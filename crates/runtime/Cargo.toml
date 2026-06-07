@@ -1,0 +1,26 @@
+[package]
+name = "dowe_runtime"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+axum.workspace = true
+bytes.workspace = true
+dowe_compiler = { path = "../compiler" }
+dowe_crypto = { path = "../crypto" }
+dowe_spawn = { path = "../spawn" }
+dowe_store = { path = "../store" }
+futures-util.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+reqwest.workspace = true
+tempfile = "3.23.0"
+tokio-tungstenite.workspace = true
+
+[lib]
+path = "src/lib.rs"

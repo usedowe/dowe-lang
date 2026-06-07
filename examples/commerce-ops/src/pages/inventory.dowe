@@ -1,0 +1,104 @@
+type ProductForm
+  id?:string
+  name:string
+  sku:string
+  category:string
+  price:string
+  stock:string
+  status:string
+  description:string
+
+type ProductItem
+  id:string
+  name:string
+  sku:string
+  category:string
+  price:string
+  stock:string
+  status:string
+  description:string
+  createdAt:string
+  updatedAt:string
+
+type AlertState
+  type:string
+  message:string
+  visible:bool
+
+page inventoryPage
+  signal product type:ProductForm value:{ id:null name:"" sku:"" category:"apparel" price:"" stock:"" status:"draft" description:"" }
+  signal products type:ProductItem[] value:[]
+  signal alert type:AlertState value:{ type:"info" message:"" visible:false }
+  action load
+    request GET route:"/api/products" update:products autoload:true
+      onError alert:"Could not load products"
+  action create
+    request POST route:"/api/products" body:product update:products reset:product
+      onSuccess alert:"Product created"
+      onError alert:"Could not create product"
+  action edit
+    assign product source:item
+  action update
+    request PATCH route:"/api/products/:id" body:product update:products reset:product
+      onSuccess alert:"Product updated"
+      onError alert:"Could not update product"
+  action delete
+    request DELETE route:"/api/products/:id" body:item update:products
+      onSuccess alert:"Product deleted"
+      onError alert:"Could not delete product"
+  action close
+    reset alert
+  Box bg:"background" color:"onBackground"
+    Grid columns:1 gap:6
+      Card variant:"soft" scheme:"surface" p:{ xs:5 md:7 } rounded:"xl"
+        Text size:"sm" weight:"semibold" color:"success"
+          INVENTORY
+        Title size:"4xl" weight:"bold"
+          Product editor
+        Text size:"md" color:"muted"
+          Build catalog records with bound form controls and endpoint-backed updates.
+        Alert type:"info" message:alert.message visible:alert.visible onClose:close p:3
+        Grid columns:{ xs:1 md:3 } gap:4
+          Input bind:product.name label:"Name" placeholder:"Merino overshirt" labelFloating:true variant:"outlined" scheme:"primary"
+          Input bind:product.sku label:"SKU" placeholder:"SKU-2401" labelFloating:true variant:"outlined" scheme:"secondary"
+          Select bind:product.category label:"Category" placeholder:"Choose category" labelFloating:true variant:"outlined" scheme:"success"
+            Option value:"apparel" label:"Apparel" description:"Clothing and accessories"
+            Option value:"home" label:"Home" description:"Interior goods"
+            Option value:"digital" label:"Digital" description:"Downloads and licenses"
+            Option value:"service" label:"Service" description:"Appointments and support"
+          Input bind:product.price label:"Price" placeholder:"129.00" labelFloating:true variant:"outlined" scheme:"info"
+          Input bind:product.stock label:"Stock" placeholder:"48" labelFloating:true variant:"outlined" scheme:"warning"
+          Select bind:product.status label:"Status" placeholder:"Choose status" labelFloating:true variant:"outlined" scheme:"tertiary"
+            Option value:"draft" label:"Draft" description:"Hidden from storefront"
+            Option value:"active" label:"Active" description:"Visible and sellable"
+            Option value:"archived" label:"Archived" description:"Retained for history"
+          Input bind:product.description label:"Description" placeholder:"Short product positioning" labelFloating:true variant:"outlined" scheme:"muted"
+        Flex gap:3 align:"center"
+          Button onClick:create variant:"solid" scheme:"success" size:"lg"
+            Create
+          Button onClick:update variant:"outlined" scheme:"primary" size:"lg"
+            Update
+      Grid columns:{ xs:1 md:3 } gap:4
+        each item in products key:item.id
+          Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+            Grid columns:1 gap:3
+              Text size:"sm" color:"muted"
+                item.category
+              Title size:"2xl"
+                item.name
+              Text size:"sm" color:"muted"
+                item.sku
+              Text size:"md"
+                item.description
+              Text size:"sm"
+                item.price
+              Text size:"sm"
+                item.stock
+              Text size:"sm" color:"success"
+                item.status
+              Flex gap:2 align:"center"
+                Button onClick:edit variant:"soft" scheme:"info" size:"sm"
+                  Edit
+                Button onClick:delete variant:"ghost" scheme:"danger" size:"sm"
+                  Delete
+

@@ -1,0 +1,18 @@
+[package]
+name = "dowe_compiler"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+dowe_components = { path = "../components" }
+dowe_generator_android = { path = "../generator_android" }
+dowe_generator_desktop = { path = "../generator_desktop" }
+dowe_generator_ios = { path = "../generator_ios" }
+dowe_generator_web = { path = "../generator_web" }
+
+[dev-dependencies]
+tempfile = "3.23.0"
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,44 @@
+page dashboardPage
+  Box bg:"background" color:"onBackground"
+    Grid columns:1 gap:6
+      Card variant:"solid" scheme:"primary" p:{ xs:5 md:8 } rounded:"xl"
+        Grid columns:{ xs:1 md:2 } gap:6
+          Box
+            Text size:"sm" weight:"semibold"
+              PRODUCT OPERATIONS
+            Title size:"5xl" weight:"bold"
+              A focused inventory console generated from Dowe source
+            Text size:"lg"
+              Keep product records, categories, and publication status in Store while views stay target-neutral.
+            Flex gap:3 align:"center"
+              Button href:"/inventory" variant:"soft" scheme:"secondary" size:"lg"
+                Manage inventory
+              Button href:"/inventory" variant:"outlined" scheme:"secondary" size:"lg"
+                Add product
+          Card variant:"soft" scheme:"surface" p:6 rounded:"xl"
+            Title size:"3xl"
+              Endpoint model
+            Text size:"md"
+              Routes under /api/products call server handlers that validate request bodies and persist product data.
+      Grid columns:{ xs:1 md:3 } gap:4
+        Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+          Text size:"sm" color:"muted"
+            Catalog
+          Title size:"3xl"
+            Products
+          Text size:"sm"
+            Each product has pricing, category, stock, and status fields.
+        Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+          Text size:"sm" color:"muted"
+            Actions
+          Title size:"3xl"
+            CRUD
+          Text size:"sm"
+            Create, update, and delete requests refresh the inventory list.
+        Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+          Text size:"sm" color:"muted"
+            UI
+          Title size:"3xl"
+            Controls
+          Text size:"sm"
+            Inputs and Selects use Dowe component contracts.

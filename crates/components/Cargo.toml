@@ -1,0 +1,10 @@
+[package]
+name = "dowe_components"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[lib]
+path = "src/lib.rs"

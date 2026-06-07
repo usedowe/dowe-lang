@@ -1,0 +1,33 @@
+import listProducts from "./handlers/products"
+import createProduct from "./handlers/products"
+import readProduct from "./handlers/products"
+import updateProduct from "./handlers/products"
+import deleteProduct from "./handlers/products"
+
+main
+  server port:8082
+    route "/api/status"
+      response text:"commerce-ops ready"
+    route "/api/products"
+      method GET handler:listProducts
+      method POST handler:createProduct
+    route "/api/products/:id"
+      method GET handler:readProduct
+      method PATCH handler:updateProduct
+      method DELETE handler:deleteProduct
+    init
+      log "Commerce ops server initialized"
+  desktop
+    server port:4502
+      route "/api/status"
+        response text:"commerce-ops desktop ready"
+      route "/api/products"
+        method GET handler:listProducts
+        method POST handler:createProduct
+      route "/api/products/:id"
+        method GET handler:readProduct
+        method PATCH handler:updateProduct
+        method DELETE handler:deleteProduct
+      init
+        log "Commerce ops desktop server initialized"
+

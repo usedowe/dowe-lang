@@ -1,0 +1,27 @@
+layout OpsLayout
+  Box bg:"background" color:"onBackground"
+    AppBar variant:"soft" scheme:"surface" bordered:true blurred:true boxed:true
+      start
+        Text weight:"bold"
+          Commerce Ops
+      center
+        Text size:"sm" color:"muted"
+          Inventory control room
+      end
+        Button href:"/" variant:"ghost" scheme:"primary" size:"sm"
+          Dashboard
+        Button href:"/inventory" variant:"soft" scheme:"success" size:"sm"
+          Inventory
+    Box p:{ xs:4 md:8 }
+      children
+    Footer variant:"soft" scheme:"surface" bordered:true boxed:true
+      start
+        Text size:"sm"
+          Commerce Ops
+      center
+        Text size:"sm"
+          Product catalog and endpoint workflow
+      end
+        Button href:"/inventory" variant:"ghost" scheme:"success" size:"sm"
+          Manage products
+

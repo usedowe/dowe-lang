@@ -1,0 +1,96 @@
+type AppointmentForm
+  id?:string
+  patientName:string
+  service:string
+  date:string
+  time:string
+  status:string
+  notes:string
+
+type AppointmentItem
+  id:string
+  patientName:string
+  service:string
+  date:string
+  time:string
+  status:string
+  notes:string
+  createdAt:string
+  updatedAt:string
+
+type AlertState
+  type:string
+  message:string
+  visible:bool
+
+page appointmentsPage
+  signal appointment type:AppointmentForm value:{ id:null patientName:"" service:"" date:"" time:"" status:"scheduled" notes:"" }
+  signal appointments type:AppointmentItem[] value:[]
+  signal alert type:AlertState value:{ type:"info" message:"" visible:false }
+  action load
+    request GET route:"/api/appointments" update:appointments autoload:true
+      onError alert:"Could not load appointments"
+  action create
+    request POST route:"/api/appointments" body:appointment update:appointments reset:appointment
+      onSuccess alert:"Appointment created"
+      onError alert:"Could not create appointment"
+  action edit
+    assign appointment source:item
+  action update
+    request PATCH route:"/api/appointments/:id" body:appointment update:appointments reset:appointment
+      onSuccess alert:"Appointment updated"
+      onError alert:"Could not update appointment"
+  action delete
+    request DELETE route:"/api/appointments/:id" body:item update:appointments
+      onSuccess alert:"Appointment deleted"
+      onError alert:"Could not delete appointment"
+  action close
+    reset alert
+  Box bg:"background" color:"onBackground"
+    Grid columns:1 gap:6
+      Card variant:"soft" scheme:"surface" p:{ xs:5 md:7 } rounded:"xl"
+        Text size:"sm" weight:"semibold" color:"info"
+          SCHEDULE
+        Title size:"4xl" weight:"bold"
+          Appointment planner
+        Text size:"md" color:"muted"
+          Create, edit, and clear appointments through Dowe Signals and server endpoints.
+        Alert type:"info" message:alert.message visible:alert.visible onClose:close p:3
+        Grid columns:{ xs:1 md:2 } gap:4
+          Input bind:appointment.patientName label:"Patient" placeholder:"Jane Rivera" labelFloating:true variant:"outlined" scheme:"primary"
+          Input bind:appointment.service label:"Service" placeholder:"Primary care" labelFloating:true variant:"outlined" scheme:"info"
+          Input bind:appointment.date label:"Date" placeholder:"2026-06-04" labelFloating:true variant:"outlined" scheme:"secondary"
+          Input bind:appointment.time label:"Time" placeholder:"09:30" labelFloating:true variant:"outlined" scheme:"secondary"
+          Select bind:appointment.status label:"Status" placeholder:"Choose status" labelFloating:true variant:"outlined" scheme:"success"
+            Option value:"scheduled" label:"Scheduled" description:"Confirmed on the calendar"
+            Option value:"checked-in" label:"Checked in" description:"Patient is waiting"
+            Option value:"completed" label:"Completed" description:"Visit is finished"
+            Option value:"cancelled" label:"Cancelled" description:"No longer active"
+          Input bind:appointment.notes label:"Notes" placeholder:"Symptoms, room, or follow-up details" labelFloating:true variant:"outlined" scheme:"muted"
+        Flex gap:3 align:"center"
+          Button onClick:create variant:"solid" scheme:"info" size:"lg"
+            Create
+          Button onClick:update variant:"outlined" scheme:"success" size:"lg"
+            Update
+      Grid columns:{ xs:1 md:2 } gap:4
+        each item in appointments key:item.id
+          Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+            Grid columns:1 gap:3
+              Text size:"sm" color:"muted"
+                item.status
+              Title size:"2xl"
+                item.patientName
+              Text size:"md"
+                item.service
+              Text size:"sm" color:"muted"
+                item.date
+              Text size:"sm" color:"muted"
+                item.time
+              Text size:"sm"
+                item.notes
+              Flex gap:2 align:"center"
+                Button onClick:edit variant:"soft" scheme:"info" size:"sm"
+                  Edit
+                Button onClick:delete variant:"ghost" scheme:"danger" size:"sm"
+                  Delete
+

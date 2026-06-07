@@ -1,0 +1,21 @@
+[package]
+name = "dowe_ipc"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+dowe_agent_harness = { path = "../agent_harness" }
+dowe_codegraph = { path = "../codegraph" }
+dowe_compiler = { path = "../compiler" }
+dowe_deploy = { path = "../deploy" }
+dowe_runtime = { path = "../runtime" }
+dowe_spawn = { path = "../spawn" }
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile = "3.23.0"
+tokio.workspace = true
+
+[lib]
+path = "src/lib.rs"

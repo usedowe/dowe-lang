@@ -1,0 +1,1911 @@
+use std::collections::BTreeSet;
+use std::fmt::{Display, Formatter};
+
+pub type ComponentResult<T> = Result<T, ComponentError>;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ViewNode {
+    Scope {
+        signals: Vec<ViewSignal>,
+        actions: Vec<ViewAction>,
+        children: Vec<ViewNode>,
+    },
+    Box {
+        props: StyleProps,
+        children: Vec<ViewNode>,
+    },
+    Section {
+        props: StyleProps,
+        children: Vec<ViewNode>,
+    },
+    Flex {
+        props: LayoutProps,
+        children: Vec<ViewNode>,
+    },
+    Grid {
+        props: GridProps,
+        children: Vec<ViewNode>,
+    },
+    Card {
+        props: VariantProps,
+        children: Vec<ViewNode>,
+    },
+    Tabs {
+        props: TabsProps,
+        tabs: Vec<TabItem>,
+    },
+    NavMenu {
+        props: NavMenuProps,
+        items: Vec<NavMenuItem>,
+    },
+    Button {
+        props: VariantProps,
+        children: Vec<ViewNode>,
+    },
+    Input {
+        props: VariantProps,
+    },
+    Select {
+        props: VariantProps,
+        options: Vec<SelectOption>,
+    },
+    Audio {
+        props: AudioProps,
+    },
+    Image {
+        props: ImageProps,
+    },
+    Code {
+        props: CodeProps,
+    },
+    Video {
+        props: VideoProps,
+    },
+    Candlestick {
+        props: CandlestickProps,
+    },
+    Table {
+        props: TableProps,
+    },
+    Divider {
+        props: DividerProps,
+    },
+    Title {
+        props: TextProps,
+        value: String,
+    },
+    Text {
+        props: TextProps,
+        value: String,
+    },
+    Alert {
+        props: AlertProps,
+    },
+    Svg {
+        props: SvgProps,
+        paths: Vec<SvgPath>,
+    },
+    AppBar {
+        props: BarProps,
+        start: Vec<ViewNode>,
+        center: Vec<ViewNode>,
+        end: Vec<ViewNode>,
+    },
+    Footer {
+        props: BarProps,
+        start: Vec<ViewNode>,
+        center: Vec<ViewNode>,
+        end: Vec<ViewNode>,
+    },
+    BottomBar {
+        props: BarProps,
+        start: Vec<ViewNode>,
+        center: Vec<ViewNode>,
+        end: Vec<ViewNode>,
+    },
+    SideNav {
+        props: SideNavProps,
+        items: Vec<SideNavItem>,
+    },
+    Sidebar {
+        props: SideNavProps,
+        items: Vec<SideNavItem>,
+    },
+    Scaffold {
+        props: ScaffoldProps,
+        app_bar: Vec<ViewNode>,
+        start: Vec<ViewNode>,
+        main: Vec<ViewNode>,
+        end: Vec<ViewNode>,
+        bottom_bar: Vec<ViewNode>,
+    },
+    Drawer {
+        props: DrawerProps,
+        children: Vec<ViewNode>,
+    },
+    Avatar {
+        props: AvatarProps,
+        icon: Option<SideNavIcon>,
+    },
+    Badge {
+        props: BadgeProps,
+        children: Vec<ViewNode>,
+    },
+    Chip {
+        props: ChipProps,
+        value: String,
+        start: Option<SideNavIcon>,
+        end: Option<SideNavIcon>,
+    },
+    Skeleton {
+        props: SkeletonProps,
+    },
+    Modal {
+        props: ModalProps,
+        header: Vec<ViewNode>,
+        body: Vec<ViewNode>,
+        footer: Vec<ViewNode>,
+    },
+    AlertDialog {
+        props: AlertDialogProps,
+    },
+    Tooltip {
+        props: TooltipProps,
+        children: Vec<ViewNode>,
+    },
+    Toast {
+        props: ToastProps,
+    },
+    Dropdown {
+        props: DropdownProps,
+        trigger: Vec<ViewNode>,
+        header: Vec<ViewNode>,
+        entries: Vec<OverlayEntry>,
+        footer: Vec<ViewNode>,
+    },
+    Command {
+        props: CommandProps,
+        entries: Vec<CommandEntry>,
+    },
+    Accordion {
+        props: AccordionProps,
+        items: Vec<AccordionItem>,
+    },
+    Carousel {
+        props: CarouselProps,
+        slides: Vec<CarouselSlide>,
+    },
+    Checkbox {
+        props: CheckboxProps,
+    },
+    Color {
+        props: ColorProps,
+    },
+    Date {
+        props: DateProps,
+    },
+    DateRange {
+        props: DateRangeProps,
+    },
+    RadioGroup {
+        props: RadioGroupProps,
+        options: Vec<RadioOption>,
+    },
+    Toggle {
+        props: ToggleProps,
+    },
+    Each {
+        item: String,
+        collection: String,
+        key: String,
+        children: Vec<ViewNode>,
+    },
+    Children,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewSignal {
+    pub id: String,
+    pub name: String,
+    pub initial: ViewSignalValue,
+    pub schema: Option<ViewSignalValue>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ViewSignalValue {
+    Null,
+    Bool(bool),
+    Number(String),
+    String(String),
+    Array(Vec<ViewSignalValue>),
+    Object(Vec<(String, ViewSignalValue)>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewAction {
+    pub id: String,
+    pub name: String,
+    pub kind: ViewActionKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ViewActionKind {
+    Request(ViewRequestAction),
+    Assign(ViewAssignAction),
+    Reset(ViewResetAction),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewRequestAction {
+    pub method: ViewRequestMethod,
+    pub path: String,
+    pub base_env: Option<String>,
+    pub body: Option<String>,
+    pub update: Option<String>,
+    pub reset: Option<String>,
+    pub success_alert: Option<String>,
+    pub success_message: Option<String>,
+    pub error_alert: Option<String>,
+    pub error_message: Option<String>,
+    pub autoload: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewRequestMethod {
+    Get,
+    Post,
+    Put,
+    Patch,
+    Delete,
+}
+
+impl ViewRequestMethod {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "GET" => Some(Self::Get),
+            "POST" => Some(Self::Post),
+            "PUT" => Some(Self::Put),
+            "PATCH" => Some(Self::Patch),
+            "DELETE" => Some(Self::Delete),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Get => "GET",
+            Self::Post => "POST",
+            Self::Put => "PUT",
+            Self::Patch => "PATCH",
+            Self::Delete => "DELETE",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewAssignAction {
+    pub target: String,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewResetAction {
+    pub target: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewRoute {
+    pub id: String,
+    pub route_path: String,
+    pub layout_tree: ViewNode,
+    pub page_tree: ViewNode,
+    pub sections: Vec<ViewSection>,
+    pub navigation_actions: Vec<ViewNavigationAction>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewSection {
+    pub id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewNavigationAction {
+    pub id: String,
+    pub action: NavigationAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NavigationAction {
+    Internal {
+        path: String,
+        fragment: Option<String>,
+        operation: NavigationOperation,
+    },
+    Section {
+        fragment: String,
+        operation: NavigationOperation,
+    },
+    External {
+        url: String,
+        web_target: WebTarget,
+        native_external_mode: NativeExternalMode,
+    },
+    Back,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NavigationOperation {
+    Push,
+    Replace,
+}
+
+impl NavigationOperation {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "push" => Some(Self::Push),
+            "replace" => Some(Self::Replace),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Push => "push",
+            Self::Replace => "replace",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Push, Self::Replace]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WebTarget {
+    SelfTarget,
+    Blank,
+}
+
+impl WebTarget {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "self" => Some(Self::SelfTarget),
+            "blank" => Some(Self::Blank),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::SelfTarget => "self",
+            Self::Blank => "blank",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::SelfTarget, Self::Blank]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeExternalMode {
+    System,
+    Webview,
+}
+
+impl NativeExternalMode {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "system" => Some(Self::System),
+            "webview" => Some(Self::Webview),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::Webview => "webview",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::System, Self::Webview]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ElementProps {
+    pub id: Option<String>,
+    pub font: Option<ResponsiveValue<FontFamily>>,
+    pub bind: Option<String>,
+    pub on_click: Option<String>,
+    pub show: Option<VisibilityCondition>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct StyleProps {
+    pub element: ElementProps,
+    pub font: Option<ResponsiveValue<FontFamily>>,
+    pub bg: Option<ResponsiveValue<ColorToken>>,
+    pub text: Option<ResponsiveValue<ColorToken>>,
+    pub cover: Option<ResponsiveValue<CoverSource>>,
+    pub overlay: Option<ResponsiveValue<OverlayPaint>>,
+    pub background: Option<ResponsiveValue<SectionBackground>>,
+    pub animation: Option<ViewAnimation>,
+    pub spacing: SpacingProps,
+    pub sizing: SizingProps,
+    pub rounded: Option<ResponsiveValue<RoundedSize>>,
+    pub border: Option<ResponsiveValue<BorderWidth>>,
+    pub grid_item: GridItemProps,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct LayoutProps {
+    pub style: StyleProps,
+    pub justify: Option<ResponsiveValue<Justify>>,
+    pub align: Option<ResponsiveValue<Align>>,
+    pub gap: Option<ResponsiveValue<GapValue>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GridProps {
+    pub style: StyleProps,
+    pub columns: Option<ResponsiveValue<GridTracks>>,
+    pub rows: Option<ResponsiveValue<GridTracks>>,
+    pub justify: Option<ResponsiveValue<GridAlignment>>,
+    pub align: Option<ResponsiveValue<GridAlignment>>,
+    pub gap: Option<ResponsiveValue<GapValue>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct VariantProps {
+    pub element: ElementProps,
+    pub style: StyleProps,
+    pub variant: Option<ComponentVariant>,
+    pub color: Option<ColorFamily>,
+    pub size: Option<ButtonSize>,
+    pub label: Option<String>,
+    pub placeholder: Option<String>,
+    pub label_floating: bool,
+    pub navigation: Option<NavigationAction>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TextProps {
+    pub style: StyleProps,
+    pub size: Option<ResponsiveValue<TextSize>>,
+    pub weight: Option<ResponsiveValue<TextWeight>>,
+    pub letter_spacing: Option<ResponsiveValue<TextSpacing>>,
+    pub i18n: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlertProps {
+    pub style: VariantProps,
+    pub kind: AlertKind,
+    pub message: String,
+    pub visible: Option<String>,
+    pub on_close: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SvgProps {
+    pub style: StyleProps,
+    pub view_box: SvgViewBox,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct BarProps {
+    pub style: VariantProps,
+    pub bordered: bool,
+    pub blurred: bool,
+    pub boxed: bool,
+    pub floating: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SideNavProps {
+    pub style: VariantProps,
+    pub size: SideNavSize,
+    pub wide: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NavMenuProps {
+    pub style: VariantProps,
+    pub size: SideNavSize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ScaffoldProps {
+    pub style: StyleProps,
+    pub boxed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DrawerProps {
+    pub style: VariantProps,
+    pub open: String,
+    pub position: DrawerPosition,
+    pub disable_overlay_close: bool,
+    pub hide_close_button: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AvatarProps {
+    pub style: VariantProps,
+    pub src: Option<String>,
+    pub name: Option<String>,
+    pub alt: String,
+    pub size: ButtonSize,
+    pub status: Option<AvatarStatus>,
+    pub bordered: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BadgeProps {
+    pub style: VariantProps,
+    pub text: String,
+    pub position: OverlayCornerPosition,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChipProps {
+    pub style: VariantProps,
+    pub on_close: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkeletonProps {
+    pub style: StyleProps,
+    pub variant: SkeletonVariant,
+    pub animation: SkeletonAnimation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModalProps {
+    pub style: VariantProps,
+    pub open: String,
+    pub on_close: Option<String>,
+    pub disable_overlay_close: bool,
+    pub hide_close_button: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlertDialogProps {
+    pub style: VariantProps,
+    pub open: String,
+    pub title: String,
+    pub description: String,
+    pub confirm_text: String,
+    pub cancel_text: String,
+    pub on_confirm: Option<String>,
+    pub on_cancel: Option<String>,
+    pub loading: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TooltipProps {
+    pub style: VariantProps,
+    pub label: String,
+    pub position: OverlayPosition,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToastProps {
+    pub style: VariantProps,
+    pub source: Option<String>,
+    pub kind: ToastKind,
+    pub title: Option<String>,
+    pub description: String,
+    pub position: OverlayCornerPosition,
+    pub show_icon: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DropdownProps {
+    pub style: VariantProps,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandProps {
+    pub style: VariantProps,
+    pub open: Option<String>,
+    pub placeholder: String,
+    pub empty_text: String,
+    pub close_text: String,
+    pub navigate_text: String,
+    pub select_text: String,
+    pub toggle_text: String,
+    pub shortcut: String,
+    pub disable_global_shortcut: bool,
+    pub show_footer: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AudioProps {
+    pub style: VariantProps,
+    pub src: String,
+    pub subtitle: Option<String>,
+    pub avatar_src: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImageProps {
+    pub style: VariantProps,
+    pub src: String,
+    pub alt: String,
+    pub aspect: ImageAspect,
+    pub object_fit: ImageObjectFit,
+    pub loading: ImageLoading,
+    pub hide_controls: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccordionProps {
+    pub style: VariantProps,
+    pub multiple: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccordionItem {
+    pub id: String,
+    pub label: String,
+    pub disabled: bool,
+    pub default_open: bool,
+    pub children: Vec<ViewNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CarouselProps {
+    pub style: VariantProps,
+    pub autoplay: bool,
+    pub autoplay_interval: u16,
+    pub disable_loop: bool,
+    pub hide_controls: bool,
+    pub hide_indicators: bool,
+    pub show_navigation: bool,
+    pub show_counter: bool,
+    pub orientation: CarouselOrientation,
+    pub size: ButtonSize,
+    pub indicator_type: CarouselIndicatorType,
+    pub title: Option<String>,
+    pub slide_width: Option<u16>,
+    pub slide_height: Option<u16>,
+    pub slides_per_view: u16,
+    pub gap: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CarouselSlide {
+    pub id: String,
+    pub children: Vec<ViewNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CheckboxProps {
+    pub style: VariantProps,
+    pub checked: bool,
+    pub disabled: bool,
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ColorProps {
+    pub style: VariantProps,
+    pub value: String,
+    pub size: ButtonSize,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+    pub show_hex: bool,
+    pub show_rgb: bool,
+    pub show_cmyk: bool,
+    pub show_oklch: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DateProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub size: ButtonSize,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+    pub min: Option<String>,
+    pub max: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DateRangeProps {
+    pub style: VariantProps,
+    pub start: Option<String>,
+    pub end: Option<String>,
+    pub start_value: Option<String>,
+    pub end_value: Option<String>,
+    pub size: ButtonSize,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+    pub min: Option<String>,
+    pub max: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RadioGroupProps {
+    pub style: VariantProps,
+    pub size: ButtonSize,
+    pub name: Option<String>,
+    pub info: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RadioOption {
+    pub value: String,
+    pub label: String,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToggleProps {
+    pub style: VariantProps,
+    pub checked: bool,
+    pub disabled: bool,
+    pub name: Option<String>,
+    pub label_left: Option<String>,
+    pub label_right: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OverlayEntry {
+    Item(OverlayItemProps),
+    Divider,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OverlayItemProps {
+    pub label: String,
+    pub description: Option<String>,
+    pub icon: Option<SideNavIcon>,
+    pub on_click: Option<String>,
+    pub navigation: Option<NavigationAction>,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandEntry {
+    Item(OverlayItemProps),
+    Group {
+        label: String,
+        icon: Option<SideNavIcon>,
+        items: Vec<OverlayItemProps>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TabsProps {
+    pub style: StyleProps,
+    pub variant: TabsVariant,
+    pub color: ColorFamily,
+    pub position: TabsPosition,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TabItem {
+    pub id: String,
+    pub label: String,
+    pub children: Vec<ViewNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NavMenuItem {
+    Item(NavMenuItemProps),
+    Submenu {
+        props: NavMenuItemProps,
+        items: Vec<NavMenuItemProps>,
+    },
+    Megamenu {
+        props: NavMenuItemProps,
+        content: Vec<ViewNode>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NavMenuItemProps {
+    pub label: String,
+    pub description: Option<String>,
+    pub icon: Option<SideNavIcon>,
+    pub on_click: Option<String>,
+    pub navigation: Option<NavigationAction>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TabsPosition {
+    Top,
+    Bottom,
+    Start,
+    End,
+}
+
+impl TabsPosition {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "top" => Some(Self::Top),
+            "bottom" => Some(Self::Bottom),
+            "start" => Some(Self::Start),
+            "end" => Some(Self::End),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+            Self::Start => "start",
+            Self::End => "end",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Top, Self::Bottom, Self::Start, Self::End]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AvatarStatus {
+    Online,
+    Offline,
+    Busy,
+    Away,
+}
+
+impl AvatarStatus {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "online" => Some(Self::Online),
+            "offline" => Some(Self::Offline),
+            "busy" => Some(Self::Busy),
+            "away" => Some(Self::Away),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Online => "online",
+            Self::Offline => "offline",
+            Self::Busy => "busy",
+            Self::Away => "away",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Online, Self::Offline, Self::Busy, Self::Away]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OverlayCornerPosition {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+impl OverlayCornerPosition {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "top-left" => Some(Self::TopLeft),
+            "top-right" => Some(Self::TopRight),
+            "bottom-left" => Some(Self::BottomLeft),
+            "bottom-right" => Some(Self::BottomRight),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::TopLeft => "top-left",
+            Self::TopRight => "top-right",
+            Self::BottomLeft => "bottom-left",
+            Self::BottomRight => "bottom-right",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::TopLeft,
+            Self::TopRight,
+            Self::BottomLeft,
+            Self::BottomRight,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OverlayPosition {
+    Top,
+    Bottom,
+    Start,
+    End,
+}
+
+impl OverlayPosition {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "top" => Some(Self::Top),
+            "bottom" => Some(Self::Bottom),
+            "start" => Some(Self::Start),
+            "end" => Some(Self::End),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+            Self::Start => "start",
+            Self::End => "end",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Top, Self::Bottom, Self::Start, Self::End]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkeletonVariant {
+    Text,
+    Circular,
+    Rectangular,
+    Rounded,
+}
+
+impl SkeletonVariant {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "text" => Some(Self::Text),
+            "circular" => Some(Self::Circular),
+            "rectangular" => Some(Self::Rectangular),
+            "rounded" => Some(Self::Rounded),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Circular => "circular",
+            Self::Rectangular => "rectangular",
+            Self::Rounded => "rounded",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Text,
+            Self::Circular,
+            Self::Rectangular,
+            Self::Rounded,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkeletonAnimation {
+    Pulse,
+    Wave,
+    None,
+}
+
+impl SkeletonAnimation {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "pulse" => Some(Self::Pulse),
+            "wave" => Some(Self::Wave),
+            "none" => Some(Self::None),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pulse => "pulse",
+            Self::Wave => "wave",
+            Self::None => "none",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Pulse, Self::Wave, Self::None]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToastKind {
+    Primary,
+    Secondary,
+    Muted,
+    Success,
+    Info,
+    Warning,
+    Danger,
+    Error,
+}
+
+impl ToastKind {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "primary" => Some(Self::Primary),
+            "secondary" => Some(Self::Secondary),
+            "muted" => Some(Self::Muted),
+            "success" => Some(Self::Success),
+            "info" => Some(Self::Info),
+            "warning" => Some(Self::Warning),
+            "danger" => Some(Self::Danger),
+            "error" => Some(Self::Error),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Primary => "primary",
+            Self::Secondary => "secondary",
+            Self::Muted => "muted",
+            Self::Success => "success",
+            Self::Info => "info",
+            Self::Warning => "warning",
+            Self::Danger => "danger",
+            Self::Error => "error",
+        }
+    }
+
+    pub fn color(self) -> ColorFamily {
+        match self {
+            Self::Primary => ColorFamily::Primary,
+            Self::Secondary => ColorFamily::Secondary,
+            Self::Muted => ColorFamily::Muted,
+            Self::Success => ColorFamily::Success,
+            Self::Info => ColorFamily::Info,
+            Self::Warning => ColorFamily::Warning,
+            Self::Danger | Self::Error => ColorFamily::Danger,
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Primary,
+            Self::Secondary,
+            Self::Muted,
+            Self::Success,
+            Self::Info,
+            Self::Warning,
+            Self::Danger,
+            Self::Error,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TabsVariant {
+    Solid,
+    Outlined,
+    Line,
+    Ghost,
+    Pills,
+}
+
+impl TabsVariant {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "solid" => Some(Self::Solid),
+            "outlined" | "outline" => Some(Self::Outlined),
+            "line" => Some(Self::Line),
+            "ghost" => Some(Self::Ghost),
+            "pills" => Some(Self::Pills),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Solid => "solid",
+            Self::Outlined => "outlined",
+            Self::Line => "line",
+            Self::Ghost => "ghost",
+            Self::Pills => "pills",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Solid,
+            Self::Outlined,
+            Self::Line,
+            Self::Ghost,
+            Self::Pills,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SideNavItem {
+    Header(SideNavItemProps),
+    Item(SideNavItemProps),
+    Divider,
+    Submenu {
+        props: SideNavItemProps,
+        open: bool,
+        items: Vec<SideNavItemProps>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SideNavItemProps {
+    pub label: String,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub icon: Option<SideNavIcon>,
+    pub on_click: Option<String>,
+    pub navigation: Option<NavigationAction>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SideNavIcon {
+    pub props: SvgProps,
+    pub paths: Vec<SvgPath>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SvgViewBox {
+    pub min_x: String,
+    pub min_y: String,
+    pub width: String,
+    pub height: String,
+}
+
+impl SvgViewBox {
+    pub fn as_str(&self) -> String {
+        format!(
+            "{} {} {} {}",
+            self.min_x, self.min_y, self.width, self.height
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SvgPath {
+    pub data: String,
+    pub fill: SvgPathFill,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SelectOption {
+    pub value: String,
+    pub label: String,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeProps {
+    pub style: VariantProps,
+    pub language: CodeLanguage,
+    pub source: String,
+    pub tokens: Vec<CodeToken>,
+    pub copy_label: String,
+    pub copied_label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VideoProps {
+    pub style: VariantProps,
+    pub src: String,
+    pub poster: Option<String>,
+    pub autoplay: bool,
+    pub aspect: VideoAspect,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CandlestickProps {
+    pub style: VariantProps,
+    pub data: String,
+    pub stream: Option<String>,
+    pub up_color: ColorToken,
+    pub down_color: ColorToken,
+    pub empty_label: String,
+    pub max_points: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TableProps {
+    pub style: VariantProps,
+    pub data: String,
+    pub columns: Vec<TableColumn>,
+    pub size: TableSize,
+    pub striped: bool,
+    pub bordered: bool,
+    pub dividers: bool,
+    pub empty_title: String,
+    pub empty_description: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TableColumn {
+    pub field: String,
+    pub label: String,
+    pub align: TableColumnAlign,
+    pub width: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DividerProps {
+    pub style: StyleProps,
+    pub orientation: DividerOrientation,
+    pub color: ColorFamily,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DividerOrientation {
+    Horizontal,
+    Vertical,
+}
+
+impl DividerOrientation {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "horizontal" => Some(Self::Horizontal),
+            "vertical" => Some(Self::Vertical),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Horizontal => "horizontal",
+            Self::Vertical => "vertical",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Horizontal, Self::Vertical]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImageAspect {
+    Horizontal,
+    Vertical,
+    Square,
+    Auto,
+}
+
+impl ImageAspect {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "horizontal" => Some(Self::Horizontal),
+            "vertical" => Some(Self::Vertical),
+            "square" => Some(Self::Square),
+            "auto" => Some(Self::Auto),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Horizontal => "horizontal",
+            Self::Vertical => "vertical",
+            Self::Square => "square",
+            Self::Auto => "auto",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Horizontal, Self::Vertical, Self::Square, Self::Auto]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImageObjectFit {
+    Cover,
+    Contain,
+    Fill,
+    None,
+}
+
+impl ImageObjectFit {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "cover" => Some(Self::Cover),
+            "contain" => Some(Self::Contain),
+            "fill" => Some(Self::Fill),
+            "none" => Some(Self::None),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Cover => "cover",
+            Self::Contain => "contain",
+            Self::Fill => "fill",
+            Self::None => "none",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Cover, Self::Contain, Self::Fill, Self::None]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImageLoading {
+    Lazy,
+    Eager,
+}
+
+impl ImageLoading {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "lazy" => Some(Self::Lazy),
+            "eager" => Some(Self::Eager),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Lazy => "lazy",
+            Self::Eager => "eager",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Lazy, Self::Eager]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CarouselOrientation {
+    Horizontal,
+    Vertical,
+}
+
+impl CarouselOrientation {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "horizontal" => Some(Self::Horizontal),
+            "vertical" => Some(Self::Vertical),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Horizontal => "horizontal",
+            Self::Vertical => "vertical",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Horizontal, Self::Vertical]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CarouselIndicatorType {
+    Bar,
+    Dot,
+}
+
+impl CarouselIndicatorType {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "bar" => Some(Self::Bar),
+            "dot" => Some(Self::Dot),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Bar => "bar",
+            Self::Dot => "dot",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Bar, Self::Dot]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VideoAspect {
+    Horizontal,
+    Vertical,
+    Square,
+}
+
+impl VideoAspect {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "horizontal" => Some(Self::Horizontal),
+            "vertical" => Some(Self::Vertical),
+            "square" => Some(Self::Square),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Horizontal => "horizontal",
+            Self::Vertical => "vertical",
+            Self::Square => "square",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Horizontal, Self::Vertical, Self::Square]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeToken {
+    pub kind: CodeTokenKind,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CodeTokenKind {
+    Plain,
+    Keyword,
+    Type,
+    String,
+    Number,
+    Attribute,
+    Comment,
+    Punctuation,
+}
+
+impl CodeTokenKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Plain => "plain",
+            Self::Keyword => "keyword",
+            Self::Type => "type",
+            Self::String => "string",
+            Self::Number => "number",
+            Self::Attribute => "attribute",
+            Self::Comment => "comment",
+            Self::Punctuation => "punctuation",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CodeLanguage {
+    Dowe,
+    TypeScript,
+    Go,
+    Rust,
+}
+
+impl CodeLanguage {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "dowe" => Some(Self::Dowe),
+            "typescript" => Some(Self::TypeScript),
+            "go" => Some(Self::Go),
+            "rust" => Some(Self::Rust),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Dowe => "dowe",
+            Self::TypeScript => "typescript",
+            Self::Go => "go",
+            Self::Rust => "rust",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Dowe, Self::TypeScript, Self::Go, Self::Rust]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VisibilityCondition {
+    Static(ResponsiveValue<bool>),
+    Signal(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SvgPathFill {
+    None,
+    CurrentColor,
+    Color(ColorToken),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlertKind {
+    Success,
+    Error,
+    Info,
+    Warning,
+}
+
+impl AlertKind {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "success" => Some(Self::Success),
+            "error" => Some(Self::Error),
+            "info" => Some(Self::Info),
+            "warning" => Some(Self::Warning),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Success => "success",
+            Self::Error => "error",
+            Self::Info => "info",
+            Self::Warning => "warning",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Success, Self::Error, Self::Info, Self::Warning]
+    }
+
+    pub fn color(self) -> ColorFamily {
+        match self {
+            Self::Success => ColorFamily::Success,
+            Self::Error => ColorFamily::Danger,
+            Self::Info => ColorFamily::Info,
+            Self::Warning => ColorFamily::Warning,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FontConfig {
+    pub default_family: FontFamily,
+    pub install: Vec<FontFamily>,
+}
+
+impl Default for FontConfig {
+    fn default() -> Self {
+        Self {
+            default_family: FontFamily::Inter,
+            install: Vec::new(),
+        }
+    }
+}
+
+impl FontConfig {
+    pub fn effective_families(&self, used: &BTreeSet<FontFamily>) -> BTreeSet<FontFamily> {
+        let mut fonts = BTreeSet::new();
+        fonts.insert(self.default_family);
+        fonts.extend(self.install.iter().copied());
+        fonts.extend(used.iter().copied());
+        fonts
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SpacingProps {
+    pub p: Option<ResponsiveValue<ScaleValue>>,
+    pub px: Option<ResponsiveValue<ScaleValue>>,
+    pub py: Option<ResponsiveValue<ScaleValue>>,
+    pub pl: Option<ResponsiveValue<ScaleValue>>,
+    pub pr: Option<ResponsiveValue<ScaleValue>>,
+    pub pt: Option<ResponsiveValue<ScaleValue>>,
+    pub pb: Option<ResponsiveValue<ScaleValue>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SizingProps {
+    pub w: Option<ResponsiveValue<SizeValue>>,
+    pub h: Option<ResponsiveValue<SizeValue>>,
+    pub min_w: Option<ResponsiveValue<SizeValue>>,
+    pub min_h: Option<ResponsiveValue<SizeValue>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct GridItemProps {
+    pub col_span: Option<ResponsiveValue<GridSpan>>,
+    pub row_span: Option<ResponsiveValue<GridSpan>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResponsiveValue<T> {
+    pub entries: Vec<ResponsiveEntry<T>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResponsiveEntry<T> {
+    pub breakpoint: Breakpoint,
+    pub value: T,
+}
+
+impl<T> ResponsiveValue<T> {
+    pub fn scalar(value: T) -> Self {
+        Self {
+            entries: vec![ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value,
+            }],
+        }
+    }
+}
+
+impl<T> ResponsiveValue<T> {
+    pub fn ordered(mut entries: Vec<ResponsiveEntry<T>>) -> Self {
+        entries.sort_by_key(|entry| entry.breakpoint.order());
+        let mut unique = Vec::new();
+
+        for entry in entries {
+            if let Some(index) = unique
+                .iter()
+                .position(|existing: &ResponsiveEntry<T>| existing.breakpoint == entry.breakpoint)
+            {
+                unique[index] = entry;
+            } else {
+                unique.push(entry);
+            }
+        }
+
+        Self { entries: unique }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ComponentProp {
+    pub name: String,
+    pub value: PropValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PropValue {
+    String(String),
+    Number(String),
+    Boolean(bool),
+    Responsive(Vec<ResponsivePropEntry>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResponsivePropEntry {
+    pub breakpoint: String,
+    pub value: PropScalar,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PropScalar {
+    String(String),
+    Number(String),
+    Boolean(bool),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Breakpoint {
+    Xs,
+    Sm,
+    Md,
+    Lg,
+    Xl,
+}
+
+impl Breakpoint {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "xs" => Some(Self::Xs),
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Xs => "xs",
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+        }
+    }
+
+    pub fn min_width(self) -> u16 {
+        match self {
+            Self::Xs => 0,
+            Self::Sm => 640,
+            Self::Md => 768,
+            Self::Lg => 1024,
+            Self::Xl => 1280,
+        }
+    }
+
+    fn order(self) -> u8 {
+        match self {
+            Self::Xs => 0,
+            Self::Sm => 1,
+            Self::Md => 2,
+            Self::Lg => 3,
+            Self::Xl => 4,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuiltinComponent {
+    Box,
+    Section,
+    Flex,
+    Grid,
+    Input,
+    Select,
+    Option,
+    Code,
+    Video,
+    Candlestick,
+    Table,
+    Divider,
+    Button,
+    Alert,
+    Svg,
+    Path,
+    AppBar,
+    Footer,
+    BottomBar,
+    NavMenu,
+    SideNav,
+    Sidebar,
+    Scaffold,
+    Drawer,
+    Avatar,
+    Badge,
+    Chip,
+    Skeleton,
+    Modal,
+    AlertDialog,
+    Tooltip,
+    Toast,
+    Dropdown,
+    Command,
+    Audio,
+    Image,
+    Accordion,
+    Carousel,
+    Checkbox,
+    Color,
+    Date,
+    DateRange,
+    RadioGroup,
+    Toggle,
+    Card,
+    Tabs,
+    Tab,
+    Title,
+    Text,
+}
+
+impl BuiltinComponent {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "Box" => Some(Self::Box),
+            "Section" => Some(Self::Section),
+            "Flex" => Some(Self::Flex),
+            "Grid" => Some(Self::Grid),
+            "Input" => Some(Self::Input),
+            "Select" => Some(Self::Select),
+            "Option" => Some(Self::Option),
+            "Code" => Some(Self::Code),
+            "Video" => Some(Self::Video),
+            "Candlestick" => Some(Self::Candlestick),
+            "Table" => Some(Self::Table),
+            "Divider" => Some(Self::Divider),
+            "Button" => Some(Self::Button),
+            "Alert" => Some(Self::Alert),
+            "Svg" => Some(Self::Svg),
+            "Path" => Some(Self::Path),
+            "AppBar" => Some(Self::AppBar),
+            "Footer" => Some(Self::Footer),
+            "BottomBar" => Some(Self::BottomBar),
+            "NavMenu" => Some(Self::NavMenu),
+            "SideNav" => Some(Self::SideNav),
+            "Sidebar" => Some(Self::Sidebar),
+            "Scaffold" => Some(Self::Scaffold),
+            "Drawer" => Some(Self::Drawer),
+            "Avatar" => Some(Self::Avatar),
+            "Badge" => Some(Self::Badge),
+            "Chip" => Some(Self::Chip),
+            "Skeleton" => Some(Self::Skeleton),
+            "Modal" => Some(Self::Modal),
+            "AlertDialog" => Some(Self::AlertDialog),
+            "Tooltip" => Some(Self::Tooltip),
+            "Toast" => Some(Self::Toast),
+            "Dropdown" => Some(Self::Dropdown),
+            "Command" => Some(Self::Command),
+            "Audio" => Some(Self::Audio),
+            "Image" => Some(Self::Image),
+            "Accordion" => Some(Self::Accordion),
+            "Carousel" => Some(Self::Carousel),
+            "Checkbox" => Some(Self::Checkbox),
+            "Color" => Some(Self::Color),
+            "Date" => Some(Self::Date),
+            "DateRange" => Some(Self::DateRange),
+            "RadioGroup" => Some(Self::RadioGroup),
+            "Toggle" => Some(Self::Toggle),
+            "Card" => Some(Self::Card),
+            "Tabs" => Some(Self::Tabs),
+            "tab" => Some(Self::Tab),
+            "Title" => Some(Self::Title),
+            "Text" => Some(Self::Text),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Box => "Box",
+            Self::Section => "Section",
+            Self::Flex => "Flex",
+            Self::Grid => "Grid",
+            Self::Input => "Input",
+            Self::Select => "Select",
+            Self::Option => "Option",
+            Self::Code => "Code",
+            Self::Video => "Video",
+            Self::Candlestick => "Candlestick",
+            Self::Table => "Table",
+            Self::Divider => "Divider",
+            Self::Button => "Button",
+            Self::Alert => "Alert",
+            Self::Svg => "Svg",
+            Self::Path => "Path",
+            Self::AppBar => "AppBar",
+            Self::Footer => "Footer",
+            Self::BottomBar => "BottomBar",
+            Self::NavMenu => "NavMenu",
+            Self::SideNav => "SideNav",
+            Self::Sidebar => "Sidebar",
+            Self::Scaffold => "Scaffold",
+            Self::Drawer => "Drawer",
+            Self::Avatar => "Avatar",
+            Self::Badge => "Badge",
+            Self::Chip => "Chip",
+            Self::Skeleton => "Skeleton",
+            Self::Modal => "Modal",
+            Self::AlertDialog => "AlertDialog",
+            Self::Tooltip => "Tooltip",
+            Self::Toast => "Toast",
+            Self::Dropdown => "Dropdown",
+            Self::Command => "Command",
+            Self::Audio => "Audio",
+            Self::Image => "Image",
+            Self::Accordion => "Accordion",
+            Self::Carousel => "Carousel",
+            Self::Checkbox => "Checkbox",
+            Self::Color => "Color",
+            Self::Date => "Date",
+            Self::DateRange => "DateRange",
+            Self::RadioGroup => "RadioGroup",
+            Self::Toggle => "Toggle",
+            Self::Card => "Card",
+            Self::Tabs => "Tabs",
+            Self::Tab => "tab",
+            Self::Title => "Title",
+            Self::Text => "Text",
+        }
+    }
+}

@@ -1,0 +1,33 @@
+import listAppointments from "./handlers/appointments"
+import createAppointment from "./handlers/appointments"
+import readAppointment from "./handlers/appointments"
+import updateAppointment from "./handlers/appointments"
+import deleteAppointment from "./handlers/appointments"
+
+main
+  server port:8081
+    route "/api/status"
+      response text:"clinic-desk ready"
+    route "/api/appointments"
+      method GET handler:listAppointments
+      method POST handler:createAppointment
+    route "/api/appointments/:id"
+      method GET handler:readAppointment
+      method PATCH handler:updateAppointment
+      method DELETE handler:deleteAppointment
+    init
+      log "Clinic desk server initialized"
+  desktop
+    server port:4501
+      route "/api/status"
+        response text:"clinic-desk desktop ready"
+      route "/api/appointments"
+        method GET handler:listAppointments
+        method POST handler:createAppointment
+      route "/api/appointments/:id"
+        method GET handler:readAppointment
+        method PATCH handler:updateAppointment
+        method DELETE handler:deleteAppointment
+      init
+        log "Clinic desk desktop server initialized"
+

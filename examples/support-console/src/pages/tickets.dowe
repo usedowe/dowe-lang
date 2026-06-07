@@ -1,0 +1,100 @@
+type TicketForm
+  id?:string
+  customerName:string
+  email:string
+  subject:string
+  priority:string
+  status:string
+  message:string
+
+type TicketItem
+  id:string
+  customerName:string
+  email:string
+  subject:string
+  priority:string
+  status:string
+  message:string
+  createdAt:string
+  updatedAt:string
+
+type AlertState
+  type:string
+  message:string
+  visible:bool
+
+page ticketsPage
+  signal ticket type:TicketForm value:{ id:null customerName:"" email:"" subject:"" priority:"normal" status:"new" message:"" }
+  signal tickets type:TicketItem[] value:[]
+  signal alert type:AlertState value:{ type:"info" message:"" visible:false }
+  action load
+    request GET route:"/api/tickets" update:tickets autoload:true
+      onError alert:"Could not load tickets"
+  action create
+    request POST route:"/api/tickets" body:ticket update:tickets reset:ticket
+      onSuccess alert:"Ticket created"
+      onError alert:"Could not create ticket"
+  action edit
+    assign ticket source:item
+  action update
+    request PATCH route:"/api/tickets/:id" body:ticket update:tickets reset:ticket
+      onSuccess alert:"Ticket updated"
+      onError alert:"Could not update ticket"
+  action delete
+    request DELETE route:"/api/tickets/:id" body:item update:tickets
+      onSuccess alert:"Ticket deleted"
+      onError alert:"Could not delete ticket"
+  action close
+    reset alert
+  Box bg:"background" color:"onBackground"
+    Grid columns:1 gap:6
+      Card variant:"soft" scheme:"surface" p:{ xs:5 md:7 } rounded:"xl"
+        Text size:"sm" weight:"semibold" color:"warning"
+          TICKETS
+        Title size:"4xl" weight:"bold"
+          Support queue
+        Text size:"md" color:"muted"
+          Route inbound customer requests with priority and status controls.
+        Alert type:"info" message:alert.message visible:alert.visible onClose:close p:3
+        Grid columns:{ xs:1 md:2 } gap:4
+          Input bind:ticket.customerName label:"Customer" placeholder:"Avery Stone" labelFloating:true variant:"outlined" scheme:"primary"
+          Input bind:ticket.email label:"Email" placeholder:"avery@example.com" labelFloating:true variant:"outlined" scheme:"secondary"
+          Input bind:ticket.subject label:"Subject" placeholder:"Billing question" labelFloating:true variant:"outlined" scheme:"warning"
+          Select bind:ticket.priority label:"Priority" placeholder:"Choose priority" labelFloating:true variant:"outlined" scheme:"danger"
+            Option value:"low" label:"Low" description:"Can wait"
+            Option value:"normal" label:"Normal" description:"Standard response"
+            Option value:"high" label:"High" description:"Needs attention"
+            Option value:"urgent" label:"Urgent" description:"Escalate immediately"
+          Select bind:ticket.status label:"Status" placeholder:"Choose status" labelFloating:true variant:"outlined" scheme:"info"
+            Option value:"new" label:"New" description:"Not triaged"
+            Option value:"open" label:"Open" description:"Assigned and active"
+            Option value:"waiting" label:"Waiting" description:"Blocked on customer"
+            Option value:"resolved" label:"Resolved" description:"Completed"
+          Input bind:ticket.message label:"Message" placeholder:"Customer context and next action" labelFloating:true variant:"outlined" scheme:"muted"
+        Flex gap:3 align:"center"
+          Button onClick:create variant:"solid" scheme:"warning" size:"lg"
+            Create
+          Button onClick:update variant:"outlined" scheme:"info" size:"lg"
+            Update
+      Grid columns:{ xs:1 md:2 } gap:4
+        each item in tickets key:item.id
+          Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+            Grid columns:1 gap:3
+              Text size:"sm" color:"muted"
+                item.priority
+              Title size:"2xl"
+                item.subject
+              Text size:"sm" color:"muted"
+                item.customerName
+              Text size:"sm" color:"muted"
+                item.email
+              Text size:"md"
+                item.message
+              Text size:"sm" color:"info"
+                item.status
+              Flex gap:2 align:"center"
+                Button onClick:edit variant:"soft" scheme:"warning" size:"sm"
+                  Edit
+                Button onClick:delete variant:"ghost" scheme:"danger" size:"sm"
+                  Delete
+

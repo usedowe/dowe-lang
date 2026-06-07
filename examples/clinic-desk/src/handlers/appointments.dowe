@@ -1,0 +1,47 @@
+type AppointmentInput
+  patientName:string
+  service:string
+  date:string
+  time:string
+  status:string
+  notes?:string
+
+type AppointmentPatch
+  id?:string
+  patientName?:string
+  service?:string
+  date?:string
+  time?:string
+  status?:string
+  notes?:string
+
+handler listAppointments req
+  let db = store database:"clinic"
+  let appointments = db.list table:"appointments"
+  return response json:{ ok:true data:appointments }
+
+handler createAppointment async req
+  let body:AppointmentInput = await req.json()
+  let db = store database:"clinic"
+  let created = db.insert table:"appointments" value:{ patientName:body.patientName service:body.service date:body.date time:body.time status:body.status notes:body.notes createdAt:now updatedAt:now } required:["patientName", "service", "date", "time", "status"]
+  let appointments = db.list table:"appointments"
+  return response status:201 json:{ ok:true data:appointments }
+
+handler readAppointment req
+  let db = store database:"clinic"
+  let appointment = db.read table:"appointments" where:{ id:req.params.id } required:true
+  return response json:{ ok:true data:appointment }
+
+handler updateAppointment async req
+  let body:AppointmentPatch = await req.json()
+  let db = store database:"clinic"
+  let updated = db.update table:"appointments" where:{ id:req.params.id } value:{ patientName:body.patientName service:body.service date:body.date time:body.time status:body.status notes:body.notes updatedAt:now } required:true match:{ id:req.params.id }
+  let appointments = db.list table:"appointments"
+  return response json:{ ok:true data:appointments }
+
+handler deleteAppointment req
+  let db = store database:"clinic"
+  let deleted = db.delete table:"appointments" where:{ id:req.params.id } required:true
+  let appointments = db.list table:"appointments"
+  return response json:{ ok:true data:appointments }
+

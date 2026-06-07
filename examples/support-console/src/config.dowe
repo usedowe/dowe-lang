@@ -1,0 +1,7 @@
+config
+  fonts default:"inter" install:["inter","lato"]
+  env
+    variable name:"BACKEND_URL" visibility:"client" required:false default:""
+  server
+    cors target:"server" devOrigins:true methods:["GET","POST","PATCH","DELETE"] headers:["Content-Type"] credentials:false maxAge:600
+

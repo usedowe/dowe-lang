@@ -1,0 +1,37 @@
+layout WorkspaceLayout
+  Box bg:"background" color:"onBackground"
+    AppBar variant:"soft" scheme:"surface" bordered:true blurred:true boxed:true
+      start
+        Text weight:"bold"
+          Clinic Desk
+      center
+        Text size:"sm" color:"muted"
+          Patient scheduling workspace
+      end
+        Button href:"/" variant:"ghost" scheme:"primary" size:"sm"
+          Overview
+        Button href:"/appointments" variant:"soft" scheme:"info" size:"sm"
+          Appointments
+    Box p:{ xs:4 md:8 }
+      children
+    BottomBar variant:"soft" scheme:"surface" bordered:true blurred:true boxed:true
+      start
+        Button href:"/" variant:"ghost" scheme:"primary" size:"sm"
+          Home
+      center
+        Button href:"/appointments" variant:"ghost" scheme:"info" size:"sm"
+          Schedule
+      end
+        Button href:"/appointments" variant:"soft" scheme:"success" size:"sm"
+          New Visit
+    Footer variant:"soft" scheme:"background" bordered:true boxed:true
+      start
+        Text size:"sm"
+          Clinic Desk
+      center
+        Text size:"sm"
+          Store-backed scheduling example
+      end
+        Text size:"sm"
+          Web Desktop Mobile
+

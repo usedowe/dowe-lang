@@ -1,0 +1,22 @@
+[package]
+name = "dowe"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "dowe"
+path = "src/main.rs"
+
+[dependencies]
+dialoguer = "0.12.0"
+dowe_agent_harness = { path = "../agent_harness" }
+dowe_codegraph = { path = "../codegraph" }
+dowe_compiler = { path = "../compiler" }
+dowe_deploy = { path = "../deploy" }
+dowe_store = { path = "../store" }
+dowe_runtime = { path = "../runtime" }
+dowe_spawn = { path = "../spawn" }
+reqwest.workspace = true
+serde_json.workspace = true
+tokio.workspace = true

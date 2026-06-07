@@ -1,0 +1,33 @@
+import listTickets from "./handlers/tickets"
+import createTicket from "./handlers/tickets"
+import readTicket from "./handlers/tickets"
+import updateTicket from "./handlers/tickets"
+import deleteTicket from "./handlers/tickets"
+
+main
+  server port:8083
+    route "/api/status"
+      response text:"support-console ready"
+    route "/api/tickets"
+      method GET handler:listTickets
+      method POST handler:createTicket
+    route "/api/tickets/:id"
+      method GET handler:readTicket
+      method PATCH handler:updateTicket
+      method DELETE handler:deleteTicket
+    init
+      log "Support console server initialized"
+  desktop
+    server port:4503
+      route "/api/status"
+        response text:"support-console desktop ready"
+      route "/api/tickets"
+        method GET handler:listTickets
+        method POST handler:createTicket
+      route "/api/tickets/:id"
+        method GET handler:readTicket
+        method PATCH handler:updateTicket
+        method DELETE handler:deleteTicket
+      init
+        log "Support console desktop server initialized"
+

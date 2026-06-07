@@ -1,0 +1,9 @@
+import WorkspaceLayout from "./layouts/workspace"
+import dashboardPage from "./pages/dashboard"
+import appointmentsPage from "./pages/appointments"
+
+views
+  route path:"/" layout:WorkspaceLayout
+    page path:"" component:dashboardPage
+    page path:"appointments" component:appointmentsPage
+

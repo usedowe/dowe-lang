@@ -1,0 +1,49 @@
+type ProductInput
+  name:string
+  sku:string
+  category:string
+  price:string
+  stock:string
+  status:string
+  description?:string
+
+type ProductPatch
+  id?:string
+  name?:string
+  sku?:string
+  category?:string
+  price?:string
+  stock?:string
+  status?:string
+  description?:string
+
+handler listProducts req
+  let db = store database:"commerce"
+  let products = db.list table:"products"
+  return response json:{ ok:true data:products }
+
+handler createProduct async req
+  let body:ProductInput = await req.json()
+  let db = store database:"commerce"
+  let created = db.insert table:"products" value:{ name:body.name sku:body.sku category:body.category price:body.price stock:body.stock status:body.status description:body.description createdAt:now updatedAt:now } required:["name", "sku", "category", "price", "stock", "status"]
+  let products = db.list table:"products"
+  return response status:201 json:{ ok:true data:products }
+
+handler readProduct req
+  let db = store database:"commerce"
+  let product = db.read table:"products" where:{ id:req.params.id } required:true
+  return response json:{ ok:true data:product }
+
+handler updateProduct async req
+  let body:ProductPatch = await req.json()
+  let db = store database:"commerce"
+  let updated = db.update table:"products" where:{ id:req.params.id } value:{ name:body.name sku:body.sku category:body.category price:body.price stock:body.stock status:body.status description:body.description updatedAt:now } required:true match:{ id:req.params.id }
+  let products = db.list table:"products"
+  return response json:{ ok:true data:products }
+
+handler deleteProduct req
+  let db = store database:"commerce"
+  let deleted = db.delete table:"products" where:{ id:req.params.id } required:true
+  let products = db.list table:"products"
+  return response json:{ ok:true data:products }
+

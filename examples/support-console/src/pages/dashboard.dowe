@@ -1,0 +1,45 @@
+page dashboardPage
+  Box bg:"background" color:"onBackground"
+    Grid columns:1 gap:6
+      Card variant:"soft" scheme:"warning" p:{ xs:5 md:8 } rounded:"xl"
+        Grid columns:{ xs:1 md:2 } gap:6
+          Box
+            Text size:"sm" weight:"semibold"
+              SUPPORT WORKFLOW
+            Title size:"5xl" weight:"bold"
+              Triage customer requests with Dowe-native state
+            Text size:"lg"
+              Capture tickets, route priority, and keep resolution status synchronized through Store-backed endpoints.
+            Flex gap:3 align:"center"
+              Button href:"/tickets" variant:"solid" scheme:"warning" size:"lg"
+                Open queue
+              Button href:"/tickets" variant:"outlined" scheme:"danger" size:"lg"
+                Create ticket
+          Card variant:"solid" scheme:"surface" p:6 rounded:"xl"
+            Title size:"3xl"
+              Agent surface
+            Text size:"md"
+              This project gives model-training examples for forms, selects, alerts, loops, and route handlers.
+      Grid columns:{ xs:1 md:3 } gap:4
+        Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+          Text size:"sm" color:"muted"
+            Queue
+          Title size:"3xl"
+            Tickets
+          Text size:"sm"
+            Each record tracks contact, subject, priority, status, and message.
+        Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+          Text size:"sm" color:"muted"
+            Status
+          Title size:"3xl"
+            Lifecycle
+          Text size:"sm"
+            New, open, waiting, and resolved values flow through a Select.
+        Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
+          Text size:"sm" color:"muted"
+            Runtime
+          Title size:"3xl"
+            Rust
+          Text size:"sm"
+            Server actions compile to Dowe runtime behavior.
+

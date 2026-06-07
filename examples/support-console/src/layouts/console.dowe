@@ -1,0 +1,27 @@
+layout ConsoleLayout
+  Box bg:"background" color:"onBackground"
+    AppBar variant:"soft" scheme:"surface" bordered:true blurred:true boxed:true
+      start
+        Text weight:"bold"
+          Support Console
+      center
+        Text size:"sm" color:"muted"
+          Ticket operations
+      end
+        Button href:"/" variant:"ghost" scheme:"primary" size:"sm"
+          Dashboard
+        Button href:"/tickets" variant:"soft" scheme:"warning" size:"sm"
+          Tickets
+    Box p:{ xs:4 md:8 }
+      children
+    BottomBar variant:"soft" scheme:"surface" bordered:true blurred:true boxed:true
+      start
+        Button href:"/" variant:"ghost" scheme:"primary" size:"sm"
+          Home
+      center
+        Button href:"/tickets" variant:"ghost" scheme:"warning" size:"sm"
+          Queue
+      end
+        Button href:"/tickets" variant:"soft" scheme:"danger" size:"sm"
+          Escalate
+

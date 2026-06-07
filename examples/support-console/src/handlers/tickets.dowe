@@ -1,0 +1,47 @@
+type TicketInput
+  customerName:string
+  email:string
+  subject:string
+  priority:string
+  status:string
+  message:string
+
+type TicketPatch
+  id?:string
+  customerName?:string
+  email?:string
+  subject?:string
+  priority?:string
+  status?:string
+  message?:string
+
+handler listTickets req
+  let db = store database:"support"
+  let tickets = db.list table:"tickets"
+  return response json:{ ok:true data:tickets }
+
+handler createTicket async req
+  let body:TicketInput = await req.json()
+  let db = store database:"support"
+  let created = db.insert table:"tickets" value:{ customerName:body.customerName email:body.email subject:body.subject priority:body.priority status:body.status message:body.message createdAt:now updatedAt:now } required:["customerName", "email", "subject", "priority", "status", "message"]
+  let tickets = db.list table:"tickets"
+  return response status:201 json:{ ok:true data:tickets }
+
+handler readTicket req
+  let db = store database:"support"
+  let ticket = db.read table:"tickets" where:{ id:req.params.id } required:true
+  return response json:{ ok:true data:ticket }
+
+handler updateTicket async req
+  let body:TicketPatch = await req.json()
+  let db = store database:"support"
+  let updated = db.update table:"tickets" where:{ id:req.params.id } value:{ customerName:body.customerName email:body.email subject:body.subject priority:body.priority status:body.status message:body.message updatedAt:now } required:true match:{ id:req.params.id }
+  let tickets = db.list table:"tickets"
+  return response json:{ ok:true data:tickets }
+
+handler deleteTicket req
+  let db = store database:"support"
+  let deleted = db.delete table:"tickets" where:{ id:req.params.id } required:true
+  let tickets = db.list table:"tickets"
+  return response json:{ ok:true data:tickets }
+

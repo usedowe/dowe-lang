@@ -1,0 +1,9 @@
+import OpsLayout from "./layouts/ops"
+import dashboardPage from "./pages/dashboard"
+import inventoryPage from "./pages/inventory"
+
+views
+  route path:"/" layout:OpsLayout
+    page path:"" component:dashboardPage
+    page path:"inventory" component:inventoryPage
+

@@ -1,0 +1,9 @@
+import ConsoleLayout from "./layouts/console"
+import dashboardPage from "./pages/dashboard"
+import ticketsPage from "./pages/tickets"
+
+views
+  route path:"/" layout:ConsoleLayout
+    page path:"" component:dashboardPage
+    page path:"tickets" component:ticketsPage
+
