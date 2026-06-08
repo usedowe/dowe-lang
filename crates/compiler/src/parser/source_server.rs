@@ -10,6 +10,9 @@ use crate::parser::source_ast::{
     SourceFile, SourceNode, SourceObjectEntry, SourceProp, SourceValue,
 };
 use crate::parser::source_imports::resolve_import;
+use crate::parser::source_kv::{
+    infer_kv_statement, kv_action_endpoint_behavior, parse_kv_let, validate_kv_statement_references,
+};
 use crate::parser::source_parser::parse_source_file;
 use crate::parser::source_store::{
     parse_store_let, store_action_endpoint_behavior, store_endpoint_behavior, store_literal,
@@ -23,7 +26,13 @@ use std::str::FromStr;
 #[cfg(test)]
 pub fn parse_server_file(path: &Path, nodes: &[SourceNode]) -> DoweResult<ServerRoot> {
     let types = TypeRegistry::parse(path, nodes)?;
-    parse_server_nodes(path, nodes, &ServerImports::default(), &types)
+    parse_server_nodes(
+        path,
+        nodes,
+        &ServerImports::default(),
+        &types,
+        &EnvironmentConfig::default(),
+    )
 }
 
 pub fn parse_server_source(
@@ -33,7 +42,7 @@ pub fn parse_server_source(
 ) -> DoweResult<ServerRoot> {
     let types = TypeRegistry::parse(&file.path, &file.nodes)?;
     let imports = server_imports(root, file, environment)?;
-    parse_server_nodes(&file.path, &file.nodes, &imports, &types)
+    parse_server_nodes(&file.path, &file.nodes, &imports, &types, environment)
 }
 
 pub(crate) fn validate_server_module_source(
@@ -48,6 +57,7 @@ fn parse_server_nodes(
     nodes: &[SourceNode],
     imports: &ServerImports,
     types: &TypeRegistry,
+    environment: &EnvironmentConfig,
 ) -> DoweResult<ServerRoot> {
     if let Some(app) = nodes.iter().find(|node| node.name == "app") {
         return Err(node_error(app, "`app` has been renamed to `main`"));
@@ -61,10 +71,10 @@ fn parse_server_nodes(
     }
     let server_node =
         child_named(main, "server").ok_or_else(|| node_error(main, "missing main.server"))?;
-    let backend = parse_server_config(server_node, imports, types)?;
+    let backend = parse_server_config(server_node, imports, types, environment)?;
     let desktop_server = child_named(main, "desktop")
         .and_then(|desktop| child_named(desktop, "server"))
-        .map(|node| parse_server_config(node, imports, types))
+        .map(|node| parse_server_config(node, imports, types, environment))
         .transpose()?;
 
     Ok(ServerRoot {
@@ -144,7 +154,7 @@ fn parse_server_module(
     for node in &file.nodes {
         match node.name.as_str() {
             "handler" => {
-                let (name, handler) = parse_handler_node(node, &types)?;
+                let (name, handler) = parse_handler_node(node, &types, environment)?;
                 if imports.handlers.insert(name.clone(), handler).is_some() {
                     return Err(node_error(node, format!("duplicate handler `{name}`")));
                 }
@@ -174,6 +184,7 @@ fn parse_server_module(
 fn parse_handler_node(
     node: &SourceNode,
     types: &TypeRegistry,
+    environment: &EnvironmentConfig,
 ) -> DoweResult<(String, ServerHandler)> {
     let name = node
         .args
@@ -187,6 +198,7 @@ fn parse_handler_node(
             request: handler_request_name(node),
         },
         types,
+        environment,
     )?;
     let behavior = exported_handler_behavior(node, &action)?;
     Ok((name, ServerHandler { action, behavior }))
@@ -223,6 +235,7 @@ fn parse_server_config(
     node: &SourceNode,
     imports: &ServerImports,
     types: &TypeRegistry,
+    environment: &EnvironmentConfig,
 ) -> DoweResult<ServerConfig> {
     let port = required_port(node)?;
     let mut endpoints = Vec::new();
@@ -231,12 +244,12 @@ fn parse_server_config(
 
     for child in &node.children {
         match child.name.as_str() {
-            "route" => endpoints.extend(parse_route(child, imports, types)?),
+            "route" => endpoints.extend(parse_route(child, imports, types, environment)?),
             "endpoint" => {
                 return Err(node_error(child, "`endpoint` has been renamed to `route`"));
             }
-            "websocket" => websockets.push(parse_websocket(child)?),
-            "init" => init_action = parse_action(child, ActionContext::Init, types)?,
+            "websocket" => websockets.push(parse_websocket(child, environment)?),
+            "init" => init_action = parse_action(child, ActionContext::Init, types, environment)?,
             _ => return Err(node_error(child, "unsupported server block")),
         }
     }
@@ -254,6 +267,7 @@ fn parse_route(
     node: &SourceNode,
     imports: &ServerImports,
     types: &TypeRegistry,
+    environment: &EnvironmentConfig,
 ) -> DoweResult<Vec<Endpoint>> {
     let path = required_path_arg(node, "route")?;
     let middlewares = route_middlewares(node, imports)?;
@@ -276,6 +290,7 @@ fn parse_route(
                         request: handler_request_name(child),
                     },
                     types,
+                    environment,
                 )?;
                 endpoints.push(Endpoint {
                     method: HttpMethod::Get,
@@ -285,7 +300,14 @@ fn parse_route(
                     middlewares: middlewares.clone(),
                 });
             }
-            "method" => endpoints.push(parse_method(child, &path, imports, &middlewares, types)?),
+            "method" => endpoints.push(parse_method(
+                child,
+                &path,
+                imports,
+                &middlewares,
+                types,
+                environment,
+            )?),
             _ => return Err(node_error(child, "unsupported route block")),
         }
     }
@@ -343,6 +365,7 @@ fn parse_method(
     imports: &ServerImports,
     middlewares: &[ServerMiddleware],
     types: &TypeRegistry,
+    environment: &EnvironmentConfig,
 ) -> DoweResult<Endpoint> {
     let method_name = node
         .args
@@ -373,6 +396,7 @@ fn parse_method(
             request,
         },
         types,
+        environment,
     )?;
     if has_reference_log(&action)
         && let Some(behavior) =
@@ -397,6 +421,17 @@ fn parse_method(
     }
     if let Some(behavior) =
         store_action_endpoint_behavior(&action, return_json_value(node), return_status(node)?)?
+    {
+        return Ok(Endpoint {
+            method,
+            path: path.to_string(),
+            behavior,
+            action,
+            middlewares: middlewares.to_vec(),
+        });
+    }
+    if let Some(behavior) =
+        kv_action_endpoint_behavior(&action, return_json_value(node), return_status(node)?)?
     {
         return Ok(Endpoint {
             method,
@@ -432,12 +467,20 @@ fn parse_method(
     })
 }
 
-fn parse_websocket(node: &SourceNode) -> DoweResult<WebSocketRoute> {
+fn parse_websocket(
+    node: &SourceNode,
+    environment: &EnvironmentConfig,
+) -> DoweResult<WebSocketRoute> {
     let path = required_path_arg(node, "websocket")?;
     let mut handlers = WebSocketHandlers::default();
 
     for child in &node.children {
-        let action = parse_action(child, ActionContext::WebSocket, &TypeRegistry::empty())?;
+        let action = parse_action(
+            child,
+            ActionContext::WebSocket,
+            &TypeRegistry::empty(),
+            environment,
+        )?;
         match child.name.as_str() {
             "open" => handlers.open = action,
             "message" => handlers.message = action,
@@ -454,6 +497,7 @@ fn parse_action(
     node: &SourceNode,
     context: ActionContext,
     types: &TypeRegistry,
+    environment: &EnvironmentConfig,
 ) -> DoweResult<ServerAction> {
     let mut statements = Vec::new();
     let mut returned = false;
@@ -466,10 +510,14 @@ fn parse_action(
                 if let Some(statement) = parse_request_json_let(child, context, types)? {
                     infer_request_json_statement(&statement, &mut inferred_bindings);
                     statements.push(statement);
-                } else if let Some(statement) = parse_store_let(child)? {
+                } else if let Some(statement) = parse_store_let(child, Some(environment))? {
                     validate_store_statement_references(child, &statement, &inferred_bindings)?;
                     infer_store_statement(&statement, &mut inferred_bindings, &mut inferred_tables);
                     statements.push(ServerStatement::Store(statement));
+                } else if let Some(statement) = parse_kv_let(child, Some(environment))? {
+                    validate_kv_statement_references(child, &statement, &inferred_bindings)?;
+                    infer_kv_statement(&statement, &mut inferred_bindings);
+                    statements.push(ServerStatement::Kv(statement));
                 } else {
                     validate_let(child, context)?;
                 }
@@ -1129,6 +1177,11 @@ fn handler_behavior(
     {
         return Ok(behavior);
     }
+    if let Some(behavior) =
+        kv_action_endpoint_behavior(action, return_json_value(node), return_status(node)?)?
+    {
+        return Ok(behavior);
+    }
     if return_text(node).is_some_and(|value| value.contains("req.context")) {
         Ok(EndpointBehavior::TextTemplate(return_text(node).unwrap()))
     } else if path.contains("/:")
@@ -1160,6 +1213,11 @@ fn exported_handler_behavior(
     }
     if let Some(behavior) =
         store_action_endpoint_behavior(action, return_json_value(node), return_status(node)?)?
+    {
+        return Ok(behavior);
+    }
+    if let Some(behavior) =
+        kv_action_endpoint_behavior(action, return_json_value(node), return_status(node)?)?
     {
         return Ok(behavior);
     }
@@ -1520,6 +1578,37 @@ main
             endpoint.endpoint.behavior,
             EndpointBehavior::TextTemplate(_)
         ));
+    }
+
+    #[test]
+    fn rejects_client_environment_for_remote_store_credentials() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/users"
+      handler
+        let db = store database:"db1" host:"http://127.0.0.1:4147" user:"api-user" token:env.STORE_TOKEN
+        let users = db.list table:"users"
+        return response json:{ data:users }"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = EnvironmentConfig {
+            variables: vec![EnvironmentVariable {
+                name: "STORE_TOKEN".to_string(),
+                visibility: EnvironmentVisibility::Client,
+                required: true,
+                default_value: None,
+                resolved_source: EnvironmentValueSource::Missing,
+                resolved_value: None,
+            }],
+        };
+        let error = parse_server_source(root, &file, &environment).expect_err("error");
+
+        assert!(error.to_string().contains("must be server-only"));
     }
 
     #[test]

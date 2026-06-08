@@ -12,9 +12,11 @@ use axum::http::header::{
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri};
 use axum::response::{Html, IntoResponse, Response};
 use dowe_compiler::{
-    CompiledProject, CorsConfig, DoweType, EndpointBehavior, HttpMethod, ServerConfig,
+    CompiledProject, CorsConfig, DoweType, EndpointBehavior, HttpMethod, KvActionJsonEndpoint,
+    KvConnectionValue, KvCredential, KvRemoteConnection, ServerConfig, ServerKvStatement,
     ServerMiddleware, ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerSecret,
-    ServerStatement, ServerStoreStatement, StoreActionJsonEndpoint, StoreFilter, StoreLiteral,
+    ServerStatement, ServerStoreStatement, StoreActionJsonEndpoint, StoreConnection,
+    StoreConnectionValue, StoreCredential, StoreFilter, StoreLiteral, StoreRemoteConnection,
     StoreTransactionEndpoint, StoreTransactionOperation, ViewPage, WebOutput, WebSocketHandlers,
     normalize_cors_method, normalize_http_header_name,
 };
@@ -22,7 +24,11 @@ use dowe_crypto::{
     JwtValidationOptions, decrypt_jwe_dir_a256gcm, encrypt_jwe_dir_a256gcm, sign_jws_hs256,
     verify_jws_hs256,
 };
-use dowe_store::{Database, StoreRecord, StoreValue, init_database, open_database};
+use dowe_kv::{KvDatabase, RemoteKvClient, RemoteKvConfig, open_database as open_kv_database};
+use dowe_store::{
+    Database, RemoteStoreClient, RemoteStoreConfig, StoreRecord, StoreValue, init_database,
+    open_database,
+};
 use futures_util::StreamExt;
 use serde_json::{Map, Value};
 use std::collections::HashMap;
@@ -48,6 +54,7 @@ pub async fn backend_handler(
         headers,
         body,
     )
+    .await
 }
 
 pub async fn desktop_handler(
@@ -70,7 +77,8 @@ pub async fn desktop_handler(
             uri.path(),
             headers,
             body,
-        );
+        )
+        .await;
     }
 
     if method == Method::GET {
@@ -80,7 +88,7 @@ pub async fn desktop_handler(
     }
 }
 
-pub(crate) fn server_response(
+pub(crate) async fn server_response(
     project: &CompiledProject,
     server: &ServerConfig,
     dev_origins: &[String],
@@ -110,7 +118,7 @@ pub(crate) fn server_response(
                     };
                 if !matches!(
                     &matched.endpoint.behavior,
-                    EndpointBehavior::StoreActionJson(_)
+                    EndpointBehavior::StoreActionJson(_) | EndpointBehavior::KvActionJson(_)
                 ) {
                     execute_server_action_with_resolver(&matched.endpoint.action, |reference| {
                         resolve_request_reference(reference, &matched.params, &middleware_context)
@@ -130,20 +138,20 @@ pub(crate) fn server_response(
                     }
                     EndpointBehavior::CreatePostJson => created_json_response(&body),
                     EndpointBehavior::StoreInsertJson(insert) => {
-                        match init_database(&project.root, &insert.database)
-                            .and_then(|_| open_database(&project.root, &insert.database))
-                            .and_then(|database| {
-                                database.insert(&insert.table, literal_record(&insert.value))
-                            }) {
-                            Ok(record) => json_response(StatusCode::OK, record_json(&record)),
+                        match execute_store_insert(
+                            project,
+                            &insert.connection,
+                            &insert.table,
+                            &insert.value,
+                        )
+                        .await
+                        {
+                            Ok(value) => json_response(StatusCode::OK, value),
                             Err(error) => store_error_response(error),
                         }
                     }
                     EndpointBehavior::StoreQueryJson(query) => {
-                        match init_database(&project.root, &query.database)
-                            .and_then(|_| open_database(&project.root, &query.database))
-                            .and_then(|database| database.query_json(&query.sql))
-                        {
+                        match execute_store_query(project, &query.connection, &query.sql).await {
                             Ok(value) => json_response(StatusCode::OK, value),
                             Err(error) => store_error_response(error),
                         }
@@ -154,13 +162,28 @@ pub(crate) fn server_response(
                             Err(error) => store_error_response(error),
                         }
                     }
-                    EndpointBehavior::StoreActionJson(response) => execute_store_action_json(
-                        &project.root,
-                        &matched.endpoint.action,
-                        &response,
-                        &matched.params,
-                        &body,
-                    ),
+                    EndpointBehavior::StoreActionJson(response) => {
+                        execute_store_action_json(
+                            project,
+                            &project.root,
+                            &matched.endpoint.action,
+                            &response,
+                            &matched.params,
+                            &body,
+                        )
+                        .await
+                    }
+                    EndpointBehavior::KvActionJson(response) => {
+                        execute_kv_action_json(
+                            project,
+                            &project.root,
+                            &matched.endpoint.action,
+                            &response,
+                            &matched.params,
+                            &body,
+                        )
+                        .await
+                    }
                 }
             }
             None => {
@@ -897,7 +920,74 @@ fn created_json_response(body: &Bytes) -> Response {
         .into_response()
 }
 
-fn execute_store_action_json(
+async fn execute_store_insert(
+    project: &CompiledProject,
+    connection: &StoreConnection,
+    table: &str,
+    value: &StoreLiteral,
+) -> dowe_store::StoreResult<Value> {
+    let record = literal_record(value);
+    if let Some(client) = remote_client_for_connection(project, connection)? {
+        return client.insert(table, record_json(&record)).await;
+    }
+    init_database(&project.root, &connection.database)?;
+    let database = open_database(&project.root, &connection.database)?;
+    Ok(record_json(&database.insert(table, record)?))
+}
+
+async fn execute_store_query(
+    project: &CompiledProject,
+    connection: &StoreConnection,
+    sql: &str,
+) -> dowe_store::StoreResult<Value> {
+    if let Some(client) = remote_client_for_connection(project, connection)? {
+        return client.query(sql).await;
+    }
+    init_database(&project.root, &connection.database)?;
+    let database = open_database(&project.root, &connection.database)?;
+    database.query_json(sql)
+}
+
+fn remote_client_for_connection(
+    project: &CompiledProject,
+    connection: &StoreConnection,
+) -> dowe_store::StoreResult<Option<RemoteStoreClient>> {
+    let Some(remote) = &connection.remote else {
+        return Ok(None);
+    };
+    let credential = match &remote.credential {
+        StoreCredential::Token(value) | StoreCredential::Password(value) => {
+            connection_value(project, value)?
+        }
+    };
+    Ok(Some(RemoteStoreClient::new(RemoteStoreConfig {
+        host: connection_value(project, &remote.host)?,
+        database: connection.database.clone(),
+        user: connection_value(project, &remote.user)?,
+        credential,
+    })?))
+}
+
+fn connection_value(
+    project: &CompiledProject,
+    value: &StoreConnectionValue,
+) -> dowe_store::StoreResult<String> {
+    match value {
+        StoreConnectionValue::Static(value) => Ok(value.clone()),
+        StoreConnectionValue::Environment(name) => project
+            .environment_config
+            .variable(name)
+            .and_then(|variable| variable.resolved_value.clone())
+            .ok_or_else(|| {
+                dowe_store::StoreError::Remote(format!(
+                    "Store environment variable `{name}` is not configured"
+                ))
+            }),
+    }
+}
+
+async fn execute_store_action_json(
+    project: &CompiledProject,
     root: &Path,
     action: &dowe_compiler::ServerAction,
     response: &StoreActionJsonEndpoint,
@@ -905,16 +995,19 @@ fn execute_store_action_json(
     body: &Bytes,
 ) -> Response {
     let mut context = StoreActionContext {
+        project,
         root,
         params,
         body,
         request_body: None,
         bindings: HashMap::new(),
         handles: HashMap::new(),
+        kv_handles: HashMap::new(),
         handle_databases: HashMap::new(),
     };
     match context
         .execute(action)
+        .await
         .and_then(|_| context.evaluate(&response.value))
     {
         Ok(ResolvedValue::Json(value)) => json_response(status_from_u16(response.status), value),
@@ -927,13 +1020,59 @@ fn execute_store_action_json(
     }
 }
 
+async fn execute_kv_action_json(
+    project: &CompiledProject,
+    root: &Path,
+    action: &dowe_compiler::ServerAction,
+    response: &KvActionJsonEndpoint,
+    params: &HashMap<String, String>,
+    body: &Bytes,
+) -> Response {
+    let mut context = StoreActionContext {
+        project,
+        root,
+        params,
+        body,
+        request_body: None,
+        bindings: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+    };
+    match context
+        .execute(action)
+        .await
+        .and_then(|_| context.evaluate(&response.value))
+    {
+        Ok(ResolvedValue::Json(value)) => json_response(status_from_u16(response.status), value),
+        Ok(ResolvedValue::Missing) => json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "invalid_response",
+            "Response value is missing",
+        ),
+        Err(error) => json_error(error.status, error.code, error.message),
+    }
+}
+
+enum StoreHandle {
+    Local(Database),
+    Remote(RemoteStoreClient),
+}
+
+enum KvHandle {
+    Local(KvDatabase),
+    Remote(RemoteKvClient),
+}
+
 struct StoreActionContext<'a> {
+    project: &'a CompiledProject,
     root: &'a Path,
     params: &'a HashMap<String, String>,
     body: &'a Bytes,
     request_body: Option<Value>,
     bindings: HashMap<String, Value>,
-    handles: HashMap<String, Database>,
+    handles: HashMap<String, StoreHandle>,
+    kv_handles: HashMap<String, KvHandle>,
     handle_databases: HashMap<String, String>,
 }
 
@@ -972,10 +1111,73 @@ impl StoreActionError {
             message: "Store operation failed",
         }
     }
+
+    fn kv() -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "kv_error",
+            message: "KV operation failed",
+        }
+    }
+
+    fn from_store(error: dowe_store::StoreError) -> Self {
+        match error {
+            dowe_store::StoreError::Authentication(_) => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "store_authentication",
+                message: "Store authentication failed",
+            },
+            dowe_store::StoreError::Authorization(_) => Self {
+                status: StatusCode::FORBIDDEN,
+                code: "store_authorization",
+                message: "Store authorization failed",
+            },
+            dowe_store::StoreError::NotFound(_) => Self::not_found("Record not found"),
+            dowe_store::StoreError::AlreadyExists(_)
+            | dowe_store::StoreError::TransactionConflict(_) => Self {
+                status: StatusCode::CONFLICT,
+                code: "store_conflict",
+                message: "Store operation conflicted",
+            },
+            dowe_store::StoreError::InvalidName(_) | dowe_store::StoreError::InvalidQuery(_) => {
+                Self {
+                    status: StatusCode::BAD_REQUEST,
+                    code: "store_invalid_request",
+                    message: "Store request is invalid",
+                }
+            }
+            _ => Self::store(),
+        }
+    }
+
+    fn from_kv(error: dowe_kv::KvError) -> Self {
+        match error {
+            dowe_kv::KvError::Authentication(_) => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "kv_authentication",
+                message: "KV authentication failed",
+            },
+            dowe_kv::KvError::Authorization(_) => Self {
+                status: StatusCode::FORBIDDEN,
+                code: "kv_authorization",
+                message: "KV authorization failed",
+            },
+            dowe_kv::KvError::NotFound(_) => Self::not_found("KV key not found"),
+            dowe_kv::KvError::InvalidName(_) | dowe_kv::KvError::InvalidRequest(_) => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "kv_invalid_request",
+                message: "KV request is invalid",
+            },
+            _ => Self::kv(),
+        }
+    }
 }
 
 impl<'a> StoreActionContext<'a> {
-    fn execute(&mut self, action: &dowe_compiler::ServerAction) -> Result<(), StoreActionError> {
+    async fn execute(
+        &mut self,
+        action: &dowe_compiler::ServerAction,
+    ) -> Result<(), StoreActionError> {
         for statement in &action.statements {
             match statement {
                 ServerStatement::Log(log) => execute_resolved_log(log, |reference| {
@@ -1001,20 +1203,33 @@ impl<'a> StoreActionContext<'a> {
                     self.request_body = Some(value.clone());
                     self.bindings.insert(binding.clone(), value);
                 }
-                ServerStatement::Store(statement) => self.execute_store(statement)?,
+                ServerStatement::Store(statement) => self.execute_store(statement).await?,
+                ServerStatement::Kv(statement) => self.execute_kv(statement).await?,
             }
         }
         Ok(())
     }
 
-    fn execute_store(&mut self, statement: &ServerStoreStatement) -> Result<(), StoreActionError> {
+    async fn execute_store(
+        &mut self,
+        statement: &ServerStoreStatement,
+    ) -> Result<(), StoreActionError> {
         match statement {
-            ServerStoreStatement::Handle { binding, database } => {
-                init_database(self.root, database).map_err(|_| StoreActionError::store())?;
-                let database =
-                    open_database(self.root, database).map_err(|_| StoreActionError::store())?;
-                let database_name = database.metadata().name.clone();
-                self.handles.insert(binding.clone(), database);
+            ServerStoreStatement::Handle {
+                binding,
+                database,
+                remote,
+            } => {
+                let database_name = database.clone();
+                let handle = if let Some(remote) = remote {
+                    StoreHandle::Remote(self.remote_client(database, remote)?)
+                } else {
+                    init_database(self.root, database).map_err(StoreActionError::from_store)?;
+                    let database =
+                        open_database(self.root, database).map_err(StoreActionError::from_store)?;
+                    StoreHandle::Local(database)
+                };
+                self.handles.insert(binding.clone(), handle);
                 self.handle_databases.insert(binding.clone(), database_name);
             }
             ServerStoreStatement::List {
@@ -1022,14 +1237,19 @@ impl<'a> StoreActionContext<'a> {
                 handle,
                 table,
             } => {
-                let records = self
-                    .database(handle)?
-                    .records(table)
-                    .map_err(|_| StoreActionError::store())?;
-                self.bindings.insert(
-                    binding.clone(),
-                    Value::Array(records.iter().map(record_json).collect()),
-                );
+                let value = match self.handle(handle)? {
+                    StoreHandle::Local(database) => {
+                        let records = database
+                            .records(table)
+                            .map_err(StoreActionError::from_store)?;
+                        Value::Array(records.iter().map(record_json).collect())
+                    }
+                    StoreHandle::Remote(client) => client
+                        .list(table)
+                        .await
+                        .map_err(StoreActionError::from_store)?,
+                };
+                self.bindings.insert(binding.clone(), value);
             }
             ServerStoreStatement::Read {
                 binding,
@@ -1039,19 +1259,24 @@ impl<'a> StoreActionContext<'a> {
                 required,
             } => {
                 let expected = self.filter_value(filter)?;
-                let record = self
-                    .database(handle)?
-                    .records(table)
-                    .map_err(|_| StoreActionError::store())?
-                    .into_iter()
-                    .find(|record| record_matches(record, &filter.field, &expected));
-                if record.is_none() && *required {
-                    return Err(StoreActionError::not_found("Record not found"));
-                }
-                self.bindings.insert(
-                    binding.clone(),
-                    record.as_ref().map(record_json).unwrap_or(Value::Null),
-                );
+                let value = match self.handle(handle)? {
+                    StoreHandle::Local(database) => {
+                        let record = database
+                            .records(table)
+                            .map_err(StoreActionError::from_store)?
+                            .into_iter()
+                            .find(|record| record_matches(record, &filter.field, &expected));
+                        if record.is_none() && *required {
+                            return Err(StoreActionError::not_found("Record not found"));
+                        }
+                        record.as_ref().map(record_json).unwrap_or(Value::Null)
+                    }
+                    StoreHandle::Remote(client) => client
+                        .read(table, &filter.field, expected.to_json(), *required)
+                        .await
+                        .map_err(StoreActionError::from_store)?,
+                };
+                self.bindings.insert(binding.clone(), value);
             }
             ServerStoreStatement::Insert {
                 binding,
@@ -1062,12 +1287,19 @@ impl<'a> StoreActionContext<'a> {
             } => {
                 let record = self.literal_record(value)?;
                 validate_required_fields(&record, required)?;
-                let inserted = self
-                    .database(handle)?
-                    .insert(table, record)
-                    .map_err(|_| StoreActionError::store())?;
-                self.bindings
-                    .insert(binding.clone(), record_json(&inserted));
+                let value = match self.handle(handle)? {
+                    StoreHandle::Local(database) => {
+                        let inserted = database
+                            .insert(table, record)
+                            .map_err(StoreActionError::from_store)?;
+                        record_json(&inserted)
+                    }
+                    StoreHandle::Remote(client) => client
+                        .insert(table, record_json(&record))
+                        .await
+                        .map_err(StoreActionError::from_store)?,
+                };
+                self.bindings.insert(binding.clone(), value);
             }
             ServerStoreStatement::Update {
                 binding,
@@ -1081,14 +1313,28 @@ impl<'a> StoreActionContext<'a> {
                 self.validate_matches(matches)?;
                 let expected = self.filter_value(filter)?;
                 let patch = self.literal_record(value)?;
-                let changed = self
-                    .database(handle)?
-                    .update(table, &filter.field, &expected, patch)
-                    .map_err(|_| StoreActionError::store())?;
-                if changed == 0 && *required {
-                    return Err(StoreActionError::not_found("Record not found"));
-                }
-                self.bindings.insert(binding.clone(), changed_json(changed));
+                let value = match self.handle(handle)? {
+                    StoreHandle::Local(database) => {
+                        let changed = database
+                            .update(table, &filter.field, &expected, patch)
+                            .map_err(StoreActionError::from_store)?;
+                        if changed == 0 && *required {
+                            return Err(StoreActionError::not_found("Record not found"));
+                        }
+                        changed_json(changed)
+                    }
+                    StoreHandle::Remote(client) => client
+                        .update(
+                            table,
+                            &filter.field,
+                            expected.to_json(),
+                            record_json(&patch),
+                            *required,
+                        )
+                        .await
+                        .map_err(StoreActionError::from_store)?,
+                };
+                self.bindings.insert(binding.clone(), value);
             }
             ServerStoreStatement::Delete {
                 binding,
@@ -1098,24 +1344,37 @@ impl<'a> StoreActionContext<'a> {
                 required,
             } => {
                 let expected = self.filter_value(filter)?;
-                let changed = self
-                    .database(handle)?
-                    .delete(table, &filter.field, &expected)
-                    .map_err(|_| StoreActionError::store())?;
-                if changed == 0 && *required {
-                    return Err(StoreActionError::not_found("Record not found"));
-                }
-                self.bindings.insert(binding.clone(), changed_json(changed));
+                let value = match self.handle(handle)? {
+                    StoreHandle::Local(database) => {
+                        let changed = database
+                            .delete(table, &filter.field, &expected)
+                            .map_err(StoreActionError::from_store)?;
+                        if changed == 0 && *required {
+                            return Err(StoreActionError::not_found("Record not found"));
+                        }
+                        changed_json(changed)
+                    }
+                    StoreHandle::Remote(client) => client
+                        .delete(table, &filter.field, expected.to_json(), *required)
+                        .await
+                        .map_err(StoreActionError::from_store)?,
+                };
+                self.bindings.insert(binding.clone(), value);
             }
             ServerStoreStatement::Query {
                 binding,
                 handle,
                 sql,
             } => {
-                let value = self
-                    .database(handle)?
-                    .query_json(sql)
-                    .map_err(|_| StoreActionError::store())?;
+                let value = match self.handle(handle)? {
+                    StoreHandle::Local(database) => database
+                        .query_json(sql)
+                        .map_err(StoreActionError::from_store)?,
+                    StoreHandle::Remote(client) => client
+                        .query(sql)
+                        .await
+                        .map_err(StoreActionError::from_store)?,
+                };
                 self.bindings.insert(binding.clone(), value);
             }
             ServerStoreStatement::Transaction {
@@ -1124,6 +1383,9 @@ impl<'a> StoreActionContext<'a> {
                 operations,
                 return_binding,
             } => {
+                if matches!(self.handle(handle)?, StoreHandle::Remote(_)) {
+                    return Err(StoreActionError::store());
+                }
                 let database_name = self
                     .handle_databases
                     .get(handle)
@@ -1142,8 +1404,188 @@ impl<'a> StoreActionContext<'a> {
         Ok(())
     }
 
-    fn database(&self, handle: &str) -> Result<&Database, StoreActionError> {
+    async fn execute_kv(&mut self, statement: &ServerKvStatement) -> Result<(), StoreActionError> {
+        match statement {
+            ServerKvStatement::Handle {
+                binding,
+                database,
+                persist,
+                remote,
+            } => {
+                let handle = if let Some(remote) = remote {
+                    KvHandle::Remote(self.kv_remote_client(database, *persist, remote)?)
+                } else {
+                    KvHandle::Local(
+                        open_kv_database(self.root, database, *persist)
+                            .map_err(StoreActionError::from_kv)?,
+                    )
+                };
+                self.kv_handles.insert(binding.clone(), handle);
+            }
+            ServerKvStatement::Get {
+                binding,
+                handle,
+                key,
+                required,
+            } => {
+                let value = match self.kv_handle(handle)? {
+                    KvHandle::Local(database) => {
+                        let value = database.get(key).map_err(StoreActionError::from_kv)?;
+                        if value.is_none() && *required {
+                            return Err(StoreActionError::not_found("KV key not found"));
+                        }
+                        value.unwrap_or(Value::Null)
+                    }
+                    KvHandle::Remote(client) => client
+                        .get(key, *required)
+                        .await
+                        .map_err(StoreActionError::from_kv)?,
+                };
+                self.bindings.insert(binding.clone(), value);
+            }
+            ServerKvStatement::Set {
+                binding,
+                handle,
+                key,
+                value,
+            } => {
+                let value = self.evaluate(value)?.into_json().unwrap_or(Value::Null);
+                let output = match self.kv_handle(handle)? {
+                    KvHandle::Local(database) => {
+                        database
+                            .set(key, value)
+                            .map_err(StoreActionError::from_kv)?;
+                        kv_set_json(key)
+                    }
+                    KvHandle::Remote(client) => client
+                        .set(key, value)
+                        .await
+                        .map_err(StoreActionError::from_kv)?,
+                };
+                self.bindings.insert(binding.clone(), output);
+            }
+            ServerKvStatement::Delete {
+                binding,
+                handle,
+                key,
+            } => {
+                let output = match self.kv_handle(handle)? {
+                    KvHandle::Local(database) => {
+                        kv_delete_json(database.delete(key).map_err(StoreActionError::from_kv)?)
+                    }
+                    KvHandle::Remote(client) => client
+                        .delete(key)
+                        .await
+                        .map_err(StoreActionError::from_kv)?,
+                };
+                self.bindings.insert(binding.clone(), output);
+            }
+            ServerKvStatement::Keys {
+                binding,
+                handle,
+                prefix,
+            } => {
+                let output = match self.kv_handle(handle)? {
+                    KvHandle::Local(database) => Value::Array(
+                        database
+                            .keys(prefix.as_deref())
+                            .map_err(StoreActionError::from_kv)?
+                            .into_iter()
+                            .map(Value::String)
+                            .collect(),
+                    ),
+                    KvHandle::Remote(client) => client
+                        .keys(prefix.as_deref())
+                        .await
+                        .map_err(StoreActionError::from_kv)?,
+                };
+                self.bindings.insert(binding.clone(), output);
+            }
+            ServerKvStatement::Clear { binding, handle } => {
+                let output = match self.kv_handle(handle)? {
+                    KvHandle::Local(database) => {
+                        kv_clear_json(database.clear().map_err(StoreActionError::from_kv)?)
+                    }
+                    KvHandle::Remote(client) => {
+                        client.clear().await.map_err(StoreActionError::from_kv)?
+                    }
+                };
+                self.bindings.insert(binding.clone(), output);
+            }
+        }
+        Ok(())
+    }
+
+    fn handle(&self, handle: &str) -> Result<&StoreHandle, StoreActionError> {
         self.handles.get(handle).ok_or_else(StoreActionError::store)
+    }
+
+    fn kv_handle(&self, handle: &str) -> Result<&KvHandle, StoreActionError> {
+        self.kv_handles.get(handle).ok_or_else(StoreActionError::kv)
+    }
+
+    fn remote_client(
+        &self,
+        database: &str,
+        remote: &StoreRemoteConnection,
+    ) -> Result<RemoteStoreClient, StoreActionError> {
+        let credential = match &remote.credential {
+            StoreCredential::Token(value) | StoreCredential::Password(value) => {
+                self.connection_value(value)?
+            }
+        };
+        RemoteStoreClient::new(RemoteStoreConfig {
+            host: self.connection_value(&remote.host)?,
+            database: database.to_string(),
+            user: self.connection_value(&remote.user)?,
+            credential,
+        })
+        .map_err(StoreActionError::from_store)
+    }
+
+    fn connection_value(&self, value: &StoreConnectionValue) -> Result<String, StoreActionError> {
+        match value {
+            StoreConnectionValue::Static(value) => Ok(value.clone()),
+            StoreConnectionValue::Environment(name) => self
+                .project
+                .environment_config
+                .variable(name)
+                .and_then(|variable| variable.resolved_value.clone())
+                .ok_or_else(StoreActionError::store),
+        }
+    }
+
+    fn kv_remote_client(
+        &self,
+        database: &str,
+        persist: bool,
+        remote: &KvRemoteConnection,
+    ) -> Result<RemoteKvClient, StoreActionError> {
+        let credential = match &remote.credential {
+            KvCredential::Token(value) | KvCredential::Password(value) => {
+                self.kv_connection_value(value)?
+            }
+        };
+        RemoteKvClient::new(RemoteKvConfig {
+            host: self.kv_connection_value(&remote.host)?,
+            database: database.to_string(),
+            user: self.kv_connection_value(&remote.user)?,
+            credential,
+            persist,
+        })
+        .map_err(StoreActionError::from_kv)
+    }
+
+    fn kv_connection_value(&self, value: &KvConnectionValue) -> Result<String, StoreActionError> {
+        match value {
+            KvConnectionValue::Static(value) => Ok(value.clone()),
+            KvConnectionValue::Environment(name) => self
+                .project
+                .environment_config
+                .variable(name)
+                .and_then(|variable| variable.resolved_value.clone())
+                .ok_or_else(StoreActionError::kv),
+        }
     }
 
     fn filter_value(&self, filter: &StoreFilter) -> Result<StoreValue, StoreActionError> {
@@ -1366,6 +1808,25 @@ fn changed_json(changed: usize) -> Value {
     Value::Object(output)
 }
 
+fn kv_set_json(key: &str) -> Value {
+    let mut output = Map::new();
+    output.insert("ok".to_string(), Value::Bool(true));
+    output.insert("key".to_string(), Value::String(key.to_string()));
+    Value::Object(output)
+}
+
+fn kv_delete_json(deleted: bool) -> Value {
+    let mut output = Map::new();
+    output.insert("deleted".to_string(), Value::Bool(deleted));
+    Value::Object(output)
+}
+
+fn kv_clear_json(cleared: usize) -> Value {
+    let mut output = Map::new();
+    output.insert("cleared".to_string(), Value::Number(cleared.into()));
+    Value::Object(output)
+}
+
 fn log_json_text(value: Value) -> String {
     match value {
         Value::String(value) => value,
@@ -1497,6 +1958,8 @@ fn json_response(status: StatusCode, value: Value) -> Response {
 
 fn store_error_response(error: dowe_store::StoreError) -> Response {
     let status = match error {
+        dowe_store::StoreError::Authentication(_) => StatusCode::UNAUTHORIZED,
+        dowe_store::StoreError::Authorization(_) => StatusCode::FORBIDDEN,
         dowe_store::StoreError::InvalidName(_) | dowe_store::StoreError::InvalidQuery(_) => {
             StatusCode::BAD_REQUEST
         }

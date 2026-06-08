@@ -1,4 +1,4 @@
-use dialoguer::{MultiSelect, Select, theme::ColorfulTheme};
+use dialoguer::{Input, MultiSelect, Select, theme::ColorfulTheme};
 use dowe_deploy::DeployTarget;
 use dowe_runtime::{
     DevTarget, DevTargetSelection, HostOs, ProjectTemplate, available_dev_targets,
@@ -46,6 +46,15 @@ pub(crate) fn prompt_agent_command() -> Result<Option<String>, Box<dyn std::erro
         .interact_opt()?;
 
     Ok(selection.map(|index| commands[index].to_string()))
+}
+
+pub(crate) fn prompt_agent_prompt() -> Result<Option<String>, Box<dyn std::error::Error>> {
+    let prompt = Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt("Describe what Dowe should build")
+        .allow_empty(false)
+        .interact_text()?;
+
+    Ok(Some(prompt))
 }
 
 pub(crate) fn prompt_deploy_target() -> Result<Option<DeployTarget>, Box<dyn std::error::Error>> {
@@ -131,13 +140,14 @@ pub(crate) fn dev_target_default_states(
         .collect()
 }
 
-pub(crate) fn root_commands() -> [&'static str; 7] {
+pub(crate) fn root_commands() -> [&'static str; 8] {
     [
         "init",
         "dev",
         "deploy",
         "agent",
         "codegraph",
+        "kv",
         "store",
         "upgrade",
     ]
@@ -152,8 +162,8 @@ pub(crate) fn deploy_targets() -> [DeployTarget; 4] {
     ]
 }
 
-pub(crate) fn agent_commands() -> [&'static str; 1] {
-    ["harness"]
+pub(crate) fn agent_commands() -> [&'static str; 2] {
+    ["chat", "harness"]
 }
 
 pub(crate) fn harness_commands() -> [&'static str; 3] {
@@ -183,6 +193,7 @@ mod tests {
                 "deploy",
                 "agent",
                 "codegraph",
+                "kv",
                 "store",
                 "upgrade"
             ]
@@ -203,8 +214,8 @@ mod tests {
     }
 
     #[test]
-    fn agent_menu_contains_harness() {
-        assert_eq!(agent_commands(), ["harness"]);
+    fn agent_menu_contains_chat_and_harness() {
+        assert_eq!(agent_commands(), ["chat", "harness"]);
     }
 
     #[test]

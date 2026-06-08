@@ -10,10 +10,12 @@ path = "src/main.rs"
 
 [dependencies]
 dialoguer = "0.12.0"
+dowe_agent = { path = "../agent" }
 dowe_agent_harness = { path = "../agent_harness" }
 dowe_codegraph = { path = "../codegraph" }
 dowe_compiler = { path = "../compiler" }
 dowe_deploy = { path = "../deploy" }
+dowe_kv = { path = "../kv" }
 dowe_store = { path = "../store" }
 dowe_runtime = { path = "../runtime" }
 dowe_spawn = { path = "../spawn" }

@@ -5,9 +5,15 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
+axum.workspace = true
+base64.workspace = true
 dowe_id = { path = "../id" }
+rand_core.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 tempfile = "3.23.0"

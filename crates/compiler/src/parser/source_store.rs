@@ -1,20 +1,30 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    EndpointBehavior, ServerAction, ServerStatement, ServerStoreStatement, StoreActionJsonEndpoint,
-    StoreFilter, StoreInsertEndpoint, StoreLiteral, StoreMatchField, StoreQueryEndpoint,
-    StoreTransactionEndpoint, StoreTransactionOperation,
+    EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, ServerAction, ServerStatement,
+    ServerStoreStatement, StoreActionJsonEndpoint, StoreConnection, StoreConnectionValue,
+    StoreCredential, StoreFilter, StoreInsertEndpoint, StoreLiteral, StoreMatchField,
+    StoreQueryEndpoint, StoreRemoteConnection, StoreTransactionEndpoint, StoreTransactionOperation,
 };
 use crate::parser::source_ast::{SourceNode, SourceObjectEntry, SourceValue};
 
-pub fn parse_store_let(node: &SourceNode) -> DoweResult<Option<ServerStoreStatement>> {
+pub fn parse_store_let(
+    node: &SourceNode,
+    environment: Option<&EnvironmentConfig>,
+) -> DoweResult<Option<ServerStoreStatement>> {
     let Some((binding, expression)) = assignment(node) else {
         return Ok(None);
     };
 
     if expression == "store" {
+        reject_unknown_props(node, &["database", "host", "user", "token", "password"])?;
         let database = required_string_prop(node, "database")?;
         validate_store_name(node, &database, "database")?;
-        return Ok(Some(ServerStoreStatement::Handle { binding, database }));
+        let remote = optional_remote_connection(node, environment)?;
+        return Ok(Some(ServerStoreStatement::Handle {
+            binding,
+            database,
+            remote,
+        }));
     }
 
     if let Some(handle) = expression.strip_suffix(".insert") {
@@ -116,15 +126,25 @@ pub fn store_endpoint_behavior(
     let Some(return_binding) = return_binding else {
         return Ok(None);
     };
-    let mut handles = Vec::<(String, String)>::new();
+    let mut handles = Vec::<(String, StoreConnection)>::new();
 
     for statement in &action.statements {
         let ServerStatement::Store(statement) = statement else {
             continue;
         };
         match statement {
-            ServerStoreStatement::Handle { binding, database } => {
-                handles.push((binding.clone(), database.clone()));
+            ServerStoreStatement::Handle {
+                binding,
+                database,
+                remote,
+            } => {
+                handles.push((
+                    binding.clone(),
+                    StoreConnection {
+                        database: database.clone(),
+                        remote: remote.clone(),
+                    },
+                ));
             }
             ServerStoreStatement::Insert {
                 binding,
@@ -133,10 +153,10 @@ pub fn store_endpoint_behavior(
                 value,
                 ..
             } if binding == &return_binding => {
-                let database = database_for_handle(&handles, handle)?;
+                let connection = connection_for_handle(&handles, handle)?;
                 return Ok(Some(EndpointBehavior::StoreInsertJson(
                     StoreInsertEndpoint {
-                        database,
+                        connection,
                         table: table.clone(),
                         value: value.clone(),
                     },
@@ -147,9 +167,9 @@ pub fn store_endpoint_behavior(
                 handle,
                 sql,
             } if binding == &return_binding => {
-                let database = database_for_handle(&handles, handle)?;
+                let connection = connection_for_handle(&handles, handle)?;
                 return Ok(Some(EndpointBehavior::StoreQueryJson(StoreQueryEndpoint {
-                    database,
+                    connection,
                     sql: sql.clone(),
                 })));
             }
@@ -159,10 +179,15 @@ pub fn store_endpoint_behavior(
                 operations,
                 return_binding: tx_return_binding,
             } if binding == &return_binding => {
-                let database = database_for_handle(&handles, handle)?;
+                let connection = connection_for_handle(&handles, handle)?;
+                if connection.remote.is_some() {
+                    return Err(DoweError::new(
+                        "remote Store transactions are not supported yet",
+                    ));
+                }
                 return Ok(Some(EndpointBehavior::StoreTransactionJson(
                     StoreTransactionEndpoint {
-                        database,
+                        database: connection.database,
                         operations: operations.clone(),
                         return_binding: tx_return_binding.clone(),
                     },
@@ -206,15 +231,25 @@ pub fn store_action_endpoint_behavior(
 }
 
 fn validate_store_handles(action: &ServerAction) -> DoweResult<()> {
-    let mut handles = Vec::<(String, String)>::new();
+    let mut handles = Vec::<(String, StoreConnection)>::new();
 
     for statement in &action.statements {
         let ServerStatement::Store(statement) = statement else {
             continue;
         };
         match statement {
-            ServerStoreStatement::Handle { binding, database } => {
-                handles.push((binding.clone(), database.clone()));
+            ServerStoreStatement::Handle {
+                binding,
+                database,
+                remote,
+            } => {
+                handles.push((
+                    binding.clone(),
+                    StoreConnection {
+                        database: database.clone(),
+                        remote: remote.clone(),
+                    },
+                ));
             }
             ServerStoreStatement::Insert { handle, .. }
             | ServerStoreStatement::List { handle, .. }
@@ -223,7 +258,14 @@ fn validate_store_handles(action: &ServerAction) -> DoweResult<()> {
             | ServerStoreStatement::Delete { handle, .. }
             | ServerStoreStatement::Query { handle, .. }
             | ServerStoreStatement::Transaction { handle, .. } => {
-                let _ = database_for_handle(&handles, handle)?;
+                let connection = connection_for_handle(&handles, handle)?;
+                if matches!(statement, ServerStoreStatement::Transaction { .. })
+                    && connection.remote.is_some()
+                {
+                    return Err(DoweError::new(
+                        "remote Store transactions are not supported yet",
+                    ));
+                }
             }
         }
     }
@@ -270,10 +312,13 @@ fn parse_store_tx(
     Ok((operations, return_binding))
 }
 
-fn database_for_handle(handles: &[(String, String)], handle: &str) -> DoweResult<String> {
+fn connection_for_handle(
+    handles: &[(String, StoreConnection)],
+    handle: &str,
+) -> DoweResult<StoreConnection> {
     handles
         .iter()
-        .find_map(|(binding, database)| (binding == handle).then(|| database.clone()))
+        .find_map(|(binding, connection)| (binding == handle).then(|| connection.clone()))
         .ok_or_else(|| DoweError::new(format!("store handle `{handle}` is not defined")))
 }
 
@@ -431,6 +476,101 @@ fn validate_store_name(node: &SourceNode, value: &str, label: &str) -> DoweResul
     Ok(())
 }
 
+fn optional_remote_connection(
+    node: &SourceNode,
+    environment: Option<&EnvironmentConfig>,
+) -> DoweResult<Option<StoreRemoteConnection>> {
+    let host = optional_connection_value_prop(node, "host", environment)?;
+    let user = optional_connection_value_prop(node, "user", environment)?;
+    let token = optional_connection_value_prop(node, "token", environment)?;
+    let password = optional_connection_value_prop(node, "password", environment)?;
+    let Some(host) = host else {
+        if user.is_some() || token.is_some() || password.is_some() {
+            return Err(node_error(node, "store remote credentials require `host`"));
+        }
+        return Ok(None);
+    };
+    let Some(user) = user else {
+        return Err(node_error(node, "remote store handle must declare `user`"));
+    };
+    match (token, password) {
+        (Some(_), Some(_)) => Err(node_error(
+            node,
+            "remote store handle must declare either `token` or `password`, not both",
+        )),
+        (Some(value), None) => Ok(Some(StoreRemoteConnection {
+            host,
+            user,
+            credential: StoreCredential::Token(value),
+        })),
+        (None, Some(value)) => Ok(Some(StoreRemoteConnection {
+            host,
+            user,
+            credential: StoreCredential::Password(value),
+        })),
+        (None, None) => Err(node_error(
+            node,
+            "remote store handle must declare `token` or `password`",
+        )),
+    }
+}
+
+fn optional_connection_value_prop(
+    node: &SourceNode,
+    name: &str,
+    environment: Option<&EnvironmentConfig>,
+) -> DoweResult<Option<StoreConnectionValue>> {
+    let Some(prop) = node.prop(name) else {
+        return Ok(None);
+    };
+    match &prop.value {
+        SourceValue::String(value) if !value.is_empty() => {
+            if name == "user" {
+                validate_store_name(node, value, "user")?;
+            }
+            Ok(Some(StoreConnectionValue::Static(value.clone())))
+        }
+        SourceValue::Bareword(value) => {
+            let Some(env_name) = value.strip_prefix("env.") else {
+                return Err(node_error(
+                    node,
+                    format!("`{name}` must be a quoted string or server env reference"),
+                ));
+            };
+            if let Some(environment) = environment {
+                let variable = environment.variable(env_name).ok_or_else(|| {
+                    node_error(node, format!("unknown environment variable `{env_name}`"))
+                })?;
+                if variable.visibility != EnvironmentVisibility::Server {
+                    return Err(node_error(
+                        node,
+                        format!("environment variable `{env_name}` must be server-only"),
+                    ));
+                }
+            }
+            Ok(Some(StoreConnectionValue::Environment(
+                env_name.to_string(),
+            )))
+        }
+        _ => Err(node_error(
+            node,
+            format!("`{name}` must be a quoted string or server env reference"),
+        )),
+    }
+}
+
+fn reject_unknown_props(node: &SourceNode, allowed: &[&str]) -> DoweResult<()> {
+    for prop in &node.props {
+        if !allowed.iter().any(|allowed| *allowed == prop.name) {
+            return Err(node_error(
+                node,
+                format!("store handle does not support `{}`", prop.name),
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn node_error(node: &SourceNode, message: impl AsRef<str>) -> DoweError {
     DoweError::at_path(
         &node.location.path,
@@ -445,7 +585,10 @@ fn node_error(node: &SourceNode, message: impl AsRef<str>) -> DoweError {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::{EndpointBehavior, ServerStatement, ServerStoreStatement};
+    use crate::model::{
+        EndpointBehavior, ServerStatement, ServerStoreStatement, StoreConnectionValue,
+        StoreCredential,
+    };
     use crate::parser::source_parser::parse_source_file;
     use crate::parser::source_server::parse_server_file;
     use std::path::Path;
@@ -471,12 +614,12 @@ mod tests {
         assert!(matches!(
             &server.backend.endpoints[0].behavior,
             EndpointBehavior::StoreInsertJson(insert)
-                if insert.database == "db1" && insert.table == "users"
+                if insert.connection.database == "db1" && insert.table == "users"
         ));
         assert!(matches!(
             &server.backend.endpoints[0].action.statements[0],
-            ServerStatement::Store(ServerStoreStatement::Handle { binding, database })
-                if binding == "db" && database == "db1"
+            ServerStatement::Store(ServerStoreStatement::Handle { binding, database, remote })
+                if binding == "db" && database == "db1" && remote.is_none()
         ));
     }
 
@@ -525,5 +668,83 @@ mod tests {
             parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect_err("error");
 
         assert!(error.to_string().contains("invalid store database name"));
+    }
+
+    #[test]
+    fn parses_remote_store_handle() {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/users"
+      handler
+        let db = store database:"db1" host:"http://127.0.0.1:4147" user:"api-user" token:"secret"
+        let users = db.list table:"users"
+        return response json:{ data:users }"#
+                .to_string(),
+        )
+        .expect("source");
+        let server =
+            parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect("server");
+        let ServerStatement::Store(ServerStoreStatement::Handle { remote, .. }) =
+            &server.backend.endpoints[0].action.statements[0]
+        else {
+            panic!("store handle");
+        };
+        let remote = remote.as_ref().expect("remote");
+
+        assert_eq!(
+            remote.host,
+            StoreConnectionValue::Static("http://127.0.0.1:4147".to_string())
+        );
+        assert_eq!(
+            remote.user,
+            StoreConnectionValue::Static("api-user".to_string())
+        );
+        assert_eq!(
+            remote.credential,
+            StoreCredential::Token(StoreConnectionValue::Static("secret".to_string()))
+        );
+    }
+
+    #[test]
+    fn rejects_remote_store_credentials_without_host() {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/users"
+      handler
+        let db = store database:"db1" user:"api-user" token:"secret"
+        return response json:{ ok:true }"#
+                .to_string(),
+        )
+        .expect("source");
+        let error =
+            parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect_err("error");
+
+        assert!(error.to_string().contains("require `host`"));
+    }
+
+    #[test]
+    fn rejects_remote_store_token_and_password_together() {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/users"
+      handler
+        let db = store database:"db1" host:"http://127.0.0.1:4147" user:"api-user" token:"secret" password:"other"
+        return response json:{ ok:true }"#
+                .to_string(),
+        )
+        .expect("source");
+        let error =
+            parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect_err("error");
+
+        assert!(error.to_string().contains("either `token` or `password`"));
     }
 }

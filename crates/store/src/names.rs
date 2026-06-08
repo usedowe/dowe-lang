@@ -1,7 +1,13 @@
 use crate::error::{StoreError, StoreResult};
 
 pub fn validate_database_name(value: &str) -> StoreResult<()> {
-    validate_name(value, "database")
+    validate_name(value, "database")?;
+    if value == "_auth" {
+        return Err(StoreError::InvalidName(
+            "database name `_auth` is reserved for Store authentication".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 pub fn validate_table_name(value: &str) -> StoreResult<()> {
@@ -17,6 +23,10 @@ pub fn validate_field_name(value: &str) -> StoreResult<()> {
     } else {
         validate_name(value, "field")
     }
+}
+
+pub fn validate_user_name(value: &str) -> StoreResult<()> {
+    validate_name(value, "user")
 }
 
 fn validate_name(value: &str, label: &str) -> StoreResult<()> {

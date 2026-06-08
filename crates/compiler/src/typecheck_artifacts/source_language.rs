@@ -99,7 +99,7 @@ const SERVER_SURFACE: &str = r#"{
     "jwe": ["dir", "A256GCM"],
     "secrets": "server env variables only"
   },
-  "inferredReferences": ["store.insert field", "store.insert id", "store.update changed", "store.delete changed"],
+  "inferredReferences": ["store.insert field", "store.insert id", "store.update changed", "store.delete changed", "kv.set ok", "kv.set key", "kv.delete deleted", "kv.clear cleared"],
   "declaredTypes": ["let body:Type = await req.json()", "validated request JSON", "typed body references"],
   "resolvedLogValues": true,
   "handlers": ["method GET handler:name", "method POST handler:name", "method PATCH handler:name", "method DELETE handler:name"],

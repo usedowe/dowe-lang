@@ -126,7 +126,7 @@ fn surface_diagnostics(root: &Path, file: &SourceFile) -> Vec<LanguageDiagnostic
             "`src/server.dowe` has been renamed to `src/main.dowe`",
         )),
         SourceSurface::Middleware => validate_middleware_shape(root, file),
-        SourceSurface::Handler => validate_handler_shape(file),
+        SourceSurface::Handler => validate_handler_shape(root, file),
         SourceSurface::Unknown => Ok(()),
     };
     if let Err(error) = result {
@@ -242,8 +242,9 @@ fn validate_server_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
     Ok(())
 }
 
-fn validate_handler_shape(file: &SourceFile) -> DoweResult<()> {
-    validate_server_module_source(file, &EnvironmentConfig::default())
+fn validate_handler_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
+    let environment = environment_config(root).unwrap_or_default();
+    validate_server_module_source(file, &environment)
 }
 
 fn validate_middleware_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
@@ -451,6 +452,11 @@ fn find_reference_fields(
         {
             return Some(reference_fields_for_type(&fields));
         }
+        if let Some((binding, fields)) = kv_binding_fields(node)
+            && binding == reference_root
+        {
+            return Some(reference_fields_for_type(&fields));
+        }
         if let Some(fields) = find_reference_fields(&node.children, tables, types, reference_root) {
             return Some(fields);
         }
@@ -486,6 +492,48 @@ fn store_binding_fields(
             binding,
             DoweType::Object(vec![DoweTypeField {
                 name: "changed".to_string(),
+                value: DoweType::Number,
+                optional: false,
+            }]),
+        ));
+    }
+    None
+}
+
+fn kv_binding_fields(node: &SourceNode) -> Option<(String, DoweType)> {
+    let (binding, expression) = assignment_expression(node)?;
+    if expression.ends_with(".set") {
+        return Some((
+            binding,
+            DoweType::Object(vec![
+                DoweTypeField {
+                    name: "ok".to_string(),
+                    value: DoweType::Bool,
+                    optional: false,
+                },
+                DoweTypeField {
+                    name: "key".to_string(),
+                    value: DoweType::String,
+                    optional: false,
+                },
+            ]),
+        ));
+    }
+    if expression.ends_with(".delete") {
+        return Some((
+            binding,
+            DoweType::Object(vec![DoweTypeField {
+                name: "deleted".to_string(),
+                value: DoweType::Bool,
+                optional: false,
+            }]),
+        ));
+    }
+    if expression.ends_with(".clear") {
+        return Some((
+            binding,
+            DoweType::Object(vec![DoweTypeField {
+                name: "cleared".to_string(),
                 value: DoweType::Number,
                 optional: false,
             }]),

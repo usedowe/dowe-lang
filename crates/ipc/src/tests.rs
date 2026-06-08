@@ -1,7 +1,7 @@
 use super::{
-    CodeGraphBuildOptions, DeployOptions, DeployTarget, DevTarget, DevTargetSelection, HostOs,
-    InitOptions, SpawnConfig, SpawnEvent, build_codegraph, deploy_project, init_agent_harness,
-    run_spawn,
+    AgentPrepareOptions, AgentRequestType, CodeGraphBuildOptions, DeployOptions, DeployTarget,
+    DevTarget, DevTargetSelection, HostOs, InitOptions, SpawnConfig, SpawnEvent, build_codegraph,
+    deploy_project, init_agent_harness, prepare_agent_request, run_spawn,
 };
 use std::fs;
 use tempfile::TempDir;
@@ -64,6 +64,25 @@ fn serializes_codegraph_for_ipc() {
     let encoded = serde_json::to_string(&graph).expect("graph");
 
     assert!(encoded.contains("views.dowe"));
+}
+
+#[test]
+fn prepares_agent_request_through_ipc_wrapper() {
+    let temp = TempDir::new().expect("tempdir");
+    let prepared = prepare_agent_request(
+        temp.path(),
+        "create a fullstack dashboard with routes",
+        AgentPrepareOptions {
+            request_type: Some(AgentRequestType::SpecPlan),
+            ..AgentPrepareOptions::default()
+        },
+    )
+    .expect("agent");
+    let encoded = serde_json::to_string(&prepared.request).expect("request");
+
+    assert_eq!(prepared.request.request_type, AgentRequestType::SpecPlan);
+    assert!(encoded.contains("requestType"));
+    assert!(encoded.contains("openai/gpt-5.5"));
 }
 
 #[test]

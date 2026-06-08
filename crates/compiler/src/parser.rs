@@ -4,6 +4,9 @@ mod source_config;
 mod source_discovery;
 mod source_i18n;
 mod source_imports;
+mod source_kv;
+#[cfg(test)]
+mod source_kv_tests;
 mod source_parser;
 mod source_server;
 mod source_store;

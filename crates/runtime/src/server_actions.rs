@@ -15,6 +15,7 @@ pub(crate) fn execute_server_action_with_resolver(
             ServerStatement::Log(log) => execute_resolved_log(log, &mut resolve),
             ServerStatement::RequestJson { .. } => {}
             ServerStatement::Store(_) => {}
+            ServerStatement::Kv(_) => {}
         }
     }
 }

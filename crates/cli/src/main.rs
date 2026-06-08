@@ -3,6 +3,7 @@ mod codegraph;
 mod deploy;
 mod dev;
 mod init;
+mod kv_cli;
 mod menus;
 mod spawn_cli;
 mod store_cli;
@@ -30,8 +31,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("deploy") => deploy::run_deploy_command(&args[1..]),
         Some("agent") => agent::run_agent_command(&args[1..]).await,
         Some("codegraph") => codegraph::run_codegraph_command(&args[1..]).await,
+        Some("kv") => kv_cli::run_kv_command(&args[1..]).await,
         Some("spawn") => spawn_cli::run_spawn_command(args[1..].to_vec()).await,
-        Some("store") => store_cli::run_store_command(&args[1..]),
+        Some("store") => store_cli::run_store_command(&args[1..]).await,
         Some("upgrade") => upgrade::run_upgrade_command(&args[1..]).await,
         Some("--version") | Some("-V") => {
             println!("dowe {}", env!("CARGO_PKG_VERSION"));
@@ -56,7 +58,8 @@ async fn run_root_menu() -> Result<(), Box<dyn std::error::Error>> {
         "deploy" => deploy::run_deploy_command(&[]),
         "agent" => agent::run_agent_command(&[]).await,
         "codegraph" => codegraph::run_codegraph_command(&[]).await,
-        "store" => store_cli::run_store_command(&[]),
+        "kv" => kv_cli::run_kv_command(&[]).await,
+        "store" => store_cli::run_store_command(&[]).await,
         "upgrade" => upgrade::run_upgrade_command(&[]).await,
         _ => Err(USAGE.into()),
     }

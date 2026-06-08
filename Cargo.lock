@@ -336,16 +336,31 @@ name = "dowe"
 version = "1.0.0"
 dependencies = [
  "dialoguer",
+ "dowe_agent",
  "dowe_agent_harness",
  "dowe_codegraph",
  "dowe_compiler",
  "dowe_deploy",
+ "dowe_kv",
  "dowe_runtime",
  "dowe_spawn",
  "dowe_store",
  "reqwest",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "dowe_agent"
+version = "1.0.0"
+dependencies = [
+ "base64",
+ "dowe_agent_harness",
+ "dowe_codegraph",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -443,6 +458,7 @@ version = "1.0.0"
 name = "dowe_ipc"
 version = "1.0.0"
 dependencies = [
+ "dowe_agent",
  "dowe_agent_harness",
  "dowe_codegraph",
  "dowe_compiler",
@@ -450,6 +466,21 @@ dependencies = [
  "dowe_runtime",
  "dowe_spawn",
  "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "dowe_kv"
+version = "1.0.0"
+dependencies = [
+ "axum",
+ "base64",
+ "rand_core 0.6.4",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
  "tempfile",
  "tokio",
 ]
@@ -466,6 +497,7 @@ dependencies = [
  "bytes",
  "dowe_compiler",
  "dowe_crypto",
+ "dowe_kv",
  "dowe_spawn",
  "dowe_store",
  "futures-util",
@@ -493,10 +525,16 @@ dependencies = [
 name = "dowe_store"
 version = "1.0.0"
 dependencies = [
+ "axum",
+ "base64",
  "dowe_id",
+ "rand_core 0.6.4",
+ "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]

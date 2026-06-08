@@ -9,6 +9,9 @@ pub enum StoreError {
     InvalidName(String),
     InvalidUlid(String),
     InvalidQuery(String),
+    Authentication(String),
+    Authorization(String),
+    Remote(String),
     TypeError(String),
     TransactionConflict(String),
     DurabilityError(String),
@@ -25,6 +28,9 @@ impl StoreError {
             Self::InvalidName(_) => "InvalidName",
             Self::InvalidUlid(_) => "InvalidUlid",
             Self::InvalidQuery(_) => "InvalidQuery",
+            Self::Authentication(_) => "Authentication",
+            Self::Authorization(_) => "Authorization",
+            Self::Remote(_) => "Remote",
             Self::TypeError(_) => "TypeError",
             Self::TransactionConflict(_) => "TransactionConflict",
             Self::DurabilityError(_) => "DurabilityError",
@@ -41,6 +47,9 @@ impl StoreError {
             | Self::InvalidName(message)
             | Self::InvalidUlid(message)
             | Self::InvalidQuery(message)
+            | Self::Authentication(message)
+            | Self::Authorization(message)
+            | Self::Remote(message)
             | Self::TypeError(message)
             | Self::TransactionConflict(message)
             | Self::DurabilityError(message)

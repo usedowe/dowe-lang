@@ -28,7 +28,8 @@ pub async fn production_handler(
             uri.path(),
             headers,
             body,
-        );
+        )
+        .await;
     }
 
     if method == Method::GET {

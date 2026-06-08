@@ -9,6 +9,7 @@ axum.workspace = true
 bytes.workspace = true
 dowe_compiler = { path = "../compiler" }
 dowe_crypto = { path = "../crypto" }
+dowe_kv = { path = "../kv" }
 dowe_spawn = { path = "../spawn" }
 dowe_store = { path = "../store" }
 futures-util.workspace = true

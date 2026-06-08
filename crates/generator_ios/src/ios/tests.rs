@@ -649,10 +649,34 @@ fn generates_full_scene_background_without_unsafe_content() {
         views
             .contains(".background(DoweDesign.background.ignoresSafeArea())")
     );
+    assert!(views.contains("struct DoweSafeAreaReporter: UIViewRepresentable"));
+    assert!(views.contains("final class DoweSafeAreaReportingView: UIView"));
+    assert!(views.contains("@State private var safeAreaInsets = EdgeInsets()"));
+    assert!(views.contains("DoweSafeAreaReporter { insets in"));
+    assert!(views.contains("routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets))"));
+    assert!(views.contains(
+        ".frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)"
+    ));
+    assert!(views.contains(
+        ".frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)"
+    ));
+    assert!(views.contains(".offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)"));
+    assert!(views.contains("        .ignoresSafeArea()\n        .frame(maxWidth: .infinity"));
+    assert!(views.contains("func doweSafeAreaWidth(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat"));
+    assert!(views.contains("func doweSafeAreaHeight(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat"));
+    assert!(views.contains("func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool"));
+    assert!(views.contains(
+        "private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat) -> some View"
+    ));
+    assert!(views.contains("LoginView(viewportWidth: viewportWidth, activeFragment: entry.fragment"));
     assert!(
         views
             .contains(".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)")
     );
+    assert!(!views.contains("safeAreaInsets:"));
+    assert!(!views.contains("let safeAreaInsets"));
+    assert!(!views.contains(".padding(.top, safeAreaInsets.top)"));
+    assert!(!views.contains(".padding(.bottom, safeAreaInsets.bottom)"));
     assert!(views.contains(
             "        .background(DoweDesign.background)\n        .foregroundStyle(DoweDesign.onBackground)"
         ));
@@ -842,20 +866,20 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     );
     assert!(
         views
-            .contains("NavigationStack(path: $navigationPath)")
+            .contains("@State private var navigationPath: [DoweRouteEntry] = []")
     );
     assert!(
         views
-            .contains(".navigationDestination(for: DoweRouteEntry.self)")
-    );
-    assert!(
-        views
-            .contains(".toolbar(.hidden, for: .navigationBar)")
+            .contains("routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets))")
     );
     assert!(
         views
             .contains(".simultaneousGesture(backSwipeGesture)")
     );
+    assert!(!views.contains("NavigationStack(path: $navigationPath)"));
+    assert!(!views.contains(".navigationDestination(for: DoweRouteEntry.self)"));
+    assert!(!views.contains(".toolbar(.hidden, for: .navigationBar)"));
+    assert!(!views.contains(".navigationBarHidden(true)"));
     assert!(
         views
             .contains("private var backSwipeGesture: some Gesture")

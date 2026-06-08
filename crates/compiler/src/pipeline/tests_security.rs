@@ -255,6 +255,7 @@
             }
             ServerStatement::RequestJson { .. } => panic!("expected log statement"),
             ServerStatement::Store(_) => panic!("expected log statement"),
+            ServerStatement::Kv(_) => panic!("expected log statement"),
         }
     }
 

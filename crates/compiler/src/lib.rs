@@ -15,13 +15,15 @@ pub use language::{
 pub use model::{
     AppOutput, ChunkKind, CompiledProject, CorsConfig, DesignConfig, DoweType, DoweTypeField,
     Endpoint, EndpointBehavior, EnvironmentConfig, EnvironmentValueSource, EnvironmentVariable,
-    EnvironmentVisibility, GeneratedChunk, GeneratedFile, HttpMethod, MatchedEndpoint,
-    ProjectServerConfig, ServerAction, ServerConfig, ServerLog, ServerLogLevel, ServerLogValue,
-    ServerMiddleware, ServerMiddlewareAction, ServerMiddlewareResponseBody,
+    EnvironmentVisibility, GeneratedChunk, GeneratedFile, HttpMethod, KvActionJsonEndpoint,
+    KvConnection, KvConnectionValue, KvCredential, KvRemoteConnection, MatchedEndpoint,
+    ProjectServerConfig, ServerAction, ServerConfig, ServerKvStatement, ServerLog, ServerLogLevel,
+    ServerLogValue, ServerMiddleware, ServerMiddlewareAction, ServerMiddlewareResponseBody,
     ServerMiddlewareStatement, ServerSecret, ServerStatement, ServerStoreStatement,
-    StoreActionJsonEndpoint, StoreFilter, StoreInsertEndpoint, StoreLiteral, StoreMatchField,
-    StoreQueryEndpoint, StoreTransactionEndpoint, StoreTransactionOperation, ViewNode, ViewPage,
-    ViewPlatform, ViewRoute, ViewTargetRoutes, WebOutput, WebSocketHandlers, WebSocketRoute,
+    StoreActionJsonEndpoint, StoreConnection, StoreConnectionValue, StoreCredential, StoreFilter,
+    StoreInsertEndpoint, StoreLiteral, StoreMatchField, StoreQueryEndpoint, StoreRemoteConnection,
+    StoreTransactionEndpoint, StoreTransactionOperation, ViewNode, ViewPage, ViewPlatform,
+    ViewRoute, ViewTargetRoutes, WebOutput, WebSocketHandlers, WebSocketRoute,
     normalize_cors_method, normalize_cors_origin, normalize_http_header_name,
 };
 pub use parser::validate_design_copilot_dowe;

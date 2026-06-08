@@ -61,8 +61,9 @@ fn validate_cloudflare(project: &CompiledProject) -> DeployResult<()> {
                 | EndpointBehavior::StoreQueryJson(_)
                 | EndpointBehavior::StoreTransactionJson(_)
                 | EndpointBehavior::StoreActionJson(_)
+                | EndpointBehavior::KvActionJson(_)
         ) {
-            return Err(unsupported("local Store"));
+            return Err(unsupported("local Store or KV"));
         }
     }
     Ok(())
@@ -166,7 +167,8 @@ fn endpoint_branch(endpoint: &Endpoint) -> String {
         EndpointBehavior::StoreInsertJson(_)
         | EndpointBehavior::StoreQueryJson(_)
         | EndpointBehavior::StoreTransactionJson(_)
-        | EndpointBehavior::StoreActionJson(_) => String::new(),
+        | EndpointBehavior::StoreActionJson(_)
+        | EndpointBehavior::KvActionJson(_) => String::new(),
     }
 }
 

@@ -2,6 +2,10 @@ use crate::DevEventType;
 use crate::server::{DevServerTargets, start_dev, start_dev_servers, start_production};
 use dowe_compiler::compile_dev;
 use dowe_crypto::sign_jws_hs256;
+use dowe_kv::{
+    KvServerConfig, clear_memory as clear_kv_memory, create_user as create_kv_user, start_kv_server,
+};
+use dowe_store::{StoreServerConfig, create_user, start_store_server};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use std::fs;
@@ -587,6 +591,272 @@ async fn serves_store_insert_and_query_endpoints() {
     assert!(temp.path().join(".dowe/store/db1/users").exists());
 
     servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn serves_kv_handlers_with_persistent_fallback() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    fs::write(
+        temp.path().join("src/main.dowe"),
+        r#"main
+  server port:0
+    route "/api/cache/save"
+      handler
+        let db = kv database:"clinic" persist:true
+        let saved = db.set key:"appointment:1" value:{ patientName:"Ana" }
+        return response json:saved
+    route "/api/cache/read"
+      handler
+        let db = kv database:"clinic" persist:true
+        let value = db.get key:"appointment:1" required:true
+        let keys = db.keys prefix:"appointment:"
+        return response json:{ patientName:value.patientName keys:keys }"#,
+    )
+    .expect("server");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev(project).await.expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+
+    let saved = client
+        .get(format!("{backend}/api/cache/save"))
+        .send()
+        .await
+        .expect("save")
+        .json::<serde_json::Value>()
+        .await
+        .expect("save json");
+    assert_eq!(saved["ok"], true);
+    assert_eq!(saved["key"], "appointment:1");
+    clear_kv_memory(temp.path(), "clinic").expect("clear kv memory");
+
+    let read = client
+        .get(format!("{backend}/api/cache/read"))
+        .send()
+        .await
+        .expect("read")
+        .json::<serde_json::Value>()
+        .await
+        .expect("read json");
+    assert_eq!(read["patientName"], "Ana");
+    assert_eq!(read["keys"], json!(["appointment:1"]));
+    assert!(temp.path().join(".dowe/kv/clinic").exists());
+
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn serves_remote_kv_handlers_without_local_kv_database() {
+    let app = TempDir::new().expect("app tempdir");
+    let remote = TempDir::new().expect("remote tempdir");
+    create_kv_user(remote.path(), "clinic", "clinic-api", Some("secret-token")).expect("user");
+    let kv_server = start_kv_server(KvServerConfig {
+        root: remote.path().to_path_buf(),
+        host: "127.0.0.1".to_string(),
+        port: 0,
+    })
+    .await
+    .expect("kv server");
+    write_fixture(app.path(), 0);
+    fs::write(
+        app.path().join("src/config.dowe"),
+        r#"config
+  env
+    variable name:"KV_HOST" visibility:"server" required:true
+    variable name:"KV_TOKEN" visibility:"server" required:true"#,
+    )
+    .expect("config");
+    fs::write(
+        app.path().join(".env"),
+        format!("KV_HOST=http://{}\nKV_TOKEN=secret-token\n", kv_server.addr),
+    )
+    .expect("env");
+    fs::write(
+        app.path().join("src/main.dowe"),
+        r#"main
+  server port:0
+    route "/api/cache"
+      handler
+        let db = kv database:"clinic" persist:true host:env.KV_HOST user:"clinic-api" token:env.KV_TOKEN
+        let saved = db.set key:"appointment:1" value:{ patientName:"Ana" }
+        let value = db.get key:"appointment:1" required:true
+        let keys = db.keys prefix:"appointment:"
+        return response json:{ ok:saved.ok patientName:value.patientName keys:keys }"#,
+    )
+    .expect("server");
+    let project = compile_dev(app.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+
+    let response = client
+        .get(format!("{backend}/api/cache"))
+        .send()
+        .await
+        .expect("cache")
+        .json::<serde_json::Value>()
+        .await
+        .expect("json");
+
+    assert_eq!(response["ok"], true);
+    assert_eq!(response["patientName"], "Ana");
+    assert_eq!(response["keys"], json!(["appointment:1"]));
+    assert!(!app.path().join(".dowe/kv/clinic").exists());
+    assert!(remote.path().join(".dowe/kv/clinic").exists());
+
+    servers.shutdown().await.expect("shutdown");
+    kv_server.shutdown().await.expect("kv shutdown");
+}
+
+#[tokio::test]
+async fn serves_remote_store_handlers_without_local_store_database() {
+    let app = TempDir::new().expect("app tempdir");
+    let remote = TempDir::new().expect("remote tempdir");
+    create_user(remote.path(), "clinic", "clinic-api", Some("secret-token")).expect("user");
+    let store_server = start_store_server(StoreServerConfig {
+        root: remote.path().to_path_buf(),
+        host: "127.0.0.1".to_string(),
+        port: 0,
+    })
+    .await
+    .expect("store server");
+    write_fixture(app.path(), 0);
+    fs::write(
+        app.path().join("src/config.dowe"),
+        r#"config
+  env
+    variable name:"STORE_HOST" visibility:"server" required:true
+    variable name:"STORE_TOKEN" visibility:"server" required:true"#,
+    )
+    .expect("config");
+    fs::write(
+        app.path().join(".env"),
+        format!(
+            "STORE_HOST=http://{}\nSTORE_TOKEN=secret-token\n",
+            store_server.addr
+        ),
+    )
+    .expect("env");
+    fs::write(
+        app.path().join("src/main.dowe"),
+        r#"main
+  server port:0
+    route "/api/appointments"
+      handler
+        let db = store database:"clinic" host:env.STORE_HOST user:"clinic-api" token:env.STORE_TOKEN
+        let created = db.insert table:"appointments" value:{ patientName:"Ana" }
+        let appointments = db.list table:"appointments"
+        return response json:{ ok:true data:appointments created:created.patientName }"#,
+    )
+    .expect("server");
+    let project = compile_dev(app.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+
+    let response = client
+        .get(format!("{backend}/api/appointments"))
+        .send()
+        .await
+        .expect("appointments")
+        .json::<serde_json::Value>()
+        .await
+        .expect("json");
+
+    assert_eq!(response["ok"], true);
+    assert_eq!(response["created"], "Ana");
+    assert_eq!(response["data"][0]["patientName"], "Ana");
+    assert!(!app.path().join(".dowe/store/clinic").exists());
+    assert!(remote.path().join(".dowe/store/clinic").exists());
+
+    servers.shutdown().await.expect("shutdown");
+    store_server.shutdown().await.expect("store shutdown");
+}
+
+#[tokio::test]
+async fn maps_remote_store_authentication_failures_for_direct_endpoints() {
+    let app = TempDir::new().expect("app tempdir");
+    let remote = TempDir::new().expect("remote tempdir");
+    create_user(remote.path(), "clinic", "clinic-api", Some("correct-token")).expect("user");
+    let store_server = start_store_server(StoreServerConfig {
+        root: remote.path().to_path_buf(),
+        host: "127.0.0.1".to_string(),
+        port: 0,
+    })
+    .await
+    .expect("store server");
+    write_fixture(app.path(), 0);
+    fs::write(
+        app.path().join("src/config.dowe"),
+        r#"config
+  env
+    variable name:"STORE_HOST" visibility:"server" required:true
+    variable name:"STORE_TOKEN" visibility:"server" required:true"#,
+    )
+    .expect("config");
+    fs::write(
+        app.path().join(".env"),
+        format!(
+            "STORE_HOST=http://{}\nSTORE_TOKEN=wrong-token\n",
+            store_server.addr
+        ),
+    )
+    .expect("env");
+    fs::write(
+        app.path().join("src/main.dowe"),
+        r#"main
+  server port:0
+    route "/api/appointments"
+      handler
+        let db = store database:"clinic" host:env.STORE_HOST user:"clinic-api" token:env.STORE_TOKEN
+        let created = db.insert table:"appointments" value:{ patientName:"Ana" }
+        return response json:created"#,
+    )
+    .expect("server");
+    let project = compile_dev(app.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+
+    let response = client
+        .get(format!("{backend}/api/appointments"))
+        .send()
+        .await
+        .expect("appointments");
+
+    assert_eq!(response.status(), reqwest::StatusCode::UNAUTHORIZED);
+    assert!(!app.path().join(".dowe/store/clinic").exists());
+
+    servers.shutdown().await.expect("shutdown");
+    store_server.shutdown().await.expect("store shutdown");
 }
 
 #[tokio::test]

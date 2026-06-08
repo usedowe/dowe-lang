@@ -5,6 +5,7 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
+dowe_agent = { path = "../agent" }
 dowe_agent_harness = { path = "../agent_harness" }
 dowe_codegraph = { path = "../codegraph" }
 dowe_compiler = { path = "../compiler" }

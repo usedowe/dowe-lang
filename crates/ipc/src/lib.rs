@@ -1,3 +1,10 @@
+pub use dowe_agent::{
+    AgentCodeGraphNodeSummary, AgentCodeGraphSummary, AgentContext, AgentDesktopEvent,
+    AgentDesktopEventKind, AgentImageInput, AgentMessage, AgentMessageContent, AgentMessagePart,
+    AgentPrepareOptions, AgentPreparedRequest, AgentRequest, AgentRequestMetadata,
+    AgentRequestType, AgentServerResponse, AgentSkillSummary, AgentToolDefinition,
+    AgentToolFunction, ImageUrl,
+};
 pub use dowe_agent_harness::{
     CheckReport, DetectedMode, Diagnostic, HarnessManifest, HarnessMode, InitOptions, InitReport,
     PlanOptions, PlanReport, PlanState, StatusReport, TddState, ValidationReport,
@@ -17,6 +24,21 @@ pub use dowe_spawn::{
     SpawnResult, StreamMode,
 };
 use std::path::Path;
+
+pub fn prepare_agent_request(
+    root: impl AsRef<Path>,
+    prompt: &str,
+    options: AgentPrepareOptions,
+) -> dowe_agent::AgentResult<AgentPreparedRequest> {
+    dowe_agent::prepare_agent_request(root, prompt, options)
+}
+
+pub async fn send_agent_request(
+    server_url: &str,
+    request: &AgentRequest,
+) -> dowe_agent::AgentResult<AgentServerResponse> {
+    dowe_agent::send_agent_request(server_url, request).await
+}
 
 pub fn init_agent_harness(
     root: impl AsRef<Path>,

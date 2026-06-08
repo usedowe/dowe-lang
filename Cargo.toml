@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "crates/agent",
   "crates/agent_harness",
   "crates/cli",
   "crates/codegraph",
@@ -13,6 +14,7 @@ members = [
   "crates/generator_web",
   "crates/id",
   "crates/ipc",
+  "crates/kv",
   "crates/minifier",
   "crates/runtime",
   "crates/spawn",

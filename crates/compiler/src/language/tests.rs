@@ -199,6 +199,39 @@ fn diagnostics_reject_unknown_inferred_handler_fields() {
 }
 
 #[test]
+fn diagnostics_accept_remote_store_env_in_handler_files() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("src/handlers")).expect("src");
+    fs::write(
+        root.path().join("src/config.dowe"),
+        concat!(
+            "config\n",
+            "  env\n",
+            "    variable name:\"STORE_HOST\" visibility:\"server\" required:true\n",
+            "    variable name:\"STORE_TOKEN\" visibility:\"server\" required:true\n"
+        ),
+    )
+    .expect("config");
+    let document = LanguageDocument {
+        path: root.path().join("src/handlers/appointments.dowe"),
+        source: concat!(
+            "handler listAppointments req\n",
+            "  let db = store database:\"clinic\" host:env.STORE_HOST user:\"clinic-api\" token:env.STORE_TOKEN\n",
+            "  let appointments = db.list table:\"appointments\"\n",
+            "  return response json:{ ok:true data:appointments }\n"
+        )
+        .to_string(),
+    };
+
+    let diagnostics = analyze_document(root.path(), &document);
+
+    assert!(
+        diagnostics.is_empty(),
+        "unexpected diagnostics: {diagnostics:?}"
+    );
+}
+
+#[test]
 fn diagnostics_accept_text_typography_props() {
     let root = tempdir().expect("tempdir");
     fs::create_dir_all(root.path().join("src/pages")).expect("src");
@@ -478,6 +511,26 @@ fn completions_and_hover_include_inferred_handler_fields() {
         hover_at(root.path(), &hover_document, 4, 10).as_deref(),
         Some("Dowe inferred field `created.title`")
     );
+}
+
+#[test]
+fn completions_include_inferred_kv_handler_fields() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("src/handlers")).expect("src");
+    let completion_document = LanguageDocument {
+        path: root.path().join("src/handlers/cache.dowe"),
+        source: "handler cacheAppointment\n  let db = kv database:\"clinic\"\n  let saved = db.set key:\"appointment:1\" value:{ patientName:\"Ana\" }\n  log saved.\n  return response json:saved\n"
+            .to_string(),
+    };
+    let completions = complete_document(
+        root.path(),
+        &completion_document,
+        4,
+        "  log saved.".len() + 1,
+    );
+
+    assert!(completions.iter().any(|item| item.label == "ok"));
+    assert!(completions.iter().any(|item| item.label == "key"));
 }
 
 #[test]

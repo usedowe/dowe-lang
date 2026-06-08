@@ -270,6 +270,7 @@ pub enum EndpointBehavior {
     StoreQueryJson(StoreQueryEndpoint),
     StoreTransactionJson(StoreTransactionEndpoint),
     StoreActionJson(StoreActionJsonEndpoint),
+    KvActionJson(KvActionJsonEndpoint),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -346,15 +347,40 @@ pub enum ServerSecret {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoreInsertEndpoint {
-    pub database: String,
+    pub connection: StoreConnection,
     pub table: String,
     pub value: StoreLiteral,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoreQueryEndpoint {
-    pub database: String,
+    pub connection: StoreConnection,
     pub sql: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoreConnection {
+    pub database: String,
+    pub remote: Option<StoreRemoteConnection>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoreRemoteConnection {
+    pub host: StoreConnectionValue,
+    pub user: StoreConnectionValue,
+    pub credential: StoreCredential,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StoreCredential {
+    Token(StoreConnectionValue),
+    Password(StoreConnectionValue),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StoreConnectionValue {
+    Static(String),
+    Environment(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -368,6 +394,38 @@ pub struct StoreTransactionEndpoint {
 pub struct StoreActionJsonEndpoint {
     pub status: u16,
     pub value: StoreLiteral,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KvActionJsonEndpoint {
+    pub status: u16,
+    pub value: StoreLiteral,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KvConnection {
+    pub database: String,
+    pub persist: bool,
+    pub remote: Option<KvRemoteConnection>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KvRemoteConnection {
+    pub host: KvConnectionValue,
+    pub user: KvConnectionValue,
+    pub credential: KvCredential,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KvCredential {
+    Token(KvConnectionValue),
+    Password(KvConnectionValue),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KvConnectionValue {
+    Static(String),
+    Environment(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -414,6 +472,7 @@ pub enum ServerStatement {
         schema: Option<DoweType>,
     },
     Store(ServerStoreStatement),
+    Kv(ServerKvStatement),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -421,6 +480,7 @@ pub enum ServerStoreStatement {
     Handle {
         binding: String,
         database: String,
+        remote: Option<StoreRemoteConnection>,
     },
     Insert {
         binding: String,
@@ -467,6 +527,42 @@ pub enum ServerStoreStatement {
         handle: String,
         operations: Vec<StoreTransactionOperation>,
         return_binding: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerKvStatement {
+    Handle {
+        binding: String,
+        database: String,
+        persist: bool,
+        remote: Option<KvRemoteConnection>,
+    },
+    Get {
+        binding: String,
+        handle: String,
+        key: String,
+        required: bool,
+    },
+    Set {
+        binding: String,
+        handle: String,
+        key: String,
+        value: StoreLiteral,
+    },
+    Delete {
+        binding: String,
+        handle: String,
+        key: String,
+    },
+    Keys {
+        binding: String,
+        handle: String,
+        prefix: Option<String>,
+    },
+    Clear {
+        binding: String,
+        handle: String,
     },
 }
 

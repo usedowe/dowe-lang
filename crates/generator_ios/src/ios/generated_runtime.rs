@@ -3229,10 +3229,48 @@ struct DoweExternalWebView: UIViewControllerRepresentable {
     }
 }
 
+struct DoweSafeAreaReporter: UIViewRepresentable {
+    let onChange: (EdgeInsets) -> Void
+
+    func makeUIView(context: Context) -> DoweSafeAreaReportingView {
+        let view = DoweSafeAreaReportingView()
+        view.onChange = onChange
+        return view
+    }
+
+    func updateUIView(_ view: DoweSafeAreaReportingView, context: Context) {
+        view.onChange = onChange
+        view.reportSafeArea()
+    }
+}
+
+final class DoweSafeAreaReportingView: UIView {
+    var onChange: ((EdgeInsets) -> Void)?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        reportSafeArea()
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        reportSafeArea()
+    }
+
+    func reportSafeArea() {
+        let uiInsets = window?.safeAreaInsets ?? safeAreaInsets
+        let insets = EdgeInsets(top: uiInsets.top, leading: uiInsets.left, bottom: uiInsets.bottom, trailing: uiInsets.right)
+        DispatchQueue.main.async {
+            self.onChange?(insets)
+        }
+    }
+}
+
 struct DoweRootView: View {
     @State private var rootEntry = DoweRouteEntry(path: DoweRoutes.initialPath, fragment: nil)
     @State private var navigationPath: [DoweRouteEntry] = []
     @State private var externalUrl: DoweExternalUrl?
+    @State private var safeAreaInsets = EdgeInsets()
 
     var body: some View {
 "#,
@@ -3249,7 +3287,7 @@ struct DoweRootView: View {
     output = output.replace("__DOWE_FONT_SWITCH__", &swift_font_switch(font_families));
 
     if routes.first().is_some() {
-        output.push_str("        NavigationStack(path: $navigationPath) {\n            GeometryReader { geometry in\n                routeContent(rootEntry, viewportWidth: geometry.size.width)\n            }\n            .toolbar(.hidden, for: .navigationBar)\n            .navigationDestination(for: DoweRouteEntry.self) { entry in\n                GeometryReader { geometry in\n                    routeContent(entry, viewportWidth: geometry.size.width)\n                }\n                .toolbar(.hidden, for: .navigationBar)\n            }\n        }\n        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background.ignoresSafeArea())\n        .foregroundStyle(DoweDesign.onBackground)\n        .simultaneousGesture(backSwipeGesture)\n        .sheet(item: $externalUrl) { item in\n            DoweExternalWebView(url: item.url)\n        }\n        .onOpenURL { url in\n            applyDeepLink(url)\n        }\n");
+        output.push_str("        GeometryReader { geometry in\n            routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets))\n                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)\n            DoweSafeAreaReporter { insets in\n                if !doweInsetsEqual(safeAreaInsets, insets) {\n                    safeAreaInsets = insets\n                }\n            }\n            .frame(width: CGFloat(0), height: CGFloat(0))\n            .allowsHitTesting(false)\n        }\n        .ignoresSafeArea()\n        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background.ignoresSafeArea())\n        .foregroundStyle(DoweDesign.onBackground)\n        .simultaneousGesture(backSwipeGesture)\n        .sheet(item: $externalUrl) { item in\n            DoweExternalWebView(url: item.url)\n        }\n        .onOpenURL { url in\n            applyDeepLink(url)\n        }\n");
     } else {
         output.push_str("        EmptyView()\n");
     }
@@ -3353,6 +3391,19 @@ func doweScroll(_ proxy: ScrollViewProxy, _ fragment: String?) {
         proxy.scrollTo(fragment, anchor: .top)
     }
 }
+
+func doweSafeAreaWidth(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat {
+    max(CGFloat(0), geometry.size.width - insets.leading - insets.trailing)
+}
+
+func doweSafeAreaHeight(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat {
+    max(CGFloat(0), geometry.size.height - insets.top - insets.bottom)
+}
+
+func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool {
+    lhs.top == rhs.top && lhs.leading == rhs.leading && lhs.bottom == rhs.bottom && lhs.trailing == rhs.trailing
+}
+
 "#,
     );
     output.push_str(swift_reactive_runtime());
