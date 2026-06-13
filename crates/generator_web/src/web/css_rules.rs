@@ -61,8 +61,39 @@ fn class_body(class_name: &str) -> Option<String> {
             | "grid"
             | "card"
             | "button"
+            | "theme-toggle"
+            | "theme-toggle-icon"
+            | "theme-icon"
+            | "theme-icon-moon"
+            | "theme-icon-sun"
+            | "fab-container"
+            | "fab-trigger"
+            | "fab-actions"
+            | "fab-action"
+            | "fab-action-label"
+            | "fab-action-link"
+            | "fab-action-button"
+            | "fab-icon"
+            | "fab-icon-svg"
             | "control"
             | "input"
+            | "slider-wrapper"
+            | "slider-info"
+            | "slider"
+            | "dropzone"
+            | "dropzone-input"
+            | "dropzone-content"
+            | "dropzone-icon"
+            | "dropzone-placeholder"
+            | "dropzone-files"
+            | "dropzone-file"
+            | "dropzone-file-preview"
+            | "dropzone-file-image"
+            | "dropzone-file-icon"
+            | "dropzone-file-info"
+            | "dropzone-file-name"
+            | "dropzone-file-size"
+            | "dropzone-file-remove"
             | "svg"
             | "video"
             | "media"
@@ -413,6 +444,23 @@ fn append_single_variant_css(
         css.push_str(&format!(
             ".control.is-outlined.is-{name}{{background-color:var(--dowe-background);color:var(--dowe-{color});border:1px solid rgba(127,127,127,0.36);}}.control.is-outlined.is-{name}:focus-within{{border-color:var(--dowe-{color});box-shadow:0 0 0 3px rgba(127,127,127,0.12);}}"
         ));
+        return;
+    }
+    if base == "toggle-group-item" {
+        match variant {
+            ComponentVariant::Solid => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-solid.is-{name}{{background-color:var(--dowe-{color});color:var(--dowe-{on});box-shadow:0 1px 6px rgba(15,23,42,.14);}}"
+            )),
+            ComponentVariant::Soft => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-soft.is-{name}{{background-color:var(--dowe-{soft});color:var(--dowe-{on_soft});}}"
+            )),
+            ComponentVariant::Outlined => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-outlined.is-{name}{{background-color:transparent;color:var(--dowe-{color});box-shadow:inset 0 0 0 1px var(--dowe-{color});}}"
+            )),
+            ComponentVariant::Ghost => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-ghost.is-{name}{{background-color:transparent;color:var(--dowe-{color});}}"
+            )),
+        }
         return;
     }
     if matches!(base, "sidenav" | "sidebar") {

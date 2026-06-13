@@ -2,7 +2,7 @@ use crate::server::DevRuntimeState;
 use crate::server_actions::{
     execute_resolved_log, execute_server_action, execute_server_action_with_resolver,
 };
-use axum::body::Bytes;
+use axum::body::{Body, Bytes};
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{State, WebSocketUpgrade};
 use axum::http::header::{
@@ -12,13 +12,15 @@ use axum::http::header::{
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri};
 use axum::response::{Html, IntoResponse, Response};
 use dowe_compiler::{
-    CompiledProject, CorsConfig, DoweType, EndpointBehavior, HttpMethod, KvActionJsonEndpoint,
-    KvConnectionValue, KvCredential, KvRemoteConnection, ServerConfig, ServerKvStatement,
-    ServerMiddleware, ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerSecret,
-    ServerStatement, ServerStoreStatement, StoreActionJsonEndpoint, StoreConnection,
-    StoreConnectionValue, StoreCredential, StoreFilter, StoreLiteral, StoreRemoteConnection,
-    StoreTransactionEndpoint, StoreTransactionOperation, ViewPage, WebOutput, WebSocketHandlers,
-    normalize_cors_method, normalize_http_header_name,
+    AgentResponseEndpoint, CompiledProject, CorsConfig, DoweType, EndpointBehavior,
+    HttpActionJsonEndpoint, HttpConnectionValue, HttpMethod, HttpProxyEndpoint, HttpResponseMode,
+    KvActionJsonEndpoint, KvConnectionValue, KvCredential, KvRemoteConnection, OutboundHttpRequest,
+    ServerConfig, ServerKvStatement, ServerMiddleware, ServerMiddlewareResponseBody,
+    ServerMiddlewareStatement, ServerSecret, ServerStatement, ServerStoreStatement,
+    StoreActionJsonEndpoint, StoreConnection, StoreConnectionValue, StoreCredential, StoreFilter,
+    StoreLiteral, StoreRemoteConnection, StoreTransactionEndpoint, StoreTransactionOperation,
+    ViewPage, WebOutput, WebSocketHandlers, WebSocketSendJsonStatement,
+    WebSocketSseBridgeStatement, normalize_cors_method, normalize_http_header_name,
 };
 use dowe_crypto::{
     JwtValidationOptions, decrypt_jwe_dir_a256gcm, encrypt_jwe_dir_a256gcm, sign_jws_hs256,
@@ -57,6 +59,18 @@ pub async fn backend_handler(
     .await
 }
 
+pub async fn backend_declared_websocket_handler(
+    state: DevRuntimeState,
+    upgrade: WebSocketUpgrade,
+    path: String,
+) -> Response {
+    let project = state.project.read().await;
+    let Some(route) = project.backend.find_websocket(&path) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    websocket_response(upgrade, project.clone(), route.handlers)
+}
+
 pub async fn desktop_handler(
     State(state): State<DevRuntimeState>,
     method: Method,
@@ -86,6 +100,21 @@ pub async fn desktop_handler(
     } else {
         StatusCode::NOT_FOUND.into_response()
     }
+}
+
+pub async fn desktop_declared_websocket_handler(
+    state: DevRuntimeState,
+    upgrade: WebSocketUpgrade,
+    path: String,
+) -> Response {
+    let project = state.project.read().await;
+    let Some(server) = &project.desktop_server else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let Some(route) = server.find_websocket(&path) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    websocket_response(upgrade, project.clone(), route.handlers)
 }
 
 pub(crate) async fn server_response(
@@ -118,7 +147,11 @@ pub(crate) async fn server_response(
                     };
                 if !matches!(
                     &matched.endpoint.behavior,
-                    EndpointBehavior::StoreActionJson(_) | EndpointBehavior::KvActionJson(_)
+                    EndpointBehavior::HttpProxy(_)
+                        | EndpointBehavior::HttpActionJson(_)
+                        | EndpointBehavior::AgentResponse(_)
+                        | EndpointBehavior::StoreActionJson(_)
+                        | EndpointBehavior::KvActionJson(_)
                 ) {
                     execute_server_action_with_resolver(&matched.endpoint.action, |reference| {
                         resolve_request_reference(reference, &matched.params, &middleware_context)
@@ -137,6 +170,39 @@ pub(crate) async fn server_response(
                         text_response(StatusCode::OK, format!("Hello User {id}!"))
                     }
                     EndpointBehavior::CreatePostJson => created_json_response(&body),
+                    EndpointBehavior::HttpProxy(response) => {
+                        execute_http_proxy(
+                            project,
+                            &project.root,
+                            &matched.endpoint.action,
+                            &response,
+                            &matched.params,
+                            &body,
+                        )
+                        .await
+                    }
+                    EndpointBehavior::HttpActionJson(response) => {
+                        execute_http_action_json(
+                            project,
+                            &project.root,
+                            &matched.endpoint.action,
+                            &response,
+                            &matched.params,
+                            &body,
+                        )
+                        .await
+                    }
+                    EndpointBehavior::AgentResponse(response) => {
+                        execute_agent_response(
+                            project,
+                            &project.root,
+                            &matched.endpoint.action,
+                            &response,
+                            &matched.params,
+                            &body,
+                        )
+                        .await
+                    }
                     EndpointBehavior::StoreInsertJson(insert) => {
                         match execute_store_insert(
                             project,
@@ -198,33 +264,6 @@ pub(crate) async fn server_response(
     };
 
     cors_actual_response(&server.cors, dev_origins, &headers, response)
-}
-
-pub async fn websocket_handler(
-    State(state): State<DevRuntimeState>,
-    upgrade: WebSocketUpgrade,
-) -> Response {
-    let project = state.project.read().await;
-    let Some(route) = project.backend.find_websocket("/ws") else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-    let handlers = route.handlers;
-
-    websocket_response(upgrade, handlers)
-}
-
-pub async fn desktop_websocket_handler(
-    State(state): State<DevRuntimeState>,
-    upgrade: WebSocketUpgrade,
-) -> Response {
-    let project = state.project.read().await;
-    let Some(server) = &project.desktop_server else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-    let Some(route) = server.find_websocket("/ws") else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-    websocket_response(upgrade, route.handlers)
 }
 
 pub async fn views_handler(State(state): State<DevRuntimeState>, uri: Uri) -> Response {
@@ -332,7 +371,11 @@ pub async fn dev_websocket_handler(
         .into_response()
 }
 
-async fn handle_websocket(mut socket: WebSocket, handlers: WebSocketHandlers) {
+async fn handle_websocket(
+    mut socket: WebSocket,
+    project: CompiledProject,
+    handlers: WebSocketHandlers,
+) {
     execute_server_action(&handlers.open);
     let mut closed = false;
 
@@ -348,8 +391,22 @@ async fn handle_websocket(mut socket: WebSocket, handlers: WebSocketHandlers) {
                 closed = true;
                 break;
             }
-            Ok(Message::Text(_)) | Ok(Message::Binary(_)) => {
-                execute_server_action(&handlers.message);
+            Ok(Message::Text(text)) => {
+                if execute_websocket_action(&mut socket, &project, &handlers.message, text.as_str())
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+            Ok(Message::Binary(payload)) => {
+                let text = String::from_utf8_lossy(&payload);
+                if execute_websocket_action(&mut socket, &project, &handlers.message, &text)
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
             }
             Ok(_) => {}
             Err(_) => break,
@@ -361,10 +418,349 @@ async fn handle_websocket(mut socket: WebSocket, handlers: WebSocketHandlers) {
     }
 }
 
-fn websocket_response(upgrade: WebSocketUpgrade, handlers: WebSocketHandlers) -> Response {
+pub(crate) fn websocket_response(
+    upgrade: WebSocketUpgrade,
+    project: CompiledProject,
+    handlers: WebSocketHandlers,
+) -> Response {
     upgrade
-        .on_upgrade(move |socket| handle_websocket(socket, handlers))
+        .on_upgrade(move |socket| handle_websocket(socket, project, handlers))
         .into_response()
+}
+
+async fn execute_websocket_action(
+    socket: &mut WebSocket,
+    project: &CompiledProject,
+    action: &dowe_compiler::ServerAction,
+    text: &str,
+) -> Result<(), ()> {
+    let body = Bytes::from(text.to_string());
+    let params = HashMap::new();
+    let mut context = StoreActionContext {
+        project,
+        root: &project.root,
+        params: &params,
+        body: &body,
+        request_body: None,
+        bindings: HashMap::new(),
+        http_results: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+    };
+    for statement in &action.statements {
+        match statement {
+            ServerStatement::WebSocketSendJson(statement) => {
+                send_websocket_json_statement(socket, &context, statement).await?;
+            }
+            ServerStatement::WebSocketSseBridge(statement) => {
+                bridge_websocket_sse(socket, &mut context, statement).await?;
+            }
+            _ => {
+                if let Err(error) = context.execute_statement(statement).await {
+                    send_ws_error(socket, None, None, None, error.code, error.message).await?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn send_websocket_json_statement(
+    socket: &mut WebSocket,
+    context: &StoreActionContext<'_>,
+    statement: &WebSocketSendJsonStatement,
+) -> Result<(), ()> {
+    match context.evaluate(&statement.value) {
+        Ok(ResolvedValue::Json(value)) => send_ws_value(socket, value).await,
+        Ok(ResolvedValue::Missing) => {
+            send_ws_error(
+                socket,
+                None,
+                None,
+                None,
+                "invalid_response",
+                "WebSocket response value is missing",
+            )
+            .await
+        }
+        Err(error) => send_ws_error(socket, None, None, None, error.code, error.message).await,
+    }
+}
+
+async fn bridge_websocket_sse(
+    socket: &mut WebSocket,
+    context: &mut StoreActionContext<'_>,
+    statement: &WebSocketSseBridgeStatement,
+) -> Result<(), ()> {
+    let request_id = resolved_text(context, &statement.request_id, "unknown");
+    let request_type = resolved_text(context, &statement.request_type, "clarify");
+    let model = resolved_text(context, &statement.model, "");
+    let Some(result) = context.http_results.remove(&statement.upstream) else {
+        return send_ws_error(
+            socket,
+            Some(&request_id),
+            Some(&request_type),
+            Some(&model),
+            "invalid_response",
+            "HTTP response binding is missing",
+        )
+        .await;
+    };
+    match result {
+        HttpActionResult::Buffered { status, body, .. } if status.is_success() => {
+            send_ws_event(
+                socket,
+                "message",
+                &request_id,
+                &request_type,
+                &model,
+                body,
+                None,
+            )
+            .await?;
+            send_ws_done(socket, &request_id, &request_type, &model).await
+        }
+        HttpActionResult::Buffered { body, .. } => {
+            let message = body.to_string();
+            send_ws_error(
+                socket,
+                Some(&request_id),
+                Some(&request_type),
+                Some(&model),
+                "openrouter_error",
+                &message,
+            )
+            .await
+        }
+        HttpActionResult::Proxy(response) => {
+            bridge_websocket_response(socket, response, &request_id, &request_type, &model).await
+        }
+    }
+}
+
+async fn bridge_websocket_response(
+    socket: &mut WebSocket,
+    response: reqwest::Response,
+    request_id: &str,
+    request_type: &str,
+    model: &str,
+) -> Result<(), ()> {
+    let status = status_from_reqwest(response.status());
+    let content_type = response_content_type(&response);
+    if !status.is_success() {
+        let payload = match response.bytes().await {
+            Ok(body) => json_from_bytes(&body),
+            Err(_) => Value::String("Outbound HTTP response failed".to_string()),
+        };
+        let message = payload.to_string();
+        return send_ws_error(
+            socket,
+            Some(request_id),
+            Some(request_type),
+            Some(model),
+            "openrouter_error",
+            &message,
+        )
+        .await;
+    }
+    if content_type.as_deref().is_some_and(is_sse_content_type) {
+        return bridge_websocket_event_stream(socket, response, request_id, request_type, model)
+            .await;
+    }
+    match response.bytes().await {
+        Ok(body) => {
+            send_ws_event(
+                socket,
+                "message",
+                request_id,
+                request_type,
+                model,
+                json_from_bytes(&body),
+                None,
+            )
+            .await?;
+            send_ws_done(socket, request_id, request_type, model).await
+        }
+        Err(_) => {
+            send_ws_error(
+                socket,
+                Some(request_id),
+                Some(request_type),
+                Some(model),
+                "http_error",
+                "Outbound HTTP response failed",
+            )
+            .await
+        }
+    }
+}
+
+async fn bridge_websocket_event_stream(
+    socket: &mut WebSocket,
+    response: reqwest::Response,
+    request_id: &str,
+    request_type: &str,
+    model: &str,
+) -> Result<(), ()> {
+    let mut buffer = String::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = match chunk {
+            Ok(chunk) => chunk,
+            Err(_) => {
+                return send_ws_error(
+                    socket,
+                    Some(request_id),
+                    Some(request_type),
+                    Some(model),
+                    "http_error",
+                    "Outbound HTTP response failed",
+                )
+                .await;
+            }
+        };
+        let text = String::from_utf8_lossy(&chunk);
+        for data in extract_sse_data_events(&mut buffer, &text) {
+            if data == "[DONE]" {
+                return send_ws_done(socket, request_id, request_type, model).await;
+            }
+            let payload = serde_json::from_str::<Value>(&data).unwrap_or(Value::String(data));
+            let content = delta_content(&payload);
+            send_ws_event(
+                socket,
+                "delta",
+                request_id,
+                request_type,
+                model,
+                payload,
+                content,
+            )
+            .await?;
+        }
+    }
+    send_ws_done(socket, request_id, request_type, model).await
+}
+
+fn extract_sse_data_events(buffer: &mut String, chunk: &str) -> Vec<String> {
+    buffer.push_str(chunk);
+    let mut events = Vec::new();
+    while let Some(index) = buffer.find('\n') {
+        let mut line = buffer[..index].to_string();
+        if line.ends_with('\r') {
+            line.pop();
+        }
+        buffer.replace_range(..=index, "");
+        let trimmed = line.trim();
+        if let Some(data) = trimmed.strip_prefix("data:") {
+            events.push(data.trim().to_string());
+        }
+    }
+    events
+}
+
+fn delta_content(payload: &Value) -> Option<String> {
+    payload
+        .get("choices")
+        .and_then(|choices| choices.get(0))
+        .and_then(|choice| choice.get("delta"))
+        .and_then(|delta| delta.get("content"))
+        .and_then(Value::as_str)
+        .map(ToOwned::to_owned)
+}
+
+fn resolved_text(context: &StoreActionContext<'_>, reference: &str, default: &str) -> String {
+    match context.resolve_reference(reference).into_json() {
+        Some(Value::String(value)) => value,
+        Some(Value::Number(value)) => value.to_string(),
+        Some(Value::Bool(value)) => value.to_string(),
+        Some(value) => value.to_string(),
+        None => default.to_string(),
+    }
+}
+
+async fn send_ws_done(
+    socket: &mut WebSocket,
+    request_id: &str,
+    request_type: &str,
+    model: &str,
+) -> Result<(), ()> {
+    send_ws_event(
+        socket,
+        "done",
+        request_id,
+        request_type,
+        model,
+        done_payload(),
+        None,
+    )
+    .await
+}
+
+async fn send_ws_error(
+    socket: &mut WebSocket,
+    request_id: Option<&str>,
+    request_type: Option<&str>,
+    model: Option<&str>,
+    code: &str,
+    message: &str,
+) -> Result<(), ()> {
+    let mut error = Map::new();
+    error.insert("code".to_string(), Value::String(code.to_string()));
+    error.insert("message".to_string(), Value::String(message.to_string()));
+    let mut payload = Map::new();
+    payload.insert("error".to_string(), Value::Object(error));
+    payload.insert("metadata".to_string(), Value::Null);
+    send_ws_event(
+        socket,
+        "error",
+        request_id.unwrap_or("unknown"),
+        request_type.unwrap_or("clarify"),
+        model.unwrap_or(""),
+        Value::Object(payload),
+        None,
+    )
+    .await
+}
+
+async fn send_ws_event(
+    socket: &mut WebSocket,
+    event: &str,
+    request_id: &str,
+    request_type: &str,
+    model: &str,
+    payload: Value,
+    content: Option<String>,
+) -> Result<(), ()> {
+    let mut output = Map::new();
+    output.insert("event".to_string(), Value::String(event.to_string()));
+    output.insert(
+        "requestId".to_string(),
+        Value::String(request_id.to_string()),
+    );
+    output.insert(
+        "requestType".to_string(),
+        Value::String(request_type.to_string()),
+    );
+    output.insert("model".to_string(), Value::String(model.to_string()));
+    output.insert("payload".to_string(), payload);
+    if let Some(content) = content {
+        output.insert("content".to_string(), Value::String(content));
+    }
+    send_ws_value(socket, Value::Object(output)).await
+}
+
+async fn send_ws_value(socket: &mut WebSocket, value: Value) -> Result<(), ()> {
+    socket
+        .send(Message::Text(value.to_string().into()))
+        .await
+        .map_err(|_| ())
+}
+
+fn done_payload() -> Value {
+    let mut output = Map::new();
+    output.insert("ok".to_string(), Value::Bool(true));
+    Value::Object(output)
 }
 
 enum MiddlewareFlow {
@@ -1001,6 +1397,7 @@ async fn execute_store_action_json(
         body,
         request_body: None,
         bindings: HashMap::new(),
+        http_results: HashMap::new(),
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         handle_databases: HashMap::new(),
@@ -1035,6 +1432,7 @@ async fn execute_kv_action_json(
         body,
         request_body: None,
         bindings: HashMap::new(),
+        http_results: HashMap::new(),
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         handle_databases: HashMap::new(),
@@ -1054,6 +1452,303 @@ async fn execute_kv_action_json(
     }
 }
 
+async fn execute_http_action_json(
+    project: &CompiledProject,
+    root: &Path,
+    action: &dowe_compiler::ServerAction,
+    response: &HttpActionJsonEndpoint,
+    params: &HashMap<String, String>,
+    body: &Bytes,
+) -> Response {
+    let mut context = StoreActionContext {
+        project,
+        root,
+        params,
+        body,
+        request_body: None,
+        bindings: HashMap::new(),
+        http_results: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+    };
+    match context
+        .execute(action)
+        .await
+        .and_then(|_| context.evaluate(&response.value))
+    {
+        Ok(ResolvedValue::Json(value)) => json_response(status_from_u16(response.status), value),
+        Ok(ResolvedValue::Missing) => json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "invalid_response",
+            "Response value is missing",
+        ),
+        Err(error) => json_error(error.status, error.code, error.message),
+    }
+}
+
+async fn execute_http_proxy(
+    project: &CompiledProject,
+    root: &Path,
+    action: &dowe_compiler::ServerAction,
+    response: &HttpProxyEndpoint,
+    params: &HashMap<String, String>,
+    body: &Bytes,
+) -> Response {
+    let mut context = StoreActionContext {
+        project,
+        root,
+        params,
+        body,
+        request_body: None,
+        bindings: HashMap::new(),
+        http_results: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+    };
+    match context.execute(action).await {
+        Ok(()) => match context.http_results.remove(&response.binding) {
+            Some(result) => http_result_response(result).await,
+            None => json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "invalid_response",
+                "HTTP response binding is missing",
+            ),
+        },
+        Err(error) => json_error(error.status, error.code, error.message),
+    }
+}
+
+async fn execute_agent_response(
+    project: &CompiledProject,
+    root: &Path,
+    action: &dowe_compiler::ServerAction,
+    response: &AgentResponseEndpoint,
+    params: &HashMap<String, String>,
+    body: &Bytes,
+) -> Response {
+    let mut context = StoreActionContext {
+        project,
+        root,
+        params,
+        body,
+        request_body: None,
+        bindings: HashMap::new(),
+        http_results: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+    };
+    for statement in &action.statements {
+        if matches!(statement, ServerStatement::Http(_))
+            && request_stream_enabled(context.resolve_reference(&response.request).into_json())
+        {
+            return json_error(
+                StatusCode::BAD_REQUEST,
+                "agent_http_stream_unsupported",
+                "Use /api/v1/agent/ws for Dowe Agent streaming requests.",
+            );
+        }
+        if let Err(error) = context.execute_statement(statement).await {
+            return json_error(error.status, error.code, error.message);
+        }
+    }
+    let request = context
+        .resolve_reference(&response.request)
+        .into_json()
+        .unwrap_or(Value::Null);
+    match context.http_results.remove(&response.upstream) {
+        Some(HttpActionResult::Buffered { status, body, .. }) if status.is_success() => {
+            json_response(StatusCode::OK, agent_http_success(request, body))
+        }
+        Some(HttpActionResult::Buffered { status, body, .. }) => {
+            json_response(status, openrouter_error(body))
+        }
+        Some(HttpActionResult::Proxy(upstream)) => agent_proxy_response(request, upstream).await,
+        None => json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "invalid_response",
+            "HTTP response binding is missing",
+        ),
+    }
+}
+
+async fn http_result_response(result: HttpActionResult) -> Response {
+    match result {
+        HttpActionResult::Buffered {
+            status,
+            content_type,
+            raw,
+            ..
+        } => body_response(status, content_type, raw),
+        HttpActionResult::Proxy(response) => {
+            let status = status_from_reqwest(response.status());
+            let content_type = response_content_type(&response);
+            if content_type.as_deref().is_some_and(is_sse_content_type) {
+                return streaming_body_response(status, content_type, response.bytes_stream());
+            }
+            match response.bytes().await {
+                Ok(body) => body_response(status, content_type, body),
+                Err(_) => json_error(
+                    StatusCode::BAD_GATEWAY,
+                    "http_error",
+                    "Outbound HTTP response failed",
+                ),
+            }
+        }
+    }
+}
+
+async fn agent_proxy_response(request: Value, response: reqwest::Response) -> Response {
+    let status = status_from_reqwest(response.status());
+    match response.bytes().await {
+        Ok(body) if status.is_success() => json_response(
+            StatusCode::OK,
+            agent_http_success(request, json_from_bytes(&body)),
+        ),
+        Ok(body) => json_response(status, openrouter_error(json_from_bytes(&body))),
+        Err(_) => json_error(
+            StatusCode::BAD_GATEWAY,
+            "http_error",
+            "Outbound HTTP response failed",
+        ),
+    }
+}
+
+fn body_response(status: StatusCode, content_type: Option<String>, body: Bytes) -> Response {
+    let mut response = (status, body).into_response();
+    if let Some(content_type) = content_type {
+        insert_header(&mut response, "content-type", &content_type);
+    }
+    response
+}
+
+fn streaming_body_response(
+    status: StatusCode,
+    content_type: Option<String>,
+    stream: impl futures_util::Stream<Item = Result<Bytes, reqwest::Error>> + Send + 'static,
+) -> Response {
+    let mut response = Response::new(Body::from_stream(stream));
+    *response.status_mut() = status;
+    if let Some(content_type) = content_type {
+        insert_header(&mut response, "content-type", &content_type);
+    }
+    response
+}
+
+fn status_from_reqwest(status: reqwest::StatusCode) -> StatusCode {
+    StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::OK)
+}
+
+fn response_content_type(response: &reqwest::Response) -> Option<String> {
+    response
+        .headers()
+        .get("content-type")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string)
+}
+
+fn is_sse_content_type(value: &str) -> bool {
+    value
+        .split(';')
+        .next()
+        .is_some_and(|value| value.trim().eq_ignore_ascii_case("text/event-stream"))
+}
+
+fn json_from_bytes(body: &Bytes) -> Value {
+    serde_json::from_slice::<Value>(body)
+        .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(body).to_string()))
+}
+
+fn http_binding_json(
+    status: StatusCode,
+    content_type: Option<String>,
+    body: Option<Value>,
+) -> Value {
+    let mut output = Map::new();
+    output.insert(
+        "status".to_string(),
+        Value::Number(u64::from(status.as_u16()).into()),
+    );
+    if let Some(content_type) = content_type {
+        output.insert("contentType".to_string(), Value::String(content_type));
+    }
+    if let Some(body) = body {
+        output.insert("json".to_string(), body);
+    }
+    Value::Object(output)
+}
+
+fn agent_chat_body(source: Value) -> Value {
+    let mut object = source.as_object().cloned().unwrap_or_default();
+    object.remove("requestId");
+    object.remove("request_id");
+    let request_type = object
+        .remove("requestType")
+        .or_else(|| object.remove("request_type"));
+    if let Some(request_type) = request_type {
+        let mut metadata = object
+            .remove("metadata")
+            .and_then(|value| value.as_object().cloned())
+            .unwrap_or_default();
+        metadata.insert("dowe_request_type".to_string(), request_type);
+        object.insert("metadata".to_string(), Value::Object(metadata));
+    }
+    Value::Object(object)
+}
+
+fn request_stream_enabled(request: Option<Value>) -> bool {
+    request
+        .as_ref()
+        .and_then(|value| value.get("stream"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
+fn agent_http_success(request: Value, payload: Value) -> Value {
+    let mut output = Map::new();
+    output.insert(
+        "requestId".to_string(),
+        request_field(&request, "requestId", "request_id"),
+    );
+    output.insert(
+        "requestType".to_string(),
+        request_field(&request, "requestType", "request_type"),
+    );
+    output.insert(
+        "model".to_string(),
+        request.get("model").cloned().unwrap_or(Value::Null),
+    );
+    output.insert("payload".to_string(), payload);
+    Value::Object(output)
+}
+
+fn request_field(request: &Value, camel: &str, snake: &str) -> Value {
+    request
+        .get(camel)
+        .or_else(|| request.get(snake))
+        .cloned()
+        .unwrap_or(Value::Null)
+}
+
+fn openrouter_error(payload: Value) -> Value {
+    let mut error = Map::new();
+    error.insert(
+        "code".to_string(),
+        Value::String("openrouter_error".to_string()),
+    );
+    error.insert(
+        "message".to_string(),
+        Value::String("OpenRouter returned an error.".to_string()),
+    );
+    error.insert("upstream".to_string(), payload);
+    let mut output = Map::new();
+    output.insert("ok".to_string(), Value::Bool(false));
+    output.insert("error".to_string(), Value::Object(error));
+    Value::Object(output)
+}
+
 enum StoreHandle {
     Local(Database),
     Remote(RemoteStoreClient),
@@ -1071,9 +1766,20 @@ struct StoreActionContext<'a> {
     body: &'a Bytes,
     request_body: Option<Value>,
     bindings: HashMap<String, Value>,
+    http_results: HashMap<String, HttpActionResult>,
     handles: HashMap<String, StoreHandle>,
     kv_handles: HashMap<String, KvHandle>,
     handle_databases: HashMap<String, String>,
+}
+
+enum HttpActionResult {
+    Buffered {
+        status: StatusCode,
+        content_type: Option<String>,
+        body: Value,
+        raw: Bytes,
+    },
+    Proxy(reqwest::Response),
 }
 
 enum ResolvedValue {
@@ -1117,6 +1823,22 @@ impl StoreActionError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "kv_error",
             message: "KV operation failed",
+        }
+    }
+
+    fn http() -> Self {
+        Self {
+            status: StatusCode::BAD_GATEWAY,
+            code: "http_error",
+            message: "Outbound HTTP request failed",
+        }
+    }
+
+    fn missing_http() -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "invalid_response",
+            message: "HTTP response binding is missing",
         }
     }
 
@@ -1179,32 +1901,122 @@ impl<'a> StoreActionContext<'a> {
         action: &dowe_compiler::ServerAction,
     ) -> Result<(), StoreActionError> {
         for statement in &action.statements {
-            match statement {
-                ServerStatement::Log(log) => execute_resolved_log(log, |reference| {
-                    self.resolve_reference(reference)
-                        .into_json()
-                        .map(log_json_text)
-                }),
-                ServerStatement::RequestJson { binding, schema } => {
-                    let value = serde_json::from_slice::<Value>(self.body).map_err(|_| {
-                        StoreActionError {
-                            status: StatusCode::BAD_REQUEST,
-                            code: "invalid_json",
-                            message: "Invalid JSON body",
-                        }
+            self.execute_statement(statement).await?;
+        }
+        Ok(())
+    }
+
+    async fn execute_statement(
+        &mut self,
+        statement: &ServerStatement,
+    ) -> Result<(), StoreActionError> {
+        match statement {
+            ServerStatement::Log(log) => execute_resolved_log(log, |reference| {
+                self.resolve_reference(reference)
+                    .into_json()
+                    .map(log_json_text)
+            }),
+            ServerStatement::RequestJson { binding, schema } => {
+                let value =
+                    serde_json::from_slice::<Value>(self.body).map_err(|_| StoreActionError {
+                        status: StatusCode::BAD_REQUEST,
+                        code: "invalid_json",
+                        message: "Invalid JSON body",
                     })?;
-                    let value = if let Some(schema) = schema {
-                        typed_json_value(&value, schema)?
-                    } else if value.is_object() {
-                        value
-                    } else {
-                        return Err(StoreActionError::invalid_body("Expected JSON object"));
-                    };
-                    self.request_body = Some(value.clone());
-                    self.bindings.insert(binding.clone(), value);
-                }
-                ServerStatement::Store(statement) => self.execute_store(statement).await?,
-                ServerStatement::Kv(statement) => self.execute_kv(statement).await?,
+                let value = if let Some(schema) = schema {
+                    typed_json_value(&value, schema)?
+                } else if value.is_object() {
+                    value
+                } else {
+                    return Err(StoreActionError::invalid_body("Expected JSON object"));
+                };
+                self.request_body = Some(value.clone());
+                self.bindings.insert(binding.clone(), value);
+            }
+            ServerStatement::Http(statement) => self.execute_http(statement).await?,
+            ServerStatement::AgentChat(statement) => {
+                let source = self
+                    .resolve_reference(&statement.source)
+                    .into_json()
+                    .ok_or_else(StoreActionError::missing_http)?;
+                self.bindings
+                    .insert(statement.binding.clone(), agent_chat_body(source));
+            }
+            ServerStatement::WebSocketJson(statement) => {
+                let value =
+                    serde_json::from_slice::<Value>(self.body).map_err(|_| StoreActionError {
+                        status: StatusCode::BAD_REQUEST,
+                        code: "invalid_json",
+                        message: "Invalid JSON body",
+                    })?;
+                self.request_body = Some(value.clone());
+                self.bindings.insert(statement.binding.clone(), value);
+            }
+            ServerStatement::WebSocketSendJson(_) | ServerStatement::WebSocketSseBridge(_) => {}
+            ServerStatement::Store(statement) => self.execute_store(statement).await?,
+            ServerStatement::Kv(statement) => self.execute_kv(statement).await?,
+        }
+        Ok(())
+    }
+
+    async fn execute_http(
+        &mut self,
+        statement: &OutboundHttpRequest,
+    ) -> Result<(), StoreActionError> {
+        let url = format!(
+            "{}{}",
+            self.http_base(&statement.base)?.trim_end_matches('/'),
+            statement.path
+        );
+        let client = reqwest::Client::new();
+        let mut request = match statement.method {
+            HttpMethod::Get => client.get(url),
+            HttpMethod::Post => client.post(url),
+            HttpMethod::Put => client.put(url),
+            HttpMethod::Patch => client.patch(url),
+            HttpMethod::Delete => client.delete(url),
+        };
+        if let Some(secret) = &statement.bearer {
+            request = request.bearer_auth(self.secret_value(secret)?);
+        }
+        if let Some(json) = &statement.json {
+            let value = self.evaluate(json)?.into_json().unwrap_or(Value::Null);
+            request = request.json(&value);
+        }
+        let response = request.send().await.map_err(|_| StoreActionError::http())?;
+        match statement.mode {
+            HttpResponseMode::Proxy => {
+                let status = status_from_reqwest(response.status());
+                let content_type = response_content_type(&response);
+                self.bindings.insert(
+                    statement.binding.clone(),
+                    http_binding_json(status, content_type, None),
+                );
+                self.http_results
+                    .insert(statement.binding.clone(), HttpActionResult::Proxy(response));
+            }
+            HttpResponseMode::Json => {
+                let status = status_from_reqwest(response.status());
+                let content_type = response_content_type(&response);
+                let raw = response
+                    .bytes()
+                    .await
+                    .map_err(|_| StoreActionError::http())?;
+                let body = serde_json::from_slice::<Value>(&raw)
+                    .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(&raw).to_string()));
+                self.bindings.insert(
+                    statement.binding.clone(),
+                    http_binding_json(status, content_type.clone(), Some(body.clone())),
+                );
+                self.http_results.insert(
+                    statement.binding.clone(),
+                    HttpActionResult::Buffered {
+                        status,
+                        content_type,
+                        body,
+                        raw,
+                    },
+                );
             }
         }
         Ok(())
@@ -1553,6 +2365,38 @@ impl<'a> StoreActionContext<'a> {
                 .and_then(|variable| variable.resolved_value.clone())
                 .ok_or_else(StoreActionError::store),
         }
+    }
+
+    fn http_base(&self, value: &HttpConnectionValue) -> Result<String, StoreActionError> {
+        match value {
+            HttpConnectionValue::Static(value) => Ok(value.clone()),
+            HttpConnectionValue::Environment(name) => {
+                self.env_value(name).ok_or_else(|| StoreActionError {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    code: "http_env_missing",
+                    message: "HTTP environment variable is not configured",
+                })
+            }
+        }
+    }
+
+    fn secret_value(&self, secret: &ServerSecret) -> Result<String, StoreActionError> {
+        match secret {
+            ServerSecret::Environment(name) => {
+                self.env_value(name).ok_or_else(|| StoreActionError {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    code: "http_secret_missing",
+                    message: "HTTP secret is not configured",
+                })
+            }
+        }
+    }
+
+    fn env_value(&self, name: &str) -> Option<String> {
+        self.project
+            .environment_config
+            .variable(name)
+            .and_then(|variable| variable.resolved_value.clone())
     }
 
     fn kv_remote_client(

@@ -1,5 +1,12 @@
 use crate::DevEventType;
 use crate::server::{DevServerTargets, start_dev, start_dev_servers, start_production};
+use axum::Router;
+use axum::body::Bytes;
+use axum::extract::State;
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::post;
 use dowe_compiler::compile_dev;
 use dowe_crypto::sign_jws_hs256;
 use dowe_kv::{
@@ -9,8 +16,13 @@ use dowe_store::{StoreServerConfig, create_user, start_store_server};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
 use std::fs;
+use std::net::SocketAddr;
 use std::path::Path;
+use std::sync::Arc;
 use tempfile::TempDir;
+use tokio::net::TcpListener;
+use tokio::sync::{Mutex, oneshot};
+use tokio::task::JoinHandle;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -209,6 +221,157 @@ async fn serves_backend_views_and_websocket() {
     dev_websocket.close(None).await.expect("dev close");
 
     servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn serves_llm_http_proxy_agent_response_and_websocket_bridge() {
+    let upstream = MockOpenRouter::start().await;
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    fs::write(
+        temp.path().join("src/config.dowe"),
+        r#"config
+  fonts default:"inter" install:["inter"]
+  env
+    variable name:"OPENROUTER_API_KEY" visibility:"server" required:true
+    variable name:"OPENROUTER_BASE_URL" visibility:"server" required:true"#,
+    )
+    .expect("config");
+    fs::write(
+        temp.path().join(".env"),
+        format!(
+            "OPENROUTER_API_KEY=test-token\nOPENROUTER_BASE_URL=http://{}\n",
+            upstream.addr
+        ),
+    )
+    .expect("env");
+    fs::write(
+        temp.path().join("src/main.dowe"),
+        r#"main
+  server port:0
+    route "/api/v1/chat/completions"
+      method POST async req
+        let body = await req.json()
+        let upstream = http.post base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:body mode:"proxy"
+        return response proxy:upstream
+    route "/api/v1/agent"
+      method POST async req
+        let request = await req.json()
+        let chat = agent.chat request
+        let upstream = http.post base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:chat mode:"json"
+        return response agent:upstream request:request
+    websocket "/api/v1/agent/ws"
+      message ws
+        let request = ws.json
+        send ws json:{ event:"started" requestId:request.requestId requestType:request.requestType model:request.model payload:{ stream:request.stream } }
+        let chat = agent.chat request
+        let upstream = http.post base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:chat mode:"proxy"
+        bridge sse:upstream to:ws requestId:request.requestId requestType:request.requestType model:request.model"#,
+    )
+    .expect("server");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+
+    let chat = client
+        .post(format!("{backend}/api/v1/chat/completions"))
+        .json(&json!({"model":"openai/test","messages":[{"role":"user","content":"hello"}],"stream":false}))
+        .send()
+        .await
+        .expect("chat");
+    assert_eq!(chat.status(), reqwest::StatusCode::OK);
+    let chat = chat.json::<serde_json::Value>().await.expect("chat json");
+    assert_eq!(chat["choices"][0]["message"]["content"], "mock message");
+
+    let agent = client
+        .post(format!("{backend}/api/v1/agent"))
+        .json(&json!({
+            "requestId":"req-1",
+            "requestType":"clarify",
+            "model":"openai/test",
+            "messages":[{"role":"user","content":"hello"}],
+            "stream":false
+        }))
+        .send()
+        .await
+        .expect("agent")
+        .json::<serde_json::Value>()
+        .await
+        .expect("agent json");
+    assert_eq!(agent["requestId"], "req-1");
+    assert_eq!(agent["requestType"], "clarify");
+    assert_eq!(
+        agent["payload"]["choices"][0]["message"]["content"],
+        "mock message"
+    );
+
+    let seen = upstream.requests().await;
+    assert_eq!(seen.len(), 2);
+    assert_eq!(seen[0].authorization, Some("Bearer test-token".to_string()));
+    assert_eq!(seen[1].body["metadata"]["dowe_request_type"], "clarify");
+    assert!(seen[1].body.get("requestId").is_none());
+    assert!(seen[1].body.get("requestType").is_none());
+
+    let before_stream_reject = upstream.requests().await.len();
+    let rejected = client
+        .post(format!("{backend}/api/v1/agent"))
+        .json(&json!({
+            "requestId":"req-http-stream",
+            "requestType":"clarify",
+            "model":"openai/test",
+            "messages":[{"role":"user","content":"stream"}],
+            "stream":true
+        }))
+        .send()
+        .await
+        .expect("stream reject");
+    assert_eq!(rejected.status(), reqwest::StatusCode::BAD_REQUEST);
+    assert_eq!(upstream.requests().await.len(), before_stream_reject);
+
+    let (mut websocket, _) = connect_async(format!(
+        "ws://{}/api/v1/agent/ws",
+        servers.backend_addr.expect("backend addr")
+    ))
+    .await
+    .expect("websocket");
+    websocket
+        .send(Message::Text(
+            json!({
+                "requestId":"req-ws",
+                "requestType":"clarify",
+                "model":"openai/test",
+                "messages":[{"role":"user","content":"stream"}],
+                "stream":true
+            })
+            .to_string()
+            .into(),
+        ))
+        .await
+        .expect("send");
+    let started = websocket_json(&mut websocket).await;
+    let delta = websocket_json(&mut websocket).await;
+    let done = websocket_json(&mut websocket).await;
+    assert_eq!(started["event"], "started");
+    assert_eq!(started["requestId"], "req-ws");
+    assert_eq!(started["payload"]["stream"], true);
+    assert_eq!(delta["event"], "delta");
+    assert_eq!(delta["content"], "mock delta");
+    assert_eq!(done["event"], "done");
+    assert_eq!(done["payload"]["ok"], true);
+    websocket.close(None).await.expect("close");
+
+    servers.shutdown().await.expect("shutdown");
+    upstream.shutdown().await;
 }
 
 #[tokio::test]
@@ -1237,6 +1400,102 @@ async fn cors_preflight_does_not_execute_handlers() {
     assert!(!temp.path().join(".dowe/store/db1/users").exists());
 
     servers.shutdown().await.expect("shutdown");
+}
+
+#[derive(Clone, Debug)]
+struct MockOpenRouterRequest {
+    authorization: Option<String>,
+    body: serde_json::Value,
+}
+
+struct MockOpenRouter {
+    addr: SocketAddr,
+    requests: Arc<Mutex<Vec<MockOpenRouterRequest>>>,
+    shutdown: oneshot::Sender<()>,
+    handle: JoinHandle<()>,
+}
+
+impl MockOpenRouter {
+    async fn start() -> Self {
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let router = Router::new()
+            .route("/api/v1/chat/completions", post(mock_openrouter_chat))
+            .with_state(requests.clone());
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("mock listener");
+        let addr = listener.local_addr().expect("mock addr");
+        let (shutdown, receiver) = oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let _ = axum::serve(listener, router)
+                .with_graceful_shutdown(async {
+                    let _ = receiver.await;
+                })
+                .await;
+        });
+        Self {
+            addr,
+            requests,
+            shutdown,
+            handle,
+        }
+    }
+
+    async fn requests(&self) -> Vec<MockOpenRouterRequest> {
+        self.requests.lock().await.clone()
+    }
+
+    async fn shutdown(self) {
+        let _ = self.shutdown.send(());
+        let _ = self.handle.await;
+    }
+}
+
+async fn mock_openrouter_chat(
+    State(requests): State<Arc<Mutex<Vec<MockOpenRouterRequest>>>>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let value = serde_json::from_slice::<serde_json::Value>(&body).expect("mock request json");
+    let authorization = headers
+        .get(AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string);
+    requests.lock().await.push(MockOpenRouterRequest {
+        authorization,
+        body: value.clone(),
+    });
+    if value
+        .get("stream")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false)
+    {
+        return (
+            StatusCode::OK,
+            [(CONTENT_TYPE, "text/event-stream")],
+            "data: {\"choices\":[{\"delta\":{\"content\":\"mock delta\"}}]}\ndata: [DONE]\n",
+        )
+            .into_response();
+    }
+    (
+        StatusCode::OK,
+        [(CONTENT_TYPE, "application/json; charset=utf-8")],
+        json!({"choices":[{"message":{"content":"mock message"}}]}).to_string(),
+    )
+        .into_response()
+}
+
+async fn websocket_json(
+    websocket: &mut tokio_tungstenite::WebSocketStream<
+        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+    >,
+) -> serde_json::Value {
+    let message = websocket
+        .next()
+        .await
+        .expect("websocket message")
+        .expect("websocket result");
+    serde_json::from_str(message.to_text().expect("websocket text")).expect("websocket json")
 }
 
 fn write_fixture(root: &Path, port: u16) {

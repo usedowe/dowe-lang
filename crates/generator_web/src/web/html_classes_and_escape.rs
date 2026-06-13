@@ -129,6 +129,129 @@ fn avatar_classes(props: &AvatarProps) -> Vec<String> {
     classes
 }
 
+fn avatar_group_classes(props: &AvatarGroupProps) -> Vec<String> {
+    let mut classes = variant_classes("avatar-group", &props.style);
+    classes.push(format!("avatar-group-{}", props.size.as_str()));
+    if props.inline {
+        classes.push("is-inline".to_string());
+    }
+    if props.auto_fit {
+        classes.push("is-auto-fit".to_string());
+    }
+    if props.bordered {
+        classes.push("is-bordered".to_string());
+    }
+    classes
+}
+
+fn chat_box_classes(props: &ChatBoxProps) -> Vec<String> {
+    let mut classes = variant_classes("chat-box", &props.style);
+    classes.push(format!("is-{}", props.mode.as_str()));
+    classes
+}
+
+fn empty_classes(props: &EmptyProps) -> Vec<String> {
+    let mut classes = variant_classes("empty", &props.style);
+    classes.push(format!("is-{}", props.kind.as_str()));
+    classes
+}
+
+fn marquee_classes(props: &MarqueeProps) -> Vec<String> {
+    let mut classes = vec![
+        "marquee".to_string(),
+        format!("is-{}", props.orientation.as_str()),
+        format!("is-{}", props.speed.as_str()),
+    ];
+    append_style_classes(&mut classes, &props.style);
+    if props.pause_on_hover {
+        classes.push("pause-on-hover".to_string());
+    }
+    if props.reverse {
+        classes.push("is-reverse".to_string());
+    }
+    if props.fade {
+        classes.push("has-fade".to_string());
+    }
+    classes
+}
+
+fn type_writer_classes(props: &TypeWriterProps) -> Vec<String> {
+    let mut classes = vec!["typewriter".to_string()];
+    append_style_classes(&mut classes, &props.style);
+    classes
+}
+
+fn rich_text_classes(props: &TextProps) -> Vec<String> {
+    let mut classes = vec!["rich-text".to_string()];
+    if let Some(size) = &props.size {
+        append_responsive_classes(&mut classes, "text", Some(size), |value| {
+            value.as_str().to_string()
+        });
+    } else {
+        classes.push("text-md".to_string());
+    }
+    append_style_classes(&mut classes, &props.style);
+    append_responsive_classes(&mut classes, "weight", props.weight.as_ref(), |value| {
+        value.as_str().to_string()
+    });
+    append_responsive_classes(
+        &mut classes,
+        "tracking",
+        props.letter_spacing.as_ref(),
+        |value| value.as_str().to_string(),
+    );
+    classes
+}
+
+fn record_classes(props: &RecordProps) -> Vec<String> {
+    let mut classes = variant_classes("media", &props.style);
+    classes.push("record".to_string());
+    if props.disabled {
+        classes.push("is-disabled".to_string());
+    }
+    classes
+}
+
+fn toggle_group_classes(props: &ToggleGroupProps) -> Vec<String> {
+    let mut classes = variant_classes("toggle-group", &props.style);
+    classes.push(format!("toggle-group-{}", props.size.as_str()));
+    if props.wide {
+        classes.push("is-wide".to_string());
+    }
+    if props.vertical {
+        classes.push("is-vertical".to_string());
+    }
+    if props.disabled {
+        classes.push("is-disabled".to_string());
+    }
+    classes
+}
+
+fn collapsible_classes(props: &CollapsibleProps) -> Vec<String> {
+    let mut classes = variant_classes("collapsible", &props.style);
+    if props.default_open {
+        classes.push("is-open".to_string());
+    }
+    if props.disabled {
+        classes.push("is-disabled".to_string());
+    }
+    classes
+}
+
+fn countdown_classes(props: &CountdownProps) -> Vec<String> {
+    let mut classes = variant_classes("countdown", &props.style);
+    classes.push(format!("countdown-{}", props.size.as_str()));
+    classes
+}
+
+fn map_classes(props: &MapProps) -> Vec<String> {
+    let mut classes = variant_classes("map", &props.style);
+    if !props.interactive {
+        classes.push("is-static".to_string());
+    }
+    classes
+}
+
 fn badge_classes(props: &BadgeProps) -> Vec<String> {
     let mut classes = variant_classes("badge", &props.style);
     classes.push(format!("is-{}", props.position.as_str()));

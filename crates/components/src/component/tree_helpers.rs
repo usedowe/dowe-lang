@@ -46,6 +46,8 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
+        | ViewNode::Collapsible { children, .. }
         | ViewNode::Button { children, .. } => contains_children(children),
         ViewNode::Modal {
             header,
@@ -92,6 +94,10 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
                 || contains_children(bottom_bar)
         }
         ViewNode::Input { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
@@ -102,6 +108,14 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
         | ViewNode::Avatar { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
         | ViewNode::Chip { .. }
         | ViewNode::Checkbox { .. }
         | ViewNode::Color { .. }
@@ -115,7 +129,8 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::Command { .. }
         | ViewNode::Svg { .. }
         | ViewNode::Title { .. }
-        | ViewNode::Text { .. } => false,
+        | ViewNode::Text { .. }
+        | ViewNode::TypeWriter { .. } => false,
     })
 }
 

@@ -60,7 +60,13 @@ fn parse_navigation_props(
     target: Option<WebTarget>,
     external_mode: Option<NativeExternalMode>,
 ) -> ComponentResult<Option<NavigationAction>> {
-    if !matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar) {
+    if !matches!(
+        component,
+        BuiltinComponent::Button
+            | BuiltinComponent::Avatar
+            | BuiltinComponent::FabAction
+            | BuiltinComponent::Empty
+    ) {
         return Ok(None);
     }
 

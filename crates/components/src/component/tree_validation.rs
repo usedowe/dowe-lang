@@ -128,6 +128,57 @@ pub fn compose_tree(layout: &ViewNode, page: &ViewNode) -> ViewNode {
                 .map(|child| compose_tree(child, page))
                 .collect(),
         },
+        ViewNode::AvatarGroup { props, items } => ViewNode::AvatarGroup {
+            props: props.clone(),
+            items: items.clone(),
+        },
+        ViewNode::ChatBox { props } => ViewNode::ChatBox {
+            props: props.clone(),
+        },
+        ViewNode::Empty { props } => ViewNode::Empty {
+            props: props.clone(),
+        },
+        ViewNode::Marquee { props, children } => ViewNode::Marquee {
+            props: props.clone(),
+            children: children
+                .iter()
+                .map(|child| compose_tree(child, page))
+                .collect(),
+        },
+        ViewNode::TypeWriter { props, items } => ViewNode::TypeWriter {
+            props: props.clone(),
+            items: items.clone(),
+        },
+        ViewNode::RichText { props, marks } => ViewNode::RichText {
+            props: props.clone(),
+            marks: marks.clone(),
+        },
+        ViewNode::Record { props } => ViewNode::Record {
+            props: props.clone(),
+        },
+        ViewNode::ToggleGroup { props, items } => ViewNode::ToggleGroup {
+            props: props.clone(),
+            items: items.clone(),
+        },
+        ViewNode::Collapsible { props, children } => ViewNode::Collapsible {
+            props: props.clone(),
+            children: children
+                .iter()
+                .map(|child| compose_tree(child, page))
+                .collect(),
+        },
+        ViewNode::Countdown { props } => ViewNode::Countdown {
+            props: props.clone(),
+        },
+        ViewNode::Map {
+            props,
+            markers,
+            waypoints,
+        } => ViewNode::Map {
+            props: props.clone(),
+            markers: markers.clone(),
+            waypoints: waypoints.clone(),
+        },
         ViewNode::Toast { props } => ViewNode::Toast {
             props: props.clone(),
         },
@@ -220,7 +271,20 @@ pub fn compose_tree(layout: &ViewNode, page: &ViewNode) -> ViewNode {
                 .map(|child| compose_tree(child, page))
                 .collect(),
         },
+        ViewNode::ToggleTheme { props } => ViewNode::ToggleTheme {
+            props: props.clone(),
+        },
+        ViewNode::Fab { props, actions } => ViewNode::Fab {
+            props: props.clone(),
+            actions: actions.clone(),
+        },
         ViewNode::Input { props } => ViewNode::Input {
+            props: props.clone(),
+        },
+        ViewNode::Slider { props } => ViewNode::Slider {
+            props: props.clone(),
+        },
+        ViewNode::Dropzone { props } => ViewNode::Dropzone {
             props: props.clone(),
         },
         ViewNode::Select { props, options } => ViewNode::Select {
@@ -408,6 +472,8 @@ fn validate_view_tree_with_parent(
         | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
+        | ViewNode::Collapsible { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
                 validate_view_tree_with_parent(child, false, None)?;
@@ -492,6 +558,10 @@ fn validate_view_tree_with_parent(
             }
         }
         ViewNode::Input { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
@@ -502,6 +572,14 @@ fn validate_view_tree_with_parent(
         | ViewNode::Divider { .. }
         | ViewNode::Alert { .. }
         | ViewNode::Avatar { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
         | ViewNode::Chip { .. }
         | ViewNode::Checkbox { .. }
         | ViewNode::Color { .. }
@@ -516,6 +594,7 @@ fn validate_view_tree_with_parent(
         | ViewNode::Svg { .. }
         | ViewNode::Title { .. }
         | ViewNode::Text { .. }
+        | ViewNode::TypeWriter { .. }
         | ViewNode::Children => {}
     }
 
@@ -551,6 +630,10 @@ fn node_style_props(node: &ViewNode) -> Option<&StyleProps> {
         ViewNode::Card { props, .. } => Some(&props.style),
         ViewNode::Drawer { props, .. } => Some(&props.style.style),
         ViewNode::Avatar { props, .. } => Some(&props.style.style),
+        ViewNode::AvatarGroup { props, .. } => Some(&props.style.style),
+        ViewNode::ChatBox { props } => Some(&props.style.style),
+        ViewNode::Empty { props } => Some(&props.style.style),
+        ViewNode::Marquee { props, .. } => Some(&props.style),
         ViewNode::Badge { props, .. } => Some(&props.style.style),
         ViewNode::Chip { props, .. } => Some(&props.style.style),
         ViewNode::Modal { props, .. } => Some(&props.style.style),
@@ -569,12 +652,17 @@ fn node_style_props(node: &ViewNode) -> Option<&StyleProps> {
         ViewNode::DateRange { props } => Some(&props.style.style),
         ViewNode::RadioGroup { props, .. } => Some(&props.style.style),
         ViewNode::Toggle { props } => Some(&props.style.style),
+        ViewNode::ToggleTheme { props } => Some(&props.style.style),
+        ViewNode::Fab { props, .. } => Some(&props.style.style),
+        ViewNode::Slider { props } => Some(&props.style.style),
+        ViewNode::Dropzone { props } => Some(&props.style.style),
         ViewNode::Skeleton { props } => Some(&props.style),
         ViewNode::Code { props } => Some(&props.style.style),
         ViewNode::Video { props } => Some(&props.style.style),
         ViewNode::Candlestick { props } => Some(&props.style.style),
         ViewNode::Table { props } => Some(&props.style.style),
         ViewNode::Divider { props } => Some(&props.style),
+        ViewNode::TypeWriter { props, .. } => Some(&props.style),
         _ => None,
     }
 }

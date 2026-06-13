@@ -38,6 +38,12 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
                 collect_node_font_families(child, fonts);
             }
         }
+        ViewNode::Marquee { props, children } => {
+            collect_style_font_families(&props.style, fonts);
+            for child in children {
+                collect_node_font_families(child, fonts);
+            }
+        }
         ViewNode::Tabs { props, tabs } => {
             collect_style_font_families(&props.style, fonts);
             for tab in tabs {
@@ -59,6 +65,11 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
             }
         }
         ViewNode::Avatar { props, .. } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::AvatarGroup { props, .. } => {
+            collect_style_font_families(&props.style.style, fonts)
+        }
+        ViewNode::ChatBox { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Empty { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Badge { props, children } => {
             collect_style_font_families(&props.style.style, fonts);
             for child in children {
@@ -123,6 +134,10 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         ViewNode::DateRange { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::RadioGroup { props, .. } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Toggle { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::ToggleTheme { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Fab { props, .. } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Slider { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Dropzone { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::AppBar {
             props,
             start,
@@ -181,6 +196,20 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => {
             collect_style_font_families(&props.style, fonts);
         }
+        ViewNode::TypeWriter { props, .. } => collect_style_font_families(&props.style, fonts),
+        ViewNode::RichText { props, .. } => collect_style_font_families(&props.style, fonts),
+        ViewNode::Record { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::ToggleGroup { props, .. } => {
+            collect_style_font_families(&props.style.style, fonts)
+        }
+        ViewNode::Collapsible { props, children } => {
+            collect_style_font_families(&props.style.style, fonts);
+            for child in children {
+                collect_node_font_families(child, fonts);
+            }
+        }
+        ViewNode::Countdown { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Map { props, .. } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Children => {}
     }
 }

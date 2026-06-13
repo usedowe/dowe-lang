@@ -15,21 +15,28 @@ use dowe_components::{
     ResponsivePropEntry, ViewAction, ViewActionKind, ViewAssignAction, ViewNavigationAction,
     ViewRequestAction, ViewRequestMethod, ViewResetAction, ViewSection, ViewSignal,
     ViewSignalValue, VisibilityCondition, accordion_component_node, accordion_item_component,
-    alert_dialog_component_node, audio_component_node, avatar_component_node, badge_component_node,
+    alert_dialog_component_node, audio_component_node, avatar_component_node,
+    avatar_group_component_node, avatar_group_item_component, badge_component_node,
     bar_component_node, candlestick_node, carousel_component_node, carousel_slide_component,
-    checkbox_component_node, children_node, chip_component_node, code_node, color_component_node,
-    command_component_node, command_group_component, compose_tree, container_component_node,
+    chat_box_component_node, checkbox_component_node, children_node, chip_component_node,
+    code_node, collapsible_component_node, color_component_node, command_component_node,
+    command_group_component, compose_tree, container_component_node, countdown_component_node,
     date_component_node, date_range_component_node, divider_node, dropdown_component_node,
-    first_text, image_component_node, input_node, modal_component_node, nav_menu_component_node,
+    dropzone_component_node, empty_component_node, fab_action_component, fab_component_node,
+    first_text, image_component_node, input_node, map_component_node, map_marker_component,
+    map_waypoint_component, marquee_component_node, modal_component_node, nav_menu_component_node,
     nav_menu_item_component, nav_menu_megamenu_component, nav_menu_submenu_component,
     navigation_action, node_child_groups, node_element_props, overlay_icon_component,
     overlay_item_component, radio_group_component_node, radio_option_component,
+    record_component_node, rich_text_component_node, rich_text_mark_component,
     scaffold_component_node, select_node, select_option_component, side_nav_component_node,
     side_nav_header_component, side_nav_icon_component, side_nav_item_component,
     side_nav_submenu_component, sidebar_component_node, skeleton_component_node,
-    svg_component_node, svg_path_component, table_column_component, table_node,
-    tabs_component_node, tabs_tab_component, text_component_node, text_node, toast_component_node,
-    toggle_component_node, tooltip_component_node, validate_view_tree, video_node,
+    slider_component_node, svg_component_node, svg_path_component, table_column_component,
+    table_node, tabs_component_node, tabs_tab_component, text_component_node, text_node,
+    theme_toggle_component_node, toast_component_node, toggle_component_node,
+    toggle_group_component_node, toggle_group_item_component, tooltip_component_node,
+    type_writer_component_node, type_writer_item_component, validate_view_tree, video_node,
 };
 use dowe_generator_web::{
     build_layout_chunk, build_page_chunk, build_translation_chunks, render_page_document,
@@ -1261,6 +1268,37 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         }
         BuiltinComponent::Dropdown => lower_dropdown_node(node, allow_children),
         BuiltinComponent::Command => lower_command_node(node),
+        BuiltinComponent::AvatarGroup => lower_avatar_group_node(node),
+        BuiltinComponent::ChatBox => {
+            reject_children(node)?;
+            chat_box_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Empty => {
+            reject_children(node)?;
+            empty_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Marquee => {
+            let children = lower_node_sequence(&node.children, allow_children)?;
+            marquee_component_node(props, children, allow_children)
+                .map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::TypeWriter => lower_type_writer_node(node),
+        BuiltinComponent::RichText => lower_rich_text_node(node),
+        BuiltinComponent::Record => {
+            reject_children(node)?;
+            record_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::ToggleGroup => lower_toggle_group_node(node),
+        BuiltinComponent::Collapsible => {
+            let children = lower_node_sequence(&node.children, allow_children)?;
+            collapsible_component_node(props, children, allow_children)
+                .map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Countdown => {
+            reject_children(node)?;
+            countdown_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Map => lower_map_node(node),
         BuiltinComponent::Accordion => lower_accordion_node(node, allow_children),
         BuiltinComponent::Carousel => lower_carousel_node(node, allow_children),
         BuiltinComponent::Checkbox => {
@@ -1296,6 +1334,24 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
             let children = vec![text_node(value).map_err(|error| component_error(node, error))?];
             container_component_node(component, props, children, allow_children)
                 .map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::ToggleTheme => {
+            reject_children(node)?;
+            theme_toggle_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Fab => lower_fab_node(node),
+        BuiltinComponent::FabAction => Err(node_error(
+            node,
+            ComponentError::invalid_prop_combination("fabAction can only be used inside Fab")
+                .to_string(),
+        )),
+        BuiltinComponent::Slider => {
+            reject_children(node)?;
+            slider_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Dropzone => {
+            reject_children(node)?;
+            dropzone_component_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Svg => lower_svg_node(node),
         BuiltinComponent::Path => Err(node_error(
@@ -1464,6 +1520,112 @@ fn lower_command_node(node: &SourceNode) -> DoweResult<ViewNode> {
     command_component_node(props, entries).map_err(|error| component_error(node, error))
 }
 
+fn lower_avatar_group_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::AvatarGroup)?;
+    let mut items = Vec::new();
+    for child in &node.children {
+        if child.name != "item" {
+            return Err(node_error(child, "AvatarGroup only accepts item entries"));
+        }
+        if !child.args.is_empty() {
+            return Err(node_error(child, "AvatarGroup item cannot declare args"));
+        }
+        reject_children(child)?;
+        items.push(
+            avatar_group_item_component(avatar_group_item_props(child)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    avatar_group_component_node(props, items).map_err(|error| component_error(node, error))
+}
+
+fn lower_type_writer_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::TypeWriter)?;
+    let mut items = Vec::new();
+    for child in &node.children {
+        if child.name != "item" {
+            return Err(node_error(child, "TypeWriter only accepts item entries"));
+        }
+        if !child.args.is_empty() {
+            return Err(node_error(child, "TypeWriter item cannot declare args"));
+        }
+        reject_children(child)?;
+        items.push(
+            type_writer_item_component(type_writer_item_props(child)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    type_writer_component_node(props, items).map_err(|error| component_error(node, error))
+}
+
+fn lower_rich_text_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::RichText)?;
+    let mut marks = Vec::new();
+    for child in &node.children {
+        if child.name != "mark" {
+            return Err(node_error(child, "RichText only accepts mark entries"));
+        }
+        if !child.args.is_empty() {
+            return Err(node_error(child, "RichText mark cannot declare args"));
+        }
+        reject_children(child)?;
+        marks.push(
+            rich_text_mark_component(rich_text_mark_props(child)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    rich_text_component_node(props, marks).map_err(|error| component_error(node, error))
+}
+
+fn lower_toggle_group_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::ToggleGroup)?;
+    let mut items = Vec::new();
+    for child in &node.children {
+        if child.name != "item" {
+            return Err(node_error(child, "ToggleGroup only accepts item entries"));
+        }
+        if !child.args.is_empty() {
+            return Err(node_error(child, "ToggleGroup item cannot declare args"));
+        }
+        reject_children(child)?;
+        items.push(
+            toggle_group_item_component(toggle_group_item_props(child)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    toggle_group_component_node(props, items).map_err(|error| component_error(node, error))
+}
+
+fn lower_map_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::Map)?;
+    let mut markers = Vec::new();
+    let mut waypoints = Vec::new();
+    for child in &node.children {
+        if !matches!(child.name.as_str(), "marker" | "waypoint") {
+            return Err(node_error(
+                child,
+                "Map only accepts marker and waypoint entries",
+            ));
+        }
+        if !child.args.is_empty() {
+            return Err(node_error(child, "Map entries cannot declare args"));
+        }
+        reject_children(child)?;
+        if child.name == "marker" {
+            markers.push(
+                map_marker_component(map_marker_props(child)?)
+                    .map_err(|error| component_error(child, error))?,
+            );
+        } else {
+            waypoints.push(
+                map_waypoint_component(map_waypoint_props(child)?)
+                    .map_err(|error| component_error(child, error))?,
+            );
+        }
+    }
+    map_component_node(props, markers, waypoints).map_err(|error| component_error(node, error))
+}
+
 fn lower_accordion_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNode> {
     let props = component_props(node, BuiltinComponent::Accordion)?;
     let mut items = Vec::new();
@@ -1519,6 +1681,175 @@ fn lower_radio_group_node(node: &SourceNode) -> DoweResult<ViewNode> {
         );
     }
     radio_group_component_node(props, options).map_err(|error| component_error(node, error))
+}
+
+fn lower_fab_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::Fab)?;
+    let mut actions = Vec::new();
+    for child in &node.children {
+        let component = COMPONENT_REGISTRY.get(&child.name).ok_or_else(|| {
+            node_error(
+                child,
+                ComponentError::unknown_component(&child.name).to_string(),
+            )
+        })?;
+        if component != BuiltinComponent::FabAction {
+            return Err(node_error(child, "Fab only accepts fabAction entries"));
+        }
+        if !child.args.is_empty() {
+            return Err(node_error(child, "fabAction cannot declare args"));
+        }
+        reject_children(child)?;
+        actions.push(
+            fab_action_component(component_props(child, component)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    fab_component_node(props, actions).map_err(|error| component_error(node, error))
+}
+
+fn avatar_group_item_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+    node.props
+        .iter()
+        .map(|prop| {
+            if !matches!(
+                prop.name.as_str(),
+                "src"
+                    | "name"
+                    | "alt"
+                    | "href"
+                    | "navigate"
+                    | "history"
+                    | "target"
+                    | "externalMode"
+                    | "onClick"
+            ) {
+                return Err(node_error(
+                    node,
+                    ComponentError::unknown_prop(BuiltinComponent::AvatarGroup, &prop.name)
+                        .to_string(),
+                ));
+            }
+            if prop.name != "onClick" && static_value_has_bareword(&prop.value) {
+                return Err(quoted_static_string_error(prop));
+            }
+            Ok(ComponentProp {
+                name: prop.name.clone(),
+                value: prop_value(prop)?,
+            })
+        })
+        .collect()
+}
+
+fn type_writer_item_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+    node.props
+        .iter()
+        .map(|prop| {
+            if prop.name != "text" {
+                return Err(node_error(
+                    node,
+                    ComponentError::unknown_prop(BuiltinComponent::TypeWriter, &prop.name)
+                        .to_string(),
+                ));
+            }
+            if static_value_has_bareword(&prop.value) {
+                return Err(quoted_static_string_error(prop));
+            }
+            Ok(ComponentProp {
+                name: prop.name.clone(),
+                value: prop_value(prop)?,
+            })
+        })
+        .collect()
+}
+
+fn rich_text_mark_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+    node.props
+        .iter()
+        .map(|prop| {
+            if !matches!(prop.name.as_str(), "text" | "style" | "scheme" | "color") {
+                return Err(node_error(
+                    node,
+                    ComponentError::unknown_prop(BuiltinComponent::RichText, &prop.name)
+                        .to_string(),
+                ));
+            }
+            if static_value_has_bareword(&prop.value) {
+                return Err(quoted_static_string_error(prop));
+            }
+            Ok(ComponentProp {
+                name: prop.name.clone(),
+                value: prop_value(prop)?,
+            })
+        })
+        .collect()
+}
+
+fn toggle_group_item_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+    node.props
+        .iter()
+        .map(|prop| {
+            if !matches!(prop.name.as_str(), "id" | "label" | "icon") {
+                return Err(node_error(
+                    node,
+                    ComponentError::unknown_prop(BuiltinComponent::ToggleGroup, &prop.name)
+                        .to_string(),
+                ));
+            }
+            if static_value_has_bareword(&prop.value) {
+                return Err(quoted_static_string_error(prop));
+            }
+            Ok(ComponentProp {
+                name: prop.name.clone(),
+                value: prop_value(prop)?,
+            })
+        })
+        .collect()
+}
+
+fn map_marker_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+    node.props
+        .iter()
+        .map(|prop| {
+            if !matches!(
+                prop.name.as_str(),
+                "id" | "lat" | "lng" | "label" | "popup" | "icon" | "onClick"
+            ) {
+                return Err(node_error(
+                    node,
+                    ComponentError::unknown_prop(BuiltinComponent::Map, &prop.name).to_string(),
+                ));
+            }
+            if prop.name != "onClick"
+                && !matches!(prop.name.as_str(), "lat" | "lng")
+                && static_value_has_bareword(&prop.value)
+            {
+                return Err(quoted_static_string_error(prop));
+            }
+            Ok(ComponentProp {
+                name: prop.name.clone(),
+                value: prop_value(prop)?,
+            })
+        })
+        .collect()
+}
+
+fn map_waypoint_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+    node.props
+        .iter()
+        .map(|prop| {
+            if !matches!(prop.name.as_str(), "lat" | "lng") {
+                return Err(node_error(
+                    node,
+                    ComponentError::unknown_prop(BuiltinComponent::Map, &prop.name).to_string(),
+                ));
+            }
+            Ok(ComponentProp {
+                name: prop.name.clone(),
+                value: prop_value(prop)?,
+            })
+        })
+        .collect()
 }
 
 fn accordion_item_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
@@ -2436,6 +2767,36 @@ fn validate_component_prop_source(
             ComponentError::invalid_prop("source", "signal object path").to_string(),
         ));
     }
+    if component == BuiltinComponent::AvatarGroup
+        && prop.name == "items"
+        && !matches!(&prop.value, SourceValue::Bareword(_))
+    {
+        return Err(prop_error(
+            prop,
+            ComponentError::invalid_prop("items", "signal array path").to_string(),
+        ));
+    }
+    if component == BuiltinComponent::ChatBox
+        && prop.name == "messages"
+        && !matches!(&prop.value, SourceValue::Bareword(_))
+    {
+        return Err(prop_error(
+            prop,
+            ComponentError::invalid_prop("messages", "signal array path").to_string(),
+        ));
+    }
+    if component == BuiltinComponent::ChatBox
+        && matches!(
+            prop.name.as_str(),
+            "loading" | "sending" | "streaming" | "hasMore"
+        )
+        && !matches!(&prop.value, SourceValue::Bareword(_))
+    {
+        return Err(prop_error(
+            prop,
+            ComponentError::invalid_prop(&prop.name, "signal bool path").to_string(),
+        ));
+    }
     if component == BuiltinComponent::DateRange
         && matches!(prop.name.as_str(), "start" | "end")
         && !matches!(&prop.value, SourceValue::Bareword(_))
@@ -2443,6 +2804,15 @@ fn validate_component_prop_source(
         return Err(prop_error(
             prop,
             ComponentError::invalid_prop(&prop.name, "signal string path").to_string(),
+        ));
+    }
+    if component == BuiltinComponent::ToggleGroup
+        && prop.name == "value"
+        && !matches!(&prop.value, SourceValue::Bareword(_))
+    {
+        return Err(prop_error(
+            prop,
+            ComponentError::invalid_prop("value", "signal string path").to_string(),
         ));
     }
     if !is_known_component_prop(component, &prop.name)
@@ -2467,6 +2837,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
         (
             BuiltinComponent::Input
             | BuiltinComponent::Select
+            | BuiltinComponent::Slider
             | BuiltinComponent::Checkbox
             | BuiltinComponent::Color
             | BuiltinComponent::Date
@@ -2476,10 +2847,39 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             SourceValue::Bareword(_),
         )
         | (BuiltinComponent::DateRange, "start" | "end", SourceValue::Bareword(_))
+        | (BuiltinComponent::ToggleGroup, "value", SourceValue::Bareword(_))
         | (BuiltinComponent::Candlestick, "data", SourceValue::Bareword(_))
         | (BuiltinComponent::Table, "data", SourceValue::Bareword(_))
+        | (BuiltinComponent::AvatarGroup, "items", SourceValue::Bareword(_))
         | (
-            BuiltinComponent::Button | BuiltinComponent::Avatar,
+            BuiltinComponent::ChatBox,
+            "messages" | "loading" | "sending" | "streaming" | "hasMore",
+            SourceValue::Bareword(_),
+        )
+        | (
+            BuiltinComponent::Button | BuiltinComponent::Avatar | BuiltinComponent::Empty,
+            "onClick",
+            SourceValue::Bareword(_),
+        )
+        | (
+            BuiltinComponent::ChatBox,
+            "onSend" | "onLoadMore" | "onStop" | "onVoiceNote" | "onFileAttach" | "onCameraCapture",
+            SourceValue::Bareword(_),
+        )
+        | (
+            BuiltinComponent::Record,
+            "onStart" | "onPause" | "onResume" | "onStop" | "onDiscard" | "onConfirm",
+            SourceValue::Bareword(_),
+        )
+        | (BuiltinComponent::ToggleGroup, "onChange", SourceValue::Bareword(_))
+        | (BuiltinComponent::Countdown, "onComplete", SourceValue::Bareword(_))
+        | (
+            BuiltinComponent::Map,
+            "onLocation" | "onLocationError" | "onRoute",
+            SourceValue::Bareword(_),
+        )
+        | (
+            BuiltinComponent::Fab | BuiltinComponent::FabAction,
             "onClick",
             SourceValue::Bareword(_),
         )
@@ -2508,7 +2908,10 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
 fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
     let shared_style = !matches!(
         component,
-        BuiltinComponent::Option | BuiltinComponent::Svg | BuiltinComponent::Path
+        BuiltinComponent::Option
+            | BuiltinComponent::FabAction
+            | BuiltinComponent::Svg
+            | BuiltinComponent::Path
     ) && matches!(
         name,
         "id" | "show"
@@ -2626,6 +3029,60 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
                     | "history"
                     | "target"
                     | "externalMode"
+            ),
+            BuiltinComponent::ToggleTheme => {
+                matches!(
+                    name,
+                    "variant" | "scheme" | "size" | "lightLabel" | "darkLabel" | "color"
+                )
+            }
+            BuiltinComponent::Fab => matches!(
+                name,
+                "position"
+                    | "fixed"
+                    | "offsetX"
+                    | "offsetY"
+                    | "icon"
+                    | "label"
+                    | "onClick"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "color"
+            ),
+            BuiltinComponent::FabAction => matches!(
+                name,
+                "label" | "icon" | "scheme" | "href" | "target" | "navigate" | "onClick" | "color"
+            ),
+            BuiltinComponent::Slider => matches!(
+                name,
+                "bind"
+                    | "value"
+                    | "min"
+                    | "max"
+                    | "step"
+                    | "label"
+                    | "name"
+                    | "hideLabel"
+                    | "scheme"
+                    | "size"
+                    | "color"
+            ),
+            BuiltinComponent::Dropzone => matches!(
+                name,
+                "accept"
+                    | "multiple"
+                    | "maxSize"
+                    | "name"
+                    | "label"
+                    | "helpText"
+                    | "errorText"
+                    | "placeholder"
+                    | "disabled"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "color"
             ),
             BuiltinComponent::Alert => {
                 matches!(
@@ -2757,6 +3214,156 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
                     | "shortcut"
                     | "disableGlobalShortcut"
                     | "showFooter"
+                    | "variant"
+                    | "scheme"
+                    | "color"
+            ),
+            BuiltinComponent::AvatarGroup => matches!(
+                name,
+                "items"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "max"
+                    | "autoFit"
+                    | "inline"
+                    | "bordered"
+                    | "color"
+            ),
+            BuiltinComponent::ChatBox => matches!(
+                name,
+                "messages"
+                    | "mode"
+                    | "currentUserId"
+                    | "userName"
+                    | "userAvatar"
+                    | "userStatus"
+                    | "assistantName"
+                    | "assistantAvatar"
+                    | "showHeader"
+                    | "placeholder"
+                    | "showAttachments"
+                    | "showVoiceNote"
+                    | "showCamera"
+                    | "loading"
+                    | "sending"
+                    | "streaming"
+                    | "hasMore"
+                    | "onSend"
+                    | "onLoadMore"
+                    | "onStop"
+                    | "onVoiceNote"
+                    | "onFileAttach"
+                    | "onCameraCapture"
+                    | "variant"
+                    | "scheme"
+                    | "color"
+            ),
+            BuiltinComponent::Empty => matches!(
+                name,
+                "type"
+                    | "title"
+                    | "description"
+                    | "href"
+                    | "navigate"
+                    | "history"
+                    | "target"
+                    | "externalMode"
+                    | "onClick"
+                    | "actionLabel"
+                    | "variant"
+                    | "scheme"
+                    | "color"
+            ),
+            BuiltinComponent::Marquee => matches!(
+                name,
+                "speed" | "pauseOnHover" | "reverse" | "orientation" | "fade" | "fadeColor" | "gap"
+            ),
+            BuiltinComponent::TypeWriter => matches!(
+                name,
+                "typeSpeed"
+                    | "deleteSpeed"
+                    | "afterTyped"
+                    | "afterDeleted"
+                    | "repeat"
+                    | "bg"
+                    | "color"
+            ),
+            BuiltinComponent::RichText => {
+                matches!(
+                    name,
+                    "size" | "weight" | "spacing" | "bg" | "color" | "i18n"
+                )
+            }
+            BuiltinComponent::Record => matches!(
+                name,
+                "name"
+                    | "url"
+                    | "disabled"
+                    | "maxDuration"
+                    | "onStart"
+                    | "onPause"
+                    | "onResume"
+                    | "onStop"
+                    | "onDiscard"
+                    | "onConfirm"
+                    | "variant"
+                    | "scheme"
+                    | "color"
+            ),
+            BuiltinComponent::ToggleGroup => matches!(
+                name,
+                "value"
+                    | "selected"
+                    | "size"
+                    | "wide"
+                    | "vertical"
+                    | "disabled"
+                    | "ariaLabel"
+                    | "onChange"
+                    | "variant"
+                    | "scheme"
+                    | "color"
+            ),
+            BuiltinComponent::Collapsible => matches!(
+                name,
+                "label" | "defaultOpen" | "disabled" | "variant" | "scheme" | "color"
+            ),
+            BuiltinComponent::Countdown => matches!(
+                name,
+                "target"
+                    | "showDays"
+                    | "showHours"
+                    | "showMinutes"
+                    | "showSeconds"
+                    | "size"
+                    | "daysLabel"
+                    | "hoursLabel"
+                    | "minutesLabel"
+                    | "secondsLabel"
+                    | "onComplete"
+                    | "variant"
+                    | "scheme"
+                    | "color"
+            ),
+            BuiltinComponent::Map => matches!(
+                name,
+                "centerLat"
+                    | "centerLng"
+                    | "zoom"
+                    | "height"
+                    | "width"
+                    | "showControls"
+                    | "showScale"
+                    | "showLocationControl"
+                    | "interactive"
+                    | "routeStartLat"
+                    | "routeStartLng"
+                    | "routeEndLat"
+                    | "routeEndLng"
+                    | "onLocation"
+                    | "onLocationError"
+                    | "onRoute"
                     | "variant"
                     | "scheme"
                     | "color"
@@ -3138,11 +3745,42 @@ fn collect_navigation_actions_from_node(
         ViewNode::Command { entries, .. } => {
             collect_command_entry_navigation_actions(entries, route_id, actions);
         }
+        ViewNode::AvatarGroup { items, .. } => {
+            collect_avatar_group_navigation_actions(items, route_id, actions);
+        }
+        ViewNode::Fab {
+            actions: fab_actions,
+            ..
+        } => {
+            for action in fab_actions {
+                if let Some(navigation) = action.navigation.as_ref() {
+                    actions.push(ViewNavigationAction {
+                        id: format!("nav-{}-{}", route_id, actions.len()),
+                        action: navigation.clone(),
+                    });
+                }
+            }
+        }
         _ => {}
     }
     for group in node_child_groups(node) {
         for child in group {
             collect_navigation_actions_from_node(child, route_id, actions);
+        }
+    }
+}
+
+fn collect_avatar_group_navigation_actions(
+    items: &[dowe_components::AvatarGroupItem],
+    route_id: &str,
+    actions: &mut Vec<ViewNavigationAction>,
+) {
+    for item in items {
+        if let Some(action) = item.navigation.as_ref() {
+            actions.push(ViewNavigationAction {
+                id: format!("nav-{}-{}", route_id, actions.len()),
+                action: action.clone(),
+            });
         }
     }
 }
@@ -3423,6 +4061,7 @@ fn validate_node_references(
         if let Some(binding) = props.bind.as_ref() {
             let expectation = match node {
                 ViewNode::Checkbox { .. } | ViewNode::Toggle { .. } => ViewPathExpectation::Bool,
+                ViewNode::Slider { .. } => ViewPathExpectation::Number,
                 _ => ViewPathExpectation::String,
             };
             validate_typed_path(path, signals, locals, binding, "bind", expectation)?;
@@ -3616,6 +4255,53 @@ fn validate_node_references(
             }
             validate_command_entry_actions(path, entries, actions)?;
         }
+        ViewNode::AvatarGroup { props, items } => {
+            if let Some(source) = props.items.as_ref() {
+                validate_avatar_group_items(path, signals, locals, source)?;
+            }
+            validate_avatar_group_actions(path, items, actions)?;
+        }
+        ViewNode::ChatBox { props } => {
+            validate_chat_box_messages(path, signals, locals, &props.messages)?;
+            validate_optional_typed_path(
+                path,
+                signals,
+                locals,
+                props.loading.as_deref(),
+                "loading",
+                ViewPathExpectation::Bool,
+            )?;
+            validate_optional_typed_path(
+                path,
+                signals,
+                locals,
+                props.sending.as_deref(),
+                "sending",
+                ViewPathExpectation::Bool,
+            )?;
+            validate_optional_typed_path(
+                path,
+                signals,
+                locals,
+                props.streaming.as_deref(),
+                "streaming",
+                ViewPathExpectation::Bool,
+            )?;
+            validate_optional_typed_path(
+                path,
+                signals,
+                locals,
+                props.has_more.as_deref(),
+                "hasMore",
+                ViewPathExpectation::Bool,
+            )?;
+            validate_optional_action(path, actions, props.on_send.as_deref())?;
+            validate_optional_action(path, actions, props.on_load_more.as_deref())?;
+            validate_optional_action(path, actions, props.on_stop.as_deref())?;
+            validate_optional_action(path, actions, props.on_voice_note.as_deref())?;
+            validate_optional_action(path, actions, props.on_file_attach.as_deref())?;
+            validate_optional_action(path, actions, props.on_camera_capture.as_deref())?;
+        }
         ViewNode::DateRange { props } => {
             if let Some(start) = props.start.as_ref() {
                 validate_typed_path(
@@ -3636,6 +4322,14 @@ fn validate_node_references(
                     "end",
                     ViewPathExpectation::String,
                 )?;
+            }
+        }
+        ViewNode::Fab {
+            actions: fab_actions,
+            ..
+        } => {
+            for action in fab_actions {
+                validate_optional_action(path, actions, action.on_click.as_deref())?;
             }
         }
         _ => {
@@ -3661,6 +4355,123 @@ fn validate_optional_action(
             path,
             format!("unknown action `{action}`"),
         ));
+    }
+    Ok(())
+}
+
+fn validate_optional_typed_path(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    locals: &HashMap<String, Option<ViewSignalValue>>,
+    value: Option<&str>,
+    label: &str,
+    expectation: ViewPathExpectation,
+) -> DoweResult<()> {
+    if let Some(value) = value {
+        validate_typed_path(path, signals, locals, value, label, expectation)?;
+    }
+    Ok(())
+}
+
+fn validate_avatar_group_items(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    locals: &HashMap<String, Option<ViewSignalValue>>,
+    source: &str,
+) -> DoweResult<()> {
+    let Some(value) = signal_path_value(path, signals, locals, source, "items")? else {
+        return Ok(());
+    };
+    let ViewSignalValue::Array(items) = value else {
+        return Err(DoweError::at_path(
+            path,
+            format!("invalid signal path `{source}` in `items`: expected array"),
+        ));
+    };
+    for item in items {
+        let ViewSignalValue::Object(fields) = item else {
+            return Err(DoweError::at_path(
+                path,
+                "AvatarGroup items must be objects",
+            ));
+        };
+        for field in ["src", "name", "alt", "href", "onClick"] {
+            if let Some(value) = object_field(&fields, field)
+                && !matches!(value, ViewSignalValue::String(_))
+            {
+                return Err(DoweError::at_path(
+                    path,
+                    format!("AvatarGroup item field `{field}` must be string"),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_chat_box_messages(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    locals: &HashMap<String, Option<ViewSignalValue>>,
+    source: &str,
+) -> DoweResult<()> {
+    let Some(value) = signal_path_value(path, signals, locals, source, "messages")? else {
+        return Ok(());
+    };
+    let ViewSignalValue::Array(items) = value else {
+        return Err(DoweError::at_path(
+            path,
+            format!("invalid signal path `{source}` in `messages`: expected array"),
+        ));
+    };
+    for item in items {
+        let ViewSignalValue::Object(fields) = item else {
+            return Err(DoweError::at_path(path, "ChatBox messages must be objects"));
+        };
+        for field in [
+            "id", "userId", "name", "avatar", "message", "text", "type", "status",
+        ] {
+            if let Some(value) = object_field(&fields, field)
+                && !matches!(value, ViewSignalValue::String(_))
+            {
+                return Err(DoweError::at_path(
+                    path,
+                    format!("ChatBox message field `{field}` must be string"),
+                ));
+            }
+        }
+        for field in ["own", "isOwn", "streaming"] {
+            if let Some(value) = object_field(&fields, field)
+                && !matches!(value, ViewSignalValue::Bool(_))
+            {
+                return Err(DoweError::at_path(
+                    path,
+                    format!("ChatBox message field `{field}` must be bool"),
+                ));
+            }
+        }
+        if let Some(value) = object_field(&fields, "createdAt")
+            && !matches!(
+                value,
+                ViewSignalValue::String(_) | ViewSignalValue::Number(_)
+            )
+        {
+            return Err(DoweError::at_path(
+                path,
+                "ChatBox message field `createdAt` must be string or number",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_avatar_group_actions(
+    path: &Path,
+    items: &[dowe_components::AvatarGroupItem],
+    actions: &HashSet<String>,
+) -> DoweResult<()> {
+    for item in items {
+        validate_optional_action(path, actions, item.on_click.as_deref())?;
     }
     Ok(())
 }
@@ -4088,6 +4899,7 @@ enum ViewPathExpectation {
     Any,
     String,
     Bool,
+    Number,
 }
 
 fn validate_typed_path(
@@ -4131,6 +4943,7 @@ fn validate_typed_path(
         ViewPathExpectation::Any => true,
         ViewPathExpectation::String => matches!(resolved_value, ViewSignalValue::String(_)),
         ViewPathExpectation::Bool => matches!(resolved_value, ViewSignalValue::Bool(_)),
+        ViewPathExpectation::Number => matches!(resolved_value, ViewSignalValue::Number(_)),
     };
     if valid {
         Ok(())
@@ -4139,6 +4952,7 @@ fn validate_typed_path(
             ViewPathExpectation::Any => unreachable!(),
             ViewPathExpectation::String => "string",
             ViewPathExpectation::Bool => "bool",
+            ViewPathExpectation::Number => "number",
         };
         Err(DoweError::at_path(
             path,
@@ -4190,11 +5004,12 @@ mod tests {
     use crate::parser::source_parser::parse_source_file;
     use dowe_components::{
         AvatarStatus, Breakpoint, ButtonSize, CarouselIndicatorType, CarouselOrientation,
-        ColorFamily, ColorToken, CommandEntry, ComponentVariant, DividerOrientation, ImageAspect,
-        ImageLoading, ImageObjectFit, NavigationAction, OverlayCornerPosition, OverlayEntry,
-        OverlayPosition, SectionBackground, SkeletonAnimation, SkeletonVariant, SvgPathFill,
-        TableColumnAlign, TableSize, ToastKind, VideoAspect, ViewActionKind, ViewAnimation,
-        ViewNode, VisibilityCondition,
+        ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant, CountdownSize,
+        DividerOrientation, EmptyKind, ImageAspect, ImageLoading, ImageObjectFit, MapMarkerIcon,
+        MarqueeOrientation, MarqueeSpeed, NavigationAction, OverlayCornerPosition, OverlayEntry,
+        OverlayPosition, RichTextMarkStyle, SectionBackground, SkeletonAnimation, SkeletonVariant,
+        SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect, ViewActionKind,
+        ViewAnimation, ViewIcon, ViewNode, VisibilityCondition,
     };
     use std::path::Path;
 
@@ -5400,6 +6215,219 @@ page usersPage
     }
 
     #[test]
+    fn parses_display_chat_and_motion_components() {
+        let tree = parse_page(
+            r#"type Person
+  src:string
+  name:string
+  alt:string
+
+type ChatMessage
+  id:string
+  role:string
+  userId:string
+  text:string
+  status:string
+
+page displayPage
+  signal people type:Person[] value:[{ src:"/ada.png" name:"Ada" alt:"Ada Lovelace" }]
+  signal messages type:ChatMessage[] value:[{ id:"1" role:"assistant" userId:"assistant" text:"Hello" status:"sent" }]
+  signal loading value:false
+  action sendMessage
+    reset loading
+  Box
+    AvatarGroup items:people size:"sm" max:3 autoFit:true inline:false bordered:true scheme:"primary" variant:"soft"
+      item src:"/ada.png" name:"Ada" alt:"Ada Lovelace" onClick:sendMessage
+      item name:"Grace" alt:"Grace Hopper" href:"/docs"
+    ChatBox messages:messages mode:"conversation" currentUserId:"ada" userName:"Ada" userAvatar:"/ada.png" userStatus:"online" assistantName:"Dowe" assistantAvatar:"/dowe.png" showHeader:true placeholder:"Ask Dowe" showAttachments:true showVoiceNote:true showCamera:true loading:loading sending:loading streaming:loading hasMore:loading onSend:sendMessage onLoadMore:sendMessage onStop:sendMessage onVoiceNote:sendMessage onFileAttach:sendMessage onCameraCapture:sendMessage
+    Empty type:"result" title:"Nothing found" description:"Try again" actionLabel:"Retry" onClick:sendMessage scheme:"info" variant:"soft"
+    Marquee speed:"fast" pauseOnHover:true reverse:true orientation:"horizontal" fade:true fadeColor:"background" gap:4
+      Text
+        Moving
+    TypeWriter typeSpeed:10 deleteSpeed:5 afterTyped:20 afterDeleted:10 repeat:false
+      item text:"Hello"
+      item text:"World""#,
+        )
+        .expect("tree");
+
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Box {
+            children: box_children,
+            ..
+        } = &children[0]
+        else {
+            panic!("box");
+        };
+        assert_eq!(box_children.len(), 5);
+
+        let ViewNode::AvatarGroup { props, items } = &box_children[0] else {
+            panic!("avatar group");
+        };
+        assert_eq!(props.items.as_deref(), Some("people"));
+        assert_eq!(props.size, ButtonSize::Sm);
+        assert_eq!(props.max, Some(3));
+        assert!(props.auto_fit);
+        assert!(!props.inline);
+        assert!(props.bordered);
+        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].on_click.as_deref(), Some("sendMessage"));
+        assert!(items[1].navigation.is_some());
+
+        let ViewNode::ChatBox { props } = &box_children[1] else {
+            panic!("chat box");
+        };
+        assert_eq!(props.messages, "messages");
+        assert_eq!(props.mode, ChatBoxMode::Conversation);
+        assert_eq!(props.current_user_id, "ada");
+        assert_eq!(props.loading.as_deref(), Some("loading"));
+        assert_eq!(props.on_send.as_deref(), Some("sendMessage"));
+        assert!(props.show_attachments);
+        assert!(props.show_voice_note);
+        assert!(props.show_camera);
+
+        let ViewNode::Empty { props } = &box_children[2] else {
+            panic!("empty");
+        };
+        assert_eq!(props.kind, EmptyKind::Result);
+        assert_eq!(props.title.as_deref(), Some("Nothing found"));
+        assert_eq!(props.action_label, "Retry");
+
+        let ViewNode::Marquee { props, children } = &box_children[3] else {
+            panic!("marquee");
+        };
+        assert_eq!(props.speed, MarqueeSpeed::Fast);
+        assert_eq!(props.orientation, MarqueeOrientation::Horizontal);
+        assert!(props.pause_on_hover);
+        assert!(props.reverse);
+        assert!(props.fade);
+        assert_eq!(props.fade_color, ColorToken::Background);
+        assert_eq!(children.len(), 1);
+
+        let ViewNode::TypeWriter { props, items } = &box_children[4] else {
+            panic!("type writer");
+        };
+        assert_eq!(props.type_speed, 10);
+        assert_eq!(props.delete_speed, 5);
+        assert!(!props.repeat);
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[1].text, "World");
+    }
+
+    #[test]
+    fn parses_rich_control_map_components() {
+        let tree = parse_page(
+            r#"page componentsPage
+  signal mode value:"map"
+  action choose
+    reset mode
+  action done
+    reset mode
+  Box
+    RichText size:"lg" weight:"bold"
+      mark text:"Launch" style:"grad" scheme:"primary"
+      mark text:"ready" style:"pill" scheme:"success"
+    Record name:"voice" maxDuration:90 onStart:choose onConfirm:done variant:"soft" scheme:"primary"
+    ToggleGroup value:mode selected:"map" size:"sm" wide:true ariaLabel:"Display mode" onChange:choose variant:"soft" scheme:"secondary"
+      item id:"list" label:"List" icon:"search"
+      item id:"map" label:"Map" icon:"settings"
+    Collapsible label:"Details" defaultOpen:true scheme:"surface"
+      Text
+        Body
+    Countdown target:"2030-01-01T00:00:00Z" size:"xl" showDays:true showHours:true showMinutes:true showSeconds:false onComplete:done scheme:"primary" variant:"outlined"
+    Map centerLat:4.7109 centerLng:-74.0721 zoom:12 height:"360px" width:"100%" showScale:true showLocationControl:true routeStartLat:4.7109 routeStartLng:-74.0721 routeEndLat:4.65 routeEndLng:-74.09 onRoute:done scheme:"primary" variant:"soft"
+      marker id:"office" lat:4.7109 lng:-74.0721 label:"Office" popup:"Main" icon:"start" onClick:choose
+      waypoint lat:4.68 lng:-74.08"#,
+        )
+        .expect("tree");
+
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Box {
+            children: box_children,
+            ..
+        } = &children[0]
+        else {
+            panic!("box");
+        };
+        assert_eq!(box_children.len(), 6);
+
+        let ViewNode::RichText { props, marks } = &box_children[0] else {
+            panic!("rich text");
+        };
+        assert_eq!(
+            props
+                .size
+                .as_ref()
+                .map(|value| value.entries[0].value.as_str()),
+            Some("lg")
+        );
+        assert_eq!(marks.len(), 2);
+        assert_eq!(marks[0].style, RichTextMarkStyle::Grad);
+        assert_eq!(marks[1].color, ColorFamily::Success);
+
+        let ViewNode::Record { props } = &box_children[1] else {
+            panic!("record");
+        };
+        assert_eq!(props.name, "voice");
+        assert_eq!(props.max_duration, Some(90));
+        assert_eq!(props.on_start.as_deref(), Some("choose"));
+        assert_eq!(props.on_confirm.as_deref(), Some("done"));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+
+        let ViewNode::ToggleGroup { props, items } = &box_children[2] else {
+            panic!("toggle group");
+        };
+        assert_eq!(props.value.as_deref(), Some("mode"));
+        assert_eq!(props.selected, "map");
+        assert_eq!(props.size, ButtonSize::Sm);
+        assert!(props.wide);
+        assert_eq!(props.on_change.as_deref(), Some("choose"));
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[1].icon, Some(ViewIcon::Settings));
+
+        let ViewNode::Collapsible { props, children } = &box_children[3] else {
+            panic!("collapsible");
+        };
+        assert_eq!(props.label, "Details");
+        assert!(props.default_open);
+        assert_eq!(props.style.color, Some(ColorFamily::Surface));
+        assert_eq!(children.len(), 1);
+
+        let ViewNode::Countdown { props } = &box_children[4] else {
+            panic!("countdown");
+        };
+        assert_eq!(props.target, "2030-01-01T00:00:00Z");
+        assert_eq!(props.size, CountdownSize::Xl);
+        assert!(!props.show_seconds);
+        assert_eq!(props.on_complete.as_deref(), Some("done"));
+
+        let ViewNode::Map {
+            props,
+            markers,
+            waypoints,
+        } = &box_children[5]
+        else {
+            panic!("map");
+        };
+        assert_eq!(props.center_lat, "4.7109");
+        assert_eq!(props.center_lng, "-74.0721");
+        assert_eq!(props.zoom, 12);
+        assert!(props.show_scale);
+        assert!(props.show_location_control);
+        assert_eq!(props.on_route.as_deref(), Some("done"));
+        assert_eq!(markers.len(), 1);
+        assert_eq!(markers[0].lng, "-74.0721");
+        assert_eq!(markers[0].icon, MapMarkerIcon::Start);
+        assert_eq!(markers[0].on_click.as_deref(), Some("choose"));
+        assert_eq!(waypoints.len(), 1);
+        assert_eq!(waypoints[0].lng, "-74.08");
+    }
+
+    #[test]
     fn parses_media_display_and_form_components() {
         let tree = parse_page(
             r##"page componentsPage
@@ -5529,6 +6557,88 @@ page usersPage
     }
 
     #[test]
+    fn parses_theme_fab_slider_and_dropzone_components() {
+        let tree = parse_page(
+            r##"page controlsPage
+  signal volume value:40
+  action create
+    reset volume
+  Box
+    ToggleTheme variant:"soft" scheme:"secondary" size:"sm" lightLabel:"Light mode" darkLabel:"Dark mode"
+    Fab position:"top-left" fixed:false offsetX:6 offsetY:8 icon:"settings" label:"Actions" variant:"soft" scheme:"primary" size:"lg" onClick:create
+      fabAction label:"Docs" icon:"link" href:"#top" navigate:"replace" scheme:"info"
+      fabAction label:"Create" icon:"plus" onClick:create scheme:"success"
+    Slider bind:volume min:0 max:100 step:5 label:"Volume" name:"volume" hideLabel:false scheme:"warning" size:"lg"
+    Dropzone accept:"image/*" multiple:false maxSize:2048 name:"images" label:"Images" helpText:"PNG only" placeholder:"Drop images" disabled:false variant:"outlined" scheme:"surface" size:"sm""##,
+        )
+        .expect("tree");
+
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Box {
+            children: box_children,
+            ..
+        } = &children[0]
+        else {
+            panic!("box");
+        };
+        assert_eq!(box_children.len(), 4);
+
+        let ViewNode::ToggleTheme { props } = &box_children[0] else {
+            panic!("theme toggle");
+        };
+        assert_eq!(props.light_label, "Light mode");
+        assert_eq!(props.dark_label, "Dark mode");
+        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.color, Some(ColorFamily::Secondary));
+
+        let ViewNode::Fab { props, actions } = &box_children[1] else {
+            panic!("fab");
+        };
+        assert_eq!(props.position, OverlayCornerPosition::TopLeft);
+        assert!(!props.fixed);
+        assert_eq!(props.icon, ViewIcon::Settings);
+        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.color, Some(ColorFamily::Primary));
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0].label, "Docs");
+        assert_eq!(actions[0].icon, ViewIcon::Link);
+        assert_eq!(actions[0].color, ColorFamily::Info);
+        assert!(matches!(
+            actions[0].navigation,
+            Some(NavigationAction::Section { .. })
+        ));
+        assert_eq!(actions[1].on_click.as_deref(), Some("create"));
+        assert_eq!(actions[1].color, ColorFamily::Success);
+
+        let ViewNode::Slider { props } = &box_children[2] else {
+            panic!("slider");
+        };
+        assert_eq!(props.style.element.bind.as_deref(), Some("volume"));
+        assert_eq!(props.value, "0");
+        assert_eq!(props.min, "0");
+        assert_eq!(props.max, "100");
+        assert_eq!(props.step.as_deref(), Some("5"));
+        assert_eq!(props.style.label.as_deref(), Some("Volume"));
+        assert_eq!(props.style.color, Some(ColorFamily::Warning));
+        assert_eq!(props.size, ButtonSize::Lg);
+
+        let ViewNode::Dropzone { props } = &box_children[3] else {
+            panic!("dropzone");
+        };
+        assert_eq!(props.accept.as_deref(), Some("image/*"));
+        assert!(!props.multiple);
+        assert_eq!(props.max_size, Some(2048));
+        assert_eq!(props.name.as_deref(), Some("images"));
+        assert_eq!(props.help_text.as_deref(), Some("PNG only"));
+        assert_eq!(props.style.placeholder.as_deref(), Some("Drop images"));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Outlined));
+        assert_eq!(props.style.color, Some(ColorFamily::Surface));
+        assert_eq!(props.size, ButtonSize::Sm);
+    }
+
+    #[test]
     fn rejects_color_prop_for_new_view_components() {
         for source in [
             r#"page componentsPage
@@ -5543,6 +6653,30 @@ page usersPage
             r#"page componentsPage
   RadioGroup color:"primary"
     item value:"one" label:"One""#,
+            r#"page componentsPage
+  ToggleTheme color:"primary""#,
+            r#"page componentsPage
+  Fab color:"primary""#,
+            r#"page componentsPage
+  Slider color:"primary""#,
+            r#"page componentsPage
+  Dropzone color:"primary""#,
+            r#"page componentsPage
+  RichText
+    mark text:"Launch" color:"primary""#,
+            r#"page componentsPage
+  Record name:"voice" color:"primary""#,
+            r#"page componentsPage
+  ToggleGroup color:"primary"
+    item id:"one" label:"One""#,
+            r#"page componentsPage
+  Collapsible label:"Details" color:"primary"
+    Text
+      Body"#,
+            r#"page componentsPage
+  Countdown target:"2030-01-01T00:00:00Z" color:"primary""#,
+            r#"page componentsPage
+  Map color:"primary""#,
         ] {
             let error = parse_page(source).expect_err("color prop");
             assert!(error.to_string().contains("use `scheme`"));

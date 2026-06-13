@@ -416,6 +416,8 @@ fn render_swift_node_body(
             modifiers.push(".buttonStyle(.plain)".to_string());
             append_swift_modifiers(output, indent, &modifiers);
         }
+        ViewNode::ToggleTheme { props } => render_swift_theme_toggle(props, indent, output),
+        ViewNode::Fab { props, actions } => render_swift_fab(props, actions, indent, output, context),
         ViewNode::Input { props } => {
             let binding = props
                 .element
@@ -454,6 +456,8 @@ fn render_swift_node_body(
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }
+        ViewNode::Slider { props } => render_swift_slider(props, indent, output, context),
+        ViewNode::Dropzone { props } => render_swift_dropzone(props, indent, output),
         ViewNode::Select { props, options } => {
             let binding = props
                 .element
@@ -621,6 +625,52 @@ fn render_swift_node_body(
                 &swift_modifiers_for_style(&props.style.style),
             );
         }
+        ViewNode::AvatarGroup { props, items } => {
+            render_swift_avatar_group(props, items, indent, output, context)
+        }
+        ViewNode::ChatBox { props } => render_swift_chat_box(props, indent, output, context),
+        ViewNode::Empty { props } => render_swift_empty(props, indent, output, context),
+        ViewNode::Marquee { props, children } => render_swift_marquee(
+            props,
+            children,
+            indent,
+            output,
+            flow,
+            inherited_font,
+            default_family,
+            context,
+        ),
+        ViewNode::TypeWriter { props, items } => {
+            render_swift_type_writer(props, items, indent, output)
+        }
+        ViewNode::RichText { props, marks } => render_swift_rich_text(
+            props,
+            marks,
+            indent,
+            output,
+            inherited_font,
+            default_family,
+        ),
+        ViewNode::Record { props } => render_swift_record(props, indent, output, context),
+        ViewNode::ToggleGroup { props, items } => {
+            render_swift_toggle_group(props, items, indent, output, context)
+        }
+        ViewNode::Collapsible { props, children } => render_swift_collapsible(
+            props,
+            children,
+            indent,
+            output,
+            flow,
+            inherited_font,
+            default_family,
+            context,
+        ),
+        ViewNode::Countdown { props } => render_swift_countdown(props, indent, output, context),
+        ViewNode::Map {
+            props,
+            markers,
+            waypoints,
+        } => render_swift_map(props, markers, waypoints, indent, output, context),
         ViewNode::Divider { props } => {
             output.push_str(&format!("{pad}Rectangle()\n"));
             append_swift_modifiers(output, indent, &swift_modifiers_for_divider(props, flow));
@@ -1040,6 +1090,321 @@ fn render_swift_avatar(
     append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
 }
 
+fn render_swift_avatar_group(
+    props: &AvatarGroupProps,
+    items: &[AvatarGroupItem],
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweAvatarGroup(items: {}, size: {}, maxCount: {}, inline: {}, bordered: {}, backgroundColor: {}, contentColor: {}, borderColor: {})\n",
+        swift_avatar_group_items_value(props, items, context),
+        swift_string_literal(props.size.as_str()),
+        props.max
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "nil".to_string()),
+        props.inline,
+        props.bordered,
+        variant_container(&props.style),
+        variant_content(&props.style),
+        variant_content(&props.style),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_chat_box(
+    props: &ChatBoxProps,
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweChatBox(state: state, messagesPath: {}, mode: {}, currentUserId: {}, userName: {}, userAvatar: {}, userStatus: {}, assistantName: {}, assistantAvatar: {}, showHeader: {}, placeholder: {}, showAttachments: {}, showVoiceNote: {}, showCamera: {}, loading: {}, sending: {}, streaming: {}, hasMore: {}, onSend: {}, onLoadMore: {}, onStop: {}, onVoiceNote: {}, onFileAttach: {}, onCameraCapture: {}, backgroundColor: {}, contentColor: {}, borderColor: {})\n",
+        swift_string_literal(&context.signal_path(&props.messages)),
+        swift_string_literal(props.mode.as_str()),
+        swift_string_literal(&props.current_user_id),
+        swift_string_literal(&props.user_name),
+        swift_optional_literal(props.user_avatar.as_deref()),
+        swift_string_literal(&props.user_status),
+        swift_string_literal(&props.assistant_name),
+        swift_optional_literal(props.assistant_avatar.as_deref()),
+        props.show_header,
+        swift_string_literal(&props.placeholder),
+        props.show_attachments,
+        props.show_voice_note,
+        props.show_camera,
+        swift_optional_bool_signal(props.loading.as_deref(), context),
+        swift_optional_bool_signal(props.sending.as_deref(), context),
+        swift_optional_bool_signal(props.streaming.as_deref(), context),
+        swift_optional_bool_signal(props.has_more.as_deref(), context),
+        swift_chat_send_action(props.on_send.as_deref(), context),
+        swift_optional_component_action(props.on_load_more.as_deref(), None, context),
+        swift_optional_component_action(props.on_stop.as_deref(), None, context),
+        swift_optional_component_action(props.on_voice_note.as_deref(), None, context),
+        swift_optional_component_action(props.on_file_attach.as_deref(), None, context),
+        swift_optional_component_action(props.on_camera_capture.as_deref(), None, context),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        swift_variant_border(&props.style),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_empty(
+    props: &EmptyProps,
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweEmpty(kind: {}, title: {}, description: {}, actionLabel: {}, action: {}, backgroundColor: {}, contentColor: {}, accentColor: {})\n",
+        swift_string_literal(props.kind.as_str()),
+        swift_optional_literal(props.title.as_deref()),
+        swift_optional_literal(props.description.as_deref()),
+        swift_string_literal(&props.action_label),
+        swift_optional_component_action(
+            props.style.element.on_click.as_deref(),
+            props.style.navigation.as_ref(),
+            context,
+        ),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Primary))),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_marquee(
+    props: &MarqueeProps,
+    children: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweMarquee(speed: {}, pauseOnHover: {}, reverse: {}, orientation: {}, fade: {}, fadeColor: {}, gap: {}) {{\n",
+        swift_string_literal(props.speed.as_str()),
+        props.pause_on_hover,
+        props.reverse,
+        swift_string_literal(props.orientation.as_str()),
+        props.fade,
+        color_ref(props.fade_color),
+        swift_scale_literal(props.gap),
+    ));
+    for child in children {
+        render_swift_node_in_flow(
+            child,
+            indent + 4,
+            output,
+            flow,
+            props.style.font.as_ref().or(inherited_font),
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!("{pad}}}\n"));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
+}
+
+fn render_swift_type_writer(
+    props: &TypeWriterProps,
+    items: &[TypeWriterItem],
+    indent: usize,
+    output: &mut String,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweTypeWriter(texts: {}, typeSpeed: {}, deleteSpeed: {}, afterTyped: {}, afterDeleted: {}, repeat: {}, contentColor: {})\n",
+        swift_type_writer_items(items),
+        props.type_speed,
+        props.delete_speed,
+        props.after_typed,
+        props.after_deleted,
+        props.repeat,
+        color_ref(ColorToken::OnBackground),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
+}
+
+fn render_swift_rich_text(
+    props: &TextProps,
+    marks: &[RichTextMark],
+    indent: usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+) {
+    let pad = " ".repeat(indent);
+    let size = props.size.as_ref().map(|value| value.entries[0].value).unwrap_or(TextSize::Md);
+    let font_size = swift_text_size_expr(false, size);
+    output.push_str(&format!(
+        "{pad}DoweRichText(marks: {}, font: {}, fontSize: {font_size})\n",
+        swift_rich_text_marks(marks),
+        swift_font_token_value(props.style.font.as_ref().or(inherited_font), default_family),
+    ));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_text(false, props, inherited_font, default_family),
+    );
+}
+
+fn render_swift_record(
+    props: &RecordProps,
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweRecord(name: {}, url: {}, disabled: {}, maxDuration: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, onStart: {}, onPause: {}, onResume: {}, onStop: {}, onDiscard: {}, onConfirm: {})\n",
+        swift_string_literal(&props.name),
+        swift_optional_literal(props.url.as_deref()),
+        props.disabled,
+        props.max_duration.map(|value| value.to_string()).unwrap_or_else(|| "nil".to_string()),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        swift_variant_border(&props.style),
+        swift_optional_component_action(props.on_start.as_deref(), None, context),
+        swift_optional_component_action(props.on_pause.as_deref(), None, context),
+        swift_optional_component_action(props.on_resume.as_deref(), None, context),
+        swift_optional_component_action(props.on_stop.as_deref(), None, context),
+        swift_optional_component_action(props.on_discard.as_deref(), None, context),
+        swift_optional_component_action(props.on_confirm.as_deref(), None, context),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_toggle_group(
+    props: &ToggleGroupProps,
+    items: &[ToggleGroupItem],
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let binding = props
+        .value
+        .as_deref()
+        .map(|path| format!("state.binding(\"{}\")", escape_swift(&context.signal_path(path))))
+        .unwrap_or_else(|| format!(".constant({})", swift_string_literal(&props.selected)));
+    output.push_str(&format!(
+        "{pad}DoweToggleGroup(value: {binding}, items: {}, size: {}, wide: {}, vertical: {}, disabled: {}, ariaLabel: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, onChange: {})\n",
+        swift_toggle_group_items(items),
+        swift_string_literal(props.size.as_str()),
+        props.wide,
+        props.vertical,
+        props.disabled,
+        swift_optional_literal(props.aria_label.as_deref()),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        swift_variant_border(&props.style),
+        swift_optional_component_action(props.on_change.as_deref(), None, context),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_collapsible(
+    props: &CollapsibleProps,
+    children: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweCollapsible(label: {}, defaultOpen: {}, disabled: {}, backgroundColor: {}, contentColor: {}, borderColor: {}) {{\n",
+        swift_string_literal(&props.label),
+        props.default_open,
+        props.disabled,
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        swift_variant_border(&props.style),
+    ));
+    for child in children {
+        render_swift_node_in_flow(
+            child,
+            indent + 4,
+            output,
+            flow,
+            props.style.style.font.as_ref().or(inherited_font),
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!("{pad}}}\n"));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_countdown(
+    props: &CountdownProps,
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweCountdown(target: {}, showDays: {}, showHours: {}, showMinutes: {}, showSeconds: {}, size: {}, daysLabel: {}, hoursLabel: {}, minutesLabel: {}, secondsLabel: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, onComplete: {})\n",
+        swift_string_literal(&props.target),
+        props.show_days,
+        props.show_hours,
+        props.show_minutes,
+        props.show_seconds,
+        swift_string_literal(props.size.as_str()),
+        swift_string_literal(&props.days_label),
+        swift_string_literal(&props.hours_label),
+        swift_string_literal(&props.minutes_label),
+        swift_string_literal(&props.seconds_label),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        swift_variant_border(&props.style),
+        swift_optional_component_action(props.on_complete.as_deref(), None, context),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_map(
+    props: &MapProps,
+    markers: &[MapMarker],
+    waypoints: &[MapWaypoint],
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}DoweMap(centerLat: {}, centerLng: {}, zoom: {}, height: {}, width: {}, showControls: {}, showScale: {}, showLocationControl: {}, interactive: {}, markers: {}, waypoints: {}, backgroundColor: {}, contentColor: {}, onLocation: {}, onLocationError: {}, onRoute: {})\n",
+        swift_string_literal(&props.center_lat),
+        swift_string_literal(&props.center_lng),
+        props.zoom,
+        swift_string_literal(&props.height),
+        swift_string_literal(&props.width),
+        props.show_controls,
+        props.show_scale,
+        props.show_location_control,
+        props.interactive,
+        swift_map_markers(markers, context),
+        swift_map_waypoints(waypoints),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        swift_optional_component_action(props.on_location.as_deref(), None, context),
+        swift_optional_component_action(props.on_location_error.as_deref(), None, context),
+        swift_optional_component_action(props.on_route.as_deref(), None, context),
+    ));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
 fn render_swift_badge(
     props: &BadgeProps,
     children: &[ViewNode],
@@ -1267,6 +1632,251 @@ fn render_swift_carousel(
     }
     output.push_str(&format!("{pad}}}\n"));
     append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_theme_toggle(
+    props: &ThemeToggleProps,
+    indent: usize,
+    output: &mut String,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}Button(action: {{\n{pad}    let current = UserDefaults.standard.string(forKey: \"theme-preference\") ?? \"light\"\n{pad}    UserDefaults.standard.set(current == \"dark\" ? \"light\" : \"dark\", forKey: \"theme-preference\")\n{pad}}}) {{\n{pad}    Image(systemName: \"moon.stars\")\n{pad}        .font(.system(size: CGFloat(18), weight: .semibold))\n{pad}}}\n"
+    ));
+    let mut modifiers = swift_modifiers_for_style(&props.style.style);
+    modifiers.push(format!(".background({})", variant_container(&props.style)));
+    modifiers.push(format!(".foregroundStyle({})", variant_content(&props.style)));
+    modifiers.push(".clipShape(Circle())".to_string());
+    if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+        modifiers.push(format!(
+            ".overlay(Circle().stroke({}, lineWidth: CGFloat(1)))",
+            variant_content(&props.style)
+        ));
+    }
+    modifiers.push(".buttonStyle(.plain)".to_string());
+    append_swift_modifiers(output, indent, &modifiers);
+}
+
+fn render_swift_fab(
+    props: &FabProps,
+    actions: &[FabAction],
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!("{pad}VStack(alignment: .trailing, spacing: CGFloat(12)) {{\n"));
+    for action in actions {
+        output.push_str(&format!(
+            "{pad}    Button(action: {}) {{\n{pad}        HStack(spacing: CGFloat(12)) {{\n{pad}            Text({})\n{pad}                .font(.system(size: CGFloat(14), weight: .semibold))\n{pad}            Image(systemName: {})\n{pad}        }}\n{pad}    }}\n{pad}    .padding(.horizontal, CGFloat(12))\n{pad}    .padding(.vertical, CGFloat(8))\n{pad}    .background({})\n{pad}    .foregroundStyle({})\n{pad}    .clipShape(Capsule())\n{pad}    .buttonStyle(.plain)\n",
+            swift_component_action(action.on_click.as_deref(), action.navigation.as_ref(), context),
+            swift_string_literal(&action.label),
+            swift_string_literal(swift_view_icon_system(action.icon)),
+            variant_container(&VariantProps {
+                color: Some(action.color),
+                variant: props.style.variant,
+                ..VariantProps::default()
+            }),
+            variant_content(&VariantProps {
+                color: Some(action.color),
+                variant: props.style.variant,
+                ..VariantProps::default()
+            })
+        ));
+    }
+    output.push_str(&format!(
+        "{pad}    Button(action: {}) {{\n{pad}        Image(systemName: {})\n{pad}            .font(.system(size: CGFloat(20), weight: .semibold))\n{pad}    }}\n",
+        swift_component_action(
+            props.style.element.on_click.as_deref(),
+            props.style.navigation.as_ref(),
+            context,
+        ),
+        swift_string_literal(swift_view_icon_system(props.icon))
+    ));
+    let mut trigger_modifiers = swift_modifiers_for_style(&props.style.style);
+    trigger_modifiers.push(format!(".background({})", variant_container(&props.style)));
+    trigger_modifiers.push(format!(".foregroundStyle({})", variant_content(&props.style)));
+    trigger_modifiers.push(".clipShape(Circle())".to_string());
+    trigger_modifiers.push(".buttonStyle(.plain)".to_string());
+    append_swift_modifiers(output, indent + 4, &trigger_modifiers);
+    output.push_str(&format!("{pad}}}\n"));
+    if props.fixed {
+        let mut modifiers = vec![
+            ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: ".to_string()
+                + swift_fab_alignment(props.position)
+                + ")",
+            format!(
+                ".padding(.horizontal, {})",
+                swift_scale_literal(props.offset_x)
+            ),
+            format!(".padding(.vertical, {})", swift_scale_literal(props.offset_y)),
+        ];
+        modifiers.extend(swift_modifiers_for_style(&props.style.style));
+        append_swift_modifiers(output, indent, &modifiers);
+    } else {
+        append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+    }
+}
+
+fn render_swift_slider(
+    props: &SliderProps,
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let value = props.value.parse::<f64>().unwrap_or(0.0);
+    let min = props.min.parse::<f64>().unwrap_or(0.0);
+    let max = props.max.parse::<f64>().unwrap_or(100.0);
+    let value_literal = swift_double_literal(value);
+    let min_literal = swift_double_literal(min);
+    let max_literal = swift_double_literal(max);
+    let step_literal = props
+        .step
+        .as_deref()
+        .map(|step| {
+            step.parse::<f64>()
+                .map(swift_double_literal)
+                .unwrap_or_else(|_| step.to_string())
+        });
+    let (binding, display_value) = props
+        .style
+        .element
+        .bind
+        .as_deref()
+        .map(|path| {
+            let path = escape_swift(&context.signal_path(path));
+            (
+                format!(
+                    "Binding<Double>(get: {{ Double(state.text(\"{path}\")) ?? {value_literal} }}, set: {{ state.write(\"{path}\", value: $0) }})"
+                ),
+                format!("Double(state.text(\"{path}\")) ?? {value_literal}"),
+            )
+        })
+        .unwrap_or_else(|| (
+            format!("Binding<Double>.constant({value_literal})"),
+            value_literal.clone(),
+        ));
+    output.push_str(&format!("{pad}VStack(spacing: CGFloat(2)) {{\n"));
+    if !props.hide_label {
+        output.push_str(&format!(
+            "{pad}    HStack {{\n{pad}        Text({})\n{pad}        Spacer()\n{pad}        Text(String(format: \"%.0f\", {display_value}))\n{pad}    }}\n{pad}    .font(.system(size: CGFloat(14), weight: .semibold))\n",
+            swift_string_literal(props.style.label.as_deref().unwrap_or_default()),
+        ));
+    }
+    let slider = if let Some(step) = step_literal {
+        format!("Slider(value: {binding}, in: {min_literal}...{max_literal}, step: {step})")
+    } else {
+        format!("Slider(value: {binding}, in: {min_literal}...{max_literal})")
+    };
+    output.push_str(&format!(
+        "{pad}    {slider}\n{pad}        .tint({})\n",
+        swift_scheme_color(&props.style)
+    ));
+    output.push_str(&format!("{pad}}}\n"));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn render_swift_dropzone(props: &DropzoneProps, indent: usize, output: &mut String) {
+    let pad = " ".repeat(indent);
+    output.push_str(&format!("{pad}VStack(alignment: .leading, spacing: CGFloat(8)) {{\n"));
+    if let Some(label) = props.style.label.as_deref() {
+        output.push_str(&format!(
+            "{pad}    Text({})\n{pad}        .font(.system(size: CGFloat(14), weight: .semibold))\n",
+            swift_string_literal(label)
+        ));
+    }
+    output.push_str(&format!(
+        "{pad}    Button(action: {{ }}) {{\n{pad}        VStack(spacing: CGFloat(8)) {{\n{pad}            Image(systemName: \"paperclip\")\n{pad}                .font(.system(size: CGFloat(28), weight: .regular))\n{pad}                .opacity(0.5)\n{pad}            Text({})\n{pad}                .font(.system(size: CGFloat(14)))\n{pad}                .multilineTextAlignment(.center)\n{pad}                .opacity(0.7)\n{pad}        }}\n{pad}        .frame(maxWidth: .infinity, minHeight: CGFloat({}))\n{pad}    }}\n{pad}    .background({})\n{pad}    .foregroundStyle({})\n{pad}    .clipShape(RoundedRectangle(cornerRadius: {}))\n{pad}    .overlay(RoundedRectangle(cornerRadius: {}).stroke({}, style: StrokeStyle(lineWidth: CGFloat(2), dash: [CGFloat(6)])))\n{pad}    .buttonStyle(.plain)\n",
+        swift_string_literal(
+            props
+                .style
+                .placeholder
+                .as_deref()
+                .unwrap_or("Drag & drop files here or click to select")
+        ),
+        swift_dropzone_height(props.size),
+        variant_container(&props.style),
+        variant_content(&props.style),
+        swift_card_radius(&props.style.style),
+        swift_card_radius(&props.style.style),
+        if props.error_text.is_some() {
+            color_ref(ColorToken::Danger).to_string()
+        } else {
+            variant_content(&props.style).to_string()
+        }
+    ));
+    if let Some(text) = props.error_text.as_deref().or(props.help_text.as_deref()) {
+        output.push_str(&format!(
+            "{pad}    Text({})\n{pad}        .font(.system(size: CGFloat(13)))\n{pad}        .foregroundStyle({})\n",
+            swift_string_literal(text),
+            if props.error_text.is_some() {
+                color_ref(ColorToken::Danger).to_string()
+            } else {
+                color_ref(ColorToken::Muted).to_string()
+            }
+        ));
+    }
+    output.push_str(&format!("{pad}}}\n"));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+}
+
+fn swift_component_action(
+    action: Option<&str>,
+    navigation: Option<&NavigationAction>,
+    context: &SwiftReactiveContext,
+) -> String {
+    let value = swift_optional_component_action(action, navigation, context);
+    if value == "nil" {
+        "{}".to_string()
+    } else {
+        value
+    }
+}
+
+fn swift_view_icon_system(icon: ViewIcon) -> &'static str {
+    match icon {
+        ViewIcon::Plus => "plus",
+        ViewIcon::Link => "link",
+        ViewIcon::Edit => "pencil",
+        ViewIcon::Trash => "trash",
+        ViewIcon::Search => "magnifyingglass",
+        ViewIcon::Settings => "gearshape",
+        ViewIcon::Upload => "paperclip",
+        ViewIcon::File => "doc",
+        ViewIcon::Dismiss => "xmark",
+        ViewIcon::Moon => "moon.stars",
+        ViewIcon::Sun => "sun.max",
+    }
+}
+
+fn swift_fab_alignment(position: OverlayCornerPosition) -> &'static str {
+    match position {
+        OverlayCornerPosition::TopLeft => ".topLeading",
+        OverlayCornerPosition::TopRight => ".topTrailing",
+        OverlayCornerPosition::BottomLeft => ".bottomLeading",
+        OverlayCornerPosition::BottomRight => ".bottomTrailing",
+    }
+}
+
+fn swift_scale_literal(value: ScaleValue) -> String {
+    format!("CGFloat({})", value.native_units())
+}
+
+fn swift_double_literal(value: f64) -> String {
+    if value.fract() == 0.0 {
+        format!("{value:.1}")
+    } else {
+        value.to_string()
+    }
+}
+
+fn swift_dropzone_height(size: ButtonSize) -> u16 {
+    match size {
+        ButtonSize::Xs | ButtonSize::Sm => 128,
+        ButtonSize::Md => 192,
+        ButtonSize::Lg | ButtonSize::Xl => 256,
+    }
 }
 
 fn render_swift_checkbox(
@@ -2715,6 +3325,139 @@ fn swift_table_columns(columns: &[TableColumn]) -> String {
                 swift_string_literal(&column.label),
                 swift_table_align(column.align),
                 swift_optional_literal(column.width.as_deref())
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
+}
+
+fn swift_avatar_group_items_value(
+    props: &AvatarGroupProps,
+    items: &[AvatarGroupItem],
+    context: &SwiftReactiveContext,
+) -> String {
+    let fallback = swift_avatar_group_items(items, context);
+    props
+        .items
+        .as_deref()
+        .map(|path| {
+            format!(
+                "doweAvatarGroupItems(state.rows({}).map {{ $0.value }}, fallback: {fallback})",
+                swift_string_literal(&context.signal_path(path))
+            )
+        })
+        .unwrap_or(fallback)
+}
+
+fn swift_avatar_group_items(items: &[AvatarGroupItem], context: &SwiftReactiveContext) -> String {
+    if items.is_empty() {
+        return "[]".to_string();
+    }
+    let values = items
+        .iter()
+        .map(|item| {
+            format!(
+                "DoweAvatarGroupItem(source: {}, name: {}, alt: {}, action: {})",
+                swift_optional_literal(item.src.as_deref()),
+                swift_optional_literal(item.name.as_deref()),
+                swift_optional_literal(item.alt.as_deref()),
+                swift_optional_component_action(
+                    item.on_click.as_deref(),
+                    item.navigation.as_ref(),
+                    context,
+                )
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
+}
+
+fn swift_optional_bool_signal(path: Option<&str>, context: &SwiftReactiveContext) -> String {
+    path.map(|path| format!("state.bool({})", swift_string_literal(&context.signal_path(path))))
+        .unwrap_or_else(|| "false".to_string())
+}
+
+fn swift_chat_send_action(action: Option<&str>, context: &SwiftReactiveContext) -> String {
+    action
+        .and_then(|name| context.action_id(name))
+        .map(|id| format!("{{ _ in state.run(\"{}\") }}", escape_swift(id)))
+        .unwrap_or_else(|| "nil".to_string())
+}
+
+fn swift_type_writer_items(items: &[TypeWriterItem]) -> String {
+    if items.is_empty() {
+        return "[]".to_string();
+    }
+    let values = items
+        .iter()
+        .map(|item| swift_string_literal(&item.text))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
+}
+
+fn swift_rich_text_marks(marks: &[RichTextMark]) -> String {
+    let values = marks
+        .iter()
+        .map(|mark| {
+            format!(
+                "DoweRichTextMark(text: {}, style: {}, color: {})",
+                swift_string_literal(&mark.text),
+                swift_string_literal(mark.style.as_str()),
+                color_ref(family_color(mark.color))
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
+}
+
+fn swift_toggle_group_items(items: &[ToggleGroupItem]) -> String {
+    let values = items
+        .iter()
+        .map(|item| {
+            format!(
+                "DoweToggleGroupItem(id: {}, label: {}, icon: {})",
+                swift_string_literal(&item.id),
+                swift_string_literal(&item.label),
+                swift_optional_literal(item.icon.map(|icon| icon.as_str()))
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
+}
+
+fn swift_map_markers(markers: &[MapMarker], context: &SwiftReactiveContext) -> String {
+    let values = markers
+        .iter()
+        .map(|marker| {
+            format!(
+                "DoweMapMarker(id: {}, lat: {}, lng: {}, label: {}, popup: {}, icon: {}, action: {})",
+                swift_string_literal(&marker.id),
+                swift_string_literal(&marker.lat),
+                swift_string_literal(&marker.lng),
+                swift_optional_literal(marker.label.as_deref()),
+                swift_optional_literal(marker.popup.as_deref()),
+                swift_string_literal(marker.icon.as_str()),
+                swift_optional_component_action(marker.on_click.as_deref(), None, context),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
+}
+
+fn swift_map_waypoints(waypoints: &[MapWaypoint]) -> String {
+    let values = waypoints
+        .iter()
+        .map(|waypoint| {
+            format!(
+                "DoweMapWaypoint(lat: {}, lng: {})",
+                swift_string_literal(&waypoint.lat),
+                swift_string_literal(&waypoint.lng),
             )
         })
         .collect::<Vec<_>>()

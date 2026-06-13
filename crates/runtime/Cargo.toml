@@ -13,13 +13,13 @@ dowe_kv = { path = "../kv" }
 dowe_spawn = { path = "../spawn" }
 dowe_store = { path = "../store" }
 futures-util.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
-reqwest.workspace = true
 tempfile = "3.23.0"
 tokio-tungstenite.workspace = true
 

@@ -638,6 +638,204 @@ pub fn toggle_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
     })
 }
 
+pub fn theme_toggle_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut light_label = "Switch to light mode".to_string();
+    let mut dark_label = "Switch to dark mode".to_string();
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "lightLabel" => light_label = parse_required_string(&prop.name, &prop.value)?,
+            "darkLabel" => dark_label = parse_required_string(&prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::ToggleTheme)),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::ToggleTheme, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    let size = *style.size.get_or_insert(ButtonSize::Md);
+    apply_icon_button_size_defaults(&mut style.style, size);
+    Ok(ViewNode::ToggleTheme {
+        props: ThemeToggleProps {
+            style,
+            light_label,
+            dark_label,
+        },
+    })
+}
+
+pub fn fab_component_node(
+    props: Vec<ComponentProp>,
+    actions: Vec<FabAction>,
+) -> ComponentResult<ViewNode> {
+    let mut position = OverlayCornerPosition::BottomRight;
+    let mut fixed = true;
+    let mut offset_x = ScaleValue::from_half_steps(8);
+    let mut offset_y = ScaleValue::from_half_steps(8);
+    let mut icon = ViewIcon::Plus;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "position" => position = parse_overlay_corner_position(&prop.name, &prop.value)?,
+            "fixed" => fixed = parse_static_bool(&prop.name, &prop.value)?,
+            "offsetX" => offset_x = parse_static_scale(&prop.name, &prop.value)?,
+            "offsetY" => offset_y = parse_static_scale(&prop.name, &prop.value)?,
+            "icon" => icon = parse_view_icon(&prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Fab)),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Fab, &style_props)?;
+    require_solid_or_soft(BuiltinComponent::Fab, style.variant)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    let size = *style.size.get_or_insert(ButtonSize::Lg);
+    apply_icon_button_size_defaults(&mut style.style, size);
+    let label = style
+        .label
+        .clone()
+        .unwrap_or_else(|| "Open actions".to_string());
+    Ok(ViewNode::Fab {
+        props: FabProps {
+            style,
+            position,
+            fixed,
+            offset_x,
+            offset_y,
+            icon,
+            label,
+        },
+        actions,
+    })
+}
+
+pub fn fab_action_component(props: Vec<ComponentProp>) -> ComponentResult<FabAction> {
+    let mut label = None;
+    let mut icon = ViewIcon::Plus;
+    let mut color = ColorFamily::Muted;
+    let mut href = None;
+    let mut target = None;
+    let mut navigate = None;
+    let mut on_click = None;
+    for prop in props {
+        match prop.name.as_str() {
+            "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
+            "icon" => icon = parse_view_icon(&prop.name, &prop.value)?,
+            "scheme" => color = parse_family_prop(BuiltinComponent::FabAction, &prop.name, &prop.value)?,
+            "href" => href = Some(parse_required_string(&prop.name, &prop.value)?),
+            "target" => target = Some(parse_web_target(&prop.name, &prop.value)?),
+            "navigate" => navigate = Some(parse_navigation_operation(&prop.name, &prop.value)?),
+            "onClick" => on_click = Some(parse_required_string(&prop.name, &prop.value)?),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::FabAction)),
+            _ => return Err(ComponentError::unknown_prop(BuiltinComponent::FabAction, &prop.name)),
+        }
+    }
+    let navigation = parse_navigation_props(
+        BuiltinComponent::FabAction,
+        href,
+        navigate,
+        None,
+        target,
+        None,
+    )?;
+    if navigation.is_none() && on_click.is_none() {
+        return Err(ComponentError::invalid_prop_combination(
+            "fabAction requires `href` or `onClick`",
+        ));
+    }
+    Ok(FabAction {
+        label: label.ok_or_else(|| ComponentError::invalid_prop("label", "non-empty string"))?,
+        icon,
+        color,
+        on_click,
+        navigation,
+    })
+}
+
+pub fn slider_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut value = "0".to_string();
+    let mut min = "0".to_string();
+    let mut max = "100".to_string();
+    let mut step = None;
+    let mut size = ButtonSize::Md;
+    let mut name = None;
+    let mut hide_label = false;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "value" => value = parse_number_literal(&prop.name, &prop.value)?,
+            "min" => min = parse_number_literal(&prop.name, &prop.value)?,
+            "max" => max = parse_number_literal(&prop.name, &prop.value)?,
+            "step" => step = Some(parse_positive_number_literal(&prop.name, &prop.value)?),
+            "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
+            "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
+            "hideLabel" => hide_label = parse_static_bool(&prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Slider)),
+            _ => style_props.push(prop),
+        }
+    }
+    validate_slider_range(&min, &max, &value)?;
+    let mut style = parse_variant_props(BuiltinComponent::Slider, &style_props)?;
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::Slider {
+        props: SliderProps {
+            style,
+            value,
+            min,
+            max,
+            step,
+            size,
+            name,
+            hide_label,
+        },
+    })
+}
+
+pub fn dropzone_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut accept = None;
+    let mut multiple = true;
+    let mut max_size = None;
+    let mut size = ButtonSize::Md;
+    let mut name = None;
+    let mut help_text = None;
+    let mut error_text = None;
+    let mut disabled = false;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "accept" => accept = Some(parse_required_string(&prop.name, &prop.value)?),
+            "multiple" => multiple = parse_static_bool(&prop.name, &prop.value)?,
+            "maxSize" => max_size = Some(parse_positive_u64(&prop.name, &prop.value)?),
+            "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
+            "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
+            "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Dropzone)),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Dropzone, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    style
+        .placeholder
+        .get_or_insert_with(|| "Drag & drop files here or click to select".to_string());
+    Ok(ViewNode::Dropzone {
+        props: DropzoneProps {
+            style,
+            accept,
+            multiple,
+            max_size,
+            size,
+            name,
+            help_text,
+            error_text,
+            disabled,
+        },
+    })
+}
+
 pub fn candlestick_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut data = None;
     let mut stream = None;
@@ -1694,6 +1892,755 @@ pub fn command_component_node(
     })
 }
 
+pub fn avatar_group_item_component(
+    props: Vec<ComponentProp>,
+) -> ComponentResult<AvatarGroupItem> {
+    let mut src = None;
+    let mut name = None;
+    let mut alt = None;
+    let mut href = None;
+    let mut navigate = None;
+    let mut history = None;
+    let mut target = None;
+    let mut external_mode = None;
+    let mut on_click = None;
+    for prop in props {
+        match prop.name.as_str() {
+            "src" => src = Some(parse_avatar_src(&prop.name, &prop.value)?),
+            "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
+            "alt" => alt = Some(parse_required_string(&prop.name, &prop.value)?),
+            "href" => href = Some(parse_required_string(&prop.name, &prop.value)?),
+            "navigate" => navigate = Some(parse_navigation_operation(&prop.name, &prop.value)?),
+            "history" => history = Some(parse_history_prop(&prop.name, &prop.value)?),
+            "target" => target = Some(parse_web_target(&prop.name, &prop.value)?),
+            "externalMode" => {
+                external_mode = Some(parse_native_external_mode(&prop.name, &prop.value)?)
+            }
+            "onClick" => on_click = Some(parse_required_string(&prop.name, &prop.value)?),
+            _ => return Err(ComponentError::unknown_prop(BuiltinComponent::AvatarGroup, &prop.name)),
+        }
+    }
+    if href.is_some() && on_click.is_some() {
+        return Err(ComponentError::invalid_prop_combination(
+            "`href` and `onClick` cannot be used on the same AvatarGroup item",
+        ));
+    }
+    if href.is_some() && history.is_some() {
+        return Err(ComponentError::invalid_prop_combination(
+            "`href` and `history` cannot be used on the same AvatarGroup item",
+        ));
+    }
+    let navigation = if history.is_some() {
+        if navigate.is_some() || target.is_some() || external_mode.is_some() {
+            return Err(ComponentError::invalid_prop_combination(
+                "`navigate`, `target` and `externalMode` require `href` on AvatarGroup item",
+            ));
+        }
+        history
+    } else {
+        parse_link_navigation_props(
+            "AvatarGroup item",
+            href,
+            navigate,
+            target,
+            external_mode,
+        )?
+    };
+    Ok(AvatarGroupItem {
+        src,
+        name,
+        alt,
+        on_click,
+        navigation,
+    })
+}
+
+pub fn avatar_group_component_node(
+    props: Vec<ComponentProp>,
+    items: Vec<AvatarGroupItem>,
+) -> ComponentResult<ViewNode> {
+    let mut source = None;
+    let mut size = ButtonSize::Md;
+    let mut max = None;
+    let mut auto_fit = false;
+    let mut inline = false;
+    let mut bordered = false;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "items" => source = Some(parse_signal_path(&prop.name, &prop.value, "signal array path")?),
+            "size" => size = parse_button_size_prop(&prop.name, &prop.value)?,
+            "max" => max = Some(parse_positive_u16(&prop.name, &prop.value)?),
+            "autoFit" => auto_fit = parse_static_bool(&prop.name, &prop.value)?,
+            "inline" => inline = parse_static_bool(&prop.name, &prop.value)?,
+            "bordered" => bordered = parse_static_bool(&prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::AvatarGroup)),
+            _ => style_props.push(prop),
+        }
+    }
+    if source.is_none() && items.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(
+            "AvatarGroup requires `items` or at least one item entry",
+        ));
+    }
+    let mut style = parse_variant_props(BuiltinComponent::AvatarGroup, &style_props)?;
+    require_solid_or_soft(BuiltinComponent::AvatarGroup, style.variant)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::AvatarGroup {
+        props: AvatarGroupProps {
+            style,
+            items: source,
+            size,
+            max,
+            auto_fit,
+            inline,
+            bordered,
+        },
+        items,
+    })
+}
+
+pub fn chat_box_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut messages = None;
+    let mut mode = ChatBoxMode::Conversation;
+    let mut current_user_id = String::new();
+    let mut user_name = String::new();
+    let mut user_avatar = None;
+    let mut user_status = "Online".to_string();
+    let mut assistant_name = "Assistant".to_string();
+    let mut assistant_avatar = None;
+    let mut show_header = true;
+    let mut placeholder = "Type a message...".to_string();
+    let mut show_attachments = true;
+    let mut show_voice_note = true;
+    let mut show_camera = false;
+    let mut loading = None;
+    let mut sending = None;
+    let mut streaming = None;
+    let mut has_more = None;
+    let mut on_send = None;
+    let mut on_load_more = None;
+    let mut on_stop = None;
+    let mut on_voice_note = None;
+    let mut on_file_attach = None;
+    let mut on_camera_capture = None;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "messages" => {
+                messages = Some(parse_signal_path(&prop.name, &prop.value, "signal array path")?)
+            }
+            "mode" => mode = parse_chat_box_mode(&prop.name, &prop.value)?,
+            "currentUserId" => current_user_id = parse_static_string(&prop.name, &prop.value)?,
+            "userName" => user_name = parse_static_string(&prop.name, &prop.value)?,
+            "userAvatar" => user_avatar = Some(parse_avatar_src(&prop.name, &prop.value)?),
+            "userStatus" => user_status = parse_static_string(&prop.name, &prop.value)?,
+            "assistantName" => assistant_name = parse_static_string(&prop.name, &prop.value)?,
+            "assistantAvatar" => assistant_avatar = Some(parse_avatar_src(&prop.name, &prop.value)?),
+            "showHeader" => show_header = parse_static_bool(&prop.name, &prop.value)?,
+            "placeholder" => placeholder = parse_static_string(&prop.name, &prop.value)?,
+            "showAttachments" => show_attachments = parse_static_bool(&prop.name, &prop.value)?,
+            "showVoiceNote" => show_voice_note = parse_static_bool(&prop.name, &prop.value)?,
+            "showCamera" => show_camera = parse_static_bool(&prop.name, &prop.value)?,
+            "loading" => loading = Some(parse_signal_path(&prop.name, &prop.value, "signal bool path")?),
+            "sending" => sending = Some(parse_signal_path(&prop.name, &prop.value, "signal bool path")?),
+            "streaming" => streaming = Some(parse_signal_path(&prop.name, &prop.value, "signal bool path")?),
+            "hasMore" => has_more = Some(parse_signal_path(&prop.name, &prop.value, "signal bool path")?),
+            "onSend" => on_send = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onLoadMore" => on_load_more = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onStop" => on_stop = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onVoiceNote" => on_voice_note = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onFileAttach" => on_file_attach = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onCameraCapture" => on_camera_capture = Some(parse_required_string(&prop.name, &prop.value)?),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::ChatBox)),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::ChatBox, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::ChatBox {
+        props: ChatBoxProps {
+            style,
+            messages: messages.ok_or_else(|| ComponentError::invalid_prop("messages", "signal array path"))?,
+            mode,
+            current_user_id,
+            user_name,
+            user_avatar,
+            user_status,
+            assistant_name,
+            assistant_avatar,
+            show_header,
+            placeholder,
+            show_attachments,
+            show_voice_note,
+            show_camera,
+            loading,
+            sending,
+            streaming,
+            has_more,
+            on_send,
+            on_load_more,
+            on_stop,
+            on_voice_note,
+            on_file_attach,
+            on_camera_capture,
+        },
+    })
+}
+
+pub fn empty_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut kind = EmptyKind::Template;
+    let mut title = None;
+    let mut description = None;
+    let mut action_label = "View more".to_string();
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "type" => kind = parse_empty_kind(&prop.name, &prop.value)?,
+            "title" => title = Some(parse_static_string(&prop.name, &prop.value)?),
+            "description" => description = Some(parse_static_string(&prop.name, &prop.value)?),
+            "actionLabel" => action_label = parse_static_string(&prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Empty)),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Empty, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Soft);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::Empty {
+        props: EmptyProps {
+            style,
+            kind,
+            title,
+            description,
+            action_label,
+        },
+    })
+}
+
+pub fn marquee_component_node(
+    props: Vec<ComponentProp>,
+    children: Vec<ViewNode>,
+    allow_children: bool,
+) -> ComponentResult<ViewNode> {
+    if children.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(
+            "Marquee requires at least one child",
+        ));
+    }
+    reject_children_placeholder(BuiltinComponent::Marquee, &children, allow_children)?;
+    let mut speed = MarqueeSpeed::Normal;
+    let mut pause_on_hover = false;
+    let mut reverse = false;
+    let mut orientation = MarqueeOrientation::Horizontal;
+    let mut fade = false;
+    let mut fade_color = ColorToken::Background;
+    let mut gap = ScaleValue::from_half_steps(0);
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "speed" => speed = parse_marquee_speed(&prop.name, &prop.value)?,
+            "pauseOnHover" => pause_on_hover = parse_static_bool(&prop.name, &prop.value)?,
+            "reverse" => reverse = parse_static_bool(&prop.name, &prop.value)?,
+            "orientation" => orientation = parse_marquee_orientation(&prop.name, &prop.value)?,
+            "fade" => fade = parse_static_bool(&prop.name, &prop.value)?,
+            "fadeColor" => fade_color = parse_single_color_token(&prop.name, &prop.value)?,
+            "gap" => gap = parse_static_scale(&prop.name, &prop.value)?,
+            _ => style_props.push(prop),
+        }
+    }
+    Ok(ViewNode::Marquee {
+        props: MarqueeProps {
+            style: parse_style_props(
+                BuiltinComponent::Marquee,
+                &style_props,
+                StylePropMode::Variant,
+            )?,
+            speed,
+            pause_on_hover,
+            reverse,
+            orientation,
+            fade,
+            fade_color,
+            gap,
+        },
+        children,
+    })
+}
+
+pub fn type_writer_item_component(props: Vec<ComponentProp>) -> ComponentResult<TypeWriterItem> {
+    let mut text = None;
+    for prop in props {
+        match prop.name.as_str() {
+            "text" => text = Some(parse_required_string(&prop.name, &prop.value)?),
+            _ => return Err(ComponentError::unknown_prop(BuiltinComponent::TypeWriter, &prop.name)),
+        }
+    }
+    Ok(TypeWriterItem {
+        text: text.ok_or_else(|| ComponentError::invalid_prop("text", "non-empty string"))?,
+    })
+}
+
+pub fn type_writer_component_node(
+    props: Vec<ComponentProp>,
+    items: Vec<TypeWriterItem>,
+) -> ComponentResult<ViewNode> {
+    if items.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(
+            "TypeWriter requires at least one item",
+        ));
+    }
+    let mut type_speed = 100;
+    let mut delete_speed = 50;
+    let mut after_typed = 1000;
+    let mut after_deleted = 500;
+    let mut repeat = true;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "typeSpeed" => type_speed = parse_positive_u64(&prop.name, &prop.value)?,
+            "deleteSpeed" => delete_speed = parse_positive_u64(&prop.name, &prop.value)?,
+            "afterTyped" => after_typed = parse_non_negative_u64(&prop.name, &prop.value)?,
+            "afterDeleted" => after_deleted = parse_non_negative_u64(&prop.name, &prop.value)?,
+            "repeat" => repeat = parse_static_bool(&prop.name, &prop.value)?,
+            _ => style_props.push(prop),
+        }
+    }
+    Ok(ViewNode::TypeWriter {
+        props: TypeWriterProps {
+            style: parse_style_props(
+                BuiltinComponent::TypeWriter,
+                &style_props,
+                StylePropMode::Text,
+            )?,
+            type_speed,
+            delete_speed,
+            after_typed,
+            after_deleted,
+            repeat,
+        },
+        items,
+    })
+}
+
+pub fn rich_text_mark_component(props: Vec<ComponentProp>) -> ComponentResult<RichTextMark> {
+    let mut text = None;
+    let mut style = RichTextMarkStyle::Mark;
+    let mut color = ColorFamily::Info;
+    for prop in props {
+        match prop.name.as_str() {
+            "text" => text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "style" => style = parse_rich_text_mark_style(&prop.name, &prop.value)?,
+            "scheme" => color = parse_family_prop(BuiltinComponent::RichText, &prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::RichText)),
+            _ => return Err(ComponentError::unknown_prop(BuiltinComponent::RichText, &prop.name)),
+        }
+    }
+    Ok(RichTextMark {
+        text: text.ok_or_else(|| ComponentError::invalid_prop("text", "non-empty string"))?,
+        style,
+        color,
+    })
+}
+
+pub fn rich_text_component_node(
+    props: Vec<ComponentProp>,
+    marks: Vec<RichTextMark>,
+) -> ComponentResult<ViewNode> {
+    if marks.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(
+            "RichText requires at least one mark entry",
+        ));
+    }
+    Ok(ViewNode::RichText {
+        props: parse_text_props(BuiltinComponent::RichText, &props)?,
+        marks,
+    })
+}
+
+pub fn record_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut name = None;
+    let mut url = None;
+    let mut disabled = false;
+    let mut max_duration = None;
+    let mut on_start = None;
+    let mut on_pause = None;
+    let mut on_resume = None;
+    let mut on_stop = None;
+    let mut on_discard = None;
+    let mut on_confirm = None;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
+            "url" => url = Some(parse_media_source(&prop.name, &prop.value)?),
+            "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            "maxDuration" => max_duration = Some(parse_positive_u16(&prop.name, &prop.value)?),
+            "onStart" => on_start = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onPause" => on_pause = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onResume" => on_resume = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onStop" => on_stop = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onDiscard" => on_discard = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onConfirm" => on_confirm = Some(parse_required_string(&prop.name, &prop.value)?),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Record)),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Record, &style_props)?;
+    require_solid_or_soft(BuiltinComponent::Record, style.variant)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::Record {
+        props: RecordProps {
+            style,
+            name: name.ok_or_else(|| ComponentError::invalid_prop("name", "non-empty string"))?,
+            url,
+            disabled,
+            max_duration,
+            on_start,
+            on_pause,
+            on_resume,
+            on_stop,
+            on_discard,
+            on_confirm,
+        },
+    })
+}
+
+pub fn toggle_group_item_component(
+    props: Vec<ComponentProp>,
+) -> ComponentResult<ToggleGroupItem> {
+    let mut id = None;
+    let mut label = None;
+    let mut icon = None;
+    for prop in props {
+        match prop.name.as_str() {
+            "id" => id = Some(parse_static_string_or_number(&prop.name, &prop.value)?),
+            "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
+            "icon" => icon = Some(parse_view_icon(&prop.name, &prop.value)?),
+            _ => return Err(ComponentError::unknown_prop(BuiltinComponent::ToggleGroup, &prop.name)),
+        }
+    }
+    Ok(ToggleGroupItem {
+        id: id.ok_or_else(|| ComponentError::invalid_prop("id", "static string or number"))?,
+        label: label.ok_or_else(|| ComponentError::invalid_prop("label", "non-empty string"))?,
+        icon,
+    })
+}
+
+pub fn toggle_group_component_node(
+    props: Vec<ComponentProp>,
+    items: Vec<ToggleGroupItem>,
+) -> ComponentResult<ViewNode> {
+    if items.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(
+            "ToggleGroup requires at least one item",
+        ));
+    }
+    let mut seen = BTreeSet::new();
+    for item in &items {
+        if !seen.insert(item.id.clone()) {
+            return Err(ComponentError::invalid_prop_combination(format!(
+                "duplicate ToggleGroup item id `{}`",
+                item.id
+            )));
+        }
+    }
+    let mut value = None;
+    let mut selected = None;
+    let mut size = ButtonSize::Md;
+    let mut wide = false;
+    let mut vertical = false;
+    let mut disabled = false;
+    let mut aria_label = None;
+    let mut on_change = None;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "value" => value = Some(parse_signal_path(
+                &prop.name,
+                &prop.value,
+                "signal string path",
+            )?),
+            "selected" => selected = Some(parse_static_string_or_number(&prop.name, &prop.value)?),
+            "size" => size = parse_button_size_prop(&prop.name, &prop.value)?,
+            "wide" => wide = parse_static_bool(&prop.name, &prop.value)?,
+            "vertical" => vertical = parse_static_bool(&prop.name, &prop.value)?,
+            "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            "ariaLabel" => aria_label = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onChange" => on_change = Some(parse_required_string(&prop.name, &prop.value)?),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::ToggleGroup)),
+            _ => style_props.push(prop),
+        }
+    }
+    let selected = selected.unwrap_or_else(|| items[0].id.clone());
+    if !items.iter().any(|item| item.id == selected) {
+        return Err(ComponentError::invalid_prop_combination(format!(
+            "ToggleGroup selected value `{}` must match an item id",
+            selected
+        )));
+    }
+    let mut style = parse_variant_props(BuiltinComponent::ToggleGroup, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Muted);
+    Ok(ViewNode::ToggleGroup {
+        props: ToggleGroupProps {
+            style,
+            value,
+            selected,
+            size,
+            wide,
+            vertical,
+            disabled,
+            aria_label,
+            on_change,
+        },
+        items,
+    })
+}
+
+pub fn collapsible_component_node(
+    props: Vec<ComponentProp>,
+    children: Vec<ViewNode>,
+    allow_children: bool,
+) -> ComponentResult<ViewNode> {
+    reject_children_placeholder(BuiltinComponent::Collapsible, &children, allow_children)?;
+    if children.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(
+            "Collapsible requires body children",
+        ));
+    }
+    let mut label = None;
+    let mut default_open = false;
+    let mut disabled = false;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
+            "defaultOpen" => default_open = parse_static_bool(&prop.name, &prop.value)?,
+            "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Collapsible)),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Collapsible, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Background);
+    Ok(ViewNode::Collapsible {
+        props: CollapsibleProps {
+            style,
+            label: label.ok_or_else(|| ComponentError::invalid_prop("label", "non-empty string"))?,
+            default_open,
+            disabled,
+        },
+        children,
+    })
+}
+
+pub fn countdown_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut target = None;
+    let mut show_days = true;
+    let mut show_hours = true;
+    let mut show_minutes = true;
+    let mut show_seconds = true;
+    let mut size = CountdownSize::Md;
+    let mut days_label = "Days".to_string();
+    let mut hours_label = "Hours".to_string();
+    let mut minutes_label = "Minutes".to_string();
+    let mut seconds_label = "Seconds".to_string();
+    let mut on_complete = None;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "target" => target = Some(parse_required_string(&prop.name, &prop.value)?),
+            "showDays" => show_days = parse_static_bool(&prop.name, &prop.value)?,
+            "showHours" => show_hours = parse_static_bool(&prop.name, &prop.value)?,
+            "showMinutes" => show_minutes = parse_static_bool(&prop.name, &prop.value)?,
+            "showSeconds" => show_seconds = parse_static_bool(&prop.name, &prop.value)?,
+            "size" => size = parse_countdown_size(&prop.name, &prop.value)?,
+            "daysLabel" => days_label = parse_required_string(&prop.name, &prop.value)?,
+            "hoursLabel" => hours_label = parse_required_string(&prop.name, &prop.value)?,
+            "minutesLabel" => minutes_label = parse_required_string(&prop.name, &prop.value)?,
+            "secondsLabel" => seconds_label = parse_required_string(&prop.name, &prop.value)?,
+            "onComplete" => on_complete = Some(parse_required_string(&prop.name, &prop.value)?),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Countdown)),
+            _ => style_props.push(prop),
+        }
+    }
+    if !show_days && !show_hours && !show_minutes && !show_seconds {
+        return Err(ComponentError::invalid_prop_combination(
+            "Countdown must show at least one unit",
+        ));
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Countdown, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::Countdown {
+        props: CountdownProps {
+            style,
+            target: target.ok_or_else(|| ComponentError::invalid_prop("target", "date string"))?,
+            show_days,
+            show_hours,
+            show_minutes,
+            show_seconds,
+            size,
+            days_label,
+            hours_label,
+            minutes_label,
+            seconds_label,
+            on_complete,
+        },
+    })
+}
+
+pub fn map_marker_component(props: Vec<ComponentProp>) -> ComponentResult<MapMarker> {
+    let mut id = None;
+    let mut lat = None;
+    let mut lng = None;
+    let mut label = None;
+    let mut popup = None;
+    let mut icon = MapMarkerIcon::Default;
+    let mut on_click = None;
+    for prop in props {
+        match prop.name.as_str() {
+            "id" => id = Some(parse_static_string_or_number(&prop.name, &prop.value)?),
+            "lat" => lat = Some(parse_number_literal(&prop.name, &prop.value)?),
+            "lng" => lng = Some(parse_number_literal(&prop.name, &prop.value)?),
+            "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
+            "popup" => popup = Some(parse_required_string(&prop.name, &prop.value)?),
+            "icon" => icon = parse_map_marker_icon(&prop.name, &prop.value)?,
+            "onClick" => on_click = Some(parse_required_string(&prop.name, &prop.value)?),
+            _ => return Err(ComponentError::unknown_prop(BuiltinComponent::Map, &prop.name)),
+        }
+    }
+    Ok(MapMarker {
+        id: id.ok_or_else(|| ComponentError::invalid_prop("id", "static string or number"))?,
+        lat: lat.ok_or_else(|| ComponentError::invalid_prop("lat", "number"))?,
+        lng: lng.ok_or_else(|| ComponentError::invalid_prop("lng", "number"))?,
+        label,
+        popup,
+        icon,
+        on_click,
+    })
+}
+
+pub fn map_waypoint_component(props: Vec<ComponentProp>) -> ComponentResult<MapWaypoint> {
+    let mut lat = None;
+    let mut lng = None;
+    for prop in props {
+        match prop.name.as_str() {
+            "lat" => lat = Some(parse_number_literal(&prop.name, &prop.value)?),
+            "lng" => lng = Some(parse_number_literal(&prop.name, &prop.value)?),
+            _ => return Err(ComponentError::unknown_prop(BuiltinComponent::Map, &prop.name)),
+        }
+    }
+    Ok(MapWaypoint {
+        lat: lat.ok_or_else(|| ComponentError::invalid_prop("lat", "number"))?,
+        lng: lng.ok_or_else(|| ComponentError::invalid_prop("lng", "number"))?,
+    })
+}
+
+pub fn map_component_node(
+    props: Vec<ComponentProp>,
+    markers: Vec<MapMarker>,
+    waypoints: Vec<MapWaypoint>,
+) -> ComponentResult<ViewNode> {
+    let mut seen = BTreeSet::new();
+    for marker in &markers {
+        if !seen.insert(marker.id.clone()) {
+            return Err(ComponentError::invalid_prop_combination(format!(
+                "duplicate Map marker id `{}`",
+                marker.id
+            )));
+        }
+    }
+    let mut center_lat = "0".to_string();
+    let mut center_lng = "0".to_string();
+    let mut zoom = 13;
+    let mut height = "400px".to_string();
+    let mut width = "100%".to_string();
+    let mut show_controls = true;
+    let mut show_scale = false;
+    let mut show_location_control = false;
+    let mut interactive = true;
+    let mut route_start_lat = None;
+    let mut route_start_lng = None;
+    let mut route_end_lat = None;
+    let mut route_end_lng = None;
+    let mut on_location = None;
+    let mut on_location_error = None;
+    let mut on_route = None;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "centerLat" => center_lat = parse_number_literal(&prop.name, &prop.value)?,
+            "centerLng" => center_lng = parse_number_literal(&prop.name, &prop.value)?,
+            "zoom" => zoom = parse_non_negative_u16(&prop.name, &prop.value)?,
+            "height" => height = parse_required_string(&prop.name, &prop.value)?,
+            "width" => width = parse_required_string(&prop.name, &prop.value)?,
+            "showControls" => show_controls = parse_static_bool(&prop.name, &prop.value)?,
+            "showScale" => show_scale = parse_static_bool(&prop.name, &prop.value)?,
+            "showLocationControl" => {
+                show_location_control = parse_static_bool(&prop.name, &prop.value)?
+            }
+            "interactive" => interactive = parse_static_bool(&prop.name, &prop.value)?,
+            "routeStartLat" => route_start_lat = Some(parse_number_literal(&prop.name, &prop.value)?),
+            "routeStartLng" => route_start_lng = Some(parse_number_literal(&prop.name, &prop.value)?),
+            "routeEndLat" => route_end_lat = Some(parse_number_literal(&prop.name, &prop.value)?),
+            "routeEndLng" => route_end_lng = Some(parse_number_literal(&prop.name, &prop.value)?),
+            "onLocation" => on_location = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onLocationError" => {
+                on_location_error = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
+            "onRoute" => on_route = Some(parse_required_string(&prop.name, &prop.value)?),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Map)),
+            _ => style_props.push(prop),
+        }
+    }
+    let route_count = [
+        route_start_lat.is_some(),
+        route_start_lng.is_some(),
+        route_end_lat.is_some(),
+        route_end_lng.is_some(),
+    ]
+    .into_iter()
+    .filter(|value| *value)
+    .count();
+    if route_count != 0 && route_count != 4 {
+        return Err(ComponentError::invalid_prop_combination(
+            "Map route requires routeStartLat, routeStartLng, routeEndLat and routeEndLng",
+        ));
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Map, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::Map {
+        props: MapProps {
+            style,
+            center_lat,
+            center_lng,
+            zoom,
+            height,
+            width,
+            show_controls,
+            show_scale,
+            show_location_control,
+            interactive,
+            route_start_lat,
+            route_start_lng,
+            route_end_lat,
+            route_end_lng,
+            on_location,
+            on_location_error,
+            on_route,
+        },
+        markers,
+        waypoints,
+    })
+}
+
 pub fn overlay_item_component(
     owner: BuiltinComponent,
     props: Vec<ComponentProp>,
@@ -1832,6 +2779,33 @@ fn parse_image_loading(name: &str, value: &PropValue) -> ComponentResult<ImageLo
         .ok_or_else(|| ComponentError::invalid_prop(name, "lazy or eager"))
 }
 
+fn parse_chat_box_mode(name: &str, value: &PropValue) -> ComponentResult<ChatBoxMode> {
+    let value = parse_required_string(name, value)?;
+    ChatBoxMode::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "conversation or prompt"))
+}
+
+fn parse_empty_kind(name: &str, value: &PropValue) -> ComponentResult<EmptyKind> {
+    let value = parse_required_string(name, value)?;
+    EmptyKind::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "playlist, result, data or template"))
+}
+
+fn parse_marquee_speed(name: &str, value: &PropValue) -> ComponentResult<MarqueeSpeed> {
+    let value = parse_required_string(name, value)?;
+    MarqueeSpeed::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "slow, normal or fast"))
+}
+
+fn parse_marquee_orientation(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<MarqueeOrientation> {
+    let value = parse_required_string(name, value)?;
+    MarqueeOrientation::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "horizontal or vertical"))
+}
+
 fn parse_carousel_orientation(
     name: &str,
     value: &PropValue,
@@ -1850,11 +2824,134 @@ fn parse_carousel_indicator(
         .ok_or_else(|| ComponentError::invalid_prop(name, "bar or dot"))
 }
 
+fn parse_rich_text_mark_style(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<RichTextMarkStyle> {
+    let value = parse_required_string(name, value)?;
+    RichTextMarkStyle::from_name(&value).ok_or_else(|| {
+        ComponentError::invalid_prop(
+            name,
+            "mark, grad, pill, slant, glow, under, strike, box, wave, neon, pop or tag",
+        )
+    })
+}
+
+fn parse_countdown_size(name: &str, value: &PropValue) -> ComponentResult<CountdownSize> {
+    let value = parse_required_string(name, value)?;
+    CountdownSize::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "sm, md, lg or xl"))
+}
+
+fn parse_map_marker_icon(name: &str, value: &PropValue) -> ComponentResult<MapMarkerIcon> {
+    let value = parse_required_string(name, value)?;
+    MapMarkerIcon::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "default, start, end or waypoint"))
+}
+
 fn parse_control_size_prop(name: &str, value: &PropValue) -> ComponentResult<ButtonSize> {
     let size = parse_button_size_prop(name, value)?;
     match size {
         ButtonSize::Sm | ButtonSize::Md | ButtonSize::Lg => Ok(size),
         ButtonSize::Xs | ButtonSize::Xl => Err(ComponentError::invalid_prop(name, "sm, md or lg")),
+    }
+}
+
+fn parse_view_icon(name: &str, value: &PropValue) -> ComponentResult<ViewIcon> {
+    let value = parse_required_string(name, value)?;
+    ViewIcon::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "plus, link, edit, trash, search, settings, upload, file or dismiss"))
+}
+
+fn parse_static_scale(name: &str, value: &PropValue) -> ComponentResult<ScaleValue> {
+    match value {
+        PropValue::Number(value) => scale_value(value)
+            .ok_or_else(|| ComponentError::invalid_prop(name, "Dowe scale value from 0 to 96")),
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+            Err(ComponentError::invalid_prop(name, "Dowe scale value from 0 to 96"))
+        }
+    }
+}
+
+fn parse_number_literal(name: &str, value: &PropValue) -> ComponentResult<String> {
+    match value {
+        PropValue::Number(value) if value.parse::<f64>().is_ok() => Ok(value.clone()),
+        PropValue::String(_) | PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+            Err(ComponentError::invalid_prop(name, "number"))
+        }
+    }
+}
+
+fn parse_positive_number_literal(name: &str, value: &PropValue) -> ComponentResult<String> {
+    let value = parse_number_literal(name, value)?;
+    if value.parse::<f64>().ok().is_some_and(|value| value > 0.0) {
+        Ok(value)
+    } else {
+        Err(ComponentError::invalid_prop(name, "positive number"))
+    }
+}
+
+fn parse_positive_u64(name: &str, value: &PropValue) -> ComponentResult<u64> {
+    match value {
+        PropValue::Number(value) => value
+            .parse::<u64>()
+            .ok()
+            .filter(|value| *value > 0)
+            .ok_or_else(|| ComponentError::invalid_prop(name, "positive integer")),
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+            Err(ComponentError::invalid_prop(name, "positive integer"))
+        }
+    }
+}
+
+fn parse_non_negative_u64(name: &str, value: &PropValue) -> ComponentResult<u64> {
+    match value {
+        PropValue::Number(value) => value
+            .parse::<u64>()
+            .ok()
+            .ok_or_else(|| ComponentError::invalid_prop(name, "non-negative integer")),
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+            Err(ComponentError::invalid_prop(name, "non-negative integer"))
+        }
+    }
+}
+
+fn parse_single_color_token(name: &str, value: &PropValue) -> ComponentResult<ColorToken> {
+    let value = parse_required_string(name, value)?;
+    ColorToken::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "color token"))
+}
+
+fn validate_slider_range(min: &str, max: &str, value: &str) -> ComponentResult<()> {
+    let min_value = min.parse::<f64>().map_err(|_| ComponentError::invalid_prop("min", "number"))?;
+    let max_value = max.parse::<f64>().map_err(|_| ComponentError::invalid_prop("max", "number"))?;
+    let current_value = value
+        .parse::<f64>()
+        .map_err(|_| ComponentError::invalid_prop("value", "number"))?;
+    if max_value <= min_value {
+        return Err(ComponentError::invalid_prop_combination(
+            "`max` must be greater than `min`",
+        ));
+    }
+    if current_value < min_value || current_value > max_value {
+        return Err(ComponentError::invalid_prop(
+            "value",
+            "number between min and max",
+        ));
+    }
+    Ok(())
+}
+
+fn apply_icon_button_size_defaults(style: &mut StyleProps, size: ButtonSize) {
+    let value = SizeValue::Scale(size.min_height());
+    if style.sizing.w.is_none() {
+        style.sizing.w = Some(ResponsiveValue::scalar(value.clone()));
+    }
+    if style.sizing.h.is_none() {
+        style.sizing.h = Some(ResponsiveValue::scalar(value));
+    }
+    if style.rounded.is_none() {
+        style.rounded = Some(ResponsiveValue::scalar(RoundedSize::Full));
     }
 }
 
@@ -2330,6 +3427,58 @@ pub fn container_component_node(
         BuiltinComponent::Command => Err(ComponentError::invalid_prop_combination(
             "Command requires item or group entries",
         )),
+        BuiltinComponent::AvatarGroup => {
+            reject_children_placeholder(component, &children, allow_children)?;
+            if children.is_empty() {
+                avatar_group_component_node(props, Vec::new())
+            } else {
+                Err(ComponentError::invalid_prop_combination(
+                    "AvatarGroup only accepts item entries",
+                ))
+            }
+        }
+        BuiltinComponent::ChatBox => {
+            if children.is_empty() {
+                chat_box_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Empty => {
+            if children.is_empty() {
+                empty_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Marquee => marquee_component_node(props, children, allow_children),
+        BuiltinComponent::TypeWriter => Err(ComponentError::invalid_prop_combination(
+            "TypeWriter requires item entries",
+        )),
+        BuiltinComponent::RichText => Err(ComponentError::invalid_prop_combination(
+            "RichText requires mark entries",
+        )),
+        BuiltinComponent::Record => {
+            if children.is_empty() {
+                record_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::ToggleGroup => Err(ComponentError::invalid_prop_combination(
+            "ToggleGroup requires item entries",
+        )),
+        BuiltinComponent::Collapsible => collapsible_component_node(props, children, allow_children),
+        BuiltinComponent::Countdown => {
+            if children.is_empty() {
+                countdown_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Map => Err(ComponentError::invalid_prop_combination(
+            "Map only accepts marker and waypoint entries",
+        )),
         BuiltinComponent::Accordion => Err(ComponentError::invalid_prop_combination(
             "Accordion requires item entries",
         )),
@@ -2399,9 +3548,37 @@ pub fn container_component_node(
                 ))
             }
         }
+        BuiltinComponent::ToggleTheme => {
+            if children.is_empty() {
+                theme_toggle_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Fab => {
+            reject_children_placeholder(component, &children, allow_children)?;
+            fab_component_node(props, Vec::new())
+        }
+        BuiltinComponent::FabAction => Err(ComponentError::invalid_prop_combination(
+            "fabAction can only be used inside Fab",
+        )),
         BuiltinComponent::Input => {
             if children.is_empty() {
                 input_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Slider => {
+            if children.is_empty() {
+                slider_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Dropzone => {
+            if children.is_empty() {
+                dropzone_component_node(props)
             } else {
                 Err(ComponentError::children_not_allowed(component))
             }
@@ -2504,6 +3681,7 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
         | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
         | ViewNode::Button { children, .. } => children.iter().find_map(first_text),
         ViewNode::Modal {
             header,
@@ -2528,6 +3706,34 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .find_map(first_text)
             .or_else(|| entries.iter().find_map(overlay_entry_first_text)),
         ViewNode::Command { entries, .. } => entries.iter().find_map(command_entry_first_text),
+        ViewNode::AvatarGroup { items, .. } => items.iter().find_map(|item| {
+            item.name
+                .clone()
+                .or_else(|| item.alt.clone())
+                .or_else(|| item.src.clone())
+        }),
+        ViewNode::ChatBox { props } => Some(props.assistant_name.clone()),
+        ViewNode::Empty { props } => props
+            .title
+            .clone()
+            .or_else(|| props.description.clone())
+            .or_else(|| Some(props.action_label.clone())),
+        ViewNode::TypeWriter { items, .. } => items.first().map(|item| item.text.clone()),
+        ViewNode::RichText { marks, .. } => marks.first().map(|mark| mark.text.clone()),
+        ViewNode::Record { props } => props.style.label.clone().or_else(|| Some(props.name.clone())),
+        ViewNode::ToggleGroup { props, items } => props
+            .style
+            .label
+            .clone()
+            .or_else(|| items.first().map(|item| item.label.clone())),
+        ViewNode::Collapsible {
+            props, children, ..
+        } => Some(props.label.clone())
+            .or_else(|| children.iter().find_map(first_text)),
+        ViewNode::Countdown { props } => Some(props.target.clone()),
+        ViewNode::Map { markers, .. } => markers
+            .iter()
+            .find_map(|marker| marker.label.clone().or_else(|| marker.popup.clone())),
         ViewNode::Accordion { items, .. } => {
             items.iter().find_map(|item| Some(item.label.clone()))
         }
@@ -2592,6 +3798,14 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .clone()
             .or_else(|| options.first().map(|option| option.label.clone())),
         ViewNode::Toggle { props } => props.style.label.clone(),
+        ViewNode::ToggleTheme { props } => Some(props.dark_label.clone()),
+        ViewNode::Fab { props, actions } => props
+            .style
+            .label
+            .clone()
+            .or_else(|| actions.first().map(|action| action.label.clone())),
+        ViewNode::Slider { props } => props.style.label.clone(),
+        ViewNode::Dropzone { props } => props.style.label.clone(),
         ViewNode::Input { .. }
         | ViewNode::Select { .. }
         | ViewNode::Code { .. }
@@ -2614,6 +3828,21 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         | ViewNode::Button { props, .. }
         | ViewNode::Input { props }
         | ViewNode::Select { props, .. } => Some(&props.element),
+        ViewNode::AvatarGroup { props, .. } => Some(&props.style.element),
+        ViewNode::ChatBox { props } => Some(&props.style.element),
+        ViewNode::Empty { props } => Some(&props.style.element),
+        ViewNode::Marquee { props, .. } => Some(&props.style.element),
+        ViewNode::TypeWriter { props, .. } => Some(&props.style.element),
+        ViewNode::RichText { props, .. } => Some(&props.style.element),
+        ViewNode::Record { props } => Some(&props.style.element),
+        ViewNode::ToggleGroup { props, .. } => Some(&props.style.element),
+        ViewNode::Collapsible { props, .. } => Some(&props.style.element),
+        ViewNode::Countdown { props } => Some(&props.style.element),
+        ViewNode::Map { props, .. } => Some(&props.style.element),
+        ViewNode::ToggleTheme { props } => Some(&props.style.element),
+        ViewNode::Fab { props, .. } => Some(&props.style.element),
+        ViewNode::Slider { props } => Some(&props.style.element),
+        ViewNode::Dropzone { props } => Some(&props.style.element),
         ViewNode::Avatar { props, .. } => Some(&props.style.element),
         ViewNode::Badge { props, .. } => Some(&props.style.element),
         ViewNode::Chip { props, .. } => Some(&props.style.element),
@@ -2660,6 +3889,7 @@ pub fn navigation_action(node: &ViewNode) -> Option<&NavigationAction> {
     match node {
         ViewNode::Button { props, .. } => props.navigation.as_ref(),
         ViewNode::Avatar { props, .. } => props.style.navigation.as_ref(),
+        ViewNode::Empty { props } => props.style.navigation.as_ref(),
         _ => None,
     }
 }
@@ -2675,6 +3905,8 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
+        | ViewNode::Collapsible { children, .. }
         | ViewNode::Button { children, .. } => children,
         ViewNode::Modal { body, .. } => body,
         ViewNode::Tabs { .. }
@@ -2691,6 +3923,10 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Sidebar { .. }
         | ViewNode::Scaffold { .. } => &[],
         ViewNode::Input { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
@@ -2701,6 +3937,14 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
         | ViewNode::Avatar { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
         | ViewNode::Chip { .. }
         | ViewNode::Checkbox { .. }
         | ViewNode::Color { .. }
@@ -2713,6 +3957,7 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Svg { .. }
         | ViewNode::Title { .. }
         | ViewNode::Text { .. }
+        | ViewNode::TypeWriter { .. }
         | ViewNode::Children => &[],
     }
 }
@@ -2751,11 +3996,12 @@ pub fn node_child_groups(node: &ViewNode) -> Vec<&[ViewNode]> {
             .iter()
             .map(|item| item.children.as_slice())
             .collect::<Vec<_>>(),
+        ViewNode::Collapsible { children, .. } => vec![children.as_slice()],
         ViewNode::Carousel { slides, .. } => slides
             .iter()
             .map(|slide| slide.children.as_slice())
             .collect::<Vec<_>>(),
-        ViewNode::RadioGroup { .. } => Vec::new(),
+        ViewNode::RadioGroup { .. } | ViewNode::ToggleGroup { .. } => Vec::new(),
         ViewNode::Scaffold {
             app_bar,
             start,

@@ -42,8 +42,21 @@ pub enum ViewNode {
         props: VariantProps,
         children: Vec<ViewNode>,
     },
+    ToggleTheme {
+        props: ThemeToggleProps,
+    },
+    Fab {
+        props: FabProps,
+        actions: Vec<FabAction>,
+    },
     Input {
         props: VariantProps,
+    },
+    Slider {
+        props: SliderProps,
+    },
+    Dropzone {
+        props: DropzoneProps,
     },
     Select {
         props: VariantProps,
@@ -166,6 +179,47 @@ pub enum ViewNode {
     Command {
         props: CommandProps,
         entries: Vec<CommandEntry>,
+    },
+    AvatarGroup {
+        props: AvatarGroupProps,
+        items: Vec<AvatarGroupItem>,
+    },
+    ChatBox {
+        props: ChatBoxProps,
+    },
+    Empty {
+        props: EmptyProps,
+    },
+    Marquee {
+        props: MarqueeProps,
+        children: Vec<ViewNode>,
+    },
+    TypeWriter {
+        props: TypeWriterProps,
+        items: Vec<TypeWriterItem>,
+    },
+    RichText {
+        props: TextProps,
+        marks: Vec<RichTextMark>,
+    },
+    Record {
+        props: RecordProps,
+    },
+    ToggleGroup {
+        props: ToggleGroupProps,
+        items: Vec<ToggleGroupItem>,
+    },
+    Collapsible {
+        props: CollapsibleProps,
+        children: Vec<ViewNode>,
+    },
+    Countdown {
+        props: CountdownProps,
+    },
+    Map {
+        props: MapProps,
+        markers: Vec<MapMarker>,
+        waypoints: Vec<MapWaypoint>,
     },
     Accordion {
         props: AccordionProps,
@@ -624,6 +678,326 @@ pub struct CommandProps {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AvatarGroupProps {
+    pub style: VariantProps,
+    pub items: Option<String>,
+    pub size: ButtonSize,
+    pub max: Option<u16>,
+    pub auto_fit: bool,
+    pub inline: bool,
+    pub bordered: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AvatarGroupItem {
+    pub src: Option<String>,
+    pub name: Option<String>,
+    pub alt: Option<String>,
+    pub on_click: Option<String>,
+    pub navigation: Option<NavigationAction>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChatBoxProps {
+    pub style: VariantProps,
+    pub messages: String,
+    pub mode: ChatBoxMode,
+    pub current_user_id: String,
+    pub user_name: String,
+    pub user_avatar: Option<String>,
+    pub user_status: String,
+    pub assistant_name: String,
+    pub assistant_avatar: Option<String>,
+    pub show_header: bool,
+    pub placeholder: String,
+    pub show_attachments: bool,
+    pub show_voice_note: bool,
+    pub show_camera: bool,
+    pub loading: Option<String>,
+    pub sending: Option<String>,
+    pub streaming: Option<String>,
+    pub has_more: Option<String>,
+    pub on_send: Option<String>,
+    pub on_load_more: Option<String>,
+    pub on_stop: Option<String>,
+    pub on_voice_note: Option<String>,
+    pub on_file_attach: Option<String>,
+    pub on_camera_capture: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EmptyProps {
+    pub style: VariantProps,
+    pub kind: EmptyKind,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub action_label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MarqueeProps {
+    pub style: StyleProps,
+    pub speed: MarqueeSpeed,
+    pub pause_on_hover: bool,
+    pub reverse: bool,
+    pub orientation: MarqueeOrientation,
+    pub fade: bool,
+    pub fade_color: ColorToken,
+    pub gap: ScaleValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeWriterProps {
+    pub style: StyleProps,
+    pub type_speed: u64,
+    pub delete_speed: u64,
+    pub after_typed: u64,
+    pub after_deleted: u64,
+    pub repeat: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeWriterItem {
+    pub text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RichTextMark {
+    pub text: String,
+    pub style: RichTextMarkStyle,
+    pub color: ColorFamily,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RichTextMarkStyle {
+    Mark,
+    Grad,
+    Pill,
+    Slant,
+    Glow,
+    Under,
+    Strike,
+    Box,
+    Wave,
+    Neon,
+    Pop,
+    Tag,
+}
+
+impl RichTextMarkStyle {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "mark" => Some(Self::Mark),
+            "grad" => Some(Self::Grad),
+            "pill" => Some(Self::Pill),
+            "slant" => Some(Self::Slant),
+            "glow" => Some(Self::Glow),
+            "under" => Some(Self::Under),
+            "strike" => Some(Self::Strike),
+            "box" => Some(Self::Box),
+            "wave" => Some(Self::Wave),
+            "neon" => Some(Self::Neon),
+            "pop" => Some(Self::Pop),
+            "tag" => Some(Self::Tag),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Mark => "mark",
+            Self::Grad => "grad",
+            Self::Pill => "pill",
+            Self::Slant => "slant",
+            Self::Glow => "glow",
+            Self::Under => "under",
+            Self::Strike => "strike",
+            Self::Box => "box",
+            Self::Wave => "wave",
+            Self::Neon => "neon",
+            Self::Pop => "pop",
+            Self::Tag => "tag",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Mark,
+            Self::Grad,
+            Self::Pill,
+            Self::Slant,
+            Self::Glow,
+            Self::Under,
+            Self::Strike,
+            Self::Box,
+            Self::Wave,
+            Self::Neon,
+            Self::Pop,
+            Self::Tag,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecordProps {
+    pub style: VariantProps,
+    pub name: String,
+    pub url: Option<String>,
+    pub disabled: bool,
+    pub max_duration: Option<u16>,
+    pub on_start: Option<String>,
+    pub on_pause: Option<String>,
+    pub on_resume: Option<String>,
+    pub on_stop: Option<String>,
+    pub on_discard: Option<String>,
+    pub on_confirm: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToggleGroupProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub selected: String,
+    pub size: ButtonSize,
+    pub wide: bool,
+    pub vertical: bool,
+    pub disabled: bool,
+    pub aria_label: Option<String>,
+    pub on_change: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToggleGroupItem {
+    pub id: String,
+    pub label: String,
+    pub icon: Option<ViewIcon>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollapsibleProps {
+    pub style: VariantProps,
+    pub label: String,
+    pub default_open: bool,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CountdownProps {
+    pub style: VariantProps,
+    pub target: String,
+    pub show_days: bool,
+    pub show_hours: bool,
+    pub show_minutes: bool,
+    pub show_seconds: bool,
+    pub size: CountdownSize,
+    pub days_label: String,
+    pub hours_label: String,
+    pub minutes_label: String,
+    pub seconds_label: String,
+    pub on_complete: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CountdownSize {
+    Sm,
+    Md,
+    Lg,
+    Xl,
+}
+
+impl CountdownSize {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Sm, Self::Md, Self::Lg, Self::Xl]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MapProps {
+    pub style: VariantProps,
+    pub center_lat: String,
+    pub center_lng: String,
+    pub zoom: u16,
+    pub height: String,
+    pub width: String,
+    pub show_controls: bool,
+    pub show_scale: bool,
+    pub show_location_control: bool,
+    pub interactive: bool,
+    pub route_start_lat: Option<String>,
+    pub route_start_lng: Option<String>,
+    pub route_end_lat: Option<String>,
+    pub route_end_lng: Option<String>,
+    pub on_location: Option<String>,
+    pub on_location_error: Option<String>,
+    pub on_route: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MapMarker {
+    pub id: String,
+    pub lat: String,
+    pub lng: String,
+    pub label: Option<String>,
+    pub popup: Option<String>,
+    pub icon: MapMarkerIcon,
+    pub on_click: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MapWaypoint {
+    pub lat: String,
+    pub lng: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MapMarkerIcon {
+    Default,
+    Start,
+    End,
+    Waypoint,
+}
+
+impl MapMarkerIcon {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "default" => Some(Self::Default),
+            "start" => Some(Self::Start),
+            "end" => Some(Self::End),
+            "waypoint" => Some(Self::Waypoint),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Start => "start",
+            Self::End => "end",
+            Self::Waypoint => "waypoint",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AudioProps {
     pub style: VariantProps,
     pub src: String,
@@ -756,6 +1130,58 @@ pub struct ToggleProps {
     pub name: Option<String>,
     pub label_left: Option<String>,
     pub label_right: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ThemeToggleProps {
+    pub style: VariantProps,
+    pub light_label: String,
+    pub dark_label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FabProps {
+    pub style: VariantProps,
+    pub position: OverlayCornerPosition,
+    pub fixed: bool,
+    pub offset_x: ScaleValue,
+    pub offset_y: ScaleValue,
+    pub icon: ViewIcon,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FabAction {
+    pub label: String,
+    pub icon: ViewIcon,
+    pub color: ColorFamily,
+    pub on_click: Option<String>,
+    pub navigation: Option<NavigationAction>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SliderProps {
+    pub style: VariantProps,
+    pub value: String,
+    pub min: String,
+    pub max: String,
+    pub step: Option<String>,
+    pub size: ButtonSize,
+    pub name: Option<String>,
+    pub hide_label: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DropzoneProps {
+    pub style: VariantProps,
+    pub accept: Option<String>,
+    pub multiple: bool,
+    pub max_size: Option<u64>,
+    pub size: ButtonSize,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+    pub disabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -959,6 +1385,72 @@ impl OverlayPosition {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewIcon {
+    Plus,
+    Link,
+    Edit,
+    Trash,
+    Search,
+    Settings,
+    Upload,
+    File,
+    Dismiss,
+    Moon,
+    Sun,
+}
+
+impl ViewIcon {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "plus" => Some(Self::Plus),
+            "link" => Some(Self::Link),
+            "edit" => Some(Self::Edit),
+            "trash" => Some(Self::Trash),
+            "search" => Some(Self::Search),
+            "settings" => Some(Self::Settings),
+            "upload" => Some(Self::Upload),
+            "file" => Some(Self::File),
+            "dismiss" => Some(Self::Dismiss),
+            "moon" => Some(Self::Moon),
+            "sun" => Some(Self::Sun),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Plus => "plus",
+            Self::Link => "link",
+            Self::Edit => "edit",
+            Self::Trash => "trash",
+            Self::Search => "search",
+            Self::Settings => "settings",
+            Self::Upload => "upload",
+            Self::File => "file",
+            Self::Dismiss => "dismiss",
+            Self::Moon => "moon",
+            Self::Sun => "sun",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Plus,
+            Self::Link,
+            Self::Edit,
+            Self::Trash,
+            Self::Search,
+            Self::Settings,
+            Self::Upload,
+            Self::File,
+            Self::Dismiss,
+            Self::Moon,
+            Self::Sun,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SkeletonVariant {
     Text,
     Circular,
@@ -1089,6 +1581,123 @@ impl ToastKind {
             Self::Danger,
             Self::Error,
         ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChatBoxMode {
+    Conversation,
+    Prompt,
+}
+
+impl ChatBoxMode {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "conversation" => Some(Self::Conversation),
+            "prompt" => Some(Self::Prompt),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Conversation => "conversation",
+            Self::Prompt => "prompt",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Conversation, Self::Prompt]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EmptyKind {
+    Playlist,
+    Result,
+    Data,
+    Template,
+}
+
+impl EmptyKind {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "playlist" => Some(Self::Playlist),
+            "result" => Some(Self::Result),
+            "data" => Some(Self::Data),
+            "template" => Some(Self::Template),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Playlist => "playlist",
+            Self::Result => "result",
+            Self::Data => "data",
+            Self::Template => "template",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Playlist, Self::Result, Self::Data, Self::Template]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarqueeSpeed {
+    Slow,
+    Normal,
+    Fast,
+}
+
+impl MarqueeSpeed {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "slow" => Some(Self::Slow),
+            "normal" => Some(Self::Normal),
+            "fast" => Some(Self::Fast),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Slow => "slow",
+            Self::Normal => "normal",
+            Self::Fast => "fast",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Slow, Self::Normal, Self::Fast]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarqueeOrientation {
+    Horizontal,
+    Vertical,
+}
+
+impl MarqueeOrientation {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "horizontal" => Some(Self::Horizontal),
+            "vertical" => Some(Self::Vertical),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Horizontal => "horizontal",
+            Self::Vertical => "vertical",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Horizontal, Self::Vertical]
     }
 }
 
@@ -1761,6 +2370,11 @@ pub enum BuiltinComponent {
     Table,
     Divider,
     Button,
+    ToggleTheme,
+    Fab,
+    FabAction,
+    Slider,
+    Dropzone,
     Alert,
     Svg,
     Path,
@@ -1782,6 +2396,17 @@ pub enum BuiltinComponent {
     Toast,
     Dropdown,
     Command,
+    AvatarGroup,
+    ChatBox,
+    Empty,
+    Marquee,
+    TypeWriter,
+    RichText,
+    Record,
+    ToggleGroup,
+    Collapsible,
+    Countdown,
+    Map,
     Audio,
     Image,
     Accordion,
@@ -1815,6 +2440,11 @@ impl BuiltinComponent {
             "Table" => Some(Self::Table),
             "Divider" => Some(Self::Divider),
             "Button" => Some(Self::Button),
+            "ToggleTheme" => Some(Self::ToggleTheme),
+            "Fab" => Some(Self::Fab),
+            "fabAction" => Some(Self::FabAction),
+            "Slider" => Some(Self::Slider),
+            "Dropzone" => Some(Self::Dropzone),
             "Alert" => Some(Self::Alert),
             "Svg" => Some(Self::Svg),
             "Path" => Some(Self::Path),
@@ -1836,6 +2466,17 @@ impl BuiltinComponent {
             "Toast" => Some(Self::Toast),
             "Dropdown" => Some(Self::Dropdown),
             "Command" => Some(Self::Command),
+            "AvatarGroup" => Some(Self::AvatarGroup),
+            "ChatBox" => Some(Self::ChatBox),
+            "Empty" => Some(Self::Empty),
+            "Marquee" => Some(Self::Marquee),
+            "TypeWriter" => Some(Self::TypeWriter),
+            "RichText" => Some(Self::RichText),
+            "Record" => Some(Self::Record),
+            "ToggleGroup" => Some(Self::ToggleGroup),
+            "Collapsible" => Some(Self::Collapsible),
+            "Countdown" => Some(Self::Countdown),
+            "Map" => Some(Self::Map),
             "Audio" => Some(Self::Audio),
             "Image" => Some(Self::Image),
             "Accordion" => Some(Self::Accordion),
@@ -1870,6 +2511,11 @@ impl BuiltinComponent {
             Self::Table => "Table",
             Self::Divider => "Divider",
             Self::Button => "Button",
+            Self::ToggleTheme => "ToggleTheme",
+            Self::Fab => "Fab",
+            Self::FabAction => "fabAction",
+            Self::Slider => "Slider",
+            Self::Dropzone => "Dropzone",
             Self::Alert => "Alert",
             Self::Svg => "Svg",
             Self::Path => "Path",
@@ -1891,6 +2537,17 @@ impl BuiltinComponent {
             Self::Toast => "Toast",
             Self::Dropdown => "Dropdown",
             Self::Command => "Command",
+            Self::AvatarGroup => "AvatarGroup",
+            Self::ChatBox => "ChatBox",
+            Self::Empty => "Empty",
+            Self::Marquee => "Marquee",
+            Self::TypeWriter => "TypeWriter",
+            Self::RichText => "RichText",
+            Self::Record => "Record",
+            Self::ToggleGroup => "ToggleGroup",
+            Self::Collapsible => "Collapsible",
+            Self::Countdown => "Countdown",
+            Self::Map => "Map",
             Self::Audio => "Audio",
             Self::Image => "Image",
             Self::Accordion => "Accordion",

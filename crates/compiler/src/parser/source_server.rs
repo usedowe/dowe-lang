@@ -1,10 +1,12 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    CorsConfig, DoweType, DoweTypeField, Endpoint, EndpointBehavior, EnvironmentConfig,
-    EnvironmentVisibility, HttpMethod, ServerAction, ServerConfig, ServerLog, ServerLogLevel,
-    ServerLogValue, ServerMiddleware, ServerMiddlewareAction, ServerMiddlewareResponseBody,
-    ServerMiddlewareStatement, ServerSecret, ServerStatement, StoreLiteral, WebSocketHandlers,
-    WebSocketRoute, normalize_http_header_name,
+    AgentChatTransform, AgentResponseEndpoint, CorsConfig, DoweType, DoweTypeField, Endpoint,
+    EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint,
+    HttpConnectionValue, HttpMethod, HttpProxyEndpoint, HttpResponseMode, OutboundHttpRequest,
+    ServerAction, ServerConfig, ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware,
+    ServerMiddlewareAction, ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerSecret,
+    ServerStatement, StoreLiteral, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
+    WebSocketSendJsonStatement, WebSocketSseBridgeStatement, normalize_http_header_name,
 };
 use crate::parser::source_ast::{
     SourceFile, SourceNode, SourceObjectEntry, SourceProp, SourceValue,
@@ -441,6 +443,15 @@ fn parse_method(
             middlewares: middlewares.to_vec(),
         });
     }
+    if let Some(behavior) = http_endpoint_behavior(node)? {
+        return Ok(Endpoint {
+            method,
+            path: path.to_string(),
+            behavior,
+            action,
+            middlewares: middlewares.to_vec(),
+        });
+    }
     let behavior = match method {
         HttpMethod::Get => EndpointBehavior::StaticText(
             return_text(node).unwrap_or_else(|| "List posts".to_string()),
@@ -510,6 +521,17 @@ fn parse_action(
                 if let Some(statement) = parse_request_json_let(child, context, types)? {
                     infer_request_json_statement(&statement, &mut inferred_bindings);
                     statements.push(statement);
+                } else if let Some(statement) = parse_websocket_json_let(child, context)? {
+                    infer_websocket_json_statement(&statement, &mut inferred_bindings);
+                    statements.push(ServerStatement::WebSocketJson(statement));
+                } else if let Some(statement) = parse_agent_chat_let(child)? {
+                    validate_reference_path(child, &statement.source, &inferred_bindings)?;
+                    infer_agent_chat_statement(&statement, &mut inferred_bindings);
+                    statements.push(ServerStatement::AgentChat(statement));
+                } else if let Some(statement) = parse_http_let(child, context, environment)? {
+                    validate_http_statement_references(child, &statement, &inferred_bindings)?;
+                    infer_http_statement(&statement, &mut inferred_bindings);
+                    statements.push(ServerStatement::Http(statement));
                 } else if let Some(statement) = parse_store_let(child, Some(environment))? {
                     validate_store_statement_references(child, &statement, &inferred_bindings)?;
                     infer_store_statement(&statement, &mut inferred_bindings, &mut inferred_tables);
@@ -531,6 +553,16 @@ fn parse_action(
                 let log = parse_log(child)?;
                 validate_log_references(child, &log, &inferred_bindings)?;
                 statements.push(ServerStatement::Log(log));
+            }
+            "send" => {
+                let statement = parse_websocket_send_json(child, context)?;
+                validate_store_literal_references(child, &statement.value, &inferred_bindings)?;
+                statements.push(ServerStatement::WebSocketSendJson(statement));
+            }
+            "bridge" => {
+                let statement = parse_websocket_sse_bridge(child, context)?;
+                validate_websocket_sse_bridge_references(child, &statement, &inferred_bindings)?;
+                statements.push(ServerStatement::WebSocketSseBridge(statement));
             }
             "if" => {
                 return Err(node_error(
@@ -786,13 +818,68 @@ fn infer_request_json_statement(
     statement: &ServerStatement,
     bindings: &mut HashMap<String, DoweType>,
 ) {
-    if let ServerStatement::RequestJson {
-        binding,
-        schema: Some(schema),
-    } = statement
-    {
-        bindings.insert(binding.clone(), schema.clone());
+    if let ServerStatement::RequestJson { binding, schema } = statement {
+        bindings.insert(binding.clone(), schema.clone().unwrap_or(DoweType::Unknown));
     }
+}
+
+fn infer_websocket_json_statement(
+    statement: &WebSocketJsonStatement,
+    bindings: &mut HashMap<String, DoweType>,
+) {
+    bindings.insert(statement.binding.clone(), DoweType::Unknown);
+}
+
+fn infer_agent_chat_statement(
+    statement: &AgentChatTransform,
+    bindings: &mut HashMap<String, DoweType>,
+) {
+    bindings.insert(statement.binding.clone(), DoweType::Unknown);
+}
+
+fn infer_http_statement(statement: &OutboundHttpRequest, bindings: &mut HashMap<String, DoweType>) {
+    bindings.insert(
+        statement.binding.clone(),
+        DoweType::Object(vec![
+            DoweTypeField {
+                name: "status".to_string(),
+                value: DoweType::Number,
+                optional: false,
+            },
+            DoweTypeField {
+                name: "contentType".to_string(),
+                value: DoweType::String,
+                optional: true,
+            },
+            DoweTypeField {
+                name: "json".to_string(),
+                value: DoweType::Unknown,
+                optional: true,
+            },
+        ]),
+    );
+}
+
+fn validate_http_statement_references(
+    node: &SourceNode,
+    statement: &OutboundHttpRequest,
+    bindings: &HashMap<String, DoweType>,
+) -> DoweResult<()> {
+    if let Some(json) = &statement.json {
+        validate_store_literal_references(node, json, bindings)?;
+    }
+    Ok(())
+}
+
+fn validate_websocket_sse_bridge_references(
+    node: &SourceNode,
+    statement: &WebSocketSseBridgeStatement,
+    bindings: &HashMap<String, DoweType>,
+) -> DoweResult<()> {
+    validate_reference_path(node, &statement.upstream, bindings)?;
+    validate_reference_path(node, &statement.request_id, bindings)?;
+    validate_reference_path(node, &statement.request_type, bindings)?;
+    validate_reference_path(node, &statement.model, bindings)
 }
 
 fn validate_store_statement_references(
@@ -884,6 +971,27 @@ fn validate_return_references(
     if let Some(json) = node.prop("json") {
         validate_source_value_references(node, &json.value, bindings)?;
     }
+    if let Some(proxy) = node.prop("proxy") {
+        let reference = proxy
+            .value
+            .as_string_like()
+            .ok_or_else(|| prop_error(proxy, "`proxy` must be a binding reference"))?;
+        validate_reference_path(node, &reference, bindings)?;
+    }
+    if let Some(agent) = node.prop("agent") {
+        let reference = agent
+            .value
+            .as_string_like()
+            .ok_or_else(|| prop_error(agent, "`agent` must be a binding reference"))?;
+        validate_reference_path(node, &reference, bindings)?;
+    }
+    if let Some(request) = node.prop("request") {
+        let reference = request
+            .value
+            .as_string_like()
+            .ok_or_else(|| prop_error(request, "`request` must be a binding reference"))?;
+        validate_reference_path(node, &reference, bindings)?;
+    }
     Ok(())
 }
 
@@ -972,6 +1080,168 @@ fn parse_request_json_let(
     Ok(Some(ServerStatement::RequestJson { binding, schema }))
 }
 
+fn parse_websocket_json_let(
+    node: &SourceNode,
+    context: ActionContext,
+) -> DoweResult<Option<WebSocketJsonStatement>> {
+    let Some((binding, expression)) = assignment(node) else {
+        return Ok(None);
+    };
+    if expression != "ws.json" {
+        return Ok(None);
+    }
+    if node.args.len() != 3 {
+        return Err(node_error(
+            node,
+            "`ws.json` does not accept positional values",
+        ));
+    }
+    if !matches!(context, ActionContext::WebSocket) {
+        return Err(node_error(
+            node,
+            "`ws.json` is only valid in WebSocket handlers",
+        ));
+    }
+    validate_binding_name(node, &binding)?;
+    reject_unknown_props(node, &[])?;
+    Ok(Some(WebSocketJsonStatement { binding }))
+}
+
+fn parse_agent_chat_let(node: &SourceNode) -> DoweResult<Option<AgentChatTransform>> {
+    let Some((binding, expression)) = assignment(node) else {
+        return Ok(None);
+    };
+    if expression != "agent.chat" {
+        return Ok(None);
+    }
+    if node.args.len() != 4 {
+        return Err(node_error(
+            node,
+            "`agent.chat` requires a source request binding",
+        ));
+    }
+    validate_binding_name(node, &binding)?;
+    reject_unknown_props(node, &[])?;
+    let source = node.args[3]
+        .as_string_like()
+        .ok_or_else(|| node_error(node, "`agent.chat` source must be a reference"))?;
+    Ok(Some(AgentChatTransform { binding, source }))
+}
+
+fn parse_http_let(
+    node: &SourceNode,
+    context: ActionContext,
+    environment: &EnvironmentConfig,
+) -> DoweResult<Option<OutboundHttpRequest>> {
+    let Some((binding, expression)) = assignment(node) else {
+        return Ok(None);
+    };
+    let method = match expression.as_str() {
+        "http.get" => HttpMethod::Get,
+        "http.post" => HttpMethod::Post,
+        _ => return Ok(None),
+    };
+    if node.args.len() != 3 {
+        return Err(node_error(
+            node,
+            "`http.get` and `http.post` only accept props",
+        ));
+    }
+    match context {
+        ActionContext::HttpHandler {
+            async_handler: true,
+            ..
+        }
+        | ActionContext::WebSocket => {}
+        ActionContext::HttpHandler { .. } => {
+            return Err(node_error(
+                node,
+                "`http.get` and `http.post` require an async request handler",
+            ));
+        }
+        ActionContext::Init => {
+            return Err(node_error(
+                node,
+                "`http.get` and `http.post` are not valid in server init",
+            ));
+        }
+    }
+    validate_binding_name(node, &binding)?;
+    reject_unknown_props(node, &["base", "path", "bearer", "json", "mode"])?;
+    let base = required_http_base_prop(node, environment)?;
+    let path = required_http_path_prop(node)?;
+    let bearer = if node.prop("bearer").is_some() {
+        Some(required_secret_prop(node, "bearer", environment)?)
+    } else {
+        None
+    };
+    let json = node
+        .prop("json")
+        .map(|prop| store_literal(&prop.value))
+        .transpose()?;
+    let mode = optional_http_mode_prop(node)?;
+    Ok(Some(OutboundHttpRequest {
+        binding,
+        method,
+        base,
+        path,
+        bearer,
+        json,
+        mode,
+    }))
+}
+
+fn parse_websocket_send_json(
+    node: &SourceNode,
+    context: ActionContext,
+) -> DoweResult<WebSocketSendJsonStatement> {
+    if !matches!(context, ActionContext::WebSocket) {
+        return Err(node_error(
+            node,
+            "`send ws` is only valid in WebSocket handlers",
+        ));
+    }
+    if node.args.len() != 1 || node.args[0].as_string_like().as_deref() != Some("ws") {
+        return Err(node_error(node, "`send` must target `ws`"));
+    }
+    reject_unknown_props(node, &["json"])?;
+    let value = required_store_literal_prop(node, "json")?;
+    Ok(WebSocketSendJsonStatement { value })
+}
+
+fn parse_websocket_sse_bridge(
+    node: &SourceNode,
+    context: ActionContext,
+) -> DoweResult<WebSocketSseBridgeStatement> {
+    if !matches!(context, ActionContext::WebSocket) {
+        return Err(node_error(
+            node,
+            "`bridge sse` is only valid in WebSocket handlers",
+        ));
+    }
+    if !node.args.is_empty() {
+        return Err(node_error(
+            node,
+            "`bridge` does not accept positional values",
+        ));
+    }
+    reject_unknown_props(node, &["sse", "to", "requestId", "requestType", "model"])?;
+    let upstream = required_reference_prop(node, "sse")?;
+    let target = node
+        .prop("to")
+        .and_then(|prop| prop.value.as_string_like())
+        .ok_or_else(|| node_error(node, "`bridge` must declare `to:ws`"))?;
+    if target != "ws" {
+        return Err(node_error(node, "`bridge` only supports `to:ws`"));
+    }
+    Ok(WebSocketSseBridgeStatement {
+        upstream,
+        request_id: required_reference_prop(node, "requestId")?,
+        request_type: required_reference_prop(node, "requestType")?,
+        model: required_reference_prop(node, "model")?,
+    })
+}
+
 fn parse_binding_type(
     node: &SourceNode,
     value: &str,
@@ -1033,11 +1303,24 @@ fn validate_return(node: &SourceNode, context: ActionContext) -> DoweResult<()> 
     {
         return Err(node_error(node, "return must produce a response"));
     }
-    if node.prop("text").is_none() && node.prop("json").is_none() {
-        return Err(node_error(node, "response must declare text or json"));
+    if node.prop("text").is_none()
+        && node.prop("json").is_none()
+        && node.prop("proxy").is_none()
+        && node.prop("agent").is_none()
+    {
+        return Err(node_error(
+            node,
+            "response must declare text, json, proxy, or agent",
+        ));
     }
     if let Some(prop) = node.prop("text") {
         required_static_string_prop(prop)?;
+    }
+    if node.prop("agent").is_some() && node.prop("request").is_none() {
+        return Err(node_error(
+            node,
+            "agent response must declare `request` binding",
+        ));
     }
     Ok(())
 }
@@ -1158,6 +1441,32 @@ fn required_text_prop(node: &SourceNode) -> DoweResult<String> {
     required_static_string_prop(prop)
 }
 
+fn http_endpoint_behavior(node: &SourceNode) -> DoweResult<Option<EndpointBehavior>> {
+    if let Some(binding) = return_reference_prop(node, "proxy")? {
+        return Ok(Some(EndpointBehavior::HttpProxy(HttpProxyEndpoint {
+            binding,
+        })));
+    }
+    if let Some(upstream) = return_reference_prop(node, "agent")? {
+        let request = return_reference_prop(node, "request")?
+            .ok_or_else(|| node_error(node, "agent response must declare `request` binding"))?;
+        return Ok(Some(EndpointBehavior::AgentResponse(
+            AgentResponseEndpoint { upstream, request },
+        )));
+    }
+    if let Some(value) = return_json_value(node) {
+        if !returns_created_json(node) {
+            return Ok(Some(EndpointBehavior::HttpActionJson(
+                HttpActionJsonEndpoint {
+                    status: return_status(node)?,
+                    value: store_literal(value)?,
+                },
+            )));
+        }
+    }
+    Ok(None)
+}
+
 fn handler_behavior(
     node: &SourceNode,
     path: &str,
@@ -1180,6 +1489,9 @@ fn handler_behavior(
     if let Some(behavior) =
         kv_action_endpoint_behavior(action, return_json_value(node), return_status(node)?)?
     {
+        return Ok(behavior);
+    }
+    if let Some(behavior) = http_endpoint_behavior(node)? {
         return Ok(behavior);
     }
     if return_text(node).is_some_and(|value| value.contains("req.context")) {
@@ -1219,6 +1531,9 @@ fn exported_handler_behavior(
     if let Some(behavior) =
         kv_action_endpoint_behavior(action, return_json_value(node), return_status(node)?)?
     {
+        return Ok(behavior);
+    }
+    if let Some(behavior) = http_endpoint_behavior(node)? {
         return Ok(behavior);
     }
     if let Some(text) = return_text(node)
@@ -1299,6 +1614,19 @@ fn return_json_value(node: &SourceNode) -> Option<&SourceValue> {
         .map(|prop| &prop.value)
 }
 
+fn return_reference_prop(node: &SourceNode, name: &str) -> DoweResult<Option<String>> {
+    node.children
+        .iter()
+        .find(|child| child.name == "return")
+        .and_then(|child| child.prop(name))
+        .map(|prop| {
+            prop.value
+                .as_string_like()
+                .ok_or_else(|| prop_error(prop, format!("`{name}` must be a binding reference")))
+        })
+        .transpose()
+}
+
 fn return_status(node: &SourceNode) -> DoweResult<u16> {
     let Some(return_node) = node.children.iter().find(|child| child.name == "return") else {
         return Ok(200);
@@ -1326,6 +1654,89 @@ fn optional_prop_string(node: &SourceNode, name: &str) -> DoweResult<Option<Stri
                 .ok_or_else(|| node_error(node, format!("`{name}` must be a string")))
         })
         .transpose()
+}
+
+fn required_http_base_prop(
+    node: &SourceNode,
+    environment: &EnvironmentConfig,
+) -> DoweResult<HttpConnectionValue> {
+    let prop = node
+        .prop("base")
+        .ok_or_else(|| node_error(node, "missing `base`"))?;
+    match &prop.value {
+        SourceValue::String(value) => {
+            if !value.starts_with("https://") && !value.starts_with("http://") {
+                return Err(prop_error(prop, "`base` must be an http or https URL"));
+            }
+            Ok(HttpConnectionValue::Static(value.clone()))
+        }
+        SourceValue::Bareword(value) => {
+            let Some(env_name) = value.strip_prefix("env.") else {
+                return Err(prop_error(
+                    prop,
+                    "`base` must be a quoted URL or server env reference",
+                ));
+            };
+            let variable = environment.variable(env_name).ok_or_else(|| {
+                prop_error(prop, format!("unknown environment variable `{env_name}`"))
+            })?;
+            if variable.visibility != EnvironmentVisibility::Server {
+                return Err(prop_error(
+                    prop,
+                    format!("environment variable `{env_name}` must be server-only"),
+                ));
+            }
+            Ok(HttpConnectionValue::Environment(env_name.to_string()))
+        }
+        _ => Err(prop_error(
+            prop,
+            "`base` must be a quoted URL or server env reference",
+        )),
+    }
+}
+
+fn required_http_path_prop(node: &SourceNode) -> DoweResult<String> {
+    let prop = node
+        .prop("path")
+        .ok_or_else(|| node_error(node, "missing `path`"))?;
+    let value = required_static_string_prop(prop)?;
+    if !value.starts_with('/') {
+        return Err(prop_error(prop, "`path` must start with `/`"));
+    }
+    Ok(value)
+}
+
+fn optional_http_mode_prop(node: &SourceNode) -> DoweResult<HttpResponseMode> {
+    let Some(prop) = node.prop("mode") else {
+        return Ok(HttpResponseMode::Json);
+    };
+    let value = required_static_string_prop(prop)?;
+    match value.as_str() {
+        "json" => Ok(HttpResponseMode::Json),
+        "proxy" => Ok(HttpResponseMode::Proxy),
+        _ => Err(prop_error(prop, "`mode` must be `json` or `proxy`")),
+    }
+}
+
+fn required_reference_prop(node: &SourceNode, name: &str) -> DoweResult<String> {
+    let prop = node
+        .prop(name)
+        .ok_or_else(|| node_error(node, format!("missing `{name}`")))?;
+    prop.value
+        .as_string_like()
+        .ok_or_else(|| prop_error(prop, format!("`{name}` must be a binding reference")))
+}
+
+fn reject_unknown_props(node: &SourceNode, allowed: &[&str]) -> DoweResult<()> {
+    for prop in &node.props {
+        if !allowed.iter().any(|name| *name == prop.name) {
+            return Err(prop_error(
+                prop,
+                format!("unknown prop `{}` on `{}`", prop.name, node.name),
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn assignment(node: &SourceNode) -> Option<(String, String)> {
@@ -1485,8 +1896,8 @@ mod tests {
     use super::{parse_server_file, parse_server_source};
     use crate::model::{
         EndpointBehavior, EnvironmentConfig, EnvironmentValueSource, EnvironmentVariable,
-        EnvironmentVisibility, HttpMethod, ServerLogValue, ServerMiddlewareStatement, ServerSecret,
-        ServerStatement,
+        EnvironmentVisibility, HttpConnectionValue, HttpMethod, HttpResponseMode, ServerLogValue,
+        ServerMiddlewareStatement, ServerSecret, ServerStatement,
     };
     use crate::parser::source_parser::parse_source_file;
     use std::fs;
@@ -1609,6 +2020,128 @@ main
         let error = parse_server_source(root, &file, &environment).expect_err("error");
 
         assert!(error.to_string().contains("must be server-only"));
+    }
+
+    #[test]
+    fn parses_outbound_http_proxy_response() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/v1/chat/completions"
+      method POST async req
+        let body = await req.json()
+        let upstream = http.post base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:body mode:"proxy"
+        return response proxy:upstream"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = openrouter_environment(EnvironmentVisibility::Server);
+        let server = parse_server_source(root, &file, &environment).expect("server");
+        let endpoint = server
+            .backend
+            .find_endpoint(&HttpMethod::Post, "/api/v1/chat/completions")
+            .expect("endpoint");
+
+        assert!(matches!(
+            endpoint.endpoint.behavior,
+            EndpointBehavior::HttpProxy(_)
+        ));
+        assert!(matches!(
+            &endpoint.endpoint.action.statements[1],
+            ServerStatement::Http(request)
+                if request.mode == HttpResponseMode::Proxy
+                    && request.base == HttpConnectionValue::Environment("OPENROUTER_BASE_URL".to_string())
+        ));
+    }
+
+    #[test]
+    fn rejects_client_environment_for_outbound_http_bearer() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/v1/chat/completions"
+      method POST async req
+        let body = await req.json()
+        let upstream = http.post base:env.OPENROUTER_BASE_URL path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:body mode:"proxy"
+        return response proxy:upstream"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = openrouter_environment(EnvironmentVisibility::Client);
+        let error = parse_server_source(root, &file, &environment).expect_err("error");
+
+        assert!(error.to_string().contains("must be server-only"));
+    }
+
+    #[test]
+    fn parses_static_json_response() {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:8080
+    route "/health"
+      handler
+        return response json:{ ok:true service:"dowe-llm-server" }"#
+                .to_string(),
+        )
+        .expect("source");
+        let server =
+            parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect("server");
+        let endpoint = server
+            .backend
+            .find_endpoint(&HttpMethod::Get, "/health")
+            .expect("endpoint");
+
+        assert!(matches!(
+            endpoint.endpoint.behavior,
+            EndpointBehavior::HttpActionJson(_)
+        ));
+    }
+
+    #[test]
+    fn parses_declared_websocket_http_bridge() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    websocket "/api/v1/agent/ws"
+      message ws
+        let request = ws.json
+        send ws json:{ event:"started" requestId:request.requestId requestType:request.requestType model:request.model payload:{ stream:request.stream } }
+        let chat = agent.chat request
+        let upstream = http.post base:"https://openrouter.ai" path:"/api/v1/chat/completions" bearer:env.OPENROUTER_API_KEY json:chat mode:"proxy"
+        bridge sse:upstream to:ws requestId:request.requestId requestType:request.requestType model:request.model"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = openrouter_environment(EnvironmentVisibility::Server);
+        let server = parse_server_source(root, &file, &environment).expect("server");
+        let route = server
+            .backend
+            .find_websocket("/api/v1/agent/ws")
+            .expect("websocket");
+        let statements = &route.handlers.message.statements;
+
+        assert!(matches!(&statements[0], ServerStatement::WebSocketJson(_)));
+        assert!(matches!(
+            &statements[1],
+            ServerStatement::WebSocketSendJson(_)
+        ));
+        assert!(matches!(&statements[2], ServerStatement::AgentChat(_)));
+        assert!(matches!(&statements[3], ServerStatement::Http(_)));
+        assert!(matches!(
+            &statements[4],
+            ServerStatement::WebSocketSseBridge(_)
+        ));
     }
 
     #[test]
@@ -1814,5 +2347,28 @@ main
             parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect_err("error");
 
         assert!(error.to_string().contains("unknown field `body.email`"));
+    }
+
+    fn openrouter_environment(visibility: EnvironmentVisibility) -> EnvironmentConfig {
+        EnvironmentConfig {
+            variables: vec![
+                EnvironmentVariable {
+                    name: "OPENROUTER_BASE_URL".to_string(),
+                    visibility: EnvironmentVisibility::Server,
+                    required: true,
+                    default_value: None,
+                    resolved_source: EnvironmentValueSource::Missing,
+                    resolved_value: None,
+                },
+                EnvironmentVariable {
+                    name: "OPENROUTER_API_KEY".to_string(),
+                    visibility,
+                    required: true,
+                    default_value: None,
+                    resolved_source: EnvironmentValueSource::Missing,
+                    resolved_value: None,
+                },
+            ],
+        }
     }
 }

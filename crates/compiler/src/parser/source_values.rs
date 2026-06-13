@@ -251,9 +251,11 @@ fn is_numeric_literal(value: &str) -> bool {
 
     let mut dot_seen = false;
     let mut digit_seen = false;
-    for value in value.chars() {
+    for (index, value) in value.chars().enumerate() {
         if value.is_ascii_digit() {
             digit_seen = true;
+        } else if index == 0 && matches!(value, '-' | '+') {
+            continue;
         } else if value == '.' && !dot_seen {
             dot_seen = true;
         } else {

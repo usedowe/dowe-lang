@@ -61,6 +61,21 @@ fn swift_font_value(
         .unwrap_or_else(|| format!("doweFont({default}, size: {size})"))
 }
 
+fn swift_font_token_value(
+    value: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+) -> String {
+    let default = swift_font_expr(&default_family);
+    value
+        .map(|value| {
+            format!(
+                "{} ?? {default}",
+                swift_responsive_value(value, swift_font_expr)
+            )
+        })
+        .unwrap_or_else(|| default.to_string())
+}
+
 fn swift_rounded_value(value: &ResponsiveValue<RoundedSize>) -> String {
     swift_responsive_value(value, |value| {
         format!("CGFloat({})", rounded_points(*value))

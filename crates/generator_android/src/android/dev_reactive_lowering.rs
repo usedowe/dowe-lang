@@ -134,6 +134,11 @@ fn collect_dev_reactive(
                 }
             }
         }
+        ViewNode::Marquee { children, .. } | ViewNode::Collapsible { children, .. } => {
+            for child in children {
+                collect_dev_reactive(child, context, initial, actions, autoload);
+            }
+        }
         ViewNode::NavMenu { items, .. } => {
             for item in items {
                 if let dowe_components::NavMenuItem::Megamenu { content, .. } = item {
@@ -162,6 +167,13 @@ fn collect_dev_reactive(
             }
         }
         ViewNode::Input { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
@@ -188,6 +200,12 @@ fn collect_dev_reactive(
         | ViewNode::Svg { .. }
         | ViewNode::SideNav { .. }
         | ViewNode::Sidebar { .. }
+        | ViewNode::TypeWriter { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
         | ViewNode::Children => {}
     }
 }

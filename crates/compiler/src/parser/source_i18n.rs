@@ -341,6 +341,11 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
                 }
             }
         }
+        ViewNode::Marquee { children, .. } | ViewNode::Collapsible { children, .. } => {
+            for child in children {
+                collect_i18n_keys(child, keys);
+            }
+        }
         ViewNode::NavMenu { items, .. } => {
             for item in items {
                 if let dowe_components::NavMenuItem::Megamenu { content, .. } = item {
@@ -368,12 +373,21 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
                 collect_i18n_keys(child, keys);
             }
         }
-        ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => {
+        ViewNode::Title { props, .. }
+        | ViewNode::Text { props, .. }
+        | ViewNode::RichText { props, .. } => {
             if let Some(key) = props.i18n.as_ref() {
                 keys.insert(key.clone());
             }
         }
         ViewNode::Input { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
@@ -398,6 +412,11 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::Svg { .. }
         | ViewNode::SideNav { .. }
         | ViewNode::Sidebar { .. }
+        | ViewNode::TypeWriter { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
         | ViewNode::Children => {}
     }
 }

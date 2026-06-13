@@ -326,6 +326,9 @@ fn parse_family_prop(
             | BuiltinComponent::Dropdown
             | BuiltinComponent::Command
             | BuiltinComponent::Accordion
+            | BuiltinComponent::Collapsible
+            | BuiltinComponent::Countdown
+            | BuiltinComponent::Dropzone
             | BuiltinComponent::Tabs
     );
     let expected = if accepts_structural {

@@ -245,7 +245,11 @@ fn render_html_with_context(
             html.push_str(close);
             html
         }
+        ViewNode::ToggleTheme { props } => render_theme_toggle_html(props, context),
+        ViewNode::Fab { props, actions } => render_fab_html(props, actions, context),
         ViewNode::Input { props } => render_input_html(props, context),
+        ViewNode::Slider { props } => render_slider_html(props, context),
+        ViewNode::Dropzone { props } => render_dropzone_html(props, context),
         ViewNode::Select { props, options } => render_select_html(props, options, context),
         ViewNode::Audio { props } => render_audio_html(props, context),
         ViewNode::Image { props } => render_image_html(props, context),
@@ -301,6 +305,25 @@ fn render_html_with_context(
             )
         }
         ViewNode::Avatar { props, icon } => render_avatar_html(props, icon.as_ref(), context),
+        ViewNode::AvatarGroup { props, items } => render_avatar_group_html(props, items, context),
+        ViewNode::ChatBox { props } => render_chat_box_html(props, context),
+        ViewNode::Empty { props } => render_empty_html(props, context),
+        ViewNode::Marquee { props, children } => {
+            render_marquee_html(props, children, children_html, context)
+        }
+        ViewNode::TypeWriter { props, items } => render_type_writer_html(props, items, context),
+        ViewNode::RichText { props, marks } => render_rich_text_html(props, marks, context),
+        ViewNode::Record { props } => render_record_html(props, context),
+        ViewNode::ToggleGroup { props, items } => render_toggle_group_html(props, items, context),
+        ViewNode::Collapsible { props, children } => {
+            render_collapsible_html(props, children, children_html, context)
+        }
+        ViewNode::Countdown { props } => render_countdown_html(props, context),
+        ViewNode::Map {
+            props,
+            markers,
+            waypoints,
+        } => render_map_html(props, markers, waypoints, context),
         ViewNode::Badge { props, children } => {
             render_badge_html(props, children, children_html, context)
         }
@@ -560,8 +583,20 @@ fn collect_js_segments(
             }
             push_literal(segments, close);
         }
+        ViewNode::ToggleTheme { props } => {
+            push_literal(segments, &render_theme_toggle_html(props, context));
+        }
+        ViewNode::Fab { props, actions } => {
+            push_literal(segments, &render_fab_html(props, actions, context));
+        }
         ViewNode::Input { props } => {
             push_literal(segments, &render_input_html(props, context));
+        }
+        ViewNode::Slider { props } => {
+            push_literal(segments, &render_slider_html(props, context));
+        }
+        ViewNode::Dropzone { props } => {
+            push_literal(segments, &render_dropzone_html(props, context));
         }
         ViewNode::Select { props, options } => {
             push_literal(segments, &render_select_html(props, options, context));
@@ -617,6 +652,17 @@ fn collect_js_segments(
             push_literal(segments, &render_html_with_context(node, None, context))
         }
         ViewNode::Avatar { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::Marquee { .. }
+        | ViewNode::TypeWriter { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Collapsible { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
         | ViewNode::Badge { .. }
         | ViewNode::Chip { .. }
         | ViewNode::Skeleton { .. }
@@ -1689,6 +1735,352 @@ fn render_checkbox_html(props: &CheckboxProps, context: &ReactiveRenderContext) 
     )
 }
 
+fn render_theme_toggle_html(props: &ThemeToggleProps, context: &ReactiveRenderContext) -> String {
+    let mut classes = variant_classes("theme-toggle", &props.style);
+    classes.push("theme-toggle-icon".to_string());
+    format!(
+        r#"<button{} type="button" aria-label="{}" data-dowe-theme-toggle data-dowe-light-label="{}" data-dowe-dark-label="{}">{}{}</button>"#,
+        attrs(classes, Some(&props.style.element), None, context),
+        escape_attr(&props.dark_label),
+        escape_attr(&props.light_label),
+        escape_attr(&props.dark_label),
+        view_icon_svg(ViewIcon::Moon, "theme-icon theme-icon-moon"),
+        view_icon_svg(ViewIcon::Sun, "theme-icon theme-icon-sun")
+    )
+}
+
+fn render_fab_html(
+    props: &FabProps,
+    actions: &[FabAction],
+    context: &ReactiveRenderContext,
+) -> String {
+    let mut container_classes = vec![
+        "fab-container".to_string(),
+        format!("is-{}", props.position.as_str()),
+    ];
+    if props.fixed {
+        container_classes.push("is-fixed".to_string());
+    }
+    let style = format!(
+        r#" style="--dowe-fab-offset-x:{};--dowe-fab-offset-y:{};""#,
+        scale_rem(props.offset_x),
+        scale_rem(props.offset_y)
+    );
+    let mut trigger_classes = variant_classes("fab-trigger", &props.style);
+    trigger_classes.push("fab-icon".to_string());
+    let expanded = if actions.is_empty() { "" } else { r#" aria-expanded="false""# };
+    let mut html = format!(
+        r#"<div{}{}><div class="fab-actions" data-dowe-fab-actions hidden>"#,
+        class_attr(container_classes),
+        style
+    );
+    for (index, action) in actions.iter().enumerate() {
+        html.push_str(&render_fab_action_html(action, index, &props.style, context));
+    }
+    html.push_str("</div>");
+    html.push_str(&format!(
+        r#"<button{} type="button" aria-label="{}" data-dowe-fab-trigger{}>{}</button></div>"#,
+        attrs(
+            trigger_classes,
+            Some(&props.style.element),
+            Some(&fab_trigger_extra(props, actions, context)),
+            context
+        ),
+        escape_attr(&props.label),
+        expanded,
+        view_icon_svg(props.icon, "fab-icon-svg")
+    ));
+    html
+}
+
+fn fab_trigger_extra(
+    _props: &FabProps,
+    actions: &[FabAction],
+    _context: &ReactiveRenderContext,
+) -> String {
+    let mut extra = String::new();
+    if !actions.is_empty() {
+        extra.push_str(r#" data-dowe-fab-has-actions="true""#);
+    }
+    extra
+}
+
+fn render_fab_action_html(
+    action: &FabAction,
+    index: usize,
+    style: &VariantProps,
+    context: &ReactiveRenderContext,
+) -> String {
+    let delay = index * 50;
+    let label = format!(
+        r#"<span class="fab-action-label">{}</span>"#,
+        escape_html(&action.label)
+    );
+    let mut button_classes = variant_classes(
+        "fab-action-button",
+        &VariantProps {
+            color: Some(action.color),
+            variant: style.variant,
+            ..VariantProps::default()
+        },
+    );
+    button_classes.push("button-md".to_string());
+    button_classes.push("fab-icon".to_string());
+    let icon = view_icon_svg(action.icon, "fab-icon-svg");
+    let control = if let Some(navigation) = action.navigation.as_ref() {
+        match navigation {
+            NavigationAction::Internal {
+                path,
+                fragment,
+                operation,
+            } => {
+                let href = internal_href(path, fragment.as_deref());
+                format!(
+                    r#"<a{}{} data-dowe-fab-action>{}</a>"#,
+                    class_attr(button_classes),
+                    navigation_attrs(&href, *operation),
+                    icon
+                )
+            }
+            NavigationAction::Section {
+                fragment,
+                operation,
+            } => {
+                let href = format!("#{fragment}");
+                format!(
+                    r#"<a{}{} data-dowe-fab-action>{}</a>"#,
+                    class_attr(button_classes),
+                    navigation_attrs(&href, *operation),
+                    icon
+                )
+            }
+            NavigationAction::External {
+                url,
+                web_target,
+                native_external_mode,
+            } => format!(
+                r#"<a{}{} data-dowe-fab-action>{}</a>"#,
+                class_attr(button_classes),
+                external_attrs(url, *web_target, *native_external_mode),
+                icon
+            ),
+            NavigationAction::Back => format!(
+                r#"<button{} type="button" data-dowe-history="back" data-dowe-fab-action>{}</button>"#,
+                class_attr(button_classes),
+                icon
+            ),
+        }
+    } else {
+        let click = action
+            .on_click
+            .as_deref()
+            .map(|value| {
+                format!(
+                    r#" data-dowe-click="{}""#,
+                    escape_attr(&context.action_id(value))
+                )
+            })
+            .unwrap_or_default();
+        format!(
+            r#"<button{} type="button"{} data-dowe-fab-action>{}</button>"#,
+            class_attr(button_classes),
+            click,
+            icon
+        )
+    };
+    format!(
+        r#"<div class="fab-action" style="--dowe-fab-action-delay:{}ms">{label}{control}</div>"#,
+        delay
+    )
+}
+
+fn render_slider_html(props: &SliderProps, context: &ReactiveRenderContext) -> String {
+    let value = props.value.parse::<f64>().unwrap_or(0.0);
+    let min = props.min.parse::<f64>().unwrap_or(0.0);
+    let max = props.max.parse::<f64>().unwrap_or(100.0);
+    let progress = if max > min {
+        (((value - min) / (max - min)) * 100.0).clamp(0.0, 100.0)
+    } else {
+        0.0
+    };
+    let info = if props.hide_label {
+        String::new()
+    } else {
+        format!(
+            r#"<div class="slider-info"><span>{}</span><span data-dowe-slider-value>{}</span></div>"#,
+            props
+                .style
+                .label
+                .as_deref()
+                .map(escape_html)
+                .unwrap_or_default(),
+            escape_html(&props.value)
+        )
+    };
+    let input = format!(
+        r#"<input type="range"{}{}{}{}{}{} class="slider is-{} is-{}" style="--dowe-slider-progress:{}%" data-dowe-slider{}>"#,
+        format!(r#" min="{}""#, escape_attr(&props.min)),
+        format!(r#" max="{}""#, escape_attr(&props.max)),
+        props
+            .step
+            .as_deref()
+            .map(|step| format!(r#" step="{}""#, escape_attr(step)))
+            .unwrap_or_default(),
+        format!(r#" value="{}""#, escape_attr(&props.value)),
+        props
+            .name
+            .as_deref()
+            .map(|name| format!(r#" name="{}""#, escape_attr(name)))
+            .unwrap_or_default(),
+        bind_attr(props.style.element.bind.as_deref(), context),
+        props.size.as_str(),
+        props.style.color.unwrap_or(ColorFamily::Primary).as_str(),
+        progress,
+        props
+            .style
+            .label
+            .as_deref()
+            .map(|label| format!(r#" data-dowe-slider-label="{}""#, escape_attr(label)))
+            .unwrap_or_default()
+    );
+    format!(
+        "<div{}>{info}{input}</div>",
+        attrs(
+            vec!["slider-wrapper".to_string()],
+            Some(&props.style.element),
+            None,
+            context
+        )
+    )
+}
+
+fn render_dropzone_html(props: &DropzoneProps, context: &ReactiveRenderContext) -> String {
+    let source = format!(
+        "{}:{}:{}:{}",
+        props.name.as_deref().unwrap_or_default(),
+        props.style.placeholder.as_deref().unwrap_or_default(),
+        props.accept.as_deref().unwrap_or_default(),
+        props.style.label.as_deref().unwrap_or_default()
+    );
+    let uid = short_id("dropzone", &source);
+    let field_label = props
+        .style
+        .label
+        .as_deref()
+        .map(|label| format!(r#"<span class="field-label">{}</span>"#, escape_html(label)))
+        .unwrap_or_default();
+    let help = props
+        .error_text
+        .as_deref()
+        .or(props.help_text.as_deref())
+        .map(|text| {
+            format!(
+                r#"<div class="field-help{}">{}</div>"#,
+                if props.error_text.is_some() { " is-danger" } else { "" },
+                escape_html(text)
+            )
+        })
+        .unwrap_or_default();
+    let mut input_classes = vec![
+        "dropzone-input".to_string(),
+        format!("is-{}", props.style.variant.unwrap_or(ComponentVariant::Solid).as_str()),
+        format!("is-{}", props.style.color.unwrap_or(ColorFamily::Primary).as_str()),
+        format!("is-{}", props.size.as_str()),
+    ];
+    if props.disabled {
+        input_classes.push("is-disabled".to_string());
+    }
+    if props.error_text.is_some() {
+        input_classes.push("is-error".to_string());
+    }
+    let max = props
+        .max_size
+        .map(|value| format!(r#" data-dowe-dropzone-max-size="{value}""#))
+        .unwrap_or_default();
+    let input = format!(
+        r#"<label{} for="{uid}" data-dowe-dropzone{max}><input id="{uid}" type="file" hidden{}{}{}{}><div class="dropzone-content">{}<span class="dropzone-placeholder">{}</span></div></label>"#,
+        class_attr(input_classes),
+        props
+            .accept
+            .as_deref()
+            .map(|accept| format!(r#" accept="{}""#, escape_attr(accept)))
+            .unwrap_or_default(),
+        if props.multiple { " multiple" } else { "" },
+        if props.disabled { " disabled" } else { "" },
+        props
+            .name
+            .as_deref()
+            .map(|name| format!(r#" name="{}""#, escape_attr(name)))
+            .unwrap_or_default(),
+        view_icon_svg(ViewIcon::Upload, "dropzone-icon"),
+        escape_html(props.style.placeholder.as_deref().unwrap_or_default())
+    );
+    format!(
+        r#"<div{}>{field_label}{input}<div class="dropzone-files" data-dowe-dropzone-files hidden></div>{help}</div>"#,
+        attrs(
+            vec!["field".to_string(), "dropzone".to_string()],
+            Some(&props.style.element),
+            None,
+            context
+        )
+    )
+}
+
+fn view_icon_svg(icon: ViewIcon, class_name: &str) -> String {
+    let (paths, view_box) = match icon {
+        ViewIcon::Plus => (
+            r#"<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Link => (
+            r#"<path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 5.03" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.22-1.22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Edit => (
+            r#"<path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0-3-3L5 17v3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m13.5 7.5 3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Trash => (
+            r#"<path d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Search => (
+            r#"<circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Settings => (
+            r#"<path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h2m12 0h2M12 4v2m0 12v2M6.3 6.3l1.4 1.4m8.6 8.6 1.4 1.4m0-11.4-1.4 1.4m-8.6 8.6-1.4 1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Upload => (
+            r#"<path d="M12 16V4m0 0 5 5m-5-5-5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::File => (
+            r#"<path d="M6 3h8l4 4v14H6V3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Dismiss => (
+            r#"<path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Moon => (
+            r#"<path d="M20 15.3A8 8 0 0 1 8.7 4 8.5 8.5 0 1 0 20 15.3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>"#,
+            "0 0 24 24",
+        ),
+        ViewIcon::Sun => (
+            r#"<circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>"#,
+            "0 0 24 24",
+        ),
+    };
+    format!(
+        r#"<svg class="{}" viewBox="{}" aria-hidden="true">{}</svg>"#,
+        escape_attr(class_name),
+        escape_attr(view_box),
+        paths
+    )
+}
+
 fn render_color_html(props: &ColorProps, context: &ReactiveRenderContext) -> String {
     let input = format!(
         r#"<input class="color-input" type="color" value="{}"{}{}>"#,
@@ -2189,6 +2581,709 @@ fn avatar_initial(props: &AvatarProps) -> String {
         .next()
         .map(|value| value.to_uppercase().collect::<String>())
         .unwrap_or_else(|| "A".to_string())
+}
+
+fn render_avatar_group_html(
+    props: &AvatarGroupProps,
+    items: &[AvatarGroupItem],
+    context: &ReactiveRenderContext,
+) -> String {
+    let mut extra = format!(
+        r#" data-dowe-avatar-group data-dowe-avatar-group-size="{}" data-dowe-avatar-group-variant="{}" data-dowe-avatar-group-scheme="{}" data-dowe-avatar-group-bordered="{}" data-dowe-avatar-group-inline="{}""#,
+        props.size.as_str(),
+        props.style.variant.unwrap_or(ComponentVariant::Solid).as_str(),
+        props.style.color.unwrap_or(ColorFamily::Primary).as_str(),
+        props.bordered,
+        props.inline
+    );
+    if let Some(source) = props.items.as_deref() {
+        extra.push_str(&format!(
+            r#" data-dowe-avatar-group-items="{}""#,
+            escape_attr(&context.signal_path(source))
+        ));
+    }
+    if let Some(max) = props.max {
+        extra.push_str(&format!(r#" data-dowe-avatar-group-max="{max}""#));
+    }
+    let visible_count = props
+        .max
+        .map(|max| usize::from(max).min(items.len()))
+        .unwrap_or(items.len());
+    let mut html = format!(
+        "<div{}>",
+        attrs(
+            avatar_group_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        )
+    );
+    html.push_str(r#"<div class="avatar-group-list" data-dowe-avatar-group-list>"#);
+    for item in items.iter().take(visible_count) {
+        html.push_str(&render_avatar_group_item_html(props, item, context));
+    }
+    if visible_count < items.len() {
+        html.push_str(&format!(
+            r#"<span class="avatar-group-counter avatar-{} is-{} is-{}">+{}</span>"#,
+            props.size.as_str(),
+            props.style.variant.unwrap_or(ComponentVariant::Solid).as_str(),
+            props.style.color.unwrap_or(ColorFamily::Primary).as_str(),
+            items.len() - visible_count
+        ));
+    }
+    html.push_str("</div></div>");
+    html
+}
+
+fn render_avatar_group_item_html(
+    group: &AvatarGroupProps,
+    item: &AvatarGroupItem,
+    context: &ReactiveRenderContext,
+) -> String {
+    let mut style = group.style.clone();
+    style.element = ElementProps {
+        on_click: item.on_click.clone(),
+        ..ElementProps::default()
+    };
+    style.navigation = item.navigation.clone();
+    let avatar = AvatarProps {
+        style,
+        src: item.src.clone(),
+        name: item.name.clone(),
+        alt: item
+            .alt
+            .clone()
+            .or_else(|| item.name.clone())
+            .unwrap_or_default(),
+        size: group.size,
+        status: None,
+        bordered: group.bordered,
+    };
+    render_avatar_html(&avatar, None, context)
+}
+
+fn render_chat_box_html(props: &ChatBoxProps, context: &ReactiveRenderContext) -> String {
+    let mut extra = format!(
+        r#" data-dowe-chatbox data-dowe-chatbox-messages="{}" data-dowe-chatbox-current-user="{}" data-dowe-chatbox-mode="{}" data-dowe-chatbox-placeholder="{}""#,
+        escape_attr(&context.signal_path(&props.messages)),
+        escape_attr(&props.current_user_id),
+        props.mode.as_str(),
+        escape_attr(&props.placeholder)
+    );
+    for (name, value) in [
+        ("loading", props.loading.as_deref()),
+        ("sending", props.sending.as_deref()),
+        ("streaming", props.streaming.as_deref()),
+        ("has-more", props.has_more.as_deref()),
+    ] {
+        if let Some(value) = value {
+            extra.push_str(&format!(
+                r#" data-dowe-chatbox-{name}="{}""#,
+                escape_attr(&context.signal_path(value))
+            ));
+        }
+    }
+    for (name, value) in [
+        ("send", props.on_send.as_deref()),
+        ("load-more", props.on_load_more.as_deref()),
+        ("stop", props.on_stop.as_deref()),
+        ("voice-note", props.on_voice_note.as_deref()),
+        ("file-attach", props.on_file_attach.as_deref()),
+        ("camera-capture", props.on_camera_capture.as_deref()),
+    ] {
+        if let Some(value) = value {
+            extra.push_str(&format!(
+                r#" data-dowe-chatbox-on-{name}="{}""#,
+                escape_attr(&context.action_id(value))
+            ));
+        }
+    }
+    let header = if props.show_header {
+        render_chat_box_header_html(props)
+    } else {
+        String::new()
+    };
+    let footer = render_chat_box_footer_html(props);
+    format!(
+        r#"<section{}>{}<div class="chat-box-body" data-dowe-chatbox-body><div class="chat-box-messages" data-dowe-chatbox-list></div><div class="chat-box-typing" data-dowe-chatbox-typing hidden><span></span><span></span><span></span></div></div>{}</section>"#,
+        attrs(
+            chat_box_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        header,
+        footer
+    )
+}
+
+fn render_chat_box_header_html(props: &ChatBoxProps) -> String {
+    let avatar = props
+        .assistant_avatar
+        .as_deref()
+        .map(|src| {
+            format!(
+                r#"<img class="chat-box-avatar" src="{}" alt="">"#,
+                escape_attr(src)
+            )
+        })
+        .unwrap_or_else(|| {
+            format!(
+                r#"<span class="chat-box-avatar">{}</span>"#,
+                escape_html(
+                    &props
+                        .assistant_name
+                        .chars()
+                        .next()
+                        .map(|value| value.to_uppercase().collect::<String>())
+                        .unwrap_or_else(|| "A".to_string())
+                )
+            )
+        });
+    format!(
+        r#"<header class="chat-box-header"><div class="chat-box-user">{avatar}<div class="chat-box-user-copy"><strong>{}</strong><span>{}</span></div></div><div class="chat-box-header-actions"><button type="button" class="chat-box-icon" aria-label="Search">⌕</button><button type="button" class="chat-box-icon" aria-label="More">⋯</button></div></header>"#,
+        escape_html(&props.assistant_name),
+        escape_html(&props.user_status)
+    )
+}
+
+fn render_chat_box_footer_html(props: &ChatBoxProps) -> String {
+    let mut actions = String::new();
+    if props.show_voice_note {
+        actions.push_str(r#"<button type="button" class="chat-box-tool" data-dowe-chatbox-voice aria-label="Voice note">◉</button>"#);
+    }
+    if props.show_attachments {
+        actions.push_str(r#"<button type="button" class="chat-box-tool" data-dowe-chatbox-file aria-label="Attach file">＋</button>"#);
+    }
+    if props.show_camera {
+        actions.push_str(r#"<button type="button" class="chat-box-tool" data-dowe-chatbox-camera aria-label="Camera">▣</button>"#);
+    }
+    format!(
+        r#"<footer class="chat-box-footer"><div class="chat-box-input-wrap">{actions}<textarea class="chat-box-input" rows="1" placeholder="{}" data-dowe-chatbox-input></textarea><button type="button" class="chat-box-send" data-dowe-chatbox-send aria-label="Send">➤</button><button type="button" class="chat-box-stop" data-dowe-chatbox-stop aria-label="Stop" hidden>■</button></div></footer>"#,
+        escape_attr(&props.placeholder)
+    )
+}
+
+fn render_empty_html(props: &EmptyProps, context: &ReactiveRenderContext) -> String {
+    let mut root_element = props.style.element.clone();
+    root_element.on_click = None;
+    let title = props
+        .title
+        .as_deref()
+        .unwrap_or_else(|| empty_default_title(props.kind));
+    let description = props
+        .description
+        .as_deref()
+        .unwrap_or_else(|| empty_default_description(props.kind));
+    let action = if props.style.navigation.is_some() || props.style.element.on_click.is_some() {
+        let mut action_props = props.style.clone();
+        action_props.element = ElementProps {
+            on_click: props.style.element.on_click.clone(),
+            ..ElementProps::default()
+        };
+        let (open, close) = button_tags(&action_props, context);
+        format!(
+            r#"<div class="empty-actions">{}{}</div>"#,
+            open + &escape_html(&props.action_label),
+            close
+        )
+    } else {
+        String::new()
+    };
+    format!(
+        r#"<div{}>{}<div class="empty-content"><h3 class="empty-title">{}</h3><p class="empty-description">{}</p></div>{}</div>"#,
+        attrs(
+            empty_classes(props),
+            Some(&root_element),
+            None,
+            context
+        ),
+        empty_icon_html(props.kind),
+        escape_html(title),
+        escape_html(description),
+        action
+    )
+}
+
+fn render_marquee_html(
+    props: &MarqueeProps,
+    children: &[ViewNode],
+    children_html: Option<&str>,
+    context: &ReactiveRenderContext,
+) -> String {
+    let content = children
+        .iter()
+        .map(|child| render_html_with_context(child, children_html, context))
+        .collect::<String>();
+    let extra = format!(
+        r#" style="--dowe-marquee-gap:{};--dowe-marquee-fade:var(--dowe-{});""#,
+        scale_rem(props.gap),
+        props.fade_color.as_str()
+    );
+    format!(
+        r#"<div{}><div class="marquee-track"><div class="marquee-content">{}</div><div class="marquee-content" aria-hidden="true">{}</div></div></div>"#,
+        attrs(
+            marquee_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        content,
+        content
+    )
+}
+
+fn render_type_writer_html(
+    props: &TypeWriterProps,
+    items: &[TypeWriterItem],
+    context: &ReactiveRenderContext,
+) -> String {
+    let texts = items
+        .iter()
+        .map(|item| js_string_literal(&item.text))
+        .collect::<Vec<_>>()
+        .join(",");
+    let first = items.first().map(|item| item.text.as_str()).unwrap_or_default();
+    let extra = format!(
+        r#" data-dowe-typewriter data-dowe-typewriter-texts="[{}]" data-dowe-typewriter-type-speed="{}" data-dowe-typewriter-delete-speed="{}" data-dowe-typewriter-after-typed="{}" data-dowe-typewriter-after-deleted="{}" data-dowe-typewriter-repeat="{}""#,
+        escape_attr(&texts),
+        props.type_speed,
+        props.delete_speed,
+        props.after_typed,
+        props.after_deleted,
+        props.repeat
+    );
+    format!(
+        r#"<span{}><span class="typewriter-text" data-dowe-typewriter-text>{}</span><span class="typewriter-caret" aria-hidden="true"></span></span>"#,
+        attrs(
+            type_writer_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        escape_html(first)
+    )
+}
+
+fn render_rich_text_html(
+    props: &TextProps,
+    marks: &[RichTextMark],
+    context: &ReactiveRenderContext,
+) -> String {
+    let content = marks
+        .iter()
+        .map(|mark| {
+            format!(
+                r#"<span class="rich-mark rich-mark-{} is-{}">{}</span>"#,
+                mark.style.as_str(),
+                mark.color.as_str(),
+                escape_html(&mark.text)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let mut extra = String::new();
+    if let Some(key) = props.i18n.as_ref() {
+        extra.push_str(&format!(r#" data-dowe-i18n="{}""#, escape_attr(key)));
+    }
+    format!(
+        "<p{}>{}</p>",
+        attrs(
+            rich_text_classes(props),
+            Some(&props.style.element),
+            (!extra.is_empty()).then_some(extra.as_str()),
+            context
+        ),
+        content
+    )
+}
+
+fn render_record_html(props: &RecordProps, context: &ReactiveRenderContext) -> String {
+    let mut extra = format!(
+        r#" data-dowe-record data-dowe-record-name="{}""#,
+        escape_attr(&props.name)
+    );
+    if let Some(url) = props.url.as_ref() {
+        extra.push_str(&format!(r#" data-dowe-record-url="{}""#, escape_attr(url)));
+    }
+    if let Some(value) = props.max_duration {
+        extra.push_str(&format!(r#" data-dowe-record-max-duration="{}""#, value));
+    }
+    if let Some(action) = props.on_start.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-record-on-start="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = props.on_pause.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-record-on-pause="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = props.on_resume.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-record-on-resume="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = props.on_stop.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-record-on-stop="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = props.on_discard.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-record-on-discard="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = props.on_confirm.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-record-on-confirm="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    let disabled = if props.disabled { " disabled" } else { "" };
+    let file = if props.url.is_none() {
+        format!(
+            r#"<input class="record-file" type="file" accept="audio/*" name="{}" data-dowe-record-file{}>"#,
+            escape_attr(&props.name),
+            disabled
+        )
+    } else {
+        String::new()
+    };
+    let bars = (0..50)
+        .map(|index| {
+            format!(
+                r#"<span class="record-bar" style="--record-bar:{}"></span>"#,
+                (index % 9) + 2
+            )
+        })
+        .collect::<String>();
+    format!(
+        r#"<div{}><div class="record-main"><div class="record-wave" aria-hidden="true">{}</div><div class="record-meta"><span class="record-time" data-dowe-record-time>00:00</span><span class="record-status" data-dowe-record-status>Ready</span></div></div><div class="record-actions"><button class="record-btn record-start" type="button" data-dowe-record-action="start"{}>Record</button><button class="record-btn record-pause" type="button" data-dowe-record-action="pause" hidden{}>Pause</button><button class="record-btn record-stop" type="button" data-dowe-record-action="stop" hidden{}>Stop</button><button class="record-btn record-discard" type="button" data-dowe-record-action="discard" hidden{}>Discard</button><button class="record-btn record-confirm" type="button" data-dowe-record-action="confirm" hidden{}>Use</button></div>{}</div>"#,
+        attrs(
+            record_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        bars,
+        disabled,
+        disabled,
+        disabled,
+        disabled,
+        disabled,
+        file
+    )
+}
+
+fn render_toggle_group_html(
+    props: &ToggleGroupProps,
+    items: &[ToggleGroupItem],
+    context: &ReactiveRenderContext,
+) -> String {
+    let mut extra = String::from(r#" role="radiogroup" data-dowe-toggle-group"#);
+    if let Some(value) = props.value.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-toggle-group-value="{}""#,
+            escape_attr(&context.signal_path(value))
+        ));
+    }
+    if let Some(action) = props.on_change.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-toggle-group-on-change="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(label) = props.aria_label.as_ref() {
+        extra.push_str(&format!(r#" aria-label="{}""#, escape_attr(label)));
+    }
+    let buttons = items
+        .iter()
+        .map(|item| {
+            let active = item.id == props.selected;
+            let variant = props.style.variant.unwrap_or(ComponentVariant::Solid).as_str();
+            let color = props.style.color.unwrap_or(ColorFamily::Muted).as_str();
+            let icon = item
+                .icon
+                .map(|icon| view_icon_svg(icon, "toggle-group-icon"))
+                .unwrap_or_default();
+            format!(
+                r#"<button class="toggle-group-item is-{} is-{}{}" type="button" role="radio" aria-checked="{}" data-dowe-toggle-group-item="{}"{}>{}<span>{}</span></button>"#,
+                variant,
+                color,
+                if active { " is-active" } else { "" },
+                active,
+                escape_attr(&item.id),
+                if props.disabled { " disabled" } else { "" },
+                icon,
+                escape_html(&item.label)
+            )
+        })
+        .collect::<String>();
+    format!(
+        "<div{}>{}</div>",
+        attrs(
+            toggle_group_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        buttons
+    )
+}
+
+fn render_collapsible_html(
+    props: &CollapsibleProps,
+    children: &[ViewNode],
+    children_html: Option<&str>,
+    context: &ReactiveRenderContext,
+) -> String {
+    let body = children
+        .iter()
+        .map(|child| render_html_with_context(child, children_html, context))
+        .collect::<String>();
+    let extra = format!(
+        r#" data-dowe-collapsible data-dowe-collapsible-open="{}""#,
+        props.default_open
+    );
+    format!(
+        r#"<div{}><button class="collapsible-header" type="button" aria-expanded="{}" data-dowe-collapsible-trigger{}><span class="collapsible-label">{}</span><span class="collapsible-arrow" aria-hidden="true">⌄</span></button><div class="collapsible-content" data-dowe-collapsible-content{}>{}</div></div>"#,
+        attrs(
+            collapsible_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        props.default_open,
+        if props.disabled { " disabled" } else { "" },
+        escape_html(&props.label),
+        if props.default_open { "" } else { " hidden" },
+        body
+    )
+}
+
+fn render_countdown_html(props: &CountdownProps, context: &ReactiveRenderContext) -> String {
+    let mut extra = format!(
+        r#" data-dowe-countdown data-dowe-countdown-target="{}""#,
+        escape_attr(&props.target)
+    );
+    if let Some(action) = props.on_complete.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-countdown-on-complete="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    let mut units = Vec::new();
+    if props.show_days {
+        units.push(("days", props.days_label.as_str()));
+    }
+    if props.show_hours {
+        units.push(("hours", props.hours_label.as_str()));
+    }
+    if props.show_minutes {
+        units.push(("minutes", props.minutes_label.as_str()));
+    }
+    if props.show_seconds {
+        units.push(("seconds", props.seconds_label.as_str()));
+    }
+    let content = units
+        .iter()
+        .enumerate()
+        .map(|(index, (unit, label))| {
+            let variant = props.style.variant.unwrap_or(ComponentVariant::Solid).as_str();
+            let color = props.style.color.unwrap_or(ColorFamily::Primary).as_str();
+            let separator = (index + 1 < units.len())
+                .then_some(r#"<span class="countdown-separator" aria-hidden="true">:</span>"#)
+                .unwrap_or_default();
+            format!(
+                r#"<span class="countdown-unit"><span class="countdown-box is-{} is-{}"><span class="countdown-digit" data-dowe-countdown-unit="{}">00</span></span><span class="countdown-label">{}</span></span>{}"#,
+                variant,
+                color,
+                unit,
+                escape_html(label),
+                separator
+            )
+        })
+        .collect::<String>();
+    format!(
+        r#"<time{} datetime="{}">{}</time>"#,
+        attrs(
+            countdown_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        escape_attr(&props.target),
+        content
+    )
+}
+
+fn render_map_html(
+    props: &MapProps,
+    markers: &[MapMarker],
+    waypoints: &[MapWaypoint],
+    context: &ReactiveRenderContext,
+) -> String {
+    let mut extra = format!(
+        r#" style="--map-height:{};--map-width:{};" data-dowe-map data-dowe-map-center-lat="{}" data-dowe-map-center-lng="{}" data-dowe-map-zoom="{}""#,
+        escape_attr(&props.height),
+        escape_attr(&props.width),
+        escape_attr(&props.center_lat),
+        escape_attr(&props.center_lng),
+        props.zoom
+    );
+    if let Some(action) = props.on_location.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-map-on-location="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = props.on_location_error.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-map-on-location-error="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = props.on_route.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-map-on-route="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    let controls = if props.show_controls {
+        r#"<div class="map-controls" aria-hidden="true"><span>+</span><span>-</span></div>"#
+    } else {
+        ""
+    };
+    let scale = if props.show_scale {
+        r#"<div class="map-scale" aria-hidden="true"><span></span>1 km</div>"#
+    } else {
+        ""
+    };
+    let location = if props.show_location_control {
+        r#"<button class="map-location-btn" type="button" aria-label="Use current location" data-dowe-map-location>⌖</button>"#
+    } else {
+        ""
+    };
+    let route = if props.route_start_lat.is_some() || !waypoints.is_empty() {
+        r#"<div class="map-route" aria-hidden="true"></div>"#
+    } else {
+        ""
+    };
+    let marker_html = markers
+        .iter()
+        .enumerate()
+        .map(|(index, marker)| render_map_marker_html(marker, index, markers.len(), context))
+        .collect::<String>();
+    let waypoint_html = waypoints
+        .iter()
+        .enumerate()
+        .map(|(index, waypoint)| {
+            let (left, top) = map_point_position(index + markers.len(), markers.len() + waypoints.len());
+            format!(
+                r#"<span class="map-waypoint" style="left:{}%;top:{}%;" data-dowe-map-waypoint-lat="{}" data-dowe-map-waypoint-lng="{}"></span>"#,
+                left,
+                top,
+                escape_attr(&waypoint.lat),
+                escape_attr(&waypoint.lng)
+            )
+        })
+        .collect::<String>();
+    format!(
+        r#"<div{}><div class="map-container"><div class="map-grid" aria-hidden="true"></div>{route}{marker_html}{waypoint_html}{controls}{scale}{location}</div></div>"#,
+        attrs(
+            map_classes(props),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        )
+    )
+}
+
+fn render_map_marker_html(
+    marker: &MapMarker,
+    index: usize,
+    total: usize,
+    context: &ReactiveRenderContext,
+) -> String {
+    let (left, top) = map_point_position(index, total);
+    let mut extra = format!(
+        r#" style="left:{}%;top:{}%;" data-dowe-map-marker="{}" data-dowe-map-marker-lat="{}" data-dowe-map-marker-lng="{}" data-dowe-map-marker-icon="{}""#,
+        left,
+        top,
+        escape_attr(&marker.id),
+        escape_attr(&marker.lat),
+        escape_attr(&marker.lng),
+        marker.icon.as_str()
+    );
+    if let Some(action) = marker.on_click.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-click="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    let label = marker
+        .label
+        .as_deref()
+        .or(marker.popup.as_deref())
+        .map(|label| format!(r#"<span class="map-marker-label">{}</span>"#, escape_html(label)))
+        .unwrap_or_default();
+    format!(
+        r#"<button class="map-marker is-{}" type="button"{}><span class="map-marker-pin"></span>{}</button>"#,
+        marker.icon.as_str(),
+        extra,
+        label
+    )
+}
+
+fn map_point_position(index: usize, total: usize) -> (usize, usize) {
+    if total <= 1 {
+        return (50, 50);
+    }
+    let step = 100 / (total + 1);
+    let left = ((index + 1) * step).clamp(12, 88);
+    let top = (28 + ((index * 23) % 46)).clamp(16, 84);
+    (left, top)
+}
+
+fn empty_default_title(kind: EmptyKind) -> &'static str {
+    match kind {
+        EmptyKind::Playlist => "No playlist items",
+        EmptyKind::Result => "No results found",
+        EmptyKind::Data => "No data",
+        EmptyKind::Template => "No template selected",
+    }
+}
+
+fn empty_default_description(kind: EmptyKind) -> &'static str {
+    match kind {
+        EmptyKind::Playlist => "Add items to start listening.",
+        EmptyKind::Result => "Try a different search or filter.",
+        EmptyKind::Data => "There are no records to display.",
+        EmptyKind::Template => "Choose or create a template to continue.",
+    }
+}
+
+fn empty_icon_html(kind: EmptyKind) -> &'static str {
+    match kind {
+        EmptyKind::Playlist => {
+            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><rect x="28" y="18" width="54" height="64" rx="10" fill="currentColor" opacity=".12"></rect><path d="M76 29v33.5a10 10 0 1 1-5-8.66V35H49v27.5a10 10 0 1 1-5-8.66V29z" fill="currentColor" opacity=".78"></path></svg>"#
+        }
+        EmptyKind::Result => {
+            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><circle cx="54" cy="45" r="24" fill="currentColor" opacity=".12"></circle><path d="M70 62l18 18M45 38h18M45 50h13" stroke="currentColor" stroke-width="7" stroke-linecap="round" opacity=".78"></path></svg>"#
+        }
+        EmptyKind::Data => {
+            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><rect x="24" y="22" width="72" height="56" rx="10" fill="currentColor" opacity=".12"></rect><path d="M38 38h44M38 52h34M38 66h22" stroke="currentColor" stroke-width="7" stroke-linecap="round" opacity=".78"></path></svg>"#
+        }
+        EmptyKind::Template => {
+            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><path d="M30 20h42l18 18v42H30z" fill="currentColor" opacity=".12"></path><path d="M72 20v20h20M43 50h34M43 64h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".78"></path></svg>"#
+        }
+    }
 }
 
 fn render_badge_html(

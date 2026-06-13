@@ -4,12 +4,13 @@ use crate::language::analysis::{
 use crate::language::model::{LanguageCompletion, LanguageCompletionKind, LanguageDocument};
 use crate::parser::{SourceNode, SourceValue, parse_source_file};
 use dowe_components::{
-    AlertKind, Align, AvatarStatus, BuiltinComponent, ButtonSize, CodeLanguage, ColorFamily,
-    ColorToken, ComponentVariant, DividerOrientation, DrawerPosition, FontFamily, GridAlignment,
-    Justify, NativeExternalMode, NavigationOperation, OverlayCornerPosition, OverlayPosition,
-    RoundedSize, SectionBackground, SideNavSize, SkeletonAnimation, SkeletonVariant,
-    TableColumnAlign, TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing, TextWeight,
-    ToastKind, VideoAspect, ViewAnimation, WebTarget,
+    AlertKind, Align, AvatarStatus, BuiltinComponent, ButtonSize, ChatBoxMode, CodeLanguage,
+    ColorFamily, ColorToken, ComponentVariant, CountdownSize, DividerOrientation, DrawerPosition,
+    EmptyKind, FontFamily, GridAlignment, Justify, MarqueeOrientation, MarqueeSpeed,
+    NativeExternalMode, NavigationOperation, OverlayCornerPosition, OverlayPosition, RoundedSize,
+    SectionBackground, SideNavSize, SkeletonAnimation, SkeletonVariant, TableColumnAlign,
+    TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing, TextWeight, ToastKind,
+    VideoAspect, ViewAnimation, ViewIcon, WebTarget,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -30,7 +31,28 @@ pub fn complete_document(
     if prefix.ends_with("env.") {
         return env_completions(root);
     }
-    if prop_value_context(&prefix, "onClick") {
+    if [
+        "onClick",
+        "onSend",
+        "onLoadMore",
+        "onStop",
+        "onVoiceNote",
+        "onFileAttach",
+        "onCameraCapture",
+        "onStart",
+        "onPause",
+        "onResume",
+        "onDiscard",
+        "onConfirm",
+        "onChange",
+        "onComplete",
+        "onLocation",
+        "onLocationError",
+        "onRoute",
+    ]
+    .iter()
+    .any(|prop| prop_value_context(&prefix, prop))
+    {
         return action_completions(root, document);
     }
     if middleware_context(&prefix) {
@@ -39,10 +61,16 @@ pub fn complete_document(
     if prop_value_context(&prefix, "bind") {
         return signal_completions(root, document);
     }
-    if prop_value_context(&prefix, "data") {
+    if ["data", "items", "messages"]
+        .iter()
+        .any(|prop| prop_value_context(&prefix, prop))
+    {
         return signal_completions(root, document);
     }
-    if prop_value_context(&prefix, "open") {
+    if ["open", "loading", "sending", "streaming", "hasMore"]
+        .iter()
+        .any(|prop| prop_value_context(&prefix, prop))
+    {
         return signal_completions(root, document);
     }
     if prop_value_context(&prefix, "show") {
@@ -176,6 +204,12 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "method",
         "handler",
         "continue",
+        "send",
+        "bridge",
+        "http.get",
+        "http.post",
+        "agent.chat",
+        "ws.json",
         "jwt.verify",
         "jwt.decrypt",
         "jwt.sign",
@@ -227,6 +261,32 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "Toast",
         "Dropdown",
         "Command",
+        "AvatarGroup",
+        "ChatBox",
+        "Empty",
+        "Marquee",
+        "TypeWriter",
+        "RichText",
+        "Record",
+        "ToggleGroup",
+        "Collapsible",
+        "Countdown",
+        "Map",
+        "Audio",
+        "Image",
+        "Accordion",
+        "Carousel",
+        "Checkbox",
+        "Color",
+        "Date",
+        "DateRange",
+        "RadioGroup",
+        "Toggle",
+        "ToggleTheme",
+        "Fab",
+        "fabAction",
+        "Slider",
+        "Dropzone",
         "Input",
         "Select",
         "Option",
@@ -484,7 +544,15 @@ fn component_value_completions(
             | BuiltinComponent::Input
             | BuiltinComponent::Select
             | BuiltinComponent::Button
-            | BuiltinComponent::Alert,
+            | BuiltinComponent::Alert
+            | BuiltinComponent::ToggleTheme
+            | BuiltinComponent::Dropzone
+            | BuiltinComponent::ChatBox
+            | BuiltinComponent::Empty
+            | BuiltinComponent::ToggleGroup
+            | BuiltinComponent::Collapsible
+            | BuiltinComponent::Countdown
+            | BuiltinComponent::Map,
             "variant",
         ) => Some(quoted_values(
             ComponentVariant::all().iter().map(|value| value.as_str()),
@@ -500,9 +568,12 @@ fn component_value_completions(
         )),
         (
             BuiltinComponent::Avatar
+            | BuiltinComponent::AvatarGroup
             | BuiltinComponent::Badge
             | BuiltinComponent::Tooltip
-            | BuiltinComponent::Toast,
+            | BuiltinComponent::Toast
+            | BuiltinComponent::Fab
+            | BuiltinComponent::Record,
             "variant",
         ) => Some(solid_soft_values()),
         (BuiltinComponent::Tabs, "variant") => Some(quoted_values(
@@ -529,7 +600,13 @@ fn component_value_completions(
             | BuiltinComponent::Tooltip
             | BuiltinComponent::Toast
             | BuiltinComponent::Dropdown
-            | BuiltinComponent::Command,
+            | BuiltinComponent::Command
+            | BuiltinComponent::Dropzone
+            | BuiltinComponent::AvatarGroup
+            | BuiltinComponent::ChatBox
+            | BuiltinComponent::Empty
+            | BuiltinComponent::Collapsible
+            | BuiltinComponent::Countdown,
             "scheme",
         ) => Some(quoted_values(
             ColorFamily::all().iter().map(|value| value.as_str()),
@@ -538,7 +615,11 @@ fn component_value_completions(
             BuiltinComponent::Input
             | BuiltinComponent::Select
             | BuiltinComponent::Button
-            | BuiltinComponent::Alert,
+            | BuiltinComponent::Alert
+            | BuiltinComponent::ToggleTheme
+            | BuiltinComponent::Fab
+            | BuiltinComponent::FabAction
+            | BuiltinComponent::Slider,
             "scheme",
         ) => Some(quoted_values(
             ColorFamily::all()
@@ -546,12 +627,30 @@ fn component_value_completions(
                 .filter(|value| !matches!(value, ColorFamily::Background | ColorFamily::Surface))
                 .map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Button, "size") => Some(quoted_values(
+        (
+            BuiltinComponent::Record | BuiltinComponent::ToggleGroup | BuiltinComponent::Map,
+            "scheme",
+        ) => Some(quoted_values(
+            ColorFamily::all()
+                .iter()
+                .filter(|value| !matches!(value, ColorFamily::Background | ColorFamily::Surface))
+                .map(|value| value.as_str()),
+        )),
+        (
+            BuiltinComponent::Button
+            | BuiltinComponent::Avatar
+            | BuiltinComponent::AvatarGroup
+            | BuiltinComponent::Chip
+            | BuiltinComponent::ToggleTheme
+            | BuiltinComponent::Fab
+            | BuiltinComponent::ToggleGroup,
+            "size",
+        ) => Some(quoted_values(
             ButtonSize::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Avatar | BuiltinComponent::Chip, "size") => Some(quoted_values(
-            ButtonSize::all().iter().map(|value| value.as_str()),
-        )),
+        (BuiltinComponent::Slider | BuiltinComponent::Dropzone, "size") => {
+            Some(control_size_values())
+        }
         (BuiltinComponent::Table, "size") => Some(quoted_values(
             TableSize::all().iter().map(|value| value.as_str()),
         )),
@@ -563,6 +662,21 @@ fn component_value_completions(
         )),
         (BuiltinComponent::Divider, "orientation") => Some(quoted_values(
             DividerOrientation::all().iter().map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::ChatBox, "mode") => Some(quoted_values(
+            ChatBoxMode::all().iter().map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::Empty, "type") => Some(quoted_values(
+            EmptyKind::all().iter().map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::Marquee, "speed") => Some(quoted_values(
+            MarqueeSpeed::all().iter().map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::Marquee, "orientation") => Some(quoted_values(
+            MarqueeOrientation::all().iter().map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::Countdown, "size") => Some(quoted_values(
+            CountdownSize::all().iter().map(|value| value.as_str()),
         )),
         (
             BuiltinComponent::SideNav | BuiltinComponent::Sidebar | BuiltinComponent::NavMenu,
@@ -579,11 +693,13 @@ fn component_value_completions(
         (BuiltinComponent::Avatar, "status") => Some(quoted_values(
             AvatarStatus::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Badge | BuiltinComponent::Toast, "position") => Some(quoted_values(
-            OverlayCornerPosition::all()
-                .iter()
-                .map(|value| value.as_str()),
-        )),
+        (BuiltinComponent::Badge | BuiltinComponent::Toast | BuiltinComponent::Fab, "position") => {
+            Some(quoted_values(
+                OverlayCornerPosition::all()
+                    .iter()
+                    .map(|value| value.as_str()),
+            ))
+        }
         (BuiltinComponent::Tooltip, "position") => Some(quoted_values(
             OverlayPosition::all().iter().map(|value| value.as_str()),
         )),
@@ -602,19 +718,27 @@ fn component_value_completions(
         (BuiltinComponent::Section, "background") => Some(quoted_values(
             SectionBackground::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Title | BuiltinComponent::Text, "size") => Some(quoted_values(
-            TextSize::all().iter().map(|value| value.as_str()),
-        )),
-        (BuiltinComponent::Title | BuiltinComponent::Text, "weight") => Some(quoted_values(
+        (BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText, "size") => {
+            Some(quoted_values(
+                TextSize::all().iter().map(|value| value.as_str()),
+            ))
+        }
+        (
+            BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText,
+            "weight",
+        ) => Some(quoted_values(
             TextWeight::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Title | BuiltinComponent::Text, "spacing") => Some(quoted_values(
+        (
+            BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText,
+            "spacing",
+        ) => Some(quoted_values(
             TextSpacing::all().iter().map(|value| value.as_str()),
         )),
         (_, "font") => Some(quoted_values(
             FontFamily::all().iter().map(|value| value.as_str()),
         )),
-        (_, "bg" | "color" | "upColor" | "downColor") => Some(quoted_values(
+        (_, "bg" | "color" | "upColor" | "downColor" | "fadeColor") => Some(quoted_values(
             ColorToken::all().iter().map(|value| value.as_str()),
         )),
         (BuiltinComponent::Path, "fill") => Some(quoted_values(
@@ -634,20 +758,48 @@ fn component_value_completions(
         (BuiltinComponent::Grid, "justify" | "align") => Some(quoted_values(
             GridAlignment::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Button | BuiltinComponent::Avatar, "navigate") => Some(quoted_values(
+        (
+            BuiltinComponent::Button
+            | BuiltinComponent::Avatar
+            | BuiltinComponent::FabAction
+            | BuiltinComponent::Empty,
+            "navigate",
+        ) => Some(quoted_values(
             NavigationOperation::all()
                 .iter()
                 .map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Button | BuiltinComponent::Avatar, "history") => {
-            Some(quoted_values(["back"]))
-        }
-        (BuiltinComponent::Button | BuiltinComponent::Avatar, "target") => Some(quoted_values(
+        (
+            BuiltinComponent::Button
+            | BuiltinComponent::Avatar
+            | BuiltinComponent::FabAction
+            | BuiltinComponent::Empty,
+            "history",
+        ) => Some(quoted_values(["back"])),
+        (
+            BuiltinComponent::Button
+            | BuiltinComponent::Avatar
+            | BuiltinComponent::FabAction
+            | BuiltinComponent::Empty,
+            "target",
+        ) => Some(quoted_values(
             WebTarget::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Button | BuiltinComponent::Avatar, "externalMode") => Some(
-            quoted_values(NativeExternalMode::all().iter().map(|value| value.as_str())),
-        ),
+        (
+            BuiltinComponent::Button
+            | BuiltinComponent::Avatar
+            | BuiltinComponent::FabAction
+            | BuiltinComponent::Empty,
+            "externalMode",
+        ) => Some(quoted_values(
+            NativeExternalMode::all().iter().map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::Fab | BuiltinComponent::FabAction, "icon") => Some(quoted_values(
+            ViewIcon::all().iter().map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::ToggleGroup, "icon") => Some(quoted_values(
+            ViewIcon::all().iter().map(|value| value.as_str()),
+        )),
         (BuiltinComponent::Alert, "type") => Some(quoted_values(
             AlertKind::all().iter().map(|value| value.as_str()),
         )),
@@ -660,6 +812,10 @@ fn component_value_completions(
 
 fn solid_soft_values() -> Vec<LanguageCompletion> {
     quoted_values(["solid", "soft"])
+}
+
+fn control_size_values() -> Vec<LanguageCompletion> {
+    quoted_values(["sm", "md", "lg"])
 }
 
 fn column_value_completions(prop: &str) -> Option<Vec<LanguageCompletion>> {
@@ -713,8 +869,27 @@ fn props_for_component(component: &str) -> &'static [&'static str] {
         "Toast" => &TOAST_PROPS,
         "Dropdown" => &DROPDOWN_PROPS,
         "Command" => &COMMAND_PROPS,
-        "item" => &OVERLAY_ITEM_PROPS,
+        "AvatarGroup" => &AVATAR_GROUP_PROPS,
+        "ChatBox" => &CHAT_BOX_PROPS,
+        "Empty" => &EMPTY_PROPS,
+        "Marquee" => &MARQUEE_PROPS,
+        "TypeWriter" => &TYPE_WRITER_PROPS,
+        "RichText" => &TEXT_PROPS,
+        "mark" => &RICH_TEXT_MARK_PROPS,
+        "Record" => &RECORD_PROPS,
+        "ToggleGroup" => &TOGGLE_GROUP_PROPS,
+        "Collapsible" => &COLLAPSIBLE_PROPS,
+        "Countdown" => &COUNTDOWN_PROPS,
+        "Map" => &MAP_PROPS,
+        "marker" => &MAP_MARKER_PROPS,
+        "waypoint" => &MAP_WAYPOINT_PROPS,
+        "item" => &ITEM_PROPS,
         "group" => &COMMAND_GROUP_PROPS,
+        "ToggleTheme" => &TOGGLE_THEME_PROPS,
+        "Fab" => &FAB_PROPS,
+        "fabAction" => &FAB_ACTION_PROPS,
+        "Slider" => &SLIDER_PROPS,
+        "Dropzone" => &DROPZONE_PROPS,
         "Input" => &INPUT_PROPS,
         "Select" => &SELECT_PROPS,
         "Option" => &OPTION_PROPS,
@@ -1107,9 +1282,294 @@ const COMMAND_PROPS: &[&str] = &[
     "rounded",
     "border",
 ];
-const OVERLAY_ITEM_PROPS: &[&str] = &[
+const AVATAR_GROUP_PROPS: &[&str] = &[
+    "items", "variant", "scheme", "size", "max", "autoFit", "inline", "bordered", "id", "show",
+    "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded", "border",
+];
+const CHAT_BOX_PROPS: &[&str] = &[
+    "messages",
+    "mode",
+    "currentUserId",
+    "userName",
+    "userAvatar",
+    "userStatus",
+    "assistantName",
+    "assistantAvatar",
+    "showHeader",
+    "placeholder",
+    "showAttachments",
+    "showVoiceNote",
+    "showCamera",
+    "loading",
+    "sending",
+    "streaming",
+    "hasMore",
+    "onSend",
+    "onLoadMore",
+    "onStop",
+    "onVoiceNote",
+    "onFileAttach",
+    "onCameraCapture",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const EMPTY_PROPS: &[&str] = &[
+    "type",
+    "title",
+    "description",
+    "href",
+    "navigate",
+    "history",
+    "target",
+    "externalMode",
+    "onClick",
+    "actionLabel",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const MARQUEE_PROPS: &[&str] = &[
+    "speed",
+    "pauseOnHover",
+    "reverse",
+    "orientation",
+    "fade",
+    "fadeColor",
+    "gap",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const TYPE_WRITER_PROPS: &[&str] = &[
+    "typeSpeed",
+    "deleteSpeed",
+    "afterTyped",
+    "afterDeleted",
+    "repeat",
+    "font",
+    "id",
+    "show",
+    "bg",
+    "color",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const RICH_TEXT_MARK_PROPS: &[&str] = &["text", "style", "scheme"];
+const RECORD_PROPS: &[&str] = &[
+    "name",
+    "url",
+    "disabled",
+    "maxDuration",
+    "onStart",
+    "onPause",
+    "onResume",
+    "onStop",
+    "onDiscard",
+    "onConfirm",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const TOGGLE_GROUP_PROPS: &[&str] = &[
+    "value",
+    "selected",
+    "size",
+    "wide",
+    "vertical",
+    "disabled",
+    "ariaLabel",
+    "onChange",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const COLLAPSIBLE_PROPS: &[&str] = &[
+    "label",
+    "defaultOpen",
+    "disabled",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const COUNTDOWN_PROPS: &[&str] = &[
+    "target",
+    "showDays",
+    "showHours",
+    "showMinutes",
+    "showSeconds",
+    "size",
+    "daysLabel",
+    "hoursLabel",
+    "minutesLabel",
+    "secondsLabel",
+    "onComplete",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const MAP_PROPS: &[&str] = &[
+    "centerLat",
+    "centerLng",
+    "zoom",
+    "height",
+    "width",
+    "showControls",
+    "showScale",
+    "showLocationControl",
+    "interactive",
+    "routeStartLat",
+    "routeStartLng",
+    "routeEndLat",
+    "routeEndLng",
+    "onLocation",
+    "onLocationError",
+    "onRoute",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const MAP_MARKER_PROPS: &[&str] = &["id", "lat", "lng", "label", "popup", "icon", "onClick"];
+const MAP_WAYPOINT_PROPS: &[&str] = &["lat", "lng"];
+const ITEM_PROPS: &[&str] = &[
+    "id",
+    "value",
+    "text",
     "label",
     "description",
+    "src",
+    "name",
+    "alt",
+    "icon",
     "href",
     "navigate",
     "history",
@@ -1119,6 +1579,115 @@ const OVERLAY_ITEM_PROPS: &[&str] = &[
     "disabled",
 ];
 const COMMAND_GROUP_PROPS: &[&str] = &["label"];
+const TOGGLE_THEME_PROPS: &[&str] = &[
+    "variant",
+    "scheme",
+    "size",
+    "lightLabel",
+    "darkLabel",
+    "id",
+    "show",
+    "font",
+    "bg",
+    "cover",
+    "overlay",
+    "colSpan",
+    "rowSpan",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+];
+const FAB_PROPS: &[&str] = &[
+    "position", "fixed", "offsetX", "offsetY", "icon", "label", "variant", "scheme", "size",
+    "onClick", "id", "show", "font", "bg", "cover", "overlay", "colSpan", "rowSpan", "p", "px",
+    "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded",
+];
+const FAB_ACTION_PROPS: &[&str] = &[
+    "label",
+    "icon",
+    "scheme",
+    "href",
+    "navigate",
+    "history",
+    "target",
+    "externalMode",
+    "onClick",
+];
+const SLIDER_PROPS: &[&str] = &[
+    "bind",
+    "value",
+    "min",
+    "max",
+    "step",
+    "label",
+    "name",
+    "hideLabel",
+    "scheme",
+    "size",
+    "id",
+    "show",
+    "font",
+    "bg",
+    "cover",
+    "overlay",
+    "colSpan",
+    "rowSpan",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+];
+const DROPZONE_PROPS: &[&str] = &[
+    "accept",
+    "multiple",
+    "maxSize",
+    "name",
+    "label",
+    "helpText",
+    "errorText",
+    "placeholder",
+    "disabled",
+    "variant",
+    "scheme",
+    "size",
+    "id",
+    "show",
+    "font",
+    "bg",
+    "cover",
+    "overlay",
+    "colSpan",
+    "rowSpan",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+];
 const INPUT_PROPS: &[&str] = &[
     "variant",
     "scheme",

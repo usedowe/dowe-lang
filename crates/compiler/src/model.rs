@@ -266,6 +266,9 @@ pub enum EndpointBehavior {
     TextTemplate(String),
     UserGreeting,
     CreatePostJson,
+    HttpProxy(HttpProxyEndpoint),
+    HttpActionJson(HttpActionJsonEndpoint),
+    AgentResponse(AgentResponseEndpoint),
     StoreInsertJson(StoreInsertEndpoint),
     StoreQueryJson(StoreQueryEndpoint),
     StoreTransactionJson(StoreTransactionEndpoint),
@@ -343,6 +346,70 @@ pub enum ServerMiddlewareResponseBody {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerSecret {
     Environment(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HttpProxyEndpoint {
+    pub binding: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HttpActionJsonEndpoint {
+    pub status: u16,
+    pub value: StoreLiteral,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentResponseEndpoint {
+    pub upstream: String,
+    pub request: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutboundHttpRequest {
+    pub binding: String,
+    pub method: HttpMethod,
+    pub base: HttpConnectionValue,
+    pub path: String,
+    pub bearer: Option<ServerSecret>,
+    pub json: Option<StoreLiteral>,
+    pub mode: HttpResponseMode,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HttpConnectionValue {
+    Static(String),
+    Environment(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HttpResponseMode {
+    Json,
+    Proxy,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentChatTransform {
+    pub binding: String,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebSocketJsonStatement {
+    pub binding: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebSocketSendJsonStatement {
+    pub value: StoreLiteral,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WebSocketSseBridgeStatement {
+    pub upstream: String,
+    pub request_id: String,
+    pub request_type: String,
+    pub model: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -471,6 +538,11 @@ pub enum ServerStatement {
         binding: String,
         schema: Option<DoweType>,
     },
+    Http(OutboundHttpRequest),
+    AgentChat(AgentChatTransform),
+    WebSocketJson(WebSocketJsonStatement),
+    WebSocketSendJson(WebSocketSendJsonStatement),
+    WebSocketSseBridge(WebSocketSseBridgeStatement),
     Store(ServerStoreStatement),
     Kv(ServerKvStatement),
 }

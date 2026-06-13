@@ -19,6 +19,7 @@ fn parse_style_props(
                     component,
                     BuiltinComponent::Input
                         | BuiltinComponent::Select
+                        | BuiltinComponent::Slider
                         | BuiltinComponent::Checkbox
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
@@ -28,7 +29,7 @@ fn parse_style_props(
             {
                 style.element.bind = Some(parse_required_string(&prop.name, &prop.value)?)
             }
-            "onClick" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar) => {
+            "onClick" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar | BuiltinComponent::Fab | BuiltinComponent::Empty) => {
                 style.element.on_click = Some(parse_required_string(&prop.name, &prop.value)?)
             }
             "bg" if style_accepts_colors(mode) => {
@@ -183,7 +184,16 @@ fn parse_variant_props(
             "scheme" => {
                 variant_props.color = Some(parse_family_prop(component, &prop.name, &prop.value)?)
             }
-            "size" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Chip) => {
+            "size"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button
+                        | BuiltinComponent::Chip
+                        | BuiltinComponent::AvatarGroup
+                        | BuiltinComponent::ToggleTheme
+                        | BuiltinComponent::Fab
+                ) =>
+            {
                 variant_props.size = Some(parse_button_size_prop(&prop.name, &prop.value)?)
             }
             "label"
@@ -197,6 +207,9 @@ fn parse_variant_props(
                         | BuiltinComponent::DateRange
                         | BuiltinComponent::RadioGroup
                         | BuiltinComponent::Toggle
+                        | BuiltinComponent::Slider
+                        | BuiltinComponent::Dropzone
+                        | BuiltinComponent::Fab
                 ) =>
             {
                 variant_props.label = Some(parse_required_string(&prop.name, &prop.value)?)
@@ -209,6 +222,7 @@ fn parse_variant_props(
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
                         | BuiltinComponent::DateRange
+                        | BuiltinComponent::Dropzone
                 ) =>
             {
                 variant_props.placeholder = Some(parse_static_string(&prop.name, &prop.value)?)
@@ -225,19 +239,19 @@ fn parse_variant_props(
             {
                 variant_props.label_floating = parse_static_bool(&prop.name, &prop.value)?
             }
-            "href" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar) => {
+            "href" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
                 href = Some(parse_required_string(&prop.name, &prop.value)?)
             }
-            "navigate" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar) => {
+            "navigate" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
                 navigate = Some(parse_navigation_operation(&prop.name, &prop.value)?)
             }
-            "history" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar) => {
+            "history" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
                 history = Some(parse_history_prop(&prop.name, &prop.value)?)
             }
-            "target" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar) => {
+            "target" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
                 target = Some(parse_web_target(&prop.name, &prop.value)?)
             }
-            "externalMode" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar) => {
+            "externalMode" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
                 external_mode = Some(parse_native_external_mode(&prop.name, &prop.value)?)
             }
             _ => style_props.push(prop.clone()),

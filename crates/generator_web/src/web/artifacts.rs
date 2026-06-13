@@ -1,21 +1,28 @@
 use dowe_components::{
-    AccordionItem, AccordionProps, AlertDialogProps, AlertProps, Align, AudioProps, AvatarProps,
-    BadgeProps, BarProps, Breakpoint, ButtonSize, CandlestickProps, CarouselIndicatorType,
+    AccordionItem, AccordionProps, AlertDialogProps, AlertProps, Align, AudioProps,
+    AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps, BarProps, Breakpoint, ButtonSize,
+    CandlestickProps, CarouselIndicatorType, ChatBoxProps, CollapsibleProps,
     CarouselOrientation, CarouselProps, CarouselSlide, CheckboxProps, ChipProps, CodeProps,
     ColorFamily, ColorProps, ColorToken, CommandEntry, CommandProps, ComponentVariant,
+    CountdownProps,
     CoverSource, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerProps, DrawerProps,
-    DropdownProps, ElementProps, FontConfig, FontFamily, GapSize, GapValue, GridAlignment,
-    GridProps, GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps,
-    Justify, LayoutProps, ModalProps, NativeExternalMode, NavMenuItem, NavMenuItemProps,
+    DropzoneProps, DropdownProps, ElementProps, EmptyKind, EmptyProps, FabAction, FabProps, FontConfig, FontFamily,
+    GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
+    INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps, MapMarker, MapProps,
+    MapWaypoint, MarqueeProps, ModalProps,
+    NativeExternalMode, NavMenuItem, NavMenuItemProps,
     NavMenuProps, NavigationAction, NavigationOperation, OverlayEntry, OverlayItemProps,
-    OverlayPaint, RadioGroupProps, RadioOption, ResponsiveValue, ScaleValue, ScaffoldProps,
+    OverlayPaint, RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark,
+    ScaleValue, ScaffoldProps,
     SectionBackground, SelectOption, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
     SizeValue, SkeletonProps, StyleProps, SvgPath, SvgPathFill, SvgProps, TabItem, TableColumn,
-    TableColumnAlign, TableProps, TabsProps, TabsVariant, TextProps, TextSize, TextSpacing,
-    TextWeight, ToastProps, ToggleProps, TooltipProps, TranslationCatalog, VariantProps,
-    VideoProps, ViewAction, ViewActionKind, ViewAnimation, ViewAssignAction, ViewNavigationAction,
-    ViewNode, ViewRequestAction, ViewResetAction, ViewSection, ViewSignal, ViewSignalValue,
-    VisibilityCondition, WebTarget, collect_node_font_families, text_spacing_em,
+    SliderProps, TableColumnAlign, TableProps, TabsProps, TabsVariant, TextProps, TextSize,
+    TextSpacing, TextWeight, ThemeToggleProps, ToastProps, ToggleGroupItem, ToggleGroupProps,
+    ToggleProps, TooltipProps,
+    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, VideoProps, ViewAction, ViewActionKind, ViewAnimation,
+    ViewAssignAction, ViewIcon, ViewNavigationAction, ViewNode, ViewRequestAction,
+    ViewResetAction, ViewSection, ViewSignal, ViewSignalValue, VisibilityCondition, WebTarget,
+    collect_node_font_families, text_spacing_em,
     text_typography, text_weight_number,
 };
 use dowe_minifier::minify_js;
@@ -231,12 +238,17 @@ pub fn render_page_document(page: &ViewPage) -> String {
         .iter()
         .map(|path| format!(r#"<script type="module" src="/{path}"></script>"#))
         .collect::<String>();
+    let theme_script = theme_bootstrap_script();
 
     format!(
-        r#"<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dowe</title><link rel="stylesheet" href="/design.css">{css_links}<script type="module" src="/router.js"></script>{chunk_scripts}</head><body><div id="dowe-app" data-dowe-route="{}">{}</div></body></html>"#,
+        r#"<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content"><title>Dowe</title>{theme_script}<link rel="stylesheet" href="/design.css">{css_links}<script type="module" src="/router.js"></script>{chunk_scripts}</head><body><div id="dowe-app" data-dowe-route="{}">{}</div></body></html>"#,
         escape_attr(&page.route_path),
         page.body_html
     )
+}
+
+fn theme_bootstrap_script() -> &'static str {
+    r#"<script>!function(){try{var k="theme-preference",t=localStorage.getItem(k);if(!t){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";localStorage.setItem(k,t)}if(t&&t!=="light")document.documentElement.setAttribute("data-dowe-theme",t);else document.documentElement.removeAttribute("data-dowe-theme")}catch(e){}}();</script>"#
 }
 
 pub fn web_artifacts(

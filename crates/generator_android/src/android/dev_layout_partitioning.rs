@@ -152,9 +152,19 @@ fn dev_children_boundary(
                 .iter()
                 .map(|slide| dev_children_boundaries(&slide.children, false, false)),
         ),
+        ViewNode::Marquee { children, .. } | ViewNode::Collapsible { children, .. } => {
+            dev_children_boundaries(children, false, false)
+        }
         ViewNode::Each { children, .. } => dev_children_boundaries(children, false, false),
         ViewNode::Button { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
         | ViewNode::Input { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
@@ -180,7 +190,13 @@ fn dev_children_boundary(
         | ViewNode::Date { .. }
         | ViewNode::DateRange { .. }
         | ViewNode::RadioGroup { .. }
-        | ViewNode::Toggle { .. } => DevChildrenBoundary::default(),
+        | ViewNode::Toggle { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
+        | ViewNode::TypeWriter { .. } => DevChildrenBoundary::default(),
     }
 }
 

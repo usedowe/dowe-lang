@@ -1,10 +1,10 @@
 use crate::handlers::{
     chunk_response, design_css_response, font_response, is_preflight, javascript_response,
-    json_response_text, server_response,
+    json_response_text, server_response, websocket_response,
 };
 use crate::server::DevRuntimeState;
 use axum::body::Bytes;
-use axum::extract::State;
+use axum::extract::{State, WebSocketUpgrade};
 use axum::http::{HeaderMap, Method, StatusCode, Uri};
 use axum::response::{Html, IntoResponse, Response};
 use dowe_compiler::CompiledProject;
@@ -37,6 +37,18 @@ pub async fn production_handler(
     } else {
         StatusCode::NOT_FOUND.into_response()
     }
+}
+
+pub async fn production_declared_websocket_handler(
+    state: DevRuntimeState,
+    upgrade: WebSocketUpgrade,
+    path: String,
+) -> Response {
+    let project = state.project.read().await;
+    let Some(route) = project.backend.find_websocket(&path) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    websocket_response(upgrade, project.clone(), route.handlers)
 }
 
 fn production_static_response(project: &CompiledProject, path: &str) -> Response {

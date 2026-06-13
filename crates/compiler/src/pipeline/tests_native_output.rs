@@ -256,8 +256,8 @@
         ));
         assert!(ios_routing.contains("dowe-dev://generated/signup"));
         assert!(ios_pages.contains("struct DoweRouteEntry: Hashable"));
-        assert!(ios_pages.contains("NavigationStack(path: $navigationPath)"));
-        assert!(ios_pages.contains(".toolbar(.hidden, for: .navigationBar)"));
+        assert!(ios_pages.contains("@State private var navigationPath: [DoweRouteEntry] = []"));
+        assert!(ios_pages.contains("routeContent(currentEntry, viewportWidth:"));
         assert!(ios_pages.contains(".simultaneousGesture(backSwipeGesture)"));
         assert!(ios_pages.contains(r#"{ navigate("replace", "", "hero") }"#));
         assert!(ios_pages.contains(r#"{ navigate("push", "/signup", "join") }"#));

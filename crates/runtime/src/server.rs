@@ -1,13 +1,14 @@
 use crate::error::{RuntimeError, RuntimeResult};
 use crate::handlers::{
-    backend_handler, desktop_handler, desktop_websocket_handler, dev_websocket_handler,
-    views_handler, websocket_handler,
+    backend_declared_websocket_handler, backend_handler, desktop_declared_websocket_handler,
+    desktop_handler, dev_websocket_handler, views_handler,
 };
 use crate::logging::log_info;
-use crate::production_handlers::production_handler;
+use crate::production_handlers::{production_declared_websocket_handler, production_handler};
 use crate::server_actions::execute_server_action;
 use crate::{DevEventBus, DevEventType};
 use axum::Router;
+use axum::extract::{State, WebSocketUpgrade};
 use axum::routing::get;
 use dowe_compiler::CompiledProject;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -133,6 +134,24 @@ pub async fn start_dev_servers(
         dev_origins.push(format!("http://{addr}"));
     }
 
+    let backend_websocket_paths = project
+        .backend
+        .websockets
+        .iter()
+        .map(|route| route.path.clone())
+        .collect::<Vec<_>>();
+    let desktop_websocket_paths = project
+        .desktop_server
+        .as_ref()
+        .map(|server| {
+            server
+                .websockets
+                .iter()
+                .map(|route| route.path.clone())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
     let state = DevRuntimeState {
         project: Arc::new(RwLock::new(project)),
         events: DevEventBus::default(),
@@ -141,7 +160,7 @@ pub async fn start_dev_servers(
 
     if let Some(listener) = backend_listener {
         let addr = listener.local_addr()?;
-        let router = backend_router(state.clone());
+        let router = backend_router(state.clone(), backend_websocket_paths);
         let (shutdown, signal) = oneshot::channel();
         let handle = spawn_server(listener, router, signal);
         log_info(format!("Backend server started at http://{addr}"));
@@ -166,7 +185,7 @@ pub async fn start_dev_servers(
     }
     if let Some(listener) = desktop_listener {
         let addr = listener.local_addr()?;
-        let router = desktop_router(state.clone());
+        let router = desktop_router(state.clone(), desktop_websocket_paths);
         let (shutdown, signal) = oneshot::channel();
         let handle = spawn_server(listener, router, signal);
         log_info(format!("Desktop server started at http://{addr}"));
@@ -207,12 +226,18 @@ pub async fn start_production(
         .map_err(|error| bind_error(addr, error))?;
     execute_server_action(&project.backend.init_action);
     let addr = listener.local_addr()?;
+    let backend_websocket_paths = project
+        .backend
+        .websockets
+        .iter()
+        .map(|route| route.path.clone())
+        .collect::<Vec<_>>();
     let state = DevRuntimeState {
         project: Arc::new(RwLock::new(project)),
         events: DevEventBus::default(),
         dev_origins: Vec::new(),
     };
-    let router = production_router(state);
+    let router = production_router(state, backend_websocket_paths);
     let (shutdown, signal) = oneshot::channel();
     let handle = spawn_server(listener, router, signal);
     log_info(format!("Production server started at http://{addr}"));
@@ -383,12 +408,21 @@ enum ServerWait {
     Finished(Result<RuntimeResult<()>, tokio::task::JoinError>),
 }
 
-fn backend_router(state: DevRuntimeState) -> Router {
-    Router::new()
-        .route("/ws", get(websocket_handler))
-        .route("/_dowe/dev/ws", get(dev_websocket_handler))
-        .fallback(backend_handler)
-        .with_state(state)
+fn backend_router(state: DevRuntimeState, websocket_paths: Vec<String>) -> Router {
+    let mut router = Router::new().route("/_dowe/dev/ws", get(dev_websocket_handler));
+    for path in websocket_paths {
+        let websocket_path = path.clone();
+        router = router.route(
+            &path,
+            get(
+                move |State(state): State<DevRuntimeState>, upgrade: WebSocketUpgrade| {
+                    let path = websocket_path.clone();
+                    async move { backend_declared_websocket_handler(state, upgrade, path).await }
+                },
+            ),
+        );
+    }
+    router.fallback(backend_handler).with_state(state)
 }
 
 fn views_router(state: DevRuntimeState) -> Router {
@@ -398,19 +432,38 @@ fn views_router(state: DevRuntimeState) -> Router {
         .with_state(state)
 }
 
-fn desktop_router(state: DevRuntimeState) -> Router {
-    Router::new()
-        .route("/ws", get(desktop_websocket_handler))
-        .route("/_dowe/dev/ws", get(dev_websocket_handler))
-        .fallback(desktop_handler)
-        .with_state(state)
+fn desktop_router(state: DevRuntimeState, websocket_paths: Vec<String>) -> Router {
+    let mut router = Router::new().route("/_dowe/dev/ws", get(dev_websocket_handler));
+    for path in websocket_paths {
+        let websocket_path = path.clone();
+        router = router.route(
+            &path,
+            get(
+                move |State(state): State<DevRuntimeState>, upgrade: WebSocketUpgrade| {
+                    let path = websocket_path.clone();
+                    async move { desktop_declared_websocket_handler(state, upgrade, path).await }
+                },
+            ),
+        );
+    }
+    router.fallback(desktop_handler).with_state(state)
 }
 
-fn production_router(state: DevRuntimeState) -> Router {
-    Router::new()
-        .route("/ws", get(websocket_handler))
-        .fallback(production_handler)
-        .with_state(state)
+fn production_router(state: DevRuntimeState, websocket_paths: Vec<String>) -> Router {
+    let mut router = Router::new();
+    for path in websocket_paths {
+        let websocket_path = path.clone();
+        router = router.route(
+            &path,
+            get(
+                move |State(state): State<DevRuntimeState>, upgrade: WebSocketUpgrade| {
+                    let path = websocket_path.clone();
+                    async move { production_declared_websocket_handler(state, upgrade, path).await }
+                },
+            ),
+        );
+    }
+    router.fallback(production_handler).with_state(state)
 }
 
 fn spawn_server(

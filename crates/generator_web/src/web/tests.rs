@@ -3,22 +3,26 @@ use super::{
     web_artifacts,
 };
 use dowe_components::{
-    AccordionItem, AccordionProps, AlertDialogProps, AudioProps, AvatarProps, AvatarStatus,
-    BadgeProps, BarProps, Breakpoint, ButtonSize, CarouselIndicatorType, CarouselOrientation,
-    CarouselProps, CarouselSlide, CheckboxProps, ChipProps, ColorFamily, ColorProps, ColorToken,
-    CommandEntry, CommandProps, ComponentProp, ComponentVariant, CoverSource, DateProps,
-    DateRangeProps, DesignConfig, DividerOrientation, DividerProps, DrawerPosition, DrawerProps,
-    DropdownProps, ElementProps, FontConfig, GapSize, GapValue, GridAlignment, GridProps, GridSpan,
-    GridTracks, ImageAspect, ImageLoading, ImageObjectFit, ImageProps, ModalProps, NavMenuItem,
-    NavMenuItemProps, NavMenuProps, NavigationAction, NavigationOperation, OverlayCornerPosition,
-    OverlayEntry, OverlayItemProps, OverlayPaint, OverlayPosition, PropValue, RadioGroupProps,
-    RadioOption, ResponsiveEntry, ResponsiveValue, RoundedSize, ScaffoldProps, SectionBackground,
-    SelectOption, SideNavItem, SideNavItemProps, SideNavProps, SideNavSize, SkeletonAnimation,
-    SkeletonProps, SkeletonVariant, StyleProps, SvgPath, SvgPathFill, SvgProps, SvgViewBox,
-    TabItem, TabsPosition, TabsProps, TabsVariant, TextProps, TextWeight, ToastKind, ToastProps,
-    ToggleProps, TooltipProps, TranslationCatalog, TranslationLocale, TranslationValue,
-    VariantProps, VideoAspect, VideoProps, ViewAction, ViewActionKind, ViewAnimation, ViewNode,
-    ViewResetAction, ViewSignal, ViewSignalValue, VisibilityCondition,
+    AccordionItem, AccordionProps, AlertDialogProps, AudioProps, AvatarGroupItem,
+    AvatarGroupProps, AvatarProps, AvatarStatus, BadgeProps, BarProps, Breakpoint, ButtonSize,
+    CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, ChatBoxMode,
+    ChatBoxProps, CheckboxProps, ChipProps, ColorFamily, ColorProps, ColorToken, CommandEntry,
+    CollapsibleProps, CommandProps, ComponentProp, ComponentVariant, CountdownProps,
+    CountdownSize, CoverSource, DateProps, DateRangeProps, DesignConfig, DividerOrientation,
+    DividerProps, DrawerPosition, DrawerProps, DropdownProps, ElementProps, EmptyKind,
+    EmptyProps, FontConfig, GapSize, GapValue, GridAlignment, GridProps, GridSpan, GridTracks,
+    ImageAspect, ImageLoading, ImageObjectFit, ImageProps, MapMarker, MapMarkerIcon, MapProps,
+    MapWaypoint, MarqueeOrientation, MarqueeProps, MarqueeSpeed, ModalProps, NavMenuItem, NavMenuItemProps,
+    NavMenuProps, NavigationAction, NavigationOperation, OverlayCornerPosition, OverlayEntry,
+    OverlayItemProps, OverlayPaint, OverlayPosition, PropValue, RadioGroupProps, RadioOption,
+    RecordProps, ResponsiveEntry, ResponsiveValue, RichTextMark, RichTextMarkStyle, RoundedSize,
+    ScaleValue, ScaffoldProps, SectionBackground, SelectOption, SideNavItem, SideNavItemProps,
+    SideNavProps, SideNavSize, SkeletonAnimation, SkeletonProps, SkeletonVariant, StyleProps,
+    SvgPath, SvgPathFill, SvgProps, SvgViewBox, TabItem, TabsPosition, TabsProps, TabsVariant,
+    TextProps, TextWeight, ToastKind, ToastProps, ToggleGroupItem, ToggleGroupProps, ToggleProps,
+    TooltipProps, TranslationCatalog, TranslationLocale, TranslationValue, TypeWriterItem,
+    TypeWriterProps, VariantProps, VideoAspect, VideoProps, ViewAction, ViewActionKind,
+    ViewAnimation, ViewNode, ViewResetAction, ViewSignal, ViewSignalValue, VisibilityCondition,
 };
 use std::path::{Path, PathBuf};
 
@@ -382,7 +386,7 @@ fn emits_web_manifest_and_html_artifacts() {
     assert!(
         view_page
             .html_document
-            .contains(r#"<meta name="viewport" content="width=device-width, initial-scale=1">"#)
+            .contains(r#"<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content">"#)
     );
     let mut web = super::WebOutput {
         chunks: vec![layout, page],
@@ -1030,6 +1034,100 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(router.contains("function renderToasts(root,state,scope)"));
     assert!(router.contains("function openCommand(command)"));
     assert!(router.contains("data-dowe-dropdown-trigger"));
+}
+
+#[test]
+fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
+    let root = Path::new("/project");
+    let page_tree = display_chat_motion_tree();
+    let page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/display.dowe"),
+        "page",
+        &page_tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+    let css = super::design_css();
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+
+    assert!(html.contains(r#"class="avatar-group"#));
+    assert!(html.contains("is-soft"));
+    assert!(html.contains("is-primary"));
+    assert!(html.contains("avatar-group-sm"));
+    assert!(html.contains("is-auto-fit"));
+    assert!(html.contains("is-bordered"));
+    assert!(html.contains(r#"data-dowe-avatar-group-items="people""#));
+    assert!(html.contains(r#"class="chat-box"#));
+    assert!(html.contains("is-conversation"));
+    assert!(html.contains(r#"data-dowe-chatbox-messages="messages""#));
+    assert!(html.contains(r#"class="empty"#));
+    assert!(html.contains("is-result"));
+    assert!(html.contains(r#"class="marquee"#));
+    assert!(html.contains("is-horizontal"));
+    assert!(html.contains("is-fast"));
+    assert!(html.contains("pause-on-hover"));
+    assert!(html.contains("is-reverse"));
+    assert!(html.contains("has-fade"));
+    assert!(html.contains(r#"class="typewriter""#));
+    assert!(page.css_content.contains(".avatar-group"));
+    assert!(page.css_content.contains(".chat-box"));
+    assert!(page.css_content.contains(".empty"));
+    assert!(css.contains(".marquee"));
+    assert!(css.contains(".typewriter"));
+    assert!(router.contains("function renderAvatarGroups(root,state,scope)"));
+    assert!(router.contains("function renderChatBoxes(root,state,scope)"));
+    assert!(router.contains("function hydrateTypeWriters(root)"));
+}
+
+#[test]
+fn renders_rich_control_map_components_markup_runtime_and_css() {
+    let root = Path::new("/project");
+    let page_tree = rich_control_map_tree();
+    let page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/rich-controls.dowe"),
+        "page",
+        &page_tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+    let css = super::design_css();
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+
+    assert!(html.contains(r#"class="rich-text"#));
+    assert!(html.contains("rich-mark-grad"));
+    assert!(html.contains(r#"data-dowe-record"#));
+    assert!(html.contains(r#"data-dowe-toggle-group"#));
+    assert!(html.contains(r#"data-dowe-collapsible"#));
+    assert!(html.contains(r#"data-dowe-countdown-target="2030-01-01T00:00:00Z""#));
+    assert!(html.contains(r#"data-dowe-map"#));
+    assert!(html.contains(r#"data-dowe-map-marker="office""#));
+    assert!(page.css_content.contains(".media.is-soft.is-primary"));
+    assert!(page.css_content.contains(".toggle-group.is-soft.is-secondary"));
+    assert!(page.css_content.contains(".collapsible.is-solid.is-surface"));
+    assert!(page.css_content.contains(".countdown-box.is-outlined.is-primary"));
+    assert!(page.css_content.contains(".map.is-soft.is-surface"));
+    assert!(css.contains(".rich-mark-grad"));
+    assert!(css.contains(".record-wave"));
+    assert!(css.contains(".toggle-group-item"));
+    assert!(css.contains(".collapsible-content"));
+    assert!(css.contains(".countdown-box"));
+    assert!(css.contains(".map-grid"));
+    assert!(router.contains("function hydrateRecords(root)"));
+    assert!(router.contains("function renderToggleGroups(root,state,scope)"));
+    assert!(router.contains("function hydrateCountdowns(root)"));
+    assert!(router.contains("function toggleCollapsible"));
 }
 
 #[test]
@@ -2103,6 +2201,262 @@ fn display_overlay_tree() -> ViewNode {
                         }],
                     },
                 ],
+            },
+        ],
+    }
+}
+
+fn display_chat_motion_tree() -> ViewNode {
+    ViewNode::Box {
+        props: StyleProps::default(),
+        children: vec![
+            ViewNode::AvatarGroup {
+                props: AvatarGroupProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Primary),
+                        variant: Some(ComponentVariant::Soft),
+                        ..Default::default()
+                    },
+                    items: Some("people".to_string()),
+                    size: ButtonSize::Sm,
+                    max: Some(3),
+                    auto_fit: true,
+                    inline: false,
+                    bordered: true,
+                },
+                items: vec![
+                    AvatarGroupItem {
+                        src: Some("/ada.png".to_string()),
+                        name: Some("Ada".to_string()),
+                        alt: Some("Ada Lovelace".to_string()),
+                        on_click: None,
+                        navigation: None,
+                    },
+                    AvatarGroupItem {
+                        src: None,
+                        name: Some("Grace".to_string()),
+                        alt: Some("Grace Hopper".to_string()),
+                        on_click: None,
+                        navigation: None,
+                    },
+                ],
+            },
+            ViewNode::ChatBox {
+                props: ChatBoxProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Surface),
+                        variant: Some(ComponentVariant::Soft),
+                        ..Default::default()
+                    },
+                    messages: "messages".to_string(),
+                    mode: ChatBoxMode::Conversation,
+                    current_user_id: "ada".to_string(),
+                    user_name: "Ada".to_string(),
+                    user_avatar: Some("/ada.png".to_string()),
+                    user_status: "online".to_string(),
+                    assistant_name: "Dowe".to_string(),
+                    assistant_avatar: Some("/dowe.png".to_string()),
+                    show_header: true,
+                    placeholder: "Ask Dowe".to_string(),
+                    show_attachments: true,
+                    show_voice_note: true,
+                    show_camera: true,
+                    loading: Some("loading".to_string()),
+                    sending: Some("sending".to_string()),
+                    streaming: Some("streaming".to_string()),
+                    has_more: Some("hasMore".to_string()),
+                    on_send: None,
+                    on_load_more: None,
+                    on_stop: None,
+                    on_voice_note: None,
+                    on_file_attach: None,
+                    on_camera_capture: None,
+                },
+            },
+            ViewNode::Empty {
+                props: EmptyProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Info),
+                        variant: Some(ComponentVariant::Soft),
+                        ..Default::default()
+                    },
+                    kind: EmptyKind::Result,
+                    title: Some("Nothing found".to_string()),
+                    description: Some("Try again".to_string()),
+                    action_label: "Retry".to_string(),
+                },
+            },
+            ViewNode::Marquee {
+                props: MarqueeProps {
+                    style: StyleProps::default(),
+                    speed: MarqueeSpeed::Fast,
+                    pause_on_hover: true,
+                    reverse: true,
+                    orientation: MarqueeOrientation::Horizontal,
+                    fade: true,
+                    fade_color: ColorToken::Background,
+                    gap: ScaleValue::from_half_steps(8),
+                },
+                children: vec![text("Moving")],
+            },
+            ViewNode::TypeWriter {
+                props: TypeWriterProps {
+                    style: StyleProps::default(),
+                    type_speed: 10,
+                    delete_speed: 5,
+                    after_typed: 20,
+                    after_deleted: 10,
+                    repeat: false,
+                },
+                items: vec![
+                    TypeWriterItem {
+                        text: "Hello".to_string(),
+                    },
+                    TypeWriterItem {
+                        text: "World".to_string(),
+                    },
+                ],
+            },
+        ],
+    }
+}
+
+fn rich_control_map_tree() -> ViewNode {
+    ViewNode::Box {
+        props: StyleProps::default(),
+        children: vec![
+            ViewNode::RichText {
+                props: TextProps::default(),
+                marks: vec![
+                    RichTextMark {
+                        text: "Launch".to_string(),
+                        style: RichTextMarkStyle::Grad,
+                        color: ColorFamily::Primary,
+                    },
+                    RichTextMark {
+                        text: "ready".to_string(),
+                        style: RichTextMarkStyle::Pill,
+                        color: ColorFamily::Success,
+                    },
+                ],
+            },
+            ViewNode::Record {
+                props: RecordProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Soft),
+                        color: Some(ColorFamily::Primary),
+                        ..Default::default()
+                    },
+                    name: "voice".to_string(),
+                    url: None,
+                    disabled: false,
+                    max_duration: Some(90),
+                    on_start: None,
+                    on_pause: None,
+                    on_resume: None,
+                    on_stop: None,
+                    on_discard: None,
+                    on_confirm: None,
+                },
+            },
+            ViewNode::ToggleGroup {
+                props: ToggleGroupProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Soft),
+                        color: Some(ColorFamily::Secondary),
+                        ..Default::default()
+                    },
+                    value: Some("mode".to_string()),
+                    selected: "map".to_string(),
+                    size: ButtonSize::Sm,
+                    wide: true,
+                    vertical: false,
+                    disabled: false,
+                    aria_label: Some("Display mode".to_string()),
+                    on_change: None,
+                },
+                items: vec![
+                    ToggleGroupItem {
+                        id: "list".to_string(),
+                        label: "List".to_string(),
+                        icon: None,
+                    },
+                    ToggleGroupItem {
+                        id: "map".to_string(),
+                        label: "Map".to_string(),
+                        icon: None,
+                    },
+                ],
+            },
+            ViewNode::Collapsible {
+                props: CollapsibleProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Surface),
+                        ..Default::default()
+                    },
+                    label: "Details".to_string(),
+                    default_open: true,
+                    disabled: false,
+                },
+                children: vec![text("Nested content")],
+            },
+            ViewNode::Countdown {
+                props: CountdownProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Outlined),
+                        color: Some(ColorFamily::Primary),
+                        ..Default::default()
+                    },
+                    target: "2030-01-01T00:00:00Z".to_string(),
+                    show_days: true,
+                    show_hours: true,
+                    show_minutes: true,
+                    show_seconds: true,
+                    size: CountdownSize::Md,
+                    days_label: "Days".to_string(),
+                    hours_label: "Hours".to_string(),
+                    minutes_label: "Minutes".to_string(),
+                    seconds_label: "Seconds".to_string(),
+                    on_complete: None,
+                },
+            },
+            ViewNode::Map {
+                props: MapProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Soft),
+                        color: Some(ColorFamily::Surface),
+                        ..Default::default()
+                    },
+                    center_lat: "4.7109".to_string(),
+                    center_lng: "-74.0721".to_string(),
+                    zoom: 12,
+                    height: "360px".to_string(),
+                    width: "100%".to_string(),
+                    show_controls: true,
+                    show_scale: true,
+                    show_location_control: true,
+                    interactive: true,
+                    route_start_lat: Some("4.7109".to_string()),
+                    route_start_lng: Some("-74.0721".to_string()),
+                    route_end_lat: Some("4.6500".to_string()),
+                    route_end_lng: Some("-74.0900".to_string()),
+                    on_location: None,
+                    on_location_error: None,
+                    on_route: None,
+                },
+                markers: vec![MapMarker {
+                    id: "office".to_string(),
+                    lat: "4.7109".to_string(),
+                    lng: "-74.0721".to_string(),
+                    label: Some("Office".to_string()),
+                    popup: Some("Main office".to_string()),
+                    icon: MapMarkerIcon::Start,
+                    on_click: None,
+                }],
+                waypoints: vec![MapWaypoint {
+                    lat: "4.6800".to_string(),
+                    lng: "-74.0800".to_string(),
+                }],
             },
         ],
     }

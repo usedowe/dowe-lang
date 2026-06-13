@@ -251,6 +251,16 @@ fn collect_swift_reactive(
                 }
             }
         }
+        ViewNode::Marquee { children, .. } => {
+            for child in children {
+                collect_swift_reactive(child, context, signals, actions, autoload);
+            }
+        }
+        ViewNode::Collapsible { children, .. } => {
+            for child in children {
+                collect_swift_reactive(child, context, signals, actions, autoload);
+            }
+        }
         ViewNode::NavMenu { items, .. } => {
             for item in items {
                 if let dowe_components::NavMenuItem::Megamenu { content, .. } = item {
@@ -279,6 +289,18 @@ fn collect_swift_reactive(
             }
         }
         ViewNode::Input { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
@@ -305,6 +327,7 @@ fn collect_swift_reactive(
         | ViewNode::Svg { .. }
         | ViewNode::SideNav { .. }
         | ViewNode::Sidebar { .. }
+        | ViewNode::TypeWriter { .. }
         | ViewNode::Children => {}
     }
 }

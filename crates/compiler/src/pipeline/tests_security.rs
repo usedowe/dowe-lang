@@ -254,6 +254,11 @@
                 assert_eq!(log.values, values);
             }
             ServerStatement::RequestJson { .. } => panic!("expected log statement"),
+            ServerStatement::Http(_) => panic!("expected log statement"),
+            ServerStatement::AgentChat(_) => panic!("expected log statement"),
+            ServerStatement::WebSocketJson(_) => panic!("expected log statement"),
+            ServerStatement::WebSocketSendJson(_) => panic!("expected log statement"),
+            ServerStatement::WebSocketSseBridge(_) => panic!("expected log statement"),
             ServerStatement::Store(_) => panic!("expected log statement"),
             ServerStatement::Kv(_) => panic!("expected log statement"),
         }

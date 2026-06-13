@@ -589,6 +589,11 @@ fn completions_include_current_view_component_props() {
     assert!(base.iter().any(|item| item.label == "Video"));
     assert!(base.iter().any(|item| item.label == "Divider"));
     assert!(base.iter().any(|item| item.label == "Drawer"));
+    assert!(base.iter().any(|item| item.label == "ToggleTheme"));
+    assert!(base.iter().any(|item| item.label == "Fab"));
+    assert!(base.iter().any(|item| item.label == "fabAction"));
+    assert!(base.iter().any(|item| item.label == "Slider"));
+    assert!(base.iter().any(|item| item.label == "Dropzone"));
     assert!(!base.iter().any(|item| item.label == "Body"));
 
     let box_props = complete_document(Path::new("/project"), &document, 2, 7);
@@ -677,6 +682,41 @@ fn completions_include_current_view_component_props() {
     assert!(side_nav_props.iter().any(|item| item.label == "scheme"));
     assert!(side_nav_props.iter().any(|item| item.label == "size"));
     assert!(side_nav_props.iter().any(|item| item.label == "wide"));
+
+    let control_document = LanguageDocument {
+        path: Path::new("/project/src/pages/controls.dowe").to_path_buf(),
+        source:
+            "page controlsPage\n  ToggleTheme \n  Fab \n    fabAction \n  Slider \n  Dropzone \n"
+                .to_string(),
+    };
+    let theme_props = complete_document(Path::new("/project"), &control_document, 2, 15);
+    assert!(theme_props.iter().any(|item| item.label == "lightLabel"));
+    assert!(theme_props.iter().any(|item| item.label == "darkLabel"));
+    assert!(theme_props.iter().any(|item| item.label == "scheme"));
+
+    let fab_props = complete_document(Path::new("/project"), &control_document, 3, 7);
+    assert!(fab_props.iter().any(|item| item.label == "position"));
+    assert!(fab_props.iter().any(|item| item.label == "offsetX"));
+    assert!(fab_props.iter().any(|item| item.label == "icon"));
+
+    let fab_action_props = complete_document(Path::new("/project"), &control_document, 4, 15);
+    assert!(fab_action_props.iter().any(|item| item.label == "href"));
+    assert!(fab_action_props.iter().any(|item| item.label == "onClick"));
+    assert!(
+        fab_action_props
+            .iter()
+            .any(|item| item.label == "externalMode")
+    );
+
+    let slider_props = complete_document(Path::new("/project"), &control_document, 5, 10);
+    assert!(slider_props.iter().any(|item| item.label == "bind"));
+    assert!(slider_props.iter().any(|item| item.label == "hideLabel"));
+    assert!(slider_props.iter().any(|item| item.label == "step"));
+
+    let dropzone_props = complete_document(Path::new("/project"), &control_document, 6, 12);
+    assert!(dropzone_props.iter().any(|item| item.label == "accept"));
+    assert!(dropzone_props.iter().any(|item| item.label == "maxSize"));
+    assert!(dropzone_props.iter().any(|item| item.label == "errorText"));
 }
 
 #[test]
@@ -812,6 +852,56 @@ fn completions_include_quoted_static_component_values() {
 
     let tabs_scheme = complete_document(Path::new("/project"), &document, 17, 17);
     assert!(tabs_scheme.iter().any(|item| item.label == "\"surface\""));
+
+    let control_document = LanguageDocument {
+        path: Path::new("/project/src/pages/controls.dowe").to_path_buf(),
+        source: "page controlsPage\n  Fab position:\n  Fab icon:\n  fabAction icon:\n  Slider size:\n  Dropzone scheme:\n  Dropzone variant:\n"
+            .to_string(),
+    };
+    let fab_position = complete_document(Path::new("/project"), &control_document, 2, 16);
+    assert!(fab_position.iter().any(|item| item.label == "\"top-left\""));
+    assert!(
+        fab_position
+            .iter()
+            .any(|item| item.label == "\"bottom-right\"")
+    );
+
+    let fab_icon = complete_document(Path::new("/project"), &control_document, 3, 12);
+    assert!(fab_icon.iter().any(|item| item.label == "\"settings\""));
+    assert!(fab_icon.iter().any(|item| item.label == "\"moon\""));
+
+    let action_icon = complete_document(Path::new("/project"), &control_document, 4, 18);
+    assert!(action_icon.iter().any(|item| item.label == "\"link\""));
+    assert!(action_icon.iter().any(|item| item.label == "\"upload\""));
+
+    let slider_size = complete_document(Path::new("/project"), &control_document, 5, 15);
+    assert!(slider_size.iter().any(|item| item.label == "\"sm\""));
+    assert!(slider_size.iter().any(|item| item.label == "\"lg\""));
+    assert!(!slider_size.iter().any(|item| item.label == "\"xl\""));
+
+    let dropzone_scheme = complete_document(Path::new("/project"), &control_document, 6, 19);
+    assert!(
+        dropzone_scheme
+            .iter()
+            .any(|item| item.label == "\"surface\"")
+    );
+    assert!(
+        dropzone_scheme
+            .iter()
+            .any(|item| item.label == "\"background\"")
+    );
+
+    let dropzone_variant = complete_document(Path::new("/project"), &control_document, 7, 20);
+    assert!(
+        dropzone_variant
+            .iter()
+            .any(|item| item.label == "\"ghost\"")
+    );
+    assert!(
+        dropzone_variant
+            .iter()
+            .any(|item| item.label == "\"outlined\"")
+    );
 }
 
 #[test]
@@ -928,6 +1018,128 @@ fn completions_include_display_overlay_component_props_and_values() {
 
     let group_props = complete_document(root, &document, 17, "  group ".len() + 1);
     assert!(group_props.iter().any(|item| item.label == "label"));
+}
+
+#[test]
+fn completions_include_rich_control_map_component_props_and_values() {
+    let source = [
+        "page componentsPage",
+        "  RichText ",
+        "    mark ",
+        "  RichText size:",
+        "  Record ",
+        "  Record variant:",
+        "  ToggleGroup ",
+        "    item ",
+        "  ToggleGroup size:",
+        "  Collapsible ",
+        "  Countdown ",
+        "  Countdown size:",
+        "  Map ",
+        "    marker ",
+        "    waypoint ",
+        "  Map scheme:",
+    ]
+    .join("\n");
+    let document = LanguageDocument {
+        path: Path::new("/project/src/pages/components.dowe").to_path_buf(),
+        source,
+    };
+    let root = Path::new("/project");
+
+    let base = complete_document(root, &document, 1, 1);
+    for label in [
+        "RichText",
+        "Record",
+        "ToggleGroup",
+        "Collapsible",
+        "Countdown",
+        "Map",
+    ] {
+        assert!(base.iter().any(|item| item.label == label));
+    }
+
+    let rich_text_props = complete_document(root, &document, 2, "  RichText ".len() + 1);
+    assert!(rich_text_props.iter().any(|item| item.label == "i18n"));
+    assert!(rich_text_props.iter().any(|item| item.label == "weight"));
+
+    let mark_props = complete_document(root, &document, 3, "    mark ".len() + 1);
+    assert!(mark_props.iter().any(|item| item.label == "text"));
+    assert!(mark_props.iter().any(|item| item.label == "style"));
+    assert!(mark_props.iter().any(|item| item.label == "scheme"));
+
+    let rich_text_size = complete_document(root, &document, 4, "  RichText size:".len() + 1);
+    assert!(rich_text_size.iter().any(|item| item.label == "\"xl\""));
+
+    let record_props = complete_document(root, &document, 5, "  Record ".len() + 1);
+    assert!(record_props.iter().any(|item| item.label == "name"));
+    assert!(record_props.iter().any(|item| item.label == "maxDuration"));
+    assert!(record_props.iter().any(|item| item.label == "onConfirm"));
+    assert!(!record_props.iter().any(|item| item.label == "color"));
+
+    let record_variant = complete_document(root, &document, 6, "  Record variant:".len() + 1);
+    assert!(record_variant.iter().any(|item| item.label == "\"solid\""));
+    assert!(record_variant.iter().any(|item| item.label == "\"soft\""));
+    assert!(!record_variant.iter().any(|item| item.label == "\"ghost\""));
+
+    let toggle_props = complete_document(root, &document, 7, "  ToggleGroup ".len() + 1);
+    assert!(toggle_props.iter().any(|item| item.label == "value"));
+    assert!(toggle_props.iter().any(|item| item.label == "selected"));
+    assert!(toggle_props.iter().any(|item| item.label == "onChange"));
+
+    let item_props = complete_document(root, &document, 8, "    item ".len() + 1);
+    assert!(item_props.iter().any(|item| item.label == "id"));
+    assert!(item_props.iter().any(|item| item.label == "label"));
+    assert!(item_props.iter().any(|item| item.label == "icon"));
+
+    let toggle_size = complete_document(root, &document, 9, "  ToggleGroup size:".len() + 1);
+    assert!(toggle_size.iter().any(|item| item.label == "\"sm\""));
+
+    let collapsible_props = complete_document(root, &document, 10, "  Collapsible ".len() + 1);
+    assert!(collapsible_props.iter().any(|item| item.label == "label"));
+    assert!(
+        collapsible_props
+            .iter()
+            .any(|item| item.label == "defaultOpen")
+    );
+
+    let countdown_props = complete_document(root, &document, 11, "  Countdown ".len() + 1);
+    assert!(countdown_props.iter().any(|item| item.label == "target"));
+    assert!(
+        countdown_props
+            .iter()
+            .any(|item| item.label == "showSeconds")
+    );
+    assert!(
+        countdown_props
+            .iter()
+            .any(|item| item.label == "onComplete")
+    );
+
+    let countdown_size = complete_document(root, &document, 12, "  Countdown size:".len() + 1);
+    assert!(countdown_size.iter().any(|item| item.label == "\"xl\""));
+
+    let map_props = complete_document(root, &document, 13, "  Map ".len() + 1);
+    assert!(map_props.iter().any(|item| item.label == "centerLat"));
+    assert!(
+        map_props
+            .iter()
+            .any(|item| item.label == "showLocationControl")
+    );
+    assert!(map_props.iter().any(|item| item.label == "onRoute"));
+
+    let marker_props = complete_document(root, &document, 14, "    marker ".len() + 1);
+    assert!(marker_props.iter().any(|item| item.label == "lat"));
+    assert!(marker_props.iter().any(|item| item.label == "popup"));
+    assert!(marker_props.iter().any(|item| item.label == "onClick"));
+
+    let waypoint_props = complete_document(root, &document, 15, "    waypoint ".len() + 1);
+    assert!(waypoint_props.iter().any(|item| item.label == "lat"));
+    assert!(waypoint_props.iter().any(|item| item.label == "lng"));
+
+    let map_scheme = complete_document(root, &document, 16, "  Map scheme:".len() + 1);
+    assert!(map_scheme.iter().any(|item| item.label == "\"primary\""));
+    assert!(!map_scheme.iter().any(|item| item.label == "\"surface\""));
 }
 
 #[test]

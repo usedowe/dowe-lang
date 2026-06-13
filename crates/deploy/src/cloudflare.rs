@@ -57,13 +57,16 @@ fn validate_cloudflare(project: &CompiledProject) -> DeployResult<()> {
         }
         if matches!(
             endpoint.behavior,
-            EndpointBehavior::StoreInsertJson(_)
+            EndpointBehavior::HttpProxy(_)
+                | EndpointBehavior::HttpActionJson(_)
+                | EndpointBehavior::AgentResponse(_)
+                | EndpointBehavior::StoreInsertJson(_)
                 | EndpointBehavior::StoreQueryJson(_)
                 | EndpointBehavior::StoreTransactionJson(_)
                 | EndpointBehavior::StoreActionJson(_)
                 | EndpointBehavior::KvActionJson(_)
         ) {
-            return Err(unsupported("local Store or KV"));
+            return Err(unsupported("server runtime actions"));
         }
     }
     Ok(())
@@ -165,6 +168,9 @@ fn endpoint_branch(endpoint: &Endpoint) -> String {
             "    if method == {method} && match_route({path}, &path).is_some() {{\n        let input = request.json::<Value>().await?;\n        let Some(input) = input.as_object() else {{\n            return Response::error(\"Expected JSON object\", 400);\n        }};\n        let mut output = Map::new();\n        output.insert(\"created\".to_string(), Value::Bool(true));\n        for (key, value) in input {{\n            output.insert(key.clone(), value.clone());\n        }}\n        return Response::from_json(&Value::Object(output));\n    }}"
         ),
         EndpointBehavior::StoreInsertJson(_)
+        | EndpointBehavior::HttpProxy(_)
+        | EndpointBehavior::HttpActionJson(_)
+        | EndpointBehavior::AgentResponse(_)
         | EndpointBehavior::StoreQueryJson(_)
         | EndpointBehavior::StoreTransactionJson(_)
         | EndpointBehavior::StoreActionJson(_)

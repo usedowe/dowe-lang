@@ -152,9 +152,23 @@ fn ios_children_boundary(
                 .iter()
                 .map(|slide| ios_children_boundaries(&slide.children, false, false)),
         ),
+        ViewNode::Marquee { children, .. } => ios_children_boundaries(children, false, false),
+        ViewNode::Collapsible { children, .. } => ios_children_boundaries(children, false, false),
         ViewNode::Each { children, .. } => ios_children_boundaries(children, false, false),
         ViewNode::Button { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::Fab { .. }
         | ViewNode::Input { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
@@ -180,7 +194,8 @@ fn ios_children_boundary(
         | ViewNode::Date { .. }
         | ViewNode::DateRange { .. }
         | ViewNode::RadioGroup { .. }
-        | ViewNode::Toggle { .. } => IosChildrenBoundary::default(),
+        | ViewNode::Toggle { .. }
+        | ViewNode::TypeWriter { .. } => IosChildrenBoundary::default(),
     }
 }
 
