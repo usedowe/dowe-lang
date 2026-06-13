@@ -1,0 +1,432 @@
+fn render_swift_scaffold(
+    props: &ScaffoldProps,
+    app_bar: &[ViewNode],
+    start: &[ViewNode],
+    main: &[ViewNode],
+    end: &[ViewNode],
+    bottom_bar: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let current_font = props.style.font.as_ref().or(inherited_font);
+    output.push_str(&format!("{pad}VStack(spacing: CGFloat(0)) {{\n"));
+    for child in app_bar {
+        render_swift_node_in_flow(
+            child,
+            indent + 4,
+            output,
+            NativeFlow::Block,
+            current_font,
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!(
+        "{pad}    HStack(alignment: .top, spacing: CGFloat(0)) {{\n"
+    ));
+    if !start.is_empty() {
+        output.push_str(&format!(
+            "{pad}        VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+        ));
+        for child in start {
+            render_swift_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                NativeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
+    }
+    output.push_str(&format!(
+        "{pad}        VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+    ));
+    for child in main {
+        render_swift_node_in_flow(
+            child,
+            indent + 12,
+            output,
+            NativeFlow::Block,
+            current_font,
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!("{pad}        }}\n{pad}        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"));
+    if !end.is_empty() {
+        output.push_str(&format!(
+            "{pad}        VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+        ));
+        for child in end {
+            render_swift_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                NativeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
+    }
+    output.push_str(&format!("{pad}    }}\n{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"));
+    for child in bottom_bar {
+        render_swift_node_in_flow(
+            child,
+            indent + 4,
+            output,
+            NativeFlow::Block,
+            current_font,
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!("{pad}}}\n"));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_container_style(&props.style, flow),
+    );
+}
+
+fn render_swift_side_nav(
+    props: &SideNavProps,
+    items: &[SideNavItem],
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let current_font = props.style.style.font.as_ref().or(inherited_font);
+    output.push_str(&format!(
+        "{pad}VStack(alignment: .leading, spacing: CGFloat(2)) {{\n"
+    ));
+    for item in items {
+        render_swift_side_nav_item(
+            item,
+            indent + 4,
+            output,
+            props,
+            current_font,
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!("{pad}}}\n"));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_container_style(&props.style.style, flow),
+    );
+}
+
+fn render_swift_side_nav_item(
+    item: &SideNavItem,
+    indent: usize,
+    output: &mut String,
+    nav: &SideNavProps,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    match item {
+        SideNavItem::Header(props) => render_swift_side_nav_row(
+            props,
+            true,
+            swift_side_nav_action(props, context),
+            indent,
+            output,
+            nav,
+            inherited_font,
+            default_family,
+        ),
+        SideNavItem::Item(props) => render_swift_side_nav_row(
+            props,
+            false,
+            swift_side_nav_action(props, context),
+            indent,
+            output,
+            nav,
+            inherited_font,
+            default_family,
+        ),
+        SideNavItem::Divider => {
+            output.push_str(&format!(
+                "{pad}Divider()\n{pad}    .padding(.vertical, CGFloat(8))\n"
+            ));
+        }
+        SideNavItem::Submenu { props, open, items } => {
+            output.push_str(&format!("{pad}DoweSideNavSubmenu(open: {open}) {{\n"));
+            for item in items {
+                render_swift_side_nav_row(
+                    item,
+                    false,
+                    swift_side_nav_action(item, context),
+                    indent + 4,
+                    output,
+                    nav,
+                    inherited_font,
+                    default_family,
+                );
+            }
+            output.push_str(&format!("{pad}}} label: {{\n"));
+            render_swift_side_nav_row(
+                props,
+                true,
+                "nil".to_string(),
+                indent + 4,
+                output,
+                nav,
+                inherited_font,
+                default_family,
+            );
+            output.push_str(&format!("{pad}}}\n"));
+        }
+    }
+}
+
+fn render_swift_side_nav_row(
+    props: &SideNavItemProps,
+    header: bool,
+    action: String,
+    indent: usize,
+    output: &mut String,
+    nav: &SideNavProps,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+) {
+    let pad = " ".repeat(indent);
+    let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
+        swift_side_nav_metrics(nav.size);
+    let border =
+        if nav.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined {
+            format!("Optional({})", variant_content(&nav.style))
+        } else {
+            "nil".to_string()
+        };
+    output.push_str(&format!(
+        "{pad}DoweSideNavRow(active: {}, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), backgroundColor: {}, contentColor: {}, borderColor: {border}, action: {action}) {{\n",
+        swift_side_nav_active(props.navigation.as_ref()),
+        nav.wide,
+        variant_container(&nav.style),
+        variant_content(&nav.style),
+    ));
+    if let Some(icon) = props.icon.as_ref() {
+        output.push_str(&format!(
+            "{pad}    DoweSvgView(viewBox: {}, color: {}, paths: {})\n",
+            swift_svg_view_box(&icon.props.view_box),
+            swift_side_nav_icon_color(icon, nav),
+            swift_svg_paths(&icon.paths)
+        ));
+        append_swift_modifiers(
+            output,
+            indent + 4,
+            &swift_modifiers_for_style(&icon.props.style),
+        );
+    }
+    output.push_str(&format!(
+        "{pad}    VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+    ));
+    output.push_str(&format!(
+        "{pad}        Text(\"{}\")\n{pad}            .font({})\n{pad}            .fontWeight({})\n",
+        escape_swift(&props.label),
+        swift_font_value(
+            inherited_font,
+            &format!("CGFloat({label_size})"),
+            default_family
+        ),
+        if header { ".semibold" } else { ".regular" }
+    ));
+    if let Some(description) = props.description.as_deref() {
+        output.push_str(&format!(
+            "{pad}        Text(\"{}\")\n{pad}            .font({})\n{pad}            .opacity(0.72)\n",
+            escape_swift(description),
+            swift_font_value(
+                inherited_font,
+                &format!("CGFloat({description_size})"),
+                default_family
+            )
+        ));
+    }
+    output.push_str(&format!(
+        "{pad}    }}\n{pad}    .frame(maxWidth: .infinity, alignment: .leading)\n"
+    ));
+    if let Some(status) = props.status.as_deref() {
+        output.push_str(&format!(
+            "{pad}    Text(\"{}\")\n{pad}        .font({})\n{pad}        .fontWeight(.semibold)\n",
+            escape_swift(status),
+            swift_font_value(
+                inherited_font,
+                &format!("CGFloat({description_size})"),
+                default_family
+            )
+        ));
+    }
+    output.push_str(&format!("{pad}}}\n"));
+}
+
+fn swift_side_nav_action(props: &SideNavItemProps, context: &SwiftReactiveContext) -> String {
+    props
+        .on_click
+        .as_deref()
+        .and_then(|name| context.action_id(name))
+        .map(|id| format!("{{ state.run(\"{}\") }}", escape_swift(id)))
+        .or_else(|| {
+            props
+                .navigation
+                .as_ref()
+                .map(|action| swift_navigation_action(Some(action)))
+        })
+        .unwrap_or_else(|| "nil".to_string())
+}
+
+fn swift_side_nav_active(action: Option<&NavigationAction>) -> String {
+    match action {
+        Some(NavigationAction::Internal { path, .. }) => {
+            format!("activePath == \"{}\"", escape_swift(path))
+        }
+        _ => "false".to_string(),
+    }
+}
+
+fn swift_side_nav_icon_color(icon: &SideNavIcon, nav: &SideNavProps) -> String {
+    if icon.props.style.text.is_some() {
+        swift_svg_color(&icon.props.style)
+    } else {
+        nav_active_content(&nav.style).to_string()
+    }
+}
+
+fn swift_side_nav_metrics(size: SideNavSize) -> (u16, u16, u16, u16, u16) {
+    match size {
+        SideNavSize::Sm => (8, 6, 6, 12, 10),
+        SideNavSize::Md => (12, 8, 8, 14, 12),
+        SideNavSize::Lg => (16, 12, 12, 16, 14),
+    }
+}
+
+fn render_swift_bar(
+    props: &BarProps,
+    start: &[ViewNode],
+    center: &[ViewNode],
+    end: &[ViewNode],
+    options: SwiftBarOptions,
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let current_font = props.style.style.font.as_ref().or(inherited_font);
+    let content_width = if props.boxed {
+        "CGFloat(1152)"
+    } else {
+        ".infinity"
+    };
+    output.push_str(&format!("{pad}ZStack {{\n"));
+    output.push_str(&format!(
+        "{pad}    HStack(alignment: .center, spacing: 0) {{\n"
+    ));
+    render_swift_bar_region(
+        start,
+        indent + 8,
+        output,
+        ".leading",
+        false,
+        options.start_padding,
+        current_font,
+        default_family,
+        context,
+    );
+    if center.is_empty() && !start.is_empty() && !end.is_empty() {
+        output.push_str(&format!("{pad}        Spacer(minLength: CGFloat(0))\n"));
+    }
+    render_swift_bar_region(
+        center,
+        indent + 8,
+        output,
+        ".center",
+        true,
+        options.center_padding,
+        current_font,
+        default_family,
+        context,
+    );
+    render_swift_bar_region(
+        end,
+        indent + 8,
+        output,
+        ".trailing",
+        false,
+        options.end_padding,
+        current_font,
+        default_family,
+        context,
+    );
+    output.push_str(&format!("{pad}    }}\n"));
+    output.push_str(&format!(
+        "{pad}    .frame(maxWidth: {content_width}, alignment: .center)\n"
+    ));
+    output.push_str(&format!("{pad}}}\n"));
+    append_swift_modifiers(output, indent, &swift_modifiers_for_bar(props, flow));
+}
+
+fn render_swift_bar_region(
+    children: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    alignment: &str,
+    fill: bool,
+    padding: usize,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    if children.is_empty() {
+        return;
+    }
+    let pad = " ".repeat(indent);
+    output.push_str(&format!(
+        "{pad}HStack(alignment: .center, spacing: CGFloat({padding})) {{\n"
+    ));
+    for child in children {
+        render_swift_node_in_flow(
+            child,
+            indent + 4,
+            output,
+            NativeFlow::Inline,
+            inherited_font,
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!("{pad}}}\n"));
+    output.push_str(&format!(
+        "{pad}    .padding(.horizontal, CGFloat({padding}))\n"
+    ));
+    output.push_str(&format!(
+        "{pad}    .padding(.vertical, CGFloat({padding}))\n"
+    ));
+    if fill {
+        output.push_str(&format!(
+            "{pad}    .frame(maxWidth: .infinity, alignment: {alignment})\n"
+        ));
+    } else {
+        output.push_str(&format!("{pad}    .frame(alignment: {alignment})\n"));
+    }
+}
