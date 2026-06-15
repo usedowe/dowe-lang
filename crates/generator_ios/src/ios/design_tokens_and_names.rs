@@ -3,7 +3,9 @@ fn variant_container(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_color(color)),
         ComponentVariant::Soft => color_ref(family_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost => "Color.clear",
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            "Color.clear"
+        }
     }
 }
 
@@ -12,7 +14,9 @@ fn variant_content(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_on_color(color)),
         ComponentVariant::Soft => color_ref(family_on_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost => color_ref(family_color(color)),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            color_ref(family_color(color))
+        }
     }
 }
 
@@ -21,12 +25,14 @@ fn nav_active_content(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Ghost) {
         ComponentVariant::Solid => color_ref(family_on_color(color)),
         ComponentVariant::Soft => color_ref(family_on_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
             color_ref(family_on_color(color))
         }
-        ComponentVariant::Outlined | ComponentVariant::Ghost => color_ref(family_color(color)),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            color_ref(family_color(color))
+        }
     }
 }
 

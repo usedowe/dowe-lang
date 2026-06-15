@@ -208,9 +208,9 @@ fn parse_text_spacing_prop(
 fn parse_variant_prop(name: &str, value: &PropValue) -> ComponentResult<ComponentVariant> {
     match value {
         PropValue::String(value) => ComponentVariant::from_name(value)
-            .ok_or_else(|| ComponentError::invalid_prop(name, "solid, soft, outlined or ghost")),
+            .ok_or_else(|| ComponentError::invalid_prop(name, "solid, soft, outlined, line or ghost")),
         PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
-            ComponentError::invalid_prop(name, "solid, soft, outlined or ghost"),
+            ComponentError::invalid_prop(name, "solid, soft, outlined, line or ghost"),
         ),
     }
 }
@@ -307,6 +307,11 @@ fn parse_family_prop(
             | BuiltinComponent::Code
             | BuiltinComponent::Video
             | BuiltinComponent::Candlestick
+            | BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart
             | BuiltinComponent::Table
             | BuiltinComponent::Divider
             | BuiltinComponent::AppBar
@@ -329,6 +334,15 @@ fn parse_family_prop(
             | BuiltinComponent::Collapsible
             | BuiltinComponent::Countdown
             | BuiltinComponent::Dropzone
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::CsvField
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
+            | BuiltinComponent::PasswordField
+            | BuiltinComponent::PhoneField
+            | BuiltinComponent::PinField
+            | BuiltinComponent::Textarea
             | BuiltinComponent::Tabs
     );
     let expected = if accepts_structural {

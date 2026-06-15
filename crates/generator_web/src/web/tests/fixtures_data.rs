@@ -99,6 +99,63 @@ fn candlestick_tree() -> ViewNode {
     .expect("candlestick")
 }
 
+fn charts_tree() -> ViewNode {
+    ViewNode::Box {
+        props: Default::default(),
+        children: vec![
+            dowe_components::arc_chart_component_node(vec![
+                ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("segments".to_string()),
+                },
+                ComponentProp {
+                    name: "palette".to_string(),
+                    value: PropValue::String("ocean".to_string()),
+                },
+            ])
+            .expect("arc chart"),
+            dowe_components::area_chart_component_node(vec![
+                ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("points".to_string()),
+                },
+                ComponentProp {
+                    name: "curve".to_string(),
+                    value: PropValue::String("smooth".to_string()),
+                },
+            ])
+            .expect("area chart"),
+            dowe_components::bar_chart_component_node(vec![ComponentProp {
+                name: "data".to_string(),
+                value: PropValue::String("segments".to_string()),
+            }])
+            .expect("bar chart"),
+            dowe_components::line_chart_component_node(vec![
+                ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("points".to_string()),
+                },
+                ComponentProp {
+                    name: "palette".to_string(),
+                    value: PropValue::String("forest".to_string()),
+                },
+            ])
+            .expect("line chart"),
+            dowe_components::pie_chart_component_node(vec![
+                ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("segments".to_string()),
+                },
+                ComponentProp {
+                    name: "donut".to_string(),
+                    value: PropValue::Boolean(true),
+                },
+            ])
+            .expect("pie chart"),
+        ],
+    }
+}
+
 fn table_tree() -> ViewNode {
     dowe_components::table_node(
         vec![

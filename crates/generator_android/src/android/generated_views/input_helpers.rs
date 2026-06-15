@@ -146,6 +146,144 @@ private fun DoweSelectPopover(visible: Boolean, options: List<DoweSelectOption>,
     }
 }
 
+private data class DoweCsvColumn(val name: String, val label: String?)
+private data class DoweDragItem(val id: String, val label: String?, val description: String?, val disabled: Boolean)
+private data class DoweDragGroup(val id: String, val title: String?, val items: List<DoweDragItem>)
+
+@Composable
+private fun DoweComboBox(value: String, onValueChange: (String) -> Unit, bound: Boolean, label: String?, placeholder: String, floating: Boolean, searchPlaceholder: String, emptyText: String, clearable: Boolean, options: List<DoweSelectOption>, modifier: Modifier, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?) {
+    DoweSelect(value = value, onValueChange = onValueChange, bound = bound, modifier = modifier, label = label, placeholder = placeholder, floating = floating, options = options, fontFamily = fontFamily, fontSize = fontSize, lineHeight = lineHeight, minHeight = minHeight, horizontalPadding = horizontalPadding, shape = shape, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor)
+}
+
+@Composable
+private fun DoweCsvField(label: String?, buttonText: String, modalTitle: String, instructions: String, columns: List<DoweCsvColumn>, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (label != null) Text(text = label, fontWeight = FontWeight.SemiBold, color = contentColor)
+        Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = backgroundColor, contentColor = contentColor)) {
+            Text(buttonText)
+        }
+        Column(modifier = Modifier.fillMaxWidth().border(1.dp, contentColor.copy(alpha = 0.18f), RoundedCornerShape(12.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = modalTitle, fontWeight = FontWeight.Bold, color = contentColor)
+            Text(text = instructions, fontSize = 12.sp, color = contentColor.copy(alpha = 0.7f))
+            columns.forEach { column ->
+                Text(text = column.label ?: column.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = contentColor)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoweDragDrop(label: String?, emptyText: String, direction: String, items: List<DoweDragItem>, groups: List<DoweDragGroup>, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (label != null) Text(text = label, fontWeight = FontWeight.SemiBold, color = contentColor)
+        val surface = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(backgroundColor).padding(8.dp)
+        if (groups.isNotEmpty()) {
+            Row(modifier = surface.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                groups.forEach { group -> DoweDragGroupView(group.title ?: group.id, group.items, emptyText, contentColor) }
+            }
+        } else {
+            Column(modifier = surface, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (items.isEmpty()) Text(emptyText, color = contentColor.copy(alpha = 0.65f))
+                items.forEach { item -> DoweDragItemView(item, contentColor) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoweDragGroupView(title: String, items: List<DoweDragItem>, emptyText: String, contentColor: Color) {
+    Column(modifier = Modifier.widthIn(min = 220.dp).border(1.dp, contentColor.copy(alpha = 0.18f), RoundedCornerShape(12.dp)).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text = title, fontWeight = FontWeight.Bold, color = contentColor)
+        if (items.isEmpty()) Text(emptyText, color = contentColor.copy(alpha = 0.65f))
+        items.forEach { item -> DoweDragItemView(item, contentColor) }
+    }
+}
+
+@Composable
+private fun DoweDragItemView(item: DoweDragItem, contentColor: Color) {
+    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(contentColor.copy(alpha = 0.08f)).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("::", fontWeight = FontWeight.Bold, color = contentColor.copy(alpha = 0.55f))
+        Column {
+            Text(item.label ?: item.id, fontWeight = FontWeight.SemiBold, color = contentColor)
+            if (item.description != null) Text(item.description, fontSize = 12.sp, color = contentColor.copy(alpha = 0.68f))
+        }
+    }
+}
+
+@Composable
+private fun DoweEditorField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, minHeight: Dp, hideToolbar: Boolean, readOnly: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    Column(modifier = modifier.clip(RoundedCornerShape(16.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.18f), RoundedCornerShape(16.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        if (label != null) Text(text = label, modifier = Modifier.padding(12.dp, 10.dp, 12.dp, 0.dp), fontWeight = FontWeight.SemiBold, color = contentColor)
+        if (!hideToolbar) Row(modifier = Modifier.fillMaxWidth().background(contentColor.copy(alpha = 0.08f)).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf("B", "I", "U", "List").forEach { Text(it, modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(contentColor.copy(alpha = 0.08f)).padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold, color = contentColor) }
+        }
+        BasicTextField(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).padding(12.dp), textStyle = TextStyle(color = contentColor), decorationBox = { inner -> Box { if (value.isEmpty() && placeholder.isNotEmpty()) Text(placeholder, color = contentColor.copy(alpha = 0.52f)); inner() } })
+    }
+}
+
+@Composable
+private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, shape: String, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (label != null) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
+        Box(modifier = Modifier.width(128.dp).height(128.dp).clip(if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(18.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.2f), if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
+            Text(if (value.isEmpty()) placeholder else "Image", color = contentColor, fontWeight = FontWeight.Bold)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Edit", color = contentColor, fontWeight = FontWeight.SemiBold)
+            Text("Remove", color = contentColor.copy(alpha = 0.72f), fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun DowePasswordField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, hideStrength: Boolean, weakLabel: String, mediumLabel: String, strongLabel: String, readOnly: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    var visible by remember { mutableStateOf(false) }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        DoweInput(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth(), label = label, placeholder = placeholder, floating = floating, fontFamily = FontFamily.Default, fontSize = 16.sp, lineHeight = 20.sp, minHeight = 48.dp, horizontalPadding = 12.dp, shape = RoundedCornerShape(12.dp), backgroundColor = backgroundColor, contentColor = contentColor, borderColor = contentColor.copy(alpha = 0.22f))
+        if (!hideStrength) {
+            val score = listOf(value.length >= 8, value.length >= 12, value.any { it.isDigit() }, value.any { it.isUpperCase() }, value.any { !it.isLetterOrDigit() }).count { it }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { repeat(6) { index -> Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(999.dp)).background(if (index < score) contentColor else contentColor.copy(alpha = 0.18f))) } }
+            Text(if (score <= 2) weakLabel else if (score <= 4) mediumLabel else strongLabel, fontSize = 12.sp, color = contentColor.copy(alpha = 0.75f))
+        }
+    }
+}
+
+@Composable
+private fun DowePhoneField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, country: String, floating: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (label != null && !floating) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
+        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(country, fontWeight = FontWeight.Bold, color = contentColor)
+            Text("+", modifier = Modifier.padding(horizontal = 8.dp), color = contentColor.copy(alpha = 0.55f))
+            BasicTextField(value = value, onValueChange = onValueChange, modifier = Modifier.weight(1f).heightIn(min = 48.dp), textStyle = TextStyle(color = contentColor), decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) { if (value.isEmpty()) Text(placeholder, color = contentColor.copy(alpha = 0.55f)); inner() } })
+        }
+    }
+}
+
+@Composable
+private fun DowePinField(value: String, onValueChange: (String) -> Unit, label: String?, length: Int, kind: String, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    var cells by remember(value) { mutableStateOf(value.padEnd(length).take(length).map { if (it == ' ') "" else it.toString() }) }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (label != null) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            cells.forEachIndexed { index, cell ->
+                BasicTextField(value = cell, onValueChange = { next ->
+                    cells = cells.toMutableList().also { it[index] = next.takeLast(1) }
+                    onValueChange(cells.joinToString(""))
+                }, modifier = Modifier.width(44.dp).height(48.dp).clip(RoundedCornerShape(10.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.25f), RoundedCornerShape(10.dp)).padding(12.dp), textStyle = TextStyle(color = contentColor, fontWeight = FontWeight.Bold))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoweTextarea(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, rows: Int, maxLength: Int?, readOnly: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (label != null && !floating) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
+        BasicTextField(value = value, onValueChange = { next -> if (!readOnly) onValueChange(maxLength?.let { next.take(it) } ?: next) }, modifier = Modifier.fillMaxWidth().heightIn(min = (rows * 28).dp).clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(12.dp), textStyle = TextStyle(color = contentColor), decorationBox = { inner -> Box { if (value.isEmpty() && placeholder.isNotEmpty()) Text(placeholder, color = contentColor.copy(alpha = 0.55f)); inner() } })
+    }
+}
+
 private fun <T> doweResponsive(viewportWidth: Dp, xs: T? = null, sm: T? = null, md: T? = null, lg: T? = null, xl: T? = null): T? {
     var value: T? = null
     if (viewportWidth >= 0.dp && xs != null) {

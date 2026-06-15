@@ -62,6 +62,37 @@ pub enum ViewNode {
         props: VariantProps,
         options: Vec<SelectOption>,
     },
+    ComboBox {
+        props: ComboBoxProps,
+        options: Vec<ComboOption>,
+    },
+    CsvField {
+        props: CsvFieldProps,
+        columns: Vec<CsvColumn>,
+    },
+    DragDrop {
+        props: DragDropProps,
+        items: Vec<DragItem>,
+        groups: Vec<DragGroup>,
+    },
+    Editor {
+        props: EditorProps,
+    },
+    ImageCropper {
+        props: ImageCropperProps,
+    },
+    PasswordField {
+        props: PasswordFieldProps,
+    },
+    PhoneField {
+        props: PhoneFieldProps,
+    },
+    PinField {
+        props: PinFieldProps,
+    },
+    Textarea {
+        props: TextareaProps,
+    },
     Audio {
         props: AudioProps,
     },
@@ -76,6 +107,21 @@ pub enum ViewNode {
     },
     Candlestick {
         props: CandlestickProps,
+    },
+    ArcChart {
+        props: ArcChartProps,
+    },
+    AreaChart {
+        props: AreaChartProps,
+    },
+    BarChart {
+        props: BarChartProps,
+    },
+    LineChart {
+        props: LineChartProps,
+    },
+    PieChart {
+        props: PieChartProps,
     },
     Table {
         props: TableProps,
@@ -1185,6 +1231,239 @@ pub struct DropzoneProps {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ComboBoxProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub search_placeholder: String,
+    pub empty_text: String,
+    pub loading_text: String,
+    pub loading_more_text: String,
+    pub clearable: bool,
+    pub disabled: bool,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ComboOption {
+    pub value: String,
+    pub label: String,
+    pub description: Option<String>,
+    pub src: Option<String>,
+    pub icon: Option<ViewIcon>,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CsvFieldProps {
+    pub style: VariantProps,
+    pub button_text: String,
+    pub modal_title: String,
+    pub instructions: String,
+    pub cancel_text: String,
+    pub confirm_text: String,
+    pub clear_text: String,
+    pub preview_title: String,
+    pub multiple: bool,
+    pub show_preview: bool,
+    pub preview_rows: u16,
+    pub preview_page_size: u16,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CsvColumn {
+    pub name: String,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DragDropProps {
+    pub style: VariantProps,
+    pub empty_text: String,
+    pub direction: DragDropDirection,
+    pub allow_group_transfer: bool,
+    pub disabled: bool,
+    pub size: ButtonSize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DragItem {
+    pub id: String,
+    pub label: Option<String>,
+    pub description: Option<String>,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DragGroup {
+    pub id: String,
+    pub title: Option<String>,
+    pub items: Vec<DragItem>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DragDropDirection {
+    Horizontal,
+    Vertical,
+}
+
+impl DragDropDirection {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "horizontal" => Some(Self::Horizontal),
+            "vertical" => Some(Self::Vertical),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Horizontal => "horizontal",
+            Self::Vertical => "vertical",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EditorProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub min_height: u16,
+    pub hide_toolbar: bool,
+    pub disabled: bool,
+    pub readonly: bool,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImageCropperProps {
+    pub style: VariantProps,
+    pub src: Option<String>,
+    pub alt: String,
+    pub accept: String,
+    pub aspect_ratio: Option<String>,
+    pub min_width: u16,
+    pub min_height: u16,
+    pub max_width: Option<u16>,
+    pub max_height: Option<u16>,
+    pub shape: ImageCropperShape,
+    pub disabled: bool,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImageCropperShape {
+    Circle,
+    Square,
+}
+
+impl ImageCropperShape {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "circle" => Some(Self::Circle),
+            "square" => Some(Self::Square),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Circle => "circle",
+            Self::Square => "square",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PasswordFieldProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub hide_strength: bool,
+    pub weak_label: String,
+    pub medium_label: String,
+    pub strong_label: String,
+    pub disabled: bool,
+    pub readonly: bool,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PhoneFieldProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub country: Option<String>,
+    pub dial_code_name: String,
+    pub search_placeholder: String,
+    pub empty_text: String,
+    pub loading_text: String,
+    pub priority_countries: Vec<String>,
+    pub disabled: bool,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PinFieldProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub length: u8,
+    pub kind: PinFieldKind,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PinFieldKind {
+    Text,
+    Password,
+    Number,
+}
+
+impl PinFieldKind {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "text" => Some(Self::Text),
+            "password" => Some(Self::Password),
+            "number" => Some(Self::Number),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Password => "password",
+            Self::Number => "number",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TextareaProps {
+    pub style: VariantProps,
+    pub value: Option<String>,
+    pub rows: u16,
+    pub cols: Option<u16>,
+    pub max_length: Option<u16>,
+    pub resize: bool,
+    pub disabled: bool,
+    pub readonly: bool,
+    pub name: Option<String>,
+    pub help_text: Option<String>,
+    pub error_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OverlayEntry {
     Item(OverlayItemProps),
     Divider,
@@ -1832,6 +2111,248 @@ pub struct CandlestickProps {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChartCommonProps {
+    pub style: VariantProps,
+    pub data: Option<String>,
+    pub series: Option<String>,
+    pub size: ChartSize,
+    pub palette: ChartPalette,
+    pub legend_position: ChartLegendPosition,
+    pub empty_label: String,
+    pub loading: bool,
+    pub hide_legend: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArcChartProps {
+    pub common: ChartCommonProps,
+    pub center_text: Option<String>,
+    pub center_value: Option<String>,
+    pub thickness: u16,
+    pub gap: u16,
+    pub start_angle: i16,
+    pub end_angle: i16,
+    pub show_inline_labels: bool,
+    pub hide_values: bool,
+    pub show_glow: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AreaChartProps {
+    pub common: ChartCommonProps,
+    pub curve: ChartCurve,
+    pub stroke_width: u16,
+    pub fill_opacity: u16,
+    pub stacked: bool,
+    pub hide_line: bool,
+    pub show_points: bool,
+    pub hide_grid: bool,
+    pub hide_x_axis: bool,
+    pub hide_y_axis: bool,
+    pub show_glow: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BarChartProps {
+    pub common: ChartCommonProps,
+    pub grouped: bool,
+    pub stacked: bool,
+    pub show_values: bool,
+    pub bar_radius: u16,
+    pub hide_grid: bool,
+    pub show_glow: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LineChartProps {
+    pub common: ChartCommonProps,
+    pub curve: ChartCurve,
+    pub stroke_width: u16,
+    pub point_radius: u16,
+    pub hide_points: bool,
+    pub hide_grid: bool,
+    pub hide_x_axis: bool,
+    pub hide_y_axis: bool,
+    pub show_gradient_fill: bool,
+    pub show_glow: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PieChartProps {
+    pub common: ChartCommonProps,
+    pub donut: bool,
+    pub donut_width: u16,
+    pub center_label: Option<String>,
+    pub center_value: Option<String>,
+    pub start_angle: i16,
+    pub pad_angle: u16,
+    pub hide_labels: bool,
+    pub hide_values: bool,
+    pub hide_percentages: bool,
+    pub show_glow: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChartSize {
+    Sm,
+    Md,
+    Lg,
+    Xl,
+}
+
+impl ChartSize {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+        }
+    }
+
+    pub fn circular_height(self) -> ScaleValue {
+        match self {
+            Self::Sm => ScaleValue::from_half_steps(40),
+            Self::Md => ScaleValue::from_half_steps(56),
+            Self::Lg => ScaleValue::from_half_steps(75),
+            Self::Xl => ScaleValue::from_half_steps(100),
+        }
+    }
+
+    pub fn cartesian_height(self) -> ScaleValue {
+        match self {
+            Self::Sm => ScaleValue::from_half_steps(50),
+            Self::Md => ScaleValue::from_half_steps(75),
+            Self::Lg => ScaleValue::from_half_steps(100),
+            Self::Xl => ScaleValue::from_half_steps(125),
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Sm, Self::Md, Self::Lg, Self::Xl]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChartPalette {
+    Default,
+    Rainbow,
+    Ocean,
+    Sunset,
+    Forest,
+    Neon,
+}
+
+impl ChartPalette {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "default" => Some(Self::Default),
+            "rainbow" => Some(Self::Rainbow),
+            "ocean" => Some(Self::Ocean),
+            "sunset" => Some(Self::Sunset),
+            "forest" => Some(Self::Forest),
+            "neon" => Some(Self::Neon),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Rainbow => "rainbow",
+            Self::Ocean => "ocean",
+            Self::Sunset => "sunset",
+            Self::Forest => "forest",
+            Self::Neon => "neon",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Default,
+            Self::Rainbow,
+            Self::Ocean,
+            Self::Sunset,
+            Self::Forest,
+            Self::Neon,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChartLegendPosition {
+    Top,
+    Right,
+    Bottom,
+    Left,
+    None,
+}
+
+impl ChartLegendPosition {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "top" => Some(Self::Top),
+            "right" => Some(Self::Right),
+            "bottom" => Some(Self::Bottom),
+            "left" => Some(Self::Left),
+            "none" => Some(Self::None),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Top => "top",
+            Self::Right => "right",
+            Self::Bottom => "bottom",
+            Self::Left => "left",
+            Self::None => "none",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Top, Self::Right, Self::Bottom, Self::Left, Self::None]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChartCurve {
+    Linear,
+    Smooth,
+}
+
+impl ChartCurve {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "linear" => Some(Self::Linear),
+            "smooth" => Some(Self::Smooth),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Linear => "linear",
+            Self::Smooth => "smooth",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Linear, Self::Smooth]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TableProps {
     pub style: VariantProps,
     pub data: String,
@@ -2367,6 +2888,11 @@ pub enum BuiltinComponent {
     Code,
     Video,
     Candlestick,
+    ArcChart,
+    AreaChart,
+    BarChart,
+    LineChart,
+    PieChart,
     Table,
     Divider,
     Button,
@@ -2375,6 +2901,19 @@ pub enum BuiltinComponent {
     FabAction,
     Slider,
     Dropzone,
+    ComboBox,
+    ComboOption,
+    CsvField,
+    CsvColumn,
+    DragDrop,
+    DragGroup,
+    DragItem,
+    Editor,
+    ImageCropper,
+    PasswordField,
+    PhoneField,
+    PinField,
+    Textarea,
     Alert,
     Svg,
     Path,
@@ -2437,6 +2976,11 @@ impl BuiltinComponent {
             "Code" => Some(Self::Code),
             "Video" => Some(Self::Video),
             "Candlestick" => Some(Self::Candlestick),
+            "ArcChart" => Some(Self::ArcChart),
+            "AreaChart" => Some(Self::AreaChart),
+            "BarChart" => Some(Self::BarChart),
+            "LineChart" => Some(Self::LineChart),
+            "PieChart" => Some(Self::PieChart),
             "Table" => Some(Self::Table),
             "Divider" => Some(Self::Divider),
             "Button" => Some(Self::Button),
@@ -2445,6 +2989,19 @@ impl BuiltinComponent {
             "fabAction" => Some(Self::FabAction),
             "Slider" => Some(Self::Slider),
             "Dropzone" => Some(Self::Dropzone),
+            "ComboBox" => Some(Self::ComboBox),
+            "comboOption" => Some(Self::ComboOption),
+            "CsvField" => Some(Self::CsvField),
+            "csvColumn" => Some(Self::CsvColumn),
+            "DragDrop" => Some(Self::DragDrop),
+            "dragGroup" => Some(Self::DragGroup),
+            "dragItem" => Some(Self::DragItem),
+            "Editor" => Some(Self::Editor),
+            "ImageCropper" => Some(Self::ImageCropper),
+            "PasswordField" => Some(Self::PasswordField),
+            "PhoneField" => Some(Self::PhoneField),
+            "PinField" => Some(Self::PinField),
+            "Textarea" => Some(Self::Textarea),
             "Alert" => Some(Self::Alert),
             "Svg" => Some(Self::Svg),
             "Path" => Some(Self::Path),
@@ -2508,6 +3065,11 @@ impl BuiltinComponent {
             Self::Code => "Code",
             Self::Video => "Video",
             Self::Candlestick => "Candlestick",
+            Self::ArcChart => "ArcChart",
+            Self::AreaChart => "AreaChart",
+            Self::BarChart => "BarChart",
+            Self::LineChart => "LineChart",
+            Self::PieChart => "PieChart",
             Self::Table => "Table",
             Self::Divider => "Divider",
             Self::Button => "Button",
@@ -2516,6 +3078,19 @@ impl BuiltinComponent {
             Self::FabAction => "fabAction",
             Self::Slider => "Slider",
             Self::Dropzone => "Dropzone",
+            Self::ComboBox => "ComboBox",
+            Self::ComboOption => "comboOption",
+            Self::CsvField => "CsvField",
+            Self::CsvColumn => "csvColumn",
+            Self::DragDrop => "DragDrop",
+            Self::DragGroup => "dragGroup",
+            Self::DragItem => "dragItem",
+            Self::Editor => "Editor",
+            Self::ImageCropper => "ImageCropper",
+            Self::PasswordField => "PasswordField",
+            Self::PhoneField => "PhoneField",
+            Self::PinField => "PinField",
+            Self::Textarea => "Textarea",
             Self::Alert => "Alert",
             Self::Svg => "Svg",
             Self::Path => "Path",

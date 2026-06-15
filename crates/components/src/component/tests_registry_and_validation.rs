@@ -1,17 +1,20 @@
 use std::{fs, path::Path};
 
 use super::{
-    Breakpoint, BuiltinComponent, ButtonSize, COMPONENT_REGISTRY, CodeLanguage, CodeTokenKind,
-    ColorFamily, ColorToken, ComponentError, ComponentProp, ComponentVariant, DividerOrientation,
-    FontFamily, GapValue, GridAlignment, GridTracks, OverlayPaint, PropValue, ResponsivePropEntry,
-    ScaleValue, SectionBackground, SizeValue, SvgPathFill, TableColumnAlign, TableSize,
-    TabsPosition, TabsVariant, TextSize, TextSpacing, TextWeight, VideoAspect, ViewAnimation,
-    ViewNode, VisibilityCondition,
+    Breakpoint, BuiltinComponent, ButtonSize, COMPONENT_REGISTRY, ChartCurve,
+    ChartLegendPosition, ChartPalette, ChartSize, CodeLanguage, CodeTokenKind, ColorFamily,
+    ColorToken, ComponentError, ComponentProp, ComponentVariant, DividerOrientation, FontFamily,
+    GapValue, GridAlignment, GridTracks, OverlayPaint, PropValue, ResponsivePropEntry, ScaleValue,
+    SectionBackground, SizeValue, SvgPathFill, TableColumnAlign, TableSize, TabsPosition,
+    TabsVariant, TextSize, TextSpacing, TextWeight, VideoAspect, ViewAnimation, ViewNode,
+    VisibilityCondition,
+    arc_chart_component_node, area_chart_component_node, bar_chart_component_node,
     bar_component_node, box_node, candlestick_node, children_node, code_node, compose_tree,
-    container_component_node, divider_node, first_text, font_catalog, input_node, select_node,
-    select_option_component, svg_component_node, svg_path_component, table_column_component,
-    table_node, tabs_component_node, tabs_tab_component, text_component_node, text_node,
-    text_spacing_em, text_typography, text_weight_number, validate_view_tree, video_node,
+    container_component_node, divider_node, first_text, font_catalog, input_node,
+    line_chart_component_node, pie_chart_component_node, select_node, select_option_component,
+    svg_component_node, svg_path_component, table_column_component, table_node,
+    tabs_component_node, tabs_tab_component, text_component_node, text_node, text_spacing_em,
+    text_typography, text_weight_number, validate_view_tree, video_node,
 };
 
 #[test]
@@ -44,6 +47,26 @@ fn registry_finds_builtin_components() {
     assert_eq!(
         COMPONENT_REGISTRY.get("Candlestick"),
         Some(BuiltinComponent::Candlestick)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("ArcChart"),
+        Some(BuiltinComponent::ArcChart)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("AreaChart"),
+        Some(BuiltinComponent::AreaChart)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("BarChart"),
+        Some(BuiltinComponent::BarChart)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("LineChart"),
+        Some(BuiltinComponent::LineChart)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("PieChart"),
+        Some(BuiltinComponent::PieChart)
     );
     assert_eq!(
         COMPONENT_REGISTRY.get("Table"),
@@ -378,6 +401,99 @@ fn validates_candlestick_props_and_defaults() {
             assert_eq!(props.max_points, 240);
         }
         _ => panic!("candlestick"),
+    }
+}
+
+#[test]
+fn validates_chart_component_props_and_defaults() {
+    let arc = arc_chart_component_node(vec![
+        string_prop("data", "segments"),
+        string_prop("palette", "ocean"),
+        string_prop("legendPosition", "left"),
+        number_prop("thickness", 18),
+        boolean_prop("showInlineLabels", true),
+    ])
+    .expect("arc chart");
+    match arc {
+        ViewNode::ArcChart { props } => {
+            assert_eq!(props.common.data.as_deref(), Some("segments"));
+            assert_eq!(props.common.palette, ChartPalette::Ocean);
+            assert_eq!(props.common.legend_position, ChartLegendPosition::Left);
+            assert_eq!(props.common.size, ChartSize::Md);
+            assert_eq!(props.thickness, 18);
+            assert!(props.show_inline_labels);
+        }
+        _ => panic!("arc chart"),
+    }
+
+    let area = area_chart_component_node(vec![
+        string_prop("series", "traffic"),
+        string_prop("curve", "smooth"),
+        number_string_prop("fillOpacity", "0.42"),
+        boolean_prop("showPoints", true),
+    ])
+    .expect("area chart");
+    match area {
+        ViewNode::AreaChart { props } => {
+            assert_eq!(props.common.series.as_deref(), Some("traffic"));
+            assert_eq!(props.common.legend_position, ChartLegendPosition::Bottom);
+            assert_eq!(props.curve, ChartCurve::Smooth);
+            assert_eq!(props.fill_opacity, 42);
+            assert!(props.show_points);
+        }
+        _ => panic!("area chart"),
+    }
+
+    let bar = bar_chart_component_node(vec![
+        string_prop("data", "sales"),
+        string_prop("size", "lg"),
+        string_prop("scheme", "surface"),
+        boolean_prop("grouped", true),
+    ])
+    .expect("bar chart");
+    match bar {
+        ViewNode::BarChart { props } => {
+            assert_eq!(props.common.data.as_deref(), Some("sales"));
+            assert_eq!(props.common.size, ChartSize::Lg);
+            assert_eq!(props.common.style.color, Some(ColorFamily::Surface));
+            assert!(props.grouped);
+        }
+        _ => panic!("bar chart"),
+    }
+
+    let line = line_chart_component_node(vec![
+        string_prop("data", "trend"),
+        string_prop("palette", "forest"),
+        string_prop("curve", "smooth"),
+        boolean_prop("showGradientFill", true),
+    ])
+    .expect("line chart");
+    match line {
+        ViewNode::LineChart { props } => {
+            assert_eq!(props.common.data.as_deref(), Some("trend"));
+            assert_eq!(props.common.palette, ChartPalette::Forest);
+            assert_eq!(props.curve, ChartCurve::Smooth);
+            assert!(props.show_gradient_fill);
+        }
+        _ => panic!("line chart"),
+    }
+
+    let pie = pie_chart_component_node(vec![
+        string_prop("data", "segments"),
+        boolean_prop("donut", true),
+        number_prop("donutWidth", 72),
+        string_prop("centerLabel", "Total"),
+    ])
+    .expect("pie chart");
+    match pie {
+        ViewNode::PieChart { props } => {
+            assert_eq!(props.common.data.as_deref(), Some("segments"));
+            assert_eq!(props.common.legend_position, ChartLegendPosition::Right);
+            assert!(props.donut);
+            assert_eq!(props.donut_width, 72);
+            assert_eq!(props.center_label.as_deref(), Some("Total"));
+        }
+        _ => panic!("pie chart"),
     }
 }
 

@@ -101,6 +101,21 @@ fn render_compose_display_node(
                         card_variant_content(&props.style),
                     ));
         }
+        ViewNode::ArcChart { props } => {
+            render_compose_chart("arc", &props.common, indent, output, context);
+        }
+        ViewNode::AreaChart { props } => {
+            render_compose_chart("area", &props.common, indent, output, context);
+        }
+        ViewNode::BarChart { props } => {
+            render_compose_chart("bar", &props.common, indent, output, context);
+        }
+        ViewNode::LineChart { props } => {
+            render_compose_chart("line", &props.common, indent, output, context);
+        }
+        ViewNode::PieChart { props } => {
+            render_compose_chart("pie", &props.common, indent, output, context);
+        }
         ViewNode::Table { props } => {
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined
@@ -274,4 +289,46 @@ fn render_compose_display_node(
         }
         _ => {}
     }
+}
+
+fn render_compose_chart(
+    chart_type: &str,
+    props: &ChartCommonProps,
+    indent: usize,
+    output: &mut String,
+    context: &ComposeReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
+        == ComponentVariant::Outlined
+    {
+        card_variant_content(&props.style)
+    } else {
+        "null"
+    };
+    let data_path = props
+        .data
+        .as_deref()
+        .map(|value| compose_string_literal(&context.signal_path(value)))
+        .unwrap_or_else(|| "null".to_string());
+    let series_path = props
+        .series
+        .as_deref()
+        .map(|value| compose_string_literal(&context.signal_path(value)))
+        .unwrap_or_else(|| "null".to_string());
+    output.push_str(&format!(
+        "{pad}DoweChart(state = state, chartType = {}, dataPath = {}, seriesPath = {}, palette = {}, legendPosition = {}, emptyLabel = {}, loading = {}, hideLegend = {}, modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+        compose_string_literal(chart_type),
+        data_path,
+        series_path,
+        compose_string_literal(props.palette.as_str()),
+        compose_string_literal(props.legend_position.as_str()),
+        compose_string_literal(&props.empty_label),
+        props.loading,
+        props.hide_legend,
+        modifier_for_style(&props.style.style),
+        compose_card_radius(&props.style.style),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+    ));
 }

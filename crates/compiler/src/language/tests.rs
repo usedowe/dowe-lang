@@ -1274,6 +1274,44 @@ fn completions_include_candlestick_component_props_and_values() {
 }
 
 #[test]
+fn completions_include_chart_component_props_and_values() {
+    let document = LanguageDocument {
+        path: Path::new("/project/src/pages/charts.dowe").to_path_buf(),
+        source: "page chartPage\n  signal points value:[]\n  LineChart \n  LineChart data:\n  LineChart palette:\n  LineChart legendPosition:\n  LineChart curve:\n  PieChart \n"
+            .to_string(),
+    };
+
+    let base = complete_document(Path::new("/project"), &document, 1, 1);
+    for label in ["ArcChart", "AreaChart", "BarChart", "LineChart", "PieChart"] {
+        assert!(base.iter().any(|item| item.label == label));
+    }
+
+    let line_props = complete_document(Path::new("/project"), &document, 3, 13);
+    assert!(line_props.iter().any(|item| item.label == "data"));
+    assert!(line_props.iter().any(|item| item.label == "series"));
+    assert!(line_props.iter().any(|item| item.label == "curve"));
+    assert!(line_props.iter().any(|item| item.label == "palette"));
+
+    let data = complete_document(Path::new("/project"), &document, 4, 18);
+    assert!(data.iter().any(|item| item.label == "points"));
+
+    let palettes = complete_document(Path::new("/project"), &document, 5, 21);
+    assert!(palettes.iter().any(|item| item.label == "\"ocean\""));
+    assert!(palettes.iter().any(|item| item.label == "\"forest\""));
+
+    let legends = complete_document(Path::new("/project"), &document, 6, 28);
+    assert!(legends.iter().any(|item| item.label == "\"bottom\""));
+    assert!(legends.iter().any(|item| item.label == "\"right\""));
+
+    let curves = complete_document(Path::new("/project"), &document, 7, 20);
+    assert!(curves.iter().any(|item| item.label == "\"smooth\""));
+
+    let pie_props = complete_document(Path::new("/project"), &document, 8, 12);
+    assert!(pie_props.iter().any(|item| item.label == "donut"));
+    assert!(pie_props.iter().any(|item| item.label == "donutWidth"));
+}
+
+#[test]
 fn completions_include_table_component_and_column_props() {
     let document = LanguageDocument {
         path: Path::new("/project/src/pages/users.dowe").to_path_buf(),

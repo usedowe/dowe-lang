@@ -142,6 +142,40 @@ fn collect_js_segments(
         ViewNode::Select { props, options } => {
             push_literal(segments, &render_select_html(props, options, context));
         }
+        ViewNode::ComboBox { props, options } => {
+            push_literal(segments, &render_combo_box_html(props, options, context));
+        }
+        ViewNode::CsvField { props, columns } => {
+            push_literal(segments, &render_csv_field_html(props, columns, context));
+        }
+        ViewNode::DragDrop {
+            props,
+            items,
+            groups,
+        } => {
+            push_literal(
+                segments,
+                &render_drag_drop_html(props, items, groups, context),
+            );
+        }
+        ViewNode::Editor { props } => {
+            push_literal(segments, &render_editor_html(props, context));
+        }
+        ViewNode::ImageCropper { props } => {
+            push_literal(segments, &render_image_cropper_html(props, context));
+        }
+        ViewNode::PasswordField { props } => {
+            push_literal(segments, &render_password_field_html(props, context));
+        }
+        ViewNode::PhoneField { props } => {
+            push_literal(segments, &render_phone_field_html(props, context));
+        }
+        ViewNode::PinField { props } => {
+            push_literal(segments, &render_pin_field_html(props, context));
+        }
+        ViewNode::Textarea { props } => {
+            push_literal(segments, &render_textarea_html(props, context));
+        }
         ViewNode::Code { props } => {
             push_literal(segments, &render_code_html(props, context));
         }
@@ -156,6 +190,21 @@ fn collect_js_segments(
         }
         ViewNode::Candlestick { props } => {
             push_literal(segments, &render_candlestick_html(props, context));
+        }
+        ViewNode::ArcChart { props } => {
+            push_literal(segments, &render_arc_chart_html(props, context));
+        }
+        ViewNode::AreaChart { props } => {
+            push_literal(segments, &render_area_chart_html(props, context));
+        }
+        ViewNode::BarChart { props } => {
+            push_literal(segments, &render_bar_chart_html(props, context));
+        }
+        ViewNode::LineChart { props } => {
+            push_literal(segments, &render_line_chart_html(props, context));
+        }
+        ViewNode::PieChart { props } => {
+            push_literal(segments, &render_pie_chart_html(props, context));
         }
         ViewNode::Table { props } => {
             push_literal(segments, &render_table_html(props, context));

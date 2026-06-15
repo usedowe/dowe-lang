@@ -193,6 +193,170 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             classes.insert("select-popover".to_string());
             classes.insert("select-option".to_string());
         }
+        ViewNode::ComboBox { props, .. } => {
+            classes.extend(variant_classes("control", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "combo-box".to_string(),
+                "combo-box-control".to_string(),
+                "combo-box-value".to_string(),
+                "combo-box-clear".to_string(),
+                "combo-box-popover".to_string(),
+                "combo-box-search-wrap".to_string(),
+                "combo-box-search".to_string(),
+                "combo-box-search-icon".to_string(),
+                "combo-box-options".to_string(),
+                "combo-box-option".to_string(),
+                "combo-box-option-avatar".to_string(),
+                "combo-box-option-icon".to_string(),
+                "combo-box-option-copy".to_string(),
+                "combo-box-option-label".to_string(),
+                "combo-box-option-description".to_string(),
+                "combo-box-empty".to_string(),
+                "combo-box-loading".to_string(),
+            ]);
+        }
+        ViewNode::CsvField { props, .. } => {
+            classes.extend(variant_classes("button", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "csv-field".to_string(),
+                "csv-field-button".to_string(),
+                "csv-field-icon".to_string(),
+                "csv-field-summary".to_string(),
+                "csv-field-preview".to_string(),
+                "csv-field-preview-title".to_string(),
+                "csv-field-preview-table".to_string(),
+                "csv-field-modal".to_string(),
+                "csv-field-dialog".to_string(),
+                "csv-field-title".to_string(),
+                "csv-field-instructions".to_string(),
+                "csv-field-columns".to_string(),
+                "csv-field-column".to_string(),
+                "csv-field-select".to_string(),
+                "csv-field-error".to_string(),
+                "csv-field-actions".to_string(),
+                "csv-field-action".to_string(),
+                "is-primary".to_string(),
+                format!(
+                    "button-{}",
+                    props.style.size.unwrap_or(ButtonSize::Md).as_str()
+                ),
+            ]);
+        }
+        ViewNode::DragDrop { props, .. } => {
+            classes.extend(variant_classes("drag-drop", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "drag-drop-group".to_string(),
+                "drag-drop-group-title".to_string(),
+                "drag-drop-list".to_string(),
+                "drag-drop-empty".to_string(),
+                "drag-drop-item".to_string(),
+                "drag-drop-handle".to_string(),
+                "drag-drop-item-copy".to_string(),
+                "drag-drop-item-label".to_string(),
+                "drag-drop-item-description".to_string(),
+                format!("is-{}", props.direction.as_str()),
+                format!("is-{}", props.size.as_str()),
+            ]);
+        }
+        ViewNode::Editor { props } => {
+            classes.extend(variant_classes("editor", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "editor-toolbar".to_string(),
+                "editor-toolbar-button".to_string(),
+                "editor-content".to_string(),
+            ]);
+        }
+        ViewNode::ImageCropper { props } => {
+            classes.extend(variant_classes("image-cropper", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "image-cropper-trigger".to_string(),
+                "image-cropper-image".to_string(),
+                "image-cropper-empty-icon".to_string(),
+                "image-cropper-label".to_string(),
+                "image-cropper-actions".to_string(),
+                "image-cropper-action".to_string(),
+                "image-cropper-modal".to_string(),
+                "image-cropper-dialog".to_string(),
+                "image-cropper-stage".to_string(),
+                "image-cropper-canvas".to_string(),
+                "image-cropper-box".to_string(),
+                "image-cropper-modal-actions".to_string(),
+                format!("is-{}", props.shape.as_str()),
+                "is-primary".to_string(),
+            ]);
+        }
+        ViewNode::PasswordField { props } => {
+            classes.extend(variant_classes("control", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "password-field".to_string(),
+                "password-field-input".to_string(),
+                "password-field-toggle".to_string(),
+                "password-strength".to_string(),
+                "password-strength-bars".to_string(),
+                "password-strength-bar".to_string(),
+                "password-strength-label".to_string(),
+            ]);
+        }
+        ViewNode::PhoneField { props } => {
+            classes.extend(variant_classes("control", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "phone-field".to_string(),
+                "phone-field-country-trigger".to_string(),
+                "phone-field-flag".to_string(),
+                "phone-field-dial".to_string(),
+                "phone-field-input".to_string(),
+                "phone-field-popover".to_string(),
+                "phone-field-search-wrap".to_string(),
+                "phone-field-search".to_string(),
+                "phone-field-search-icon".to_string(),
+                "phone-field-countries".to_string(),
+                "phone-field-country".to_string(),
+                "phone-field-country-name".to_string(),
+                "phone-field-empty".to_string(),
+                "phone-field-loading".to_string(),
+            ]);
+        }
+        ViewNode::PinField { props } => {
+            classes.extend(variant_classes("pin-field", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "pin-field-cells".to_string(),
+                "pin-field-cell".to_string(),
+            ]);
+        }
+        ViewNode::Textarea { props } => {
+            classes.extend(variant_classes("control", &props.style));
+            classes.extend([
+                "field".to_string(),
+                "field-label".to_string(),
+                "field-help".to_string(),
+                "textarea-field".to_string(),
+                "textarea-control".to_string(),
+                "is-resizable".to_string(),
+            ]);
+        }
         ViewNode::Code { props } => {
             classes.extend(variant_classes("code-block", &props.style));
         }
@@ -203,6 +367,21 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             classes.extend(candlestick_classes(props));
             classes.insert("candlestick-canvas".to_string());
             classes.insert("candlestick-empty".to_string());
+        }
+        ViewNode::ArcChart { props } => {
+            collect_chart_classes("arc-chart-container", &props.common, classes);
+        }
+        ViewNode::AreaChart { props } => {
+            collect_chart_classes("area-chart-container", &props.common, classes);
+        }
+        ViewNode::BarChart { props } => {
+            collect_chart_classes("bar-chart-container", &props.common, classes);
+        }
+        ViewNode::LineChart { props } => {
+            collect_chart_classes("line-chart-container", &props.common, classes);
+        }
+        ViewNode::PieChart { props } => {
+            collect_chart_classes("pie-chart-container", &props.common, classes);
         }
         ViewNode::Table { props } => {
             classes.extend(table_wrapper_classes(props));
@@ -238,4 +417,26 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         _ => unreachable!(),
     }
+}
+
+fn collect_chart_classes(base: &str, props: &ChartCommonProps, classes: &mut BTreeSet<String>) {
+    classes.extend(chart_classes(base, props));
+    classes.insert("dowe-chart-viewport".to_string());
+    classes.insert("dowe-chart-svg".to_string());
+    classes.insert("dowe-chart-loading".to_string());
+    classes.insert("dowe-chart-empty".to_string());
+    classes.insert("dowe-chart-legend".to_string());
+    classes.insert("dowe-chart-legend-item".to_string());
+    classes.insert("dowe-chart-legend-color".to_string());
+    classes.insert("dowe-chart-axis-line".to_string());
+    classes.insert("dowe-chart-axis-label".to_string());
+    classes.insert("dowe-chart-grid-line".to_string());
+    classes.insert("dowe-chart-line".to_string());
+    classes.insert("dowe-chart-area".to_string());
+    classes.insert("dowe-chart-point".to_string());
+    classes.insert("dowe-chart-bar".to_string());
+    classes.insert("dowe-chart-slice".to_string());
+    classes.insert("dowe-chart-arc".to_string());
+    classes.insert("dowe-chart-center-value".to_string());
+    classes.insert("dowe-chart-center-label".to_string());
 }

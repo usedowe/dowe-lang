@@ -172,6 +172,25 @@ fn collect_variant_rules<'a>(
         ViewNode::Select { props, .. } => {
             push_variant_rule(variants, "control", props);
         }
+        ViewNode::ComboBox { props, .. } => push_variant_rule(variants, "control", &props.style),
+        ViewNode::PasswordField { props } => push_variant_rule(variants, "control", &props.style),
+        ViewNode::PhoneField { props } => push_variant_rule(variants, "control", &props.style),
+        ViewNode::Textarea { props } => push_variant_rule(variants, "control", &props.style),
+        ViewNode::CsvField { props, .. } => {
+            push_variant_rule(variants, "button", &props.style);
+        }
+        ViewNode::DragDrop { props, .. } => {
+            push_variant_rule(variants, "drag-drop", &props.style);
+        }
+        ViewNode::Editor { props } => {
+            push_variant_rule(variants, "editor", &props.style);
+        }
+        ViewNode::ImageCropper { props } => {
+            push_variant_rule(variants, "image-cropper", &props.style);
+        }
+        ViewNode::PinField { props } => {
+            push_variant_rule(variants, "pin-field", &props.style);
+        }
         ViewNode::Slider { .. } => {}
         ViewNode::Dropzone { props } => push_variant_rule(variants, "dropzone-input", &props.style),
         ViewNode::Code { props } => {
@@ -182,6 +201,21 @@ fn collect_variant_rules<'a>(
         }
         ViewNode::Candlestick { props } => {
             push_variant_rule(variants, "candlestick", &props.style);
+        }
+        ViewNode::ArcChart { props } => {
+            push_variant_rule(variants, "arc-chart-container", &props.common.style);
+        }
+        ViewNode::AreaChart { props } => {
+            push_variant_rule(variants, "area-chart-container", &props.common.style);
+        }
+        ViewNode::BarChart { props } => {
+            push_variant_rule(variants, "bar-chart-container", &props.common.style);
+        }
+        ViewNode::LineChart { props } => {
+            push_variant_rule(variants, "line-chart-container", &props.common.style);
+        }
+        ViewNode::PieChart { props } => {
+            push_variant_rule(variants, "pie-chart-container", &props.common.style);
         }
         ViewNode::Table { props } => {
             push_variant_rule(variants, "table", &props.style);
@@ -377,6 +411,15 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
             }
         }
         ViewNode::Input { .. }
+        | ViewNode::ComboBox { .. }
+        | ViewNode::CsvField { .. }
+        | ViewNode::DragDrop { .. }
+        | ViewNode::Editor { .. }
+        | ViewNode::ImageCropper { .. }
+        | ViewNode::PasswordField { .. }
+        | ViewNode::PhoneField { .. }
+        | ViewNode::PinField { .. }
+        | ViewNode::Textarea { .. }
         | ViewNode::ToggleTheme { .. }
         | ViewNode::Fab { .. }
         | ViewNode::Slider { .. }
@@ -387,6 +430,11 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Alert { .. }

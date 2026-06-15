@@ -207,14 +207,59 @@ fn apply_dev_android_style(
         || props.spacing.pb.is_some()
     {
         output.push_str(&format!(
-            "        int {view}Left = 0;\n        int {view}Top = 0;\n        int {view}Right = 0;\n        int {view}Bottom = 0;\n        Integer {view}Padding = {};\n        if ({view}Padding != null) {{\n            int value = doweDp({view}Padding);\n            {view}Left = value;\n            {view}Top = value;\n            {view}Right = value;\n            {view}Bottom = value;\n        }}\n        Integer {view}PaddingX = {};\n        if ({view}PaddingX != null) {{\n            int value = doweDp({view}PaddingX);\n            {view}Left = value;\n            {view}Right = value;\n        }}\n        Integer {view}PaddingY = {};\n        if ({view}PaddingY != null) {{\n            int value = doweDp({view}PaddingY);\n            {view}Top = value;\n            {view}Bottom = value;\n        }}\n        Integer {view}PaddingLeft = {};\n        if ({view}PaddingLeft != null) {{\n            {view}Left = doweDp({view}PaddingLeft);\n        }}\n        Integer {view}PaddingRight = {};\n        if ({view}PaddingRight != null) {{\n            {view}Right = doweDp({view}PaddingRight);\n        }}\n        Integer {view}PaddingTop = {};\n        if ({view}PaddingTop != null) {{\n            {view}Top = doweDp({view}PaddingTop);\n        }}\n        Integer {view}PaddingBottom = {};\n        if ({view}PaddingBottom != null) {{\n            {view}Bottom = doweDp({view}PaddingBottom);\n        }}\n        {view}.setPadding({view}Left, {view}Top, {view}Right, {view}Bottom);\n",
-            dev_optional_scale(props.spacing.p.as_ref()),
-            dev_optional_scale(props.spacing.px.as_ref()),
-            dev_optional_scale(props.spacing.py.as_ref()),
-            dev_optional_scale(props.spacing.pl.as_ref()),
-            dev_optional_scale(props.spacing.pr.as_ref()),
-            dev_optional_scale(props.spacing.pt.as_ref()),
-            dev_optional_scale(props.spacing.pb.as_ref())
+            "        int {view}Left = 0;\n        int {view}Top = 0;\n        int {view}Right = 0;\n        int {view}Bottom = 0;\n"
+        ));
+        write_dev_android_padding(
+            props.spacing.p.as_ref(),
+            view,
+            "Padding",
+            DevPaddingEdges::All,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.px.as_ref(),
+            view,
+            "PaddingX",
+            DevPaddingEdges::Horizontal,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.py.as_ref(),
+            view,
+            "PaddingY",
+            DevPaddingEdges::Vertical,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pl.as_ref(),
+            view,
+            "PaddingLeft",
+            DevPaddingEdges::Left,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pr.as_ref(),
+            view,
+            "PaddingRight",
+            DevPaddingEdges::Right,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pt.as_ref(),
+            view,
+            "PaddingTop",
+            DevPaddingEdges::Top,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pb.as_ref(),
+            view,
+            "PaddingBottom",
+            DevPaddingEdges::Bottom,
+            output,
+        );
+        output.push_str(&format!(
+            "        {view}.setPadding({view}Left, {view}Top, {view}Right, {view}Bottom);\n"
         ));
     }
 
@@ -245,4 +290,55 @@ fn apply_dev_android_style(
             animation.as_str()
         ));
     }
+}
+
+enum DevPaddingEdges {
+    All,
+    Horizontal,
+    Vertical,
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+fn write_dev_android_padding(
+    value: Option<&ResponsiveValue<ScaleValue>>,
+    view: &str,
+    suffix: &str,
+    edges: DevPaddingEdges,
+    output: &mut String,
+) {
+    let Some(value) = value else {
+        return;
+    };
+    let name = format!("{view}{suffix}");
+    output.push_str(&format!(
+        "        Integer {name} = {};\n        if ({name} != null) {{\n",
+        dev_scale_value(value)
+    ));
+    match edges {
+        DevPaddingEdges::All => output.push_str(&format!(
+            "            int value = doweDp({name});\n            {view}Left = value;\n            {view}Top = value;\n            {view}Right = value;\n            {view}Bottom = value;\n"
+        )),
+        DevPaddingEdges::Horizontal => output.push_str(&format!(
+            "            int value = doweDp({name});\n            {view}Left = value;\n            {view}Right = value;\n"
+        )),
+        DevPaddingEdges::Vertical => output.push_str(&format!(
+            "            int value = doweDp({name});\n            {view}Top = value;\n            {view}Bottom = value;\n"
+        )),
+        DevPaddingEdges::Left => {
+            output.push_str(&format!("            {view}Left = doweDp({name});\n"));
+        }
+        DevPaddingEdges::Right => {
+            output.push_str(&format!("            {view}Right = doweDp({name});\n"));
+        }
+        DevPaddingEdges::Top => {
+            output.push_str(&format!("            {view}Top = doweDp({name});\n"));
+        }
+        DevPaddingEdges::Bottom => {
+            output.push_str(&format!("            {view}Bottom = doweDp({name});\n"));
+        }
+    }
+    output.push_str("        }\n");
 }

@@ -186,6 +186,417 @@ struct DoweCandlestickView: View {
     }
 }
 
+struct DoweChartPoint {
+    let x: Double
+    let y: Double
+
+    init?(_ source: [String: Any]) {
+        guard let x = DoweChartPoint.number(source["x"]),
+              let y = DoweChartPoint.number(source["y"]) else {
+            return nil
+        }
+        self.x = x
+        self.y = y
+    }
+
+    static func number(_ value: Any?) -> Double? {
+        if let number = value as? NSNumber {
+            return number.doubleValue
+        }
+        if let text = value as? String {
+            return Double(text)
+        }
+        return nil
+    }
+}
+
+struct DoweChartCategory: Identifiable {
+    let id: String
+    let label: String
+    let value: Double
+    let color: String?
+
+    init?(_ source: [String: Any], index: Int) {
+        guard let value = DoweChartPoint.number(source["value"]), value >= 0 else {
+            return nil
+        }
+        self.id = "\(index)-\(source["label"].map { String(describing: $0) } ?? "")"
+        self.label = source["label"].map { String(describing: $0) } ?? String(index + 1)
+        self.value = value
+        self.color = source["color"].map { String(describing: $0) }
+    }
+}
+
+struct DoweChartSeries: Identifiable {
+    let id: String
+    let label: String
+    let color: String?
+    let points: [DoweChartPoint]
+}
+
+struct DoweChartLegendItem: Identifiable {
+    let id: String
+    let label: String
+    let color: Color
+}
+
+struct DoweChartView: View {
+    @ObservedObject var state: DoweReactiveState
+    let chartType: String
+    let dataPath: String?
+    let seriesPath: String?
+    let palette: String
+    let legendPosition: String
+    let emptyLabel: String
+    let loading: Bool
+    let hideLegend: Bool
+    let backgroundColor: Color
+    let contentColor: Color
+    let borderColor: Color?
+    let radius: CGFloat
+
+    private var rows: [[String: Any]] {
+        if let dataPath {
+            return state.candles(dataPath)
+        }
+        guard let seriesPath else {
+            return []
+        }
+        return state.candles(seriesPath).flatMap { row in
+            row["data"] as? [[String: Any]] ?? []
+        }
+    }
+
+    private var categories: [DoweChartCategory] {
+        rows.enumerated().compactMap { index, row in
+            DoweChartCategory(row, index: index)
+        }
+    }
+
+    private var series: [DoweChartSeries] {
+        if let seriesPath {
+            return state.candles(seriesPath).enumerated().map { index, row in
+                let data = row["data"] as? [[String: Any]] ?? []
+                let points = data.compactMap(DoweChartPoint.init)
+                let label = row["label"].map { String(describing: $0) } ?? "Series \(index + 1)"
+                let color = row["color"].map { String(describing: $0) }
+                return DoweChartSeries(id: "\(index)-\(label)", label: label, color: color, points: points)
+            }
+        }
+        return [
+            DoweChartSeries(id: "series-0", label: "Series 1", color: nil, points: rows.compactMap(DoweChartPoint.init))
+        ]
+    }
+
+    private var isPointChart: Bool {
+        chartType == "line" || chartType == "area"
+    }
+
+    private var isCircularChart: Bool {
+        chartType == "arc" || chartType == "pie"
+    }
+
+    private var isEmpty: Bool {
+        if isPointChart {
+            return !series.contains { !$0.points.isEmpty }
+        }
+        return categories.isEmpty
+    }
+
+    private var legendItems: [DoweChartLegendItem] {
+        if isPointChart {
+            return series.enumerated()
+                .filter { !$0.element.points.isEmpty }
+                .map { entry in
+                    let index = entry.offset
+                    let item = entry.element
+                    return DoweChartLegendItem(id: item.id, label: item.label, color: chartColor(index, explicit: item.color))
+                }
+        }
+        return categories.enumerated().map { index, item in
+            DoweChartLegendItem(id: item.id, label: item.label, color: chartColor(index, explicit: item.color))
+        }
+    }
+
+    private var showsLegend: Bool {
+        !hideLegend && legendPosition != "none" && !legendItems.isEmpty
+    }
+
+    var body: some View {
+        chartLayout
+            .padding(CGFloat(12))
+            .frame(maxWidth: .infinity, minHeight: isCircularChart ? CGFloat(224) : CGFloat(300))
+            .background(backgroundColor)
+            .foregroundStyle(contentColor)
+            .clipShape(RoundedRectangle(cornerRadius: radius))
+            .overlay(
+                RoundedRectangle(cornerRadius: radius)
+                    .stroke(borderColor ?? contentColor.opacity(0.12), lineWidth: CGFloat(1))
+            )
+            .accessibilityLabel(Text("\(chartType.capitalized) chart"))
+    }
+
+    @ViewBuilder
+    private var chartLayout: some View {
+        if showsLegend && legendPosition == "left" {
+            HStack(alignment: .center, spacing: CGFloat(12)) {
+                legendView
+                chartCanvas
+            }
+        } else if showsLegend && legendPosition == "right" {
+            HStack(alignment: .center, spacing: CGFloat(12)) {
+                chartCanvas
+                legendView
+            }
+        } else if showsLegend && legendPosition == "top" {
+            VStack(spacing: CGFloat(10)) {
+                legendView
+                chartCanvas
+            }
+        } else {
+            VStack(spacing: CGFloat(10)) {
+                chartCanvas
+                legendView
+            }
+        }
+    }
+
+    private var chartCanvas: some View {
+        ZStack {
+            Canvas { context, size in
+                var context = context
+                guard !loading, !isEmpty else {
+                    return
+                }
+                if isPointChart {
+                    drawPointChart(series, context: &context, size: size)
+                } else if chartType == "bar" {
+                    drawBarChart(categories, context: &context, size: size)
+                } else if chartType == "arc" {
+                    drawArcChart(categories, context: &context, size: size)
+                } else {
+                    drawPieChart(categories, context: &context, size: size)
+                }
+            }
+            if loading || isEmpty {
+                Text(loading ? "Loading" : emptyLabel)
+                    .font(.footnote)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(contentColor.opacity(0.64))
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: isCircularChart ? CGFloat(184) : CGFloat(252))
+    }
+
+    @ViewBuilder
+    private var legendView: some View {
+        if showsLegend {
+            let items = Array(legendItems.prefix(6))
+            if legendPosition == "left" || legendPosition == "right" {
+                VStack(alignment: .leading, spacing: CGFloat(8)) {
+                    ForEach(items) { item in
+                        legendItem(item)
+                    }
+                }
+            } else {
+                HStack(spacing: CGFloat(12)) {
+                    ForEach(items) { item in
+                        legendItem(item)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
+    private func legendItem(_ item: DoweChartLegendItem) -> some View {
+        HStack(spacing: CGFloat(6)) {
+            RoundedRectangle(cornerRadius: CGFloat(2))
+                .fill(item.color)
+                .frame(width: CGFloat(10), height: CGFloat(10))
+            Text(item.label)
+                .font(.caption)
+                .lineLimit(1)
+                .foregroundStyle(contentColor.opacity(0.82))
+        }
+    }
+
+    private func drawPointChart(_ series: [DoweChartSeries], context: inout GraphicsContext, size: CGSize) {
+        let allPoints = series.flatMap(\.points)
+        guard !allPoints.isEmpty else {
+            return
+        }
+        let left = CGFloat(36)
+        let top = CGFloat(12)
+        let right = CGFloat(12)
+        let bottom = CGFloat(28)
+        let width = max(CGFloat(1), size.width - left - right)
+        let height = max(CGFloat(1), size.height - top - bottom)
+        let minX = allPoints.map(\.x).min() ?? 0
+        let maxX = max((allPoints.map(\.x).max() ?? 1), minX + 0.000001)
+        let minY = min(0, allPoints.map(\.y).min() ?? 0)
+        let maxY = max((allPoints.map(\.y).max() ?? 1), minY + 0.000001)
+
+        for line in 0...4 {
+            let y = top + height * CGFloat(line) / CGFloat(4)
+            context.stroke(
+                Path { path in
+                    path.move(to: CGPoint(x: left, y: y))
+                    path.addLine(to: CGPoint(x: left + width, y: y))
+                },
+                with: .color(contentColor.opacity(0.14)),
+                lineWidth: CGFloat(1)
+            )
+        }
+
+        for (seriesIndex, entry) in series.enumerated() where !entry.points.isEmpty {
+            let color = chartColor(seriesIndex, explicit: entry.color)
+            let mapped = entry.points.map { point in
+                CGPoint(
+                    x: left + CGFloat((point.x - minX) / (maxX - minX)) * width,
+                    y: top + CGFloat((maxY - point.y) / (maxY - minY)) * height
+                )
+            }
+            if chartType == "area", mapped.count > 1 {
+                var area = Path()
+                area.move(to: CGPoint(x: mapped[0].x, y: top + height))
+                mapped.forEach { area.addLine(to: $0) }
+                area.addLine(to: CGPoint(x: mapped[mapped.count - 1].x, y: top + height))
+                area.closeSubpath()
+                context.fill(area, with: .color(color.opacity(0.28)))
+            }
+            var linePath = Path()
+            for (index, point) in mapped.enumerated() {
+                if index == 0 {
+                    linePath.move(to: point)
+                } else {
+                    linePath.addLine(to: point)
+                }
+            }
+            context.stroke(linePath, with: .color(color), lineWidth: CGFloat(2.5))
+            mapped.forEach { point in
+                context.fill(Path(ellipseIn: CGRect(x: point.x - 3.5, y: point.y - 3.5, width: 7, height: 7)), with: .color(color))
+            }
+        }
+    }
+
+    private func drawBarChart(_ items: [DoweChartCategory], context: inout GraphicsContext, size: CGSize) {
+        guard !items.isEmpty else {
+            return
+        }
+        let left = CGFloat(36)
+        let top = CGFloat(12)
+        let bottom = CGFloat(28)
+        let width = max(CGFloat(1), size.width - left - CGFloat(12))
+        let height = max(CGFloat(1), size.height - top - bottom)
+        let maxValue = max(CGFloat(1), CGFloat(items.map(\.value).max() ?? 1))
+        for line in 0...4 {
+            let y = top + height * CGFloat(line) / CGFloat(4)
+            context.stroke(
+                Path { path in
+                    path.move(to: CGPoint(x: left, y: y))
+                    path.addLine(to: CGPoint(x: left + width, y: y))
+                },
+                with: .color(contentColor.opacity(0.14)),
+                lineWidth: CGFloat(1)
+            )
+        }
+        let step = width / CGFloat(max(items.count, 1))
+        for (index, item) in items.enumerated() {
+            let barHeight = height * CGFloat(item.value) / maxValue
+            let rect = CGRect(
+                x: left + CGFloat(index) * step + step * CGFloat(0.18),
+                y: top + height - barHeight,
+                width: max(CGFloat(2), step * CGFloat(0.64)),
+                height: max(CGFloat(1), barHeight)
+            )
+            context.fill(Path(roundedRect: rect, cornerRadius: CGFloat(4)), with: .color(chartColor(index, explicit: item.color)))
+        }
+    }
+
+    private func drawPieChart(_ items: [DoweChartCategory], context: inout GraphicsContext, size: CGSize) {
+        let total = items.reduce(0) { $0 + max(0, $1.value) }
+        guard total > 0 else {
+            return
+        }
+        let radius = max(CGFloat(1), min(size.width, size.height) / CGFloat(2) - CGFloat(12))
+        let center = CGPoint(x: size.width / CGFloat(2), y: size.height / CGFloat(2))
+        var start = -90.0
+        for (index, item) in items.enumerated() {
+            let sweep = 360.0 * item.value / total
+            var wedge = Path()
+            wedge.move(to: center)
+            wedge.addArc(center: center, radius: radius, startAngle: Angle(degrees: start), endAngle: Angle(degrees: start + sweep), clockwise: false)
+            wedge.closeSubpath()
+            context.fill(wedge, with: .color(chartColor(index, explicit: item.color)))
+            start += sweep
+        }
+    }
+
+    private func drawArcChart(_ items: [DoweChartCategory], context: inout GraphicsContext, size: CGSize) {
+        let total = items.reduce(0) { $0 + max(0, $1.value) }
+        guard total > 0 else {
+            return
+        }
+        let radius = max(CGFloat(1), min(size.width, size.height) / CGFloat(2) - CGFloat(18))
+        let center = CGPoint(x: size.width / CGFloat(2), y: size.height / CGFloat(2))
+        for (index, item) in items.enumerated() {
+            let stroke = max(CGFloat(8), radius * CGFloat(0.08))
+            let inset = CGFloat(index) * (stroke + CGFloat(7))
+            let currentRadius = max(CGFloat(1), radius - inset)
+            let sweep = 360.0 * item.value / total
+            context.stroke(
+                Path { path in
+                    path.addArc(center: center, radius: currentRadius, startAngle: .degrees(-90), endAngle: .degrees(270), clockwise: false)
+                },
+                with: .color(contentColor.opacity(0.16)),
+                style: StrokeStyle(lineWidth: stroke, lineCap: .round)
+            )
+            context.stroke(
+                Path { path in
+                    path.addArc(center: center, radius: currentRadius, startAngle: .degrees(-90), endAngle: .degrees(-90 + sweep), clockwise: false)
+                },
+                with: .color(chartColor(index, explicit: item.color)),
+                style: StrokeStyle(lineWidth: stroke, lineCap: .round)
+            )
+        }
+    }
+
+    private func chartColor(_ index: Int, explicit: String?) -> Color {
+        let colors: [String]
+        switch palette {
+        case "rainbow":
+            colors = ["danger", "warning", "success", "info", "primary", "secondary", "muted"]
+        case "ocean":
+            colors = ["info", "primary", "secondary", "success", "muted", "warning", "danger"]
+        case "sunset":
+            colors = ["warning", "danger", "secondary", "primary", "info", "success", "muted"]
+        case "forest":
+            colors = ["success", "primary", "info", "secondary", "muted", "warning", "danger"]
+        case "neon":
+            colors = ["secondary", "primary", "success", "warning", "danger", "info", "muted"]
+        default:
+            colors = ["primary", "secondary", "success", "info", "warning", "danger", "muted"]
+        }
+        switch explicit ?? colors[index % colors.count] {
+        case "secondary":
+            return DoweDesign.secondary
+        case "success":
+            return DoweDesign.success
+        case "info":
+            return DoweDesign.info
+        case "warning":
+            return DoweDesign.warning
+        case "danger":
+            return DoweDesign.danger
+        case "muted":
+            return DoweDesign.muted
+        default:
+            return DoweDesign.primary
+        }
+    }
+}
+
 enum DoweTableColumnAlign {
     case start
     case center

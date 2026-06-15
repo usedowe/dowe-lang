@@ -46,6 +46,145 @@ fn render_candlestick_html(props: &CandlestickProps, context: &ReactiveRenderCon
     )
 }
 
+fn render_arc_chart_html(props: &ArcChartProps, context: &ReactiveRenderContext) -> String {
+    let extra = format!(
+        r#"{} data-dowe-chart-thickness="{}" data-dowe-chart-gap="{}" data-dowe-chart-start-angle="{}" data-dowe-chart-end-angle="{}" data-dowe-chart-show-inline-labels="{}" data-dowe-chart-hide-values="{}" data-dowe-chart-show-glow="{}"{}{}"#,
+        chart_common_attrs("arc", &props.common, context),
+        props.thickness,
+        props.gap,
+        props.start_angle,
+        props.end_angle,
+        props.show_inline_labels,
+        props.hide_values,
+        props.show_glow,
+        optional_chart_attr("center-text", props.center_text.as_deref()),
+        optional_chart_attr("center-value", props.center_value.as_deref()),
+    );
+    render_chart_html("arc-chart-container", "Arc chart", &props.common, extra, context)
+}
+
+fn render_area_chart_html(props: &AreaChartProps, context: &ReactiveRenderContext) -> String {
+    let extra = format!(
+        r#"{} data-dowe-chart-curve="{}" data-dowe-chart-stroke-width="{}" data-dowe-chart-fill-opacity="{}" data-dowe-chart-stacked="{}" data-dowe-chart-hide-line="{}" data-dowe-chart-show-points="{}" data-dowe-chart-hide-grid="{}" data-dowe-chart-hide-x-axis="{}" data-dowe-chart-hide-y-axis="{}" data-dowe-chart-show-glow="{}""#,
+        chart_common_attrs("area", &props.common, context),
+        props.curve.as_str(),
+        props.stroke_width,
+        props.fill_opacity,
+        props.stacked,
+        props.hide_line,
+        props.show_points,
+        props.hide_grid,
+        props.hide_x_axis,
+        props.hide_y_axis,
+        props.show_glow,
+    );
+    render_chart_html("area-chart-container", "Area chart", &props.common, extra, context)
+}
+
+fn render_bar_chart_html(props: &BarChartProps, context: &ReactiveRenderContext) -> String {
+    let extra = format!(
+        r#"{} data-dowe-chart-grouped="{}" data-dowe-chart-stacked="{}" data-dowe-chart-show-values="{}" data-dowe-chart-bar-radius="{}" data-dowe-chart-hide-grid="{}" data-dowe-chart-show-glow="{}""#,
+        chart_common_attrs("bar", &props.common, context),
+        props.grouped,
+        props.stacked,
+        props.show_values,
+        props.bar_radius,
+        props.hide_grid,
+        props.show_glow,
+    );
+    render_chart_html("bar-chart-container", "Bar chart", &props.common, extra, context)
+}
+
+fn render_line_chart_html(props: &LineChartProps, context: &ReactiveRenderContext) -> String {
+    let extra = format!(
+        r#"{} data-dowe-chart-curve="{}" data-dowe-chart-stroke-width="{}" data-dowe-chart-point-radius="{}" data-dowe-chart-hide-points="{}" data-dowe-chart-hide-grid="{}" data-dowe-chart-hide-x-axis="{}" data-dowe-chart-hide-y-axis="{}" data-dowe-chart-show-gradient-fill="{}" data-dowe-chart-show-glow="{}""#,
+        chart_common_attrs("line", &props.common, context),
+        props.curve.as_str(),
+        props.stroke_width,
+        props.point_radius,
+        props.hide_points,
+        props.hide_grid,
+        props.hide_x_axis,
+        props.hide_y_axis,
+        props.show_gradient_fill,
+        props.show_glow,
+    );
+    render_chart_html("line-chart-container", "Line chart", &props.common, extra, context)
+}
+
+fn render_pie_chart_html(props: &PieChartProps, context: &ReactiveRenderContext) -> String {
+    let extra = format!(
+        r#"{} data-dowe-chart-donut="{}" data-dowe-chart-donut-width="{}" data-dowe-chart-start-angle="{}" data-dowe-chart-pad-angle="{}" data-dowe-chart-hide-labels="{}" data-dowe-chart-hide-values="{}" data-dowe-chart-hide-percentages="{}" data-dowe-chart-show-glow="{}"{}{}"#,
+        chart_common_attrs("pie", &props.common, context),
+        props.donut,
+        props.donut_width,
+        props.start_angle,
+        props.pad_angle,
+        props.hide_labels,
+        props.hide_values,
+        props.hide_percentages,
+        props.show_glow,
+        optional_chart_attr("center-label", props.center_label.as_deref()),
+        optional_chart_attr("center-value", props.center_value.as_deref()),
+    );
+    render_chart_html("pie-chart-container", "Pie chart", &props.common, extra, context)
+}
+
+fn render_chart_html(
+    class_base: &str,
+    label: &str,
+    props: &ChartCommonProps,
+    extra: String,
+    context: &ReactiveRenderContext,
+) -> String {
+    format!(
+        r#"<figure{}><div class="dowe-chart-viewport"><svg class="dowe-chart-svg" viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true"></svg><div class="dowe-chart-loading">Loading</div><figcaption class="dowe-chart-empty">{}</figcaption></div><div class="dowe-chart-legend" data-dowe-chart-legend></div></figure>"#,
+        attrs(
+            chart_classes(class_base, props),
+            Some(&props.style.element),
+            Some(&format!(r#" role="figure" aria-label="{label}"{extra}"#)),
+            context,
+        ),
+        escape_html(&props.empty_label)
+    )
+}
+
+fn chart_common_attrs(
+    chart_type: &str,
+    props: &ChartCommonProps,
+    context: &ReactiveRenderContext,
+) -> String {
+    let mut extra = format!(
+        r#" data-dowe-chart data-dowe-chart-type="{}" data-dowe-chart-size="{}" data-dowe-chart-palette="{}" data-dowe-chart-legend-position="{}" data-dowe-chart-empty-label="{}" data-dowe-chart-loading="{}" data-dowe-chart-hide-legend="{}""#,
+        chart_type,
+        props.size.as_str(),
+        props.palette.as_str(),
+        props.legend_position.as_str(),
+        escape_attr(&props.empty_label),
+        props.loading,
+        props.hide_legend,
+    );
+    if let Some(data) = props.data.as_deref() {
+        extra.push_str(&format!(
+            r#" data-dowe-chart-data="{}""#,
+            escape_attr(&context.signal_path(data))
+        ));
+    }
+    if let Some(series) = props.series.as_deref() {
+        extra.push_str(&format!(
+            r#" data-dowe-chart-series="{}""#,
+            escape_attr(&context.signal_path(series))
+        ));
+    }
+    extra
+}
+
+fn optional_chart_attr(name: &str, value: Option<&str>) -> String {
+    value
+        .map(|value| format!(r#" data-dowe-chart-{name}="{}""#, escape_attr(value)))
+        .unwrap_or_default()
+}
+
 fn render_table_html(props: &TableProps, context: &ReactiveRenderContext) -> String {
     let mut html = format!(
         "<div{}><div class=\"table-container\"><table{}{}><thead class=\"table-header\"><tr>",

@@ -61,6 +61,30 @@ fn generates_swiftui_candlestick_with_canvas_and_stream() {
 }
 
 #[test]
+fn generates_swiftui_charts_with_canvas_runtime() {
+    let output = generate_ios(
+        &[charts_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains("struct DoweChartView: View"));
+    assert!(views.contains("drawPointChart(series, context: &context, size: size)"));
+    assert!(views.contains("drawPieChart(categories, context: &context, size: size)"));
+    assert!(views.contains(
+        "return DoweChartLegendItem(id: item.id, label: item.label, color: chartColor(index, explicit: item.color))"
+    ));
+    assert!(views.contains(
+        "DoweChartView(state: state, chartType: \"arc\", dataPath: \"segments\""
+    ));
+    assert!(views.contains(
+        "DoweChartView(state: state, chartType: \"line\", dataPath: \"points\""
+    ));
+}
+
+#[test]
 fn generates_swiftui_table_with_columns_and_scheme() {
     let output = generate_ios(
         &[table_route()],

@@ -294,6 +294,7 @@ fn dev_activity(
     output.push_str(dev_activity_svg_view());
     output.push_str(dev_activity_drawables_media());
     output.push_str(dev_activity_candlestick_runtime());
+    output.push_str(dev_activity_chart_runtime());
     output.push_str(dev_activity_code_and_forms());
     output.push_str(dev_activity_responsive_helpers());
 

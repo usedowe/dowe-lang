@@ -14,6 +14,11 @@ fn render_dev_android_display_node(
         ViewNode::Accordion { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
         | ViewNode::Carousel { .. }
         | ViewNode::Code { .. }
         | ViewNode::Image { .. }

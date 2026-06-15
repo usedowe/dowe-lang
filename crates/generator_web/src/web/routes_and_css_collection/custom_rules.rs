@@ -140,9 +140,27 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         ViewNode::Input { props } | ViewNode::Select { props, .. } => {
             collect_style_custom_rules(&props.style, rules)
         }
+        ViewNode::ComboBox { props, .. } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::CsvField { props, .. } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::DragDrop { props, .. } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Editor { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::ImageCropper { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::PasswordField { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::PhoneField { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::PinField { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Textarea { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Code { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Video { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Candlestick { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::ArcChart { props } => collect_style_custom_rules(&props.common.style.style, rules),
+        ViewNode::AreaChart { props } => {
+            collect_style_custom_rules(&props.common.style.style, rules)
+        }
+        ViewNode::BarChart { props } => collect_style_custom_rules(&props.common.style.style, rules),
+        ViewNode::LineChart { props } => {
+            collect_style_custom_rules(&props.common.style.style, rules)
+        }
+        ViewNode::PieChart { props } => collect_style_custom_rules(&props.common.style.style, rules),
         ViewNode::Table { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Divider { props } => {
             collect_divider_custom_rules(props, rules);

@@ -383,6 +383,20 @@ fn candlestick_classes(props: &CandlestickProps) -> Vec<String> {
     variant_classes("candlestick", &props.style)
 }
 
+fn chart_classes(base: &str, props: &ChartCommonProps) -> Vec<String> {
+    let mut classes = variant_classes(base, &props.style);
+    classes.push(format!("is-{}", props.size.as_str()));
+    classes.push(format!("legend-{}", props.legend_position.as_str()));
+    classes.push(format!("palette-{}", props.palette.as_str()));
+    if props.loading {
+        classes.push("is-loading".to_string());
+    }
+    if props.hide_legend {
+        classes.push("hide-legend".to_string());
+    }
+    classes
+}
+
 fn table_wrapper_classes(props: &TableProps) -> Vec<String> {
     let mut classes = vec!["table-wrapper".to_string()];
     append_style_classes(&mut classes, &props.style.style);

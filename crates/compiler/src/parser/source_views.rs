@@ -15,28 +15,34 @@ use dowe_components::{
     ResponsivePropEntry, ViewAction, ViewActionKind, ViewAssignAction, ViewNavigationAction,
     ViewRequestAction, ViewRequestMethod, ViewResetAction, ViewSection, ViewSignal,
     ViewSignalValue, VisibilityCondition, accordion_component_node, accordion_item_component,
-    alert_dialog_component_node, audio_component_node, avatar_component_node,
-    avatar_group_component_node, avatar_group_item_component, badge_component_node,
+    alert_dialog_component_node, arc_chart_component_node, area_chart_component_node,
+    audio_component_node, avatar_component_node, avatar_group_component_node,
+    avatar_group_item_component, badge_component_node, bar_chart_component_node,
     bar_component_node, candlestick_node, carousel_component_node, carousel_slide_component,
     chat_box_component_node, checkbox_component_node, children_node, chip_component_node,
-    code_node, collapsible_component_node, color_component_node, command_component_node,
-    command_group_component, compose_tree, container_component_node, countdown_component_node,
-    date_component_node, date_range_component_node, divider_node, dropdown_component_node,
-    dropzone_component_node, empty_component_node, fab_action_component, fab_component_node,
-    first_text, image_component_node, input_node, map_component_node, map_marker_component,
-    map_waypoint_component, marquee_component_node, modal_component_node, nav_menu_component_node,
-    nav_menu_item_component, nav_menu_megamenu_component, nav_menu_submenu_component,
-    navigation_action, node_child_groups, node_element_props, overlay_icon_component,
-    overlay_item_component, radio_group_component_node, radio_option_component,
+    code_node, collapsible_component_node, color_component_node, combo_box_component_node,
+    combo_option_component, command_component_node, command_group_component, compose_tree,
+    container_component_node, countdown_component_node, csv_column_component,
+    csv_field_component_node, date_component_node, date_range_component_node, divider_node,
+    drag_drop_component_node, drag_group_component, drag_item_component, dropdown_component_node,
+    dropzone_component_node, editor_component_node, empty_component_node, fab_action_component,
+    fab_component_node, first_text, image_component_node, image_cropper_component_node, input_node,
+    line_chart_component_node, map_component_node, map_marker_component, map_waypoint_component,
+    marquee_component_node, modal_component_node, nav_menu_component_node, nav_menu_item_component,
+    nav_menu_megamenu_component, nav_menu_submenu_component, navigation_action, node_child_groups,
+    node_element_props, overlay_icon_component, overlay_item_component,
+    password_field_component_node, phone_field_component_node, pie_chart_component_node,
+    pin_field_component_node, radio_group_component_node, radio_option_component,
     record_component_node, rich_text_component_node, rich_text_mark_component,
     scaffold_component_node, select_node, select_option_component, side_nav_component_node,
     side_nav_header_component, side_nav_icon_component, side_nav_item_component,
     side_nav_submenu_component, sidebar_component_node, skeleton_component_node,
     slider_component_node, svg_component_node, svg_path_component, table_column_component,
     table_node, tabs_component_node, tabs_tab_component, text_component_node, text_node,
-    theme_toggle_component_node, toast_component_node, toggle_component_node,
-    toggle_group_component_node, toggle_group_item_component, tooltip_component_node,
-    type_writer_component_node, type_writer_item_component, validate_view_tree, video_node,
+    textarea_component_node, theme_toggle_component_node, toast_component_node,
+    toggle_component_node, toggle_group_component_node, toggle_group_item_component,
+    tooltip_component_node, type_writer_component_node, type_writer_item_component,
+    validate_view_tree, video_node,
 };
 use dowe_generator_web::{
     build_layout_chunk, build_page_chunk, build_translation_chunks, render_page_document,
@@ -1202,10 +1208,37 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
             input_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Select => lower_select_node(node),
+        BuiltinComponent::ComboBox => lower_combo_box_node(node),
+        BuiltinComponent::CsvField => lower_csv_field_node(node),
+        BuiltinComponent::DragDrop => lower_drag_drop_node(node),
         BuiltinComponent::Option => Err(node_error(
             node,
             ComponentError::invalid_prop_combination("Option can only be used inside Select")
                 .to_string(),
+        )),
+        BuiltinComponent::ComboOption => Err(node_error(
+            node,
+            ComponentError::invalid_prop_combination(
+                "comboOption can only be used inside ComboBox",
+            )
+            .to_string(),
+        )),
+        BuiltinComponent::CsvColumn => Err(node_error(
+            node,
+            ComponentError::invalid_prop_combination("csvColumn can only be used inside CsvField")
+                .to_string(),
+        )),
+        BuiltinComponent::DragGroup => Err(node_error(
+            node,
+            ComponentError::invalid_prop_combination("dragGroup can only be used inside DragDrop")
+                .to_string(),
+        )),
+        BuiltinComponent::DragItem => Err(node_error(
+            node,
+            ComponentError::invalid_prop_combination(
+                "dragItem can only be used inside DragDrop or dragGroup",
+            )
+            .to_string(),
         )),
         BuiltinComponent::Code => unreachable!("Code lowers before scalar props"),
         BuiltinComponent::Video => {
@@ -1223,6 +1256,26 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         BuiltinComponent::Candlestick => {
             reject_children(node)?;
             candlestick_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::ArcChart => {
+            reject_children(node)?;
+            arc_chart_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::AreaChart => {
+            reject_children(node)?;
+            area_chart_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::BarChart => {
+            reject_children(node)?;
+            bar_chart_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::LineChart => {
+            reject_children(node)?;
+            line_chart_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::PieChart => {
+            reject_children(node)?;
+            pie_chart_component_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Table => lower_table_node(node),
         BuiltinComponent::Tabs => lower_tabs_node(node, allow_children),
@@ -1352,6 +1405,30 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         BuiltinComponent::Dropzone => {
             reject_children(node)?;
             dropzone_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Editor => {
+            reject_children(node)?;
+            editor_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::ImageCropper => {
+            reject_children(node)?;
+            image_cropper_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::PasswordField => {
+            reject_children(node)?;
+            password_field_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::PhoneField => {
+            reject_children(node)?;
+            phone_field_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::PinField => {
+            reject_children(node)?;
+            pin_field_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Textarea => {
+            reject_children(node)?;
+            textarea_component_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Svg => lower_svg_node(node),
         BuiltinComponent::Path => Err(node_error(
@@ -2656,6 +2733,114 @@ fn lower_select_node(node: &SourceNode) -> DoweResult<ViewNode> {
     select_node(props, options).map_err(|error| component_error(node, error))
 }
 
+fn lower_combo_box_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::ComboBox)?;
+    let mut options = Vec::new();
+    for child in &node.children {
+        let component = COMPONENT_REGISTRY.get(&child.name).ok_or_else(|| {
+            node_error(
+                child,
+                ComponentError::unknown_component(&child.name).to_string(),
+            )
+        })?;
+        if component != BuiltinComponent::ComboOption {
+            return Err(node_error(
+                child,
+                "ComboBox can only contain comboOption children",
+            ));
+        }
+        reject_children(child)?;
+        options.push(
+            combo_option_component(component_props(child, component)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    combo_box_component_node(props, options).map_err(|error| component_error(node, error))
+}
+
+fn lower_csv_field_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::CsvField)?;
+    let mut columns = Vec::new();
+    for child in &node.children {
+        let component = COMPONENT_REGISTRY.get(&child.name).ok_or_else(|| {
+            node_error(
+                child,
+                ComponentError::unknown_component(&child.name).to_string(),
+            )
+        })?;
+        if component != BuiltinComponent::CsvColumn {
+            return Err(node_error(
+                child,
+                "CsvField can only contain csvColumn children",
+            ));
+        }
+        reject_children(child)?;
+        columns.push(
+            csv_column_component(component_props(child, component)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    csv_field_component_node(props, columns).map_err(|error| component_error(node, error))
+}
+
+fn lower_drag_drop_node(node: &SourceNode) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::DragDrop)?;
+    let mut items = Vec::new();
+    let mut groups = Vec::new();
+    for child in &node.children {
+        let component = COMPONENT_REGISTRY.get(&child.name).ok_or_else(|| {
+            node_error(
+                child,
+                ComponentError::unknown_component(&child.name).to_string(),
+            )
+        })?;
+        match component {
+            BuiltinComponent::DragItem => {
+                reject_children(child)?;
+                items.push(
+                    drag_item_component(component_props(child, component)?)
+                        .map_err(|error| component_error(child, error))?,
+                );
+            }
+            BuiltinComponent::DragGroup => {
+                groups.push(lower_drag_group_node(child)?);
+            }
+            _ => {
+                return Err(node_error(
+                    child,
+                    "DragDrop can only contain dragItem or dragGroup children",
+                ));
+            }
+        }
+    }
+    drag_drop_component_node(props, items, groups).map_err(|error| component_error(node, error))
+}
+
+fn lower_drag_group_node(node: &SourceNode) -> DoweResult<dowe_components::DragGroup> {
+    let props = component_props(node, BuiltinComponent::DragGroup)?;
+    let mut items = Vec::new();
+    for child in &node.children {
+        let component = COMPONENT_REGISTRY.get(&child.name).ok_or_else(|| {
+            node_error(
+                child,
+                ComponentError::unknown_component(&child.name).to_string(),
+            )
+        })?;
+        if component != BuiltinComponent::DragItem {
+            return Err(node_error(
+                child,
+                "dragGroup can only contain dragItem children",
+            ));
+        }
+        reject_children(child)?;
+        items.push(
+            drag_item_component(component_props(child, component)?)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    drag_group_component(props, items).map_err(|error| component_error(node, error))
+}
+
 fn lower_code_node(node: &SourceNode) -> DoweResult<ViewNode> {
     reject_children(node)?;
     let lines = code_lines(node)?;
@@ -2842,13 +3027,29 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             | BuiltinComponent::Color
             | BuiltinComponent::Date
             | BuiltinComponent::RadioGroup
-            | BuiltinComponent::Toggle,
+            | BuiltinComponent::Toggle
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
+            | BuiltinComponent::PasswordField
+            | BuiltinComponent::PhoneField
+            | BuiltinComponent::PinField
+            | BuiltinComponent::Textarea,
             "bind",
             SourceValue::Bareword(_),
         )
         | (BuiltinComponent::DateRange, "start" | "end", SourceValue::Bareword(_))
         | (BuiltinComponent::ToggleGroup, "value", SourceValue::Bareword(_))
         | (BuiltinComponent::Candlestick, "data", SourceValue::Bareword(_))
+        | (
+            BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart,
+            "data" | "series",
+            SourceValue::Bareword(_),
+        )
         | (BuiltinComponent::Table, "data", SourceValue::Bareword(_))
         | (BuiltinComponent::AvatarGroup, "items", SourceValue::Bareword(_))
         | (
@@ -2910,6 +3111,10 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
         component,
         BuiltinComponent::Option
             | BuiltinComponent::FabAction
+            | BuiltinComponent::ComboOption
+            | BuiltinComponent::CsvColumn
+            | BuiltinComponent::DragGroup
+            | BuiltinComponent::DragItem
             | BuiltinComponent::Svg
             | BuiltinComponent::Path
     ) && matches!(
@@ -3002,6 +3207,133 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
                         | "maxPoints"
                 )
             }
+            BuiltinComponent::ArcChart => {
+                matches!(
+                    name,
+                    "data"
+                        | "variant"
+                        | "scheme"
+                        | "bg"
+                        | "color"
+                        | "size"
+                        | "palette"
+                        | "legendPosition"
+                        | "emptyLabel"
+                        | "loading"
+                        | "hideLegend"
+                        | "centerText"
+                        | "centerValue"
+                        | "thickness"
+                        | "gap"
+                        | "startAngle"
+                        | "endAngle"
+                        | "showInlineLabels"
+                        | "hideValues"
+                        | "showGlow"
+                )
+            }
+            BuiltinComponent::AreaChart => {
+                matches!(
+                    name,
+                    "data"
+                        | "series"
+                        | "variant"
+                        | "scheme"
+                        | "bg"
+                        | "color"
+                        | "size"
+                        | "palette"
+                        | "legendPosition"
+                        | "emptyLabel"
+                        | "loading"
+                        | "hideLegend"
+                        | "curve"
+                        | "strokeWidth"
+                        | "fillOpacity"
+                        | "stacked"
+                        | "hideLine"
+                        | "showPoints"
+                        | "hideGrid"
+                        | "hideXAxis"
+                        | "hideYAxis"
+                        | "showGlow"
+                )
+            }
+            BuiltinComponent::BarChart => {
+                matches!(
+                    name,
+                    "data"
+                        | "series"
+                        | "variant"
+                        | "scheme"
+                        | "bg"
+                        | "color"
+                        | "size"
+                        | "palette"
+                        | "legendPosition"
+                        | "emptyLabel"
+                        | "loading"
+                        | "hideLegend"
+                        | "grouped"
+                        | "stacked"
+                        | "showValues"
+                        | "barRadius"
+                        | "hideGrid"
+                        | "showGlow"
+                )
+            }
+            BuiltinComponent::LineChart => {
+                matches!(
+                    name,
+                    "data"
+                        | "series"
+                        | "variant"
+                        | "scheme"
+                        | "bg"
+                        | "color"
+                        | "size"
+                        | "palette"
+                        | "legendPosition"
+                        | "emptyLabel"
+                        | "loading"
+                        | "hideLegend"
+                        | "curve"
+                        | "strokeWidth"
+                        | "pointRadius"
+                        | "hidePoints"
+                        | "hideGrid"
+                        | "hideXAxis"
+                        | "hideYAxis"
+                        | "showGradientFill"
+                        | "showGlow"
+                )
+            }
+            BuiltinComponent::PieChart => {
+                matches!(
+                    name,
+                    "data"
+                        | "variant"
+                        | "scheme"
+                        | "bg"
+                        | "color"
+                        | "size"
+                        | "palette"
+                        | "legendPosition"
+                        | "emptyLabel"
+                        | "loading"
+                        | "hideLegend"
+                        | "donut"
+                        | "donutWidth"
+                        | "centerLabel"
+                        | "centerValue"
+                        | "startAngle"
+                        | "padAngle"
+                        | "hideLabels"
+                        | "hideValues"
+                        | "hidePercentages"
+                        | "showGlow"
+                )
+            }
             BuiltinComponent::Table => {
                 matches!(
                     name,
@@ -3018,6 +3350,186 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
             }
             BuiltinComponent::Divider => matches!(name, "orientation" | "scheme"),
             BuiltinComponent::Option => matches!(name, "value" | "label" | "description"),
+            BuiltinComponent::ComboBox => matches!(
+                name,
+                "bind"
+                    | "value"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "name"
+                    | "label"
+                    | "placeholder"
+                    | "labelFloating"
+                    | "searchPlaceholder"
+                    | "emptyText"
+                    | "loadingText"
+                    | "loadingMoreText"
+                    | "clearable"
+                    | "disabled"
+                    | "helpText"
+                    | "errorText"
+                    | "color"
+            ),
+            BuiltinComponent::ComboOption => matches!(
+                name,
+                "value" | "label" | "description" | "src" | "icon" | "disabled"
+            ),
+            BuiltinComponent::CsvField => matches!(
+                name,
+                "buttonText"
+                    | "modalTitle"
+                    | "instructions"
+                    | "cancelText"
+                    | "confirmText"
+                    | "clearText"
+                    | "previewTitle"
+                    | "multiple"
+                    | "showPreview"
+                    | "previewRows"
+                    | "previewPageSize"
+                    | "errorText"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "color"
+            ),
+            BuiltinComponent::CsvColumn => matches!(name, "name" | "label"),
+            BuiltinComponent::DragDrop => matches!(
+                name,
+                "emptyText"
+                    | "direction"
+                    | "allowGroupTransfer"
+                    | "disabled"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "color"
+            ),
+            BuiltinComponent::DragGroup => matches!(name, "id" | "title"),
+            BuiltinComponent::DragItem => {
+                matches!(name, "id" | "label" | "description" | "disabled")
+            }
+            BuiltinComponent::Editor => matches!(
+                name,
+                "bind"
+                    | "value"
+                    | "placeholder"
+                    | "label"
+                    | "helpText"
+                    | "errorText"
+                    | "minHeight"
+                    | "hideToolbar"
+                    | "disabled"
+                    | "readonly"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "name"
+                    | "color"
+            ),
+            BuiltinComponent::ImageCropper => matches!(
+                name,
+                "bind"
+                    | "src"
+                    | "alt"
+                    | "accept"
+                    | "placeholder"
+                    | "label"
+                    | "helpText"
+                    | "errorText"
+                    | "aspectRatio"
+                    | "minWidth"
+                    | "minHeight"
+                    | "maxWidth"
+                    | "maxHeight"
+                    | "shape"
+                    | "disabled"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "name"
+                    | "color"
+            ),
+            BuiltinComponent::PasswordField => matches!(
+                name,
+                "bind"
+                    | "value"
+                    | "placeholder"
+                    | "label"
+                    | "labelFloating"
+                    | "helpText"
+                    | "errorText"
+                    | "hideStrength"
+                    | "weakLabel"
+                    | "mediumLabel"
+                    | "strongLabel"
+                    | "disabled"
+                    | "readonly"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "name"
+                    | "color"
+            ),
+            BuiltinComponent::PhoneField => matches!(
+                name,
+                "bind"
+                    | "value"
+                    | "country"
+                    | "dialCodeName"
+                    | "placeholder"
+                    | "label"
+                    | "labelFloating"
+                    | "searchPlaceholder"
+                    | "emptyText"
+                    | "loadingText"
+                    | "priorityCountries"
+                    | "disabled"
+                    | "helpText"
+                    | "errorText"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "name"
+                    | "color"
+            ),
+            BuiltinComponent::PinField => matches!(
+                name,
+                "bind"
+                    | "value"
+                    | "length"
+                    | "type"
+                    | "label"
+                    | "helpText"
+                    | "errorText"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "name"
+                    | "color"
+            ),
+            BuiltinComponent::Textarea => matches!(
+                name,
+                "bind"
+                    | "value"
+                    | "placeholder"
+                    | "label"
+                    | "labelFloating"
+                    | "helpText"
+                    | "errorText"
+                    | "rows"
+                    | "cols"
+                    | "maxLength"
+                    | "resize"
+                    | "disabled"
+                    | "readonly"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "name"
+                    | "color"
+            ),
             BuiltinComponent::Button => matches!(
                 name,
                 "onClick"
@@ -4164,6 +4676,21 @@ fn validate_node_references(
         ViewNode::Candlestick { props } => {
             validate_candlestick_data(path, signals, &props.data)?;
         }
+        ViewNode::ArcChart { props } => {
+            validate_category_chart_common(path, signals, &props.common, "ArcChart")?;
+        }
+        ViewNode::PieChart { props } => {
+            validate_category_chart_common(path, signals, &props.common, "PieChart")?;
+        }
+        ViewNode::BarChart { props } => {
+            validate_category_or_series_chart_common(path, signals, &props.common, "BarChart")?;
+        }
+        ViewNode::AreaChart { props } => {
+            validate_point_or_series_chart_common(path, signals, &props.common, "AreaChart")?;
+        }
+        ViewNode::LineChart { props } => {
+            validate_point_or_series_chart_common(path, signals, &props.common, "LineChart")?;
+        }
         ViewNode::Table { props } => {
             validate_table_data(path, signals, &props.data, &props.columns)?;
         }
@@ -4633,6 +5160,308 @@ fn validate_candlestick_data(
     Ok(())
 }
 
+fn validate_category_chart_common(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    props: &dowe_components::ChartCommonProps,
+    component: &str,
+) -> DoweResult<()> {
+    let Some(data) = props.data.as_deref() else {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} requires `data`"),
+        ));
+    };
+    validate_chart_data(
+        path,
+        signals,
+        data,
+        "data",
+        component,
+        ChartDataShape::Category,
+    )
+}
+
+fn validate_category_or_series_chart_common(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    props: &dowe_components::ChartCommonProps,
+    component: &str,
+) -> DoweResult<()> {
+    if let Some(data) = props.data.as_deref() {
+        validate_chart_data(
+            path,
+            signals,
+            data,
+            "data",
+            component,
+            ChartDataShape::Category,
+        )?;
+    }
+    if let Some(series) = props.series.as_deref() {
+        validate_chart_data(
+            path,
+            signals,
+            series,
+            "series",
+            component,
+            ChartDataShape::CategorySeries,
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_point_or_series_chart_common(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    props: &dowe_components::ChartCommonProps,
+    component: &str,
+) -> DoweResult<()> {
+    if let Some(data) = props.data.as_deref() {
+        validate_chart_data(
+            path,
+            signals,
+            data,
+            "data",
+            component,
+            ChartDataShape::Point,
+        )?;
+    }
+    if let Some(series) = props.series.as_deref() {
+        validate_chart_data(
+            path,
+            signals,
+            series,
+            "series",
+            component,
+            ChartDataShape::PointSeries,
+        )?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ChartDataShape {
+    Category,
+    Point,
+    CategorySeries,
+    PointSeries,
+}
+
+fn validate_chart_data(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    source: &str,
+    prop: &str,
+    component: &str,
+    shape: ChartDataShape,
+) -> DoweResult<()> {
+    let root = path_root(source);
+    let Some(collection_type) = signals.get(root) else {
+        return Err(DoweError::at_path(
+            path,
+            format!("unknown signal `{root}` in `{prop}`"),
+        ));
+    };
+    let ViewSignalValue::Array(items) = collection_type else {
+        return Err(DoweError::at_path(
+            path,
+            format!("signal `{root}` in `{prop}` must be an array"),
+        ));
+    };
+    for item in items {
+        match shape {
+            ChartDataShape::Category => validate_chart_category_item(path, item, component)?,
+            ChartDataShape::Point => validate_chart_point_item(path, item, component)?,
+            ChartDataShape::CategorySeries => {
+                validate_chart_series_item(path, item, component, ChartDataShape::Category)?
+            }
+            ChartDataShape::PointSeries => {
+                validate_chart_series_item(path, item, component, ChartDataShape::Point)?
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_chart_series_item(
+    path: &Path,
+    item: &ViewSignalValue,
+    component: &str,
+    shape: ChartDataShape,
+) -> DoweResult<()> {
+    let ViewSignalValue::Object(fields) = item else {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} series items must be objects"),
+        ));
+    };
+    let name = chart_field(path, fields, component, "series", "name")?;
+    if !matches!(
+        name,
+        ViewSignalValue::String(_) | ViewSignalValue::Number(_)
+    ) {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} series field `name` must be string or number"),
+        ));
+    }
+    if let Some((_, color)) = fields.iter().find(|(field, _)| field == "color") {
+        validate_chart_color(path, color, component)?;
+    }
+    let data = chart_field(path, fields, component, "series", "data")?;
+    let ViewSignalValue::Array(items) = data else {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} series field `data` must be an array"),
+        ));
+    };
+    for item in items {
+        match shape {
+            ChartDataShape::Category => validate_chart_category_item(path, item, component)?,
+            ChartDataShape::Point => validate_chart_point_item(path, item, component)?,
+            ChartDataShape::CategorySeries | ChartDataShape::PointSeries => {}
+        }
+    }
+    Ok(())
+}
+
+fn validate_chart_category_item(
+    path: &Path,
+    item: &ViewSignalValue,
+    component: &str,
+) -> DoweResult<()> {
+    let ViewSignalValue::Object(fields) = item else {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} data items must be objects"),
+        ));
+    };
+    let label = chart_field(path, fields, component, "data item", "label")?;
+    if !matches!(
+        label,
+        ViewSignalValue::String(_) | ViewSignalValue::Number(_)
+    ) {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} data item field `label` must be string or number"),
+        ));
+    }
+    let value = chart_number_field(path, fields, component, "data item", "value")?;
+    if value < 0.0 {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} data item field `value` must be non-negative"),
+        ));
+    }
+    if let Some((_, max)) = fields.iter().find(|(field, _)| field == "max") {
+        let ViewSignalValue::Number(value) = max else {
+            return Err(DoweError::at_path(
+                path,
+                format!("{component} data item field `max` must be number"),
+            ));
+        };
+        let parsed = value.parse::<f64>().map_err(|_| {
+            DoweError::at_path(
+                path,
+                format!("{component} data item field `max` must be number"),
+            )
+        })?;
+        if parsed <= 0.0 || !parsed.is_finite() {
+            return Err(DoweError::at_path(
+                path,
+                format!("{component} data item field `max` must be positive"),
+            ));
+        }
+    }
+    if let Some((_, color)) = fields.iter().find(|(field, _)| field == "color") {
+        validate_chart_color(path, color, component)?;
+    }
+    Ok(())
+}
+
+fn validate_chart_point_item(
+    path: &Path,
+    item: &ViewSignalValue,
+    component: &str,
+) -> DoweResult<()> {
+    let ViewSignalValue::Object(fields) = item else {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} data items must be objects"),
+        ));
+    };
+    chart_number_field(path, fields, component, "data item", "x")?;
+    chart_number_field(path, fields, component, "data item", "y")?;
+    Ok(())
+}
+
+fn validate_chart_color(path: &Path, value: &ViewSignalValue, component: &str) -> DoweResult<()> {
+    let ViewSignalValue::String(value) = value else {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} color fields must be strings"),
+        ));
+    };
+    if dowe_components::ColorToken::from_name(value).is_some() {
+        Ok(())
+    } else {
+        Err(DoweError::at_path(
+            path,
+            format!("{component} color fields must be Dowe color tokens"),
+        ))
+    }
+}
+
+fn chart_field<'a>(
+    path: &Path,
+    fields: &'a [(String, ViewSignalValue)],
+    component: &str,
+    item_name: &str,
+    name: &str,
+) -> DoweResult<&'a ViewSignalValue> {
+    fields
+        .iter()
+        .find(|(field, _)| field == name)
+        .map(|(_, value)| value)
+        .ok_or_else(|| {
+            DoweError::at_path(
+                path,
+                format!("{component} {item_name} must include `{name}`"),
+            )
+        })
+}
+
+fn chart_number_field(
+    path: &Path,
+    fields: &[(String, ViewSignalValue)],
+    component: &str,
+    item_name: &str,
+    name: &str,
+) -> DoweResult<f64> {
+    let ViewSignalValue::Number(value) = chart_field(path, fields, component, item_name, name)?
+    else {
+        return Err(DoweError::at_path(
+            path,
+            format!("{component} {item_name} field `{name}` must be number"),
+        ));
+    };
+    let parsed = value.parse::<f64>().map_err(|_| {
+        DoweError::at_path(
+            path,
+            format!("{component} {item_name} field `{name}` must be number"),
+        )
+    })?;
+    if parsed.is_finite() {
+        Ok(parsed)
+    } else {
+        Err(DoweError::at_path(
+            path,
+            format!("{component} {item_name} field `{name}` must be number"),
+        ))
+    }
+}
+
 fn validate_table_data(
     path: &Path,
     signals: &HashMap<String, ViewSignalValue>,
@@ -5004,12 +5833,13 @@ mod tests {
     use crate::parser::source_parser::parse_source_file;
     use dowe_components::{
         AvatarStatus, Breakpoint, ButtonSize, CarouselIndicatorType, CarouselOrientation,
-        ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant, CountdownSize,
-        DividerOrientation, EmptyKind, ImageAspect, ImageLoading, ImageObjectFit, MapMarkerIcon,
-        MarqueeOrientation, MarqueeSpeed, NavigationAction, OverlayCornerPosition, OverlayEntry,
-        OverlayPosition, RichTextMarkStyle, SectionBackground, SkeletonAnimation, SkeletonVariant,
-        SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect, ViewActionKind,
-        ViewAnimation, ViewIcon, ViewNode, VisibilityCondition,
+        ChartCurve, ChartLegendPosition, ChartPalette, ChartSize, ChatBoxMode, ColorFamily,
+        ColorToken, CommandEntry, ComponentVariant, CountdownSize, DividerOrientation, EmptyKind,
+        ImageAspect, ImageLoading, ImageObjectFit, MapMarkerIcon, MarqueeOrientation, MarqueeSpeed,
+        NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayPosition, RichTextMarkStyle,
+        SectionBackground, SkeletonAnimation, SkeletonVariant, SvgPathFill, TableColumnAlign,
+        TableSize, ToastKind, VideoAspect, ViewActionKind, ViewAnimation, ViewIcon, ViewNode,
+        VisibilityCondition,
     };
     use std::path::Path;
 
@@ -5078,6 +5908,88 @@ mod tests {
         assert_eq!(request.path, "/api/blogs");
         assert_eq!(request.success_alert.as_deref(), Some("feedback"));
         assert_eq!(request.success_message.as_deref(), Some("Blog creado"));
+    }
+
+    #[test]
+    fn parses_advanced_form_components_and_structural_children() {
+        let tree = parse_page(
+            r#"page advancedPage
+  signal form value:{ role:"editor" notes:"" password:"" phone:"" pin:"" bio:"" avatar:"" }
+  Box
+    ComboBox bind:form.role label:"Role" placeholder:"Choose" clearable:true
+      comboOption value:"admin" label:"Admin" description:"Full access"
+      comboOption value:"editor" label:"Editor"
+    CsvField label:"Import" buttonText:"Upload CSV"
+      csvColumn name:"email" label:"Email"
+    DragDrop label:"Tasks" direction:"horizontal"
+      dragGroup id:"todo" title:"Todo"
+        dragItem id:"draft" label:"Draft" description:"Prepare"
+    Editor bind:form.notes label:"Notes" placeholder:"Write notes" minHeight:180
+    ImageCropper bind:form.avatar label:"Avatar" shape:"circle"
+    PasswordField bind:form.password label:"Password" hideStrength:false
+    PhoneField bind:form.phone label:"Phone" country:"US"
+    PinField bind:form.pin label:"Code" length:6 type:"number"
+    Textarea bind:form.bio label:"Bio" rows:4 maxLength:160"#,
+        )
+        .expect("tree");
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Box { children, .. } = &children[0] else {
+            panic!("box");
+        };
+
+        assert!(matches!(
+            &children[0],
+            ViewNode::ComboBox { props, options }
+                if props.clearable
+                    && props.style.element.bind.as_deref() == Some("form.role")
+                    && options.len() == 2
+                    && options[0].description.as_deref() == Some("Full access")
+        ));
+        assert!(matches!(
+            &children[1],
+            ViewNode::CsvField { props, columns }
+                if props.button_text == "Upload CSV"
+                    && columns.len() == 1
+                    && columns[0].name == "email"
+        ));
+        assert!(matches!(
+            &children[2],
+            ViewNode::DragDrop { props, groups, .. }
+                if props.direction.as_str() == "horizontal"
+                    && groups.len() == 1
+                    && groups[0].items[0].id == "draft"
+        ));
+        assert!(matches!(
+            &children[3],
+            ViewNode::Editor { props }
+                if props.min_height == 180
+                    && props.style.element.bind.as_deref() == Some("form.notes")
+        ));
+        assert!(matches!(
+            &children[4],
+            ViewNode::ImageCropper { props }
+                if props.shape.as_str() == "circle"
+                    && props.style.element.bind.as_deref() == Some("form.avatar")
+        ));
+        assert!(matches!(
+            &children[5],
+            ViewNode::PasswordField { props } if !props.hide_strength
+        ));
+        assert!(matches!(
+            &children[6],
+            ViewNode::PhoneField { props } if props.country.as_deref() == Some("US")
+        ));
+        assert!(matches!(
+            &children[7],
+            ViewNode::PinField { props }
+                if props.length == 6 && props.kind.as_str() == "number"
+        ));
+        assert!(matches!(
+            &children[8],
+            ViewNode::Textarea { props } if props.rows == 4 && props.max_length == Some(160)
+        ));
     }
 
     #[test]
@@ -5523,6 +6435,90 @@ page marketPage
             child
                 .to_string()
                 .contains("children are not valid for this component")
+        );
+    }
+
+    #[test]
+    fn parses_chart_components_with_typed_signals() {
+        let tree = parse_page(
+            r#"type ChartPoint
+  x:number
+  y:number
+
+type ChartSlice
+  label:string
+  value:number
+
+page chartPage
+  signal points type:ChartPoint[] value:[{ x:1 y:12 }, { x:2 y:18 }]
+  signal slices type:ChartSlice[] value:[{ label:"Docs" value:40 }, { label:"CLI" value:60 }]
+  Box
+    LineChart data:points curve:"smooth" palette:"ocean" size:"lg" showGradientFill:true
+    AreaChart data:points legendPosition:"bottom" fillOpacity:0.42 showPoints:true
+    BarChart data:slices grouped:true showValues:true
+    ArcChart data:slices legendPosition:"right" thickness:18 showInlineLabels:true
+    PieChart data:slices donut:true donutWidth:72"#,
+        )
+        .expect("tree");
+
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Box {
+            children: chart_children,
+            ..
+        } = &children[0]
+        else {
+            panic!("box");
+        };
+        let ViewNode::LineChart { props } = &chart_children[0] else {
+            panic!("line chart");
+        };
+        assert_eq!(props.common.data.as_deref(), Some("points"));
+        assert_eq!(props.common.palette, ChartPalette::Ocean);
+        assert_eq!(props.common.size, ChartSize::Lg);
+        assert_eq!(props.curve, ChartCurve::Smooth);
+        assert!(props.show_gradient_fill);
+
+        let ViewNode::AreaChart { props } = &chart_children[1] else {
+            panic!("area chart");
+        };
+        assert_eq!(props.common.legend_position, ChartLegendPosition::Bottom);
+        assert_eq!(props.fill_opacity, 42);
+        assert!(props.show_points);
+
+        let ViewNode::BarChart { props } = &chart_children[2] else {
+            panic!("bar chart");
+        };
+        assert!(props.grouped);
+        assert!(props.show_values);
+
+        let ViewNode::ArcChart { props } = &chart_children[3] else {
+            panic!("arc chart");
+        };
+        assert_eq!(props.common.legend_position, ChartLegendPosition::Right);
+        assert_eq!(props.thickness, 18);
+        assert!(props.show_inline_labels);
+
+        let ViewNode::PieChart { props } = &chart_children[4] else {
+            panic!("pie chart");
+        };
+        assert!(props.donut);
+        assert_eq!(props.donut_width, 72);
+    }
+
+    #[test]
+    fn rejects_invalid_chart_data_shape() {
+        let error = parse_page(
+            r#"page chartPage
+  signal points value:[{ x:1 }]
+  LineChart data:points"#,
+        )
+        .expect_err("line chart data");
+        assert!(
+            error
+                .to_string()
+                .contains("LineChart data item must include `y`")
         );
     }
 

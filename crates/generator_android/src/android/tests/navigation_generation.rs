@@ -182,3 +182,39 @@ fn generates_android_candlestick_with_canvas_and_stream_runtime() {
     ));
     assert!(dev.content.contains("DoweCandlestickView"));
 }
+
+#[test]
+fn generates_android_charts_with_canvas_runtime() {
+    let output = generate_android(
+        &[charts_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains("private fun DoweChart("));
+    assert!(views.content.contains("doweDrawPointChart"));
+    assert!(views.content.contains("doweDrawPieChart"));
+    assert!(views.content.contains(
+        "DoweChart(state = state, chartType = \"arc\", dataPath = \"segments\""
+    ));
+    assert!(views.content.contains(
+        "DoweChart(state = state, chartType = \"line\", dataPath = \"points\""
+    ));
+
+    let dev = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweDevActivity.java"))
+        .expect("dev");
+    assert!(
+        dev.content
+            .contains("private DoweChartView doweChart(")
+    );
+    assert!(dev.content.contains("DoweChartView"));
+    assert!(dev.content.contains("doweDrawPieChart"));
+}

@@ -271,6 +271,57 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
             }
             output.push(&props.description);
         }
+        ViewNode::ComboBox { props, options } => {
+            if let Some(label) = props.style.label.as_deref() {
+                output.push(label);
+            }
+            output.extend(options.iter().map(|option| option.label.as_str()));
+        }
+        ViewNode::CsvField { props, columns } => {
+            output.push(&props.button_text);
+            output.push(&props.modal_title);
+            output.extend(columns.iter().filter_map(|column| column.label.as_deref()));
+        }
+        ViewNode::DragDrop {
+            props,
+            items,
+            groups,
+        } => {
+            output.push(&props.empty_text);
+            output.extend(items.iter().filter_map(|item| item.label.as_deref()));
+            for group in groups {
+                if let Some(title) = group.title.as_deref() {
+                    output.push(title);
+                }
+                output.extend(group.items.iter().filter_map(|item| item.label.as_deref()));
+            }
+        }
+        ViewNode::Editor { props } => {
+            if let Some(label) = props.style.label.as_deref() {
+                output.push(label);
+            }
+        }
+        ViewNode::ImageCropper { props } => output.push(&props.alt),
+        ViewNode::PasswordField { props } => {
+            if let Some(label) = props.style.label.as_deref() {
+                output.push(label);
+            }
+        }
+        ViewNode::PhoneField { props } => {
+            if let Some(label) = props.style.label.as_deref() {
+                output.push(label);
+            }
+        }
+        ViewNode::PinField { props } => {
+            if let Some(label) = props.style.label.as_deref() {
+                output.push(label);
+            }
+        }
+        ViewNode::Textarea { props } => {
+            if let Some(label) = props.style.label.as_deref() {
+                output.push(label);
+            }
+        }
         ViewNode::Input { .. }
         | ViewNode::ToggleTheme { .. }
         | ViewNode::Fab { .. }
@@ -286,6 +337,11 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Skeleton { .. }

@@ -19,6 +19,13 @@ fn parse_style_props(
                     component,
                     BuiltinComponent::Input
                         | BuiltinComponent::Select
+                        | BuiltinComponent::ComboBox
+                        | BuiltinComponent::Editor
+                        | BuiltinComponent::ImageCropper
+                        | BuiltinComponent::PasswordField
+                        | BuiltinComponent::PhoneField
+                        | BuiltinComponent::PinField
+                        | BuiltinComponent::Textarea
                         | BuiltinComponent::Slider
                         | BuiltinComponent::Checkbox
                         | BuiltinComponent::Color
@@ -201,6 +208,15 @@ fn parse_variant_props(
                     component,
                     BuiltinComponent::Input
                         | BuiltinComponent::Select
+                        | BuiltinComponent::ComboBox
+                        | BuiltinComponent::CsvField
+                        | BuiltinComponent::DragDrop
+                        | BuiltinComponent::Editor
+                        | BuiltinComponent::ImageCropper
+                        | BuiltinComponent::PasswordField
+                        | BuiltinComponent::PhoneField
+                        | BuiltinComponent::PinField
+                        | BuiltinComponent::Textarea
                         | BuiltinComponent::Checkbox
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
@@ -219,6 +235,12 @@ fn parse_variant_props(
                     component,
                     BuiltinComponent::Input
                         | BuiltinComponent::Select
+                        | BuiltinComponent::ComboBox
+                        | BuiltinComponent::Editor
+                        | BuiltinComponent::ImageCropper
+                        | BuiltinComponent::PasswordField
+                        | BuiltinComponent::PhoneField
+                        | BuiltinComponent::Textarea
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
                         | BuiltinComponent::DateRange
@@ -232,6 +254,10 @@ fn parse_variant_props(
                     component,
                     BuiltinComponent::Input
                         | BuiltinComponent::Select
+                        | BuiltinComponent::ComboBox
+                        | BuiltinComponent::PasswordField
+                        | BuiltinComponent::PhoneField
+                        | BuiltinComponent::Textarea
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
                         | BuiltinComponent::DateRange

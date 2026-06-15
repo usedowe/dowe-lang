@@ -9,5 +9,6 @@ include!("dev_shell/svg_parser.rs");
 include!("dev_shell/svg_view.rs");
 include!("dev_shell/drawables_media.rs");
 include!("dev_shell/candlestick_runtime.rs");
+include!("dev_shell/chart_runtime.rs");
 include!("dev_shell/code_and_forms.rs");
 include!("dev_shell/responsive_helpers.rs");

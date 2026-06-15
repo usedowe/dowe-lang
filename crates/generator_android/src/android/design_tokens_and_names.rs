@@ -17,7 +17,9 @@ fn variant_container(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_color(color)),
         ComponentVariant::Soft => color_ref(family_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost => "Color.Transparent",
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            "Color.Transparent"
+        }
     }
 }
 
@@ -26,7 +28,9 @@ fn variant_content(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_on_color(color)),
         ComponentVariant::Soft => color_ref(family_on_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost => color_ref(family_color(color)),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            color_ref(family_color(color))
+        }
     }
 }
 
@@ -35,12 +39,14 @@ fn nav_active_content(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Ghost) {
         ComponentVariant::Solid => color_ref(family_on_color(color)),
         ComponentVariant::Soft => color_ref(family_on_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
             color_ref(family_on_color(color))
         }
-        ComponentVariant::Outlined | ComponentVariant::Ghost => color_ref(family_color(color)),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            color_ref(family_color(color))
+        }
     }
 }
 
@@ -76,7 +82,9 @@ fn dev_variant_container(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => java_color(family_color(color)),
         ComponentVariant::Soft => java_color(family_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost => "Color.TRANSPARENT",
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            "Color.TRANSPARENT"
+        }
     }
 }
 
@@ -85,7 +93,9 @@ fn dev_variant_content(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => java_color(family_on_color(color)),
         ComponentVariant::Soft => java_color(family_on_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost => java_color(family_color(color)),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            java_color(family_color(color))
+        }
     }
 }
 
@@ -94,12 +104,14 @@ fn dev_nav_active_content(props: &VariantProps) -> &'static str {
     match props.variant.unwrap_or(ComponentVariant::Ghost) {
         ComponentVariant::Solid => java_color(family_on_color(color)),
         ComponentVariant::Soft => java_color(family_on_soft_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Ghost
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
             java_color(family_on_color(color))
         }
-        ComponentVariant::Outlined | ComponentVariant::Ghost => java_color(family_color(color)),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            java_color(family_color(color))
+        }
     }
 }
 
@@ -320,12 +332,6 @@ fn dev_text_spacing(title: bool, props: &TextProps) -> String {
     } else {
         "0f".to_string()
     }
-}
-
-fn dev_optional_scale(value: Option<&ResponsiveValue<ScaleValue>>) -> String {
-    value
-        .map(dev_scale_value)
-        .unwrap_or_else(|| "null".to_string())
 }
 
 fn dev_optional_size(value: Option<&ResponsiveValue<SizeValue>>) -> String {

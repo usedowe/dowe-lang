@@ -149,9 +149,10 @@ fn code_types(language: CodeLanguage) -> &'static [&'static str] {
     match language {
         CodeLanguage::Dowe => &[
             "Alert", "AppBar", "BottomBar", "Box", "Button", "Candlestick", "Card", "Code",
-            "Divider", "Drawer", "Flex", "Footer", "Grid", "Input", "Option", "Path", "Select",
-            "NavMenu", "Scaffold", "SideNav", "Sidebar", "Svg", "Table", "Tabs", "Text",
-            "Title", "Video",
+            "ComboBox", "CsvField", "Divider", "DragDrop", "Drawer", "Editor", "Flex",
+            "Footer", "Grid", "ImageCropper", "Input", "Option", "PasswordField", "Path",
+            "PhoneField", "PinField", "Select", "NavMenu", "Scaffold", "SideNav", "Sidebar",
+            "Svg", "Table", "Tabs", "Text", "Textarea", "Title", "Video",
         ],
         CodeLanguage::TypeScript => &[
             "any", "boolean", "never", "number", "object", "string", "unknown", "void",

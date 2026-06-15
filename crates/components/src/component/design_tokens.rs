@@ -466,6 +466,7 @@ pub enum ComponentVariant {
     Soft,
     Outlined,
     Ghost,
+    Line,
 }
 
 impl ComponentVariant {
@@ -475,6 +476,7 @@ impl ComponentVariant {
             "soft" => Some(Self::Soft),
             "outlined" => Some(Self::Outlined),
             "ghost" => Some(Self::Ghost),
+            "line" => Some(Self::Line),
             _ => None,
         }
     }
@@ -485,11 +487,18 @@ impl ComponentVariant {
             Self::Soft => "soft",
             Self::Outlined => "outlined",
             Self::Ghost => "ghost",
+            Self::Line => "line",
         }
     }
 
     pub fn all() -> &'static [Self] {
-        &[Self::Solid, Self::Soft, Self::Outlined, Self::Ghost]
+        &[
+            Self::Solid,
+            Self::Soft,
+            Self::Outlined,
+            Self::Ghost,
+            Self::Line,
+        ]
     }
 }
 

@@ -75,9 +75,23 @@ fn collect_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
         | ViewNode::Dropzone { .. }
         | ViewNode::Input { .. }
         | ViewNode::Select { .. }
+        | ViewNode::ComboBox { .. }
+        | ViewNode::CsvField { .. }
+        | ViewNode::DragDrop { .. }
+        | ViewNode::Editor { .. }
+        | ViewNode::ImageCropper { .. }
+        | ViewNode::PasswordField { .. }
+        | ViewNode::PhoneField { .. }
+        | ViewNode::PinField { .. }
+        | ViewNode::Textarea { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Alert { .. }

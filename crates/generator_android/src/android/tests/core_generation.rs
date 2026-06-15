@@ -237,6 +237,28 @@ fn reuses_identical_dev_layout_methods_across_routes() {
 }
 
 #[test]
+fn omits_absent_dev_padding_branches() {
+    let props = StyleProps {
+        spacing: SpacingProps {
+            px: Some(responsive_scale(&[(Breakpoint::Xs, 8)])),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut output = String::new();
+
+    super::apply_dev_android_style(&props, "view0", true, &mut output);
+
+    assert!(output.contains("Integer view0PaddingX = doweResponsiveInt"));
+    assert!(!output.contains("Integer view0Padding ="));
+    assert!(!output.contains("Integer view0PaddingY ="));
+    assert!(!output.contains("Integer view0PaddingLeft ="));
+    assert!(!output.contains("Integer view0PaddingRight ="));
+    assert!(!output.contains("Integer view0PaddingTop ="));
+    assert!(!output.contains("Integer view0PaddingBottom ="));
+}
+
+#[test]
 fn keeps_contextual_dev_layouts_composed_with_their_pages() {
     let mut contextual = route();
     contextual.layout_tree = ViewNode::Scope {

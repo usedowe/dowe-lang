@@ -94,6 +94,93 @@ fn class_body(class_name: &str) -> Option<String> {
             | "dropzone-file-name"
             | "dropzone-file-size"
             | "dropzone-file-remove"
+            | "combo-box"
+            | "combo-box-control"
+            | "combo-box-value"
+            | "combo-box-clear"
+            | "combo-box-popover"
+            | "combo-box-search-wrap"
+            | "combo-box-search"
+            | "combo-box-search-icon"
+            | "combo-box-options"
+            | "combo-box-option"
+            | "combo-box-option-avatar"
+            | "combo-box-option-icon"
+            | "combo-box-option-copy"
+            | "combo-box-option-label"
+            | "combo-box-option-description"
+            | "combo-box-empty"
+            | "combo-box-loading"
+            | "csv-field"
+            | "csv-field-button"
+            | "csv-field-icon"
+            | "csv-field-summary"
+            | "csv-field-preview"
+            | "csv-field-preview-title"
+            | "csv-field-preview-table"
+            | "csv-field-modal"
+            | "csv-field-dialog"
+            | "csv-field-title"
+            | "csv-field-instructions"
+            | "csv-field-columns"
+            | "csv-field-column"
+            | "csv-field-select"
+            | "csv-field-error"
+            | "csv-field-actions"
+            | "csv-field-action"
+            | "drag-drop"
+            | "drag-drop-group"
+            | "drag-drop-group-title"
+            | "drag-drop-list"
+            | "drag-drop-empty"
+            | "drag-drop-item"
+            | "drag-drop-handle"
+            | "drag-drop-item-copy"
+            | "drag-drop-item-label"
+            | "drag-drop-item-description"
+            | "editor"
+            | "editor-toolbar"
+            | "editor-toolbar-button"
+            | "editor-content"
+            | "image-cropper"
+            | "image-cropper-trigger"
+            | "image-cropper-image"
+            | "image-cropper-empty-icon"
+            | "image-cropper-label"
+            | "image-cropper-actions"
+            | "image-cropper-action"
+            | "image-cropper-modal"
+            | "image-cropper-dialog"
+            | "image-cropper-stage"
+            | "image-cropper-canvas"
+            | "image-cropper-box"
+            | "image-cropper-modal-actions"
+            | "password-field"
+            | "password-field-input"
+            | "password-field-toggle"
+            | "password-strength"
+            | "password-strength-bars"
+            | "password-strength-bar"
+            | "password-strength-label"
+            | "phone-field"
+            | "phone-field-country-trigger"
+            | "phone-field-flag"
+            | "phone-field-dial"
+            | "phone-field-input"
+            | "phone-field-popover"
+            | "phone-field-search-wrap"
+            | "phone-field-search"
+            | "phone-field-search-icon"
+            | "phone-field-countries"
+            | "phone-field-country"
+            | "phone-field-country-name"
+            | "phone-field-empty"
+            | "phone-field-loading"
+            | "pin-field"
+            | "pin-field-cells"
+            | "pin-field-cell"
+            | "textarea-field"
+            | "textarea-control"
             | "svg"
             | "video"
             | "media"
@@ -154,6 +241,29 @@ fn class_body(class_name: &str) -> Option<String> {
             | "toggle-input"
             | "toggle-label-left"
             | "toggle-label-right"
+            | "arc-chart-container"
+            | "area-chart-container"
+            | "bar-chart-container"
+            | "line-chart-container"
+            | "pie-chart-container"
+            | "dowe-chart-viewport"
+            | "dowe-chart-svg"
+            | "dowe-chart-loading"
+            | "dowe-chart-empty"
+            | "dowe-chart-legend"
+            | "dowe-chart-legend-item"
+            | "dowe-chart-legend-color"
+            | "dowe-chart-axis-line"
+            | "dowe-chart-axis-label"
+            | "dowe-chart-grid-line"
+            | "dowe-chart-line"
+            | "dowe-chart-area"
+            | "dowe-chart-point"
+            | "dowe-chart-bar"
+            | "dowe-chart-slice"
+            | "dowe-chart-arc"
+            | "dowe-chart-center-value"
+            | "dowe-chart-center-label"
             | "table-wrapper"
             | "table-container"
             | "table"
@@ -446,6 +556,12 @@ fn append_single_variant_css(
         ));
         return;
     }
+    if base == "control" && variant == ComponentVariant::Line {
+        css.push_str(&format!(
+            ".control.is-line.is-{name}{{background-color:transparent;color:var(--dowe-{color});border:0;border-bottom:1px solid rgba(127,127,127,0.42);border-radius:0;}}.control.is-line.is-{name}:focus-within{{border-bottom-color:var(--dowe-{color});box-shadow:0 1px 0 0 var(--dowe-{color});}}"
+        ));
+        return;
+    }
     if base == "toggle-group-item" {
         match variant {
             ComponentVariant::Solid => css.push_str(&format!(
@@ -456,6 +572,9 @@ fn append_single_variant_css(
             )),
             ComponentVariant::Outlined => css.push_str(&format!(
                 ".toggle-group-item.is-active.is-outlined.is-{name}{{background-color:transparent;color:var(--dowe-{color});box-shadow:inset 0 0 0 1px var(--dowe-{color});}}"
+            )),
+            ComponentVariant::Line => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-line.is-{name}{{background-color:transparent;color:var(--dowe-{color});box-shadow:inset 0 -2px 0 var(--dowe-{color});}}"
             )),
             ComponentVariant::Ghost => css.push_str(&format!(
                 ".toggle-group-item.is-active.is-ghost.is-{name}{{background-color:transparent;color:var(--dowe-{color});}}"
@@ -468,6 +587,7 @@ fn append_single_variant_css(
             ComponentVariant::Solid => (color, on, color),
             ComponentVariant::Soft => (soft, on_soft, soft),
             ComponentVariant::Outlined => ("transparent", nav_active_content_token(family, variant), nav_active_content_token(family, variant)),
+            ComponentVariant::Line => ("transparent", nav_active_content_token(family, variant), nav_active_content_token(family, variant)),
             ComponentVariant::Ghost => ("transparent", nav_active_content_token(family, variant), "transparent"),
         };
         css.push_str(&format!(
@@ -491,6 +611,7 @@ fn append_single_variant_css(
             ComponentVariant::Solid => (color, on, color),
             ComponentVariant::Soft => (soft, on_soft, soft),
             ComponentVariant::Outlined => ("transparent", nav_active_content_token(family, variant), nav_active_content_token(family, variant)),
+            ComponentVariant::Line => ("transparent", nav_active_content_token(family, variant), nav_active_content_token(family, variant)),
             ComponentVariant::Ghost => ("transparent", nav_active_content_token(family, variant), "transparent"),
         };
         css.push_str(&format!(
@@ -530,6 +651,11 @@ fn append_single_variant_css(
                 ".{base}.is-outlined.is-{name}{{background-color:{surface};color:var(--dowe-{content});border:1px solid var(--dowe-{color});}}"
             ));
         }
+        ComponentVariant::Line => {
+            css.push_str(&format!(
+                ".{base}.is-line.is-{name}{{background-color:transparent;color:var(--dowe-{color});border-color:transparent;border-bottom:1px solid var(--dowe-{color});border-radius:0;}}"
+            ));
+        }
         ComponentVariant::Ghost => {
             let content = if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
                 on
@@ -552,7 +678,7 @@ fn nav_active_content_token(family: ColorFamily, variant: ComponentVariant) -> &
         {
             on_token(family)
         }
-        ComponentVariant::Outlined | ComponentVariant::Ghost => family.as_str(),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => family.as_str(),
     }
 }
 

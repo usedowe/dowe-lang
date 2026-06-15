@@ -4,13 +4,13 @@ use crate::language::analysis::{
 use crate::language::model::{LanguageCompletion, LanguageCompletionKind, LanguageDocument};
 use crate::parser::{SourceNode, SourceValue, parse_source_file};
 use dowe_components::{
-    AlertKind, Align, AvatarStatus, BuiltinComponent, ButtonSize, ChatBoxMode, CodeLanguage,
-    ColorFamily, ColorToken, ComponentVariant, CountdownSize, DividerOrientation, DrawerPosition,
-    EmptyKind, FontFamily, GridAlignment, Justify, MarqueeOrientation, MarqueeSpeed,
-    NativeExternalMode, NavigationOperation, OverlayCornerPosition, OverlayPosition, RoundedSize,
-    SectionBackground, SideNavSize, SkeletonAnimation, SkeletonVariant, TableColumnAlign,
-    TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing, TextWeight, ToastKind,
-    VideoAspect, ViewAnimation, ViewIcon, WebTarget,
+    AlertKind, Align, AvatarStatus, BuiltinComponent, ButtonSize, ChartCurve, ChartLegendPosition,
+    ChartPalette, ChartSize, ChatBoxMode, CodeLanguage, ColorFamily, ColorToken, ComponentVariant,
+    CountdownSize, DividerOrientation, DrawerPosition, EmptyKind, FontFamily, GridAlignment,
+    Justify, MarqueeOrientation, MarqueeSpeed, NativeExternalMode, NavigationOperation,
+    OverlayCornerPosition, OverlayPosition, RoundedSize, SectionBackground, SideNavSize,
+    SkeletonAnimation, SkeletonVariant, TableColumnAlign, TableSize, TabsPosition, TabsVariant,
+    TextSize, TextSpacing, TextWeight, ToastKind, VideoAspect, ViewAnimation, ViewIcon, WebTarget,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -61,7 +61,7 @@ pub fn complete_document(
     if prop_value_context(&prefix, "bind") {
         return signal_completions(root, document);
     }
-    if ["data", "items", "messages"]
+    if ["data", "series", "items", "messages"]
         .iter()
         .any(|prop| prop_value_context(&prefix, prop))
     {
@@ -293,6 +293,11 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "Code",
         "Video",
         "Candlestick",
+        "ArcChart",
+        "AreaChart",
+        "BarChart",
+        "LineChart",
+        "PieChart",
         "Divider",
         "Button",
         "Alert",
@@ -535,6 +540,11 @@ fn component_value_completions(
             | BuiltinComponent::Code
             | BuiltinComponent::Video
             | BuiltinComponent::Candlestick
+            | BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart
             | BuiltinComponent::Table
             | BuiltinComponent::AppBar
             | BuiltinComponent::Footer
@@ -543,6 +553,15 @@ fn component_value_completions(
             | BuiltinComponent::Drawer
             | BuiltinComponent::Input
             | BuiltinComponent::Select
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::CsvField
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
+            | BuiltinComponent::PasswordField
+            | BuiltinComponent::PhoneField
+            | BuiltinComponent::PinField
+            | BuiltinComponent::Textarea
             | BuiltinComponent::Button
             | BuiltinComponent::Alert
             | BuiltinComponent::ToggleTheme
@@ -584,6 +603,11 @@ fn component_value_completions(
             | BuiltinComponent::Code
             | BuiltinComponent::Video
             | BuiltinComponent::Candlestick
+            | BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart
             | BuiltinComponent::Table
             | BuiltinComponent::Divider
             | BuiltinComponent::AppBar
@@ -602,6 +626,15 @@ fn component_value_completions(
             | BuiltinComponent::Dropdown
             | BuiltinComponent::Command
             | BuiltinComponent::Dropzone
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::CsvField
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
+            | BuiltinComponent::PasswordField
+            | BuiltinComponent::PhoneField
+            | BuiltinComponent::PinField
+            | BuiltinComponent::Textarea
             | BuiltinComponent::AvatarGroup
             | BuiltinComponent::ChatBox
             | BuiltinComponent::Empty
@@ -648,12 +681,64 @@ fn component_value_completions(
         ) => Some(quoted_values(
             ButtonSize::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Slider | BuiltinComponent::Dropzone, "size") => {
-            Some(control_size_values())
+        (
+            BuiltinComponent::Slider
+            | BuiltinComponent::Dropzone
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::PasswordField
+            | BuiltinComponent::PhoneField
+            | BuiltinComponent::PinField
+            | BuiltinComponent::Textarea,
+            "size",
+        ) => Some(control_size_values()),
+        (BuiltinComponent::CsvField | BuiltinComponent::ImageCropper, "size") => Some(
+            quoted_values(ButtonSize::all().iter().map(|value| value.as_str())),
+        ),
+        (BuiltinComponent::DragDrop, "direction") => {
+            Some(quoted_values(["horizontal", "vertical"]))
         }
+        (BuiltinComponent::ImageCropper, "shape") => Some(quoted_values(["circle", "square"])),
+        (BuiltinComponent::PinField, "type") => Some(quoted_values(["text", "password", "number"])),
         (BuiltinComponent::Table, "size") => Some(quoted_values(
             TableSize::all().iter().map(|value| value.as_str()),
         )),
+        (
+            BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart,
+            "size",
+        ) => Some(quoted_values(
+            ChartSize::all().iter().map(|value| value.as_str()),
+        )),
+        (
+            BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart,
+            "palette",
+        ) => Some(quoted_values(
+            ChartPalette::all().iter().map(|value| value.as_str()),
+        )),
+        (
+            BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart,
+            "legendPosition",
+        ) => Some(quoted_values(
+            ChartLegendPosition::all()
+                .iter()
+                .map(|value| value.as_str()),
+        )),
+        (BuiltinComponent::AreaChart | BuiltinComponent::LineChart, "curve") => Some(
+            quoted_values(ChartCurve::all().iter().map(|value| value.as_str())),
+        ),
         (BuiltinComponent::Code, "language") => Some(quoted_values(
             CodeLanguage::all().iter().map(|value| value.as_str()),
         )),
@@ -890,12 +975,30 @@ fn props_for_component(component: &str) -> &'static [&'static str] {
         "fabAction" => &FAB_ACTION_PROPS,
         "Slider" => &SLIDER_PROPS,
         "Dropzone" => &DROPZONE_PROPS,
+        "ComboBox" => &COMBO_BOX_PROPS,
+        "comboOption" => &COMBO_OPTION_PROPS,
+        "CsvField" => &CSV_FIELD_PROPS,
+        "csvColumn" => &CSV_COLUMN_PROPS,
+        "DragDrop" => &DRAG_DROP_PROPS,
+        "dragGroup" => &DRAG_GROUP_PROPS,
+        "dragItem" => &DRAG_ITEM_PROPS,
+        "Editor" => &EDITOR_PROPS,
+        "ImageCropper" => &IMAGE_CROPPER_PROPS,
+        "PasswordField" => &PASSWORD_FIELD_PROPS,
+        "PhoneField" => &PHONE_FIELD_PROPS,
+        "PinField" => &PIN_FIELD_PROPS,
+        "Textarea" => &TEXTAREA_PROPS,
         "Input" => &INPUT_PROPS,
         "Select" => &SELECT_PROPS,
         "Option" => &OPTION_PROPS,
         "Code" => &CODE_PROPS,
         "Video" => &VIDEO_PROPS,
         "Candlestick" => &CANDLESTICK_PROPS,
+        "ArcChart" => &ARC_CHART_PROPS,
+        "AreaChart" => &AREA_CHART_PROPS,
+        "BarChart" => &BAR_CHART_PROPS,
+        "LineChart" => &LINE_CHART_PROPS,
+        "PieChart" => &PIE_CHART_PROPS,
         "Table" => &TABLE_PROPS,
         "column" => &COLUMN_PROPS,
         "Divider" => &DIVIDER_PROPS,
@@ -1688,6 +1791,307 @@ const DROPZONE_PROPS: &[&str] = &[
     "minH",
     "rounded",
 ];
+const COMBO_BOX_PROPS: &[&str] = &[
+    "bind",
+    "value",
+    "variant",
+    "scheme",
+    "size",
+    "name",
+    "label",
+    "placeholder",
+    "labelFloating",
+    "searchPlaceholder",
+    "emptyText",
+    "loadingText",
+    "loadingMoreText",
+    "clearable",
+    "disabled",
+    "helpText",
+    "errorText",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const COMBO_OPTION_PROPS: &[&str] = &["value", "label", "description", "src", "icon", "disabled"];
+const CSV_FIELD_PROPS: &[&str] = &[
+    "buttonText",
+    "modalTitle",
+    "instructions",
+    "cancelText",
+    "confirmText",
+    "clearText",
+    "previewTitle",
+    "multiple",
+    "showPreview",
+    "previewRows",
+    "previewPageSize",
+    "errorText",
+    "variant",
+    "scheme",
+    "size",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const CSV_COLUMN_PROPS: &[&str] = &["name", "label"];
+const DRAG_DROP_PROPS: &[&str] = &[
+    "emptyText",
+    "direction",
+    "allowGroupTransfer",
+    "disabled",
+    "variant",
+    "scheme",
+    "size",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const DRAG_GROUP_PROPS: &[&str] = &["id", "title"];
+const DRAG_ITEM_PROPS: &[&str] = &["id", "label", "description", "disabled"];
+const EDITOR_PROPS: &[&str] = &[
+    "bind",
+    "value",
+    "placeholder",
+    "label",
+    "helpText",
+    "errorText",
+    "minHeight",
+    "hideToolbar",
+    "disabled",
+    "readonly",
+    "variant",
+    "scheme",
+    "size",
+    "name",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const IMAGE_CROPPER_PROPS: &[&str] = &[
+    "bind",
+    "src",
+    "alt",
+    "accept",
+    "placeholder",
+    "label",
+    "helpText",
+    "errorText",
+    "aspectRatio",
+    "minWidth",
+    "minHeight",
+    "maxWidth",
+    "maxHeight",
+    "shape",
+    "disabled",
+    "variant",
+    "scheme",
+    "size",
+    "name",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const PASSWORD_FIELD_PROPS: &[&str] = &[
+    "bind",
+    "value",
+    "placeholder",
+    "label",
+    "labelFloating",
+    "helpText",
+    "errorText",
+    "hideStrength",
+    "weakLabel",
+    "mediumLabel",
+    "strongLabel",
+    "disabled",
+    "readonly",
+    "variant",
+    "scheme",
+    "size",
+    "name",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const PHONE_FIELD_PROPS: &[&str] = &[
+    "bind",
+    "value",
+    "country",
+    "dialCodeName",
+    "placeholder",
+    "label",
+    "labelFloating",
+    "searchPlaceholder",
+    "emptyText",
+    "loadingText",
+    "priorityCountries",
+    "disabled",
+    "helpText",
+    "errorText",
+    "variant",
+    "scheme",
+    "size",
+    "name",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const PIN_FIELD_PROPS: &[&str] = &[
+    "bind",
+    "value",
+    "length",
+    "type",
+    "label",
+    "helpText",
+    "errorText",
+    "variant",
+    "scheme",
+    "size",
+    "name",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const TEXTAREA_PROPS: &[&str] = &[
+    "bind",
+    "value",
+    "placeholder",
+    "label",
+    "labelFloating",
+    "helpText",
+    "errorText",
+    "rows",
+    "cols",
+    "maxLength",
+    "resize",
+    "disabled",
+    "readonly",
+    "variant",
+    "scheme",
+    "size",
+    "name",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
 const INPUT_PROPS: &[&str] = &[
     "variant",
     "scheme",
@@ -1782,6 +2186,188 @@ const CANDLESTICK_PROPS: &[&str] = &[
     "downColor",
     "emptyLabel",
     "maxPoints",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const ARC_CHART_PROPS: &[&str] = &[
+    "data",
+    "variant",
+    "scheme",
+    "size",
+    "palette",
+    "legendPosition",
+    "emptyLabel",
+    "loading",
+    "hideLegend",
+    "startAngle",
+    "endAngle",
+    "thickness",
+    "gap",
+    "centerText",
+    "centerValue",
+    "showInlineLabels",
+    "hideValues",
+    "showGlow",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const AREA_CHART_PROPS: &[&str] = &[
+    "data",
+    "series",
+    "variant",
+    "scheme",
+    "size",
+    "palette",
+    "legendPosition",
+    "emptyLabel",
+    "loading",
+    "hideLegend",
+    "curve",
+    "stacked",
+    "strokeWidth",
+    "showPoints",
+    "hideLine",
+    "fillOpacity",
+    "hideGrid",
+    "hideXAxis",
+    "hideYAxis",
+    "showGlow",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const BAR_CHART_PROPS: &[&str] = &[
+    "data",
+    "series",
+    "variant",
+    "scheme",
+    "size",
+    "palette",
+    "legendPosition",
+    "emptyLabel",
+    "loading",
+    "hideLegend",
+    "stacked",
+    "grouped",
+    "showValues",
+    "barRadius",
+    "hideGrid",
+    "showGlow",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const LINE_CHART_PROPS: &[&str] = &[
+    "data",
+    "series",
+    "variant",
+    "scheme",
+    "size",
+    "palette",
+    "legendPosition",
+    "emptyLabel",
+    "loading",
+    "hideLegend",
+    "curve",
+    "strokeWidth",
+    "pointRadius",
+    "hidePoints",
+    "hideGrid",
+    "hideXAxis",
+    "hideYAxis",
+    "showGradientFill",
+    "showGlow",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+];
+const PIE_CHART_PROPS: &[&str] = &[
+    "data",
+    "variant",
+    "scheme",
+    "size",
+    "palette",
+    "legendPosition",
+    "emptyLabel",
+    "loading",
+    "hideLegend",
+    "donut",
+    "donutWidth",
+    "centerLabel",
+    "centerValue",
+    "startAngle",
+    "padAngle",
+    "hideLabels",
+    "hideValues",
+    "hidePercentages",
+    "showGlow",
     "id",
     "show",
     "font",

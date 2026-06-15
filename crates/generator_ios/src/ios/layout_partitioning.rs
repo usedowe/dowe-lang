@@ -167,6 +167,15 @@ fn ios_children_boundary(
         | ViewNode::ToggleTheme { .. }
         | ViewNode::Fab { .. }
         | ViewNode::Input { .. }
+        | ViewNode::ComboBox { .. }
+        | ViewNode::CsvField { .. }
+        | ViewNode::DragDrop { .. }
+        | ViewNode::Editor { .. }
+        | ViewNode::ImageCropper { .. }
+        | ViewNode::PasswordField { .. }
+        | ViewNode::PhoneField { .. }
+        | ViewNode::PinField { .. }
+        | ViewNode::Textarea { .. }
         | ViewNode::Slider { .. }
         | ViewNode::Dropzone { .. }
         | ViewNode::Select { .. }
@@ -175,6 +184,11 @@ fn ios_children_boundary(
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Title { .. }

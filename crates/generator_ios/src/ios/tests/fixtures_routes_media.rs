@@ -128,6 +128,46 @@ fn candlestick_route() -> ViewRoute {
     }
 }
 
+fn charts_route() -> ViewRoute {
+    ViewRoute {
+        id: "charts".to_string(),
+        route_path: "/charts".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Box {
+            props: Default::default(),
+            children: vec![
+                dowe_components::arc_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("segments".to_string()),
+                }])
+                .expect("arc chart"),
+                dowe_components::area_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("points".to_string()),
+                }])
+                .expect("area chart"),
+                dowe_components::bar_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("segments".to_string()),
+                }])
+                .expect("bar chart"),
+                dowe_components::line_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("points".to_string()),
+                }])
+                .expect("line chart"),
+                dowe_components::pie_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("segments".to_string()),
+                }])
+                .expect("pie chart"),
+            ],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
 fn table_route() -> ViewRoute {
     ViewRoute {
         id: "users".to_string(),

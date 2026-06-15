@@ -287,6 +287,41 @@ pub fn compose_tree(layout: &ViewNode, page: &ViewNode) -> ViewNode {
         ViewNode::Dropzone { props } => ViewNode::Dropzone {
             props: props.clone(),
         },
+        ViewNode::ComboBox { props, options } => ViewNode::ComboBox {
+            props: props.clone(),
+            options: options.clone(),
+        },
+        ViewNode::CsvField { props, columns } => ViewNode::CsvField {
+            props: props.clone(),
+            columns: columns.clone(),
+        },
+        ViewNode::DragDrop {
+            props,
+            items,
+            groups,
+        } => ViewNode::DragDrop {
+            props: props.clone(),
+            items: items.clone(),
+            groups: groups.clone(),
+        },
+        ViewNode::Editor { props } => ViewNode::Editor {
+            props: props.clone(),
+        },
+        ViewNode::ImageCropper { props } => ViewNode::ImageCropper {
+            props: props.clone(),
+        },
+        ViewNode::PasswordField { props } => ViewNode::PasswordField {
+            props: props.clone(),
+        },
+        ViewNode::PhoneField { props } => ViewNode::PhoneField {
+            props: props.clone(),
+        },
+        ViewNode::PinField { props } => ViewNode::PinField {
+            props: props.clone(),
+        },
+        ViewNode::Textarea { props } => ViewNode::Textarea {
+            props: props.clone(),
+        },
         ViewNode::Select { props, options } => ViewNode::Select {
             props: props.clone(),
             options: options.clone(),
@@ -298,6 +333,21 @@ pub fn compose_tree(layout: &ViewNode, page: &ViewNode) -> ViewNode {
             props: props.clone(),
         },
         ViewNode::Candlestick { props } => ViewNode::Candlestick {
+            props: props.clone(),
+        },
+        ViewNode::ArcChart { props } => ViewNode::ArcChart {
+            props: props.clone(),
+        },
+        ViewNode::AreaChart { props } => ViewNode::AreaChart {
+            props: props.clone(),
+        },
+        ViewNode::BarChart { props } => ViewNode::BarChart {
+            props: props.clone(),
+        },
+        ViewNode::LineChart { props } => ViewNode::LineChart {
+            props: props.clone(),
+        },
+        ViewNode::PieChart { props } => ViewNode::PieChart {
             props: props.clone(),
         },
         ViewNode::Table { props } => ViewNode::Table {
@@ -562,12 +612,26 @@ fn validate_view_tree_with_parent(
         | ViewNode::Fab { .. }
         | ViewNode::Slider { .. }
         | ViewNode::Dropzone { .. }
+        | ViewNode::ComboBox { .. }
+        | ViewNode::CsvField { .. }
+        | ViewNode::DragDrop { .. }
+        | ViewNode::Editor { .. }
+        | ViewNode::ImageCropper { .. }
+        | ViewNode::PasswordField { .. }
+        | ViewNode::PhoneField { .. }
+        | ViewNode::PinField { .. }
+        | ViewNode::Textarea { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Alert { .. }
@@ -656,10 +720,24 @@ fn node_style_props(node: &ViewNode) -> Option<&StyleProps> {
         ViewNode::Fab { props, .. } => Some(&props.style.style),
         ViewNode::Slider { props } => Some(&props.style.style),
         ViewNode::Dropzone { props } => Some(&props.style.style),
+        ViewNode::ComboBox { props, .. } => Some(&props.style.style),
+        ViewNode::CsvField { props, .. } => Some(&props.style.style),
+        ViewNode::DragDrop { props, .. } => Some(&props.style.style),
+        ViewNode::Editor { props } => Some(&props.style.style),
+        ViewNode::ImageCropper { props } => Some(&props.style.style),
+        ViewNode::PasswordField { props } => Some(&props.style.style),
+        ViewNode::PhoneField { props } => Some(&props.style.style),
+        ViewNode::PinField { props } => Some(&props.style.style),
+        ViewNode::Textarea { props } => Some(&props.style.style),
         ViewNode::Skeleton { props } => Some(&props.style),
         ViewNode::Code { props } => Some(&props.style.style),
         ViewNode::Video { props } => Some(&props.style.style),
         ViewNode::Candlestick { props } => Some(&props.style.style),
+        ViewNode::ArcChart { props } => Some(&props.common.style.style),
+        ViewNode::AreaChart { props } => Some(&props.common.style.style),
+        ViewNode::BarChart { props } => Some(&props.common.style.style),
+        ViewNode::LineChart { props } => Some(&props.common.style.style),
+        ViewNode::PieChart { props } => Some(&props.common.style.style),
         ViewNode::Table { props } => Some(&props.style.style),
         ViewNode::Divider { props } => Some(&props.style),
         ViewNode::TypeWriter { props, .. } => Some(&props.style),

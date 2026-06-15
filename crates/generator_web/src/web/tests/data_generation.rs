@@ -91,6 +91,39 @@ fn renders_candlestick_markup_theme_classes_and_stream_runtime() {
 }
 
 #[test]
+fn renders_chart_markup_css_and_runtime() {
+    let tree = charts_tree();
+    let html = render_page_body(&ViewNode::Children, &tree);
+    for chart_type in ["arc", "area", "bar", "line", "pie"] {
+        assert!(html.contains(&format!(r#"data-dowe-chart-type="{chart_type}""#)));
+    }
+    assert!(html.contains(r#"data-dowe-chart-data="segments""#));
+    assert!(html.contains(r#"data-dowe-chart-data="points""#));
+    assert!(html.contains("dowe-chart-svg"));
+    assert!(html.contains("dowe-chart-legend"));
+
+    let chunk = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/charts.dowe"),
+        "page chartsPage",
+        &tree,
+    );
+    assert!(chunk.css_content.contains(".arc-chart-container"));
+    assert!(chunk.css_content.contains(".line-chart-container"));
+    assert!(chunk.css_content.contains(".dowe-chart-svg"));
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+    assert!(router.contains("function renderCharts"));
+    assert!(router.contains("renderPieArcChart"));
+    assert!(router.contains("renderLineAreaChart"));
+}
+
+#[test]
 fn renders_table_markup_css_and_runtime() {
     let tree = table_tree();
     let html = render_page_body(&ViewNode::Children, &tree);

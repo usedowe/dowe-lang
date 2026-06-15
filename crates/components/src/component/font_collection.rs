@@ -138,6 +138,15 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         ViewNode::Fab { props, .. } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Slider { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Dropzone { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::ComboBox { props, .. } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::CsvField { props, .. } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::DragDrop { props, .. } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Editor { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::ImageCropper { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::PasswordField { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::PhoneField { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::PinField { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Textarea { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::AppBar {
             props,
             start,
@@ -189,6 +198,15 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         ViewNode::Code { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Video { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Candlestick { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::ArcChart { props } => collect_style_font_families(&props.common.style.style, fonts),
+        ViewNode::AreaChart { props } => {
+            collect_style_font_families(&props.common.style.style, fonts)
+        }
+        ViewNode::BarChart { props } => collect_style_font_families(&props.common.style.style, fonts),
+        ViewNode::LineChart { props } => {
+            collect_style_font_families(&props.common.style.style, fonts)
+        }
+        ViewNode::PieChart { props } => collect_style_font_families(&props.common.style.style, fonts),
         ViewNode::Table { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Divider { props } => collect_style_font_families(&props.style, fonts),
         ViewNode::Alert { props } => collect_style_font_families(&props.style.style, fonts),

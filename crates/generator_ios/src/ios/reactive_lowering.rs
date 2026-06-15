@@ -289,6 +289,15 @@ fn collect_swift_reactive(
             }
         }
         ViewNode::Input { .. }
+        | ViewNode::ComboBox { .. }
+        | ViewNode::CsvField { .. }
+        | ViewNode::DragDrop { .. }
+        | ViewNode::Editor { .. }
+        | ViewNode::ImageCropper { .. }
+        | ViewNode::PasswordField { .. }
+        | ViewNode::PhoneField { .. }
+        | ViewNode::PinField { .. }
+        | ViewNode::Textarea { .. }
         | ViewNode::AvatarGroup { .. }
         | ViewNode::ChatBox { .. }
         | ViewNode::Empty { .. }
@@ -313,6 +322,11 @@ fn collect_swift_reactive(
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Title { .. }

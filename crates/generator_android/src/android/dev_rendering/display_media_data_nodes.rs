@@ -180,6 +180,66 @@ fn render_dev_android_display_media_data_node(
             apply_dev_android_style(&props.style.style, &view, false, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
+        ViewNode::ArcChart { props } => {
+            render_dev_android_chart(
+                "arc",
+                &props.common,
+                parent,
+                parent_gap,
+                parent_horizontal,
+                counter,
+                context,
+                output,
+            );
+        }
+        ViewNode::AreaChart { props } => {
+            render_dev_android_chart(
+                "area",
+                &props.common,
+                parent,
+                parent_gap,
+                parent_horizontal,
+                counter,
+                context,
+                output,
+            );
+        }
+        ViewNode::BarChart { props } => {
+            render_dev_android_chart(
+                "bar",
+                &props.common,
+                parent,
+                parent_gap,
+                parent_horizontal,
+                counter,
+                context,
+                output,
+            );
+        }
+        ViewNode::LineChart { props } => {
+            render_dev_android_chart(
+                "line",
+                &props.common,
+                parent,
+                parent_gap,
+                parent_horizontal,
+                counter,
+                context,
+                output,
+            );
+        }
+        ViewNode::PieChart { props } => {
+            render_dev_android_chart(
+                "pie",
+                &props.common,
+                parent,
+                parent_gap,
+                parent_horizontal,
+                counter,
+                context,
+                output,
+            );
+        }
         ViewNode::Table { props } => {
             let view = next_dev_view(counter);
             render_dev_android_table(props, &view, &context.signal_path(&props.data), output);
@@ -188,4 +248,41 @@ fn render_dev_android_display_media_data_node(
         }
         _ => {}
     }
+}
+
+fn render_dev_android_chart(
+    chart_type: &str,
+    props: &ChartCommonProps,
+    parent: &str,
+    parent_gap: Option<&str>,
+    parent_horizontal: bool,
+    counter: &mut usize,
+    context: &ComposeReactiveContext,
+    output: &mut String,
+) {
+    let view = next_dev_view(counter);
+    let data_path = props
+        .data
+        .as_deref()
+        .map(|value| format!("\"{}\"", escape_java(&context.signal_path(value))))
+        .unwrap_or_else(|| "null".to_string());
+    let series_path = props
+        .series
+        .as_deref()
+        .map(|value| format!("\"{}\"", escape_java(&context.signal_path(value))))
+        .unwrap_or_else(|| "null".to_string());
+    output.push_str(&format!(
+        "        DoweChartView {view} = doweChart(\"{}\", {data_path}, {series_path}, \"{}\", \"{}\", \"{}\", {}, {}, {}, {}, {});\n",
+        escape_java(chart_type),
+        props.palette.as_str(),
+        props.legend_position.as_str(),
+        escape_java(&props.empty_label),
+        props.loading,
+        props.hide_legend,
+        dev_card_variant_container(&props.style),
+        dev_card_variant_content(&props.style),
+        dev_card_border(&props.style)
+    ));
+    apply_dev_android_style(&props.style.style, &view, false, output);
+    output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
 }
