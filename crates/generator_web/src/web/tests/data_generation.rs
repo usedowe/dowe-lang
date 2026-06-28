@@ -311,12 +311,12 @@ fn emits_show_visibility_markup_and_css() {
 
     assert!(page.content.contains("show-false md:show-true"));
     assert!(page.content.contains(r#"data-dowe-show=\"ready01\""#));
-    assert!(!page.css_content.contains(".show-false{display:none;}"));
+    assert!(!page.css_content.contains(".show-false:not([hidden])"));
     assert!(!page.css_content.contains(".md\\:show-true"));
     let design_css = show_design_css();
-    assert!(design_css.contains(".show-false{display:none;}"));
+    assert!(design_css.contains(".show-false:not([hidden]){display:none;}"));
     assert!(design_css.contains(
-        "@media (min-width:768px){.md\\:show-false{display:none;}.md\\:show-true{display:var(--dowe-component-display,revert);}}"
+        "@media (min-width:768px){.md\\:show-false:not([hidden]){display:none;}.md\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}}"
     ));
     assert!(
         super::router_js(&super::WebOutput {
@@ -361,7 +361,17 @@ fn keeps_nested_layout_visibility_rules_order_safe() {
 
     assert!(!parent.css_content.contains(".show-false"));
     assert!(!child.css_content.contains(".show-false"));
-    assert!(design_css.contains(".show-false{display:none;}"));
-    assert!(design_css.contains(".md\\:show-true{display:var(--dowe-component-display,revert);}"));
-    assert!(design_css.contains(".lg\\:show-true{display:var(--dowe-component-display,revert);}"));
+    assert!(design_css.contains(".show-false:not([hidden]){display:none;}"));
+    assert!(design_css
+        .contains(".md\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}"));
+    assert!(design_css
+        .contains(".lg\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}"));
+    assert!(
+        design_css
+            .find(".show-false:not([hidden]){display:none;}")
+            .unwrap()
+            < design_css
+                .find(".box{--dowe-component-display:block;")
+                .unwrap()
+    );
 }

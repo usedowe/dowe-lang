@@ -135,7 +135,7 @@ fn append_theme_variables(css: &mut String, theme: &DesignTheme) {
 fn append_visibility_css(css: &mut String) {
     for value in [false, true] {
         css.push_str(&format!(
-            ".show-{value}{{display:{};}}",
+            ".show-{value}:not([hidden]){{display:{};}}",
             visibility_display(value)
         ));
     }
@@ -151,7 +151,7 @@ fn append_visibility_css(css: &mut String) {
         ));
         for value in [false, true] {
             css.push_str(&format!(
-                ".{}\\:show-{value}{{display:{};}}",
+                ".{}\\:show-{value}:not([hidden]){{display:{};}}",
                 breakpoint.as_str(),
                 visibility_display(value)
             ));
