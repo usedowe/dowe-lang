@@ -132,8 +132,14 @@ struct DoweMarquee<Content: View>: View {
             }
         }
         .clipped()
-        .task(id: "\(speed)-\(reverse)-\(orientation)") {
-            await animate()
+        .onAppear {
+            startAnimation()
+        }
+        .onChange(of: speed) { _, _ in startAnimation() }
+        .onChange(of: reverse) { _, _ in startAnimation() }
+        .onChange(of: orientation) { _, _ in startAnimation() }
+        .onDisappear {
+            offset = CGFloat(0)
         }
     }
 
@@ -173,22 +179,18 @@ struct DoweMarquee<Content: View>: View {
         }
     }
 
-    @MainActor private func animate() async {
-        while !Task.isCancelled {
-            try? await Task.sleep(nanoseconds: 16_000_000)
-            let delta = step * (reverse ? CGFloat(1) : CGFloat(-1))
-            offset += delta
-            if abs(offset) >= CGFloat(360) {
-                offset = CGFloat(0)
-            }
+    @MainActor private func startAnimation() {
+        offset = CGFloat(0)
+        withAnimation(.linear(duration: marqueeDuration).repeatForever(autoreverses: false)) {
+            offset = reverse ? CGFloat(360) : CGFloat(-360)
         }
     }
 
-    private var step: CGFloat {
+    private var marqueeDuration: Double {
         switch speed {
-        case "slow": return CGFloat(0.45)
-        case "fast": return CGFloat(1.8)
-        default: return CGFloat(0.9)
+        case "slow": return 12.8
+        case "fast": return 3.2
+        default: return 6.4
         }
     }
 }

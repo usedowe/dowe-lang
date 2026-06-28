@@ -37,6 +37,10 @@ fn generates_swiftui_display_chat_and_motion_components() {
     assert!(views.contains("DoweChatBox(state: state, messagesPath: \"messages\""));
     assert!(views.contains("DoweEmpty(kind: \"result\""));
     assert!(views.contains("DoweMarquee(speed: \"fast\""));
+    assert!(views.contains(
+        "withAnimation(.linear(duration: marqueeDuration).repeatForever(autoreverses: false))"
+    ));
+    assert!(!views.contains("Task.sleep(nanoseconds: 16_000_000)"));
     assert!(views.contains("DoweTypeWriter(texts: [\"Hello\", \"World\"]"));
 }
 
@@ -153,6 +157,60 @@ fn generates_portable_grid_controls_and_variant_colors() {
         .expect("outlined button background");
     assert!(frame < background);
     assert!(button_tail.contains(".foregroundStyle(DoweDesign.primary)"));
+}
+
+#[test]
+fn generates_swiftui_ghost_card_without_variant_border() {
+    let output = generate_ios(
+        &[ViewRoute {
+            id: "cards".to_string(),
+            route_path: "/cards".to_string(),
+            layout_tree: ViewNode::Children,
+            page_tree: ViewNode::Box {
+                props: Default::default(),
+                children: vec![
+                    ViewNode::Card {
+                        props: VariantProps {
+                            variant: Some(ComponentVariant::Outlined),
+                            color: Some(ColorFamily::Info),
+                            ..Default::default()
+                        },
+                        children: vec![text("Outlined")],
+                    },
+                    ViewNode::Card {
+                        props: VariantProps {
+                            variant: Some(ComponentVariant::Ghost),
+                            color: Some(ColorFamily::Warning),
+                            ..Default::default()
+                        },
+                        children: vec![text("Ghost")],
+                    },
+                ],
+            },
+            sections: Vec::new(),
+            navigation_actions: Vec::new(),
+        }],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let page = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageCardsView.swift"))
+        .expect("cards page");
+    let outlined = page
+        .content
+        .find("Text(\"Outlined\")")
+        .expect("outlined card");
+    let ghost = page.content.find("Text(\"Ghost\")").expect("ghost card");
+    let outlined_card = &page.content[outlined..ghost];
+    let ghost_card = &page.content[ghost..];
+
+    assert!(outlined_card.contains(".stroke(DoweDesign.info, lineWidth: CGFloat(1))"));
+    assert!(ghost_card.contains(".background(Color.clear)"));
+    assert!(ghost_card.contains(".foregroundStyle(DoweDesign.warning)"));
+    assert!(!ghost_card.contains(".stroke("));
 }
 
 #[test]
