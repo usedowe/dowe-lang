@@ -40,45 +40,67 @@ fn launch_ios_app(
     ios_root: &Path,
     simulator: &IosSimulator,
 ) -> RuntimeResult<()> {
-    run_required(
-        DevTarget::Ios,
-        SpawnConfig::new("open", ["-a", "Simulator"])
-            .with_options(quiet_command_options(None, StreamMode::Ignore)),
-    )?;
-    let app_bundle = build_ios_app(&project.root, ios_root)?;
+    let app_bundle = build_ios_app(&project.root, ios_root, simulator.boot_requested)?;
     if simulator.boot_requested {
         wait_ios_simulator_boot(&simulator.udid)?;
     }
     run_required(
         DevTarget::Ios,
-        SpawnConfig::new(
-            "xcrun",
-            [
-                "simctl".to_string(),
-                "install".to_string(),
-                simulator.udid.clone(),
-                app_bundle.to_string_lossy().to_string(),
-            ],
-        )
-        .with_options(quiet_command_options(None, StreamMode::Ignore)),
+        ios_install_config(&simulator.udid, &app_bundle)
+            .with_options(quiet_command_options(None, StreamMode::Ignore)),
     )?;
-    run_required(
+    let launch_result = run_required(
         DevTarget::Ios,
-        SpawnConfig::new(
-            "xcrun",
-            [
-                "simctl",
-                "launch",
-                &simulator.udid,
-                &project.app_config.bundle,
-            ],
-        )
-        .with_options(quiet_command_options(None, StreamMode::Ignore)),
-    )?;
-    Ok(())
+        ios_launch_config(&simulator.udid, &project.app_config.bundle)
+            .with_options(quiet_command_options(None, StreamMode::Ignore)),
+    );
+    if launch_result.is_ok() {
+        open_ios_simulator()?;
+    }
+    launch_result.map(|_| ())
 }
 
-fn build_ios_app(project_root: &Path, ios_root: &Path) -> RuntimeResult<PathBuf> {
+fn ios_install_config(udid: &str, app_bundle: &Path) -> SpawnConfig {
+    SpawnConfig::new(
+        "xcrun",
+        [
+            "simctl".to_string(),
+            "install".to_string(),
+            udid.to_string(),
+            app_bundle.to_string_lossy().to_string(),
+        ],
+    )
+}
+
+fn ios_launch_config(udid: &str, bundle: &str) -> SpawnConfig {
+    SpawnConfig::new(
+        "xcrun",
+        [
+            "simctl".to_string(),
+            "launch".to_string(),
+            udid.to_string(),
+            bundle.to_string(),
+        ],
+    )
+}
+
+fn ios_open_simulator_config() -> SpawnConfig {
+    SpawnConfig::new("open", ["-a", "Simulator"])
+}
+
+fn open_ios_simulator() -> RuntimeResult<()> {
+    run_required(
+        DevTarget::Ios,
+        ios_open_simulator_config().with_options(quiet_command_options(None, StreamMode::Ignore)),
+    )
+    .map(|_| ())
+}
+
+fn build_ios_app(
+    project_root: &Path,
+    ios_root: &Path,
+    simulator_booting: bool,
+) -> RuntimeResult<PathBuf> {
     ensure_file(ios_root.join("DoweIosApp.swift"), DevTarget::Ios)?;
     ensure_file(ios_root.join("GeneratedViews.swift"), DevTarget::Ios)?;
     let plist = ensure_file(ios_root.join("Info.plist"), DevTarget::Ios)?;
@@ -117,6 +139,7 @@ fn build_ios_app(project_root: &Path, ios_root: &Path) -> RuntimeResult<PathBuf>
     let object_files = ios_swift_object_files(&swift_files, &objects_root);
     let output_map = build_root.join("output-file-map.json");
     let output_map_content = ios_swift_output_map(&swift_files, &object_files);
+    let swift_jobs = ios_swift_job_count(simulator_booting);
     fs::write(
         &output_map,
         serde_json::to_vec(&output_map_content)
@@ -126,7 +149,7 @@ fn build_ios_app(project_root: &Path, ios_root: &Path) -> RuntimeResult<PathBuf>
         DevTarget::Ios,
         SpawnConfig::new(
             "xcrun",
-            ios_swift_compile_args(&swift_files, &output_map, target.clone()),
+            ios_swift_compile_args(&swift_files, &output_map, target.clone(), swift_jobs),
         )
         .with_options(quiet_command_options(Some(source_root), StreamMode::Ignore)),
     )?;
@@ -305,10 +328,12 @@ fn ios_toolchain_signature() -> RuntimeResult<Vec<u8>> {
     Ok(signature)
 }
 
-fn ios_swift_job_count() -> usize {
+fn ios_swift_job_count(simulator_booting: bool) -> usize {
+    let limit = if simulator_booting { 2 } else { 8 };
     std::thread::available_parallelism()
-        .map(|value| value.get().clamp(1, 8))
+        .map(|value| value.get().clamp(1, limit))
         .unwrap_or(4)
+        .min(limit)
 }
 
 fn ios_swift_object_files(swift_files: &[String], objects_root: &Path) -> Vec<PathBuf> {
@@ -344,8 +369,9 @@ fn ios_swift_compile_args(
     swift_files: &[String],
     output_map: &Path,
     target: String,
+    jobs: usize,
 ) -> Vec<String> {
-    let jobs = ios_swift_job_count().to_string();
+    let jobs = jobs.to_string();
     let mut args = vec![
         "--sdk".to_string(),
         "iphonesimulator".to_string(),
@@ -391,7 +417,8 @@ fn ios_swift_link_args(object_files: &[PathBuf], bundle: &Path, target: String) 
 #[cfg(test)]
 mod tests {
     use super::{
-        ios_build_root, ios_cleanup_commands, ios_simulator_target, ios_swift_compile_args,
+        ios_build_root, ios_cleanup_commands, ios_install_config, ios_launch_config,
+        ios_open_simulator_config, ios_simulator_target, ios_swift_compile_args,
         ios_swift_job_count, ios_swift_link_args, ios_swift_object_files, ios_swift_output_map,
     };
     use dowe_spawn::StreamMode;
@@ -418,8 +445,30 @@ mod tests {
     }
 
     #[test]
-    fn bounds_ios_swift_parallel_jobs() {
-        assert!((1..=8).contains(&ios_swift_job_count()));
+    fn builds_ios_install_launch_and_open_commands() {
+        let install = ios_install_config("TEST-UDID", Path::new("/project/DoweIosApp.app"));
+        let launch = ios_launch_config("TEST-UDID", "app.test");
+        let open = ios_open_simulator_config();
+
+        assert_eq!(install.command, "xcrun");
+        assert_eq!(
+            install.args,
+            ["simctl", "install", "TEST-UDID", "/project/DoweIosApp.app"]
+        );
+        assert_eq!(launch.command, "xcrun");
+        assert_eq!(launch.args, ["simctl", "launch", "TEST-UDID", "app.test"]);
+        assert_eq!(open.command, "open");
+        assert_eq!(open.args, ["-a", "Simulator"]);
+    }
+
+    #[test]
+    fn bounds_ios_swift_parallel_jobs_for_ready_simulator() {
+        assert!((1..=8).contains(&ios_swift_job_count(false)));
+    }
+
+    #[test]
+    fn limits_ios_swift_parallel_jobs_during_simulator_boot() {
+        assert!((1..=2).contains(&ios_swift_job_count(true)));
     }
 
     #[test]
@@ -431,11 +480,14 @@ mod tests {
             ],
             Path::new("/project/.dowe/dev/ios/build/1/output-file-map.json"),
             "arm64-apple-ios17.0-simulator".to_string(),
+            2,
         );
 
         assert!(args.contains(&"-enable-batch-mode".to_string()));
         assert!(args.contains(&"-driver-batch-count".to_string()));
         assert!(args.contains(&"-j".to_string()));
+        assert_eq!(arg_after(&args, "-driver-batch-count"), Some("2"));
+        assert_eq!(arg_after(&args, "-j"), Some("2"));
         assert!(!args.contains(&"-whole-module-optimization".to_string()));
         assert!(!args.contains(&"-num-threads".to_string()));
         assert!(args.contains(&"-c".to_string()));
@@ -443,6 +495,12 @@ mod tests {
         assert!(!args.contains(&"-o".to_string()));
         assert!(args.contains(&"DoweIosApp.swift".to_string()));
         assert!(args.contains(&"GeneratedViews.swift".to_string()));
+    }
+
+    fn arg_after<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
+        args.windows(2)
+            .find(|window| window[0] == flag)
+            .map(|window| window[1].as_str())
     }
 
     #[test]
