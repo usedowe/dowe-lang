@@ -150,6 +150,14 @@ fn dev_card_border(props: &VariantProps) -> &'static str {
     }
 }
 
+fn dev_button_border(props: &VariantProps) -> &'static str {
+    if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+        dev_variant_content(props)
+    } else {
+        "null"
+    }
+}
+
 fn tabs_list_background(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_color(props.color)),

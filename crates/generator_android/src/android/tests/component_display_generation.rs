@@ -214,6 +214,11 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(views.content.contains(
             "CardDefaults.cardColors(containerColor = DoweDesign.surface, contentColor = DoweDesign.onSurface), border = BorderStroke(1.dp, DoweDesign.surface)"
         ));
+    assert!(
+        views
+            .content
+            .contains("ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = DoweDesign.primary), border = BorderStroke(1.dp, DoweDesign.primary)")
+    );
 
     let dev = output
         .files
@@ -240,6 +245,10 @@ fn generates_portable_grid_controls_and_variant_colors() {
     ));
     assert!(dev.content.contains("doweCard(DOWE_SOFT_MUTED, null)"));
     assert!(dev.content.contains("doweCard(DOWE_SURFACE, DOWE_SURFACE)"));
+    assert!(
+        dev.content
+            .contains("setBackground(doweInputBackground(Color.TRANSPARENT, DOWE_PRIMARY, DOWE_RADIUS_UI))")
+    );
     assert!(
         dev.content
             .contains("doweText(\"Surface\", DOWE_ON_SURFACE")

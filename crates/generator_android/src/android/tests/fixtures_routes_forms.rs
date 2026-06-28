@@ -58,6 +58,14 @@ fn parity_route() -> ViewRoute {
                         },
                     ],
                 },
+                ViewNode::Button {
+                    props: VariantProps {
+                        variant: Some(ComponentVariant::Outlined),
+                        color: Some(ColorFamily::Primary),
+                        ..Default::default()
+                    },
+                    children: vec![text("Outlined")],
+                },
             ],
         },
         sections: Vec::new(),

@@ -195,12 +195,13 @@ fn render_dev_android_flow_node(
             let view = next_dev_view(counter);
             let text = collect_joined_text(children);
             output.push_str(&format!(
-                            "        Button {view} = new Button(this);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setText(\"{}\");\n        {view}.setAllCaps(false);\n        {view}.setTypeface(Typeface.create({}, android.graphics.Typeface.NORMAL));\n        {view}.setTextSize({});\n        {view}.setIncludeFontPadding(false);\n        {view}.setGravity(Gravity.CENTER);\n        {view}.setMinWidth(0);\n        {view}.setMinimumWidth(0);\n        {view}.setMinHeight(0);\n        {view}.setMinimumHeight(0);\n        {view}.setTextColor({});\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS_UI));\n",
+                            "        Button {view} = new Button(this);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setText(\"{}\");\n        {view}.setAllCaps(false);\n        {view}.setTypeface(Typeface.create({}, android.graphics.Typeface.NORMAL));\n        {view}.setTextSize({});\n        {view}.setIncludeFontPadding(false);\n        {view}.setGravity(Gravity.CENTER);\n        {view}.setMinWidth(0);\n        {view}.setMinimumWidth(0);\n        {view}.setMinHeight(0);\n        {view}.setMinimumHeight(0);\n        {view}.setTextColor({});\n        {view}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS_UI));\n",
                             escape_java(&text),
                             dev_font_value(props.style.font.as_ref().or(inherited_font)),
                             dev_text_size_expr(false, INPUT_TEXT_SIZE),
                             dev_variant_content(props),
-                            dev_variant_container(props)
+                            dev_variant_container(props),
+                            dev_button_border(props)
                         ));
             let action = props
                 .element
