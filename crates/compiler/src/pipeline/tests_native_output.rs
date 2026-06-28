@@ -27,6 +27,7 @@
         assert!(body.contains("md:col-span-2"));
         assert!(body.contains("has-cover"));
         assert!(body.contains("has-overlay"));
+        assert!(body.contains("p-4 lg:p-5"));
         assert!(body.contains("is-soft is-surface"));
 
         let page_css_path = temp
@@ -39,6 +40,7 @@
         assert!(page_css.contains("row-gap:10px;column-gap:20px;"));
         assert!(page_css.contains("background-image:url(\"/mobile.jpg\")"));
         assert!(page_css.contains("background-image:url(\"/desktop.jpg\")"));
+        assert!(page_css.contains(".lg\\:p-5"));
         assert!(page_css.contains("rgba(0,0,0,0.4)"));
         assert!(page_css.contains("rgba(0,0,0,0.6)"));
 
@@ -50,6 +52,7 @@
         assert!(android.contains("DoweCoverBox"));
         assert!(android.contains("\"/desktop.jpg\""));
         assert!(android.contains("DoweOverlay.Solid(Color.Black.copy(alpha = 0.6f))"));
+        assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
         assert!(android.contains("DoweGrid(modifier ="));
         assert!(
             android.contains("columns = doweResponsive(viewportWidth, xs = 1, md = 3) ?: 1")
@@ -65,6 +68,9 @@
         assert!(ios.contains("DoweCoverImage"));
         assert!(ios.contains("\"/desktop.jpg\""));
         assert!(ios.contains("DoweOverlay.color(Color.black.opacity(0.6))"));
+        assert!(ios.contains(
+            ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0))"
+        ));
         assert!(ios.contains(
             "LazyVGrid(columns: doweGridColumns(doweResponsive(viewportWidth, xs: 1, md: 3) ?? 1, spacing: doweResponsive(viewportWidth, xs: CGFloat(20))),"
         ));

@@ -1233,7 +1233,7 @@ fn validates_select_options() {
 }
 
 #[test]
-fn keeps_card_padding_author_controlled() {
+fn normalizes_card_padding_default_and_author_override() {
     let default_card = container_component_node(
         BuiltinComponent::Card,
         Vec::new(),
@@ -1244,7 +1244,12 @@ fn keeps_card_padding_author_controlled() {
 
     match default_card {
         ViewNode::Card { props, .. } => {
-            assert!(props.style.spacing.p.is_none());
+            let padding = props.style.spacing.p.expect("default padding");
+            assert_eq!(padding.entries.len(), 2);
+            assert_eq!(padding.entries[0].breakpoint, Breakpoint::Xs);
+            assert_eq!(padding.entries[0].value, ScaleValue::from_half_steps(8));
+            assert_eq!(padding.entries[1].breakpoint, Breakpoint::Lg);
+            assert_eq!(padding.entries[1].value, ScaleValue::from_half_steps(10));
             assert!(props.style.spacing.px.is_none());
             assert!(props.style.spacing.py.is_none());
         }

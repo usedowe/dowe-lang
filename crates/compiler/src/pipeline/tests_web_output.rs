@@ -54,8 +54,7 @@
                 r#"<div class="control is-outlined is-info"><input class="input"></div>"#
             )
         );
-        assert!(body.contains(r#"class="card is-solid is-primary""#));
-        assert!(!body.contains(r#"class="card p-4 md:p-6 lg:p-8"#));
+        assert!(body.contains(r#"class="card p-4 lg:p-5 is-solid is-primary""#));
 
         let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
         assert!(css.contains("--dowe-primary"));
@@ -76,6 +75,7 @@
         assert!(page_css.contains(".p-10{padding:2.5rem;}"));
         assert!(page_css.contains(".px-0\\.5{padding-left:0.125rem;padding-right:0.125rem;}"));
         assert!(page_css.contains(".md\\:p-8"));
+        assert!(page_css.contains(".lg\\:p-5"));
         assert!(!page_css.contains(".lg\\:p-8"));
         assert!(page_css.contains(".lg\\:gap-6"));
         assert!(page_css.contains(".title-2xl{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(1.75rem, 1.4rem + 1vw, 2.25rem);line-height:1.2;font-weight:700;letter-spacing:-0.025em;margin:0;}"));
@@ -101,6 +101,7 @@
         assert!(android.contains("DoweDesign.softWarning"));
         assert!(android.contains("DoweDesign.onSoftWarning"));
         assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
+        assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
         assert!(android.contains("horizontal = doweResponsive(viewportWidth, xs = 20.dp)"));
         assert!(android.contains("vertical = doweResponsive(viewportWidth, xs = 12.dp)"));
         assert!(android.contains("doweResponsive(viewportWidth, xs = DoweSize.Fixed(44.dp))"));
@@ -125,7 +126,11 @@
                 ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(32)) ?? CGFloat(0))"
             )
         );
-        assert!(!ios.contains("xs: CGFloat(16), md: CGFloat(24), lg: CGFloat(32)"));
+        assert!(
+            ios.contains(
+                ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0))"
+            )
+        );
         assert!(ios.contains(
             ".padding(.horizontal, doweResponsive(viewportWidth, xs: CGFloat(20)) ?? CGFloat(0))"
         ));

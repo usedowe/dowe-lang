@@ -295,6 +295,8 @@ fn parse_variant_props(
     )?;
     if component == BuiltinComponent::Button {
         normalize_button_visual_props(&mut variant_props);
+    } else if component == BuiltinComponent::Card {
+        normalize_card_visual_props(&mut variant_props);
     }
     variant_props.element = variant_props.style.element.clone();
     variant_props.navigation =
@@ -375,6 +377,31 @@ fn normalize_button_visual_props(props: &mut VariantProps) {
     props.color.get_or_insert(ColorFamily::Primary);
     let size = *props.size.get_or_insert(ButtonSize::Md);
     apply_button_size_defaults(&mut props.style, size);
+}
+
+fn normalize_card_visual_props(props: &mut VariantProps) {
+    props.variant.get_or_insert(ComponentVariant::Solid);
+    props.color.get_or_insert(ColorFamily::Primary);
+
+    if props.style.spacing.p.is_none()
+        && props.style.spacing.px.is_none()
+        && props.style.spacing.py.is_none()
+        && props.style.spacing.pl.is_none()
+        && props.style.spacing.pr.is_none()
+        && props.style.spacing.pt.is_none()
+        && props.style.spacing.pb.is_none()
+    {
+        props.style.spacing.p = Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: ScaleValue::from_half_steps(8),
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Lg,
+                value: ScaleValue::from_half_steps(10),
+            },
+        ]));
+    }
 }
 
 fn apply_button_size_defaults(style: &mut StyleProps, size: ButtonSize) {
