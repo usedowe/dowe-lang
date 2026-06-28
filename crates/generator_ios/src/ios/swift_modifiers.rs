@@ -1,6 +1,6 @@
 fn swift_modifiers_for_container_style(props: &StyleProps, flow: NativeFlow) -> Vec<String> {
     let mut modifiers = Vec::new();
-    if flow == NativeFlow::Block && props.sizing.w.is_none() {
+    if flow.is_block() && props.sizing.w.is_none() {
         modifiers.push(".frame(maxWidth: .infinity, alignment: .leading)".to_string());
     }
     modifiers.extend(swift_modifiers_for_style(props));
@@ -9,7 +9,7 @@ fn swift_modifiers_for_container_style(props: &StyleProps, flow: NativeFlow) -> 
 
 fn swift_modifiers_for_layout(props: &LayoutProps, flow: NativeFlow) -> Vec<String> {
     let mut modifiers = Vec::new();
-    let should_fill = flow == NativeFlow::Block && props.style.sizing.w.is_none();
+    let should_fill = flow.is_block() && props.style.sizing.w.is_none();
     if should_fill || props.justify.is_some() {
         modifiers.push(format!(
             ".frame(maxWidth: .infinity, alignment: {})",
@@ -26,7 +26,7 @@ fn swift_modifiers_for_grid(props: &GridProps, flow: NativeFlow) -> Vec<String> 
 
 fn swift_modifiers_for_bar(props: &BarProps, flow: NativeFlow) -> Vec<String> {
     let mut modifiers = Vec::new();
-    if flow == NativeFlow::Block && props.style.style.sizing.w.is_none() {
+    if flow.is_block() && props.style.style.sizing.w.is_none() {
         modifiers.push(".frame(maxWidth: .infinity, minHeight: CGFloat(48), alignment: .center)".to_string());
     } else {
         modifiers.push(".frame(minHeight: CGFloat(48), alignment: .center)".to_string());
@@ -60,7 +60,7 @@ fn swift_modifiers_for_divider(props: &DividerProps, flow: NativeFlow) -> Vec<St
     let mut modifiers = vec![format!(".fill({})", color_ref(family_color(props.color)))];
     match props.orientation {
         DividerOrientation::Horizontal => {
-            if flow == NativeFlow::Block && props.style.sizing.w.is_none() {
+            if flow.is_block() && props.style.sizing.w.is_none() {
                 modifiers.push(".frame(maxWidth: .infinity)".to_string());
             }
             if props.style.sizing.h.is_none() {

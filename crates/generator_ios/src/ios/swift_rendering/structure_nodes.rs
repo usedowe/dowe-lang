@@ -213,7 +213,7 @@ fn render_swift_structure_node(
                     child,
                     indent + 4,
                     output,
-                    NativeFlow::Block,
+                    NativeFlow::GridItem,
                     current_font,
                     default_family,
                     context,

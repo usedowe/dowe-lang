@@ -271,5 +271,16 @@ fn swift_route_body_nodes(tree: &ViewNode) -> (&[ViewNode], SwiftReactiveContext
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum NativeFlow {
     Block,
+    GridItem,
     Inline,
+}
+
+impl NativeFlow {
+    fn is_block(self) -> bool {
+        matches!(self, Self::Block | Self::GridItem)
+    }
+
+    fn is_grid_item(self) -> bool {
+        matches!(self, Self::GridItem)
+    }
 }

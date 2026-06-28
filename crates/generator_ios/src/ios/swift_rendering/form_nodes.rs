@@ -2,7 +2,7 @@ fn render_swift_form_node(
     node: &ViewNode,
     indent: usize,
     output: &mut String,
-    _flow: NativeFlow,
+    flow: NativeFlow,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
     context: &SwiftReactiveContext,
@@ -40,6 +40,9 @@ fn render_swift_form_node(
             output.push_str(&format!("{pad}    }}\n"));
             output.push_str(&format!("{pad}}}\n"));
             let mut modifiers = swift_modifiers_for_style(&props.style);
+            if flow.is_grid_item() && props.style.sizing.w.is_none() {
+                modifiers.push(".frame(maxWidth: .infinity, alignment: .center)".to_string());
+            }
             modifiers.push(format!(".background({})", variant_container(props)));
             modifiers.push(format!(".foregroundStyle({})", variant_content(props)));
             let radius = swift_control_radius(&props.style);

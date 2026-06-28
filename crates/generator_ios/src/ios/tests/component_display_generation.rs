@@ -138,6 +138,21 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(views.contains(".background(DoweDesign.surface)"));
     assert!(views.contains(".foregroundStyle(DoweDesign.onSurface)"));
     assert!(views.contains(".stroke(DoweDesign.surface, lineWidth: CGFloat(1))"));
+    let page = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageParityView.swift"))
+        .expect("parity page");
+    let action = page.content.find("Text(\"Action\")").expect("button label");
+    let button_tail = &page.content[action..];
+    let frame = button_tail
+        .find(".frame(maxWidth: .infinity, alignment: .center)")
+        .expect("grid button frame");
+    let background = button_tail
+        .find(".background(Color.clear)")
+        .expect("outlined button background");
+    assert!(frame < background);
+    assert!(button_tail.contains(".foregroundStyle(DoweDesign.primary)"));
 }
 
 #[test]
