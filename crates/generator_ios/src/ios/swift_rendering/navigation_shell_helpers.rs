@@ -108,6 +108,18 @@ fn render_swift_side_nav(
     default_family: FontFamily,
     context: &SwiftReactiveContext,
 ) {
+    if swift_side_nav_can_use_data_renderer(items) {
+        render_swift_side_nav_data(
+            props,
+            items,
+            indent,
+            output,
+            flow,
+            inherited_font,
+            default_family,
+        );
+        return;
+    }
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     output.push_str(&format!(
@@ -130,6 +142,199 @@ fn render_swift_side_nav(
         indent,
         &swift_modifiers_for_container_style(&props.style.style, flow),
     );
+}
+
+fn render_swift_side_nav_data(
+    props: &SideNavProps,
+    items: &[SideNavItem],
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+) {
+    let pad = " ".repeat(indent);
+    let current_font = props.style.style.font.as_ref().or(inherited_font);
+    let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
+        swift_side_nav_metrics(props.size);
+    let border =
+        if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined {
+            format!("Optional({})", variant_content(&props.style))
+        } else {
+            "nil".to_string()
+        };
+    output.push_str(&format!(
+        "{pad}DoweSideNav(items: {}, activePath: activePath, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), labelFont: {}, descriptionFont: {}, backgroundColor: {}, contentColor: {}, activeContentColor: {}, borderColor: {border}, navigate: navigate)\n",
+        swift_side_nav_entries(items, indent),
+        props.wide,
+        swift_font_value(
+            current_font,
+            &format!("CGFloat({label_size})"),
+            default_family
+        ),
+        swift_font_value(
+            current_font,
+            &format!("CGFloat({description_size})"),
+            default_family
+        ),
+        variant_container(&props.style),
+        variant_content(&props.style),
+        nav_active_content(&props.style),
+    ));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_container_style(&props.style.style, flow),
+    );
+}
+
+fn swift_side_nav_can_use_data_renderer(items: &[SideNavItem]) -> bool {
+    items.iter().all(|item| match item {
+        SideNavItem::Header(props) | SideNavItem::Item(props) => {
+            swift_side_nav_item_can_use_data_renderer(props, true)
+        }
+        SideNavItem::Divider => true,
+        SideNavItem::Submenu { props, items, .. } => {
+            swift_side_nav_item_can_use_data_renderer(props, false)
+                && items
+                    .iter()
+                    .all(|item| swift_side_nav_item_can_use_data_renderer(item, true))
+        }
+    })
+}
+
+fn swift_side_nav_item_can_use_data_renderer(
+    props: &SideNavItemProps,
+    allow_navigation: bool,
+) -> bool {
+    props.icon.is_none()
+        && props.on_click.is_none()
+        && (allow_navigation || props.navigation.is_none())
+        && props
+            .navigation
+            .as_ref()
+            .is_none_or(swift_side_nav_navigation_supported)
+}
+
+fn swift_side_nav_navigation_supported(action: &NavigationAction) -> bool {
+    matches!(
+        action,
+        NavigationAction::Internal { .. } | NavigationAction::Section { .. }
+    )
+}
+
+fn swift_side_nav_entries(items: &[SideNavItem], indent: usize) -> String {
+    swift_side_nav_entries_with_prefix(items, indent, "item")
+}
+
+fn swift_side_nav_entries_with_prefix(
+    items: &[SideNavItem],
+    indent: usize,
+    prefix: &str,
+) -> String {
+    if items.is_empty() {
+        return "[]".to_string();
+    }
+    let pad = " ".repeat(indent);
+    let item_pad = " ".repeat(indent + 4);
+    let mut output = "[\n".to_string();
+    for (index, item) in items.iter().enumerate() {
+        let id = format!("{prefix}-{index}");
+        output.push_str(&format!(
+            "{item_pad}{},\n",
+            swift_side_nav_entry(item, indent + 4, &id)
+        ));
+    }
+    output.push_str(&format!("{pad}]"));
+    output
+}
+
+fn swift_side_nav_child_entries(
+    items: &[SideNavItemProps],
+    indent: usize,
+    prefix: &str,
+) -> String {
+    if items.is_empty() {
+        return "[]".to_string();
+    }
+    let pad = " ".repeat(indent);
+    let item_pad = " ".repeat(indent + 4);
+    let mut output = "[\n".to_string();
+    for (index, item) in items.iter().enumerate() {
+        let id = format!("{prefix}-{index}");
+        output.push_str(&format!(
+            "{item_pad}{},\n",
+            swift_side_nav_entry_props("item", item, false, "", &id)
+        ));
+    }
+    output.push_str(&format!("{pad}]"));
+    output
+}
+
+fn swift_side_nav_entry(item: &SideNavItem, indent: usize, id: &str) -> String {
+    match item {
+        SideNavItem::Header(props) => swift_side_nav_entry_props("header", props, false, "", id),
+        SideNavItem::Item(props) => swift_side_nav_entry_props("item", props, false, "", id),
+        SideNavItem::Divider => format!(
+            "DoweSideNavEntry(id: \"{}\", kind: \"divider\", label: \"\", description: nil, status: nil, operation: nil, path: nil, fragment: nil, open: false, children: [])",
+            escape_swift(id)
+        ),
+        SideNavItem::Submenu { props, open, items } => {
+            let children = swift_side_nav_child_entries(items, indent + 4, id);
+            swift_side_nav_entry_props("submenu", props, *open, &children, id)
+        }
+    }
+}
+
+fn swift_side_nav_entry_props(
+    kind: &str,
+    props: &SideNavItemProps,
+    open: bool,
+    children: &str,
+    id: &str,
+) -> String {
+    let (operation, path, fragment) = swift_side_nav_navigation_values(props.navigation.as_ref());
+    let children = if children.is_empty() { "[]" } else { children };
+    format!(
+        "DoweSideNavEntry(id: \"{}\", kind: \"{}\", label: \"{}\", description: {}, status: {}, operation: {}, path: {}, fragment: {}, open: {}, children: {})",
+        escape_swift(id),
+        kind,
+        escape_swift(&props.label),
+        swift_side_nav_optional_string(props.description.as_deref()),
+        swift_side_nav_optional_string(props.status.as_deref()),
+        swift_side_nav_optional_string(operation),
+        swift_side_nav_optional_string(path),
+        swift_side_nav_optional_string(fragment),
+        open,
+        children
+    )
+}
+
+fn swift_side_nav_navigation_values(
+    action: Option<&NavigationAction>,
+) -> (Option<&str>, Option<&str>, Option<&str>) {
+    match action {
+        Some(NavigationAction::Internal {
+            path,
+            fragment,
+            operation,
+        }) => (
+            Some(operation.as_str()),
+            Some(path.as_str()),
+            fragment.as_deref(),
+        ),
+        Some(NavigationAction::Section {
+            fragment,
+            operation,
+        }) => (Some(operation.as_str()), Some(""), Some(fragment.as_str())),
+        _ => (None, None, None),
+    }
+}
+
+fn swift_side_nav_optional_string(value: Option<&str>) -> String {
+    value
+        .map(|value| format!("\"{}\"", escape_swift(value)))
+        .unwrap_or_else(|| "nil".to_string())
 }
 
 fn render_swift_side_nav_item(

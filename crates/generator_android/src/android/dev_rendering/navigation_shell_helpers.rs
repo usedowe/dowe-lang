@@ -120,6 +120,16 @@ fn render_dev_android_side_nav(
     ));
     apply_dev_android_style(&props.style.style, &view, true, output);
     output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+    if dev_side_nav_can_use_data_renderer(items) {
+        render_dev_android_side_nav_data(
+            props,
+            items,
+            &view,
+            output,
+            current_font,
+        );
+        return;
+    }
     for item in items {
         render_dev_android_side_nav_item(
             item,
@@ -131,6 +141,140 @@ fn render_dev_android_side_nav(
             context,
         );
     }
+}
+
+fn render_dev_android_side_nav_data(
+    props: &SideNavProps,
+    items: &[SideNavItem],
+    parent: &str,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+) {
+    let (padding_horizontal, padding_vertical, _, label_size, description_size) =
+        compose_side_nav_metrics(props.size);
+    let entries = dev_side_nav_entries(items);
+    output.push_str(&format!(
+        "        doweRenderSideNav({parent}, {entries}, {padding_horizontal}, {padding_vertical}, {label_size}, {description_size}, {}, {}, {});\n",
+        dev_variant_container(&props.style),
+        dev_nav_active_content(&props.style),
+        dev_font_value(inherited_font)
+    ));
+}
+
+fn dev_side_nav_can_use_data_renderer(items: &[SideNavItem]) -> bool {
+    items.iter().all(|item| match item {
+        SideNavItem::Header(props) | SideNavItem::Item(props) => {
+            dev_side_nav_item_can_use_data_renderer(props, true)
+        }
+        SideNavItem::Divider => true,
+        SideNavItem::Submenu { props, items, .. } => {
+            dev_side_nav_item_can_use_data_renderer(props, false)
+                && items
+                    .iter()
+                    .all(|item| dev_side_nav_item_can_use_data_renderer(item, true))
+        }
+    })
+}
+
+fn dev_side_nav_item_can_use_data_renderer(
+    props: &SideNavItemProps,
+    allow_navigation: bool,
+) -> bool {
+    props.icon.is_none()
+        && props.on_click.is_none()
+        && (allow_navigation || props.navigation.is_none())
+        && props
+            .navigation
+            .as_ref()
+            .is_none_or(dev_side_nav_navigation_supported)
+}
+
+fn dev_side_nav_navigation_supported(action: &NavigationAction) -> bool {
+    matches!(action, NavigationAction::Internal { .. })
+}
+
+fn dev_side_nav_entries(items: &[SideNavItem]) -> String {
+    let mut output = "new ArrayList<DoweSideNavEntry>() {{".to_string();
+    for (index, item) in items.iter().enumerate() {
+        let id = format!("item-{index}");
+        output.push_str(&format!(" add({});", dev_side_nav_entry(item, &id)));
+    }
+    output.push_str(" }}");
+    output
+}
+
+fn dev_side_nav_submenu_child_entries(items: &[SideNavItemProps], prefix: &str) -> String {
+    let mut output = "new ArrayList<DoweSideNavEntry>() {{".to_string();
+    for (index, item) in items.iter().enumerate() {
+        let id = format!("{prefix}-{index}");
+        output.push_str(&format!(
+            " add({});",
+            dev_side_nav_entry_props("item", item, false, "null", &id)
+        ));
+    }
+    output.push_str(" }}");
+    output
+}
+
+fn dev_side_nav_entry(item: &SideNavItem, id: &str) -> String {
+    match item {
+        SideNavItem::Header(props) => dev_side_nav_entry_props("header", props, false, "null", id),
+        SideNavItem::Item(props) => dev_side_nav_entry_props("item", props, false, "null", id),
+        SideNavItem::Divider => format!(
+            "new DoweSideNavEntry(\"{}\", \"divider\", \"\", null, null, null, null, null, false, null)",
+            escape_java(id)
+        ),
+        SideNavItem::Submenu { props, open, items } => {
+            let children = dev_side_nav_submenu_child_entries(items, id);
+            dev_side_nav_entry_props("submenu", props, *open, &children, id)
+        }
+    }
+}
+
+fn dev_side_nav_entry_props(
+    kind: &str,
+    props: &SideNavItemProps,
+    open: bool,
+    children: &str,
+    id: &str,
+) -> String {
+    let (operation, path, fragment) = dev_side_nav_navigation_values(props.navigation.as_ref());
+    format!(
+        "new DoweSideNavEntry(\"{}\", \"{}\", \"{}\", {}, {}, {}, {}, {}, {}, {})",
+        escape_java(id),
+        kind,
+        escape_java(&props.label),
+        dev_side_nav_optional_string(props.description.as_deref()),
+        dev_side_nav_optional_string(props.status.as_deref()),
+        dev_side_nav_optional_string(operation),
+        dev_side_nav_optional_string(path),
+        dev_side_nav_optional_string(fragment),
+        open,
+        children
+    )
+}
+
+fn dev_side_nav_navigation_values(
+    action: Option<&NavigationAction>,
+) -> (Option<&str>, Option<&str>, Option<&str>) {
+    match action {
+        Some(NavigationAction::Internal {
+            path,
+            fragment,
+            operation,
+        }) => (
+            Some(operation.as_str()),
+            Some(path.as_str()),
+            fragment.as_deref(),
+        ),
+        _ => (None, None, None),
+    }
+}
+
+fn dev_side_nav_optional_string(value: Option<&str>) -> String {
+    value
+        .map(|value| format!("\"{}\"", escape_java(value)))
+        .unwrap_or_else(|| "null".to_string())
 }
 
 fn render_dev_android_side_nav_item(

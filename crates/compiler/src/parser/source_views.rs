@@ -84,6 +84,8 @@ pub fn parse_views_file(
         views_path: &file.path,
         imports,
         modules: HashMap::new(),
+        components: HashMap::new(),
+        component_stack: Vec::new(),
         chunks: Vec::new(),
         chunk_indexes: HashMap::new(),
         outputs: PlatformRouteOutputs::default(),
@@ -172,6 +174,12 @@ enum ImportedViewKind {
 }
 
 #[derive(Clone)]
+struct ParsedComponentModule {
+    name: String,
+    children: Vec<SourceNode>,
+}
+
+#[derive(Clone)]
 struct ViewDeclaration {
     path: String,
     component: String,
@@ -208,6 +216,8 @@ struct RouteBuildContext<'a> {
     views_path: &'a Path,
     imports: HashMap<String, ViewImport>,
     modules: HashMap<String, ParsedViewModule>,
+    components: HashMap<PathBuf, ParsedComponentModule>,
+    component_stack: Vec<PathBuf>,
     chunks: Vec<dowe_generator_web::GeneratedChunk>,
     chunk_indexes: HashMap<String, usize>,
     outputs: PlatformRouteOutputs,
@@ -467,6 +477,7 @@ impl RouteBuildContext<'_> {
         let source = fs::read_to_string(&import.path)
             .map_err(|error| DoweError::at_path(&import.path, error.to_string()))?;
         let file = parse_source_file(self.root, &import.path, source)?;
+        let module_imports = view_imports(self.root, &file)?;
         let types = TypeRegistry::parse(&file.path, &file.nodes)?;
         let root_node = single_export(&file)?;
         let kind = match root_node.name.as_str() {
@@ -479,25 +490,28 @@ impl RouteBuildContext<'_> {
                 ));
             }
         };
+        let expanded_root = self.expand_export_node(root_node, &module_imports)?;
         if kind != expected {
             return Err(DoweError::at_path(
                 self.views_path,
                 format!("component `{component}` is used in the wrong route position"),
             ));
         }
-        let export_name = root_node
+        let export_name = expanded_root
             .args
             .first()
             .and_then(SourceValue::as_required_string)
-            .ok_or_else(|| node_error(root_node, "layout or page export must declare a name"))?;
+            .ok_or_else(|| {
+                node_error(&expanded_root, "layout or page export must declare a name")
+            })?;
         if export_name != component {
             return Err(node_error(
-                root_node,
+                &expanded_root,
                 format!("export `{export_name}` does not match import `{component}`"),
             ));
         }
         let tree = export_tree(
-            root_node,
+            &expanded_root,
             kind == ImportedViewKind::Layout,
             self.environment,
             &types,
@@ -510,6 +524,128 @@ impl RouteBuildContext<'_> {
         };
         self.modules.insert(component.to_string(), module.clone());
         Ok(module)
+    }
+
+    fn expand_export_node(
+        &mut self,
+        node: &SourceNode,
+        imports: &HashMap<String, ViewImport>,
+    ) -> DoweResult<SourceNode> {
+        let mut used = HashSet::new();
+        let mut expanded = node.clone();
+        expanded.children = self.expand_node_children(imports, &node.children, &mut used)?;
+        reject_unused_imports(&node.location.path, imports, &used)?;
+        Ok(expanded)
+    }
+
+    fn expand_node_children(
+        &mut self,
+        imports: &HashMap<String, ViewImport>,
+        nodes: &[SourceNode],
+        used: &mut HashSet<String>,
+    ) -> DoweResult<Vec<SourceNode>> {
+        let mut expanded = Vec::new();
+        for node in nodes {
+            if COMPONENT_REGISTRY.get(&node.name).is_none() {
+                if let Some(import) = imports.get(&node.name) {
+                    reject_component_usage_shape(node)?;
+                    used.insert(node.name.clone());
+                    expanded.extend(self.component_children(&node.name, &import.path, node)?);
+                    continue;
+                }
+            }
+            let mut child = node.clone();
+            child.children = self.expand_node_children(imports, &node.children, used)?;
+            expanded.push(child);
+        }
+        Ok(expanded)
+    }
+
+    fn component_children(
+        &mut self,
+        component: &str,
+        path: &Path,
+        usage: &SourceNode,
+    ) -> DoweResult<Vec<SourceNode>> {
+        let normalized = path.to_path_buf();
+        if let Some(module) = self.components.get(&normalized) {
+            if module.name != component {
+                return Err(node_error(
+                    usage,
+                    format!(
+                        "export `{}` does not match import `{component}`",
+                        module.name
+                    ),
+                ));
+            }
+            return Ok(module.children.clone());
+        }
+        if self.component_stack.contains(&normalized) {
+            return Err(node_error(
+                usage,
+                format!(
+                    "component import cycle includes `{}`",
+                    path.strip_prefix(self.root)
+                        .unwrap_or(path)
+                        .to_string_lossy()
+                ),
+            ));
+        }
+
+        self.component_stack.push(normalized.clone());
+        let result = self.load_component(component, path);
+        self.component_stack.pop();
+        result
+    }
+
+    fn load_component(&mut self, component: &str, path: &Path) -> DoweResult<Vec<SourceNode>> {
+        let source = fs::read_to_string(path)
+            .map_err(|error| DoweError::at_path(path, error.to_string()))?;
+        let file = parse_source_file(self.root, path, source)?;
+        let imports = view_imports(self.root, &file)?;
+        let root_node = single_export(&file)?;
+        if root_node.name != "component" {
+            return Err(node_error(
+                root_node,
+                format!("import `{component}` must export a component"),
+            ));
+        }
+        if !root_node.props.is_empty() {
+            return Err(node_error(
+                root_node,
+                "component export cannot declare props",
+            ));
+        }
+        let export_name = root_node
+            .args
+            .first()
+            .and_then(SourceValue::as_required_string)
+            .ok_or_else(|| node_error(root_node, "component export must declare a name"))?;
+        if export_name != component {
+            return Err(node_error(
+                root_node,
+                format!("export `{export_name}` does not match import `{component}`"),
+            ));
+        }
+        reject_component_state_nodes(root_node)?;
+        if root_node.children.is_empty() {
+            return Err(node_error(
+                root_node,
+                "component export must contain view nodes",
+            ));
+        }
+
+        let mut used = HashSet::new();
+        let children = self.expand_node_children(&imports, &root_node.children, &mut used)?;
+        reject_unused_imports(&file.path, &imports, &used)?;
+        self.components.insert(
+            path.to_path_buf(),
+            ParsedComponentModule {
+                name: component.to_string(),
+                children: children.clone(),
+            },
+        );
+        Ok(children)
     }
 
     fn chunk_for(
@@ -550,6 +686,48 @@ fn view_imports(root: &Path, file: &SourceFile) -> DoweResult<HashMap<String, Vi
         }
     }
     Ok(imports)
+}
+
+fn reject_unused_imports(
+    path: &Path,
+    imports: &HashMap<String, ViewImport>,
+    used: &HashSet<String>,
+) -> DoweResult<()> {
+    for local in imports.keys() {
+        if !used.contains(local) {
+            return Err(DoweError::at_path(
+                path,
+                format!("import `{local}` is not used by the view module"),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn reject_component_usage_shape(node: &SourceNode) -> DoweResult<()> {
+    if !node.args.is_empty() || !node.props.is_empty() || !node.children.is_empty() {
+        return Err(node_error(
+            node,
+            format!(
+                "component `{}` cannot declare args, props or children",
+                node.name
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn reject_component_state_nodes(node: &SourceNode) -> DoweResult<()> {
+    for child in &node.children {
+        if matches!(child.name.as_str(), "signal" | "action" | "request") {
+            return Err(node_error(
+                child,
+                "component exports cannot declare signal, action or request",
+            ));
+        }
+        reject_component_state_nodes(child)?;
+    }
+    Ok(())
 }
 
 fn view_declarations(file: &SourceFile) -> DoweResult<Vec<ViewDeclaration>> {
@@ -4147,13 +4325,13 @@ fn single_export(file: &SourceFile) -> DoweResult<&SourceNode> {
     let exports = file
         .nodes
         .iter()
-        .filter(|node| matches!(node.name.as_str(), "layout" | "page"))
+        .filter(|node| matches!(node.name.as_str(), "layout" | "page" | "component"))
         .collect::<Vec<_>>();
     if exports.len() != 1
         || file
             .nodes
             .iter()
-            .any(|node| !matches!(node.name.as_str(), "type" | "layout" | "page"))
+            .any(|node| !matches!(node.name.as_str(), "type" | "layout" | "page" | "component"))
     {
         return Err(DoweError::at_path(
             &file.path,

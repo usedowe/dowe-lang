@@ -115,7 +115,7 @@ fn generates_shared_swiftui_layout_once_for_multiple_routes() {
 }
 
 #[test]
-fn keeps_contextual_swiftui_layout_composed_with_its_page() {
+fn keeps_layouts_composed_when_page_reads_layout_state() {
     let mut contextual = route();
     contextual.layout_tree = ViewNode::Scope {
         signals: vec![ViewSignal {
@@ -155,6 +155,81 @@ fn keeps_contextual_swiftui_layout_composed_with_its_page() {
     assert!(!layouts.content.contains("struct DoweLayout0<"));
     assert!(!login.content.contains("DoweLayout0("));
     assert!(login.content.contains("state.text(\"layout.message\")"));
+}
+
+#[test]
+fn reuses_stateful_swiftui_layout_when_page_does_not_read_layout_state() {
+    let mut contextual = route();
+    contextual.layout_tree = ViewNode::Scope {
+        signals: vec![ViewSignal {
+            id: "layout.open".to_string(),
+            name: "open".to_string(),
+            initial: ViewSignalValue::Bool(false),
+            schema: None,
+        }],
+        actions: Vec::new(),
+        children: vec![ViewNode::Box {
+            props: Default::default(),
+            children: vec![ViewNode::Children],
+        }],
+    };
+    contextual.page_tree = ViewNode::Text {
+        props: Default::default(),
+        value: "Login".to_string(),
+    };
+
+    let output = generate_ios(
+        &[contextual],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let layouts = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweLayouts.swift"))
+        .expect("layouts");
+    let login = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageLoginView.swift"))
+        .expect("login");
+
+    assert!(layouts.content.contains("struct DoweLayout0<"));
+    assert!(login.content.contains("DoweLayout0("));
+    assert!(login.content.contains("\"layout.open\": false"));
+}
+
+#[test]
+fn reuses_stateful_scaffold_drawer_layout_when_page_mentions_binding_literals() {
+    let contextual = stateful_scaffold_drawer_layout_route();
+
+    let output = generate_ios(
+        &[contextual],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let layouts = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweLayouts.swift"))
+        .expect("layouts");
+    let login = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageLoginView.swift"))
+        .expect("login");
+
+    assert!(layouts.content.contains("struct DoweLayout0<"));
+    assert!(layouts.content.contains("DoweDrawer(open: state.bool(\"layout.drawer.open\")"));
+    assert!(login.content.contains("DoweLayout0("));
+    assert!(login.content.contains("\"layout.drawer.open\": false"));
+    assert!(login.content.contains("\"layout.drawer.visible\": true"));
+    assert!(login.content.contains(
+        "\"layout.drawer.open.action\": .assign(\"layout.drawer.open\", \"layout.drawer.visible\")"
+    ));
+    assert!(!login.content.contains("DoweDrawer(open: state.bool(\"layout.drawer.open\")"));
 }
 
 #[test]
@@ -241,4 +316,107 @@ fn generates_native_ios_translation_resources() {
         .expect("plist");
     assert!(plist.content.contains("CFBundleDevelopmentRegion"));
     assert!(plist.content.contains("<string>en</string>"));
+}
+
+fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
+    ViewRoute {
+        id: "login".to_string(),
+        route_path: "/login".to_string(),
+        layout_tree: ViewNode::Scope {
+            signals: vec![
+                ViewSignal {
+                    id: "layout.drawer.open".to_string(),
+                    name: "drawerOpen".to_string(),
+                    initial: ViewSignalValue::Bool(false),
+                    schema: None,
+                },
+                ViewSignal {
+                    id: "layout.drawer.visible".to_string(),
+                    name: "drawerVisible".to_string(),
+                    initial: ViewSignalValue::Bool(true),
+                    schema: None,
+                },
+            ],
+            actions: vec![ViewAction {
+                id: "layout.drawer.open.action".to_string(),
+                name: "openDrawer".to_string(),
+                kind: ViewActionKind::Assign(ViewAssignAction {
+                    target: "drawerOpen".to_string(),
+                    source: "drawerVisible".to_string(),
+                }),
+            }],
+            children: vec![ViewNode::Scaffold {
+                props: ScaffoldProps::default(),
+                app_bar: vec![ViewNode::AppBar {
+                    props: bar_props(false),
+                    start: vec![ViewNode::Button {
+                        props: VariantProps {
+                            element: ElementProps {
+                                on_click: Some("openDrawer".to_string()),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        children: vec![text("Menu")],
+                    }],
+                    center: vec![text("Docs")],
+                    end: Vec::new(),
+                }],
+                start: vec![ViewNode::Sidebar {
+                    props: SideNavProps {
+                        style: VariantProps::default(),
+                        size: SideNavSize::Sm,
+                        wide: true,
+                    },
+                    items: vec![SideNavItem::Item(SideNavItemProps {
+                        label: "Overview".to_string(),
+                        description: None,
+                        status: None,
+                        icon: None,
+                        on_click: None,
+                        navigation: None,
+                    })],
+                }],
+                main: vec![
+                    ViewNode::Drawer {
+                        props: DrawerProps {
+                            style: VariantProps::default(),
+                            open: "drawerOpen".to_string(),
+                            position: DrawerPosition::Start,
+                            disable_overlay_close: false,
+                            hide_close_button: false,
+                        },
+                        children: vec![ViewNode::Sidebar {
+                            props: SideNavProps {
+                                style: VariantProps::default(),
+                                size: SideNavSize::Sm,
+                                wide: true,
+                            },
+                            items: vec![SideNavItem::Item(SideNavItemProps {
+                                label: "Overview".to_string(),
+                                description: None,
+                                status: None,
+                                icon: None,
+                                on_click: None,
+                                navigation: None,
+                            })],
+                        }],
+                    },
+                    ViewNode::Children,
+                ],
+                end: Vec::new(),
+                bottom_bar: Vec::new(),
+            }],
+        },
+        page_tree: ViewNode::RichText {
+            props: TextProps::default(),
+            marks: vec![RichTextMark {
+                text: "drawerOpen openDrawer".to_string(),
+                style: RichTextMarkStyle::Mark,
+                color: ColorFamily::Primary,
+            }],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
 }

@@ -39,6 +39,9 @@ pub(super) fn publish_ios_app(
         return Ok(cached);
     }
     fs::create_dir_all(&cache_root)?;
+    if cache_entry.exists() {
+        fs::remove_dir_all(&cache_entry)?;
+    }
     let staging = cache_root.join(format!(".{cache_key}.{}.tmp", std::process::id()));
     if staging.exists() {
         fs::remove_dir_all(&staging)?;
@@ -49,6 +52,14 @@ pub(super) fn publish_ios_app(
         Ok(()) => {}
         Err(_) if cached_ios_app(project_root, cache_key).is_some() => {
             fs::remove_dir_all(staging)?;
+        }
+        Err(error) if cache_entry.exists() => {
+            if cached_ios_app(project_root, cache_key).is_some() {
+                fs::remove_dir_all(staging)?;
+            } else {
+                fs::remove_dir_all(&cache_entry)?;
+                fs::rename(&staging, &cache_entry).map_err(|_| error)?;
+            }
         }
         Err(error) => return Err(error.into()),
     }
@@ -136,6 +147,30 @@ mod tests {
         assert_eq!(
             fs::read_to_string(cached.join("DoweIosApp")).expect("binary"),
             "binary"
+        );
+        assert!(!bundle.exists());
+    }
+
+    #[test]
+    fn replaces_incomplete_ios_cache_entry() {
+        let temp = tempdir().expect("tempdir");
+        let stale = temp.path().join(".dowe/dev/ios/cache/key/DoweIosApp.app");
+        fs::create_dir_all(&stale).expect("stale bundle");
+        fs::write(stale.join("Info.plist"), "stale").expect("stale plist");
+        let bundle = temp.path().join(".dowe/dev/ios/build/1/DoweIosApp.app");
+        fs::create_dir_all(&bundle).expect("bundle");
+        fs::write(bundle.join("DoweIosApp"), "binary").expect("binary");
+        fs::write(bundle.join("Info.plist"), "plist").expect("plist");
+
+        let published = publish_ios_app(temp.path(), "key", &bundle).expect("publish");
+
+        assert_eq!(
+            fs::read_to_string(published.join("DoweIosApp")).expect("binary"),
+            "binary"
+        );
+        assert_eq!(
+            fs::read_to_string(published.join("Info.plist")).expect("plist"),
+            "plist"
         );
         assert!(!bundle.exists());
     }

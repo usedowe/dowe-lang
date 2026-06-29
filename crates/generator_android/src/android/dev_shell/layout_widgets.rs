@@ -203,5 +203,88 @@ fn dev_activity_layout_widgets() -> &'static str {
         view.animate().alpha(1f).translationY(0f).setDuration(160).withEndAction(null).start();
     }
 
+    private static final class DoweSideNavEntry {
+        final String id;
+        final String kind;
+        final String label;
+        final String description;
+        final String status;
+        final String operation;
+        final String path;
+        final String fragment;
+        final boolean open;
+        final ArrayList<DoweSideNavEntry> children;
+
+        DoweSideNavEntry(String id, String kind, String label, String description, String status, String operation, String path, String fragment, boolean open, ArrayList<DoweSideNavEntry> children) {
+            this.id = id;
+            this.kind = kind;
+            this.label = label;
+            this.description = description;
+            this.status = status;
+            this.operation = operation;
+            this.path = path;
+            this.fragment = fragment;
+            this.open = open;
+            this.children = children == null ? new ArrayList<>() : children;
+        }
+    }
+
+    private void doweRenderSideNav(LinearLayout parent, ArrayList<DoweSideNavEntry> entries, int paddingHorizontal, int paddingVertical, int labelSize, int descriptionSize, int backgroundColor, int contentColor, String font) {
+        for (DoweSideNavEntry entry : entries) {
+            if ("divider".equals(entry.kind)) {
+                View divider = new View(this);
+                divider.setBackgroundColor(DOWE_MUTED);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1)));
+                doweAdd(parent, divider, 8, false);
+            } else if ("submenu".equals(entry.kind)) {
+                LinearLayout trigger = doweSideNavRow(entry, true, paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font, null);
+                doweAdd(parent, trigger);
+                LinearLayout submenu = doweContainer(false);
+                submenu.setPadding(doweDp(16), 0, 0, 0);
+                submenu.setVisibility(entry.open ? View.VISIBLE : View.GONE);
+                doweAdd(parent, submenu);
+                trigger.setOnClickListener(v -> doweToggleSideNavSubmenu(submenu));
+                doweRenderSideNav(submenu, entry.children, paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font);
+            } else {
+                LinearLayout row = doweSideNavRow(entry, "header".equals(entry.kind), paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font, doweSideNavAction(entry));
+                doweAdd(parent, row);
+            }
+        }
+    }
+
+    private LinearLayout doweSideNavRow(DoweSideNavEntry entry, boolean header, int paddingHorizontal, int paddingVertical, int labelSize, int descriptionSize, int backgroundColor, int contentColor, String font, Runnable action) {
+        LinearLayout view = doweContainer(true);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        view.setPadding(doweDp(paddingHorizontal), doweDp(paddingVertical), doweDp(paddingHorizontal), doweDp(paddingVertical));
+        if (entry.path != null && entry.path.equals(currentPath)) {
+            view.setBackground(doweBackground(backgroundColor, DOWE_RADIUS_UI));
+        }
+        LinearLayout copy = doweContainer(false);
+        copy.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        doweAdd(view, copy);
+        TextView label = doweText(entry.label, contentColor, labelSize, header ? 600 : 400, 0f, labelSize, font);
+        doweAdd(copy, label);
+        if (entry.description != null) {
+            TextView description = doweText(entry.description, contentColor, descriptionSize, 400, 0f, descriptionSize, font);
+            description.setAlpha(0.72f);
+            doweAdd(copy, description);
+        }
+        if (entry.status != null) {
+            TextView status = doweText(entry.status, contentColor, descriptionSize, 600, 0f, descriptionSize, font);
+            doweAdd(view, status);
+        }
+        if (action != null) {
+            view.setOnClickListener(v -> action.run());
+        }
+        return view;
+    }
+
+    private Runnable doweSideNavAction(DoweSideNavEntry entry) {
+        if (entry.path == null) {
+            return null;
+        }
+        return () -> doweNavigate(entry.operation == null ? "push" : entry.operation, entry.path, entry.fragment);
+    }
+
 "#
 }

@@ -378,8 +378,8 @@ fn ios_swift_compile_args(
         "swiftc".to_string(),
         "-parse-as-library".to_string(),
         "-enable-batch-mode".to_string(),
-        "-driver-batch-count".to_string(),
-        jobs.clone(),
+        "-driver-batch-size-limit".to_string(),
+        "1".to_string(),
         "-target".to_string(),
         target,
         "-j".to_string(),
@@ -472,7 +472,7 @@ mod tests {
     }
 
     #[test]
-    fn builds_ios_swift_args_for_batched_compile() {
+    fn builds_ios_swift_args_for_unbatched_compile() {
         let args = ios_swift_compile_args(
             &[
                 "DoweIosApp.swift".to_string(),
@@ -484,9 +484,11 @@ mod tests {
         );
 
         assert!(args.contains(&"-enable-batch-mode".to_string()));
-        assert!(args.contains(&"-driver-batch-count".to_string()));
+        assert!(args.contains(&"-driver-batch-size-limit".to_string()));
+        assert_eq!(arg_after(&args, "-driver-batch-size-limit"), Some("1"));
+        assert!(!args.contains(&"-disable-batch-mode".to_string()));
+        assert!(!args.contains(&"-driver-batch-count".to_string()));
         assert!(args.contains(&"-j".to_string()));
-        assert_eq!(arg_after(&args, "-driver-batch-count"), Some("2"));
         assert_eq!(arg_after(&args, "-j"), Some("2"));
         assert!(!args.contains(&"-whole-module-optimization".to_string()));
         assert!(!args.contains(&"-num-threads".to_string()));

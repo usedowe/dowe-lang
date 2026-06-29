@@ -148,6 +148,9 @@ fn generates_compose_and_dev_navigation_shell_components() {
             .content
             .contains("Row(modifier = Modifier.fillMaxWidth().weight(1f))")
     );
+    assert!(views.content.contains(
+        "Column(modifier = Modifier.doweWidth(doweResponsive(viewportWidth, xs = DoweSize.Fixed(384.dp)))"
+    ));
     assert!(views.content.contains("Text(\"Resource hub\""));
     assert!(views.content.contains("Text(text = \"Side Home\""));
 
@@ -156,6 +159,10 @@ fn generates_compose_and_dev_navigation_shell_components() {
         .iter()
         .find(|file| file.relative_path.ends_with("DoweDevActivity.java"))
         .expect("dev activity");
+    assert!(
+        dev.content
+            .contains("doweResponsiveInt(viewportWidth, 384, null, null, null, null)")
+    );
     assert!(dev.content.contains("doweText(\"Resource hub\""));
     assert!(dev.content.contains("doweText(\"Side Home\""));
 }
@@ -293,5 +300,19 @@ fn generates_compose_and_dev_drawer() {
     assert!(dev.content.contains(
         "new FrameLayout.LayoutParams(doweDp(28), doweDp(28), Gravity.TOP | Gravity.END)"
     ));
+    assert!(
+        dev.content
+            .contains("doweAdd(parent, child, null, false);")
+    );
+    assert!(dev.content.contains("if (parent instanceof FrameLayout)"));
+    assert!(dev.content.contains("doweFrameLayoutParams"));
+    assert!(
+        dev.content
+            .contains("Params = doweFrameLayoutParams(view")
+    );
+    assert!(
+        dev.content
+            .contains("Params.width == ViewGroup.LayoutParams.WRAP_CONTENT")
+    );
     assert!(!dev.content.contains("doweCard(DOWE_SURFACE, null)"));
 }

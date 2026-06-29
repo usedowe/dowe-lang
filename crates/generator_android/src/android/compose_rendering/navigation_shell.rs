@@ -102,6 +102,18 @@ fn render_compose_side_nav(
     default_family: FontFamily,
     context: &ComposeReactiveContext,
 ) {
+    if compose_side_nav_can_use_data_renderer(items) {
+        render_compose_side_nav_data(
+            props,
+            items,
+            indent,
+            output,
+            flow,
+            inherited_font,
+            default_family,
+        );
+        return;
+    }
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     output.push_str(&format!(
@@ -120,6 +132,190 @@ fn render_compose_side_nav(
         );
     }
     output.push_str(&format!("{pad}}}\n"));
+}
+
+fn render_compose_side_nav_data(
+    props: &SideNavProps,
+    items: &[SideNavItem],
+    indent: usize,
+    output: &mut String,
+    flow: ComposeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+) {
+    let pad = " ".repeat(indent);
+    let current_font = props.style.style.font.as_ref().or(inherited_font);
+    let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
+        compose_side_nav_metrics(props.size);
+    let border =
+        if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined {
+            variant_content(&props.style)
+        } else {
+            "null"
+        };
+    output.push_str(&format!(
+        "{pad}DoweSideNav(items = {}, modifier = {}, activePath = activePath, wide = {}, paddingHorizontal = {padding_horizontal}.dp, paddingVertical = {padding_vertical}.dp, gap = {gap}.dp, labelSize = {label_size}f, descriptionSize = {description_size}f, fontFamily = {}, backgroundColor = {}, contentColor = {}, activeContentColor = {}, borderColor = {border}, navigate = navigate)\n",
+        compose_side_nav_entries(items, indent),
+        modifier_for_container_style(&props.style.style, flow),
+        props.wide,
+        compose_font_value(current_font, default_family),
+        variant_container(&props.style),
+        variant_content(&props.style),
+        nav_active_content(&props.style),
+    ));
+}
+
+fn compose_side_nav_can_use_data_renderer(items: &[SideNavItem]) -> bool {
+    items.iter().all(|item| match item {
+        SideNavItem::Header(props) | SideNavItem::Item(props) => {
+            compose_side_nav_item_can_use_data_renderer(props, true)
+        }
+        SideNavItem::Divider => true,
+        SideNavItem::Submenu { props, items, .. } => {
+            compose_side_nav_item_can_use_data_renderer(props, false)
+                && items
+                    .iter()
+                    .all(|item| compose_side_nav_item_can_use_data_renderer(item, true))
+        }
+    })
+}
+
+fn compose_side_nav_item_can_use_data_renderer(
+    props: &SideNavItemProps,
+    allow_navigation: bool,
+) -> bool {
+    props.icon.is_none()
+        && props.on_click.is_none()
+        && (allow_navigation || props.navigation.is_none())
+        && props
+            .navigation
+            .as_ref()
+            .is_none_or(compose_side_nav_navigation_supported)
+}
+
+fn compose_side_nav_navigation_supported(action: &NavigationAction) -> bool {
+    matches!(
+        action,
+        NavigationAction::Internal { .. } | NavigationAction::Section { .. }
+    )
+}
+
+fn compose_side_nav_entries(items: &[SideNavItem], indent: usize) -> String {
+    compose_side_nav_entries_with_prefix(items, indent, "item")
+}
+
+fn compose_side_nav_entries_with_prefix(
+    items: &[SideNavItem],
+    indent: usize,
+    prefix: &str,
+) -> String {
+    if items.is_empty() {
+        return "emptyList()".to_string();
+    }
+    let pad = " ".repeat(indent);
+    let item_pad = " ".repeat(indent + 4);
+    let mut output = "listOf(\n".to_string();
+    for (index, item) in items.iter().enumerate() {
+        let id = format!("{prefix}-{index}");
+        output.push_str(&format!(
+            "{item_pad}{},\n",
+            compose_side_nav_entry(item, indent + 4, &id)
+        ));
+    }
+    output.push_str(&format!("{pad})"));
+    output
+}
+
+fn compose_side_nav_child_entries(
+    items: &[SideNavItemProps],
+    indent: usize,
+    prefix: &str,
+) -> String {
+    if items.is_empty() {
+        return "emptyList()".to_string();
+    }
+    let pad = " ".repeat(indent);
+    let item_pad = " ".repeat(indent + 4);
+    let mut output = "listOf(\n".to_string();
+    for (index, item) in items.iter().enumerate() {
+        let id = format!("{prefix}-{index}");
+        output.push_str(&format!(
+            "{item_pad}{},\n",
+            compose_side_nav_entry_props("item", item, false, "", &id)
+        ));
+    }
+    output.push_str(&format!("{pad})"));
+    output
+}
+
+fn compose_side_nav_entry(item: &SideNavItem, indent: usize, id: &str) -> String {
+    match item {
+        SideNavItem::Header(props) => compose_side_nav_entry_props("header", props, false, "", id),
+        SideNavItem::Item(props) => compose_side_nav_entry_props("item", props, false, "", id),
+        SideNavItem::Divider => format!(
+            "DoweSideNavEntry(id = \"{}\", kind = \"divider\", label = \"\", description = null, status = null, operation = null, path = null, fragment = null)",
+            escape_kotlin(id)
+        ),
+        SideNavItem::Submenu { props, open, items } => {
+            let children = compose_side_nav_child_entries(items, indent + 4, id);
+            compose_side_nav_entry_props("submenu", props, *open, &children, id)
+        }
+    }
+}
+
+fn compose_side_nav_entry_props(
+    kind: &str,
+    props: &SideNavItemProps,
+    open: bool,
+    children: &str,
+    id: &str,
+) -> String {
+    let (operation, path, fragment) = compose_side_nav_navigation_values(props.navigation.as_ref());
+    let children = if children.is_empty() {
+        "emptyList()"
+    } else {
+        children
+    };
+    format!(
+        "DoweSideNavEntry(id = \"{}\", kind = \"{}\", label = \"{}\", description = {}, status = {}, operation = {}, path = {}, fragment = {}, open = {}, children = {})",
+        escape_kotlin(id),
+        kind,
+        escape_kotlin(&props.label),
+        compose_side_nav_optional_string(props.description.as_deref()),
+        compose_side_nav_optional_string(props.status.as_deref()),
+        compose_side_nav_optional_string(operation),
+        compose_side_nav_optional_string(path),
+        compose_side_nav_optional_string(fragment),
+        open,
+        children
+    )
+}
+
+fn compose_side_nav_navigation_values(
+    action: Option<&NavigationAction>,
+) -> (Option<&str>, Option<&str>, Option<&str>) {
+    match action {
+        Some(NavigationAction::Internal {
+            path,
+            fragment,
+            operation,
+        }) => (
+            Some(operation.as_str()),
+            Some(path.as_str()),
+            fragment.as_deref(),
+        ),
+        Some(NavigationAction::Section {
+            fragment,
+            operation,
+        }) => (Some(operation.as_str()), Some(""), Some(fragment.as_str())),
+        _ => (None, None, None),
+    }
+}
+
+fn compose_side_nav_optional_string(value: Option<&str>) -> String {
+    value
+        .map(|value| format!("\"{}\"", escape_kotlin(value)))
+        .unwrap_or_else(|| "null".to_string())
 }
 
 fn render_compose_side_nav_item(

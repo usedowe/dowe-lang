@@ -93,6 +93,53 @@ private fun DoweSideNavRow(modifier: Modifier = Modifier, active: Boolean, wide:
     }
 }
 
+private data class DoweSideNavEntry(val id: String, val kind: String, val label: String, val description: String?, val status: String?, val operation: String?, val path: String?, val fragment: String?, val open: Boolean = false, val children: List<DoweSideNavEntry> = emptyList())
+
+@Composable
+private fun DoweSideNav(items: List<DoweSideNavEntry>, modifier: Modifier = Modifier, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        items.forEach { item ->
+            DoweSideNavEntryView(item = item, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, activeContentColor = activeContentColor, borderColor = borderColor, navigate = navigate)
+        }
+    }
+}
+
+@Composable
+private fun DoweSideNavEntryView(item: DoweSideNavEntry, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
+    when (item.kind) {
+        "divider" -> Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(DoweDesign.muted))
+        "submenu" -> DoweSideNavSubmenu(open = item.open, trigger = { toggle ->
+            DoweSideNavEntryRow(item = item, header = true, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = toggle)
+        }) {
+            item.children.forEach { child ->
+                DoweSideNavEntryRow(item = child, header = false, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = sideNavAction(child, navigate))
+            }
+        }
+        "header" -> DoweSideNavEntryRow(item = item, header = true, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = sideNavAction(item, navigate))
+        else -> DoweSideNavEntryRow(item = item, header = false, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = sideNavAction(item, navigate))
+    }
+}
+
+@Composable
+private fun DoweSideNavEntryRow(item: DoweSideNavEntry, header: Boolean, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, borderColor: Color?, onClick: (() -> Unit)?) {
+    DoweSideNavRow(active = item.path == activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = onClick) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = item.label, fontSize = labelSize.sp, fontFamily = fontFamily, fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal)
+            item.description?.let { description ->
+                Text(text = description, fontSize = descriptionSize.sp, fontFamily = fontFamily, color = LocalContentColor.current.copy(alpha = 0.72f))
+            }
+        }
+        item.status?.let { status ->
+            Text(text = status, fontSize = descriptionSize.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+private fun sideNavAction(item: DoweSideNavEntry, navigate: (String, String, String?) -> Unit): (() -> Unit)? {
+    val path = item.path ?: return null
+    return { navigate(item.operation ?: "push", path, item.fragment) }
+}
+
 @Composable
 private fun DoweSideNavSubmenu(open: Boolean, trigger: @Composable ((() -> Unit) -> Unit), content: @Composable () -> Unit) {
     var expanded by remember { mutableStateOf(open) }

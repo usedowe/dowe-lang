@@ -109,6 +109,17 @@ fn navigation_shell_route() -> ViewRoute {
                     style: VariantProps {
                         variant: Some(ComponentVariant::Soft),
                         color: Some(ColorFamily::Surface),
+                        style: StyleProps {
+                            sizing: dowe_components::SizingProps {
+                                w: Some(ResponsiveValue::scalar(
+                                    dowe_components::SizeValue::Scale(
+                                        ScaleValue::from_half_steps(192),
+                                    ),
+                                )),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
                         ..Default::default()
                     },
                     size: SideNavSize::Md,

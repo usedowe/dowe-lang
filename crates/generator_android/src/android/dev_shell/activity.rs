@@ -57,7 +57,7 @@ fn dev_activity(
         root.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
-        scrollView.addView(root);
+        scrollView.addView(root, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         background.addView(scrollView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         viewportWidth = getResources().getConfiguration().screenWidthDp;
         doweInitializeState();

@@ -23,8 +23,8 @@ use dowe_components::{
     TabsPosition, TabsProps, TabsVariant, TextProps, TextSize, TextWeight, TextareaProps,
     ToastKind, ToastProps, ToggleGroupItem, ToggleGroupProps, ToggleProps, TooltipProps,
     TranslationCatalog, TranslationLocale, TranslationValue, TypeWriterItem, TypeWriterProps,
-    VariantProps, ViewAnimation, ViewNode, ViewRoute, ViewSection, ViewSignal, ViewSignalValue,
-    VisibilityCondition,
+    VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewAssignAction, ViewNode,
+    ViewRoute, ViewSection, ViewSignal, ViewSignalValue, VisibilityCondition,
 };
 use std::path::PathBuf;
 

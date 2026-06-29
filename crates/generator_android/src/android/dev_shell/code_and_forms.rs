@@ -217,20 +217,12 @@ fn dev_activity_code_and_forms() -> &'static str {
     }
 
     private void doweAdd(ViewGroup parent, View child) {
-        parent.addView(child);
+        doweAdd(parent, child, null, false);
     }
 
     private void doweAdd(ViewGroup parent, View child, Integer gap, boolean horizontal) {
         if (gap != null && parent.getChildCount() > 0) {
-            ViewGroup.LayoutParams current = child.getLayoutParams();
-            LinearLayout.LayoutParams params;
-            if (current instanceof LinearLayout.LayoutParams) {
-                params = new LinearLayout.LayoutParams((LinearLayout.LayoutParams) current);
-            } else if (current != null) {
-                params = new LinearLayout.LayoutParams(current.width, current.height);
-            } else {
-                params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            }
+            LinearLayout.LayoutParams params = doweLinearLayoutParams(child.getLayoutParams());
             int size = doweDp(gap);
             if (horizontal) {
                 params.setMargins(size, 0, 0, 0);
@@ -239,7 +231,72 @@ fn dev_activity_code_and_forms() -> &'static str {
             }
             child.setLayoutParams(params);
         }
+        if (parent instanceof ScrollView) {
+            parent.addView(child, doweScrollViewLayoutParams(child.getLayoutParams()));
+            return;
+        }
+        if (parent instanceof HorizontalScrollView) {
+            parent.addView(child, doweHorizontalScrollViewLayoutParams(child.getLayoutParams()));
+            return;
+        }
+        if (parent instanceof FrameLayout) {
+            parent.addView(child, doweFrameLayoutParams(child.getLayoutParams()));
+            return;
+        }
+        if (parent instanceof LinearLayout && !(child.getLayoutParams() instanceof LinearLayout.LayoutParams)) {
+            parent.addView(child, doweLinearLayoutParams(child.getLayoutParams()));
+            return;
+        }
         parent.addView(child);
+    }
+
+    private LinearLayout.LayoutParams doweLinearLayoutParams(ViewGroup.LayoutParams current) {
+        LinearLayout.LayoutParams params;
+        if (current instanceof LinearLayout.LayoutParams) {
+            params = new LinearLayout.LayoutParams((LinearLayout.LayoutParams) current);
+        } else if (current != null) {
+            params = new LinearLayout.LayoutParams(current.width, current.height);
+        } else {
+            params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        doweCopyMargins(params, current);
+        return params;
+    }
+
+    private FrameLayout.LayoutParams doweFrameLayoutParams(ViewGroup.LayoutParams current) {
+        FrameLayout.LayoutParams params;
+        if (current instanceof FrameLayout.LayoutParams) {
+            params = new FrameLayout.LayoutParams((FrameLayout.LayoutParams) current);
+        } else if (current != null) {
+            params = new FrameLayout.LayoutParams(current.width, current.height);
+        } else {
+            params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        doweCopyMargins(params, current);
+        return params;
+    }
+
+    private ScrollView.LayoutParams doweScrollViewLayoutParams(ViewGroup.LayoutParams current) {
+        int width = current != null ? current.width : ViewGroup.LayoutParams.MATCH_PARENT;
+        int height = current != null ? current.height : ViewGroup.LayoutParams.WRAP_CONTENT;
+        ScrollView.LayoutParams params = new ScrollView.LayoutParams(width, height);
+        doweCopyMargins(params, current);
+        return params;
+    }
+
+    private HorizontalScrollView.LayoutParams doweHorizontalScrollViewLayoutParams(ViewGroup.LayoutParams current) {
+        int width = current != null ? current.width : ViewGroup.LayoutParams.WRAP_CONTENT;
+        int height = current != null ? current.height : ViewGroup.LayoutParams.WRAP_CONTENT;
+        HorizontalScrollView.LayoutParams params = new HorizontalScrollView.LayoutParams(width, height);
+        doweCopyMargins(params, current);
+        return params;
+    }
+
+    private void doweCopyMargins(ViewGroup.MarginLayoutParams target, ViewGroup.LayoutParams source) {
+        if (source instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) source;
+            target.setMargins(margins.leftMargin, margins.topMargin, margins.rightMargin, margins.bottomMargin);
+        }
     }
 
 __DOWE_JAVA_REACTIVE_RUNTIME__

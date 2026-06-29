@@ -56,12 +56,16 @@ fn generates_swiftui_side_nav() {
     let views = swift_content(&output);
 
     assert!(views.contains("struct DoweSideNavRow<Content: View>: View"));
-    assert!(views.contains("DoweSideNavSubmenu(open: true)"));
+    assert!(views.contains("struct DoweSideNavEntry: Identifiable"));
+    assert!(views.contains("DoweSideNav(items: ["));
+    assert!(views.contains("kind: \"submenu\""));
+    assert!(views.contains("open: true"));
+    assert!(views.contains("path: \"/bars\""));
+    assert!(views.contains("DoweSideNavSubmenu(open: item.open)"));
     assert!(views.contains("withAnimation(.easeInOut(duration: 0.18))"));
     assert!(views.contains(".transition(.opacity.combined(with: .move(edge: .top)))"));
-    assert!(views.contains("active: activePath == \"/bars\""));
-    assert!(views.contains("Text(\"Workspace\")"));
-    assert!(views.contains("Text(\"Blogs\")"));
+    assert!(views.contains("label: \"Workspace\""));
+    assert!(views.contains("label: \"Blogs\""));
 }
 
 #[test]
@@ -80,6 +84,12 @@ fn generates_swiftui_navigation_shell_components() {
     assert!(views.contains("HStack(alignment: .top"));
     assert!(views.contains("Text(\"Resource hub\")"));
     assert!(views.contains("Text(\"Side Home\")"));
+    assert!(views.contains(
+        ".frame(width: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.fixed(CGFloat(384)))))"
+    ));
+    assert!(views.contains(
+        ".frame(maxWidth: doweMaxSize(doweResponsive(viewportWidth, xs: DoweSize.fixed(CGFloat(384)))))"
+    ));
 }
 
 #[test]

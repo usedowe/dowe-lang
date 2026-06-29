@@ -186,6 +186,94 @@ struct DoweSideNavRow<Content: View>: View {
     }
 }
 
+struct DoweSideNavEntry: Identifiable {
+    let id: String
+    let kind: String
+    let label: String
+    let description: String?
+    let status: String?
+    let operation: String?
+    let path: String?
+    let fragment: String?
+    let open: Bool
+    let children: [DoweSideNavEntry]
+}
+
+struct DoweSideNav: View {
+    let items: [DoweSideNavEntry]
+    let activePath: String
+    let wide: Bool
+    let paddingHorizontal: CGFloat
+    let paddingVertical: CGFloat
+    let gap: CGFloat
+    let labelFont: Font
+    let descriptionFont: Font
+    let backgroundColor: Color
+    let contentColor: Color
+    let activeContentColor: Color
+    let borderColor: Color?
+    let navigate: (String, String, String?) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: CGFloat(2)) {
+            ForEach(items) { item in
+                entryView(item)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func entryView(_ item: DoweSideNavEntry) -> some View {
+        switch item.kind {
+        case "divider":
+            Divider()
+                .padding(.vertical, CGFloat(8))
+        case "submenu":
+            DoweSideNavSubmenu(open: item.open) {
+                ForEach(item.children) { child in
+                    row(child, header: false, action: action(for: child))
+                }
+            } label: {
+                row(item, header: true, action: nil)
+            }
+        case "header":
+            row(item, header: true, action: action(for: item))
+        default:
+            row(item, header: false, action: action(for: item))
+        }
+    }
+
+    private func row(_ item: DoweSideNavEntry, header: Bool, action: (() -> Void)?) -> some View {
+        DoweSideNavRow(active: item.path == activePath, wide: wide, paddingHorizontal: paddingHorizontal, paddingVertical: paddingVertical, gap: gap, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, action: action) {
+            VStack(alignment: .leading, spacing: CGFloat(0)) {
+                Text(item.label)
+                    .font(labelFont)
+                    .fontWeight(header ? .semibold : .regular)
+                if let description = item.description {
+                    Text(description)
+                        .font(descriptionFont)
+                        .opacity(0.72)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let status = item.status {
+                Text(status)
+                    .font(descriptionFont)
+                    .fontWeight(.semibold)
+            }
+        }
+    }
+
+    private func action(for item: DoweSideNavEntry) -> (() -> Void)? {
+        guard let path = item.path else {
+            return nil
+        }
+        return {
+            navigate(item.operation ?? "push", path, item.fragment)
+        }
+    }
+}
+
 struct DoweNavMenu<Content: View, Popover: View>: View {
     @State private var openIndex: Int? = nil
     let gap: CGFloat

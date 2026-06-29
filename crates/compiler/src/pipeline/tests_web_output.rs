@@ -1,14 +1,14 @@
-    #[test]
-    fn compiles_design_system_components_and_responsive_props() {
-        let temp = TempDir::new().expect("tempdir");
-        write_fixture_with_views(
-            temp.path(),
-            r#"layout AuthLayout
+#[test]
+fn compiles_design_system_components_and_responsive_props() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
   Box bg:"background" color:"onBackground" p:{ xs:2 md:4 }
     Text size:"sm"
       Shell
     children"#,
-            r#"page loginPage
+        r#"page loginPage
   Box p:10 px:0.5 w:"full"
     Flex justify:"center" align:"center" gap:{ xs:2 lg:6 }
       Card variant:"soft" scheme:"primary" rounded:"lg" border:1 p:{ xs:4 md:8 }
@@ -24,138 +24,297 @@
         Card scheme:"primary"
           Text
             Default"#,
-        );
+    );
 
-        let project = compile_dev(temp.path()).expect("project");
-        let body = &project.web.pages[0].body_html;
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
 
-        assert!(body.contains(r#"class="box bg-background color-onBackground p-2 md:p-4""#));
-        assert!(body.contains(r#"class="box p-10 px-0.5 w-full""#));
-        assert!(body.contains(r#"class="flex justify-center align-center gap-2 lg:gap-6""#));
-        assert!(
-            body.contains(
-                r#"class="card p-4 md:p-8 rounded-lg border-1 is-soft is-primary""#
-            )
-        );
-        assert!(body.contains(
-            r#"class="title-2xl bg-softPrimary p-4 weight-extrabold tracking-tight""#
-        ));
-        assert!(body.contains(
+    assert!(body.contains(r#"class="box bg-background color-onBackground p-2 md:p-4""#));
+    assert!(body.contains(r#"class="box p-10 px-0.5 w-full""#));
+    assert!(body.contains(r#"class="flex justify-center align-center gap-2 lg:gap-6""#));
+    assert!(body.contains(r#"class="card p-4 md:p-8 rounded-lg border-1 is-soft is-primary""#));
+    assert!(
+        body.contains(r#"class="title-2xl bg-softPrimary p-4 weight-extrabold tracking-tight""#)
+    );
+    assert!(body.contains(
             r#"class="text-md bg-surface color-onPrimary rounded-md border-1 weight-bold tracking-wide""#
         ));
-        assert!(
-            body.contains(r#"class="button button-md px-4 py-2.5 min-h-10 is-solid is-danger""#)
-        );
-        assert!(body.contains(
-            r#"class="button button-lg px-5 py-3 min-h-11 rounded-full is-soft is-warning""#
-        ));
-        assert!(
-            body.contains(
-                r#"<div class="control is-outlined is-info"><input class="input"></div>"#
-            )
-        );
-        assert!(body.contains(r#"class="card p-4 lg:p-5 is-solid is-primary""#));
+    assert!(body.contains(r#"class="button button-md px-4 py-2.5 min-h-10 is-solid is-danger""#));
+    assert!(body.contains(
+        r#"class="button button-lg px-5 py-3 min-h-11 rounded-full is-soft is-warning""#
+    ));
+    assert!(
+        body.contains(r#"<div class="control is-outlined is-info"><input class="input"></div>"#)
+    );
+    assert!(body.contains(r#"class="card p-4 lg:p-5 is-solid is-primary""#));
 
-        let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
-        assert!(css.contains("--dowe-primary"));
-        assert!(css.contains("--dowe-softDanger"));
-        assert!(!css.contains(".p-96"));
-        let layout_css_path = temp
-            .path()
-            .join(".dowe/web")
-            .join(&project.web.pages[0].css_chunks[0]);
-        let layout_css = fs::read_to_string(layout_css_path).expect("layout css");
-        assert!(layout_css.contains(".color-onBackground{color:var(--dowe-onBackground);}"));
+    let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
+    assert!(css.contains("--dowe-primary"));
+    assert!(css.contains("--dowe-softDanger"));
+    assert!(!css.contains(".p-96"));
+    let layout_css_path = temp
+        .path()
+        .join(".dowe/web")
+        .join(&project.web.pages[0].css_chunks[0]);
+    let layout_css = fs::read_to_string(layout_css_path).expect("layout css");
+    assert!(layout_css.contains(".color-onBackground{color:var(--dowe-onBackground);}"));
 
-        let page_css_path = temp
-            .path()
-            .join(".dowe/web")
-            .join(&project.web.pages[0].css_chunks[1]);
-        let page_css = fs::read_to_string(page_css_path).expect("page css");
-        assert!(page_css.contains(".p-10{padding:2.5rem;}"));
-        assert!(page_css.contains(".px-0\\.5{padding-left:0.125rem;padding-right:0.125rem;}"));
-        assert!(page_css.contains(".md\\:p-8"));
-        assert!(page_css.contains(".lg\\:p-5"));
-        assert!(!page_css.contains(".lg\\:p-8"));
-        assert!(page_css.contains(".lg\\:gap-6"));
-        assert!(page_css.contains(".title-2xl{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(1.75rem, 1.4rem + 1vw, 2.25rem);line-height:1.2;font-weight:700;letter-spacing:-0.025em;margin:0;}"));
-        assert!(page_css.contains(".text-md{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);line-height:1.6;font-weight:400;margin:0;}"));
-        assert!(page_css.contains(".color-onPrimary{color:var(--dowe-onPrimary);}"));
-        assert!(page_css.contains(".button-md{padding:0.625rem 1rem;min-height:2.5rem;}"));
-        assert!(page_css.contains(".button-lg{padding:0.75rem 1.25rem;min-height:2.75rem;}"));
-        assert!(page_css.contains(".min-h-10{min-height:2.5rem;}"));
-        assert!(page_css.contains(".rounded-full{border-radius:9999px;}"));
-        assert!(page_css.contains(".weight-extrabold{font-weight:800;}"));
-        assert!(page_css.contains(".tracking-wide{letter-spacing:0.02em;}"));
-        assert!(!page_css.contains(".p-96"));
+    let page_css_path = temp
+        .path()
+        .join(".dowe/web")
+        .join(&project.web.pages[0].css_chunks[1]);
+    let page_css = fs::read_to_string(page_css_path).expect("page css");
+    assert!(page_css.contains(".p-10{padding:2.5rem;}"));
+    assert!(page_css.contains(".px-0\\.5{padding-left:0.125rem;padding-right:0.125rem;}"));
+    assert!(page_css.contains(".md\\:p-8"));
+    assert!(page_css.contains(".lg\\:p-5"));
+    assert!(!page_css.contains(".lg\\:p-8"));
+    assert!(page_css.contains(".lg\\:gap-6"));
+    assert!(page_css.contains(".title-2xl{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(1.75rem, 1.4rem + 1vw, 2.25rem);line-height:1.2;font-weight:700;letter-spacing:-0.025em;margin:0;}"));
+    assert!(page_css.contains(".text-md{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);line-height:1.6;font-weight:400;margin:0;}"));
+    assert!(page_css.contains(".color-onPrimary{color:var(--dowe-onPrimary);}"));
+    assert!(page_css.contains(".button-md{padding:0.625rem 1rem;min-height:2.5rem;}"));
+    assert!(page_css.contains(".button-lg{padding:0.75rem 1.25rem;min-height:2.75rem;}"));
+    assert!(page_css.contains(".min-h-10{min-height:2.5rem;}"));
+    assert!(page_css.contains(".rounded-full{border-radius:9999px;}"));
+    assert!(page_css.contains(".weight-extrabold{font-weight:800;}"));
+    assert!(page_css.contains(".tracking-wide{letter-spacing:0.02em;}"));
+    assert!(!page_css.contains(".p-96"));
 
-        let android = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        )
-        .expect("android");
-        assert!(android.contains("object DoweDesign"));
-        assert!(android.contains("val softWarning"));
-        assert!(android.contains("Button("));
-        assert!(android.contains("DoweDesign.danger"));
-        assert!(android.contains("DoweDesign.softWarning"));
-        assert!(android.contains("DoweDesign.onSoftWarning"));
-        assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
-        assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
-        assert!(android.contains("horizontal = doweResponsive(viewportWidth, xs = 20.dp)"));
-        assert!(android.contains("vertical = doweResponsive(viewportWidth, xs = 12.dp)"));
-        assert!(android.contains("doweResponsive(viewportWidth, xs = DoweSize.Fixed(44.dp))"));
-        assert!(android.contains(
-            "RoundedCornerShape(doweResponsive(viewportWidth, xs = 999.dp) ?: DoweDesign.radiusUi)"
-        ));
-        assert!(android.contains("DoweInput("));
-        assert!(android.contains("DoweDesign.info"));
-        assert!(android.contains("FontWeight.ExtraBold"));
-        assert!(android.contains("xs = (-0.02f).em"));
-        assert!(android.contains("DoweDesign.softPrimary"));
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("object DoweDesign"));
+    assert!(android.contains("val softWarning"));
+    assert!(android.contains("Button("));
+    assert!(android.contains("DoweDesign.danger"));
+    assert!(android.contains("DoweDesign.softWarning"));
+    assert!(android.contains("DoweDesign.onSoftWarning"));
+    assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
+    assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
+    assert!(android.contains("horizontal = doweResponsive(viewportWidth, xs = 20.dp)"));
+    assert!(android.contains("vertical = doweResponsive(viewportWidth, xs = 12.dp)"));
+    assert!(android.contains("doweResponsive(viewportWidth, xs = DoweSize.Fixed(44.dp))"));
+    assert!(android.contains(
+        "RoundedCornerShape(doweResponsive(viewportWidth, xs = 999.dp) ?: DoweDesign.radiusUi)"
+    ));
+    assert!(android.contains("DoweInput("));
+    assert!(android.contains("DoweDesign.info"));
+    assert!(android.contains("FontWeight.ExtraBold"));
+    assert!(android.contains("xs = (-0.02f).em"));
+    assert!(android.contains("DoweDesign.softPrimary"));
 
-        let ios = ios_swift_output(temp.path());
-        assert!(ios.contains("enum DoweDesign"));
-        assert!(ios.contains("static let softWarning"));
-        assert!(ios.contains("Button(action: {})"));
-        assert!(ios.contains("DoweDesign.danger"));
-        assert!(ios.contains("DoweDesign.softWarning"));
-        assert!(ios.contains("DoweDesign.onSoftWarning"));
-        assert!(
-            ios.contains(
-                ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(32)) ?? CGFloat(0))"
-            )
-        );
-        assert!(
-            ios.contains(
-                ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0))"
-            )
-        );
-        assert!(ios.contains(
-            ".padding(.horizontal, doweResponsive(viewportWidth, xs: CGFloat(20)) ?? CGFloat(0))"
-        ));
-        assert!(ios.contains(
-            ".padding(.vertical, doweResponsive(viewportWidth, xs: CGFloat(12)) ?? CGFloat(0))"
-        ));
-        assert!(ios.contains("DoweSize.fixed(CGFloat(44))"));
-        assert!(ios.contains(
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("enum DoweDesign"));
+    assert!(ios.contains("static let softWarning"));
+    assert!(ios.contains("Button(action: {})"));
+    assert!(ios.contains("DoweDesign.danger"));
+    assert!(ios.contains("DoweDesign.softWarning"));
+    assert!(ios.contains("DoweDesign.onSoftWarning"));
+    assert!(ios.contains(
+        ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(32)) ?? CGFloat(0))"
+    ));
+    assert!(ios.contains(
+        ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0))"
+    ));
+    assert!(ios.contains(
+        ".padding(.horizontal, doweResponsive(viewportWidth, xs: CGFloat(20)) ?? CGFloat(0))"
+    ));
+    assert!(ios.contains(
+        ".padding(.vertical, doweResponsive(viewportWidth, xs: CGFloat(12)) ?? CGFloat(0))"
+    ));
+    assert!(ios.contains("DoweSize.fixed(CGFloat(44))"));
+    assert!(ios.contains(
             "RoundedRectangle(cornerRadius: doweResponsive(viewportWidth, xs: CGFloat(999)) ?? DoweDesign.radiusUi)"
         ));
-        assert!(ios.contains("DoweInputField(value: nil, label: nil, placeholder: \"\", floating: false"));
-        assert!(ios.contains("Font.Weight.heavy"));
-        assert!(ios.contains("doweTextTracking"));
-        assert!(ios.contains("DoweDesign.softPrimary"));
-    }
+    assert!(
+        ios.contains("DoweInputField(value: nil, label: nil, placeholder: \"\", floating: false")
+    );
+    assert!(ios.contains("Font.Weight.heavy"));
+    assert!(ios.contains("doweTextTracking"));
+    assert!(ios.contains("DoweDesign.softPrimary"));
+}
 
-    #[test]
-    fn compiles_theme_fab_slider_and_dropzone_across_targets() {
-        let temp = TempDir::new().expect("tempdir");
-        write_fixture_with_views(
-            temp.path(),
-            r#"layout AuthLayout
+#[test]
+fn compiles_reusable_view_component_inside_sidebar_and_drawer() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"import DocsNavigation from "../components/docs-navigation"
+
+layout AuthLayout
+  signal drawerOpen value:false
+  signal drawerVisible value:true
+  action openDrawer
+    assign drawerOpen source:drawerVisible
+  Scaffold
+    appBar
+      AppBar variant:"solid" scheme:"background" bordered:true boxed:true
+        start
+          Button onClick:openDrawer show:{ xs:true md:false } variant:"ghost" scheme:"primary" size:"xs"
+            Menu
+        center
+          Text size:"xl" weight:"black" spacing:"normal"
+            DOWE
+    start
+      Sidebar show:{ xs:false md:true } w:96 pr:6 variant:"soft" scheme:"surface" size:"sm" wide:true rounded:"lg" border:1 p:4
+        DocsNavigation
+    main
+      Drawer show:{ xs:true md:false } open:drawerOpen position:"start" variant:"soft" scheme:"surface" disableOverlayClose:false hideCloseButton:false p:4 w:80
+        Sidebar variant:"soft" scheme:"surface" size:"sm" wide:true
+          DocsNavigation
+      children"#,
+        r#"page loginPage
+  Box
+    Text
+      Login"#,
+    );
+    fs::create_dir_all(temp.path().join("src/components")).expect("components");
+    fs::write(
+        temp.path().join("src/components/docs-navigation.dowe"),
+        r#"component DocsNavigation
+  header label:"Views" description:"Portable UI"
+  item label:"Docs overview" href:"/"
+  divider
+  header label:"Deploy" description:"Distribution targets"
+  item label:"Deploy overview" href:"/""#,
+    )
+    .expect("component");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
+
+    assert!(body.contains("show-true md:show-false"));
+    assert!(body.contains(r#"<nav class="sidebar show-false md:show-true"#));
+    assert!(body.contains(r#"<div class="drawer-panel show-true md:show-false"#));
+    assert_eq!(body.matches("Docs overview").count(), 2);
+    assert_eq!(body.matches("Deploy overview").count(), 2);
+
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("Text(text = \"Docs overview\""));
+    assert!(android.contains("Text(text = \"Deploy overview\""));
+
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("Text(\"Docs overview\")"));
+    assert!(ios.contains("Text(\"Deploy overview\")"));
+}
+
+#[test]
+fn rejects_reusable_view_component_usage_shape_and_cycles() {
+    let props = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        props.path(),
+        r#"import DocsNavigation from "../components/docs-navigation"
+
+layout AuthLayout
+  Box
+    DocsNavigation p:4
+    children"#,
+        r#"page loginPage
+  Text
+    Login"#,
+    );
+    fs::create_dir_all(props.path().join("src/components")).expect("components");
+    fs::write(
+        props.path().join("src/components/docs-navigation.dowe"),
+        r#"component DocsNavigation
+  Text
+    Navigation"#,
+    )
+    .expect("component");
+    let props_error = compile_dev(props.path()).expect_err("props error");
+    assert!(props_error
+        .to_string()
+        .contains("component `DocsNavigation` cannot declare args, props or children"));
+
+    let cycle = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        cycle.path(),
+        r#"import DocsNavigation from "../components/docs-navigation"
+
+layout AuthLayout
+  Box
+    DocsNavigation
+    children"#,
+        r#"page loginPage
+  Text
+    Login"#,
+    );
+    fs::create_dir_all(cycle.path().join("src/components")).expect("components");
+    fs::write(
+        cycle.path().join("src/components/docs-navigation.dowe"),
+        r#"import NestedNavigation from "./nested-navigation"
+
+component DocsNavigation
+  NestedNavigation"#,
+    )
+    .expect("component");
+    fs::write(
+        cycle.path().join("src/components/nested-navigation.dowe"),
+        r#"import DocsNavigation from "./docs-navigation"
+
+component NestedNavigation
+  DocsNavigation"#,
+    )
+    .expect("nested");
+    let cycle_error = compile_dev(cycle.path()).expect_err("cycle error");
+    assert!(cycle_error
+        .to_string()
+        .contains("component import cycle includes"));
+}
+
+#[test]
+fn rejects_reusable_view_component_as_route_component() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
   Box
     children"#,
-            r##"page loginPage
+        r#"page loginPage
+  Text
+    Login"#,
+    );
+    fs::create_dir_all(temp.path().join("src/components")).expect("components");
+    fs::write(
+        temp.path().join("src/components/docs-navigation.dowe"),
+        r#"component DocsNavigation
+  Text
+    Navigation"#,
+    )
+    .expect("component");
+    fs::write(
+        temp.path().join("src/views.dowe"),
+        r#"import AuthLayout from "./layouts/auth"
+import DocsNavigation from "./components/docs-navigation"
+
+views
+  route path:"/" layout:AuthLayout
+    page path:"" component:DocsNavigation"#,
+    )
+    .expect("views");
+
+    let error = compile_dev(temp.path()).expect_err("route component error");
+    assert!(error
+        .to_string()
+        .contains("view modules must export a layout or page"));
+}
+
+#[test]
+fn compiles_theme_fab_slider_and_dropzone_across_targets() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
+  Box
+    children"#,
+        r##"page loginPage
   signal volume value:40
   action resetVolume
     reset volume
@@ -167,150 +326,150 @@
     Slider bind:volume value:40 min:0 max:100 step:5 label:"Volume" name:"volume" scheme:"warning" size:"lg"
     Slider value:40 min:0 max:100 step:5 label:"Static volume" scheme:"warning" size:"md"
     Dropzone accept:"image/*" multiple:false maxSize:4096 name:"images" label:"Images" helpText:"PNG only" placeholder:"Drop images" variant:"outlined" scheme:"surface" size:"sm""##,
-        );
+    );
 
-        let project = compile_dev(temp.path()).expect("project");
-        let page = &project.web.pages[0];
-        let body = &page.body_html;
+    let project = compile_dev(temp.path()).expect("project");
+    let page = &project.web.pages[0];
+    let body = &page.body_html;
 
-        assert!(page.html_document.contains("theme-preference"));
-        assert!(page.html_document.contains("prefers-color-scheme"));
-        assert!(body.contains("data-dowe-theme-toggle"));
-        assert!(body.contains(r#"data-dowe-light-label="Light mode""#));
-        assert!(body.contains(r#"data-dowe-dark-label="Dark mode""#));
-        assert!(body.contains(r#"class="fab-container is-bottom-left is-fixed""#));
-        assert!(body.contains("data-dowe-fab-trigger"));
-        assert!(body.contains("data-dowe-fab-action"));
-        assert!(body.contains(r##"href="#top" data-dowe-nav="replace""##));
-        assert!(body.contains("data-dowe-slider"));
-        assert!(body.contains("data-dowe-bind="));
-        assert!(body.contains(r#"style="--dowe-slider-progress:40%""#));
-        assert!(body.contains("data-dowe-dropzone"));
-        assert!(body.contains(r#"data-dowe-dropzone-max-size="4096""#));
-        assert!(body.contains("Drop images"));
+    assert!(page.html_document.contains("theme-preference"));
+    assert!(page.html_document.contains("prefers-color-scheme"));
+    assert!(body.contains("data-dowe-theme-toggle"));
+    assert!(body.contains(r#"data-dowe-light-label="Light mode""#));
+    assert!(body.contains(r#"data-dowe-dark-label="Dark mode""#));
+    assert!(body.contains(r#"class="fab-container is-bottom-left is-fixed""#));
+    assert!(body.contains("data-dowe-fab-trigger"));
+    assert!(body.contains("data-dowe-fab-action"));
+    assert!(body.contains(r##"href="#top" data-dowe-nav="replace""##));
+    assert!(body.contains("data-dowe-slider"));
+    assert!(body.contains("data-dowe-bind="));
+    assert!(body.contains(r#"style="--dowe-slider-progress:40%""#));
+    assert!(body.contains("data-dowe-dropzone"));
+    assert!(body.contains(r#"data-dowe-dropzone-max-size="4096""#));
+    assert!(body.contains("Drop images"));
 
-        let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
-        assert!(css.contains("html.theme-transitioning"));
-        assert!(css.contains("html.page-transitioning"));
-        assert!(css.contains(".theme-toggle"));
-        assert!(css.contains(".fab-container"));
-        assert!(css.contains(".slider-wrapper"));
-        assert!(css.contains(".dropzone-input"));
+    let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
+    assert!(css.contains("html.theme-transitioning"));
+    assert!(css.contains("html.page-transitioning"));
+    assert!(css.contains(".theme-toggle"));
+    assert!(css.contains(".fab-container"));
+    assert!(css.contains(".slider-wrapper"));
+    assert!(css.contains(".dropzone-input"));
 
-        let router = fs::read_to_string(temp.path().join(".dowe/web/router.js")).expect("router");
-        assert!(router.contains("theme-preference"));
-        assert!(router.contains("startViewTransition"));
-        assert!(router.contains("hydrateThemeToggles"));
-        assert!(router.contains("hydrateFabs"));
-        assert!(router.contains("hydrateSliders"));
-        assert!(router.contains("hydrateDropzones"));
+    let router = fs::read_to_string(temp.path().join(".dowe/web/router.js")).expect("router");
+    assert!(router.contains("theme-preference"));
+    assert!(router.contains("startViewTransition"));
+    assert!(router.contains("hydrateThemeToggles"));
+    assert!(router.contains("hydrateFabs"));
+    assert!(router.contains("hydrateSliders"));
+    assert!(router.contains("hydrateDropzones"));
 
-        let android = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        )
-        .expect("android");
-        assert!(android.contains("DoweThemeToggle("));
-        assert!(android.contains("DoweSliderField("));
-        assert!(android.contains("DoweDropzone("));
-        assert!(android.contains("\"theme-preference\""));
-        assert!(android.contains("state.write("));
-        assert!(android.contains("it.toDouble()"));
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("DoweThemeToggle("));
+    assert!(android.contains("DoweSliderField("));
+    assert!(android.contains("DoweDropzone("));
+    assert!(android.contains("\"theme-preference\""));
+    assert!(android.contains("state.write("));
+    assert!(android.contains("it.toDouble()"));
 
-        let android_dev = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
-        )
-        .expect("android dev");
-        assert!(android_dev.contains("getSharedPreferences(\"dowe\", 0)"));
-        assert!(android_dev.contains("new SeekBar(this)"));
-        assert!(android_dev.contains("Drop images"));
+    let android_dev = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
+    )
+    .expect("android dev");
+    assert!(android_dev.contains("getSharedPreferences(\"dowe\", 0)"));
+    assert!(android_dev.contains("new SeekBar(this)"));
+    assert!(android_dev.contains("Drop images"));
 
-        let ios = ios_swift_output(temp.path());
-        assert!(
+    let ios = ios_swift_output(temp.path());
+    assert!(
             ios.contains(
                 "UserDefaults.standard.set(current == \"dark\" ? \"light\" : \"dark\", forKey: \"theme-preference\")"
             )
         );
-        assert!(ios.contains("Slider(value:"));
-        assert!(ios.contains("Binding<Double>.constant(40.0)"));
-        assert!(ios.contains("Text(String(format: \"%.0f\", 40.0))"));
-        assert!(!ios.contains(".constant(40).wrappedValue"));
-        assert!(ios.contains("Image(systemName: \"paperclip\")"));
-        assert!(ios.contains("StrokeStyle(lineWidth: CGFloat(2), dash: [CGFloat(6)])"));
-        assert!(ios.contains("Drop images"));
-    }
+    assert!(ios.contains("Slider(value:"));
+    assert!(ios.contains("Binding<Double>.constant(40.0)"));
+    assert!(ios.contains("Text(String(format: \"%.0f\", 40.0))"));
+    assert!(!ios.contains(".constant(40).wrappedValue"));
+    assert!(ios.contains("Image(systemName: \"paperclip\")"));
+    assert!(ios.contains("StrokeStyle(lineWidth: CGFloat(2), dash: [CGFloat(6)])"));
+    assert!(ios.contains("Drop images"));
+}
 
-    #[test]
-    fn compiles_expanded_text_weight_overrides() {
-        let temp = TempDir::new().expect("tempdir");
-        write_fixture_with_views(
-            temp.path(),
-            r#"layout AuthLayout
+#[test]
+fn compiles_expanded_text_weight_overrides() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
   Box
     children"#,
-            r#"page loginPage
+        r#"page loginPage
   Box
     Text weight:{ xs:"thin" md:"extralight" lg:"black" }
       Weighted text
     Title weight:"black"
       Weighted title"#,
-        );
+    );
 
-        let project = compile_dev(temp.path()).expect("project");
-        let body = &project.web.pages[0].body_html;
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
 
-        assert!(body.contains(
-            r#"class="text-md weight-thin md:weight-extralight lg:weight-black""#
-        ));
-        assert!(body.contains(r#"class="title-md weight-black""#));
+    assert!(body.contains(r#"class="text-md weight-thin md:weight-extralight lg:weight-black""#));
+    assert!(body.contains(r#"class="title-md weight-black""#));
 
-        let page_css_path = temp
-            .path()
-            .join(".dowe/web")
-            .join(&project.web.pages[0].css_chunks[1]);
-        let page_css = fs::read_to_string(page_css_path).expect("page css");
-        assert!(page_css.contains(".weight-thin{font-weight:100;}"));
-        assert!(page_css.contains(".md\\:weight-extralight{font-weight:200;}"));
-        assert!(page_css.contains(".lg\\:weight-black{font-weight:900;}"));
-        assert!(page_css.contains(".weight-black{font-weight:900;}"));
+    let page_css_path = temp
+        .path()
+        .join(".dowe/web")
+        .join(&project.web.pages[0].css_chunks[1]);
+    let page_css = fs::read_to_string(page_css_path).expect("page css");
+    assert!(page_css.contains(".weight-thin{font-weight:100;}"));
+    assert!(page_css.contains(".md\\:weight-extralight{font-weight:200;}"));
+    assert!(page_css.contains(".lg\\:weight-black{font-weight:900;}"));
+    assert!(page_css.contains(".weight-black{font-weight:900;}"));
 
-        let android = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        )
-        .expect("android");
-        assert!(android.contains("FontWeight.Thin"));
-        assert!(android.contains("FontWeight.ExtraLight"));
-        assert!(android.contains("FontWeight.Black"));
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("FontWeight.Thin"));
+    assert!(android.contains("FontWeight.ExtraLight"));
+    assert!(android.contains("FontWeight.Black"));
 
-        let android_dev = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
-        )
-        .expect("android dev");
-        assert!(android_dev.contains(
-            "doweTextWeight(doweResponsiveInt(viewportWidth, 100, null, 200, 900, null), 400)"
-        ));
-        assert!(android_dev.contains("doweTextWeight(doweResponsiveInt(viewportWidth, 900, null, null, null, null), 400)"));
+    let android_dev = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
+    )
+    .expect("android dev");
+    assert!(android_dev.contains(
+        "doweTextWeight(doweResponsiveInt(viewportWidth, 100, null, 200, 900, null), 400)"
+    ));
+    assert!(android_dev.contains(
+        "doweTextWeight(doweResponsiveInt(viewportWidth, 900, null, null, null, null), 400)"
+    ));
 
-        let ios = ios_swift_output(temp.path());
-        assert!(ios.contains("Font.Weight.ultraLight"));
-        assert!(ios.contains("Font.Weight.thin"));
-        assert!(ios.contains("Font.Weight.black"));
-    }
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("Font.Weight.ultraLight"));
+    assert!(ios.contains("Font.Weight.thin"));
+    assert!(ios.contains("Font.Weight.black"));
+}
 
-    #[test]
-    fn compiles_platform_reset_and_font_tokens() {
-        let temp = TempDir::new().expect("tempdir");
-        write_fixture_with_views(
-            temp.path(),
-            r#"layout AuthLayout
+#[test]
+fn compiles_platform_reset_and_font_tokens() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
   Box font:"roboto"
     Text
       Layout
     children"#,
-            r#"page loginPage
+        r#"page loginPage
   Box font:{ xs:"inter" md:"lato" }
     Text
       Inherited
@@ -323,209 +482,196 @@
     Input font:"roboto"
     Text font:"lora"
       Caption"#,
-        );
+    );
 
-        let project = compile_dev(temp.path()).expect("project");
-        let body = &project.web.pages[0].body_html;
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
 
-        assert!(body.contains(r#"class="box font-roboto""#));
-        assert!(body.contains(r#"class="box font-inter md:font-lato""#));
-        assert!(body.contains(r#"class="text-md font-manrope""#));
-        assert!(body.contains(r#"class="title-md font-poppins""#));
-        assert!(body.contains(
-            r#"class="button button-md font-montserrat px-4 py-2.5 min-h-10 is-solid is-primary""#
-        ));
-        assert!(body.contains(r#"class="control font-roboto is-solid is-primary""#));
-        assert!(body.contains(r#"class="text-md font-lora""#));
+    assert!(body.contains(r#"class="box font-roboto""#));
+    assert!(body.contains(r#"class="box font-inter md:font-lato""#));
+    assert!(body.contains(r#"class="text-md font-manrope""#));
+    assert!(body.contains(r#"class="title-md font-poppins""#));
+    assert!(body.contains(
+        r#"class="button button-md font-montserrat px-4 py-2.5 min-h-10 is-solid is-primary""#
+    ));
+    assert!(body.contains(r#"class="control font-roboto is-solid is-primary""#));
+    assert!(body.contains(r#"class="text-md font-lora""#));
 
-        let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
-        assert!(css.contains("body{margin:0;"));
-        assert!(css.contains("p,h1,h2,h3,h4,h5,h6{margin:0;"));
-        assert!(css.contains("a{color:inherit;text-decoration:inherit;}"));
-        assert!(css.contains("button,input,textarea,select{font:inherit;color:inherit;margin:0;}"));
-        assert!(css.contains("--dowe-font-inter"));
-        assert!(css.contains("@font-face{font-family:\"Dowe Inter\""));
-        assert!(css.contains("font-weight:100;src:url(\"/fonts/inter/inter-light.ttf\")"));
-        assert!(css.contains("src:url(\"/fonts/inter/inter-regular.ttf\") format(\"truetype\")"));
-        assert!(css.contains("font-weight:900;src:url(\"/fonts/inter/inter-extrabold.ttf\")"));
-        assert!(
-            temp.path()
-                .join(".dowe/fonts/inter/inter-regular.ttf")
-                .is_file()
-        );
-        assert!(!temp.path().join(".dowe/fonts/quicksand").exists());
+    let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
+    assert!(css.contains("body{margin:0;"));
+    assert!(css.contains("p,h1,h2,h3,h4,h5,h6{margin:0;"));
+    assert!(css.contains("a{color:inherit;text-decoration:inherit;}"));
+    assert!(css.contains("button,input,textarea,select{font:inherit;color:inherit;margin:0;}"));
+    assert!(css.contains("--dowe-font-inter"));
+    assert!(css.contains("@font-face{font-family:\"Dowe Inter\""));
+    assert!(css.contains("font-weight:100;src:url(\"/fonts/inter/inter-light.ttf\")"));
+    assert!(css.contains("src:url(\"/fonts/inter/inter-regular.ttf\") format(\"truetype\")"));
+    assert!(css.contains("font-weight:900;src:url(\"/fonts/inter/inter-extrabold.ttf\")"));
+    assert!(temp
+        .path()
+        .join(".dowe/fonts/inter/inter-regular.ttf")
+        .is_file());
+    assert!(!temp.path().join(".dowe/fonts/quicksand").exists());
 
-        let page_css_path = temp
-            .path()
-            .join(".dowe/web")
-            .join(&project.web.pages[0].css_chunks[1]);
-        let page_css = fs::read_to_string(page_css_path).expect("page css");
-        assert!(page_css.contains(".font-poppins{font-family:var(--dowe-font-poppins);}"));
-        assert!(page_css.contains(".font-manrope{font-family:var(--dowe-font-manrope);}"));
-        assert!(page_css.contains(".font-lora{font-family:var(--dowe-font-lora);}"));
-        assert!(page_css.contains(".md\\:font-lato{font-family:var(--dowe-font-lato);}"));
+    let page_css_path = temp
+        .path()
+        .join(".dowe/web")
+        .join(&project.web.pages[0].css_chunks[1]);
+    let page_css = fs::read_to_string(page_css_path).expect("page css");
+    assert!(page_css.contains(".font-poppins{font-family:var(--dowe-font-poppins);}"));
+    assert!(page_css.contains(".font-manrope{font-family:var(--dowe-font-manrope);}"));
+    assert!(page_css.contains(".font-lora{font-family:var(--dowe-font-lora);}"));
+    assert!(page_css.contains(".md\\:font-lato{font-family:var(--dowe-font-lato);}"));
 
-        let android = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        )
-        .expect("android");
-        assert!(android.contains("private enum class DoweFont"));
-        assert!(android.contains("Font(R.font.inter_light, FontWeight.Thin)"));
-        assert!(android.contains("Font(R.font.inter_regular, FontWeight.Normal)"));
-        assert!(android.contains("Font(R.font.inter_extrabold, FontWeight.Black)"));
-        assert!(android.contains("DoweFont.Lato -> DoweFonts.lato"));
-        assert!(android.contains("DoweFont.Manrope -> DoweFonts.manrope"));
-        assert!(android.contains("DoweFont.Lora -> DoweFonts.lora"));
-        assert!(
-            android
-                .contains("doweResponsive(viewportWidth, xs = DoweFont.Inter, md = DoweFont.Lato)")
-        );
-        assert!(android.contains("xs = DoweFont.Poppins"));
-        assert!(android.contains("contentPadding = PaddingValues(0.dp)"));
-        assert!(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/res/font/inter_regular.ttf")
-                .is_file()
-        );
-        assert!(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/res/font/manrope_regular.ttf")
-                .is_file()
-        );
-        assert!(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/res/font/lora_regular.ttf")
-                .is_file()
-        );
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("private enum class DoweFont"));
+    assert!(android.contains("Font(R.font.inter_light, FontWeight.Thin)"));
+    assert!(android.contains("Font(R.font.inter_regular, FontWeight.Normal)"));
+    assert!(android.contains("Font(R.font.inter_extrabold, FontWeight.Black)"));
+    assert!(android.contains("DoweFont.Lato -> DoweFonts.lato"));
+    assert!(android.contains("DoweFont.Manrope -> DoweFonts.manrope"));
+    assert!(android.contains("DoweFont.Lora -> DoweFonts.lora"));
+    assert!(
+        android.contains("doweResponsive(viewportWidth, xs = DoweFont.Inter, md = DoweFont.Lato)")
+    );
+    assert!(android.contains("xs = DoweFont.Poppins"));
+    assert!(android.contains("contentPadding = PaddingValues(0.dp)"));
+    assert!(temp
+        .path()
+        .join(".dowe/apps/android/app/src/main/res/font/inter_regular.ttf")
+        .is_file());
+    assert!(temp
+        .path()
+        .join(".dowe/apps/android/app/src/main/res/font/manrope_regular.ttf")
+        .is_file());
+    assert!(temp
+        .path()
+        .join(".dowe/apps/android/app/src/main/res/font/lora_regular.ttf")
+        .is_file());
 
-        let android_dev = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
-        )
-        .expect("android dev");
-        assert!(android_dev.contains("setAllCaps(false)"));
-        assert!(android_dev.contains(
-            "doweResponsiveString(viewportWidth, \"Inter\", null, \"Lato\", null, null)"
-        ));
+    let android_dev = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
+    )
+    .expect("android dev");
+    assert!(android_dev.contains("setAllCaps(false)"));
+    assert!(android_dev
+        .contains("doweResponsiveString(viewportWidth, \"Inter\", null, \"Lato\", null, null)"));
 
-        let ios = ios_swift_output(temp.path());
-        assert!(ios.contains("enum DoweFont"));
-        assert!(ios.contains("doweResponsive(viewportWidth, xs: .inter, md: .lato)"));
-        assert!(ios.contains("xs: .poppins"));
-        assert!(ios.contains("xs: .manrope"));
-        assert!(ios.contains("xs: .lora"));
-        assert!(ios.contains(".buttonStyle(.plain)"));
-        assert!(ios.contains(".textFieldStyle(.plain)"));
-        assert!(
-            temp.path()
-                .join(".dowe/apps/ios/Fonts/inter-regular.ttf")
-                .is_file()
-        );
-        assert!(
-            temp.path()
-                .join(".dowe/apps/ios/Fonts/manrope-regular.ttf")
-                .is_file()
-        );
-        assert!(
-            temp.path()
-                .join(".dowe/apps/ios/Fonts/lora-regular.ttf")
-                .is_file()
-        );
-        let plist =
-            fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist")).expect("plist");
-        assert!(plist.contains("UIAppFonts"));
-        assert!(plist.contains("Fonts/inter-regular.ttf"));
-    }
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("enum DoweFont"));
+    assert!(ios.contains("doweResponsive(viewportWidth, xs: .inter, md: .lato)"));
+    assert!(ios.contains("xs: .poppins"));
+    assert!(ios.contains("xs: .manrope"));
+    assert!(ios.contains("xs: .lora"));
+    assert!(ios.contains(".buttonStyle(.plain)"));
+    assert!(ios.contains(".textFieldStyle(.plain)"));
+    assert!(temp
+        .path()
+        .join(".dowe/apps/ios/Fonts/inter-regular.ttf")
+        .is_file());
+    assert!(temp
+        .path()
+        .join(".dowe/apps/ios/Fonts/manrope-regular.ttf")
+        .is_file());
+    assert!(temp
+        .path()
+        .join(".dowe/apps/ios/Fonts/lora-regular.ttf")
+        .is_file());
+    let plist = fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist")).expect("plist");
+    assert!(plist.contains("UIAppFonts"));
+    assert!(plist.contains("Fonts/inter-regular.ttf"));
+}
 
-    #[test]
-    fn compiles_configured_font_install_set() {
-        let temp = TempDir::new().expect("tempdir");
-        write_fixture_with_views(
-            temp.path(),
-            r#"layout AuthLayout
+#[test]
+fn compiles_configured_font_install_set() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
   Box
     Text
       Layout
     children"#,
-            r#"page loginPage
+        r#"page loginPage
   Box
     Text
       Login"#,
-        );
-        fs::write(
-            temp.path().join("src/config.dowe"),
-            r#"config
+    );
+    fs::write(
+        temp.path().join("src/config.dowe"),
+        r#"config
   fonts default:"manrope" install:["lora"]"#,
-        )
-        .expect("config");
+    )
+    .expect("config");
 
-        let project = compile_dev(temp.path()).expect("project");
-        assert_eq!(
-            project.font_config.default_family,
-            dowe_components::FontFamily::Manrope
-        );
+    let project = compile_dev(temp.path()).expect("project");
+    assert_eq!(
+        project.font_config.default_family,
+        dowe_components::FontFamily::Manrope
+    );
 
-        let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
-        assert!(css.contains("html{font-family:var(--dowe-font-manrope);"));
-        assert!(css.contains("body{margin:0;"));
-        assert!(css.contains("--dowe-font-manrope"));
-        assert!(css.contains("--dowe-font-lora"));
-        assert!(!css.contains("--dowe-font-inter"));
-        assert!(!css.contains("--dowe-font-poppins"));
-        assert!(
-            temp.path()
-                .join(".dowe/fonts/manrope/manrope-regular.ttf")
-                .is_file()
-        );
-        assert!(
-            temp.path()
-                .join(".dowe/fonts/lora/lora-regular.ttf")
-                .is_file()
-        );
-        assert!(!temp.path().join(".dowe/fonts/inter").exists());
+    let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
+    assert!(css.contains("html{font-family:var(--dowe-font-manrope);"));
+    assert!(css.contains("body{margin:0;"));
+    assert!(css.contains("--dowe-font-manrope"));
+    assert!(css.contains("--dowe-font-lora"));
+    assert!(!css.contains("--dowe-font-inter"));
+    assert!(!css.contains("--dowe-font-poppins"));
+    assert!(temp
+        .path()
+        .join(".dowe/fonts/manrope/manrope-regular.ttf")
+        .is_file());
+    assert!(temp
+        .path()
+        .join(".dowe/fonts/lora/lora-regular.ttf")
+        .is_file());
+    assert!(!temp.path().join(".dowe/fonts/inter").exists());
 
-        let android = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        )
-        .expect("android");
-        assert!(android.contains("null -> DoweFonts.manrope"));
-        assert!(android.contains("DoweFont.Lora -> DoweFonts.lora"));
-        assert!(!android.contains("R.font.inter_regular"));
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("null -> DoweFonts.manrope"));
+    assert!(android.contains("DoweFont.Lora -> DoweFonts.lora"));
+    assert!(!android.contains("R.font.inter_regular"));
 
-        let android_dev = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
-        )
-        .expect("android dev");
-        assert!(android_dev.contains("return value == null ? \"Manrope\" : value;"));
+    let android_dev = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
+    )
+    .expect("android dev");
+    assert!(android_dev.contains("return value == null ? \"Manrope\" : value;"));
 
-        let plist =
-            fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist")).expect("plist");
-        assert!(plist.contains("Fonts/manrope-regular.ttf"));
-        assert!(plist.contains("Fonts/lora-regular.ttf"));
-        assert!(!plist.contains("Fonts/inter-regular.ttf"));
-    }
+    let plist = fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist")).expect("plist");
+    assert!(plist.contains("Fonts/manrope-regular.ttf"));
+    assert!(plist.contains("Fonts/lora-regular.ttf"));
+    assert!(!plist.contains("Fonts/inter-regular.ttf"));
+}
 
-    #[test]
-    fn compiles_design_tokens_from_config_dowe() {
-        let temp = TempDir::new().expect("tempdir");
-        write_fixture_with_views(
-            temp.path(),
-            r#"layout AuthLayout
+#[test]
+fn compiles_design_tokens_from_config_dowe() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
   Box
     Text
       Layout
     children"#,
-            r#"page loginPage
+        r#"page loginPage
   Card scheme:"primary"
     Text
       Login"#,
-        );
-        fs::write(
-            temp.path().join("src/config.dowe"),
-            r##"config
+    );
+    fs::write(
+        temp.path().join("src/config.dowe"),
+        r##"config
   fonts default:"inter" install:["inter"]
   design defaultTheme:"light"
     theme name:"light"
@@ -533,113 +679,103 @@
       radii radius:10 radiusBox:14 radiusUi:9
     theme name:"dark"
       colors primary:"#ffffff" onPrimary:"#000000""##,
-        )
-        .expect("config");
+    )
+    .expect("config");
 
-        let project = compile_dev(temp.path()).expect("project");
+    let project = compile_dev(temp.path()).expect("project");
 
-        assert_eq!(project.design_config.default_theme, "light");
-        assert!(project.design_config.theme("dark").is_some());
+    assert_eq!(project.design_config.default_theme, "light");
+    assert!(project.design_config.theme("dark").is_some());
 
-        let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
-        assert!(css.contains("--dowe-primary:#000000;"));
-        assert!(css.contains("--dowe-radius:10px;"));
-        assert!(css.contains("--dowe-radiusBox:14px;"));
-        assert!(css.contains("--dowe-radiusUi:9px;"));
-        assert!(css.contains("[data-dowe-theme=\"dark\"]{"));
-        assert!(css.contains("--dowe-primary:#ffffff;"));
+    let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
+    assert!(css.contains("--dowe-primary:#000000;"));
+    assert!(css.contains("--dowe-radius:10px;"));
+    assert!(css.contains("--dowe-radiusBox:14px;"));
+    assert!(css.contains("--dowe-radiusUi:9px;"));
+    assert!(css.contains("[data-dowe-theme=\"dark\"]{"));
+    assert!(css.contains("--dowe-primary:#ffffff;"));
 
-        let android_theme = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DoweTheme.kt"),
-        )
-        .expect("android theme");
-        assert!(android_theme.contains("const val defaultTheme = \"light\""));
-        assert!(android_theme.contains("\"dark\""));
-        assert!(android_theme.contains("\"primary\" to Color(0xFF000000)"));
-        let android_dev = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
-        )
-        .expect("android dev");
-        assert!(
-            android_dev.contains("private static final int DOWE_PRIMARY = Color.rgb(0, 0, 0);")
-        );
-        assert!(android_dev.contains("private static final float DOWE_RADIUS_UI = 9f;"));
+    let android_theme = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DoweTheme.kt"),
+    )
+    .expect("android theme");
+    assert!(android_theme.contains("const val defaultTheme = \"light\""));
+    assert!(android_theme.contains("\"dark\""));
+    assert!(android_theme.contains("\"primary\" to Color(0xFF000000)"));
+    let android_dev = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
+    )
+    .expect("android dev");
+    assert!(android_dev.contains("private static final int DOWE_PRIMARY = Color.rgb(0, 0, 0);"));
+    assert!(android_dev.contains("private static final float DOWE_RADIUS_UI = 9f;"));
 
-        let ios_theme =
-            fs::read_to_string(temp.path().join(".dowe/apps/ios/DoweTheme.swift"))
-                .expect("ios theme");
-        assert!(ios_theme.contains("static let defaultTheme = \"light\""));
-        assert!(ios_theme.contains("\"dark\""));
-        assert!(ios_theme.contains("\"primary\": Color(red: 0.000, green: 0.000, blue: 0.000)"));
-    }
+    let ios_theme =
+        fs::read_to_string(temp.path().join(".dowe/apps/ios/DoweTheme.swift")).expect("ios theme");
+    assert!(ios_theme.contains("static let defaultTheme = \"light\""));
+    assert!(ios_theme.contains("\"dark\""));
+    assert!(ios_theme.contains("\"primary\": Color(red: 0.000, green: 0.000, blue: 0.000)"));
+}
 
-    #[test]
-    fn compiles_mobile_responsive_runtime_values() {
-        let temp = TempDir::new().expect("tempdir");
-        write_fixture_with_views(
-            temp.path(),
-            r#"layout AuthLayout
+#[test]
+fn compiles_mobile_responsive_runtime_values() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
   Box p:{ xs:4 md:8 }
     Text
       Layout
     children"#,
-            r#"page loginPage
+        r#"page loginPage
   Box p:{ md:8 }
     Text size:{ md:"lg" }
       Login"#,
-        );
+    );
 
-        let project = compile_dev(temp.path()).expect("project");
-        let body = &project.web.pages[0].body_html;
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
 
-        assert!(body.contains(r#"class="box p-4 md:p-8""#));
-        assert!(body.contains(r#"class="box md:p-8""#));
+    assert!(body.contains(r#"class="box p-4 md:p-8""#));
+    assert!(body.contains(r#"class="box md:p-8""#));
 
-        let android = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        )
-        .expect("android");
-        assert!(android.contains("BoxWithConstraints"));
-        assert!(android.contains(
-            "fun IndexScreen(viewportWidth: Dp, sectionRegistry: DoweSectionRegistry, navigate:"
-        ));
-        assert!(android.contains("doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
-        assert!(android.contains("doweResponsive(viewportWidth, md = 32.dp)"));
-        assert!(android.contains(
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("BoxWithConstraints"));
+    assert!(android.contains(
+        "fun IndexScreen(viewportWidth: Dp, sectionRegistry: DoweSectionRegistry, navigate:"
+    ));
+    assert!(android.contains("doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
+    assert!(android.contains("doweResponsive(viewportWidth, md = 32.dp)"));
+    assert!(android.contains(
             "doweResponsive(viewportWidth, md = doweTextSize(viewportWidth, min = 16f, preferredBase = 15.2f, preferredViewport = 0.3f, max = 18f)) ?: doweTextSize(viewportWidth, min = 14f, preferredBase = 13.12f, preferredViewport = 0.25f, max = 16f)"
         ));
 
-        let android_dev = fs::read_to_string(
-            temp.path()
-                .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
-        )
-        .expect("android dev");
-        assert!(
-            android_dev
-                .contains("viewportWidth = getResources().getConfiguration().screenWidthDp;")
-        );
-        assert!(android_dev.contains("int viewportWidth = this.viewportWidth;"));
-        assert!(android_dev.contains("doweResponsiveInt(viewportWidth, 16, null, 32, null, null)"));
-        assert!(
-            android_dev.contains("doweResponsiveInt(viewportWidth, null, null, 32, null, null)")
-        );
+    let android_dev = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/dev/src/dev/dowe/generated/DoweDevActivity.java"),
+    )
+    .expect("android dev");
+    assert!(
+        android_dev.contains("viewportWidth = getResources().getConfiguration().screenWidthDp;")
+    );
+    assert!(android_dev.contains("int viewportWidth = this.viewportWidth;"));
+    assert!(android_dev.contains("doweResponsiveInt(viewportWidth, 16, null, 32, null, null)"));
+    assert!(android_dev.contains("doweResponsiveInt(viewportWidth, null, null, 32, null, null)"));
 
-        let ios = ios_swift_output(temp.path());
-        assert!(ios.contains("GeometryReader { geometry in"));
-        assert!(ios.contains("let viewportWidth: CGFloat"));
-        assert!(
-            ios.contains(
-                ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(32)) ?? CGFloat(0))"
-            )
-        );
-        assert!(
-            ios.contains(".padding(doweResponsive(viewportWidth, md: CGFloat(32)) ?? CGFloat(0))")
-        );
-        assert!(ios.contains(
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("GeometryReader { geometry in"));
+    assert!(ios.contains("let viewportWidth: CGFloat"));
+    assert!(ios.contains(
+        ".padding(doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(32)) ?? CGFloat(0))"
+    ));
+    assert!(ios.contains(".padding(doweResponsive(viewportWidth, md: CGFloat(32)) ?? CGFloat(0))"));
+    assert!(ios.contains(
             ".font(doweFont(.inter, size: doweResponsive(viewportWidth, md: doweTextSize(viewportWidth, min: CGFloat(16), preferredBase: CGFloat(15.2), preferredViewport: CGFloat(0.3), max: CGFloat(18))) ?? doweTextSize(viewportWidth, min: CGFloat(14), preferredBase: CGFloat(13.12), preferredViewport: CGFloat(0.25), max: CGFloat(16))))"
         ));
-        assert!(ios.contains(".fontWeight(Font.Weight.regular)"));
-    }
+    assert!(ios.contains(".fontWeight(Font.Weight.regular)"));
+}

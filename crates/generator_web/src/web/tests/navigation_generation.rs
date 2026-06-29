@@ -156,11 +156,14 @@ fn renders_navigation_shell_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-navmenu-popover="2""#));
     assert!(html.contains(r#"data-dowe-navmenu-href="/docs""#));
     assert!(html.contains("Resource hub"));
-    assert!(html.contains(r#"<nav class="sidebar is-soft is-surface sidebar-md is-wide""#));
+    assert!(html.contains(r#"<nav class="sidebar w-96 is-soft is-surface sidebar-md is-wide""#));
     assert!(html.contains(r#"data-dowe-sidebar-href="/""#));
     assert!(css.contains(".navmenu{--dowe-component-display:flex"));
     assert!(css.contains(".sidebar{--dowe-component-display:flex"));
+    assert!(css.contains(".sidebar.is-wide .sidebar-entry"));
+    assert!(!css.contains(".sidebar.is-wide{width:100%;}"));
     assert!(css.contains(".scaffold{--dowe-component-display:flex"));
+    assert!(page.css_content.contains(".w-96{width:24rem;}"));
     assert!(
         page.css_content
             .contains(".navmenu.is-ghost.is-muted .navmenu-item.is-active")

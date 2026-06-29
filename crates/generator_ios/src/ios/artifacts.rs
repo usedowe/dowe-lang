@@ -5,7 +5,7 @@ use dowe_components::{
     CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
     CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme,
-    DividerOrientation, DividerProps, DragGroup, DragItem, DrawerProps, DropzoneProps, DropdownProps, EmptyProps,
+    DividerOrientation, DividerProps, DragGroup, DragItem, DrawerProps, DropzoneProps, DropdownProps, ElementProps, EmptyProps,
     FabAction, FabProps, FontConfig, FontFamily, GapSize, GapValue, GridAlignment, GridProps,
     GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify,
     LayoutProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps,

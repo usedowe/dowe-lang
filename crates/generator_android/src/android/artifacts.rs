@@ -6,7 +6,7 @@ use dowe_components::{
     CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
     CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation,
     DividerProps, DragGroup, DragItem, DrawerPosition,
-    DrawerProps, DropzoneProps, DropdownProps, EmptyProps, FabAction, FabProps,
+    DrawerProps, DropzoneProps, DropdownProps, ElementProps, EmptyProps, FabAction, FabProps,
     FontConfig, FontFamily, GapSize, GapValue, GridAlignment,
     GridProps, GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE,
     ImageProps, Justify, LayoutProps, MapMarker, MapProps, MapWaypoint,
