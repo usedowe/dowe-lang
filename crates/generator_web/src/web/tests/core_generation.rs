@@ -267,6 +267,19 @@ fn emits_web_manifest_and_html_artifacts() {
         web.router_js
             .contains("scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\"})")
     );
+    assert!(
+        web.router_js
+            .contains("new RegExp(\"^https?:/{2}\",\"i\").test(source)")
+    );
+    assert!(
+        web.router_js
+            .contains("const boundary=document.querySelector('[data-dowe-boundary^=\"page:\"]')")
+    );
+    assert!(
+        web.router_js
+            .contains("boundary.outerHTML=wrapPage(route,page.render())")
+    );
+    assert!(web.router_js.contains("history.pushState"));
 }
 
 #[test]
