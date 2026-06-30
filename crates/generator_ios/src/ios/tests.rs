@@ -18,7 +18,7 @@ use dowe_components::{
     OverlayPosition, PasswordFieldProps, PhoneFieldProps, PinFieldKind, PinFieldProps, PropValue,
     RadioGroupProps, RadioOption, RecordProps, ResponsiveEntry, ResponsiveValue, RichTextMark,
     RichTextMarkStyle, RoundedSize, ScaleValue, ScaffoldProps, SectionBackground, SelectOption,
-    SideNavItem, SideNavItemProps, SideNavProps, SideNavSize, SkeletonAnimation, SkeletonProps,
+    SideNavItem, SideNavItemProps, SideNavProps, SidebarProps, SideNavSize, SkeletonAnimation, SkeletonProps,
     SkeletonVariant, StyleProps, SvgPath, SvgPathFill, SvgProps, SvgViewBox, TabItem,
     TabsPosition, TabsProps, TabsVariant, TextProps, TextSize, TextWeight, TextareaProps,
     ToastKind, ToastProps, ToggleGroupItem, ToggleGroupProps, ToggleProps, TooltipProps,

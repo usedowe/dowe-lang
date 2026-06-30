@@ -49,7 +49,7 @@
     children"#,
             r#"page loginPage
   Title i18n:"home.hero.title"
-    Dowe builds systems."#,
+    "Dowe builds systems.""#,
         );
         write_translation_catalogs(temp.path());
 
@@ -116,7 +116,7 @@
             r#"layout MarketingLayout
   Box
     Text
-      Marketing
+      "Marketing"
     children"#,
         )
         .expect("marketing layout");
@@ -125,7 +125,7 @@
             r#"page landingPage
   Box
     Text
-      Landing"#,
+      "Landing""#,
         )
         .expect("landing");
         fs::write(
@@ -727,15 +727,15 @@ views
             r#"layout AuthLayout
   Box
     Text
-      Before
+      "Before"
     children
     Text
-      After"#,
+      "After""#,
             r#"page loginPage
   Box
     Box
       Text
-        Login"#,
+        "Login""#,
         );
 
         let project = compile_dev(temp.path()).expect("project");
@@ -1022,13 +1022,13 @@ views
     reset alert
   Box
     Text
-      Layout
+      "Layout"
     Alert type:"info" message:alert.message visible:alert.visible onClose:close
     children"#,
             r#"page loginPage
   Box
     Text
-      Login"#,
+      "Login""#,
         );
         fs::write(
             root.join("src/config.dowe"),
@@ -1131,19 +1131,19 @@ views
     reset alert
   Box
     Title
-      Blogs
+      "Blogs"
     Alert type:"info" message:alert.message visible:alert.visible onClose:close
     Input bind:blog.title
     Button onClick:create
-      Crear
+      "Crear"
     each item in blogs key:item.id
       Card
         Title
-          item.title
+          "item.title"
         Text
-          item.content
+          "item.content"
         Button onClick:edit
-          Editar"#,
+          "Editar""#,
         )
         .expect("blogs");
     }

@@ -8,11 +8,16 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Button { children, .. } => children.iter().find_map(first_text),
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => header.iter().chain(body).chain(footer).find_map(first_text),
         ViewNode::Modal {
             header,
             body,
@@ -82,9 +87,19 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
         | ViewNode::BottomBar {
             start, center, end, ..
         } => start.iter().chain(center).chain(end).find_map(first_text),
-        ViewNode::SideNav { items, .. } | ViewNode::Sidebar { items, .. } => {
+        ViewNode::SideNav { items, .. } => {
             items.iter().find_map(side_nav_first_text)
         }
+        ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        } => header
+            .iter()
+            .chain(body)
+            .chain(footer)
+            .find_map(first_text),
         ViewNode::Scaffold {
             app_bar,
             start,
@@ -239,7 +254,8 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         ViewNode::AppBar { props, .. }
         | ViewNode::Footer { props, .. }
         | ViewNode::BottomBar { props, .. } => Some(&props.style.element),
-        ViewNode::SideNav { props, .. } | ViewNode::Sidebar { props, .. } => {
+        ViewNode::SideNav { props, .. } => Some(&props.style.element),
+        ViewNode::Sidebar { props, .. } => {
             Some(&props.style.element)
         }
         ViewNode::Scaffold { props, .. } => Some(&props.style.element),
@@ -266,12 +282,12 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Button { children, .. } => children,
+        ViewNode::Drawer { body, .. } => body,
         ViewNode::Modal { body, .. } => body,
         ViewNode::Tabs { .. }
         | ViewNode::NavMenu { .. }
@@ -356,7 +372,19 @@ pub fn node_child_groups(node: &ViewNode) -> Vec<&[ViewNode]> {
             .map(|tab| tab.children.as_slice())
             .collect::<Vec<_>>(),
         ViewNode::NavMenu { items, .. } => items.iter().filter_map(nav_menu_child_group).collect(),
-        ViewNode::SideNav { .. } | ViewNode::Sidebar { .. } => Vec::new(),
+        ViewNode::SideNav { .. } => Vec::new(),
+        ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        } => vec![header.as_slice(), body.as_slice(), footer.as_slice()],
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => vec![header.as_slice(), body.as_slice(), footer.as_slice()],
         ViewNode::Modal {
             header,
             body,

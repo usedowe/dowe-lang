@@ -13,8 +13,11 @@ fn dev_java_reactive_runtime() -> &'static str {
         private final String errorMessage;
         private final String target;
         private final String source;
+        private final String stdlibNamespace;
+        private final String stdlibFunction;
+        private final Object[][] stdlibArgs;
 
-        private DoweAction(String kind, String method, String path, String base, String body, String update, String reset, String successAlert, String successMessage, String errorAlert, String errorMessage, String target, String source) {
+        private DoweAction(String kind, String method, String path, String base, String body, String update, String reset, String successAlert, String successMessage, String errorAlert, String errorMessage, String target, String source, String stdlibNamespace, String stdlibFunction, Object[][] stdlibArgs) {
             this.kind = kind;
             this.method = method;
             this.path = path;
@@ -28,18 +31,25 @@ fn dev_java_reactive_runtime() -> &'static str {
             this.errorMessage = errorMessage;
             this.target = target;
             this.source = source;
+            this.stdlibNamespace = stdlibNamespace;
+            this.stdlibFunction = stdlibFunction;
+            this.stdlibArgs = stdlibArgs;
         }
 
         private static DoweAction request(String method, String path, String base, String body, String update, String reset, String successAlert, String successMessage, String errorAlert, String errorMessage) {
-            return new DoweAction("request", method, path, base, body, update, reset, successAlert, successMessage, errorAlert, errorMessage, null, null);
+            return new DoweAction("request", method, path, base, body, update, reset, successAlert, successMessage, errorAlert, errorMessage, null, null, null, null, null);
         }
 
         private static DoweAction assign(String target, String source) {
-            return new DoweAction("assign", null, null, null, null, null, null, null, null, null, null, target, source);
+            return new DoweAction("assign", null, null, null, null, null, null, null, null, null, null, target, source, null, null, null);
+        }
+
+        private static DoweAction assignCall(String target, String source, String namespace, String function, Object[][] args) {
+            return new DoweAction("assign", null, null, null, null, null, null, null, null, null, null, target, source, namespace, function, args);
         }
 
         private static DoweAction reset(String target) {
-            return new DoweAction("reset", null, null, null, null, null, null, null, null, null, null, target, null);
+            return new DoweAction("reset", null, null, null, null, null, null, null, null, null, null, target, null, null, null, null);
         }
     }
 
@@ -253,13 +263,124 @@ fn dev_java_reactive_runtime() -> &'static str {
         doweState.put(parts[0], object);
     }
 
+    private Object doweStdlib(DoweAction action, Map<String, Object> item) {
+        HashMap<String, Object> args = new HashMap<>();
+        if (action.stdlibArgs != null) {
+            for (Object[] arg : action.stdlibArgs) {
+                args.put(String.valueOf(arg[0]), doweStdlibValue((Object[]) arg[1], item));
+            }
+        }
+        String name = action.stdlibNamespace + "." + action.stdlibFunction;
+        if ("str.trim".equals(name)) return doweStdlibText(args.get("value")).trim();
+        if ("str.lower".equals(name)) return doweStdlibText(args.get("value")).toLowerCase();
+        if ("str.upper".equals(name)) return doweStdlibText(args.get("value")).toUpperCase();
+        if ("str.length".equals(name)) return doweStdlibText(args.get("value")).codePointCount(0, doweStdlibText(args.get("value")).length());
+        if ("str.contains".equals(name)) return doweStdlibText(args.get("value")).contains(doweStdlibText(args.get("needle")));
+        if ("str.startsWith".equals(name)) return doweStdlibText(args.get("value")).startsWith(doweStdlibText(args.get("prefix")));
+        if ("str.endsWith".equals(name)) return doweStdlibText(args.get("value")).endsWith(doweStdlibText(args.get("suffix")));
+        if ("str.replace".equals(name)) return doweStdlibText(args.get("value")).replace(doweStdlibText(args.get("from")), doweStdlibText(args.get("to")));
+        if ("math.add".equals(name)) return doweFinite(args.get("left"), args.get("right"), '+');
+        if ("math.sub".equals(name)) return doweFinite(args.get("left"), args.get("right"), '-');
+        if ("math.mul".equals(name)) return doweFinite(args.get("left"), args.get("right"), '*');
+        if ("math.div".equals(name)) return doweFinite(args.get("left"), args.get("right"), '/');
+        if ("math.sum".equals(name)) return doweStdlibList(args.get("values")).stream().map(this::doweStdlibNumber).filter(Objects::nonNull).reduce(0.0, Double::sum);
+        if ("parse.int".equals(name)) {
+            try {
+                return Long.parseLong(doweStdlibText(args.get("value")).trim());
+            } catch (NumberFormatException error) {
+                return args.get("fallback");
+            }
+        }
+        if ("parse.float".equals(name)) return doweStdlibNumber(args.get("value")) == null ? args.get("fallback") : doweStdlibNumber(args.get("value"));
+        if ("parse.string".equals(name)) return doweStdlibText(args.get("value"));
+        if ("sort.asc".equals(name)) return doweSorted(args.get("values"), null, false);
+        if ("sort.desc".equals(name)) return doweSorted(args.get("values"), null, true);
+        if ("sort.by".equals(name)) return doweSorted(args.get("values"), doweStdlibText(args.get("field")), "desc".equals(doweStdlibText(args.get("direction"))));
+        if ("list.take".equals(name)) return new ArrayList<>(doweStdlibList(args.get("values")).subList(0, Math.min(doweStdlibList(args.get("values")).size(), Math.max(0, doweStdlibNumber(args.get("count")).intValue()))));
+        if ("list.skip".equals(name)) return new ArrayList<>(doweStdlibList(args.get("values")).subList(Math.min(doweStdlibList(args.get("values")).size(), Math.max(0, doweStdlibNumber(args.get("count")).intValue())), doweStdlibList(args.get("values")).size()));
+        if ("list.first".equals(name)) return doweStdlibList(args.get("values")).isEmpty() ? null : doweStdlibList(args.get("values")).get(0);
+        if ("list.last".equals(name)) return doweStdlibList(args.get("values")).isEmpty() ? null : doweStdlibList(args.get("values")).get(doweStdlibList(args.get("values")).size() - 1);
+        if ("list.count".equals(name)) return doweStdlibList(args.get("values")).size();
+        if ("json.get".equals(name)) {
+            Object value = doweStdlibRead(args.get("value"), doweStdlibText(args.get("path")));
+            return value == null ? args.get("fallback") : value;
+        }
+        if ("json.stringify".equals(name)) return doweJson(args.get("value")).toString();
+        if ("date.now".equals(name)) return java.time.Instant.now().toString();
+        return null;
+    }
+
+    private Object doweStdlibValue(Object[] value, Map<String, Object> item) {
+        String kind = String.valueOf(value[0]);
+        Object raw = value[1];
+        if ("null".equals(kind)) return null;
+        if ("bool".equals(kind)) return raw;
+        if ("number".equals(kind)) return doweStdlibNumber(raw);
+        if ("string".equals(kind)) return raw == null ? "" : String.valueOf(raw);
+        if ("reference".equals(kind)) return doweRead(String.valueOf(raw), item);
+        if ("array".equals(kind)) {
+            ArrayList<Object> result = new ArrayList<>();
+            for (Object entry : (Object[]) raw) result.add(doweStdlibValue((Object[]) entry, item));
+            return result;
+        }
+        return raw;
+    }
+
+    private String doweStdlibText(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private Double doweStdlibNumber(Object value) {
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        try {
+            return Double.parseDouble(doweStdlibText(value).trim());
+        } catch (NumberFormatException error) {
+            return null;
+        }
+    }
+
+    private List<Object> doweStdlibList(Object value) {
+        return value instanceof List ? (List<Object>) value : new ArrayList<>();
+    }
+
+    private Double doweFinite(Object leftValue, Object rightValue, char operation) {
+        Double left = doweStdlibNumber(leftValue);
+        Double right = doweStdlibNumber(rightValue);
+        if (left == null || right == null) return null;
+        if (operation == '+') return left + right;
+        if (operation == '-') return left - right;
+        if (operation == '*') return left * right;
+        if (operation == '/') return right == 0.0 ? null : left / right;
+        return null;
+    }
+
+    private Object doweStdlibRead(Object value, String path) {
+        Object current = value;
+        for (String part : path.split("\\.")) {
+            if (!(current instanceof Map)) return null;
+            current = ((Map<?, ?>) current).get(part);
+        }
+        return current;
+    }
+
+    private ArrayList<Object> doweSorted(Object value, String field, boolean desc) {
+        ArrayList<Object> result = new ArrayList<>(doweStdlibList(value));
+        result.sort((left, right) -> {
+            Object leftValue = field == null ? left : doweStdlibRead(left, field);
+            Object rightValue = field == null ? right : doweStdlibRead(right, field);
+            int order = doweStdlibText(leftValue).compareTo(doweStdlibText(rightValue));
+            return desc ? -order : order;
+        });
+        return result;
+    }
+
     private void doweRunAction(String id, Map<String, Object> item) {
         DoweAction action = doweActions.get(id);
         if (action == null) {
             return;
         }
         if ("assign".equals(action.kind)) {
-            doweWrite(action.target, doweRead(action.source, item));
+            doweWrite(action.target, action.stdlibNamespace == null ? doweRead(action.source, item) : doweStdlib(action, item));
             renderCurrentRoute(false);
             return;
         }

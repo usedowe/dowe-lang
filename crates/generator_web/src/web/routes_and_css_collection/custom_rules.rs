@@ -31,9 +31,14 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
                 collect_custom_rules(child, rules);
             }
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             collect_style_custom_rules(&props.style.style, rules);
-            for child in children {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_custom_rules(child, rules);
             }
         }
@@ -193,8 +198,16 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         ViewNode::SideNav { props, .. } => {
             collect_style_custom_rules(&props.style.style, rules);
         }
-        ViewNode::Sidebar { props, .. } => {
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             collect_style_custom_rules(&props.style.style, rules);
+            for child in header.iter().chain(body).chain(footer) {
+                collect_custom_rules(child, rules);
+            }
         }
         ViewNode::NavMenu { props, items } => {
             collect_style_custom_rules(&props.style.style, rules);

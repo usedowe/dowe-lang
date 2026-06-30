@@ -188,12 +188,21 @@ fn collect_swift_reactive(
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Button { children, .. }
         | ViewNode::Each { children, .. } => {
             for child in children {
+                collect_swift_reactive(child, context, signals, actions, autoload);
+            }
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_swift_reactive(child, context, signals, actions, autoload);
             }
         }
@@ -377,14 +386,85 @@ fn swift_signal_value(value: &ViewSignalValue) -> String {
 fn swift_action_value(action: &ViewAction, context: &SwiftReactiveContext) -> String {
     match &action.kind {
         ViewActionKind::Request(request) => swift_request_value(request, context),
-        ViewActionKind::Assign(assign) => format!(
-            ".assign(\"{}\", \"{}\")",
-            escape_swift(&context.signal_path(&assign.target)),
-            escape_swift(&context.signal_path(&assign.source))
-        ),
+        ViewActionKind::Assign(assign) => {
+            let target = escape_swift(&context.signal_path(&assign.target));
+            let source = escape_swift(&context.signal_path(&assign.source));
+            let call = assign
+                .call
+                .as_ref()
+                .map(|call| swift_stdlib_call_value(call, context))
+                .unwrap_or_else(|| "nil".to_string());
+            format!(".assign(\"{}\", \"{}\", {})", target, source, call)
+        }
         ViewActionKind::Reset(reset) => format!(
             ".reset(\"{}\")",
             escape_swift(&context.signal_path(&reset.target))
+        ),
+    }
+}
+
+fn swift_stdlib_call_value(
+    call: &dowe_components::StdlibCall,
+    context: &SwiftReactiveContext,
+) -> String {
+    format!(
+        "DoweStdlibCall(namespace: \"{}\", function: \"{}\", args: [{}])",
+        escape_swift(&call.namespace),
+        escape_swift(&call.function),
+        call.args
+            .iter()
+            .map(|arg| format!(
+                "DoweStdlibArg(name: \"{}\", value: {})",
+                escape_swift(&arg.name),
+                swift_stdlib_value(&arg.value, context)
+            ))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+fn swift_stdlib_value(
+    value: &dowe_components::StdlibValue,
+    context: &SwiftReactiveContext,
+) -> String {
+    match value {
+        dowe_components::StdlibValue::Null => {
+            "DoweStdlibValue(kind: \"null\", value: nil)".to_string()
+        }
+        dowe_components::StdlibValue::Bool(value) => {
+            format!("DoweStdlibValue(kind: \"bool\", value: {value})")
+        }
+        dowe_components::StdlibValue::Number(value) => format!(
+            "DoweStdlibValue(kind: \"number\", value: \"{}\")",
+            escape_swift(value)
+        ),
+        dowe_components::StdlibValue::String(value) => format!(
+            "DoweStdlibValue(kind: \"string\", value: \"{}\")",
+            escape_swift(value)
+        ),
+        dowe_components::StdlibValue::Reference(value) => format!(
+            "DoweStdlibValue(kind: \"reference\", value: \"{}\")",
+            escape_swift(&context.signal_path(value))
+        ),
+        dowe_components::StdlibValue::Array(values) => format!(
+            "DoweStdlibValue(kind: \"array\", value: [{}])",
+            values
+                .iter()
+                .map(|value| swift_stdlib_value(value, context))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        dowe_components::StdlibValue::Object(entries) => format!(
+            "DoweStdlibValue(kind: \"object\", value: [{}])",
+            entries
+                .iter()
+                .map(|(key, value)| format!(
+                    "(\"{}\", {})",
+                    escape_swift(key),
+                    swift_stdlib_value(value, context)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
     }
 }

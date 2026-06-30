@@ -10,10 +10,10 @@
   Grid columns:{ xs:1 md:3 } rows:"100px auto" gap:"10px 20px" justify:"center" align:"end"
     Box colSpan:{ md:2 } cover:{ xs:"/mobile.jpg" md:"/desktop.jpg" } overlay:true
       Text
-        Hero
+        "Hero"
     Card variant:"soft" scheme:"surface" rounded:"full" rowSpan:2 cover:"/images/card.jpg" overlay:0.6
       Text
-        Card"#,
+        "Card""#,
         );
 
         let project = compile_dev(temp.path()).expect("project");
@@ -86,19 +86,19 @@
     AppBar variant:"soft" scheme:"surface" bordered:true boxed:true
       start
         Text
-          Dowe
+          "Dowe"
     children
     BottomBar variant:"soft" scheme:"surface" bordered:true boxed:true
       center
         Text
-          Home
+          "Home"
     Footer scheme:"background" bordered:true boxed:true
       end
         Text
-          Built with Dowe"#,
+          "Built with Dowe""#,
             r#"page loginPage
   Text
-    Login"#,
+    "Login""#,
         );
 
         compile_dev(temp.path()).expect("project");
@@ -123,9 +123,9 @@
             r#"page loginPage
   Box
     Text size:"9xl"
-      Body
+      "Body"
     Title size:"9xl"
-      Title"#,
+      "Title""#,
         );
 
         let project = compile_dev(temp.path()).expect("project");
@@ -181,22 +181,22 @@
             r#"layout AuthLayout
   Box id:"shell"
     Text
-      Layout
+      "Layout"
     children"#,
             r##"page loginPage
   Box id:"hero"
     Button href:"#hero" navigate:"replace"
-      Hero
+      "Hero"
     Button href:"/signup#join"
-      Signup
+      "Signup"
     Button href:"https://example.com/docs" target:"blank" externalMode:"webview"
-      Docs
+      "Docs"
     Button history:"back"
-      Back"##,
+      "Back""##,
             r#"page signupPage
   Box id:"join"
     Text
-      Signup"#,
+      "Signup""#,
         );
 
         let project = compile_dev(temp.path()).expect("project");
@@ -275,7 +275,7 @@
             r#"page loginPage
   Box
     Button href:"/missing"
-      Missing"#,
+      "Missing""#,
             "unknown navigation route `/missing`",
         );
     }
@@ -286,7 +286,7 @@
             r##"page loginPage
   Box id:"hero"
     Button href:"#missing"
-      Missing"##,
+      "Missing""##,
             "unknown section `#missing`",
         );
     }
@@ -298,7 +298,7 @@
   Box id:"hero"
     Box id:"hero"
       Text
-        Login"#,
+        "Login""#,
             "duplicate section id `hero`",
         );
     }
@@ -309,7 +309,7 @@
             r#"page loginPage
   Box
     Button href:"javascript:alert(1)"
-      Bad"#,
+      "Bad""#,
             "invalid value for prop `href`",
         );
     }
@@ -320,7 +320,7 @@
             r#"page loginPage
   Stack
     Text
-      Login"#,
+      "Login""#,
             "unknown component `Stack`",
         );
 
@@ -337,7 +337,7 @@
             r#"page loginPage
   Box bg:"softBackground"
     Text
-      Login"#,
+      "Login""#,
             "invalid value for prop `bg`",
         );
 
@@ -345,7 +345,7 @@
             r#"page loginPage
   Box text:onBackground
     Text
-      Login"#,
+      "Login""#,
             "unknown prop `text`",
         );
 
@@ -353,7 +353,7 @@
             r#"page loginPage
   Box
     Button color:"primary"
-      Login"#,
+      "Login""#,
             "unknown prop `color`",
         );
 
@@ -383,7 +383,7 @@
   Box
     Card color:"primary"
       Text
-        Login"#,
+        "Login""#,
             "unknown prop `color`",
         );
 
@@ -405,7 +405,7 @@
             r#"page loginPage
   Box
     Button scheme:"onPrimary"
-      Login"#,
+      "Login""#,
             "invalid value for prop `scheme`",
         );
 
@@ -414,7 +414,7 @@
   Box
     Flex aling:center
       Text
-        Login"#,
+        "Login""#,
             "unknown prop `aling`",
         );
 
@@ -422,7 +422,7 @@
             r#"page loginPage
   Box p:13
     Text
-      Login"#,
+      "Login""#,
             "invalid value for prop `p`",
         );
 
@@ -430,7 +430,7 @@
             r#"page loginPage
   Box p:97
     Text
-      Login"#,
+      "Login""#,
             "invalid value for prop `p`",
         );
 
@@ -438,7 +438,7 @@
             r#"page loginPage
   Box border:5
     Text
-      Login"#,
+      "Login""#,
             "invalid value for prop `border`",
         );
 
@@ -446,7 +446,7 @@
             r#"page loginPage
   Box
     Text weight:"heavy"
-      Login"#,
+      "Login""#,
             "invalid value for prop `weight`",
         );
 
@@ -454,7 +454,7 @@
             r#"page loginPage
   Box
     Title spacing:"-0.02em"
-      Login"#,
+      "Login""#,
             "invalid value for prop `spacing`",
         );
 
@@ -462,7 +462,7 @@
             r#"page loginPage
   Grid justify:"between"
     Text
-      Login"#,
+      "Login""#,
             "invalid value for prop `justify`",
         );
 
@@ -470,7 +470,7 @@
             r#"page loginPage
   Box colSpan:2
     Text
-      Login"#,
+      "Login""#,
             "`colSpan` and `rowSpan` can only be used",
         );
 
@@ -478,7 +478,7 @@
             r#"page loginPage
   Box overlay:true
     Text
-      Login"#,
+      "Login""#,
             "`overlay` requires `cover`",
         );
 
@@ -486,7 +486,7 @@
             r#"page loginPage
   Box cover:"javascript:alert(1)"
     Text
-      Login"#,
+      "Login""#,
             "invalid value for prop `cover`",
         );
     }
@@ -497,7 +497,7 @@
             r#"page loginPage
   Box p:{ xs:2 md:4 }
     Text size:"md"
-      Login"#,
+      "Login""#,
         )
         .expect("valid copilot dowe");
 
@@ -510,7 +510,7 @@
             r#"page loginPage
   Box
     Button scheme:"onPrimary"
-      Login"#,
+      "Login""#,
         )
         .expect_err("invalid copilot dowe");
 
@@ -556,8 +556,8 @@
             r#"page loginPage
   Box
     Text
-      Documentation
-    Code language:"dowe" variant:"soft" scheme:"surface" lines:["page docsPage","  Card variant:\"soft\" p:4 show:true","    Text","      Documentation"]
+      "Documentation"
+    Code language:"dowe" variant:"soft" scheme:"surface" lines:["page docsPage","  Card variant:\"soft\" p:4 show:true","    Text","      \"Documentation\""]
     Code language:"typescript" scheme:"info" lines:["const value: string = \"Dowe\""]
     Code language:"go" scheme:"success" lines:["func main() {}"]
     Code language:"rust" scheme:"warning" lines:["fn main() {}"]"#,
@@ -578,7 +578,7 @@
         .expect("android");
         assert!(android.contains("private fun DoweCode("));
         assert!(android.contains("clipboard.setText(AnnotatedString(source))"));
-        assert!(android.contains("DoweCode(source = \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      Documentation\""));
+        assert!(android.contains("DoweCode(source = \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      \\\"Documentation\\\"\""));
         assert!(android.contains("DoweDesign.primary"));
         assert!(android.contains("DoweDesign.info"));
         assert!(android.contains("DoweDesign.success"));
@@ -598,7 +598,7 @@
         let ios = ios_swift_output(temp.path());
         assert!(ios.contains("struct DoweCodeView: View"));
         assert!(ios.contains("UIPasteboard.general.string = source"));
-        assert!(ios.contains("DoweCodeView(source: \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      Documentation\""));
+        assert!(ios.contains("DoweCodeView(source: \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      \\\"Documentation\\\"\""));
         assert!(ios.contains("DoweDesign.primary"));
         assert!(ios.contains("DoweDesign.info"));
         assert!(ios.contains("DoweDesign.success"));
@@ -612,38 +612,38 @@
         assert_compile_error(
             r#"page loginPage
   Text
-    Documentation
+    "Documentation"
   Code"#,
             "`Code` requires `lines`",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Documentation
+    "Documentation"
   Code lines:[]"#,
             "`Code lines` must be a non-empty string array",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Documentation
+    "Documentation"
   Code lines:[docs]"#,
             "`Code lines` must contain quoted static strings",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Documentation
+    "Documentation"
   Code language:"python" lines:["print()"]"#,
             "invalid value for prop `language`: expected dowe, typescript, go or rust",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Documentation
+    "Documentation"
   Code lines:["docs"]
     Text
-      Child"#,
+      "Child""#,
             "children are not valid for this component",
         );
     }
@@ -659,7 +659,7 @@
             r#"page loginPage
   Box
     Text
-      Video
+      "Video"
     Video src:"https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" poster:"/images/video.jpg" autoplay:true aspect:"vertical" variant:"outlined" scheme:"surface""#,
         );
 
@@ -708,7 +708,7 @@
             r#"page loginPage
   Box
     Text
-      Divider
+      "Divider"
     Divider scheme:"primary"
     Divider orientation:"vertical" scheme:"secondary""#,
         );
@@ -753,17 +753,17 @@
         assert_compile_error(
             r#"page loginPage
   Text
-    Divider
+    "Divider"
   Divider orientation:"diagonal""#,
             "expected horizontal or vertical",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Divider
+    "Divider"
   Divider
     Text
-      Child"#,
+      "Child""#,
             "children are not valid for this component",
         );
     }
@@ -773,38 +773,38 @@
         assert_compile_error(
             r#"page loginPage
   Text
-    Video
+    "Video"
   Video"#,
             "invalid value for prop `src`: expected https URL",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Video
+    "Video"
   Video src:"http://example.com/video.mp4""#,
             "invalid value for prop `src`: expected https URL",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Video
+    "Video"
   Video src:"https://example.com/video.mp4" aspect:"wide""#,
             "invalid value for prop `aspect`: expected horizontal, vertical or square",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Video
+    "Video"
   Video src:"https://example.com/video.mp4" autoplay:"true""#,
             "invalid value for prop `autoplay`: expected boolean",
         );
         assert_compile_error(
             r#"page loginPage
   Text
-    Video
+    "Video"
   Video src:"https://example.com/video.mp4"
     Text
-      Child"#,
+      "Child""#,
             "children are not valid for this component",
         );
     }
@@ -842,8 +842,8 @@
     Text
       Box
         Text
-          Nested"#,
-            "text child must be plain text",
+          "Nested""#,
+            "must be a quoted static string literal",
         );
     }
 

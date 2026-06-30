@@ -20,7 +20,7 @@ use dowe_components::{
     PhoneFieldProps, PinFieldKind, PinFieldProps, PropValue, RadioGroupProps, RadioOption,
     RecordProps, ResponsiveEntry, ResponsiveValue, RichTextMark, RichTextMarkStyle, RoundedSize,
     ScaleValue, ScaffoldProps, SectionBackground, SelectOption, SideNavItem, SideNavItemProps,
-    SideNavProps, SideNavSize, SkeletonAnimation, SkeletonProps, SkeletonVariant, StyleProps,
+    SideNavProps, SidebarProps, SideNavSize, SkeletonAnimation, SkeletonProps, SkeletonVariant, StyleProps,
     SvgPath, SvgPathFill, SvgProps, SvgViewBox, TabItem, TabsPosition, TabsProps, TabsVariant,
     TextProps, TextWeight, TextareaProps, ToastKind, ToastProps, ToggleGroupItem, ToggleGroupProps,
     ToggleProps, TooltipProps, TranslationCatalog, TranslationLocale, TranslationValue,

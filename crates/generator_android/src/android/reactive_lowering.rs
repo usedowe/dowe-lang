@@ -150,12 +150,21 @@ fn collect_compose_reactive(
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Button { children, .. }
         | ViewNode::Each { children, .. } => {
             for child in children {
+                collect_compose_reactive(child, context, signals, actions, autoload);
+            }
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_compose_reactive(child, context, signals, actions, autoload);
             }
         }
@@ -343,14 +352,87 @@ fn compose_signal_value(value: &ViewSignalValue) -> String {
 fn compose_action_value(action: &ViewAction, context: &ComposeReactiveContext) -> String {
     match &action.kind {
         ViewActionKind::Request(request) => compose_request_value(request, context),
-        ViewActionKind::Assign(assign) => format!(
-            "DoweAction.Assign(\"{}\", \"{}\")",
-            escape_kotlin(&context.signal_path(&assign.target)),
-            escape_kotlin(&context.signal_path(&assign.source))
-        ),
+        ViewActionKind::Assign(assign) => {
+            let target = escape_kotlin(&context.signal_path(&assign.target));
+            let source = escape_kotlin(&context.signal_path(&assign.source));
+            if let Some(call) = &assign.call {
+                format!(
+                    "DoweAction.Assign(\"{}\", \"{}\", {})",
+                    target,
+                    source,
+                    compose_stdlib_call_value(call, context)
+                )
+            } else {
+                format!("DoweAction.Assign(\"{}\", \"{}\")", target, source)
+            }
+        }
         ViewActionKind::Reset(reset) => format!(
             "DoweAction.Reset(\"{}\")",
             escape_kotlin(&context.signal_path(&reset.target))
+        ),
+    }
+}
+
+fn compose_stdlib_call_value(
+    call: &dowe_components::StdlibCall,
+    context: &ComposeReactiveContext,
+) -> String {
+    format!(
+        "DoweStdlibCall(\"{}\", \"{}\", listOf({}))",
+        escape_kotlin(&call.namespace),
+        escape_kotlin(&call.function),
+        call.args
+            .iter()
+            .map(|arg| format!(
+                "DoweStdlibArg(\"{}\", {})",
+                escape_kotlin(&arg.name),
+                compose_stdlib_value(&arg.value, context)
+            ))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+fn compose_stdlib_value(
+    value: &dowe_components::StdlibValue,
+    context: &ComposeReactiveContext,
+) -> String {
+    match value {
+        dowe_components::StdlibValue::Null => "DoweStdlibValue(\"null\", null)".to_string(),
+        dowe_components::StdlibValue::Bool(value) => {
+            format!("DoweStdlibValue(\"bool\", {value})")
+        }
+        dowe_components::StdlibValue::Number(value) => format!(
+            "DoweStdlibValue(\"number\", \"{}\")",
+            escape_kotlin(value)
+        ),
+        dowe_components::StdlibValue::String(value) => format!(
+            "DoweStdlibValue(\"string\", \"{}\")",
+            escape_kotlin(value)
+        ),
+        dowe_components::StdlibValue::Reference(value) => format!(
+            "DoweStdlibValue(\"reference\", \"{}\")",
+            escape_kotlin(&context.signal_path(value))
+        ),
+        dowe_components::StdlibValue::Array(values) => format!(
+            "DoweStdlibValue(\"array\", listOf({}))",
+            values
+                .iter()
+                .map(|value| compose_stdlib_value(value, context))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        dowe_components::StdlibValue::Object(entries) => format!(
+            "DoweStdlibValue(\"object\", listOf({}))",
+            entries
+                .iter()
+                .map(|(key, value)| format!(
+                    "\"{}\" to {}",
+                    escape_kotlin(key),
+                    compose_stdlib_value(value, context)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
     }
 }

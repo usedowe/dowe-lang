@@ -6,6 +6,7 @@ fn dev_activity_navigation(first_path: &str) -> String {
             return;
         }}
         String resolvedFragment = doweCanSection(path, fragment) ? fragment : null;
+        doweCloseDrawerForNavigation();
         if (path.equals(currentPath) && Objects.equals(resolvedFragment, currentFragment)) {{
             return;
         }}
@@ -21,6 +22,7 @@ fn dev_activity_navigation(first_path: &str) -> String {
     }}
 
     private void doweBack() {{
+        doweCloseDrawerForNavigation();
         if (externalOpen) {{
             renderCurrentRoute();
         }} else if (!backStack.isEmpty()) {{
@@ -36,6 +38,7 @@ fn dev_activity_navigation(first_path: &str) -> String {
     }}
 
     private void doweOpenExternal(String mode, String target) {{
+        doweCloseDrawerForNavigation();
         if ("webview".equals(mode)) {{
             root.removeAllViews();
             externalOpen = true;
@@ -45,6 +48,14 @@ fn dev_activity_navigation(first_path: &str) -> String {
             root.addView(webView);
         }} else {{
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(target)));
+        }}
+    }}
+
+    private void doweCloseDrawerForNavigation() {{
+        if (doweDrawerNavigationClose != null) {{
+            Runnable close = doweDrawerNavigationClose;
+            doweDrawerNavigationClose = null;
+            close.run();
         }}
     }}
 

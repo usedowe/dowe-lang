@@ -6,7 +6,8 @@ fn parses_indented_component_tree() {
     let file = parse_source_file(
         Path::new("/project"),
         Path::new("/project/src/pages/login.dowe"),
-        "page loginPage\n  Box p:{ xs:4 md:8 }\n    Text size:\"md\"\n      Login\n".to_string(),
+        "page loginPage\n  Box p:{ xs:4 md:8 }\n    Text size:\"md\"\n      \"Login\"\n"
+            .to_string(),
     )
     .expect("source");
 

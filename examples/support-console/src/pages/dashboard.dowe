@@ -5,41 +5,41 @@ page dashboardPage
         Grid columns:{ xs:1 md:2 } gap:6
           Box
             Text size:"sm" weight:"semibold"
-              SUPPORT WORKFLOW
+              "SUPPORT WORKFLOW"
             Title size:"5xl" weight:"bold"
-              Triage customer requests with Dowe-native state
+              "Triage customer requests with Dowe-native state"
             Text size:"lg"
-              Capture tickets, route priority, and keep resolution status synchronized through Store-backed endpoints.
+              "Capture tickets, route priority, and keep resolution status synchronized through Store-backed endpoints."
             Flex gap:3 align:"center"
               Button href:"/tickets" variant:"solid" scheme:"warning" size:"lg"
-                Open queue
+                "Open queue"
               Button href:"/tickets" variant:"outlined" scheme:"danger" size:"lg"
-                Create ticket
+                "Create ticket"
           Card variant:"solid" scheme:"surface" p:6 rounded:"xl"
             Title size:"3xl"
-              Agent surface
+              "Agent surface"
             Text size:"md"
-              This project gives model-training examples for forms, selects, alerts, loops, and route handlers.
+              "This project gives model-training examples for forms, selects, alerts, loops, and route handlers."
       Grid columns:{ xs:1 md:3 } gap:4
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Queue
+            "Queue"
           Title size:"3xl"
-            Tickets
+            "Tickets"
           Text size:"sm"
-            Each record tracks contact, subject, priority, status, and message.
+            "Each record tracks contact, subject, priority, status, and message."
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Status
+            "Status"
           Title size:"3xl"
-            Lifecycle
+            "Lifecycle"
           Text size:"sm"
-            New, open, waiting, and resolved values flow through a Select.
+            "New, open, waiting, and resolved values flow through a Select."
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Runtime
+            "Runtime"
           Title size:"3xl"
-            Rust
+            "Rust"
           Text size:"sm"
-            Server actions compile to Dowe runtime behavior.
+            "Server actions compile to Dowe runtime behavior."
 

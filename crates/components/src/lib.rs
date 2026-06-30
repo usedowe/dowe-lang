@@ -1,3 +1,5 @@
+pub use dowe_stdlib::{StdlibArgument, StdlibCall, StdlibValue};
+
 include!("component/model.rs");
 include!("component/i18n.rs");
 include!("component/code_highlighting.rs");

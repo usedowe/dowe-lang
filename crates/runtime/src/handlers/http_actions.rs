@@ -195,6 +195,27 @@ fn response_content_type(response: &reqwest::Response) -> Option<String> {
         .map(str::to_string)
 }
 
+fn response_location(headers: &reqwest::header::HeaderMap) -> Option<String> {
+    headers
+        .get("location")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string)
+}
+
+fn response_headers_json(headers: &reqwest::header::HeaderMap) -> Value {
+    let mut output = Map::new();
+    for (name, value) in headers {
+        let name = name.as_str();
+        if name.eq_ignore_ascii_case("set-cookie") {
+            continue;
+        }
+        if let Ok(value) = value.to_str() {
+            output.insert(name.to_string(), Value::String(value.to_string()));
+        }
+    }
+    Value::Object(output)
+}
+
 fn is_sse_content_type(value: &str) -> bool {
     value
         .split(';')
@@ -211,14 +232,25 @@ fn http_binding_json(
     status: StatusCode,
     content_type: Option<String>,
     body: Option<Value>,
+    url: String,
+    redirected: bool,
+    headers: Value,
+    location: Option<String>,
 ) -> Value {
     let mut output = Map::new();
     output.insert(
         "status".to_string(),
         Value::Number(u64::from(status.as_u16()).into()),
     );
+    output.insert("ok".to_string(), Value::Bool(status.is_success()));
+    output.insert("url".to_string(), Value::String(url));
+    output.insert("redirected".to_string(), Value::Bool(redirected));
+    output.insert("headers".to_string(), headers);
     if let Some(content_type) = content_type {
         output.insert("contentType".to_string(), Value::String(content_type));
+    }
+    if let Some(location) = location {
+        output.insert("location".to_string(), Value::String(location));
     }
     if let Some(body) = body {
         output.insert("json".to_string(), body);

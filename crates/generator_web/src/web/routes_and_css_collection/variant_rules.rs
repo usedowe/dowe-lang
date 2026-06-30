@@ -19,9 +19,14 @@ fn collect_variant_rules<'a>(
                 collect_variant_rules(child, variants);
             }
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             push_variant_rule(variants, "drawer", &props.style);
-            for child in children {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_variant_rules(child, variants);
             }
         }
@@ -260,8 +265,16 @@ fn collect_variant_rules<'a>(
         ViewNode::SideNav { props, .. } => {
             push_variant_rule(variants, "sidenav", &props.style);
         }
-        ViewNode::Sidebar { props, .. } => {
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             push_variant_rule(variants, "sidebar", &props.style);
+            for child in header.iter().chain(body).chain(footer) {
+                collect_variant_rules(child, variants);
+            }
         }
         ViewNode::NavMenu { props, items } => {
             push_variant_rule(variants, "navmenu", &props.style);
@@ -319,13 +332,22 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
+                collect_tabs_variant_rules(child, variants);
+            }
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_tabs_variant_rules(child, variants);
             }
         }

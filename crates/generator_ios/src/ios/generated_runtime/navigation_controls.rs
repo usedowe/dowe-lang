@@ -196,6 +196,7 @@ struct DoweSideNavEntry: Identifiable {
     let path: String?
     let fragment: String?
     let open: Bool
+    let bordered: Bool
     let children: [DoweSideNavEntry]
 }
 
@@ -229,12 +230,12 @@ struct DoweSideNav: View {
             Divider()
                 .padding(.vertical, CGFloat(8))
         case "submenu":
-            DoweSideNavSubmenu(open: item.open) {
+            DoweSideNavSubmenu(open: item.open, bordered: item.bordered) {
                 ForEach(item.children) { child in
                     row(child, header: false, action: action(for: child))
                 }
-            } label: {
-                row(item, header: true, action: nil)
+            } label: { expanded in
+                row(item, header: true, action: nil, expanded: expanded)
             }
         case "header":
             row(item, header: true, action: action(for: item))
@@ -243,7 +244,7 @@ struct DoweSideNav: View {
         }
     }
 
-    private func row(_ item: DoweSideNavEntry, header: Bool, action: (() -> Void)?) -> some View {
+    private func row(_ item: DoweSideNavEntry, header: Bool, action: (() -> Void)?, expanded: Bool? = nil) -> some View {
         DoweSideNavRow(active: item.path == activePath, wide: wide, paddingHorizontal: paddingHorizontal, paddingVertical: paddingVertical, gap: gap, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, action: action) {
             VStack(alignment: .leading, spacing: CGFloat(0)) {
                 Text(item.label)
@@ -260,6 +261,9 @@ struct DoweSideNav: View {
                 Text(status)
                     .font(descriptionFont)
                     .fontWeight(.semibold)
+            }
+            if let expanded {
+                DoweSideNavArrow(expanded: expanded)
             }
         }
     }
@@ -360,31 +364,60 @@ struct DoweNavMenuItem<Content: View>: View {
     }
 }
 
+struct DoweSideNavArrow: View {
+    let expanded: Bool
+
+    var body: some View {
+        DoweSvgView(
+            viewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24)),
+            color: DoweDesign.onBackground,
+            paths: [
+                DoweSvgPathData(data: "M0 0h24v24H0z", fill: .none),
+                DoweSvgPathData(data: "m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z", fill: .currentColor)
+            ]
+        )
+        .frame(width: CGFloat(16), height: CGFloat(16))
+        .rotationEffect(.degrees(expanded ? 90 : 0))
+        .animation(.easeInOut(duration: 0.16), value: expanded)
+    }
+}
+
 struct DoweSideNavSubmenu<Label: View, Content: View>: View {
     @State private var expanded: Bool
-    let label: Label
+    let bordered: Bool
+    let label: (Bool) -> Label
     let content: Content
 
-    init(open: Bool, @ViewBuilder content: () -> Content, @ViewBuilder label: () -> Label) {
+    init(open: Bool, bordered: Bool, @ViewBuilder content: () -> Content, @ViewBuilder label: @escaping (Bool) -> Label) {
         _expanded = State(initialValue: open)
+        self.bordered = bordered
         self.content = content()
-        self.label = label()
+        self.label = label
     }
 
     var body: some View {
-        DisclosureGroup(isExpanded: Binding(
-            get: { expanded },
-            set: { value in
+        VStack(alignment: .leading, spacing: CGFloat(2)) {
+            Button(action: {
                 withAnimation(.easeInOut(duration: 0.18)) {
-                    expanded = value
+                    expanded.toggle()
                 }
+            }) {
+                label(expanded)
             }
-        )) {
-            content
-                .padding(.leading, CGFloat(16))
-                .transition(.opacity.combined(with: .move(edge: .top)))
-        } label: {
-            label
+            .buttonStyle(.plain)
+            if expanded {
+                content
+                    .padding(.leading, bordered ? CGFloat(8) : CGFloat(0))
+                    .overlay(alignment: .leading) {
+                        if bordered {
+                            Rectangle()
+                                .fill(DoweDesign.muted)
+                                .frame(width: CGFloat(1))
+                        }
+                    }
+                    .padding(.leading, CGFloat(16))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .animation(.easeInOut(duration: 0.18), value: expanded)
     }

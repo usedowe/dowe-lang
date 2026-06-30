@@ -96,10 +96,17 @@ fn render_dev_android_navigation_node(
                 context,
             );
         }
-        ViewNode::Sidebar { props, items } => {
-            render_dev_android_side_nav(
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            render_dev_android_sidebar(
                 props,
-                items,
+                header,
+                body,
+                footer,
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -107,6 +114,7 @@ fn render_dev_android_navigation_node(
                 output,
                 inherited_font,
                 context,
+                children_method,
             );
         }
         ViewNode::NavMenu { props, items } => {

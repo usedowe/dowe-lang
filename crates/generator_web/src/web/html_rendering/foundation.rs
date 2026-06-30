@@ -440,9 +440,12 @@ fn render_html_with_context(
         ViewNode::SideNav { props, items } => {
             render_side_nav_html("sidenav", props, items, context)
         }
-        ViewNode::Sidebar { props, items } => {
-            render_side_nav_html("sidebar", props, items, context)
-        }
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => render_sidebar_html(props, header, body, footer, children_html, context),
         ViewNode::Scaffold {
             props,
             app_bar,
@@ -460,9 +463,12 @@ fn render_html_with_context(
             children_html,
             context,
         ),
-        ViewNode::Drawer { props, children } => {
-            render_drawer_html(props, children, children_html, context)
-        }
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => render_drawer_html(props, header, body, footer, children_html, context),
         ViewNode::Each {
             item,
             collection,

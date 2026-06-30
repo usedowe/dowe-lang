@@ -50,11 +50,11 @@ page ticketsPage
     Grid columns:1 gap:6
       Card variant:"soft" scheme:"surface" p:{ xs:5 md:7 } rounded:"xl"
         Text size:"sm" weight:"semibold" color:"warning"
-          TICKETS
+          "TICKETS"
         Title size:"4xl" weight:"bold"
-          Support queue
+          "Support queue"
         Text size:"md" color:"muted"
-          Route inbound customer requests with priority and status controls.
+          "Route inbound customer requests with priority and status controls."
         Alert type:"info" message:alert.message visible:alert.visible onClose:close p:3
         Grid columns:{ xs:1 md:2 } gap:4
           Input bind:ticket.customerName label:"Customer" placeholder:"Avery Stone" labelFloating:true variant:"outlined" scheme:"primary"
@@ -73,28 +73,28 @@ page ticketsPage
           Input bind:ticket.message label:"Message" placeholder:"Customer context and next action" labelFloating:true variant:"outlined" scheme:"muted"
         Flex gap:3 align:"center"
           Button onClick:create variant:"solid" scheme:"warning" size:"lg"
-            Create
+            "Create"
           Button onClick:update variant:"outlined" scheme:"info" size:"lg"
-            Update
+            "Update"
       Grid columns:{ xs:1 md:2 } gap:4
         each item in tickets key:item.id
           Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
             Grid columns:1 gap:3
               Text size:"sm" color:"muted"
-                item.priority
+                "item.priority"
               Title size:"2xl"
-                item.subject
+                "item.subject"
               Text size:"sm" color:"muted"
-                item.customerName
+                "item.customerName"
               Text size:"sm" color:"muted"
-                item.email
+                "item.email"
               Text size:"md"
-                item.message
+                "item.message"
               Text size:"sm" color:"info"
-                item.status
+                "item.status"
               Flex gap:2 align:"center"
                 Button onClick:edit variant:"soft" scheme:"warning" size:"sm"
-                  Edit
+                  "Edit"
                 Button onClick:delete variant:"ghost" scheme:"danger" size:"sm"
-                  Delete
+                  "Delete"
 

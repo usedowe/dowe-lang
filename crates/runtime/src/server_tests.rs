@@ -3,10 +3,10 @@ use crate::server::{DevServerTargets, start_dev, start_dev_servers, start_produc
 use axum::Router;
 use axum::body::Bytes;
 use axum::extract::State;
-use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE, LOCATION};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::post;
+use axum::routing::{get, post};
 use dowe_compiler::compile_dev;
 use dowe_crypto::sign_jws_hs256;
 use dowe_kv::{
@@ -23,6 +23,7 @@ use tempfile::TempDir;
 use tokio::net::TcpListener;
 use tokio::sync::{Mutex, oneshot};
 use tokio::task::JoinHandle;
+use tokio::time::{Duration, sleep};
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -369,6 +370,125 @@ async fn serves_llm_http_proxy_agent_response_and_websocket_bridge() {
     assert_eq!(done["event"], "done");
     assert_eq!(done["payload"]["ok"], true);
     websocket.close(None).await.expect("close");
+
+    servers.shutdown().await.expect("shutdown");
+    upstream.shutdown().await;
+}
+
+#[tokio::test]
+async fn serves_general_outbound_http_request_options() {
+    let upstream = MockExternalApi::start().await;
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    fs::write(
+        temp.path().join("src/config.dowe"),
+        r#"config
+  fonts default:"inter" install:["inter"]
+  env
+    variable name:"CATALOG_BASE_URL" visibility:"server" required:true
+    variable name:"CATALOG_TOKEN" visibility:"server" required:true"#,
+    )
+    .expect("config");
+    fs::write(
+        temp.path().join(".env"),
+        format!(
+            "CATALOG_BASE_URL=http://{}\nCATALOG_TOKEN=test-catalog-token\n",
+            upstream.addr
+        ),
+    )
+    .expect("env");
+    fs::write(
+        temp.path().join("src/main.dowe"),
+        r#"main
+  server port:0
+    route "/api/products"
+      method GET async req
+        let upstream = http.request method:"GET" base:env.CATALOG_BASE_URL path:"/v1/products" headers:[{ name:"Accept" value:"application/json" }, { name:"X-Api-Key" value:env.CATALOG_TOKEN }] redirect:"manual" timeoutMs:5000 mode:"json"
+        return response json:upstream
+    route "/api/redirect"
+      method GET async req
+        let upstream = http.request method:"GET" base:env.CATALOG_BASE_URL path:"/redirect" redirect:"manual" mode:"json"
+        return response json:upstream
+    route "/api/redirect-error"
+      method GET async req
+        let upstream = http.request method:"GET" base:env.CATALOG_BASE_URL path:"/redirect" redirect:"error" mode:"json"
+        return response json:upstream
+    route "/api/timeout"
+      method GET async req
+        let upstream = http.request method:"GET" base:env.CATALOG_BASE_URL path:"/slow" timeoutMs:1 mode:"json"
+        return response json:upstream"#,
+    )
+    .expect("server");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+
+    let products = client
+        .get(format!("{backend}/api/products"))
+        .send()
+        .await
+        .expect("products")
+        .json::<serde_json::Value>()
+        .await
+        .expect("products json");
+    assert_eq!(products["ok"], true);
+    assert_eq!(products["status"], 200);
+    assert_eq!(products["redirected"], false);
+    assert_eq!(products["json"]["items"][0]["name"], "Dowe Kit");
+    assert_eq!(
+        products["headers"]["content-type"],
+        "application/json; charset=utf-8"
+    );
+    let seen = upstream.requests().await;
+    assert_eq!(seen[0].accept, Some("application/json".to_string()));
+    assert_eq!(seen[0].api_key, Some("test-catalog-token".to_string()));
+
+    let redirect = client
+        .get(format!("{backend}/api/redirect"))
+        .send()
+        .await
+        .expect("redirect")
+        .json::<serde_json::Value>()
+        .await
+        .expect("redirect json");
+    assert_eq!(redirect["status"], 302);
+    assert_eq!(redirect["ok"], false);
+    assert_eq!(redirect["redirected"], false);
+    assert_eq!(redirect["location"], "/v1/products");
+
+    let blocked = client
+        .get(format!("{backend}/api/redirect-error"))
+        .send()
+        .await
+        .expect("redirect error");
+    assert_eq!(blocked.status(), reqwest::StatusCode::BAD_GATEWAY);
+    let blocked = blocked
+        .json::<serde_json::Value>()
+        .await
+        .expect("blocked json");
+    assert_eq!(blocked["error"]["code"], "http_redirect");
+
+    let timeout = client
+        .get(format!("{backend}/api/timeout"))
+        .send()
+        .await
+        .expect("timeout");
+    assert_eq!(timeout.status(), reqwest::StatusCode::GATEWAY_TIMEOUT);
+    let timeout = timeout
+        .json::<serde_json::Value>()
+        .await
+        .expect("timeout json");
+    assert_eq!(timeout["error"]["code"], "http_timeout");
 
     servers.shutdown().await.expect("shutdown");
     upstream.shutdown().await;
@@ -1406,6 +1526,90 @@ async fn cors_preflight_does_not_execute_handlers() {
 struct MockOpenRouterRequest {
     authorization: Option<String>,
     body: serde_json::Value,
+}
+
+#[derive(Clone, Debug)]
+struct MockExternalRequest {
+    accept: Option<String>,
+    api_key: Option<String>,
+}
+
+struct MockExternalApi {
+    addr: SocketAddr,
+    requests: Arc<Mutex<Vec<MockExternalRequest>>>,
+    shutdown: oneshot::Sender<()>,
+    handle: JoinHandle<()>,
+}
+
+impl MockExternalApi {
+    async fn start() -> Self {
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let router = Router::new()
+            .route("/v1/products", get(mock_external_products))
+            .route("/redirect", get(mock_external_redirect))
+            .route("/slow", get(mock_external_slow))
+            .with_state(requests.clone());
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("mock listener");
+        let addr = listener.local_addr().expect("mock addr");
+        let (shutdown, receiver) = oneshot::channel();
+        let handle = tokio::spawn(async move {
+            let _ = axum::serve(listener, router)
+                .with_graceful_shutdown(async {
+                    let _ = receiver.await;
+                })
+                .await;
+        });
+        Self {
+            addr,
+            requests,
+            shutdown,
+            handle,
+        }
+    }
+
+    async fn requests(&self) -> Vec<MockExternalRequest> {
+        self.requests.lock().await.clone()
+    }
+
+    async fn shutdown(self) {
+        let _ = self.shutdown.send(());
+        let _ = self.handle.await;
+    }
+}
+
+async fn mock_external_products(
+    State(requests): State<Arc<Mutex<Vec<MockExternalRequest>>>>,
+    headers: HeaderMap,
+) -> Response {
+    let accept = headers
+        .get("accept")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string);
+    let api_key = headers
+        .get("x-api-key")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_string);
+    requests
+        .lock()
+        .await
+        .push(MockExternalRequest { accept, api_key });
+    (
+        StatusCode::OK,
+        [(CONTENT_TYPE, "application/json; charset=utf-8")],
+        json!({"items":[{"name":"Dowe Kit"}]}).to_string(),
+    )
+        .into_response()
+}
+
+async fn mock_external_redirect() -> Response {
+    (StatusCode::FOUND, [(LOCATION, "/v1/products")], "").into_response()
+}
+
+async fn mock_external_slow() -> Response {
+    sleep(Duration::from_millis(50)).await;
+    (StatusCode::OK, "slow").into_response()
 }
 
 struct MockOpenRouter {

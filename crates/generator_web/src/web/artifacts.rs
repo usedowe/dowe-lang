@@ -18,6 +18,7 @@ use dowe_components::{
     RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark,
     ScaleValue, ScaffoldProps,
     SectionBackground, SelectOption, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
+    SidebarProps,
     SizeValue, SkeletonProps, StyleProps, SvgPath, SvgPathFill, SvgProps, TabItem, TableColumn,
     SliderProps, TableColumnAlign, TableProps, TabsProps, TabsVariant, TextProps, TextSize,
     TextSpacing, TextWeight, TextareaProps, ThemeToggleProps, ToastProps, ToggleGroupItem,

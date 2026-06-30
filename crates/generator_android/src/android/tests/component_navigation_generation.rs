@@ -79,12 +79,19 @@ fn generates_compose_and_dev_side_nav() {
         .find(|file| file.relative_path.ends_with("DowePages.kt"))
         .expect("views");
 
-    assert!(views.content.contains("DoweSideNavSubmenu(open = true"));
     assert!(
         views
             .content
-            .contains("Column(modifier = Modifier.padding(start = 16.dp))")
+            .contains("DoweSideNavSubmenu(open = true, bordered = true")
     );
+    assert!(
+        views
+            .content
+            .contains(".padding(start = 16.dp)")
+    );
+    assert!(views.content.contains("DoweSideNavArrow(expanded = expanded)"));
+    assert!(views.content.contains("doweSideNavArrowPaths"));
+    assert!(views.content.contains("drawLine(DoweDesign.muted"));
     assert!(views.content.contains("AnimatedVisibility("));
     assert!(views.content.contains(
         "fadeIn(animationSpec = tween(160)) + expandVertically(animationSpec = tween(180))"
@@ -108,6 +115,8 @@ fn generates_compose_and_dev_side_nav() {
         .expect("dev activity");
     assert!(dev.content.contains("setVisibility(View.VISIBLE)"));
     assert!(dev.content.contains("doweToggleSideNavSubmenu"));
+    assert!(dev.content.contains("doweSideNavArrow"));
+    assert!(dev.content.contains("doweSideNavSubmenuContent"));
     assert!(
         dev.content
             .contains("view.animate().alpha(0f).translationY(-doweDp(4)).setDuration(140)")
@@ -136,6 +145,11 @@ fn generates_compose_and_dev_navigation_shell_components() {
     assert!(
         views
             .content
+            .contains("import androidx.compose.ui.platform.LocalConfiguration")
+    );
+    assert!(
+        views
+            .content
             .contains("DoweNavMenuItem(active = activePath == \"/\"")
     );
     assert!(
@@ -148,11 +162,22 @@ fn generates_compose_and_dev_navigation_shell_components() {
             .content
             .contains("Row(modifier = Modifier.fillMaxWidth().weight(1f))")
     );
+    assert!(views.content.contains("DoweSideNav(items = listOf("));
     assert!(views.content.contains(
-        "Column(modifier = Modifier.doweWidth(doweResponsive(viewportWidth, xs = DoweSize.Fixed(384.dp)))"
+        "modifier = Modifier.doweWidth(doweResponsive(viewportWidth, xs = DoweSize.Fixed(384.dp)))"
     ));
+    assert!(
+        views
+            .content
+            .contains(".heightIn(max = LocalConfiguration.current.screenHeightDp.dp).background(DoweDesign.surface)")
+    );
+    assert!(
+        views
+            .content
+            .contains("Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())")
+    );
     assert!(views.content.contains("Text(\"Resource hub\""));
-    assert!(views.content.contains("Text(text = \"Side Home\""));
+    assert!(views.content.contains("label = \"Side Home\""));
 
     let dev = output
         .files
@@ -163,8 +188,16 @@ fn generates_compose_and_dev_navigation_shell_components() {
         dev.content
             .contains("doweResponsiveInt(viewportWidth, 384, null, null, null, null)")
     );
+    assert!(
+        dev.content.contains(
+            "ShellHeight = Math.max(0, getResources().getDisplayMetrics().heightPixels - scrollView.getPaddingTop() - scrollView.getPaddingBottom());"
+        )
+    );
+    assert!(
+        dev.content.contains("ShellHeight));")
+    );
     assert!(dev.content.contains("doweText(\"Resource hub\""));
-    assert!(dev.content.contains("doweText(\"Side Home\""));
+    assert!(dev.content.contains("\"Side Home\""));
 }
 
 #[test]
@@ -248,6 +281,26 @@ fn generates_compose_and_dev_drawer() {
             .contains("Modifier.fillMaxHeight().widthIn(max = 320.dp)")
     );
     assert!(
+        views
+            .content
+            .contains("Modifier.fillMaxSize().safeDrawingPadding()")
+    );
+    assert!(views.content.contains("private val doweDrawerClosePaths = listOf("));
+    assert!(views.content.contains("DoweSvg(viewBox = doweDrawerCloseViewBox"));
+    assert!(views.content.contains("m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073"));
+    assert!(
+        views
+            .content
+            .contains("Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())")
+    );
+    assert!(views.content.contains("val doweDrawerNavigate = navigate"));
+    assert!(views.content.contains("state.write(\"drawer01\", false)"));
+    assert!(
+        views
+            .content
+            .contains("doweDrawerNavigate(operation, target, fragment)")
+    );
+    assert!(
         views.content.contains(
             "private fun doweDrawerShape(position: String, radius: Dp): RoundedCornerShape"
         )
@@ -274,6 +327,14 @@ fn generates_compose_and_dev_drawer() {
     assert!(dev.content.contains("if (doweBool(\"drawer01\"))"));
     assert!(dev.content.contains("new PopupWindow("));
     assert!(dev.content.contains("doweWrite(\"drawer01\", false)"));
+    assert!(dev.content.contains("private Runnable doweDrawerNavigationClose = null;"));
+    assert!(dev.content.contains("private void doweCloseDrawerForNavigation()"));
+    assert!(dev.content.contains("doweDrawerNavigationClose = view"));
+    assert!(dev.content.contains("new ScrollView(this);"));
+    assert!(dev.content.contains("scrollView.getPaddingTop()"));
+    assert!(dev.content.contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_ON_SOFT_MUTED"));
+    assert!(dev.content.contains("setContentDescription(\"Close drawer\")"));
+    assert!(dev.content.contains("m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073"));
     assert!(
         dev.content
             .contains("private void renderCurrentRoute(boolean scrollToFragment)")
@@ -296,7 +357,7 @@ fn generates_compose_and_dev_drawer() {
         dev.content
             .contains(r#"doweDrawerBackground(DOWE_SURFACE, null, "end", 0f)"#)
     );
-    assert!(dev.content.contains("TextView"));
+    assert!(!dev.content.contains(".setText(\"x\")"));
     assert!(dev.content.contains(
         "new FrameLayout.LayoutParams(doweDp(28), doweDp(28), Gravity.TOP | Gravity.END)"
     ));

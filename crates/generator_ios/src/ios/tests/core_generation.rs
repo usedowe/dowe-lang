@@ -227,7 +227,7 @@ fn reuses_stateful_scaffold_drawer_layout_when_page_mentions_binding_literals() 
     assert!(login.content.contains("\"layout.drawer.open\": false"));
     assert!(login.content.contains("\"layout.drawer.visible\": true"));
     assert!(login.content.contains(
-        "\"layout.drawer.open.action\": .assign(\"layout.drawer.open\", \"layout.drawer.visible\")"
+        "\"layout.drawer.open.action\": .assign(\"layout.drawer.open\", \"layout.drawer.visible\", nil)"
     ));
     assert!(!login.content.contains("DoweDrawer(open: state.bool(\"layout.drawer.open\")"));
 }
@@ -343,6 +343,7 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                 kind: ViewActionKind::Assign(ViewAssignAction {
                     target: "drawerOpen".to_string(),
                     source: "drawerVisible".to_string(),
+                    call: None,
                 }),
             }],
             children: vec![ViewNode::Scaffold {
@@ -363,19 +364,26 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                     end: Vec::new(),
                 }],
                 start: vec![ViewNode::Sidebar {
-                    props: SideNavProps {
+                    props: SidebarProps {
                         style: VariantProps::default(),
-                        size: SideNavSize::Sm,
-                        wide: true,
                     },
-                    items: vec![SideNavItem::Item(SideNavItemProps {
-                        label: "Overview".to_string(),
-                        description: None,
-                        status: None,
-                        icon: None,
-                        on_click: None,
-                        navigation: None,
-                    })],
+                    header: Vec::new(),
+                    body: vec![ViewNode::SideNav {
+                        props: SideNavProps {
+                            style: VariantProps::default(),
+                            size: SideNavSize::Sm,
+                            wide: true,
+                        },
+                        items: vec![SideNavItem::Item(SideNavItemProps {
+                            label: "Overview".to_string(),
+                            description: None,
+                            status: None,
+                            icon: None,
+                            on_click: None,
+                            navigation: None,
+                        })],
+                    }],
+                    footer: Vec::new(),
                 }],
                 main: vec![
                     ViewNode::Drawer {
@@ -386,7 +394,8 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                             disable_overlay_close: false,
                             hide_close_button: false,
                         },
-                        children: vec![ViewNode::Sidebar {
+                        header: Vec::new(),
+                        body: vec![ViewNode::SideNav {
                             props: SideNavProps {
                                 style: VariantProps::default(),
                                 size: SideNavSize::Sm,
@@ -401,6 +410,7 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                                 navigation: None,
                             })],
                         }],
+                        footer: Vec::new(),
                     },
                     ViewNode::Children,
                 ],

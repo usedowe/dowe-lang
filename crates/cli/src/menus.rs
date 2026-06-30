@@ -1,7 +1,8 @@
 use dialoguer::{Input, MultiSelect, Select, theme::ColorfulTheme};
 use dowe_deploy::DeployTarget;
 use dowe_runtime::{
-    DevTarget, DevTargetSelection, HostOs, ProjectTemplate, available_dev_targets,
+    DevTarget, DevTargetDeviceSelection, DevTargetSelection, HostOs, ProjectTemplate,
+    available_android_devices, available_dev_targets, available_ios_simulators,
     available_project_templates,
 };
 use std::io::IsTerminal;
@@ -128,6 +129,54 @@ pub(crate) fn prompt_dev_targets(
 
         return Ok(Some(DevTargetSelection::new(selected, host)?));
     }
+}
+
+pub(crate) fn prompt_dev_target_devices(
+    targets: &DevTargetSelection,
+) -> Result<Option<DevTargetDeviceSelection>, Box<dyn std::error::Error>> {
+    let mut devices = DevTargetDeviceSelection::default();
+
+    if targets.contains(DevTarget::Android) {
+        let options = available_android_devices()?;
+        if options.is_empty() {
+            return Err("Android target has no connected devices or virtual devices".into());
+        }
+        let items = options
+            .iter()
+            .map(|option| option.label())
+            .collect::<Vec<_>>();
+        let Some(index) = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Select Android emulator or device")
+            .items(&items)
+            .default(0)
+            .interact_opt()?
+        else {
+            return Ok(None);
+        };
+        devices.android = Some(options[index].selection().clone());
+    }
+
+    if targets.contains(DevTarget::Ios) {
+        let options = available_ios_simulators()?;
+        if options.is_empty() {
+            return Err("iOS target has no available simulators".into());
+        }
+        let items = options
+            .iter()
+            .map(|option| option.label())
+            .collect::<Vec<_>>();
+        let Some(index) = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Select iOS simulator")
+            .items(&items)
+            .default(0)
+            .interact_opt()?
+        else {
+            return Ok(None);
+        };
+        devices.ios = Some(options[index].selection());
+    }
+
+    Ok(Some(devices))
 }
 
 pub(crate) fn dev_target_default_states(

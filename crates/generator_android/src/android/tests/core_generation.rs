@@ -198,6 +198,52 @@ fn generates_compose_box_and_text() {
 }
 
 #[test]
+fn generates_android_box_border_for_compose_and_dev_launcher() {
+    let mut route = route();
+    route.layout_tree = ViewNode::Children;
+    route.page_tree = ViewNode::Box {
+        props: StyleProps {
+            border: Some(ResponsiveValue::scalar(BorderWidth(2))),
+            rounded: Some(ResponsiveValue::scalar(RoundedSize::Lg)),
+            ..Default::default()
+        },
+        children: vec![text("Bordered")],
+    };
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+
+    assert!(views.content.contains(
+        ".doweBorder(width = doweResponsive(viewportWidth, xs = 2.dp), radius = doweResponsive(viewportWidth, xs = 12.dp))"
+    ));
+
+    let dev = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweDevActivity.java"))
+        .expect("dev activity");
+
+    assert!(dev.content.contains(
+        "private GradientDrawable doweStyledBackground(int color, Integer strokeColor, Integer strokeWidth, float radius)"
+    ));
+    assert!(dev.content.contains(
+        "view0.setBackground(doweStyledBackground(Color.TRANSPARENT, DOWE_ON_BACKGROUND, doweResponsiveInt(viewportWidth, 2, null, null, null, null), doweFloat(doweResponsiveFloat(viewportWidth, 12f, null, null, null, null), DOWE_RADIUS)))"
+    ));
+    assert!(dev
+        .content
+        .contains("background.setStroke(doweDp(strokeWidth), strokeColor)"));
+}
+
+#[test]
 fn reuses_identical_dev_layout_methods_across_routes() {
     let first = route();
     let mut second = route();
@@ -512,6 +558,7 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                 kind: ViewActionKind::Assign(ViewAssignAction {
                     target: "drawerOpen".to_string(),
                     source: "drawerVisible".to_string(),
+                    call: None,
                 }),
             }],
             children: vec![ViewNode::Scaffold {
@@ -532,19 +579,26 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                     end: Vec::new(),
                 }],
                 start: vec![ViewNode::Sidebar {
-                    props: SideNavProps {
+                    props: SidebarProps {
                         style: VariantProps::default(),
-                        size: SideNavSize::Sm,
-                        wide: true,
                     },
-                    items: vec![SideNavItem::Item(SideNavItemProps {
-                        label: "Overview".to_string(),
-                        description: None,
-                        status: None,
-                        icon: None,
-                        on_click: None,
-                        navigation: None,
-                    })],
+                    header: Vec::new(),
+                    body: vec![ViewNode::SideNav {
+                        props: SideNavProps {
+                            style: VariantProps::default(),
+                            size: SideNavSize::Sm,
+                            wide: true,
+                        },
+                        items: vec![SideNavItem::Item(SideNavItemProps {
+                            label: "Overview".to_string(),
+                            description: None,
+                            status: None,
+                            icon: None,
+                            on_click: None,
+                            navigation: None,
+                        })],
+                    }],
+                    footer: Vec::new(),
                 }],
                 main: vec![
                     ViewNode::Drawer {
@@ -555,7 +609,8 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                             disable_overlay_close: false,
                             hide_close_button: false,
                         },
-                        children: vec![ViewNode::Sidebar {
+                        header: Vec::new(),
+                        body: vec![ViewNode::SideNav {
                             props: SideNavProps {
                                 style: VariantProps::default(),
                                 size: SideNavSize::Sm,
@@ -570,6 +625,7 @@ fn stateful_scaffold_drawer_layout_route() -> ViewRoute {
                                 navigation: None,
                             })],
                         }],
+                        footer: Vec::new(),
                     },
                     ViewNode::Children,
                 ],

@@ -11,18 +11,29 @@ fn render_side_nav_item_html(
             render_side_nav_entry_html(base, props, &format!("{base}-entry"), context)
         }
         SideNavItem::Divider => format!(r#"<div class="{base}-divider"></div>"#),
-        SideNavItem::Submenu { props, open, items } => {
+        SideNavItem::Submenu {
+            props,
+            open,
+            bordered,
+            items,
+        } => {
             let classes = if *open {
                 format!("{base}-submenu is-open")
             } else {
                 format!("{base}-submenu")
             };
+            let classes = if *bordered {
+                classes
+            } else {
+                format!("{classes} is-unbordered")
+            };
             let mut html = format!(
-                r#"<details class="{classes}" data-dowe-{base}-submenu{}><summary class="{base}-entry {base}-trigger" aria-expanded="{}">{}{}<span class="{base}-chevron" aria-hidden="true">›</span></summary><div class="{base}-submenu-content">"#,
+                r#"<details class="{classes}" data-dowe-{base}-submenu{}><summary class="{base}-entry {base}-trigger" aria-expanded="{}">{}{}{}</summary><div class="{base}-submenu-content">"#,
                 if *open { " open" } else { "" },
                 if *open { "true" } else { "false" },
                 render_side_nav_icon_html(base, props.icon.as_ref(), context),
-                render_side_nav_content_html(base, props)
+                render_side_nav_content_html(base, props),
+                render_side_nav_arrow_html(base)
             );
             for item in items {
                 html.push_str(&render_side_nav_entry_html(
@@ -36,6 +47,12 @@ fn render_side_nav_item_html(
             html
         }
     }
+}
+
+fn render_side_nav_arrow_html(base: &str) -> String {
+    format!(
+        r#"<span class="{base}-chevron" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z" /></svg></span>"#
+    )
 }
 
 fn render_side_nav_entry_html(
@@ -332,12 +349,79 @@ fn assign_action_json(
     context: &ReactiveRenderContext,
 ) -> String {
     format!(
-        r#"{{"id":"{}","name":"{}","kind":"assign","target":"{}","source":"{}"}}"#,
+        r#"{{"id":"{}","name":"{}","kind":"assign","target":"{}","source":"{}","call":{}}}"#,
         escape_json(&view_action.id),
         escape_json(&view_action.name),
         escape_json(&context.signal_path(&action.target)),
-        escape_json(&context.signal_path(&action.source))
+        escape_json(&context.signal_path(&action.source)),
+        action
+            .call
+            .as_ref()
+            .map(|call| stdlib_call_json(call, context))
+            .unwrap_or_else(|| "null".to_string())
     )
+}
+
+fn stdlib_call_json(
+    call: &dowe_components::StdlibCall,
+    context: &ReactiveRenderContext,
+) -> String {
+    format!(
+        r#"{{"namespace":"{}","function":"{}","args":[{}]}}"#,
+        escape_json(&call.namespace),
+        escape_json(&call.function),
+        call.args
+            .iter()
+            .map(|arg| format!(
+                r#"{{"name":"{}","value":{}}}"#,
+                escape_json(&arg.name),
+                stdlib_value_json(&arg.value, context)
+            ))
+            .collect::<Vec<_>>()
+            .join(",")
+    )
+}
+
+fn stdlib_value_json(
+    value: &dowe_components::StdlibValue,
+    context: &ReactiveRenderContext,
+) -> String {
+    match value {
+        dowe_components::StdlibValue::Null => r#"{"kind":"null","value":null}"#.to_string(),
+        dowe_components::StdlibValue::Bool(value) => {
+            format!(r#"{{"kind":"bool","value":{value}}}"#)
+        }
+        dowe_components::StdlibValue::Number(value) => {
+            format!(r#"{{"kind":"number","value":"{}"}}"#, escape_json(value))
+        }
+        dowe_components::StdlibValue::String(value) => {
+            format!(r#"{{"kind":"string","value":"{}"}}"#, escape_json(value))
+        }
+        dowe_components::StdlibValue::Reference(value) => format!(
+            r#"{{"kind":"reference","value":"{}"}}"#,
+            escape_json(&context.signal_path(value))
+        ),
+        dowe_components::StdlibValue::Array(values) => format!(
+            r#"{{"kind":"array","value":[{}]}}"#,
+            values
+                .iter()
+                .map(|value| stdlib_value_json(value, context))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        dowe_components::StdlibValue::Object(entries) => format!(
+            r#"{{"kind":"object","value":[{}]}}"#,
+            entries
+                .iter()
+                .map(|(key, value)| format!(
+                    r#"["{}",{}]"#,
+                    escape_json(key),
+                    stdlib_value_json(value, context)
+                ))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+    }
 }
 
 fn reset_action_json(

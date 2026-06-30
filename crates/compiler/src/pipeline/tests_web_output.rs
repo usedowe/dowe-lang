@@ -6,24 +6,24 @@ fn compiles_design_system_components_and_responsive_props() {
         r#"layout AuthLayout
   Box bg:"background" color:"onBackground" p:{ xs:2 md:4 }
     Text size:"sm"
-      Shell
+      "Shell"
     children"#,
         r#"page loginPage
   Box p:10 px:0.5 w:"full"
     Flex justify:"center" align:"center" gap:{ xs:2 lg:6 }
       Card variant:"soft" scheme:"primary" rounded:"lg" border:1 p:{ xs:4 md:8 }
         Title size:"2xl" bg:"softPrimary" weight:"extrabold" spacing:"tight" p:4
-          Welcome
+          "Welcome"
         Text size:"md" bg:"surface" color:"onPrimary" weight:"bold" spacing:"wide" rounded:"md" border:1
-          Login
+          "Login"
         Button variant:"solid" scheme:"danger"
-          Save
+          "Save"
         Button variant:"soft" scheme:"warning" size:"lg" rounded:"full"
-          Warn
+          "Warn"
         Input variant:"outlined" scheme:"info"
         Card scheme:"primary"
           Text
-            Default"#,
+            "Default""#,
     );
 
     let project = compile_dev(temp.path()).expect("project");
@@ -154,22 +154,25 @@ layout AuthLayout
       AppBar variant:"solid" scheme:"background" bordered:true boxed:true
         start
           Button onClick:openDrawer show:{ xs:true md:false } variant:"ghost" scheme:"primary" size:"xs"
-            Menu
+            "Menu"
         center
           Text size:"xl" weight:"black" spacing:"normal"
-            DOWE
+            "DOWE"
     start
-      Sidebar show:{ xs:false md:true } w:96 pr:6 variant:"soft" scheme:"surface" size:"sm" wide:true rounded:"lg" border:1 p:4
-        DocsNavigation
+      Sidebar show:{ xs:false md:true } w:96 pr:6 variant:"soft" scheme:"surface" rounded:"lg" border:1 p:4
+        body
+          SideNav variant:"ghost" scheme:"muted" size:"sm" wide:true
+            DocsNavigation
     main
       Drawer show:{ xs:true md:false } open:drawerOpen position:"start" variant:"soft" scheme:"surface" disableOverlayClose:false hideCloseButton:false p:4 w:80
-        Sidebar variant:"soft" scheme:"surface" size:"sm" wide:true
-          DocsNavigation
+        body
+          SideNav variant:"ghost" scheme:"muted" size:"sm" wide:true
+            DocsNavigation
       children"#,
         r#"page loginPage
   Box
     Text
-      Login"#,
+      "Login""#,
     );
     fs::create_dir_all(temp.path().join("src/components")).expect("components");
     fs::write(
@@ -187,7 +190,8 @@ layout AuthLayout
     let body = &project.web.pages[0].body_html;
 
     assert!(body.contains("show-true md:show-false"));
-    assert!(body.contains(r#"<nav class="sidebar show-false md:show-true"#));
+    assert!(body.contains(r#"<aside class="sidebar show-false md:show-true"#));
+    assert!(body.contains(r#"<nav class="sidenav is-ghost is-muted sidenav-sm is-wide""#));
     assert!(body.contains(r#"<div class="drawer-panel show-true md:show-false"#));
     assert_eq!(body.matches("Docs overview").count(), 2);
     assert_eq!(body.matches("Deploy overview").count(), 2);
@@ -197,12 +201,12 @@ layout AuthLayout
             .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
     )
     .expect("android");
-    assert!(android.contains("Text(text = \"Docs overview\""));
-    assert!(android.contains("Text(text = \"Deploy overview\""));
+    assert!(android.contains("label = \"Docs overview\""));
+    assert!(android.contains("label = \"Deploy overview\""));
 
     let ios = ios_swift_output(temp.path());
-    assert!(ios.contains("Text(\"Docs overview\")"));
-    assert!(ios.contains("Text(\"Deploy overview\")"));
+    assert!(ios.contains("label: \"Docs overview\""));
+    assert!(ios.contains("label: \"Deploy overview\""));
 }
 
 #[test]
@@ -218,14 +222,14 @@ layout AuthLayout
     children"#,
         r#"page loginPage
   Text
-    Login"#,
+    "Login""#,
     );
     fs::create_dir_all(props.path().join("src/components")).expect("components");
     fs::write(
         props.path().join("src/components/docs-navigation.dowe"),
         r#"component DocsNavigation
   Text
-    Navigation"#,
+    "Navigation""#,
     )
     .expect("component");
     let props_error = compile_dev(props.path()).expect_err("props error");
@@ -244,7 +248,7 @@ layout AuthLayout
     children"#,
         r#"page loginPage
   Text
-    Login"#,
+    "Login""#,
     );
     fs::create_dir_all(cycle.path().join("src/components")).expect("components");
     fs::write(
@@ -279,14 +283,14 @@ fn rejects_reusable_view_component_as_route_component() {
     children"#,
         r#"page loginPage
   Text
-    Login"#,
+    "Login""#,
     );
     fs::create_dir_all(temp.path().join("src/components")).expect("components");
     fs::write(
         temp.path().join("src/components/docs-navigation.dowe"),
         r#"component DocsNavigation
   Text
-    Navigation"#,
+    "Navigation""#,
     )
     .expect("component");
     fs::write(
@@ -411,9 +415,9 @@ fn compiles_expanded_text_weight_overrides() {
         r#"page loginPage
   Box
     Text weight:{ xs:"thin" md:"extralight" lg:"black" }
-      Weighted text
+      "Weighted text"
     Title weight:"black"
-      Weighted title"#,
+      "Weighted title""#,
     );
 
     let project = compile_dev(temp.path()).expect("project");
@@ -467,21 +471,21 @@ fn compiles_platform_reset_and_font_tokens() {
         r#"layout AuthLayout
   Box font:"roboto"
     Text
-      Layout
+      "Layout"
     children"#,
         r#"page loginPage
   Box font:{ xs:"inter" md:"lato" }
     Text
-      Inherited
+      "Inherited"
     Text font:"manrope"
-      Lead
+      "Lead"
     Title font:"poppins"
-      Login
+      "Login"
     Button font:"montserrat"
-      Submit
+      "Submit"
     Input font:"roboto"
     Text font:"lora"
-      Caption"#,
+      "Caption""#,
     );
 
     let project = compile_dev(temp.path()).expect("project");
@@ -595,12 +599,12 @@ fn compiles_configured_font_install_set() {
         r#"layout AuthLayout
   Box
     Text
-      Layout
+      "Layout"
     children"#,
         r#"page loginPage
   Box
     Text
-      Login"#,
+      "Login""#,
     );
     fs::write(
         temp.path().join("src/config.dowe"),
@@ -662,12 +666,12 @@ fn compiles_design_tokens_from_config_dowe() {
         r#"layout AuthLayout
   Box
     Text
-      Layout
+      "Layout"
     children"#,
         r#"page loginPage
   Card scheme:"primary"
     Text
-      Login"#,
+      "Login""#,
     );
     fs::write(
         temp.path().join("src/config.dowe"),
@@ -726,12 +730,12 @@ fn compiles_mobile_responsive_runtime_values() {
         r#"layout AuthLayout
   Box p:{ xs:4 md:8 }
     Text
-      Layout
+      "Layout"
     children"#,
         r#"page loginPage
   Box p:{ md:8 }
     Text size:{ md:"lg" }
-      Login"#,
+      "Login""#,
     );
 
     let project = compile_dev(temp.path()).expect("project");

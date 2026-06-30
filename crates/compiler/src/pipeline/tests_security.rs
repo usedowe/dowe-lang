@@ -37,7 +37,7 @@
   signal blog value:{ title:"" }
   Box
     Button onClick:saveBlog
-      Save"#,
+      "Save""#,
             "unknown action `saveBlog`",
         );
     }
@@ -173,7 +173,7 @@
     children"#,
             r#"page loginPage
   Text i18n:"home.hero.title"
-    Dowe builds systems."#,
+    "Dowe builds systems.""#,
         );
 
         let error = compile_dev(temp.path()).expect_err("compile error");
@@ -195,7 +195,7 @@
     children"#,
             r#"page loginPage
   Text i18n:"home.hero.title"
-    Dowe builds systems."#,
+    "Dowe builds systems.""#,
         );
         write_translation_catalogs(temp.path());
         fs::write(
@@ -254,6 +254,7 @@
                 assert_eq!(log.values, values);
             }
             ServerStatement::RequestJson { .. } => panic!("expected log statement"),
+            ServerStatement::Stdlib(_) => panic!("expected log statement"),
             ServerStatement::Http(_) => panic!("expected log statement"),
             ServerStatement::AgentChat(_) => panic!("expected log statement"),
             ServerStatement::WebSocketJson(_) => panic!("expected log statement"),
@@ -270,12 +271,12 @@
             r#"layout AuthLayout
   Box
     Text
-      Layout
+      "Layout"
     children"#,
             r#"page loginPage
   Box
     Text
-      Login"#,
+      "Login""#,
         );
     }
 
@@ -375,7 +376,7 @@ views
             r#"layout AuthLayout
   Box
     Text
-      Layout
+      "Layout"
     children"#,
             page_source,
         );

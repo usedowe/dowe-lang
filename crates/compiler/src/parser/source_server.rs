@@ -2,10 +2,11 @@ use crate::error::{DoweError, DoweResult};
 use crate::model::{
     AgentChatTransform, AgentResponseEndpoint, CorsConfig, DoweType, DoweTypeField, Endpoint,
     EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint,
-    HttpConnectionValue, HttpMethod, HttpProxyEndpoint, HttpResponseMode, OutboundHttpRequest,
-    ServerAction, ServerConfig, ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware,
-    ServerMiddlewareAction, ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerSecret,
-    ServerStatement, StoreLiteral, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
+    HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint, HttpRedirectPolicy,
+    HttpResponseMode, OutboundHttpHeader, OutboundHttpRequest, ServerAction, ServerConfig,
+    ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware, ServerMiddlewareAction,
+    ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerSecret, ServerStatement,
+    ServerStdlibStatement, StoreLiteral, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
     WebSocketSendJsonStatement, WebSocketSseBridgeStatement, normalize_http_header_name,
 };
 use crate::parser::source_ast::{
@@ -16,10 +17,12 @@ use crate::parser::source_kv::{
     infer_kv_statement, kv_action_endpoint_behavior, parse_kv_let, validate_kv_statement_references,
 };
 use crate::parser::source_parser::parse_source_file;
+use crate::parser::source_stdlib::{dowe_type_from_stdlib_return, parse_stdlib_call};
 use crate::parser::source_store::{
     parse_store_let, store_action_endpoint_behavior, store_endpoint_behavior, store_literal,
 };
 use crate::parser::source_types::{TypeRegistry, type_from_store_literal, validate_reference_path};
+use dowe_stdlib::StdlibSurface;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -528,6 +531,10 @@ fn parse_action(
                     validate_reference_path(child, &statement.source, &inferred_bindings)?;
                     infer_agent_chat_statement(&statement, &mut inferred_bindings);
                     statements.push(ServerStatement::AgentChat(statement));
+                } else if let Some(statement) = parse_stdlib_let(child)? {
+                    validate_stdlib_statement_references(child, &statement, &inferred_bindings)?;
+                    infer_stdlib_statement(&statement, &mut inferred_bindings)?;
+                    statements.push(ServerStatement::Stdlib(statement));
                 } else if let Some(statement) = parse_http_let(child, context, environment)? {
                     validate_http_statement_references(child, &statement, &inferred_bindings)?;
                     infer_http_statement(&statement, &mut inferred_bindings);
@@ -837,6 +844,19 @@ fn infer_agent_chat_statement(
     bindings.insert(statement.binding.clone(), DoweType::Unknown);
 }
 
+fn infer_stdlib_statement(
+    statement: &ServerStdlibStatement,
+    bindings: &mut HashMap<String, DoweType>,
+) -> DoweResult<()> {
+    let kind = dowe_stdlib::validate_call(&statement.call, StdlibSurface::Server)
+        .map_err(|error| DoweError::new(error.to_string()))?;
+    bindings.insert(
+        statement.binding.clone(),
+        dowe_type_from_stdlib_return(kind),
+    );
+    Ok(())
+}
+
 fn infer_http_statement(statement: &OutboundHttpRequest, bindings: &mut HashMap<String, DoweType>) {
     bindings.insert(
         statement.binding.clone(),
@@ -847,7 +867,32 @@ fn infer_http_statement(statement: &OutboundHttpRequest, bindings: &mut HashMap<
                 optional: false,
             },
             DoweTypeField {
+                name: "ok".to_string(),
+                value: DoweType::Bool,
+                optional: false,
+            },
+            DoweTypeField {
+                name: "url".to_string(),
+                value: DoweType::String,
+                optional: false,
+            },
+            DoweTypeField {
+                name: "redirected".to_string(),
+                value: DoweType::Bool,
+                optional: false,
+            },
+            DoweTypeField {
                 name: "contentType".to_string(),
+                value: DoweType::String,
+                optional: true,
+            },
+            DoweTypeField {
+                name: "headers".to_string(),
+                value: DoweType::Unknown,
+                optional: false,
+            },
+            DoweTypeField {
+                name: "location".to_string(),
                 value: DoweType::String,
                 optional: true,
             },
@@ -948,6 +993,17 @@ fn validate_store_literal_references(
         | StoreLiteral::Number(_)
         | StoreLiteral::String(_) => Ok(()),
     }
+}
+
+fn validate_stdlib_statement_references(
+    node: &SourceNode,
+    statement: &ServerStdlibStatement,
+    bindings: &HashMap<String, DoweType>,
+) -> DoweResult<()> {
+    for reference in dowe_stdlib::reference_paths(&statement.call) {
+        validate_reference_path(node, &reference, bindings)?;
+    }
+    Ok(())
 }
 
 fn validate_log_references(
@@ -1128,6 +1184,23 @@ fn parse_agent_chat_let(node: &SourceNode) -> DoweResult<Option<AgentChatTransfo
     Ok(Some(AgentChatTransform { binding, source }))
 }
 
+fn parse_stdlib_let(node: &SourceNode) -> DoweResult<Option<ServerStdlibStatement>> {
+    let Some((binding, expression)) = assignment(node) else {
+        return Ok(None);
+    };
+    let Some(call) = parse_stdlib_call(node, &expression, StdlibSurface::Server, &[])? else {
+        return Ok(None);
+    };
+    if node.args.len() != 3 {
+        return Err(node_error(
+            node,
+            format!("`{expression}` only accepts named arguments"),
+        ));
+    }
+    validate_binding_name(node, &binding)?;
+    Ok(Some(ServerStdlibStatement { binding, call }))
+}
+
 fn parse_http_let(
     node: &SourceNode,
     context: ActionContext,
@@ -1139,12 +1212,13 @@ fn parse_http_let(
     let method = match expression.as_str() {
         "http.get" => HttpMethod::Get,
         "http.post" => HttpMethod::Post,
+        "http.request" => required_http_method_prop(node)?,
         _ => return Ok(None),
     };
     if node.args.len() != 3 {
         return Err(node_error(
             node,
-            "`http.get` and `http.post` only accept props",
+            "`http.request`, `http.get`, and `http.post` only accept props",
         ));
     }
     match context {
@@ -1156,18 +1230,35 @@ fn parse_http_let(
         ActionContext::HttpHandler { .. } => {
             return Err(node_error(
                 node,
-                "`http.get` and `http.post` require an async request handler",
+                "`http.request`, `http.get`, and `http.post` require an async request handler",
             ));
         }
         ActionContext::Init => {
             return Err(node_error(
                 node,
-                "`http.get` and `http.post` are not valid in server init",
+                "`http.request`, `http.get`, and `http.post` are not valid in server init",
             ));
         }
     }
     validate_binding_name(node, &binding)?;
-    reject_unknown_props(node, &["base", "path", "bearer", "json", "mode"])?;
+    reject_unknown_props(
+        node,
+        &[
+            "method",
+            "base",
+            "path",
+            "bearer",
+            "headers",
+            "json",
+            "mode",
+            "redirect",
+            "maxRedirects",
+            "timeoutMs",
+        ],
+    )?;
+    if expression != "http.request" && node.prop("method").is_some() {
+        return Err(node_error(node, "`method` is only valid on `http.request`"));
+    }
     let base = required_http_base_prop(node, environment)?;
     let path = required_http_path_prop(node)?;
     let bearer = if node.prop("bearer").is_some() {
@@ -1175,19 +1266,33 @@ fn parse_http_let(
     } else {
         None
     };
+    let headers = optional_http_headers_prop(node, environment)?;
     let json = node
         .prop("json")
         .map(|prop| store_literal(&prop.value))
         .transpose()?;
     let mode = optional_http_mode_prop(node)?;
+    let redirect = optional_http_redirect_prop(node)?;
+    let max_redirects = optional_positive_u32_prop(node, "maxRedirects")?;
+    if max_redirects.is_some() && redirect != HttpRedirectPolicy::Follow {
+        return Err(node_error(
+            node,
+            "`maxRedirects` is only valid with redirect:\"follow\"",
+        ));
+    }
+    let timeout_ms = optional_positive_u64_prop(node, "timeoutMs")?;
     Ok(Some(OutboundHttpRequest {
         binding,
         method,
         base,
         path,
         bearer,
+        headers,
         json,
         mode,
+        redirect,
+        max_redirects,
+        timeout_ms,
     }))
 }
 
@@ -1718,6 +1823,62 @@ fn optional_http_mode_prop(node: &SourceNode) -> DoweResult<HttpResponseMode> {
     }
 }
 
+fn optional_http_redirect_prop(node: &SourceNode) -> DoweResult<HttpRedirectPolicy> {
+    let Some(prop) = node.prop("redirect") else {
+        return Ok(HttpRedirectPolicy::Follow);
+    };
+    let value = required_static_string_prop(prop)?;
+    match value.as_str() {
+        "follow" => Ok(HttpRedirectPolicy::Follow),
+        "manual" => Ok(HttpRedirectPolicy::Manual),
+        "error" => Ok(HttpRedirectPolicy::Error),
+        _ => Err(prop_error(
+            prop,
+            "`redirect` must be `follow`, `manual`, or `error`",
+        )),
+    }
+}
+
+fn optional_positive_u32_prop(node: &SourceNode, name: &str) -> DoweResult<Option<u32>> {
+    let Some(prop) = node.prop(name) else {
+        return Ok(None);
+    };
+    let value = prop
+        .value
+        .as_string_like()
+        .ok_or_else(|| prop_error(prop, format!("`{name}` must be a positive integer")))?;
+    let value = value
+        .parse::<u32>()
+        .map_err(|_| prop_error(prop, format!("`{name}` must be a positive integer")))?;
+    if value == 0 {
+        return Err(prop_error(
+            prop,
+            format!("`{name}` must be a positive integer"),
+        ));
+    }
+    Ok(Some(value))
+}
+
+fn optional_positive_u64_prop(node: &SourceNode, name: &str) -> DoweResult<Option<u64>> {
+    let Some(prop) = node.prop(name) else {
+        return Ok(None);
+    };
+    let value = prop
+        .value
+        .as_string_like()
+        .ok_or_else(|| prop_error(prop, format!("`{name}` must be a positive integer")))?;
+    let value = value
+        .parse::<u64>()
+        .map_err(|_| prop_error(prop, format!("`{name}` must be a positive integer")))?;
+    if value == 0 {
+        return Err(prop_error(
+            prop,
+            format!("`{name}` must be a positive integer"),
+        ));
+    }
+    Ok(Some(value))
+}
+
 fn required_reference_prop(node: &SourceNode, name: &str) -> DoweResult<String> {
     let prop = node
         .prop(name)
@@ -1763,6 +1924,122 @@ fn required_header_name_prop(node: &SourceNode, name: &str) -> DoweResult<String
         }
     };
     normalize_http_header_name(&value).ok_or_else(|| prop_error(prop, "invalid header name"))
+}
+
+fn required_http_method_prop(node: &SourceNode) -> DoweResult<HttpMethod> {
+    let prop = node
+        .prop("method")
+        .ok_or_else(|| node_error(node, "missing `method`"))?;
+    let value = required_static_string_prop(prop)?;
+    HttpMethod::from_str(&value)
+        .map_err(|_| prop_error(prop, "`method` must be GET, POST, PUT, PATCH, or DELETE"))
+}
+
+fn optional_http_headers_prop(
+    node: &SourceNode,
+    environment: &EnvironmentConfig,
+) -> DoweResult<Vec<OutboundHttpHeader>> {
+    let Some(prop) = node.prop("headers") else {
+        return Ok(Vec::new());
+    };
+    let SourceValue::Array(values) = &prop.value else {
+        return Err(prop_error(
+            prop,
+            "`headers` must be an array of { name:\"Header\" value:\"literal\" } objects",
+        ));
+    };
+    values
+        .iter()
+        .map(|value| parse_http_header_value(prop, value, environment))
+        .collect()
+}
+
+fn parse_http_header_value(
+    prop: &SourceProp,
+    value: &SourceValue,
+    environment: &EnvironmentConfig,
+) -> DoweResult<OutboundHttpHeader> {
+    let SourceValue::Object(entries) = value else {
+        return Err(prop_error(prop, "`headers` entries must be objects"));
+    };
+    let mut name = None;
+    let mut header_value = None;
+    for entry in entries {
+        let SourceObjectEntry::KeyValue { key, value } = entry else {
+            return Err(prop_error(prop, "`headers` entries do not support spread"));
+        };
+        match key.as_str() {
+            "name" => {
+                let SourceValue::String(value) = value else {
+                    return Err(prop_error(prop, "header `name` must be a quoted string"));
+                };
+                name = Some(value.clone());
+            }
+            "value" => header_value = Some(parse_http_header_binding(prop, value, environment)?),
+            _ => return Err(prop_error(prop, format!("unknown header field `{key}`"))),
+        }
+    }
+    let name = name.ok_or_else(|| prop_error(prop, "header entry missing `name`"))?;
+    let name =
+        normalize_http_header_name(&name).ok_or_else(|| prop_error(prop, "invalid header name"))?;
+    if is_restricted_outbound_header(&name) {
+        return Err(prop_error(
+            prop,
+            format!("header `{name}` is not allowed in outbound request headers"),
+        ));
+    }
+    let value = header_value.ok_or_else(|| prop_error(prop, "header entry missing `value`"))?;
+    Ok(OutboundHttpHeader { name, value })
+}
+
+fn parse_http_header_binding(
+    prop: &SourceProp,
+    value: &SourceValue,
+    environment: &EnvironmentConfig,
+) -> DoweResult<HttpHeaderValue> {
+    match value {
+        SourceValue::String(value) => Ok(HttpHeaderValue::Static(value.clone())),
+        SourceValue::Bareword(value) => {
+            let Some(env_name) = value.strip_prefix("env.") else {
+                return Err(prop_error(
+                    prop,
+                    "header `value` must be a quoted string or server env reference",
+                ));
+            };
+            let variable = environment.variable(env_name).ok_or_else(|| {
+                prop_error(prop, format!("unknown environment variable `{env_name}`"))
+            })?;
+            if variable.visibility != EnvironmentVisibility::Server {
+                return Err(prop_error(
+                    prop,
+                    format!("environment variable `{env_name}` must be server-only"),
+                ));
+            }
+            Ok(HttpHeaderValue::Environment(env_name.to_string()))
+        }
+        _ => Err(prop_error(
+            prop,
+            "header `value` must be a quoted string or server env reference",
+        )),
+    }
+}
+
+fn is_restricted_outbound_header(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "authorization"
+            | "cookie"
+            | "set-cookie"
+            | "host"
+            | "connection"
+            | "content-length"
+            | "transfer-encoding"
+            | "upgrade"
+            | "proxy-authorization"
+            | "proxy-authenticate"
+            | "te"
+            | "trailer"
+    )
 }
 
 fn required_secret_prop(
@@ -1896,8 +2173,9 @@ mod tests {
     use super::{parse_server_file, parse_server_source};
     use crate::model::{
         EndpointBehavior, EnvironmentConfig, EnvironmentValueSource, EnvironmentVariable,
-        EnvironmentVisibility, HttpConnectionValue, HttpMethod, HttpResponseMode, ServerLogValue,
-        ServerMiddlewareStatement, ServerSecret, ServerStatement,
+        EnvironmentVisibility, HttpConnectionValue, HttpHeaderValue, HttpMethod,
+        HttpRedirectPolicy, HttpResponseMode, ServerLogValue, ServerMiddlewareStatement,
+        ServerSecret, ServerStatement,
     };
     use crate::parser::source_parser::parse_source_file;
     use std::fs;
@@ -2055,6 +2333,142 @@ main
                 if request.mode == HttpResponseMode::Proxy
                     && request.base == HttpConnectionValue::Environment("OPENROUTER_BASE_URL".to_string())
         ));
+    }
+
+    #[test]
+    fn parses_general_outbound_http_request_options() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/products"
+      method PATCH async req
+        let body = await req.json()
+        let upstream = http.request method:"PATCH" base:env.OPENROUTER_BASE_URL path:"/v1/products" headers:[{ name:"Accept" value:"application/json" }, { name:"X-Api-Key" value:env.OPENROUTER_API_KEY }] json:body redirect:"manual" timeoutMs:5000 mode:"json"
+        return response json:{ ok:upstream.ok status:upstream.status location:upstream.location data:upstream.json }"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = openrouter_environment(EnvironmentVisibility::Server);
+        let server = parse_server_source(root, &file, &environment).expect("server");
+        let endpoint = server
+            .backend
+            .find_endpoint(&HttpMethod::Patch, "/api/products")
+            .expect("endpoint");
+
+        assert!(matches!(
+            &endpoint.endpoint.action.statements[1],
+            ServerStatement::Http(request)
+                if request.method == HttpMethod::Patch
+                    && request.redirect == HttpRedirectPolicy::Manual
+                    && request.timeout_ms == Some(5000)
+                    && request.headers.len() == 2
+                    && request.headers[0].name == "Accept"
+                    && request.headers[0].value == HttpHeaderValue::Static("application/json".to_string())
+                    && request.headers[1].name == "X-Api-Key"
+                    && request.headers[1].value == HttpHeaderValue::Environment("OPENROUTER_API_KEY".to_string())
+        ));
+    }
+
+    #[test]
+    fn parses_stdlib_let_statement() {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/src/main.dowe"),
+            r#"type User
+  name:string
+
+main
+  server port:8080
+    route "/api/normalize"
+      method POST async req
+        let body:User = await req.json()
+        let normalized = str.trim value:body.name
+        return response json:{ name:normalized }"#
+                .to_string(),
+        )
+        .expect("source");
+
+        let server =
+            parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect("server");
+        let endpoint = server
+            .backend
+            .find_endpoint(&HttpMethod::Post, "/api/normalize")
+            .expect("route");
+
+        assert!(matches!(
+            &endpoint.endpoint.action.statements[1],
+            ServerStatement::Stdlib(statement)
+                if statement.binding == "normalized"
+                    && statement.call.namespace == "str"
+                    && statement.call.function == "trim"
+                    && statement.call.args[0].name == "value"
+        ));
+    }
+
+    #[test]
+    fn rejects_authorization_header_on_outbound_http_request() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/products"
+      method GET async req
+        let upstream = http.request method:"GET" base:env.OPENROUTER_BASE_URL path:"/v1/products" headers:[{ name:"Authorization" value:"Bearer token" }]
+        return response json:upstream"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = openrouter_environment(EnvironmentVisibility::Server);
+        let error = parse_server_source(root, &file, &environment).expect_err("error");
+
+        assert!(error.to_string().contains("not allowed"));
+    }
+
+    #[test]
+    fn rejects_client_environment_for_outbound_http_header() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/products"
+      method GET async req
+        let upstream = http.request method:"GET" base:env.OPENROUTER_BASE_URL path:"/v1/products" headers:[{ name:"X-Api-Key" value:env.OPENROUTER_API_KEY }]
+        return response json:upstream"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = openrouter_environment(EnvironmentVisibility::Client);
+        let error = parse_server_source(root, &file, &environment).expect_err("error");
+
+        assert!(error.to_string().contains("must be server-only"));
+    }
+
+    #[test]
+    fn rejects_outbound_http_request_without_method() {
+        let root = Path::new("/project");
+        let file = parse_source_file(
+            root,
+            Path::new("/project/src/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/products"
+      method GET async req
+        let upstream = http.request base:env.OPENROUTER_BASE_URL path:"/v1/products"
+        return response json:upstream"#
+                .to_string(),
+        )
+        .expect("source");
+        let environment = openrouter_environment(EnvironmentVisibility::Server);
+        let error = parse_server_source(root, &file, &environment).expect_err("error");
+
+        assert!(error.to_string().contains("missing `method`"));
     }
 
     #[test]

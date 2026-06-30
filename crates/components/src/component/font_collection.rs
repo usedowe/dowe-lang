@@ -58,9 +58,14 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
                 collect_nav_menu_font_families(item, fonts);
             }
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             collect_style_font_families(&props.style.style, fonts);
-            for child in children {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_node_font_families(child, fonts);
             }
         }
@@ -170,8 +175,19 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
                 collect_node_font_families(child, fonts);
             }
         }
-        ViewNode::SideNav { props, .. } | ViewNode::Sidebar { props, .. } => {
+        ViewNode::SideNav { props, .. } => {
             collect_style_font_families(&props.style.style, fonts);
+        }
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            collect_style_font_families(&props.style.style, fonts);
+            for child in header.iter().chain(body).chain(footer) {
+                collect_node_font_families(child, fonts);
+            }
         }
         ViewNode::Scaffold {
             props,

@@ -43,12 +43,19 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Button { children, .. } => contains_children(children),
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            contains_children(header) || contains_children(body) || contains_children(footer)
+        }
         ViewNode::Modal {
             header,
             body,
@@ -78,7 +85,15 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::BottomBar {
             start, center, end, ..
         } => contains_children(start) || contains_children(center) || contains_children(end),
-        ViewNode::SideNav { .. } | ViewNode::Sidebar { .. } => false,
+        ViewNode::SideNav { .. } => false,
+        ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            contains_children(header) || contains_children(body) || contains_children(footer)
+        }
         ViewNode::Scaffold {
             app_bar,
             start,

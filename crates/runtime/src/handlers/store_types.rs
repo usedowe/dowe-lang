@@ -83,11 +83,45 @@ impl StoreActionError {
         }
     }
 
+    fn from_http(error: reqwest::Error) -> Self {
+        if error.is_timeout() {
+            return Self {
+                status: StatusCode::GATEWAY_TIMEOUT,
+                code: "http_timeout",
+                message: "Outbound HTTP request timed out",
+            };
+        }
+        Self::http()
+    }
+
+    fn redirect() -> Self {
+        Self {
+            status: StatusCode::BAD_GATEWAY,
+            code: "http_redirect",
+            message: "Outbound HTTP redirect was blocked",
+        }
+    }
+
     fn missing_http() -> Self {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "invalid_response",
             message: "HTTP response binding is missing",
+        }
+    }
+
+    fn stdlib(error: dowe_stdlib::StdlibError) -> Self {
+        let code = match error.code {
+            dowe_stdlib::StdlibErrorCode::InvalidArgument => "stdlib_invalid_argument",
+            dowe_stdlib::StdlibErrorCode::LimitExceeded => "stdlib_limit_exceeded",
+            dowe_stdlib::StdlibErrorCode::ParseError => "stdlib_parse_error",
+            dowe_stdlib::StdlibErrorCode::Unsupported => "stdlib_unsupported",
+            dowe_stdlib::StdlibErrorCode::NonFiniteNumber => "stdlib_non_finite_number",
+        };
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code,
+            message: "Standard library function failed",
         }
     }
 

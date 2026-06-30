@@ -312,11 +312,39 @@ fn collect_js_segments(
                 &render_side_nav_html("sidenav", props, items, context),
             );
         }
-        ViewNode::Sidebar { props, items } => {
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             push_literal(
                 segments,
-                &render_side_nav_html("sidebar", props, items, context),
+                &format!(
+                    "<aside{}>",
+                    attrs(sidebar_classes(props), Some(&props.style.element), None, context)
+                ),
             );
+            if !header.is_empty() {
+                push_literal(segments, "<div class=\"sidebar-header\">");
+                for child in header {
+                    collect_js_segments(child, segments, context);
+                }
+                push_literal(segments, "</div>");
+            }
+            push_literal(segments, "<div class=\"sidebar-body\">");
+            for child in body {
+                collect_js_segments(child, segments, context);
+            }
+            push_literal(segments, "</div>");
+            if !footer.is_empty() {
+                push_literal(segments, "<div class=\"sidebar-footer\">");
+                for child in footer {
+                    collect_js_segments(child, segments, context);
+                }
+                push_literal(segments, "</div>");
+            }
+            push_literal(segments, "</aside>");
         }
         ViewNode::Scaffold {
             props,
@@ -330,7 +358,12 @@ fn collect_js_segments(
                 props, app_bar, start, main, end, bottom_bar, segments, context,
             );
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             let extra = drawer_panel_attrs(props, context);
             push_literal(
                 segments,
@@ -348,8 +381,24 @@ fn collect_js_segments(
             if !props.hide_close_button {
                 push_literal(segments, drawer_close_html());
             }
-            for child in children {
+            if !header.is_empty() {
+                push_literal(segments, "<div class=\"drawer-header\">");
+                for child in header {
+                    collect_js_segments(child, segments, context);
+                }
+                push_literal(segments, "</div>");
+            }
+            push_literal(segments, "<div class=\"drawer-body\">");
+            for child in body {
                 collect_js_segments(child, segments, context);
+            }
+            push_literal(segments, "</div>");
+            if !footer.is_empty() {
+                push_literal(segments, "<div class=\"drawer-footer\">");
+                for child in footer {
+                    collect_js_segments(child, segments, context);
+                }
+                push_literal(segments, "</div>");
             }
             push_literal(segments, "</div></div>");
         }

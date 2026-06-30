@@ -50,11 +50,11 @@ page appointmentsPage
     Grid columns:1 gap:6
       Card variant:"soft" scheme:"surface" p:{ xs:5 md:7 } rounded:"xl"
         Text size:"sm" weight:"semibold" color:"info"
-          SCHEDULE
+          "SCHEDULE"
         Title size:"4xl" weight:"bold"
-          Appointment planner
+          "Appointment planner"
         Text size:"md" color:"muted"
-          Create, edit, and clear appointments through Dowe Signals and server endpoints.
+          "Create, edit, and clear appointments through Dowe Signals and server endpoints."
         Alert type:"info" message:alert.message visible:alert.visible onClose:close p:3
         Grid columns:{ xs:1 md:2 } gap:4
           Input bind:appointment.patientName label:"Patient" placeholder:"Jane Rivera" labelFloating:true variant:"outlined" scheme:"primary"
@@ -69,28 +69,28 @@ page appointmentsPage
           Input bind:appointment.notes label:"Notes" placeholder:"Symptoms, room, or follow-up details" labelFloating:true variant:"outlined" scheme:"muted"
         Flex gap:3 align:"center"
           Button onClick:create variant:"solid" scheme:"info" size:"lg"
-            Create
+            "Create"
           Button onClick:update variant:"outlined" scheme:"success" size:"lg"
-            Update
+            "Update"
       Grid columns:{ xs:1 md:2 } gap:4
         each item in appointments key:item.id
           Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
             Grid columns:1 gap:3
               Text size:"sm" color:"muted"
-                item.status
+                "item.status"
               Title size:"2xl"
-                item.patientName
+                "item.patientName"
               Text size:"md"
-                item.service
+                "item.service"
               Text size:"sm" color:"muted"
-                item.date
+                "item.date"
               Text size:"sm" color:"muted"
-                item.time
+                "item.time"
               Text size:"sm"
-                item.notes
+                "item.notes"
               Flex gap:2 align:"center"
                 Button onClick:edit variant:"soft" scheme:"info" size:"sm"
-                  Edit
+                  "Edit"
                 Button onClick:delete variant:"ghost" scheme:"danger" size:"sm"
-                  Delete
+                  "Delete"
 

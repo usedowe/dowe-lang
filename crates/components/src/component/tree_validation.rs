@@ -69,9 +69,19 @@ pub fn compose_tree(layout: &ViewNode, page: &ViewNode) -> ViewNode {
                 .map(|item| compose_nav_menu_item(item, page))
                 .collect(),
         },
-        ViewNode::Drawer { props, children } => ViewNode::Drawer {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => ViewNode::Drawer {
             props: props.clone(),
-            children: children
+            header: header
+                .iter()
+                .map(|child| compose_tree(child, page))
+                .collect(),
+            body: body.iter().map(|child| compose_tree(child, page)).collect(),
+            footer: footer
                 .iter()
                 .map(|child| compose_tree(child, page))
                 .collect(),
@@ -418,9 +428,22 @@ pub fn compose_tree(layout: &ViewNode, page: &ViewNode) -> ViewNode {
             props: props.clone(),
             items: items.clone(),
         },
-        ViewNode::Sidebar { props, items } => ViewNode::Sidebar {
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => ViewNode::Sidebar {
             props: props.clone(),
-            items: items.clone(),
+            header: header
+                .iter()
+                .map(|child| compose_tree(child, page))
+                .collect(),
+            body: body.iter().map(|child| compose_tree(child, page)).collect(),
+            footer: footer
+                .iter()
+                .map(|child| compose_tree(child, page))
+                .collect(),
         },
         ViewNode::Scaffold {
             props,
@@ -519,13 +542,22 @@ fn validate_view_tree_with_parent(
         | ViewNode::Section { children, .. }
         | ViewNode::Flex { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
+                validate_view_tree_with_parent(child, false, None)?;
+            }
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
                 validate_view_tree_with_parent(child, false, None)?;
             }
         }
@@ -588,7 +620,17 @@ fn validate_view_tree_with_parent(
                 validate_view_tree_with_parent(child, false, None)?;
             }
         }
-        ViewNode::SideNav { .. } | ViewNode::Sidebar { .. } => {}
+        ViewNode::SideNav { .. } => {}
+        ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
+                validate_view_tree_with_parent(child, false, None)?;
+            }
+        }
         ViewNode::Scaffold {
             app_bar,
             start,

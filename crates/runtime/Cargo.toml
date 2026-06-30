@@ -11,6 +11,7 @@ dowe_compiler = { path = "../compiler" }
 dowe_crypto = { path = "../crypto" }
 dowe_kv = { path = "../kv" }
 dowe_spawn = { path = "../spawn" }
+dowe_stdlib = { path = "../stdlib" }
 dowe_store = { path = "../store" }
 futures-util.workspace = true
 reqwest.workspace = true

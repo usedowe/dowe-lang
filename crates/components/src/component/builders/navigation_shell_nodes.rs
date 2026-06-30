@@ -136,22 +136,22 @@ pub fn side_nav_component_node(
 
 pub fn sidebar_component_node(
     props: Vec<ComponentProp>,
-    items: Vec<SideNavItem>,
+    header: Vec<ViewNode>,
+    body: Vec<ViewNode>,
+    footer: Vec<ViewNode>,
+    allow_children: bool,
 ) -> ComponentResult<ViewNode> {
-    if items.is_empty() {
+    if body.is_empty() {
         return Err(ComponentError::invalid_prop_combination(
-            "Sidebar requires at least one entry",
+            "Sidebar requires body children",
         ));
     }
-    let mut size = None;
-    let mut wide = false;
+    reject_children_placeholder(BuiltinComponent::Sidebar, &header, allow_children)?;
+    reject_children_placeholder(BuiltinComponent::Sidebar, &body, allow_children)?;
+    reject_children_placeholder(BuiltinComponent::Sidebar, &footer, allow_children)?;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "size" => {
-                size = Some(parse_side_nav_size_prop(&prop.name, &prop.value)?);
-            }
-            "wide" => wide = parse_static_bool(&prop.name, &prop.value)?,
             "color" => {
                 return Err(ComponentError::new(
                     "unknown prop `color` on `Sidebar`; use `scheme` for visual family",
@@ -164,12 +164,10 @@ pub fn sidebar_component_node(
     style.variant.get_or_insert(ComponentVariant::Ghost);
     style.color.get_or_insert(ColorFamily::Muted);
     Ok(ViewNode::Sidebar {
-        props: SideNavProps {
-            style,
-            size: size.unwrap_or(SideNavSize::Md),
-            wide,
-        },
-        items,
+        props: SidebarProps { style },
+        header,
+        body,
+        footer,
     })
 }
 
@@ -257,15 +255,19 @@ pub fn scaffold_component_node(
 
 pub fn drawer_component_node(
     props: Vec<ComponentProp>,
-    children: Vec<ViewNode>,
+    header: Vec<ViewNode>,
+    body: Vec<ViewNode>,
+    footer: Vec<ViewNode>,
     allow_children: bool,
 ) -> ComponentResult<ViewNode> {
-    if children.is_empty() {
+    if body.is_empty() {
         return Err(ComponentError::invalid_prop_combination(
-            "Drawer requires at least one child",
+            "Drawer requires body children",
         ));
     }
-    reject_children_placeholder(BuiltinComponent::Drawer, &children, allow_children)?;
+    reject_children_placeholder(BuiltinComponent::Drawer, &header, allow_children)?;
+    reject_children_placeholder(BuiltinComponent::Drawer, &body, allow_children)?;
+    reject_children_placeholder(BuiltinComponent::Drawer, &footer, allow_children)?;
     let mut open = None;
     let mut position = DrawerPosition::Start;
     let mut disable_overlay_close = false;
@@ -304,6 +306,8 @@ pub fn drawer_component_node(
             disable_overlay_close,
             hide_close_button,
         },
-        children,
+        header,
+        body,
+        footer,
     })
 }

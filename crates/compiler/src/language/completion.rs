@@ -206,6 +206,7 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "continue",
         "send",
         "bridge",
+        "http.request",
         "http.get",
         "http.post",
         "agent.chat",
@@ -314,6 +315,13 @@ fn base_completions() -> Vec<LanguageCompletion> {
                 completion(label, LanguageCompletionKind::Component, "Dowe component")
             }),
         )
+        .chain(dowe_stdlib::signatures().into_iter().map(|signature| {
+            completion(
+                &format!("{}.{}", signature.namespace, signature.function),
+                LanguageCompletionKind::Function,
+                "portable standard library",
+            )
+        }))
         .collect()
 }
 
@@ -550,6 +558,7 @@ fn component_value_completions(
             | BuiltinComponent::Footer
             | BuiltinComponent::BottomBar
             | BuiltinComponent::SideNav
+            | BuiltinComponent::Sidebar
             | BuiltinComponent::Drawer
             | BuiltinComponent::Input
             | BuiltinComponent::Select
@@ -614,6 +623,7 @@ fn component_value_completions(
             | BuiltinComponent::Footer
             | BuiltinComponent::BottomBar
             | BuiltinComponent::SideNav
+            | BuiltinComponent::Sidebar
             | BuiltinComponent::Tabs
             | BuiltinComponent::Drawer
             | BuiltinComponent::Avatar
@@ -763,10 +773,7 @@ fn component_value_completions(
         (BuiltinComponent::Countdown, "size") => Some(quoted_values(
             CountdownSize::all().iter().map(|value| value.as_str()),
         )),
-        (
-            BuiltinComponent::SideNav | BuiltinComponent::Sidebar | BuiltinComponent::NavMenu,
-            "size",
-        ) => Some(quoted_values(
+        (BuiltinComponent::SideNav | BuiltinComponent::NavMenu, "size") => Some(quoted_values(
             SideNavSize::all().iter().map(|value| value.as_str()),
         )),
         (BuiltinComponent::Drawer, "position") => Some(quoted_values(
@@ -938,7 +945,7 @@ fn props_for_component(component: &str) -> &'static [&'static str] {
         "AppBar" | "BottomBar" => &FLOATING_BAR_PROPS,
         "Footer" => &BAR_PROPS,
         "SideNav" => &SIDE_NAV_PROPS,
-        "Sidebar" => &SIDE_NAV_PROPS,
+        "Sidebar" => &SIDEBAR_PROPS,
         "NavMenu" => &NAV_MENU_PROPS,
         "Scaffold" => &SCAFFOLD_PROPS,
         "Tabs" => &TABS_PROPS,
@@ -1155,6 +1162,10 @@ const FLOATING_BAR_PROPS: &[&str] = &[
 const SIDE_NAV_PROPS: &[&str] = &[
     "variant", "scheme", "size", "wide", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt",
     "pb", "w", "h", "minW", "minH", "rounded", "border",
+];
+const SIDEBAR_PROPS: &[&str] = &[
+    "variant", "scheme", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h",
+    "minW", "minH", "rounded", "border",
 ];
 const NAV_MENU_PROPS: &[&str] = &[
     "variant", "scheme", "size", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb",

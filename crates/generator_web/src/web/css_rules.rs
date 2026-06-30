@@ -284,6 +284,9 @@ fn class_body(class_name: &str) -> Option<String> {
             | "tabs-content"
             | "drawer-panel"
             | "drawer"
+            | "drawer-header"
+            | "drawer-body"
+            | "drawer-footer"
             | "avatar"
             | "avatar-image"
             | "avatar-icon"
@@ -582,7 +585,7 @@ fn append_single_variant_css(
         }
         return;
     }
-    if matches!(base, "sidenav" | "sidebar") {
+    if base == "sidenav" {
         let (background, content, border) = match variant {
             ComponentVariant::Solid => (color, on, color),
             ComponentVariant::Soft => (soft, on_soft, soft),

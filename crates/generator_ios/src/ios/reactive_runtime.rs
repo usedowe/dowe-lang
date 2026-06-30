@@ -20,8 +20,24 @@ struct DoweRequestAction {
 
 enum DoweAction {
     case request(DoweRequestAction)
-    case assign(String, String)
+    case assign(String, String, DoweStdlibCall?)
     case reset(String)
+}
+
+struct DoweStdlibCall {
+    let namespace: String
+    let function: String
+    let args: [DoweStdlibArg]
+}
+
+struct DoweStdlibArg {
+    let name: String
+    let value: DoweStdlibValue
+}
+
+struct DoweStdlibValue {
+    let kind: String
+    let value: Any?
 }
 
 @MainActor
@@ -143,10 +159,9 @@ final class DoweReactiveState: ObservableObject {
             return
         }
         switch action {
-        case .assign(let target, let source):
-            if let current = value(source, item: item) {
-                write(target, value: current)
-            }
+        case .assign(let target, let source, let call):
+            let current = call.map { stdlib($0, item: item) } ?? value(source, item: item)
+            write(target, value: current ?? NSNull())
         case .reset(let target):
             if let current = value(target, in: initial) {
                 write(target, value: current)
@@ -194,6 +209,126 @@ final class DoweReactiveState: ObservableObject {
         var object = values[root] as? [String: Any] ?? [:]
         object[parts[1]] = value
         values[root] = object
+    }
+
+    private func stdlib(_ call: DoweStdlibCall, item: [String: Any]?) -> Any? {
+        let args = Dictionary(uniqueKeysWithValues: call.args.map { ($0.name, stdlibValue($0.value, item: item)) })
+        func text(_ name: String) -> String { stdlibText(args[name] ?? nil) }
+        func number(_ name: String) -> Double? { stdlibNumber(args[name] ?? nil) }
+        func list(_ name: String) -> [Any] { args[name] as? [Any] ?? [] }
+        switch call.namespace + "." + call.function {
+        case "str.trim": return text("value").trimmingCharacters(in: .whitespacesAndNewlines)
+        case "str.lower": return text("value").lowercased()
+        case "str.upper": return text("value").uppercased()
+        case "str.length": return text("value").unicodeScalars.count
+        case "str.contains": return text("value").contains(text("needle"))
+        case "str.startsWith": return text("value").hasPrefix(text("prefix"))
+        case "str.endsWith": return text("value").hasSuffix(text("suffix"))
+        case "str.replace": return text("value").replacingOccurrences(of: text("from"), with: text("to"))
+        case "str.split": return text("value").components(separatedBy: text("delimiter"))
+        case "str.join": return list("values").map(stdlibText).joined(separator: text("delimiter"))
+        case "math.add": return finite(number("left"), number("right"), +)
+        case "math.sub": return finite(number("left"), number("right"), -)
+        case "math.mul": return finite(number("left"), number("right"), *)
+        case "math.div":
+            guard let right = number("right"), right != 0 else { return nil }
+            return finite(number("left"), right, /)
+        case "math.round": return number("value").map { Foundation.round($0) }
+        case "math.floor": return number("value").map { Foundation.floor($0) }
+        case "math.ceil": return number("value").map { Foundation.ceil($0) }
+        case "math.abs": return number("value").map { Swift.abs($0) }
+        case "math.sum": return list("values").compactMap(stdlibNumber).reduce(0, +)
+        case "math.average":
+            let values = list("values").compactMap(stdlibNumber)
+            return values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+        case "math.min": return list("values").compactMap(stdlibNumber).min()
+        case "math.max": return list("values").compactMap(stdlibNumber).max()
+        case "parse.int": return Int(text("value").trimmingCharacters(in: .whitespacesAndNewlines)) ?? args["fallback"] ?? nil
+        case "parse.float": return number("value") ?? args["fallback"] ?? nil
+        case "parse.string": return stdlibText(args["value"] ?? nil)
+        case "parse.json", "json.parse":
+            guard let data = text("value").data(using: .utf8) else { return args["fallback"] ?? nil }
+            return (try? JSONSerialization.jsonObject(with: data)) ?? args["fallback"] ?? nil
+        case "sort.asc": return list("values").sorted { stdlibText($0) < stdlibText($1) }
+        case "sort.desc": return list("values").sorted { stdlibText($0) > stdlibText($1) }
+        case "sort.by": return list("values").sorted { stdlibText(read($0, path: text("field"))) < stdlibText(read($1, path: text("field"))) }
+        case "list.take": return Array(list("values").prefix(max(0, Int(number("count") ?? 0))))
+        case "list.skip": return Array(list("values").dropFirst(max(0, Int(number("count") ?? 0))))
+        case "list.first": return list("values").first
+        case "list.last": return list("values").last
+        case "list.count": return list("values").count
+        case "list.filterContains": return list("values").filter { stdlibText(read($0, path: text("field"))).lowercased().contains(text("value").lowercased()) }
+        case "list.mapField": return list("values").map { read($0, path: text("field")) as Any }
+        case "list.sumBy": return list("values").compactMap { stdlibNumber(read($0, path: text("field"))) }.reduce(0, +)
+        case "json.get": return read(args["value"] ?? nil, path: text("path")) ?? args["fallback"] ?? nil
+        case "json.stringify":
+            guard JSONSerialization.isValidJSONObject(args["value"] as Any) else { return stdlibText(args["value"] ?? nil) }
+            let data = try? JSONSerialization.data(withJSONObject: args["value"] as Any)
+            return data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        case "json.merge":
+            var output = args["left"] as? [String: Any] ?? [:]
+            for (key, value) in args["right"] as? [String: Any] ?? [:] { output[key] = value }
+            return output
+        case "date.now": return ISO8601DateFormatter().string(from: Date())
+        case "date.formatIso":
+            let formatter = ISO8601DateFormatter()
+            return formatter.date(from: text("value")).map { formatter.string(from: $0) } ?? text("value")
+        case "date.addDays":
+            let formatter = ISO8601DateFormatter()
+            guard let date = formatter.date(from: text("value")) else { return nil }
+            return formatter.string(from: date.addingTimeInterval((number("days") ?? 0) * 86400))
+        case "date.diffDays":
+            let formatter = ISO8601DateFormatter()
+            guard let start = formatter.date(from: text("start")), let end = formatter.date(from: text("end")) else { return 0 }
+            return Int(end.timeIntervalSince(start) / 86400)
+        default: return nil
+        }
+    }
+
+    private func stdlibValue(_ value: DoweStdlibValue, item: [String: Any]?) -> Any? {
+        switch value.kind {
+        case "null": return nil
+        case "bool": return value.value as? Bool
+        case "number": return stdlibNumber(value.value)
+        case "string": return value.value as? String ?? ""
+        case "reference": return self.value(value.value as? String ?? "", item: item)
+        case "array": return (value.value as? [DoweStdlibValue] ?? []).map { stdlibValue($0, item: item) as Any }
+        case "object":
+            var output: [String: Any] = [:]
+            for entry in value.value as? [(String, DoweStdlibValue)] ?? [] {
+                output[entry.0] = stdlibValue(entry.1, item: item) as Any
+            }
+            return output
+        default: return nil
+        }
+    }
+
+    private func stdlibText(_ value: Any?) -> String {
+        guard let value, !(value is NSNull) else { return "" }
+        if let text = value as? String { return text }
+        return String(describing: value)
+    }
+
+    private func stdlibNumber(_ value: Any?) -> Double? {
+        if let number = value as? NSNumber { return number.doubleValue.isFinite ? number.doubleValue : nil }
+        if let number = value as? Double { return number.isFinite ? number : nil }
+        if let text = value as? String, let number = Double(text.trimmingCharacters(in: .whitespacesAndNewlines)), number.isFinite { return number }
+        return nil
+    }
+
+    private func read(_ value: Any?, path: String) -> Any? {
+        var current = value
+        for part in path.split(separator: ".").map(String.init) {
+            guard let object = current as? [String: Any] else { return nil }
+            current = object[part]
+        }
+        return current
+    }
+
+    private func finite(_ left: Double?, _ right: Double?, _ op: (Double, Double) -> Double) -> Double? {
+        guard let left, let right else { return nil }
+        let value = op(left, right)
+        return value.isFinite ? value : nil
     }
 
     private func execute(_ action: DoweRequestAction, item: [String: Any]?) async {

@@ -51,10 +51,17 @@ fn render_compose_navigation_node(
                 context,
             );
         }
-        ViewNode::Sidebar { props, items } => {
-            render_compose_side_nav(
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            render_compose_sidebar(
                 props,
-                items,
+                header,
+                body,
+                footer,
                 indent,
                 output,
                 flow,

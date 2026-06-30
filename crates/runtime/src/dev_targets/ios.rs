@@ -3,7 +3,9 @@ use super::{
     ios_cache::{cached_ios_app, ios_app_cache_key, publish_ios_app},
     print_target_started, print_target_starting, quiet_command_options, run_required,
 };
-use crate::dev::{DevTarget, ExternalTargetStartup, HostOs};
+use crate::dev::{
+    DevTarget, ExternalTargetStartup, HostOs, IosSimulatorOption, IosSimulatorSelection,
+};
 use crate::error::{RuntimeError, RuntimeResult};
 use dowe_compiler::CompiledProject;
 use dowe_spawn::{SpawnConfig, StreamMode};
@@ -12,14 +14,17 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub(super) fn start(project: &CompiledProject) -> RuntimeResult<ExternalTargetStartup> {
+pub(super) fn start(
+    project: &CompiledProject,
+    selection: Option<IosSimulatorSelection>,
+) -> RuntimeResult<ExternalTargetStartup> {
     if HostOs::current() != HostOs::Macos {
         return Err(RuntimeError::new("target `ios` is only available on macOS"));
     }
 
     let ios_root = ensure_dir(project.root.join(".dowe/apps/ios"), DevTarget::Ios)?;
     print_target_starting(DevTarget::Ios);
-    let simulator = prepare_ios_simulator()?;
+    let simulator = prepare_ios_simulator(selection)?;
     let cleanup_configs = ios_cleanup_commands(&simulator.udid);
     if let Err(error) = launch_ios_app(project, &ios_root, &simulator) {
         run_ios_cleanup_configs(&cleanup_configs);
@@ -210,7 +215,11 @@ struct IosSimulator {
     boot_requested: bool,
 }
 
-fn prepare_ios_simulator() -> RuntimeResult<IosSimulator> {
+fn prepare_ios_simulator(selection: Option<IosSimulatorSelection>) -> RuntimeResult<IosSimulator> {
+    if let Some(selection) = selection {
+        return prepare_selected_ios_simulator(&selection);
+    }
+
     if let Some(udid) = find_ios_device("booted")? {
         return Ok(IosSimulator {
             udid,
@@ -229,6 +238,34 @@ fn prepare_ios_simulator() -> RuntimeResult<IosSimulator> {
     Ok(IosSimulator {
         udid,
         boot_requested: true,
+    })
+}
+
+fn prepare_selected_ios_simulator(
+    selection: &IosSimulatorSelection,
+) -> RuntimeResult<IosSimulator> {
+    let option = simulator_options()?
+        .into_iter()
+        .find(|option| option.udid() == selection.udid())
+        .ok_or_else(|| {
+            RuntimeError::new(format!(
+                "iOS app target failed: selected simulator `{}` is not available",
+                selection.udid()
+            ))
+        })?;
+
+    let boot_requested = !option.is_booted();
+    if option.state() != "Booted" && option.state() != "Booting" {
+        run_required(
+            DevTarget::Ios,
+            SpawnConfig::new("xcrun", ["simctl", "boot", option.udid()])
+                .with_options(quiet_command_options(None, StreamMode::Ignore)),
+        )?;
+    }
+
+    Ok(IosSimulator {
+        udid: option.udid().to_string(),
+        boot_requested,
     })
 }
 
@@ -269,6 +306,18 @@ fn run_ios_cleanup_configs(configs: &[SpawnConfig]) {
     }
 }
 
+pub(super) fn simulator_options() -> RuntimeResult<Vec<IosSimulatorOption>> {
+    if HostOs::current() != HostOs::Macos {
+        return Ok(Vec::new());
+    }
+    let output = run_required(
+        DevTarget::Ios,
+        SpawnConfig::new("xcrun", ["simctl", "list", "devices", "available", "-j"])
+            .with_options(quiet_command_options(None, StreamMode::Pipe)),
+    )?;
+    parse_ios_simulator_options(&output.stdout_bytes)
+}
+
 fn find_ios_device(mode: &str) -> RuntimeResult<Option<String>> {
     let output = run_required(
         DevTarget::Ios,
@@ -300,6 +349,63 @@ fn find_ios_device(mode: &str) -> RuntimeResult<Option<String>> {
     }
 
     Ok(None)
+}
+
+fn parse_ios_simulator_options(contents: &[u8]) -> RuntimeResult<Vec<IosSimulatorOption>> {
+    let value = serde_json::from_slice::<Value>(contents)
+        .map_err(|error| RuntimeError::new(format!("iOS app target failed: {error}")))?;
+    let Some(runtimes) = value.get("devices").and_then(Value::as_object) else {
+        return Ok(Vec::new());
+    };
+    let mut options = Vec::new();
+
+    for (runtime, devices) in runtimes {
+        let Some(devices) = devices.as_array() else {
+            continue;
+        };
+        for device in devices {
+            let available = device
+                .get("isAvailable")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            if !available {
+                continue;
+            }
+            let Some(name) = device.get("name").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(udid) = device.get("udid").and_then(Value::as_str) else {
+                continue;
+            };
+            let state = device
+                .get("state")
+                .and_then(Value::as_str)
+                .unwrap_or("Unknown");
+            options.push(IosSimulatorOption::new(
+                name,
+                udid,
+                ios_runtime_label(runtime),
+                state,
+            ));
+        }
+    }
+
+    options.sort_by(|left, right| {
+        (!left.is_booted())
+            .cmp(&!right.is_booted())
+            .then_with(|| left.runtime().cmp(right.runtime()))
+            .then_with(|| left.name().cmp(right.name()))
+            .then_with(|| left.udid().cmp(right.udid()))
+    });
+    Ok(options)
+}
+
+fn ios_runtime_label(runtime: &str) -> String {
+    let suffix = runtime.rsplit('.').next().unwrap_or(runtime);
+    if let Some(version) = suffix.strip_prefix("iOS-") {
+        return format!("iOS {}", version.replace('-', "."));
+    }
+    suffix.replace('-', " ")
 }
 
 fn ios_simulator_target() -> String {
@@ -418,8 +524,9 @@ fn ios_swift_link_args(object_files: &[PathBuf], bundle: &Path, target: String) 
 mod tests {
     use super::{
         ios_build_root, ios_cleanup_commands, ios_install_config, ios_launch_config,
-        ios_open_simulator_config, ios_simulator_target, ios_swift_compile_args,
+        ios_open_simulator_config, ios_runtime_label, ios_simulator_target, ios_swift_compile_args,
         ios_swift_job_count, ios_swift_link_args, ios_swift_object_files, ios_swift_output_map,
+        parse_ios_simulator_options,
     };
     use dowe_spawn::StreamMode;
     use std::path::Path;
@@ -429,6 +536,39 @@ mod tests {
         let target = ios_simulator_target();
 
         assert!(target.ends_with("-apple-ios17.0-simulator"));
+    }
+
+    #[test]
+    fn parses_ios_simulator_options() {
+        let options = parse_ios_simulator_options(
+            br#"{
+              "devices": {
+                "com.apple.CoreSimulator.SimRuntime.iOS-17-5": [
+                  {"name":"iPhone 15","udid":"BOOTED","state":"Booted","isAvailable":true},
+                  {"name":"iPad Pro","udid":"UNAVAILABLE","state":"Shutdown","isAvailable":false}
+                ],
+                "com.apple.CoreSimulator.SimRuntime.iOS-18-0": [
+                  {"name":"iPhone 16","udid":"SHUTDOWN","state":"Shutdown","isAvailable":true}
+                ]
+              }
+            }"#,
+        )
+        .expect("options");
+
+        assert_eq!(options.len(), 2);
+        assert_eq!(options[0].udid(), "BOOTED");
+        assert_eq!(options[0].label(), "iPhone 15 (iOS 17.5, Booted)");
+        assert_eq!(options[1].udid(), "SHUTDOWN");
+        assert_eq!(options[1].label(), "iPhone 16 (iOS 18.0, Shutdown)");
+    }
+
+    #[test]
+    fn formats_ios_runtime_labels() {
+        assert_eq!(
+            ios_runtime_label("com.apple.CoreSimulator.SimRuntime.iOS-18-2"),
+            "iOS 18.2"
+        );
+        assert_eq!(ios_runtime_label("custom-runtime"), "custom runtime");
     }
 
     #[test]

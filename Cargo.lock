@@ -391,12 +391,16 @@ dependencies = [
  "dowe_generator_desktop",
  "dowe_generator_ios",
  "dowe_generator_web",
+ "dowe_stdlib",
  "tempfile",
 ]
 
 [[package]]
 name = "dowe_components"
 version = "1.0.0"
+dependencies = [
+ "dowe_stdlib",
+]
 
 [[package]]
 name = "dowe_crypto"
@@ -499,6 +503,7 @@ dependencies = [
  "dowe_crypto",
  "dowe_kv",
  "dowe_spawn",
+ "dowe_stdlib",
  "dowe_store",
  "futures-util",
  "reqwest",
@@ -519,6 +524,14 @@ dependencies = [
  "serde",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "dowe_stdlib"
+version = "1.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

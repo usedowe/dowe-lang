@@ -3,64 +3,87 @@ use super::{
     print_target_starting, quiet_command_options, run_allow_failure, run_required,
     spawn_background,
 };
-use crate::dev::{DevTarget, ExternalTargetStartup, HostOs, RunningExternalProcess};
+use crate::dev::{
+    AndroidDeviceOption, AndroidDeviceSelection, DevTarget, ExternalTargetStartup, HostOs,
+    RunningExternalProcess,
+};
 use crate::error::{RuntimeError, RuntimeResult};
 use dowe_compiler::CompiledProject;
 use dowe_spawn::{SpawnConfig, StreamMode};
+use std::collections::BTreeSet;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
-pub(super) fn start(project: &CompiledProject) -> RuntimeResult<ExternalTargetStartup> {
+pub(super) fn start(
+    project: &CompiledProject,
+    selection: Option<AndroidDeviceSelection>,
+) -> RuntimeResult<ExternalTargetStartup> {
     let android_root = ensure_dir(project.root.join(".dowe/apps/android"), DevTarget::Android)?;
     let sdk = android_sdk_root()?;
     let tools = android_tools(&sdk)?;
     let mut processes = Vec::new();
 
     print_target_starting(DevTarget::Android);
-    let existing_serial = android_device_serial(&tools.adb)?;
-    if existing_serial.is_none() {
-        let avd = first_android_avd(&tools.emulator)?;
-        processes.push(spawn_background(
-            DevTarget::Android,
-            SpawnConfig::new(
-                tools.emulator.to_string_lossy().to_string(),
-                ["-avd".to_string(), avd],
-            )
-            .with_options(quiet_command_options(None, StreamMode::Ignore)),
-        )?);
-    }
+    let selected_serial = match selection {
+        Some(AndroidDeviceSelection::Connected { serial }) => {
+            let serials = android_device_serials(&tools.adb)?;
+            if serials.iter().any(|value| value == &serial) {
+                serial
+            } else {
+                return Err(RuntimeError::new(format!(
+                    "Android app target failed: selected Android device `{serial}` is not connected"
+                )));
+            }
+        }
+        Some(AndroidDeviceSelection::Avd { name }) => {
+            let existing_serials = android_device_serials(&tools.adb)?;
+            start_android_avd(&tools.emulator, name, &mut processes)?;
+            cleanup_on_error(
+                wait_for_new_android_device(&tools.adb, &existing_serials),
+                &mut processes,
+            )?
+        }
+        None => {
+            if let Some(serial) = android_device_serial(&tools.adb)? {
+                serial
+            } else {
+                let avd = first_android_avd(&tools.emulator)?;
+                start_android_avd(&tools.emulator, avd, &mut processes)?;
+                cleanup_on_error(wait_for_android_device(&tools.adb), &mut processes)?
+            }
+        }
+    };
 
     let apk = cleanup_on_error(build_android_apk(&android_root, &tools), &mut processes)?;
-    let serial = match existing_serial {
-        Some(serial) => serial,
-        None => cleanup_on_error(wait_for_android_device(&tools.adb), &mut processes)?,
-    };
 
     cleanup_on_error(
         run_required(
             DevTarget::Android,
-            adb_config(&tools.adb, &serial, ["wait-for-device"])
+            adb_config(&tools.adb, &selected_serial, ["wait-for-device"])
                 .with_options(quiet_command_options(None, StreamMode::Ignore)),
         ),
         &mut processes,
     )?;
-    cleanup_on_error(wait_for_android_boot(&tools.adb, &serial), &mut processes)?;
+    cleanup_on_error(
+        wait_for_android_boot(&tools.adb, &selected_serial),
+        &mut processes,
+    )?;
     if let Some(port) = android_loopback_backend_port(project) {
         let port = format!("tcp:{port}");
         cleanup_on_error(
             run_required(
                 DevTarget::Android,
-                adb_config(&tools.adb, &serial, ["reverse", &port, &port])
+                adb_config(&tools.adb, &selected_serial, ["reverse", &port, &port])
                     .with_options(quiet_command_options(None, StreamMode::Ignore)),
             ),
             &mut processes,
         )?;
     }
     cleanup_on_error(
-        uninstall_existing_app(&tools.adb, &serial, &project.app_config.bundle),
+        uninstall_existing_app(&tools.adb, &selected_serial, &project.app_config.bundle),
         &mut processes,
     )?;
     cleanup_on_error(
@@ -68,7 +91,7 @@ pub(super) fn start(project: &CompiledProject) -> RuntimeResult<ExternalTargetSt
             DevTarget::Android,
             adb_config(
                 &tools.adb,
-                &serial,
+                &selected_serial,
                 ["install", "-r", &apk.to_string_lossy()],
             )
             .with_options(quiet_command_options(None, StreamMode::Ignore)),
@@ -84,7 +107,7 @@ pub(super) fn start(project: &CompiledProject) -> RuntimeResult<ExternalTargetSt
             DevTarget::Android,
             adb_config(
                 &tools.adb,
-                &serial,
+                &selected_serial,
                 ["shell", "am", "start", "-n", launch_component.as_str()],
             )
             .with_options(quiet_command_options(None, StreamMode::Ignore)),
@@ -94,6 +117,44 @@ pub(super) fn start(project: &CompiledProject) -> RuntimeResult<ExternalTargetSt
     print_target_started(DevTarget::Android);
 
     Ok(ExternalTargetStartup::from_processes(processes))
+}
+
+pub(super) fn device_options() -> RuntimeResult<Vec<AndroidDeviceOption>> {
+    let sdk = android_sdk_root()?;
+    let tools = android_tools(&sdk)?;
+    let mut options = Vec::new();
+
+    for serial in android_device_serials(&tools.adb)? {
+        options.push(AndroidDeviceOption::new(
+            format!("Connected device {serial}"),
+            AndroidDeviceSelection::Connected { serial },
+        ));
+    }
+
+    for name in android_avds(&tools.emulator)? {
+        options.push(AndroidDeviceOption::new(
+            format!("Android emulator {name}"),
+            AndroidDeviceSelection::Avd { name },
+        ));
+    }
+
+    Ok(options)
+}
+
+fn start_android_avd(
+    emulator: &Path,
+    avd: String,
+    processes: &mut Vec<RunningExternalProcess>,
+) -> RuntimeResult<()> {
+    processes.push(spawn_background(
+        DevTarget::Android,
+        SpawnConfig::new(
+            emulator.to_string_lossy().to_string(),
+            ["-avd".to_string(), avd],
+        )
+        .with_options(quiet_command_options(None, StreamMode::Ignore)),
+    )?);
+    Ok(())
 }
 
 fn cleanup_on_error<T>(
@@ -424,6 +485,10 @@ fn create_debug_keystore(path: &Path) -> RuntimeResult<()> {
 }
 
 fn android_device_serial(adb: &Path) -> RuntimeResult<Option<String>> {
+    Ok(android_device_serials(adb)?.into_iter().next())
+}
+
+fn android_device_serials(adb: &Path) -> RuntimeResult<Vec<String>> {
     let output = run_required(
         DevTarget::Android,
         SpawnConfig::new(adb.to_string_lossy().to_string(), ["devices"])
@@ -436,23 +501,49 @@ fn android_device_serial(adb: &Path) -> RuntimeResult<Option<String>> {
         .filter_map(parse_adb_device)
         .collect::<Vec<_>>();
     devices.sort_by_key(|serial| !serial.starts_with("emulator-"));
-    Ok(devices.into_iter().next())
+    Ok(devices)
 }
 
 fn first_android_avd(emulator: &Path) -> RuntimeResult<String> {
+    android_avds(emulator)?.into_iter().next().ok_or_else(|| {
+        RuntimeError::new("Android app target failed: no Android virtual devices found")
+    })
+}
+
+fn android_avds(emulator: &Path) -> RuntimeResult<Vec<String>> {
     let output = run_required(
         DevTarget::Android,
         SpawnConfig::new(emulator.to_string_lossy().to_string(), ["-list-avds"])
             .with_options(quiet_command_options(None, StreamMode::Pipe)),
     )?;
-    String::from_utf8_lossy(&output.stdout_bytes)
+    Ok(parse_android_avds(&String::from_utf8_lossy(
+        &output.stdout_bytes,
+    )))
+}
+
+fn parse_android_avds(contents: &str) -> Vec<String> {
+    contents
         .lines()
-        .find(|line| !line.trim().is_empty())
         .map(str::trim)
+        .filter(|line| !line.is_empty())
         .map(ToOwned::to_owned)
-        .ok_or_else(|| {
-            RuntimeError::new("Android app target failed: no Android virtual devices found")
-        })
+        .collect()
+}
+
+fn wait_for_new_android_device(adb: &Path, existing_serials: &[String]) -> RuntimeResult<String> {
+    let existing = existing_serials.iter().collect::<BTreeSet<_>>();
+    for _ in 0..120 {
+        if let Some(serial) = android_device_serials(adb)?
+            .into_iter()
+            .find(|serial| !existing.contains(serial))
+        {
+            return Ok(serial);
+        }
+        thread::sleep(Duration::from_secs(1));
+    }
+    Err(RuntimeError::new(
+        "Android app target failed: selected emulator did not become available",
+    ))
 }
 
 fn wait_for_android_device(adb: &Path) -> RuntimeResult<String> {
@@ -570,7 +661,7 @@ fn latest_android_jar(sdk: &Path) -> RuntimeResult<PathBuf> {
 mod tests {
     use super::{
         android_java_sources, android_javac_args, compiled_activity_classes, loopback_url_port,
-        parse_adb_device,
+        parse_adb_device, parse_android_avds,
     };
     use std::fs;
     use tempfile::TempDir;
@@ -582,6 +673,14 @@ mod tests {
             Some("emulator-5554".to_string())
         );
         assert_eq!(parse_adb_device("ZT322K45WX\tunauthorized"), None);
+    }
+
+    #[test]
+    fn parses_available_android_avds() {
+        assert_eq!(
+            parse_android_avds("Pixel_8\n\nTablet_API_35\n"),
+            vec!["Pixel_8".to_string(), "Tablet_API_35".to_string()]
+        );
     }
 
     #[test]

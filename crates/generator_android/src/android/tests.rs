@@ -4,7 +4,8 @@ use super::{
 };
 use dowe_components::{
     AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
-    AvatarGroupProps, AvatarProps, AvatarStatus, BadgeProps, BarProps, Breakpoint, ButtonSize,
+    AvatarGroupProps, AvatarProps, AvatarStatus, BadgeProps, BarProps, BorderWidth, Breakpoint,
+    ButtonSize,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, ChatBoxMode,
     ChatBoxProps, CheckboxProps, ChipProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps,
     ComboOption, CommandEntry, CollapsibleProps, CommandProps, ComponentProp, ComponentVariant,
@@ -20,7 +21,7 @@ use dowe_components::{
     PinFieldProps, PropValue, RadioGroupProps, RadioOption, RecordProps, ResponsiveEntry,
     ResponsiveValue, RichTextMark, RichTextMarkStyle, RoundedSize, ScaleValue, ScaffoldProps,
     SectionBackground, SelectOption, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
-    SideNavSize, SizeValue, SkeletonAnimation, SkeletonProps, SkeletonVariant, SpacingProps,
+    SidebarProps, SideNavSize, SizeValue, SkeletonAnimation, SkeletonProps, SkeletonVariant, SpacingProps,
     StyleProps, SvgPath, SvgPathFill, SvgProps, SvgViewBox, TabItem, TabsPosition, TabsProps,
     TabsVariant, TextProps, TextSize, TextWeight, TextareaProps, ToastKind, ToastProps,
     ToggleGroupItem, ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog,

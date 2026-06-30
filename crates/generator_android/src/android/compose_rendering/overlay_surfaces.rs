@@ -1,6 +1,8 @@
 fn render_compose_drawer(
     props: &DrawerProps,
-    children: &[ViewNode],
+    header: &[ViewNode],
+    body: &[ViewNode],
+    footer: &[ViewNode],
     indent: usize,
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
@@ -25,20 +27,64 @@ fn render_compose_drawer(
         props.hide_close_button
     ));
     output.push_str(&format!(
+        "{pad}    val doweDrawerNavigate = navigate\n{pad}    val navigate: (String, String, String?) -> Unit = {{ operation, target, fragment ->\n{pad}        state.write(\"{path}\", false)\n{pad}        doweDrawerNavigate(operation, target, fragment)\n{pad}    }}\n{pad}    val doweDrawerGoBack = goBack\n{pad}    val goBack: () -> Unit = {{\n{pad}        state.write(\"{path}\", false)\n{pad}        doweDrawerGoBack()\n{pad}    }}\n{pad}    val doweDrawerOpenExternal = openExternal\n{pad}    val openExternal: (String, String) -> Unit = {{ mode, target ->\n{pad}        state.write(\"{path}\", false)\n{pad}        doweDrawerOpenExternal(mode, target)\n{pad}    }}\n"
+    ));
+    output.push_str(&format!(
         "{pad}    Column(modifier = {}) {{\n",
-        modifier_for_container_style(&props.style.style, ComposeFlow::Block)
+        modifier_for_style_with_base(
+            &props.style.style,
+            "Modifier.fillMaxSize().safeDrawingPadding()".to_string(),
+        )
     ));
     let current_font = props.style.style.font.as_ref().or(inherited_font);
-    for child in children {
+    if !header.is_empty() {
+        output.push_str(&format!(
+            "{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n"
+        ));
+        for child in header {
+            render_compose_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                ComposeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
+    }
+    output.push_str(&format!(
+        "{pad}        Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {{\n"
+    ));
+    for child in body {
         render_compose_node_in_flow(
             child,
-            indent + 8,
+            indent + 12,
             output,
             ComposeFlow::Block,
             current_font,
             default_family,
             context,
         );
+    }
+    output.push_str(&format!("{pad}        }}\n"));
+    if !footer.is_empty() {
+        output.push_str(&format!(
+            "{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n"
+        ));
+        for child in footer {
+            render_compose_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                ComposeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
     }
     output.push_str(&format!("{pad}    }}\n"));
     output.push_str(&format!("{pad}}}\n"));

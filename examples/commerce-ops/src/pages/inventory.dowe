@@ -52,11 +52,11 @@ page inventoryPage
     Grid columns:1 gap:6
       Card variant:"soft" scheme:"surface" p:{ xs:5 md:7 } rounded:"xl"
         Text size:"sm" weight:"semibold" color:"success"
-          INVENTORY
+          "INVENTORY"
         Title size:"4xl" weight:"bold"
-          Product editor
+          "Product editor"
         Text size:"md" color:"muted"
-          Build catalog records with bound form controls and endpoint-backed updates.
+          "Build catalog records with bound form controls and endpoint-backed updates."
         Alert type:"info" message:alert.message visible:alert.visible onClose:close p:3
         Grid columns:{ xs:1 md:3 } gap:4
           Input bind:product.name label:"Name" placeholder:"Merino overshirt" labelFloating:true variant:"outlined" scheme:"primary"
@@ -75,30 +75,30 @@ page inventoryPage
           Input bind:product.description label:"Description" placeholder:"Short product positioning" labelFloating:true variant:"outlined" scheme:"muted"
         Flex gap:3 align:"center"
           Button onClick:create variant:"solid" scheme:"success" size:"lg"
-            Create
+            "Create"
           Button onClick:update variant:"outlined" scheme:"primary" size:"lg"
-            Update
+            "Update"
       Grid columns:{ xs:1 md:3 } gap:4
         each item in products key:item.id
           Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
             Grid columns:1 gap:3
               Text size:"sm" color:"muted"
-                item.category
+                "item.category"
               Title size:"2xl"
-                item.name
+                "item.name"
               Text size:"sm" color:"muted"
-                item.sku
+                "item.sku"
               Text size:"md"
-                item.description
+                "item.description"
               Text size:"sm"
-                item.price
+                "item.price"
               Text size:"sm"
-                item.stock
+                "item.stock"
               Text size:"sm" color:"success"
-                item.status
+                "item.status"
               Flex gap:2 align:"center"
                 Button onClick:edit variant:"soft" scheme:"info" size:"sm"
-                  Edit
+                  "Edit"
                 Button onClick:delete variant:"ghost" scheme:"danger" size:"sm"
-                  Delete
+                  "Delete"
 

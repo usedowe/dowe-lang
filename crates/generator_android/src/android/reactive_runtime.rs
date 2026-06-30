@@ -17,9 +17,13 @@ private data class DoweRequestAction(
 
 private sealed class DoweAction {
     data class Request(val action: DoweRequestAction) : DoweAction()
-    data class Assign(val target: String, val source: String) : DoweAction()
+    data class Assign(val target: String, val source: String, val call: DoweStdlibCall? = null) : DoweAction()
     data class Reset(val target: String) : DoweAction()
 }
+
+private data class DoweStdlibCall(val namespace: String, val function: String, val args: List<DoweStdlibArg>)
+private data class DoweStdlibArg(val name: String, val value: DoweStdlibValue)
+private data class DoweStdlibValue(val kind: String, val value: Any?)
 
 private class DoweReactiveState(
     private val initial: Map<String, Any?>,
@@ -70,7 +74,7 @@ private class DoweReactiveState(
 
     suspend fun run(id: String, item: Map<String, Any?>? = null) {
         when (val action = actions[id]) {
-            is DoweAction.Assign -> read(action.source, item)?.let { write(action.target, it) }
+            is DoweAction.Assign -> write(action.target, action.call?.let { stdlib(it, item) } ?: read(action.source, item))
             is DoweAction.Reset -> initial[action.target]?.let { write(action.target, it) }
             is DoweAction.Request -> execute(action.action, item)
             null -> {}
@@ -94,6 +98,109 @@ private class DoweReactiveState(
             current = (current as? Map<*, *>)?.get(part) ?: return null
         }
         return current
+    }
+
+    private fun stdlib(call: DoweStdlibCall, item: Map<String, Any?>?): Any? {
+        val args = call.args.associate { it.name to stdlibValue(it.value, item) }
+        fun text(name: String): String = stdlibText(args[name])
+        fun number(name: String): Double? = stdlibNumber(args[name])
+        fun list(name: String): List<Any?> = args[name] as? List<Any?> ?: emptyList()
+        return when (call.namespace + "." + call.function) {
+            "str.trim" -> text("value").trim()
+            "str.lower" -> text("value").lowercase()
+            "str.upper" -> text("value").uppercase()
+            "str.length" -> text("value").codePointCount(0, text("value").length)
+            "str.contains" -> text("value").contains(text("needle"))
+            "str.startsWith" -> text("value").startsWith(text("prefix"))
+            "str.endsWith" -> text("value").endsWith(text("suffix"))
+            "str.replace" -> text("value").replace(text("from"), text("to"))
+            "str.split" -> text("value").split(text("delimiter"))
+            "str.join" -> list("values").joinToString(text("delimiter")) { stdlibText(it) }
+            "math.add" -> finite(number("left"), number("right")) { left, right -> left + right }
+            "math.sub" -> finite(number("left"), number("right")) { left, right -> left - right }
+            "math.mul" -> finite(number("left"), number("right")) { left, right -> left * right }
+            "math.div" -> finite(number("left"), number("right")) { left, right -> if (right == 0.0) null else left / right }
+            "math.round" -> number("value")?.let { kotlin.math.round(it) }
+            "math.floor" -> number("value")?.let { kotlin.math.floor(it) }
+            "math.ceil" -> number("value")?.let { kotlin.math.ceil(it) }
+            "math.abs" -> number("value")?.let { kotlin.math.abs(it) }
+            "math.sum" -> list("values").mapNotNull(::stdlibNumber).sum()
+            "math.average" -> list("values").mapNotNull(::stdlibNumber).takeIf { it.isNotEmpty() }?.average()
+            "math.min" -> list("values").mapNotNull(::stdlibNumber).minOrNull()
+            "math.max" -> list("values").mapNotNull(::stdlibNumber).maxOrNull()
+            "parse.int" -> text("value").trim().toLongOrNull() ?: args["fallback"]
+            "parse.float" -> number("value") ?: args["fallback"]
+            "parse.bool" -> stdlibBool(args["value"]) ?: args["fallback"]
+            "parse.string" -> stdlibText(args["value"])
+            "parse.json", "json.parse" -> runCatching { doweNativeValue(JSONObject(text("value"))) }.getOrDefault(args["fallback"])
+            "sort.asc" -> list("values").sortedBy { stdlibText(it) }
+            "sort.desc" -> list("values").sortedByDescending { stdlibText(it) }
+            "sort.by" -> list("values").sortedBy { stdlibText(stdlibRead(it, text("field"))) }
+            "list.take" -> list("values").take(number("count")?.toInt() ?: 0)
+            "list.skip" -> list("values").drop(number("count")?.toInt() ?: 0)
+            "list.first" -> list("values").firstOrNull()
+            "list.last" -> list("values").lastOrNull()
+            "list.count" -> list("values").size
+            "list.filterEquals" -> list("values").filter { stdlibRead(it, text("field")) == args["value"] }
+            "list.filterContains" -> list("values").filter { stdlibText(stdlibRead(it, text("field"))).lowercase().contains(text("value").lowercase()) }
+            "list.mapField" -> list("values").map { stdlibRead(it, text("field")) }
+            "list.sumBy" -> list("values").mapNotNull { stdlibNumber(stdlibRead(it, text("field"))) }.sum()
+            "list.averageBy" -> list("values").mapNotNull { stdlibNumber(stdlibRead(it, text("field"))) }.takeIf { it.isNotEmpty() }?.average()
+            "json.get" -> stdlibRead(args["value"], text("path")) ?: args["fallback"]
+            "json.stringify" -> doweJsonValue(args["value"]).toString()
+            "json.merge" -> (args["left"] as? Map<String, Any?>).orEmpty() + (args["right"] as? Map<String, Any?>).orEmpty()
+            "date.now" -> java.time.Instant.now().toString()
+            "date.formatIso" -> runCatching { java.time.Instant.parse(text("value")).toString() }.getOrDefault(text("value"))
+            "date.addDays" -> runCatching { java.time.Instant.parse(text("value")).plus(java.time.Duration.ofDays(number("days")?.toLong() ?: 0)).toString() }.getOrNull()
+            "date.diffDays" -> runCatching { java.time.Duration.between(java.time.Instant.parse(text("start")), java.time.Instant.parse(text("end"))).toDays() }.getOrDefault(0L)
+            else -> null
+        }
+    }
+
+    private fun stdlibValue(value: DoweStdlibValue, item: Map<String, Any?>?): Any? = when (value.kind) {
+        "null" -> null
+        "bool" -> value.value as? Boolean
+        "number" -> stdlibNumber(value.value)
+        "string" -> value.value?.toString() ?: ""
+        "reference" -> read(value.value?.toString() ?: "", item)
+        "array" -> (value.value as? List<DoweStdlibValue>).orEmpty().map { stdlibValue(it, item) }
+        "object" -> (value.value as? List<Pair<String, DoweStdlibValue>>).orEmpty().associate { it.first to stdlibValue(it.second, item) }
+        else -> null
+    }
+
+    private fun stdlibText(value: Any?): String = when (value) {
+        null -> ""
+        is String -> value
+        is JSONObject, is JSONArray -> value.toString()
+        else -> value.toString()
+    }
+
+    private fun stdlibNumber(value: Any?): Double? = when (value) {
+        is Number -> value.toDouble().takeIf { it.isFinite() }
+        is String -> value.trim().toDoubleOrNull()?.takeIf { it.isFinite() }
+        else -> null
+    }
+
+    private fun stdlibBool(value: Any?): Boolean? = when (value) {
+        is Boolean -> value
+        else -> when (stdlibText(value).trim().lowercase()) {
+            "true", "1", "yes", "y" -> true
+            "false", "0", "no", "n" -> false
+            else -> null
+        }
+    }
+
+    private fun stdlibRead(value: Any?, path: String): Any? {
+        var current = value
+        for (part in path.split(".").filter { it.isNotEmpty() }) {
+            current = (current as? Map<*, *>)?.get(part) ?: return null
+        }
+        return current
+    }
+
+    private fun finite(left: Double?, right: Double?, op: (Double, Double) -> Double?): Double? {
+        val result = if (left == null || right == null) null else op(left, right)
+        return result?.takeIf { it.isFinite() }
     }
 
     private suspend fun execute(action: DoweRequestAction, item: Map<String, Any?>?) {

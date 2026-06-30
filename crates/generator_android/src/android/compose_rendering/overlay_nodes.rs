@@ -8,10 +8,17 @@ fn render_compose_overlay_node(
     context: &ComposeReactiveContext,
 ) {
     match node {
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             render_compose_drawer(
                 props,
-                children,
+                header,
+                body,
+                footer,
                 indent,
                 output,
                 inherited_font,

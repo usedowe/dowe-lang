@@ -70,10 +70,17 @@ fn render_swift_navigation_shell_node(
                 context,
             );
         }
-        ViewNode::Sidebar { props, items } => {
-            render_swift_side_nav(
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            render_swift_sidebar(
                 props,
-                items,
+                header,
+                body,
+                footer,
                 indent,
                 output,
                 flow,
@@ -129,10 +136,17 @@ fn render_swift_navigation_shell_node(
                 context,
             );
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             render_swift_drawer(
                 props,
-                children,
+                header,
+                body,
+                footer,
                 indent,
                 output,
                 inherited_font,

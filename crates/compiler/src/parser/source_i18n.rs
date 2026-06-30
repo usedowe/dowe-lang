@@ -281,9 +281,18 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::Button { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Each { children, .. } => {
             for child in children {
+                collect_i18n_keys(child, keys);
+            }
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_i18n_keys(child, keys);
             }
         }

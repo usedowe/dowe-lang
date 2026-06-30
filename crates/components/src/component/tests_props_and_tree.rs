@@ -354,6 +354,21 @@
             Some(icon),
         )
         .expect("item");
+        let submenu = super::side_nav_submenu_component(
+            vec![string_prop("label", "Content")],
+            None,
+            true,
+            false,
+            vec![super::SideNavItemProps {
+                label: "Blogs".to_string(),
+                description: None,
+                status: None,
+                icon: None,
+                on_click: None,
+                navigation: None,
+            }],
+        )
+        .expect("submenu");
         let node = super::side_nav_component_node(
             vec![
                 string_prop("variant", "soft"),
@@ -361,7 +376,7 @@
                 string_prop("size", "lg"),
                 boolean_prop("wide", true),
             ],
-            vec![item],
+            vec![item, submenu],
         )
         .expect("side nav");
 
@@ -372,6 +387,7 @@
                 assert_eq!(props.size, super::SideNavSize::Lg);
                 assert!(props.wide);
                 assert!(matches!(&items[0], super::SideNavItem::Item(props) if props.icon.is_some()));
+                assert!(matches!(&items[1], super::SideNavItem::Submenu { open: true, bordered: false, items, .. } if items.len() == 1));
             }
             _ => panic!("side nav"),
         }
@@ -431,24 +447,35 @@
             None,
         )
         .expect("sidebar item");
+        let sidebar_nav = super::side_nav_component_node(
+            vec![string_prop("size", "sm"), boolean_prop("wide", true)],
+            vec![sidebar_item],
+        )
+        .expect("sidebar nav");
         let sidebar = super::sidebar_component_node(
             vec![
                 string_prop("variant", "solid"),
                 string_prop("scheme", "primary"),
-                string_prop("size", "sm"),
-                boolean_prop("wide", true),
             ],
-            vec![sidebar_item],
+            vec![text_node("Header").expect("header")],
+            vec![sidebar_nav],
+            vec![text_node("Footer").expect("footer")],
+            false,
         )
         .expect("sidebar");
 
         match &sidebar {
-            ViewNode::Sidebar { props, items } => {
+            ViewNode::Sidebar {
+                props,
+                header,
+                body,
+                footer,
+            } => {
                 assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
                 assert_eq!(props.style.color, Some(ColorFamily::Primary));
-                assert_eq!(props.size, super::SideNavSize::Sm);
-                assert!(props.wide);
-                assert_eq!(items.len(), 1);
+                assert_eq!(header.len(), 1);
+                assert_eq!(body.len(), 1);
+                assert_eq!(footer.len(), 1);
             }
             _ => panic!("sidebar"),
         }
@@ -495,8 +522,10 @@
 
         let error = super::sidebar_component_node(
             vec![string_prop("color", "primary")],
-            vec![super::side_nav_item_component(vec![string_prop("label", "Home")], None)
-                .expect("item")],
+            Vec::new(),
+            vec![text_node("Body").expect("body")],
+            Vec::new(),
+            false,
         )
         .expect_err("color error");
         assert_eq!(
@@ -517,13 +546,20 @@
                 boolean_prop("hideCloseButton", true),
                 responsive_boolean_prop("show", &[("xs", true), ("md", false)]),
             ],
+            vec![text_node("Menu").expect("header")],
             vec![text_node("Navigation").expect("text")],
+            vec![text_node("Footer").expect("footer")],
             false,
         )
         .expect("drawer");
 
         match node {
-            ViewNode::Drawer { props, children } => {
+            ViewNode::Drawer {
+                props,
+                header,
+                body,
+                footer,
+            } => {
                 assert_eq!(props.open, "drawerOpen");
                 assert_eq!(props.position, super::DrawerPosition::End);
                 assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
@@ -531,7 +567,9 @@
                 assert!(props.disable_overlay_close);
                 assert!(props.hide_close_button);
                 assert!(props.style.element.show.is_some());
-                assert_eq!(children.len(), 1);
+                assert_eq!(header.len(), 1);
+                assert_eq!(body.len(), 1);
+                assert_eq!(footer.len(), 1);
             }
             _ => panic!("drawer"),
         }
@@ -539,12 +577,14 @@
         let error = super::drawer_component_node(
             vec![string_prop("open", "drawerOpen")],
             Vec::new(),
+            Vec::new(),
+            Vec::new(),
             false,
         )
         .expect_err("children");
         assert_eq!(
             error,
-            ComponentError::invalid_prop_combination("Drawer requires at least one child")
+            ComponentError::invalid_prop_combination("Drawer requires body children")
         );
     }
 

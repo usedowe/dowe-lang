@@ -12,7 +12,7 @@ use dowe_components::{
     NavigationAction, OverlayEntry, OverlayCornerPosition, OverlayItemProps, OverlayPaint,
     RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark, RoundedSize, ScaleValue, ScaffoldProps,
     SectionBackground, SelectOption, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
-    SideNavSize, SkeletonProps, SizeValue, SliderProps, StyleProps, SvgPath, SvgPathFill,
+    SidebarProps, SideNavSize, SkeletonProps, SizeValue, SliderProps, StyleProps, SvgPath, SvgPathFill,
     SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableSize, TabsProps, TabsVariant,
     TextProps, TextSize, TextWeight, ThemeToggleProps, ToastProps, ToggleGroupItem,
     ToggleGroupProps, ToggleProps, TooltipProps,

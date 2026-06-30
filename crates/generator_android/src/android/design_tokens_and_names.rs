@@ -361,6 +361,23 @@ fn dev_drawer_radius(props: &StyleProps) -> String {
         .unwrap_or_else(|| "0f".to_string())
 }
 
+fn dev_style_radius(props: &StyleProps) -> String {
+    props
+        .rounded
+        .as_ref()
+        .map(|value| {
+            format!(
+                "doweFloat({}, DOWE_RADIUS)",
+                dev_responsive_float_value(value, |value| format!("{}f", rounded_dp(*value)))
+            )
+        })
+        .unwrap_or_else(|| "DOWE_RADIUS".to_string())
+}
+
+fn dev_border_value(value: &ResponsiveValue<BorderWidth>) -> String {
+    dev_responsive_value(value, |value| value.0.to_string())
+}
+
 fn dev_scale_value(value: &ResponsiveValue<ScaleValue>) -> String {
     dev_responsive_value(value, |value| value.native_units().to_string())
 }

@@ -83,6 +83,7 @@ fn renders_side_nav_markup_active_runtime_and_css() {
                     navigation: None,
                 },
                 open: true,
+                bordered: false,
                 items: vec![side_nav_item("Blogs", "/blogs")],
             },
         ],
@@ -100,13 +101,17 @@ fn renders_side_nav_markup_active_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-sidenav-href="/blogs""#));
     assert!(
         html.contains(
-            r#"<details class="sidenav-submenu is-open" data-dowe-sidenav-submenu open>"#
+            r#"<details class="sidenav-submenu is-open is-unbordered" data-dowe-sidenav-submenu open>"#
         )
     );
+    assert!(html.contains(r#"<span class="sidenav-chevron" aria-hidden="true"><svg"#));
+    assert!(html.contains(r#"d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z""#));
     assert!(html.contains(r#"aria-expanded="true""#));
     assert!(html.contains(r#"<div class="sidenav-divider"></div>"#));
     assert!(css.contains(".sidenav{--dowe-component-display:flex;display:var(--dowe-show,var(--dowe-component-display));flex-direction:column;"));
     assert!(css.contains(".sidenav-submenu-content{display:flex;flex-direction:column;gap:0.125rem;max-height:0;overflow:hidden;"));
+    assert!(css.contains(".sidenav-submenu.is-unbordered>.sidenav-submenu-content{border-left:0;}"));
+    assert!(css.contains(".sidenav-chevron svg{display:block;width:1em;height:1em;}"));
     assert!(
         css.contains(
             ".sidenav-submenu.is-open>.sidenav-submenu-content{max-height:40rem;opacity:1;"
@@ -156,12 +161,17 @@ fn renders_navigation_shell_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-navmenu-popover="2""#));
     assert!(html.contains(r#"data-dowe-navmenu-href="/docs""#));
     assert!(html.contains("Resource hub"));
-    assert!(html.contains(r#"<nav class="sidebar w-96 is-soft is-surface sidebar-md is-wide""#));
-    assert!(html.contains(r#"data-dowe-sidebar-href="/""#));
+    assert!(html.contains(r#"<aside class="sidebar w-96 is-soft is-surface""#));
+    assert!(html.contains(r#"<div class="sidebar-body">"#));
+    assert!(html.contains(r#"<nav class="sidenav is-ghost is-muted sidenav-md is-wide""#));
+    assert!(html.contains(r#"data-dowe-sidenav-href="/""#));
     assert!(css.contains(".navmenu{--dowe-component-display:flex"));
     assert!(css.contains(".sidebar{--dowe-component-display:flex"));
-    assert!(css.contains(".sidebar.is-wide .sidebar-entry"));
-    assert!(!css.contains(".sidebar.is-wide{width:100%;}"));
+    assert!(css.contains(".scaffold-content{position:sticky;top:0;display:flex;height:100%;min-height:0;max-height:100vh;overflow:hidden;}"));
+    assert!(css.contains(".sidebar-body{display:flex;min-height:0;flex:1 1 auto;flex-direction:column;overflow:auto;overscroll-behavior:contain;}"));
+    assert!(css.contains(".scaffold-content>.sidebar{height:100%;max-height:100%;}"));
+    assert!(!css.contains(".scaffold-content{position:sticky;top:0;max-height:100vh;overflow:auto;"));
+    assert!(!css.contains(".sidebar-entry"));
     assert!(css.contains(".scaffold{--dowe-component-display:flex"));
     assert!(page.css_content.contains(".w-96{width:24rem;}"));
     assert!(
@@ -170,10 +180,11 @@ fn renders_navigation_shell_markup_runtime_and_css() {
     );
     assert!(
         page.css_content
-            .contains(".sidebar.is-soft.is-surface .sidebar-entry.is-active")
+            .contains(".sidenav.is-ghost.is-muted .sidenav-entry.is-active")
     );
     assert!(router.contains("openNavMenu"));
-    assert!(router.contains("hydrateNavTreeSubmenus(root,\"sidebar\")"));
+    assert!(router.contains("hydrateNavTreeSubmenus(root,\"sidenav\")"));
+    assert!(!router.contains("data-dowe-sidebar-href"));
     assert!(router.contains("data-dowe-navmenu-href"));
 }
 
@@ -229,7 +240,9 @@ fn renders_drawer_markup_runtime_and_css() {
             disable_overlay_close: true,
             hide_close_button: false,
         },
-        children: vec![text("Navigation")],
+        header: vec![text("Menu")],
+        body: vec![text("Navigation")],
+        footer: vec![text("Footer")],
     };
     let page = build_page_chunk(
         root,
@@ -254,13 +267,21 @@ fn renders_drawer_markup_runtime_and_css() {
         )
     );
     assert!(html.contains(r#"data-dowe-drawer-close"#));
+    assert!(html.contains(r#"<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false">"#));
+    assert!(html.contains(r#"d="m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z""#));
+    assert!(html.contains(r#"class="drawer-header""#));
+    assert!(html.contains(r#"class="drawer-body""#));
+    assert!(html.contains(r#"class="drawer-footer""#));
     assert!(css.contains(
         ".drawer-panel{--dowe-component-display:flex;position:fixed;inset:0;z-index:50;"
     ));
+    assert!(css.contains(".drawer{position:absolute;display:flex;max-width:100vw;max-height:100vh;min-height:0;flex-direction:column;overflow:hidden;"));
+    assert!(css.contains(".drawer-body{display:flex;min-height:0;flex:1 1 auto;flex-direction:column;overflow:auto;overscroll-behavior:contain;}"));
     assert!(css.contains(".drawer.is-end{inset-block:0;inset-inline-end:0;width:min(20rem,100vw);border-start-end-radius:0;border-end-end-radius:0;transform:translateX(100%);"));
     assert!(css.contains(".drawer.is-start{inset-block:0;inset-inline-start:0;width:min(20rem,100vw);border-start-start-radius:0;border-end-start-radius:0;"));
     assert!(css.contains(".drawer.is-top{inset-inline:0;top:0;max-height:min(20rem,100vh);border-start-start-radius:0;border-start-end-radius:0;"));
     assert!(css.contains(".drawer.is-bottom{inset-inline:0;bottom:0;max-height:min(20rem,100vh);border-end-start-radius:0;border-end-end-radius:0;"));
+    assert!(css.contains(".drawer-close svg{display:block;width:1em;height:1em;}"));
     assert!(page.css_content.contains(".drawer.is-soft.is-surface"));
     assert!(router.contains("function closeDrawer(drawer)"));
     assert!(router.contains("data-dowe-drawer-overlay"));
@@ -283,7 +304,9 @@ fn renders_drawer_markup_runtime_and_css() {
                 disable_overlay_close: false,
                 hide_close_button: false,
             },
-            children: vec![text("Navigation")],
+            header: Vec::new(),
+            body: vec![text("Navigation")],
+            footer: Vec::new(),
         },
     );
     assert!(rounded_html.contains("drawer rounded-lg is-soft is-surface is-start"));

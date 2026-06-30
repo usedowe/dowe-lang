@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use dowe_stdlib::StdlibCall;
+
 pub use dowe_components::{DesignConfig, FontConfig, TranslationCatalog, ViewNode, ViewRoute};
 pub use dowe_generator_web::{ChunkKind, GeneratedChunk, ViewPage, WebOutput};
 
@@ -372,8 +374,24 @@ pub struct OutboundHttpRequest {
     pub base: HttpConnectionValue,
     pub path: String,
     pub bearer: Option<ServerSecret>,
+    pub headers: Vec<OutboundHttpHeader>,
     pub json: Option<StoreLiteral>,
     pub mode: HttpResponseMode,
+    pub redirect: HttpRedirectPolicy,
+    pub max_redirects: Option<u32>,
+    pub timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutboundHttpHeader {
+    pub name: String,
+    pub value: HttpHeaderValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HttpHeaderValue {
+    Static(String),
+    Environment(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -386,6 +404,13 @@ pub enum HttpConnectionValue {
 pub enum HttpResponseMode {
     Json,
     Proxy,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HttpRedirectPolicy {
+    Follow,
+    Manual,
+    Error,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -538,6 +563,7 @@ pub enum ServerStatement {
         binding: String,
         schema: Option<DoweType>,
     },
+    Stdlib(ServerStdlibStatement),
     Http(OutboundHttpRequest),
     AgentChat(AgentChatTransform),
     WebSocketJson(WebSocketJsonStatement),
@@ -545,6 +571,12 @@ pub enum ServerStatement {
     WebSocketSseBridge(WebSocketSseBridgeStatement),
     Store(ServerStoreStatement),
     Kv(ServerKvStatement),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerStdlibStatement {
+    pub binding: String,
+    pub call: StdlibCall,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

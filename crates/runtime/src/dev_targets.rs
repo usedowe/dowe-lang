@@ -4,7 +4,8 @@ mod ios;
 mod ios_cache;
 
 use crate::dev::{
-    DevTarget, ExternalTargetStartup, RunningExternalCleanup, RunningExternalProcess,
+    DevTarget, DevTargetDeviceSelection, ExternalTargetStartup, RunningExternalCleanup,
+    RunningExternalProcess,
 };
 use crate::error::{RuntimeError, RuntimeResult};
 use crate::logging::log_info;
@@ -18,13 +19,22 @@ pub(crate) fn start_external_target(
     project: &CompiledProject,
     target: DevTarget,
     desktop_origin: Option<&str>,
+    devices: &DevTargetDeviceSelection,
 ) -> RuntimeResult<ExternalTargetStartup> {
     match target {
         DevTarget::Desktop => desktop::start(project, desktop_origin),
-        DevTarget::Android => android::start(project),
-        DevTarget::Ios => ios::start(project),
+        DevTarget::Android => android::start(project, devices.android.clone()),
+        DevTarget::Ios => ios::start(project, devices.ios.clone()),
         DevTarget::Server | DevTarget::Web => Ok(ExternalTargetStartup::default()),
     }
+}
+
+pub(crate) fn android_device_options() -> RuntimeResult<Vec<crate::dev::AndroidDeviceOption>> {
+    android::device_options()
+}
+
+pub(crate) fn ios_simulator_options() -> RuntimeResult<Vec<crate::dev::IosSimulatorOption>> {
+    ios::simulator_options()
 }
 
 pub(super) fn spawn_external(

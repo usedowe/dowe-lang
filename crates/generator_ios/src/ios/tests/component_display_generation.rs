@@ -108,8 +108,10 @@ fn generates_full_scene_background_without_unsafe_content() {
     assert!(
         views.contains(".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)")
     );
-    assert!(!views.contains("safeAreaInsets:"));
-    assert!(!views.contains("let safeAreaInsets"));
+    assert!(!views.contains(
+        "LoginView(viewportWidth: viewportWidth, activeFragment: entry.fragment, safeAreaInsets:"
+    ));
+    assert!(!views.contains("let safeAreaInsets ="));
     assert!(!views.contains(".padding(.top, safeAreaInsets.top)"));
     assert!(!views.contains(".padding(.bottom, safeAreaInsets.bottom)"));
     assert!(views.contains(

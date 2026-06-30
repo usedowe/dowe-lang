@@ -98,6 +98,93 @@ fn render_swift_scaffold(
     );
 }
 
+fn render_swift_sidebar(
+    props: &SidebarProps,
+    header: &[ViewNode],
+    body: &[ViewNode],
+    footer: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let current_font = props.style.style.font.as_ref().or(inherited_font);
+    output.push_str(&format!(
+        "{pad}VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+    ));
+    if !header.is_empty() {
+        output.push_str(&format!(
+            "{pad}    VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+        ));
+        for child in header {
+            render_swift_node_in_flow(
+                child,
+                indent + 8,
+                output,
+                NativeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}    }}\n"));
+        output.push_str(&format!(
+            "{pad}    .frame(maxWidth: .infinity, alignment: .topLeading)\n"
+        ));
+    }
+    output.push_str(&format!(
+        "{pad}    ScrollView {{\n{pad}        VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+    ));
+    for child in body {
+        render_swift_node_in_flow(
+            child,
+            indent + 12,
+            output,
+            NativeFlow::Block,
+            current_font,
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!(
+        "{pad}        }}\n{pad}        .frame(maxWidth: .infinity, alignment: .topLeading)\n{pad}    }}\n{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"
+    ));
+    if !footer.is_empty() {
+        output.push_str(&format!(
+            "{pad}    VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
+        ));
+        for child in footer {
+            render_swift_node_in_flow(
+                child,
+                indent + 8,
+                output,
+                NativeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}    }}\n"));
+        output.push_str(&format!(
+            "{pad}    .frame(maxWidth: .infinity, alignment: .topLeading)\n"
+        ));
+    }
+    output.push_str(&format!("{pad}}}\n"));
+    let mut modifiers = swift_modifiers_for_container_style(&props.style.style, flow);
+    if props.style.style.sizing.h.is_none() {
+        modifiers.push(
+            ".frame(maxHeight: UIScreen.main.bounds.height, alignment: .topLeading)".to_string(),
+        );
+        modifiers.push(".clipped()".to_string());
+    }
+    modifiers.push(format!(".background({})", variant_container(&props.style)));
+    modifiers.push(format!(".foregroundStyle({})", variant_content(&props.style)));
+    append_swift_modifiers(output, indent, &modifiers);
+}
+
 fn render_swift_side_nav(
     props: &SideNavProps,
     items: &[SideNavItem],
@@ -264,7 +351,7 @@ fn swift_side_nav_child_entries(
         let id = format!("{prefix}-{index}");
         output.push_str(&format!(
             "{item_pad}{},\n",
-            swift_side_nav_entry_props("item", item, false, "", &id)
+            swift_side_nav_entry_props("item", item, false, false, "", &id)
         ));
     }
     output.push_str(&format!("{pad}]"));
@@ -273,15 +360,22 @@ fn swift_side_nav_child_entries(
 
 fn swift_side_nav_entry(item: &SideNavItem, indent: usize, id: &str) -> String {
     match item {
-        SideNavItem::Header(props) => swift_side_nav_entry_props("header", props, false, "", id),
-        SideNavItem::Item(props) => swift_side_nav_entry_props("item", props, false, "", id),
+        SideNavItem::Header(props) => {
+            swift_side_nav_entry_props("header", props, false, false, "", id)
+        }
+        SideNavItem::Item(props) => swift_side_nav_entry_props("item", props, false, false, "", id),
         SideNavItem::Divider => format!(
-            "DoweSideNavEntry(id: \"{}\", kind: \"divider\", label: \"\", description: nil, status: nil, operation: nil, path: nil, fragment: nil, open: false, children: [])",
+            "DoweSideNavEntry(id: \"{}\", kind: \"divider\", label: \"\", description: nil, status: nil, operation: nil, path: nil, fragment: nil, open: false, bordered: false, children: [])",
             escape_swift(id)
         ),
-        SideNavItem::Submenu { props, open, items } => {
+        SideNavItem::Submenu {
+            props,
+            open,
+            bordered,
+            items,
+        } => {
             let children = swift_side_nav_child_entries(items, indent + 4, id);
-            swift_side_nav_entry_props("submenu", props, *open, &children, id)
+            swift_side_nav_entry_props("submenu", props, *open, *bordered, &children, id)
         }
     }
 }
@@ -290,13 +384,14 @@ fn swift_side_nav_entry_props(
     kind: &str,
     props: &SideNavItemProps,
     open: bool,
+    bordered: bool,
     children: &str,
     id: &str,
 ) -> String {
     let (operation, path, fragment) = swift_side_nav_navigation_values(props.navigation.as_ref());
     let children = if children.is_empty() { "[]" } else { children };
     format!(
-        "DoweSideNavEntry(id: \"{}\", kind: \"{}\", label: \"{}\", description: {}, status: {}, operation: {}, path: {}, fragment: {}, open: {}, children: {})",
+        "DoweSideNavEntry(id: \"{}\", kind: \"{}\", label: \"{}\", description: {}, status: {}, operation: {}, path: {}, fragment: {}, open: {}, bordered: {}, children: {})",
         escape_swift(id),
         kind,
         escape_swift(&props.label),
@@ -306,6 +401,7 @@ fn swift_side_nav_entry_props(
         swift_side_nav_optional_string(path),
         swift_side_nav_optional_string(fragment),
         open,
+        bordered,
         children
     )
 }
@@ -357,6 +453,7 @@ fn render_swift_side_nav_item(
             nav,
             inherited_font,
             default_family,
+            None,
         ),
         SideNavItem::Item(props) => render_swift_side_nav_row(
             props,
@@ -367,14 +464,20 @@ fn render_swift_side_nav_item(
             nav,
             inherited_font,
             default_family,
+            None,
         ),
         SideNavItem::Divider => {
             output.push_str(&format!(
                 "{pad}Divider()\n{pad}    .padding(.vertical, CGFloat(8))\n"
             ));
         }
-        SideNavItem::Submenu { props, open, items } => {
-            output.push_str(&format!("{pad}DoweSideNavSubmenu(open: {open}) {{\n"));
+        SideNavItem::Submenu {
+            props,
+            open,
+            bordered,
+            items,
+        } => {
+            output.push_str(&format!("{pad}DoweSideNavSubmenu(open: {open}, bordered: {bordered}) {{\n"));
             for item in items {
                 render_swift_side_nav_row(
                     item,
@@ -385,9 +488,10 @@ fn render_swift_side_nav_item(
                     nav,
                     inherited_font,
                     default_family,
+                    None,
                 );
             }
-            output.push_str(&format!("{pad}}} label: {{\n"));
+            output.push_str(&format!("{pad}}} label: {{ expanded in\n"));
             render_swift_side_nav_row(
                 props,
                 true,
@@ -397,6 +501,7 @@ fn render_swift_side_nav_item(
                 nav,
                 inherited_font,
                 default_family,
+                Some("expanded"),
             );
             output.push_str(&format!("{pad}}}\n"));
         }
@@ -412,6 +517,7 @@ fn render_swift_side_nav_row(
     nav: &SideNavProps,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
+    submenu_expanded: Option<&str>,
 ) {
     let pad = " ".repeat(indent);
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
@@ -478,6 +584,11 @@ fn render_swift_side_nav_row(
                 &format!("CGFloat({description_size})"),
                 default_family
             )
+        ));
+    }
+    if let Some(expanded) = submenu_expanded {
+        output.push_str(&format!(
+            "{pad}    DoweSideNavArrow(expanded: {expanded})\n"
         ));
     }
     output.push_str(&format!("{pad}}}\n"));

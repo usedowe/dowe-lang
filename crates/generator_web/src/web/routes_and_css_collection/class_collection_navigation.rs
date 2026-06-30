@@ -28,9 +28,19 @@ fn collect_navigation_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             classes.extend(side_nav_classes("sidenav", props));
             collect_side_nav_icon_classes(items, classes);
         }
-        ViewNode::Sidebar { props, items } => {
-            classes.extend(side_nav_classes("sidebar", props));
-            collect_side_nav_icon_classes(items, classes);
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            classes.extend(sidebar_classes(props));
+            classes.insert("sidebar-header".to_string());
+            classes.insert("sidebar-body".to_string());
+            classes.insert("sidebar-footer".to_string());
+            for child in header.iter().chain(body).chain(footer) {
+                collect_classes(child, classes);
+            }
         }
         ViewNode::NavMenu { props, items } => {
             classes.extend(nav_menu_classes(props));
@@ -84,10 +94,18 @@ fn collect_navigation_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
                 }
             }
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             classes.extend(drawer_panel_classes(props));
             classes.extend(drawer_classes(props));
-            for child in children {
+            classes.insert("drawer-header".to_string());
+            classes.insert("drawer-body".to_string());
+            classes.insert("drawer-footer".to_string());
+            for child in header.iter().chain(body).chain(footer) {
                 collect_classes(child, classes);
             }
         }

@@ -11,10 +11,17 @@ fn render_dev_android_overlay_node(
     children_method: Option<&str>,
 ) {
     match node {
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             render_dev_android_drawer(
                 props,
-                children,
+                header,
+                body,
+                footer,
                 counter,
                 output,
                 inherited_font,

@@ -14,6 +14,7 @@ pub(crate) fn execute_server_action_with_resolver(
         match statement {
             ServerStatement::Log(log) => execute_resolved_log(log, &mut resolve),
             ServerStatement::RequestJson { .. } => {}
+            ServerStatement::Stdlib(_) => {}
             ServerStatement::Http(_) => {}
             ServerStatement::AgentChat(_) => {}
             ServerStatement::WebSocketJson(_) => {}

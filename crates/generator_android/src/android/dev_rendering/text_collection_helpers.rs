@@ -52,11 +52,20 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
+                collect_texts(child, output);
+            }
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_texts(child, output);
             }
         }
@@ -98,7 +107,7 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
                 }
             }
         }
-        ViewNode::SideNav { items, .. } | ViewNode::Sidebar { items, .. } => {
+        ViewNode::SideNav { items, .. } => {
             for item in items {
                 match item {
                     SideNavItem::Header(props) | SideNavItem::Item(props) => {
@@ -110,6 +119,16 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
                     }
                     SideNavItem::Divider => {}
                 }
+            }
+        }
+        ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
+                collect_texts(child, output);
             }
         }
         ViewNode::NavMenu { items, .. } => {

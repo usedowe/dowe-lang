@@ -4,17 +4,12 @@ fn render_side_nav_html(
     items: &[SideNavItem],
     context: &ReactiveRenderContext,
 ) -> String {
-    let label = if base == "sidebar" {
-        "Sidebar navigation"
-    } else {
-        "Side navigation"
-    };
     let mut html = format!(
         "<nav{}>",
         attrs(
             side_nav_classes(base, props),
             Some(&props.style.element),
-            Some(&format!(r#" aria-label="{label}""#)),
+            Some(r#" aria-label="Side navigation""#),
             context,
         )
     );
@@ -25,9 +20,46 @@ fn render_side_nav_html(
     html
 }
 
+fn render_sidebar_html(
+    props: &SidebarProps,
+    header: &[ViewNode],
+    body: &[ViewNode],
+    footer: &[ViewNode],
+    children_html: Option<&str>,
+    context: &ReactiveRenderContext,
+) -> String {
+    let mut html = format!(
+        "<aside{}>",
+        attrs(sidebar_classes(props), Some(&props.style.element), None, context)
+    );
+    if !header.is_empty() {
+        html.push_str("<div class=\"sidebar-header\">");
+        for child in header {
+            html.push_str(&render_html_with_context(child, children_html, context));
+        }
+        html.push_str("</div>");
+    }
+    html.push_str("<div class=\"sidebar-body\">");
+    for child in body {
+        html.push_str(&render_html_with_context(child, children_html, context));
+    }
+    html.push_str("</div>");
+    if !footer.is_empty() {
+        html.push_str("<div class=\"sidebar-footer\">");
+        for child in footer {
+            html.push_str(&render_html_with_context(child, children_html, context));
+        }
+        html.push_str("</div>");
+    }
+    html.push_str("</aside>");
+    html
+}
+
 fn render_drawer_html(
     props: &DrawerProps,
-    children: &[ViewNode],
+    header: &[ViewNode],
+    body: &[ViewNode],
+    footer: &[ViewNode],
     children_html: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
@@ -45,8 +77,24 @@ fn render_drawer_html(
     if !props.hide_close_button {
         html.push_str(drawer_close_html());
     }
-    for child in children {
+    if !header.is_empty() {
+        html.push_str("<div class=\"drawer-header\">");
+        for child in header {
+            html.push_str(&render_html_with_context(child, children_html, context));
+        }
+        html.push_str("</div>");
+    }
+    html.push_str("<div class=\"drawer-body\">");
+    for child in body {
         html.push_str(&render_html_with_context(child, children_html, context));
+    }
+    html.push_str("</div>");
+    if !footer.is_empty() {
+        html.push_str("<div class=\"drawer-footer\">");
+        for child in footer {
+            html.push_str(&render_html_with_context(child, children_html, context));
+        }
+        html.push_str("</div>");
     }
     html.push_str("</div></div>");
     html
@@ -61,5 +109,5 @@ fn drawer_panel_attrs(props: &DrawerProps, context: &ReactiveRenderContext) -> S
 }
 
 fn drawer_close_html() -> &'static str {
-    r#"<button class="drawer-close" type="button" aria-label="Close drawer" data-dowe-drawer-close>&times;</button>"#
+    r#"<button class="drawer-close" type="button" aria-label="Close drawer" data-dowe-drawer-close><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z"/></svg></button>"#
 }

@@ -80,12 +80,12 @@ fn diagnostics_resolve_imports_from_nearest_nested_src() {
     .expect("layout");
     fs::write(
         example_src.join("pages/dashboard.dowe"),
-        "page dashboardPage\n  Text\n    Dashboard\n",
+        "page dashboardPage\n  Text\n    \"Dashboard\"\n",
     )
     .expect("dashboard");
     fs::write(
         example_src.join("pages/inventory.dowe"),
-        "page inventoryPage\n  Text\n    Inventory\n",
+        "page inventoryPage\n  Text\n    \"Inventory\"\n",
     )
     .expect("inventory");
     let document = LanguageDocument {
@@ -136,7 +136,7 @@ fn diagnostics_validate_view_actions_and_bindings() {
     let path = root.path().join("src/pages/blogs.dowe");
     let document = LanguageDocument {
         path,
-        source: "page blogsPage\n  signal blog value:{ title:\"\" }\n  Button onClick:missing\n    Save\n".to_string(),
+        source: "page blogsPage\n  signal blog value:{ title:\"\" }\n  Button onClick:missing\n    \"Save\"\n".to_string(),
     };
 
     let diagnostics = analyze_document(root.path(), &document);
@@ -237,7 +237,7 @@ fn diagnostics_accept_text_typography_props() {
     fs::create_dir_all(root.path().join("src/pages")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("src/pages/login.dowe"),
-        source: "page loginPage\n  Text size:\"md\" color:\"onPrimary\" i18n:\"auth.login.title\"\n    Login\n".to_string(),
+        source: "page loginPage\n  Text size:\"md\" color:\"onPrimary\" i18n:\"auth.login.title\"\n    \"Login\"\n".to_string(),
     };
 
     let diagnostics = analyze_document(root.path(), &document);
@@ -246,6 +246,28 @@ fn diagnostics_accept_text_typography_props() {
         diagnostics.is_empty(),
         "unexpected diagnostics: {diagnostics:?}"
     );
+}
+
+#[test]
+fn diagnostics_report_unquoted_static_text_children() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("src/pages")).expect("src");
+    let document = LanguageDocument {
+        path: root.path().join("src/pages/login.dowe"),
+        source: "page loginPage\n  Title\n    header\n".to_string(),
+    };
+
+    let diagnostics = analyze_document(root.path(), &document);
+    let diagnostic = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.message.contains("quoted static string literal"))
+        .expect("quoted text child diagnostic");
+
+    assert_eq!(
+        diagnostic.message,
+        "3:5: text child `header` must be a quoted static string literal"
+    );
+    assert_eq!(diagnostic.range, LanguageRange::single_line(3, 5, 6));
 }
 
 #[test]
@@ -665,7 +687,8 @@ fn completions_include_current_view_component_props() {
 
     let bar_document = LanguageDocument {
         path: Path::new("/project/src/pages/bars.dowe").to_path_buf(),
-        source: "page barsPage\n  AppBar \n  Footer \n  BottomBar \n  SideNav \n".to_string(),
+        source: "page barsPage\n  AppBar \n  Footer \n  BottomBar \n  SideNav \n  Sidebar \n"
+            .to_string(),
     };
     let appbar_props = complete_document(Path::new("/project"), &bar_document, 2, 11);
     assert!(appbar_props.iter().any(|item| item.label == "floating"));
@@ -682,6 +705,12 @@ fn completions_include_current_view_component_props() {
     assert!(side_nav_props.iter().any(|item| item.label == "scheme"));
     assert!(side_nav_props.iter().any(|item| item.label == "size"));
     assert!(side_nav_props.iter().any(|item| item.label == "wide"));
+
+    let sidebar_props = complete_document(Path::new("/project"), &bar_document, 6, 12);
+    assert!(sidebar_props.iter().any(|item| item.label == "scheme"));
+    assert!(sidebar_props.iter().any(|item| item.label == "variant"));
+    assert!(!sidebar_props.iter().any(|item| item.label == "size"));
+    assert!(!sidebar_props.iter().any(|item| item.label == "wide"));
 
     let control_document = LanguageDocument {
         path: Path::new("/project/src/pages/controls.dowe").to_path_buf(),

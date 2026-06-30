@@ -15,9 +15,12 @@ mod server_tests;
 mod watch;
 
 pub use dev::{
-    DevTarget, DevTargetSelection, HostOs, RunningDevSession, available_dev_targets,
-    default_dev_targets, dev_target_selection_path, load_dev_target_selection, run_dev,
-    save_dev_target_selection, start_dev_session,
+    AndroidDeviceOption, AndroidDeviceSelection, DevRunOptions, DevTarget,
+    DevTargetDeviceSelection, DevTargetSelection, HostOs, IosSimulatorOption,
+    IosSimulatorSelection, RunningDevSession, available_android_devices, available_dev_targets,
+    available_ios_simulators, default_dev_targets, dev_target_selection_path,
+    load_dev_target_selection, run_dev, run_dev_with_options, save_dev_target_selection,
+    start_dev_session, start_dev_session_with_options,
 };
 pub use dev_events::{DevEvent, DevEventBus, DevEventType};
 pub use dowe_spawn::{

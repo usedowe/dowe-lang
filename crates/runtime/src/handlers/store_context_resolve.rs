@@ -51,6 +51,19 @@ impl<'a> StoreActionContext<'a> {
         }
     }
 
+    fn http_header_value(&self, value: &HttpHeaderValue) -> Result<String, StoreActionError> {
+        match value {
+            HttpHeaderValue::Static(value) => Ok(value.clone()),
+            HttpHeaderValue::Environment(name) => {
+                self.env_value(name).ok_or_else(|| StoreActionError {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    code: "http_env_missing",
+                    message: "HTTP environment variable is not configured",
+                })
+            }
+        }
+    }
+
     fn secret_value(&self, secret: &ServerSecret) -> Result<String, StoreActionError> {
         match secret {
             ServerSecret::Environment(name) => {

@@ -32,7 +32,9 @@ pub fn container_component_node(
             reject_children_placeholder(component, &children, allow_children)?;
             Ok(ViewNode::Card { props, children })
         }
-        BuiltinComponent::Drawer => drawer_component_node(props, children, allow_children),
+        BuiltinComponent::Drawer => {
+            drawer_component_node(props, Vec::new(), children, Vec::new(), allow_children)
+        }
         BuiltinComponent::Avatar => {
             if children.is_empty() {
                 avatar_component_node(props, None)
@@ -411,7 +413,7 @@ pub fn container_component_node(
             "SideNav requires header, item, divider or submenu entries",
         )),
         BuiltinComponent::Sidebar => Err(ComponentError::invalid_prop_combination(
-            "Sidebar requires header, item, divider or submenu entries",
+            "Sidebar requires header, body or footer regions",
         )),
         BuiltinComponent::Scaffold => Err(ComponentError::invalid_prop_combination(
             "Scaffold requires appBar, main and optional side regions",

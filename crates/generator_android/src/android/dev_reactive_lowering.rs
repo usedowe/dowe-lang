@@ -62,12 +62,21 @@ fn collect_dev_reactive(
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Button { children, .. }
         | ViewNode::Each { children, .. } => {
             for child in children {
+                collect_dev_reactive(child, context, initial, actions, autoload);
+            }
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            for child in header.iter().chain(body).chain(footer) {
                 collect_dev_reactive(child, context, initial, actions, autoload);
             }
         }
@@ -254,14 +263,77 @@ fn java_signal_value(value: &ViewSignalValue) -> String {
 fn java_action_value(action: &ViewAction, context: &ComposeReactiveContext) -> String {
     match &action.kind {
         ViewActionKind::Request(request) => java_request_value(request, context),
-        ViewActionKind::Assign(assign) => format!(
-            "DoweAction.assign(\"{}\", \"{}\")",
-            escape_java(&context.signal_path(&assign.target)),
-            escape_java(&context.signal_path(&assign.source))
-        ),
+        ViewActionKind::Assign(assign) => {
+            let target = escape_java(&context.signal_path(&assign.target));
+            let source = escape_java(&context.signal_path(&assign.source));
+            if let Some(call) = &assign.call {
+                format!(
+                    "DoweAction.assignCall(\"{}\", \"{}\", \"{}\", \"{}\", new Object[][] {{{}}})",
+                    target,
+                    source,
+                    escape_java(&call.namespace),
+                    escape_java(&call.function),
+                    call.args
+                        .iter()
+                        .map(|arg| format!(
+                            "new Object[] {{\"{}\", {}}}",
+                            escape_java(&arg.name),
+                            java_stdlib_value(&arg.value, context)
+                        ))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            } else {
+                format!("DoweAction.assign(\"{}\", \"{}\")", target, source)
+            }
+        }
         ViewActionKind::Reset(reset) => format!(
             "DoweAction.reset(\"{}\")",
             escape_java(&context.signal_path(&reset.target))
+        ),
+    }
+}
+
+fn java_stdlib_value(
+    value: &dowe_components::StdlibValue,
+    context: &ComposeReactiveContext,
+) -> String {
+    match value {
+        dowe_components::StdlibValue::Null => "new Object[] {\"null\", null}".to_string(),
+        dowe_components::StdlibValue::Bool(value) => {
+            format!("new Object[] {{\"bool\", {value}}}")
+        }
+        dowe_components::StdlibValue::Number(value) => format!(
+            "new Object[] {{\"number\", \"{}\"}}",
+            escape_java(value)
+        ),
+        dowe_components::StdlibValue::String(value) => format!(
+            "new Object[] {{\"string\", \"{}\"}}",
+            escape_java(value)
+        ),
+        dowe_components::StdlibValue::Reference(value) => format!(
+            "new Object[] {{\"reference\", \"{}\"}}",
+            escape_java(&context.signal_path(value))
+        ),
+        dowe_components::StdlibValue::Array(values) => format!(
+            "new Object[] {{\"array\", new Object[] {{{}}}}}",
+            values
+                .iter()
+                .map(|value| java_stdlib_value(value, context))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        dowe_components::StdlibValue::Object(entries) => format!(
+            "new Object[] {{\"object\", new Object[] {{{}}}}}",
+            entries
+                .iter()
+                .map(|(key, value)| format!(
+                    "new Object[] {{\"{}\", {}}}",
+                    escape_java(key),
+                    java_stdlib_value(value, context)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
     }
 }

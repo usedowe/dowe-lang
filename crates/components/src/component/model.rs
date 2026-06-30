@@ -167,8 +167,10 @@ pub enum ViewNode {
         items: Vec<SideNavItem>,
     },
     Sidebar {
-        props: SideNavProps,
-        items: Vec<SideNavItem>,
+        props: SidebarProps,
+        header: Vec<ViewNode>,
+        body: Vec<ViewNode>,
+        footer: Vec<ViewNode>,
     },
     Scaffold {
         props: ScaffoldProps,
@@ -180,7 +182,9 @@ pub enum ViewNode {
     },
     Drawer {
         props: DrawerProps,
-        children: Vec<ViewNode>,
+        header: Vec<ViewNode>,
+        body: Vec<ViewNode>,
+        footer: Vec<ViewNode>,
     },
     Avatar {
         props: AvatarProps,
@@ -386,6 +390,7 @@ impl ViewRequestMethod {
 pub struct ViewAssignAction {
     pub target: String,
     pub source: String,
+    pub call: Option<StdlibCall>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -609,6 +614,11 @@ pub struct SideNavProps {
     pub style: VariantProps,
     pub size: SideNavSize,
     pub wide: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SidebarProps {
+    pub style: VariantProps,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2030,6 +2040,7 @@ pub enum SideNavItem {
     Submenu {
         props: SideNavItemProps,
         open: bool,
+        bordered: bool,
         items: Vec<SideNavItemProps>,
     },
 }

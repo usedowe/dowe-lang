@@ -61,7 +61,10 @@ fn generates_swiftui_side_nav() {
     assert!(views.contains("kind: \"submenu\""));
     assert!(views.contains("open: true"));
     assert!(views.contains("path: \"/bars\""));
-    assert!(views.contains("DoweSideNavSubmenu(open: item.open)"));
+    assert!(views.contains("DoweSideNavSubmenu(open: item.open, bordered: item.bordered)"));
+    assert!(views.contains("bordered: true"));
+    assert!(views.contains("struct DoweSideNavArrow: View"));
+    assert!(views.contains("m19.704 12l-8.491-8.727a.75.75"));
     assert!(views.contains("withAnimation(.easeInOut(duration: 0.18))"));
     assert!(views.contains(".transition(.opacity.combined(with: .move(edge: .top)))"));
     assert!(views.contains("label: \"Workspace\""));
@@ -83,13 +86,18 @@ fn generates_swiftui_navigation_shell_components() {
     assert!(views.contains("DoweNavMenuItem(active: openIndex == 1"));
     assert!(views.contains("HStack(alignment: .top"));
     assert!(views.contains("Text(\"Resource hub\")"));
-    assert!(views.contains("Text(\"Side Home\")"));
+    assert!(views.contains("label: \"Side Home\""));
     assert!(views.contains(
         ".frame(width: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.fixed(CGFloat(384)))))"
     ));
     assert!(views.contains(
         ".frame(maxWidth: doweMaxSize(doweResponsive(viewportWidth, xs: DoweSize.fixed(CGFloat(384)))))"
     ));
+    assert!(views.contains(
+        ".frame(maxHeight: UIScreen.main.bounds.height, alignment: .topLeading)"
+    ));
+    assert!(views.contains(".clipped()"));
+    assert!(views.contains("ScrollView {"));
 }
 
 #[test]
@@ -127,6 +135,16 @@ fn generates_swiftui_drawer() {
     assert!(views.contains("DoweDrawer(open: state.bool(\"drawer01\"), close: { state.write(\"drawer01\", value: false) }, position: \"end\""));
     assert!(views.contains("radius: CGFloat(0)"));
     assert!(views.contains("disableOverlayClose: true, hideCloseButton: false"));
+    assert!(views.contains("let doweDrawerNavigate = navigate"));
+    assert!(views.contains("state.write(\"drawer01\", value: false)"));
+    assert!(views.contains("doweDrawerNavigate(operation, target, fragment)"));
+    assert!(views.contains("ScrollView {"));
+    assert!(views.contains(".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)"));
+    assert!(views.contains("safeAreaInsets: doweDrawerEdgeInsets(window.safeAreaInsets)"));
+    assert!(views.contains("drawerSafeAreaPadding(safeAreaInsets)"));
+    assert!(views.contains("drawerClosePadding(safeAreaInsets)"));
+    assert!(views.contains("struct DoweDrawerCloseIcon: View"));
+    assert!(views.contains("DoweSvgPathData(data: \"m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073"));
     assert!(views.contains("return CGSize(width: CGFloat(320), height: CGFloat(0))"));
     assert!(views.contains("private var panelShape: UnevenRoundedRectangle"));
     assert!(views.contains("return UnevenRoundedRectangle(topLeadingRadius: radius, bottomLeadingRadius: radius, bottomTrailingRadius: CGFloat(0), topTrailingRadius: CGFloat(0))"));

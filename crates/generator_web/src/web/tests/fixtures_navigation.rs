@@ -87,7 +87,7 @@ fn navigation_shell_tree() -> ViewNode {
             ],
         }],
         start: vec![ViewNode::Sidebar {
-            props: SideNavProps {
+            props: SidebarProps {
                 style: VariantProps {
                     variant: Some(ComponentVariant::Soft),
                     color: Some(ColorFamily::Surface),
@@ -104,21 +104,32 @@ fn navigation_shell_tree() -> ViewNode {
                     },
                     ..Default::default()
                 },
-                size: SideNavSize::Md,
-                wide: true,
             },
-            items: vec![SideNavItem::Item(SideNavItemProps {
-                label: "Side Home".to_string(),
-                description: None,
-                status: None,
-                icon: None,
-                on_click: None,
-                navigation: Some(NavigationAction::Internal {
-                    path: "/".to_string(),
-                    fragment: None,
-                    operation: NavigationOperation::Push,
-                }),
-            })],
+            header: Vec::new(),
+            body: vec![ViewNode::SideNav {
+                props: SideNavProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Ghost),
+                        color: Some(ColorFamily::Muted),
+                        ..Default::default()
+                    },
+                    size: SideNavSize::Md,
+                    wide: true,
+                },
+                items: vec![SideNavItem::Item(SideNavItemProps {
+                    label: "Side Home".to_string(),
+                    description: None,
+                    status: None,
+                    icon: None,
+                    on_click: None,
+                    navigation: Some(NavigationAction::Internal {
+                        path: "/".to_string(),
+                        fragment: None,
+                        operation: NavigationOperation::Push,
+                    }),
+                })],
+            }],
+            footer: Vec::new(),
         }],
         main: vec![text("Main content")],
         end: Vec::new(),

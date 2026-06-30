@@ -5,41 +5,41 @@ page dashboardPage
         Grid columns:{ xs:1 md:2 } gap:6
           Box
             Text size:"sm" weight:"semibold" color:"info"
-              CLINIC OPERATIONS
+              "CLINIC OPERATIONS"
             Title size:"5xl" weight:"bold"
-              Appointment flow without duplicated client logic
+              "Appointment flow without duplicated client logic"
             Text size:"lg" color:"muted"
-              Manage patient scheduling, service queues, status changes, and local Store data from one Dowe source model.
+              "Manage patient scheduling, service queues, status changes, and local Store data from one Dowe source model."
             Flex gap:3 align:"center"
               Button href:"/appointments" variant:"solid" scheme:"info" size:"lg"
-                Open schedule
+                "Open schedule"
               Button href:"/appointments" variant:"outlined" scheme:"secondary" size:"lg"
-                Review queue
+                "Review queue"
           Card variant:"solid" scheme:"info" p:6 rounded:"xl"
             Title size:"3xl"
-              Today
+              "Today"
             Text size:"md"
-              Load appointments from the Rust server endpoint, edit them through Signals, and persist changes through Store handlers.
+              "Load appointments from the Rust server endpoint, edit them through Signals, and persist changes through Store handlers."
       Grid columns:{ xs:1 md:3 } gap:4
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Status
+            "Status"
           Title size:"3xl"
-            Ready
+            "Ready"
           Text size:"sm"
-            The API status route answers from the server target.
+            "The API status route answers from the server target."
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Storage
+            "Storage"
           Title size:"3xl"
-            Store
+            "Store"
           Text size:"sm"
-            Appointment records are written to the clinic database.
+            "Appointment records are written to the clinic database."
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Targets
+            "Targets"
           Title size:"3xl"
-            Shared
+            "Shared"
           Text size:"sm"
-            The same view model feeds web, desktop, Android, and iOS.
+            "The same view model feeds web, desktop, Android, and iOS."
 

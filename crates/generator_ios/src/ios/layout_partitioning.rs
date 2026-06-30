@@ -91,13 +91,22 @@ fn ios_collect_scope_bindings(node: &ViewNode, bindings: &mut IosLayoutBindings)
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Each { children, .. }
         | ViewNode::Button { children, .. } => {
             ios_collect_scope_bindings_from_children(children, bindings);
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            ios_collect_scope_bindings_from_children(header, bindings);
+            ios_collect_scope_bindings_from_children(body, bindings);
+            ios_collect_scope_bindings_from_children(footer, bindings);
         }
         ViewNode::Scaffold {
             app_bar,
@@ -407,9 +416,22 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
                     .is_some_and(|value| bindings.references_action(value))
         }
         ViewNode::Svg { props, .. } => ios_style_references_layout_bindings(&props.style, bindings),
-        ViewNode::SideNav { props, items } | ViewNode::Sidebar { props, items } => {
+        ViewNode::SideNav { props, items } => {
             ios_variant_references_layout_bindings(&props.style, bindings)
                 || ios_side_nav_items_reference_layout_bindings(items, bindings)
+        }
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            ios_variant_references_layout_bindings(&props.style, bindings)
+                || header
+                    .iter()
+                    .chain(body)
+                    .chain(footer)
+                    .any(|child| ios_node_references_layout_bindings(child, bindings))
         }
         ViewNode::AppBar {
             props,
@@ -449,10 +471,17 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
                 || ios_children_reference_layout_bindings(end, bindings)
                 || ios_children_reference_layout_bindings(bottom_bar, bindings)
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             ios_variant_references_layout_bindings(&props.style, bindings)
                 || bindings.references_signal(&props.open)
-                || ios_children_reference_layout_bindings(children, bindings)
+                || ios_children_reference_layout_bindings(header, bindings)
+                || ios_children_reference_layout_bindings(body, bindings)
+                || ios_children_reference_layout_bindings(footer, bindings)
         }
         ViewNode::Badge { props, children } => {
             ios_variant_references_layout_bindings(&props.style, bindings)
@@ -948,9 +977,19 @@ fn ios_children_boundary(
             ios_children_boundaries(center, false, true),
             ios_children_boundaries(end, false, true),
         ]),
-        ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
-        | ViewNode::Badge { children, .. } => ios_children_boundaries(children, false, false),
+        ViewNode::Card { children, .. } | ViewNode::Badge { children, .. } => {
+            ios_children_boundaries(children, false, false)
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => ios_merge_children_boundaries([
+            ios_children_boundaries(header, false, false),
+            ios_children_boundaries(body, false, false),
+            ios_children_boundaries(footer, false, false),
+        ]),
         ViewNode::Modal {
             header,
             body,

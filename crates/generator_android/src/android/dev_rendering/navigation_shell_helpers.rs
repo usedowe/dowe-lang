@@ -102,6 +102,97 @@ fn render_dev_android_scaffold(
     }
 }
 
+fn render_dev_android_sidebar(
+    props: &SidebarProps,
+    header: &[ViewNode],
+    body: &[ViewNode],
+    footer: &[ViewNode],
+    parent: &str,
+    parent_gap: Option<&str>,
+    parent_horizontal: bool,
+    counter: &mut usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    context: &ComposeReactiveContext,
+    children_method: Option<&str>,
+) {
+    let view = next_dev_view(counter);
+    let body_scroll = next_dev_view(counter);
+    let body_content = next_dev_view(counter);
+    let current_font = props.style.style.font.as_ref().or(inherited_font);
+    output.push_str(&format!(
+        "        LinearLayout {view} = doweContainer(false);\n"
+    ));
+    apply_dev_android_style(&props.style.style, &view, true, output);
+    if props.style.style.sizing.h.is_none() {
+        output.push_str(&format!(
+            "        int {view}ShellHeight = Math.max(0, getResources().getDisplayMetrics().heightPixels - scrollView.getPaddingTop() - scrollView.getPaddingBottom());\n        {view}.setLayoutParams(new LinearLayout.LayoutParams({view}.getLayoutParams().width, {view}ShellHeight));\n"
+        ));
+    }
+    output.push_str(&format!(
+        "        {view}.setBackgroundColor({});\n",
+        dev_variant_container(&props.style)
+    ));
+    output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+    if !header.is_empty() {
+        let header_content = next_dev_view(counter);
+        output.push_str(&format!(
+            "        LinearLayout {header_content} = doweContainer(false);\n        doweAdd({view}, {header_content});\n"
+        ));
+        for child in header {
+            render_dev_android_node(
+                child,
+                &header_content,
+                None,
+                false,
+                counter,
+                output,
+                current_font,
+                Some(dev_variant_content(&props.style).to_string()),
+                context,
+                children_method,
+            );
+        }
+    }
+    output.push_str(&format!(
+        "        ScrollView {body_scroll} = new ScrollView(this);\n        {body_scroll}.setFillViewport(true);\n        LinearLayout {body_content} = doweContainer(false);\n        {body_scroll}.addView({body_content}, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.addView({body_scroll}, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));\n"
+    ));
+    for child in body {
+        render_dev_android_node(
+            child,
+            &body_content,
+            None,
+            false,
+            counter,
+            output,
+            current_font,
+            Some(dev_variant_content(&props.style).to_string()),
+            context,
+            children_method,
+        );
+    }
+    if !footer.is_empty() {
+        let footer_content = next_dev_view(counter);
+        output.push_str(&format!(
+            "        LinearLayout {footer_content} = doweContainer(false);\n        doweAdd({view}, {footer_content});\n"
+        ));
+        for child in footer {
+            render_dev_android_node(
+                child,
+                &footer_content,
+                None,
+                false,
+                counter,
+                output,
+                current_font,
+                Some(dev_variant_content(&props.style).to_string()),
+                context,
+                children_method,
+            );
+        }
+    }
+}
+
 fn render_dev_android_side_nav(
     props: &SideNavProps,
     items: &[SideNavItem],
@@ -209,7 +300,7 @@ fn dev_side_nav_submenu_child_entries(items: &[SideNavItemProps], prefix: &str) 
         let id = format!("{prefix}-{index}");
         output.push_str(&format!(
             " add({});",
-            dev_side_nav_entry_props("item", item, false, "null", &id)
+            dev_side_nav_entry_props("item", item, false, false, "null", &id)
         ));
     }
     output.push_str(" }}");
@@ -218,15 +309,22 @@ fn dev_side_nav_submenu_child_entries(items: &[SideNavItemProps], prefix: &str) 
 
 fn dev_side_nav_entry(item: &SideNavItem, id: &str) -> String {
     match item {
-        SideNavItem::Header(props) => dev_side_nav_entry_props("header", props, false, "null", id),
-        SideNavItem::Item(props) => dev_side_nav_entry_props("item", props, false, "null", id),
+        SideNavItem::Header(props) => {
+            dev_side_nav_entry_props("header", props, false, false, "null", id)
+        }
+        SideNavItem::Item(props) => dev_side_nav_entry_props("item", props, false, false, "null", id),
         SideNavItem::Divider => format!(
-            "new DoweSideNavEntry(\"{}\", \"divider\", \"\", null, null, null, null, null, false, null)",
+            "new DoweSideNavEntry(\"{}\", \"divider\", \"\", null, null, null, null, null, false, false, null)",
             escape_java(id)
         ),
-        SideNavItem::Submenu { props, open, items } => {
+        SideNavItem::Submenu {
+            props,
+            open,
+            bordered,
+            items,
+        } => {
             let children = dev_side_nav_submenu_child_entries(items, id);
-            dev_side_nav_entry_props("submenu", props, *open, &children, id)
+            dev_side_nav_entry_props("submenu", props, *open, *bordered, &children, id)
         }
     }
 }
@@ -235,12 +333,13 @@ fn dev_side_nav_entry_props(
     kind: &str,
     props: &SideNavItemProps,
     open: bool,
+    bordered: bool,
     children: &str,
     id: &str,
 ) -> String {
     let (operation, path, fragment) = dev_side_nav_navigation_values(props.navigation.as_ref());
     format!(
-        "new DoweSideNavEntry(\"{}\", \"{}\", \"{}\", {}, {}, {}, {}, {}, {}, {})",
+        "new DoweSideNavEntry(\"{}\", \"{}\", \"{}\", {}, {}, {}, {}, {}, {}, {}, {})",
         escape_java(id),
         kind,
         escape_java(&props.label),
@@ -250,6 +349,7 @@ fn dev_side_nav_entry_props(
         dev_side_nav_optional_string(path),
         dev_side_nav_optional_string(fragment),
         open,
+        bordered,
         children
     )
 }
@@ -297,6 +397,7 @@ fn render_dev_android_side_nav_item(
                 output,
                 inherited_font,
                 context,
+                None,
             );
         }
         SideNavItem::Item(props) => {
@@ -309,6 +410,7 @@ fn render_dev_android_side_nav_item(
                 output,
                 inherited_font,
                 context,
+                None,
             );
         }
         SideNavItem::Divider => {
@@ -317,7 +419,12 @@ fn render_dev_android_side_nav_item(
                 "        View {view} = new View(this);\n        {view}.setBackgroundColor(DOWE_MUTED);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1)));\n        doweAdd({parent}, {view}, 8, false);\n"
             ));
         }
-        SideNavItem::Submenu { props, open, items } => {
+        SideNavItem::Submenu {
+            props,
+            open,
+            bordered,
+            items,
+        } => {
             let trigger = render_dev_android_side_nav_row(
                 props,
                 true,
@@ -327,22 +434,25 @@ fn render_dev_android_side_nav_item(
                 output,
                 inherited_font,
                 context,
+                Some(*open),
             );
             let submenu = next_dev_view(counter);
+            let submenu_content = next_dev_view(counter);
             output.push_str(&format!(
-                "        LinearLayout {submenu} = doweContainer(false);\n        {submenu}.setPadding(doweDp(16), 0, 0, 0);\n        {submenu}.setVisibility({});\n        doweAdd({parent}, {submenu});\n        {trigger}.setOnClickListener(v -> doweToggleSideNavSubmenu({submenu}));\n",
+                "        LinearLayout {submenu} = doweContainer({bordered});\n        {submenu}.setPadding(doweDp(16), 0, 0, 0);\n        {submenu}.setVisibility({});\n        doweAdd({parent}, {submenu});\n        LinearLayout {submenu_content} = doweSideNavSubmenuContent({submenu}, {bordered});\n        View {trigger}Arrow = (View) {trigger}.getTag();\n        {trigger}.setOnClickListener(v -> doweToggleSideNavSubmenu({submenu}, {trigger}Arrow));\n",
                 if *open { "View.VISIBLE" } else { "View.GONE" }
             ));
             for item in items {
                 render_dev_android_side_nav_row(
                     item,
                     false,
-                    &submenu,
+                    &submenu_content,
                     nav,
                     counter,
                     output,
                     inherited_font,
                     context,
+                    None,
                 );
             }
         }
@@ -358,6 +468,7 @@ fn render_dev_android_side_nav_row(
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     context: &ComposeReactiveContext,
+    submenu_open: Option<bool>,
 ) -> String {
     let view = next_dev_view(counter);
     let (padding_horizontal, padding_vertical, _, label_size, description_size) =
@@ -391,6 +502,12 @@ fn render_dev_android_side_nav_row(
             "        TextView {view}Status = doweText(\"{}\", {content}, {description_size}f, 600, 0f, {description_size}f, {});\n        doweAdd({view}, {view}Status);\n",
             escape_java(status),
             dev_font_value(inherited_font)
+        ));
+    }
+    if let Some(open) = submenu_open {
+        output.push_str(&format!(
+            "        DoweSvgView {view}Arrow = doweSideNavArrow({content});\n        {view}Arrow.setRotation({});\n        {view}.setTag({view}Arrow);\n        doweAdd({view}, {view}Arrow);\n",
+            if open { "90f" } else { "0f" }
         ));
     }
     if let Some(action) = dev_side_nav_action(props, context) {

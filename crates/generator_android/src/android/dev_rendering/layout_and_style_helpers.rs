@@ -184,7 +184,10 @@ fn apply_dev_android_style(
         ));
     }
 
-    if include_background && let Some(value) = props.bg.as_ref() {
+    let styled_background =
+        include_background && props.background.is_none() && props.border.is_some();
+
+    if include_background && !styled_background && let Some(value) = props.bg.as_ref() {
         output.push_str(&format!(
             "        Integer {view}Background = {};\n        if ({view}Background != null) {{\n            {view}.setBackgroundColor({view}Background);\n        }}\n",
             dev_color_value(value)
@@ -195,6 +198,23 @@ fn apply_dev_android_style(
         output.push_str(&format!(
             "        String {view}SectionBackground = {};\n        if ({view}SectionBackground != null) {{\n            {view}.setBackground(doweSectionBackground({view}SectionBackground));\n        }}\n",
             dev_section_background_value(value)
+        ));
+    }
+
+    if styled_background {
+        let background = props
+            .bg
+            .as_ref()
+            .map(|value| format!("doweColor({}, Color.TRANSPARENT)", dev_color_value(value)))
+            .unwrap_or_else(|| "Color.TRANSPARENT".to_string());
+        let border = props
+            .border
+            .as_ref()
+            .map(dev_border_value)
+            .unwrap_or_else(|| "null".to_string());
+        output.push_str(&format!(
+            "        {view}.setBackground(doweStyledBackground({background}, DOWE_ON_BACKGROUND, {border}, {}));\n",
+            dev_style_radius(props)
         ));
     }
 

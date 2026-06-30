@@ -20,6 +20,7 @@ pub fn side_nav_submenu_component(
     props: Vec<ComponentProp>,
     icon: Option<SideNavIcon>,
     open: bool,
+    bordered: bool,
     items: Vec<SideNavItemProps>,
 ) -> ComponentResult<SideNavItem> {
     if items.is_empty() {
@@ -33,7 +34,12 @@ pub fn side_nav_submenu_component(
             "SideNav submenu cannot declare navigation or onClick",
         ));
     }
-    Ok(SideNavItem::Submenu { props, open, items })
+    Ok(SideNavItem::Submenu {
+        props,
+        open,
+        bordered,
+        items,
+    })
 }
 
 pub fn side_nav_icon_component(node: ViewNode) -> ComponentResult<SideNavIcon> {

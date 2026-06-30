@@ -1,6 +1,8 @@
 fn render_swift_drawer(
     props: &DrawerProps,
-    children: &[ViewNode],
+    header: &[ViewNode],
+    body: &[ViewNode],
+    footer: &[ViewNode],
     indent: usize,
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
@@ -25,13 +27,39 @@ fn render_swift_drawer(
         props.hide_close_button
     ));
     output.push_str(&format!(
+        "{pad}    let doweDrawerNavigate = navigate\n{pad}    let navigate: (String, String, String?) -> Void = {{ operation, target, fragment in\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerNavigate(operation, target, fragment)\n{pad}    }}\n{pad}    let doweDrawerGoBack = goBack\n{pad}    let goBack: () -> Void = {{\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerGoBack()\n{pad}    }}\n{pad}    let doweDrawerOpenExternal = openExternal\n{pad}    let openExternal: (String, String) -> Void = {{ mode, target in\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerOpenExternal(mode, target)\n{pad}    }}\n"
+    ));
+    output.push_str(&format!(
         "{pad}    VStack(alignment: .leading, spacing: 0) {{\n"
     ));
     let current_font = props.style.style.font.as_ref().or(inherited_font);
-    for child in children {
+    if !header.is_empty() {
+        output.push_str(&format!(
+            "{pad}        VStack(alignment: .leading, spacing: 0) {{\n"
+        ));
+        for child in header {
+            render_swift_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                NativeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
+        output.push_str(&format!(
+            "{pad}        .frame(maxWidth: .infinity, alignment: .topLeading)\n"
+        ));
+    }
+    output.push_str(&format!(
+        "{pad}        ScrollView {{\n{pad}            VStack(alignment: .leading, spacing: 0) {{\n"
+    ));
+    for child in body {
         render_swift_node_in_flow(
             child,
-            indent + 8,
+            indent + 16,
             output,
             NativeFlow::Block,
             current_font,
@@ -39,7 +67,33 @@ fn render_swift_drawer(
             context,
         );
     }
+    output.push_str(&format!(
+        "{pad}            }}\n{pad}            .frame(maxWidth: .infinity, alignment: .topLeading)\n{pad}        }}\n{pad}        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"
+    ));
+    if !footer.is_empty() {
+        output.push_str(&format!(
+            "{pad}        VStack(alignment: .leading, spacing: 0) {{\n"
+        ));
+        for child in footer {
+            render_swift_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                NativeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
+        output.push_str(&format!(
+            "{pad}        .frame(maxWidth: .infinity, alignment: .topLeading)\n"
+        ));
+    }
     output.push_str(&format!("{pad}    }}\n"));
+    output.push_str(&format!(
+        "{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"
+    ));
     append_swift_modifiers(
         output,
         indent + 4,

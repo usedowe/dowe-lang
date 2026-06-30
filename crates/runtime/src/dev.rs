@@ -117,6 +117,124 @@ pub struct DevTargetSelection {
     targets: Vec<DevTarget>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DevRunOptions {
+    pub devices: DevTargetDeviceSelection,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct DevTargetDeviceSelection {
+    pub android: Option<AndroidDeviceSelection>,
+    pub ios: Option<IosSimulatorSelection>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AndroidDeviceSelection {
+    Connected { serial: String },
+    Avd { name: String },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AndroidDeviceOption {
+    label: String,
+    selection: AndroidDeviceSelection,
+}
+
+impl AndroidDeviceOption {
+    pub(crate) fn new(label: impl Into<String>, selection: AndroidDeviceSelection) -> Self {
+        Self {
+            label: label.into(),
+            selection,
+        }
+    }
+
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
+    pub fn selection(&self) -> &AndroidDeviceSelection {
+        &self.selection
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IosSimulatorSelection {
+    udid: String,
+}
+
+impl IosSimulatorSelection {
+    pub(crate) fn new(udid: impl Into<String>) -> Self {
+        Self { udid: udid.into() }
+    }
+
+    pub fn udid(&self) -> &str {
+        &self.udid
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IosSimulatorOption {
+    label: String,
+    name: String,
+    udid: String,
+    runtime: String,
+    state: String,
+}
+
+impl IosSimulatorOption {
+    pub(crate) fn new(
+        name: impl Into<String>,
+        udid: impl Into<String>,
+        runtime: impl Into<String>,
+        state: impl Into<String>,
+    ) -> Self {
+        let name = name.into();
+        let udid = udid.into();
+        let runtime = runtime.into();
+        let state = state.into();
+        let label = if state == "Booted" {
+            format!("{name} ({runtime}, Booted)")
+        } else {
+            format!("{name} ({runtime}, {state})")
+        };
+        Self {
+            label,
+            name,
+            udid,
+            runtime,
+            state,
+        }
+    }
+
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn udid(&self) -> &str {
+        &self.udid
+    }
+
+    pub fn runtime(&self) -> &str {
+        &self.runtime
+    }
+
+    pub fn state(&self) -> &str {
+        &self.state
+    }
+
+    pub fn selection(&self) -> IosSimulatorSelection {
+        IosSimulatorSelection::new(self.udid.clone())
+    }
+
+    pub fn is_booted(&self) -> bool {
+        self.state == "Booted"
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 struct StoredDevTargetSelection {
     version: u8,
@@ -184,6 +302,14 @@ pub fn available_dev_targets(host: HostOs) -> Vec<DevTarget> {
 pub fn default_dev_targets(host: HostOs) -> DevTargetSelection {
     DevTargetSelection::new([DevTarget::Server, DevTarget::Web], host)
         .expect("default dev targets are always available")
+}
+
+pub fn available_android_devices() -> RuntimeResult<Vec<AndroidDeviceOption>> {
+    crate::dev_targets::android_device_options()
+}
+
+pub fn available_ios_simulators() -> RuntimeResult<Vec<IosSimulatorOption>> {
+    crate::dev_targets::ios_simulator_options()
 }
 
 pub fn dev_target_selection_path(root: impl AsRef<Path>) -> PathBuf {
@@ -288,14 +414,30 @@ impl ExternalTargetStartup {
 }
 
 pub async fn run_dev(root: impl AsRef<Path>, selection: DevTargetSelection) -> RuntimeResult<()> {
+    run_dev_with_options(root, selection, DevRunOptions::default()).await
+}
+
+pub async fn run_dev_with_options(
+    root: impl AsRef<Path>,
+    selection: DevTargetSelection,
+    options: DevRunOptions,
+) -> RuntimeResult<()> {
     let project = compile_dev(root).map_err(RuntimeError::from)?;
-    let session = start_dev_session(project, selection).await?;
+    let session = start_dev_session_with_options(project, selection, options).await?;
     session.wait().await
 }
 
 pub async fn start_dev_session(
     project: CompiledProject,
     selection: DevTargetSelection,
+) -> RuntimeResult<RunningDevSession> {
+    start_dev_session_with_options(project, selection, DevRunOptions::default()).await
+}
+
+pub async fn start_dev_session_with_options(
+    project: CompiledProject,
+    selection: DevTargetSelection,
+    options: DevRunOptions,
 ) -> RuntimeResult<RunningDevSession> {
     let server_targets = DevServerTargets {
         backend: selection.contains(DevTarget::Server),
@@ -315,7 +457,7 @@ pub async fn start_dev_session(
         .desktop_addr
         .map(|addr| format!("http://{addr}/"));
 
-    match start_external_targets(&project, &selection, desktop_origin).await {
+    match start_external_targets(&project, &selection, desktop_origin, &options.devices).await {
         Ok(startup) => {
             session.external_processes.extend(startup.processes);
             session.external_cleanups.extend(startup.cleanups);
@@ -335,6 +477,7 @@ async fn start_external_targets(
     project: &CompiledProject,
     selection: &DevTargetSelection,
     desktop_origin: Option<String>,
+    devices: &DevTargetDeviceSelection,
 ) -> Result<ExternalTargetStartup, (RuntimeError, ExternalTargetStartup)> {
     let targets = [DevTarget::Desktop, DevTarget::Android, DevTarget::Ios]
         .into_iter()
@@ -351,10 +494,11 @@ async fn start_external_targets(
     for target in targets {
         let project = project.clone();
         let desktop_origin = desktop_origin.clone();
+        let devices = devices.clone();
         tasks.push(tokio::task::spawn_blocking(move || {
             (
                 target,
-                start_external_target(&project, target, desktop_origin.as_deref()),
+                start_external_target(&project, target, desktop_origin.as_deref(), &devices),
             )
         }));
     }

@@ -90,13 +90,22 @@ fn dev_collect_scope_bindings(node: &ViewNode, bindings: &mut DevLayoutBindings)
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Each { children, .. }
         | ViewNode::Button { children, .. } => {
             dev_collect_scope_bindings_from_children(children, bindings);
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            dev_collect_scope_bindings_from_children(header, bindings);
+            dev_collect_scope_bindings_from_children(body, bindings);
+            dev_collect_scope_bindings_from_children(footer, bindings);
         }
         ViewNode::Scaffold {
             app_bar,
@@ -406,9 +415,22 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
                     .is_some_and(|value| bindings.references_action(value))
         }
         ViewNode::Svg { props, .. } => dev_style_references_layout_bindings(&props.style, bindings),
-        ViewNode::SideNav { props, items } | ViewNode::Sidebar { props, items } => {
+        ViewNode::SideNav { props, items } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
                 || dev_side_nav_items_reference_layout_bindings(items, bindings)
+        }
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            dev_variant_references_layout_bindings(&props.style, bindings)
+                || header
+                    .iter()
+                    .chain(body)
+                    .chain(footer)
+                    .any(|child| dev_node_references_layout_bindings(child, bindings))
         }
         ViewNode::AppBar {
             props,
@@ -448,10 +470,17 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
                 || dev_children_reference_layout_bindings(end, bindings)
                 || dev_children_reference_layout_bindings(bottom_bar, bindings)
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
                 || bindings.references_signal(&props.open)
-                || dev_children_reference_layout_bindings(children, bindings)
+                || dev_children_reference_layout_bindings(header, bindings)
+                || dev_children_reference_layout_bindings(body, bindings)
+                || dev_children_reference_layout_bindings(footer, bindings)
         }
         ViewNode::Badge { props, children } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
@@ -947,9 +976,19 @@ fn dev_children_boundary(
             dev_children_boundaries(center, false, true),
             dev_children_boundaries(end, false, true),
         ]),
-        ViewNode::Card { children, .. }
-        | ViewNode::Drawer { children, .. }
-        | ViewNode::Badge { children, .. } => dev_children_boundaries(children, false, false),
+        ViewNode::Card { children, .. } | ViewNode::Badge { children, .. } => {
+            dev_children_boundaries(children, false, false)
+        }
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => dev_merge_children_boundaries([
+            dev_children_boundaries(header, false, false),
+            dev_children_boundaries(body, false, false),
+            dev_children_boundaries(footer, false, false),
+        ]),
         ViewNode::Modal {
             header,
             body,

@@ -76,6 +76,10 @@ fn side_nav_classes(base: &str, props: &SideNavProps) -> Vec<String> {
     classes
 }
 
+fn sidebar_classes(props: &SidebarProps) -> Vec<String> {
+    variant_classes("sidebar", &props.style)
+}
+
 fn nav_menu_classes(props: &NavMenuProps) -> Vec<String> {
     let mut classes = variant_classes("navmenu", &props.style);
     classes.push(format!("navmenu-{}", props.size.as_str()));

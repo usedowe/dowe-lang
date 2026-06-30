@@ -92,6 +92,83 @@ fn render_compose_scaffold(
     output.push_str(&format!("{pad}}}\n"));
 }
 
+fn render_compose_sidebar(
+    props: &SidebarProps,
+    header: &[ViewNode],
+    body: &[ViewNode],
+    footer: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    flow: ComposeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &ComposeReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let current_font = props.style.style.font.as_ref().or(inherited_font);
+    let mut modifier = modifier_for_container_style(&props.style.style, flow);
+    if props.style.style.sizing.h.is_none() {
+        modifier.push_str(".heightIn(max = LocalConfiguration.current.screenHeightDp.dp)");
+    }
+    let modifier = format!("{}.background({})", modifier, variant_container(&props.style));
+    output.push_str(&format!("{pad}Column(modifier = {modifier}) {{\n"));
+    output.push_str(&format!(
+        "{pad}    CompositionLocalProvider(LocalContentColor provides {}) {{\n",
+        variant_content(&props.style)
+    ));
+    if !header.is_empty() {
+        output.push_str(&format!(
+            "{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n"
+        ));
+        for child in header {
+            render_compose_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                ComposeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
+    }
+    output.push_str(&format!(
+        "{pad}        Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {{\n"
+    ));
+    for child in body {
+        render_compose_node_in_flow(
+            child,
+            indent + 12,
+            output,
+            ComposeFlow::Block,
+            current_font,
+            default_family,
+            context,
+        );
+    }
+    output.push_str(&format!("{pad}        }}\n"));
+    if !footer.is_empty() {
+        output.push_str(&format!(
+            "{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n"
+        ));
+        for child in footer {
+            render_compose_node_in_flow(
+                child,
+                indent + 12,
+                output,
+                ComposeFlow::Block,
+                current_font,
+                default_family,
+                context,
+            );
+        }
+        output.push_str(&format!("{pad}        }}\n"));
+    }
+    output.push_str(&format!("{pad}    }}\n"));
+    output.push_str(&format!("{pad}}}\n"));
+}
+
 fn render_compose_side_nav(
     props: &SideNavProps,
     items: &[SideNavItem],
@@ -241,7 +318,7 @@ fn compose_side_nav_child_entries(
         let id = format!("{prefix}-{index}");
         output.push_str(&format!(
             "{item_pad}{},\n",
-            compose_side_nav_entry_props("item", item, false, "", &id)
+            compose_side_nav_entry_props("item", item, false, false, "", &id)
         ));
     }
     output.push_str(&format!("{pad})"));
@@ -250,15 +327,22 @@ fn compose_side_nav_child_entries(
 
 fn compose_side_nav_entry(item: &SideNavItem, indent: usize, id: &str) -> String {
     match item {
-        SideNavItem::Header(props) => compose_side_nav_entry_props("header", props, false, "", id),
-        SideNavItem::Item(props) => compose_side_nav_entry_props("item", props, false, "", id),
+        SideNavItem::Header(props) => {
+            compose_side_nav_entry_props("header", props, false, false, "", id)
+        }
+        SideNavItem::Item(props) => compose_side_nav_entry_props("item", props, false, false, "", id),
         SideNavItem::Divider => format!(
-            "DoweSideNavEntry(id = \"{}\", kind = \"divider\", label = \"\", description = null, status = null, operation = null, path = null, fragment = null)",
+            "DoweSideNavEntry(id = \"{}\", kind = \"divider\", label = \"\", description = null, status = null, operation = null, path = null, fragment = null, bordered = false)",
             escape_kotlin(id)
         ),
-        SideNavItem::Submenu { props, open, items } => {
+        SideNavItem::Submenu {
+            props,
+            open,
+            bordered,
+            items,
+        } => {
             let children = compose_side_nav_child_entries(items, indent + 4, id);
-            compose_side_nav_entry_props("submenu", props, *open, &children, id)
+            compose_side_nav_entry_props("submenu", props, *open, *bordered, &children, id)
         }
     }
 }
@@ -267,6 +351,7 @@ fn compose_side_nav_entry_props(
     kind: &str,
     props: &SideNavItemProps,
     open: bool,
+    bordered: bool,
     children: &str,
     id: &str,
 ) -> String {
@@ -277,7 +362,7 @@ fn compose_side_nav_entry_props(
         children
     };
     format!(
-        "DoweSideNavEntry(id = \"{}\", kind = \"{}\", label = \"{}\", description = {}, status = {}, operation = {}, path = {}, fragment = {}, open = {}, children = {})",
+        "DoweSideNavEntry(id = \"{}\", kind = \"{}\", label = \"{}\", description = {}, status = {}, operation = {}, path = {}, fragment = {}, open = {}, bordered = {}, children = {})",
         escape_kotlin(id),
         kind,
         escape_kotlin(&props.label),
@@ -287,6 +372,7 @@ fn compose_side_nav_entry_props(
         compose_side_nav_optional_string(path),
         compose_side_nav_optional_string(fragment),
         open,
+        bordered,
         children
     )
 }
@@ -338,6 +424,7 @@ fn render_compose_side_nav_item(
             nav,
             inherited_font,
             default_family,
+            None,
         ),
         SideNavItem::Item(props) => render_compose_side_nav_row(
             props,
@@ -348,12 +435,18 @@ fn render_compose_side_nav_item(
             nav,
             inherited_font,
             default_family,
+            None,
         ),
         SideNavItem::Divider => output.push_str(&format!(
             "{pad}Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(DoweDesign.muted))\n"
         )),
-        SideNavItem::Submenu { props, open, items } => {
-            output.push_str(&format!("{pad}DoweSideNavSubmenu(open = {open}, trigger = {{ toggle ->\n"));
+        SideNavItem::Submenu {
+            props,
+            open,
+            bordered,
+            items,
+        } => {
+            output.push_str(&format!("{pad}DoweSideNavSubmenu(open = {open}, bordered = {bordered}, trigger = {{ expanded, toggle ->\n"));
             render_compose_side_nav_row(
                 props,
                 true,
@@ -363,6 +456,7 @@ fn render_compose_side_nav_item(
                 nav,
                 inherited_font,
                 default_family,
+                Some("expanded"),
             );
             output.push_str(&format!("{pad}}}) {{\n"));
             for item in items {
@@ -375,6 +469,7 @@ fn render_compose_side_nav_item(
                     nav,
                     inherited_font,
                     default_family,
+                    None,
                 );
             }
             output.push_str(&format!("{pad}}}\n"));
@@ -391,6 +486,7 @@ fn render_compose_side_nav_row(
     nav: &SideNavProps,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
+    submenu_expanded: Option<&str>,
 ) {
     let pad = " ".repeat(indent);
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
@@ -443,6 +539,9 @@ fn render_compose_side_nav_row(
             "{pad}    Text(text = \"{}\", fontSize = {description_size}.sp, fontWeight = FontWeight.SemiBold)\n",
             escape_kotlin(status)
         ));
+    }
+    if let Some(expanded) = submenu_expanded {
+        output.push_str(&format!("{pad}    DoweSideNavArrow(expanded = {expanded})\n"));
     }
     output.push_str(&format!("{pad}}}\n"));
 }

@@ -17,6 +17,14 @@ fn dev_activity_drawables_media() -> &'static str {
         return background;
     }
 
+    private GradientDrawable doweStyledBackground(int color, Integer strokeColor, Integer strokeWidth, float radius) {
+        GradientDrawable background = doweBackground(color, radius);
+        if (strokeColor != null && strokeWidth != null) {
+            background.setStroke(doweDp(strokeWidth), strokeColor);
+        }
+        return background;
+    }
+
     private GradientDrawable doweSectionBackground(String value) {
         int[] colors;
         if ("aurora".equals(value)) {
@@ -38,11 +46,7 @@ fn dev_activity_drawables_media() -> &'static str {
     }
 
     private GradientDrawable doweInputBackground(int color, Integer strokeColor, float radius) {
-        GradientDrawable background = doweBackground(color, radius);
-        if (strokeColor != null) {
-            background.setStroke(doweDp(1), strokeColor);
-        }
-        return background;
+        return doweStyledBackground(color, strokeColor, strokeColor == null ? null : 1, radius);
     }
 
     private GradientDrawable doweDrawerBackground(int color, Integer strokeColor, String position, float radius) {

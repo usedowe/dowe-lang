@@ -5,40 +5,40 @@ page dashboardPage
         Grid columns:{ xs:1 md:2 } gap:6
           Box
             Text size:"sm" weight:"semibold"
-              PRODUCT OPERATIONS
+              "PRODUCT OPERATIONS"
             Title size:"5xl" weight:"bold"
-              A focused inventory console generated from Dowe source
+              "A focused inventory console generated from Dowe source"
             Text size:"lg"
-              Keep product records, categories, and publication status in Store while views stay target-neutral.
+              "Keep product records, categories, and publication status in Store while views stay target-neutral."
             Flex gap:3 align:"center"
               Button href:"/inventory" variant:"soft" scheme:"secondary" size:"lg"
-                Manage inventory
+                "Manage inventory"
               Button href:"/inventory" variant:"outlined" scheme:"secondary" size:"lg"
-                Add product
+                "Add product"
           Card variant:"soft" scheme:"surface" p:6 rounded:"xl"
             Title size:"3xl"
-              Endpoint model
+              "Endpoint model"
             Text size:"md"
-              Routes under /api/products call server handlers that validate request bodies and persist product data.
+              "Routes under /api/products call server handlers that validate request bodies and persist product data."
       Grid columns:{ xs:1 md:3 } gap:4
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Catalog
+            "Catalog"
           Title size:"3xl"
-            Products
+            "Products"
           Text size:"sm"
-            Each product has pricing, category, stock, and status fields.
+            "Each product has pricing, category, stock, and status fields."
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            Actions
+            "Actions"
           Title size:"3xl"
-            CRUD
+            "CRUD"
           Text size:"sm"
-            Create, update, and delete requests refresh the inventory list.
+            "Create, update, and delete requests refresh the inventory list."
         Card variant:"outlined" scheme:"surface" p:5 rounded:"lg"
           Text size:"sm" color:"muted"
-            UI
+            "UI"
           Title size:"3xl"
-            Controls
+            "Controls"
           Text size:"sm"
-            Inputs and Selects use Dowe component contracts.
+            "Inputs and Selects use Dowe component contracts."

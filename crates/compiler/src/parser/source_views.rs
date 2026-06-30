@@ -9,7 +9,9 @@ use crate::parser::source_ast::{
 use crate::parser::source_i18n::validate_view_i18n_keys;
 use crate::parser::source_imports::resolve_import;
 use crate::parser::source_parser::parse_source_file;
+use crate::parser::source_stdlib::parse_stdlib_call;
 use crate::parser::source_types::{TypeRegistry, validate_source_value_type};
+use crate::parser::source_values::parse_value;
 use dowe_components::{
     BuiltinComponent, COMPONENT_REGISTRY, ComponentError, ComponentProp, PropScalar, PropValue,
     ResponsivePropEntry, ViewAction, ViewActionKind, ViewAssignAction, ViewNavigationAction,
@@ -24,30 +26,31 @@ use dowe_components::{
     combo_option_component, command_component_node, command_group_component, compose_tree,
     container_component_node, countdown_component_node, csv_column_component,
     csv_field_component_node, date_component_node, date_range_component_node, divider_node,
-    drag_drop_component_node, drag_group_component, drag_item_component, dropdown_component_node,
-    dropzone_component_node, editor_component_node, empty_component_node, fab_action_component,
-    fab_component_node, first_text, image_component_node, image_cropper_component_node, input_node,
-    line_chart_component_node, map_component_node, map_marker_component, map_waypoint_component,
-    marquee_component_node, modal_component_node, nav_menu_component_node, nav_menu_item_component,
-    nav_menu_megamenu_component, nav_menu_submenu_component, navigation_action, node_child_groups,
-    node_element_props, overlay_icon_component, overlay_item_component,
-    password_field_component_node, phone_field_component_node, pie_chart_component_node,
-    pin_field_component_node, radio_group_component_node, radio_option_component,
-    record_component_node, rich_text_component_node, rich_text_mark_component,
-    scaffold_component_node, select_node, select_option_component, side_nav_component_node,
-    side_nav_header_component, side_nav_icon_component, side_nav_item_component,
-    side_nav_submenu_component, sidebar_component_node, skeleton_component_node,
-    slider_component_node, svg_component_node, svg_path_component, table_column_component,
-    table_node, tabs_component_node, tabs_tab_component, text_component_node, text_node,
-    textarea_component_node, theme_toggle_component_node, toast_component_node,
-    toggle_component_node, toggle_group_component_node, toggle_group_item_component,
-    tooltip_component_node, type_writer_component_node, type_writer_item_component,
-    validate_view_tree, video_node,
+    drag_drop_component_node, drag_group_component, drag_item_component, drawer_component_node,
+    dropdown_component_node, dropzone_component_node, editor_component_node, empty_component_node,
+    fab_action_component, fab_component_node, first_text, image_component_node,
+    image_cropper_component_node, input_node, line_chart_component_node, map_component_node,
+    map_marker_component, map_waypoint_component, marquee_component_node, modal_component_node,
+    nav_menu_component_node, nav_menu_item_component, nav_menu_megamenu_component,
+    nav_menu_submenu_component, navigation_action, node_child_groups, node_element_props,
+    overlay_icon_component, overlay_item_component, password_field_component_node,
+    phone_field_component_node, pie_chart_component_node, pin_field_component_node,
+    radio_group_component_node, radio_option_component, record_component_node,
+    rich_text_component_node, rich_text_mark_component, scaffold_component_node, select_node,
+    select_option_component, side_nav_component_node, side_nav_header_component,
+    side_nav_icon_component, side_nav_item_component, side_nav_submenu_component,
+    sidebar_component_node, skeleton_component_node, slider_component_node, svg_component_node,
+    svg_path_component, table_column_component, table_node, tabs_component_node,
+    tabs_tab_component, text_component_node, text_node, textarea_component_node,
+    theme_toggle_component_node, toast_component_node, toggle_component_node,
+    toggle_group_component_node, toggle_group_item_component, tooltip_component_node,
+    type_writer_component_node, type_writer_item_component, validate_view_tree, video_node,
 };
 use dowe_generator_web::{
     build_layout_chunk, build_page_chunk, build_translation_chunks, render_page_document,
     render_routed_page_body, router_js,
 };
+use dowe_stdlib::StdlibSurface;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -1230,11 +1233,14 @@ fn parse_assign_action(node: &SourceNode) -> DoweResult<ViewAssignAction> {
             "`assign` must use `assign target source:value`",
         ));
     }
+    let source = required_prop_string(node, "source")?;
+    let call = parse_stdlib_call(node, &source, StdlibSurface::Views, &["source"])?;
     Ok(ViewAssignAction {
         target: node.args[0]
             .as_required_string()
             .ok_or_else(|| node_error(node, "`assign` target must be a signal name"))?,
-        source: required_prop_string(node, "source")?,
+        source,
+        call,
     })
 }
 
@@ -1483,6 +1489,7 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
             reject_children(node)?;
             skeleton_component_node(props).map_err(|error| component_error(node, error))
         }
+        BuiltinComponent::Drawer => lower_drawer_node(node, allow_children),
         BuiltinComponent::Modal => lower_modal_node(node, allow_children),
         BuiltinComponent::AlertDialog => {
             reject_children(node)?;
@@ -1617,16 +1624,14 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         BuiltinComponent::AppBar | BuiltinComponent::Footer | BuiltinComponent::BottomBar => {
             lower_bar_node(node, component, allow_children)
         }
-        BuiltinComponent::SideNav | BuiltinComponent::Sidebar => {
-            lower_side_nav_node(node, component)
-        }
+        BuiltinComponent::SideNav => lower_side_nav_node(node, component),
+        BuiltinComponent::Sidebar => lower_sidebar_node(node, allow_children),
         BuiltinComponent::Scaffold => lower_scaffold_node(node, allow_children),
         BuiltinComponent::Box
         | BuiltinComponent::Section
         | BuiltinComponent::Flex
         | BuiltinComponent::Grid
-        | BuiltinComponent::Card
-        | BuiltinComponent::Drawer => {
+        | BuiltinComponent::Card => {
             let children = lower_node_sequence(&node.children, allow_children)?;
             container_component_node(component, props, children, allow_children)
                 .map_err(|error| component_error(node, error))
@@ -1696,6 +1701,43 @@ fn lower_modal_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewN
         props,
         header.unwrap_or_default(),
         body,
+        footer.unwrap_or_default(),
+        allow_children,
+    )
+    .map_err(|error| component_error(node, error))
+}
+
+fn lower_drawer_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::Drawer)?;
+    let mut header = None;
+    let mut body = None;
+    let mut footer = None;
+    let mut body_nodes = Vec::new();
+    for child in &node.children {
+        match child.name.as_str() {
+            "header" if header.is_none() => {
+                header = Some(lower_region(child, "Drawer header", allow_children)?)
+            }
+            "header" => return Err(node_error(child, "duplicate `header` region in Drawer")),
+            "body" if body.is_none() => {
+                body = Some(lower_region(child, "Drawer body", allow_children)?)
+            }
+            "body" => return Err(node_error(child, "duplicate `body` region in Drawer")),
+            "footer" if footer.is_none() => {
+                footer = Some(lower_region(child, "Drawer footer", allow_children)?)
+            }
+            "footer" => return Err(node_error(child, "duplicate `footer` region in Drawer")),
+            _ => body_nodes.push(child.clone()),
+        }
+    }
+    let mut lowered_body = lower_node_sequence(&body_nodes, allow_children)?;
+    if let Some(mut region_body) = body {
+        lowered_body.append(&mut region_body);
+    }
+    drawer_component_node(
+        props,
+        header.unwrap_or_default(),
+        lowered_body,
         footer.unwrap_or_default(),
         allow_children,
     )
@@ -2618,11 +2660,45 @@ fn lower_side_nav_node(node: &SourceNode, component: BuiltinComponent) -> DoweRe
         BuiltinComponent::SideNav => {
             side_nav_component_node(props, items).map_err(|error| component_error(node, error))
         }
-        BuiltinComponent::Sidebar => {
-            sidebar_component_node(props, items).map_err(|error| component_error(node, error))
-        }
         _ => unreachable!("navigation component"),
     }
+}
+
+fn lower_sidebar_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::Sidebar)?;
+    let mut header = None;
+    let mut body = None;
+    let mut footer = None;
+    for child in &node.children {
+        match child.name.as_str() {
+            "header" if header.is_none() => {
+                header = Some(lower_region(child, "Sidebar header", allow_children)?)
+            }
+            "header" => return Err(node_error(child, "duplicate `header` region in Sidebar")),
+            "body" if body.is_none() => {
+                body = Some(lower_region(child, "Sidebar body", allow_children)?)
+            }
+            "body" => return Err(node_error(child, "duplicate `body` region in Sidebar")),
+            "footer" if footer.is_none() => {
+                footer = Some(lower_region(child, "Sidebar footer", allow_children)?)
+            }
+            "footer" => return Err(node_error(child, "duplicate `footer` region in Sidebar")),
+            _ => {
+                return Err(node_error(
+                    child,
+                    "Sidebar only accepts header, body or footer regions",
+                ));
+            }
+        }
+    }
+    sidebar_component_node(
+        props,
+        header.unwrap_or_default(),
+        body.unwrap_or_default(),
+        footer.unwrap_or_default(),
+        allow_children,
+    )
+    .map_err(|error| component_error(node, error))
 }
 
 fn lower_side_nav_entry(
@@ -2661,7 +2737,7 @@ fn lower_side_nav_entry(
                 "onClick",
             ]
         },
-        false,
+        &[],
         component,
     )?;
     if header {
@@ -2682,7 +2758,13 @@ fn lower_side_nav_submenu(
         ));
     }
     let open = optional_prop_bool(node, "open")?.unwrap_or(false);
-    let props = side_nav_entry_props(node, &["label", "description", "status"], true, component)?;
+    let bordered = optional_prop_bool(node, "bordered")?.unwrap_or(true);
+    let props = side_nav_entry_props(
+        node,
+        &["label", "description", "status"],
+        &["open", "bordered"],
+        component,
+    )?;
     let mut icon = None;
     let mut items = Vec::new();
     for child in &node.children {
@@ -2712,7 +2794,7 @@ fn lower_side_nav_submenu(
             }
         }
     }
-    side_nav_submenu_component(props, icon, open, items)
+    side_nav_submenu_component(props, icon, open, bordered, items)
         .map_err(|error| component_error(node, error))
 }
 
@@ -2762,12 +2844,12 @@ fn lower_side_nav_icon(
 fn side_nav_entry_props(
     node: &SourceNode,
     allowed: &[&str],
-    skip_open: bool,
+    ignored: &[&str],
     component: BuiltinComponent,
 ) -> DoweResult<Vec<ComponentProp>> {
     node.props
         .iter()
-        .filter(|prop| !skip_open || prop.name != "open")
+        .filter(|prop| !ignored.contains(&prop.name.as_str()))
         .map(|prop| {
             if !allowed.contains(&prop.name.as_str()) {
                 return Err(node_error(
@@ -3809,9 +3891,7 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
                 )
             }
             BuiltinComponent::SideNav => matches!(name, "variant" | "scheme" | "size" | "wide"),
-            BuiltinComponent::Sidebar => {
-                matches!(name, "variant" | "scheme" | "size" | "wide" | "color")
-            }
+            BuiltinComponent::Sidebar => matches!(name, "variant" | "scheme" | "color"),
             BuiltinComponent::NavMenu => {
                 matches!(name, "variant" | "scheme" | "size" | "color")
             }
@@ -4272,18 +4352,21 @@ fn text_child_value(node: &SourceNode) -> DoweResult<Option<String>> {
     }
     let child = &node.children[0];
     if !child.children.is_empty() || !child.props.is_empty() {
-        return Err(node_error(child, "text child must be plain text"));
+        return Err(quoted_text_child_error(child));
     }
-    let mut parts = Vec::new();
-    parts.push(text_token(&child.name));
-    parts.extend(child.args.iter().map(SourceValue::to_source).map(|value| {
-        if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
-            value[1..value.len() - 1].to_string()
-        } else {
-            value
-        }
-    }));
-    Ok(Some(parts.join(" ")))
+    if !child.args.is_empty() {
+        return Err(quoted_text_child_error(child));
+    }
+    let SourceValue::String(value) = parse_value(
+        &child.location.path,
+        child.location.line,
+        child.location.column,
+        &child.name,
+    )?
+    else {
+        return Err(quoted_text_child_error(child));
+    };
+    Ok(Some(value))
 }
 
 fn text_child_line(node: &SourceNode) -> DoweResult<String> {
@@ -4308,6 +4391,22 @@ fn text_token(value: &str) -> String {
     } else {
         value.to_string()
     }
+}
+
+fn quoted_text_child_error(node: &SourceNode) -> DoweError {
+    node_error(
+        node,
+        format!(
+            "text child `{}` must be a quoted static string literal",
+            text_child_source(node)
+        ),
+    )
+}
+
+fn text_child_source(node: &SourceNode) -> String {
+    let mut parts = vec![node.name.clone()];
+    parts.extend(node.args.iter().map(SourceValue::to_source));
+    parts.join(" ")
 }
 
 fn reject_children(node: &SourceNode) -> DoweResult<()> {
@@ -4423,7 +4522,7 @@ fn collect_navigation_actions_from_node(
         });
     }
     match node {
-        ViewNode::SideNav { items, .. } | ViewNode::Sidebar { items, .. } => {
+        ViewNode::SideNav { items, .. } => {
             collect_side_nav_navigation_actions(items, route_id, actions);
         }
         ViewNode::NavMenu { items, .. } => {
@@ -4673,6 +4772,18 @@ fn validate_action_references(
         }
         ViewActionKind::Assign(assign) => {
             validate_signal_name(path, signals, &assign.target, "target")?;
+            if let Some(call) = &assign.call {
+                for reference in dowe_stdlib::reference_paths(call) {
+                    let source_root = path_root(&reference);
+                    if !signals.contains(source_root) && source_root != "item" {
+                        return Err(DoweError::at_path(
+                            path,
+                            format!("unknown stdlib argument source `{reference}`"),
+                        ));
+                    }
+                }
+                return Ok(());
+            }
             let source_root = path_root(&assign.source);
             if !signals.contains(source_root) && source_root != "item" {
                 return Err(DoweError::at_path(
@@ -4872,7 +4983,7 @@ fn validate_node_references(
         ViewNode::Table { props } => {
             validate_table_data(path, signals, &props.data, &props.columns)?;
         }
-        ViewNode::SideNav { items, .. } | ViewNode::Sidebar { items, .. } => {
+        ViewNode::SideNav { items, .. } => {
             validate_side_nav_actions(path, items, actions)?;
         }
         ViewNode::NavMenu { items, .. } => {
@@ -4883,7 +4994,12 @@ fn validate_node_references(
                 }
             }
         }
-        ViewNode::Drawer { props, children } => {
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
             validate_typed_path(
                 path,
                 signals,
@@ -4892,7 +5008,7 @@ fn validate_node_references(
                 "open",
                 ViewPathExpectation::Bool,
             )?;
-            for child in children {
+            for child in header.iter().chain(body).chain(footer) {
                 validate_node_references(path, child, signals, actions, locals)?;
             }
         }
@@ -6032,7 +6148,7 @@ mod tests {
       onError alert:"No se pudieron cargar los blogs"
   Box
     Text size:"md"
-      Crear y editar entradas usando signals, Input bind, Button onClick y Store."#,
+      "Crear y editar entradas usando signals, Input bind, Button onClick y Store.""#,
         )
         .expect("tree");
         let ViewNode::Scope {
@@ -6073,7 +6189,7 @@ mod tests {
       onSuccess target:feedback alert:"Blog creado"
   Box
     Text
-      Blogs"#,
+      "Blogs""#,
         )
         .expect("tree");
         let ViewNode::Scope { actions, .. } = tree else {
@@ -6086,6 +6202,34 @@ mod tests {
         assert_eq!(request.path, "/api/blogs");
         assert_eq!(request.success_alert.as_deref(), Some("feedback"));
         assert_eq!(request.success_message.as_deref(), Some("Blog creado"));
+    }
+
+    #[test]
+    fn parses_stdlib_assign_action() {
+        let tree = parse_page(
+            r#"page profilePage
+  signal form value:{ name:"  Ada  " }
+  signal normalized value:""
+  action normalize
+    assign normalized source:str.trim value:form.name
+  Box
+    Text
+      "Profile""#,
+        )
+        .expect("tree");
+        let ViewNode::Scope { actions, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewActionKind::Assign(assign) = &actions[0].kind else {
+            panic!("assign");
+        };
+        let call = assign.call.as_ref().expect("stdlib call");
+
+        assert_eq!(assign.target, "normalized");
+        assert_eq!(assign.source, "str.trim");
+        assert_eq!(call.namespace, "str");
+        assert_eq!(call.function, "trim");
+        assert_eq!(call.args[0].name, "value");
     }
 
     #[test]
@@ -6179,7 +6323,7 @@ mod tests {
     request GET "/api/blogs" route:"/api/blogs" update:blogs
   Box
     Text
-      Blogs"#,
+      "Blogs""#,
         )
         .expect_err("error");
 
@@ -6231,7 +6375,7 @@ mod tests {
             r#"page profilePage
   signal profile value:{ title:"" }
   Text i18n:"profile.title"
-    profile.title"#,
+    "profile.title""#,
         )
         .expect_err("reactive fallback");
 
@@ -6250,10 +6394,10 @@ mod tests {
   signal rows value:[{ id:"1" ready:true }]
   Box show:{ xs:false md:true }
     Text show:isReady
-      Ready
+      "Ready"
     each row in rows key:row.id
       Text show:row.ready
-        Row"#,
+        "Row""#,
         )
         .expect("tree");
 
@@ -6314,7 +6458,7 @@ mod tests {
   Box animation:"fadeIn"
     Card animation:"slideUp"
       Text
-        Motion"#,
+        "Motion""#,
         )
         .expect("tree");
 
@@ -6335,7 +6479,7 @@ mod tests {
             r#"page landingPage
   Section id:"hero" background:{ xs:"soft" md:"aurora" } color:"onBackground" p:8
     Text
-      Hero"#,
+      "Hero""#,
         )
         .expect("tree");
 
@@ -6357,7 +6501,7 @@ mod tests {
             r#"page readyPage
   signal profile value:{ name:"" }
   Text show:profile.name
-    Ready"#,
+    "Ready""#,
         )
         .expect_err("non bool");
         assert!(
@@ -6369,7 +6513,7 @@ mod tests {
         let responsive_string = parse_page(
             r#"page readyPage
   Text show:{ xs:"false" }
-    Ready"#,
+    "Ready""#,
         )
         .expect_err("responsive string");
         assert!(
@@ -6386,7 +6530,7 @@ mod tests {
   signal blog value:{ id:"" title:"" }
   each item in blog key:item.id
     Text
-      item.title"#,
+      "item.title""#,
         )
         .expect_err("collection type");
 
@@ -6412,7 +6556,7 @@ page blogsPage
     Input bind:blog.title
     each item in blogs key:item.id
       Text
-        item.title"#,
+        "item.title""#,
         )
         .expect("typed page");
 
@@ -6426,7 +6570,7 @@ page blogsPage
   Box
     each item in blogs key:item.id
       Text
-        item.missing"#,
+        "item.missing""#,
         )
         .expect_err("missing typed field");
 
@@ -6448,7 +6592,7 @@ page blogsPage
       onSuccess alert:"Blog creado"
   Box
     Text
-      Blogs"#,
+      "Blogs""#,
         )
         .expect_err("error");
 
@@ -6606,7 +6750,7 @@ page marketPage
   signal candles value:[]
   Candlestick data:candles
     Text
-      Invalid"#,
+      "Invalid""#,
         )
         .expect_err("child");
         assert!(
@@ -6814,7 +6958,7 @@ page usersPage
             r#"page dividerPage
   Divider
     Text
-      Invalid"#,
+      "Invalid""#,
         )
         .expect_err("child");
         assert!(
@@ -6855,7 +6999,7 @@ page usersPage
             r#"page videoPage
   Video src:"https://example.com/video.mp4"
     Text
-      Invalid"#,
+      "Invalid""#,
         )
         .expect_err("child");
         assert!(
@@ -6872,13 +7016,13 @@ page usersPage
   AppBar variant:"soft" scheme:"surface" bordered:true blurred:true boxed:true floating:true
     start
       Text
-        Menu
+        "Menu"
     center
       Text
-        Brand
+        "Brand"
     end
       Button href:"/"
-        Home"#,
+        "Home""#,
         )
         .expect("tree");
 
@@ -6910,10 +7054,10 @@ page usersPage
   AppBar
     start
       Text
-        Menu
+        "Menu"
     start
       Text
-        Brand"#,
+        "Brand""#,
         )
         .expect_err("duplicate");
         assert!(
@@ -6926,7 +7070,7 @@ page usersPage
             r#"page barsPage
   AppBar
     Text
-      Brand"#,
+      "Brand""#,
         )
         .expect_err("direct child");
         assert!(
@@ -6947,7 +7091,7 @@ page usersPage
         Svg viewBox:"0 0 24 24" w:5 h:5
           Path d:"M3 11l9-8 9 8v10H3z" fill:"currentColor"
     divider
-    submenu label:"Content" status:"2" open:true
+    submenu label:"Content" status:"2" open:true bordered:false
       item label:"Blogs" href:"/blogs" status:"12""#,
         )
         .expect("tree");
@@ -6965,33 +7109,66 @@ page usersPage
         ));
         assert!(matches!(
             &items[3],
-            dowe_components::SideNavItem::Submenu { open: true, items, .. } if items.len() == 1
+            dowe_components::SideNavItem::Submenu { open: true, bordered: false, items, .. } if items.len() == 1
         ));
     }
 
     #[test]
-    fn parses_sidebar_as_side_navigation_surface() {
+    fn parses_sidebar_as_regional_shell_surface() {
         let tree = parse_page(
             r#"page navPage
-  Sidebar variant:"solid" scheme:"primary" size:"sm" wide:true
-    header label:"Workspace"
-    item label:"Home" href:"/"
-    submenu label:"Content" open:true
-      item label:"Blogs" href:"/blogs""#,
+  Sidebar variant:"solid" scheme:"primary"
+    header
+      Text
+        "Workspace"
+    body
+      SideNav variant:"ghost" scheme:"muted" size:"sm" wide:true
+        item label:"Home" href:"/"
+        submenu label:"Content" open:true
+          item label:"Blogs" href:"/blogs"
+    footer
+      Text
+        "Footer""#,
         )
         .expect("tree");
 
-        let ViewNode::Sidebar { props, items } = tree else {
+        let ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } = tree
+        else {
             panic!("sidebar");
         };
         assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
         assert_eq!(props.style.color, Some(ColorFamily::Primary));
-        assert_eq!(props.size, dowe_components::SideNavSize::Sm);
-        assert!(props.wide);
+        assert_eq!(header.len(), 1);
+        assert_eq!(body.len(), 1);
+        assert_eq!(footer.len(), 1);
         assert!(matches!(
-            &items[2],
-            dowe_components::SideNavItem::Submenu { open: true, items, .. } if items.len() == 1
+            &body[0],
+            ViewNode::SideNav { props, items }
+                if props.size == dowe_components::SideNavSize::Sm
+                    && props.wide
+                    && matches!(&items[1], dowe_components::SideNavItem::Submenu { open: true, bordered: true, items, .. } if items.len() == 1)
         ));
+    }
+
+    #[test]
+    fn rejects_sidebar_navigation_entries() {
+        let error = parse_page(
+            r#"page navPage
+  Sidebar variant:"soft" scheme:"surface"
+    item label:"Home" href:"/""#,
+        )
+        .expect_err("sidebar item");
+
+        assert!(
+            error
+                .to_string()
+                .contains("Sidebar only accepts header, body or footer regions")
+        );
     }
 
     #[test]
@@ -7007,7 +7184,7 @@ page usersPage
       content
         Card variant:"soft" scheme:"surface"
           Text
-            Resource hub"##,
+            "Resource hub""##,
         )
         .expect("tree");
 
@@ -7036,18 +7213,20 @@ page usersPage
       AppBar
         center
           Text
-            Top
+            "Top"
     start
       Sidebar
-        item label:"Home" href:"/"
+        body
+          SideNav
+            item label:"Home" href:"/"
     main
       Text
-        Main
+        "Main"
     bottomBar
       BottomBar
         center
           Text
-            Bottom"#,
+            "Bottom""#,
         )
         .expect("tree");
 
@@ -7073,7 +7252,7 @@ page usersPage
   Scaffold
     start
       Text
-        Side"#,
+        "Side""#,
         )
         .expect_err("missing main");
         assert!(
@@ -7100,7 +7279,9 @@ page usersPage
         let sidebar = parse_page(
             r#"page navPage
   Sidebar color:"primary"
-    item label:"Home" href:"/""#,
+    body
+      Text
+        "Home""#,
         )
         .expect_err("sidebar color");
         assert!(
@@ -7118,7 +7299,7 @@ page usersPage
     item label:"Home"
       icon
         Text
-          Home"#,
+          "Home""#,
         )
         .expect_err("icon");
         assert!(
@@ -7146,10 +7327,10 @@ page usersPage
   Tabs variant:"line" scheme:"primary" position:"start"
     tab id:"overview" label:"Overview"
       Text
-        Overview content
+        "Overview content"
     tab id:"details" label:"Details"
       Button
-        Save"#,
+        "Save""#,
         )
         .expect("tree");
 
@@ -7172,7 +7353,7 @@ page usersPage
   Tabs color:"primary"
     tab id:"overview" label:"Overview"
       Text
-        Overview"#,
+        "Overview""#,
         )
         .expect_err("color");
         assert!(
@@ -7186,10 +7367,10 @@ page usersPage
   Tabs
     tab id:"overview" label:"Overview"
       Text
-        Overview
+        "Overview"
     tab id:"overview" label:"Duplicate"
       Text
-        Duplicate"#,
+        "Duplicate""#,
         )
         .expect_err("duplicate");
         assert!(
@@ -7202,7 +7383,7 @@ page usersPage
             r#"page tabsPage
   Tabs
     Text
-      Overview"#,
+      "Overview""#,
         )
         .expect_err("child");
         assert!(child.to_string().contains("Tabs only accepts tab entries"));
@@ -7211,7 +7392,7 @@ page usersPage
             r#"page tabsPage
   tab id:"overview" label:"Overview"
     Text
-      Overview"#,
+      "Overview""#,
         )
         .expect_err("outside");
         assert!(
@@ -7227,15 +7408,28 @@ page usersPage
             r#"page navPage
   signal drawerOpen value:false
   Drawer open:drawerOpen position:"end" variant:"soft" scheme:"surface" show:{ xs:true md:false } disableOverlayClose:true hideCloseButton:true
-    Text
-      Navigation"#,
+    header
+      Title
+        "Menu"
+    body
+      Text
+        "Navigation"
+    footer
+      Text
+        "Footer""#,
         )
         .expect("tree");
 
         let ViewNode::Scope { children, .. } = tree else {
             panic!("scope");
         };
-        let ViewNode::Drawer { props, children } = &children[0] else {
+        let ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } = &children[0]
+        else {
             panic!("drawer");
         };
         assert_eq!(props.open, "drawerOpen");
@@ -7245,7 +7439,26 @@ page usersPage
         assert!(props.disable_overlay_close);
         assert!(props.hide_close_button);
         assert!(props.style.element.show.is_some());
-        assert_eq!(children.len(), 1);
+        assert_eq!(header.len(), 1);
+        assert_eq!(body.len(), 1);
+        assert_eq!(footer.len(), 1);
+
+        let legacy = parse_page(
+            r#"page navPage
+  signal drawerOpen value:false
+  Drawer open:drawerOpen
+    Text
+      "Navigation""#,
+        )
+        .expect("legacy drawer");
+
+        let ViewNode::Scope { children, .. } = legacy else {
+            panic!("scope");
+        };
+        let ViewNode::Drawer { body, .. } = &children[0] else {
+            panic!("drawer");
+        };
+        assert_eq!(body.len(), 1);
     }
 
     #[test]
@@ -7266,21 +7479,21 @@ page usersPage
     Modal open:modalOpen scheme:"surface" hideCloseButton:true
       header
         Title
-          Settings
+          "Settings"
       Text
-        Body
+        "Body"
       footer
         Button onClick:close
-          Close
+          "Close"
     AlertDialog open:modalOpen title:"Delete?" description:"Cannot undo." confirmText:"Delete" cancelText:"Cancel" onConfirm:close onCancel:close scheme:"danger"
     Tooltip label:"More actions" position:"end" scheme:"muted"
       Text
-        Hover
+        "Hover"
     Toast source:toast position:"top-right" showIcon:true
     Dropdown scheme:"surface"
       trigger
         Button
-          Menu
+          "Menu"
       item label:"Profile" onClick:close
       divider
       item label:"Docs" href:"/docs" description:"Open docs"
@@ -7417,7 +7630,7 @@ page displayPage
     Empty type:"result" title:"Nothing found" description:"Try again" actionLabel:"Retry" onClick:sendMessage scheme:"info" variant:"soft"
     Marquee speed:"fast" pauseOnHover:true reverse:true orientation:"horizontal" fade:true fadeColor:"background" gap:4
       Text
-        Moving
+        "Moving"
     TypeWriter typeSpeed:10 deleteSpeed:5 afterTyped:20 afterDeleted:10 repeat:false
       item text:"Hello"
       item text:"World""#,
@@ -7509,7 +7722,7 @@ page displayPage
       item id:"map" label:"Map" icon:"settings"
     Collapsible label:"Details" defaultOpen:true scheme:"surface"
       Text
-        Body
+        "Body"
     Countdown target:"2030-01-01T00:00:00Z" size:"xl" showDays:true showHours:true showMinutes:true showSeconds:false onComplete:done scheme:"primary" variant:"outlined"
     Map centerLat:4.7109 centerLng:-74.0721 zoom:12 height:"360px" width:"100%" showScale:true showLocationControl:true routeStartLat:4.7109 routeStartLng:-74.0721 routeEndLat:4.65 routeEndLng:-74.09 onRoute:done scheme:"primary" variant:"soft"
       marker id:"office" lat:4.7109 lng:-74.0721 label:"Office" popup:"Main" icon:"start" onClick:choose
@@ -7617,17 +7830,17 @@ page displayPage
     Accordion multiple:true variant:"outlined" scheme:"surface"
       item id:"intro" label:"Intro" defaultOpen:true
         Text
-          Intro body
+          "Intro body"
       item id:"details" label:"Details" disabled:true
         Text
-          Details body
+          "Details body"
     Carousel title:"Samples" autoplay:true autoplayInterval:4000 showCounter:true orientation:"horizontal" size:"sm" indicatorType:"dot" slidesPerView:2 gap:12 scheme:"info"
       slide id:"one"
         Text
-          First
+          "First"
       slide id:"two"
         Text
-          Second
+          "Second"
     Checkbox bind:accepted checked:true label:"I accept" name:"accepted" scheme:"success"
     Color bind:themeColor value:"#3366ff" label:"Theme" showHex:true showRgb:true showCmyk:true showOklch:true scheme:"primary"
     Date bind:shipDate value:"2026-06-05" label:"Ship date" min:"2026-01-01" max:"2026-12-31" scheme:"warning"
@@ -7821,7 +8034,7 @@ page displayPage
   Accordion color:"primary"
     item id:"one" label:"One"
       Text
-        Body"#,
+        "Body""#,
             r#"page componentsPage
   Checkbox color:"primary""#,
             r#"page componentsPage
@@ -7846,7 +8059,7 @@ page displayPage
             r#"page componentsPage
   Collapsible label:"Details" color:"primary"
     Text
-      Body"#,
+      "Body""#,
             r#"page componentsPage
   Countdown target:"2030-01-01T00:00:00Z" color:"primary""#,
             r#"page componentsPage
@@ -7878,7 +8091,7 @@ page displayPage
             r#"page navPage
   Drawer
     Text
-      Navigation"#,
+      "Navigation""#,
         )
         .expect_err("open");
         assert!(
@@ -7892,7 +8105,7 @@ page displayPage
   signal title value:"Navigation"
   Drawer open:title
     Text
-      Navigation"#,
+      "Navigation""#,
         )
         .expect_err("bool");
         assert!(
@@ -7906,13 +8119,31 @@ page displayPage
   signal drawerOpen value:false
   Drawer open:"drawerOpen"
     Text
-      Navigation"#,
+      "Navigation""#,
         )
         .expect_err("bare signal path");
         assert!(
             quoted
                 .to_string()
                 .contains("invalid value for prop `open`: expected signal bool path")
+        );
+
+        let duplicate = parse_page(
+            r#"page navPage
+  signal drawerOpen value:false
+  Drawer open:drawerOpen
+    body
+      Text
+        "Primary"
+    body
+      Text
+        "Duplicate""#,
+        )
+        .expect_err("duplicate body");
+        assert!(
+            duplicate
+                .to_string()
+                .contains("duplicate `body` region in Drawer")
         );
     }
 
@@ -7978,6 +8209,51 @@ page displayPage
     }
 
     #[test]
+    fn requires_quoted_static_text_children() {
+        let quoted = parse_page(
+            r#"page copyPage
+  Box
+    Text
+      "Dowe compiles your code directly into fast native code."
+    Title
+      "Dashboard"
+    Button href:"/docs"
+      "Open docs""#,
+        )
+        .expect("quoted text children");
+
+        let ViewNode::Box {
+            children: box_children,
+            ..
+        } = &quoted
+        else {
+            panic!("box");
+        };
+        assert!(matches!(box_children[0], ViewNode::Text { .. }));
+        assert!(matches!(box_children[1], ViewNode::Title { .. }));
+        assert!(matches!(box_children[2], ViewNode::Button { .. }));
+
+        for source in [
+            r#"page copyPage
+  Text
+    Dowe compiles your code directly into fast native code."#,
+            r#"page copyPage
+  Title
+    header"#,
+            r#"page copyPage
+  Button
+    Open docs"#,
+        ] {
+            let error = parse_page(source).expect_err("unquoted text child");
+            assert!(
+                error
+                    .to_string()
+                    .contains("must be a quoted static string literal")
+            );
+        }
+    }
+
+    #[test]
     fn rejects_path_outside_svg() {
         let error = parse_page(
             r#"page iconPage
@@ -7998,7 +8274,7 @@ page displayPage
             r#"page iconPage
   Svg viewBox:"0 0 24 24"
     Text
-      Bad"#,
+      "Bad""#,
         )
         .expect_err("error");
 

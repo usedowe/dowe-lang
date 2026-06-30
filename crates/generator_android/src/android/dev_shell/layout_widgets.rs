@@ -187,15 +187,21 @@ fn dev_activity_layout_widgets() -> &'static str {
         view.animate().alpha(1f).translationX(0f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(220).start();
     }
 
-    private void doweToggleSideNavSubmenu(View view) {
+    private void doweToggleSideNavSubmenu(View view, View arrow) {
         view.animate().withEndAction(null).cancel();
         if (view.getVisibility() == View.VISIBLE) {
+            if (arrow != null) {
+                arrow.animate().rotation(0f).setDuration(140).start();
+            }
             view.animate().alpha(0f).translationY(-doweDp(4)).setDuration(140).withEndAction(() -> {
                 view.setVisibility(View.GONE);
                 view.setAlpha(1f);
                 view.setTranslationY(0f);
             }).start();
             return;
+        }
+        if (arrow != null) {
+            arrow.animate().rotation(90f).setDuration(160).start();
         }
         view.setAlpha(0f);
         view.setTranslationY(-doweDp(4));
@@ -213,9 +219,10 @@ fn dev_activity_layout_widgets() -> &'static str {
         final String path;
         final String fragment;
         final boolean open;
+        final boolean bordered;
         final ArrayList<DoweSideNavEntry> children;
 
-        DoweSideNavEntry(String id, String kind, String label, String description, String status, String operation, String path, String fragment, boolean open, ArrayList<DoweSideNavEntry> children) {
+        DoweSideNavEntry(String id, String kind, String label, String description, String status, String operation, String path, String fragment, boolean open, boolean bordered, ArrayList<DoweSideNavEntry> children) {
             this.id = id;
             this.kind = kind;
             this.label = label;
@@ -225,6 +232,7 @@ fn dev_activity_layout_widgets() -> &'static str {
             this.path = path;
             this.fragment = fragment;
             this.open = open;
+            this.bordered = bordered;
             this.children = children == null ? new ArrayList<>() : children;
         }
     }
@@ -237,22 +245,38 @@ fn dev_activity_layout_widgets() -> &'static str {
                 divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1)));
                 doweAdd(parent, divider, 8, false);
             } else if ("submenu".equals(entry.kind)) {
-                LinearLayout trigger = doweSideNavRow(entry, true, paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font, null);
+                LinearLayout trigger = doweSideNavRow(entry, true, paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font, null, entry.open);
                 doweAdd(parent, trigger);
-                LinearLayout submenu = doweContainer(false);
+                LinearLayout submenu = doweContainer(entry.bordered);
                 submenu.setPadding(doweDp(16), 0, 0, 0);
                 submenu.setVisibility(entry.open ? View.VISIBLE : View.GONE);
                 doweAdd(parent, submenu);
-                trigger.setOnClickListener(v -> doweToggleSideNavSubmenu(submenu));
-                doweRenderSideNav(submenu, entry.children, paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font);
+                LinearLayout submenuContent = doweSideNavSubmenuContent(submenu, entry.bordered);
+                View arrow = (View) trigger.getTag();
+                trigger.setOnClickListener(v -> doweToggleSideNavSubmenu(submenu, arrow));
+                doweRenderSideNav(submenuContent, entry.children, paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font);
             } else {
-                LinearLayout row = doweSideNavRow(entry, "header".equals(entry.kind), paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font, doweSideNavAction(entry));
+                LinearLayout row = doweSideNavRow(entry, "header".equals(entry.kind), paddingHorizontal, paddingVertical, labelSize, descriptionSize, backgroundColor, contentColor, font, doweSideNavAction(entry), null);
                 doweAdd(parent, row);
             }
         }
     }
 
-    private LinearLayout doweSideNavRow(DoweSideNavEntry entry, boolean header, int paddingHorizontal, int paddingVertical, int labelSize, int descriptionSize, int backgroundColor, int contentColor, String font, Runnable action) {
+    private LinearLayout doweSideNavSubmenuContent(LinearLayout submenu, boolean bordered) {
+        if (!bordered) {
+            return submenu;
+        }
+        View border = new View(this);
+        border.setBackgroundColor(DOWE_MUTED);
+        border.setLayoutParams(new LinearLayout.LayoutParams(doweDp(1), ViewGroup.LayoutParams.MATCH_PARENT));
+        doweAdd(submenu, border);
+        LinearLayout content = doweContainer(false);
+        content.setPadding(doweDp(8), 0, 0, 0);
+        doweAdd(submenu, content);
+        return content;
+    }
+
+    private LinearLayout doweSideNavRow(DoweSideNavEntry entry, boolean header, int paddingHorizontal, int paddingVertical, int labelSize, int descriptionSize, int backgroundColor, int contentColor, String font, Runnable action, Boolean submenuOpen) {
         LinearLayout view = doweContainer(true);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setPadding(doweDp(paddingHorizontal), doweDp(paddingVertical), doweDp(paddingHorizontal), doweDp(paddingVertical));
@@ -273,9 +297,24 @@ fn dev_activity_layout_widgets() -> &'static str {
             TextView status = doweText(entry.status, contentColor, descriptionSize, 600, 0f, descriptionSize, font);
             doweAdd(view, status);
         }
+        if (submenuOpen != null) {
+            DoweSvgView arrow = doweSideNavArrow(contentColor);
+            arrow.setRotation(submenuOpen ? 90f : 0f);
+            view.setTag(arrow);
+            doweAdd(view, arrow);
+        }
         if (action != null) {
             view.setOnClickListener(v -> action.run());
         }
+        return view;
+    }
+
+    private DoweSvgView doweSideNavArrow(int color) {
+        ArrayList<DoweSvgPathEntry> paths = new ArrayList<>();
+        paths.add(new DoweSvgPathEntry("M0 0h24v24H0z", false, null));
+        paths.add(new DoweSvgPathEntry("m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z", true, null));
+        DoweSvgView view = new DoweSvgView(this, 0f, 0f, 24f, 24f, color, paths);
+        view.setLayoutParams(new LinearLayout.LayoutParams(doweDp(16), doweDp(16)));
         return view;
     }
 

@@ -100,6 +100,7 @@ struct DoweDrawerPresenter<Content: View>: UIViewRepresentable {
                 radius: parent.radius,
                 disableOverlayClose: parent.disableOverlayClose,
                 hideCloseButton: parent.hideCloseButton,
+                safeAreaInsets: doweDrawerEdgeInsets(window.safeAreaInsets),
                 content: parent.content
             )
             let controller = hosting ?? UIHostingController(rootView: root)
@@ -139,43 +140,47 @@ struct DoweDrawerSurface<Content: View>: View {
     let radius: CGFloat
     let disableOverlayClose: Bool
     let hideCloseButton: Bool
+    let safeAreaInsets: EdgeInsets
     let content: Content
     @State private var active = false
 
     var body: some View {
-        ZStack(alignment: alignment) {
-            Color.black.opacity(active ? 0.48 : 0)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if !disableOverlayClose {
-                        close()
-                    }
-                }
-            content
-                .frame(maxWidth: vertical ? CGFloat(320) : .infinity, maxHeight: vertical ? .infinity : CGFloat(320), alignment: .topLeading)
-                .background(backgroundColor)
-                .foregroundStyle(contentColor)
-                .clipShape(panelShape)
-                .overlay(
-                    panelShape
-                        .stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1))
-                )
-                .overlay(alignment: .topTrailing) {
-                    if !hideCloseButton {
-                        Button(action: close) {
-                            Text("x")
-                                .frame(width: CGFloat(28), height: CGFloat(28))
+        GeometryReader { _ in
+            ZStack(alignment: alignment) {
+                Color.black.opacity(active ? 0.48 : 0)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if !disableOverlayClose {
+                            close()
                         }
-                        .buttonStyle(.plain)
-                        .background(DoweDesign.softMuted)
-                        .foregroundStyle(DoweDesign.onSoftMuted)
-                        .clipShape(Circle())
-                        .padding(CGFloat(8))
                     }
-                }
-                .offset(x: offset.width, y: offset.height)
+                content
+                    .padding(drawerSafeAreaPadding(safeAreaInsets))
+                    .frame(maxWidth: vertical ? CGFloat(320) : .infinity, maxHeight: vertical ? .infinity : CGFloat(320), alignment: .topLeading)
+                    .background(backgroundColor)
+                    .foregroundStyle(contentColor)
+                    .clipShape(panelShape)
+                    .overlay(
+                        panelShape
+                            .stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1))
+                    )
+                    .overlay(alignment: .topTrailing) {
+                        if !hideCloseButton {
+                            Button(action: close) {
+                                DoweDrawerCloseIcon(color: DoweDesign.onSoftMuted)
+                                    .frame(width: CGFloat(28), height: CGFloat(28))
+                            }
+                            .buttonStyle(.plain)
+                            .background(DoweDesign.softMuted)
+                            .foregroundStyle(DoweDesign.onSoftMuted)
+                            .clipShape(Circle())
+                            .padding(drawerClosePadding(safeAreaInsets))
+                        }
+                    }
+                    .offset(x: offset.width, y: offset.height)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
         .ignoresSafeArea()
         .onAppear {
             DispatchQueue.main.async {
@@ -231,6 +236,34 @@ struct DoweDrawerSurface<Content: View>: View {
             return CGSize(width: CGFloat(-320), height: CGFloat(0))
         }
     }
+
+    private func drawerSafeAreaPadding(_ insets: EdgeInsets) -> EdgeInsets {
+        EdgeInsets(top: insets.top, leading: insets.leading, bottom: insets.bottom, trailing: insets.trailing)
+    }
+
+    private func drawerClosePadding(_ insets: EdgeInsets) -> EdgeInsets {
+        EdgeInsets(top: insets.top + CGFloat(8), leading: CGFloat(0), bottom: CGFloat(0), trailing: insets.trailing + CGFloat(8))
+    }
+}
+
+struct DoweDrawerCloseIcon: View {
+    let color: Color
+
+    var body: some View {
+        DoweSvgView(
+            viewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24)),
+            color: color,
+            paths: [
+                DoweSvgPathData(data: "M0 0h24v24H0z", fill: .none),
+                DoweSvgPathData(data: "m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z", fill: .currentColor)
+            ]
+        )
+        .frame(width: CGFloat(18), height: CGFloat(18))
+    }
+}
+
+private func doweDrawerEdgeInsets(_ insets: UIEdgeInsets) -> EdgeInsets {
+    EdgeInsets(top: insets.top, leading: insets.left, bottom: insets.bottom, trailing: insets.right)
 }
 
 "#

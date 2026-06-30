@@ -9,6 +9,7 @@ mod source_kv;
 mod source_kv_tests;
 mod source_parser;
 mod source_server;
+mod source_stdlib;
 mod source_store;
 mod source_types;
 mod source_values;

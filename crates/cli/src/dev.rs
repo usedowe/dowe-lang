@@ -1,8 +1,8 @@
 use crate::menus;
 use crate::usage::USAGE;
 use dowe_runtime::{
-    DevTarget, DevTargetSelection, HostOs, RuntimeError, default_dev_targets,
-    load_dev_target_selection, run_dev, save_dev_target_selection,
+    DevRunOptions, DevTarget, DevTargetSelection, HostOs, RuntimeError, default_dev_targets,
+    load_dev_target_selection, run_dev_with_options, save_dev_target_selection,
 };
 use std::env;
 
@@ -27,7 +27,16 @@ pub(crate) async fn run_dev_command(args: &[String]) -> Result<(), Box<dyn std::
         }
     };
 
-    run_dev(root, selection).await?;
+    let devices = if menus::is_interactive_terminal() {
+        let Some(devices) = menus::prompt_dev_target_devices(&selection)? else {
+            return Ok(());
+        };
+        devices
+    } else {
+        Default::default()
+    };
+
+    run_dev_with_options(root, selection, DevRunOptions { devices }).await?;
     Ok(())
 }
 
