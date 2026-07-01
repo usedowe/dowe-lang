@@ -1,0 +1,18 @@
+type TicketInput
+  title:string
+  priority:string
+  status:string
+  description?:string
+
+type TicketPatch
+  id?:string
+  title?:string
+  priority?:string
+  status?:string
+  description?:string
+
+type TicketSummary
+  id:string
+  title:string
+  priority:string
+  status:string

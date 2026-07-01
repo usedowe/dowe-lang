@@ -11,6 +11,7 @@ The examples are intentionally separate from `src`. They should demonstrate real
 | `clinic-desk` | Appointment operations dashboard with Store-backed scheduling endpoints |
 | `commerce-ops` | Product inventory console with category and status controls |
 | `support-console` | Support ticket queue with priority and lifecycle endpoints |
+| `support-layers` | Backend layering example with handler, middleware, service, repository, Store, and KV |
 
 ## Corpus Rules
 
@@ -19,4 +20,3 @@ The examples are intentionally separate from `src`. They should demonstrate real
 - Use current Dowe Source Format syntax from specs and docs.
 - Prefer complete multi-file applications over isolated snippets.
 - Keep examples deterministic and provider-independent.
-

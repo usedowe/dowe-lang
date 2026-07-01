@@ -1,0 +1,6 @@
+config
+  app name:"Support Layers" bundle:"dev.dowe.support.layers"
+  env
+    variable name:"JWT_SECRET" visibility:"server" required:false default:"01234567890123456789012345678901"
+  server
+    cors target:"server" devOrigins:true methods:["GET", "POST", "PATCH", "DELETE"] headers:["Content-Type", "Authorization"] credentials:false maxAge:600

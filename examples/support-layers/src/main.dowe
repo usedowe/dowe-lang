@@ -1,0 +1,20 @@
+import requireBearer from "./middlewares/auth"
+import listTickets from "./handlers/tickets"
+import createTicket from "./handlers/tickets"
+import readTicket from "./handlers/tickets"
+import updateTicket from "./handlers/tickets"
+import deleteTicket from "./handlers/tickets"
+
+main
+  server port:8084
+    route "/api/status"
+      response text:"support-layers ready"
+    route "/api/tickets" middleware:[requireBearer]
+      method GET handler:listTickets
+      method POST handler:createTicket
+    route "/api/tickets/:id" middleware:[requireBearer]
+      method GET handler:readTicket
+      method PATCH handler:updateTicket
+      method DELETE handler:deleteTicket
+    init
+      log "Support layers server initialized"

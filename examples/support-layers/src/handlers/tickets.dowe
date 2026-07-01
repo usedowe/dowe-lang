@@ -1,0 +1,29 @@
+import TicketInput from "../types/tickets"
+import TicketPatch from "../types/tickets"
+import listTicketsService from "../services/tickets"
+import createTicketService from "../services/tickets"
+import readTicketService from "../services/tickets"
+import updateTicketService from "../services/tickets"
+import deleteTicketService from "../services/tickets"
+
+handler listTickets req
+  let result = listTicketsService args:{ status:"open" }
+  return response json:result
+
+handler createTicket async req
+  let body:TicketInput = await req.json()
+  let result = createTicketService args:{ title:body.title priority:body.priority status:body.status description:body.description }
+  return response status:201 json:result
+
+handler readTicket req
+  let result = readTicketService args:{ id:req.params.id }
+  return response json:result
+
+handler updateTicket async req
+  let body:TicketPatch = await req.json()
+  let result = updateTicketService args:{ id:req.params.id title:body.title priority:body.priority status:body.status description:body.description }
+  return response json:result
+
+handler deleteTicket req
+  let result = deleteTicketService args:{ id:req.params.id }
+  return response json:result

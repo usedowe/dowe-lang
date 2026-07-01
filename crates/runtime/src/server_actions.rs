@@ -22,6 +22,7 @@ pub(crate) fn execute_server_action_with_resolver(
             ServerStatement::WebSocketSseBridge(_) => {}
             ServerStatement::Store(_) => {}
             ServerStatement::Kv(_) => {}
+            ServerStatement::Call(_) => {}
         }
     }
 }

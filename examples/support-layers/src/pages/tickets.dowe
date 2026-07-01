@@ -1,0 +1,13 @@
+import TicketSummary from "../types/tickets"
+
+page ticketsPage
+  signal tickets type:TicketSummary[] value:[]
+  Box
+    Title
+      "Support Layers"
+    Text
+      "Backend example with handler, middleware, service, repository, Store, and KV."
+    Grid
+      each item in tickets key:item.id
+        Text
+          "item.title"

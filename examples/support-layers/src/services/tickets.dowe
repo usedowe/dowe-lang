@@ -1,0 +1,25 @@
+import listTicketsRepository from "../repositories/tickets"
+import createTicketRepository from "../repositories/tickets"
+import readTicketRepository from "../repositories/tickets"
+import updateTicketRepository from "../repositories/tickets"
+import deleteTicketRepository from "../repositories/tickets"
+
+service listTicketsService
+  let result = listTicketsRepository args:{ status:args.status }
+  return value:{ ok:true data:result.rows cache:result.cache }
+
+service createTicketService
+  let result = createTicketRepository args:{ title:args.title priority:args.priority status:args.status description:args.description }
+  return value:{ ok:true data:result.rows created:result.created cache:result.cache }
+
+service readTicketService
+  let result = readTicketRepository args:{ id:args.id }
+  return value:{ ok:true data:result.ticket cache:result.cache }
+
+service updateTicketService
+  let result = updateTicketRepository args:{ id:args.id title:args.title priority:args.priority status:args.status description:args.description }
+  return value:{ ok:true data:result.rows changed:result.changed cache:result.cache }
+
+service deleteTicketService
+  let result = deleteTicketRepository args:{ id:args.id }
+  return value:{ ok:true data:result.rows deleted:result.deleted cache:result.cache }

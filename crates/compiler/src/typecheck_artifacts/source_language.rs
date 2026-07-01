@@ -74,8 +74,9 @@ const SOURCE_FORMAT: &str = r#"{
     "field": "name:string",
     "optionalField": "id?:string",
     "arrays": "User[]",
-    "scope": "local file"
+    "scope": "local file or imported from src/types"
   },
+  "sharedTypes": ["src/types/**/*.dowe", "import User from \"../types/user\"", "signal users type:User[] value:[]", "let body:User = await req.json()"],
   "imports": {
     "relativeOnly": true,
     "extension": ".dowe",
@@ -90,7 +91,7 @@ const SOURCE_FORMAT: &str = r#"{
 
 const SERVER_SURFACE: &str = r#"{
   "root": "src/main.dowe",
-  "blocks": ["type", "main", "server", "desktop", "route", "websocket", "init", "handler", "middleware"],
+  "blocks": ["type", "main", "server", "desktop", "route", "websocket", "init", "handler", "middleware", "service", "repository"],
   "httpMethods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
   "actions": ["let", "return", "return continue", "response text", "response json", "response proxy", "response agent", "send ws", "bridge sse", "log", "info", "warn", "error"],
   "request": ["req.params", "req.json()", "req.header", "req.context", "ws.json"],
@@ -98,6 +99,7 @@ const SERVER_SURFACE: &str = r#"{
   "standardLibrary": ["str.trim", "str.lower", "str.upper", "str.length", "math.sum", "parse.int", "parse.float", "parse.json", "url.parse", "url.querySet", "csv.parse", "sort.by", "list.filterContains", "json.get", "json.stringify", "date.now"],
   "agent": ["agent.chat", "return response agent:upstream request:request"],
   "middleware": ["route middleware:[name]", "middleware name async req", "bearer", "jwt.verify", "jwt.decrypt", "jwt.sign", "jwt.encrypt"],
+  "reusableServer": ["service name", "repository name", "let result = serviceName args:{ ... }", "let result = repositoryName args:{ ... }", "return value:{ ... }"],
   "jwt": {
     "jws": ["HS256"],
     "jwe": ["dir", "A256GCM"],

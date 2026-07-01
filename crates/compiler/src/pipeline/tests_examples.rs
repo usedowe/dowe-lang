@@ -13,7 +13,12 @@ mod curated_examples {
             .expect("repo root");
         let examples_root = repo_root.join("examples");
 
-        for project_name in ["clinic-desk", "commerce-ops", "support-console"] {
+        for project_name in [
+            "clinic-desk",
+            "commerce-ops",
+            "support-console",
+            "support-layers",
+        ] {
             let temp = TempDir::new().expect("tempdir");
             copy_dir(
                 &examples_root.join(project_name).join("src"),

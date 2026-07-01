@@ -330,6 +330,7 @@ pub enum ServerMiddlewareStatement {
         binding: String,
         statements: Vec<ServerMiddlewareStatement>,
     },
+    Call(ServerCallStatement),
     Continue {
         context: Option<StoreLiteral>,
     },
@@ -571,12 +572,34 @@ pub enum ServerStatement {
     WebSocketSseBridge(WebSocketSseBridgeStatement),
     Store(ServerStoreStatement),
     Kv(ServerKvStatement),
+    Call(ServerCallStatement),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerStdlibStatement {
     pub binding: String,
     pub call: StdlibCall,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerCallStatement {
+    pub binding: String,
+    pub target: String,
+    pub kind: ServerReusableKind,
+    pub args: StoreLiteral,
+    pub action: Box<ServerReusableAction>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerReusableAction {
+    pub statements: Vec<ServerStatement>,
+    pub return_value: StoreLiteral,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerReusableKind {
+    Service,
+    Repository,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

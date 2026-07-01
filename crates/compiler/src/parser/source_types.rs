@@ -1,8 +1,11 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{DoweType, DoweTypeField, StoreLiteral};
-use crate::parser::source_ast::{SourceNode, SourceObjectEntry, SourceValue};
+use crate::parser::source_ast::{SourceFile, SourceNode, SourceObjectEntry, SourceValue};
+use crate::parser::source_imports::resolve_import;
+use crate::parser::source_parser::parse_source_file;
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Default)]
 pub struct TypeRegistry {
@@ -11,6 +14,18 @@ pub struct TypeRegistry {
 
 impl TypeRegistry {
     pub fn parse(path: &Path, nodes: &[SourceNode]) -> DoweResult<Self> {
+        Self::parse_nodes(path, nodes, HashMap::new())
+    }
+
+    pub fn parse_file(root: &Path, file: &SourceFile) -> DoweResult<Self> {
+        parse_file_with_imports(root, file, &mut Vec::new())
+    }
+
+    fn parse_nodes(
+        path: &Path,
+        nodes: &[SourceNode],
+        mut definitions: HashMap<String, DoweType>,
+    ) -> DoweResult<Self> {
         let mut declarations = HashMap::<String, SourceNode>::new();
         for node in nodes.iter().filter(|node| node.name == "type") {
             let name = node
@@ -28,12 +43,14 @@ impl TypeRegistry {
                     format!("type `{name}` must declare fields"),
                 ));
             }
+            if definitions.contains_key(&name) {
+                return Err(node_error(node, format!("duplicate type `{name}`")));
+            }
             if declarations.insert(name.clone(), node.clone()).is_some() {
                 return Err(node_error(node, format!("duplicate type `{name}`")));
             }
         }
 
-        let mut definitions = HashMap::new();
         let names = declarations.keys().cloned().collect::<HashSet<_>>();
         for name in names.iter() {
             resolve_type(
@@ -53,7 +70,10 @@ impl TypeRegistry {
                 continue;
             }
             if node.location.indent == 0
-                && !matches!(node.name.as_str(), "handler" | "middleware")
+                && !matches!(
+                    node.name.as_str(),
+                    "handler" | "middleware" | "service" | "repository"
+                )
                 && !node.name.starts_with("type")
             {
                 return Err(DoweError::at_path(
@@ -78,6 +98,129 @@ impl TypeRegistry {
     pub fn resolve(&self, node: &SourceNode, name: &str) -> DoweResult<DoweType> {
         parse_type_reference(node, name, &self.definitions)
     }
+}
+
+fn parse_file_with_imports(
+    root: &Path,
+    file: &SourceFile,
+    stack: &mut Vec<PathBuf>,
+) -> DoweResult<TypeRegistry> {
+    let shared_type_file = is_shared_type_file(file);
+    if shared_type_file {
+        validate_shared_type_nodes(file)?;
+        if stack.iter().any(|path| path == &file.path) {
+            return Err(DoweError::at_path(
+                &file.path,
+                "cyclic shared type import detected",
+            ));
+        }
+        stack.push(file.path.clone());
+    }
+
+    let mut imported = HashMap::new();
+    for import in &file.imports {
+        let path = resolve_import(root, &file.path, import)?;
+        if !is_shared_type_path(root, &path) {
+            if shared_type_file {
+                return Err(DoweError::at_path(
+                    &import.location.path,
+                    format!(
+                        "{}:{}: shared type modules can only import from `src/types`",
+                        import.location.line, import.location.column
+                    ),
+                ));
+            }
+            continue;
+        }
+        if stack.iter().any(|value| value == &path) {
+            return Err(DoweError::at_path(
+                &import.location.path,
+                format!(
+                    "{}:{}: cyclic shared type import detected",
+                    import.location.line, import.location.column
+                ),
+            ));
+        }
+        let source = fs::read_to_string(&path)
+            .map_err(|error| DoweError::at_path(&path, error.to_string()))?;
+        let imported_file = parse_source_file(root, &path, source)?;
+        let registry = parse_file_with_imports(root, &imported_file, stack)?;
+        let value = registry
+            .definitions
+            .get(&import.local)
+            .cloned()
+            .ok_or_else(|| {
+                DoweError::at_path(
+                    &import.location.path,
+                    format!(
+                        "{}:{}: shared type module does not export `{}`",
+                        import.location.line, import.location.column, import.local
+                    ),
+                )
+            })?;
+        if imported.insert(import.local.clone(), value).is_some() {
+            return Err(DoweError::at_path(
+                &import.location.path,
+                format!(
+                    "{}:{}: duplicate type `{}`",
+                    import.location.line, import.location.column, import.local
+                ),
+            ));
+        }
+    }
+
+    let registry = TypeRegistry::parse_nodes(&file.path, &file.nodes, imported);
+    if shared_type_file {
+        stack.pop();
+    }
+    registry
+}
+
+pub(crate) fn validate_shared_type_source(root: &Path, file: &SourceFile) -> DoweResult<()> {
+    if !is_shared_type_file(file) {
+        return Err(DoweError::at_path(
+            &file.path,
+            "shared type modules must live under `src/types`",
+        ));
+    }
+    TypeRegistry::parse_file(root, file).map(|_| ())
+}
+
+pub(crate) fn is_shared_type_file(file: &SourceFile) -> bool {
+    file.relative_path
+        .to_string_lossy()
+        .replace('\\', "/")
+        .starts_with("src/types/")
+}
+
+pub(crate) fn is_shared_type_path(root: &Path, path: &Path) -> bool {
+    path.strip_prefix(root)
+        .ok()
+        .map(|relative| {
+            relative
+                .to_string_lossy()
+                .replace('\\', "/")
+                .starts_with("src/types/")
+        })
+        .unwrap_or(false)
+}
+
+fn validate_shared_type_nodes(file: &SourceFile) -> DoweResult<()> {
+    if file.nodes.is_empty() {
+        return Err(DoweError::at_path(
+            &file.path,
+            "shared type modules must declare at least one type",
+        ));
+    }
+    for node in &file.nodes {
+        if node.name != "type" {
+            return Err(node_error(
+                node,
+                "shared type modules only accept `type` declarations",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn resolve_type(
@@ -178,10 +321,13 @@ fn parse_type_reference_with_declarations(
         return Ok(value);
     }
     validate_identifier(node, value, "type")?;
-    if !names.contains(value) {
-        return Err(node_error(node, format!("unknown type `{value}`")));
+    if let Some(value) = definitions.get(value) {
+        return Ok(value.clone());
     }
-    resolve_type(value, declarations, names, definitions, stack)
+    if names.contains(value) {
+        return resolve_type(value, declarations, names, definitions, stack);
+    }
+    Err(node_error(node, format!("unknown type `{value}`")))
 }
 
 fn parse_type_reference(
@@ -407,4 +553,73 @@ fn node_error(node: &SourceNode, message: impl AsRef<str>) -> DoweError {
             message.as_ref()
         ),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{TypeRegistry, validate_shared_type_source};
+    use crate::parser::source_parser::parse_source_file;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn rejects_non_type_block_inside_shared_type_module() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("src/types")).expect("types");
+        let path = root.join("src/types/tickets.dowe");
+        let file = parse_source_file(
+            root,
+            &path,
+            r#"type Ticket
+  id:string
+
+handler listTickets req
+  return response json:{ ok:true }"#
+                .to_string(),
+        )
+        .expect("source");
+
+        let error = validate_shared_type_source(root, &file).expect_err("type module error");
+
+        assert!(
+            error
+                .to_string()
+                .contains("shared type modules only accept `type`")
+        );
+    }
+
+    #[test]
+    fn rejects_shared_type_import_cycles() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("src/types")).expect("types");
+        fs::write(
+            root.join("src/types/a.dowe"),
+            r#"import B from "./b"
+
+type A
+  b:B"#,
+        )
+        .expect("type a");
+        fs::write(
+            root.join("src/types/b.dowe"),
+            r#"import A from "./a"
+
+type B
+  a:A"#,
+        )
+        .expect("type b");
+        let path = root.join("src/types/a.dowe");
+        let source = fs::read_to_string(&path).expect("source");
+        let file = parse_source_file(root, &path, source).expect("file");
+
+        let error = TypeRegistry::parse_file(root, &file).expect_err("cycle");
+
+        assert!(
+            error
+                .to_string()
+                .contains("cyclic shared type import detected")
+        );
+    }
 }

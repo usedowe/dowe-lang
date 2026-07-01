@@ -10,7 +10,7 @@ use crate::parser::source_i18n::validate_view_i18n_keys;
 use crate::parser::source_imports::resolve_import;
 use crate::parser::source_parser::parse_source_file;
 use crate::parser::source_stdlib::parse_stdlib_call;
-use crate::parser::source_types::{TypeRegistry, validate_source_value_type};
+use crate::parser::source_types::{TypeRegistry, is_shared_type_path, validate_source_value_type};
 use crate::parser::source_values::parse_value;
 use dowe_components::{
     BuiltinComponent, COMPONENT_REGISTRY, ComponentError, ComponentProp, PropScalar, PropValue,
@@ -150,10 +150,11 @@ pub fn validate_design_copilot_dowe(source: &str) -> DoweResult<ViewNode> {
 }
 
 pub(crate) fn validate_view_source(
+    root: &Path,
     file: &SourceFile,
     environment: &EnvironmentConfig,
 ) -> DoweResult<ViewNode> {
-    let types = TypeRegistry::parse(&file.path, &file.nodes)?;
+    let types = TypeRegistry::parse_file(root, file)?;
     let root_node = single_export(file)?;
     match root_node.name.as_str() {
         "layout" => export_tree(root_node, true, environment, &types),
@@ -481,7 +482,7 @@ impl RouteBuildContext<'_> {
             .map_err(|error| DoweError::at_path(&import.path, error.to_string()))?;
         let file = parse_source_file(self.root, &import.path, source)?;
         let module_imports = view_imports(self.root, &file)?;
-        let types = TypeRegistry::parse(&file.path, &file.nodes)?;
+        let types = TypeRegistry::parse_file(self.root, &file)?;
         let root_node = single_export(&file)?;
         let kind = match root_node.name.as_str() {
             "layout" => ImportedViewKind::Layout,
@@ -678,6 +679,9 @@ fn view_imports(root: &Path, file: &SourceFile) -> DoweResult<HashMap<String, Vi
     let mut imports = HashMap::new();
     for import in &file.imports {
         let path = resolve_import(root, &file.path, import)?;
+        if is_shared_type_path(root, &path) {
+            continue;
+        }
         if imports
             .insert(import.local.clone(), ViewImport { path })
             .is_some()
@@ -6135,7 +6139,9 @@ mod tests {
         TableSize, ToastKind, VideoAspect, ViewActionKind, ViewAnimation, ViewIcon, ViewNode,
         VisibilityCondition,
     };
+    use std::fs;
     use std::path::Path;
+    use tempfile::TempDir;
 
     #[test]
     fn parses_request_route_blocks_and_api_base_default() {
@@ -6579,6 +6585,35 @@ page blogsPage
                 .to_string()
                 .contains("unknown signal path `item.missing`")
         );
+    }
+
+    #[test]
+    fn validates_shared_type_imported_by_view_signal() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("src/types")).expect("types");
+        fs::create_dir_all(root.join("src/pages")).expect("pages");
+        fs::write(
+            root.join("src/types/tickets.dowe"),
+            r#"type TicketSummary
+  id:string
+  title:string
+  status:string"#,
+        )
+        .expect("type source");
+        let path = root.join("src/pages/tickets.dowe");
+        let source = r#"import TicketSummary from "../types/tickets"
+
+page ticketsPage
+  signal tickets type:TicketSummary[] value:[]
+  Box
+    each item in tickets key:item.id
+      Text
+        "item.title""#
+            .to_string();
+        let file = parse_source_file(root, &path, source).expect("source");
+
+        validate_view_source(root, &file, &environment()).expect("view");
     }
 
     #[test]
@@ -8282,9 +8317,10 @@ page displayPage
     }
 
     fn parse_page(source: &str) -> crate::error::DoweResult<ViewNode> {
+        let root = Path::new("/project");
         let path = Path::new("/project/src/pages/blogs.dowe");
-        let file = parse_source_file(Path::new("/project"), path, source.to_string())?;
-        validate_view_source(&file, &environment())
+        let file = parse_source_file(root, path, source.to_string())?;
+        validate_view_source(root, &file, &environment())
     }
 
     fn environment() -> EnvironmentConfig {

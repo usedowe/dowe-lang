@@ -8,20 +8,26 @@ enum MiddlewareStep {
     Return(MiddlewareFlow),
 }
 
-fn execute_middlewares(
+async fn execute_middlewares(
     project: &CompiledProject,
+    root: &Path,
     middlewares: &[ServerMiddleware],
     headers: &HeaderMap,
+    params: &HashMap<String, String>,
+    body: &Bytes,
 ) -> MiddlewareFlow {
     let mut request_context = HashMap::new();
     for middleware in middlewares {
         let mut execution = MiddlewareExecution {
             project,
+            root,
             headers,
+            params,
+            body,
             request_context: &mut request_context,
             bindings: HashMap::new(),
         };
-        match execution.execute(&middleware.action.statements) {
+        match execution.execute(&middleware.action.statements).await {
             Ok(MiddlewareFlow::Continue(context)) => request_context = context,
             Ok(MiddlewareFlow::Respond(response)) => return MiddlewareFlow::Respond(response),
             Err(error) => return MiddlewareFlow::Respond(error),
@@ -32,18 +38,21 @@ fn execute_middlewares(
 
 struct MiddlewareExecution<'a> {
     project: &'a CompiledProject,
+    root: &'a Path,
     headers: &'a HeaderMap,
+    params: &'a HashMap<String, String>,
+    body: &'a Bytes,
     request_context: &'a mut HashMap<String, Value>,
     bindings: HashMap<String, Value>,
 }
 
 impl<'a> MiddlewareExecution<'a> {
-    fn execute(
+    async fn execute(
         &mut self,
         statements: &[ServerMiddlewareStatement],
     ) -> Result<MiddlewareFlow, Response> {
         for statement in statements {
-            match self.execute_statement(statement)? {
+            match self.execute_statement(statement).await? {
                 MiddlewareStep::Continue => {}
                 MiddlewareStep::Return(flow) => return Ok(flow),
             }
@@ -55,7 +64,7 @@ impl<'a> MiddlewareExecution<'a> {
         ))
     }
 
-    fn execute_statement(
+    async fn execute_statement(
         &mut self,
         statement: &ServerMiddlewareStatement,
     ) -> Result<MiddlewareStep, Response> {
@@ -177,7 +186,7 @@ impl<'a> MiddlewareExecution<'a> {
                     .and_then(Value::as_bool)
                     .unwrap_or(false);
                 if valid {
-                    match self.execute(statements)? {
+                    match Box::pin(self.execute(statements)).await? {
                         MiddlewareFlow::Continue(context) => {
                             return Ok(MiddlewareStep::Return(MiddlewareFlow::Continue(context)));
                         }
@@ -187,6 +196,25 @@ impl<'a> MiddlewareExecution<'a> {
                     }
                 }
                 Ok(MiddlewareStep::Continue)
+            }
+            ServerMiddlewareStatement::Call(statement) => {
+                let args = self.evaluate(&statement.args);
+                match Box::pin(execute_reusable_action(
+                    self.project,
+                    self.root,
+                    self.params,
+                    self.body,
+                    &statement.action,
+                    args,
+                ))
+                .await
+                {
+                    Ok(value) => {
+                        self.bindings.insert(statement.binding.clone(), value);
+                        Ok(MiddlewareStep::Continue)
+                    }
+                    Err(error) => Err(json_error(error.status, error.code, error.message)),
+                }
             }
             ServerMiddlewareStatement::Continue { context } => {
                 if let Some(context) = context {

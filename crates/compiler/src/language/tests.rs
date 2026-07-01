@@ -591,6 +591,41 @@ fn completions_and_diagnostics_include_declared_types() {
 }
 
 #[test]
+fn completions_include_imported_shared_types() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("src/types")).expect("types");
+    fs::create_dir_all(root.path().join("src/handlers")).expect("handlers");
+    fs::create_dir_all(root.path().join("src/pages")).expect("pages");
+    fs::write(
+        root.path().join("src/types/tickets.dowe"),
+        "type TicketInput\n  title:string\n  priority:string\n\n\
+type TicketSummary\n  id:string\n  status:string\n",
+    )
+    .expect("types");
+    let handler_document = LanguageDocument {
+        path: root.path().join("src/handlers/tickets.dowe"),
+        source: "import TicketInput from \"../types/tickets\"\n\nhandler createTicket async req\n  let body:TicketInput = await req.json()\n  log body.\n  return response json:{ ok:true }\n".to_string(),
+    };
+    let handler_completions =
+        complete_document(root.path(), &handler_document, 5, "  log body.".len() + 1);
+    assert!(handler_completions.iter().any(|item| item.label == "title"));
+    assert!(
+        handler_completions
+            .iter()
+            .any(|item| item.label == "priority")
+    );
+
+    let view_document = LanguageDocument {
+        path: root.path().join("src/pages/tickets.dowe"),
+        source: "import TicketSummary from \"../types/tickets\"\n\npage ticketsPage\n  signal tickets type:TicketSummary[] value:[]\n  Grid\n    each item in tickets key:item.id\n      Text\n        item.\n".to_string(),
+    };
+    let view_completions =
+        complete_document(root.path(), &view_document, 8, "        item.".len() + 1);
+    assert!(view_completions.iter().any(|item| item.label == "id"));
+    assert!(view_completions.iter().any(|item| item.label == "status"));
+}
+
+#[test]
 fn completions_include_current_view_component_props() {
     let document = LanguageDocument {
         path: Path::new("/project/src/pages/login.dowe").to_path_buf(),

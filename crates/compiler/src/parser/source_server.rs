@@ -3,10 +3,11 @@ use crate::model::{
     AgentChatTransform, AgentResponseEndpoint, CorsConfig, DoweType, DoweTypeField, Endpoint,
     EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint,
     HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint, HttpRedirectPolicy,
-    HttpResponseMode, OutboundHttpHeader, OutboundHttpRequest, ServerAction, ServerConfig,
-    ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware, ServerMiddlewareAction,
-    ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerSecret, ServerStatement,
-    ServerStdlibStatement, StoreLiteral, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
+    HttpResponseMode, OutboundHttpHeader, OutboundHttpRequest, ServerAction, ServerCallStatement,
+    ServerConfig, ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware,
+    ServerMiddlewareAction, ServerMiddlewareResponseBody, ServerMiddlewareStatement,
+    ServerReusableAction, ServerReusableKind, ServerSecret, ServerStatement, ServerStdlibStatement,
+    StoreLiteral, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
     WebSocketSendJsonStatement, WebSocketSseBridgeStatement, normalize_http_header_name,
 };
 use crate::parser::source_ast::{
@@ -21,7 +22,9 @@ use crate::parser::source_stdlib::{dowe_type_from_stdlib_return, parse_stdlib_ca
 use crate::parser::source_store::{
     parse_store_let, store_action_endpoint_behavior, store_endpoint_behavior, store_literal,
 };
-use crate::parser::source_types::{TypeRegistry, type_from_store_literal, validate_reference_path};
+use crate::parser::source_types::{
+    TypeRegistry, is_shared_type_path, type_from_store_literal, validate_reference_path,
+};
 use dowe_stdlib::StdlibSurface;
 use std::collections::HashMap;
 use std::fs;
@@ -45,16 +48,17 @@ pub fn parse_server_source(
     file: &SourceFile,
     environment: &EnvironmentConfig,
 ) -> DoweResult<ServerRoot> {
-    let types = TypeRegistry::parse(&file.path, &file.nodes)?;
+    let types = TypeRegistry::parse_file(root, file)?;
     let imports = server_imports(root, file, environment)?;
     parse_server_nodes(&file.path, &file.nodes, &imports, &types, environment)
 }
 
 pub(crate) fn validate_server_module_source(
+    root: &Path,
     file: &SourceFile,
     environment: &EnvironmentConfig,
 ) -> DoweResult<()> {
-    parse_server_module(file, environment).map(|_| ())
+    parse_server_module(root, file, environment, &mut Vec::new()).map(|_| ())
 }
 
 fn parse_server_nodes(
@@ -100,10 +104,18 @@ struct ServerHandler {
     behavior: EndpointBehavior,
 }
 
+#[derive(Debug, Clone)]
+struct ServerCallable {
+    name: String,
+    kind: ServerReusableKind,
+    action: ServerReusableAction,
+}
+
 #[derive(Default)]
 struct ServerImports {
     handlers: HashMap<String, ServerHandler>,
     middlewares: HashMap<String, ServerMiddleware>,
+    callables: HashMap<String, ServerCallable>,
 }
 
 fn server_imports(
@@ -114,10 +126,13 @@ fn server_imports(
     let mut imports = ServerImports::default();
     for import in &file.imports {
         let path = resolve_import(root, &file.path, import)?;
+        if is_shared_type_path(root, &path) {
+            continue;
+        }
         let source = fs::read_to_string(&path)
             .map_err(|error| DoweError::at_path(&path, error.to_string()))?;
         let module_file = parse_source_file(root, &path, source)?;
-        let module = parse_server_module(&module_file, environment)?;
+        let module = parse_server_module(root, &module_file, environment, &mut Vec::new())?;
         if let Some(handler) = module.handlers.get(&import.local).cloned() {
             if imports
                 .handlers
@@ -151,21 +166,34 @@ fn server_imports(
 }
 
 fn parse_server_module(
+    root: &Path,
     file: &SourceFile,
     environment: &EnvironmentConfig,
+    stack: &mut Vec<std::path::PathBuf>,
 ) -> DoweResult<ServerImports> {
-    let types = TypeRegistry::parse(&file.path, &file.nodes)?;
+    if stack.iter().any(|path| path == &file.path) {
+        return Err(DoweError::at_path(
+            &file.path,
+            "cyclic server module import detected",
+        ));
+    }
+    stack.push(file.path.clone());
+    let surface = server_module_surface(file);
+    let imported_callables = module_callable_imports(root, file, environment, stack, surface)?;
+    let types = TypeRegistry::parse_file(root, file)?;
     let mut imports = ServerImports::default();
     for node in &file.nodes {
         match node.name.as_str() {
             "handler" => {
-                let (name, handler) = parse_handler_node(node, &types, environment)?;
+                let (name, handler) =
+                    parse_handler_node(node, &types, environment, &imported_callables)?;
                 if imports.handlers.insert(name.clone(), handler).is_some() {
                     return Err(node_error(node, format!("duplicate handler `{name}`")));
                 }
             }
             "middleware" => {
-                let (name, middleware) = parse_middleware_node(file, node, environment)?;
+                let (name, middleware) =
+                    parse_middleware_node(file, node, environment, &imported_callables)?;
                 if imports
                     .middlewares
                     .insert(name.clone(), middleware)
@@ -174,22 +202,119 @@ fn parse_server_module(
                     return Err(node_error(node, format!("duplicate middleware `{name}`")));
                 }
             }
+            "service" => {
+                let (name, callable) = parse_reusable_node(
+                    file,
+                    node,
+                    ServerReusableKind::Service,
+                    &types,
+                    environment,
+                    &imported_callables,
+                )?;
+                if imports.callables.insert(name.clone(), callable).is_some() {
+                    return Err(node_error(node, format!("duplicate service `{name}`")));
+                }
+            }
+            "repository" => {
+                let (name, callable) = parse_reusable_node(
+                    file,
+                    node,
+                    ServerReusableKind::Repository,
+                    &types,
+                    environment,
+                    &imported_callables,
+                )?;
+                if imports.callables.insert(name.clone(), callable).is_some() {
+                    return Err(node_error(node, format!("duplicate repository `{name}`")));
+                }
+            }
             "type" => {}
             _ => {
                 return Err(node_error(
                     node,
-                    "server modules only accept `type`, `handler` or `middleware`",
+                    "server modules only accept `type`, `handler`, `middleware`, `service` or `repository`",
                 ));
             }
         }
     }
+    stack.pop();
     Ok(imports)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ServerModuleSurface {
+    Handler,
+    Middleware,
+    Service,
+    Repository,
+    Other,
+}
+
+fn server_module_surface(file: &SourceFile) -> ServerModuleSurface {
+    let relative = file.relative_path.to_string_lossy().replace('\\', "/");
+    if relative.starts_with("src/handlers/") {
+        ServerModuleSurface::Handler
+    } else if relative.starts_with("src/middlewares/") {
+        ServerModuleSurface::Middleware
+    } else if relative.starts_with("src/services/") {
+        ServerModuleSurface::Service
+    } else if relative.starts_with("src/repositories/") {
+        ServerModuleSurface::Repository
+    } else {
+        ServerModuleSurface::Other
+    }
+}
+
+fn module_callable_imports(
+    root: &Path,
+    file: &SourceFile,
+    environment: &EnvironmentConfig,
+    stack: &mut Vec<std::path::PathBuf>,
+    surface: ServerModuleSurface,
+) -> DoweResult<HashMap<String, ServerCallable>> {
+    let mut callables = HashMap::new();
+    for import in &file.imports {
+        let path = resolve_import(root, &file.path, import)?;
+        if is_shared_type_path(root, &path) {
+            continue;
+        }
+        let source = fs::read_to_string(&path)
+            .map_err(|error| DoweError::at_path(&path, error.to_string()))?;
+        let module_file = parse_source_file(root, &path, source)?;
+        let module = parse_server_module(root, &module_file, environment, stack)?;
+        let callable = module
+            .callables
+            .get(&import.local)
+            .cloned()
+            .ok_or_else(|| {
+                DoweError::at_path(
+                    &import.location.path,
+                    format!("server module does not export reusable `{}`", import.local),
+                )
+            })?;
+        if surface == ServerModuleSurface::Repository
+            && callable.kind != ServerReusableKind::Repository
+        {
+            return Err(DoweError::at_path(
+                &import.location.path,
+                "repositories can only import repositories",
+            ));
+        }
+        if callables.insert(import.local.clone(), callable).is_some() {
+            return Err(DoweError::at_path(
+                &import.location.path,
+                format!("duplicate reusable import `{}`", import.local),
+            ));
+        }
+    }
+    Ok(callables)
 }
 
 fn parse_handler_node(
     node: &SourceNode,
     types: &TypeRegistry,
     environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
 ) -> DoweResult<(String, ServerHandler)> {
     let name = node
         .args
@@ -204,6 +329,7 @@ fn parse_handler_node(
         },
         types,
         environment,
+        callables,
     )?;
     let behavior = exported_handler_behavior(node, &action)?;
     Ok((name, ServerHandler { action, behavior }))
@@ -213,6 +339,7 @@ fn parse_middleware_node(
     file: &SourceFile,
     node: &SourceNode,
     environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
 ) -> DoweResult<(String, ServerMiddleware)> {
     let relative = file.relative_path.to_string_lossy().replace('\\', "/");
     if !relative.starts_with("src/middlewares/") {
@@ -232,8 +359,48 @@ fn parse_middleware_node(
             "middleware must declare request binding `req`",
         ));
     }
-    let action = parse_middleware_action(node, environment)?;
+    let action = parse_middleware_action(node, environment, callables)?;
     Ok((name.clone(), ServerMiddleware { name, action }))
+}
+
+fn parse_reusable_node(
+    file: &SourceFile,
+    node: &SourceNode,
+    kind: ServerReusableKind,
+    types: &TypeRegistry,
+    environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
+) -> DoweResult<(String, ServerCallable)> {
+    let relative = file.relative_path.to_string_lossy().replace('\\', "/");
+    let expected = match kind {
+        ServerReusableKind::Service => "src/services/",
+        ServerReusableKind::Repository => "src/repositories/",
+    };
+    if !relative.starts_with(expected) {
+        let label = match kind {
+            ServerReusableKind::Service => "`service` declarations must live under `src/services`",
+            ServerReusableKind::Repository => {
+                "`repository` declarations must live under `src/repositories`"
+            }
+        };
+        return Err(node_error(node, label));
+    }
+    let name = node
+        .args
+        .first()
+        .and_then(SourceValue::as_required_string)
+        .ok_or_else(|| {
+            node_error(
+                node,
+                match kind {
+                    ServerReusableKind::Service => "service must declare a name",
+                    ServerReusableKind::Repository => "repository must declare a name",
+                },
+            )
+        })?;
+    validate_binding_name(node, &name)?;
+    let action = parse_reusable_action(node, kind, types, environment, callables)?;
+    Ok((name.clone(), ServerCallable { name, kind, action }))
 }
 
 fn parse_server_config(
@@ -254,7 +421,15 @@ fn parse_server_config(
                 return Err(node_error(child, "`endpoint` has been renamed to `route`"));
             }
             "websocket" => websockets.push(parse_websocket(child, environment)?),
-            "init" => init_action = parse_action(child, ActionContext::Init, types, environment)?,
+            "init" => {
+                init_action = parse_action(
+                    child,
+                    ActionContext::Init,
+                    types,
+                    environment,
+                    &imports.callables,
+                )?
+            }
             _ => return Err(node_error(child, "unsupported server block")),
         }
     }
@@ -296,6 +471,7 @@ fn parse_route(
                     },
                     types,
                     environment,
+                    &imports.callables,
                 )?;
                 endpoints.push(Endpoint {
                     method: HttpMethod::Get,
@@ -402,6 +578,7 @@ fn parse_method(
         },
         types,
         environment,
+        &imports.callables,
     )?;
     if has_reference_log(&action)
         && let Some(behavior) =
@@ -494,6 +671,7 @@ fn parse_websocket(
             ActionContext::WebSocket,
             &TypeRegistry::empty(),
             environment,
+            &HashMap::new(),
         )?;
         match child.name.as_str() {
             "open" => handlers.open = action,
@@ -512,6 +690,7 @@ fn parse_action(
     context: ActionContext,
     types: &TypeRegistry,
     environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
 ) -> DoweResult<ServerAction> {
     let mut statements = Vec::new();
     let mut returned = false;
@@ -547,6 +726,10 @@ fn parse_action(
                     validate_kv_statement_references(child, &statement, &inferred_bindings)?;
                     infer_kv_statement(&statement, &mut inferred_bindings);
                     statements.push(ServerStatement::Kv(statement));
+                } else if let Some(statement) = parse_call_let(child, context, callables)? {
+                    validate_store_literal_references(child, &statement.args, &inferred_bindings)?;
+                    inferred_bindings.insert(statement.binding.clone(), DoweType::Unknown);
+                    statements.push(ServerStatement::Call(statement));
                 } else {
                     validate_let(child, context)?;
                 }
@@ -595,11 +778,108 @@ fn parse_action(
     Ok(ServerAction { statements })
 }
 
+fn parse_reusable_action(
+    node: &SourceNode,
+    kind: ServerReusableKind,
+    types: &TypeRegistry,
+    environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
+) -> DoweResult<ServerReusableAction> {
+    let mut statements = Vec::new();
+    let mut return_value = None;
+    let mut inferred_bindings = HashMap::<String, DoweType>::new();
+    let mut inferred_tables = HashMap::<String, DoweType>::new();
+    inferred_bindings.insert("args".to_string(), DoweType::Unknown);
+    let context = ActionContext::Reusable;
+
+    for child in &node.children {
+        match child.name.as_str() {
+            "let" => {
+                if let Some(statement) = parse_request_json_let(child, context, types)? {
+                    infer_request_json_statement(&statement, &mut inferred_bindings);
+                    statements.push(statement);
+                } else if let Some(statement) = parse_agent_chat_let(child)? {
+                    validate_reference_path(child, &statement.source, &inferred_bindings)?;
+                    infer_agent_chat_statement(&statement, &mut inferred_bindings);
+                    statements.push(ServerStatement::AgentChat(statement));
+                } else if let Some(statement) = parse_stdlib_let(child)? {
+                    validate_stdlib_statement_references(child, &statement, &inferred_bindings)?;
+                    infer_stdlib_statement(&statement, &mut inferred_bindings)?;
+                    statements.push(ServerStatement::Stdlib(statement));
+                } else if let Some(statement) = parse_http_let(child, context, environment)? {
+                    validate_http_statement_references(child, &statement, &inferred_bindings)?;
+                    infer_http_statement(&statement, &mut inferred_bindings);
+                    statements.push(ServerStatement::Http(statement));
+                } else if let Some(statement) = parse_store_let(child, Some(environment))? {
+                    validate_store_statement_references(child, &statement, &inferred_bindings)?;
+                    infer_store_statement(&statement, &mut inferred_bindings, &mut inferred_tables);
+                    statements.push(ServerStatement::Store(statement));
+                } else if let Some(statement) = parse_kv_let(child, Some(environment))? {
+                    validate_kv_statement_references(child, &statement, &inferred_bindings)?;
+                    infer_kv_statement(&statement, &mut inferred_bindings);
+                    statements.push(ServerStatement::Kv(statement));
+                } else if let Some(statement) = parse_call_let(child, context, callables)? {
+                    validate_store_literal_references(child, &statement.args, &inferred_bindings)?;
+                    inferred_bindings.insert(statement.binding.clone(), DoweType::Unknown);
+                    statements.push(ServerStatement::Call(statement));
+                } else {
+                    validate_let(child, context)?;
+                }
+            }
+            "return" => {
+                let value = parse_reusable_return(child, kind)?;
+                validate_store_literal_references(child, &value, &inferred_bindings)?;
+                return_value = Some(value);
+            }
+            "log" | "info" | "warn" | "error" => {
+                let log = parse_log(child)?;
+                validate_log_references(child, &log, &inferred_bindings)?;
+                statements.push(ServerStatement::Log(log));
+            }
+            "if" => {
+                return Err(node_error(
+                    child,
+                    "server if is not supported by current contracts",
+                ));
+            }
+            "send" | "bridge" => {
+                return Err(node_error(
+                    child,
+                    "WebSocket actions are not valid inside service or repository",
+                ));
+            }
+            "commit" => return Err(node_error(child, "`commit` is only valid inside store tx")),
+            "rollback" => {
+                return Err(node_error(
+                    child,
+                    "`rollback` is only valid inside store tx",
+                ));
+            }
+            _ => return Err(node_error(child, "unsupported server action")),
+        }
+    }
+
+    let return_value = return_value.ok_or_else(|| {
+        node_error(
+            node,
+            match kind {
+                ServerReusableKind::Service => "service must return value",
+                ServerReusableKind::Repository => "repository must return value",
+            },
+        )
+    })?;
+    Ok(ServerReusableAction {
+        statements,
+        return_value,
+    })
+}
+
 fn parse_middleware_action(
     node: &SourceNode,
     environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
 ) -> DoweResult<ServerMiddlewareAction> {
-    let statements = parse_middleware_statements(&node.children, environment)?;
+    let statements = parse_middleware_statements(&node.children, environment, callables)?;
     if !middleware_returns(&statements) {
         return Err(node_error(
             node,
@@ -612,12 +892,13 @@ fn parse_middleware_action(
 fn parse_middleware_statements(
     nodes: &[SourceNode],
     environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
 ) -> DoweResult<Vec<ServerMiddlewareStatement>> {
     let mut statements = Vec::new();
     for node in nodes {
         match node.name.as_str() {
-            "let" => statements.push(parse_middleware_let(node, environment)?),
-            "if" => statements.push(parse_middleware_if(node, environment)?),
+            "let" => statements.push(parse_middleware_let(node, environment, callables)?),
+            "if" => statements.push(parse_middleware_if(node, environment, callables)?),
             "return" => statements.push(parse_middleware_return(node)?),
             "log" | "info" | "warn" | "error" => {
                 statements.push(ServerMiddlewareStatement::Log(parse_log(node)?));
@@ -632,6 +913,7 @@ fn parse_middleware_statements(
 fn parse_middleware_let(
     node: &SourceNode,
     environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
 ) -> DoweResult<ServerMiddlewareStatement> {
     let (binding, expression) =
         assignment(node).ok_or_else(|| node_error(node, "middleware let must assign a value"))?;
@@ -704,13 +986,16 @@ fn parse_middleware_let(
                 encryption,
             })
         }
-        _ => Err(node_error(node, "unsupported middleware let expression")),
+        _ => parse_call_let(node, ActionContext::Middleware, callables)?
+            .map(ServerMiddlewareStatement::Call)
+            .ok_or_else(|| node_error(node, "unsupported middleware let expression")),
     }
 }
 
 fn parse_middleware_if(
     node: &SourceNode,
     environment: &EnvironmentConfig,
+    callables: &HashMap<String, ServerCallable>,
 ) -> DoweResult<ServerMiddlewareStatement> {
     let condition = node
         .args
@@ -723,7 +1008,7 @@ fn parse_middleware_if(
             "middleware if only supports JWT validation checks",
         ));
     };
-    let statements = parse_middleware_statements(&node.children, environment)?;
+    let statements = parse_middleware_statements(&node.children, environment, callables)?;
     Ok(ServerMiddlewareStatement::IfValid {
         binding: binding.to_string(),
         statements,
@@ -1088,6 +1373,8 @@ enum ActionContext<'a> {
         async_handler: bool,
         request: Option<&'a str>,
     },
+    Middleware,
+    Reusable,
     WebSocket,
 }
 
@@ -1201,6 +1488,79 @@ fn parse_stdlib_let(node: &SourceNode) -> DoweResult<Option<ServerStdlibStatemen
     Ok(Some(ServerStdlibStatement { binding, call }))
 }
 
+fn parse_call_let(
+    node: &SourceNode,
+    context: ActionContext,
+    callables: &HashMap<String, ServerCallable>,
+) -> DoweResult<Option<ServerCallStatement>> {
+    let Some((binding, expression)) = assignment(node) else {
+        return Ok(None);
+    };
+    let Some(callable) = callables.get(&expression) else {
+        return Ok(None);
+    };
+    if node.args.len() != 3 {
+        return Err(node_error(
+            node,
+            "server reusable calls only accept named props",
+        ));
+    }
+    validate_binding_name(node, &binding)?;
+    reject_unknown_props(node, &["args"])?;
+    let source = node
+        .args
+        .iter()
+        .map(SourceValue::to_source)
+        .chain(
+            node.props
+                .iter()
+                .map(|prop| format!("{}:{}", prop.name, prop.value.to_source())),
+        )
+        .collect::<Vec<_>>()
+        .join(" ");
+    validate_request_usage(node, context, &source)?;
+    let args = if let Some(prop) = node.prop("args") {
+        match &prop.value {
+            SourceValue::Object(_) => store_literal(&prop.value)?,
+            _ => return Err(prop_error(prop, "`args` must be an object")),
+        }
+    } else {
+        StoreLiteral::Object(Vec::new())
+    };
+    Ok(Some(ServerCallStatement {
+        binding,
+        target: callable.name.clone(),
+        kind: callable.kind,
+        args,
+        action: Box::new(callable.action.clone()),
+    }))
+}
+
+fn parse_reusable_return(node: &SourceNode, kind: ServerReusableKind) -> DoweResult<StoreLiteral> {
+    if node
+        .args
+        .first()
+        .and_then(SourceValue::as_string_like)
+        .as_deref()
+        == Some("response")
+    {
+        return Err(node_error(
+            node,
+            match kind {
+                ServerReusableKind::Service => "service return must use `return value:<value>`",
+                ServerReusableKind::Repository => {
+                    "repository return must use `return value:<value>`"
+                }
+            },
+        ));
+    }
+    if !node.args.is_empty() {
+        return Err(node_error(node, "return value must use `value:<value>`"));
+    }
+    reject_unknown_props(node, &["value"])?;
+    required_store_literal_prop(node, "value")
+}
+
 fn parse_http_let(
     node: &SourceNode,
     context: ActionContext,
@@ -1237,6 +1597,12 @@ fn parse_http_let(
             return Err(node_error(
                 node,
                 "`http.request`, `http.get`, and `http.post` are not valid in server init",
+            ));
+        }
+        ActionContext::Middleware | ActionContext::Reusable => {
+            return Err(node_error(
+                node,
+                "`http.request`, `http.get`, and `http.post` are only valid in async handlers and WebSocket handlers",
             ));
         }
     }
@@ -1461,7 +1827,10 @@ fn validate_request_usage(
                     "`req.json()` requires an async request handler",
                 ));
             }
-            ActionContext::Init | ActionContext::WebSocket => {
+            ActionContext::Init
+            | ActionContext::Middleware
+            | ActionContext::Reusable
+            | ActionContext::WebSocket => {
                 return Err(node_error(
                     node,
                     "`req.json()` is only valid in HTTP handlers",
@@ -2270,6 +2639,138 @@ main
     }
 
     #[test]
+    fn parses_handler_service_repository_call_chain() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("src/handlers")).expect("handlers");
+        fs::create_dir_all(root.join("src/services")).expect("services");
+        fs::create_dir_all(root.join("src/repositories")).expect("repositories");
+        fs::write(
+            root.join("src/main.dowe"),
+            r#"import listTickets from "./handlers/tickets"
+
+main
+  server port:0
+    route "/api/tickets"
+      method GET handler:listTickets"#,
+        )
+        .expect("main");
+        fs::write(
+            root.join("src/handlers/tickets.dowe"),
+            r#"import listTicketsService from "../services/tickets"
+
+handler listTickets req
+  let result = listTicketsService args:{ status:"open" }
+  return response json:result"#,
+        )
+        .expect("handler");
+        fs::write(
+            root.join("src/services/tickets.dowe"),
+            r#"import listTicketsRepository from "../repositories/tickets"
+
+service listTicketsService
+  let result = listTicketsRepository args:{ status:args.status }
+  return value:{ ok:true data:result.rows cache:result.cache }"#,
+        )
+        .expect("service");
+        fs::write(
+            root.join("src/repositories/tickets.dowe"),
+            r#"repository listTicketsRepository
+  let db = store database:"support"
+  let rows = db.list table:"tickets"
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-list" value:{ status:args.status }
+  return value:{ rows:rows cache:saved }"#,
+        )
+        .expect("repository");
+        let source = fs::read_to_string(root.join("src/main.dowe")).expect("main source");
+        let file = parse_source_file(root, &root.join("src/main.dowe"), source).expect("source");
+        let server =
+            parse_server_source(root, &file, &EnvironmentConfig::default()).expect("server");
+        let endpoint = server
+            .backend
+            .find_endpoint(&HttpMethod::Get, "/api/tickets")
+            .expect("endpoint");
+
+        assert!(matches!(
+            &endpoint.endpoint.action.statements[0],
+            ServerStatement::Call(call) if call.binding == "result" && call.target == "listTicketsService"
+        ));
+        assert!(matches!(
+            endpoint.endpoint.behavior,
+            EndpointBehavior::HttpActionJson(_)
+        ));
+    }
+
+    #[test]
+    fn rejects_service_outside_services_directory() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("src/handlers")).expect("handlers");
+        fs::write(
+            root.join("src/main.dowe"),
+            r#"import listTickets from "./handlers/tickets"
+
+main
+  server port:0
+    route "/api/tickets"
+      method GET handler:listTickets"#,
+        )
+        .expect("main");
+        fs::write(
+            root.join("src/handlers/tickets.dowe"),
+            r#"service listTickets
+  return value:{ ok:true }"#,
+        )
+        .expect("service");
+        let source = fs::read_to_string(root.join("src/main.dowe")).expect("main source");
+        let file = parse_source_file(root, &root.join("src/main.dowe"), source).expect("source");
+        let error = parse_server_source(root, &file, &EnvironmentConfig::default())
+            .expect_err("service path error");
+
+        assert!(error.to_string().contains("src/services"));
+    }
+
+    #[test]
+    fn rejects_response_return_inside_service() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("src/handlers")).expect("handlers");
+        fs::create_dir_all(root.join("src/services")).expect("services");
+        fs::write(
+            root.join("src/main.dowe"),
+            r#"import listTickets from "./handlers/tickets"
+
+main
+  server port:0
+    route "/api/tickets"
+      method GET handler:listTickets"#,
+        )
+        .expect("main");
+        fs::write(
+            root.join("src/handlers/tickets.dowe"),
+            r#"import listTicketsService from "../services/tickets"
+
+handler listTickets req
+  let result = listTicketsService
+  return response json:result"#,
+        )
+        .expect("handler");
+        fs::write(
+            root.join("src/services/tickets.dowe"),
+            r#"service listTicketsService
+  return response json:{ ok:true }"#,
+        )
+        .expect("service");
+        let source = fs::read_to_string(root.join("src/main.dowe")).expect("main source");
+        let file = parse_source_file(root, &root.join("src/main.dowe"), source).expect("source");
+        let error = parse_server_source(root, &file, &EnvironmentConfig::default())
+            .expect_err("service return error");
+
+        assert!(error.to_string().contains("return value"));
+    }
+
+    #[test]
     fn rejects_client_environment_for_remote_store_credentials() {
         let root = Path::new("/project");
         let file = parse_source_file(
@@ -2722,6 +3223,51 @@ main
 
         let server =
             parse_server_file(Path::new("/project/src/main.dowe"), &file.nodes).expect("server");
+        let endpoint = server
+            .backend
+            .find_endpoint(&HttpMethod::Post, "/api/users")
+            .expect("route");
+
+        assert!(matches!(
+            &endpoint.endpoint.action.statements[0],
+            ServerStatement::RequestJson {
+                binding,
+                schema: Some(_)
+            } if binding == "body"
+        ));
+    }
+
+    #[test]
+    fn validates_shared_type_imported_by_request_body() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("src/types")).expect("types");
+        fs::write(
+            root.join("src/types/users.dowe"),
+            r#"type UserInput
+  name:string
+  age:number"#,
+        )
+        .expect("type source");
+        let file = parse_source_file(
+            root,
+            &root.join("src/main.dowe"),
+            r#"import UserInput from "./types/users"
+
+main
+  server port:8080
+    route "/api/users"
+      method POST async req
+        let body:UserInput = await req.json()
+        let db = store database:"app"
+        let created = db.insert table:"users" value:{ name:body.name age:body.age }
+        return response json:{ ok:true user:created }"#
+                .to_string(),
+        )
+        .expect("source");
+
+        let server =
+            parse_server_source(root, &file, &EnvironmentConfig::default()).expect("server");
         let endpoint = server
             .backend
             .find_endpoint(&HttpMethod::Post, "/api/users")

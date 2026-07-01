@@ -10,7 +10,8 @@ use crate::parser::{
     SourceFile, SourceNode, SourceObjectEntry, SourceValue, parse_config_file,
     parse_project_config, parse_server_source, parse_source_file, parse_translation_catalog,
     parse_views_file, reference_fields_for_type, resolve_import, type_from_source_value,
-    validate_server_module_source, validate_translation_source, validate_view_source,
+    validate_server_module_source, validate_shared_type_source, validate_translation_source,
+    validate_view_source,
 };
 use std::collections::HashMap;
 use std::fs;
@@ -117,9 +118,10 @@ fn surface_diagnostics(root: &Path, file: &SourceFile) -> Vec<LanguageDiagnostic
     let environment = environment_config(root).unwrap_or_default();
     let result = match source_surface(file) {
         SourceSurface::Config => validate_config_shape(root, file),
-        SourceSurface::ViewModule => validate_view_source(file, &environment).map(|_| ()),
+        SourceSurface::ViewModule => validate_view_source(root, file, &environment).map(|_| ()),
         SourceSurface::Views => validate_views_shape(root, file, &environment),
         SourceSurface::Translations => validate_translation_source(file),
+        SourceSurface::SharedTypes => validate_shared_type_source(root, file),
         SourceSurface::Server => validate_server_shape(root, file),
         SourceSurface::LegacyServer => Err(DoweError::at_path(
             &file.path,
@@ -127,6 +129,8 @@ fn surface_diagnostics(root: &Path, file: &SourceFile) -> Vec<LanguageDiagnostic
         )),
         SourceSurface::Middleware => validate_middleware_shape(root, file),
         SourceSurface::Handler => validate_handler_shape(root, file),
+        SourceSurface::Service => validate_service_shape(root, file),
+        SourceSurface::Repository => validate_repository_shape(root, file),
         SourceSurface::Unknown => Ok(()),
     };
     if let Err(error) = result {
@@ -145,12 +149,22 @@ fn source_surface(file: &SourceFile) -> SourceSurface {
         SourceSurface::Server
     } else if relative.starts_with("src/i18n/") {
         SourceSurface::Translations
+    } else if relative.starts_with("src/types/") {
+        SourceSurface::SharedTypes
     } else if relative == "src/server.dowe" {
         SourceSurface::LegacyServer
     } else if relative.starts_with("src/middlewares/") {
         SourceSurface::Middleware
+    } else if relative.starts_with("src/services/") {
+        SourceSurface::Service
+    } else if relative.starts_with("src/repositories/") {
+        SourceSurface::Repository
     } else if file.nodes.iter().any(|node| node.name == "middleware") {
         SourceSurface::Middleware
+    } else if file.nodes.iter().any(|node| node.name == "service") {
+        SourceSurface::Service
+    } else if file.nodes.iter().any(|node| node.name == "repository") {
+        SourceSurface::Repository
     } else if file
         .nodes
         .iter()
@@ -178,10 +192,13 @@ enum SourceSurface {
     ViewModule,
     Views,
     Translations,
+    SharedTypes,
     Server,
     LegacyServer,
     Middleware,
     Handler,
+    Service,
+    Repository,
     Unknown,
 }
 
@@ -195,7 +212,15 @@ fn exports_symbol(file: &SourceFile, name: &str) -> bool {
     file.nodes.iter().any(|node| {
         matches!(
             node.name.as_str(),
-            "layout" | "page" | "component" | "action" | "handler" | "middleware"
+            "layout"
+                | "page"
+                | "component"
+                | "action"
+                | "handler"
+                | "middleware"
+                | "service"
+                | "repository"
+                | "type"
         ) && node
             .args
             .first()
@@ -244,12 +269,22 @@ fn validate_server_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
 
 fn validate_handler_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
     let environment = environment_config(root).unwrap_or_default();
-    validate_server_module_source(file, &environment)
+    validate_server_module_source(root, file, &environment)
 }
 
 fn validate_middleware_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
     let environment = environment_config(root).unwrap_or_default();
-    validate_server_module_source(file, &environment)
+    validate_server_module_source(root, file, &environment)
+}
+
+fn validate_service_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
+    let environment = environment_config(root).unwrap_or_default();
+    validate_server_module_source(root, file, &environment)
+}
+
+fn validate_repository_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
+    let environment = environment_config(root).unwrap_or_default();
+    validate_server_module_source(root, file, &environment)
 }
 
 pub(crate) fn environment_config(root: &Path) -> DoweResult<EnvironmentConfig> {
@@ -403,7 +438,7 @@ pub(crate) fn reference_fields(
     let Ok(file) = parse_source_file(&root, &document.path, document.source.clone()) else {
         return Vec::new();
     };
-    let types = crate::parser::TypeRegistry::parse(&file.path, &file.nodes).unwrap_or_default();
+    let types = crate::parser::TypeRegistry::parse_file(&root, &file).unwrap_or_default();
     let mut tables = HashMap::new();
     collect_store_table_fields(&file.nodes, &mut tables);
     find_reference_fields(&file.nodes, &tables, &types, reference_root)

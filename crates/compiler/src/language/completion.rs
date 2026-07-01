@@ -193,6 +193,8 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "component",
         "action",
         "middleware",
+        "service",
+        "repository",
         "signal",
         "request",
         "assign",
@@ -384,8 +386,7 @@ fn action_completions(root: &Path, document: &LanguageDocument) -> Vec<LanguageC
 fn signal_completions(root: &Path, document: &LanguageDocument) -> Vec<LanguageCompletion> {
     parse_source_file(root, &document.path, document.source.clone())
         .map(|file| {
-            let types =
-                crate::parser::TypeRegistry::parse(&file.path, &file.nodes).unwrap_or_default();
+            let types = crate::parser::TypeRegistry::parse_file(root, &file).unwrap_or_default();
             file.nodes
                 .iter()
                 .flat_map(|node| collect_signals(node, &types))

@@ -603,6 +603,183 @@ main
 }
 
 #[tokio::test]
+async fn serves_layered_backend_with_middleware_service_repository_store_and_kv() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    fs::write(
+        temp.path().join("src/layouts/auth.dowe"),
+        r#"layout AuthLayout
+  Box
+    Text
+      "Layout"
+    children"#,
+    )
+    .expect("layout");
+    fs::write(
+        temp.path().join("src/pages/login.dowe"),
+        r#"page loginPage
+  Box
+    Text
+      "Login""#,
+    )
+    .expect("page");
+    fs::create_dir_all(temp.path().join("src/handlers")).expect("handlers");
+    fs::create_dir_all(temp.path().join("src/middlewares")).expect("middlewares");
+    fs::create_dir_all(temp.path().join("src/services")).expect("services");
+    fs::create_dir_all(temp.path().join("src/repositories")).expect("repositories");
+    fs::create_dir_all(temp.path().join("src/types")).expect("types");
+    fs::write(
+        temp.path().join("src/config.dowe"),
+        r#"config
+  env
+    variable name:"JWT_SECRET" visibility:"server" required:true"#,
+    )
+    .expect("config");
+    fs::write(
+        temp.path().join(".env"),
+        "JWT_SECRET=01234567890123456789012345678901\n",
+    )
+    .expect("env");
+    fs::write(
+        temp.path().join("src/main.dowe"),
+        r#"import requireBearer from "./middlewares/auth"
+import listTickets from "./handlers/tickets"
+import createTicket from "./handlers/tickets"
+
+main
+  server port:0
+    route "/api/tickets" middleware:[requireBearer]
+      method GET handler:listTickets
+      method POST handler:createTicket"#,
+    )
+    .expect("main");
+    fs::write(
+        temp.path().join("src/middlewares/auth.dowe"),
+        r#"middleware requireBearer async req
+  let authorization = req.header name:"Authorization"
+  let token = bearer authorization
+  let verified = jwt.verify token secret:env.JWT_SECRET algorithm:"HS256"
+  if verified.valid
+    return continue context:{ auth:{ subject:verified.claims.sub } }
+  return response status:401 json:{ ok:false error:"Unauthorized" }"#,
+    )
+    .expect("middleware");
+    fs::write(
+        temp.path().join("src/types/tickets.dowe"),
+        r#"type TicketInput
+  title:string
+  priority:string"#,
+    )
+    .expect("types");
+    fs::write(
+        temp.path().join("src/handlers/tickets.dowe"),
+        r#"import TicketInput from "../types/tickets"
+import listTicketsService from "../services/tickets"
+import createTicketService from "../services/tickets"
+
+handler listTickets req
+  let result = listTicketsService args:{ status:"open" }
+  return response json:result
+
+handler createTicket async req
+  let body:TicketInput = await req.json()
+  let result = createTicketService args:{ title:body.title priority:body.priority status:"open" }
+  return response status:201 json:result"#,
+    )
+    .expect("handler");
+    fs::write(
+        temp.path().join("src/services/tickets.dowe"),
+        r#"import listTicketsRepository from "../repositories/tickets"
+import createTicketRepository from "../repositories/tickets"
+
+service listTicketsService
+  let result = listTicketsRepository args:{ status:args.status }
+  return value:{ ok:true data:result.rows cache:result.cache }
+
+service createTicketService
+  let result = createTicketRepository args:{ title:args.title priority:args.priority status:args.status }
+  return value:{ ok:true data:result.rows created:result.created cache:result.cache }"#,
+    )
+    .expect("service");
+    fs::write(
+        temp.path().join("src/repositories/tickets.dowe"),
+        r#"repository listTicketsRepository
+  let db = store database:"support"
+  let rows = db.list table:"tickets"
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-list" value:{ status:args.status }
+  return value:{ rows:rows cache:saved }
+
+repository createTicketRepository
+  let db = store database:"support"
+  let created = db.insert table:"tickets" value:{ title:args.title priority:args.priority status:args.status createdAt:now updatedAt:now } required:["title","priority","status"]
+  let rows = db.list table:"tickets"
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-created" value:{ id:created.id title:created.title }
+  return value:{ rows:rows created:created cache:saved }"#,
+    )
+    .expect("repository");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+
+    let unauthorized = client
+        .get(format!("{backend}/api/tickets"))
+        .send()
+        .await
+        .expect("unauthorized");
+    assert_eq!(unauthorized.status(), reqwest::StatusCode::UNAUTHORIZED);
+
+    let token = sign_jws_hs256(
+        &json!({"sub":"agent-1","exp":4102444800u64}),
+        "01234567890123456789012345678901",
+    )
+    .expect("token");
+    let created = client
+        .post(format!("{backend}/api/tickets"))
+        .bearer_auth(&token)
+        .json(&json!({"title":"Printer offline","priority":"high"}))
+        .send()
+        .await
+        .expect("create");
+    assert_eq!(created.status(), reqwest::StatusCode::CREATED);
+    let created = created
+        .json::<serde_json::Value>()
+        .await
+        .expect("created json");
+    assert_eq!(created["ok"], true);
+    assert_eq!(created["created"]["title"], "Printer offline");
+    assert_eq!(created["cache"]["key"], "tickets:last-created");
+
+    let listed = client
+        .get(format!("{backend}/api/tickets"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .expect("list")
+        .json::<serde_json::Value>()
+        .await
+        .expect("list json");
+    assert_eq!(listed["ok"], true);
+    assert_eq!(listed["data"].as_array().expect("tickets").len(), 1);
+    assert_eq!(listed["cache"]["key"], "tickets:last-list");
+    assert!(temp.path().join(".dowe/store/support/tickets").exists());
+    assert!(temp.path().join(".dowe/kv/support-cache").exists());
+
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
 async fn starts_only_selected_backend_server() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);

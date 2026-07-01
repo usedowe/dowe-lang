@@ -65,8 +65,39 @@ impl<'a> StoreActionContext<'a> {
             ServerStatement::WebSocketSendJson(_) | ServerStatement::WebSocketSseBridge(_) => {}
             ServerStatement::Store(statement) => self.execute_store(statement).await?,
             ServerStatement::Kv(statement) => self.execute_kv(statement).await?,
+            ServerStatement::Call(statement) => {
+                let args = self.evaluate(&statement.args)?.into_json().ok_or_else(|| {
+                    StoreActionError::invalid_body("Reusable call args must be JSON")
+                })?;
+                let value = Box::pin(execute_reusable_action(
+                    self.project,
+                    self.root,
+                    self.params,
+                    self.body,
+                    &statement.action,
+                    args,
+                ))
+                .await?;
+                self.bindings.insert(statement.binding.clone(), value);
+            }
         }
         Ok(())
+    }
+
+    async fn execute_reusable(
+        &mut self,
+        action: &ServerReusableAction,
+    ) -> Result<Value, StoreActionError> {
+        for statement in &action.statements {
+            self.execute_statement(statement).await?;
+        }
+        self.evaluate(&action.return_value)?
+            .into_json()
+            .ok_or_else(|| StoreActionError {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                code: "invalid_response",
+                message: "Reusable return value is missing",
+            })
     }
 
     async fn execute_http(
@@ -183,4 +214,29 @@ impl<'a> StoreActionContext<'a> {
         }
         builder.build().map_err(|_| StoreActionError::http())
     }
+}
+
+async fn execute_reusable_action(
+    project: &CompiledProject,
+    root: &Path,
+    params: &HashMap<String, String>,
+    body: &Bytes,
+    action: &ServerReusableAction,
+    args: Value,
+) -> Result<Value, StoreActionError> {
+    let mut bindings = HashMap::new();
+    bindings.insert("args".to_string(), args);
+    let mut context = StoreActionContext {
+        project,
+        root,
+        params,
+        body,
+        request_body: None,
+        bindings,
+        http_results: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+    };
+    context.execute_reusable(action).await
 }

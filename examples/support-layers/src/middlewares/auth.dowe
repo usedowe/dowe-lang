@@ -1,0 +1,7 @@
+middleware requireBearer async req
+  let authorization = req.header name:"Authorization"
+  let token = bearer authorization
+  let verified = jwt.verify token secret:env.JWT_SECRET algorithm:"HS256"
+  if verified.valid
+    return continue context:{ auth:{ subject:verified.claims.sub } }
+  return response status:401 json:{ ok:false error:"Unauthorized" }

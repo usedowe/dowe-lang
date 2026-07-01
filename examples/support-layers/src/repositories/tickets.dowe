@@ -1,0 +1,37 @@
+repository listTicketsRepository
+  let db = store database:"support"
+  let rows = db.list table:"tickets"
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-list" value:{ status:args.status updatedAt:now }
+  return value:{ rows:rows cache:saved }
+
+repository createTicketRepository
+  let db = store database:"support"
+  let created = db.insert table:"tickets" value:{ title:args.title priority:args.priority status:args.status description:args.description createdAt:now updatedAt:now } required:["title", "priority", "status"]
+  let rows = db.list table:"tickets"
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-created" value:{ id:created.id title:created.title updatedAt:now }
+  return value:{ rows:rows created:created cache:saved }
+
+repository readTicketRepository
+  let db = store database:"support"
+  let ticket = db.read table:"tickets" where:{ id:args.id } required:true
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-read" value:{ id:ticket.id title:ticket.title updatedAt:now }
+  return value:{ ticket:ticket cache:saved }
+
+repository updateTicketRepository
+  let db = store database:"support"
+  let changed = db.update table:"tickets" where:{ id:args.id } value:{ title:args.title priority:args.priority status:args.status description:args.description updatedAt:now } required:true match:{ id:args.id }
+  let rows = db.list table:"tickets"
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-updated" value:{ id:args.id changed:changed.changed updatedAt:now }
+  return value:{ rows:rows changed:changed cache:saved }
+
+repository deleteTicketRepository
+  let db = store database:"support"
+  let deleted = db.delete table:"tickets" where:{ id:args.id } required:true
+  let rows = db.list table:"tickets"
+  let cache = kv database:"support-cache" persist:true
+  let saved = cache.set key:"tickets:last-deleted" value:{ id:args.id changed:deleted.changed updatedAt:now }
+  return value:{ rows:rows deleted:deleted cache:saved }

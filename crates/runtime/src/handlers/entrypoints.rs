@@ -92,18 +92,21 @@ pub(crate) async fn server_response(
     let response = match HttpMethod::from_str(method.as_str()) {
         Ok(method) => match server.find_endpoint(&method, path) {
             Some(matched) => {
-                let middleware_context =
-                    match execute_middlewares(project, &matched.endpoint.middlewares, &headers) {
-                        MiddlewareFlow::Continue(context) => context,
-                        MiddlewareFlow::Respond(response) => {
-                            return cors_actual_response(
-                                &server.cors,
-                                dev_origins,
-                                &headers,
-                                response,
-                            );
-                        }
-                    };
+                let middleware_context = match execute_middlewares(
+                    project,
+                    &project.root,
+                    &matched.endpoint.middlewares,
+                    &headers,
+                    &matched.params,
+                    &body,
+                )
+                .await
+                {
+                    MiddlewareFlow::Continue(context) => context,
+                    MiddlewareFlow::Respond(response) => {
+                        return cors_actual_response(&server.cors, dev_origins, &headers, response);
+                    }
+                };
                 if !matches!(
                     &matched.endpoint.behavior,
                     EndpointBehavior::HttpProxy(_)

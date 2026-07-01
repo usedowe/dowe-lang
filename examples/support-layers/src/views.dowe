@@ -1,0 +1,6 @@
+import BackendLayout from "./layouts/backend"
+import ticketsPage from "./pages/tickets"
+
+views
+  route path:"/" layout:BackendLayout
+    page path:"" component:ticketsPage

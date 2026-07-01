@@ -31,7 +31,9 @@ fn symbol_kind(node: &SourceNode) -> Option<LanguageSymbolKind> {
             Some(LanguageSymbolKind::Module)
         }
         "layout" | "page" | "component" | "type" => Some(LanguageSymbolKind::Class),
-        "action" | "handler" | "middleware" | "init" => Some(LanguageSymbolKind::Function),
+        "action" | "handler" | "middleware" | "service" | "repository" | "init" => {
+            Some(LanguageSymbolKind::Function)
+        }
         "method" | "websocket" => Some(LanguageSymbolKind::Method),
         "signal" => Some(LanguageSymbolKind::Variable),
         "fonts" | "env" | "variable" | "cors" | "design" | "theme" => {

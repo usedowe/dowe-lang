@@ -26,7 +26,9 @@ pub(crate) use source_i18n::{parse_translation_catalog, validate_translation_sou
 pub(crate) use source_imports::resolve_import;
 pub(crate) use source_parser::parse_source_file;
 pub(crate) use source_server::{parse_server_source, validate_server_module_source};
-pub(crate) use source_types::{TypeRegistry, reference_fields_for_type, type_from_source_value};
+pub(crate) use source_types::{
+    TypeRegistry, reference_fields_for_type, type_from_source_value, validate_shared_type_source,
+};
 pub(crate) use source_views::parse_views_file;
 pub(crate) use source_views::validate_view_source;
 
