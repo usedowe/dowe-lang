@@ -1,0 +1,3 @@
+fn normalizeTitle params:{ value:string } return:"string"
+  str normalized source:"trim" value:args.value
+  return value:normalized

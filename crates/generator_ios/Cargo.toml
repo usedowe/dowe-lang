@@ -1,0 +1,11 @@
+[package]
+name = "dowe_generator_ios"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+dowe_components = { path = "../components" }
+
+[lib]
+path = "src/lib.rs"

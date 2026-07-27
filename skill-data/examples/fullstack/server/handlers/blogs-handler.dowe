@@ -1,0 +1,10 @@
+import { listBlogsService, createBlogService } from "@/server/services/blogs-service"
+
+handler listBlogs
+  listBlogsService result
+  return json:result
+
+handler createBlog
+  const body value:req.json
+  createBlogService result args:{ title:body.title content:body.content }
+  return status:201 json:result

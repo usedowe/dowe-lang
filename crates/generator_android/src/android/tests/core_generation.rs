@@ -1,0 +1,1731 @@
+#[test]
+fn generates_persistent_view_store_for_compose_and_dev_shell() {
+    let mut persistent = route();
+    persistent.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "session01".to_string(),
+            name: "session".to_string(),
+            storage_key: "views/store/session:session".to_string(),
+            scope: dowe_components::ViewSignalScope::Global,
+            storage: dowe_components::ViewSignalStorage::Local,
+            initial: ViewSignalValue::Object(vec![(
+                "token".to_string(),
+                ViewSignalValue::String(String::new()),
+            )]),
+            schema: None,
+        }],
+        actions: Vec::new(),
+        children: vec![text("Session")],
+    };
+    let output = generate_android(
+        &[persistent],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = output
+        .files
+        .iter()
+        .map(|file| file.content.as_str())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert!(
+        generated
+            .contains("DoweSignalMetadata(\"views/store/session:session\", \"global\", \"local\")")
+    );
+    assert!(generated.contains(
+        "dowePutSignalMetadata(\"session01\", \"views/store/session:session\", \"global\", \"local\")"
+    ));
+    assert!(generated.contains("getSharedPreferences(\"dowe_view_state\""));
+    assert!(generated.contains("compatibleSignalValue(stored, initial[id])"));
+}
+
+#[test]
+fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
+    let mut fab_route = route();
+    fab_route.page_tree = fixed_fab_page();
+    let output = generate_android(
+        &[fab_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+
+    assert!(generated.contains("var doweFixedFabOpen0 by remember"));
+    assert!(generated.contains("Modifier.fillMaxSize().padding(horizontal"));
+    assert!(generated.contains("if (doweFixedFabOpen0)"));
+    assert!(generated.contains(
+        "verticalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.Bottom)"
+    ));
+    assert!(generated.contains(".rotate(if (doweFixedFabOpen0) 45f else 0f)"));
+    assert!(generated.contains("DoweSvg(viewBox ="));
+    assert!(generated.contains("setTag(\"dowe-fixed-fab\")"));
+    assert!(generated.contains("Gravity.BOTTOM | Gravity.END"));
+    assert!(generated.contains(".setRotation(open ? 45f : 0f)"));
+    assert!(generated.contains("doweWrapContentWidth("));
+    assert!(!generated.contains("setMinimumWidth(doweDp(180))"));
+    assert!(!generated.contains("Text(\"+\")"));
+
+    let mut top_fab_route = route();
+    top_fab_route.page_tree = fixed_fab_page_at(OverlayCornerPosition::TopRight);
+    let top_generated = all_android_source(&generate_android(
+        &[top_fab_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+    let mut top_lines = top_generated.lines();
+    let trigger_line = top_lines
+        .find(|line| line.contains(".setContentDescription(\"Open actions\")"))
+        .expect("top Fab trigger");
+    let trigger = trigger_line
+        .trim()
+        .split('.')
+        .next()
+        .expect("top Fab trigger variable");
+    let first_child_addition = top_lines
+        .find(|line| line.contains("doweAdd("))
+        .expect("top Fab first child addition");
+    assert!(first_child_addition.contains(&format!(", {trigger},")));
+}
+
+fn fixed_fab_page() -> ViewNode {
+    fixed_fab_page_at(OverlayCornerPosition::BottomRight)
+}
+
+fn fixed_fab_page_at(position: OverlayCornerPosition) -> ViewNode {
+    ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![
+            text("Scrollable content"),
+            ViewNode::Fab {
+                props: FabProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Primary),
+                        variant: Some(ComponentVariant::Solid),
+                        size: Some(ButtonSize::Lg),
+                        ..Default::default()
+                    },
+                    position,
+                    fixed: true,
+                    offset_x: ScaleValue::from_half_steps(8),
+                    offset_y: ScaleValue::from_half_steps(8),
+                    icon: ViewIcon::Plus,
+                    label: "Open actions".to_string(),
+                },
+                actions: vec![FabAction {
+                    label: "Edit".to_string(),
+                    icon: ViewIcon::Edit,
+                    color: ColorFamily::Info,
+                    on_click: None,
+                    navigation: Some(NavigationAction::Internal {
+                        path: "/edit".to_string(),
+                        fragment: None,
+                        operation: NavigationOperation::Push,
+                    }),
+                }],
+            },
+        ],
+    }
+}
+
+#[test]
+fn generates_global_toasts_for_sequential_request_functions() {
+    let mut sequential = route();
+    sequential.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "session01".to_string(),
+            name: "session".to_string(),
+            storage_key: "session".to_string(),
+            scope: dowe_components::ViewSignalScope::Page,
+            storage: dowe_components::ViewSignalStorage::None,
+            initial: ViewSignalValue::Object(Vec::new()),
+            schema: None,
+        }],
+        actions: vec![ViewAction {
+            id: "login01".to_string(),
+            name: "login".to_string(),
+            params: Vec::new(),
+            return_type: None,
+            kind: ViewActionKind::Sequence(vec![
+                ViewFunctionStatement::Request {
+                    result: "res".to_string(),
+                    action: ViewRequestAction {
+                        method: ViewRequestMethod::Post,
+                        path: "/api/auth/login".to_string(),
+                        base_env: None,
+                        headers: Vec::new(),
+                        body: None,
+                        update: None,
+                        reset: None,
+                        success_alert: None,
+                        success_message: None,
+                        error_alert: None,
+                        error_message: None,
+                        autoload: false,
+                    },
+                },
+                ViewFunctionStatement::If {
+                    result: "res".to_string(),
+                    success: vec![
+                        ViewFunctionStatement::Assign(ViewAssignAction {
+                            target: "session".to_string(),
+                            source: "$dowe:literal".to_string(),
+                            literal: Some(ViewSignalValue::Object(Vec::new())),
+                            call: None,
+                        }),
+                        ViewFunctionStatement::Toast(ViewToastAction {
+                            kind: "success".to_string(),
+                            title: "Success".to_string(),
+                            message: "Signed in".to_string(),
+                            duration: Some(3000),
+                            scheme: Some("success".to_string()),
+                            variant: Some("soft".to_string()),
+                            position: Some("top-right".to_string()),
+                        }),
+                    ],
+                    error: vec![ViewFunctionStatement::Toast(ViewToastAction {
+                        kind: "error".to_string(),
+                        title: "Error".to_string(),
+                        message: "Login failed".to_string(),
+                        duration: None,
+                        scheme: None,
+                        variant: None,
+                        position: None,
+                    })],
+                },
+            ]),
+        }],
+        children: vec![text("Login")],
+    };
+    let output = generate_android(
+        &[sequential],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+
+    assert!(generated.contains("DoweAction.Sequence(listOf(DoweStep.Request"));
+    assert!(generated.contains("DoweStep.Toast(\"success\", \"Success\", \"Signed in\", 3000"));
+    assert!(generated.contains("DoweAction.sequence(new DoweStep[] {DoweStep.request"));
+    assert!(generated.contains("DoweStep.toast(\"success\", \"Success\", \"Signed in\", 3000)"));
+    assert!(generated.contains("android.widget.Toast.makeText(context, message, duration).show()"));
+    assert!(generated.contains("android.widget.Toast.makeText(this, text, duration).show()"));
+    assert!(generated.contains("signals.entries.lastOrNull { it.value.name == name }"));
+    assert!(generated.contains("doweRequestPath(action.path, body, item)"));
+}
+
+#[test]
+fn generates_init_and_reactive_splash_for_compose_and_dev_shell() {
+    let mut splash_route = route();
+    splash_route.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "loading01".to_string(),
+            name: "isLoading".to_string(),
+            storage_key: "isLoading".to_string(),
+            scope: dowe_components::ViewSignalScope::Page,
+            storage: dowe_components::ViewSignalStorage::None,
+            initial: ViewSignalValue::Bool(true),
+            schema: None,
+        }],
+        actions: vec![ViewAction::init(
+            "init01".to_string(),
+            vec![ViewFunctionStatement::Assign(ViewAssignAction {
+                target: "isLoading".to_string(),
+                source: "$dowe:bool:false".to_string(),
+                literal: None,
+                call: None,
+            })],
+        )],
+        children: vec![ViewNode::Splash {
+            binding: "isLoading".to_string(),
+            initial: true,
+            content: vec![text("Users"), fixed_fab_page()],
+            children: vec![text("Loading users")],
+        }],
+    };
+    let generated = all_android_source(&generate_android(
+        &[splash_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(generated.contains("LaunchedEffect(Unit) { state.load(listOf(\"init01\")) }"));
+    assert!(generated.contains("if (state.bool(\"loading01\"))"));
+    assert!(generated.contains("if (!state.bool(\"loading01\"))"));
+    assert!(generated.contains("if (doweBool(\"loading01\"))"));
+    assert!(generated.contains("doweRunStartup(new String[] {\"init01\"})"));
+}
+
+#[test]
+fn generates_immutable_compose_constants() {
+    let mut constant_route = route();
+    constant_route.page_tree = ViewNode::Scope {
+        constants: vec![dowe_components::ViewConstant {
+            id: "plans01".to_string(),
+            name: "plans".to_string(),
+            value: ViewSignalValue::Array(vec![ViewSignalValue::String("Starter".to_string())]),
+        }],
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![text("Plans")],
+    };
+    let output = generate_android(
+        &[constant_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+    assert!(
+        generated
+            .contains("constants = mapOf<String, Any?>(\"plans01\" to listOf<Any?>(\"Starter\"))")
+    );
+    assert!(generated.contains("private val constants: Map<String, Any?>"));
+}
+
+#[test]
+fn generates_compose_select_options_from_constant_each() {
+    let mut constant_route = route();
+    constant_route.page_tree = ViewNode::Scope {
+        constants: vec![dowe_components::ViewConstant {
+            id: "options01".to_string(),
+            name: "options".to_string(),
+            value: ViewSignalValue::Array(Vec::new()),
+        }],
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![ViewNode::Select {
+            props: Default::default(),
+            options: Vec::new(),
+            option_each: Some(SelectOptionEach {
+                item: "option".to_string(),
+                collection: "options".to_string(),
+                key: "option.id".to_string(),
+                value: "option.value".to_string(),
+                label: "option.label".to_string(),
+                description: None,
+            }),
+        }],
+    };
+    let output = generate_android(
+        &[constant_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+    assert!(generated.contains("state.rows(\"options01\").map { row -> DoweSelectOption"));
+    assert!(generated.contains("state.text(\"item.value\", row.value)"));
+    assert!(generated.contains("state.text(\"item.label\", row.value)"));
+    assert!(generated.contains("doweRowTextValues(\"options01\", \"item.label\")"));
+}
+
+#[test]
+fn resolves_button_values_from_each_item_scope() {
+    let mut scoped_route = route();
+    scoped_route.page_tree = ViewNode::Scope {
+        constants: vec![dowe_components::ViewConstant {
+            id: "buttons01".to_string(),
+            name: "buttons".to_string(),
+            value: ViewSignalValue::Array(vec![ViewSignalValue::Object(vec![
+                (
+                    "id".to_string(),
+                    ViewSignalValue::String("success".to_string()),
+                ),
+                (
+                    "label".to_string(),
+                    ViewSignalValue::String("Success".to_string()),
+                ),
+                (
+                    "variant".to_string(),
+                    ViewSignalValue::String("solid".to_string()),
+                ),
+                (
+                    "scheme".to_string(),
+                    ViewSignalValue::String("success".to_string()),
+                ),
+                (
+                    "size".to_string(),
+                    ViewSignalValue::String("lg".to_string()),
+                ),
+                (
+                    "rounded".to_string(),
+                    ViewSignalValue::String("full".to_string()),
+                ),
+            ])]),
+        }],
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![ViewNode::Each {
+            item: "button".to_string(),
+            collection: "buttons".to_string(),
+            key: "button.id".to_string(),
+            children: vec![ViewNode::Button {
+                props: VariantProps {
+                    reactive: ReactiveVariantProps {
+                        variant: Some("button.variant".to_string()),
+                        scheme: Some("button.scheme".to_string()),
+                        size: Some("button.size".to_string()),
+                        rounded: Some("button.rounded".to_string()),
+                        ..Default::default()
+                    },
+                    style: StyleProps {
+                        shadow: Some(ResponsiveValue::scalar(ShadowSize::Sm)),
+                        shadow_color: Some(ColorFamily::Secondary),
+                        rounded: Some(ResponsiveValue::scalar(RoundedSize::Md)),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                children: vec![text("{button.label}")],
+            }],
+        }],
+    };
+    let output = generate_android(
+        &[scoped_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+    assert!(generated.contains("state.text(\"item.variant\", row.value)"));
+    assert!(generated.contains("state.text(\"item.scheme\", row.value)"));
+    assert!(
+        generated.contains("doweButtonHorizontalPadding(state.text(\"item.size\", row.value))")
+    );
+    assert!(generated.contains("doweButtonMinHeight(state.text(\"item.size\", row.value))"));
+    assert!(generated.contains("(\"outlined\".equals(doweTextValue(\"item.variant\", row"));
+    assert!(generated.contains("state.text(\"item.label\", row.value)"));
+    assert!(generated.contains("doweTextValue(\"item.scheme\", row"));
+    assert!(generated.contains("setText(doweTextValue(\"item.label\", row"));
+    assert!(generated.contains(
+        "shape = RoundedCornerShape(doweButtonRadius(state.text(\"item.rounded\", row.value)))"
+    ));
+    assert!(
+        generated.contains("DOWE_SECONDARY, doweButtonRadius(doweTextValue(\"item.rounded\", row")
+    );
+    assert!(!generated.contains(".doweRounded(doweResponsive(viewportWidth, xs = 8.dp))"));
+    assert!(!generated.contains("doweResponsiveFloat(viewportWidth, 8f, null, null, null, null)"));
+}
+
+#[test]
+fn generates_compose_box_and_text() {
+    let output = generate_android(
+        &[route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+
+    assert!(
+        views
+            .content
+            .contains("Column(modifier = Modifier.fillMaxWidth()) {")
+    );
+    assert!(
+        views
+            .content
+            .contains("Card(modifier = Modifier.fillMaxWidth()")
+    );
+    assert!(
+        views
+            .content
+            .contains("Box(modifier = Modifier.fillMaxSize().background(DoweDesign.background))")
+    );
+    assert!(
+        views
+            .content
+            .contains("Box(modifier = Modifier.fillMaxSize().verticalScroll(scrollState))")
+    );
+    assert!(
+        !views
+            .content
+            .contains("import androidx.compose.foundation.layout.matchParentSize")
+    );
+    assert_eq!(
+        views
+            .content
+            .matches("private fun doweFontFamily(value: DoweFont?): FontFamily")
+            .count(),
+        1
+    );
+    assert!(
+        views
+            .content
+            .contains("Text(\"Layout\", modifier = Modifier, color = Color.Unspecified")
+    );
+    assert!(
+        views
+            .content
+            .contains("Text(\"Login\", modifier = Modifier, color = Color.Unspecified")
+    );
+    assert!(
+        views
+            .content
+            .contains("Font(R.font.inter_light, FontWeight.Thin)")
+    );
+    assert!(
+        views
+            .content
+            .contains("Font(R.font.inter_regular, FontWeight.Normal)")
+    );
+    assert!(
+        views
+            .content
+            .contains("Font(R.font.inter_extrabold, FontWeight.Black)")
+    );
+    assert!(views.content.contains("DoweFont.Inter -> DoweFonts.inter"));
+
+    let root_gradle = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("build.gradle.kts"))
+        .expect("root gradle");
+    assert!(
+        root_gradle
+            .content
+            .contains("org.jetbrains.kotlin.plugin.compose")
+    );
+    let gradle_properties = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("gradle.properties"))
+        .expect("gradle properties");
+    assert!(
+        gradle_properties
+            .content
+            .contains("android.useAndroidX=true")
+    );
+    let app_gradle = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("app/build.gradle.kts"))
+        .expect("app gradle");
+    assert!(app_gradle.content.contains("JvmTarget.JVM_17"));
+    assert!(
+        app_gradle
+            .content
+            .contains("androidx.compose:compose-bom:2026.06.01")
+    );
+    assert!(app_gradle.content.contains("androidx.compose.ui:ui\")"));
+
+    let dev = dev_java_source(&output);
+    assert!(
+        dev.content
+            .contains("root.setGravity(Gravity.TOP | Gravity.START)")
+    );
+    assert!(
+        dev.content
+            .contains("private static int DOWE_BACKGROUND = Color.rgb(255, 255, 255);")
+    );
+    assert!(
+        dev.content
+            .contains("background.setBackgroundColor(DOWE_BACKGROUND)")
+    );
+    assert!(
+        dev.content
+            .contains("root.setBackgroundColor(DOWE_BACKGROUND)")
+    );
+    assert!(
+        dev.content
+            .contains("getWindow().setStatusBarColor(Color.TRANSPARENT)")
+    );
+    assert!(
+        dev.content
+            .contains("getWindow().setNavigationBarColor(Color.TRANSPARENT)")
+    );
+    assert!(
+        dev.content
+            .contains("getWindow().setDecorFitsSystemWindows(false)")
+    );
+    assert!(
+        dev.content
+            .contains("boolean useDarkIcons = Color.luminance(DOWE_BACKGROUND) > 0.179f")
+    );
+    assert!(dev.content.contains(
+        "getWindow().getInsetsController().setSystemBarsAppearance(useDarkIcons ? mask : 0, mask)"
+    ));
+    assert!(
+        dev.content
+            .contains("doweApplyTheme(name);\n        doweApplySystemBarAppearance();")
+    );
+    assert!(dev.content.contains("view.setOnApplyWindowInsetsListener"));
+    assert!(dev.content.contains(
+            "new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)"
+        ));
+    assert!(dev.content.contains("doweCard(DOWE_PRIMARY, null)"));
+    assert!(dev.content.contains(
+        "private GradientDrawable doweInputBackground(int color, Integer strokeColor, float radius)"
+    ));
+    assert!(dev.content.contains("if (strokeColor != null)"));
+    assert!(dev.content.contains("doweText(\"Layout\""));
+    assert!(dev.content.contains("doweText(\"Login\""));
+    assert!(dev.content.contains("final class DoweDevRouteLogin"));
+    assert!(
+        dev.content
+            .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));")
+    );
+    assert!(dev.content.contains("final class DoweDevLayout0"));
+    assert!(dev.content.contains("page.accept(view0);"));
+    assert!(dev.content.contains("private static void renderPage("));
+    assert!(dev.content.contains("doweFontName(null)"));
+    assert!(
+        dev.content
+            .contains("return value == null ? \"Inter\" : value;")
+    );
+    assert!(
+        dev.content
+            .contains("Typeface bundled = getResources().getFont(resource);")
+    );
+    assert!(dev.content.contains("return R.font.inter_light;"));
+    assert!(dev.content.contains("return R.font.inter_regular;"));
+    assert!(
+        dev.content
+            .contains("view.setTypeface(doweTypeface(font, weight));")
+    );
+    assert!(
+        !dev.content
+            .contains("Typeface baseTypeface = Typeface.create(font, Typeface.NORMAL);")
+    );
+    assert!(
+        output
+            .files
+            .iter()
+            .any(|file| file.relative_path.ends_with("dev/AndroidManifest.xml"))
+    );
+    let manifest = output
+        .files
+        .iter()
+        .find(|file| {
+            file.relative_path
+                .ends_with("app/src/main/AndroidManifest.xml")
+        })
+        .expect("manifest");
+    assert!(manifest.content.contains(r#"android:scheme="dowe-dev""#));
+    assert!(
+        manifest
+            .content
+            .contains(r#"android:windowSoftInputMode="adjustResize""#)
+    );
+    let main_activity = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("MainActivity.kt"))
+        .expect("main activity");
+    assert!(
+        main_activity
+            .content
+            .contains("import androidx.activity.enableEdgeToEdge")
+    );
+    assert!(main_activity.content.contains("enableEdgeToEdge()"));
+    assert!(
+        main_activity
+            .content
+            .contains("val useDarkSystemBarIcons = DoweDesign.background.luminance() > 0.179f")
+    );
+    assert!(
+        main_activity
+            .content
+            .contains("isAppearanceLightStatusBars = useDarkSystemBarIcons")
+    );
+    assert!(
+        main_activity
+            .content
+            .contains("isAppearanceLightNavigationBars = useDarkSystemBarIcons")
+    );
+    assert!(
+        main_activity
+            .content
+            .contains("restoreThemePreference()\n        applyIntentRoute(intent)")
+    );
+    assert!(main_activity.content.contains(
+        "getSharedPreferences(\"dowe\", MODE_PRIVATE)\n            .getString(\"theme-preference\", DoweThemeModule.defaultTheme)"
+    ));
+    assert!(
+        main_activity
+            .content
+            .contains("DoweDesign.applyTheme(storedTheme)")
+    );
+    assert!(
+        !views
+            .content
+            .contains("val storedTheme = context.getSharedPreferences")
+    );
+
+    let hot_host = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweDevHostActivity.java"))
+        .expect("hot host");
+    assert!(hot_host.content.contains("DexClassLoader"));
+    assert!(
+        hot_host
+            .content
+            .contains("/_dowe/dev/modules/manifest.json")
+    );
+    assert!(hot_host.content.contains("getConstructor(Activity.class)"));
+    assert!(hot_host.content.contains("resolveEndpoint(getIntent())"));
+    assert!(
+        hot_host
+            .content
+            .contains("getSharedPreferences(HMR_PREFERENCES, MODE_PRIVATE)")
+    );
+    assert!(
+        hot_host
+            .content
+            .contains("putString(HMR_ENDPOINT, value).apply()")
+    );
+    assert!(hot_host.content.contains("getString(HMR_ENDPOINT, \"\")"));
+    assert!(
+        hot_host
+            .content
+            .contains("setContentView(loading);\n        restoreCachedModule();\n        poll();")
+    );
+    assert!(
+        hot_host
+            .content
+            .contains("new File(getFilesDir(), \"dowe-modules\")")
+    );
+    assert!(hot_host.content.contains("getString(HMR_VERSION, \"\")"));
+    assert!(hot_host.content.contains("putString(HMR_VERSION, version)"));
+    assert!(hot_host.content.contains("persistCurrentPath()"));
+    assert!(dev.content.contains("extends ContextThemeWrapper"));
+    assert!(
+        dev.content
+            .contains("public void mount(String preferredPath, Intent launchIntent)")
+    );
+}
+
+#[test]
+fn preserves_fixed_height_for_empty_grid_items_on_android() {
+    let mut fixed_height_route = route();
+    fixed_height_route.page_tree = ViewNode::Grid {
+        props: GridProps {
+            columns: Some(ResponsiveValue::scalar(GridTracks::Count(3))),
+            gap: Some(ResponsiveValue::scalar(GapValue::Single(GapSize::Scale(
+                ScaleValue::from_half_steps(4),
+            )))),
+            ..Default::default()
+        },
+        children: vec![ViewNode::Box {
+            props: StyleProps {
+                bg: Some(ResponsiveValue::scalar(ColorToken::Primary)),
+                border: Some(ResponsiveValue::scalar(BorderWidth(1))),
+                rounded: Some(ResponsiveValue::scalar(RoundedSize::Sm)),
+                sizing: dowe_components::SizingProps {
+                    h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(16),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: Vec::new(),
+        }],
+    };
+
+    let output = generate_android(
+        &[fixed_height_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let compose = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("compose pages");
+    let dev = dev_java_source(&output);
+
+    assert!(compose.content.contains(
+        ".doweBackground(doweResponsive(viewportWidth, xs = DoweDesign.primary)).doweHeight(doweResponsive(viewportWidth, xs = DoweSize.Fixed(32.dp)))"
+    ));
+    assert!(
+        dev.content
+            .contains("Height = doweResponsiveInt(viewportWidth")
+    );
+    assert!(dev.content.contains("int childHeight = childParams == null ? ViewGroup.LayoutParams.WRAP_CONTENT : childParams.height;"));
+    assert!(
+        dev.content
+            .contains("int childHeightSpec = getChildMeasureSpec(")
+    );
+    assert!(
+        dev.content
+            .contains("child.measure(childWidthSpec, childHeightSpec);")
+    );
+}
+
+#[test]
+fn preserves_fixed_box_width_inside_android_grids() {
+    let mut fixed_width_route = route();
+    fixed_width_route.page_tree = ViewNode::Grid {
+        props: GridProps {
+            columns: Some(ResponsiveValue::scalar(GridTracks::Count(1))),
+            ..Default::default()
+        },
+        children: vec![
+            ViewNode::Box {
+                props: StyleProps {
+                    sizing: dowe_components::SizingProps {
+                        w: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                            ScaleValue::from_half_steps(24),
+                        ))),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                children: vec![text("H")],
+            },
+            ViewNode::Box {
+                props: StyleProps::default(),
+                children: vec![text("Full width")],
+            },
+        ],
+    };
+
+    let output = generate_android(
+        &[fixed_width_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let compose = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("compose pages");
+    let dev = dev_java_source(&output);
+
+    assert!(
+        compose
+            .content
+            .contains(".doweWidth(doweResponsive(viewportWidth, xs = DoweSize.Fixed(48.dp)))")
+    );
+    assert!(
+        dev.content
+            .contains("Width = doweResponsiveInt(viewportWidth, 48,")
+    );
+    assert!(dev.content.contains(
+        "int childWidth = childParams == null ? ViewGroup.LayoutParams.WRAP_CONTENT : childParams.width;"
+    ));
+    assert!(dev.content.contains(
+        "MeasureSpec.makeMeasureSpec(Math.min(childWidth, cellWidth), MeasureSpec.EXACTLY)"
+    ));
+    assert!(dev.content.contains(
+        "child.layout(childLeft, rowTop, childLeft + child.getMeasuredWidth(), rowTop + child.getMeasuredHeight());"
+    ));
+}
+
+#[test]
+fn generates_non_throwing_dev_json_stringify_runtime() {
+    let output = generate_android(
+        &[route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let dev = dev_java_source(&output);
+
+    assert!(dev.content.contains(
+        "if (\"json.stringify\".equals(name)) return doweJsonString(args.get(\"value\"));"
+    ));
+    assert!(
+        dev.content
+            .contains("private String doweJsonString(Object value) {")
+    );
+    assert!(!dev.content.contains(
+        "if (\"json.stringify\".equals(name)) return doweJson(args.get(\"value\")).toString();"
+    ));
+}
+
+#[test]
+fn generates_android_box_border_for_compose_and_dev_launcher() {
+    let mut route = route();
+    route.layout_tree = ViewNode::Children;
+    route.page_tree = ViewNode::Box {
+        props: StyleProps {
+            border: Some(ResponsiveValue::scalar(BorderWidth(2))),
+            rounded: Some(ResponsiveValue::scalar(RoundedSize::Lg)),
+            ..Default::default()
+        },
+        children: vec![text("Bordered")],
+    };
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+
+    assert!(views.content.contains(
+        ".border(doweResponsive(viewportWidth, xs = 2.dp) ?: 0.dp, DoweDesign.onBackground, RoundedCornerShape(doweResponsive(viewportWidth, xs = 12.dp) ?: DoweDesign.radius))"
+    ));
+
+    let dev = dev_java_source(&output);
+
+    assert!(dev.content.contains(
+        "private GradientDrawable doweStyledBackground(int color, Integer strokeColor, Integer strokeWidth, float radius)"
+    ));
+    assert!(dev.content.contains(
+        "view0.setBackground(doweStyledBackground(Color.TRANSPARENT, DOWE_ON_BACKGROUND, doweResponsiveInt(viewportWidth, 2, null, null, null, null), doweFloat(doweResponsiveFloat(viewportWidth, 12f, null, null, null, null), DOWE_RADIUS)))"
+    ));
+    assert!(
+        dev.content
+            .contains("background.setStroke(doweDp(strokeWidth), strokeColor)")
+    );
+}
+
+#[test]
+fn preserves_explicit_rounded_values_across_android_renderers() {
+    let mut route = route();
+    route.layout_tree = ViewNode::Children;
+    route.page_tree = ViewNode::Box {
+        props: StyleProps {
+            bg: Some(ResponsiveValue::scalar(ColorToken::Primary)),
+            rounded: Some(ResponsiveValue::scalar(RoundedSize::Full)),
+            ..Default::default()
+        },
+        children: vec![ViewNode::Button {
+            props: VariantProps {
+                style: StyleProps {
+                    rounded: Some(ResponsiveValue::scalar(RoundedSize::Full)),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![text("Continue")],
+        }],
+    };
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    let dev = dev_java_source(&output);
+
+    assert!(views.content.contains(".doweRounded(doweResponsive(viewportWidth, xs = 999.dp)).doweBackground(doweResponsive(viewportWidth, xs = DoweDesign.primary))"));
+    assert!(views.content.contains(
+        "RoundedCornerShape(doweResponsive(viewportWidth, xs = 999.dp) ?: DoweDesign.radius)"
+    ));
+    assert!(dev.content.contains(
+        "doweRound(view0, doweResponsiveFloat(viewportWidth, 999f, null, null, null, null))"
+    ));
+    assert!(dev.content.contains(
+        "doweRound(view1, doweResponsiveFloat(viewportWidth, 999f, null, null, null, null))"
+    ));
+    assert!(dev.content.contains("view.setClipToOutline(true)"));
+}
+
+#[test]
+fn generates_tinted_card_shadow_for_compose() {
+    let mut route = route();
+    route.layout_tree = ViewNode::Children;
+    route.page_tree = ViewNode::Card {
+        props: VariantProps {
+            style: StyleProps {
+                shadow: Some(ResponsiveValue::scalar(ShadowSize::Lg)),
+                shadow_color: Some(ColorFamily::Primary),
+                rounded: Some(ResponsiveValue::scalar(RoundedSize::Md)),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![text("Raised")],
+    };
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains(
+        ".doweShadow(radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(doweResponsive(viewportWidth, xs = 8.dp) ?: DoweDesign.radius), color = DoweDesign.primary, alpha = 0.28f)"
+    ));
+    assert!(views.content.contains(
+        ".doweShadow(radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(doweResponsive(viewportWidth, xs = 8.dp) ?: DoweDesign.radius), color = DoweDesign.primary, alpha = 0.28f).doweRounded(doweResponsive(viewportWidth, xs = 8.dp))"
+    ));
+    assert!(views.content.contains("private fun Modifier.doweShadow("));
+    assert!(views.content.contains("dropShadow("));
+    assert!(views.content.contains("DoweDropShadow("));
+    assert!(
+        views
+            .content
+            .contains("elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)")
+    );
+    assert!(
+        !views
+            .content
+            .contains("CardDefaults.cardElevation(defaultElevation = doweResponsive")
+    );
+}
+
+#[test]
+fn generates_centered_icon_button_without_empty_android_label() {
+    let mut route = route();
+    route.layout_tree = ViewNode::Children;
+    route.page_tree = ViewNode::Button {
+        props: VariantProps {
+            style: StyleProps {
+                sizing: SizingProps {
+                    w: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(20),
+                    ))),
+                    h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(20),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            icon_start: Some(solar_control_icon("settings").expect("settings icon")),
+            icon_only: true,
+            label: Some("Open settings".to_string()),
+            ..Default::default()
+        },
+        children: Vec::new(),
+    };
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let dev = dev_java_source(&output);
+
+    assert!(dev.content.contains("setGravity(Gravity.CENTER)"));
+    assert!(
+        dev.content
+            .contains("setContentDescription(\"Open settings\")")
+    );
+    assert!(!dev.content.contains("doweText(\"\""));
+}
+
+#[test]
+fn preserves_static_button_variants_with_reactive_scheme_on_android() {
+    let mut route = route();
+    route.layout_tree = ViewNode::Children;
+    route.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "scheme01".to_string(),
+            name: "schemeChoice".to_string(),
+            storage_key: "schemeChoice".to_string(),
+            scope: dowe_components::ViewSignalScope::Page,
+            storage: dowe_components::ViewSignalStorage::None,
+            initial: ViewSignalValue::String("primary".to_string()),
+            schema: None,
+        }],
+        actions: Vec::new(),
+        children: [
+            ComponentVariant::Solid,
+            ComponentVariant::Soft,
+            ComponentVariant::Outlined,
+            ComponentVariant::Ghost,
+        ]
+        .into_iter()
+        .map(|variant| ViewNode::Button {
+            props: VariantProps {
+                variant: Some(variant),
+                reactive: ReactiveVariantProps {
+                    scheme: Some("schemeChoice".to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![text("Action")],
+        })
+        .collect(),
+    };
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+
+    assert!(generated.contains("doweButtonContainer(\"solid\", state.text("));
+    assert!(generated.contains("doweButtonContainer(\"soft\", state.text("));
+    assert!(generated.contains("doweButtonContainer(\"outlined\", state.text("));
+    assert!(generated.contains("doweButtonContainer(\"ghost\", state.text("));
+    assert!(generated.contains("doweButtonContainer(\"soft\", doweTextValue("));
+    assert!(generated.contains("doweButtonContainer(\"outlined\", doweTextValue("));
+    assert!(generated.contains("if (\"outlined\" == \"outlined\") BorderStroke"));
+    assert!(generated.contains("\"outlined\".equals(\"outlined\")"));
+}
+
+#[test]
+fn generates_diffuse_semantic_shadows_for_portable_components() {
+    let shadow_style = |size, color| StyleProps {
+        shadow: Some(ResponsiveValue::scalar(size)),
+        shadow_color: Some(color),
+        ..Default::default()
+    };
+    let mut route = route();
+    route.layout_tree = ViewNode::Children;
+    route.page_tree = ViewNode::Box {
+        props: StyleProps::default(),
+        children: vec![
+            ViewNode::Card {
+                props: VariantProps {
+                    style: StyleProps {
+                        rounded: Some(ResponsiveValue::scalar(RoundedSize::Md)),
+                        ..shadow_style(ShadowSize::Md, ColorFamily::Primary)
+                    },
+                    ..Default::default()
+                },
+                children: vec![text("Card")],
+            },
+            ViewNode::Button {
+                props: VariantProps {
+                    style: shadow_style(ShadowSize::Sm, ColorFamily::Secondary),
+                    ..Default::default()
+                },
+                children: vec![text("Button")],
+            },
+            ViewNode::Avatar {
+                props: AvatarProps {
+                    style: VariantProps {
+                        style: shadow_style(ShadowSize::Lg, ColorFamily::Tertiary),
+                        ..Default::default()
+                    },
+                    src: None,
+                    name: Some("Dowe".to_string()),
+                    alt: "Dowe".to_string(),
+                    size: ButtonSize::Md,
+                    status: None,
+                    bordered: false,
+                },
+                icon: None,
+            },
+            ViewNode::Chip {
+                props: ChipProps {
+                    style: VariantProps {
+                        style: shadow_style(ShadowSize::Xs, ColorFamily::Success),
+                        ..Default::default()
+                    },
+                    on_close: None,
+                },
+                value: "Chip".to_string(),
+                start: None,
+                end: None,
+            },
+            ViewNode::Input {
+                props: VariantProps {
+                    style: StyleProps {
+                        sizing: SizingProps {
+                            w: Some(ResponsiveValue::scalar(SizeValue::Full)),
+                            ..Default::default()
+                        },
+                        rounded: Some(ResponsiveValue::scalar(RoundedSize::Lg)),
+                        ..shadow_style(ShadowSize::Md, ColorFamily::Info)
+                    },
+                    variant: Some(ComponentVariant::Outlined),
+                    color: Some(ColorFamily::Info),
+                    label: Some("Workspace".to_string()),
+                    placeholder: Some("dowe-app".to_string()),
+                    ..Default::default()
+                },
+            },
+        ],
+    };
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    for expected in [
+        "radius = doweResponsive(viewportWidth, xs = 24.dp) ?: 0.dp, shape = RoundedCornerShape(doweResponsive(viewportWidth, xs = 8.dp) ?: DoweDesign.radius), color = DoweDesign.primary, alpha = 0.28f",
+        "radius = doweResponsive(viewportWidth, xs = 12.dp) ?: 0.dp, shape = RoundedCornerShape(DoweDesign.radius), color = DoweDesign.secondary, alpha = 0.28f",
+        "radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(999.dp), color = DoweDesign.tertiary, alpha = 0.28f",
+        "radius = doweResponsive(viewportWidth, xs = 2.dp) ?: 0.dp, shape = RoundedCornerShape(null ?: DoweDesign.radius), color = DoweDesign.success, alpha = 0.28f",
+        "radius = doweResponsive(viewportWidth, xs = 24.dp) ?: 0.dp, shape = RoundedCornerShape(doweResponsive(viewportWidth, xs = 12.dp) ?: DoweDesign.radius), color = DoweDesign.info, alpha = 0.28f",
+    ] {
+        assert!(views.content.contains(expected), "missing {expected}");
+    }
+    assert!(views.content.contains("radius <= 2.dp -> 0.12f"));
+    assert!(views.content.contains("radius <= 12.dp -> 0.14f"));
+    assert!(views.content.contains("radius <= 24.dp -> 0.16f"));
+    assert!(views.content.contains("radius <= 44.dp -> 0.18f"));
+    assert!(views.content.contains("else -> 0.22f"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("BlurMaskFilter.Blur.NORMAL"));
+    assert!(dev.content.contains("canvas.clipOutPath(surface)"));
+    assert!(dev.content.contains("doweDrawChildShadows(this, canvas)"));
+    assert!(dev.content.contains("view.setStateListAnimator(null);"));
+    assert!(!dev.content.contains("setOutlineAmbientShadowColor"));
+    assert!(!dev.content.contains("setOutlineSpotShadowColor"));
+    for expected in [
+        "doweResponsiveInt(viewportWidth, 24, null, null, null, null), DOWE_PRIMARY, doweFloat(doweResponsiveFloat(viewportWidth, 8f, null, null, null, null), DOWE_RADIUS), 0.28f",
+        "doweResponsiveInt(viewportWidth, 12, null, null, null, null), DOWE_SECONDARY, DOWE_RADIUS, 0.28f",
+        "doweResponsiveInt(viewportWidth, 44, null, null, null, null), DOWE_TERTIARY, 999f, 0.28f",
+        "doweResponsiveInt(viewportWidth, 2, null, null, null, null), DOWE_SUCCESS, DOWE_RADIUS, 0.28f",
+    ] {
+        assert!(dev.content.contains(expected), "missing {expected}");
+    }
+    let field_line = dev
+        .content
+        .lines()
+        .find(|line| line.contains(".setHint(\"dowe-app\")"))
+        .expect("input field");
+    let field = field_line
+        .trim_start()
+        .split('.')
+        .next()
+        .expect("field variable");
+    assert!(dev.content.contains(&format!(
+        "doweShadow({field}, doweResponsiveInt(viewportWidth, 24, null, null, null, null), DOWE_INFO, doweFloat(doweResponsiveFloat(viewportWidth, 12f, null, null, null, null), DOWE_RADIUS), 0.28f);"
+    )));
+    assert!(dev.content.contains(&format!(
+        "doweRound({field}, doweResponsiveFloat(viewportWidth, 12f, null, null, null, null));"
+    )));
+}
+
+#[test]
+fn reuses_identical_dev_layout_methods_across_routes() {
+    let first = route();
+    let mut second = route();
+    second.id = "signup".to_string();
+    second.route_path = "/signup".to_string();
+    second.page_tree = ViewNode::Box {
+        props: Default::default(),
+        children: vec![text("Signup")],
+    };
+
+    let output = generate_android(
+        &[first, second],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let dev = dev_java_source(&output);
+
+    assert_eq!(dev.content.matches("final class DoweDevLayout0").count(), 1);
+    assert_eq!(
+        dev.content
+            .matches("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));")
+            .count(),
+        2
+    );
+}
+
+#[test]
+fn omits_absent_dev_padding_branches() {
+    let props = StyleProps {
+        spacing: SpacingProps {
+            px: Some(responsive_scale(&[(Breakpoint::Xs, 8)])),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut output = String::new();
+
+    super::apply_dev_android_style(&props, "view0", true, &mut output);
+
+    assert!(output.contains("Integer view0PaddingX = doweResponsiveInt"));
+    assert!(!output.contains("Integer view0Padding ="));
+    assert!(!output.contains("Integer view0PaddingY ="));
+    assert!(!output.contains("Integer view0PaddingLeft ="));
+    assert!(!output.contains("Integer view0PaddingRight ="));
+    assert!(!output.contains("Integer view0PaddingTop ="));
+    assert!(!output.contains("Integer view0PaddingBottom ="));
+}
+
+#[test]
+fn keeps_layouts_composed_when_page_reads_layout_state() {
+    let mut contextual = route();
+    contextual.layout_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "layout.message".to_string(),
+            name: "message".to_string(),
+            storage_key: "message".to_string(),
+            scope: dowe_components::ViewSignalScope::Page,
+            storage: dowe_components::ViewSignalStorage::None,
+            initial: ViewSignalValue::String("Layout message".to_string()),
+            schema: None,
+        }],
+        actions: Vec::new(),
+        children: vec![ViewNode::Box {
+            props: Default::default(),
+            children: vec![ViewNode::Children],
+        }],
+    };
+    contextual.page_tree = ViewNode::Text {
+        props: Default::default(),
+        value: "{message}".to_string(),
+    };
+
+    let output = generate_android(
+        &[contextual],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let dev = dev_java_source(&output);
+
+    assert!(!dev.content.contains("final class DoweDevLayout0"));
+    assert!(!dev.content.contains("private static void renderPage("));
+    assert!(
+        dev.content
+            .contains("doweTextValue(\"layout.message\", null)")
+    );
+}
+
+#[test]
+fn reuses_stateful_dev_layout_when_page_does_not_read_layout_state() {
+    let mut contextual = route();
+    contextual.layout_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "layout.open".to_string(),
+            name: "open".to_string(),
+            storage_key: "open".to_string(),
+            scope: dowe_components::ViewSignalScope::Page,
+            storage: dowe_components::ViewSignalStorage::None,
+            initial: ViewSignalValue::Bool(false),
+            schema: None,
+        }],
+        actions: Vec::new(),
+        children: vec![ViewNode::Box {
+            props: Default::default(),
+            children: vec![ViewNode::Children],
+        }],
+    };
+    contextual.page_tree = ViewNode::Text {
+        props: Default::default(),
+        value: "Login".to_string(),
+    };
+
+    let output = generate_android(
+        &[contextual],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let dev = dev_java_source(&output);
+
+    assert!(dev.content.contains("final class DoweDevLayout0"));
+    assert!(dev.content.contains("private static void renderPage("));
+    assert!(
+        dev.content
+            .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));")
+    );
+    assert!(
+        dev.content
+            .contains("dowePutInitial(\"layout.open\", false);")
+    );
+}
+
+#[test]
+fn reuses_stateful_scaffold_drawer_layout_when_page_mentions_binding_literals() {
+    let contextual = stateful_scaffold_drawer_layout_route(false);
+
+    let output = generate_android(
+        &[contextual],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let dev = dev_java_source(&output);
+
+    assert!(dev.content.contains("final class DoweDevLayout0"));
+    assert!(dev.content.contains("private static void renderPage("));
+    assert!(
+        dev.content
+            .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));")
+    );
+    assert!(
+        dev.content
+            .contains("dowePutInitial(\"layout.drawer.open\", false);")
+    );
+    assert!(
+        dev.content
+            .contains("dowePutInitial(\"layout.drawer.visible\", true);")
+    );
+    assert!(
+        dev.content
+            .contains("doweActions.put(\"layout.drawer.open.action\", DoweAction.assign(\"layout.drawer.open\", \"layout.drawer.visible\"));")
+    );
+    let generated = output
+        .files
+        .iter()
+        .map(|file| file.content.as_str())
+        .collect::<String>();
+    assert!(generated.contains("Box(modifier = Modifier.fillMaxSize())"));
+    assert!(generated.contains(
+        "Row(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(scrollState))"
+    ));
+
+    let boxed = stateful_scaffold_drawer_layout_route(true);
+    let boxed_output = generate_android(
+        &[boxed],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let boxed_generated = boxed_output
+        .files
+        .iter()
+        .map(|file| file.content.as_str())
+        .collect::<String>();
+    assert!(boxed_generated.contains(
+        "Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.TopCenter)"
+    ));
+    assert!(boxed_generated.contains(
+        "Row(modifier = Modifier.widthIn(max = 1536.dp).fillMaxSize().verticalScroll(scrollState))"
+    ));
+}
+
+#[test]
+fn generates_compose_and_dev_section_backgrounds() {
+    let output = generate_android(
+        &[section_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+
+    assert!(
+        views
+            .content
+            .contains("private enum class DoweSectionBackground")
+    );
+    assert!(views.content.contains("DoweSectionBackgroundBox("));
+    assert!(views.content.contains(
+        "Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter)"
+    ));
+    assert!(
+        views.content.contains(
+            "Column(modifier = Modifier.widthIn(max = 1536.dp).fillMaxWidth().dowePadding"
+        )
+    );
+    assert!(views.content.contains("Column(modifier = Modifier.dowePadding(all = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp)"));
+    assert!(views.content.contains("background = doweResponsive(viewportWidth, xs = DoweSectionBackground.Aurora, md = DoweSectionBackground.Ocean)"));
+    assert!(views.content.contains("Brush.linearGradient(listOf(DoweDesign.softPrimary, DoweDesign.softSecondary, DoweDesign.softTertiary))"));
+    assert!(views.content.contains("DoweCoverBox("));
+    assert!(views.content.contains("https://example.com/hero.jpg"));
+    assert!(
+        views
+            .content
+            .contains("DoweOverlay.Solid(Color.Black.copy(alpha = 0.35f))")
+    );
+
+    let dev = dev_java_source(&output);
+    assert!(
+        dev.content
+            .contains("private GradientDrawable doweSectionBackground(String value)")
+    );
+    assert!(
+        dev.content
+            .contains("String view1SectionBackground = doweResponsiveString(viewportWidth, \"aurora\", null, \"ocean\", null, null)")
+    );
+    assert!(
+        dev.content
+            .contains("view1.setBackground(doweSectionBackground(view1SectionBackground));")
+    );
+    assert!(dev.content.contains("doweBoxedContainer(1536)"));
+}
+
+#[test]
+fn generates_android_app_metadata() {
+    let output = generate_android_with_app_and_translations(
+        &[route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+        &TranslationCatalog::default(),
+        "Clinic Desk",
+        "com.example.clinic",
+    );
+    let gradle = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("app/build.gradle.kts"))
+        .expect("gradle");
+    let app_manifest = output
+        .files
+        .iter()
+        .find(|file| {
+            file.relative_path
+                .ends_with("app/src/main/AndroidManifest.xml")
+        })
+        .expect("app manifest");
+    let dev_manifest = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("dev/AndroidManifest.xml"))
+        .expect("dev manifest");
+    let dev = dev_java_source(&output);
+
+    assert!(
+        gradle
+            .content
+            .contains(r#"applicationId = "com.example.clinic""#)
+    );
+    assert!(
+        app_manifest
+            .content
+            .contains(r#"android:label="Clinic Desk""#)
+    );
+    assert!(
+        dev_manifest
+            .content
+            .contains(r#"package="com.example.clinic""#)
+    );
+    assert!(
+        dev_manifest
+            .content
+            .contains(r#"android:label="Clinic Desk""#)
+    );
+    assert!(dev.content.contains("import com.example.clinic.R;"));
+}
+
+fn stateful_scaffold_drawer_layout_route(boxed: bool) -> ViewRoute {
+    ViewRoute {
+        id: "login".to_string(),
+        route_path: "/login".to_string(),
+        layout_tree: ViewNode::Scope {
+            constants: Vec::new(),
+            signals: vec![
+                ViewSignal {
+                    id: "layout.drawer.open".to_string(),
+                    name: "drawerOpen".to_string(),
+                    storage_key: "drawerOpen".to_string(),
+                    scope: dowe_components::ViewSignalScope::Page,
+                    storage: dowe_components::ViewSignalStorage::None,
+                    initial: ViewSignalValue::Bool(false),
+                    schema: None,
+                },
+                ViewSignal {
+                    id: "layout.drawer.visible".to_string(),
+                    name: "drawerVisible".to_string(),
+                    storage_key: "drawerVisible".to_string(),
+                    scope: dowe_components::ViewSignalScope::Page,
+                    storage: dowe_components::ViewSignalStorage::None,
+                    initial: ViewSignalValue::Bool(true),
+                    schema: None,
+                },
+            ],
+            actions: vec![ViewAction {
+                id: "layout.drawer.open.action".to_string(),
+                name: "openDrawer".to_string(),
+                params: Vec::new(),
+                return_type: None,
+                kind: ViewActionKind::Assign(ViewAssignAction {
+                    target: "drawerOpen".to_string(),
+                    source: "drawerVisible".to_string(),
+                    literal: None,
+                    call: None,
+                }),
+            }],
+            children: vec![ViewNode::Scaffold {
+                props: ScaffoldProps {
+                    boxed,
+                    ..Default::default()
+                },
+                app_bar: vec![ViewNode::AppBar {
+                    props: BarProps {
+                        position: BarPosition::Fixed,
+                        ..bar_props(false)
+                    },
+                    top: Vec::new(),
+                    start: vec![ViewNode::Button {
+                        props: VariantProps {
+                            element: ElementProps {
+                                on_click: Some("openDrawer".to_string()),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        children: vec![text("Menu")],
+                    }],
+                    center: vec![text("Docs")],
+                    end: Vec::new(),
+                    bottom: Vec::new(),
+                }],
+                start: vec![ViewNode::Sidebar {
+                    props: SidebarProps {
+                        style: VariantProps::default(),
+                    },
+                    header: Vec::new(),
+                    body: vec![ViewNode::SideNav {
+                        props: SideNavProps {
+                            style: VariantProps::default(),
+                            size: SideNavSize::Sm,
+                            wide: true,
+                            reactive_wide: None,
+                        },
+                        items: vec![SideNavItem::Item(SideNavItemProps {
+                            label: "Overview".to_string(),
+                            i18n: None,
+                            description: None,
+                            description_i18n: None,
+                            status: None,
+                            status_i18n: None,
+                            icon: None,
+                            on_click: None,
+                            navigation: None,
+                        })],
+                    }],
+                    footer: Vec::new(),
+                }],
+                main: vec![
+                    ViewNode::Drawer {
+                        props: DrawerProps {
+                            style: VariantProps::default(),
+                            open: "drawerOpen".to_string(),
+                            position: DrawerPosition::Start,
+                            disable_overlay_close: false,
+                            hide_close_button: false,
+                        },
+                        header: Vec::new(),
+                        body: vec![ViewNode::SideNav {
+                            props: SideNavProps {
+                                style: VariantProps::default(),
+                                size: SideNavSize::Sm,
+                                wide: true,
+                                reactive_wide: None,
+                            },
+                            items: vec![SideNavItem::Item(SideNavItemProps {
+                                label: "Overview".to_string(),
+                                i18n: None,
+                                description: None,
+                                description_i18n: None,
+                                status: None,
+                                status_i18n: None,
+                                icon: None,
+                                on_click: None,
+                                navigation: None,
+                            })],
+                        }],
+                        footer: Vec::new(),
+                    },
+                    ViewNode::Children,
+                ],
+                end: Vec::new(),
+                bottom_bar: Vec::new(),
+                overlays: Vec::new(),
+            }],
+        },
+        page_tree: ViewNode::RichText {
+            props: TextProps::default(),
+            marks: vec![RichTextMark {
+                text: "drawerOpen openDrawer".to_string(),
+                style: RichTextMarkStyle::Mark,
+                color: ColorFamily::Primary,
+            }],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
+#[test]
+fn generates_intrinsic_brand_navigation_without_button_chrome() {
+    let mut brand_route = route();
+    brand_route.layout_tree = ViewNode::Children;
+    brand_route.page_tree = ViewNode::Brand {
+        props: BrandProps {
+            style: StyleProps {
+                sizing: SizingProps {
+                    w: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(64),
+                    ))),
+                    h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(16),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            navigation: Some(NavigationAction::Internal {
+                path: "/".to_string(),
+                fragment: None,
+                operation: NavigationOperation::Push,
+            }),
+            label: Some("Dowe home".to_string()),
+        },
+        children: vec![text("Dowe")],
+    };
+    let output = generate_android(
+        &[brand_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let pages = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("pages");
+    let dev = dev_java_source(&output);
+
+    assert!(pages.content.contains("Row(modifier = Modifier"));
+    assert!(
+        pages
+            .content
+            .contains(".clickable(onClick = { navigate(\"push\", \"/\", null) })")
+    );
+    assert!(
+        pages
+            .content
+            .contains(".semantics { contentDescription = \"Dowe home\" }")
+    );
+    assert!(pages.content.contains("DoweSize.Fixed(128.dp)"));
+    assert!(pages.content.contains("DoweSize.Fixed(32.dp)"));
+    assert!(!pages.content.contains("Button(modifier ="));
+    assert!(dev.content.contains("doweContainer(true)"));
+    assert!(dev.content.contains("setContentDescription(\"Dowe home\")"));
+    assert!(
+        dev.content
+            .contains("setOnClickListener(v -> doweNavigate(\"push\", \"/\", null))")
+    );
+}

@@ -1,0 +1,15 @@
+import AppBrand from "@/views/components/brand"
+
+layout AppLayout
+  Scaffold
+    appBar
+      AppBar
+        start
+          AppBrand
+    start
+      Sidebar
+        body
+          SideNav
+            item label:"Journal" href:"/"
+    main
+      children

@@ -1,0 +1,5 @@
+.dowe
+target
+.DS_Store
+.env
+*.af~lock~

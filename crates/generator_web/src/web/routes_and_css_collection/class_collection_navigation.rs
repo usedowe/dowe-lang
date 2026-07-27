@@ -1,0 +1,132 @@
+fn collect_navigation_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
+    match node {
+        ViewNode::AppBar {
+            props,
+            start,
+            center,
+            end,
+            ..
+        } => {
+            collect_bar_classes("appbar", props, start, center, end, classes);
+        }
+        ViewNode::Footer {
+            props,
+            start,
+            center,
+            end,
+            ..
+        } => {
+            collect_bar_classes("footer", props, start, center, end, classes);
+        }
+        ViewNode::BottomBar { props, tabs } => {
+            classes.extend(bar_classes("bottombar", props));
+            for tab in tabs {
+                classes.extend(svg_classes(&tab.icon.props.style));
+            }
+        }
+        ViewNode::SideNav { props, items } => {
+            classes.extend(side_nav_classes("sidenav", props));
+            collect_side_nav_icon_classes(items, classes);
+        }
+        ViewNode::RailNav { props, items } => {
+            classes.extend(rail_nav_classes(props));
+            classes.insert("railnav-item".to_string());
+            classes.insert("railnav-icon".to_string());
+            classes.insert("railnav-label".to_string());
+            classes.insert("railnav-divider".to_string());
+            if !props.show_labels {
+                classes.insert("tooltip".to_string());
+                classes.insert("railnav-tooltip".to_string());
+                classes.insert("tooltip-popover".to_string());
+                classes.insert("tooltip-arrow".to_string());
+            }
+            collect_rail_nav_icon_classes(items, classes);
+        }
+        ViewNode::Sidebar {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            classes.extend(sidebar_classes(props));
+            classes.insert("sidebar-header".to_string());
+            classes.insert("sidebar-body".to_string());
+            classes.insert("sidebar-footer".to_string());
+            for child in header.iter().chain(body).chain(footer) {
+                collect_classes(child, classes);
+            }
+        }
+        ViewNode::NavMenu { props, items } => {
+            classes.extend(nav_menu_classes(props));
+            classes.insert("navmenu-item".to_string());
+            classes.insert("navmenu-label".to_string());
+            classes.insert("navmenu-icon".to_string());
+            classes.insert("navmenu-arrow".to_string());
+            classes.insert("navmenu-popover".to_string());
+            classes.insert("navmenu-popover-content".to_string());
+            classes.insert("navmenu-submenu-item".to_string());
+            classes.insert("navmenu-submenu-icon".to_string());
+            classes.insert("navmenu-submenu-content".to_string());
+            classes.insert("navmenu-submenu-label".to_string());
+            classes.insert("navmenu-submenu-description".to_string());
+            collect_nav_menu_classes(items, classes);
+        }
+        ViewNode::Scaffold {
+            props,
+            app_bar,
+            start,
+            main,
+            end,
+            bottom_bar,
+            overlays,
+        } => {
+            classes.extend(scaffold_classes(props));
+            classes.insert("scaffold-body".to_string());
+            classes.insert("scaffold-main".to_string());
+            classes.insert("scaffold-start".to_string());
+            classes.insert("scaffold-end".to_string());
+            classes.insert("scaffold-content".to_string());
+            classes.insert("scaffold-overlays".to_string());
+            for child in app_bar
+                .iter()
+                .chain(start)
+                .chain(main)
+                .chain(end)
+                .chain(bottom_bar)
+                .chain(overlays)
+            {
+                collect_classes(child, classes);
+            }
+        }
+        ViewNode::Tabs { props, tabs } => {
+            classes.extend(tabs_classes(props));
+            classes.extend(tabs_list_classes(props));
+            classes.insert("tab".to_string());
+            classes.insert("tabs-label".to_string());
+            classes.insert("tabs-wrapper".to_string());
+            classes.insert("tabs-content".to_string());
+            for tab in tabs {
+                for child in &tab.children {
+                    collect_classes(child, classes);
+                }
+            }
+        }
+        ViewNode::Drawer {
+            props,
+            header,
+            body,
+            footer,
+        } => {
+            classes.extend(drawer_panel_classes(props));
+            classes.extend(drawer_classes(props));
+            classes.insert("drawer-header".to_string());
+            classes.insert("drawer-body".to_string());
+            classes.insert("drawer-footer".to_string());
+            for child in header.iter().chain(body).chain(footer) {
+                collect_classes(child, classes);
+            }
+        }
+        ViewNode::Children => {}
+        _ => unreachable!(),
+    }
+}

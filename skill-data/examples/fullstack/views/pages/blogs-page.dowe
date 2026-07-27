@@ -1,0 +1,47 @@
+import Blog from "@/views/types/blog"
+
+page BlogsPage
+  signal blogs type:Blog[] value:[]
+  signal form value:{ title:"" content:"" }
+
+  fn loadBlogs
+    request result method:"GET" route:"/api/blogs"
+    if result.ok
+      set blogs value:result.data
+    else
+      toast value:{ type:"error" title:"Error" message:"Could not load the journal." visible:true }
+
+  fn createBlog
+    request result method:"POST" route:"/api/blogs" body:form
+    if result.ok
+      set blogs value:result.data
+      reset form
+      toast value:{ type:"success" title:"Published" message:"Blog created." visible:true }
+    else
+      toast value:{ type:"error" title:"Error" message:"Could not create the blog." visible:true }
+
+  Section
+    Grid columns:1 gap:4
+      Title
+        "Journal"
+      Text
+        "Recent writing from the team."
+      Button onClick:loadBlogs
+        "Refresh"
+
+  Section
+    Grid columns:{ xs:1 md:2 } gap:4
+      Card
+        Grid columns:1 gap:3
+          Input bind:form.title label:"Title"
+          Textarea bind:form.content label:"Content"
+          Button onClick:createBlog
+            "Publish"
+      Grid columns:1 gap:3
+        each in:blogs as:blog key:blog.id
+          Card
+            Grid columns:1 gap:2
+              Title
+                "{blog.title}"
+              Text
+                "{blog.content}"

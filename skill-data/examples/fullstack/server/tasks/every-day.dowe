@@ -1,0 +1,6 @@
+import listBlogsService from "@/server/services/blogs-service"
+
+fn everyDay
+  listBlogsService result
+  log "daily blog refresh complete"
+  return value:result

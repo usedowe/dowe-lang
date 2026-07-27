@@ -1,0 +1,15 @@
+[package]
+name = "dowe_components"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+dowe_stdlib = { path = "../stdlib" }
+quick-xml = "0.38"
+
+[build-dependencies]
+walkdir = "2"
+
+[lib]
+path = "src/lib.rs"

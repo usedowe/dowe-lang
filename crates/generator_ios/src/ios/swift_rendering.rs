@@ -1,0 +1,16 @@
+include!("swift_rendering/core.rs");
+include!("swift_rendering/structure_nodes.rs");
+include!("swift_rendering/form_nodes.rs");
+include!("swift_rendering/media_data_nodes.rs");
+include!("swift_rendering/rich_display_nodes.rs");
+include!("swift_rendering/text_svg_alert_nodes.rs");
+include!("swift_rendering/navigation_shell_nodes.rs");
+include!("swift_rendering/overlay_nodes.rs");
+include!("swift_rendering/drawer_rich_nodes.rs");
+include!("swift_rendering/badge_media_nodes.rs");
+include!("swift_rendering/form_action_nodes.rs");
+include!("swift_rendering/form_field_nodes.rs");
+include!("swift_rendering/overlay_helpers.rs");
+include!("swift_rendering/navigation_menu_helpers.rs");
+include!("swift_rendering/navigation_shell_helpers.rs");
+include!("swift_rendering/value_helpers.rs");

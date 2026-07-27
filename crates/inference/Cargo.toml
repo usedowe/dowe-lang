@@ -1,0 +1,16 @@
+[package]
+name = "dowe_inference"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[features]
+default = []
+candle = ["dep:candle-core", "dep:candle-onnx"]
+
+[dependencies]
+candle-core = { workspace = true, optional = true }
+candle-onnx = { workspace = true, optional = true }
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,10 @@
+import { appDb, appCache } from "@/server/config/data"
+
+fn listBlogsRepository
+  query blogs db:appDb.list table:"blogs"
+  return value:blogs
+
+fn createBlogRepository params:{ title:string content:string }
+  query created db:appDb.insert table:"blogs" value:{ title:args.title content:args.content }
+  kv cached conn:appCache.set key:"blogs:last-created" value:created
+  return value:created

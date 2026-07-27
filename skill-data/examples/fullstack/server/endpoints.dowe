@@ -1,0 +1,7 @@
+import { listBlogs, createBlog } from "@/server/handlers/blogs-handler"
+import requireBearer from "@/server/middlewares/auth"
+
+endpoints apiRoutes
+  group path:"/api/blogs"
+    get path:"" handler:listBlogs
+    post path:"" handler:createBlog middleware:[requireBearer]

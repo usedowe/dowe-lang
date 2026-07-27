@@ -1,0 +1,6 @@
+middleware requireBearer params:{}
+  bearer token value:req.header.Authorization
+  jwt verified secret:env.JWT_SECRET algorithm:"HS256" token:token
+  if verified.valid
+    next
+  return status:401 json:{ ok:false error:"Unauthorized" }

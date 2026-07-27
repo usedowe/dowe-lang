@@ -1,0 +1,12 @@
+[package]
+name = "dowe_generator_web"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+dowe_components = { path = "../components" }
+dowe_minifier = { path = "../minifier" }
+
+[lib]
+path = "src/lib.rs"

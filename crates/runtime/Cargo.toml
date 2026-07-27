@@ -1,0 +1,39 @@
+[package]
+name = "dowe_runtime"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[features]
+default = []
+candle = ["dowe_inference/candle"]
+
+[dependencies]
+axum.workspace = true
+axum-server.workspace = true
+bytes.workspace = true
+dowe_components = { path = "../components" }
+dowe_compiler = { path = "../compiler" }
+dowe_crypto = { path = "../crypto" }
+dowe_cache = { path = "../cache" }
+dowe_inference = { path = "../inference" }
+dowe_id = { path = "../id" }
+dowe_spawn = { path = "../spawn" }
+dowe_stdlib = { path = "../stdlib" }
+dowe_database = { path = "../database" }
+dowe_vector = { path = "../vector" }
+futures-util.workspace = true
+reqwest.workspace = true
+rcgen.workspace = true
+rustls-acme.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+tempfile = "3.23.0"
+
+[dev-dependencies]
+tokio-tungstenite.workspace = true
+
+[lib]
+path = "src/lib.rs"

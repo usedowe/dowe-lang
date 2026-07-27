@@ -1,0 +1,22 @@
+[package]
+name = "dowe_agent"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+base64.workspace = true
+dowe_agent_harness = { path = "../agent_harness" }
+dowe_codegraph = { path = "../codegraph" }
+dowe_runtime = { path = "../runtime" }
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile = "3.23.0"
+
+[dev-dependencies]
+dowe_compiler = { path = "../compiler" }
+dowe_components = { path = "../components" }
+
+[lib]
+path = "src/lib.rs"

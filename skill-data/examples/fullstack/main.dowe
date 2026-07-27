@@ -1,0 +1,11 @@
+import apiRoutes from "@/server/endpoints"
+import everyDay from "@/server/tasks/every-day"
+import viewRoutes from "@/views/routes/view"
+
+main
+  app name:"Dowe Journal" bundle:"com.example.dowejournal"
+  views:viewRoutes
+  server port:8080
+    endpoints:apiRoutes
+    init
+      cron everyDay schedule:"0 3 * * *" args:{}

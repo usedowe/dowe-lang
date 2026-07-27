@@ -1,0 +1,3 @@
+fn fetchProviderStatus
+  http upstream method:"get" base:env.PROVIDER_BASE_URL path:"/health" mode:"json"
+  return value:{ ok:upstream.ok data:upstream.json }

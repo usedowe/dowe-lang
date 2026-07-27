@@ -1,0 +1,11 @@
+import { listBlogsRepository, createBlogRepository } from "@/server/repositories/blogs-repository"
+import normalizeTitle from "@/server/utils/normalize-title"
+
+fn listBlogsService
+  listBlogsRepository blogs
+  return value:{ ok:true data:blogs }
+
+fn createBlogService params:{ title:string content:string }
+  normalizeTitle title args:{ value:args.title }
+  createBlogRepository created args:{ title:title content:args.content }
+  return value:{ ok:true data:created }
