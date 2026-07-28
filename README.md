@@ -7,11 +7,17 @@
 **AI can generate code. Dowe generates the system.**
 
 [![Status](https://img.shields.io/badge/status-early_access-6BC670?style=flat-square)](https://dowe.dev)
-![Version](https://img.shields.io/badge/version-1.0.5-1F3A5F?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.7-1F3A5F?style=flat-square)
 ![Toolchain](https://img.shields.io/badge/toolchain-Rust-B7410E?style=flat-square&logo=rust&logoColor=white)
 ![Source](https://img.shields.io/badge/source-.dowe-6C5CE7?style=flat-square)
 
 [Website](https://dowe.dev) · [Quick start](#quick-start) · [Architecture](#how-dowe-works) · [Development](#developing-dowe)
+
+<a href="https://cdn.dowe.dev/dowe.mp4">
+  <img src=".github/assets/dowe-demo.jpg" alt="Dowe running the same application on web, Android, and iOS" width="900">
+</a>
+
+[**▶ Watch the Dowe demo**](https://cdn.dowe.dev/dowe.mp4)
 
 </div>
 

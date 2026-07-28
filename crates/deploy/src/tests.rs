@@ -57,7 +57,10 @@ fn generates_distroless_docker_context_without_local_dotenv() {
     assert!(!docker.output_dir.join("app/env.dowe").exists());
     assert!(!docker.output_dir.join("app/.env").exists());
     assert!(dockerfile.contains("gcr.io/distroless/cc-debian12:nonroot"));
-    assert!(dockerfile.contains("v1.0.5/linux-amd64.tar.gz"));
+    assert!(dockerfile.contains(&format!(
+        "v{}/linux-amd64.tar.gz",
+        env!("CARGO_PKG_VERSION")
+    )));
     assert!(dockerfile.contains("tar -xzf /dowe.tar.gz"));
     assert!(dockerfile.contains("COPY --from=dowe-runtime /dowe /usr/local/bin/dowe"));
     assert!(dockerfile.contains(
