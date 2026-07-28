@@ -1,6 +1,7 @@
 include!("dev_shell/font_support.rs");
 include!("dev_shell/hot_host.rs");
 include!("dev_shell/activity.rs");
+include!("dev_shell/shards.rs");
 include!("dev_shell/phone_flags.rs");
 include!("dev_shell/activity_header.rs");
 include!("dev_shell/activity_navigation.rs");

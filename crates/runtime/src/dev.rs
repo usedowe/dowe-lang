@@ -692,14 +692,20 @@ async fn start_external_targets(
                         if !pending.is_empty() {
                             loading_status.update(loading_status_message(pending.iter().copied()));
                         }
-                        if first_error.is_none() {
-                            first_error = Some(error);
-                        }
+                        record_external_startup_failure(
+                            &mut first_error,
+                            &mut cancelling,
+                            error,
+                            cancel_active_external_commands,
+                        );
                     }
                     Err(error) => {
-                        if first_error.is_none() {
-                            first_error = Some(RuntimeError::from(error));
-                        }
+                        record_external_startup_failure(
+                            &mut first_error,
+                            &mut cancelling,
+                            RuntimeError::from(error),
+                            cancel_active_external_commands,
+                        );
                     }
                 }
             }
@@ -715,6 +721,21 @@ async fn start_external_targets(
         Err((error, startup))
     } else {
         Ok(startup)
+    }
+}
+
+fn record_external_startup_failure(
+    first_error: &mut Option<RuntimeError>,
+    cancelling: &mut bool,
+    error: RuntimeError,
+    cancel: impl FnOnce(),
+) {
+    if first_error.is_none() {
+        *first_error = Some(error);
+    }
+    if !*cancelling {
+        cancel();
+        *cancelling = true;
     }
 }
 
@@ -902,9 +923,11 @@ mod tests {
         available_dev_targets_for_project, default_dev_targets, default_dev_targets_for_project,
         dev_target_selection_path, load_dev_target_preferences,
         load_dev_target_preferences_for_project, load_dev_target_selection, loading_status_message,
-        save_dev_target_preferences, save_dev_target_selection,
+        record_external_startup_failure, save_dev_target_preferences, save_dev_target_selection,
         validate_dev_target_selection_for_project,
     };
+    use crate::error::RuntimeError;
+    use std::cell::Cell;
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
@@ -1012,6 +1035,27 @@ mod tests {
         assert_eq!(
             loading_status_message([DevTarget::Android, DevTarget::Ios]),
             "Loading dev targets: Android app, iOS app"
+        );
+    }
+
+    #[test]
+    fn cancels_pending_startups_after_first_target_failure() {
+        let cancelled = Cell::new(false);
+        let mut first_error = None;
+        let mut cancelling = false;
+
+        record_external_startup_failure(
+            &mut first_error,
+            &mut cancelling,
+            RuntimeError::new("Android app failed"),
+            || cancelled.set(true),
+        );
+
+        assert!(cancelled.get());
+        assert!(cancelling);
+        assert_eq!(
+            first_error.expect("first error").to_string(),
+            "Android app failed"
         );
     }
 

@@ -213,3 +213,39 @@ fn partitions_large_icon_side_nav_layout_methods() {
     assert_eq!(layout.matches(".accept(view0);").count(), 80);
     assert!(layout.contains("static void render(DoweDevActivity runtime"));
 }
+
+#[test]
+fn partitions_large_page_route_methods() {
+    let mut large = route();
+    large.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: (0..80)
+            .map(|index| ViewNode::Section {
+                props: StyleProps::default(),
+                children: (0..12)
+                    .map(|line| text(&format!("Section {index} line {line}")))
+                    .collect(),
+            })
+            .collect(),
+    };
+
+    let output = generate_android(
+        &[large],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let modules = dev_module_files(&output);
+    let route = modules
+        .iter()
+        .find(|(name, _)| name.starts_with("DoweDevRouteLogin"))
+        .map(|(_, content)| content)
+        .expect("route module");
+
+    assert_eq!(route.matches("private static void renderPagePart").count(), 80);
+    assert_eq!(route.matches("renderPagePart").count(), 160);
+    assert!(route.contains("renderPagePart0(runtime, root);"));
+    assert!(route.contains("renderPagePart79(runtime, root);"));
+}
