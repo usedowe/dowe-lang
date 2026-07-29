@@ -7,6 +7,36 @@ fn render_compose_node_in_flow(
     default_family: FontFamily,
     context: &ComposeReactiveContext,
 ) {
+    let mut rendered = String::new();
+    render_compose_node_in_flow_body(
+        node,
+        indent,
+        &mut rendered,
+        flow,
+        inherited_font,
+        default_family,
+        context,
+    );
+    if rendered.len() > 24_000 {
+        let pad = " ".repeat(indent);
+        let part = format!("p{}", output.len());
+        output.push_str(&format!(
+            "{pad}val {part}: @Composable () -> Unit = {{\n{rendered}{pad}}}\n{pad}{part}()\n"
+        ));
+    } else {
+        output.push_str(&rendered);
+    }
+}
+
+fn render_compose_node_in_flow_body(
+    node: &ViewNode,
+    indent: usize,
+    output: &mut String,
+    flow: ComposeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &ComposeReactiveContext,
+) {
     if let Some(show) = node_element_props(node).and_then(|props| props.show.as_ref()) {
         let pad = " ".repeat(indent);
         output.push_str(&format!(
@@ -55,6 +85,7 @@ fn render_compose_node_body(
         | ViewNode::Grid { .. }
         | ViewNode::Card { .. }
         | ViewNode::Brand { .. }
+        | ViewNode::Banner { .. }
         | ViewNode::Button { .. } => {
             render_compose_flow_node(
                 node,

@@ -1254,9 +1254,20 @@ async fn production_server_serves_backend_and_web_without_dev_endpoints() {
 }
 
 #[tokio::test]
-async fn serves_static_desktop_entry_and_local_routes_from_one_origin() {
+async fn separates_views_from_the_local_desktop_server() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
+    fs::write(
+        temp.path().join("routes/view.dowe"),
+        r#"import AuthLayout from "../layouts/auth"
+import loginPage from "../pages/login"
+
+views viewRoutes
+  group path:"/" layout:AuthLayout
+    route path:"" page:loginPage
+    route path:"docs/functions" page:loginPage"#,
+    )
+    .expect("views");
     fs::write(
         temp.path().join("main.dowe"),
         r#"import viewRoutes from "@/routes/view"
@@ -1277,19 +1288,19 @@ main
         project,
         DevServerTargets {
             backend: false,
-            views: false,
+            views: true,
             desktop: true,
         },
     )
     .await
     .expect("servers");
     assert!(servers.backend_addr.is_none());
-    assert!(servers.views_addr.is_none());
+    let views = format!("http://{}", servers.views_addr.expect("views addr"));
     let desktop = format!("http://{}", servers.desktop_addr.expect("desktop addr"));
     let client = reqwest::Client::new();
 
     let html = client
-        .get(format!("{desktop}/"))
+        .get(format!("{views}/"))
         .send()
         .await
         .expect("desktop entry")
@@ -1297,8 +1308,22 @@ main
         .await
         .expect("desktop html");
     assert!(html.contains("Layout"));
-    assert!(html.contains(r#"src="router.js""#));
+    assert!(html.contains(r#"src="/router.js""#));
     assert!(html.contains(r#"src="/_dowe/dev/client.js""#));
+
+    let nested_html = client
+        .get(format!("{views}/docs/functions"))
+        .send()
+        .await
+        .expect("desktop nested route")
+        .text()
+        .await
+        .expect("desktop nested html");
+    assert!(nested_html.contains(r#"href="/design.css""#));
+    assert!(nested_html.contains(r#"src="/router.js""#));
+    assert!(nested_html.contains("/chunks/layouts/"));
+    assert!(nested_html.contains("/chunks/pages/"));
+    assert!(!nested_html.contains(r#"src="../router.js""#));
 
     let status = client
         .get(format!("{desktop}/api/status"))
@@ -1309,6 +1334,47 @@ main
         .await
         .expect("desktop status text");
     assert_eq!(status, "Desktop OK");
+
+    let desktop_entry = client
+        .get(format!("{desktop}/"))
+        .send()
+        .await
+        .expect("desktop entry");
+    assert_eq!(desktop_entry.status(), reqwest::StatusCode::NOT_FOUND);
+
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn desktop_without_a_local_server_reuses_only_the_views_listener() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    let project = compile_dev(temp.path()).expect("project");
+    assert!(project.desktop_server.is_none());
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: false,
+            views: true,
+            desktop: true,
+        },
+    )
+    .await
+    .expect("servers");
+    assert!(servers.backend_addr.is_none());
+    assert!(servers.desktop_addr.is_none());
+    let views = format!("http://{}", servers.views_addr.expect("views addr"));
+    let html = reqwest::get(format!("{views}/"))
+        .await
+        .expect("desktop entry")
+        .text()
+        .await
+        .expect("desktop html");
+
+    assert!(html.contains("Layout"));
+    assert!(html.contains("Login"));
+    assert!(html.contains(r#"src="/router.js""#));
+    assert!(html.contains(r#"src="/_dowe/dev/client.js""#));
 
     servers.shutdown().await.expect("shutdown");
 }
@@ -1338,17 +1404,17 @@ main
         project,
         DevServerTargets {
             backend: true,
-            views: false,
+            views: true,
             desktop: true,
         },
     )
     .await
     .expect("servers");
     let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
-    let desktop_origin = format!("http://{}", servers.desktop_addr.expect("desktop addr"));
+    let views_origin = format!("http://{}", servers.views_addr.expect("views addr"));
     let allowed = reqwest::Client::new()
         .request(reqwest::Method::OPTIONS, format!("{backend}/api/status"))
-        .header("Origin", desktop_origin.as_str())
+        .header("Origin", views_origin.as_str())
         .header("Access-Control-Request-Method", "GET")
         .send()
         .await
@@ -1360,7 +1426,7 @@ main
             .headers()
             .get("access-control-allow-origin")
             .and_then(|value| value.to_str().ok()),
-        Some(desktop_origin.as_str())
+        Some(views_origin.as_str())
     );
 
     servers.shutdown().await.expect("shutdown");

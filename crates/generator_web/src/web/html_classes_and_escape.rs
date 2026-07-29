@@ -275,9 +275,32 @@ fn map_classes(props: &MapProps) -> Vec<String> {
 }
 
 fn badge_classes(props: &BadgeProps) -> Vec<String> {
-    let mut classes = variant_classes("badge", &props.style);
+    let mut classes = vec!["badge".to_string()];
+    append_style_classes(&mut classes, &props.style.style);
     classes.push(format!("is-{}", props.position.as_str()));
     classes
+}
+
+fn badge_content_classes(props: &BadgeProps) -> Vec<String> {
+    vec![
+        "badge-content".to_string(),
+        format!(
+            "is-{}",
+            props
+                .style
+                .variant
+                .unwrap_or(ComponentVariant::Solid)
+                .as_str()
+        ),
+        format!(
+            "is-{}",
+            props
+                .style
+                .color
+                .unwrap_or(ColorFamily::Primary)
+                .as_str()
+        ),
+    ]
 }
 
 fn chip_classes(props: &ChipProps) -> Vec<String> {
@@ -493,6 +516,30 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
     {
         classes.push(format!("animate-{}", animation.class_suffix()));
     }
+    let position = props.position();
+    if position.mode != BoxPosition::Static {
+        classes.push(format!("position-{}", position.mode.as_str()));
+    }
+    if matches!(position.mode, BoxPosition::Absolute | BoxPosition::Fixed) {
+        if position.top.is_none() && position.bottom.is_none() {
+            classes.push("top-0".to_string());
+        }
+        if position.left.is_none() && position.right.is_none() {
+            classes.push("left-0".to_string());
+        }
+    }
+    append_responsive_classes(classes, "top", position.top.as_ref(), |value| {
+        value.class_suffix()
+    });
+    append_responsive_classes(classes, "right", position.right.as_ref(), |value| {
+        value.class_suffix()
+    });
+    append_responsive_classes(classes, "bottom", position.bottom.as_ref(), |value| {
+        value.class_suffix()
+    });
+    append_responsive_classes(classes, "left", position.left.as_ref(), |value| {
+        value.class_suffix()
+    });
     append_responsive_classes(classes, "p", props.spacing.p.as_ref(), |value| {
         value.class_suffix()
     });
@@ -536,13 +583,13 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
     append_responsive_classes(
         classes,
         "col-span",
-        props.grid_item.col_span.as_ref(),
+        props.grid_item().col_span.as_ref(),
         |value| value.0.to_string(),
     );
     append_responsive_classes(
         classes,
         "row-span",
-        props.grid_item.row_span.as_ref(),
+        props.grid_item().row_span.as_ref(),
         |value| value.0.to_string(),
     );
 }
@@ -808,6 +855,39 @@ fn brand_tags(props: &BrandProps, context: &ReactiveRenderContext) -> (String, &
             )
         }
     }
+}
+
+fn banner_tags(props: &BannerProps, context: &ReactiveRenderContext) -> (String, &'static str) {
+    let classes = banner_classes(&props.style);
+    let label = props
+        .label
+        .as_deref()
+        .map(|label| format!(r#" aria-label="{}""#, escape_attr(label)))
+        .unwrap_or_default();
+    let NavigationAction::External {
+        url,
+        web_target,
+        native_external_mode,
+    } = &props.navigation
+    else {
+        unreachable!()
+    };
+    (
+        format!(
+            "<a{}>",
+            attrs(
+                classes,
+                Some(&props.style.element),
+                Some(&format!(
+                    "{}{}",
+                    external_attrs(url, *web_target, *native_external_mode),
+                    label
+                )),
+                context
+            )
+        ),
+        "</a>",
+    )
 }
 
 fn reactive_button_attrs(props: &VariantProps, context: &ReactiveRenderContext) -> String {
@@ -1215,7 +1295,7 @@ fn external_attrs(
         native_external_mode.as_str()
     );
     if web_target == WebTarget::Blank {
-        attrs.push_str(r#" target="_blank" rel="noopener""#);
+        attrs.push_str(r#" target="_blank" rel="noopener noreferrer""#);
     }
     attrs
 }

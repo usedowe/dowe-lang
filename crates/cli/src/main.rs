@@ -1,4 +1,5 @@
 mod agent;
+mod build;
 mod cache_cli;
 mod codegraph;
 mod d1_cli;
@@ -29,6 +30,12 @@ async fn main() {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    if dowe_runtime::run_development_desktop_host_from_env()? {
+        return Ok(());
+    }
+    if dowe_runtime::run_embedded_desktop_app().await? {
+        return Ok(());
+    }
     if dowe_runtime::run_background_worker_from_env().await? {
         return Ok(());
     }
@@ -40,6 +47,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("icons") => icons::run_icons_command(&args[1..]),
         Some("dev") => dev::run_dev_command(&args[1..]).await,
         Some("test") => test_cli::run_test_command(&args[1..]),
+        Some("build") => build::run_build_command(&args[1..]).await,
         Some("deploy") => deploy::run_deploy_command(&args[1..]),
         Some("agent") => agent::run_agent_command(&args[1..]).await,
         Some("codegraph") => codegraph::run_codegraph_command(&args[1..]).await,
@@ -72,6 +80,7 @@ async fn run_root_menu() -> Result<(), Box<dyn std::error::Error>> {
         "icons" => icons::run_icons_command(&[]),
         "dev" => dev::run_dev_command(&[]).await,
         "test" => test_cli::run_test_command(&[]),
+        "build" => build::run_build_command(&[]).await,
         "deploy" => deploy::run_deploy_command(&[]),
         "agent" => agent::run_agent_command(&[]).await,
         "codegraph" => codegraph::run_codegraph_command(&[]).await,

@@ -986,7 +986,7 @@ fn render_swift_bottom_bar(
             swift_localized_literal(&tab.label, tab.i18n.as_deref()),
             swift_svg_view_box(&tab.icon.props.view_box),
             swift_svg_paths(&tab.icon.paths),
-            tab.icon.props.motion.is_some()
+            tab.icon.props.is_animated()
         ));
     }
     output.push_str(&format!("{pad}    }}\n"));

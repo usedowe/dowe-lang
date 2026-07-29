@@ -190,6 +190,7 @@ fn generates_compose_responsive_runtime_values() {
         .expect("views");
 
     assert!(views.content.contains("BoxWithConstraints"));
+    assert!(views.content.contains("val viewportWidth = maxWidth"));
     assert!(views.content.contains(
         "fun LoginScreen(viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, navigate:"
     ));

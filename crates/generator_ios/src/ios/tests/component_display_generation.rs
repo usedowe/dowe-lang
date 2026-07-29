@@ -56,6 +56,10 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains("struct DoweAvatar<Icon: View>: View"));
     assert!(views.contains("DoweAvatar(source: nil, name: \"Ada\""));
     assert!(views.contains("DoweBadge(text: \"3\", position: \"bottom-right\""));
+    assert!(views.contains(".alignmentGuide(.leading) { dimensions in"));
+    assert!(views.contains("dimensions[HorizontalAlignment.center]"));
+    assert!(views.contains(".alignmentGuide(.bottom) { dimensions in"));
+    assert!(views.contains("dimensions[VerticalAlignment.center]"));
     assert!(views.contains("DoweChip(text: \"Filter\", size: \"sm\""));
     assert!(views.contains("DoweSkeleton(variant: \"rounded\", animation: \"pulse\")"));
     assert!(views.contains("private let pathBuilder: @Sendable (CGRect) -> Path"));
@@ -211,6 +215,43 @@ fn generates_swiftui_solar_icon_paints() {
     });
     assert!(stroke.contains("DoweSvgFill.stroke(.some(DoweDesign.tertiary)"));
     assert!(swift_runtime_svg_runtime().contains("StrokeStyle(lineWidth: width"));
+}
+
+#[test]
+fn generates_swiftui_svg_logo_literal_paints() {
+    let fill = swift_svg_fill(SvgPathFill::LiteralFill {
+        red: 36,
+        green: 41,
+        blue: 47,
+        opacity: 255,
+        even_odd: false,
+    });
+    assert!(fill.contains("Color(red: 0.141, green: 0.161, blue: 0.184)"));
+}
+
+#[test]
+fn generates_swiftui_svg_logo_paths() {
+    let logo = icon_component_node(vec![ComponentProp {
+        name: "name".to_string(),
+        value: PropValue::String("svg-logos:github-icon".to_string()),
+    }])
+    .expect("SVG logo");
+    let output = generate_ios(
+        &[ViewRoute {
+            id: "logo".to_string(),
+            route_path: "/logo".to_string(),
+            layout_tree: ViewNode::Children,
+            page_tree: logo,
+            sections: Vec::new(),
+            navigation_actions: Vec::new(),
+        }],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains("DoweSvgFill.fill(.some(Color(red:"));
 }
 
 #[test]

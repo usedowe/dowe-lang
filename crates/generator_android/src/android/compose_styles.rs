@@ -178,6 +178,29 @@ fn modifier_for_container_style(props: &StyleProps, flow: ComposeFlow) -> String
     modifier_for_style_with_base(props, modifier)
 }
 
+fn compose_position_modifier(props: &PositionProps) -> String {
+    let vertical = if props.bottom.is_some() { "Bottom" } else { "Top" };
+    let horizontal = if props.right.is_some() { "End" } else { "Start" };
+    let mut modifier = format!(".align(Alignment.{vertical}{horizontal})");
+    let mut values = Vec::new();
+    if let Some(value) = props.top.as_ref() {
+        values.push(format!("top = {} ?: 0.dp", compose_scale_value(value)));
+    }
+    if let Some(value) = props.right.as_ref() {
+        values.push(format!("end = {} ?: 0.dp", compose_scale_value(value)));
+    }
+    if let Some(value) = props.bottom.as_ref() {
+        values.push(format!("bottom = {} ?: 0.dp", compose_scale_value(value)));
+    }
+    if let Some(value) = props.left.as_ref() {
+        values.push(format!("start = {} ?: 0.dp", compose_scale_value(value)));
+    }
+    if !values.is_empty() {
+        modifier.push_str(&format!(".padding({})", values.join(", ")));
+    }
+    modifier
+}
+
 fn modifier_for_section_container(props: &StyleProps, flow: ComposeFlow) -> String {
     let mut outer = props.clone();
     outer.spacing = Default::default();
@@ -186,10 +209,7 @@ fn modifier_for_section_container(props: &StyleProps, flow: ComposeFlow) -> Stri
 
 fn modifier_for_section_content(props: &StyleProps) -> String {
     let mut content = StyleProps::default();
-    content.spacing = props.spacing.with_padding_default(ResponsiveValue::ordered(vec![
-        dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Xs, value: ScaleValue::from_half_steps(8) },
-        dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Md, value: ScaleValue::from_half_steps(12) },
-    ]));
+    content.spacing = dowe_components::section_content_spacing(&props.spacing);
     let modifier = if props.boxed {
         "Modifier.widthIn(max = 1536.dp).fillMaxWidth()".to_string()
     } else {

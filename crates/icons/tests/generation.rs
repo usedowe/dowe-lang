@@ -1,5 +1,5 @@
 use dowe_icons::{GenerateIconOptions, IconRounded, IconTarget, generate_project_icons};
-use icns::IconFamily;
+use icns::{IconFamily, IconType, PixelFormat};
 use ico::IconDir;
 use std::fs;
 use std::io::BufReader;
@@ -80,7 +80,47 @@ fn generates_platform_icon_sets_from_one_svg() {
         fs::File::open(project.path().join("assets/icons/desktop/icon.icns")).expect("icns"),
     )
     .expect("valid icns");
-    assert_eq!(icns.available_icons().len(), 7);
+    let available_icons = icns.available_icons();
+    assert_eq!(available_icons.len(), 10);
+    for icon_type in [
+        IconType::RGBA32_16x16,
+        IconType::RGBA32_16x16_2x,
+        IconType::RGBA32_32x32,
+        IconType::RGBA32_32x32_2x,
+        IconType::RGBA32_128x128,
+        IconType::RGBA32_128x128_2x,
+        IconType::RGBA32_256x256,
+        IconType::RGBA32_256x256_2x,
+        IconType::RGBA32_512x512,
+        IconType::RGBA32_512x512_2x,
+    ] {
+        assert!(available_icons.contains(&icon_type));
+    }
+    let macos = icns
+        .get_icon_with_type(IconType::RGBA32_512x512)
+        .expect("macos icon")
+        .convert_to(PixelFormat::RGBA);
+    let macos_pixels = macos.data();
+    assert_eq!(&macos_pixels[0..4], &[0, 0, 0, 0]);
+    assert_eq!(pixel(macos_pixels, 512, 256, 0), [0, 0, 0, 0]);
+    assert_eq!(pixel(macos_pixels, 512, 256, 60), [51, 102, 153, 255]);
+    assert_eq!(pixel(macos_pixels, 512, 256, 256), [255, 255, 255, 255]);
+    let macos_surface = opaque_bounds(macos_pixels, 512, |value| value[3] > 8);
+    assert!((0.80..=0.81).contains(&(macos_surface.width() as f32 / 512.0)));
+    assert!((0.80..=0.81).contains(&(macos_surface.height() as f32 / 512.0)));
+    assert!((macos_surface.center_x() - 255.5).abs() <= 1.0);
+    assert!((macos_surface.center_y() - 255.5).abs() <= 1.0);
+    let macos_logo = opaque_bounds(macos_pixels, 512, |value| {
+        value[0] > 240 && value[1] > 240 && value[2] > 240
+    });
+    let logo_share = macos_logo.width() as f32 / macos_surface.width() as f32;
+    assert!((0.69..=0.71).contains(&logo_share));
+    assert!((macos_logo.center_x() - 255.5).abs() <= 1.0);
+    assert!((macos_logo.center_y() - 255.5).abs() <= 1.0);
+
+    let desktop_png = png_rgba(&project.path().join("assets/icons/desktop/icon.png"));
+    assert_eq!(&desktop_png[0..4], &[0, 0, 0, 0]);
+    assert_eq!(pixel(&desktop_png, 512, 256, 0), [51, 102, 153, 255]);
 }
 
 #[test]
@@ -245,6 +285,71 @@ fn generates_every_rounded_value() {
                 .is_file()
         );
     }
+}
+
+#[test]
+fn draws_the_macos_surface_on_the_apple_icon_grid() {
+    let project = fixture();
+    fs::write(
+        project.path().join("assets/icon.svg"),
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#ffffff" d="M0 0h100v100H0z"/></svg>"##,
+    )
+    .expect("square svg");
+    generate_project_icons(
+        GenerateIconOptions::new(
+            project.path(),
+            "assets/icon.svg",
+            "#336699",
+            IconRounded::Full,
+        )
+        .with_targets([IconTarget::Desktop]),
+    )
+    .expect("desktop icons");
+
+    let first_icns =
+        fs::read(project.path().join("assets/icons/desktop/icon.icns")).expect("first icns");
+    let icns = IconFamily::read(first_icns.as_slice()).expect("valid icns");
+    let macos = icns
+        .get_icon_with_type(IconType::RGBA32_512x512)
+        .expect("macos icon")
+        .convert_to(PixelFormat::RGBA);
+    let pixels = macos.data();
+    assert_eq!(pixel(pixels, 512, 0, 0), [0, 0, 0, 0]);
+    assert_eq!(pixel(pixels, 512, 256, 0), [0, 0, 0, 0]);
+    assert_eq!(pixel(pixels, 512, 256, 256), [255, 255, 255, 255]);
+    let surface = opaque_bounds(pixels, 512, |value| value[3] > 8);
+    assert!((0.80..=0.81).contains(&(surface.width() as f32 / 512.0)));
+    assert!((0.80..=0.81).contains(&(surface.height() as f32 / 512.0)));
+    assert!((surface.center_x() - 255.5).abs() <= 1.0);
+    assert!((surface.center_y() - 255.5).abs() <= 1.0);
+    assert_eq!(pixel(pixels, 512, 60, 60), [0, 0, 0, 0]);
+
+    generate_project_icons(
+        GenerateIconOptions::new(
+            project.path(),
+            "assets/icon.svg",
+            "#ff0000",
+            IconRounded::None,
+        )
+        .with_targets([IconTarget::Desktop]),
+    )
+    .expect("regenerated desktop icons");
+    let second_icns =
+        fs::read(project.path().join("assets/icons/desktop/icon.icns")).expect("second icns");
+    assert_ne!(second_icns, first_icns);
+    let icns = IconFamily::read(second_icns.as_slice()).expect("valid icns");
+    let macos = icns
+        .get_icon_with_type(IconType::RGBA32_512x512)
+        .expect("macos icon")
+        .convert_to(PixelFormat::RGBA);
+    let pixels = macos.data();
+    assert_eq!(pixel(pixels, 512, 0, 0), [0, 0, 0, 0]);
+    assert_eq!(pixel(pixels, 512, 60, 60), [255, 0, 0, 255]);
+    let surface = opaque_bounds(pixels, 512, |value| value[3] > 8);
+    assert!((0.80..=0.81).contains(&(surface.width() as f32 / 512.0)));
+
+    let desktop_png = png_rgba(&project.path().join("assets/icons/desktop/icon.png"));
+    assert_eq!(pixel(&desktop_png, 512, 0, 0), [255, 0, 0, 255]);
 }
 
 #[test]

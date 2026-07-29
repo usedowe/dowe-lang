@@ -170,6 +170,81 @@
     }
 
     #[test]
+    fn validates_banner_children_and_required_external_navigation() {
+        let node = container_component_node(
+            BuiltinComponent::Banner,
+            vec![
+                string_prop("href", "https://dowe.dev/cloud"),
+                string_prop("label", "Explore Dowe Cloud"),
+                responsive_number_prop("w", &[("xs", 24), ("md", 32)]),
+                number_prop("h", 16),
+            ],
+            vec![text_node("Dowe Cloud").expect("text")],
+            false,
+        )
+        .expect("banner");
+
+        match node {
+            ViewNode::Banner { props, children } => {
+                assert_eq!(props.label.as_deref(), Some("Explore Dowe Cloud"));
+                assert!(matches!(
+                    props.navigation,
+                    NavigationAction::External {
+                        ref url,
+                        web_target: WebTarget::Blank,
+                        native_external_mode: NativeExternalMode::System,
+                    } if url == "https://dowe.dev/cloud"
+                ));
+                assert_eq!(children.len(), 1);
+                assert_eq!(
+                    props.style.sizing.w.expect("width").entries[0].value,
+                    SizeValue::Scale(ScaleValue::from_half_steps(48))
+                );
+                assert_eq!(
+                    props.style.sizing.h.expect("height").entries[0].value,
+                    SizeValue::Scale(ScaleValue::from_half_steps(32))
+                );
+            }
+            _ => panic!("banner"),
+        }
+
+        for props in [
+            Vec::new(),
+            vec![string_prop("href", "/pricing")],
+            vec![string_prop("href", "#pricing")],
+            vec![string_prop("href", "http://dowe.dev")],
+            vec![string_prop("href", "javascript:alert(1)")],
+            vec![
+                string_prop("href", "https://dowe.dev"),
+                string_prop("label", ""),
+            ],
+            vec![
+                string_prop("href", "https://dowe.dev"),
+                string_prop("variant", "solid"),
+            ],
+        ] {
+            assert!(
+                container_component_node(
+                    BuiltinComponent::Banner,
+                    props,
+                    vec![text_node("Dowe").expect("text")],
+                    false,
+                )
+                .is_err()
+            );
+        }
+        assert!(
+            container_component_node(
+                BuiltinComponent::Banner,
+                vec![string_prop("href", "https://dowe.dev")],
+                Vec::new(),
+                false,
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
     fn validates_box_and_card_animation_props() {
         let box_node = container_component_node(
             BuiltinComponent::Box,
@@ -489,6 +564,39 @@
         };
         assert_eq!(paths.len(), 1);
         assert_eq!(paths[0].data, "M12 3a9 9 0 1 1-6.364 2.636");
+    }
+
+    #[test]
+    fn resolves_svg_logo_icons_with_bundled_source_and_native_paths() {
+        let logo = icon_component_node(vec![string_prop("name", "svg-logos:github-icon")])
+            .expect("SVG logo icon");
+        let ViewNode::Svg { props, paths } = logo else {
+            panic!("SVG logo");
+        };
+        let source = props.motion.expect("bundled SVG logo source");
+        assert!(!source.animated);
+        assert!(source.source.contains("<svg"));
+        assert!(!paths.is_empty());
+        assert!(paths.iter().any(|path| matches!(
+            path.fill,
+            SvgPathFill::LiteralFill { .. } | SvgPathFill::LiteralStroke { .. }
+        )));
+
+        assert!(icon_component_node(vec![
+            string_prop("name", "svg-logos:github-icon"),
+            string_prop("style", "bold"),
+        ])
+        .is_err());
+        assert!(icon_component_node(vec![string_prop(
+            "name",
+            "svg-logos:not-a-logo",
+        )])
+        .is_err());
+    }
+
+    #[test]
+    fn validates_every_bundled_svg_logo() {
+        assert_eq!(validate_svg_logo_catalog().expect("SVG Logos catalog"), 1863);
     }
 
     #[test]

@@ -116,6 +116,18 @@ fn compose_svg_fill(fill: SvgPathFill) -> String {
             match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
             match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
         ),
+        SvgPathFill::LiteralFill { red, green, blue, opacity, even_odd } => format!(
+            "DoweSvgFill.Fill(Color(0xFF{red:02X}{green:02X}{blue:02X}), {}f, {})",
+            opacity as f32 / 255.0,
+            even_odd
+        ),
+        SvgPathFill::LiteralStroke { red, green, blue, opacity, width, line_cap, line_join } => format!(
+            "DoweSvgFill.Stroke(Color(0xFF{red:02X}{green:02X}{blue:02X}), {}f, {}f, \"{}\", \"{}\")",
+            opacity as f32 / 255.0,
+            width as f32 / 100.0,
+            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
+            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+        ),
         SvgPathFill::Stroke { color, opacity, width, line_cap, line_join } => format!(
             "DoweSvgFill.Stroke({}, {}f, {}f, \"{}\", \"{}\")",
             color.map(color_ref).map(|value| format!("{value}")).unwrap_or_else(|| "null".to_string()),

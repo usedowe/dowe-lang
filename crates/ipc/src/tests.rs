@@ -1,11 +1,11 @@
 use super::{
-    AgentPrepareOptions, AgentRequestType, CodeGraphBuildOptions, DeployOptions, DeployTarget,
-    DevTarget, DevTargetSelection, GenerateIconOptions, HostOs, IconRounded, IconTarget,
-    InitOptions, InitProjectOptions, ProjectTemplate, SpawnConfig, SpawnEvent, build_codegraph,
-    deploy_project, generate_project_icons, get_agent_public_skill, handle_agent_mcp_message,
-    init_agent_harness, init_dowe_project, init_external_agent_project, list_agent_public_skills,
-    prepare_agent_project_context, prepare_agent_request, run_spawn, search_agent_public_examples,
-    update_external_agent_project,
+    AgentPrepareOptions, AgentRequestType, BuildOptions, BuildTarget, CodeGraphBuildOptions,
+    DeployOptions, DeployTarget, DevTarget, DevTargetSelection, GenerateIconOptions, HostOs,
+    IconRounded, IconTarget, InitOptions, InitProjectOptions, ProjectTemplate, SpawnConfig,
+    SpawnEvent, build_codegraph, build_project, deploy_project, generate_project_icons,
+    get_agent_public_skill, handle_agent_mcp_message, init_agent_harness, init_dowe_project,
+    init_external_agent_project, list_agent_public_skills, prepare_agent_project_context,
+    prepare_agent_request, run_spawn, search_agent_public_examples, update_external_agent_project,
 };
 use std::fs;
 use tempfile::TempDir;
@@ -232,6 +232,20 @@ fn deploys_cloudflare_pages_package_through_ipc_wrapper() {
 
     assert_eq!(report.target, DeployTarget::CloudflarePages);
     assert!(report.output_dir.join("assets/index.html").is_file());
+}
+
+#[test]
+fn plans_native_build_through_ipc_wrapper() {
+    let temp = TempDir::new().expect("tempdir");
+    write_deploy_fixture(temp.path());
+    let mut options = BuildOptions::new(temp.path(), BuildTarget::Android);
+    options.dry_run = true;
+
+    let report = build_project(options).expect("build plan");
+
+    assert_eq!(report.target, BuildTarget::Android);
+    assert!(!report.built);
+    assert!(report.artifact.ends_with("DoweDev.apk"));
 }
 
 #[tokio::test]

@@ -11,19 +11,12 @@
                 |file| file.relative_path == Path::new("apps/desktop/macos/DoweMacOSApp.swift")
             )
         );
-        assert!(
-            output
-                .files
-                .iter()
-                .any(|file| file.relative_path
-                    == Path::new("apps/desktop/windows/DoweWindowsApp.cs"))
-        );
-        assert!(
-            output
-                .files
-                .iter()
-                .any(|file| file.relative_path == Path::new("apps/desktop/linux/dowe_linux_app.c"))
-        );
+        assert!(!output.files.iter().any(|file| {
+            matches!(
+                file.relative_path.extension().and_then(|value| value.to_str()),
+                Some("cs" | "c" | "rs")
+            )
+        }));
         assert!(
             output
                 .files
@@ -49,20 +42,29 @@
         assert!(macos.content.contains("TransformProcessType"));
         assert!(macos.content.contains("makeKeyAndOrderFront"));
         assert!(macos.content.contains("orderFrontRegardless"));
+        assert!(macos.content.contains("applicationIconImage"));
+        assert!(
+            macos
+                .content
+                .contains(r#"Bundle.main.path(forResource: "AppIcon", ofType: "icns")"#)
+        );
         let windows = output
             .files
             .iter()
-            .find(|file| file.relative_path == Path::new("apps/desktop/windows/DoweWindowsApp.cs"))
-            .expect("windows app");
-        assert!(windows.content.contains("string[] args"));
-        assert!(windows.content.contains("Uri.TryCreate"));
+            .find(|file| {
+                file.relative_path
+                    == Path::new("apps/desktop/windows/dowe-desktop.json")
+            })
+            .expect("windows manifest");
+        assert!(windows.content.contains(r#""entrypoint":"dowe-runtime""#));
         let linux = output
             .files
             .iter()
-            .find(|file| file.relative_path == Path::new("apps/desktop/linux/dowe_linux_app.c"))
-            .expect("linux app");
-        assert!(linux.content.contains("argc > 1"));
-        assert!(linux.content.contains("argv[1]"));
+            .find(|file| {
+                file.relative_path == Path::new("apps/desktop/linux/dowe-desktop.json")
+            })
+            .expect("linux manifest");
+        assert!(linux.content.contains(r#""entrypoint":"dowe-runtime""#));
     }
 
     #[test]

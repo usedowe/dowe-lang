@@ -54,7 +54,6 @@ fn launch_ios_app(
     dev_origin: Option<&str>,
 ) -> RuntimeResult<()> {
     let app_bundle = build_ios_app(&project.root, ios_root, simulator.boot_requested)?;
-    build_hot_module(project)?;
     if simulator.boot_requested {
         wait_ios_simulator_boot(&simulator.udid)?;
     }
@@ -170,11 +169,6 @@ fn build_ios_app(
     let cached_bundle = publish_ios_app(project_root, &cache_key, &bundle)?;
     fs::remove_dir_all(build_root)?;
     Ok(cached_bundle)
-}
-
-pub(super) fn build_hot_module(project: &CompiledProject) -> RuntimeResult<PublishedDevModule> {
-    build_hot_module_with_revision(project, None)?
-        .ok_or_else(|| RuntimeError::new("unconditional iOS module publication was skipped"))
 }
 
 pub(super) fn build_hot_module_if_current(

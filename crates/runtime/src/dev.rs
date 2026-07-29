@@ -567,13 +567,7 @@ pub async fn start_dev_session_with_options(
     selection: DevTargetSelection,
     options: DevRunOptions,
 ) -> RuntimeResult<RunningDevSession> {
-    let server_targets = DevServerTargets {
-        backend: selection.contains(DevTarget::Server),
-        views: selection.contains(DevTarget::Web)
-            || selection.contains(DevTarget::Android)
-            || selection.contains(DevTarget::Ios),
-        desktop: selection.contains(DevTarget::Desktop),
-    };
+    let server_targets = dev_server_targets(&selection);
     let servers = match start_dev_servers(project.clone(), server_targets).await {
         Ok(servers) => servers,
         Err(error) => return Err(error),
@@ -587,7 +581,7 @@ pub async fn start_dev_session_with_options(
     };
     let desktop_origin = session
         .servers
-        .desktop_addr
+        .views_addr
         .map(|addr| format!("http://{addr}/"));
     let dev_origin = session
         .servers
@@ -616,6 +610,17 @@ pub async fn start_dev_session_with_options(
     }
 
     Ok(session)
+}
+
+fn dev_server_targets(selection: &DevTargetSelection) -> DevServerTargets {
+    DevServerTargets {
+        backend: selection.contains(DevTarget::Server),
+        views: selection.contains(DevTarget::Web)
+            || selection.contains(DevTarget::Desktop)
+            || selection.contains(DevTarget::Android)
+            || selection.contains(DevTarget::Ios),
+        desktop: selection.contains(DevTarget::Desktop),
+    }
 }
 
 async fn start_external_targets(
@@ -921,7 +926,7 @@ mod tests {
     use super::{
         DevTarget, DevTargetDeviceSelection, DevTargetSelection, HostOs, available_dev_targets,
         available_dev_targets_for_project, default_dev_targets, default_dev_targets_for_project,
-        dev_target_selection_path, load_dev_target_preferences,
+        dev_server_targets, dev_target_selection_path, load_dev_target_preferences,
         load_dev_target_preferences_for_project, load_dev_target_selection, loading_status_message,
         record_external_startup_failure, save_dev_target_preferences, save_dev_target_selection,
         validate_dev_target_selection_for_project,
@@ -944,6 +949,18 @@ mod tests {
         let selection = default_dev_targets(HostOs::Linux);
 
         assert_eq!(selection.targets(), &[DevTarget::Server, DevTarget::Web]);
+    }
+
+    #[test]
+    fn desktop_reuses_the_views_server_and_enables_its_local_server_surface() {
+        let selection =
+            DevTargetSelection::new([DevTarget::Desktop], HostOs::Macos).expect("selection");
+
+        let targets = dev_server_targets(&selection);
+
+        assert!(!targets.backend);
+        assert!(targets.views);
+        assert!(targets.desktop);
     }
 
     #[test]

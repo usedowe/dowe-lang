@@ -125,4 +125,45 @@ fn main() {
     )
     .unwrap();
     println!("cargo:rerun-if-changed={}", spinner_root.display());
+
+    let logo_root = manifest.join("../../assets/icons/svg-logos");
+    let mut logo_entries = WalkDir::new(&logo_root)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            (path.extension().and_then(|value| value.to_str()) == Some("svg"))
+                .then(|| {
+                    path.file_stem().map(|stem| {
+                        (
+                            stem.to_string_lossy().to_ascii_lowercase(),
+                            path.to_path_buf(),
+                        )
+                    })
+                })
+                .flatten()
+        })
+        .collect::<Vec<_>>();
+    logo_entries.sort_by(|left, right| left.0.cmp(&right.0));
+    for pair in logo_entries.windows(2) {
+        assert_ne!(
+            pair[0].0, pair[1].0,
+            "duplicate SVG Logos icon name {}",
+            pair[0].0
+        );
+    }
+    let mut logo_source = String::from("static SVG_LOGOS: &[SvgLogoSource] = &[\n");
+    for (name, path) in logo_entries {
+        logo_source.push_str(&format!(
+            "SvgLogoSource {{ name: {:?}, svg: include_str!({:?}) }},\n",
+            name, path
+        ));
+    }
+    logo_source.push_str("];\n");
+    fs::write(
+        PathBuf::from(env::var("OUT_DIR").unwrap()).join("svg_logos.rs"),
+        logo_source,
+    )
+    .unwrap();
+    println!("cargo:rerun-if-changed={}", logo_root.display());
 }

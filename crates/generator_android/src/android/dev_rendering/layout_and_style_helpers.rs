@@ -97,7 +97,7 @@ fn dev_svg_color(props: &StyleProps, inherited_color: Option<&str>) -> String {
 fn dev_svg_path_current_color(fill: SvgPathFill) -> &'static str {
     match fill {
         SvgPathFill::CurrentColor | SvgPathFill::Fill { color: None, .. } | SvgPathFill::Stroke { color: None, .. } => "true",
-        SvgPathFill::None | SvgPathFill::Color(_) | SvgPathFill::RawFill { .. } | SvgPathFill::RawStroke { .. } | SvgPathFill::Fill { color: Some(_), .. } | SvgPathFill::Stroke { color: Some(_), .. } => "false",
+        SvgPathFill::None | SvgPathFill::Color(_) | SvgPathFill::RawFill { .. } | SvgPathFill::RawStroke { .. } | SvgPathFill::LiteralFill { .. } | SvgPathFill::LiteralStroke { .. } | SvgPathFill::Fill { color: Some(_), .. } | SvgPathFill::Stroke { color: Some(_), .. } => "false",
     }
 }
 
@@ -105,6 +105,10 @@ fn dev_svg_path_color(fill: SvgPathFill) -> String {
     match fill {
         SvgPathFill::None | SvgPathFill::CurrentColor => "null".to_string(),
         SvgPathFill::RawFill { color, .. } | SvgPathFill::RawStroke { color, .. } => android_java_color_literal(color),
+        SvgPathFill::LiteralFill { red, green, blue, .. }
+        | SvgPathFill::LiteralStroke { red, green, blue, .. } => {
+            format!("Color.rgb({red}, {green}, {blue})")
+        }
         SvgPathFill::Color(token) | SvgPathFill::Fill { color: Some(token), .. } | SvgPathFill::Stroke { color: Some(token), .. } => java_color(token).to_string(),
         SvgPathFill::Fill { color: None, .. } | SvgPathFill::Stroke { color: None, .. } => "null".to_string(),
     }
@@ -112,10 +116,10 @@ fn dev_svg_path_color(fill: SvgPathFill) -> String {
 
 fn dev_svg_path_details(fill: SvgPathFill) -> String {
     match fill {
-        SvgPathFill::RawFill { opacity, even_odd, .. } | SvgPathFill::Fill { opacity, even_odd, .. } => {
+        SvgPathFill::RawFill { opacity, even_odd, .. } | SvgPathFill::LiteralFill { opacity, even_odd, .. } | SvgPathFill::Fill { opacity, even_odd, .. } => {
             format!("false, {opacity}, 0f, {even_odd}, \"butt\", \"miter\"")
         }
-        SvgPathFill::RawStroke { opacity, width, line_cap, line_join, .. } | SvgPathFill::Stroke { opacity, width, line_cap, line_join, .. } => {
+        SvgPathFill::RawStroke { opacity, width, line_cap, line_join, .. } | SvgPathFill::LiteralStroke { opacity, width, line_cap, line_join, .. } | SvgPathFill::Stroke { opacity, width, line_cap, line_join, .. } => {
             format!(
                 "true, {opacity}, {}f, false, \"{}\", \"{}\"",
                 width as f32 / 100.0,

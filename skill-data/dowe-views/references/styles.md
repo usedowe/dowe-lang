@@ -52,6 +52,7 @@ breakpoint.
 | Border | `rounded`, `border` | `xs`, `sm`, `md`, `lg`, `xl`, `full`; integers `1` to `4` |
 | Layout | `justify`, `align`, `gap`, `columns`, `rows` | Layout keywords, grid tracks, scale values, validated pixel gaps |
 | Grid item | `colSpan`, `rowSpan` | Positive integers on direct `Box`, `Section`, or `Card` children of `Grid` |
+| Box position | `position`, `top`, `right`, `bottom`, `left` | Static position mode; responsive Dowe-scale offsets on absolute or fixed Box |
 | Media background | `cover`, `overlay` | Static asset path or `https://` URL; boolean, opacity number, RGBA, or linear gradient |
 | Section background | `background` | `soft`, `aurora`, `sunrise`, `ocean`, `meadow`, `slate` on `Section` |
 | Boxed width | `boxed` | Static boolean on `Section`, `Scaffold`, `AppBar`, `Footer`, `BottomBar` |
@@ -105,8 +106,9 @@ section ids. `javascript:`, `data:`, and `file:` schemes are rejected.
 
 `Box` has no default padding, border, radius, background, shadow, or flex behavior. `Section` owns
 the outer band (background, cover, overlay, sizing, radius, border, anchor) and generates an inner
-content body with responsive default padding `p:{ xs:4 md:6 }`; `boxed:true` caps and centers only
-that body at `96rem` web or `1536` native. `Section background:<preset>` cannot combine with
+content body with responsive defaults `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }`; the larger
+vertical inset separates ordinary page bands without repeated props. `boxed:true` caps and centers
+only that body at `96rem` web or `1536` native. `Section background:<preset>` cannot combine with
 `cover` because both are base layers. `Card` defaults to `variant:"solid"`, `scheme:"primary"`,
 theme radius, and inner padding `p:{ xs:4 lg:5 }`.
 
@@ -127,6 +129,27 @@ lines.
 `rows:"100px auto"`, `gap:"10px 20px"` as row gap then column gap, plus `justify` and `align` for
 cell alignment. `colSpan` and `rowSpan` are valid only on direct `Box`, `Section`, or `Card` grid
 children, and a span wider than a statically known column count fails compilation.
+
+## Box positioning
+
+`Box position:"relative"` stays in normal flow and creates a portable layer plane. A direct
+`Box position:"absolute"` child leaves flow and anchors to that plane. Wrap the actual Card, Chip,
+Icon, Svg, or other content in the positioned Box; positioning props do not apply directly to
+those semantic components.
+
+```text
+Box position:"relative" cover:"/assets/images/hero.jpg" minH:"vh-32" rounded:"xl"
+  Box position:"absolute" top:{ xs:4 md:6 } right:{ xs:4 md:6 }
+    Card variant:"solid" scheme:"surface" p:4
+      Text weight:"bold"
+        "Audience proof"
+```
+
+`position` is a static scalar accepting `static`, `relative`, `absolute`, or `fixed`. The four
+offsets use the Dowe scale and may be responsive. Use only one edge on each axis. Missing axes
+default to `top:0` and `left:0`; negative offsets, `zIndex`, and opposite-edge stretching are not
+portable. A fixed Box anchors to the safe route viewport and cannot appear inside `each` or
+`Splash`. Later positioned siblings render above earlier siblings.
 
 ## Cover and overlay
 

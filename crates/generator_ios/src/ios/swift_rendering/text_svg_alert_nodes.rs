@@ -116,7 +116,7 @@ fn render_swift_text_svg_alert_node(
                 output.push_str(&format!(
                     "{pad}DoweRuntimeSvgView(payload: {payload}, color: {}, animated: {})\n",
                     swift_svg_color(&props.style),
-                    props.motion.is_some()
+                    props.is_animated()
                 ));
                 append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
                 return;
@@ -126,7 +126,7 @@ fn render_swift_text_svg_alert_node(
                 swift_svg_view_box(&props.view_box),
                 swift_svg_color(&props.style),
                 swift_svg_paths(paths),
-                props.motion.is_some()
+                props.is_animated()
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }

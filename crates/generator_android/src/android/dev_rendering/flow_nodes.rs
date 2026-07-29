@@ -104,28 +104,59 @@ fn render_dev_android_flow_node(
             output.push_str("        }\n");
         }
         ViewNode::Box { props, children } => {
-            let current_font = props.font.as_ref().or(inherited_font);
-            let current_color = dev_inherited_color(props, inherited_color.as_deref());
-            let view = next_dev_view(counter);
-            output.push_str(&format!(
-                "        LinearLayout {view} = doweContainer(false);\n"
-            ));
-            apply_dev_android_style(props, &view, true, output);
-            apply_dev_android_inline_width(props, &view, parent_horizontal, output);
-            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
-            for child in children {
-                render_dev_android_node(
-                    child,
-                    &view,
-                    None,
-                    false,
+            if props.position().mode == BoxPosition::Fixed {
+                render_dev_android_fixed_box(
+                    props,
+                    children,
                     counter,
                     output,
-                    current_font,
-                    current_color.clone(),
+                    inherited_font,
+                    inherited_color,
                     context,
                     children_method,
                 );
+            } else if props.position().mode == BoxPosition::Relative
+                && children.iter().any(|child| {
+                    matches!(child, ViewNode::Box { props, .. } if props.position().mode == BoxPosition::Absolute)
+                })
+            {
+                render_dev_android_relative_box(
+                    props,
+                    children,
+                    parent,
+                    parent_gap,
+                    parent_horizontal,
+                    counter,
+                    output,
+                    inherited_font,
+                    inherited_color,
+                    context,
+                    children_method,
+                );
+            } else if props.position().mode != BoxPosition::Absolute {
+                let current_font = props.font.as_ref().or(inherited_font);
+                let current_color = dev_inherited_color(props, inherited_color.as_deref());
+                let view = next_dev_view(counter);
+                output.push_str(&format!(
+                    "        LinearLayout {view} = doweContainer(false);\n"
+                ));
+                apply_dev_android_style(props, &view, true, output);
+                apply_dev_android_inline_width(props, &view, parent_horizontal, output);
+                output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+                for child in children {
+                    render_dev_android_node(
+                        child,
+                        &view,
+                        None,
+                        false,
+                        counter,
+                        output,
+                        current_font,
+                        current_color.clone(),
+                        context,
+                        children_method,
+                    );
+                }
             }
         }
         ViewNode::Section { props, children } => {
@@ -150,10 +181,7 @@ fn render_dev_android_flow_node(
                 "        LinearLayout {body} = {body_constructor};\n"
             ));
             let mut body_props = StyleProps::default();
-            body_props.spacing = props.spacing.with_padding_default(ResponsiveValue::ordered(vec![
-                dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Xs, value: ScaleValue::from_half_steps(8) },
-                dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Md, value: ScaleValue::from_half_steps(12) },
-            ]));
+            body_props.spacing = dowe_components::section_content_spacing(&props.spacing);
             apply_dev_android_style(&body_props, &body, false, output);
             output.push_str(&dev_add(&view, &body, None, false));
             for child in children {
@@ -285,6 +313,41 @@ fn render_dev_android_flow_node(
                     &view,
                     None,
                     true,
+                    counter,
+                    output,
+                    current_font,
+                    current_color.clone(),
+                    context,
+                    children_method,
+                );
+            }
+        }
+        ViewNode::Banner { props, children } => {
+            let current_font = props.style.font.as_ref().or(inherited_font);
+            let current_color = dev_inherited_color(&props.style, inherited_color.as_deref());
+            let view = next_dev_view(counter);
+            output.push_str(&format!(
+                "        LinearLayout {view} = doweContainer(false);\n"
+            ));
+            if let Some(label) = props.label.as_deref() {
+                output.push_str(&format!(
+                    "        {view}.setContentDescription(\"{}\");\n",
+                    escape_java(label)
+                ));
+            }
+            if let Some(action) = dev_android_navigation_action(Some(&props.navigation)) {
+                output.push_str(&format!(
+                    "        {view}.setOnClickListener(v -> {action});\n"
+                ));
+            }
+            apply_dev_android_style(&props.style, &view, false, output);
+            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+            for child in children {
+                render_dev_android_node(
+                    child,
+                    &view,
+                    None,
+                    false,
                     counter,
                     output,
                     current_font,
@@ -444,4 +507,159 @@ fn render_dev_android_flow_node(
         }
         _ => {}
     }
+}
+
+fn render_dev_android_relative_box(
+    props: &StyleProps,
+    children: &[ViewNode],
+    parent: &str,
+    parent_gap: Option<&str>,
+    parent_horizontal: bool,
+    counter: &mut usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    inherited_color: Option<String>,
+    context: &ComposeReactiveContext,
+    children_method: Option<&str>,
+) {
+    let current_font = props.font.as_ref().or(inherited_font);
+    let current_color = dev_inherited_color(props, inherited_color.as_deref());
+    let view = next_dev_view(counter);
+    let content = next_dev_view(counter);
+    output.push_str(&format!(
+        "        FrameLayout {view} = new FrameLayout(this);\n"
+    ));
+    apply_dev_android_style(props, &view, true, output);
+    apply_dev_android_inline_width(props, &view, parent_horizontal, output);
+    output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+    output.push_str(&format!(
+        "        LinearLayout {content} = doweContainer(false);\n        {view}.addView({content}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));\n"
+    ));
+    for child in children.iter().filter(|child| {
+        !matches!(child, ViewNode::Box { props, .. } if props.position().mode == BoxPosition::Absolute)
+    }) {
+        render_dev_android_node(
+            child,
+            &content,
+            None,
+            false,
+            counter,
+            output,
+            current_font,
+            current_color.clone(),
+            context,
+            children_method,
+        );
+    }
+    for child in children.iter().filter(|child| {
+        matches!(child, ViewNode::Box { props, .. } if props.position().mode == BoxPosition::Absolute)
+    }) {
+        let ViewNode::Box { props, children } = child else {
+            unreachable!();
+        };
+        render_dev_android_positioned_box(
+            props,
+            children,
+            &view,
+            counter,
+            output,
+            current_font,
+            current_color.clone(),
+            context,
+            children_method,
+        );
+    }
+}
+
+fn render_dev_android_positioned_box(
+    props: &StyleProps,
+    children: &[ViewNode],
+    parent: &str,
+    counter: &mut usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    inherited_color: Option<String>,
+    context: &ComposeReactiveContext,
+    children_method: Option<&str>,
+) {
+    let current_font = props.font.as_ref().or(inherited_font);
+    let current_color = dev_inherited_color(props, inherited_color.as_deref());
+    let view = next_dev_view(counter);
+    output.push_str(&format!(
+        "        LinearLayout {view} = doweContainer(false);\n"
+    ));
+    apply_dev_android_style(props, &view, true, output);
+    for child in children {
+        render_dev_android_node(
+            child,
+            &view,
+            None,
+            false,
+            counter,
+            output,
+            current_font,
+            current_color.clone(),
+            context,
+            children_method,
+        );
+    }
+    let params = format!("{view}PositionParams");
+    output.push_str(&format!(
+        "        FrameLayout.LayoutParams {params} = doweFrameLayoutParams({view}.getLayoutParams());\n        {params}.gravity = {};\n        {params}.setMargins({}, {}, {}, {});\n        {parent}.addView({view}, {params});\n",
+        dev_box_position_gravity(props.position()),
+        dev_box_offset(props.position().left.as_ref()),
+        dev_box_offset(props.position().top.as_ref()),
+        dev_box_offset(props.position().right.as_ref()),
+        dev_box_offset(props.position().bottom.as_ref()),
+    ));
+}
+
+fn render_dev_android_fixed_box(
+    props: &StyleProps,
+    children: &[ViewNode],
+    counter: &mut usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    inherited_color: Option<String>,
+    context: &ComposeReactiveContext,
+    children_method: Option<&str>,
+) {
+    let overlay = next_dev_view(counter);
+    output.push_str(&format!(
+        "        FrameLayout {overlay} = new FrameLayout(this);\n        {overlay}.setTag(\"dowe-fixed-box\");\n        {overlay}.setClipChildren(false);\n        {overlay}.setClipToPadding(false);\n"
+    ));
+    render_dev_android_positioned_box(
+        props,
+        children,
+        &overlay,
+        counter,
+        output,
+        inherited_font,
+        inherited_color,
+        context,
+        children_method,
+    );
+    output.push_str(&format!(
+        "        ((ViewGroup) scrollView.getParent()).addView({overlay}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        doweApplySystemInsets({overlay});\n"
+    ));
+}
+
+fn dev_box_position_gravity(props: &PositionProps) -> String {
+    let vertical = if props.bottom.is_some() {
+        "Gravity.BOTTOM"
+    } else {
+        "Gravity.TOP"
+    };
+    let horizontal = if props.right.is_some() {
+        "Gravity.END"
+    } else {
+        "Gravity.START"
+    };
+    format!("{vertical} | {horizontal}")
+}
+
+fn dev_box_offset(value: Option<&ResponsiveValue<ScaleValue>>) -> String {
+    value
+        .map(|value| format!("doweDp({})", dev_scale_value(value)))
+        .unwrap_or_else(|| "0".to_string())
 }

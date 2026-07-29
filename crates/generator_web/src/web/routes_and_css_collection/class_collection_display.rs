@@ -164,7 +164,7 @@ fn collect_display_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
         }
         ViewNode::Badge { props, children } => {
             classes.extend(badge_classes(props));
-            classes.insert("badge-content".to_string());
+            classes.extend(badge_content_classes(props));
             classes.insert("badge-text".to_string());
             for child in children {
                 collect_classes(child, classes);

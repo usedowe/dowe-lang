@@ -362,7 +362,7 @@ private fun doweSectionBackgroundBrush(background: DoweSectionBackground): Brush
     }
 
 @Composable
-private fun DoweCoverBox(modifier: Modifier = Modifier, source: String?, overlay: DoweOverlay?, content: @Composable () -> Unit) {
+private fun DoweCoverBox(modifier: Modifier = Modifier, source: String?, overlay: DoweOverlay?, content: @Composable BoxScope.() -> Unit) {
     Box(modifier = modifier.clipToBounds()) {
         if (source != null) {
             AndroidView(

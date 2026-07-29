@@ -5,13 +5,13 @@ use super::{
     CarouselVariant, ChartCurve,
     ChartLegendPosition, ChartPalette, ChartSize, CodeLanguage, CodeTemplateSegment, CodeTokenKind, ColorFamily,
     ColorToken, ComponentError, ComponentProp, ComponentVariant, DividerOrientation, FlexDirection, FontFamily,
-    FabProps, GapValue, GridAlignment, GridTracks, OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation,
-    ResponsivePropEntry, ScaleValue, SectionBackground, SizeValue, SvgLineCap, SvgLineJoin, SvgPathFill, SvgTransform, TableColumnAlign,
-    BarPosition, DeviceProfile, IframeLoading, NavigationAction, TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing,
-    TextWeight, VideoAspect,
+    BoxPosition, FabProps, GapValue, GridAlignment, GridTracks, OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation,
+    ResponsivePropEntry, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap, SvgLineJoin, SvgPathFill, SvgTransform, TableColumnAlign,
+    BarPosition, DeviceProfile, IframeLoading, NativeExternalMode, NavigationAction, TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing,
+    TextWeight, VideoAspect, WebTarget,
     ViewAnimation, ViewIcon, ViewNode, VisibilityCondition,
     arc_chart_component_node, area_chart_component_node, bar_chart_component_node,
-    bar_component_node, box_node, canvas_component_node, candlestick_node, children_node, code_node, compose_tree, fixed_fab_nodes,
+    bar_component_node, box_node, canvas_component_node, candlestick_node, children_node, code_node, compose_tree, fixed_box_nodes, fixed_fab_nodes,
     carousel_component_node, carousel_slide_component, container_component_node, device_node,
     divider_node, first_text, font_catalog, icon_component_node, iframe_node, input_node,
     line_chart_component_node, pie_chart_component_node, radio_group_component_node,
@@ -20,8 +20,9 @@ use super::{
     tabs_component_node, tabs_tab_component, text_binding_path, text_component_node, text_node,
     text_spacing_em,
     all_icon_names, country_flag_icon, phone_countries, text_typography, text_weight_number,
-    validate_solar_icon_catalog, validate_svg_spinner_catalog, validate_view_tree, video_node,
-    COUNTRY_FLAGS, SVG_SPINNERS,
+    section_content_spacing, validate_solar_icon_catalog, validate_svg_logo_catalog,
+    validate_svg_spinner_catalog, validate_view_tree, video_node, COUNTRY_FLAGS, SVG_LOGOS,
+    SVG_SPINNERS,
 };
 
 #[test]
@@ -110,6 +111,10 @@ fn registry_finds_builtin_components() {
     assert_eq!(
         COMPONENT_REGISTRY.get("Brand"),
         Some(BuiltinComponent::Brand)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("Banner"),
+        Some(BuiltinComponent::Banner)
     );
     assert_eq!(
         COMPONENT_REGISTRY.get("Alert"),
@@ -1315,6 +1320,128 @@ fn rejects_grid_spans_outside_direct_grid_children() {
 }
 
 #[test]
+fn validates_relative_absolute_and_fixed_box_positioning() {
+    let tree = container_component_node(
+        BuiltinComponent::Box,
+        vec![string_prop("position", "relative")],
+        vec![container_component_node(
+            BuiltinComponent::Box,
+            vec![
+                string_prop("position", "absolute"),
+                number_prop("top", 4),
+                number_prop("right", 6),
+            ],
+            vec![text_node("Proof").expect("text")],
+            false,
+        )
+        .expect("absolute box")],
+        false,
+    )
+    .expect("relative box");
+
+    validate_view_tree(&tree).expect("valid positioned tree");
+    let ViewNode::Box { props, children } = &tree else {
+        panic!("box");
+    };
+    assert_eq!(props.position().mode, BoxPosition::Relative);
+    let ViewNode::Box { props, .. } = &children[0] else {
+        panic!("absolute box");
+    };
+    assert_eq!(props.position().mode, BoxPosition::Absolute);
+    assert_eq!(
+        props.position().top.as_ref().expect("top").entries[0]
+            .value
+            .native_units(),
+        16
+    );
+    assert_eq!(
+        props.position().right.as_ref().expect("right").entries[0]
+            .value
+            .native_units(),
+        24
+    );
+
+    let fixed = container_component_node(
+        BuiltinComponent::Box,
+        vec![
+            string_prop("position", "fixed"),
+            number_prop("bottom", 4),
+            number_prop("right", 4),
+        ],
+        vec![text_node("Persistent").expect("text")],
+        false,
+    )
+    .expect("fixed box");
+    validate_view_tree(&fixed).expect("valid fixed box");
+    assert_eq!(fixed_box_nodes(&fixed).len(), 1);
+}
+
+#[test]
+fn rejects_invalid_box_positioning_contracts() {
+    let static_offset_error = container_component_node(
+            BuiltinComponent::Box,
+            vec![number_prop("top", 4)],
+            Vec::new(),
+            false,
+        )
+        .expect_err("static offset");
+    assert!(
+        static_offset_error
+            .to_string()
+            .contains("require `position:\"absolute\"` or `position:\"fixed\"`"),
+        "{static_offset_error}"
+    );
+    assert!(
+        container_component_node(
+            BuiltinComponent::Box,
+            vec![
+                string_prop("position", "absolute"),
+                number_prop("left", 2),
+                number_prop("right", 2),
+            ],
+            Vec::new(),
+            false,
+        )
+        .expect_err("ambiguous horizontal axis")
+        .to_string()
+        .contains("`left` and `right`")
+    );
+
+    let orphan = container_component_node(
+        BuiltinComponent::Box,
+        vec![string_prop("position", "absolute")],
+        Vec::new(),
+        false,
+    )
+    .expect("absolute box");
+    assert!(
+        validate_view_tree(&orphan)
+            .expect_err("orphan absolute box")
+            .to_string()
+            .contains("direct child of `Box position:\"relative\"`")
+    );
+
+    let fixed_in_each = ViewNode::Each {
+        item: "item".to_string(),
+        collection: "items".to_string(),
+        key: "item.id".to_string(),
+        children: vec![container_component_node(
+            BuiltinComponent::Box,
+            vec![string_prop("position", "fixed")],
+            Vec::new(),
+            false,
+        )
+        .expect("fixed box")],
+    };
+    assert!(
+        validate_view_tree(&fixed_in_each)
+            .expect_err("fixed inside each")
+            .to_string()
+            .contains("cannot be nested inside `each` or `Splash`")
+    );
+}
+
+#[test]
 fn validates_section_background_props() {
     let node = container_component_node(
         BuiltinComponent::Section,
@@ -1699,6 +1826,31 @@ fn normalizes_card_padding_default_and_author_override() {
 }
 
 #[test]
+fn derives_section_axis_padding_defaults_and_preserves_overrides() {
+    let default_spacing = section_content_spacing(&SpacingProps::default());
+    let horizontal = default_spacing.px.expect("default horizontal padding");
+    let vertical = default_spacing.py.expect("default vertical padding");
+    assert_eq!(horizontal.entries[0].value, ScaleValue::from_half_steps(8));
+    assert_eq!(horizontal.entries[1].value, ScaleValue::from_half_steps(12));
+    assert_eq!(vertical.entries[0].value, ScaleValue::from_half_steps(20));
+    assert_eq!(vertical.entries[1].value, ScaleValue::from_half_steps(32));
+
+    let authored = SpacingProps {
+        py: Some(super::ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+        ..Default::default()
+    };
+    let effective = section_content_spacing(&authored);
+    assert_eq!(
+        effective.py.expect("authored vertical padding").entries[0].value,
+        ScaleValue::from_half_steps(12)
+    );
+    assert_eq!(
+        effective.px.expect("default horizontal padding").entries[1].value,
+        ScaleValue::from_half_steps(12)
+    );
+}
+
+#[test]
 fn validates_button_events_and_alert_props() {
     let button = container_component_node(
         BuiltinComponent::Button,
@@ -1854,4 +2006,13 @@ fn validates_svg_spinner_catalog_and_icon_names() {
     assert_eq!(validate_svg_spinner_catalog().expect("catalog"), 46);
     assert!(all_icon_names().contains(&"svg-spinners:3-dots-bounce".to_string()));
     assert!(all_icon_names().contains(&"svg-spinners:ring-resize".to_string()));
+}
+
+#[test]
+fn validates_svg_logo_catalog_and_icon_names() {
+    assert_eq!(SVG_LOGOS.len(), 1863);
+    assert_eq!(validate_svg_logo_catalog().expect("catalog"), 1863);
+    assert!(all_icon_names().contains(&"svg-logos:github-icon".to_string()));
+    assert!(all_icon_names().contains(&"svg-logos:daisyui-icon".to_string()));
+    assert!(all_icon_names().contains(&"svg-logos:macos".to_string()));
 }

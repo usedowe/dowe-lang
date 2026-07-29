@@ -234,6 +234,18 @@ pub fn container_component_node(
                 children,
             })
         }
+        BuiltinComponent::Banner => {
+            reject_children_placeholder(component, &children, allow_children)?;
+            if children.is_empty() {
+                return Err(ComponentError::invalid_prop_combination(
+                    "Banner requires at least one child",
+                ));
+            }
+            Ok(ViewNode::Banner {
+                props: parse_banner_props(component, &props)?,
+                children,
+            })
+        }
         BuiltinComponent::IconButton => {
             if children.is_empty() {
                 let props = parse_variant_props(component, &props)?;

@@ -297,7 +297,7 @@ private fun doweIframeSource(context: android.content.Context, source: String): 
     if (!source.startsWith("/") || source.startsWith("//")) return null
     val configured = DoweEnvironment.BACKEND_URL.trimEnd('/')
     val development = context.getSharedPreferences("dowe-hmr", android.content.Context.MODE_PRIVATE).getString("endpoint", "").orEmpty().trimEnd('/')
-    val base = listOf(configured, development).firstOrNull { value ->
+    val base = listOf(development, configured).firstOrNull { value ->
         runCatching { doweIframeUrlAllowed(Uri.parse(value)) }.getOrDefault(false)
     } ?: return null
     return java.net.URI(base).resolve(source).toString()

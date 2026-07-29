@@ -186,7 +186,7 @@ fn code_keywords(language: CodeLanguage) -> &'static [&'static str] {
 fn code_types(language: CodeLanguage) -> &'static [&'static str] {
     match language {
         CodeLanguage::Dowe => &[
-            "Alert", "AppBar", "BottomBar", "Box", "Button", "Brand", "IconButton", "Canvas", "Candlestick", "Card", "Code",
+            "Alert", "AppBar", "BottomBar", "Box", "Button", "Brand", "Banner", "IconButton", "Canvas", "Candlestick", "Card", "Code",
             "ComboBox", "CsvField", "Divider", "DragDrop", "Drawer", "Editor", "Flex",
             "Footer", "Grid", "ImageCropper", "Input", "Option", "PasswordField", "Path",
             "PhoneField", "PinField", "Select", "NavMenu", "Scaffold", "SideNav", "RailNav", "Sidebar",

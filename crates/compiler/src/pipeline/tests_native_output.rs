@@ -242,7 +242,7 @@
         assert!(
             login
                 .body_html
-                .contains(r#"href="https://example.com/docs" data-dowe-external-mode="webview" target="_blank" rel="noopener""#)
+                .contains(r#"href="https://example.com/docs" data-dowe-external-mode="webview" target="_blank" rel="noopener noreferrer""#)
         );
         assert!(login.body_html.contains(r#"data-dowe-history="back""#));
         assert!(manifest.contains(r#""sections":["shell","hero"]"#));
@@ -267,6 +267,51 @@
         assert!(ios_pages.contains(".simultaneousGesture(backSwipeGesture)"));
         assert!(ios_pages.contains(r#"{ navigate("replace", "", "hero") }"#));
         assert!(ios_pages.contains(r#"{ navigate("push", "/signup", "join") }"#));
+    }
+
+    #[test]
+    fn compiles_external_banner_across_targets() {
+        let temp = TempDir::new().expect("tempdir");
+        write_fixture_with_views(
+            temp.path(),
+            r#"layout AuthLayout
+  Box
+    children"#,
+            r#"page loginPage
+  Banner href:"https://dowe.dev/cloud" label:"Explore Dowe Cloud" p:6
+    Title
+      "Build beyond code"
+    Text
+      "Explore Dowe Cloud""#,
+        );
+
+        let project = compile_dev(temp.path()).expect("project");
+        let body = &project.web.pages[0].body_html;
+        let android = fs::read_to_string(
+            temp.path()
+                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+        )
+        .expect("android pages");
+        let android_dev = android_dev_output(temp.path());
+        let ios = ios_swift_output(temp.path());
+
+        assert!(body.contains(r#"<a class="banner p-6""#));
+        assert!(body.contains(r#"href="https://dowe.dev/cloud""#));
+        assert!(body.contains(r#"target="_blank" rel="noopener noreferrer""#));
+        assert!(body.contains(r#"aria-label="Explore Dowe Cloud""#));
+        assert!(android.contains(
+            ".clickable(onClick = { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
+        ));
+        assert!(android.contains(
+            ".semantics { contentDescription = \"Explore Dowe Cloud\" }"
+        ));
+        assert!(android_dev.contains(
+            "setOnClickListener(v -> doweOpenExternal(\"system\", \"https://dowe.dev/cloud\"))"
+        ));
+        assert!(ios.contains(
+            "Button(action: { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
+        ));
+        assert!(ios.contains(".accessibilityLabel(Text(\"Explore Dowe Cloud\"))"));
     }
 
     #[test]
@@ -813,18 +858,23 @@
         assert!(android.contains("DoweEnvironment.BACKEND_URL"));
         assert!(android.contains("getSharedPreferences(\"dowe-hmr\""));
         assert!(android.contains("doweIframeUrlAllowed"));
+        assert!(android.contains("listOf(development, configured).firstOrNull"));
 
         let android_dev = android_dev_output(temp.path());
         assert!(android_dev.contains("doweIframeSource(source)"));
         assert!(android_dev.contains("DoweEnvironment.BACKEND_URL"));
         assert!(android_dev.contains("getSharedPreferences(\"dowe-hmr\""));
         assert!(android_dev.contains("doweIframeUrlAllowed"));
+        assert!(android_dev.contains(
+            "doweIframeUrlAllowed(Uri.parse(development)) ? development : configured"
+        ));
 
         let ios = ios_swift_output(temp.path());
         assert!(ios.contains("doweIframeURL(source)"));
         assert!(ios.contains("DoweEnvironment.BACKEND_URL"));
         assert!(ios.contains("UserDefaults.standard.string(forKey: \"dowe.hmr.endpoint\")"));
         assert!(ios.contains("doweIframeURLAllowed"));
+        assert!(ios.contains("[development, configured].compactMap"));
     }
 
     #[test]

@@ -2,6 +2,7 @@ mod background_jobs;
 mod d1_migrations;
 mod database_bootstrap;
 mod database_runtime;
+mod desktop_app;
 mod dev;
 mod dev_events;
 mod dev_modules;
@@ -26,6 +27,8 @@ mod watch;
 
 pub use background_jobs::run_worker_from_env as run_background_worker_from_env;
 pub use d1_migrations::{D1IconCatalogMigrationReport, generate_solar_icon_catalog_d1_migrations};
+pub use desktop_app::run_development_host_from_env as run_development_desktop_host_from_env;
+pub use desktop_app::run_embedded as run_embedded_desktop_app;
 pub use dev::{
     AndroidDeviceOption, AndroidDeviceSelection, DevRunOptions, DevTarget,
     DevTargetDeviceSelection, DevTargetPreferences, DevTargetSelection, HostOs, IosSimulatorOption,

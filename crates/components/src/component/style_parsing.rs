@@ -61,10 +61,31 @@ fn parse_style_props(
                 style.animation = Some(parse_animation_prop(&prop.name, &prop.value)?)
             }
             "colSpan" if style_accepts_grid_item(mode) => {
-                style.grid_item.col_span = Some(parse_span_prop(&prop.name, &prop.value)?)
+                style.grid_item_mut().col_span = Some(parse_span_prop(&prop.name, &prop.value)?)
             }
             "rowSpan" if style_accepts_grid_item(mode) => {
-                style.grid_item.row_span = Some(parse_span_prop(&prop.name, &prop.value)?)
+                style.grid_item_mut().row_span = Some(parse_span_prop(&prop.name, &prop.value)?)
+            }
+            "position" if matches!(mode, StylePropMode::Box) => {
+                let value = parse_required_string(&prop.name, &prop.value)?;
+                style.position_mut().mode = BoxPosition::from_name(&value).ok_or_else(|| {
+                    ComponentError::invalid_prop(
+                        "position",
+                        "static, relative, absolute or fixed",
+                    )
+                })?;
+            }
+            "top" if matches!(mode, StylePropMode::Box) => {
+                style.position_mut().top = Some(parse_scale_prop(&prop.name, &prop.value)?)
+            }
+            "right" if matches!(mode, StylePropMode::Box) => {
+                style.position_mut().right = Some(parse_scale_prop(&prop.name, &prop.value)?)
+            }
+            "bottom" if matches!(mode, StylePropMode::Box) => {
+                style.position_mut().bottom = Some(parse_scale_prop(&prop.name, &prop.value)?)
+            }
+            "left" if matches!(mode, StylePropMode::Box) => {
+                style.position_mut().left = Some(parse_scale_prop(&prop.name, &prop.value)?)
             }
             "p" => style.spacing.p = Some(parse_scale_prop(&prop.name, &prop.value)?),
             "px" => style.spacing.px = Some(parse_scale_prop(&prop.name, &prop.value)?),
@@ -104,6 +125,29 @@ fn parse_style_props(
         )));
     }
 
+    let position = style.position();
+    let has_position_offset = position.top.is_some()
+        || position.right.is_some()
+        || position.bottom.is_some()
+        || position.left.is_some();
+    if has_position_offset
+        && matches!(position.mode, BoxPosition::Static | BoxPosition::Relative)
+    {
+        return Err(ComponentError::invalid_prop_combination(
+            "`top`, `right`, `bottom` and `left` require `position:\"absolute\"` or `position:\"fixed\"`",
+        ));
+    }
+    if position.top.is_some() && position.bottom.is_some() {
+        return Err(ComponentError::invalid_prop_combination(
+            "`top` and `bottom` cannot be used together on positioned `Box`",
+        ));
+    }
+    if position.left.is_some() && position.right.is_some() {
+        return Err(ComponentError::invalid_prop_combination(
+            "`left` and `right` cannot be used together on positioned `Box`",
+        ));
+    }
+
     Ok(style)
 }
 
@@ -117,14 +161,14 @@ fn reactive_reference(value: &PropValue) -> Option<String> {
 fn style_accepts_colors(mode: StylePropMode) -> bool {
     matches!(
         mode,
-        StylePropMode::Box | StylePropMode::Section | StylePropMode::Text
+        StylePropMode::Box | StylePropMode::Banner | StylePropMode::Section | StylePropMode::Text
     )
 }
 
 fn style_accepts_cover(mode: StylePropMode) -> bool {
     matches!(
         mode,
-        StylePropMode::Box | StylePropMode::Section | StylePropMode::Card
+        StylePropMode::Box | StylePropMode::Banner | StylePropMode::Section | StylePropMode::Card
     )
 }
 
@@ -135,14 +179,14 @@ fn style_accepts_background(mode: StylePropMode) -> bool {
 fn style_accepts_grid_item(mode: StylePropMode) -> bool {
     matches!(
         mode,
-        StylePropMode::Box | StylePropMode::Section | StylePropMode::Card
+        StylePropMode::Box | StylePropMode::Banner | StylePropMode::Section | StylePropMode::Card
     )
 }
 
 fn style_accepts_animation(mode: StylePropMode) -> bool {
     matches!(
         mode,
-        StylePropMode::Box | StylePropMode::Section | StylePropMode::Card
+        StylePropMode::Box | StylePropMode::Banner | StylePropMode::Section | StylePropMode::Card
     )
 }
 
@@ -403,6 +447,40 @@ fn parse_brand_props(
     Ok(BrandProps {
         style: parse_style_props(component, &style_props, StylePropMode::Layout)?,
         navigation: parse_link_navigation_props(component.as_str(), href, None, None, None)?,
+        label,
+    })
+}
+
+fn parse_banner_props(
+    component: BuiltinComponent,
+    props: &[ComponentProp],
+) -> ComponentResult<BannerProps> {
+    let mut style_props = Vec::new();
+    let mut href = None;
+    let mut label = None;
+
+    for prop in props {
+        match prop.name.as_str() {
+            "href" => href = Some(parse_required_string(&prop.name, &prop.value)?),
+            "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
+            _ => style_props.push(prop.clone()),
+        }
+    }
+
+    let href = href.ok_or_else(|| ComponentError::invalid_prop("href", "required https URL"))?;
+    let navigation = classify_href(
+        &href,
+        NavigationOperation::Push,
+        WebTarget::Blank,
+        NativeExternalMode::System,
+    )?;
+    if !matches!(navigation, NavigationAction::External { .. }) {
+        return Err(ComponentError::invalid_prop("href", "https URL"));
+    }
+
+    Ok(BannerProps {
+        style: parse_style_props(component, &style_props, StylePropMode::Banner)?,
+        navigation,
         label,
     })
 }

@@ -1,6 +1,7 @@
 use dialoguer::{Confirm, Input, MultiSelect, Select, theme::ColorfulTheme};
 use dowe_deploy::{
-    DeploySurface, DeployTarget, available_deploy_surfaces, deploy_targets_for_surface,
+    BuildTarget, DeploySurface, DeployTarget, available_build_targets, available_deploy_surfaces,
+    deploy_targets_for_surface,
 };
 use dowe_icons::{IconRounded, IconTarget};
 use dowe_runtime::{
@@ -159,6 +160,20 @@ pub(crate) fn prompt_deploy_surface(
         .interact_opt()?;
 
     Ok(selection.map(|index| surfaces[index]))
+}
+
+pub(crate) fn prompt_build_target() -> Result<Option<BuildTarget>, Box<dyn std::error::Error>> {
+    let targets = available_build_targets();
+    let items = targets
+        .iter()
+        .map(|target| target.label())
+        .collect::<Vec<_>>();
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select build target")
+        .items(&items)
+        .default(0)
+        .interact_opt()?;
+    Ok(selection.map(|index| targets[index]))
 }
 
 pub(crate) fn prompt_deploy_target(
@@ -326,10 +341,11 @@ pub(crate) fn dev_target_default_states(
         .collect()
 }
 
-pub(crate) fn root_commands() -> [&'static str; 14] {
+pub(crate) fn root_commands() -> [&'static str; 15] {
     [
         "dev",
         "agent",
+        "build",
         "cache",
         "codegraph",
         "d1",
@@ -373,6 +389,7 @@ mod tests {
             [
                 "dev",
                 "agent",
+                "build",
                 "cache",
                 "codegraph",
                 "d1",
@@ -398,6 +415,14 @@ mod tests {
         assert_eq!(
             deploy_targets_for_surface(DeploySurface::Server),
             [DeployTarget::Docker, DeployTarget::Cloudflare]
+        );
+        assert_eq!(
+            deploy_targets_for_surface(DeploySurface::Android),
+            [DeployTarget::Android]
+        );
+        assert_eq!(
+            deploy_targets_for_surface(DeploySurface::Ios),
+            [DeployTarget::Ios]
         );
     }
 

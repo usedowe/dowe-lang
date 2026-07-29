@@ -54,6 +54,12 @@ fn collect_layout_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>) 
                 collect_classes(child, classes);
             }
         }
+        ViewNode::Banner { props, children } => {
+            classes.extend(banner_classes(&props.style));
+            for child in children {
+                collect_classes(child, classes);
+            }
+        }
         ViewNode::ToggleTheme { props } => {
             classes.extend(variant_classes("theme-toggle", &props.style));
             classes.insert("theme-toggle-icon".to_string());

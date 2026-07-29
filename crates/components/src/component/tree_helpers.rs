@@ -51,6 +51,7 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => contains_children(children),
         ViewNode::Drawer {
             header,

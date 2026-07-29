@@ -6,8 +6,13 @@ license.workspace = true
 
 [dependencies]
 dowe_compiler = { path = "../compiler" }
+base64.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+reqwest.workspace = true
+rand_core.workspace = true
+sha2.workspace = true
+sha1.workspace = true
 tempfile = "3.23.0"
 wasm-encoder = "0.244.0"
 

@@ -202,6 +202,7 @@ fn generated_route_view(
         escape_swift(&route.route_path)
     ));
     let tree = compose_tree(&route.layout_tree, &route.page_tree);
+    let fixed_boxes = fixed_box_nodes(&tree);
     let fixed_fabs = fixed_fab_nodes(&tree);
     let reactive = swift_reactive_route(&tree);
     for index in 0..fixed_fabs.len() {
@@ -247,6 +248,9 @@ fn generated_route_view(
         output.push_str("            }\n");
     }
     output.push_str("            .onAppear { doweScroll(proxy, activeFragment) }\n            .onChange(of: activeFragment) { _, value in doweScroll(proxy, value) }\n        }\n");
+    for index in 0..fixed_boxes.len() {
+        output.push_str(&format!("            fixedBox{index}()\n"));
+    }
     for (index, node) in fixed_fabs.iter().enumerate() {
         if let Some(condition) = swift_fixed_fab_splash_condition(&tree, node) {
             output.push_str(&format!(
@@ -286,6 +290,26 @@ fn generated_route_view(
             None,
             font_config.default_family,
             &route_context,
+        );
+        output.push_str("    }\n\n");
+    }
+    for (index, node) in fixed_boxes.iter().enumerate() {
+        let ViewNode::Box { props, children } = node else {
+            unreachable!();
+        };
+        output.push_str(&format!(
+            "    @ViewBuilder\n    private func fixedBox{index}() -> some View {{\n"
+        ));
+        let box_context =
+            swift_reactive_context_for_node(&tree, node).unwrap_or_else(|| route_context.clone());
+        render_swift_fixed_box(
+            props,
+            children,
+            8,
+            &mut output,
+            None,
+            font_config.default_family,
+            &box_context,
         );
         output.push_str("    }\n\n");
     }

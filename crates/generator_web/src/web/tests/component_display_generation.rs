@@ -19,7 +19,8 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     });
 
     assert!(html.contains(r#"class="avatar is-soft is-success avatar-lg is-bordered""#));
-    assert!(html.contains(r#"class="badge is-solid is-danger is-bottom-right""#));
+    assert!(html.contains(r#"class="badge is-bottom-right""#));
+    assert!(html.contains(r#"class="badge-content is-solid is-danger""#));
     assert!(html.contains(r#"class="chip is-outlined is-info chip-sm has-close""#));
     assert!(html.contains(r#"class="skeleton"#));
     assert!(html.contains("is-pulse"));
@@ -35,6 +36,10 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(html.contains(r#"class="dropdown-popover is-solid is-surface""#));
     assert!(html.contains(r#"data-dowe-command-open="modal01""#));
     assert!(page.css_content.contains(".avatar.is-soft.is-success"));
+    assert!(page
+        .css_content
+        .contains(".badge-content.is-solid.is-danger"));
+    assert!(!page.css_content.contains(".badge.is-solid.is-danger"));
     assert!(page.css_content.contains(".modal.is-solid.is-surface"));
     assert!(
         page.css_content
@@ -91,6 +96,21 @@ fn renders_svg_spinner_css_and_reduced_motion_behavior() {
     assert!(html.contains("@media (prefers-reduced-motion:reduce)"));
     assert!(html.contains("dowe-svg-spinner-fallback"));
     assert!(!html.contains("spinner_Pcrv"));
+}
+
+#[test]
+fn renders_svg_logo_as_an_isolated_bundled_data_resource() {
+    let logo = icon_component_node(vec![ComponentProp {
+        name: "name".to_string(),
+        value: PropValue::String("svg-logos:github-icon".to_string()),
+    }])
+    .expect("SVG logo");
+    let html = render_page_body(&ViewNode::Children, &logo);
+
+    assert!(html.contains("data:image/svg+xml,"));
+    assert!(html.contains("%3Csvg"));
+    assert!(html.contains(r#"<image width="100%" height="100%""#));
+    assert!(!html.contains("is-svg-spinner"));
 }
 
 #[test]

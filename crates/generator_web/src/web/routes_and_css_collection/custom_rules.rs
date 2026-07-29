@@ -12,8 +12,15 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
                 collect_custom_rules(child, rules);
             }
         }
-        ViewNode::Box { props, children } | ViewNode::Section { props, children } => {
+        ViewNode::Box { props, children } => {
             collect_style_custom_rules(props, rules);
+            for child in children {
+                collect_custom_rules(child, rules);
+            }
+        }
+        ViewNode::Section { props, children } => {
+            collect_style_custom_rules(props, rules);
+            collect_section_spacing_custom_rules(props, rules);
             for child in children {
                 collect_custom_rules(child, rules);
             }
@@ -151,6 +158,12 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
             }
         }
         ViewNode::Brand { props, children } => {
+            collect_style_custom_rules(&props.style, rules);
+            for child in children {
+                collect_custom_rules(child, rules);
+            }
+        }
+        ViewNode::Banner { props, children } => {
             collect_style_custom_rules(&props.style, rules);
             for child in children {
                 collect_custom_rules(child, rules);
@@ -326,6 +339,18 @@ fn collect_style_custom_rules(props: &StyleProps, rules: &mut Vec<String>) {
                     overlay_css(&entry.value)
                 ),
             );
+        }
+    }
+}
+
+fn collect_section_spacing_custom_rules(props: &StyleProps, rules: &mut Vec<String>) {
+    for class_name in section_body_classes(props).into_iter().filter(|class_name| {
+        responsive_class(class_name).is_some() && section_spacing_class(class_name)
+    }) {
+        let mut rule = String::new();
+        append_class_css(&mut rule, &class_name);
+        if !rule.is_empty() && !rules.contains(&rule) {
+            rules.push(rule);
         }
     }
 }

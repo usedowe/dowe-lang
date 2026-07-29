@@ -245,6 +245,10 @@ fn svg_path_fill(fill: SvgPathFill) -> String {
         SvgPathFill::CurrentColor => "currentColor".to_string(),
         SvgPathFill::Color(token) => format!("var(--dowe-{})", token.as_str()),
         SvgPathFill::RawFill { color, .. } | SvgPathFill::RawStroke { color, .. } => color.to_string(),
+        SvgPathFill::LiteralFill { red, green, blue, .. }
+        | SvgPathFill::LiteralStroke { red, green, blue, .. } => {
+            format!("#{red:02x}{green:02x}{blue:02x}")
+        }
         SvgPathFill::Fill { color, .. } | SvgPathFill::Stroke { color, .. } => color
             .map(|token| format!("var(--dowe-{})", token.as_str()))
             .unwrap_or_else(|| "currentColor".to_string()),
@@ -262,6 +266,18 @@ fn svg_path_attributes(paint: SvgPathFill) -> String {
         SvgPathFill::RawStroke { color, opacity, width, line_cap, line_join } => format!(
             " fill=\"none\" stroke=\"{}\" stroke-width=\"{:.2}\" stroke-linecap=\"{}\" stroke-linejoin=\"{}\"{}",
             escape_attr(color),
+            width as f32 / 100.0,
+            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
+            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" },
+            if opacity == 255 { String::new() } else { format!(" opacity=\"{:.3}\"", opacity as f32 / 255.0) }
+        ),
+        SvgPathFill::LiteralFill { red, green, blue, opacity, even_odd } => format!(
+            " fill=\"#{red:02x}{green:02x}{blue:02x}\"{}{}",
+            if opacity == 255 { String::new() } else { format!(" opacity=\"{:.3}\"", opacity as f32 / 255.0) },
+            if even_odd { " fill-rule=\"evenodd\" clip-rule=\"evenodd\"" } else { "" }
+        ),
+        SvgPathFill::LiteralStroke { red, green, blue, opacity, width, line_cap, line_join } => format!(
+            " fill=\"none\" stroke=\"#{red:02x}{green:02x}{blue:02x}\" stroke-width=\"{:.2}\" stroke-linecap=\"{}\" stroke-linejoin=\"{}\"{}",
             width as f32 / 100.0,
             match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
             match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" },
@@ -686,6 +702,13 @@ fn brand_classes(props: &StyleProps) -> Vec<String> {
     classes
 }
 
+fn banner_classes(props: &StyleProps) -> Vec<String> {
+    let mut classes = vec!["banner".to_string()];
+    append_style_classes(&mut classes, props);
+    append_container_visual_classes(&mut classes, props);
+    classes
+}
+
 fn section_classes(props: &StyleProps) -> Vec<String> {
     let mut classes = vec!["section".to_string()];
     append_style_classes(&mut classes, props);
@@ -700,10 +723,7 @@ fn section_body_classes(props: &StyleProps) -> Vec<String> {
         classes.push("is-boxed".to_string());
     }
     let mut content = props.clone();
-    content.spacing = props.spacing.with_padding_default(ResponsiveValue::ordered(vec![
-        dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Xs, value: ScaleValue::from_half_steps(8) },
-        dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Md, value: ScaleValue::from_half_steps(12) },
-    ]));
+    content.spacing = dowe_components::section_content_spacing(&props.spacing);
     let mut style_classes = Vec::new();
     append_style_classes(&mut style_classes, &content);
     classes.extend(

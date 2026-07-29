@@ -215,6 +215,10 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                 name,
                 "href" | "label" | "borderColor" | "shadow" | "shadowColor"
             ),
+            BuiltinComponent::Banner => matches!(
+                name,
+                "href" | "label" | "borderColor" | "shadow" | "shadowColor"
+            ),
             BuiltinComponent::IconButton => matches!(
                 name,
                 "icon"

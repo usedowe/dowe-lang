@@ -66,29 +66,26 @@ pub async fn desktop_handler(
     body: Bytes,
 ) -> Response {
     let project = state.project.read().await;
-    if let Some(server) = &project.desktop_server
-        && (server.has_endpoint_path(uri.path())
-            || method == Method::OPTIONS && is_preflight(&headers))
+    let Some(server) = &project.desktop_server else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    if !server.has_endpoint_path(uri.path())
+        && !(method == Method::OPTIONS && is_preflight(&headers))
     {
-        return server_response(
-            &project,
-            server,
-            &state.dev_origins,
-            state.cache_mode,
-            method,
-            uri.path(),
-            uri.query(),
-            headers,
-            body,
-        )
-        .await;
+        return StatusCode::NOT_FOUND.into_response();
     }
-
-    if method == Method::GET {
-        desktop_static_response(&project, uri.path())
-    } else {
-        StatusCode::NOT_FOUND.into_response()
-    }
+    server_response(
+        &project,
+        server,
+        &state.dev_origins,
+        state.cache_mode,
+        method,
+        uri.path(),
+        uri.query(),
+        headers,
+        body,
+    )
+    .await
 }
 
 pub async fn desktop_declared_websocket_handler(
@@ -389,58 +386,4 @@ pub async fn views_handler(State(state): State<DevRuntimeState>, uri: Uri) -> Re
     }
 
     StatusCode::NOT_FOUND.into_response()
-}
-
-fn desktop_static_response(project: &CompiledProject, path: &str) -> Response {
-    if path == "/_dowe/dev/client.js" {
-        return dev_client_response();
-    }
-    if path == "/_dowe/dev/modules/manifest.json" {
-        return generated_json_response(project, "dev/modules/manifest.json");
-    }
-    if let Some(response) = dev_module_response(project, path) {
-        return response;
-    }
-    if path == "/design.css" {
-        return design_css_response(project, "apps/desktop/web/design.css");
-    }
-    if path == "/router.js" {
-        return javascript_response(project.desktop_web.router_js.clone());
-    }
-    if path == "/env.json" {
-        return json_response_text(project.environment_config.client_json());
-    }
-    if path == "/manifest.json" {
-        return generated_json_response(project, "apps/desktop/web/manifest.json");
-    }
-    if let Some(response) = font_response(project, path) {
-        return response;
-    }
-    if let Some(response) = project_asset_response(project, path, "no-store") {
-        return response;
-    }
-    if let Some(response) = chunk_response(&project.desktop_web, path) {
-        return response;
-    }
-    let Some(page) = project
-        .desktop_web
-        .pages
-        .iter()
-        .find(|page| page.route_path == path)
-    else {
-        return StatusCode::NOT_FOUND.into_response();
-    };
-    let html_path = if page.route_path == "/" {
-        project.root.join(".dowe/apps/desktop/web/index.html")
-    } else {
-        let file_name = page.route_path.trim_matches('/').replace('/', "-");
-        project
-            .root
-            .join(".dowe/apps/desktop/web/pages")
-            .join(format!("{file_name}.html"))
-    };
-    match fs::read_to_string(html_path) {
-        Ok(html) => Html(inject_dev_client(&html)).into_response(),
-        Err(_) => StatusCode::NOT_FOUND.into_response(),
-    }
 }

@@ -8,10 +8,11 @@ use dowe_components::{
     CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition, ChartPalette, ChartSize,
     ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant, CountdownSize,
     DividerOrientation, EmptyKind, ImageAspect, ImageLoading, ImageObjectFit, MapMarkerIcon,
-    MarqueeOrientation, MarqueeSpeed, NavigationAction, OverlayCornerPosition, OverlayEntry,
-    OverlayPosition, RichTextMarkStyle, SectionBackground, SkeletonAnimation, SkeletonVariant,
-    SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect, ViewActionKind,
-    ViewAnimation, ViewIcon, ViewNode, ViewSignalScope, ViewSignalStorage, VisibilityCondition,
+    MarqueeOrientation, MarqueeSpeed, NativeExternalMode, NavigationAction, OverlayCornerPosition,
+    OverlayEntry, OverlayPosition, RichTextMarkStyle, SectionBackground, SkeletonAnimation,
+    SkeletonVariant, SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect,
+    ViewActionKind, ViewAnimation, ViewIcon, ViewNode, ViewSignalScope, ViewSignalStorage,
+    VisibilityCondition, WebTarget,
 };
 use std::fs;
 use std::path::Path;

@@ -212,7 +212,7 @@ containers and content components used elsewhere, but make its hierarchy unambig
 | Media plus copy | The same split Grid with media first when the image carries the initial visual weight |
 | Lead capture | Responsive split Grid with the promise and proof in one column and one form `Card` in the other |
 | Immersive campaign | `Section cover:` plus `overlay`, then centered or split content above the generated visual stack |
-| Product or analytics story | Media `Box` containing a `Flex` stack of small Cards, Chips, Icons, or portable Svg data visuals |
+| Product or analytics story | Relative media `Box` containing direct absolute `Box` wrappers around small Cards, Chips, Icons, or portable Svg data visuals |
 
 Use `Section boxed:true` when the background or cover is full bleed but the hero content aligns to
 the page rails. Give the Section a stable `id` when navigation links target it. Use responsive
@@ -224,10 +224,10 @@ When specific line breaks are part of the composition, author separate compact a
 groups with complementary `show` values. Never hide the only copy or action at a breakpoint.
 
 Treat a media-backed `Box` as a deliberate visual stage: give it a meaningful `minH`, portable
-`cover`, radius, and optional shadow, then position overlay Cards with an inner Flex using
-`justify:"between"`, `justify:"end"`, or responsive gaps. The Cards must remain real Dowe content,
-not flattened artwork. Keep contrast explicit with `overlay` and semantic foreground tokens when
-the Section or Card owns a cover.
+`cover`, radius, optional shadow, and `position:"relative"`. Place overlay content inside direct
+`Box position:"absolute"` children with responsive `top`, `right`, `bottom`, or `left` offsets.
+The Cards must remain real Dowe content, not flattened artwork. Keep contrast explicit with
+`overlay` and semantic foreground tokens when the Section or Card owns a cover.
 
 For a lead form, the form is one Card rather than a generic Box. Stack its fields with
 `Grid columns:1 gap:<n>`, make the primary submit action full width when appropriate, and keep
@@ -257,8 +257,8 @@ Section id:"hero" background:"aurora" boxed:true py:{ xs:8 md:12 }
         Icon name:"check-circle" style:"bold" fill:"success"
         Text size:"sm" color:"muted"
           "14-day trial · no credit card"
-    Box cover:"/assets/images/hero-team.jpg" rounded:"xl" minH:"vh-48" p:6
-      Flex direction:"column" justify:"end" align:"end" minH:"vh-56"
+    Box position:"relative" cover:"/assets/images/hero-team.jpg" rounded:"xl" minH:"vh-48"
+      Box position:"absolute" right:6 bottom:6
         Card variant:"solid" scheme:"surface" shadow:"xl" shadowColor:"success"
           Grid columns:1 gap:1
             Title size:"3xl" weight:"black"

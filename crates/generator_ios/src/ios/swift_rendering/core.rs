@@ -103,6 +103,7 @@ fn render_swift_node_body(
         | ViewNode::Grid { .. }
         | ViewNode::Card { .. }
         | ViewNode::Brand { .. }
+        | ViewNode::Banner { .. }
         | ViewNode::Children => render_swift_structure_node(
             node,
             indent,

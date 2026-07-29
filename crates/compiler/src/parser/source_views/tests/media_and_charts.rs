@@ -20,6 +20,26 @@
     }
 
     #[test]
+    fn parses_namespaced_svg_logo_icon() {
+        let tree = parse_page(
+            r#"page logoPage
+  Icon name:"svg-logos:github-icon" w:10 h:10"#,
+        )
+        .expect("SVG logo Icon");
+
+        let ViewNode::Svg { props, paths } = tree else {
+            panic!("SVG logo");
+        };
+        assert!(!props.is_animated());
+        assert!(props.motion.is_some());
+        assert!(!paths.is_empty());
+        assert!(paths.iter().any(|path| matches!(
+            path.fill,
+            SvgPathFill::LiteralFill { .. } | SvgPathFill::LiteralStroke { .. }
+        )));
+    }
+
+    #[test]
     fn parses_brand_with_svg_navigation_and_box_sizing() {
         let tree = parse_page(
             r#"page brandPage
@@ -40,6 +60,43 @@
         assert_eq!(props.style.sizing.w.expect("width").entries.len(), 2);
         assert!(props.style.sizing.h.is_some());
         assert!(matches!(children.as_slice(), [ViewNode::Svg { .. }]));
+    }
+
+    #[test]
+    fn parses_banner_with_required_external_navigation() {
+        let tree = parse_page(
+            r#"page bannerPage
+  Banner href:"https://dowe.dev/cloud" label:"Explore Dowe Cloud" p:{ xs:5 md:8 }
+    Grid columns:{ xs:1 md:2 } gap:4
+      Title
+        "Build beyond code"
+      Text
+        "Explore Dowe Cloud""#,
+        )
+        .expect("Banner");
+
+        let ViewNode::Banner { props, children } = tree else {
+            panic!("banner");
+        };
+        assert_eq!(props.label.as_deref(), Some("Explore Dowe Cloud"));
+        assert!(matches!(
+            props.navigation,
+            NavigationAction::External {
+                ref url,
+                web_target: WebTarget::Blank,
+                native_external_mode: NativeExternalMode::System,
+            } if url == "https://dowe.dev/cloud"
+        ));
+        assert!(props.style.spacing.p.is_some());
+        assert!(matches!(children.as_slice(), [ViewNode::Grid { .. }]));
+
+        for source in [
+            "page invalid\n  Banner\n    Text\n      \"Missing href\"",
+            "page invalid\n  Banner href:\"/pricing\"\n    Text\n      \"Internal\"",
+            "page invalid\n  Banner href:\"https://dowe.dev\"",
+        ] {
+            assert!(parse_page(source).is_err(), "{source}");
+        }
     }
 
     #[test]
@@ -467,4 +524,3 @@ page usersPage
         assert_eq!(props.columns[1].align, TableColumnAlign::End);
         assert_eq!(props.columns[1].width.as_deref(), Some("8rem"));
     }
-

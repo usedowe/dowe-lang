@@ -476,4 +476,3 @@ page usersPage
                     && matches!(&items[1], dowe_components::SideNavItem::Submenu { open: true, bordered: true, items, .. } if items.len() == 1)
         ));
     }
-

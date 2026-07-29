@@ -923,6 +923,11 @@ fn compiles_app_metadata_from_main() {
     assert!(apps_manifest.contains(r#""name":"Clinic Desk""#));
     assert!(apps_manifest.contains(r#""bundle":"com.example.clinic""#));
     assert!(android_gradle.contains(r#"applicationId = "com.example.clinic""#));
+    assert!(android_gradle.contains("create(\"release\")"));
+    assert!(android_gradle.contains("DOWE_ANDROID_KEYSTORE"));
+    assert!(android_gradle.contains("DOWE_APP_BUILD_NUMBER"));
+    assert!(android_gradle.contains("DOWE_APP_VERSION"));
+    assert!(android_gradle.contains("signingConfigs.getByName(\"release\")"));
     assert!(android_manifest.contains(r#"package="com.example.clinic""#));
     assert!(android_manifest.contains(r#"android:label="Clinic Desk""#));
     assert!(android_activity.contains("import com.example.clinic.R;"));

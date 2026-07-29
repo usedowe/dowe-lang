@@ -6,6 +6,9 @@ use ico::{IconDir, IconDirEntry, IconImage, ResourceType};
 use std::collections::BTreeMap;
 use std::io::Cursor;
 
+const MACOS_SURFACE_SCALE: f32 = 824.0 / 1024.0;
+const MACOS_LOGO_SCALE: f32 = 0.7;
+
 pub(crate) fn web_artifacts(
     renderer: &IconRenderer,
     background: IconColor,
@@ -31,18 +34,15 @@ pub(crate) fn desktop_artifacts(
     background: IconColor,
     rounded: IconRounded,
 ) -> IconResult<Vec<IconArtifact>> {
-    let style = composite_style(background, rounded);
     let sizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
-    let rendered = render_sizes(renderer, &sizes, style)?;
+    let rendered = render_sizes(renderer, &sizes, composite_style(background, rounded))?;
+    let macos_rendered = render_sizes(renderer, &sizes, macos_style(background, rounded))?;
     let mut artifacts = vec![
         IconArtifact::new(
             "icon.ico",
             encode_ico(&rendered, &[16, 24, 32, 48, 64, 128, 256])?,
         ),
-        IconArtifact::new(
-            "icon.icns",
-            encode_icns(&rendered, &[16, 32, 64, 128, 256, 512, 1024])?,
-        ),
+        IconArtifact::new("icon.icns", encode_icns(&macos_rendered)?),
         png_artifact("icon.png", &rendered, 512),
     ];
     for size in [16, 32, 64, 128, 256, 512, 1024] {
@@ -59,8 +59,19 @@ pub(crate) fn desktop_artifacts(
 fn composite_style(background: IconColor, rounded: IconRounded) -> RenderStyle {
     RenderStyle {
         background: Some(background),
+        background_scale: 1.0,
         radius: rounded.ratio(),
         logo_scale: 0.7,
+        circular_safe_zone: None,
+    }
+}
+
+fn macos_style(background: IconColor, rounded: IconRounded) -> RenderStyle {
+    RenderStyle {
+        background: Some(background),
+        background_scale: MACOS_SURFACE_SCALE,
+        radius: rounded.ratio(),
+        logo_scale: MACOS_SURFACE_SCALE * MACOS_LOGO_SCALE,
         circular_safe_zone: None,
     }
 }
@@ -97,14 +108,22 @@ fn encode_ico(rendered: &BTreeMap<u32, Vec<u8>>, sizes: &[u32]) -> IconResult<Ve
     Ok(output.into_inner())
 }
 
-fn encode_icns(rendered: &BTreeMap<u32, Vec<u8>>, sizes: &[u32]) -> IconResult<Vec<u8>> {
+fn encode_icns(rendered: &BTreeMap<u32, Vec<u8>>) -> IconResult<Vec<u8>> {
     let mut family = IconFamily::new();
-    for size in sizes {
-        let image = Image::read_png(Cursor::new(&rendered[size]))
+    for (size, icon_type) in [
+        (16, IconType::RGBA32_16x16),
+        (32, IconType::RGBA32_16x16_2x),
+        (32, IconType::RGBA32_32x32),
+        (64, IconType::RGBA32_32x32_2x),
+        (128, IconType::RGBA32_128x128),
+        (256, IconType::RGBA32_128x128_2x),
+        (256, IconType::RGBA32_256x256),
+        (512, IconType::RGBA32_256x256_2x),
+        (512, IconType::RGBA32_512x512),
+        (1024, IconType::RGBA32_512x512_2x),
+    ] {
+        let image = Image::read_png(Cursor::new(&rendered[&size]))
             .map_err(|error| IconError::new(format!("failed to decode generated PNG: {error}")))?;
-        let icon_type = IconType::from_pixel_size(*size, *size).ok_or_else(|| {
-            IconError::new(format!("ICNS does not support a {size}x{size} image"))
-        })?;
         family
             .add_icon_with_type(&image, icon_type)
             .map_err(|error| IconError::new(format!("failed to encode ICNS: {error}")))?;

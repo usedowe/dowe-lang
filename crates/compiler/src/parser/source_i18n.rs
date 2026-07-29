@@ -287,6 +287,7 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::Card { children, .. }
         | ViewNode::Button { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Each { children, .. } => {

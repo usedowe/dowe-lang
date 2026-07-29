@@ -16,7 +16,8 @@ fn collect_variant_rules<'a>(
         | ViewNode::Section { children, .. }
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
-        | ViewNode::Brand { children, .. } => {
+        | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. } => {
             for child in children {
                 collect_variant_rules(child, variants);
             }
@@ -78,7 +79,7 @@ fn collect_variant_rules<'a>(
         }
         ViewNode::Map { props, .. } => push_variant_rule(variants, "map", &props.style),
         ViewNode::Badge { props, children } => {
-            push_variant_rule(variants, "badge", &props.style);
+            push_variant_rule(variants, "badge-content", &props.style);
             for child in children {
                 collect_variant_rules(child, variants);
             }
@@ -386,6 +387,7 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
                 collect_tabs_variant_rules(child, variants);

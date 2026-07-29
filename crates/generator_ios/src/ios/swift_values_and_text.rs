@@ -277,6 +277,20 @@ fn swift_svg_fill(fill: SvgPathFill) -> String {
             match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
             match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
         ),
+        SvgPathFill::LiteralFill { red, green, blue, opacity, even_odd } => format!(
+            "DoweSvgFill.fill(.some({}), {}, {})",
+            swift_rgb_color(red, green, blue),
+            opacity as f32 / 255.0,
+            even_odd
+        ),
+        SvgPathFill::LiteralStroke { red, green, blue, opacity, width, line_cap, line_join } => format!(
+            "DoweSvgFill.stroke(.some({}), {}, {}, \"{}\", \"{}\")",
+            swift_rgb_color(red, green, blue),
+            opacity as f32 / 255.0,
+            width as f32 / 100.0,
+            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
+            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+        ),
         SvgPathFill::Stroke { color, opacity, width, line_cap, line_join } => format!(
             "DoweSvgFill.stroke({}, {}, {}, \"{}\", \"{}\")",
             color.map(color_ref).map(|value| format!(".some({value})")).unwrap_or_else(|| ".none".to_string()),
@@ -288,12 +302,21 @@ fn swift_svg_fill(fill: SvgPathFill) -> String {
     }
 }
 
+fn swift_rgb_color(red: u8, green: u8, blue: u8) -> String {
+    format!(
+        "Color(red: {:.3}, green: {:.3}, blue: {:.3})",
+        red as f32 / 255.0,
+        green as f32 / 255.0,
+        blue as f32 / 255.0
+    )
+}
+
 fn swift_hex_color(value: &str) -> String {
     let raw = value.trim_start_matches('#');
     let red = u8::from_str_radix(&raw[0..2], 16).expect("red color");
     let green = u8::from_str_radix(&raw[2..4], 16).expect("green color");
     let blue = u8::from_str_radix(&raw[4..6], 16).expect("blue color");
-    format!("Color(red: {:.3}, green: {:.3}, blue: {:.3})", red as f32 / 255.0, green as f32 / 255.0, blue as f32 / 255.0)
+    swift_rgb_color(red, green, blue)
 }
 
 fn swift_rgba_color(value: &str) -> String {

@@ -53,6 +53,8 @@ fn run_surface_deploy(
     let default_target = match (surface, interactive_target) {
         (_, Some(target)) => Some(target),
         (DeploySurface::Web, None) => Some(DeployTarget::CloudflarePages),
+        (DeploySurface::Android, None) => Some(DeployTarget::Android),
+        (DeploySurface::Ios, None) => Some(DeployTarget::Ios),
         (DeploySurface::Server, None) => None,
     };
     let mut options = parse_deploy_flags(args, root, default_target)?;
@@ -77,6 +79,8 @@ fn should_auto_publish(surface: DeploySurface, target: DeployTarget) -> bool {
         (surface, target),
         (DeploySurface::Web, DeployTarget::CloudflarePages)
             | (DeploySurface::Server, DeployTarget::Cloudflare)
+            | (DeploySurface::Android, DeployTarget::Android)
+            | (DeploySurface::Ios, DeployTarget::Ios)
     )
 }
 
@@ -102,6 +106,7 @@ fn parse_deploy_flags(
     let mut dry_run = false;
     let mut registry = None;
     let mut image = None;
+    let mut track = None;
     while index < args.len() {
         match args[index].as_str() {
             "--target" => {
@@ -128,16 +133,24 @@ fn parse_deploy_flags(
                 image = Some(required_value(args, index, "--image")?.to_string());
                 index += 2;
             }
+            "--track" => {
+                track = Some(required_value(args, index, "--track")?.to_string());
+                index += 2;
+            }
             _ => return Err(USAGE.into()),
         }
     }
     let target = target.ok_or("dowe deploy requires --target")?;
+    if track.is_some() && target != DeployTarget::Android {
+        return Err("--track is only valid for the Android deploy target".into());
+    }
     let mut options = DeployOptions::new(root, target);
     options.name = name;
     options.publish = publish;
     options.dry_run = dry_run;
     options.registry = registry;
     options.image = image;
+    options.track = track;
     Ok(options)
 }
 
@@ -181,6 +194,13 @@ fn print_report(report: &dowe_deploy::DeployReport) {
                 println!("Docker build command: {}", command.join(" "));
             }
         }
+    }
+    if let Some(artifact) = report.artifact.as_deref() {
+        println!(
+            "{} artifact written to {}",
+            report.target,
+            artifact.display()
+        );
     }
 }
 
@@ -234,6 +254,24 @@ mod tests {
     }
 
     #[test]
+    fn parses_android_store_track() {
+        let args = vec![
+            "--target".to_string(),
+            "android".to_string(),
+            "--track".to_string(),
+            "beta".to_string(),
+            "--publish".to_string(),
+        ];
+        let options = parse_deploy_options(&args, PathBuf::from("/project"))
+            .expect("parse")
+            .expect("options");
+
+        assert_eq!(options.target, DeployTarget::Android);
+        assert_eq!(options.track.as_deref(), Some("beta"));
+        assert!(options.publish);
+    }
+
+    #[test]
     fn leaves_target_to_menu_without_args() {
         assert!(
             parse_deploy_options(&[], PathBuf::from("/project"))
@@ -269,5 +307,10 @@ mod tests {
             DeploySurface::Server,
             DeployTarget::Docker
         ));
+        assert!(should_auto_publish(
+            DeploySurface::Android,
+            DeployTarget::Android
+        ));
+        assert!(should_auto_publish(DeploySurface::Ios, DeployTarget::Ios));
     }
 }

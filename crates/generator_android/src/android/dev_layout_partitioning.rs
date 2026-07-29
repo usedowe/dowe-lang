@@ -116,6 +116,7 @@ fn dev_collect_scope_bindings(node: &ViewNode, bindings: &mut DevLayoutBindings)
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Each { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => {
             dev_collect_scope_bindings_from_children(children, bindings);
         }
@@ -311,6 +312,10 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
                 || dev_children_reference_layout_bindings(children, bindings)
         }
         ViewNode::Brand { props, children } => {
+            dev_style_references_layout_bindings(&props.style, bindings)
+                || dev_children_reference_layout_bindings(children, bindings)
+        }
+        ViewNode::Banner { props, children } => {
             dev_style_references_layout_bindings(&props.style, bindings)
                 || dev_children_reference_layout_bindings(children, bindings)
         }
@@ -1027,6 +1032,11 @@ fn dev_children_boundary(
             children,
             neutral_context && props.style.font.is_none() && props.style.text.is_none(),
             true,
+        ),
+        ViewNode::Banner { props, children } => dev_children_boundaries(
+            children,
+            neutral_context && props.style.font.is_none() && props.style.text.is_none(),
+            false,
         ),
         ViewNode::Scaffold {
             props,

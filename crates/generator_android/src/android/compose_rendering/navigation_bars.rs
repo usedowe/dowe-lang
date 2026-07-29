@@ -128,7 +128,7 @@ fn render_compose_bottom_bar(
             compose_svg_view_box(&tab.icon.props.view_box),
             icon_color,
             compose_svg_paths(&tab.icon.paths),
-            tab.icon.props.motion.is_some()
+            tab.icon.props.is_animated()
         ));
         output.push_str(&format!("{content_pad}    }}\n"));
     }

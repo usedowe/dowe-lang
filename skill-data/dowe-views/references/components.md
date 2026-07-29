@@ -14,7 +14,7 @@ contract declares them.
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Box` | Neutral wrapper for exceptional background, overlay, cover, or local styling behavior. Prefer a semantic container when one exists. |
+| `Box` | Neutral wrapper for exceptional background, overlay, cover, local styling, or portable relative/absolute/fixed positioning. Prefer a semantic container when one exists. |
 | `Section` | Ordered page band and page-level vertical rhythm. A page begins with one or more sibling Sections; `boxed:true` constrains and centers only its generated inner body at `96rem` web or `1536` native. |
 | `Flex` | One-axis row or column using `direction`, `gap`, `align`, `justify`, and optional wrapping. |
 | `Grid` | Explicit or responsive tracks using `columns`, optional `rows`, `gap`, and alignment. |
@@ -95,12 +95,12 @@ Section, Scaffold, AppBar, Footer, and BottomBar use the wide boxed content cap 
 | --- | --- |
 | `Code` | Displays source without executing it. Set `language`, `content`, and optional template or copy behavior. |
 | `Video` | Portable HTTPS video or HLS playback with optional poster, aspect, autoplay preference, and Dowe-owned controls. |
-| `Iframe` | Embeds one quoted HTTPS URL or root-relative internal route. Quoted `src` and accessible `title` are required. |
+| `Iframe` | Embeds one quoted HTTPS URL or root-relative internal route. Quoted `src` and accessible `title` are required. During native `dowe dev`, an internal route uses the active Views origin instead of the API `BACKEND_URL`. |
 | `Device` | Responsive preview frame that contains exactly one Iframe and selects a supported device profile. |
 | `Canvas` | Custom drawing or pointer surface for visuals that semantic components cannot express; keep its commands and data target-neutral. |
 | `Audio` | Portable audio playback for a supported static source with Dowe-owned playback behavior. |
 | `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
-| `Icon` | Bundled vector selected by quoted `name`: Solar names, `country-flags:<ISO code>`, or animated `svg-spinners:<name>`. Solar supports six styles; namespaced catalogs use `linear`. |
+| `Icon` | Bundled vector selected by quoted `name`: Solar names, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or brand-colored `svg-logos:<name>`. Solar supports six styles; namespaced catalogs use `linear`. |
 | `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. |
 | `Path` | Context-only Svg path with quoted `d`, paint, and optional matrix transform. |
 
@@ -155,6 +155,7 @@ are outside the Table contract.
 | `AvatarGroup` | Static `item` children or bound `items`, with visible-count and overflow behavior. |
 | `Badge` | Compact status or count surface containing one or more view children. |
 | `Brand` | Logo or identity container with one or more arbitrary view children, optional quoted `href` navigation, optional accessible `label`, and Box-compatible `w` and `h`; it adds no Button chrome. |
+| `Banner` | Full-width external surface with one or more arbitrary view children, required quoted HTTPS `href`, optional accessible `label`, and common background, cover, spacing, sizing, border, radius, shadow, and visibility props; web opens a protected new tab and native targets use the system browser. |
 | `Chip` | Compact labeled token with optional `start` and `end` icon regions and supported close behavior. |
 | `Skeleton` | Loading placeholder sized to the content surface it represents. |
 | `ChatBox` | Bound message list with named send and pagination functions plus loading, sending, and streaming state. |

@@ -92,6 +92,71 @@ fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
     assert!(first_child_addition.contains(&format!(", {trigger},")));
 }
 
+#[test]
+fn generates_relative_absolute_and_fixed_boxes_as_native_overlays() {
+    let mut positioned_route = route();
+    positioned_route.page_tree = positioned_box_page();
+    let generated = all_android_source(&generate_android(
+        &[positioned_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(generated.contains("Alignment.TopEnd"));
+    assert!(generated.contains(".padding(top = doweResponsive(viewportWidth, xs = 16.dp) ?: 0.dp, end = doweResponsive(viewportWidth, xs = 24.dp) ?: 0.dp)"));
+    assert!(generated.contains("Alignment.BottomEnd"));
+    assert!(generated.contains(".padding(end = doweResponsive(viewportWidth, xs = 16.dp) ?: 0.dp, bottom = doweResponsive(viewportWidth, xs = 16.dp) ?: 0.dp)"));
+    assert!(generated.contains("FrameLayout"));
+    assert!(generated.contains("Gravity.TOP | Gravity.END"));
+    assert!(generated.contains("dowe-fixed-box"));
+}
+
+fn positioned_box_page() -> ViewNode {
+    ViewNode::Box {
+        props: StyleProps {
+            position: Some(Box::new(dowe_components::PositionProps {
+                mode: BoxPosition::Relative,
+                ..Default::default()
+            })),
+            sizing: SizingProps {
+                min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                    ScaleValue::from_half_steps(64),
+                ))),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![
+            text("Flow content"),
+            ViewNode::Box {
+                props: StyleProps {
+                    position: Some(Box::new(dowe_components::PositionProps {
+                        mode: BoxPosition::Absolute,
+                        top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                },
+                children: vec![text("Proof")],
+            },
+            ViewNode::Box {
+                props: StyleProps {
+                    position: Some(Box::new(dowe_components::PositionProps {
+                        mode: BoxPosition::Fixed,
+                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                        bottom: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                },
+                children: vec![text("Persistent")],
+            },
+        ],
+    }
+}
+
 fn fixed_fab_page() -> ViewNode {
     fixed_fab_page_at(OverlayCornerPosition::BottomRight)
 }
@@ -511,6 +576,16 @@ fn generates_compose_box_and_text() {
             .content
             .contains("android.useAndroidX=true")
     );
+    assert!(
+        gradle_properties
+            .content
+            .contains("org.gradle.jvmargs=-Xmx2048m")
+    );
+    assert!(
+        gradle_properties
+            .content
+            .contains("kotlin.daemon.jvmargs=-Xmx8192m")
+    );
     let app_gradle = output
         .files
         .iter()
@@ -565,6 +640,9 @@ fn generates_compose_box_and_text() {
             .contains("doweApplyTheme(name);\n        doweApplySystemBarAppearance();")
     );
     assert!(dev.content.contains("view.setOnApplyWindowInsetsListener"));
+    assert!(dev.content.contains(
+        "scrollView.setClipToPadding(true);\n        scrollView.addView(root"
+    ));
     assert!(dev.content.contains(
             "new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)"
         ));
@@ -1447,7 +1525,7 @@ fn generates_compose_and_dev_section_backgrounds() {
             "Column(modifier = Modifier.widthIn(max = 1536.dp).fillMaxWidth().dowePadding"
         )
     );
-    assert!(views.content.contains("Column(modifier = Modifier.dowePadding(all = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp)"));
+    assert!(views.content.contains("Column(modifier = Modifier.dowePadding(all = null, horizontal = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp), vertical = doweResponsive(viewportWidth, xs = 40.dp, md = 64.dp)"));
     assert!(views.content.contains("background = doweResponsive(viewportWidth, xs = DoweSectionBackground.Aurora, md = DoweSectionBackground.Ocean)"));
     assert!(views.content.contains("Brush.linearGradient(listOf(DoweDesign.softPrimary, DoweDesign.softSecondary, DoweDesign.softTertiary))"));
     assert!(views.content.contains("DoweCoverBox("));
@@ -1472,6 +1550,8 @@ fn generates_compose_and_dev_section_backgrounds() {
             .contains("view1.setBackground(doweSectionBackground(view1SectionBackground));")
     );
     assert!(dev.content.contains("doweBoxedContainer(1536)"));
+    assert!(dev.content.contains("PaddingX = doweResponsiveInt(viewportWidth, 16, null, 24, null, null)"));
+    assert!(dev.content.contains("PaddingY = doweResponsiveInt(viewportWidth, 40, null, 64, null, null)"));
 }
 
 #[test]
@@ -1728,4 +1808,54 @@ fn generates_intrinsic_brand_navigation_without_button_chrome() {
         dev.content
             .contains("setOnClickListener(v -> doweNavigate(\"push\", \"/\", null))")
     );
+}
+
+#[test]
+fn generates_external_banner_without_button_chrome() {
+    let mut banner_route = route();
+    banner_route.layout_tree = ViewNode::Children;
+    banner_route.page_tree = ViewNode::Banner {
+        props: BannerProps {
+            style: StyleProps {
+                spacing: SpacingProps {
+                    p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            navigation: NavigationAction::External {
+                url: "https://dowe.dev/cloud".to_string(),
+                web_target: dowe_components::WebTarget::Blank,
+                native_external_mode: dowe_components::NativeExternalMode::System,
+            },
+            label: Some("Explore Dowe Cloud".to_string()),
+        },
+        children: vec![text("Build beyond code")],
+    };
+    let output = generate_android(
+        &[banner_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let pages = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("pages");
+    let dev = dev_java_source(&output);
+
+    assert!(pages.content.contains("Column(modifier = Modifier"));
+    assert!(pages.content.contains(
+        ".clickable(onClick = { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
+    ));
+    assert!(pages.content.contains(
+        ".semantics { contentDescription = \"Explore Dowe Cloud\" }"
+    ));
+    assert!(!pages.content.contains("Button(modifier ="));
+    assert!(dev.content.contains("doweContainer(false)"));
+    assert!(dev.content.contains("setContentDescription(\"Explore Dowe Cloud\")"));
+    assert!(dev.content.contains(
+        "setOnClickListener(v -> doweOpenExternal(\"system\", \"https://dowe.dev/cloud\"))"
+    ));
 }

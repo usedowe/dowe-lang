@@ -14,6 +14,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Badge { children, .. }
@@ -352,6 +353,7 @@ pub fn apply_theme_catalog_to_tree(tree: &mut ViewNode, design: &DesignConfig) {
         | ViewNode::Card { children, .. }
         | ViewNode::Button { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Marquee { children, .. }

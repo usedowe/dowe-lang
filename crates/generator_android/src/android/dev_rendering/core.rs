@@ -66,6 +66,7 @@ fn render_dev_android_node_body(
         | ViewNode::Grid { .. }
         | ViewNode::Card { .. }
         | ViewNode::Brand { .. }
+        | ViewNode::Banner { .. }
         | ViewNode::Button { .. } => render_dev_android_flow_node(
             node,
             parent,

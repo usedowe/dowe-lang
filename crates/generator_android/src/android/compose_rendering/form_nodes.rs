@@ -220,7 +220,7 @@ fn render_compose_form_node(
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Enter phone number")),
                 compose_string_literal(props.country.as_deref().unwrap_or("US")),
-                compose_phone_countries(),
+                "dowePhoneCountries",
                 compose_string_list(&props.priority_countries),
                 compose_string_literal(&props.search_placeholder),
                 compose_string_literal(&props.empty_text),
@@ -313,7 +313,7 @@ fn compose_control_icon(icon: Option<&SideNavIcon>) -> String {
     .unwrap_or_else(|| "null".to_string())
 }
 
-fn compose_phone_countries() -> String {
+fn compose_phone_country_catalog() -> String {
     let countries = phone_countries()
         .iter()
         .filter_map(|country| {
@@ -328,7 +328,21 @@ fn compose_phone_countries() -> String {
             ))
         })
         .collect::<Vec<_>>();
-    format!("listOf({})", countries.join(", "))
+    let mut output = String::new();
+    let mut parts = Vec::new();
+    for (index, countries) in countries.chunks(16).enumerate() {
+        let name = format!("dowePhoneCountries{index}");
+        output.push_str(&format!(
+            "private fun {name}(): List<DowePhoneCountry> = listOf({})\n",
+            countries.join(", ")
+        ));
+        parts.push(format!("addAll({name}())"));
+    }
+    output.push_str(&format!(
+        "private val dowePhoneCountries: List<DowePhoneCountry> = buildList {{ {} }}",
+        parts.join("; ")
+    ));
+    output
 }
 
 fn compose_string_list(values: &[String]) -> String {

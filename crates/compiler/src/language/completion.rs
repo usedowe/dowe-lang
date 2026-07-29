@@ -8,7 +8,7 @@ use crate::language::documentation::{
 use crate::language::model::{LanguageCompletion, LanguageCompletionKind, LanguageDocument};
 use crate::parser::{SourceNode, SourceValue, parse_source_file};
 use dowe_components::{
-    AlertKind, Align, AvatarStatus, BarPosition, BuiltinComponent, ButtonSize,
+    AlertKind, Align, AvatarStatus, BarPosition, BoxPosition, BuiltinComponent, ButtonSize,
     CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition,
     ChartPalette, ChartSize, ChatBoxMode, CodeLanguage, ColorFamily, ColorToken, ComponentVariant,
     CountdownSize, DividerOrientation, DrawerPosition, EmptyKind, FlexDirection, FontFamily,
@@ -1047,6 +1047,9 @@ pub(super) fn component_value_completions(
         ) => Some(quoted_values(
             SideNavSize::all().iter().map(|value| value.as_str()),
         )),
+        (BuiltinComponent::Box, "position") => Some(quoted_values(
+            BoxPosition::all().iter().map(|value| value.as_str()),
+        )),
         (BuiltinComponent::Drawer, "position") => Some(quoted_values(
             DrawerPosition::all().iter().map(|value| value.as_str()),
         )),
@@ -1230,7 +1233,7 @@ fn boolean_values() -> Vec<LanguageCompletion> {
 
 pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
     match component {
-        "Box" => STYLE_PROPS.to_vec(),
+        "Box" => BOX_PROPS.to_vec(),
         "Section" => SECTION_PROPS.to_vec(),
         "Flex" => LAYOUT_PROPS.to_vec(),
         "Grid" => GRID_PROPS.to_vec(),
@@ -1313,6 +1316,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Divider" => DIVIDER_PROPS.to_vec(),
         "Button" => BUTTON_PROPS.to_vec(),
         "Brand" => BRAND_PROPS.to_vec(),
+        "Banner" => BANNER_PROPS.to_vec(),
         "IconButton" => ICON_BUTTON_PROPS.to_vec(),
         "Alert" => ALERT_PROPS.to_vec(),
         "Icon" => ICON_PROPS.to_vec(),
@@ -1494,7 +1498,7 @@ fn documented_completion(
     }
 }
 
-const STYLE_PROPS: &[&str] = &[
+const BOX_PROPS: &[&str] = &[
     "id",
     "show",
     "font",
@@ -1505,6 +1509,11 @@ const STYLE_PROPS: &[&str] = &[
     "animation",
     "colSpan",
     "rowSpan",
+    "position",
+    "top",
+    "right",
+    "bottom",
+    "left",
     "p",
     "px",
     "py",
@@ -3149,6 +3158,36 @@ const BRAND_PROPS: &[&str] = &[
     "id",
     "show",
     "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "rounded",
+    "border",
+    "borderColor",
+    "shadow",
+    "shadowColor",
+];
+const BANNER_PROPS: &[&str] = &[
+    "href",
+    "label",
+    "id",
+    "show",
+    "font",
+    "bg",
+    "color",
+    "cover",
+    "overlay",
+    "animation",
+    "colSpan",
+    "rowSpan",
     "p",
     "px",
     "py",

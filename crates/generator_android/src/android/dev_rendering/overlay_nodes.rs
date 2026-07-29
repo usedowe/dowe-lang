@@ -82,17 +82,40 @@ fn render_dev_android_overlay_node(
         }
         ViewNode::Badge { props, children } => {
             let current_font = props.style.style.font.as_ref().or(inherited_font);
-            let current_color = Some(dev_variant_content(&props.style).to_string());
+            let current_color = inherited_color.clone();
             let view = next_dev_view(counter);
+            let content = next_dev_view(counter);
+            let label = next_dev_view(counter);
+            let (gravity, translation_x, translation_y) = match props.position {
+                OverlayCornerPosition::TopLeft => (
+                    "Gravity.TOP | Gravity.START",
+                    "-v.getWidth() / 2f",
+                    "-v.getHeight() / 2f",
+                ),
+                OverlayCornerPosition::TopRight => (
+                    "Gravity.TOP | Gravity.END",
+                    "v.getWidth() / 2f",
+                    "-v.getHeight() / 2f",
+                ),
+                OverlayCornerPosition::BottomLeft => (
+                    "Gravity.BOTTOM | Gravity.START",
+                    "-v.getWidth() / 2f",
+                    "v.getHeight() / 2f",
+                ),
+                OverlayCornerPosition::BottomRight => (
+                    "Gravity.BOTTOM | Gravity.END",
+                    "v.getWidth() / 2f",
+                    "v.getHeight() / 2f",
+                ),
+            };
             output.push_str(&format!(
-                "        LinearLayout {view} = doweContainer(false);\n"
+                "        FrameLayout {view} = new DoweBadgeLayout(this);\n        LinearLayout {content} = doweContainer(false);\n        {view}.addView({content}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
             ));
             apply_dev_android_style(&props.style.style, &view, true, output);
-            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             for child in children {
                 render_dev_android_node(
                     child,
-                    &view,
+                    &content,
                     None,
                     false,
                     counter,
@@ -103,17 +126,14 @@ fn render_dev_android_overlay_node(
                     children_method,
                 );
             }
-            render_dev_android_variant_label(
-                &props.text,
-                &props.style,
-                &view,
-                None,
-                false,
-                counter,
-                output,
-                current_font,
-                context,
-            );
+            output.push_str(&format!(
+                "        TextView {label} = doweText({}, {}, 12f, 700, 0f, 1f, {});\n        {label}.setSingleLine(true);\n        {label}.setGravity(Gravity.CENTER);\n        {label}.setPadding(doweDp(6), doweDp(2), doweDp(6), doweDp(2));\n        {label}.setBackground(doweBackground({}, 999f));\n        FrameLayout.LayoutParams {label}Params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, doweDp(20), {gravity});\n        {view}.addView({label}, {label}Params);\n        {label}.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {{\n            v.setTranslationX({translation_x});\n            v.setTranslationY({translation_y});\n        }});\n",
+                dev_text_expression(&props.text, None, context),
+                dev_variant_content(&props.style),
+                dev_font_value(current_font),
+                dev_variant_container(&props.style),
+            ));
+            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::Chip { props, value, .. } => {
             render_dev_android_variant_label(

@@ -127,7 +127,7 @@ fn render_dev_android_display_text_svg_node(
                 output.push_str(&format!(
                     "        DoweSvgView {view} = doweRuntimeSvg({payload}, {}, {});\n        if ({view} == null) {view} = new DoweSvgView(this, 0f, 0f, 24f, 24f, {}, new ArrayList<>(), false);\n",
                     dev_svg_color(&props.style, inherited_color.as_deref()),
-                    props.motion.is_some(),
+                    props.is_animated(),
                     dev_svg_color(&props.style, inherited_color.as_deref())
                 ));
                 apply_dev_android_style(&props.style, &view, false, output);
@@ -155,7 +155,7 @@ fn render_dev_android_display_text_svg_node(
                                         props.view_box.width,
                                         props.view_box.height,
                                         dev_svg_color(&props.style, inherited_color.as_deref()),
-                                        props.motion.is_some()
+                                        props.is_animated()
                                     ));
             apply_dev_android_style(&props.style, &view, false, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));

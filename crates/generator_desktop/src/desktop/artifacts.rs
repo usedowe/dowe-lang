@@ -50,16 +50,10 @@ pub fn generate_desktop_with_app(
                 target: "desktop-macos",
             },
             DesktopArtifact {
-                relative_path: PathBuf::from("apps/desktop/windows/DoweWindowsApp.cs"),
-                content: windows_app(app_name),
-                kind: DesktopArtifactKind::Entrypoint,
-                target: "desktop-windows",
-            },
-            DesktopArtifact {
                 relative_path: PathBuf::from("apps/desktop/windows/dowe-desktop.json"),
                 content: desktop_target_manifest(
                     "desktop-windows",
-                    "DoweWindowsApp.cs",
+                    "dowe-runtime",
                     routes,
                     app_name,
                     app_bundle,
@@ -68,16 +62,10 @@ pub fn generate_desktop_with_app(
                 target: "desktop-windows",
             },
             DesktopArtifact {
-                relative_path: PathBuf::from("apps/desktop/linux/dowe_linux_app.c"),
-                content: linux_app(app_name),
-                kind: DesktopArtifactKind::Entrypoint,
-                target: "desktop-linux",
-            },
-            DesktopArtifact {
                 relative_path: PathBuf::from("apps/desktop/linux/dowe-desktop.json"),
                 content: desktop_target_manifest(
                     "desktop-linux",
-                    "dowe_linux_app.c",
+                    "dowe-runtime",
                     routes,
                     app_name,
                     app_bundle,
@@ -100,6 +88,7 @@ final class DoweDesktopApp: NSObject, NSApplicationDelegate {
     private var webView: WKWebView?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        applyBundledIcon()
         let webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1024, height: 768))
         webView.autoresizingMask = [.width, .height]
         let window = NSWindow(
@@ -129,6 +118,14 @@ final class DoweDesktopApp: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
+    }
+
+    private func applyBundledIcon() {
+        guard let path = Bundle.main.path(forResource: "AppIcon", ofType: "icns"),
+              let icon = NSImage(contentsOfFile: path) else {
+            return
+        }
+        NSApplication.shared.applicationIconImage = icon
     }
 
     private func loadEntry(in webView: WKWebView) {
@@ -168,81 +165,6 @@ app.run()
     .replace("__DOWE_APP_NAME__", &escape_swift(app_name))
 }
 
-fn windows_app(app_name: &str) -> String {
-    r#"using System;
-using System.IO;
-using System.Windows.Forms;
-
-namespace Dowe.Generated
-{
-    public static class DoweWindowsApp
-    {
-        [STAThread]
-        public static void Main(string[] args)
-        {
-            ApplicationConfiguration.Initialize();
-            var window = new Form();
-            window.Text = "__DOWE_APP_NAME__";
-            window.Width = 1024;
-            window.Height = 768;
-            var browser = new WebBrowser();
-            browser.Dock = DockStyle.Fill;
-            Uri startupUri;
-            if (args.Length > 0 && Uri.TryCreate(args[0], UriKind.Absolute, out var providedUri)
-                && (providedUri.Scheme == Uri.UriSchemeHttp || providedUri.Scheme == Uri.UriSchemeHttps))
-            {
-                startupUri = providedUri;
-            }
-            else
-            {
-                startupUri = new Uri(Path.GetFullPath("../web/index.html"));
-            }
-            browser.Url = startupUri;
-            window.Controls.Add(browser);
-            Application.Run(window);
-        }
-    }
-}
-"#
-    .replace("__DOWE_APP_NAME__", &escape_csharp(app_name))
-}
-
-fn linux_app(app_name: &str) -> String {
-    r#"#include <gtk/gtk.h>
-#include <webkit2/webkit2.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-
-int main(int argc, char **argv) {
-    gtk_init(&argc, &argv);
-    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW(window), "__DOWE_APP_NAME__");
-    gtk_window_set_default_size(GTK_WINDOW(window), 1024, 768);
-    if (g_file_test("icon.png", G_FILE_TEST_IS_REGULAR)) {
-        gtk_window_set_icon_from_file(GTK_WINDOW(window), "icon.png", NULL);
-    }
-    GtkWidget *view = webkit_web_view_new();
-    gtk_container_add(GTK_CONTAINER(window), view);
-    if (argc > 1 && (strncmp(argv[1], "http://", 7) == 0 || strncmp(argv[1], "https://", 8) == 0)) {
-        webkit_web_view_load_uri(WEBKIT_WEB_VIEW(view), argv[1]);
-    } else {
-        char path[PATH_MAX];
-        realpath("../web/index.html", path);
-        char uri[PATH_MAX + 8];
-        strcpy(uri, "file://");
-        strcat(uri, path);
-        webkit_web_view_load_uri(WEBKIT_WEB_VIEW(view), uri);
-    }
-    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
-    gtk_widget_show_all(window);
-    gtk_main();
-    return 0;
-}
-"#
-    .replace("__DOWE_APP_NAME__", &escape_c(app_name))
-}
-
 fn desktop_target_manifest(
     target: &str,
     entrypoint: &str,
@@ -268,14 +190,6 @@ fn desktop_target_manifest(
 }
 
 fn escape_swift(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-fn escape_csharp(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
-}
-
-fn escape_c(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 

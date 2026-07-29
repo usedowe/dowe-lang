@@ -88,6 +88,70 @@ fn generates_fixed_fab_as_route_overlay_with_dowe_icons() {
     assert!(!generated.contains("Image(systemName: \"plus\")"));
 }
 
+#[test]
+fn generates_relative_absolute_and_fixed_boxes_as_swiftui_overlays() {
+    let mut positioned_route = route();
+    positioned_route.page_tree = positioned_box_page();
+    let generated = swift_content(&generate_ios(
+        &[positioned_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(generated.contains("ZStack(alignment: .topLeading)"));
+    assert!(generated.contains("alignment: .topTrailing"));
+    assert!(generated.contains(".padding(.top, doweResponsive(viewportWidth, xs: CGFloat(16)))"));
+    assert!(generated.contains(".padding(.trailing, doweResponsive(viewportWidth, xs: CGFloat(24)))"));
+    assert!(generated.contains("alignment: .bottomTrailing"));
+    assert!(generated.contains("private func fixedBox0() -> some View"));
+}
+
+fn positioned_box_page() -> ViewNode {
+    ViewNode::Box {
+        props: StyleProps {
+            position: Some(Box::new(dowe_components::PositionProps {
+                mode: BoxPosition::Relative,
+                ..Default::default()
+            })),
+            sizing: SizingProps {
+                min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                    ScaleValue::from_half_steps(64),
+                ))),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![
+            text("Flow content"),
+            ViewNode::Box {
+                props: StyleProps {
+                    position: Some(Box::new(dowe_components::PositionProps {
+                        mode: BoxPosition::Absolute,
+                        top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                },
+                children: vec![text("Proof")],
+            },
+            ViewNode::Box {
+                props: StyleProps {
+                    position: Some(Box::new(dowe_components::PositionProps {
+                        mode: BoxPosition::Fixed,
+                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                        bottom: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                },
+                children: vec![text("Persistent")],
+            },
+        ],
+    }
+}
+
 fn fixed_fab_page() -> ViewNode {
     ViewNode::Scope {
         constants: Vec::new(),
@@ -442,10 +506,14 @@ fn generates_swiftui_box_and_text() {
         host.content
             .contains("UserDefaults.standard.set(version, forKey: activeVersionKey)")
     );
-    assert!(
-        host.content
-            .contains("UserDefaults.standard.string(forKey: activeRouteKey)")
-    );
+    assert!(host.content.contains("private var activeRoute = \"/\""));
+    assert!(!host.content.contains("dowe.hmr.route"));
+    assert!(!host
+        .content
+        .contains("UserDefaults.standard.string(forKey: activeRouteKey)"));
+    assert!(!host
+        .content
+        .contains("UserDefaults.standard.set(path, forKey: activeRouteKey)"));
     assert!(host.content.contains("persistCurrentPath()"));
     assert!(
         module
@@ -1356,7 +1424,7 @@ fn generates_swiftui_section_backgrounds() {
 
     assert!(views.contains("enum DoweSectionBackground"));
     assert!(views.contains("DoweSectionBackgroundView(background: background)"));
-    assert!(views.contains(".padding(EdgeInsets(top: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0), leading: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0)"));
+    assert!(views.contains(".padding(EdgeInsets(top: doweResponsive(viewportWidth, xs: CGFloat(40), md: CGFloat(64)) ?? CGFloat(0), leading: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0), bottom: doweResponsive(viewportWidth, xs: CGFloat(40), md: CGFloat(64)) ?? CGFloat(0), trailing: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0)))"));
     let section = &views[views
         .find("doweResponsive(viewportWidth, xs: DoweSectionBackground.aurora")
         .expect("section")..];
@@ -1607,4 +1675,45 @@ fn generates_plain_brand_navigation_with_explicit_size() {
         generated
             .contains(".accessibilityLabel(Text(\"Dowe home\"))")
     );
+}
+
+#[test]
+fn generates_external_banner_without_button_chrome() {
+    let mut banner_route = route();
+    banner_route.layout_tree = ViewNode::Children;
+    banner_route.page_tree = ViewNode::Banner {
+        props: BannerProps {
+            style: StyleProps {
+                spacing: SpacingProps {
+                    p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            navigation: NavigationAction::External {
+                url: "https://dowe.dev/cloud".to_string(),
+                web_target: dowe_components::WebTarget::Blank,
+                native_external_mode: dowe_components::NativeExternalMode::System,
+            },
+            label: Some("Explore Dowe Cloud".to_string()),
+        },
+        children: vec![text("Build beyond code")],
+    };
+    let output = generate_ios(
+        &[banner_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = swift_content(&output);
+
+    assert!(generated.contains(
+        "Button(action: { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
+    ));
+    assert!(generated.contains("VStack(alignment: .leading, spacing: 0)"));
+    assert!(generated.contains(".contentShape(Rectangle())"));
+    assert!(generated.contains(".buttonStyle(.plain)"));
+    assert!(generated.contains(
+        ".accessibilityLabel(Text(\"Explore Dowe Cloud\"))"
+    ));
 }

@@ -15,8 +15,8 @@ fn swift_runtime_badge_chip_skeleton() -> &'static str {
     }
 
     var body: some View {
-        ZStack(alignment: alignment) {
-            content
+        content
+            .overlay(alignment: alignment) {
             Text(text)
                 .font(.caption2.weight(.semibold))
                 .padding(.horizontal, CGFloat(6))
@@ -24,7 +24,19 @@ fn swift_runtime_badge_chip_skeleton() -> &'static str {
                 .background(backgroundColor)
                 .foregroundStyle(contentColor)
                 .clipShape(Capsule())
-        }
+                .alignmentGuide(.leading) { dimensions in
+                    dimensions[HorizontalAlignment.center]
+                }
+                .alignmentGuide(.trailing) { dimensions in
+                    dimensions[HorizontalAlignment.center]
+                }
+                .alignmentGuide(.top) { dimensions in
+                    dimensions[VerticalAlignment.center]
+                }
+                .alignmentGuide(.bottom) { dimensions in
+                    dimensions[VerticalAlignment.center]
+                }
+            }
     }
 
     private var alignment: Alignment {

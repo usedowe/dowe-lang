@@ -246,6 +246,8 @@ private fun DowePasswordField(value: String, onValueChange: (String) -> Unit, la
 
 private data class DowePhoneCountry(val code: String, val name: String, val dialCode: String, val viewBox: DoweSvgViewBox, val paths: List<DoweSvgPath>)
 
+__DOWE_PHONE_COUNTRIES__
+
 @Composable
 private fun DowePhoneField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, country: String, countries: List<DowePhoneCountry>, priorityCountries: List<String>, searchPlaceholder: String, emptyText: String, loadingText: String, floating: Boolean, disabled: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
     var expanded by remember { mutableStateOf(false) }

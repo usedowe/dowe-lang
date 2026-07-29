@@ -313,6 +313,11 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
             container_component_node(component, props, children, allow_children)
                 .map_err(|error| component_error(node, error))
         }
+        BuiltinComponent::Banner => {
+            let children = lower_node_sequence(&node.children, allow_children)?;
+            container_component_node(component, props, children, allow_children)
+                .map_err(|error| component_error(node, error))
+        }
         BuiltinComponent::IconButton => {
             reject_children(node)?;
             container_component_node(component, props, Vec::new(), allow_children)
@@ -396,4 +401,3 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         }
     }
 }
-

@@ -1,550 +1,170 @@
 pub fn compose_tree(layout: &ViewNode, page: &ViewNode) -> ViewNode {
-    match layout {
+    let mut composed = layout.clone();
+    compose_tree_in_place(&mut composed, page);
+    composed
+}
+
+fn compose_tree_in_place(node: &mut ViewNode, page: &ViewNode) {
+    match node {
         ViewNode::Splash {
-            binding,
-            initial,
-            content,
-            children,
-        } => ViewNode::Splash {
-            binding: binding.clone(),
-            initial: *initial,
-            content: content
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Scope {
-            constants,
-            signals,
-            actions,
-            children,
-        } => ViewNode::Scope {
-            constants: constants.clone(),
-            signals: signals.clone(),
-            actions: actions.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Box { props, children } => ViewNode::Box {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Section { props, children } => ViewNode::Section {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Flex { props, children } => ViewNode::Flex {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Grid { props, children } => ViewNode::Grid {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Card { props, children } => ViewNode::Card {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Tabs { props, tabs } => ViewNode::Tabs {
-            props: props.clone(),
-            tabs: tabs
-                .iter()
-                .map(|tab| TabItem {
-                    id: tab.id.clone(),
-                    label: tab.label.clone(),
-                    i18n: tab.i18n.clone(),
-                    children: tab
-                        .children
-                        .iter()
-                        .map(|child| compose_tree(child, page))
-                        .collect(),
-                })
-                .collect(),
-        },
-        ViewNode::NavMenu { props, items } => ViewNode::NavMenu {
-            props: props.clone(),
-            items: items
-                .iter()
-                .map(|item| compose_nav_menu_item(item, page))
-                .collect(),
-        },
+            content, children, ..
+        } => {
+            compose_children_in_place(content, page);
+            compose_children_in_place(children, page);
+        }
+        ViewNode::Scope { children, .. }
+        | ViewNode::Box { children, .. }
+        | ViewNode::Section { children, .. }
+        | ViewNode::Flex { children, .. }
+        | ViewNode::Grid { children, .. }
+        | ViewNode::Card { children, .. }
+        | ViewNode::Badge { children, .. }
+        | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
+        | ViewNode::Collapsible { children, .. }
+        | ViewNode::Button { children, .. }
+        | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
+        | ViewNode::Each { children, .. } => compose_children_in_place(children, page),
+        ViewNode::Tabs { tabs, .. } => {
+            for tab in tabs {
+                compose_children_in_place(&mut tab.children, page);
+            }
+        }
+        ViewNode::NavMenu { items, .. } => {
+            for item in items {
+                if let NavMenuItem::Megamenu { content, .. } = item {
+                    compose_children_in_place(content, page);
+                }
+            }
+        }
         ViewNode::Drawer {
-            props,
             header,
             body,
             footer,
-        } => ViewNode::Drawer {
-            props: props.clone(),
-            header: header
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            body: body.iter().map(|child| compose_tree(child, page)).collect(),
-            footer: footer
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Avatar { props, icon } => ViewNode::Avatar {
-            props: props.clone(),
-            icon: icon.clone(),
-        },
-        ViewNode::Badge { props, children } => ViewNode::Badge {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Chip {
-            props,
-            value,
-            start,
-            end,
-        } => ViewNode::Chip {
-            props: props.clone(),
-            value: value.clone(),
-            start: start.clone(),
-            end: end.clone(),
-        },
-        ViewNode::Skeleton { props } => ViewNode::Skeleton {
-            props: props.clone(),
-        },
-        ViewNode::Modal {
-            props,
+            ..
+        }
+        | ViewNode::Modal {
             header,
             body,
             footer,
-        } => ViewNode::Modal {
-            props: props.clone(),
-            header: header
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            body: body.iter().map(|child| compose_tree(child, page)).collect(),
-            footer: footer
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::AlertDialog { props } => ViewNode::AlertDialog {
-            props: props.clone(),
-        },
-        ViewNode::Tooltip { props, children } => ViewNode::Tooltip {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::AvatarGroup { props, items } => ViewNode::AvatarGroup {
-            props: props.clone(),
-            items: items.clone(),
-        },
-        ViewNode::ChatBox { props } => ViewNode::ChatBox {
-            props: props.clone(),
-        },
-        ViewNode::Empty { props } => ViewNode::Empty {
-            props: props.clone(),
-        },
-        ViewNode::Marquee { props, children } => ViewNode::Marquee {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::TypeWriter { props, items } => ViewNode::TypeWriter {
-            props: props.clone(),
-            items: items.clone(),
-        },
-        ViewNode::RichText { props, marks } => ViewNode::RichText {
-            props: props.clone(),
-            marks: marks.clone(),
-        },
-        ViewNode::Record { props } => ViewNode::Record {
-            props: props.clone(),
-        },
-        ViewNode::ToggleGroup { props, items } => ViewNode::ToggleGroup {
-            props: props.clone(),
-            items: items.clone(),
-        },
-        ViewNode::Collapsible { props, children } => ViewNode::Collapsible {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Countdown { props } => ViewNode::Countdown {
-            props: props.clone(),
-        },
-        ViewNode::Map {
-            props,
-            markers,
-            waypoints,
-        } => ViewNode::Map {
-            props: props.clone(),
-            markers: markers.clone(),
-            waypoints: waypoints.clone(),
-        },
-        ViewNode::Toast { props } => ViewNode::Toast {
-            props: props.clone(),
-        },
+            ..
+        }
+        | ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        } => {
+            compose_children_in_place(header, page);
+            compose_children_in_place(body, page);
+            compose_children_in_place(footer, page);
+        }
         ViewNode::Dropdown {
-            props,
             trigger,
             header,
-            entries,
             footer,
-        } => ViewNode::Dropdown {
-            props: props.clone(),
-            trigger: trigger
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            header: header
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            entries: entries.clone(),
-            footer: footer
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Command { props, entries } => ViewNode::Command {
-            props: props.clone(),
-            entries: entries.clone(),
-        },
-        ViewNode::Audio { props } => ViewNode::Audio {
-            props: props.clone(),
-        },
-        ViewNode::Image { props } => ViewNode::Image {
-            props: props.clone(),
-        },
-        ViewNode::Accordion { props, items } => ViewNode::Accordion {
-            props: props.clone(),
-            items: items
-                .iter()
-                .map(|item| AccordionItem {
-                    id: item.id.clone(),
-                    label: item.label.clone(),
-                    disabled: item.disabled,
-                    default_open: item.default_open,
-                    children: item
-                        .children
-                        .iter()
-                        .map(|child| compose_tree(child, page))
-                        .collect(),
-                })
-                .collect(),
-        },
-        ViewNode::Carousel { props, slides } => ViewNode::Carousel {
-            props: props.clone(),
-            slides: slides
-                .iter()
-                .map(|slide| CarouselSlide {
-                    id: slide.id.clone(),
-                    children: slide
-                        .children
-                        .iter()
-                        .map(|child| compose_tree(child, page))
-                        .collect(),
-                })
-                .collect(),
-        },
-        ViewNode::Checkbox { props } => ViewNode::Checkbox {
-            props: props.clone(),
-        },
-        ViewNode::Color { props } => ViewNode::Color {
-            props: props.clone(),
-        },
-        ViewNode::Date { props } => ViewNode::Date {
-            props: props.clone(),
-        },
-        ViewNode::DateRange { props } => ViewNode::DateRange {
-            props: props.clone(),
-        },
-        ViewNode::RadioGroup { props, options } => ViewNode::RadioGroup {
-            props: props.clone(),
-            options: options.clone(),
-        },
-        ViewNode::Toggle { props } => ViewNode::Toggle {
-            props: props.clone(),
-        },
-        ViewNode::Button { props, children } => ViewNode::Button {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Brand { props, children } => ViewNode::Brand {
-            props: props.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::ToggleTheme { props } => ViewNode::ToggleTheme {
-            props: props.clone(),
-        },
-        ViewNode::SelectTheme { props } => ViewNode::SelectTheme {
-            props: props.clone(),
-        },
-        ViewNode::Fab { props, actions } => ViewNode::Fab {
-            props: props.clone(),
-            actions: actions.clone(),
-        },
-        ViewNode::Input { props } => ViewNode::Input {
-            props: props.clone(),
-        },
-        ViewNode::Slider { props } => ViewNode::Slider {
-            props: props.clone(),
-        },
-        ViewNode::Dropzone { props } => ViewNode::Dropzone {
-            props: props.clone(),
-        },
-        ViewNode::ComboBox { props, options } => ViewNode::ComboBox {
-            props: props.clone(),
-            options: options.clone(),
-        },
-        ViewNode::CsvField { props, columns } => ViewNode::CsvField {
-            props: props.clone(),
-            columns: columns.clone(),
-        },
-        ViewNode::DragDrop {
-            props,
-            items,
-            groups,
-        } => ViewNode::DragDrop {
-            props: props.clone(),
-            items: items.clone(),
-            groups: groups.clone(),
-        },
-        ViewNode::Editor { props } => ViewNode::Editor {
-            props: props.clone(),
-        },
-        ViewNode::ImageCropper { props } => ViewNode::ImageCropper {
-            props: props.clone(),
-        },
-        ViewNode::PasswordField { props } => ViewNode::PasswordField {
-            props: props.clone(),
-        },
-        ViewNode::PhoneField { props } => ViewNode::PhoneField {
-            props: props.clone(),
-        },
-        ViewNode::PinField { props } => ViewNode::PinField {
-            props: props.clone(),
-        },
-        ViewNode::Textarea { props } => ViewNode::Textarea {
-            props: props.clone(),
-        },
-        ViewNode::Select {
-            props,
-            options,
-            option_each,
-        } => ViewNode::Select {
-            props: props.clone(),
-            options: options.clone(),
-            option_each: option_each.clone(),
-        },
-        ViewNode::Code { props } => ViewNode::Code {
-            props: props.clone(),
-        },
-        ViewNode::Video { props } => ViewNode::Video {
-            props: props.clone(),
-        },
-        ViewNode::Iframe { props } => ViewNode::Iframe {
-            props: props.clone(),
-        },
-        ViewNode::Device { props, iframe } => ViewNode::Device {
-            props: props.clone(),
-            iframe: iframe.clone(),
-        },
-        ViewNode::Canvas { props } => ViewNode::Canvas {
-            props: props.clone(),
-        },
-        ViewNode::Candlestick { props } => ViewNode::Candlestick {
-            props: props.clone(),
-        },
-        ViewNode::ArcChart { props } => ViewNode::ArcChart {
-            props: props.clone(),
-        },
-        ViewNode::AreaChart { props } => ViewNode::AreaChart {
-            props: props.clone(),
-        },
-        ViewNode::BarChart { props } => ViewNode::BarChart {
-            props: props.clone(),
-        },
-        ViewNode::LineChart { props } => ViewNode::LineChart {
-            props: props.clone(),
-        },
-        ViewNode::PieChart { props } => ViewNode::PieChart {
-            props: props.clone(),
-        },
-        ViewNode::Table { props } => ViewNode::Table {
-            props: props.clone(),
-        },
-        ViewNode::Divider { props } => ViewNode::Divider {
-            props: props.clone(),
-        },
-        ViewNode::Alert { props } => ViewNode::Alert {
-            props: props.clone(),
-        },
-        ViewNode::Svg { props, paths } => ViewNode::Svg {
-            props: props.clone(),
-            paths: paths.clone(),
-        },
+            ..
+        } => {
+            compose_children_in_place(trigger, page);
+            compose_children_in_place(header, page);
+            compose_children_in_place(footer, page);
+        }
+        ViewNode::Accordion { items, .. } => {
+            for item in items {
+                compose_children_in_place(&mut item.children, page);
+            }
+        }
+        ViewNode::Carousel { slides, .. } => {
+            for slide in slides {
+                compose_children_in_place(&mut slide.children, page);
+            }
+        }
         ViewNode::AppBar {
-            props,
             top,
             start,
             center,
             end,
             bottom,
-        } => ViewNode::AppBar {
-            props: props.clone(),
-            top: top.iter().map(|child| compose_tree(child, page)).collect(),
-            start: start
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            center: center
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            end: end.iter().map(|child| compose_tree(child, page)).collect(),
-            bottom: bottom.iter().map(|child| compose_tree(child, page)).collect(),
-        },
+            ..
+        } => {
+            compose_children_in_place(top, page);
+            compose_children_in_place(start, page);
+            compose_children_in_place(center, page);
+            compose_children_in_place(end, page);
+            compose_children_in_place(bottom, page);
+        }
         ViewNode::Footer {
-            props,
-            start,
-            center,
-            end,
-        } => ViewNode::Footer {
-            props: props.clone(),
-            start: start
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            center: center
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            end: end.iter().map(|child| compose_tree(child, page)).collect(),
-        },
-        ViewNode::BottomBar { props, tabs } => ViewNode::BottomBar {
-            props: props.clone(),
-            tabs: tabs.clone(),
-        },
-        ViewNode::SideNav { props, items } => ViewNode::SideNav {
-            props: props.clone(),
-            items: items.clone(),
-        },
-        ViewNode::RailNav { props, items } => ViewNode::RailNav {
-            props: props.clone(),
-            items: items.clone(),
-        },
-        ViewNode::Sidebar {
-            props,
-            header,
-            body,
-            footer,
-        } => ViewNode::Sidebar {
-            props: props.clone(),
-            header: header
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            body: body.iter().map(|child| compose_tree(child, page)).collect(),
-            footer: footer
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
+            start, center, end, ..
+        } => {
+            compose_children_in_place(start, page);
+            compose_children_in_place(center, page);
+            compose_children_in_place(end, page);
+        }
         ViewNode::Scaffold {
-            props,
             app_bar,
             start,
             main,
             end,
             bottom_bar,
             overlays,
-        } => ViewNode::Scaffold {
-            props: props.clone(),
-            app_bar: app_bar
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            start: start
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            main: main
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            end: end.iter().map(|child| compose_tree(child, page)).collect(),
-            bottom_bar: bottom_bar
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-            overlays: overlays
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Each {
-            item,
-            collection,
-            key,
-            children,
-        } => ViewNode::Each {
-            item: item.clone(),
-            collection: collection.clone(),
-            key: key.clone(),
-            children: children
-                .iter()
-                .map(|child| compose_tree(child, page))
-                .collect(),
-        },
-        ViewNode::Title { props, value } => ViewNode::Title {
-            props: props.clone(),
-            value: value.clone(),
-        },
-        ViewNode::Text { props, value } => ViewNode::Text {
-            props: props.clone(),
-            value: value.clone(),
-        },
-        ViewNode::Children => page.clone(),
+            ..
+        } => {
+            compose_children_in_place(app_bar, page);
+            compose_children_in_place(start, page);
+            compose_children_in_place(main, page);
+            compose_children_in_place(end, page);
+            compose_children_in_place(bottom_bar, page);
+            compose_children_in_place(overlays, page);
+        }
+        ViewNode::Children => *node = page.clone(),
+        _ => {}
+    }
+}
+
+fn compose_children_in_place(children: &mut [ViewNode], page: &ViewNode) {
+    for child in children {
+        compose_tree_in_place(child, page);
     }
 }
 
 pub fn validate_view_tree(node: &ViewNode) -> ComponentResult<()> {
+    validate_box_positioning(node, None, false)?;
     validate_view_tree_with_parent(node, false, None)
+}
+
+fn validate_box_positioning(
+    node: &ViewNode,
+    parent_box_position: Option<BoxPosition>,
+    fixed_forbidden: bool,
+) -> ComponentResult<()> {
+    if let ViewNode::Box { props, .. } = node {
+        if props.position().mode == BoxPosition::Absolute
+            && parent_box_position != Some(BoxPosition::Relative)
+        {
+            return Err(ComponentError::invalid_prop_combination(
+                "`Box position:\"absolute\"` must be a direct child of `Box position:\"relative\"`",
+            ));
+        }
+        if props.position().mode == BoxPosition::Fixed && fixed_forbidden {
+            return Err(ComponentError::invalid_prop_combination(
+                "`Box position:\"fixed\"` cannot be nested inside `each` or `Splash`",
+            ));
+        }
+    }
+
+    let child_parent_position = match node {
+        ViewNode::Box { props, .. } => Some(props.position().mode),
+        _ => None,
+    };
+    let child_fixed_forbidden =
+        fixed_forbidden || matches!(node, ViewNode::Each { .. } | ViewNode::Splash { .. });
+    for group in node_child_groups(node) {
+        for child in group {
+            validate_box_positioning(child, child_parent_position, child_fixed_forbidden)?;
+        }
+    }
+    Ok(())
 }
 
 fn validate_view_tree_with_parent(
@@ -553,7 +173,8 @@ fn validate_view_tree_with_parent(
     parent_columns: Option<u16>,
 ) -> ComponentResult<()> {
     if let Some(style) = node_style_props(node) {
-        let has_span = style.grid_item.col_span.is_some() || style.grid_item.row_span.is_some();
+        let grid_item = style.grid_item();
+        let has_span = grid_item.col_span.is_some() || grid_item.row_span.is_some();
         if has_span && !parent_is_grid {
             return Err(ComponentError::invalid_prop_combination(
                 "`colSpan` and `rowSpan` can only be used on `Box`, `Section` or `Card` children of `Grid`",
@@ -561,7 +182,7 @@ fn validate_view_tree_with_parent(
         }
         if parent_is_grid
             && let Some(columns) = parent_columns
-            && let Some(span) = style.grid_item.col_span.as_ref()
+            && let Some(span) = grid_item.col_span.as_ref()
             && span.entries.iter().any(|entry| entry.value.0 > columns)
         {
             return Err(ComponentError::invalid_prop(
@@ -599,6 +220,7 @@ fn validate_view_tree_with_parent(
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
                 validate_view_tree_with_parent(child, false, None)?;
@@ -764,19 +386,6 @@ fn validate_view_tree_with_parent(
     Ok(())
 }
 
-fn compose_nav_menu_item(item: &NavMenuItem, page: &ViewNode) -> NavMenuItem {
-    match item {
-        NavMenuItem::Item(props) => NavMenuItem::Item(props.clone()),
-        NavMenuItem::Submenu { props, items } => NavMenuItem::Submenu {
-            props: props.clone(),
-            items: items.clone(),
-        },
-        NavMenuItem::Megamenu { props, content } => NavMenuItem::Megamenu {
-            props: props.clone(),
-            content: content.iter().map(|child| compose_tree(child, page)).collect(),
-        },
-    }
-}
 
 fn validate_nav_menu_item(item: &NavMenuItem) -> ComponentResult<()> {
     if let NavMenuItem::Megamenu { content, .. } = item {
@@ -907,9 +516,29 @@ pub fn fixed_fab_nodes(node: &ViewNode) -> Vec<&ViewNode> {
     fabs
 }
 
+pub fn fixed_box_nodes(node: &ViewNode) -> Vec<&ViewNode> {
+    fn collect<'a>(node: &'a ViewNode, boxes: &mut Vec<&'a ViewNode>) {
+        if matches!(node, ViewNode::Box { props, .. } if props.position().mode == BoxPosition::Fixed)
+        {
+            boxes.push(node);
+            return;
+        }
+        for group in node_child_groups(node) {
+            for child in group {
+                collect(child, boxes);
+            }
+        }
+    }
+
+    let mut boxes = Vec::new();
+    collect(node, &mut boxes);
+    boxes
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StylePropMode {
     Box,
+    Banner,
     Section,
     Layout,
     Grid,

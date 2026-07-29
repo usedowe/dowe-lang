@@ -94,6 +94,12 @@ fn generates_compose_and_dev_display_overlay_components() {
         .contains("DoweBadge(text = \"3\", position = \"bottom-right\""));
     assert!(views
         .content
+        .contains(".doweBadgeCornerOffset(position)"));
+    assert!(views
+        .content
+        .contains("private fun Modifier.doweBadgeCornerOffset(position: String)"));
+    assert!(views
+        .content
         .contains("DoweChip(text = \"Filter\", size = \"sm\""));
     assert!(views
         .content
@@ -118,6 +124,9 @@ fn generates_compose_and_dev_display_overlay_components() {
     assert!(views
         .content
         .contains("DoweDropdown(backgroundColor = DoweDesign.surface"));
+    assert!(views.content.contains("trigger = {"));
+    assert!(views.content.contains("}, content = { close ->"));
+    assert!(!views.content.contains("} content: { close ->"));
     let dropdown_runtime_start = views
         .content
         .find("private fun DoweDropdown(")
@@ -156,6 +165,9 @@ fn generates_compose_and_dev_display_overlay_components() {
         .contains(".setBackground(doweBackground(DOWE_SOFT_SUCCESS, 999f));"));
     assert!(dev.content.contains("BlurMaskFilter.Blur.NORMAL"));
     assert!(dev.content.contains("doweDrawChildShadows(this, canvas)"));
+    assert!(dev.content.contains("FrameLayout.LayoutParams"));
+    assert!(dev.content.contains("setTranslationX(v.getWidth() / 2f)"));
+    assert!(dev.content.contains("setTranslationY(v.getHeight() / 2f)"));
     assert!(dev.content.contains("doweText(\"Search\""));
     assert!(dev.content.contains("doweText(\"Docs\""));
     assert!(dev.content.contains("if (doweBool(\"modal01\"))"));
@@ -169,7 +181,7 @@ fn generates_compose_and_dev_display_overlay_components() {
     assert!(dev.content.contains("TriggerHeight = view"));
     assert!(dev.content.contains("HitParams.height = view"));
     assert!(dev.content.contains(".requestLayout();"));
-    assert!(views.content.contains("content: { close ->"));
+    assert!(views.content.contains("content = { close ->"));
     assert!(views
         .content
         .contains("onClick = { close(); navigate(\"push\", \"/docs\", null) }"));
@@ -199,6 +211,49 @@ fn generates_android_solar_icon_paints() {
     assert!(dev_svg_path_details(stroke).contains("true, 128, 1.5f"));
     assert!(android_runtime_data_code_svg().contains("drawscope.Stroke"));
     assert!(dev_activity_svg_view().contains("Paint.Style.STROKE"));
+}
+
+#[test]
+fn generates_android_svg_logo_literal_paints() {
+    let fill = SvgPathFill::LiteralFill {
+        red: 36,
+        green: 41,
+        blue: 47,
+        opacity: 255,
+        even_odd: false,
+    };
+    assert!(compose_svg_fill(fill).contains("Color(0xFF24292F)"));
+    assert!(dev_svg_path_color(fill).contains("Color.rgb(36, 41, 47)"));
+}
+
+#[test]
+fn generates_android_svg_logo_paths_for_compose_and_dev() {
+    let logo = icon_component_node(vec![ComponentProp {
+        name: "name".to_string(),
+        value: PropValue::String("svg-logos:github-icon".to_string()),
+    }])
+    .expect("SVG logo");
+    let output = generate_android(
+        &[ViewRoute {
+            id: "logo".to_string(),
+            route_path: "/logo".to_string(),
+            layout_tree: ViewNode::Children,
+            page_tree: logo,
+            sections: Vec::new(),
+            navigation_actions: Vec::new(),
+        }],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = output
+        .files
+        .iter()
+        .map(|file| file.content.as_str())
+        .collect::<String>();
+
+    assert!(generated.contains("DoweSvgFill.Fill(Color(0xFF"));
+    assert!(generated.contains("Color.rgb("));
 }
 
 #[test]
@@ -796,7 +851,13 @@ fn generates_compose_advanced_form_components() {
         .contains("DowePhoneField(value = state.text(\"profile.phone\")"));
     assert!(views
         .content
-        .contains("countries = listOf(DowePhoneCountry("));
+        .contains("countries = dowePhoneCountries"));
+    assert!(views
+        .content
+        .contains("private fun dowePhoneCountries0(): List<DowePhoneCountry>"));
+    assert!(views
+        .content
+        .contains("private val dowePhoneCountries: List<DowePhoneCountry> = buildList"));
     let phone = views
         .content
         .split("private fun DowePhoneField(")

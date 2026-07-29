@@ -15,7 +15,10 @@ fn render_svg_html(props: &SvgProps, paths: &[SvgPath], context: &ReactiveRender
         );
     }
     if let Some(motion) = &props.motion {
-        return render_svg_spinner_html(props, motion, context);
+        if motion.animated {
+            return render_svg_spinner_html(props, motion, context);
+        }
+        return render_bundled_svg_html(props, motion.source, context);
     }
     let mut html = format!(
         r#"<svg{} xmlns="http://www.w3.org/2000/svg" viewBox="{}" aria-hidden="true">"#,
@@ -42,6 +45,34 @@ fn render_svg_html(props: &SvgProps, paths: &[SvgPath], context: &ReactiveRender
     }
     html.push_str("</svg>");
     html
+}
+
+fn render_bundled_svg_html(
+    props: &SvgProps,
+    source: &str,
+    context: &ReactiveRenderContext,
+) -> String {
+    let encoded = source
+        .as_bytes()
+        .iter()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                (*byte as char).to_string()
+            }
+            _ => format!("%{byte:02X}"),
+        })
+        .collect::<String>();
+    format!(
+        r#"<svg{} xmlns="http://www.w3.org/2000/svg" viewBox="{}" aria-hidden="true"><image width="100%" height="100%" preserveAspectRatio="xMidYMid meet" href="data:image/svg+xml,{}"></image></svg>"#,
+        attrs(
+            svg_classes(&props.style),
+            Some(&props.style.element),
+            None,
+            context
+        ),
+        escape_attr(&props.view_box.as_str()),
+        encoded
+    )
 }
 
 fn render_svg_spinner_html(

@@ -4,7 +4,7 @@ use crate::error::{RuntimeError, RuntimeResult};
 use dowe_compiler::CompiledProject;
 use dowe_spawn::{SpawnConfig, StreamMode};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub(super) fn start(
     project: &CompiledProject,
@@ -13,8 +13,7 @@ pub(super) fn start(
     let host = HostOs::current();
     match host {
         HostOs::Macos => start_macos(project, desktop_origin),
-        HostOs::Linux => start_linux(project, desktop_origin),
-        HostOs::Windows => start_windows(project, desktop_origin),
+        HostOs::Linux | HostOs::Windows => start_dowe_host(project, desktop_origin),
         HostOs::Other => Err(RuntimeError::new(
             "target `desktop` is not available on this host",
         )),
@@ -146,129 +145,30 @@ fn copy_dir_all(source: &Path, destination: &Path) -> RuntimeResult<()> {
     Ok(())
 }
 
-fn start_linux(
+fn start_dowe_host(
     project: &CompiledProject,
     desktop_origin: Option<&str>,
 ) -> RuntimeResult<ExternalTargetStartup> {
-    let app_dir = ensure_dir(
-        project.root.join(".dowe/apps/desktop/linux"),
-        DevTarget::Desktop,
-    )?;
-    ensure_file(app_dir.join("dowe_linux_app.c"), DevTarget::Desktop)?;
-    let build_dir = app_dir.join("build");
-    fs::create_dir_all(&build_dir)?;
-    let binary = build_dir.join("dowe_linux_app");
-    let mut args = vec![
-        "dowe_linux_app.c".to_string(),
-        "-o".to_string(),
-        binary.to_string_lossy().to_string(),
-    ];
-    args.extend(linux_toolkit_flags()?);
-    run_required(
-        DevTarget::Desktop,
-        SpawnConfig::new("cc", args).with_options(quiet_command_options(
-            Some(app_dir.clone()),
-            StreamMode::Ignore,
-        )),
-    )?;
+    let origin = desktop_origin
+        .ok_or_else(|| RuntimeError::new("desktop development origin is unavailable"))?;
+    let mut options = quiet_command_options(Some(project.root.clone()), StreamMode::Ignore);
+    options
+        .env
+        .insert("DOWE_INTERNAL_DESKTOP_URL".to_string(), origin.to_string());
+    options.env.insert(
+        "DOWE_INTERNAL_DESKTOP_NAME".to_string(),
+        project.app_config.name.clone(),
+    );
+    let executable = std::env::current_exe()?;
     let process = spawn_external(
         DevTarget::Desktop,
         SpawnConfig::new(
-            "./build/dowe_linux_app",
-            desktop_origin.into_iter().map(ToOwned::to_owned),
+            executable.to_string_lossy().to_string(),
+            std::iter::empty::<String>(),
         )
-        .with_options(quiet_command_options(Some(app_dir), StreamMode::Ignore)),
+        .with_options(options),
     )?;
     Ok(ExternalTargetStartup::from_processes(vec![process]))
-}
-
-fn linux_toolkit_flags() -> RuntimeResult<Vec<String>> {
-    let output = run_required(
-        DevTarget::Desktop,
-        SpawnConfig::new(
-            "pkg-config",
-            ["--cflags", "--libs", "gtk+-3.0", "webkit2gtk-4.0"],
-        )
-        .with_options(quiet_command_options(None, StreamMode::Pipe)),
-    )?;
-    Ok(String::from_utf8_lossy(&output.stdout_bytes)
-        .split_whitespace()
-        .map(ToOwned::to_owned)
-        .collect())
-}
-
-fn start_windows(
-    project: &CompiledProject,
-    desktop_origin: Option<&str>,
-) -> RuntimeResult<ExternalTargetStartup> {
-    let app_dir = ensure_dir(
-        project.root.join(".dowe/apps/desktop/windows"),
-        DevTarget::Desktop,
-    )?;
-    ensure_file(app_dir.join("DoweWindowsApp.cs"), DevTarget::Desktop)?;
-    let build_dir = app_dir.join("build");
-    fs::create_dir_all(&build_dir)?;
-    let project_file = write_windows_project(&build_dir, app_dir.join("icon.ico").is_file())?;
-    let output_dir = build_dir.join("out");
-    run_required(
-        DevTarget::Desktop,
-        SpawnConfig::new(
-            "dotnet",
-            [
-                "build".to_string(),
-                project_file.to_string_lossy().to_string(),
-                "-c".to_string(),
-                "Debug".to_string(),
-                "-o".to_string(),
-                output_dir.to_string_lossy().to_string(),
-            ],
-        )
-        .with_options(quiet_command_options(
-            Some(app_dir.clone()),
-            StreamMode::Ignore,
-        )),
-    )?;
-    let process = spawn_external(
-        DevTarget::Desktop,
-        SpawnConfig::new(
-            output_dir
-                .join("DoweWindowsApp.exe")
-                .to_string_lossy()
-                .to_string(),
-            desktop_origin.into_iter().map(ToOwned::to_owned),
-        )
-        .with_options(quiet_command_options(Some(app_dir), StreamMode::Ignore)),
-    )?;
-    Ok(ExternalTargetStartup::from_processes(vec![process]))
-}
-
-fn write_windows_project(build_dir: &Path, has_icon: bool) -> RuntimeResult<PathBuf> {
-    let project = build_dir.join("DoweWindowsApp.csproj");
-    let icon = if has_icon {
-        "    <ApplicationIcon>../icon.ico</ApplicationIcon>\n"
-    } else {
-        ""
-    };
-    fs::write(
-        &project,
-        format!(
-            r#"<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-{icon}  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="../DoweWindowsApp.cs" />
-  </ItemGroup>
-</Project>
-"#
-        ),
-    )?;
-    Ok(project)
 }
 
 fn macos_executable_name(app_name: &str) -> String {
@@ -294,9 +194,7 @@ fn escape_xml(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{macos_executable_name, macos_info_plist, write_windows_project};
-    use std::fs;
-    use tempfile::TempDir;
+    use super::{macos_executable_name, macos_info_plist};
 
     #[test]
     fn macos_bundle_metadata_matches_desktop_app() {
@@ -313,14 +211,5 @@ mod tests {
     fn macos_executable_name_is_path_safe() {
         assert_eq!(macos_executable_name("Clinic Desk"), "ClinicDesk");
         assert_eq!(macos_executable_name("***"), "DoweApp");
-    }
-
-    #[test]
-    fn windows_project_embeds_generated_icon_when_available() {
-        let temp = TempDir::new().expect("tempdir");
-        let project = write_windows_project(temp.path(), true).expect("project");
-        let content = fs::read_to_string(project).expect("content");
-
-        assert!(content.contains("<ApplicationIcon>../icon.ico</ApplicationIcon>"));
     }
 }

@@ -269,6 +269,37 @@ fn renders_brand_navigation_without_button_chrome() {
 }
 
 #[test]
+fn renders_banner_as_safe_external_block_link() {
+    let tree = ViewNode::Banner {
+        props: BannerProps {
+            style: StyleProps {
+                spacing: dowe_components::SpacingProps {
+                    p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            navigation: NavigationAction::External {
+                url: "https://dowe.dev/cloud".to_string(),
+                web_target: dowe_components::WebTarget::Blank,
+                native_external_mode: dowe_components::NativeExternalMode::System,
+            },
+            label: Some("Explore Dowe Cloud".to_string()),
+        },
+        children: vec![text("Build beyond code")],
+    };
+    let body = render_page_body(&ViewNode::Children, &tree);
+    let css = super::design_css();
+
+    assert!(body.contains(r#"<a class="banner p-6""#));
+    assert!(body.contains(r#"href="https://dowe.dev/cloud""#));
+    assert!(body.contains(r#"target="_blank" rel="noopener noreferrer""#));
+    assert!(body.contains(r#"aria-label="Explore Dowe Cloud""#));
+    assert!(!body.contains(r#"class="button"#));
+    assert!(css.contains(".banner{--dowe-component-display:block;"));
+}
+
+#[test]
 fn creates_stable_chunk_ids() {
     let root = Path::new("/project");
     let source = "page loginPage\n  Text\n    Login";
@@ -431,7 +462,7 @@ fn renders_section_markup_and_background_css() {
 
     assert!(html.contains("<section"));
     assert!(html.contains(
-        "<div class=\"section-body is-boxed p-4 md:p-6\"><p class=\"text-md\">Hero</p></div>"
+        "<div class=\"section-body is-boxed px-4 md:px-6 py-10 md:py-16\"><p class=\"text-md\">Hero</p></div>"
     ));
     assert!(!html.contains("<section class=\"section is-boxed"));
     assert!(html.contains(
@@ -442,6 +473,15 @@ fn renders_section_markup_and_background_css() {
     ));
     assert!(page.css_content.contains("background-image:linear-gradient(135deg,var(--dowe-softPrimary),var(--dowe-softSecondary),var(--dowe-softTertiary));"));
     assert!(page.css_content.contains("@media (min-width:768px)"));
+    let base_vertical_padding = page
+        .css_content
+        .find(".py-10{padding-top:2.5rem;padding-bottom:2.5rem;}")
+        .expect("base section vertical padding");
+    let responsive_vertical_padding = page
+        .css_content
+        .rfind("@media (min-width:768px){.md\\:py-16{padding-top:4rem;padding-bottom:4rem;}}")
+        .expect("responsive section vertical padding");
+    assert!(base_vertical_padding < responsive_vertical_padding);
     let design_css = super::design_css();
     assert!(design_css.contains(".section-body{width:100%;}"));
     assert!(design_css.contains(".section-body.is-boxed{max-width:96rem;margin-inline:auto;}"));
@@ -685,8 +725,29 @@ fn emits_web_manifest_and_html_artifacts() {
         web.router_js
             .contains("compatibleSignalValue(previous.state[signal.id]")
     );
-    assert!(web.router_js.contains("if(current&&!version)return"));
-    assert!(web.router_js.contains("load\",()=>current.remove()"));
+    assert!(web
+        .router_js
+        .contains("if(current&&!version){document.head.appendChild(current)"));
+    assert!(web
+        .router_js
+        .contains("return Promise.all(route.cssChunks.map(path=>loadCss(path"));
+    assert!(web.router_js.contains(
+        "if(!document.querySelector('script[src=\"/_dowe/dev/client.js\"]'))return"
+    ));
+    assert!(web
+        .router_js
+        .contains("await syncDevRoutes();const route=routes[destination.path]"));
+    assert_eq!(
+        web.router_js.matches("await loadRouteCss(route").count(),
+        2
+    );
+    assert!(web
+        .router_js
+        .contains("reject(new Error(\"Dowe CSS chunk failed: \"+link.href))"));
+    assert!(web.router_js.contains(
+        "if(options.writeHistory===false||options.replace)location.replace(destination.href)"
+    ));
+    assert!(web.router_js.contains("if(current)current.remove()"));
     assert!(web.router_js.contains("history.pushState"));
 }
 
@@ -722,10 +783,10 @@ fn emits_container_refactor_css() {
                     overlay: Some(ResponsiveValue::scalar(OverlayPaint::BlackOpacity(
                         "0.6".to_string(),
                     ))),
-                    grid_item: dowe_components::GridItemProps {
+                    grid_item: Some(Box::new(dowe_components::GridItemProps {
                         col_span: Some(ResponsiveValue::scalar(GridSpan(2))),
                         ..Default::default()
-                    },
+                    })),
                     ..Default::default()
                 },
                 children: vec![text("Hero")],
@@ -765,6 +826,74 @@ fn emits_container_refactor_css() {
     assert!(page.css_content.contains("@media (min-width:768px)"));
     assert!(page.css_content.contains("rgba(0,0,0,0.6)"));
     assert!(page.css_content.contains(".card.is-soft.is-surface"));
+}
+
+#[test]
+fn emits_portable_box_positioning_css() {
+    let page_tree = ViewNode::Box {
+        props: StyleProps {
+            position: Some(Box::new(dowe_components::PositionProps {
+                mode: BoxPosition::Relative,
+                ..Default::default()
+            })),
+            ..Default::default()
+        },
+        children: vec![
+            ViewNode::Box {
+                props: StyleProps {
+                    position: Some(Box::new(dowe_components::PositionProps {
+                        mode: BoxPosition::Absolute,
+                        top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                        right: Some(ResponsiveValue::ordered(vec![
+                            ResponsiveEntry {
+                                breakpoint: Breakpoint::Xs,
+                                value: ScaleValue::from_half_steps(8),
+                            },
+                            ResponsiveEntry {
+                                breakpoint: Breakpoint::Md,
+                                value: ScaleValue::from_half_steps(12),
+                            },
+                        ])),
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                },
+                children: vec![text("Proof")],
+            },
+            ViewNode::Box {
+                props: StyleProps {
+                    position: Some(Box::new(dowe_components::PositionProps {
+                        mode: BoxPosition::Fixed,
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                },
+                children: vec![text("Persistent")],
+            },
+        ],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/positioning.dowe"),
+        "page",
+        &page_tree,
+    );
+
+    assert!(page.content.contains("position-relative"));
+    assert!(page.content.contains("position-absolute"));
+    assert!(page.content.contains("position-fixed top-0 left-0"));
+    assert!(page.content.contains("top-4"));
+    assert!(page.content.contains("right-4 md:right-6"));
+    assert!(page.css_content.contains(".position-relative{position:relative;}"));
+    assert!(page.css_content.contains(".position-absolute{position:absolute;}"));
+    assert!(page.css_content.contains(".position-fixed{position:fixed;}"));
+    assert!(page.css_content.contains(".top-4{top:1rem;}"));
+    assert!(page.css_content.contains(".top-0{top:0rem;}"));
+    assert!(page.css_content.contains(".left-0{left:0rem;}"));
+    assert!(page.css_content.contains(".right-4{right:1rem;}"));
+    assert!(page.css_content.contains(
+        "@media (min-width:768px){.md\\:right-6{right:1.5rem;}}"
+    ));
 }
 
 #[test]

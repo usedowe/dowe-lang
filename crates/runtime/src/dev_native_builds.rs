@@ -53,12 +53,25 @@ impl NativeBuildCoordinator {
         state: &DevRuntimeState,
         project: &Arc<CompiledProject>,
     ) -> Self {
-        Self::new_with_builder(
+        Self::new_with_builder_and_initial_ios(
             selection,
             state,
             project,
             Arc::new(build_hot_module_if_current),
         )
+    }
+
+    fn new_with_builder_and_initial_ios(
+        selection: &DevTargetSelection,
+        state: &DevRuntimeState,
+        project: &Arc<CompiledProject>,
+        builder: NativeBuildFunction,
+    ) -> Self {
+        let mut coordinator = Self::new_with_builder(selection, state, project, builder);
+        if selection.contains(DevTarget::Ios) {
+            coordinator.enqueue_initial(project, DevTarget::Ios);
+        }
+        coordinator
     }
 
     fn new_with_builder(
@@ -129,6 +142,30 @@ impl NativeBuildCoordinator {
                 paths: paths.clone(),
             }));
         }
+    }
+
+    fn enqueue_initial(&mut self, project: &Arc<CompiledProject>, target: DevTarget) {
+        let Some(worker) = self.workers.get_mut(&target) else {
+            return;
+        };
+        self.revision = self.revision.saturating_add(1);
+        let fingerprint = native_target_fingerprint(project, target);
+        {
+            let mut fingerprints = worker
+                .fingerprints
+                .lock()
+                .expect("native build fingerprint lock");
+            fingerprints.published = [0; 32];
+            fingerprints.requested = fingerprint;
+            fingerprints.requested_revision = self.revision;
+        }
+        *worker.latest.lock().expect("native build revision lock") = self.revision;
+        worker.sender.send_replace(Some(NativeBuildRequest {
+            revision: self.revision,
+            fingerprint,
+            project: Arc::clone(project),
+            paths: Vec::new(),
+        }));
     }
 
     pub(crate) fn shutdown(mut self) {
@@ -334,6 +371,48 @@ mod tests {
                 native_target_fingerprint(&second, target)
             );
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn initial_ios_module_build_is_queued_without_blocking_target_startup() {
+        let temp = TempDir::new().expect("tempdir");
+        write_project(temp.path(), "first", "one");
+        let project = Arc::new(compile_dev(temp.path()).expect("project"));
+        let state = DevRuntimeState {
+            project: Arc::new(RwLock::new(Arc::clone(&project))),
+            events: DevEventBus::new("ios-initial-module"),
+            dev_origins: Vec::new(),
+            cache_mode: crate::handlers::CacheRuntimeMode::Local,
+        };
+        let selection =
+            DevTargetSelection::new([DevTarget::Ios], HostOs::Macos).expect("selection");
+        let (build_sender, build_receiver) = standard_mpsc::channel();
+        let builder = Arc::new(
+            move |_: &dowe_compiler::CompiledProject,
+                  target: DevTarget,
+                  revision: &crate::dev_modules::DevModuleRevision| {
+                build_sender.send(target).expect("build observation");
+                Ok(revision
+                    .is_current()
+                    .then(|| crate::dev_modules::PublishedDevModule {
+                        target: target.as_str().to_string(),
+                        version: "initial-version".to_string(),
+                        path: "/ios".to_string(),
+                        file: PathBuf::from("ios"),
+                    }))
+            },
+        );
+        let coordinator = super::NativeBuildCoordinator::new_with_builder_and_initial_ios(
+            &selection, &state, &project, builder,
+        );
+
+        assert_eq!(
+            build_receiver
+                .recv_timeout(Duration::from_secs(2))
+                .expect("initial build"),
+            DevTarget::Ios
+        );
+        coordinator.shutdown();
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

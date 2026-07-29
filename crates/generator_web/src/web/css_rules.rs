@@ -57,6 +57,11 @@ fn class_body(class_name: &str) -> Option<String> {
     if class_name == "flex-wrap" {
         return Some("flex-wrap:wrap;".to_string());
     }
+    if let Some(value) = class_name.strip_prefix("position-")
+        && let Some(position) = BoxPosition::from_name(value)
+    {
+        return Some(format!("position:{};", position.as_str()));
+    }
     if matches!(
         class_name,
         "box"
@@ -413,7 +418,10 @@ fn class_body(class_name: &str) -> Option<String> {
     {
         return Some(button_size_css(size));
     }
-    for prefix in ["p", "px", "py", "pl", "pr", "pt", "pb", "gap", "w", "h"] {
+    for prefix in [
+        "p", "px", "py", "pl", "pr", "pt", "pb", "top", "right", "bottom", "left",
+        "gap", "w", "h",
+    ] {
         if let Some(suffix) = class_name.strip_prefix(&format!("{prefix}-"))
             && let Some(rem) = scale_suffix_rem(suffix)
         {
@@ -425,6 +433,10 @@ fn class_body(class_name: &str) -> Option<String> {
                 "pr" => format!("padding-right:{rem};"),
                 "pt" => format!("padding-top:{rem};"),
                 "pb" => format!("padding-bottom:{rem};"),
+                "top" => format!("top:{rem};"),
+                "right" => format!("right:{rem};"),
+                "bottom" => format!("bottom:{rem};"),
+                "left" => format!("left:{rem};"),
                 "gap" => format!("gap:{rem};"),
                 "w" => format!("width:{rem};"),
                 "h" => format!("height:{rem};"),

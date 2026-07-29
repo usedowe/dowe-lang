@@ -429,7 +429,7 @@ private func doweIframeURL(_ source: String) -> URL? {
     }
     let configured = DoweEnvironment.BACKEND_URL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     let development = (UserDefaults.standard.string(forKey: "dowe.hmr.endpoint") ?? "").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-    guard let baseURL = [configured, development].compactMap({ URL(string: $0) }).first(where: doweIframeURLAllowed) else { return nil }
+    guard let baseURL = [development, configured].compactMap({ URL(string: $0) }).first(where: doweIframeURLAllowed) else { return nil }
     return URL(string: source, relativeTo: baseURL)?.absoluteURL
 }
 

@@ -3,7 +3,18 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
             BuiltinComponent::Box => {
                 matches!(
                     name,
-                    "bg" | "color" | "cover" | "overlay" | "animation" | "colSpan" | "rowSpan"
+                    "bg"
+                        | "color"
+                        | "cover"
+                        | "overlay"
+                        | "animation"
+                        | "colSpan"
+                        | "rowSpan"
+                        | "position"
+                        | "top"
+                        | "right"
+                        | "bottom"
+                        | "left"
                 )
             }
             BuiltinComponent::Section => {

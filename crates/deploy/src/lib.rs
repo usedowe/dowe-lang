@@ -1,19 +1,23 @@
 mod cloudflare;
 mod cloudflare_wasm;
 mod database;
+mod desktop_runtime;
 mod docker;
 mod error;
 mod files;
+mod gradle;
 mod model;
+mod native;
 mod package;
 mod publish;
 
 pub use docker::{DEFAULT_DOCKER_REGISTRY, DOCKER_PLATFORM, default_docker_image_name};
 pub use error::{DeployError, DeployResult};
 pub use model::{
-    DeployOptions, DeployReport, DeploySurface, DeployTarget, available_deploy_surfaces,
-    deploy_targets_for_surface,
+    BuildOptions, BuildReport, BuildTarget, DeployOptions, DeployReport, DeploySurface,
+    DeployTarget, available_build_targets, available_deploy_surfaces, deploy_targets_for_surface,
 };
+pub use native::build;
 
 use dowe_compiler::compile_dev;
 use files::{collect_files, reset_dir, target_dir, web_target_dir};
@@ -22,7 +26,11 @@ use std::path::Path;
 pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
     let root = options.root.canonicalize()?;
     let project = compile_dev(&root)?;
-    if options.target.surface() == DeploySurface::Web && !project.capabilities.views {
+    if matches!(
+        options.target.surface(),
+        DeploySurface::Web | DeploySurface::Android | DeploySurface::Ios
+    ) && !project.capabilities.views
+    {
         return Err(DeployError::new(format!(
             "deploy target `{}` requires `views` in main.dowe",
             options.target
@@ -33,6 +41,11 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
             "deploy target `{}` requires `server` in main.dowe",
             options.target
         )));
+    }
+    if options.target == DeployTarget::Ios && !cfg!(target_os = "macos") {
+        return Err(DeployError::new(
+            "deploy target `ios` is only available on macOS",
+        ));
     }
     let output = deploy_output_dir(&root, options.target)?;
     let cloudflare_pages_name = (options.target == DeployTarget::CloudflarePages)
@@ -54,6 +67,7 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
     }
     reset_dir(&output)?;
 
+    let mut artifact = None;
     match options.target {
         DeployTarget::Static => package::generate_static(&root, &output)?,
         DeployTarget::Docker => docker::generate_docker(
@@ -71,6 +85,15 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
                 .as_deref()
                 .ok_or_else(|| DeployError::new("cloudflare pages project name is missing"))?;
             package::generate_cloudflare_pages(&root, &output, project_name)?;
+        }
+        DeployTarget::Android => {
+            artifact =
+                Some(native::android_store_bundle(&project, &output, options.dry_run)?.artifact);
+        }
+        DeployTarget::Ios => {
+            artifact = Some(
+                native::build_store(&project, BuildTarget::Ios, &output, options.dry_run)?.artifact,
+            );
         }
     }
     database::write_database_artifacts(&project, &output, options.target.surface())?;
@@ -104,6 +127,23 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
             DeployTarget::Docker => {
                 unreachable!("docker publish is rejected before package generation");
             }
+            DeployTarget::Android => {
+                let artifact = artifact
+                    .as_deref()
+                    .ok_or_else(|| DeployError::new("Android store artifact is missing"))?;
+                command = Some(publish::publish_android(
+                    artifact,
+                    &project.app_config.bundle,
+                    options.track.as_deref().unwrap_or("internal"),
+                    options.dry_run,
+                )?);
+            }
+            DeployTarget::Ios => {
+                let artifact = artifact
+                    .as_deref()
+                    .ok_or_else(|| DeployError::new("iOS store artifact is missing"))?;
+                command = Some(publish::publish_ios(artifact, options.dry_run)?);
+            }
         }
     }
 
@@ -115,6 +155,7 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
         published: options.publish && !options.dry_run,
         image_ref: docker_image.map(|image| image.reference),
         image_built,
+        artifact,
     })
 }
 
@@ -130,7 +171,9 @@ pub fn deploy_output_dir(
                 target_dir(root.as_ref(), target.as_str())
             }
         }
-        DeploySurface::Server => target_dir(root.as_ref(), target.as_str()),
+        DeploySurface::Server | DeploySurface::Android | DeploySurface::Ios => {
+            target_dir(root.as_ref(), target.as_str())
+        }
     }
 }
 

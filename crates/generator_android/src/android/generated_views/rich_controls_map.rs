@@ -176,6 +176,8 @@ private fun DoweBadge(text: String, position: String, backgroundColor: Color, co
             text = text,
             modifier = Modifier
                 .align(doweBadgeAlignment(position))
+                .doweBadgeCornerOffset(position)
+                .zIndex(1f)
                 .clip(RoundedCornerShape(999.dp))
                 .background(backgroundColor)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -186,6 +188,16 @@ private fun DoweBadge(text: String, position: String, backgroundColor: Color, co
         )
     }
 }
+
+private fun Modifier.doweBadgeCornerOffset(position: String): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+            val x = if (position.endsWith("right")) placeable.width / 2 else -placeable.width / 2
+            val y = if (position.startsWith("bottom")) placeable.height / 2 else -placeable.height / 2
+            placeable.place(x, y)
+        }
+    }
 
 private fun doweBadgeAlignment(position: String): Alignment =
     when (position) {

@@ -81,7 +81,7 @@ fn dev_activity_sources(
         scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
         scrollView.setClipChildren(false);
-        scrollView.setClipToPadding(false);
+        scrollView.setClipToPadding(true);
         scrollView.addView(root, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         background.addView(scrollView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         viewportWidth = getResources().getConfiguration().screenWidthDp;

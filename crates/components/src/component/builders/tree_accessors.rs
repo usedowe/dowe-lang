@@ -18,6 +18,7 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => children.iter().find_map(first_text),
         ViewNode::Drawer {
             header,
@@ -207,6 +208,7 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         | ViewNode::Input { props }
         | ViewNode::Select { props, .. } => Some(&props.element),
         ViewNode::Brand { props, .. } => Some(&props.style.element),
+        ViewNode::Banner { props, .. } => Some(&props.style.element),
         ViewNode::AvatarGroup { props, .. } => Some(&props.style.element),
         ViewNode::ChatBox { props } => Some(&props.style.element),
         ViewNode::Empty { props } => Some(&props.style.element),
@@ -290,6 +292,7 @@ pub fn navigation_action(node: &ViewNode) -> Option<&NavigationAction> {
     match node {
         ViewNode::Button { props, .. } => props.navigation.as_ref(),
         ViewNode::Brand { props, .. } => props.navigation.as_ref(),
+        ViewNode::Banner { props, .. } => Some(&props.navigation),
         ViewNode::Avatar { props, .. } => props.style.navigation.as_ref(),
         ViewNode::Empty { props } => props.style.navigation.as_ref(),
         _ => None,
@@ -310,6 +313,7 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => children,
         ViewNode::Drawer { body, .. } => body,
         ViewNode::Modal { body, .. } => body,

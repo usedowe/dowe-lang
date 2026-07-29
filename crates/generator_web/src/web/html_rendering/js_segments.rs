@@ -186,6 +186,14 @@ fn collect_js_segments(
             }
             push_literal(segments, close);
         }
+        ViewNode::Banner { props, children } => {
+            let (open, close) = banner_tags(props, context);
+            push_literal(segments, &open);
+            for child in children {
+                collect_js_segments(child, segments, context);
+            }
+            push_literal(segments, close);
+        }
         ViewNode::ToggleTheme { props } => {
             push_literal(segments, &render_theme_toggle_html(props, context));
         }

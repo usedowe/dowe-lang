@@ -10,6 +10,7 @@ pub(crate) fn ios_artifacts(
 ) -> IconResult<Vec<IconArtifact>> {
     let style = RenderStyle {
         background: Some(background),
+        background_scale: 1.0,
         radius: 0.0,
         logo_scale: 0.7,
         circular_safe_zone: None,
@@ -60,18 +61,21 @@ pub(crate) fn android_artifacts(
     ];
     let legacy_style = RenderStyle {
         background: Some(background),
+        background_scale: 1.0,
         radius: rounded.ratio(),
         logo_scale: 0.7,
         circular_safe_zone: None,
     };
     let round_style = RenderStyle {
         background: Some(background),
+        background_scale: 1.0,
         radius: 0.5,
         logo_scale: 0.7,
         circular_safe_zone: None,
     };
     let foreground_style = RenderStyle {
         background: None,
+        background_scale: 1.0,
         radius: 0.0,
         logo_scale: 1.0,
         circular_safe_zone: Some(66.0 / 108.0),

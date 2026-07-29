@@ -9,6 +9,7 @@ pub(crate) struct IconRenderer {
 #[derive(Clone, Copy)]
 pub(crate) struct RenderStyle {
     pub background: Option<IconColor>,
+    pub background_scale: f32,
     pub radius: f32,
     pub logo_scale: f32,
     pub circular_safe_zone: Option<f32>,
@@ -37,7 +38,12 @@ impl IconRenderer {
         let mut pixmap = Pixmap::new(size, size)
             .ok_or_else(|| IconError::new(format!("invalid icon canvas size {size}")))?;
         if let Some(background) = style.background {
-            fill_background(&mut pixmap, background, style.radius);
+            fill_background(
+                &mut pixmap,
+                background,
+                style.radius,
+                style.background_scale,
+            );
         }
         let source_size = self.tree.size();
         let source_width = source_size.width();
@@ -60,17 +66,19 @@ impl IconRenderer {
     }
 }
 
-fn fill_background(pixmap: &mut Pixmap, color: IconColor, radius: f32) {
+fn fill_background(pixmap: &mut Pixmap, color: IconColor, radius: f32, scale: f32) {
     let color = Color::from_rgba8(color.red, color.green, color.blue, 255);
-    if radius <= 0.0 {
+    if radius <= 0.0 && scale >= 1.0 {
         pixmap.fill(color);
         return;
     }
-    let side = pixmap.width() as f32;
+    let canvas_side = pixmap.width() as f32;
+    let side = canvas_side * scale;
+    let origin = (canvas_side - side) * 0.5;
     let radius = (side * radius).min(side * 0.5);
     let mut paint = Paint::default();
     paint.set_color(color);
-    if let Some(path) = rounded_square(side, radius) {
+    if let Some(path) = rounded_square(origin, side, radius) {
         pixmap.fill_path(
             &path,
             &paint,
@@ -81,39 +89,47 @@ fn fill_background(pixmap: &mut Pixmap, color: IconColor, radius: f32) {
     }
 }
 
-fn rounded_square(side: f32, radius: f32) -> Option<Path> {
+fn rounded_square(origin: f32, side: f32, radius: f32) -> Option<Path> {
+    let end = origin + side;
     let control = radius * 0.552_284_8;
     let mut path = PathBuilder::new();
-    path.move_to(radius, 0.0);
-    path.line_to(side - radius, 0.0);
+    path.move_to(origin + radius, origin);
+    path.line_to(end - radius, origin);
     path.cubic_to(
-        side - radius + control,
-        0.0,
-        side,
-        radius - control,
-        side,
-        radius,
+        end - radius + control,
+        origin,
+        end,
+        origin + radius - control,
+        end,
+        origin + radius,
     );
-    path.line_to(side, side - radius);
+    path.line_to(end, end - radius);
     path.cubic_to(
-        side,
-        side - radius + control,
-        side - radius + control,
-        side,
-        side - radius,
-        side,
+        end,
+        end - radius + control,
+        end - radius + control,
+        end,
+        end - radius,
+        end,
     );
-    path.line_to(radius, side);
+    path.line_to(origin + radius, end);
     path.cubic_to(
-        radius - control,
-        side,
-        0.0,
-        side - radius + control,
-        0.0,
-        side - radius,
+        origin + radius - control,
+        end,
+        origin,
+        end - radius + control,
+        origin,
+        end - radius,
     );
-    path.line_to(0.0, radius);
-    path.cubic_to(0.0, radius - control, radius - control, 0.0, radius, 0.0);
+    path.line_to(origin, origin + radius);
+    path.cubic_to(
+        origin,
+        origin + radius - control,
+        origin + radius - control,
+        origin,
+        origin + radius,
+        origin,
+    );
     path.close();
     path.finish()
 }

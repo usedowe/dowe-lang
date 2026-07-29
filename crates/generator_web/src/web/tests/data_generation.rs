@@ -277,6 +277,16 @@ fn emits_button_size_and_variant_css() {
 }
 
 #[test]
+fn keeps_button_content_on_one_line_without_flex_shrink() {
+    let css = super::design_css();
+
+    assert!(css.contains(
+        ".button{--dowe-component-display:inline-flex;display:var(--dowe-show,var(--dowe-component-display));flex:0 0 auto;"
+    ));
+    assert!(css.contains("font:inherit;text-decoration:none;white-space:nowrap;}"));
+}
+
+#[test]
 fn emits_centered_proportional_icon_button_css() {
     let css = super::design_css();
 

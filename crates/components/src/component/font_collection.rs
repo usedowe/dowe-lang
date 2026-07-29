@@ -51,6 +51,12 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
                 collect_node_font_families(child, fonts);
             }
         }
+        ViewNode::Banner { props, children } => {
+            collect_style_font_families(&props.style, fonts);
+            for child in children {
+                collect_node_font_families(child, fonts);
+            }
+        }
         ViewNode::Marquee { props, children } => {
             collect_style_font_families(&props.style, fonts);
             for child in children {

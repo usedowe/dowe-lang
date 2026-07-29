@@ -1,12 +1,13 @@
 use super::{
-    android_runtime_data_code_svg, compose_svg_fill, dev_activity_svg_view, dev_svg_path_details,
+    android_runtime_data_code_svg, compose_svg_fill, dev_activity_svg_view, dev_svg_path_color,
+    dev_svg_path_details,
     generate_android, generate_android_with_app_and_translations,
     generate_android_with_translations, AndroidOutput,
 };
 use dowe_components::{
     AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
-    AvatarGroupProps, AvatarProps, AvatarStatus, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BrandProps,
-    Breakpoint, ButtonSize,
+    AvatarGroupProps, AvatarProps, AvatarStatus, BadgeProps, BannerProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BrandProps,
+    BoxPosition, Breakpoint, ButtonSize,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,
     ChatBoxMode,
     ChatBoxProps, CheckboxProps, ChipProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps,

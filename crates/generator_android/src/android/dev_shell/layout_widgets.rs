@@ -37,6 +37,34 @@ fn dev_activity_layout_widgets() -> &'static str {
         }
     }
 
+    private static final class DoweBadgeLayout extends FrameLayout {
+        DoweBadgeLayout(Context context) {
+            super(context);
+            setClipChildren(false);
+            setClipToPadding(false);
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            View content = getChildCount() == 0 ? null : getChildAt(0);
+            if (content == null) {
+                setMeasuredDimension(
+                    resolveSize(getSuggestedMinimumWidth(), widthMeasureSpec),
+                    resolveSize(getSuggestedMinimumHeight(), heightMeasureSpec)
+                );
+                return;
+            }
+            measureChildWithMargins(content, widthMeasureSpec, 0, heightMeasureSpec, 0);
+            for (int index = 1; index < getChildCount(); index++) {
+                measureChild(getChildAt(index), widthMeasureSpec, heightMeasureSpec);
+            }
+            setMeasuredDimension(
+                resolveSize(content.getMeasuredWidth() + getPaddingLeft() + getPaddingRight(), widthMeasureSpec),
+                resolveSize(content.getMeasuredHeight() + getPaddingTop() + getPaddingBottom(), heightMeasureSpec)
+            );
+        }
+    }
+
     private LinearLayout doweContainer(boolean horizontal) {
         LinearLayout view = new DoweLinearLayout(this);
         view.setOrientation(horizontal ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);

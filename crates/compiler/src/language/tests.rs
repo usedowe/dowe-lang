@@ -174,6 +174,37 @@ fn language_support_documents_brand_navigation_and_size() {
 }
 
 #[test]
+fn language_support_documents_banner_external_navigation() {
+    let root = tempdir().expect("root");
+    let document = LanguageDocument {
+        path: root.path().join("pages/banner.dowe"),
+        source: "page bannerPage\n  Banner href:\"https://dowe.dev/cloud\" label:\"Explore Dowe Cloud\" p:6\n    Text\n      \"Build beyond code\"\n"
+            .to_string(),
+    };
+    let prop_document = LanguageDocument {
+        path: root.path().join("pages/banner-props.dowe"),
+        source: "page bannerProps\n  Banner \n".to_string(),
+    };
+    let component_document = LanguageDocument {
+        path: root.path().join("pages/banner-component.dowe"),
+        source: "page bannerComponent\n  Bann\n".to_string(),
+    };
+
+    let diagnostics = analyze_document(root.path(), &document);
+    let props = complete_document(root.path(), &prop_document, 2, 10);
+    let components = complete_document(root.path(), &component_document, 2, 7);
+    let hover = hover_at(root.path(), &document, 2, 4).expect("Banner hover");
+
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    for prop in ["href", "label", "bg", "cover", "p", "w", "h"] {
+        assert!(props.iter().any(|item| item.label == prop), "{prop}");
+    }
+    assert!(components.iter().any(|item| item.label == "Banner"));
+    assert!(hover.contains("cross-platform external banner component"));
+    assert!(hover.contains("one or more banner children"));
+}
+
+#[test]
 fn formatter_rejects_unsafe_parse() {
     let error = format_document(
         Path::new("/project"),
@@ -675,6 +706,40 @@ fn completes_namespaced_svg_spinner_icon_names() {
         completions
             .iter()
             .any(|completion| completion.label == "\"svg-spinners:3-dots-bounce\"")
+    );
+}
+
+#[test]
+fn completes_namespaced_svg_logo_icon_names() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("views/pages")).expect("pages");
+    let document = LanguageDocument {
+        path: root.path().join("views/pages/brands.dowe"),
+        source: "page BrandPage\n  Icon name:\n".to_string(),
+    };
+    let completions = complete_document(root.path(), &document, 2, "  Icon name:".len() + 1);
+
+    assert!(
+        completions
+            .iter()
+            .any(|completion| completion.label == "\"svg-logos:github-icon\"")
+    );
+}
+
+#[test]
+fn diagnostics_accept_namespaced_svg_logo_icon_names() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("views/pages")).expect("pages");
+    let document = LanguageDocument {
+        path: root.path().join("views/pages/home-page.dowe"),
+        source: "page homePage\n  Flex align:\"center\" gap:3\n    Icon name:\"svg-logos:android-icon\" w:10 h:10\n"
+            .to_string(),
+    };
+
+    let diagnostics = analyze_document(root.path(), &document);
+    assert!(
+        diagnostics.is_empty(),
+        "unexpected diagnostics: {diagnostics:?}"
     );
 }
 
@@ -1327,6 +1392,11 @@ fn completions_include_current_view_component_props() {
     let box_props = complete_document(Path::new("/project"), &document, 2, 7);
     assert!(box_props.iter().any(|item| item.label == "color"));
     assert!(box_props.iter().any(|item| item.label == "animation"));
+    assert!(box_props.iter().any(|item| item.label == "position"));
+    assert!(box_props.iter().any(|item| item.label == "top"));
+    assert!(box_props.iter().any(|item| item.label == "right"));
+    assert!(box_props.iter().any(|item| item.label == "bottom"));
+    assert!(box_props.iter().any(|item| item.label == "left"));
     assert!(!box_props.iter().any(|item| item.label == "text"));
 
     let section_props = complete_document(Path::new("/project"), &document, 3, 11);
@@ -1467,6 +1537,31 @@ fn completions_include_current_view_component_props() {
     assert!(dropzone_props.iter().any(|item| item.label == "accept"));
     assert!(dropzone_props.iter().any(|item| item.label == "maxSize"));
     assert!(dropzone_props.iter().any(|item| item.label == "errorText"));
+}
+
+#[test]
+fn completions_and_diagnostics_support_box_positioning() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("pages")).expect("pages");
+    let document = LanguageDocument {
+        path: root.path().join("pages/positioning.dowe"),
+        source: "page positioningPage\n  Box position:\"relative\"\n    Box position:\n"
+            .to_string(),
+    };
+    let values = complete_document(root.path(), &document, 3, "    Box position:".len() + 1);
+    for value in ["\"static\"", "\"relative\"", "\"absolute\"", "\"fixed\""] {
+        assert!(values.iter().any(|item| item.label == value));
+    }
+
+    let valid = LanguageDocument {
+        path: root.path().join("pages/positioning-valid.dowe"),
+        source: "page positioningPage\n  Box position:\"relative\" minH:64\n    Box position:\"absolute\" top:4 right:{ xs:4 md:6 }\n      Text\n        \"Proof\"\n"
+            .to_string(),
+    };
+    assert!(
+        analyze_document(root.path(), &valid).is_empty(),
+        "valid positioned Box should have no diagnostics"
+    );
 }
 
 #[test]
@@ -2314,6 +2409,7 @@ fn every_builtin_view_component_and_prop_has_editor_documentation() {
         "Divider",
         "Button",
         "Brand",
+        "Banner",
         "ToggleTheme",
         "SelectTheme",
         "Fab",

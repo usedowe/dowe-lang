@@ -46,6 +46,7 @@ fn collect_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
         | ViewNode::Card { .. }
         | ViewNode::Button { .. }
         | ViewNode::Brand { .. }
+        | ViewNode::Banner { .. }
         | ViewNode::ToggleTheme { .. }
         | ViewNode::Fab { .. } => collect_layout_node_classes(node, classes),
         ViewNode::Avatar { .. }

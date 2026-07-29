@@ -6,7 +6,7 @@ use dowe_stdlib::{StdlibReturnKind, StdlibSignature};
 pub(super) const VIEW_COMPONENTS: &[&str] = &[
     "Box", "Section", "Flex", "Grid", "Input", "Select", "Option", "Code", "Video", "Iframe", "Device", "Canvas",
     "Candlestick", "ArcChart", "AreaChart", "BarChart", "LineChart", "PieChart", "Table", "Divider",
-    "Button", "Brand", "ToggleTheme", "SelectTheme", "Fab", "fabAction", "Slider", "Dropzone", "ComboBox",
+    "Button", "Brand", "Banner", "ToggleTheme", "SelectTheme", "Fab", "fabAction", "Slider", "Dropzone", "ComboBox",
     "comboOption", "CsvField", "csvColumn", "DragDrop", "dragGroup", "dragItem", "Editor", "ImageCropper",
     "PasswordField", "PhoneField", "PinField", "Textarea", "Alert", "Icon", "Svg", "Path", "AppBar", "Footer",
     "BottomBar", "NavMenu", "SideNav", "RailNav", "Sidebar", "Scaffold", "Splash", "Drawer", "Avatar", "Badge", "Chip",
@@ -499,6 +499,9 @@ fn component_description(name: &str) -> &'static str {
         "Brand" => {
             "Built-in cross-platform identity component for arbitrary logo children with optional navigation."
         }
+        "Banner" => {
+            "Built-in cross-platform external banner component for arbitrary visual children with required HTTPS navigation."
+        }
         "Splash" => {
             "Direct layout or page boundary that replaces normal content while its bound boolean Signal is true."
         }
@@ -523,6 +526,7 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
     match name {
         "Box" | "Section" | "Flex" | "Grid" | "Card" => &[("view components", "(zero or more)")],
         "Brand" => &[("view components", "(one or more identity children)")],
+        "Banner" => &[("view components", "(one or more banner children)")],
         "Splash" => &[("view components", "(zero or more splash children)")],
         "Badge" | "Tooltip" | "Marquee" | "Collapsible" => &[("view components", "(one or more)")],
         "Button" | "Title" | "Text" => &[("\"text\"", "(one direct static string)")],
@@ -665,11 +669,10 @@ fn prop_type(component: &str, prop: &str) -> String {
         | "showCmyk"
         | "showOklch" => "boolean".to_string(),
         "template" => "boolean".to_string(),
-        "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "gap" | "columns" | "rows" | "colSpan"
-        | "rowSpan" | "min" | "max" | "step" | "maxSize" | "maxPoints" | "offsetX" | "offsetY"
-        | "autoplayInterval" | "slideWidth" | "slideHeight" | "slidesPerView" => {
-            "number | responsive number".to_string()
-        }
+        "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "top" | "right" | "bottom" | "left"
+        | "gap" | "columns" | "rows" | "colSpan" | "rowSpan" | "min" | "max" | "step"
+        | "maxSize" | "maxPoints" | "offsetX" | "offsetY" | "autoplayInterval" | "slideWidth"
+        | "slideHeight" | "slidesPerView" => "number | responsive number".to_string(),
         name if name.starts_with("on") => "fn reference".to_string(),
         "i18n" | "descriptionI18n" | "statusI18n" => "quoted translation key".to_string(),
         "bind" | "data" | "series" | "items" | "messages" | "scene" | "visible" | "start"
@@ -694,6 +697,12 @@ fn prop_description(prop: &str) -> &'static str {
         "variant" => "Selects the component's visual treatment.",
         "boxed" => {
             "Constrains and centers the component's generated content body while preserving its full-width structural container."
+        }
+        "position" => {
+            "Controls Box flow and overlay placement with static, relative, absolute, or fixed positioning."
+        }
+        "top" | "right" | "bottom" | "left" => {
+            "Offsets an absolute or fixed Box using a scalar or responsive Dowe scale value."
         }
         "size" => "Selects the component's canonical Dowe size.",
         "i18n" => {

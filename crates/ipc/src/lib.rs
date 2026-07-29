@@ -16,8 +16,8 @@ pub use dowe_codegraph::{
 };
 use dowe_compiler::{CompiledProject, DoweResult, compile_dev};
 pub use dowe_deploy::{
-    DeployOptions, DeployReport, DeploySurface, DeployTarget, available_deploy_surfaces,
-    deploy_targets_for_surface,
+    BuildOptions, BuildReport, BuildTarget, DeployOptions, DeployReport, DeploySurface,
+    DeployTarget, available_build_targets, available_deploy_surfaces, deploy_targets_for_surface,
 };
 pub use dowe_icons::{GenerateIconOptions, IconReport, IconRounded, IconTarget};
 pub use dowe_runtime::{
@@ -166,6 +166,10 @@ pub fn prepare_dev_project(root: impl AsRef<Path>) -> DoweResult<CompiledProject
 
 pub fn deploy_project(options: DeployOptions) -> dowe_deploy::DeployResult<DeployReport> {
     dowe_deploy::deploy(options)
+}
+
+pub fn build_project(options: BuildOptions) -> dowe_deploy::DeployResult<BuildReport> {
+    dowe_deploy::build(options)
 }
 
 pub fn generate_project_icons(options: GenerateIconOptions) -> dowe_icons::IconResult<IconReport> {

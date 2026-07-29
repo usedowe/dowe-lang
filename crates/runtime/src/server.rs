@@ -93,7 +93,7 @@ pub async fn start_dev_servers(
     if targets.views {
         log_info("Views server starting");
     }
-    if targets.desktop {
+    if targets.desktop && project.desktop_server.is_some() {
         log_info("Desktop server starting");
     }
 
@@ -112,16 +112,19 @@ pub async fn start_dev_servers(
     } else {
         None
     };
-    let desktop_listener = match (targets.desktop, project.desktop_server.as_ref()) {
-        (true, Some(server)) => {
+    let desktop_listener = if targets.desktop {
+        if let Some(server) = project.desktop_server.as_ref() {
             let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, server.port));
             Some(
                 TcpListener::bind(addr)
                     .await
                     .map_err(|error| bind_error(addr, error))?,
             )
+        } else {
+            None
         }
-        _ => None,
+    } else {
+        None
     };
 
     let mut background_jobs = Vec::new();
@@ -160,11 +163,6 @@ pub async fn start_dev_servers(
         let addr = listener.local_addr()?;
         dev_origins.push(format!("http://{addr}"));
     }
-    if let Some(listener) = &desktop_listener {
-        let addr = listener.local_addr()?;
-        dev_origins.push(format!("http://{addr}"));
-    }
-
     let backend_websocket_paths = project
         .backend
         .websockets

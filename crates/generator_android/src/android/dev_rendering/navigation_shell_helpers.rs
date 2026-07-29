@@ -782,7 +782,7 @@ fn render_dev_android_icon_view(
         icon.props.view_box.width,
         icon.props.view_box.height,
         dev_svg_color(&icon.props.style, inherited_color),
-        icon.props.motion.is_some()
+        icon.props.is_animated()
     ));
     apply_dev_android_style(&icon.props.style, &view, false, output);
     view

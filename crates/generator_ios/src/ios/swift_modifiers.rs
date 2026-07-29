@@ -10,6 +10,32 @@ fn swift_modifiers_for_container_style(props: &StyleProps, flow: NativeFlow) -> 
     modifiers
 }
 
+fn swift_modifiers_for_positioned_box(props: &PositionProps) -> Vec<String> {
+    let mut modifiers = Vec::new();
+    if let Some(value) = props.top.as_ref() {
+        modifiers.push(format!(".padding(.top, {})", swift_scale_value(value)));
+    }
+    if let Some(value) = props.right.as_ref() {
+        modifiers.push(format!(".padding(.trailing, {})", swift_scale_value(value)));
+    }
+    if let Some(value) = props.bottom.as_ref() {
+        modifiers.push(format!(".padding(.bottom, {})", swift_scale_value(value)));
+    }
+    if let Some(value) = props.left.as_ref() {
+        modifiers.push(format!(".padding(.leading, {})", swift_scale_value(value)));
+    }
+    let vertical = if props.bottom.is_some() { "bottom" } else { "top" };
+    let horizontal = if props.right.is_some() {
+        "Trailing"
+    } else {
+        "Leading"
+    };
+    modifiers.push(format!(
+        ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .{vertical}{horizontal})"
+    ));
+    modifiers
+}
+
 fn swift_modifiers_for_section_container(props: &StyleProps, flow: NativeFlow) -> Vec<String> {
     let mut outer = props.clone();
     outer.spacing = Default::default();
@@ -18,10 +44,7 @@ fn swift_modifiers_for_section_container(props: &StyleProps, flow: NativeFlow) -
 
 fn swift_modifiers_for_section_content(props: &StyleProps) -> Vec<String> {
     let mut content = StyleProps::default();
-    content.spacing = props.spacing.with_padding_default(ResponsiveValue::ordered(vec![
-        dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Xs, value: ScaleValue::from_half_steps(8) },
-        dowe_components::ResponsiveEntry { breakpoint: Breakpoint::Md, value: ScaleValue::from_half_steps(12) },
-    ]));
+    content.spacing = dowe_components::section_content_spacing(&props.spacing);
     let mut modifiers = swift_modifiers_for_style(&content);
     if props.boxed {
         modifiers.push(".frame(maxWidth: CGFloat(1536), alignment: .leading)".to_string());

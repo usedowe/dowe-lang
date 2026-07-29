@@ -257,7 +257,7 @@ fn render_compose_dropdown(
 ) {
     let pad = " ".repeat(indent);
     output.push_str(&format!(
-        "{pad}DoweDropdown(backgroundColor = {}, contentColor = {}, modifier = {}) {{\n",
+        "{pad}DoweDropdown(backgroundColor = {}, contentColor = {}, modifier = {}, trigger = {{\n",
         variant_container(&props.style),
         variant_content(&props.style),
         modifier_for_style(&props.style.style)
@@ -273,7 +273,7 @@ fn render_compose_dropdown(
             context,
         );
     }
-    output.push_str(&format!("{pad}}} content: {{ close ->\n"));
+    output.push_str(&format!("{pad}}}, content = {{ close ->\n"));
     for child in header {
         render_compose_node_in_flow(
             child,
@@ -299,7 +299,7 @@ fn render_compose_dropdown(
             context,
         );
     }
-    output.push_str(&format!("{pad}}}\n"));
+    output.push_str(&format!("{pad}}})\n"));
 }
 
 fn render_compose_command(

@@ -1,6 +1,6 @@
 use dowe_components::{
     AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
-    AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, Breakpoint, ButtonSize,
+    AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BoxPosition, Breakpoint, ButtonSize,
     CanvasBackground, CarouselProps, CarouselSlide, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
     CodeTemplateSegment, CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
@@ -9,7 +9,7 @@ use dowe_components::{
     FabAction, FabProps, FlexDirection, FontConfig, FontFamily, GapSize, GapValue, GridAlignment, GridProps,
     GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify,
     LayoutProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, solar_control_icon, view_icon,
-    NavigationAction, OverlayEntry, OverlayCornerPosition, OverlayItemProps, OverlayPaint,
+    NavigationAction, OverlayEntry, OverlayCornerPosition, OverlayItemProps, OverlayPaint, PositionProps,
     RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark, RoundedSize, ScaleValue, ScaffoldProps,
     RailNavItem, RailNavProps,
     SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
@@ -19,7 +19,7 @@ use dowe_components::{
     ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
     TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction,
     ViewActionKind, ViewAnimation, ViewConstant, ViewNode, ViewRequestAction, ViewRoute, ViewSignal,
-    ViewSignalValue, VisibilityCondition, collect_route_font_families, compose_tree, fixed_fab_nodes,
+    ViewSignalValue, VisibilityCondition, collect_route_font_families, compose_tree, fixed_box_nodes, fixed_fab_nodes,
     phone_countries, phone_country_flag_icon,
     node_child_groups, node_element_props, text_binding_path, text_spacing_em, text_typography,
 };
@@ -561,10 +561,10 @@ struct DoweIosDevModuleHost: UIViewControllerRepresentable {
 final class DoweIosDevModuleCoordinator: NSObject {
     private let endpointKey = "dowe.hmr.endpoint"
     private let activeVersionKey = "dowe.hmr.version"
-    private let activeRouteKey = "dowe.hmr.route"
     private weak var container: UIViewController?
     private var activeController: UIViewController?
     private var activeVersion = ""
+    private var activeRoute = "/"
     private var attemptedVersion = ""
     private var moduleEndpoint: String?
     private var handles: [UnsafeMutableRawPointer] = []
@@ -676,8 +676,8 @@ final class DoweIosDevModuleCoordinator: NSObject {
         next.didMove(toParent: container)
         activeController = next
         activeVersion = version
+        activeRoute = path
         UserDefaults.standard.set(version, forKey: activeVersionKey)
-        UserDefaults.standard.set(path, forKey: activeRouteKey)
         handles.append(handle)
     }
 
@@ -689,12 +689,12 @@ final class DoweIosDevModuleCoordinator: NSObject {
         {
             return value
         }
-        return UserDefaults.standard.string(forKey: activeRouteKey) ?? "/"
+        return activeRoute
     }
 
     private func persistCurrentPath() {
         guard activeController != nil else { return }
-        UserDefaults.standard.set(currentPath(), forKey: activeRouteKey)
+        activeRoute = currentPath()
     }
 }
 "#

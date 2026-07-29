@@ -719,7 +719,8 @@ fn dev_activity_drawables_media() -> &'static str {
         }
         String configured = DoweEnvironment.BACKEND_URL.replaceAll("/+$", "");
         String development = getSharedPreferences("dowe-hmr", 0).getString("endpoint", "");
-        String base = doweIframeUrlAllowed(Uri.parse(configured)) ? configured : development == null ? "" : development.replaceAll("/+$", "");
+        development = development == null ? "" : development.replaceAll("/+$", "");
+        String base = doweIframeUrlAllowed(Uri.parse(development)) ? development : configured;
         if (!doweIframeUrlAllowed(Uri.parse(base))) {
             return null;
         }

@@ -325,6 +325,15 @@ fn render_html_with_context(
             html.push_str(close);
             html
         }
+        ViewNode::Banner { props, children } => {
+            let (open, close) = banner_tags(props, context);
+            let mut html = open;
+            for child in children {
+                html.push_str(&render_html_with_context(child, children_html, context));
+            }
+            html.push_str(close);
+            html
+        }
         ViewNode::ToggleTheme { props } => render_theme_toggle_html(props, context),
         ViewNode::SelectTheme { props } => render_theme_select_html(props, context),
         ViewNode::Fab { props, actions } => render_fab_html(props, actions, context),

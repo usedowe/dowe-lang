@@ -1,6 +1,6 @@
 use dowe_components::{
     AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
-    AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, Breakpoint, ButtonSize,
+    AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BoxPosition, Breakpoint, ButtonSize,
     CanvasBackground, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
     CodeTemplateSegment, CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
@@ -12,7 +12,7 @@ use dowe_components::{
     ImageProps, Justify, LayoutProps, MapMarker, MapProps, MapWaypoint,
     MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, solar_control_icon, view_icon,
     NavMenuProps, NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayItemProps,
-    OverlayPaint, RadioGroupOrientation, RadioGroupProps,
+    OverlayPaint, PositionProps, RadioGroupOrientation, RadioGroupProps,
     RadioOption, RecordProps, ResponsiveValue, RichTextMark,
     RailNavItem, RailNavProps,
     RoundedSize, ScaleValue,
@@ -24,10 +24,10 @@ use dowe_components::{
     VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewNode,
     PhoneFieldProps, phone_country, phone_countries, phone_country_flag_icon,
     ViewConstant, ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, VisibilityCondition,
-    collect_route_font_families, compose_tree, fixed_fab_nodes, node_child_groups, node_element_props, text_spacing_em,
+    collect_route_font_families, compose_tree, fixed_box_nodes, fixed_fab_nodes, node_child_groups, node_element_props, text_spacing_em,
     text_binding_path, text_typography, translation_resource_name,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -447,6 +447,9 @@ fn root_gradle() -> String {
 fn gradle_properties() -> String {
     r#"android.useAndroidX=true
 kotlin.jvm.target.validation.mode=warning
+org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8
+kotlin.daemon.jvmargs=-Xmx8192m
+org.gradle.workers.max=2
 "#
     .to_string()
 }
@@ -463,12 +466,28 @@ android {{
     namespace = "dev.dowe.generated"
     compileSdk = 36
 
+    signingConfigs {{
+        create("release") {{
+            storeFile = file(System.getenv("DOWE_ANDROID_KEYSTORE") ?: "")
+            storePassword = System.getenv("DOWE_ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("DOWE_ANDROID_KEY_ALIAS")
+            keyPassword = System.getenv("DOWE_ANDROID_KEY_PASSWORD")
+        }}
+    }}
+
     defaultConfig {{
         applicationId = "{}"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = (System.getenv("DOWE_APP_BUILD_NUMBER") ?: "1").toInt()
+        versionName = System.getenv("DOWE_APP_VERSION") ?: "0.1.0"
+    }}
+
+    buildTypes {{
+        getByName("release") {{
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+        }}
     }}
 
     compileOptions {{

@@ -17,7 +17,8 @@ fn render_badge_html(
         html.push_str(&render_html_with_context(child, children_html, context));
     }
     html.push_str(&format!(
-        r#"<span class="badge-content"><span class="badge-text">{}</span></span></div>"#,
+        r#"<span{}><span class="badge-text">{}</span></span></div>"#,
+        class_attr(badge_content_classes(props)),
         escape_html(&props.text)
     ));
     html

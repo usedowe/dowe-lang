@@ -53,6 +53,10 @@ pub enum ViewNode {
         props: BrandProps,
         children: Vec<ViewNode>,
     },
+    Banner {
+        props: BannerProps,
+        children: Vec<ViewNode>,
+    },
     ToggleTheme {
         props: ThemeToggleProps,
     },
@@ -689,7 +693,90 @@ pub struct StyleProps {
     pub border_color: Option<ColorFamily>,
     pub shadow: Option<ResponsiveValue<ShadowSize>>,
     pub shadow_color: Option<ColorFamily>,
-    pub grid_item: GridItemProps,
+    pub grid_item: Option<Box<GridItemProps>>,
+    pub position: Option<Box<PositionProps>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BoxPosition {
+    #[default]
+    Static,
+    Relative,
+    Absolute,
+    Fixed,
+}
+
+impl BoxPosition {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "static" => Some(Self::Static),
+            "relative" => Some(Self::Relative),
+            "absolute" => Some(Self::Absolute),
+            "fixed" => Some(Self::Fixed),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Static => "static",
+            Self::Relative => "relative",
+            Self::Absolute => "absolute",
+            Self::Fixed => "fixed",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Static, Self::Relative, Self::Absolute, Self::Fixed]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PositionProps {
+    pub mode: BoxPosition,
+    pub top: Option<ResponsiveValue<ScaleValue>>,
+    pub right: Option<ResponsiveValue<ScaleValue>>,
+    pub bottom: Option<ResponsiveValue<ScaleValue>>,
+    pub left: Option<ResponsiveValue<ScaleValue>>,
+}
+
+impl StyleProps {
+    pub fn grid_item(&self) -> &GridItemProps {
+        self.grid_item.as_deref().unwrap_or(&GridItemProps::EMPTY)
+    }
+
+    pub fn grid_item_mut(&mut self) -> &mut GridItemProps {
+        self.grid_item
+            .get_or_insert_with(|| Box::new(GridItemProps::default()))
+    }
+
+    pub fn position(&self) -> &PositionProps {
+        self.position
+            .as_deref()
+            .unwrap_or(&PositionProps::STATIC)
+    }
+
+    pub fn position_mut(&mut self) -> &mut PositionProps {
+        self.position
+            .get_or_insert_with(|| Box::new(PositionProps::default()))
+    }
+}
+
+impl GridItemProps {
+    pub const EMPTY: Self = Self {
+        col_span: None,
+        row_span: None,
+    };
+}
+
+impl PositionProps {
+    pub const STATIC: Self = Self {
+        mode: BoxPosition::Static,
+        top: None,
+        right: None,
+        bottom: None,
+        left: None,
+    };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -748,6 +835,13 @@ pub struct VariantProps {
 pub struct BrandProps {
     pub style: StyleProps,
     pub navigation: Option<NavigationAction>,
+    pub label: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BannerProps {
+    pub style: StyleProps,
+    pub navigation: NavigationAction,
     pub label: Option<String>,
 }
 
@@ -820,6 +914,15 @@ pub struct SvgMotion {
     pub source: &'static str,
     pub fill: Option<ColorToken>,
     pub stroke: Option<ColorToken>,
+    pub animated: bool,
+}
+
+impl SvgProps {
+    pub fn is_animated(&self) -> bool {
+        self.motion
+            .as_ref()
+            .is_some_and(|source| source.animated)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -3332,6 +3435,22 @@ pub enum SvgPathFill {
         line_cap: SvgLineCap,
         line_join: SvgLineJoin,
     },
+    LiteralFill {
+        red: u8,
+        green: u8,
+        blue: u8,
+        opacity: u8,
+        even_odd: bool,
+    },
+    LiteralStroke {
+        red: u8,
+        green: u8,
+        blue: u8,
+        opacity: u8,
+        width: u16,
+        line_cap: SvgLineCap,
+        line_join: SvgLineJoin,
+    },
     Stroke {
         color: Option<ColorToken>,
         opacity: u8,
@@ -3470,6 +3589,60 @@ impl SpacingProps {
         }
         spacing
     }
+
+    pub fn with_padding_axis_defaults(
+        &self,
+        horizontal: ResponsiveValue<ScaleValue>,
+        vertical: ResponsiveValue<ScaleValue>,
+    ) -> Self {
+        if self.p.is_some() {
+            return self.clone();
+        }
+
+        let mut spacing = self.clone();
+        if spacing.px.is_none() {
+            match (spacing.pl.is_some(), spacing.pr.is_some()) {
+                (false, false) => spacing.px = Some(horizontal.clone()),
+                (false, true) => spacing.pl = Some(horizontal.clone()),
+                (true, false) => spacing.pr = Some(horizontal),
+                (true, true) => {}
+            }
+        }
+        if spacing.py.is_none() {
+            match (spacing.pt.is_some(), spacing.pb.is_some()) {
+                (false, false) => spacing.py = Some(vertical.clone()),
+                (false, true) => spacing.pt = Some(vertical.clone()),
+                (true, false) => spacing.pb = Some(vertical),
+                (true, true) => {}
+            }
+        }
+        spacing
+    }
+}
+
+pub fn section_content_spacing(spacing: &SpacingProps) -> SpacingProps {
+    spacing.with_padding_axis_defaults(
+        ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: ScaleValue::from_half_steps(8),
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: ScaleValue::from_half_steps(12),
+            },
+        ]),
+        ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: ScaleValue::from_half_steps(20),
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: ScaleValue::from_half_steps(32),
+            },
+        ]),
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -3631,6 +3804,7 @@ pub enum BuiltinComponent {
     Divider,
     Button,
     Brand,
+    Banner,
     IconButton,
     ToggleTheme,
     SelectTheme,
@@ -3727,6 +3901,7 @@ impl BuiltinComponent {
         Self::Divider,
         Self::Button,
         Self::Brand,
+        Self::Banner,
         Self::IconButton,
         Self::ToggleTheme,
         Self::SelectTheme,
@@ -3823,6 +3998,7 @@ impl BuiltinComponent {
             "Divider" => Some(Self::Divider),
             "Button" => Some(Self::Button),
             "Brand" => Some(Self::Brand),
+            "Banner" => Some(Self::Banner),
             "IconButton" => Some(Self::IconButton),
             "ToggleTheme" => Some(Self::ToggleTheme),
             "SelectTheme" => Some(Self::SelectTheme),
@@ -3921,6 +4097,7 @@ impl BuiltinComponent {
             Self::Divider => "Divider",
             Self::Button => "Button",
             Self::Brand => "Brand",
+            Self::Banner => "Banner",
             Self::IconButton => "IconButton",
             Self::ToggleTheme => "ToggleTheme",
             Self::SelectTheme => "SelectTheme",

@@ -381,7 +381,7 @@ fn render_compose_display_node(
                     "{pad}DoweRuntimeSvg(payload = {payload}, modifier = {}, color = {}, animated = {})\n",
                     modifier_for_style(&props.style),
                     compose_svg_color(&props.style),
-                    props.motion.is_some()
+                    props.is_animated()
                 ));
                 return;
             }
@@ -391,7 +391,7 @@ fn render_compose_display_node(
                 modifier_for_style(&props.style),
                 compose_svg_color(&props.style),
                 compose_svg_paths(paths),
-                props.motion.is_some()
+                props.is_animated()
             ));
         }
         _ => {}

@@ -101,6 +101,7 @@ fn collect_dev_reactive(
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. }
         | ViewNode::Each { children, .. } => {
             for child in children {

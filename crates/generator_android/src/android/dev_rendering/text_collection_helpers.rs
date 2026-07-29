@@ -62,6 +62,7 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
         | ViewNode::Badge { children, .. }
         | ViewNode::Tooltip { children, .. }
         | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
         | ViewNode::Button { children, .. } => {
             for child in children {
                 collect_texts(child, output);
