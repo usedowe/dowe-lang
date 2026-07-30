@@ -209,6 +209,6 @@ code remain free of runtime Node.js assumptions and framework-specific compatibi
 
 **Build the system, not the stack.**
 
-[dowe.dev](https://dowe.dev)
+[dowe.dev](https://dowe.dev) · [info@dowe.dev](mailto:info@dowe.dev)
 
 </div>
