@@ -2562,6 +2562,25 @@ fn scaffold_editor_documentation_lists_accepted_regions() {
 }
 
 #[test]
+fn layout_bar_editor_documentation_lists_full_width_regions() {
+    for component in ["AppBar", "Footer"] {
+        let document = LanguageDocument {
+            path: Path::new("/project/pages/docs.dowe").to_path_buf(),
+            source: format!(
+                "page docsPage\n  {component}\n    center\n      Text\n        \"Content\"\n"
+            ),
+        };
+
+        let hover = hover_at(Path::new("/project"), &document, 2, 3).expect("layout bar hover");
+        assert!(hover.contains("`top` (optional full-width region)"));
+        assert!(hover.contains("`start` (optional region)"));
+        assert!(hover.contains("`center` (optional region)"));
+        assert!(hover.contains("`end` (optional region)"));
+        assert!(hover.contains("`bottom` (optional full-width region)"));
+    }
+}
+
+#[test]
 fn bottom_bar_editor_support_lists_tabs_and_navigation_props() {
     let document = LanguageDocument {
         path: Path::new("/project/pages/docs.dowe").to_path_buf(),

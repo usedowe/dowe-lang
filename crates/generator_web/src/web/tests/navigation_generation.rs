@@ -17,9 +17,11 @@ fn renders_layout_bars_markup_and_css() {
             },
             ViewNode::Footer {
                 props: bar_props(false),
+                top: vec![text("Directory")],
                 start: vec![text("Footer")],
                 center: Vec::new(),
                 end: vec![text("Legal")],
+                bottom: vec![text("Copyright")],
             },
             ViewNode::BottomBar {
                 props: bar_props(false),
@@ -55,7 +57,9 @@ fn renders_layout_bars_markup_and_css() {
     assert!(html.contains(r#"</div></div><div class="appbar-bottom">"#));
     assert!(html.contains(r#"<div class="appbar-start">"#));
     assert!(html.contains(r#"<footer class="footer is-soft is-surface is-bordered is-blurred">"#));
+    assert!(html.contains(r#"<div class="footer-top">"#));
     assert!(html.contains(r#"<div class="footer-content is-boxed">"#));
+    assert!(html.contains(r#"<div class="footer-bottom">"#));
     assert!(html.contains(r#"<nav class="bottombar is-soft is-surface is-bordered is-blurred">"#));
     assert!(html.contains(r#"<div class="bottombar-tabs is-boxed">"#));
     assert!(html.contains(r#"class="bottombar-tab is-featured""#));
@@ -64,7 +68,7 @@ fn renders_layout_bars_markup_and_css() {
     assert!(css.contains(".appbar,.footer,.bottombar{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));width:100%;"));
     assert!(css.contains(".appbar.position-sticky{position:sticky;top:0;}"));
     assert!(css.contains(".appbar.position-fixed{position:fixed;top:0;left:0;right:0;}"));
-    assert!(css.contains(".appbar-top>*,.appbar-bottom>*{width:100%;}"));
+    assert!(css.contains(".appbar-top>*,.appbar-bottom>*,.footer-top>*,.footer-bottom>*{width:100%;}"));
     assert!(css.contains(".appbar{padding-top:0;}"));
     assert!(css.contains(
         ".appbar-content.is-boxed,.footer-content.is-boxed,.bottombar-content.is-boxed{max-width:96rem;margin:0 auto;}"

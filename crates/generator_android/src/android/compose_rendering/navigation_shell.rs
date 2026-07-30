@@ -22,10 +22,18 @@ fn render_compose_scaffold(
         "{pad}Column(modifier = {}) {{\n",
         modifier_for_container_style(&props.style, flow)
     ));
+    let color_scope = compose_content_color(&props.style);
+    if let Some(color) = color_scope.as_ref() {
+        output.push_str(&format!(
+            "{pad}    CompositionLocalProvider(LocalContentColor provides ({color} ?: LocalContentColor.current)) {{\n"
+        ));
+    }
+    let content_indent = indent + if color_scope.is_some() { 8 } else { 4 };
+    let content_pad = " ".repeat(content_indent);
     for child in app_bar {
         render_compose_node_in_flow(
             child,
-            indent + 4,
+            content_indent,
             output,
             ComposeFlow::Block,
             current_font,
@@ -42,10 +50,10 @@ fn render_compose_scaffold(
     };
     if props.boxed {
         output.push_str(&format!(
-            "{pad}    Box(modifier = {body_modifier}, contentAlignment = Alignment.TopCenter) {{\n"
+            "{content_pad}Box(modifier = {body_modifier}, contentAlignment = Alignment.TopCenter) {{\n"
         ));
     }
-    let row_indent = if props.boxed { indent + 8 } else { indent + 4 };
+    let row_indent = if props.boxed { content_indent + 4 } else { content_indent };
     let row_pad = " ".repeat(row_indent);
     let row_modifier = if props.boxed && persistent_app_bar {
         "Modifier.widthIn(max = 1536.dp).fillMaxSize().verticalScroll(scrollState)"
@@ -102,12 +110,12 @@ fn render_compose_scaffold(
     }
     output.push_str(&format!("{row_pad}}}\n"));
     if props.boxed {
-        output.push_str(&format!("{pad}    }}\n"));
+        output.push_str(&format!("{content_pad}}}\n"));
     }
     for child in bottom_bar {
         render_compose_node_in_flow(
             child,
-            indent + 4,
+            content_indent,
             output,
             ComposeFlow::Block,
             current_font,
@@ -118,13 +126,16 @@ fn render_compose_scaffold(
     for child in overlays {
         render_compose_node_in_flow(
             child,
-            indent + 4,
+            content_indent,
             output,
             ComposeFlow::Block,
             current_font,
             default_family,
             context,
         );
+    }
+    if color_scope.is_some() {
+        output.push_str(&format!("{pad}    }}\n"));
     }
     output.push_str(&format!("{pad}}}\n"));
 }

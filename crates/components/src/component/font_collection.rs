@@ -188,12 +188,14 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         }
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             collect_style_font_families(&props.style.style, fonts);
-            for child in start.iter().chain(center).chain(end) {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_node_font_families(child, fonts);
             }
         }

@@ -326,12 +326,28 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
             }
         }
         ViewNode::AppBar {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         } => {
-            for child in start.iter().chain(center).chain(end) {
+            for child in top
+                .iter()
+                .chain(start)
+                .chain(center)
+                .chain(end)
+                .chain(bottom)
+            {
                 collect_i18n_keys(child, keys);
             }
         }

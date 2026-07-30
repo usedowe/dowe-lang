@@ -183,9 +183,11 @@ pub enum ViewNode {
     },
     Footer {
         props: BarProps,
+        top: Vec<ViewNode>,
         start: Vec<ViewNode>,
         center: Vec<ViewNode>,
         end: Vec<ViewNode>,
+        bottom: Vec<ViewNode>,
     },
     BottomBar {
         props: BarProps,
@@ -3553,6 +3555,23 @@ pub struct SpacingProps {
 }
 
 impl SpacingProps {
+    pub fn with_horizontal_padding_default(&self, value: ResponsiveValue<ScaleValue>) -> Self {
+        if self.p.is_some() {
+            return self.clone();
+        }
+
+        let mut spacing = self.clone();
+        if spacing.px.is_none() {
+            match (spacing.pl.is_some(), spacing.pr.is_some()) {
+                (false, false) => spacing.px = Some(value.clone()),
+                (false, true) => spacing.pl = Some(value),
+                (true, false) => spacing.pr = Some(value),
+                (true, true) => {}
+            }
+        }
+        spacing
+    }
+
     pub fn with_padding_default(&self, value: ResponsiveValue<ScaleValue>) -> Self {
         if self.p.is_some() {
             return self.clone();

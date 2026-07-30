@@ -5,6 +5,55 @@ fn text(value: &str) -> ViewNode {
     }
 }
 
+fn container_foreground_tree() -> ViewNode {
+    ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![
+            ViewNode::Box {
+                props: StyleProps {
+                    text: Some(ResponsiveValue::scalar(ColorToken::OnPrimary)),
+                    ..Default::default()
+                },
+                children: vec![
+                    text("Box inherited"),
+                    ViewNode::Text {
+                        props: TextProps {
+                            style: StyleProps {
+                                text: Some(ResponsiveValue::scalar(ColorToken::Danger)),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        value: "Box override".to_string(),
+                    },
+                ],
+            },
+            ViewNode::Card {
+                props: VariantProps {
+                    variant: Some(ComponentVariant::Soft),
+                    color: Some(ColorFamily::Muted),
+                    ..Default::default()
+                },
+                children: vec![
+                    text("Card inherited"),
+                    ViewNode::Title {
+                        props: TextProps {
+                            style: StyleProps {
+                                text: Some(ResponsiveValue::scalar(ColorToken::Warning)),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        value: "Card override".to_string(),
+                    },
+                ],
+            },
+        ],
+    }
+}
+
 fn translations() -> TranslationCatalog {
     TranslationCatalog {
         default_locale: Some("en".to_string()),

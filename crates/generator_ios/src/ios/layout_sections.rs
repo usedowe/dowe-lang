@@ -136,18 +136,28 @@ fn collect_ios_layout_sections<'a>(
         }
         ViewNode::AppBar {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         }
         | ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             let neutral = neutral_context && props.style.style.font.is_none();
+            collect_ios_layout_section_children(
+                top,
+                NativeFlow::Block,
+                neutral,
+                bindings,
+                sections,
+            );
             collect_ios_layout_section_children(
                 start,
                 NativeFlow::Inline,
@@ -165,6 +175,13 @@ fn collect_ios_layout_sections<'a>(
             collect_ios_layout_section_children(
                 end,
                 NativeFlow::Inline,
+                neutral,
+                bindings,
+                sections,
+            );
+            collect_ios_layout_section_children(
+                bottom,
+                NativeFlow::Block,
                 neutral,
                 bindings,
                 sections,

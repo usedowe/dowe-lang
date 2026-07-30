@@ -127,13 +127,11 @@ fn lower_bar_node(
         }
         let children = lower_node_sequence(&child.children, allow_children)?;
         match child.name.as_str() {
-            "top" if component == BuiltinComponent::AppBar && top.is_none() => top = Some(children),
+            "top" if top.is_none() => top = Some(children),
             "start" if start.is_none() => start = Some(children),
             "center" if center.is_none() => center = Some(children),
             "end" if end.is_none() => end = Some(children),
-            "bottom" if component == BuiltinComponent::AppBar && bottom.is_none() => {
-                bottom = Some(children)
-            }
+            "bottom" if bottom.is_none() => bottom = Some(children),
             name => {
                 return Err(node_error(
                     child,
@@ -369,4 +367,3 @@ fn lower_svg_node(node: &SourceNode) -> DoweResult<ViewNode> {
     }
     svg_component_node(props, paths).map_err(|error| component_error(node, error))
 }
-

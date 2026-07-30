@@ -93,9 +93,11 @@ pub fn bar_component_node(
         }),
         BuiltinComponent::Footer => Ok(ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         }),
         BuiltinComponent::BottomBar => Err(ComponentError::invalid_prop_combination(
             "BottomBar requires tab entries",

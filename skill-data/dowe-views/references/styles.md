@@ -14,9 +14,11 @@ keep project or built-in defaults.
 | Structural `background` | `background`, `onBackground` | none |
 | Structural `surface` | `surface`, `onSurface` | none |
 
-`bg` and `color` accept color tokens. `Box color:<token>` sets the inherited foreground for
-descendant text until a descendant declares its own `color`. `Box bg:<token>` paints the container
-after padding and size and before radius and border.
+`bg` and `color` accept color tokens. On a child-bearing container, `color:<token>` sets the
+inherited foreground for descendant text and current-color paint until a descendant declares its
+own `color`. This includes `Box`, `Section`, `Flex`, `Grid`, `Brand`, `Banner`, `Marquee`, and
+`Scaffold`. `Box bg:<token>` paints the container after padding and size and before radius and
+border.
 
 `scheme` on `Button`, `ToggleTheme`, `Fab`, `fabAction`, `Slider`, `Input`, `Select`, `SideNav`,
 and `RailNav` accepts action families only. `scheme` on `SelectTheme`, `Card`, `Video`, the chart
@@ -36,8 +38,10 @@ plus `muted`. The normalized variant name is `outlined`.
 
 `solid` maps the scheme family to its base and `on*` tokens, `soft` maps to `soft*` and `onSoft*`,
 `outlined` uses a structural surface with a family-colored border, and `ghost` is transparent with
-family-colored content. Variant containers pass their resolved foreground token to descendant text
-unless the descendant declares `color`.
+family-colored content. Child-bearing variant surfaces pass their resolved foreground token to all
+of their content regions unless the descendant declares `color`; for example, a soft muted Card
+supplies `onSoftMuted`, and AppBar or Footer supplies its content color to `top`, `start`, `center`,
+`end`, and `bottom`.
 
 ## Style props and responsive values
 

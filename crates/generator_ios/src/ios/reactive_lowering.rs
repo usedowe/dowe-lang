@@ -316,12 +316,12 @@ fn collect_swift_reactive(
             }
         }
         ViewNode::AppBar {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         } => {
-            for child in start.iter().chain(center.iter()).chain(end.iter()) {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_swift_reactive(child, context, constants, signals, metadata, actions, init, autoload);
             }
         }

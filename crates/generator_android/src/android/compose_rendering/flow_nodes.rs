@@ -322,17 +322,16 @@ fn render_compose_flow_node(
             output.push_str(&format!(
                 "{pad}Row(modifier = {modifier}, verticalAlignment = Alignment.CenterVertically) {{\n"
             ));
-            for child in children {
-                render_compose_node_in_flow(
-                    child,
-                    indent + 4,
-                    output,
-                    ComposeFlow::Inline,
-                    current_font,
-                    default_family,
-                    context,
-                );
-            }
+            render_compose_scoped_children(
+                &props.style,
+                children,
+                indent + 4,
+                output,
+                ComposeFlow::Inline,
+                current_font,
+                default_family,
+                context,
+            );
             output.push_str(&format!("{pad}}}\n"));
         }
         ViewNode::Banner { props, children } => {
@@ -357,34 +356,32 @@ fn render_compose_flow_node(
                 output.push_str(&format!(
                     "{pad}    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {{\n"
                 ));
-                for child in children {
-                    render_compose_node_in_flow(
-                        child,
-                        indent + 8,
-                        output,
-                        ComposeFlow::Block,
-                        current_font,
-                        default_family,
-                        context,
-                    );
-                }
+                render_compose_scoped_children(
+                    &props.style,
+                    children,
+                    indent + 8,
+                    output,
+                    ComposeFlow::Block,
+                    current_font,
+                    default_family,
+                    context,
+                );
                 output.push_str(&format!("{pad}    }}\n"));
                 output.push_str(&format!("{pad}}}\n"));
             } else {
                 output.push_str(&format!(
                     "{pad}Column(modifier = {modifier}, verticalArrangement = Arrangement.spacedBy(0.dp)) {{\n"
                 ));
-                for child in children {
-                    render_compose_node_in_flow(
-                        child,
-                        indent + 4,
-                        output,
-                        ComposeFlow::Block,
-                        current_font,
-                        default_family,
-                        context,
-                    );
-                }
+                render_compose_scoped_children(
+                    &props.style,
+                    children,
+                    indent + 4,
+                    output,
+                    ComposeFlow::Block,
+                    current_font,
+                    default_family,
+                    context,
+                );
                 output.push_str(&format!("{pad}}}\n"));
             }
         }
@@ -690,13 +687,15 @@ fn render_compose_box(
         output.push_str(&format!("{pad}}}\n"));
     } else {
         output.push_str(&format!("{pad}Column(modifier = {modifier}) {{\n"));
-        render_compose_box_flow_children(
+        render_compose_box_children(
+            props,
             children,
             indent + 4,
             output,
             current_font,
             default_family,
             context,
+            false,
         );
         output.push_str(&format!("{pad}}}\n"));
     }
@@ -780,5 +779,39 @@ fn render_compose_box_flow_children(
             default_family,
             context,
         );
+    }
+}
+
+fn render_compose_scoped_children(
+    props: &StyleProps,
+    children: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    flow: ComposeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &ComposeReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let color_scope = compose_content_color(props);
+    if let Some(color) = color_scope.as_ref() {
+        output.push_str(&format!(
+            "{pad}CompositionLocalProvider(LocalContentColor provides ({color} ?: LocalContentColor.current)) {{\n"
+        ));
+    }
+    let child_indent = indent + if color_scope.is_some() { 4 } else { 0 };
+    for child in children {
+        render_compose_node_in_flow(
+            child,
+            child_indent,
+            output,
+            flow,
+            inherited_font,
+            default_family,
+            context,
+        );
+    }
+    if color_scope.is_some() {
+        output.push_str(&format!("{pad}}}\n"));
     }
 }

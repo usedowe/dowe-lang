@@ -95,11 +95,18 @@ fn compose_tree_in_place(node: &mut ViewNode, page: &ViewNode) {
             compose_children_in_place(bottom, page);
         }
         ViewNode::Footer {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         } => {
+            compose_children_in_place(top, page);
             compose_children_in_place(start, page);
             compose_children_in_place(center, page);
             compose_children_in_place(end, page);
+            compose_children_in_place(bottom, page);
         }
         ViewNode::Scaffold {
             app_bar,
@@ -283,13 +290,22 @@ fn validate_view_tree_with_parent(
             }
         }
         ViewNode::AppBar {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
-        }
-        => {
-            for child in start.iter().chain(center).chain(end) {
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        } => {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 validate_view_tree_with_parent(child, false, None)?;
             }
         }

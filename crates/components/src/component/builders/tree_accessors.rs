@@ -87,12 +87,27 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .find_map(|tab| tab.children.iter().find_map(first_text)),
         ViewNode::NavMenu { items, .. } => items.iter().find_map(nav_menu_first_text),
         ViewNode::AppBar {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
-        }
-        => start.iter().chain(center).chain(end).find_map(first_text),
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        } => top
+            .iter()
+            .chain(start)
+            .chain(center)
+            .chain(end)
+            .chain(bottom)
+            .find_map(first_text),
         ViewNode::BottomBar { tabs, .. } => tabs.first().map(|tab| tab.label.clone()),
         ViewNode::SideNav { items, .. } => {
             items.iter().find_map(side_nav_first_text)
@@ -395,12 +410,27 @@ pub fn node_child_groups(node: &ViewNode) -> Vec<&[ViewNode]> {
             content, children, ..
         } => vec![content.as_slice(), children.as_slice()],
         ViewNode::AppBar {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
-        }
-        => vec![start.as_slice(), center.as_slice(), end.as_slice()],
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        } => vec![
+            top.as_slice(),
+            start.as_slice(),
+            center.as_slice(),
+            end.as_slice(),
+            bottom.as_slice(),
+        ],
         ViewNode::BottomBar { .. } => Vec::new(),
         ViewNode::Tabs { tabs, .. } => tabs
             .iter()

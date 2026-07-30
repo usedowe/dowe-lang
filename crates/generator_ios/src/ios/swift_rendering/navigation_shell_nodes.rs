@@ -38,17 +38,19 @@ fn render_swift_navigation_shell_node(
         ),
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         }
         => render_swift_bar(
             props,
-            &[],
+            top,
             start,
             center,
             end,
-            &[],
+            bottom,
             SwiftBarOptions {
                 start_padding: 8,
                 center_padding: 8,

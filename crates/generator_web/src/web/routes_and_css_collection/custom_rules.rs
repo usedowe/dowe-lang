@@ -218,12 +218,14 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         }
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             collect_style_custom_rules(&props.style.style, rules);
-            for child in start.iter().chain(center).chain(end) {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_custom_rules(child, rules);
             }
         }

@@ -148,14 +148,16 @@ fn ios_collect_scope_bindings(node: &ViewNode, bindings: &mut IosLayoutBindings)
             ios_collect_scope_bindings_from_children(overlays, bindings);
         }
         ViewNode::AppBar {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         } => {
+            ios_collect_scope_bindings_from_children(top, bindings);
             ios_collect_scope_bindings_from_children(start, bindings);
             ios_collect_scope_bindings_from_children(center, bindings);
             ios_collect_scope_bindings_from_children(end, bindings);
+            ios_collect_scope_bindings_from_children(bottom, bindings);
         }
         ViewNode::BottomBar { .. } => {}
         ViewNode::Modal {
@@ -508,21 +510,26 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
         }
         ViewNode::AppBar {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         }
         | ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             ios_variant_references_layout_bindings(&props.style, bindings)
+                || ios_children_reference_layout_bindings(top, bindings)
                 || ios_children_reference_layout_bindings(start, bindings)
                 || ios_children_reference_layout_bindings(center, bindings)
                 || ios_children_reference_layout_bindings(end, bindings)
+                || ios_children_reference_layout_bindings(bottom, bindings)
         }
         ViewNode::BottomBar { props, .. } => {
             ios_variant_references_layout_bindings(&props.style, bindings)
@@ -1065,14 +1072,16 @@ fn ios_children_boundary(
             false,
         ),
         ViewNode::AppBar {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         } => ios_merge_children_boundaries([
+            ios_children_boundaries(top, false, false),
             ios_children_boundaries(start, false, true),
             ios_children_boundaries(center, false, true),
             ios_children_boundaries(end, false, true),
+            ios_children_boundaries(bottom, false, false),
         ]),
         ViewNode::Card { children, .. } | ViewNode::Badge { children, .. } => {
             ios_children_boundaries(children, false, false)

@@ -396,7 +396,10 @@ fn generates_portable_grid_controls_and_variant_colors() {
         .iter()
         .find(|file| file.relative_path.ends_with("DowePageParityView.swift"))
         .expect("parity page");
-    let action = page.content.find("Text(\"Action\")").expect("button label");
+    let action = page
+        .content
+        .find("Text(verbatim: \"Action\")")
+        .expect("button label");
     let button_tail = &page.content[action..];
     let frame = button_tail
         .find(".frame(maxWidth: .infinity, alignment: .center)")
@@ -505,9 +508,12 @@ fn generates_swiftui_ghost_card_without_variant_border() {
         .expect("cards page");
     let outlined = page
         .content
-        .find("Text(\"Outlined\")")
+        .find("Text(verbatim: \"Outlined\")")
         .expect("outlined card");
-    let ghost = page.content.find("Text(\"Ghost\")").expect("ghost card");
+    let ghost = page
+        .content
+        .find("Text(verbatim: \"Ghost\")")
+        .expect("ghost card");
     let outlined_card = &page.content[outlined..ghost];
     let ghost_card = &page.content[ghost..];
 

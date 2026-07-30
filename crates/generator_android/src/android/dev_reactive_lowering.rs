@@ -139,18 +139,22 @@ fn collect_dev_reactive(
             }
         }
         ViewNode::AppBar {
+            top,
             start,
             center,
             end,
+            bottom,
             ..
         }
         | ViewNode::Footer {
+            top,
             start,
             center,
             end,
+            bottom,
             ..
         } => {
-            for child in start.iter().chain(center).chain(end) {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_dev_reactive(child, context, initial, metadata, actions, init, autoload);
             }
         }

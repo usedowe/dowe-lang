@@ -547,6 +547,20 @@ fn parse_bar_props(
     let mut style = parse_variant_props(component, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Surface);
+    if component == BuiltinComponent::Footer {
+        style.style.spacing = style.style.spacing.with_horizontal_padding_default(
+            ResponsiveValue::ordered(vec![
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xs,
+                    value: ScaleValue::from_half_steps(8),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Md,
+                    value: ScaleValue::from_half_steps(12),
+                },
+            ]),
+        );
+    }
     bar.style = style;
     Ok(bar)
 }

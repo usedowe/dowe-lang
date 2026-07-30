@@ -102,12 +102,20 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         }
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
-            for child in start.iter_mut().chain(center).chain(end) {
+            for child in top
+                .iter_mut()
+                .chain(start)
+                .chain(center)
+                .chain(end)
+                .chain(bottom)
+            {
                 apply_design_defaults_to_tree(child, defaults);
             }
         }
@@ -411,15 +419,27 @@ pub fn apply_theme_catalog_to_tree(tree: &mut ViewNode, design: &DesignConfig) {
             }
         }
         ViewNode::AppBar {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         } => {
-            for child in start
+            for child in top
                 .iter_mut()
+                .chain(start.iter_mut())
                 .chain(center.iter_mut())
                 .chain(end.iter_mut())
+                .chain(bottom.iter_mut())
             {
                 apply_theme_catalog_to_tree(child, design);
             }

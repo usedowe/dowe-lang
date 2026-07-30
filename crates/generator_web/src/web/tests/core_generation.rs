@@ -35,6 +35,32 @@ fn emits_persistent_view_store_metadata() {
 }
 
 #[test]
+fn inherits_container_foreground_and_preserves_text_overrides() {
+    let tree = container_foreground_tree();
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/views/pages/colors.dowe"),
+        "page ColorsPage",
+        &tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &tree);
+
+    assert!(html.contains(
+        "<div class=\"box color-onPrimary\"><p class=\"text-md\">Box inherited</p><p class=\"text-md color-danger\">Box override</p></div>"
+    ));
+    assert!(html.contains("<article class=\"card"));
+    assert!(html.contains("is-soft is-muted"));
+    assert!(html.contains("<p class=\"text-md\">Card inherited</p>"));
+    assert!(html.contains("<p class=\"title-md color-warning\">Card override</p>"));
+    assert!(page
+        .css_content
+        .contains(".color-onPrimary{color:var(--dowe-onPrimary);}"));
+    assert!(page.css_content.contains(
+        ".card.is-soft.is-muted{background-color:var(--dowe-softMuted);color:var(--dowe-onSoftMuted);border-color:var(--dowe-softMuted);}"
+    ));
+}
+
+#[test]
 fn rejects_incompatible_persisted_view_store_shapes() {
     let web = super::WebOutput {
         chunks: Vec::new(),

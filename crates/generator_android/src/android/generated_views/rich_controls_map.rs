@@ -70,12 +70,14 @@ private fun DowePaginationButton(enabled: Boolean, selected: Boolean, dimension:
 private fun DoweCollapsible(label: String, defaultOpen: Boolean, disabled: Boolean, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, content: @Composable () -> Unit) {
     var open by remember { mutableStateOf(defaultOpen) }
     Column(modifier = modifier.clip(RoundedCornerShape(16.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(16.dp)) else Modifier)) {
-        Row(modifier = Modifier.fillMaxWidth().clickable(enabled = !disabled) { open = !open }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = label, color = contentColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            Text(text = if (open) "⌃" else "⌄", color = contentColor)
-        }
-        AnimatedVisibility(visible = open, enter = fadeIn(tween(160)) + expandVertically(), exit = fadeOut(tween(160)) + shrinkVertically()) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Row(modifier = Modifier.fillMaxWidth().clickable(enabled = !disabled) { open = !open }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(text = label, color = contentColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(text = if (open) "⌃" else "⌄", color = contentColor)
+            }
+            AnimatedVisibility(visible = open, enter = fadeIn(tween(160)) + expandVertically(), exit = fadeOut(tween(160)) + shrinkVertically()) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+            }
         }
     }
 }

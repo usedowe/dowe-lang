@@ -82,12 +82,27 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         ViewNode::Tabs { tabs, .. } => tabs.iter().any(|tab| contains_children(&tab.children)),
         ViewNode::NavMenu { items, .. } => items.iter().any(nav_menu_contains_children),
         ViewNode::AppBar {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        } => {
+            contains_children(top)
+                || contains_children(start)
+                || contains_children(center)
+                || contains_children(end)
+                || contains_children(bottom)
         }
-        => contains_children(start) || contains_children(center) || contains_children(end),
         ViewNode::BottomBar { .. } | ViewNode::SideNav { .. } | ViewNode::RailNav { .. } => false,
         ViewNode::Sidebar {
             header,

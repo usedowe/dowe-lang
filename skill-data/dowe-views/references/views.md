@@ -160,7 +160,8 @@ producing `Option value:option.value label:option.label` entries.
 `"blog.title"` is literal text. A braced binding must resolve to a string. Mixed text such as
 `"By {blog.author}"` is not interpolated and remains literal. Braces apply to direct visible-text
 children only; props continue to use bare references such as `bind:form.title`, `show:ready`, and
-`onClick:save`.
+`onClick:save`. Static `Text` and `Title` copy remains verbatim across targets; email- and URL-shaped
+strings do not implicitly become links on iOS.
 
 ## State
 

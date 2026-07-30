@@ -549,9 +549,11 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
             "(one or more static path entries, or none with runtime data)",
         )],
         "AppBar" | "Footer" => &[
+            ("top", "(optional full-width region)"),
             ("start", "(optional region)"),
             ("center", "(optional region)"),
             ("end", "(optional region)"),
+            ("bottom", "(optional full-width region)"),
         ],
         "BottomBar" => &[("tab", "(one or more navigation tabs with one Icon child)")],
         "NavMenu" => &[

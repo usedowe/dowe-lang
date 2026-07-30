@@ -34,18 +34,20 @@ fn render_compose_navigation_node(
         }
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             render_compose_bar(
                 props,
                 1536,
-                &[],
+                top,
                 start,
                 center,
                 end,
-                &[],
+                bottom,
                 indent,
                 output,
                 flow,

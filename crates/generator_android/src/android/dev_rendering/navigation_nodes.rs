@@ -13,17 +13,20 @@ fn render_dev_android_navigation_node(
     match node {
         ViewNode::AppBar {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         } => {
             render_dev_android_bar(
                 props,
                 1536,
+                top,
                 start,
                 center,
                 end,
+                bottom,
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -36,16 +39,20 @@ fn render_dev_android_navigation_node(
         }
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             render_dev_android_bar(
                 props,
                 1536,
+                top,
                 start,
                 center,
                 end,
+                bottom,
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -176,9 +183,11 @@ fn render_dev_android_navigation_node(
 fn render_dev_android_bar(
     props: &BarProps,
     boxed_max_width: u16,
+    top: &[ViewNode],
     start: &[ViewNode],
     center: &[ViewNode],
     end: &[ViewNode],
+    bottom: &[ViewNode],
     parent: &str,
     parent_gap: Option<&str>,
     parent_horizontal: bool,
@@ -192,7 +201,7 @@ fn render_dev_android_bar(
     let current_color = Some(dev_variant_content(&props.style).to_string());
     let surface = next_dev_view(counter);
     output.push_str(&format!(
-        "        LinearLayout {surface} = doweContainer(false);\n        {surface}.setGravity(Gravity.CENTER_VERTICAL);\n        {surface}.setMinimumHeight(doweDp(48));\n        {surface}.setBackground(doweBackground({}, {}));\n",
+        "        LinearLayout {surface} = doweContainer(false);\n        {surface}.setMinimumHeight(doweDp(48));\n        {surface}.setBackground(doweBackground({}, {}));\n",
         dev_variant_container(&props.style),
         if props.floating {
             "DOWE_RADIUS"
@@ -214,6 +223,16 @@ fn render_dev_android_bar(
             parent_horizontal,
         ));
     }
+    render_dev_android_bar_edge_region(
+        top,
+        &surface,
+        counter,
+        output,
+        current_font,
+        current_color.clone(),
+        context,
+        children_method,
+    );
     let content = next_dev_view(counter);
     let content_constructor = if props.boxed {
         format!("doweBoxedContainer(true, {boxed_max_width})")
@@ -258,6 +277,16 @@ fn render_dev_android_bar(
         counter,
         output,
         current_font,
+        current_color.clone(),
+        context,
+        children_method,
+    );
+    render_dev_android_bar_edge_region(
+        bottom,
+        &surface,
+        counter,
+        output,
+        current_font,
         current_color,
         context,
         children_method,
@@ -266,5 +295,31 @@ fn render_dev_android_bar(
         output.push_str(&format!(
             "        dowePinAppBar({parent}, {surface});\n"
         ));
+    }
+}
+
+fn render_dev_android_bar_edge_region(
+    children: &[ViewNode],
+    parent: &str,
+    counter: &mut usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    inherited_color: Option<String>,
+    context: &ComposeReactiveContext,
+    children_method: Option<&str>,
+) {
+    for child in children {
+        render_dev_android_node(
+            child,
+            parent,
+            Some("8"),
+            false,
+            counter,
+            output,
+            inherited_font,
+            inherited_color.clone(),
+            context,
+            children_method,
+        );
     }
 }

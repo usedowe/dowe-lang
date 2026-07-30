@@ -43,6 +43,106 @@ fn generates_persistent_view_store_for_compose_and_dev_shell() {
 }
 
 #[test]
+fn inherits_container_foreground_and_preserves_text_overrides() {
+    let mut color_route = route();
+    color_route.layout_tree = ViewNode::Children;
+    color_route.page_tree = container_foreground_tree();
+    let output = generate_android(
+        &[color_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let compose = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("Compose pages");
+
+    assert!(compose.content.contains(
+        "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.onPrimary) ?: LocalContentColor.current))"
+    ));
+    assert!(compose
+        .content
+        .contains("Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified"));
+    assert!(compose.content.contains(
+        "Text(\"Box override\", modifier = Modifier, color = doweResponsive(viewportWidth, xs = DoweDesign.danger) ?: DoweDesign.onBackground"
+    ));
+    assert!(compose.content.contains(
+        "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.onSoftMuted)"
+    ));
+    assert!(compose
+        .content
+        .contains("Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified"));
+    assert!(compose.content.contains(
+        "Text(\"Card override\", modifier = Modifier, color = doweResponsive(viewportWidth, xs = DoweDesign.warning) ?: DoweDesign.onBackground"
+    ));
+    for (label, token) in [
+        ("Section inherited", "onSecondary"),
+        ("Flex inherited", "onTertiary"),
+        ("Grid inherited", "onMuted"),
+        ("Brand inherited", "onSurface"),
+        ("Banner inherited", "onInfo"),
+        ("Marquee inherited", "onWarning"),
+        ("Scaffold inherited", "onDanger"),
+    ] {
+        assert!(compose.content.contains(&format!(
+            "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.{token}) ?: LocalContentColor.current))"
+        )));
+        assert!(compose.content.contains(&format!(
+            "Text(\"{label}\", modifier = Modifier, color = Color.Unspecified"
+        )));
+    }
+    assert!(compose
+        .content
+        .contains("CompositionLocalProvider(LocalContentColor provides contentColor)"));
+    assert!(compose.content.contains(
+        "Text(\"Collapsible inherited\", modifier = Modifier, color = Color.Unspecified"
+    ));
+    assert!(compose.content.contains(
+        "DoweTypeWriter(texts = listOf(\"TypeWriter inherited\"), typeSpeed = 10, deleteSpeed = 5, afterTyped = 20, afterDeleted = 10, repeat = false, contentColor = LocalContentColor.current"
+    ));
+
+    let dev = dev_java_source(&output);
+    let box_inherited = dev
+        .content
+        .find("doweText(\"Box inherited\"")
+        .expect("Box inherited text");
+    assert!(dev.content[box_inherited..box_inherited + 320].contains("DOWE_ON_PRIMARY"));
+    let box_override = dev
+        .content
+        .find("doweText(\"Box override\"")
+        .expect("Box override text");
+    assert!(dev.content[box_override..box_override + 320].contains("DOWE_DANGER"));
+    assert!(dev
+        .content
+        .contains("doweText(\"Card inherited\", DOWE_ON_SOFT_MUTED"));
+    let card_override = dev
+        .content
+        .find("doweText(\"Card override\"")
+        .expect("Card override text");
+    assert!(dev.content[card_override..card_override + 320].contains("DOWE_WARNING"));
+    for (label, token) in [
+        ("Section inherited", "DOWE_ON_SECONDARY"),
+        ("Flex inherited", "DOWE_ON_TERTIARY"),
+        ("Grid inherited", "DOWE_ON_MUTED"),
+        ("Brand inherited", "DOWE_ON_SURFACE"),
+        ("Banner inherited", "DOWE_ON_INFO"),
+        ("Marquee inherited", "DOWE_ON_WARNING"),
+        ("Scaffold inherited", "DOWE_ON_DANGER"),
+    ] {
+        let start = dev
+            .content
+            .find(&format!("doweText(\"{label}\""))
+            .unwrap_or_else(|| panic!("{label} text"));
+        assert!(
+            dev.content[start..start + 320].contains(token),
+            "{label} should inherit {token}"
+        );
+    }
+}
+
+#[test]
 fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
     let mut fab_route = route();
     fab_route.page_tree = fixed_fab_page();

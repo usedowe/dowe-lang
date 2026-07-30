@@ -39,6 +39,15 @@ fn generates_compose_and_dev_layout_bars() {
             .contains("horizontalArrangement = Arrangement.Center")
     );
     assert!(views.content.contains("Text(\"Brand\""));
+    assert!(views.content.contains("Text(\"Directory\""));
+    assert!(views.content.contains("Text(\"Copyright\""));
+    let directory = views.content.find("Text(\"Directory\"").expect("Footer top");
+    let footer_start = views.content[..directory]
+        .rfind("Column(modifier =")
+        .expect("Footer column");
+    assert!(views.content[footer_start..directory].contains(
+        "CompositionLocalProvider(LocalContentColor provides DoweDesign.onSurface)"
+    ));
     assert!(views.content.contains("itemSize = 56.dp"));
     assert!(views.content.contains("featured = true"));
     assert!(views.content.contains("backgroundColor = DoweDesign.primary"));
@@ -129,6 +138,8 @@ fn generates_compose_and_dev_layout_bars() {
     );
     assert!(dev.content.contains("doweText(\"Brand\""));
     assert!(dev.content.contains("doweText(\"Footer\""));
+    assert!(dev.content.contains("doweText(\"Directory\""));
+    assert!(dev.content.contains("doweText(\"Copyright\""));
 }
 
 #[test]

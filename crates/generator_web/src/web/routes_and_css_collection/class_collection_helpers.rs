@@ -58,13 +58,18 @@ fn collect_nav_menu_item_icon_classes(props: &NavMenuItemProps, classes: &mut BT
 fn collect_bar_classes(
     base: &str,
     props: &BarProps,
+    top: &[ViewNode],
     start: &[ViewNode],
     center: &[ViewNode],
     end: &[ViewNode],
+    bottom: &[ViewNode],
     classes: &mut BTreeSet<String>,
 ) {
     classes.extend(bar_classes(base, props));
     classes.extend(bar_content_classes(base, props));
+    if !top.is_empty() {
+        classes.insert(format!("{base}-top"));
+    }
     if !start.is_empty() {
         classes.insert(format!("{base}-start"));
     }
@@ -74,7 +79,10 @@ fn collect_bar_classes(
     if !end.is_empty() {
         classes.insert(format!("{base}-end"));
     }
-    for child in start.iter().chain(center).chain(end) {
+    if !bottom.is_empty() {
+        classes.insert(format!("{base}-bottom"));
+    }
+    for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
         collect_classes(child, classes);
     }
 }

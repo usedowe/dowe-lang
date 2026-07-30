@@ -1147,9 +1147,9 @@ fn compiles_blog_crud_signals_actions_and_handlers() {
     assert!(ios_pages.contains("DoweInputField(value: state.binding("));
     assert!(ios_pages.contains("minHeight: CGFloat(40), horizontalPadding: CGFloat(12)"));
     assert!(ios_pages.contains("if path == \"item\", let item"));
-    assert!(!ios_pages.contains("Text(\"alert.message\")"));
-    assert!(!ios_pages.contains("Text(\"item.title\")"));
-    assert!(ios_pages.contains("Text(\"item.literal\")"));
+    assert!(!ios_pages.contains("Text(verbatim: \"alert.message\")"));
+    assert!(!ios_pages.contains("Text(verbatim: \"item.title\")"));
+    assert!(ios_pages.contains("Text(verbatim: \"item.literal\")"));
 }
 
 #[test]
@@ -1210,8 +1210,8 @@ fn writes_app_targets_from_shared_view_tree() {
     assert!(android.contains("Text(\"Login\", modifier = Modifier, color = Color.Unspecified"));
     assert!(ios.contains("VStack(alignment: .leading, spacing: 0)"));
     assert!(!ios.contains("VStack(alignment: .leading) {"));
-    assert!(ios.contains("Text(\"Layout\")"));
-    assert!(ios.contains("Text(\"Login\")"));
+    assert!(ios.contains("Text(verbatim: \"Layout\")"));
+    assert!(ios.contains("Text(verbatim: \"Login\")"));
     assert!(manifest.contains("desktop-macos"));
     assert!(manifest.contains("desktop-windows"));
     assert!(manifest.contains("desktop-linux"));

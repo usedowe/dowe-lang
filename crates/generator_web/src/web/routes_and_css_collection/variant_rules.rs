@@ -254,25 +254,27 @@ fn collect_variant_rules<'a>(
         }
         ViewNode::AppBar {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         } => {
             push_variant_rule(variants, "appbar", &props.style);
-            for child in start.iter().chain(center).chain(end) {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_variant_rules(child, variants);
             }
         }
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         } => {
             push_variant_rule(variants, "footer", &props.style);
-            for child in start.iter().chain(center).chain(end) {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_variant_rules(child, variants);
             }
         }
@@ -449,12 +451,12 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
             }
         }
         ViewNode::AppBar {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         } => {
-            for child in start.iter().chain(center).chain(end) {
+            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_tabs_variant_rules(child, variants);
             }
         }

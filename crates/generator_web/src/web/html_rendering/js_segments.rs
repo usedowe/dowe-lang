@@ -377,11 +377,13 @@ fn collect_js_segments(
         ),
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => collect_bar_js_segments(
-            "footer", "footer", props, &[], start, center, end, &[], segments, context,
+            "footer", "footer", props, top, start, center, end, bottom, segments, context,
         ),
         ViewNode::BottomBar {
             props,

@@ -231,6 +231,66 @@ page usersPage
     }
 
     #[test]
+    fn parses_footer_full_width_regions() {
+        let tree = parse_page(
+            r#"page footerPage
+  Footer variant:"soft" scheme:"surface" boxed:true
+    top
+      Text
+        "Directory"
+    start
+      Text
+        "Company"
+    center
+      Text
+        "Links"
+    end
+      Text
+        "Social"
+    bottom
+      Text
+        "Legal""#,
+        )
+        .expect("footer regions");
+
+        let ViewNode::Footer {
+            props,
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        } = tree
+        else {
+            panic!("footer");
+        };
+
+        let horizontal = props.style.style.spacing.px.expect("default px");
+        assert_eq!(
+            horizontal.entries[0].breakpoint,
+            dowe_components::Breakpoint::Xs
+        );
+        assert_eq!(
+            horizontal.entries[0].value,
+            dowe_components::ScaleValue::from_half_steps(8)
+        );
+        assert_eq!(
+            horizontal.entries[1].breakpoint,
+            dowe_components::Breakpoint::Md
+        );
+        assert_eq!(
+            horizontal.entries[1].value,
+            dowe_components::ScaleValue::from_half_steps(12)
+        );
+        assert_eq!(top.len(), 1);
+        assert_eq!(start.len(), 1);
+        assert_eq!(center.len(), 1);
+        assert_eq!(end.len(), 1);
+        assert_eq!(bottom.len(), 1);
+    }
+
+    #[test]
     fn parses_bottom_bar_tabs_with_icon_and_featured_state() {
         let tree = parse_page(
             r#"page tabsPage

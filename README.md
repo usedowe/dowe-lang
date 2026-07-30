@@ -7,7 +7,7 @@
 **AI can generate code. Dowe generates the system.**
 
 [![Status](https://img.shields.io/badge/status-early_access-6BC670?style=flat-square)](https://dowe.dev)
-![Version](https://img.shields.io/badge/version-1.0.9-1F3A5F?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.10-1F3A5F?style=flat-square)
 ![Toolchain](https://img.shields.io/badge/toolchain-Rust-B7410E?style=flat-square&logo=rust&logoColor=white)
 ![Source](https://img.shields.io/badge/source-.dowe-6C5CE7?style=flat-square)
 
@@ -209,6 +209,6 @@ code remain free of runtime Node.js assumptions and framework-specific compatibi
 
 **Build the system, not the stack.**
 
-[dowe.dev](https://dowe.dev) · [info@dowe.dev](mailto:info@dowe.dev)
+[dowe.dev](https://dowe.dev) · [Discord](https://discord.gg/N2cww7sP5s) · [X](https://x.com/usedowe) · [info@dowe.dev](mailto:info@dowe.dev)
 
 </div>

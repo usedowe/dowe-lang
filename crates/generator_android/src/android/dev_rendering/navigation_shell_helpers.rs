@@ -18,6 +18,7 @@ fn render_dev_android_scaffold(
 ) {
     let view = next_dev_view(counter);
     let current_font = props.style.font.as_ref().or(inherited_font);
+    let current_color = dev_inherited_color(&props.style, inherited_color.as_deref());
     output.push_str(&format!(
         "        LinearLayout {view} = doweContainer(false);\n"
     ));
@@ -32,7 +33,7 @@ fn render_dev_android_scaffold(
             counter,
             output,
             current_font,
-            inherited_color.clone(),
+            current_color.clone(),
             context,
             children_method,
         );
@@ -63,7 +64,7 @@ fn render_dev_android_scaffold(
             counter,
             output,
             current_font,
-            inherited_color.clone(),
+            current_color.clone(),
             context,
             children_method,
         );
@@ -81,7 +82,7 @@ fn render_dev_android_scaffold(
             counter,
             output,
             current_font,
-            inherited_color.clone(),
+            current_color.clone(),
             context,
             children_method,
         );
@@ -95,7 +96,7 @@ fn render_dev_android_scaffold(
             counter,
             output,
             current_font,
-            inherited_color.clone(),
+            current_color.clone(),
             context,
             children_method,
         );
@@ -109,7 +110,7 @@ fn render_dev_android_scaffold(
             counter,
             output,
             current_font,
-            inherited_color.clone(),
+            current_color.clone(),
             context,
             children_method,
         );
@@ -123,7 +124,7 @@ fn render_dev_android_scaffold(
             counter,
             output,
             current_font,
-            inherited_color.clone(),
+            current_color.clone(),
             context,
             children_method,
         );

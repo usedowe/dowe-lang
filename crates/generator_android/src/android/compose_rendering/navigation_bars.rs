@@ -16,18 +16,35 @@ fn render_compose_bar(
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     output.push_str(&format!("{pad}Column(modifier = {}) {{\n", modifier_for_bar(props, flow)));
-    render_compose_bar_edge_region(top, indent + 4, output, current_font, default_family, context);
+    output.push_str(&format!(
+        "{pad}    CompositionLocalProvider(LocalContentColor provides {}) {{\n",
+        variant_content(&props.style)
+    ));
+    render_compose_bar_edge_region(top, indent + 8, output, current_font, default_family, context);
     if props.boxed {
         output.push_str(&format!(
-            "{pad}Box(modifier = {}, contentAlignment = Alignment.Center) {{\n",
+            "{pad}        Box(modifier = {}, contentAlignment = Alignment.Center) {{\n",
             "Modifier.fillMaxWidth()"
         ));
         output.push_str(&format!(
-            "{pad}    CompositionLocalProvider(LocalContentColor provides {}) {{\n",
-            variant_content(&props.style)
+            "{pad}            Row(modifier = Modifier.widthIn(max = {boxed_max_width}.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {{\n"
         ));
+        render_compose_bar_regions(
+            start,
+            center,
+            end,
+            indent + 16,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
+        output.push_str(&format!("{pad}            }}\n"));
+        output.push_str(&format!("{pad}        }}\n"));
+    } else {
         output.push_str(&format!(
-            "{pad}        Row(modifier = Modifier.widthIn(max = {boxed_max_width}.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {{\n"
+            "{pad}        Row(modifier = {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {{\n",
+            "Modifier.fillMaxWidth()"
         ));
         render_compose_bar_regions(
             start,
@@ -40,31 +57,9 @@ fn render_compose_bar(
             context,
         );
         output.push_str(&format!("{pad}        }}\n"));
-        output.push_str(&format!("{pad}    }}\n"));
-        output.push_str(&format!("{pad}}}\n"));
-    } else {
-        output.push_str(&format!(
-            "{pad}Row(modifier = {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {{\n",
-            "Modifier.fillMaxWidth()"
-        ));
-        output.push_str(&format!(
-            "{pad}    CompositionLocalProvider(LocalContentColor provides {}) {{\n",
-            variant_content(&props.style)
-        ));
-        render_compose_bar_regions(
-            start,
-            center,
-            end,
-            indent + 8,
-            output,
-            current_font,
-            default_family,
-            context,
-        );
-        output.push_str(&format!("{pad}    }}\n"));
-        output.push_str(&format!("{pad}}}\n"));
     }
-    render_compose_bar_edge_region(bottom, indent + 4, output, current_font, default_family, context);
+    render_compose_bar_edge_region(bottom, indent + 8, output, current_font, default_family, context);
+    output.push_str(&format!("{pad}    }}\n"));
     output.push_str(&format!("{pad}}}\n"));
 }
 

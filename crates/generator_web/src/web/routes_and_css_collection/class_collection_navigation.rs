@@ -2,21 +2,23 @@ fn collect_navigation_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
     match node {
         ViewNode::AppBar {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         } => {
-            collect_bar_classes("appbar", props, start, center, end, classes);
+            collect_bar_classes("appbar", props, top, start, center, end, bottom, classes);
         }
         ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         } => {
-            collect_bar_classes("footer", props, start, center, end, classes);
+            collect_bar_classes("footer", props, top, start, center, end, bottom, classes);
         }
         ViewNode::BottomBar { props, tabs } => {
             classes.extend(bar_classes("bottombar", props));

@@ -141,17 +141,16 @@ fn render_compose_marquee(
         compose_scale_literal(props.gap),
         modifier_for_style(&props.style),
     ));
-    for child in children {
-        render_compose_node_in_flow(
-            child,
-            indent + 4,
-            output,
-            flow,
-            props.style.font.as_ref().or(inherited_font),
-            default_family,
-            context,
-        );
-    }
+    render_compose_scoped_children(
+        &props.style,
+        children,
+        indent + 4,
+        output,
+        flow,
+        props.style.font.as_ref().or(inherited_font),
+        default_family,
+        context,
+    );
     output.push_str(&format!("{pad}}}\n"));
 }
 
@@ -170,7 +169,7 @@ fn render_compose_type_writer(
         props.after_typed,
         props.after_deleted,
         props.repeat,
-        color_ref(ColorToken::OnBackground),
+        compose_svg_color(&props.style),
         modifier_for_style(&props.style),
     ));
 }

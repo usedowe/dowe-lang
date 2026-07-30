@@ -10,7 +10,9 @@ fn generates_swiftui_layout_bars() {
 
     assert!(views.contains("ZStack {"));
     assert!(views.contains("HStack(alignment: .center, spacing: 0)"));
-    assert!(views.contains("Text(\"Brand\")"));
+    assert!(views.contains("Text(verbatim: \"Brand\")"));
+    assert!(views.contains("Text(verbatim: \"Directory\")"));
+    assert!(views.contains("Text(verbatim: \"Copyright\")"));
     assert!(views.contains(".background(DoweDesign.surface)"));
     assert!(views.contains(".foregroundStyle(DoweDesign.onSurface)"));
     assert!(views.contains(".zIndex(1)"));
@@ -255,7 +257,7 @@ fn generates_swiftui_navigation_shell_components() {
     assert!(views.contains(
         ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)"
     ));
-    assert!(views.contains("Text(\"Resource hub\")"));
+    assert!(views.contains("Text(verbatim: \"Resource hub\")"));
     assert!(views.contains("label: \"Side Home\""));
     assert!(views.contains(
         ".frame(width: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.fixed(CGFloat(384)))), alignment: .leading)"
@@ -292,7 +294,7 @@ fn generates_swiftui_tabs() {
         "RoundedRectangle(cornerRadius: tabRadius).stroke(active && selectedLine"
     ));
     assert!(views.contains("if activeTab == \"overview\""));
-    assert!(views.contains("Text(\"Overview content\")"));
+    assert!(views.contains("Text(verbatim: \"Overview content\")"));
 }
 
 #[test]

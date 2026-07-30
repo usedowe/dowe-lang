@@ -455,8 +455,8 @@ fn generates_swiftui_box_and_text() {
     assert!(!views.contains("VStack(alignment: .leading) {"));
     assert!(views.contains(".frame(maxWidth: .infinity, alignment: .leading)"));
     assert!(views.contains(".background(DoweDesign.primary)"));
-    assert!(views.contains("Text(\"Layout\")"));
-    assert!(views.contains("Text(\"Login\")"));
+    assert!(views.contains("Text(verbatim: \"Layout\")"));
+    assert!(views.contains("Text(verbatim: \"Login\")"));
 
     let plist = output
         .files
@@ -545,6 +545,57 @@ fn generates_swiftui_box_and_text() {
     assert!(!pages.content.contains("__DOWE_IOS_SOURCE_REVISION__"));
     assert!(views.contains("init(initialPath: String = DoweRoutes.initialPath"));
     assert!(views.contains("routeChanged(path)"));
+}
+
+#[test]
+fn generates_static_text_as_verbatim_swiftui_content() {
+    let mut literal_route = route();
+    literal_route.page_tree = text("info@dowe.dev");
+    let views = swift_content(&generate_ios(
+        &[literal_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(views.contains("Text(verbatim: \"info@dowe.dev\")"));
+    assert!(!views.contains("Text(\"info@dowe.dev\")"));
+}
+
+#[test]
+fn inherits_container_foreground_and_preserves_text_overrides() {
+    let mut color_route = route();
+    color_route.layout_tree = ViewNode::Children;
+    color_route.page_tree = container_foreground_tree();
+    let views = swift_content(&generate_ios(
+        &[color_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    let box_inherited = views.find("Text(verbatim: \"Box inherited\")").expect("Box text");
+    let box_override = views.find("Text(verbatim: \"Box override\")").expect("Box override");
+    assert!(!views[box_inherited..box_override].contains(".foregroundStyle("));
+    assert!(views[box_override..].contains(
+        ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.danger) ?? DoweDesign.onBackground)"
+    ));
+    assert!(views[box_override..].contains(
+        ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.onPrimary) ?? DoweDesign.onBackground)"
+    ));
+
+    let card_inherited = views.find("Text(verbatim: \"Card inherited\")").expect("Card text");
+    let card_override = views.find("Text(verbatim: \"Card override\")").expect("Card override");
+    assert!(!views[card_inherited..card_override].contains(".foregroundStyle("));
+    let card_tail = &views[card_override..];
+    let override_color = card_tail
+        .find(".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.warning) ?? DoweDesign.onBackground)")
+        .expect("Card override color");
+    let inherited_color = card_tail
+        .find(".foregroundStyle(DoweDesign.onSoftMuted)")
+        .expect("Card content color");
+    assert!(override_color < inherited_color);
+
 }
 
 #[test]
@@ -745,8 +796,8 @@ fn keeps_swiftui_box_background_and_foreground_across_nested_boxes() {
     assert!(min_height < background);
     assert!(background < foreground);
     assert!(foreground < border);
-    assert!(views.contains("Text(\"Dowe Source Format\")"));
-    assert!(views.contains("Text(\"Compiler-owned output\")"));
+    assert!(views.contains("Text(verbatim: \"Dowe Source Format\")"));
+    assert!(views.contains("Text(verbatim: \"Compiler-owned output\")"));
 }
 
 #[test]
@@ -945,7 +996,10 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
         .iter()
         .find(|file| file.relative_path.ends_with("DowePageLoginView.swift"))
         .expect("page");
-    let button_start = page.content.find("Text(\"Button\")").expect("button");
+    let button_start = page
+        .content
+        .find("Text(verbatim: \"Button\")")
+        .expect("button");
     let button_output = &page.content[button_start..];
     let button_background = button_output
         .find(".background(DoweDesign.primary)")
@@ -1155,7 +1209,10 @@ fn generates_shared_swiftui_layout_once_for_multiple_routes() {
         1
     );
     assert!(!layouts_index.content.contains("struct DoweLayout"));
-    assert_eq!(layout.content.matches("Text(\"Layout\")").count(), 1);
+    assert_eq!(
+        layout.content.matches("Text(verbatim: \"Layout\")").count(),
+        1
+    );
     assert!(layout.content.contains("layoutSection0()"));
     assert!(
         layout
@@ -1164,10 +1221,10 @@ fn generates_shared_swiftui_layout_once_for_multiple_routes() {
     );
     assert!(login.content.contains("DoweLayout0("));
     assert!(signup.content.contains("DoweLayout0("));
-    assert!(!login.content.contains("Text(\"Layout\")"));
-    assert!(!signup.content.contains("Text(\"Layout\")"));
-    assert!(login.content.contains("Text(\"Login\")"));
-    assert!(signup.content.contains("Text(\"Signup\")"));
+    assert!(!login.content.contains("Text(verbatim: \"Layout\")"));
+    assert!(!signup.content.contains("Text(verbatim: \"Layout\")"));
+    assert!(login.content.contains("Text(verbatim: \"Login\")"));
+    assert!(signup.content.contains("Text(verbatim: \"Signup\")"));
 }
 
 #[test]
@@ -1201,10 +1258,26 @@ fn generates_reusable_swiftui_layouts_as_independent_files() {
         .find(|file| file.relative_path.ends_with("DoweLayout1.swift"))
         .expect("second layout");
 
-    assert!(first_layout.content.contains("Text(\"First layout\")"));
-    assert!(!first_layout.content.contains("Text(\"Second layout\")"));
-    assert!(second_layout.content.contains("Text(\"Second layout\")"));
-    assert!(!second_layout.content.contains("Text(\"First layout\")"));
+    assert!(
+        first_layout
+            .content
+            .contains("Text(verbatim: \"First layout\")")
+    );
+    assert!(
+        !first_layout
+            .content
+            .contains("Text(verbatim: \"Second layout\")")
+    );
+    assert!(
+        second_layout
+            .content
+            .contains("Text(verbatim: \"Second layout\")")
+    );
+    assert!(
+        !second_layout
+            .content
+            .contains("Text(verbatim: \"First layout\")")
+    );
 }
 
 #[test]

@@ -81,9 +81,11 @@ fn bar_route() -> ViewRoute {
                 ViewNode::Children,
                 ViewNode::Footer {
                     props: bar_props(false),
+                    top: vec![text("Directory")],
                     start: vec![text("Footer")],
                     center: Vec::new(),
                     end: vec![text("Legal")],
+                    bottom: vec![text("Copyright")],
                 },
             ],
         },

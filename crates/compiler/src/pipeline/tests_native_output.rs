@@ -78,6 +78,61 @@
     }
 
     #[test]
+    fn compiles_container_foreground_inheritance_for_all_view_targets() {
+        let temp = TempDir::new().expect("tempdir");
+        write_fixture_with_views(
+            temp.path(),
+            r#"layout AuthLayout
+  Box
+    children"#,
+            r#"page loginPage
+  Box color:"onPrimary"
+    Text
+      "Box inherited"
+    Text color:"danger"
+      "Box override"
+  Card variant:"soft" scheme:"muted"
+    Text
+      "Card inherited"
+    Title color:"warning"
+      "Card override""#,
+        );
+
+        let project = compile_dev(temp.path()).expect("project");
+        let body = &project.web.pages[0].body_html;
+        assert!(body.contains("box color-onPrimary"));
+        assert!(body.contains("text-md color-danger\">Box override"));
+        assert!(body.contains("card p-4 lg:p-5 is-soft is-muted"));
+        assert!(body.contains("title-md color-warning\">Card override"));
+
+        let android = fs::read_to_string(
+            temp.path()
+                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+        )
+        .expect("android");
+        assert!(android.contains(
+            "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.onPrimary) ?: LocalContentColor.current))"
+        ));
+        assert!(android.contains(
+            "Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified"
+        ));
+        assert!(android.contains(
+            "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.onSoftMuted)"
+        ));
+        assert!(android.contains(
+            "Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified"
+        ));
+
+        let ios = ios_swift_output(temp.path());
+        assert!(ios.contains("Text(verbatim: \"Box inherited\")"));
+        assert!(ios.contains(
+            ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.onPrimary) ?? DoweDesign.onBackground)"
+        ));
+        assert!(ios.contains("Text(verbatim: \"Card inherited\")"));
+        assert!(ios.contains(".foregroundStyle(DoweDesign.onSoftMuted)"));
+    }
+
+    #[test]
     fn compiles_layout_bars_without_ios_dividers() {
         let temp = TempDir::new().expect("tempdir");
         write_fixture_with_views(
@@ -95,7 +150,7 @@
     Footer scheme:"background" bordered:true boxed:true
       end
         Text
-          "Built with Dowe""#,
+          "info@dowe.dev""#,
             r#"page loginPage
   Text
     "Login""#,
@@ -103,9 +158,18 @@
 
         let project = compile_dev(temp.path()).expect("project");
         assert!(project.web.pages[0].body_html.contains("position-sticky"));
+        assert!(
+            project.web.pages[0]
+                .body_html
+                .contains("footer px-4 md:px-6")
+        );
 
         let ios = ios_swift_output(temp.path());
         assert!(ios.contains(".zIndex(1)"));
+        assert!(ios.contains("Text(verbatim: \"info@dowe.dev\")"));
+        assert!(ios.contains(
+            "leading: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0)"
+        ));
         assert!(!ios.contains(
             ".overlay(Rectangle().fill(DoweDesign.muted).frame(height: CGFloat(1))"
         ));
@@ -113,8 +177,13 @@
             temp.path().join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
         ).expect("android");
         assert!(android.contains(".zIndex(1f)"));
+        assert!(android.contains("horizontal = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp)"));
         let android_dev = android_dev_output(temp.path());
         assert!(android_dev.contains("setElevation(doweDp(4))"));
+        assert!(
+            android_dev
+                .contains("PaddingX = doweResponsiveInt(viewportWidth, 16, null, 24, null, null)")
+        );
         assert!(!ios.contains(
             ".overlay(RoundedRectangle(cornerRadius: CGFloat(0)).stroke(DoweDesign.muted, lineWidth: CGFloat(1)))"
         ));

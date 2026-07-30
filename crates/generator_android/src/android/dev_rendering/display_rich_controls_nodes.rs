@@ -50,6 +50,7 @@ fn render_dev_android_display_rich_controls_node(
             let view = next_dev_view(counter);
             let horizontal = props.orientation.as_str() == "horizontal";
             let current_font = props.style.font.as_ref().or(inherited_font);
+            let current_color = dev_inherited_color(&props.style, inherited_color.as_deref());
             output.push_str(&format!(
                 "        LinearLayout {view} = doweContainer({});\n",
                 horizontal
@@ -65,7 +66,7 @@ fn render_dev_android_display_rich_controls_node(
                     counter,
                     output,
                     current_font,
-                    inherited_color.clone(),
+                    current_color.clone(),
                     context,
                     children_method,
                 );
@@ -81,7 +82,7 @@ fn render_dev_android_display_rich_controls_node(
             output.push_str(&format!(
                 "        TextView {view} = doweText(\"{}\", {}, 14f, 500, 0f, 1.2f, {});\n",
                 escape_java(&text),
-                inherited_color.as_deref().unwrap_or("DOWE_ON_BACKGROUND"),
+                dev_svg_color(&props.style, inherited_color.as_deref()),
                 dev_font_value(props.style.font.as_ref().or(inherited_font))
             ));
             apply_dev_android_style(&props.style, &view, false, output);

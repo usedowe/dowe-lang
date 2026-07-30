@@ -1643,6 +1643,33 @@ fn validates_layout_bar_props_and_regions() {
         _ => panic!("appbar"),
     }
 
+    let footer = bar_component_node(
+        BuiltinComponent::Footer,
+        vec![boolean_prop("boxed", true)],
+        vec![text_node("Directory").expect("text")],
+        Vec::new(),
+        vec![text_node("Navigation").expect("text")],
+        Vec::new(),
+        vec![text_node("Legal").expect("text")],
+        false,
+    )
+    .expect("footer");
+
+    let ViewNode::Footer {
+        props,
+        top,
+        center,
+        bottom,
+        ..
+    } = footer
+    else {
+        panic!("footer");
+    };
+    assert!(props.boxed);
+    assert_eq!(top.len(), 1);
+    assert_eq!(center.len(), 1);
+    assert_eq!(bottom.len(), 1);
+
     let error = bar_component_node(
         BuiltinComponent::Footer,
         vec![boolean_prop("floating", true)],
@@ -1691,6 +1718,50 @@ fn validates_layout_bar_props_and_regions() {
         error,
         ComponentError::unknown_prop(BuiltinComponent::BottomBar, "position")
     );
+}
+
+#[test]
+fn applies_footer_horizontal_padding_defaults_and_preserves_overrides() {
+    let default_footer = bar_component_node(
+        BuiltinComponent::Footer,
+        Vec::new(),
+        vec![text_node("Directory").expect("text")],
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        false,
+    )
+    .expect("default footer");
+
+    let ViewNode::Footer { props, .. } = default_footer else {
+        panic!("footer");
+    };
+    let horizontal = props.style.style.spacing.px.expect("default px");
+    assert_eq!(horizontal.entries.len(), 2);
+    assert_eq!(horizontal.entries[0].breakpoint, Breakpoint::Xs);
+    assert_eq!(horizontal.entries[0].value, ScaleValue::from_half_steps(8));
+    assert_eq!(horizontal.entries[1].breakpoint, Breakpoint::Md);
+    assert_eq!(horizontal.entries[1].value, ScaleValue::from_half_steps(12));
+
+    let authored_footer = bar_component_node(
+        BuiltinComponent::Footer,
+        vec![number_prop("px", 2)],
+        vec![text_node("Directory").expect("text")],
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        false,
+    )
+    .expect("authored footer");
+
+    let ViewNode::Footer { props, .. } = authored_footer else {
+        panic!("footer");
+    };
+    let horizontal = props.style.style.spacing.px.expect("authored px");
+    assert_eq!(horizontal.entries.len(), 1);
+    assert_eq!(horizontal.entries[0].value, ScaleValue::from_half_steps(4));
 }
 
 #[test]

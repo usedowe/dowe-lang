@@ -147,14 +147,16 @@ fn dev_collect_scope_bindings(node: &ViewNode, bindings: &mut DevLayoutBindings)
             dev_collect_scope_bindings_from_children(overlays, bindings);
         }
         ViewNode::AppBar {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         } => {
+            dev_collect_scope_bindings_from_children(top, bindings);
             dev_collect_scope_bindings_from_children(start, bindings);
             dev_collect_scope_bindings_from_children(center, bindings);
             dev_collect_scope_bindings_from_children(end, bindings);
+            dev_collect_scope_bindings_from_children(bottom, bindings);
         }
         ViewNode::BottomBar { .. } => {}
         ViewNode::Modal {
@@ -507,21 +509,26 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
         }
         ViewNode::AppBar {
             props,
+            top,
             start,
             center,
             end,
-            ..
+            bottom,
         }
         | ViewNode::Footer {
             props,
+            top,
             start,
             center,
             end,
+            bottom,
         } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
+                || dev_children_reference_layout_bindings(top, bindings)
                 || dev_children_reference_layout_bindings(start, bindings)
                 || dev_children_reference_layout_bindings(center, bindings)
                 || dev_children_reference_layout_bindings(end, bindings)
+                || dev_children_reference_layout_bindings(bottom, bindings)
         }
         ViewNode::BottomBar { props, .. } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
@@ -1064,14 +1071,16 @@ fn dev_children_boundary(
             false,
         ),
         ViewNode::AppBar {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         }
         | ViewNode::Footer {
-            start, center, end, ..
+            top, start, center, end, bottom, ..
         } => dev_merge_children_boundaries([
+            dev_children_boundaries(top, false, false),
             dev_children_boundaries(start, false, true),
             dev_children_boundaries(center, false, true),
             dev_children_boundaries(end, false, true),
+            dev_children_boundaries(bottom, false, false),
         ]),
         ViewNode::Card { children, .. } | ViewNode::Badge { children, .. } => {
             dev_children_boundaries(children, false, false)

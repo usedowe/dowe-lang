@@ -11,7 +11,7 @@ fn swift_text_expression(
             .item_value(value)
             .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
             .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path))),
-        None => format!("\"{}\"", escape_swift(value)),
+        None => format!("verbatim: \"{}\"", escape_swift(value)),
     }
 }
 
@@ -24,14 +24,14 @@ fn swift_visible_text_expression(
         return format!("String(localized: \"{}\")", escape_swift(key));
     }
     let Some(binding) = text_binding_path(value) else {
-        return format!("\"{}\"", escape_swift(value));
+        return format!("verbatim: \"{}\"", escape_swift(value));
     };
     match context.dynamic_path(binding) {
         Some(path) => context
             .item_value(binding)
             .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
             .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path))),
-        None => format!("\"{}\"", escape_swift(value)),
+        None => format!("verbatim: \"{}\"", escape_swift(value)),
     }
 }
 
