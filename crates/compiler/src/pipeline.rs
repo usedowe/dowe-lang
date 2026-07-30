@@ -6,6 +6,7 @@ include!("pipeline/compile_and_artifacts.rs");
 mod tests {
     include!("pipeline/tests_config.rs");
     include!("pipeline/tests_web_output.rs");
+    include!("pipeline/tests_sizing.rs");
     include!("pipeline/tests_native_output.rs");
     include!("pipeline/tests_security.rs");
     include!("pipeline/tests_generated_sync.rs");

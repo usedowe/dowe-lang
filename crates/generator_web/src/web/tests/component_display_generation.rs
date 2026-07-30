@@ -851,6 +851,12 @@ fn renders_viewport_minus_height_classes() {
                 min_h: Some(ResponsiveValue::scalar(
                     dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(40)),
                 )),
+                max_w: Some(ResponsiveValue::scalar(
+                    dowe_components::SizeValue::Scale(ScaleValue::from_half_steps(128)),
+                )),
+                max_h: Some(ResponsiveValue::scalar(
+                    dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(48)),
+                )),
                 ..Default::default()
             },
             ..Default::default()
@@ -866,6 +872,8 @@ fn renders_viewport_minus_height_classes() {
 
     assert!(page.content.contains("vh-16"));
     assert!(page.content.contains("min-h-vh-20"));
+    assert!(page.content.contains("max-w-64"));
+    assert!(page.content.contains("max-h-vh-24"));
     assert!(
         page.css_content
             .contains(".vh-16{height:calc(100vh - 4rem);}")
@@ -873,5 +881,10 @@ fn renders_viewport_minus_height_classes() {
     assert!(
         page.css_content
             .contains(".min-h-vh-20{min-height:calc(100vh - 5rem);}")
+    );
+    assert!(page.css_content.contains(".max-w-64{max-width:16rem;}"));
+    assert!(
+        page.css_content
+            .contains(".max-h-vh-24{max-height:calc(100vh - 6rem);}")
     );
 }

@@ -210,11 +210,6 @@ fn render_dev_android_bar(
         }
     ));
     apply_dev_android_style(&props.style.style, &surface, true, output);
-    if props.position != BarPosition::Static {
-        output.push_str(&format!(
-            "        {surface}.setElevation(doweDp(4));\n"
-        ));
-    }
     if props.position == BarPosition::Static {
         output.push_str(&dev_add(
             parent,

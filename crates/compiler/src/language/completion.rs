@@ -16,7 +16,7 @@ use dowe_components::{
     MarqueeSpeed, NativeExternalMode, NavigationOperation, OverlayCornerPosition, OverlayPosition,
     RoundedSize, SectionBackground, ShadowSize, SideNavSize, SkeletonAnimation, SkeletonVariant,
     TableColumnAlign, TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing, TextWeight,
-    ToastKind, VideoAspect, ViewAnimation, ViewIcon, WebTarget,
+    ToastKind, VIEW_META_NAMES, VideoAspect, ViewAnimation, ViewIcon, WebTarget,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -120,6 +120,9 @@ pub fn complete_document(
     if prop_value_context(&prefix, "platform") {
         return quoted_values(["web", "desktop", "android", "ios"]);
     }
+    if prefix.trim_start().starts_with("meta ") && prop_value_context(&prefix, "name") {
+        return quoted_values(VIEW_META_NAMES.iter().copied());
+    }
     if prop_value_context(&prefix, "i18n") {
         return i18n_completions(root);
     }
@@ -163,6 +166,9 @@ pub fn complete_document(
     }
     if prefix.trim_start().starts_with("each ") {
         return each_prop_completions();
+    }
+    if prefix.trim_start().starts_with("meta ") {
+        return view_meta_prop_completions();
     }
     if let Some(owner) = server_owner_before_cursor(&prefix) {
         let completions = server_prop_completions(owner);
@@ -328,6 +334,30 @@ fn each_prop_completions() -> Vec<LanguageCompletion> {
         .collect()
 }
 
+fn view_meta_prop_completions() -> Vec<LanguageCompletion> {
+    ["name", "content"]
+        .into_iter()
+        .map(|prop| {
+            documented_completion(
+                prop,
+                LanguageCompletionKind::Property,
+                "web metadata prop",
+                Some(
+                    match prop {
+                        "name" => {
+                            "`meta.name` selects a supported web document metadata identifier."
+                        }
+                        _ => {
+                            "`meta.content` is the static value emitted into the web document head."
+                        }
+                    }
+                    .to_string(),
+                ),
+            )
+        })
+        .collect()
+}
+
 fn base_completions() -> Vec<LanguageCompletion> {
     let keywords = [
         "import",
@@ -339,6 +369,7 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "translation",
         "layout",
         "page",
+        "meta",
         "component",
         "test",
         "assert",
@@ -1525,6 +1556,8 @@ const BOX_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "borderColor",
     "shadow",
@@ -1554,6 +1587,8 @@ const SECTION_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
     "borderColor",
@@ -1586,6 +1621,8 @@ const LAYOUT_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "borderColor",
     "shadow",
@@ -1594,7 +1631,7 @@ const LAYOUT_PROPS: &[&str] = &[
 const GRID_PROPS: &[&str] = &[
     "columns", "rows", "justify", "align", "gap", "id", "show", "font", "bg", "color", "cover",
     "overlay", "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH",
+    "minH", "maxW", "maxH",
 ];
 const VARIANT_PROPS: &[&str] = &[
     "variant",
@@ -1619,6 +1656,8 @@ const VARIANT_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "borderColor",
     "shadow",
@@ -1626,11 +1665,12 @@ const VARIANT_PROPS: &[&str] = &[
 ];
 const BAR_PROPS: &[&str] = &[
     "variant", "scheme", "bordered", "blurred", "boxed", "id", "show", "font", "p", "px", "py",
-    "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded", "border",
+    "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded", "border",
 ];
 const FLOATING_BAR_PROPS: &[&str] = &[
     "variant", "scheme", "bordered", "blurred", "boxed", "floating", "id", "show", "font", "p",
-    "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded", "border",
+    "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
+    "border",
 ];
 const APP_BAR_PROPS: &[&str] = &[
     "variant",
@@ -1655,12 +1695,14 @@ const APP_BAR_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
 const SIDE_NAV_PROPS: &[&str] = &[
     "variant", "scheme", "size", "wide", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt",
-    "pb", "w", "h", "minW", "minH", "rounded", "border",
+    "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded", "border",
 ];
 const RAIL_NAV_PROPS: &[&str] = &[
     "variant",
@@ -1681,24 +1723,26 @@ const RAIL_NAV_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
 const SIDEBAR_PROPS: &[&str] = &[
     "variant", "scheme", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h",
-    "minW", "minH", "rounded", "border",
+    "minW", "minH", "maxW", "maxH", "rounded", "border",
 ];
 const NAV_MENU_PROPS: &[&str] = &[
     "variant", "scheme", "size", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb",
-    "w", "h", "minW", "minH", "rounded", "border",
+    "w", "h", "minW", "minH", "maxW", "maxH", "rounded", "border",
 ];
 const SCAFFOLD_PROPS: &[&str] = &[
     "boxed", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "rounded", "border",
+    "minH", "maxW", "maxH", "rounded", "border",
 ];
 const TABS_PROPS: &[&str] = &[
     "variant", "scheme", "position", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb",
-    "w", "h", "minW", "minH", "rounded", "border",
+    "w", "h", "minW", "minH", "maxW", "maxH", "rounded", "border",
 ];
 const TAB_PROPS: &[&str] = &[
     "id",
@@ -1731,6 +1775,8 @@ const DRAWER_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -1768,6 +1814,8 @@ const AVATAR_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "borderColor",
     "shadow",
@@ -1776,12 +1824,12 @@ const AVATAR_PROPS: &[&str] = &[
 const BADGE_PROPS: &[&str] = &[
     "text", "variant", "scheme", "position", "id", "show", "font", "bg", "cover", "overlay",
     "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH",
-    "rounded",
+    "maxW", "maxH", "rounded",
 ];
 const CHIP_PROPS: &[&str] = &[
     "variant", "scheme", "size", "onClose", "id", "show", "font", "bg", "cover", "overlay",
     "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH",
-    "rounded",
+    "maxW", "maxH", "rounded",
 ];
 const SKELETON_PROPS: &[&str] = &[
     "variant",
@@ -1806,6 +1854,8 @@ const SKELETON_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "borderColor",
     "shadow",
@@ -1832,6 +1882,8 @@ const MODAL_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -1860,13 +1912,15 @@ const ALERT_DIALOG_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
 const TOOLTIP_PROPS: &[&str] = &[
     "label", "position", "variant", "scheme", "id", "show", "font", "bg", "cover", "overlay",
     "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH",
-    "rounded",
+    "maxW", "maxH", "rounded",
 ];
 const TOAST_PROPS: &[&str] = &[
     "source",
@@ -1896,6 +1950,8 @@ const TOAST_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "borderColor",
     "shadow",
@@ -1903,7 +1959,7 @@ const TOAST_PROPS: &[&str] = &[
 ];
 const DROPDOWN_PROPS: &[&str] = &[
     "scheme", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "rounded", "border",
+    "minH", "maxW", "maxH", "rounded", "border",
 ];
 const COMMAND_PROPS: &[&str] = &[
     "open",
@@ -1932,12 +1988,15 @@ const COMMAND_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
 const AVATAR_GROUP_PROPS: &[&str] = &[
     "items", "variant", "scheme", "size", "max", "autoFit", "inline", "bordered", "id", "show",
-    "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded", "border",
+    "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH",
+    "rounded", "border",
 ];
 const CHAT_BOX_PROPS: &[&str] = &[
     "messages",
@@ -1979,6 +2038,8 @@ const CHAT_BOX_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2009,6 +2070,8 @@ const EMPTY_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2034,6 +2097,8 @@ const MARQUEE_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2059,6 +2124,8 @@ const TYPE_WRITER_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2090,6 +2157,8 @@ const RECORD_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2118,6 +2187,8 @@ const TOGGLE_GROUP_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2141,6 +2212,8 @@ const COLLAPSIBLE_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2172,6 +2245,8 @@ const COUNTDOWN_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2208,6 +2283,8 @@ const MAP_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2241,6 +2318,8 @@ const RADIO_GROUP_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2302,6 +2381,8 @@ const TOGGLE_THEME_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
 ];
 const SELECT_THEME_PROPS: &[&str] = &[
@@ -2329,12 +2410,14 @@ const SELECT_THEME_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
 ];
 const FAB_PROPS: &[&str] = &[
     "position", "fixed", "offsetX", "offsetY", "icon", "label", "variant", "scheme", "size",
     "onClick", "id", "show", "font", "bg", "cover", "overlay", "colSpan", "rowSpan", "p", "px",
-    "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded",
+    "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
 ];
 const FAB_ACTION_PROPS: &[&str] = &[
     "label",
@@ -2377,6 +2460,8 @@ const SLIDER_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
 ];
 const DROPZONE_PROPS: &[&str] = &[
@@ -2411,6 +2496,8 @@ const DROPZONE_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
 ];
 const COMBO_BOX_PROPS: &[&str] = &[
@@ -2445,6 +2532,8 @@ const COMBO_BOX_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2479,6 +2568,8 @@ const CSV_FIELD_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2505,6 +2596,8 @@ const DRAG_DROP_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2539,6 +2632,8 @@ const EDITOR_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2576,6 +2671,8 @@ const IMAGE_CROPPER_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2611,6 +2708,8 @@ const PASSWORD_FIELD_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2647,6 +2746,8 @@ const PHONE_FIELD_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2676,6 +2777,8 @@ const PIN_FIELD_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2711,6 +2814,8 @@ const TEXTAREA_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2742,6 +2847,8 @@ const INPUT_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
 ];
 const SELECT_PROPS: &[&str] = &[
@@ -2770,6 +2877,8 @@ const SELECT_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
 ];
 const OPTION_PROPS: &[&str] = &["value", "label", "description"];
@@ -2795,12 +2904,14 @@ const CODE_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
 const VIDEO_PROPS: &[&str] = &[
     "src", "poster", "autoplay", "aspect", "variant", "scheme", "id", "show", "font", "p", "px",
-    "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded", "border",
+    "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded", "border",
 ];
 const IFRAME_PROPS: &[&str] = &[
     "src",
@@ -2823,12 +2934,14 @@ const IFRAME_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
 const DEVICE_PROPS: &[&str] = &[
     "device", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "rounded", "border",
+    "minH", "maxW", "maxH", "rounded", "border",
 ];
 const CANVAS_PROPS: &[&str] = &[
     "scene",
@@ -2858,6 +2971,8 @@ const CANVAS_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2884,6 +2999,8 @@ const CANDLESTICK_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2920,6 +3037,8 @@ const ARC_CHART_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2958,6 +3077,8 @@ const AREA_CHART_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -2992,6 +3113,8 @@ const BAR_CHART_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -3029,6 +3152,8 @@ const LINE_CHART_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -3066,6 +3191,8 @@ const PIE_CHART_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -3093,6 +3220,8 @@ const TABLE_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -3114,6 +3243,8 @@ const DIVIDER_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -3150,6 +3281,8 @@ const BUTTON_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
 ];
 const BRAND_PROPS: &[&str] = &[
@@ -3169,6 +3302,8 @@ const BRAND_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
     "borderColor",
@@ -3199,6 +3334,8 @@ const BANNER_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
     "borderColor",
@@ -3231,6 +3368,8 @@ const ICON_BUTTON_PROPS: &[&str] = &[
     "h",
     "minW",
     "minH",
+    "maxW",
+    "maxH",
     "rounded",
     "border",
 ];
@@ -3241,7 +3380,7 @@ const ALERT_PROPS: &[&str] = &[
 ];
 const TEXT_PROPS: &[&str] = &[
     "size", "weight", "spacing", "i18n", "font", "id", "show", "bg", "color", "p", "px", "py",
-    "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "rounded",
+    "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
 ];
 const SVG_PROPS: &[&str] = &["viewBox", "data", "color", "w", "h", "id", "show"];
 const ICON_PROPS: &[&str] = &["name", "style", "fill", "stroke", "w", "h", "id", "show"];

@@ -671,6 +671,9 @@ fn prop_type(component: &str, prop: &str) -> String {
         | "showCmyk"
         | "showOklch" => "boolean".to_string(),
         "template" => "boolean".to_string(),
+        "w" | "h" | "minW" | "minH" | "maxW" | "maxH" => {
+            "Dowe size | responsive Dowe size".to_string()
+        }
         "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "top" | "right" | "bottom" | "left"
         | "gap" | "columns" | "rows" | "colSpan" | "rowSpan" | "min" | "max" | "step"
         | "maxSize" | "maxPoints" | "offsetX" | "offsetY" | "autoplayInterval" | "slideWidth"
@@ -706,6 +709,8 @@ fn prop_description(prop: &str) -> &'static str {
         "top" | "right" | "bottom" | "left" => {
             "Offsets an absolute or fixed Box using a scalar or responsive Dowe scale value."
         }
+        "maxW" => "Limits the component width without forcing it to occupy the full limit.",
+        "maxH" => "Limits the component height without adding implicit overflow behavior.",
         "size" => "Selects the component's canonical Dowe size.",
         "i18n" => {
             "References a translation key for the component's primary visible text while preserving the authored text as fallback."

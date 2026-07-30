@@ -155,6 +155,7 @@ fn render_swift_form_node(
             if flow.is_grid_item() && props.style.sizing.w.is_none() {
                 modifiers.push(".frame(maxWidth: .infinity, alignment: .center)".to_string());
             }
+            modifiers.push(".contentShape(Rectangle())".to_string());
             let container = if reactive_visual {
                 format!("doweButtonContainer({variant_value}, {scheme_value})")
             } else {
@@ -175,6 +176,13 @@ fn render_swift_form_node(
                 ));
             }
             modifiers.push(".buttonStyle(.plain)".to_string());
+            if props.icon_only {
+                modifiers.push(".accessibilityElement(children: .ignore)".to_string());
+                modifiers.push(format!(
+                    ".accessibilityLabel(Text(\"{}\"))",
+                    escape_swift(props.label.as_deref().unwrap_or_default())
+                ));
+            }
             if let Some(loading) = loading.as_ref() {
                 modifiers.push(format!(".disabled({loading})"));
             }

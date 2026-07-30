@@ -292,7 +292,7 @@ struct DoweRailNavItem: View {
 
 struct DoweSideNavIcon {
     let viewBox: DoweSvgViewBox
-    let color: Color
+    let color: Color?
     let paths: [DoweSvgPathData]
     let width: CGFloat?
     let maxWidth: CGFloat?
@@ -365,7 +365,7 @@ struct DoweSideNav: View {
     private func row(_ item: DoweSideNavEntry, header: Bool, action: (() -> Void)?, expanded: Bool? = nil) -> some View {
         DoweSideNavRow(active: item.path == activePath, wide: wide, paddingHorizontal: paddingHorizontal, paddingVertical: paddingVertical, gap: gap, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, action: action) {
             if let icon = item.icon {
-                DoweSvgView(viewBox: icon.viewBox, color: icon.color, paths: icon.paths)
+                DoweSvgView(viewBox: icon.viewBox, color: icon.color ?? (item.path == activePath ? activeContentColor : DoweDesign.onBackground), paths: icon.paths)
                     .frame(width: icon.width)
                     .frame(maxWidth: icon.maxWidth)
                     .frame(height: icon.height)

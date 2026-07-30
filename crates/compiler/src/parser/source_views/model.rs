@@ -35,6 +35,7 @@ struct ViewDeclaration {
 #[derive(Clone)]
 struct ParsedViewModule {
     tree: ViewNode,
+    metadata: Vec<ViewMetadata>,
     source: String,
     path: PathBuf,
     kind: ImportedViewKind,
@@ -43,6 +44,7 @@ struct ParsedViewModule {
 #[derive(Clone)]
 struct RouteLayout {
     tree: ViewNode,
+    metadata: Vec<ViewMetadata>,
     chunk_id: String,
     js_path: String,
     css_path: String,
@@ -50,6 +52,7 @@ struct RouteLayout {
 
 struct RoutePage {
     tree: ViewNode,
+    metadata: Vec<ViewMetadata>,
     path: PathBuf,
     chunk_id: String,
     js_path: String,

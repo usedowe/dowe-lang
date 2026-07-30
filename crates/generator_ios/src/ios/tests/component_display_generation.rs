@@ -1188,6 +1188,103 @@ fn generates_loading_button_with_animated_spinner_and_disabled_state() {
 }
 
 #[test]
+fn generates_full_hit_targets_for_icon_and_text_buttons() {
+    let route = ViewRoute {
+        id: "button-hit-targets".to_string(),
+        route_path: "/button-hit-targets".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Box {
+            props: Default::default(),
+            children: vec![
+                ViewNode::Button {
+                    props: VariantProps {
+                        style: StyleProps {
+                            sizing: SizingProps {
+                                w: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                                    ScaleValue::from_half_steps(20),
+                                ))),
+                                h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                                    ScaleValue::from_half_steps(20),
+                                ))),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        icon_start: Some(
+                            solar_control_icon("settings").expect("settings icon"),
+                        ),
+                        icon_only: true,
+                        label: Some("Open settings".to_string()),
+                        navigation: Some(NavigationAction::Internal {
+                            path: "/settings".to_string(),
+                            fragment: None,
+                            operation: NavigationOperation::Push,
+                        }),
+                        ..Default::default()
+                    },
+                    children: Vec::new(),
+                },
+                ViewNode::Button {
+                    props: VariantProps {
+                        style: StyleProps {
+                            spacing: SpacingProps {
+                                px: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                                py: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(5))),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        navigation: Some(NavigationAction::Internal {
+                            path: "/save".to_string(),
+                            fragment: None,
+                            operation: NavigationOperation::Push,
+                        }),
+                        ..Default::default()
+                    },
+                    children: vec![text("Save")],
+                },
+            ],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    let icon_start = views
+        .find("Button(action: { navigate(\"push\", \"/settings\", nil) })")
+        .expect("icon button");
+    let text_start = views
+        .find("Button(action: { navigate(\"push\", \"/save\", nil) })")
+        .expect("text button");
+    let icon_output = &views[icon_start..text_start];
+    let text_output = &views[text_start..];
+    let icon_width = icon_output.find(".frame(width:").expect("icon width");
+    let icon_height = icon_output.find(".frame(height:").expect("icon height");
+    let icon_hit_target = icon_output
+        .find(".contentShape(Rectangle())")
+        .expect("icon hit target");
+    let icon_background = icon_output.find(".background(").expect("icon background");
+    assert!(icon_width < icon_hit_target);
+    assert!(icon_height < icon_hit_target);
+    assert!(icon_hit_target < icon_background);
+    assert!(icon_output.contains(".accessibilityLabel(Text(\"Open settings\"))"));
+    let text_padding = text_output
+        .find(".padding(EdgeInsets(")
+        .expect("text button padding");
+    let text_hit_target = text_output
+        .find(".contentShape(Rectangle())")
+        .expect("text button hit target");
+    let text_background = text_output.find(".background(").expect("text button background");
+    assert!(text_padding < text_hit_target);
+    assert!(text_hit_target < text_background);
+}
+
+#[test]
 fn generates_swiftui_viewport_minus_height() {
     let route = ViewRoute {
         id: "viewport".to_string(),
@@ -1201,6 +1298,12 @@ fn generates_swiftui_viewport_minus_height() {
                     )),
                     min_h: Some(ResponsiveValue::scalar(
                         dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(40)),
+                    )),
+                    max_w: Some(ResponsiveValue::scalar(
+                        dowe_components::SizeValue::Scale(ScaleValue::from_half_steps(128)),
+                    )),
+                    max_h: Some(ResponsiveValue::scalar(
+                        dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(48)),
                     )),
                     ..Default::default()
                 },
@@ -1227,6 +1330,12 @@ fn generates_swiftui_viewport_minus_height() {
     ));
     assert!(views.contains(
         ".frame(minHeight: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.viewportMinus(CGFloat(80))), viewportHeight: viewportHeight))"
+    ));
+    assert!(views.contains(
+        ".frame(maxWidth: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.fixed(CGFloat(256)))))"
+    ));
+    assert!(views.contains(
+        ".frame(maxHeight: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.viewportMinus(CGFloat(96))), viewportHeight: viewportHeight))"
     ));
 }
 

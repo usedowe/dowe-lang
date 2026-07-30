@@ -434,6 +434,22 @@ private fun Modifier.doweMinHeight(value: DoweSize?): Modifier =
         else -> this
     }
 
+@Composable
+private fun Modifier.doweMaxWidth(value: DoweSize?): Modifier =
+    when (value) {
+        is DoweSize.Fixed -> widthIn(max = value.value)
+        is DoweSize.ViewportMinus -> widthIn(max = (LocalConfiguration.current.screenWidthDp.dp - value.inset).coerceAtLeast(0.dp))
+        else -> this
+    }
+
+@Composable
+private fun Modifier.doweMaxHeight(value: DoweSize?): Modifier =
+    when (value) {
+        is DoweSize.Fixed -> heightIn(max = value.value)
+        is DoweSize.ViewportMinus -> heightIn(max = (LocalConfiguration.current.screenHeightDp.dp - value.inset).coerceAtLeast(0.dp))
+        else -> this
+    }
+
 private fun Modifier.doweRounded(radius: Dp?): Modifier =
     if (radius == null) this else clip(RoundedCornerShape(radius))
 

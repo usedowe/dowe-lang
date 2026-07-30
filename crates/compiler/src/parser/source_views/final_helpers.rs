@@ -95,6 +95,25 @@ fn combine_layout_stack(layouts: &[RouteLayout]) -> ViewNode {
     tree
 }
 
+fn compose_route_metadata(
+    layouts: &[RouteLayout],
+    page_metadata: &[ViewMetadata],
+) -> Vec<ViewMetadata> {
+    let mut metadata = Vec::<ViewMetadata>::new();
+    for entry in layouts
+        .iter()
+        .flat_map(|layout| layout.metadata.iter())
+        .chain(page_metadata)
+    {
+        if let Some(existing) = metadata.iter_mut().find(|item| item.name == entry.name) {
+            existing.content = entry.content.clone();
+        } else {
+            metadata.push(entry.clone());
+        }
+    }
+    metadata
+}
+
 fn strip_web_prefix(path: &Path) -> String {
     path.strip_prefix("web")
         .unwrap_or(path)

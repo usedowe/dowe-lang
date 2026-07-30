@@ -24,6 +24,8 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
             | "h"
             | "minW"
             | "minH"
+            | "maxW"
+            | "maxH"
             | "rounded"
             | "border"
     );

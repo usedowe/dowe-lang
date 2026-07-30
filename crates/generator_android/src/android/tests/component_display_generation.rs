@@ -1174,6 +1174,12 @@ fn generates_android_viewport_minus_height() {
                     min_h: Some(ResponsiveValue::scalar(SizeValue::ViewportMinus(
                         ScaleValue::from_half_steps(40),
                     ))),
+                    max_w: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(128),
+                    ))),
+                    max_h: Some(ResponsiveValue::scalar(SizeValue::ViewportMinus(
+                        ScaleValue::from_half_steps(48),
+                    ))),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -1198,6 +1204,8 @@ fn generates_android_viewport_minus_height() {
 
     assert!(views.content.contains("DoweSize.ViewportMinus(64.dp)"));
     assert!(views.content.contains("DoweSize.ViewportMinus(80.dp)"));
+    assert!(views.content.contains(".doweMaxWidth(doweResponsive(viewportWidth, xs = DoweSize.Fixed(256.dp)))"));
+    assert!(views.content.contains(".doweMaxHeight(doweResponsive(viewportWidth, xs = DoweSize.ViewportMinus(96.dp)))"));
     assert!(views
         .content
         .contains("LocalConfiguration.current.screenHeightDp.dp - value.inset"));

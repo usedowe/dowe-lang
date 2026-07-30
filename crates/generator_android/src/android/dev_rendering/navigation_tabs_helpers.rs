@@ -30,7 +30,12 @@ fn render_dev_android_tabs(
     };
     let active_background = dev_tab_background(props, true, tab_radius);
     let inactive_background = dev_tab_background(props, false, tab_radius);
-    let active_content = dev_tabs_active_content(props);
+    let active_content = match props.variant {
+        TabsVariant::Line | TabsVariant::Ghost => dev_tabs_accent(props),
+        TabsVariant::Solid | TabsVariant::Outlined | TabsVariant::Pills => {
+            dev_tabs_active_content(props)
+        }
+    };
     let inactive_content = dev_tabs_list_content(props);
     let font = dev_font_value(props.style.font.as_ref().or(inherited_font));
     output.push_str(&format!(

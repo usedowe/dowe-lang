@@ -195,10 +195,10 @@ fn reject_component_usage_shape(node: &SourceNode) -> DoweResult<()> {
 
 fn reject_component_state_nodes(node: &SourceNode) -> DoweResult<()> {
     for child in &node.children {
-        if matches!(child.name.as_str(), "signal" | "fn" | "request") {
+        if matches!(child.name.as_str(), "signal" | "fn" | "request" | "meta") {
             return Err(node_error(
                 child,
-                "component exports cannot declare signal, fn or request",
+                "component exports cannot declare signal, fn, request or meta",
             ));
         }
         reject_component_state_nodes(child)?;
@@ -490,4 +490,3 @@ fn value_uses_reference(value: &SourceValue, name: &str) -> bool {
         | SourceValue::Null => false,
     }
 }
-

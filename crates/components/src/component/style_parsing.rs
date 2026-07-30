@@ -98,6 +98,8 @@ fn parse_style_props(
             "h" => style.sizing.h = Some(parse_size_prop(&prop.name, &prop.value)?),
             "minW" => style.sizing.min_w = Some(parse_size_prop(&prop.name, &prop.value)?),
             "minH" => style.sizing.min_h = Some(parse_size_prop(&prop.name, &prop.value)?),
+            "maxW" => style.sizing.max_w = Some(parse_size_prop(&prop.name, &prop.value)?),
+            "maxH" => style.sizing.max_h = Some(parse_size_prop(&prop.name, &prop.value)?),
             "rounded" => style.rounded = Some(parse_rounded_prop(&prop.name, &prop.value)?),
             "border" => style.border = Some(parse_border_prop(&prop.name, &prop.value)?),
             "borderColor" => {

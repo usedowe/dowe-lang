@@ -15,15 +15,16 @@ use crate::parser::source_values::parse_value;
 use dowe_components::{
     BuiltinComponent, COMPONENT_REGISTRY, CodeTemplateSegment, ComponentError, ComponentProp,
     DesignConfig, PropScalar, PropValue, ResponsivePropEntry, StdlibArgument, StdlibCall,
-    StdlibValue, ToggleGroupKind, ViewAction, ViewActionKind, ViewAssignAction, ViewConstant,
-    ViewFunctionParameter, ViewFunctionReturn, ViewFunctionStatement, ViewNavigationAction,
-    ViewRequestAction, ViewRequestHeader, ViewRequestHeaderValue, ViewRequestMethod,
-    ViewResetAction, ViewSection, ViewSignal, ViewSignalScope, ViewSignalStorage, ViewSignalValue,
-    ViewToastAction, VisibilityCondition, accordion_component_node, accordion_item_component,
-    alert_dialog_component_node, apply_design_defaults_to_tree, apply_theme_catalog_to_tree,
-    arc_chart_component_node, area_chart_component_node, audio_component_node,
-    avatar_component_node, avatar_group_component_node, avatar_group_item_component,
-    badge_component_node, bar_chart_component_node, bar_component_node, bottom_bar_component_node,
+    StdlibValue, ToggleGroupKind, VIEW_META_NAMES, ViewAction, ViewActionKind, ViewAssignAction,
+    ViewConstant, ViewFunctionParameter, ViewFunctionReturn, ViewFunctionStatement, ViewMetadata,
+    ViewNavigationAction, ViewRequestAction, ViewRequestHeader, ViewRequestHeaderValue,
+    ViewRequestMethod, ViewResetAction, ViewSection, ViewSignal, ViewSignalScope,
+    ViewSignalStorage, ViewSignalValue, ViewToastAction, VisibilityCondition,
+    accordion_component_node, accordion_item_component, alert_dialog_component_node,
+    apply_design_defaults_to_tree, apply_theme_catalog_to_tree, arc_chart_component_node,
+    area_chart_component_node, audio_component_node, avatar_component_node,
+    avatar_group_component_node, avatar_group_item_component, badge_component_node,
+    bar_chart_component_node, bar_component_node, bottom_bar_component_node,
     bottom_bar_tab_component, candlestick_node, canvas_component_node, carousel_component_node,
     carousel_slide_component, chat_box_component_node, checkbox_component_node, children_node,
     chip_component_node, code_node, collapsible_component_node, color_component_node,
@@ -67,6 +68,7 @@ include!("source_views/model.rs");
 include!("source_views/routes.rs");
 include!("source_views/imports.rs");
 include!("source_views/tree.rs");
+include!("source_views/metadata.rs");
 include!("source_views/inline_actions.rs");
 include!("source_views/functions.rs");
 include!("source_views/legacy_requests.rs");

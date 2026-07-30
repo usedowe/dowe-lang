@@ -101,6 +101,8 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                         | "rowSpan"
                         | "minW"
                         | "minH"
+                        | "maxW"
+                        | "maxH"
                 )
             }
             BuiltinComponent::Audio => {

@@ -319,7 +319,7 @@ fn validates_code_source_and_highlighting() {
             string_prop("variant", "soft"),
             string_prop("scheme", "surface"),
         ],
-        "page loginPage\n  Card scheme:\"primary\"\n    Text\n      Login".to_string(),
+        "page loginPage\n  meta name:\"title\" content:\"Login\"\n  Card scheme:\"primary\"\n    Text\n      Login".to_string(),
     )
     .expect("code");
 
@@ -339,6 +339,12 @@ fn validates_code_source_and_highlighting() {
                     .tokens
                     .iter()
                     .any(|token| token.kind == CodeTokenKind::Keyword && token.text == "page")
+            );
+            assert!(
+                props
+                    .tokens
+                    .iter()
+                    .any(|token| token.kind == CodeTokenKind::Keyword && token.text == "meta")
             );
             assert!(
                 props
@@ -1120,6 +1126,8 @@ fn validates_design_props() {
             number_prop("p", 8),
             responsive_number_prop("h", &[("xs", 16), ("md", 24)]),
             string_prop("minH", "vh-16"),
+            responsive_number_prop("maxW", &[("xs", 64), ("md", 80)]),
+            string_prop("maxH", "vh-24"),
         ],
         vec![text_node("Hello").expect("text")],
         false,
@@ -1149,6 +1157,14 @@ fn validates_design_props() {
                 props.sizing.min_h.expect("minH").entries[0].value,
                 SizeValue::ViewportMinus(ScaleValue::from_half_steps(32))
             );
+            assert_eq!(
+                props.sizing.max_w.expect("maxW").entries[1].value,
+                SizeValue::Scale(ScaleValue::from_half_steps(160))
+            );
+            assert_eq!(
+                props.sizing.max_h.expect("maxH").entries[0].value,
+                SizeValue::ViewportMinus(ScaleValue::from_half_steps(48))
+            );
         }
         _ => panic!("box"),
     }
@@ -1173,6 +1189,17 @@ fn validates_design_props() {
         )
         .expect_err("viewport height as width"),
         ComponentError::invalid_prop("w", "Dowe scale value or full")
+    );
+
+    assert_eq!(
+        container_component_node(
+            BuiltinComponent::Box,
+            vec![string_prop("maxW", "vh-16")],
+            vec![text_node("Hello").expect("text")],
+            false,
+        )
+        .expect_err("viewport height as max width"),
+        ComponentError::invalid_prop("maxW", "Dowe scale value or full")
     );
 }
 

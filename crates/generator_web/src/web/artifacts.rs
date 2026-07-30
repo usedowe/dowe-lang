@@ -27,7 +27,7 @@ use dowe_components::{
     TextSpacing, TextWeight, TextareaProps, ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem,
     ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
     TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, VideoProps, ViewAction, ViewActionKind, ViewAnimation,
-    ViewAssignAction, ViewIcon, ViewNavigationAction, ViewNode, ViewRequestAction,
+    ViewAssignAction, ViewIcon, ViewMetadata, ViewNavigationAction, ViewNode, ViewRequestAction,
     ViewConstant, ViewResetAction, ViewSection, ViewSignal, ViewSignalValue, VisibilityCondition, WebTarget,
     collect_node_font_families, text_binding_path, text_spacing_em,
     text_typography, text_weight_number,
@@ -92,6 +92,7 @@ pub struct ViewPage {
     pub boundaries: Vec<String>,
     pub sections: Vec<ViewSection>,
     pub navigation_actions: Vec<ViewNavigationAction>,
+    pub metadata: Vec<ViewMetadata>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -255,12 +256,54 @@ pub fn render_page_document_with_icons(
         .collect::<String>();
     let theme_script = theme_bootstrap_script();
     let icon_links = icon_links(favicon, apple_touch_icon);
+    let metadata = metadata_head(&page.metadata);
 
     format!(
-        r#"<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content">{icon_links}<title>Dowe</title>{theme_script}<link rel="stylesheet" href="/design.css">{css_links}<script type="module" src="/router.js"></script>{chunk_scripts}</head><body><div id="dowe-app" data-dowe-route="{}">{}</div></body></html>"#,
+        r#"<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content">{icon_links}{metadata}{theme_script}<link rel="stylesheet" href="/design.css">{css_links}<script type="module" src="/router.js"></script>{chunk_scripts}</head><body><div id="dowe-app" data-dowe-route="{}">{}</div></body></html>"#,
         escape_attr(&page.route_path),
         page.body_html
     )
+}
+
+fn metadata_head(metadata: &[ViewMetadata]) -> String {
+    let mut head = String::new();
+    let mut has_title = false;
+    for entry in metadata {
+        match entry.name.as_str() {
+            "title" => {
+                has_title = true;
+                head.push_str(&format!(
+                    r#"<title data-dowe-meta>{}</title>"#,
+                    escape_html_text(&entry.content)
+                ));
+            }
+            "canonical" => head.push_str(&format!(
+                r#"<link data-dowe-meta rel="canonical" href="{}">"#,
+                escape_attr(&entry.content)
+            )),
+            name if name.starts_with("og:") => head.push_str(&format!(
+                r#"<meta data-dowe-meta property="{}" content="{}">"#,
+                escape_attr(name),
+                escape_attr(&entry.content)
+            )),
+            name => head.push_str(&format!(
+                r#"<meta data-dowe-meta name="{}" content="{}">"#,
+                escape_attr(name),
+                escape_attr(&entry.content)
+            )),
+        }
+    }
+    if !has_title {
+        head.insert_str(0, "<title>Dowe</title>");
+    }
+    head
+}
+
+fn escape_html_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 fn icon_links(favicon: Option<&str>, apple_touch_icon: Option<&str>) -> String {
@@ -510,8 +553,9 @@ pub fn manifest(web: &WebOutput) -> String {
                 .map(navigation_action_json)
                 .collect::<Vec<_>>()
                 .join(",");
+            let metadata = metadata_json(&page.metadata);
             format!(
-                r#"{{"id":"{}","path":"{}","layoutChunk":"{}","pageChunk":"{}","layoutStack":[{layout_stack}],"jsChunks":[{js_chunks}],"cssChunks":[{css_chunks}],"boundaries":[{boundaries}],"sections":[{sections}],"navigationActions":[{navigation_actions}],"staticFile":"web/pages/{file_name}.html"}}"#,
+                r#"{{"id":"{}","path":"{}","layoutChunk":"{}","pageChunk":"{}","layoutStack":[{layout_stack}],"jsChunks":[{js_chunks}],"cssChunks":[{css_chunks}],"boundaries":[{boundaries}],"sections":[{sections}],"navigationActions":[{navigation_actions}],"metadata":{metadata},"staticFile":"web/pages/{file_name}.html"}}"#,
                 escape_json(&page.id),
                 escape_json(&page.route_path),
                 escape_json(&page.layout_chunk_id),
@@ -539,6 +583,21 @@ pub fn manifest(web: &WebOutput) -> String {
     format!(
         r#"{{"chunks":[{chunks}],"translationChunks":[{translation_chunks}],"defaultLocale":{default_locale},"routes":[{routes}],"history":{{"push":true,"replace":true,"back":true}},"externalPolicies":{{"web":["self","blank"],"desktop":["system","webview"],"android":["system","webview"],"ios":["system","webview"]}},"deepLinks":{{"scheme":"dowe-dev","routesFromManifest":true}}}}"#
     )
+}
+
+fn metadata_json(metadata: &[ViewMetadata]) -> String {
+    let entries = metadata
+        .iter()
+        .map(|entry| {
+            format!(
+                r#"{{"name":"{}","content":"{}"}}"#,
+                escape_json(&entry.name),
+                escape_json(&entry.content)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("[{entries}]")
 }
 
 pub fn design_css() -> String {

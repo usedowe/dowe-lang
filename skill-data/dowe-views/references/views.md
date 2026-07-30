@@ -18,6 +18,7 @@ folders.
 | `const plans` | Immutable value owned by a page or layout |
 | `fn loadBlogs` | Ordered view workflow owned by its page or layout |
 | `init` | Unnamed ordered workflow that runs once when its page or layout mounts |
+| `meta name:"..." content:"..."` | Direct static layout or page metadata for the web document head |
 
 ## Routes
 
@@ -67,6 +68,27 @@ page BlogsPage
         Text
           "First article"
 ```
+
+### Web metadata
+
+A layout or page may declare direct static `meta name:"..." content:"..."` entries. Layout values
+are defaults; the page overrides matching names. Supported names are
+`title`, `description`, `keywords`, `robots`, `canonical`, `og:title`, `og:description`,
+`og:image`, `og:image:alt`, `og:type`, `og:url`, `og:site_name`, `twitter:card`, `twitter:title`,
+`twitter:description`, `twitter:image`, `twitter:image:alt`, `twitter:site`, and
+`twitter:creator`.
+
+```text
+layout SiteLayout
+  meta name:"title" content:"Acme"
+  meta name:"og:image" content:"https://acme.dev/og.png"
+  Scaffold
+    main
+      children
+```
+
+`meta` is not visual and accepts no children or dynamic values. It affects web SSR and browser
+routing only; desktop, Android, and iOS accept the syntax without emitting native metadata.
 
 ### Init and Splash
 

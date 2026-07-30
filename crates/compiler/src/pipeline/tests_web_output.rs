@@ -1,4 +1,110 @@
 #[test]
+fn composes_and_emits_web_only_route_metadata() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
+  meta name:"title" content:"Dowe"
+  meta name:"description" content:"Default & reliable"
+  meta name:"canonical" content:"https://dowe.dev/?ref=docs&kind=web"
+  meta name:"og:image" content:"https://dowe.dev/og.png"
+  meta name:"twitter:card" content:"summary_large_image"
+  Box
+    children"#,
+        r#"page loginPage
+  meta name:"title" content:"Views < Dowe"
+  meta name:"description" content:"Compose web views."
+  Box
+    Text
+      "Login""#,
+    );
+    fs::write(
+        temp.path().join("pages/inherited.dowe"),
+        "page inheritedPage\n  Text\n    \"Inherited\"",
+    )
+    .expect("inherited page");
+    fs::write(
+        temp.path().join("layouts/other.dowe"),
+        "layout OtherLayout\n  meta name:\"title\" content:\"Other layout\"\n  Box\n    children",
+    )
+    .expect("other layout");
+    fs::write(
+        temp.path().join("pages/other.dowe"),
+        "page otherPage\n  Text\n    \"Other\"",
+    )
+    .expect("other page");
+    fs::write(
+        temp.path().join("routes/view.dowe"),
+        r#"import AuthLayout from "../layouts/auth"
+import OtherLayout from "../layouts/other"
+import loginPage from "../pages/login"
+import inheritedPage from "../pages/inherited"
+import otherPage from "../pages/other"
+
+views viewRoutes
+  group path:"/" layout:AuthLayout
+    route path:"" page:loginPage
+    route path:"inherited" page:inheritedPage
+  group path:"/other" layout:OtherLayout
+    route path:"" page:otherPage"#,
+    )
+    .expect("metadata routes");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let page = project
+        .web
+        .pages
+        .iter()
+        .find(|page| page.route_path == "/")
+        .expect("root page");
+    assert_eq!(page.metadata[0].content, "Views < Dowe");
+    assert_eq!(page.metadata[1].content, "Compose web views.");
+    assert!(page.html_document.contains("<title data-dowe-meta>Views &lt; Dowe</title>"));
+    assert!(page.html_document.contains(r#"<meta data-dowe-meta name="description" content="Compose web views.">"#));
+    assert!(page.html_document.contains(r#"<link data-dowe-meta rel="canonical" href="https://dowe.dev/?ref=docs&amp;kind=web">"#));
+    assert!(page.html_document.contains(r#"<meta data-dowe-meta property="og:image" content="https://dowe.dev/og.png">"#));
+    assert!(page.html_document.contains(r#"<meta data-dowe-meta name="twitter:card" content="summary_large_image">"#));
+    assert!(dowe_generator_web::manifest(&project.web).contains(r#""metadata":[{"name":"title","content":"Views < Dowe"}"#));
+    assert!(project.web.router_js.contains("function applyRouteMetadata(route)"));
+    assert!(project.web.router_js.contains("applyRouteMetadata(route)"));
+    let inherited = project
+        .web
+        .pages
+        .iter()
+        .find(|page| page.route_path == "/inherited")
+        .expect("inherited route");
+    assert_eq!(inherited.metadata[0].content, "Dowe");
+    assert_eq!(inherited.metadata[1].content, "Default & reliable");
+    assert!(inherited.html_document.contains("Default &amp; reliable"));
+    let changed_layout = project
+        .web
+        .pages
+        .iter()
+        .find(|page| page.route_path == "/other")
+        .expect("changed layout route");
+    assert_eq!(changed_layout.metadata[0].content, "Other layout");
+    assert!(project
+        .desktop_web
+        .pages
+        .iter()
+        .all(|page| page.metadata.is_empty()));
+    assert!(project
+        .desktop_web
+        .pages
+        .iter()
+        .all(|page| !page.html_document.contains("Views &lt; Dowe")));
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android pages");
+    let ios = fs::read_to_string(temp.path().join(".dowe/apps/ios/DowePages.swift"))
+        .expect("ios pages");
+    assert!(!android.contains("Compose web views."));
+    assert!(!ios.contains("Compose web views."));
+}
+
+#[test]
 fn copies_project_assets_to_android_bundle() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture_with_views(
@@ -122,8 +228,9 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(android.contains("DoweDesign.onSoftWarning"));
     assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
     assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
-    assert!(android.contains("horizontal = doweResponsive(viewportWidth, xs = 20.dp)"));
-    assert!(android.contains("vertical = doweResponsive(viewportWidth, xs = 12.dp)"));
+    assert!(android.contains(
+        "contentPadding = PaddingValues(start = doweResponsive(viewportWidth, xs = 20.dp) ?: 0.dp, top = doweResponsive(viewportWidth, xs = 12.dp) ?: 0.dp, end = doweResponsive(viewportWidth, xs = 20.dp) ?: 0.dp, bottom = doweResponsive(viewportWidth, xs = 12.dp) ?: 0.dp)"
+    ));
     assert!(android.contains("doweResponsive(viewportWidth, xs = DoweSize.Fixed(44.dp))"));
     assert!(android.contains(
         "RoundedCornerShape(doweResponsive(viewportWidth, xs = 999.dp) ?: DoweDesign.radius)"
@@ -371,6 +478,33 @@ layout AuthLayout
     assert!(props_error
         .to_string()
         .contains("component `DocsNavigation` cannot declare args, props or children"));
+
+    let metadata = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        metadata.path(),
+        r#"import DocsNavigation from "../components/docs-navigation"
+
+layout AuthLayout
+  Box
+    DocsNavigation
+    children"#,
+        r#"page loginPage
+  Text
+    "Login""#,
+    );
+    fs::create_dir_all(metadata.path().join("components")).expect("components");
+    fs::write(
+        metadata.path().join("components/docs-navigation.dowe"),
+        r#"component DocsNavigation
+  meta name:"title" content:"Hidden override"
+  Text
+    "Navigation""#,
+    )
+    .expect("component");
+    let metadata_error = compile_dev(metadata.path()).expect_err("metadata error");
+    assert!(metadata_error
+        .to_string()
+        .contains("component exports cannot declare signal, fn, request or meta"));
 
     let cycle = TempDir::new().expect("tempdir");
     write_fixture_with_views(

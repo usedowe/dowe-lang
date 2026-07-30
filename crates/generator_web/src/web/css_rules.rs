@@ -449,13 +449,15 @@ fn class_body(class_name: &str) -> Option<String> {
     {
         return Some(format!("height:calc(100vh - {rem});"));
     }
-    for prefix in ["min-w", "min-h"] {
+    for prefix in ["min-w", "min-h", "max-w", "max-h"] {
         if let Some(suffix) = class_name.strip_prefix(&format!("{prefix}-"))
             && let Some(rem) = scale_suffix_rem(suffix)
         {
             return Some(match prefix {
                 "min-w" => format!("min-width:{rem};"),
                 "min-h" => format!("min-height:{rem};"),
+                "max-w" => format!("max-width:{rem};"),
+                "max-h" => format!("max-height:{rem};"),
                 _ => String::new(),
             });
         }
@@ -465,11 +467,18 @@ fn class_body(class_name: &str) -> Option<String> {
     {
         return Some(format!("min-height:calc(100vh - {rem});"));
     }
+    if let Some(suffix) = class_name.strip_prefix("max-h-vh-")
+        && let Some(rem) = scale_suffix_rem(suffix)
+    {
+        return Some(format!("max-height:calc(100vh - {rem});"));
+    }
     match class_name {
         "w-full" => return Some("width:100%;".to_string()),
         "h-full" => return Some("height:100%;".to_string()),
         "min-w-full" => return Some("min-width:100%;".to_string()),
         "min-h-full" => return Some("min-height:100%;".to_string()),
+        "max-w-full" => return Some("max-width:100%;".to_string()),
+        "max-h-full" => return Some("max-height:100%;".to_string()),
         _ => {}
     }
     if let Some(value) = class_name.strip_prefix("rounded-") {

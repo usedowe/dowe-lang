@@ -380,6 +380,13 @@ fn apply_dev_android_style(
             dev_size_value(value)
         ));
     }
+    if props.sizing.max_w.is_some() || props.sizing.max_h.is_some() {
+        output.push_str(&format!(
+            "        doweConstrain({view}, {}, {});\n",
+            dev_optional_size(props.sizing.max_w.as_ref()),
+            dev_optional_size(props.sizing.max_h.as_ref())
+        ));
+    }
 
     apply_dev_android_shadow(props, view, output);
 

@@ -105,6 +105,24 @@ fn dev_activity_responsive_helpers() -> &'static str {
         return doweDp(value);
     }
 
+    private void doweConstrain(View view, Integer maxWidth, Integer maxHeight) {
+        int widthLimit = maxWidth == null || maxWidth == ViewGroup.LayoutParams.MATCH_PARENT ? Integer.MAX_VALUE : doweDp(maxWidth);
+        int heightLimit = maxHeight == null || maxHeight == ViewGroup.LayoutParams.MATCH_PARENT ? Integer.MAX_VALUE : doweDp(maxHeight);
+        view.addOnLayoutChangeListener((current, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            ViewGroup.LayoutParams params = current.getLayoutParams();
+            if (params == null) {
+                return;
+            }
+            int width = current.getMeasuredWidth() > widthLimit ? widthLimit : params.width;
+            int height = current.getMeasuredHeight() > heightLimit ? heightLimit : params.height;
+            if (width != params.width || height != params.height) {
+                params.width = width;
+                params.height = height;
+                current.setLayoutParams(params);
+            }
+        });
+    }
+
     private int doweColor(Integer value, int fallback) {
         return value == null ? fallback : value;
     }

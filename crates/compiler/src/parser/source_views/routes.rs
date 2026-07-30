@@ -29,6 +29,7 @@ impl RouteBuildContext<'_> {
     ) -> DoweResult<()> {
         let page = self.page_for(&declaration.component)?;
         let layout_tree = combine_layout_stack(&layouts);
+        let metadata = compose_route_metadata(&layouts, &page.metadata);
         let layout_chunk_ids = layouts
             .iter()
             .map(|layout| layout.chunk_id.clone())
@@ -76,6 +77,7 @@ impl RouteBuildContext<'_> {
             boundaries,
             sections: sections.clone(),
             navigation_actions: navigation_actions.clone(),
+            metadata,
         };
         let view_route = ViewRoute {
             id,
@@ -86,9 +88,13 @@ impl RouteBuildContext<'_> {
             navigation_actions,
         };
         for platform in platforms {
+            let mut platform_page = view_page.clone();
+            if platform != ViewPlatform::Web {
+                platform_page.metadata.clear();
+            }
             self.outputs.add_page(
                 platform,
-                view_page.clone(),
+                platform_page,
                 view_route.clone(),
                 self.views_path,
             )?;
@@ -101,6 +107,7 @@ impl RouteBuildContext<'_> {
         let chunk = self.chunk_for(component, &module)?;
         Ok(RouteLayout {
             tree: module.tree,
+            metadata: module.metadata,
             chunk_id: chunk.id,
             js_path: strip_web_prefix(&chunk.relative_path),
             css_path: strip_web_prefix(&chunk.css_relative_path),
@@ -112,6 +119,7 @@ impl RouteBuildContext<'_> {
         let chunk = self.chunk_for(component, &module)?;
         Ok(RoutePage {
             tree: module.tree,
+            metadata: module.metadata,
             path: module.path,
             chunk_id: chunk.id,
             js_path: strip_web_prefix(&chunk.relative_path),
@@ -185,8 +193,10 @@ impl RouteBuildContext<'_> {
         )?;
         apply_design_defaults_to_tree(&mut tree, &self.design_config.defaults);
         apply_theme_catalog_to_tree(&mut tree, self.design_config);
+        let metadata = parse_view_metadata(&expanded_root)?;
         let module = ParsedViewModule {
             tree,
+            metadata,
             source: file.source,
             path: file.path,
             kind,

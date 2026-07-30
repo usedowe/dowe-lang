@@ -272,6 +272,18 @@ fn swift_modifiers_for_style_with_width_alignment(
             swift_size_value(value)
         ));
     }
+    if let Some(value) = props.sizing.max_w.as_ref() {
+        modifiers.push(format!(
+            ".frame(maxWidth: doweFixedSize({}))",
+            swift_size_value(value)
+        ));
+    }
+    if let Some(value) = props.sizing.max_h.as_ref() {
+        modifiers.push(format!(
+            ".frame(maxHeight: doweFixedSize({}, viewportHeight: viewportHeight))",
+            swift_size_value(value)
+        ));
+    }
     if let Some(value) = props.bg.as_ref() {
         modifiers.push(format!(
             ".background({} ?? Color.clear)",

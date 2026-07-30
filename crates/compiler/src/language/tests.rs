@@ -108,6 +108,51 @@ fn formatter_preserves_each_property_syntax() {
 }
 
 #[test]
+fn language_supports_web_metadata_declarations() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("views/pages")).expect("pages");
+    let path = root.path().join("views/pages/home.dowe");
+    let valid = LanguageDocument {
+        path: path.clone(),
+        source: "page HomePage\n  meta name:\"title\" content:\"Dowe\"\n  Text\n    \"Home\"\n"
+            .to_string(),
+    };
+    assert!(analyze_document(root.path(), &valid).is_empty());
+
+    let props = complete_document(
+        root.path(),
+        &LanguageDocument {
+            path: path.clone(),
+            source: "page HomePage\n  meta \n".to_string(),
+        },
+        2,
+        8,
+    );
+    assert!(props.iter().any(|item| item.label == "name"));
+    assert!(props.iter().any(|item| item.label == "content"));
+
+    let names = complete_document(
+        root.path(),
+        &LanguageDocument {
+            path: path.clone(),
+            source: "page HomePage\n  meta name:\n".to_string(),
+        },
+        2,
+        13,
+    );
+    assert!(names.iter().any(|item| item.label == "\"title\""));
+    assert!(names.iter().any(|item| item.label == "\"og:image\""));
+    assert!(names.iter().any(|item| item.label == "\"twitter:card\""));
+
+    let hover = hover_at(root.path(), &valid, 2, 4).expect("meta hover");
+    assert!(hover.contains("web metadata declaration"));
+    let name_hover = hover_at(root.path(), &valid, 2, 9).expect("name hover");
+    assert!(name_hover.contains("metadata identifier"));
+    let content_hover = hover_at(root.path(), &valid, 2, 22).expect("content hover");
+    assert!(content_hover.contains("metadata value"));
+}
+
+#[test]
 fn formatter_preserves_multiline_string_content() {
     let path = Path::new("/project/pages/code.dowe");
     let source = "page codePage\n  Code:\n    language:\"dowe\"\n    content:\"\"\"\n      page example\n        Text\n          \"Hello\"\n\n        Button\n          \"Continue\"\n    \"\"\"\n";
@@ -1397,6 +1442,8 @@ fn completions_include_current_view_component_props() {
     assert!(box_props.iter().any(|item| item.label == "right"));
     assert!(box_props.iter().any(|item| item.label == "bottom"));
     assert!(box_props.iter().any(|item| item.label == "left"));
+    assert!(box_props.iter().any(|item| item.label == "maxW"));
+    assert!(box_props.iter().any(|item| item.label == "maxH"));
     assert!(!box_props.iter().any(|item| item.label == "text"));
 
     let section_props = complete_document(Path::new("/project"), &document, 3, 11);
@@ -1555,7 +1602,7 @@ fn completions_and_diagnostics_support_box_positioning() {
 
     let valid = LanguageDocument {
         path: root.path().join("pages/positioning-valid.dowe"),
-        source: "page positioningPage\n  Box position:\"relative\" minH:64\n    Box position:\"absolute\" top:4 right:{ xs:4 md:6 }\n      Text\n        \"Proof\"\n"
+        source: "page positioningPage\n  Box position:\"relative\" minH:64 maxW:{ xs:\"full\" md:64 } maxH:\"vh-16\"\n    Box position:\"absolute\" top:4 right:{ xs:4 md:6 }\n      Text\n        \"Proof\"\n"
             .to_string(),
     };
     assert!(

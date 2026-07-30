@@ -1175,26 +1175,55 @@ fn generates_tinted_card_shadow_for_compose() {
 fn generates_centered_icon_button_without_empty_android_label() {
     let mut route = route();
     route.layout_tree = ViewNode::Children;
-    route.page_tree = ViewNode::Button {
-        props: VariantProps {
-            style: StyleProps {
-                sizing: SizingProps {
-                    w: Some(ResponsiveValue::scalar(SizeValue::Scale(
-                        ScaleValue::from_half_steps(20),
-                    ))),
-                    h: Some(ResponsiveValue::scalar(SizeValue::Scale(
-                        ScaleValue::from_half_steps(20),
-                    ))),
+    route.page_tree = ViewNode::Box {
+        props: Default::default(),
+        children: vec![
+            ViewNode::Button {
+                props: VariantProps {
+                    style: StyleProps {
+                        sizing: SizingProps {
+                            w: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                                ScaleValue::from_half_steps(20),
+                            ))),
+                            h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                                ScaleValue::from_half_steps(20),
+                            ))),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    icon_start: Some(solar_control_icon("settings").expect("settings icon")),
+                    icon_only: true,
+                    label: Some("Open settings".to_string()),
+                    navigation: Some(NavigationAction::Internal {
+                        path: "/settings".to_string(),
+                        fragment: None,
+                        operation: NavigationOperation::Push,
+                    }),
                     ..Default::default()
                 },
-                ..Default::default()
+                children: Vec::new(),
             },
-            icon_start: Some(solar_control_icon("settings").expect("settings icon")),
-            icon_only: true,
-            label: Some("Open settings".to_string()),
-            ..Default::default()
-        },
-        children: Vec::new(),
+            ViewNode::Button {
+                props: VariantProps {
+                    style: StyleProps {
+                        spacing: SpacingProps {
+                            px: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            py: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(5))),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    navigation: Some(NavigationAction::Internal {
+                        path: "/save".to_string(),
+                        fragment: None,
+                        operation: NavigationOperation::Push,
+                    }),
+                    ..Default::default()
+                },
+                children: vec![text("Save")],
+            },
+        ],
     };
     let output = generate_android(
         &[route],
@@ -1202,12 +1231,41 @@ fn generates_centered_icon_button_without_empty_android_label() {
         &DesignConfig::default(),
         &[],
     );
+    let compose = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("Compose pages");
     let dev = dev_java_source(&output);
 
+    assert!(compose.content.contains(
+        ".semantics { contentDescription = \"Open settings\" }.defaultMinSize"
+    ));
+    assert!(
+        compose
+            .content
+            .contains("onClick = { navigate(\"push\", \"/settings\", null) }")
+    );
+    assert!(compose.content.contains(
+        "contentPadding = PaddingValues(start = doweResponsive(viewportWidth"
+    ));
+    assert!(
+        compose
+            .content
+            .contains("onClick = { navigate(\"push\", \"/save\", null) }")
+    );
     assert!(dev.content.contains("setGravity(Gravity.CENTER)"));
     assert!(
         dev.content
             .contains("setContentDescription(\"Open settings\")")
+    );
+    assert!(
+        dev.content
+            .contains("setOnClickListener(v -> doweNavigate(\"push\", \"/settings\", null))")
+    );
+    assert!(
+        dev.content
+            .contains("setOnClickListener(v -> doweNavigate(\"push\", \"/save\", null))")
     );
     assert!(!dev.content.contains("doweText(\"\""));
 }

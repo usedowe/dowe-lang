@@ -378,7 +378,7 @@ fn render_swift_side_nav_data(
     let border = if let Some(variant) = variant.as_ref() { format!("{variant} == \"outlined\" ? Optional({content}) : nil") } else if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined { format!("Optional({content})") } else { "nil".to_string() };
     output.push_str(&format!(
         "{pad}DoweSideNav(items: {}, activePath: activePath, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), labelFont: {}, descriptionFont: {}, backgroundColor: {}, contentColor: {}, activeContentColor: {}, borderColor: {border}, navigate: navigate)\n",
-        swift_side_nav_entries(items, indent, props),
+        swift_side_nav_entries(items, indent),
         wide,
         swift_font_value(
             current_font,
@@ -463,15 +463,14 @@ fn swift_side_nav_navigation_supported(action: &NavigationAction) -> bool {
     )
 }
 
-fn swift_side_nav_entries(items: &[SideNavItem], indent: usize, nav: &SideNavProps) -> String {
-    swift_side_nav_entries_with_prefix(items, indent, "item", nav)
+fn swift_side_nav_entries(items: &[SideNavItem], indent: usize) -> String {
+    swift_side_nav_entries_with_prefix(items, indent, "item")
 }
 
 fn swift_side_nav_entries_with_prefix(
     items: &[SideNavItem],
     indent: usize,
     prefix: &str,
-    nav: &SideNavProps,
 ) -> String {
     if items.is_empty() {
         return "[]".to_string();
@@ -483,7 +482,7 @@ fn swift_side_nav_entries_with_prefix(
         let id = format!("{prefix}-{index}");
         output.push_str(&format!(
             "{item_pad}{},\n",
-            swift_side_nav_entry(item, indent + 4, &id, nav)
+            swift_side_nav_entry(item, indent + 4, &id)
         ));
     }
     output.push_str(&format!("{pad}]"));
@@ -494,7 +493,6 @@ fn swift_side_nav_child_entries(
     items: &[SideNavItemProps],
     indent: usize,
     prefix: &str,
-    nav: &SideNavProps,
 ) -> String {
     if items.is_empty() {
         return "[]".to_string();
@@ -506,7 +504,7 @@ fn swift_side_nav_child_entries(
         let id = format!("{prefix}-{index}");
         output.push_str(&format!(
             "{item_pad}{},\n",
-            swift_side_nav_entry_props("item", item, false, false, "", &id, nav)
+            swift_side_nav_entry_props("item", item, false, false, "", &id)
         ));
     }
     output.push_str(&format!("{pad}]"));
@@ -517,14 +515,13 @@ fn swift_side_nav_entry(
     item: &SideNavItem,
     indent: usize,
     id: &str,
-    nav: &SideNavProps,
 ) -> String {
     match item {
         SideNavItem::Header(props) => {
-            swift_side_nav_entry_props("header", props, false, false, "", id, nav)
+            swift_side_nav_entry_props("header", props, false, false, "", id)
         }
         SideNavItem::Item(props) => {
-            swift_side_nav_entry_props("item", props, false, false, "", id, nav)
+            swift_side_nav_entry_props("item", props, false, false, "", id)
         }
         SideNavItem::Divider => format!(
             "DoweSideNavEntry(id: \"{}\", kind: \"divider\", label: \"\", description: nil, status: nil, icon: nil, operation: nil, path: nil, fragment: nil, open: false, bordered: false, children: [])",
@@ -536,8 +533,8 @@ fn swift_side_nav_entry(
             bordered,
             items,
         } => {
-            let children = swift_side_nav_child_entries(items, indent + 4, id, nav);
-            swift_side_nav_entry_props("submenu", props, *open, *bordered, &children, id, nav)
+            let children = swift_side_nav_child_entries(items, indent + 4, id);
+            swift_side_nav_entry_props("submenu", props, *open, *bordered, &children, id)
         }
     }
 }
@@ -549,7 +546,6 @@ fn swift_side_nav_entry_props(
     bordered: bool,
     children: &str,
     id: &str,
-    nav: &SideNavProps,
 ) -> String {
     let (operation, path, fragment) = swift_side_nav_navigation_values(props.navigation.as_ref());
     let children = if children.is_empty() { "[]" } else { children };
@@ -560,7 +556,7 @@ fn swift_side_nav_entry_props(
         swift_localized_literal(&props.label, props.i18n.as_deref()),
         props.description.as_deref().map(|value| swift_localized_literal(value, props.description_i18n.as_deref())).unwrap_or_else(|| "nil".to_string()),
         props.status.as_deref().map(|value| swift_localized_literal(value, props.status_i18n.as_deref())).unwrap_or_else(|| "nil".to_string()),
-        swift_side_nav_data_icon(props.icon.as_ref(), nav),
+        swift_side_nav_data_icon(props.icon.as_ref()),
         swift_side_nav_optional_string(operation),
         swift_side_nav_optional_string(path),
         swift_side_nav_optional_string(fragment),
@@ -570,7 +566,7 @@ fn swift_side_nav_entry_props(
     )
 }
 
-fn swift_side_nav_data_icon(icon: Option<&SideNavIcon>, nav: &SideNavProps) -> String {
+fn swift_side_nav_data_icon(icon: Option<&SideNavIcon>) -> String {
     let Some(icon) = icon else {
         return "nil".to_string();
     };
@@ -618,7 +614,7 @@ fn swift_side_nav_data_icon(icon: Option<&SideNavIcon>, nav: &SideNavProps) -> S
     format!(
         "DoweSideNavIcon(viewBox: {}, color: {}, paths: {}, width: {width}, maxWidth: {max_width}, height: {height}, maxHeight: {max_height}, minWidth: {min_width}, minHeight: {min_height})",
         swift_svg_view_box(&icon.props.view_box),
-        swift_side_nav_icon_color(icon, nav),
+        swift_side_nav_data_icon_color(icon),
         swift_svg_paths(&icon.paths),
     )
 }
@@ -743,6 +739,7 @@ fn render_swift_side_nav_row(
     submenu_expanded: Option<&str>,
 ) {
     let pad = " ".repeat(indent);
+    let active = swift_side_nav_active(props.navigation.as_ref());
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
         swift_side_nav_metrics(nav.size);
     let border =
@@ -753,7 +750,7 @@ fn render_swift_side_nav_row(
         };
     output.push_str(&format!(
         "{pad}DoweSideNavRow(active: {}, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), backgroundColor: {}, contentColor: {}, borderColor: {border}, action: {action}) {{\n",
-        swift_side_nav_active(props.navigation.as_ref()),
+        active,
         wide,
         variant_container(&nav.style),
         variant_content(&nav.style),
@@ -762,7 +759,7 @@ fn render_swift_side_nav_row(
         output.push_str(&format!(
             "{pad}    DoweSvgView(viewBox: {}, color: {}, paths: {})\n",
             swift_svg_view_box(&icon.props.view_box),
-            swift_side_nav_icon_color(icon, nav),
+            swift_side_nav_explicit_icon_color(icon, nav, &active),
             swift_svg_paths(&icon.paths)
         ));
         append_swift_modifiers(
@@ -847,11 +844,26 @@ fn swift_side_nav_active(action: Option<&NavigationAction>) -> String {
     }
 }
 
-fn swift_side_nav_icon_color(icon: &SideNavIcon, nav: &SideNavProps) -> String {
+fn swift_side_nav_data_icon_color(icon: &SideNavIcon) -> String {
+    if icon.props.style.text.is_some() {
+        format!("Optional({})", swift_svg_color(&icon.props.style))
+    } else {
+        "nil".to_string()
+    }
+}
+
+fn swift_side_nav_explicit_icon_color(
+    icon: &SideNavIcon,
+    nav: &SideNavProps,
+    active: &str,
+) -> String {
     if icon.props.style.text.is_some() {
         swift_svg_color(&icon.props.style)
     } else {
-        nav_active_content(&nav.style).to_string()
+        format!(
+            "{active} ? {} : DoweDesign.onBackground",
+            nav_active_content(&nav.style)
+        )
     }
 }
 

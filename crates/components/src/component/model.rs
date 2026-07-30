@@ -569,6 +569,34 @@ pub struct ViewNavigationAction {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewMetadata {
+    pub name: String,
+    pub content: String,
+}
+
+pub const VIEW_META_NAMES: &[&str] = &[
+    "title",
+    "description",
+    "keywords",
+    "robots",
+    "canonical",
+    "og:title",
+    "og:description",
+    "og:image",
+    "og:image:alt",
+    "og:type",
+    "og:url",
+    "og:site_name",
+    "twitter:card",
+    "twitter:title",
+    "twitter:description",
+    "twitter:image",
+    "twitter:image:alt",
+    "twitter:site",
+    "twitter:creator",
+];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NavigationAction {
     Internal {
         path: String,
@@ -3670,6 +3698,8 @@ pub struct SizingProps {
     pub h: Option<ResponsiveValue<SizeValue>>,
     pub min_w: Option<ResponsiveValue<SizeValue>>,
     pub min_h: Option<ResponsiveValue<SizeValue>>,
+    pub max_w: Option<ResponsiveValue<SizeValue>>,
+    pub max_h: Option<ResponsiveValue<SizeValue>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

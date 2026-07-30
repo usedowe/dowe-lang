@@ -4,6 +4,7 @@ fn lower_export_tree_with_stores(
     types: &TypeRegistry,
     stores: &[ImportedViewStore],
 ) -> DoweResult<ViewNode> {
+    parse_view_metadata(node)?;
     let scope_name = node
         .args
         .first()
@@ -29,6 +30,7 @@ fn lower_export_tree_with_stores(
 
     for child in &node.children {
         match child.name.as_str() {
+            "meta" => {}
             "const" => constants.push(parse_constant(child, &node.name, &scope_name)?),
             "signal" => signals.push(parse_signal(child, &node.name, &scope_name, types)?),
             "init" => {
@@ -201,4 +203,3 @@ fn lower_inline_on_click_actions(
     }
     Ok(actions)
 }
-

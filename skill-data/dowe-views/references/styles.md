@@ -52,7 +52,7 @@ breakpoint.
 | Group | Props | Values |
 | --- | --- | --- |
 | Padding | `p`, `px`, `py`, `pl`, `pr`, `pt`, `pb` | Dowe numeric scale |
-| Size | `w`, `h`, `minW`, `minH` | Scale values, `full`; `h` and `minH` also accept `vh-<scale>` |
+| Size | `w`, `h`, `minW`, `minH`, `maxW`, `maxH` | Scale values, `full`; `h`, `minH`, and `maxH` also accept `vh-<scale>` |
 | Border | `rounded`, `border` | `xs`, `sm`, `md`, `lg`, `xl`, `full`; integers `1` to `4` |
 | Layout | `justify`, `align`, `gap`, `columns`, `rows` | Layout keywords, grid tracks, scale values, validated pixel gaps |
 | Grid item | `colSpan`, `rowSpan` | Positive integers on direct `Box`, `Section`, or `Card` children of `Grid` |
@@ -66,8 +66,9 @@ breakpoint.
 Breakpoints are `xs:0`, `sm:640`, `md:768`, `lg:1024`, and `xl:1280` logical units on every
 target. The numeric scale is `0` to `4` in `0.5` steps, `4` to `12` in `1` steps, then `12`, `14`,
 `16`, `20`, `24`, `28`, `32`, `36`, `40`, `44`, `48`, `52`, `56`, `60`, `64`, `72`, `80`, and
-`96`. One scale unit is `0.25rem` on web and `4` points or dp on native targets. `h:"vh-16"`
-resolves to the viewport height minus the scale value.
+`96`. One scale unit is `0.25rem` on web and `4` points or dp on native targets. `maxW` and `maxH`
+set upper bounds without forcing the component to occupy the limit. `h:"vh-16"`, `minH:"vh-16"`,
+and `maxH:"vh-16"` resolve against the viewport height minus the scale value.
 
 ## Typography
 
@@ -81,7 +82,7 @@ weight `600` with tight tracking; `Text` defaults to weight `400`. Both accept:
 | `weight` | `thin`, `extralight`, `light`, `regular`, `medium`, `semibold`, `bold`, `extrabold`, `black` |
 | `spacing` | `tightest`, `tighter`, `tight`, `normal`, `wide`, `wider`, `widest` |
 | `font` | Dowe font token, overriding the `theme.dowe` `Text` or `Title` default |
-| Common style props | `p*`, `w`, `h`, `minW`, `minH`, `rounded`, `border` |
+| Common style props | `p*`, `w`, `h`, `minW`, `minH`, `maxW`, `maxH`, `rounded`, `border` |
 
 `Text` and `Title` have no text-alignment prop; `align` is rejected. Center or align text through
 the parent container: `Flex direction:"column" align:"center"` for centered stacks, or

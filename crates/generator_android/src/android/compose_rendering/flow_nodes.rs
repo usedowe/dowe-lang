@@ -482,6 +482,7 @@ fn render_compose_flow_node(
                 compose_button_border(props)
             };
             let mut button_style = props.style.clone();
+            button_style.spacing = Default::default();
             if props.reactive.rounded.is_some() {
                 button_style.rounded = None;
             }
@@ -489,14 +490,24 @@ fn render_compose_flow_node(
                 &button_style,
                 &format!("RoundedCornerShape({radius})"),
             );
-            let modifier = if let Some(size) = size.as_ref() { format!("{button_modifier}.padding(horizontal = doweButtonHorizontalPadding({size}), vertical = doweButtonVerticalPadding({size}))") } else { button_modifier };
+            let mut modifier = button_modifier;
+            if props.icon_only {
+                modifier.push_str(&format!(
+                    ".semantics {{ contentDescription = \"{}\" }}",
+                    escape_kotlin(props.label.as_deref().unwrap_or_default())
+                ));
+            }
+            let content_padding = size
+                .as_ref()
+                .map(|size| format!("PaddingValues(horizontal = doweButtonHorizontalPadding({size}), vertical = doweButtonVerticalPadding({size}))"))
+                .unwrap_or_else(|| compose_content_padding(&props.style.spacing));
             let min_height = size.as_ref().map(|size| format!("doweButtonMinHeight({size})")).unwrap_or_else(|| "0.dp".to_string());
             let enabled = loading
                 .as_ref()
                 .map(|value| format!("!({value})"))
                 .unwrap_or_else(|| "true".to_string());
             output.push_str(&format!(
-                        "{pad}Button(modifier = {}.defaultMinSize(minWidth = 0.dp, minHeight = {min_height}), shape = RoundedCornerShape({}), colors = ButtonDefaults.buttonColors(containerColor = {}, contentColor = {}), border = {}, contentPadding = PaddingValues(0.dp), enabled = {enabled}, onClick = {}) {{\n",
+                        "{pad}Button(modifier = {}.defaultMinSize(minWidth = 0.dp, minHeight = {min_height}), shape = RoundedCornerShape({}), colors = ButtonDefaults.buttonColors(containerColor = {}, contentColor = {}), border = {}, contentPadding = {content_padding}, enabled = {enabled}, onClick = {}) {{\n",
                         modifier,
                         radius,
                         container,

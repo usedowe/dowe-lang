@@ -57,7 +57,7 @@ fn generates_compose_and_dev_layout_bars() {
         dev.content
             .contains("doweBackground(DOWE_SURFACE, DOWE_RADIUS)")
     );
-    assert!(dev.content.contains("setElevation(doweDp(4))"));
+    assert!(!dev.content.contains("setElevation(doweDp(4))"));
     assert!(dev.content.contains("doweBackground(DOWE_PRIMARY, 999f)"));
     assert_eq!(
         dev.content
@@ -140,6 +140,29 @@ fn generates_compose_and_dev_layout_bars() {
     assert!(dev.content.contains("doweText(\"Footer\""));
     assert!(dev.content.contains("doweText(\"Directory\""));
     assert!(dev.content.contains("doweText(\"Copyright\""));
+}
+
+#[test]
+fn keeps_unbordered_persistent_appbar_visually_flat() {
+    let output = generate_android(
+        &[unbordered_persistent_appbar_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+
+    assert!(views.content.contains(
+        "Column(modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).zIndex(1f).background(DoweDesign.surface))"
+    ));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("dowePinAppBar("));
+    assert!(!dev.content.contains("setElevation(doweDp(4))"));
 }
 
 #[test]
@@ -420,6 +443,13 @@ fn generates_compose_and_dev_tabs() {
     assert!(dev.content.contains("View[] view"));
     assert!(dev.content.contains("doweText(\"Overview\""));
     assert!(dev.content.contains("doweText(\"Details\""));
+    assert!(
+        dev.content
+            .contains("doweText(\"Overview\", DOWE_PRIMARY")
+    );
+    assert!(!dev
+        .content
+        .contains("doweText(\"Overview\", DOWE_ON_PRIMARY"));
     assert!(dev.content.contains(
         ".setGravity(Gravity.CENTER_VERTICAL);\n        doweWrapContentWidth(view"
     ));

@@ -11,7 +11,7 @@ fn parse_scale_prop(name: &str, value: &PropValue) -> ComponentResult<Responsive
 }
 
 fn parse_size_prop(name: &str, value: &PropValue) -> ComponentResult<ResponsiveValue<SizeValue>> {
-    let allow_viewport_height = matches!(name, "h" | "minH");
+    let allow_viewport_height = matches!(name, "h" | "minH" | "maxH");
     let expected = if allow_viewport_height {
         "Dowe scale value, full or vh-<scale>"
     } else {

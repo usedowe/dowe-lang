@@ -327,6 +327,12 @@ fn modifier_for_style_with_base_and_shadow_shape(
             compose_optional_scale(props.spacing.pb.as_ref())
         ));
     }
+    if let Some(value) = props.sizing.max_w.as_ref() {
+        modifier.push_str(&format!(".doweMaxWidth({})", compose_size_value(value)));
+    }
+    if let Some(value) = props.sizing.max_h.as_ref() {
+        modifier.push_str(&format!(".doweMaxHeight({})", compose_size_value(value)));
+    }
     if let Some(value) = props.sizing.w.as_ref() {
         modifier.push_str(&format!(".doweWidth({})", compose_size_value(value)));
     }
@@ -456,6 +462,36 @@ fn compose_optional_scale(value: Option<&ResponsiveValue<ScaleValue>>) -> String
     value
         .map(compose_scale_value)
         .unwrap_or_else(|| "null".to_string())
+}
+
+fn compose_content_padding(spacing: &dowe_components::SpacingProps) -> String {
+    if spacing.p.is_none()
+        && spacing.px.is_none()
+        && spacing.py.is_none()
+        && spacing.pl.is_none()
+        && spacing.pr.is_none()
+        && spacing.pt.is_none()
+        && spacing.pb.is_none()
+    {
+        return "PaddingValues(0.dp)".to_string();
+    }
+    let edge = |side: Option<&ResponsiveValue<ScaleValue>>,
+                axis: Option<&ResponsiveValue<ScaleValue>>| {
+        [side, axis, spacing.p.as_ref()]
+            .into_iter()
+            .flatten()
+            .map(compose_scale_value)
+            .chain(std::iter::once("0.dp".to_string()))
+            .collect::<Vec<_>>()
+            .join(" ?: ")
+    };
+    format!(
+        "PaddingValues(start = {}, top = {}, end = {}, bottom = {})",
+        edge(spacing.pl.as_ref(), spacing.px.as_ref()),
+        edge(spacing.pt.as_ref(), spacing.py.as_ref()),
+        edge(spacing.pr.as_ref(), spacing.px.as_ref()),
+        edge(spacing.pb.as_ref(), spacing.py.as_ref())
+    )
 }
 
 fn compose_optional_rounded(value: Option<&ResponsiveValue<RoundedSize>>) -> String {

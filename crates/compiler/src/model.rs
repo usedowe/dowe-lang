@@ -4,7 +4,9 @@ use std::str::FromStr;
 
 use dowe_stdlib::StdlibCall;
 
-pub use dowe_components::{DesignConfig, FontConfig, TranslationCatalog, ViewNode, ViewRoute};
+pub use dowe_components::{
+    DesignConfig, FontConfig, TranslationCatalog, ViewMetadata, ViewNode, ViewRoute,
+};
 pub use dowe_generator_web::{ChunkKind, GeneratedChunk, ViewPage, WebOutput};
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -83,6 +83,72 @@
     }
 
     #[test]
+    fn accepts_direct_layout_and_page_metadata_without_adding_visual_roots() {
+        parse_page(
+            r#"layout HomeLayout
+  meta name:"title" content:"Dowe"
+  meta name:"og:image" content:"/images/social.png"
+  Scaffold
+    main
+      children"#,
+        )
+        .expect("layout metadata");
+        parse_page(
+            r#"page ViewsPage
+  meta name:"title" content:"Views | Dowe"
+  meta name:"description" content:"Build fullstack views with Dowe."
+  Title
+    "Views""#,
+        )
+        .expect("page metadata");
+    }
+
+    #[test]
+    fn rejects_invalid_direct_view_metadata() {
+        for (source, expected) in [
+            (
+                "page InvalidPage\n  meta content:\"Dowe\"\n  Text\n    \"Invalid\"",
+                "missing `name` on `meta`",
+            ),
+            (
+                "page InvalidPage\n  meta name:\"title\" content:\"\"\n  Text\n    \"Invalid\"",
+                "`content` must not be empty",
+            ),
+            (
+                "page InvalidPage\n  meta name:\"author\" content:\"Dowe\"\n  Text\n    \"Invalid\"",
+                "unsupported meta name `author`",
+            ),
+            (
+                "page InvalidPage\n  meta name:\"title\" content:\"Dowe\" media:\"all\"\n  Text\n    \"Invalid\"",
+                "unknown prop `media` on `meta`",
+            ),
+            (
+                "page InvalidPage\n  meta name:\"title\" content:titleSignal\n  Text\n    \"Invalid\"",
+                "expected quoted static string literal",
+            ),
+            (
+                "page InvalidPage\n  meta name:\"title\" content:\"One\"\n  meta name:\"title\" content:\"Two\"\n  Text\n    \"Invalid\"",
+                "duplicate meta name `title`",
+            ),
+            (
+                "page InvalidPage\n  meta invalid name:\"title\" content:\"Dowe\"\n  Text\n    \"Invalid\"",
+                "accepts only `name` and `content` props and no children",
+            ),
+            (
+                "page InvalidPage\n  meta name:\"title\" content:\"Dowe\"\n    Text\n      \"Invalid\"",
+                "accepts only `name` and `content` props and no children",
+            ),
+            (
+                "page InvalidPage\n  Box\n    meta name:\"title\" content:\"Nested\"",
+                "unknown component `meta`",
+            ),
+        ] {
+            let error = parse_page(source).expect_err("invalid metadata");
+            assert!(error.to_string().contains(expected), "{error}");
+        }
+    }
+
+    #[test]
     fn parses_immutable_view_constants_for_table_data() {
         let tree = parse_page(
             r#"page catalog
@@ -442,4 +508,3 @@
                 .contains("layout exports must contain one root view node")
         );
     }
-

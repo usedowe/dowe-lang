@@ -114,6 +114,32 @@ fn bar_route() -> ViewRoute {
     }
 }
 
+fn unbordered_persistent_appbar_route() -> ViewRoute {
+    ViewRoute {
+        id: "unbordered-appbar".to_string(),
+        route_path: "/unbordered-appbar".to_string(),
+        layout_tree: ViewNode::AppBar {
+            props: BarProps {
+                style: VariantProps {
+                    variant: Some(ComponentVariant::Solid),
+                    color: Some(ColorFamily::Surface),
+                    ..Default::default()
+                },
+                position: BarPosition::Sticky,
+                ..Default::default()
+            },
+            top: Vec::new(),
+            start: vec![text("Brand")],
+            center: Vec::new(),
+            end: vec![text("Account")],
+            bottom: Vec::new(),
+        },
+        page_tree: text("Page"),
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
 fn side_nav_route() -> ViewRoute {
     ViewRoute {
         id: "bars".to_string(),

@@ -565,6 +565,8 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
     append_height_classes(classes, props.sizing.h.as_ref());
     append_responsive_classes(classes, "min-w", props.sizing.min_w.as_ref(), size_suffix);
     append_responsive_classes(classes, "min-h", props.sizing.min_h.as_ref(), size_suffix);
+    append_responsive_classes(classes, "max-w", props.sizing.max_w.as_ref(), size_suffix);
+    append_responsive_classes(classes, "max-h", props.sizing.max_h.as_ref(), size_suffix);
     append_responsive_classes(classes, "rounded", props.rounded.as_ref(), |value| {
         value.as_str().to_string()
     });

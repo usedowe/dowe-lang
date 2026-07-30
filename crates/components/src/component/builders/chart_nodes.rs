@@ -384,6 +384,8 @@ fn is_chart_style_prop(name: &str) -> bool {
             | "h"
             | "minW"
             | "minH"
+            | "maxW"
+            | "maxH"
             | "rounded"
             | "border"
             | "colSpan"

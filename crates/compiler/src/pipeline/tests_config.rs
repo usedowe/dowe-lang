@@ -626,6 +626,10 @@ fn writes_source_language_artifacts() {
     assert!(!views.contains("views/store/**/*.dowe"));
     assert!(views.contains(r#""routing""#));
     assert!(views.contains("platform values"));
+    assert!(views.contains(r#""metadata""#));
+    assert!(views.contains(r#"meta name:\"title\" content:\"Page title\""#));
+    assert!(views.contains("active layout then page by name"));
+    assert!(views.contains("web SSR and browser routing only"));
     assert!(!views.contains(r#""Body""#));
     assert!(views.contains(r#""children""#));
     assert!(views.contains(r#""serverApisAvailable": false"#));

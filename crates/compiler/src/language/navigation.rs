@@ -41,6 +41,17 @@ pub fn hover_at(
         .nth(line.saturating_sub(1))
         .unwrap_or_default();
     let owner = source_line.split_whitespace().next().unwrap_or_default();
+    if owner == "meta" {
+        return match token.as_str() {
+            "meta" => Some("Dowe web metadata declaration: a direct layout or page child emitted during SSR and updated during browser routing".to_string()),
+            "name" => Some("Static supported web metadata identifier; page values override matching layout defaults".to_string()),
+            "content" => Some("Static web metadata value emitted into the browser document head".to_string()),
+            value if dowe_components::VIEW_META_NAMES.contains(&value) => {
+                Some(format!("Supported Dowe web metadata name `{value}`"))
+            }
+            _ => None,
+        };
+    }
     if document.path.ends_with("theme.dowe")
         && let Some(value) = theme_documentation(
             owner,

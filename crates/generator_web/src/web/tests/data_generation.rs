@@ -314,6 +314,61 @@ fn emits_centered_proportional_icon_button_css() {
 }
 
 #[test]
+fn binds_icon_and_text_button_actions_to_the_full_web_control() {
+    let tree = ViewNode::Box {
+        props: Default::default(),
+        children: vec![
+            ViewNode::Button {
+                props: VariantProps {
+                    element: ElementProps {
+                        on_click: Some("openSettings".to_string()),
+                        ..Default::default()
+                    },
+                    icon_start: Some(
+                        solar_control_icon("settings").expect("settings icon"),
+                    ),
+                    icon_only: true,
+                    label: Some("Open settings".to_string()),
+                    ..Default::default()
+                },
+                children: Vec::new(),
+            },
+            ViewNode::Button {
+                props: VariantProps {
+                    element: ElementProps {
+                        on_click: Some("save".to_string()),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                children: vec![text("Save")],
+            },
+        ],
+    };
+    let html = render_page_body(&ViewNode::Children, &tree);
+    let icon_start = html.find("aria-label=\"Open settings\"").expect("icon button");
+    let icon_open = html[..icon_start].rfind("<button").expect("icon opening tag");
+    let icon_close = html[icon_start..]
+        .find("</button>")
+        .map(|offset| icon_start + offset)
+        .expect("icon closing tag");
+    let icon_output = &html[icon_open..icon_close];
+    assert!(icon_output.contains("icon-button"));
+    assert!(icon_output.contains("data-dowe-click=\"openSettings\""));
+    assert!(icon_output.contains("data-dowe-button-icon-start"));
+    let text_start = html.find("data-dowe-click=\"save\"").expect("text button");
+    let text_open = html[..text_start].rfind("<button").expect("text opening tag");
+    let text_close = html[text_start..]
+        .find("</button>")
+        .map(|offset| text_start + offset)
+        .expect("text closing tag");
+    let text_output = &html[text_open..text_close];
+    assert!(text_output.contains("class=\"button"));
+    assert!(text_output.contains("data-dowe-click=\"save\""));
+    assert!(text_output.contains("Save"));
+}
+
+#[test]
 fn emits_text_weight_override_css() {
     let root = Path::new("/project");
     let page_tree = ViewNode::Text {

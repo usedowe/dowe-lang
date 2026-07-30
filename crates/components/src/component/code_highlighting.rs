@@ -148,8 +148,8 @@ fn code_keywords(language: CodeLanguage) -> &'static [&'static str] {
     match language {
         CodeLanguage::Dowe => &[
             "action", "set", "children", "column", "component", "config", "each", "else", "env",
-            "handler", "if", "import", "layout", "main", "middleware", "page", "request",
-            "reset", "return", "route", "server", "signal", "type", "views",
+            "handler", "if", "import", "layout", "main", "meta", "middleware", "page",
+            "request", "reset", "return", "route", "server", "signal", "type", "views",
         ],
         CodeLanguage::TypeScript => &[
             "as", "async", "await", "class", "const", "else", "export", "extends", "from",

@@ -636,6 +636,7 @@ fn emits_web_manifest_and_html_artifacts() {
         boundaries: vec![format!("layout:{}", layout.id), format!("page:{}", page.id)],
         sections: Vec::new(),
         navigation_actions: Vec::new(),
+        metadata: Vec::new(),
     };
     view_page.html_document = super::render_page_document(&view_page);
     assert!(

@@ -38,9 +38,9 @@ pub use model::{
     StoreActionJsonEndpoint, StoreConnection, StoreConnectionValue, StoreFilter,
     StoreInsertEndpoint, StoreLiteral, StoreMatchField, StoreQueryEndpoint,
     StoreTransactionEndpoint, StoreTransactionOperation, TlsConfig, TlsDomainsSource, TlsMode,
-    VectorActionJsonEndpoint, VectorConnection, VectorConnectionValue, VectorProvider, ViewNode,
-    ViewPage, ViewPlatform, ViewRoute, ViewTargetRoutes, WebOutput, WebSocketHandlers,
-    WebSocketJsonStatement, WebSocketRoute, WebSocketSendJsonStatement,
+    VectorActionJsonEndpoint, VectorConnection, VectorConnectionValue, VectorProvider,
+    ViewMetadata, ViewNode, ViewPage, ViewPlatform, ViewRoute, ViewTargetRoutes, WebOutput,
+    WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute, WebSocketSendJsonStatement,
     WebSocketSseBridgeStatement, normalize_cors_method, normalize_cors_origin,
     normalize_http_header_name,
 };
