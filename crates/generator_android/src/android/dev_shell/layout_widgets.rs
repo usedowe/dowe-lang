@@ -37,6 +37,27 @@ fn dev_activity_layout_widgets() -> &'static str {
         }
     }
 
+    private static final class DoweDismissOnTouchLayout extends DoweLinearLayout {
+        private Runnable dismissAction;
+
+        DoweDismissOnTouchLayout(Context context) {
+            super(context);
+        }
+
+        void setDismissAction(Runnable dismissAction) {
+            this.dismissAction = dismissAction;
+        }
+
+        @Override
+        public boolean dispatchTouchEvent(MotionEvent event) {
+            boolean handled = super.dispatchTouchEvent(event);
+            if (handled && event.getActionMasked() == MotionEvent.ACTION_UP && dismissAction != null) {
+                post(dismissAction);
+            }
+            return handled;
+        }
+    }
+
     private static final class DoweBadgeLayout extends FrameLayout {
         DoweBadgeLayout(Context context) {
             super(context);
@@ -252,23 +273,40 @@ fn dev_activity_layout_widgets() -> &'static str {
         if (currentFragment == null || scrollView == null) {
             return;
         }
-        root.post(() -> {
-            View target = sectionViews.get(currentFragment);
-            if (target != null) {
-                scrollView.scrollTo(0, doweTopRelativeToRoot(target));
+        View laidOutTarget = sectionViews.get(currentFragment);
+        if (laidOutTarget != null && laidOutTarget.isLaidOut()) {
+            laidOutTarget.post(() -> doweRevealSection(laidOutTarget));
+            return;
+        }
+        root.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                if (root.getViewTreeObserver().isAlive()) {
+                    root.getViewTreeObserver().removeOnPreDrawListener(this);
+                }
+                View target = sectionViews.get(currentFragment);
+                if (target != null) {
+                    doweRevealSection(target);
+                }
+                return true;
             }
         });
     }
 
-    private int doweTopRelativeToRoot(View view) {
-        int top = 0;
-        View current = view;
-        while (current != null && current != root) {
-            top += current.getTop();
-            Object parent = current.getParent();
-            current = parent instanceof View ? (View) parent : null;
+    private void doweRevealSection(View target) {
+        int[] targetLocation = new int[2];
+        int[] scrollLocation = new int[2];
+        target.getLocationInWindow(targetLocation);
+        scrollView.getLocationInWindow(scrollLocation);
+        int visibleTop = scrollLocation[1] + scrollView.getPaddingTop();
+        View pinnedAppBar = ((ViewGroup) scrollView.getParent()).findViewWithTag("dowe-pinned-appbar");
+        if (pinnedAppBar != null) {
+            int[] appBarLocation = new int[2];
+            pinnedAppBar.getLocationInWindow(appBarLocation);
+            visibleTop = Math.max(visibleTop, appBarLocation[1] + pinnedAppBar.getHeight());
         }
-        return top;
+        int destination = Math.max(0, scrollView.getScrollY() + targetLocation[1] - visibleTop);
+        scrollView.smoothScrollTo(0, destination);
     }
 
     private void doweAnimate(View view, String preset) {
@@ -430,6 +468,12 @@ fn dev_activity_layout_widgets() -> &'static str {
         paths.add(new DoweSvgPathEntry("m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z", true, null));
         DoweSvgView view = new DoweSvgView(this, 0f, 0f, 24f, 24f, color, paths);
         view.setLayoutParams(new LinearLayout.LayoutParams(doweDp(16), doweDp(16)));
+        return view;
+    }
+
+    private DoweSvgView doweNavMenuArrow(int color) {
+        DoweSvgView view = doweSideNavArrow(color);
+        view.setRotation(90f);
         return view;
     }
 

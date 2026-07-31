@@ -194,7 +194,7 @@ fn generates_swiftui_display_overlay_components() {
         .expect("overlay item after dropdown popover");
     assert!(!views[popover_start..popover_end].contains("ScrollView"));
     assert!(!views[popover_start..popover_end].contains(".shadow("));
-    assert!(!views.contains(".presentationCompactAdaptation(.popover)"));
+    assert!(!views[popover_start..popover_end].contains(".presentationCompactAdaptation(.popover)"));
     assert!(views.contains("DoweCommand(open: state.bool(\"modal01\")"));
 }
 

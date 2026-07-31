@@ -314,6 +314,13 @@ fn generates_compose_and_dev_navigation_shell_components() {
         .expect("views");
 
     assert!(views.content.contains("DoweNavMenu("));
+    assert!(views.content.contains("Popup(onDismissRequest = { openIndex = null }"));
+    assert!(views.content.contains("DoweNavMenuPopoverSurface(onDismiss = { openIndex = null })"));
+    assert!(views.content.contains("PointerEventPass.Final"));
+    assert!(views.content.contains("PointerEventType.Release"));
+    assert!(views.content.contains(
+        "popoverBackgroundColor = DoweDesign.background, popoverContentColor = DoweDesign.onBackground"
+    ));
     let resource = dowe_components::translation_resource_name("home.hero.title");
     assert!(
         views
@@ -363,6 +370,19 @@ fn generates_compose_and_dev_navigation_shell_components() {
     assert!(views.content.contains("label = \"Side Home\""));
 
     let dev = dev_java_source(&output);
+    assert!(dev.content.contains("DoweDismissOnTouchLayout"));
+    assert!(dev.content.contains("new PopupWindow("));
+    assert!(dev.content.contains("showAsDropDown("));
+    assert!(dev.content.contains("doweInputBackground(DOWE_BACKGROUND, null, DOWE_RADIUS)"));
+    assert!(dev.content.contains("doweNavMenuArrow(DOWE_ON_BACKGROUND)"));
+    assert!(dev.content.contains("setOnDismissListener"));
+    assert!(dev.content.contains(
+        "doweNavigate(\"push\", \"/docs\", null); if ("
+    ));
+    assert!(dev.content.contains("Label.setOnClickListener(v ->"));
+    assert!(dev.content.contains(".performClick());"));
+    assert!(dev.content.contains("post(dismissAction);"));
+    assert!(!dev.content.contains("dismissAction.run();"));
     assert!(
         dev.content
             .contains(&format!("getString(R.string.{resource})"))
@@ -380,6 +400,9 @@ fn generates_compose_and_dev_navigation_shell_components() {
         dev.content.contains("ShellHeight));")
     );
     assert!(dev.content.contains("doweText(\"Resource hub\""));
+    assert!(!dev.content.contains(
+        "new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f)"
+    ));
     assert!(dev.content.contains("\"Side Home\""));
     assert!(dev.content.contains("doweBoxedContainer(true, 1536)"));
     assert!(dev.content.contains("Params.gravity = Gravity.CENTER_HORIZONTAL"));
@@ -390,8 +413,9 @@ fn generates_compose_and_dev_navigation_shell_components() {
         "LinearLayout view2 = doweContainer(true);\n        doweWrapContentWidth(view2);\n        doweAdd(view1, view2);"
     ));
     assert!(dev.content.contains(
-        "LinearLayout view3 = doweContainer(true);\n        view3.setGravity(Gravity.CENTER_VERTICAL);\n        view3.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        doweWrapContentWidth(view3);\n        doweAdd(view2, view3);"
+        "LinearLayout view3 = doweContainer(true);\n        view3.setGravity(Gravity.CENTER_VERTICAL);\n        view3.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        doweWrapContentWidth(view3);"
     ));
+    assert!(dev.content.contains("doweAdd(view2, view3);"));
 }
 
 #[test]
@@ -550,15 +574,21 @@ fn generates_compose_and_dev_drawer() {
             .contains("if (scrollToFragment) {\n            if (currentFragment == null) {\n                scrollView.scrollTo(0, 0);\n            } else {\n                doweScrollToFragment();\n            }\n        }")
     );
     assert!(dev.content.contains("renderCurrentRoute(false);"));
-    assert!(
-        dev.content
-            .contains("scrollView.scrollTo(0, doweTopRelativeToRoot(target));")
-    );
+    assert!(dev.content.contains("addOnPreDrawListener"));
+    assert!(dev
+        .content
+        .contains("target.getLocationInWindow(targetLocation);"));
+    assert!(dev
+        .content
+        .contains("visibleTop = Math.max(visibleTop, appBarLocation[1] + pinnedAppBar.getHeight());"));
+    assert!(dev
+        .content
+        .contains("scrollView.smoothScrollTo(0, destination);"));
+    assert!(!dev.content.contains("doweTopRelativeToRoot"));
     assert!(
         dev.content
             .contains("root.post(() -> { if (root.getWindowToken() != null) { view")
     );
-    assert!(!dev.content.contains("smoothScrollTo"));
     assert!(
         dev.content
             .contains(r#"doweDrawerBackground(DOWE_SURFACE, null, "end", 0f)"#)

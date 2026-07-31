@@ -255,12 +255,33 @@ private fun DoweNavMenu(modifier: Modifier = Modifier, gap: Dp, popoverBackgroun
                     shape = RoundedCornerShape(DoweDesign.radius),
                     elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
-                    Column(modifier = Modifier.widthIn(min = 192.dp, max = 720.dp).heightIn(max = 640.dp).padding(8.dp)) {
-                        popover(openIndex)
+                    DoweNavMenuPopoverSurface(onDismiss = { openIndex = null }) {
+                        Column(modifier = Modifier.widthIn(min = 192.dp, max = 720.dp).heightIn(max = 640.dp).padding(8.dp)) {
+                            popover(openIndex)
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DoweNavMenuPopoverSurface(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier.pointerInput(onDismiss) {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Final)
+                    if (event.type == PointerEventType.Release) {
+                        onDismiss()
+                        break
+                    }
+                }
+            }
+        }
+    ) {
+        content()
     }
 }
 

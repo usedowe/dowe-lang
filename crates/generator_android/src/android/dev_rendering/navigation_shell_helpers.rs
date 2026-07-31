@@ -47,11 +47,11 @@ fn render_dev_android_scaffold(
     output.push_str(&format!("        LinearLayout {body} = {body_constructor};\n"));
     if props.boxed {
         output.push_str(&format!(
-            "        LinearLayout.LayoutParams {body}Params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, 0, 1f);\n        {body}Params.gravity = Gravity.CENTER_HORIZONTAL;\n        {body}.setLayoutParams({body}Params);\n"
+            "        LinearLayout.LayoutParams {body}Params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);\n        {body}Params.gravity = Gravity.CENTER_HORIZONTAL;\n        {body}.setLayoutParams({body}Params);\n"
         ));
     } else {
         output.push_str(&format!(
-            "        {body}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));\n"
+            "        {body}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
         ));
     }
     output.push_str(&format!("        doweAdd({view}, {body});\n"));
@@ -71,7 +71,7 @@ fn render_dev_android_scaffold(
     }
     let main_view = next_dev_view(counter);
     output.push_str(&format!(
-        "        LinearLayout {main_view} = doweContainer(false);\n        {main_view}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));\n        doweAdd({body}, {main_view});\n"
+        "        LinearLayout {main_view} = doweContainer(false);\n        {main_view}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n        doweAdd({body}, {main_view});\n"
     ));
     for child in main {
         render_dev_android_node(

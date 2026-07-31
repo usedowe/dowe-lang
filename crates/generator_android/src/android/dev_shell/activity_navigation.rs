@@ -7,7 +7,19 @@ fn dev_activity_navigation(first_path: &str) -> String {
         }}
         String resolvedFragment = doweCanSection(path, fragment) ? fragment : null;
         doweCloseDrawerForNavigation();
-        if (path.equals(currentPath) && Objects.equals(resolvedFragment, currentFragment)) {{
+        if (path.equals(currentPath)) {{
+            if (Objects.equals(resolvedFragment, currentFragment)) {{
+                return;
+            }}
+            if (!"replace".equals(operation)) {{
+                backStack.add(new DoweRouteEntry(currentPath, currentFragment));
+            }}
+            currentFragment = resolvedFragment;
+            if (currentFragment == null) {{
+                scrollView.smoothScrollTo(0, 0);
+            }} else {{
+                doweScrollToFragment();
+            }}
             return;
         }}
         if ("replace".equals(operation)) {{

@@ -410,13 +410,15 @@ struct DoweSideNav: View {
 struct DoweNavMenu<Content: View, Popover: View>: View {
     @State private var openIndex: Int? = nil
     let gap: CGFloat
+    let wideIndices: Set<Int>
     let popoverBackgroundColor: Color
     let popoverContentColor: Color
     let content: (Int?, @escaping (Int) -> Void) -> Content
     let popover: (Int?) -> Popover
 
-    init(gap: CGFloat, popoverBackgroundColor: Color, popoverContentColor: Color, @ViewBuilder content: @escaping (Int?, @escaping (Int) -> Void) -> Content, @ViewBuilder popover: @escaping (Int?) -> Popover) {
+    init(gap: CGFloat, wideIndices: Set<Int>, popoverBackgroundColor: Color, popoverContentColor: Color, @ViewBuilder content: @escaping (Int?, @escaping (Int) -> Void) -> Content, @ViewBuilder popover: @escaping (Int?) -> Popover) {
         self.gap = gap
+        self.wideIndices = wideIndices
         self.popoverBackgroundColor = popoverBackgroundColor
         self.popoverContentColor = popoverContentColor
         self.content = content
@@ -424,24 +426,55 @@ struct DoweNavMenu<Content: View, Popover: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: CGFloat(8)) {
-            HStack(spacing: gap) {
-                content(openIndex) { index in
-                    openIndex = openIndex == index ? nil : index
-                }
-            }
-            if openIndex != nil {
-                VStack(alignment: .leading, spacing: CGFloat(4)) {
-                    popover(openIndex)
-                }
-                .padding(CGFloat(8))
-                .frame(minWidth: CGFloat(192), maxWidth: CGFloat(720), alignment: .leading)
-                .background(popoverBackgroundColor)
-                .foregroundStyle(popoverContentColor)
-                .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
-                .shadow(color: Color.black.opacity(0.16), radius: CGFloat(16), x: CGFloat(0), y: CGFloat(8))
+        HStack(spacing: gap) {
+            content(openIndex) { index in
+                openIndex = openIndex == index ? nil : index
             }
         }
+        .background(
+            DoweAnchoredPopoverPresenter(
+                isPresented: openIndex != nil,
+                minWidth: wideIndices.contains(openIndex ?? -1) ? CGFloat(600) : CGFloat(192),
+                maxWidth: wideIndices.contains(openIndex ?? -1) ? CGFloat(720) : CGFloat(360),
+                maxHeight: wideIndices.contains(openIndex ?? -1) ? CGFloat(640) : CGFloat(360),
+                onDismiss: { openIndex = nil }
+            ) {
+                DoweNavMenuPopover(backgroundColor: popoverBackgroundColor, contentColor: popoverContentColor) {
+                    popover(openIndex)
+                }
+                .simultaneousGesture(TapGesture().onEnded {
+                    openIndex = nil
+                })
+            }
+        )
+        .zIndex(openIndex == nil ? 0 : 1000)
+        .onDisappear {
+            openIndex = nil
+        }
+    }
+}
+
+struct DoweNavMenuPopover<Content: View>: View {
+    let backgroundColor: Color
+    let contentColor: Color
+    let content: Content
+
+    init(backgroundColor: Color, contentColor: Color, @ViewBuilder content: () -> Content) {
+        self.backgroundColor = backgroundColor
+        self.contentColor = contentColor
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: CGFloat(4)) {
+            content
+        }
+        .padding(CGFloat(8))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(backgroundColor)
+        .foregroundStyle(contentColor)
+        .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
+        .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(contentColor.opacity(0.08), lineWidth: CGFloat(1)))
     }
 }
 

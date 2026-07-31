@@ -251,6 +251,15 @@ fn generates_swiftui_navigation_shell_components() {
     let views = swift_content(&output);
 
     assert!(views.contains("DoweNavMenu(gap:"));
+    assert!(views.contains(
+        "DoweAnchoredPopoverPresenter(\n                isPresented: openIndex != nil"
+    ));
+    assert!(views.contains("DoweNavMenuPopover("));
+    assert!(!views.contains(".popover(\n            isPresented: Binding("));
+    assert!(!views.contains(".presentationCompactAdaptation(.popover)"));
+    assert!(!views.contains(".presentationBackground(popoverBackgroundColor)"));
+    assert!(views.contains(".simultaneousGesture(TapGesture().onEnded"));
+    assert!(!views.contains("if openIndex != nil {"));
     assert!(views.contains("Text(String(localized: \"home.hero.title\"))"));
     assert!(views.contains("DoweNavMenuItem(active: activePath == \"/\""));
     assert!(views.contains("DoweNavMenuItem(active: openIndex == 1"));

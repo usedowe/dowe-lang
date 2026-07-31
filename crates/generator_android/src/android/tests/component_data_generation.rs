@@ -353,12 +353,30 @@ fn generates_fragment_aware_native_history_and_deep_links() {
         .contains("\"/\".equals(path) || \"/signup\".equals(path)"));
     assert!(dev.content.contains("doweApplyIntentRoute();"));
     assert!(dev.content.contains("doweScrollToFragment();"));
+    assert!(dev.content.contains("if (path.equals(currentPath)) {"));
+    assert!(dev.content.contains("currentFragment = resolvedFragment;"));
+    assert!(dev.content.contains(
+        "} else {\n                doweScrollToFragment();\n            }\n            return;"
+    ));
     assert!(dev.content.contains(
         "if (currentFragment == null) {\n                scrollView.scrollTo(0, 0);\n            } else {\n                doweScrollToFragment();\n            }"
     ));
     assert!(dev
         .content
-        .contains("scrollView.scrollTo(0, doweTopRelativeToRoot(target));"));
+        .contains("target.getLocationInWindow(targetLocation);"));
+    assert!(dev
+        .content
+        .contains("pinnedAppBar.getLocationInWindow(appBarLocation);"));
+    assert!(dev.content.contains(
+        "scrollView.smoothScrollTo(0, destination);"
+    ));
+    assert!(dev
+        .content
+        .contains("laidOutTarget.post(() -> doweRevealSection(laidOutTarget));"));
+    assert!(dev
+        .content
+        .contains("if (laidOutTarget != null && laidOutTarget.isLaidOut())"));
+    assert!(!dev.content.contains("doweTopRelativeToRoot"));
     assert!(dev.content.contains(r#"doweRegisterSection("hero", "#));
 
     let views = output

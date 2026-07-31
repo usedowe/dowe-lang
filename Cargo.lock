@@ -994,7 +994,7 @@ dependencies = [
 
 [[package]]
 name = "dowe"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dialoguer",
  "dowe_agent",
@@ -1016,7 +1016,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_agent"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "base64 0.22.1",
  "dowe_agent_harness",
@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_agent_harness"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_codegraph",
  "serde",
@@ -1042,7 +1042,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_cache"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1060,7 +1060,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_codegraph"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "serde",
  "serde_json",
@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_compiler"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_components",
  "dowe_generator_android",
@@ -1084,7 +1084,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_components"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_stdlib",
  "quick-xml",
@@ -1094,7 +1094,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_crypto"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1109,7 +1109,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_database"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1130,7 +1130,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_deploy"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "base64 0.22.1",
  "dowe_compiler",
@@ -1147,28 +1147,28 @@ dependencies = [
 
 [[package]]
 name = "dowe_generator_android"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_components",
 ]
 
 [[package]]
 name = "dowe_generator_desktop"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_components",
 ]
 
 [[package]]
 name = "dowe_generator_ios"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_components",
 ]
 
 [[package]]
 name = "dowe_generator_web"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_components",
  "dowe_minifier",
@@ -1176,7 +1176,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_icons"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "icns",
  "ico",
@@ -1191,11 +1191,11 @@ dependencies = [
 
 [[package]]
 name = "dowe_id"
-version = "1.0.11"
+version = "1.0.12"
 
 [[package]]
 name = "dowe_inference"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "candle-core",
  "candle-onnx",
@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_ipc"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_agent",
  "dowe_agent_harness",
@@ -1220,11 +1220,11 @@ dependencies = [
 
 [[package]]
 name = "dowe_minifier"
-version = "1.0.11"
+version = "1.0.12"
 
 [[package]]
 name = "dowe_runtime"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "axum",
  "axum-server",
@@ -1256,7 +1256,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_spawn"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "libc",
  "portable-pty",
@@ -1267,7 +1267,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_stdlib"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "dowe_id",
  "serde",
@@ -1276,7 +1276,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_vector"
-version = "1.0.11"
+version = "1.0.12"
 dependencies = [
  "axum",
  "base64 0.22.1",

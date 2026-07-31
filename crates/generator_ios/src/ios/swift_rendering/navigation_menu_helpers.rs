@@ -210,8 +210,14 @@ fn render_swift_nav_menu(
         } else {
             "nil".to_string()
         };
+    let wide_indices = items
+        .iter()
+        .enumerate()
+        .filter_map(|(index, item)| matches!(item, NavMenuItem::Megamenu { .. }).then_some(index.to_string()))
+        .collect::<Vec<_>>()
+        .join(", ");
     output.push_str(&format!(
-        "{pad}DoweNavMenu(gap: CGFloat({gap}), popoverBackgroundColor: DoweDesign.background, popoverContentColor: DoweDesign.onBackground) {{ openIndex, toggle in\n"
+        "{pad}DoweNavMenu(gap: CGFloat({gap}), wideIndices: [{wide_indices}], popoverBackgroundColor: DoweDesign.background, popoverContentColor: DoweDesign.onBackground) {{ openIndex, toggle in\n"
     ));
     for (index, item) in items.iter().enumerate() {
         render_swift_nav_menu_trigger(

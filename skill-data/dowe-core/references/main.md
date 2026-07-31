@@ -10,6 +10,7 @@
 | `.env` | Local effective values; never read, print, or commit this file |
 | `assets/icon.svg` | Recommended transparent vector source for `dowe icons` |
 | `assets/icons` | Versioned generated icon sets for web, desktop, iOS, and Android |
+| `assets/**` | Public project media served under `/assets/**` in web deployments |
 
 `main.dowe` declares exactly one `main` block. It can own application metadata, one or more view
 route graphs, a server, and an optional desktop server.
@@ -129,6 +130,7 @@ i18n/
 assets/
   icon.svg
   icons/
+  social/
 main.dowe
 theme.dowe
 .env.example
@@ -164,6 +166,10 @@ when it belongs exclusively to either `views/types` or `server/types`.
 
 Run `dowe icons` to generate the versioned `assets/icons` tree from a local SVG. Keep that tree in
 source control and treat copies under `.dowe` as disposable generated output.
+
+Web exports preserve the complete public `assets/**` tree under `/assets/**`, including files used
+only by document metadata. A source file such as `assets/social/home.png` is therefore available as
+`/assets/social/home.png` after static, Cloudflare Worker, or Cloudflare Pages deployment.
 
 The responsibility names `services`, `repositories`, `providers`, `tasks`, and `utils` are optional
 folders, not declaration keywords. Their files declare `fn <binding>` because `fn` is the only

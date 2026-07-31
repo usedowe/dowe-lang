@@ -99,6 +99,7 @@ fn normalize_cloudflare_pages_html(document: &str) -> String {
 
 pub fn copy_static_assets(root: &Path, output: &Path) -> DeployResult<()> {
     copy_tree(&root.join(".dowe/web"), output)?;
+    copy_tree(&root.join("assets"), &output.join("assets"))?;
     copy_tree(&root.join(".dowe/fonts"), &output.join("fonts"))
 }
 

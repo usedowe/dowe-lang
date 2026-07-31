@@ -18,6 +18,10 @@ fn generates_static_dist_with_web_assets() {
     let icon = temp.path().join("assets/icons/web/favicon-32x32.png");
     fs::create_dir_all(icon.parent().expect("icon parent")).expect("icon directory");
     fs::write(&icon, "icon").expect("icon");
+    let social_image = temp.path().join("assets/social/share.png");
+    fs::create_dir_all(social_image.parent().expect("social image parent"))
+        .expect("social image directory");
+    fs::write(&social_image, "social image").expect("social image");
 
     let report = deploy(DeployOptions::new(temp.path(), DeployTarget::Static)).expect("deploy");
 
@@ -33,6 +37,7 @@ fn generates_static_dist_with_web_assets() {
             .join("assets/icons/web/favicon-32x32.png")
             .is_file()
     );
+    assert!(report.output_dir.join("assets/social/share.png").is_file());
     let index = fs::read_to_string(report.output_dir.join("index.html")).expect("index");
     assert!(index.contains(r#"href="assets/icons/web/favicon-32x32.png""#));
 }
@@ -197,6 +202,10 @@ main
 fn generates_cloudflare_pages_web_distribution_without_node_project() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), "");
+    let social_image = temp.path().join("assets/social/share.png");
+    fs::create_dir_all(social_image.parent().expect("social image parent"))
+        .expect("social image directory");
+    fs::write(&social_image, "social image").expect("social image");
     fs::create_dir_all(temp.path().join("node_modules")).expect("node modules");
     fs::write(temp.path().join("package.json"), "{}\n").expect("package");
     let mut options = DeployOptions::new(temp.path(), DeployTarget::CloudflarePages);
@@ -216,6 +225,12 @@ fn generates_cloudflare_pages_web_distribution_without_node_project() {
             .join(".dowe/dist/web/cloudflare-pages")
     );
     assert!(report.output_dir.join("assets/index.html").is_file());
+    assert!(
+        report
+            .output_dir
+            .join("assets/assets/social/share.png")
+            .is_file()
+    );
     assert!(index.contains(r#"href="/design.css""#));
     assert!(index.contains(r#"src="/router.js""#));
     assert!(page.contains(r#"href="/design.css""#));

@@ -105,7 +105,8 @@ A navigable Button uses static navigation props instead of `onClick`:
 | `externalMode` | Desktop and mobile external URL mode: `system` or `webview` |
 
 Internal `href` values must resolve to connected routes, and fragments must resolve to validated
-section ids. `javascript:`, `data:`, and `file:` schemes are rejected.
+section ids. The same navigation props apply to navigable `NavMenu`, `RailNav`, and `SideNav`
+entries. `javascript:`, `data:`, and `file:` schemes are rejected.
 
 ## Containers
 
@@ -174,7 +175,17 @@ values, and unsafe URL schemes fail compilation. `Box`, `Section`, and `Card` su
 
 A visible component can declare a static quoted `id` that becomes a target-neutral anchor.
 `Section id:"hero"` is the canonical band anchor; `Button href:"#hero"` and `href:"/page#hero"`
-navigate to it. Empty, dynamic, duplicated, or non-portable ids fail compilation.
+navigate to it. `NavMenu item`, `RailNav item`, and navigable `SideNav header` or `item` entries can
+use the same fragment destinations. Fragment navigation scrolls smoothly unless reduced motion is
+requested. On web, a fixed or sticky AppBar in the same Scaffold is measured so the destination
+begins below the bar. Empty, dynamic, duplicated, or non-portable ids fail compilation.
+
+`NavMenu scheme` styles trigger, open, and active-entry states consistently across web, Android,
+and iOS. Its submenu and megamenu popovers remain visible structural surfaces using `background`
+and `onBackground`, even for `ghost` or `outlined` menus. Popovers float without changing layout
+and close after their content is activated. iOS uses the same Dowe-owned anchored overlay strategy
+as `Dropdown` instead of a system popover. Navigation dispatches before dismissal so fragment links
+can animate to their validated `Section` destination.
 
 ## Visibility with show
 

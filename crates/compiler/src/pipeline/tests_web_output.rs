@@ -452,6 +452,71 @@ fn compiles_fixed_appbar_with_automatic_scaffold_insets() {
 }
 
 #[test]
+fn compiles_navigation_components_with_appbar_aware_section_scroll() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r##"layout AuthLayout
+  Scaffold
+    appBar
+      AppBar position:"fixed"
+        center
+          NavMenu
+            item label:"Features" href:"#features"
+    start
+      SideNav
+        item label:"Features" href:"#features"
+      RailNav
+        item label:"Features" href:"#features" icon:"stars-minimalistic"
+    main
+      children"##,
+        r#"page loginPage
+  Section id:"hero"
+    Title
+      "Landing"
+  Section id:"features"
+    Title
+      "Features""#,
+    );
+
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
+    let router = &project.web.router_js;
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android pages");
+    let ios = ios_swift_output(temp.path());
+
+    assert_eq!(
+        body.matches(r##"href="#features" data-dowe-nav="push""##)
+            .count(),
+        3
+    );
+    assert!(body.contains(r#"id="features""#));
+    assert!(router.contains("function fragmentAppBarInset(target)"));
+    assert!(router.contains(".appbar.position-fixed,.appbar.position-sticky"));
+    assert!(router.contains("target.style.scrollMarginTop"));
+    assert!(router.contains(
+        "scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\"})"
+    ));
+    assert_eq!(
+        android
+            .matches(r#"{ navigate("push", "", "features") }"#)
+            .count(),
+        2
+    );
+    assert!(android.contains(r#"path = "", fragment = "features""#));
+    assert_eq!(
+        ios.matches(r#"{ navigate("push", "", "features") }"#)
+            .count(),
+        2
+    );
+    assert!(ios.contains(r#"path: "", fragment: "features""#));
+}
+
+#[test]
 fn rejects_reusable_view_component_usage_shape_and_cycles() {
     let props = TempDir::new().expect("tempdir");
     write_fixture_with_views(
