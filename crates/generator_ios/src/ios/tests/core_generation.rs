@@ -40,6 +40,43 @@ fn generates_persistent_view_store_for_swiftui() {
 }
 
 #[test]
+fn generates_dowe_global_toast_presenter_for_swiftui() {
+    let mut toast_route = route();
+    toast_route.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: vec![ViewAction {
+            id: "notify01".to_string(),
+            name: "notify".to_string(),
+            params: Vec::new(),
+            return_type: None,
+            kind: ViewActionKind::Sequence(vec![ViewFunctionStatement::Toast(ViewToastAction {
+                kind: "success".to_string(),
+                title: "Saved".to_string(),
+                message: "Changes published".to_string(),
+                duration: Some(3000),
+                scheme: Some("surface".to_string()),
+                variant: Some("outlined".to_string()),
+                position: Some("top-right".to_string()),
+            })]),
+        }],
+        children: vec![text("Notify")],
+    };
+    let generated = swift_content(&generate_ios(
+        &[toast_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(generated.contains("DoweGlobalToast(toast: state.toast, close: state.closeToast)"));
+    assert!(generated.contains("doweCardContainer(toast.variant, toast.scheme)"));
+    assert!(generated.contains("DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)"));
+    assert!(generated.contains(".accessibilityLabel(\"Close toast\")"));
+    assert!(!generated.contains("UIAlertController"));
+}
+
+#[test]
 fn fills_request_path_placeholders_from_signal_names() {
     let output = generate_ios(
         &[route()],
@@ -306,6 +343,33 @@ fn generates_init_sequence_and_reactive_splash_for_swiftui() {
     assert!(generated.contains(".toast(\"success\", \"Loaded\", \"Users loaded\", 1500"));
     assert!(generated.contains("if state.bool(\"loading01\")"));
     assert!(generated.contains("if !state.bool(\"loading01\")"));
+}
+
+#[test]
+fn generates_terminal_replace_redirect_for_swiftui() {
+    let mut redirect_route = route();
+    redirect_route.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: vec![ViewAction::init(
+            "init01".to_string(),
+            vec![ViewFunctionStatement::Redirect {
+                path: "/login".to_string(),
+            }],
+        )],
+        children: vec![text("Home")],
+    };
+    let generated = swift_content(&generate_ios(
+        &[redirect_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(generated.contains(".redirect(\"/login\")"));
+    assert!(generated.contains("redirectPath = path"));
+    assert!(generated.contains("navigate(\"replace\", path, nil)"));
+    assert!(generated.contains("if await runSteps"));
 }
 
 #[test]

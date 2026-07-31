@@ -395,6 +395,18 @@
     }
 
     #[test]
+    fn rejects_redirect_to_unknown_route() {
+        assert_compile_error(
+            r#"page loginPage
+  init
+    redirect path:"/missing"
+  Text
+    "Login""#,
+            "unknown navigation route `/missing`",
+        );
+    }
+
+    #[test]
     fn rejects_navigation_to_unknown_section() {
         assert_compile_error(
             r##"page loginPage

@@ -33,7 +33,7 @@ fn render_side_nav_item_html(
                 if *open { "true" } else { "false" },
                 render_side_nav_icon_html(base, props.icon.as_ref(), context),
                 render_side_nav_content_html(base, props),
-                render_side_nav_arrow_html(base)
+                render_side_nav_arrow_html(base, context)
             );
             for item in items {
                 html.push_str(&render_side_nav_entry_html(
@@ -120,9 +120,11 @@ fn render_rail_nav_item_html(
     }
 }
 
-fn render_side_nav_arrow_html(base: &str) -> String {
+fn render_side_nav_arrow_html(base: &str, context: &ReactiveRenderContext) -> String {
+    let arrow = side_nav_submenu_arrow_icon();
     format!(
-        r#"<span class="{base}-chevron" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z" /></svg></span>"#
+        r#"<span class="{base}-chevron" aria-hidden="true">{}</span>"#,
+        render_svg_html(&arrow.props, &arrow.paths, context)
     )
 }
 
@@ -510,6 +512,10 @@ fn statement_json(statement: &dowe_components::ViewFunctionStatement, context: &
         dowe_components::ViewFunctionStatement::Toast(toast) => format!(
             r#"{{"kind":"toast","type":"{}","title":"{}","message":"{}","duration":{},"scheme":{},"variant":{},"position":{}}}"#,
             escape_json(&toast.kind), escape_json(&toast.title), escape_json(&toast.message), toast.duration.map(|value| value.to_string()).unwrap_or_else(|| "null".to_string()), json_optional_string(toast.scheme.as_deref()), json_optional_string(toast.variant.as_deref()), json_optional_string(toast.position.as_deref())
+        ),
+        dowe_components::ViewFunctionStatement::Redirect { path } => format!(
+            r#"{{"kind":"redirect","path":"{}"}}"#,
+            escape_json(path)
         ),
     }
 }

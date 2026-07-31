@@ -226,7 +226,8 @@ View functions contain ordered, target-neutral statements.
 | `request result` | Function-local result with `ok` and `data` | `method`, exactly one of `route` or `path`; optional `base`, `body`, `headers` |
 | `set target` | none | `value`, or `source:<standard-library function>` with its props |
 | `reset target` | none | Restores a Signal or View Store to its initial value |
-| `toast` | none | `value:{ type title message visible duration? }`; optional `duration`, `scheme`, `variant`, `position` |
+| `toast` | none | `value:{ type title message visible duration? }`; optional `duration`, Card-equivalent `variant` (`solid`, `soft`, `outlined`, `ghost`), design `scheme`, and corner `position` |
+| `redirect` | none | Required static absolute `path` to a declared internal route; replaces history and terminates the function |
 
 ```text
 fn createBlog
@@ -236,7 +237,7 @@ fn createBlog
     reset form
     toast value:{ type:"success" title:"Published" message:"Blog created." visible:true }
   else
-    toast value:{ type:"error" title:"Error" message:"Could not create the blog." visible:true }
+    redirect path:"/login"
 ```
 
 Use `Button onClick:createBlog` to dispatch the named function. `fn` accepts optional
@@ -246,6 +247,10 @@ validation. Requests use `GET`, `POST`, `PUT`, `PATCH`, or `DELETE` and can only
 routes or client-visible environment bases; a `/api` route without `base` uses `env.BACKEND_URL`
 implicitly. Views cannot access Database, KV, server HTTP, crypto, spawn, filesystem, or
 server-only environment values.
+
+Use `redirect path:"/login"` in either `fn` or `init` for route guards and completed workflows.
+The path must exist in the effective route graph. Redirect is terminal, uses replace navigation on
+web, desktop, Android, and iOS, and does not accept external or dynamic destinations.
 
 `set target value:<value>` accepts a reactive reference, its boolean negation such as
 `value:!openMenu`, a boolean literal, or a quoted static string, and writes Signals, nested Signal

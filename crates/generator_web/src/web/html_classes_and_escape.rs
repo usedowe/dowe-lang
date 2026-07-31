@@ -111,7 +111,13 @@ fn scaffold_classes(props: &ScaffoldProps) -> Vec<String> {
 }
 
 fn tabs_classes(props: &TabsProps) -> Vec<String> {
-    let mut classes = vec!["tabs".to_string(), format!("is-{}", props.position.as_str())];
+    let mut classes = vec![
+        "tabs".to_string(),
+        format!("is-{}", props.position.as_str()),
+    ];
+    if props.variant == TabsVariant::Stepper {
+        classes.push("stepper".to_string());
+    }
     append_style_classes(&mut classes, &props.style);
     classes
 }
@@ -294,11 +300,7 @@ fn badge_content_classes(props: &BadgeProps) -> Vec<String> {
         ),
         format!(
             "is-{}",
-            props
-                .style
-                .color
-                .unwrap_or(ColorFamily::Primary)
-                .as_str()
+            props.style.color.unwrap_or(ColorFamily::Primary).as_str()
         ),
     ]
 }
@@ -356,8 +358,18 @@ fn tooltip_classes(props: &TooltipProps) -> Vec<String> {
 fn tooltip_popover_classes(props: &TooltipProps) -> Vec<String> {
     vec![
         "tooltip-popover".to_string(),
-        format!("is-{}", props.style.variant.unwrap_or(ComponentVariant::Solid).as_str()),
-        format!("is-{}", props.style.color.unwrap_or(ColorFamily::Muted).as_str()),
+        format!(
+            "is-{}",
+            props
+                .style
+                .variant
+                .unwrap_or(ComponentVariant::Solid)
+                .as_str()
+        ),
+        format!(
+            "is-{}",
+            props.style.color.unwrap_or(ColorFamily::Muted).as_str()
+        ),
         format!("position-{}", props.position.as_str()),
     ]
 }
@@ -377,8 +389,18 @@ fn dropdown_classes(props: &DropdownProps) -> Vec<String> {
 fn dropdown_popover_classes(props: &DropdownProps) -> Vec<String> {
     vec![
         "dropdown-popover".to_string(),
-        format!("is-{}", props.style.variant.unwrap_or(ComponentVariant::Solid).as_str()),
-        format!("is-{}", props.style.color.unwrap_or(ColorFamily::Primary).as_str()),
+        format!(
+            "is-{}",
+            props
+                .style
+                .variant
+                .unwrap_or(ComponentVariant::Solid)
+                .as_str()
+        ),
+        format!(
+            "is-{}",
+            props.style.color.unwrap_or(ColorFamily::Primary).as_str()
+        ),
     ]
 }
 
@@ -471,7 +493,11 @@ fn table_classes(props: &TableProps) -> Vec<String> {
         format!("is-{}", props.size.as_str()),
         format!(
             "is-{}",
-            props.style.variant.unwrap_or(ComponentVariant::Solid).as_str()
+            props
+                .style
+                .variant
+                .unwrap_or(ComponentVariant::Solid)
+                .as_str()
         ),
         format!(
             "is-{}",
@@ -676,7 +702,12 @@ fn button_tags(props: &VariantProps, context: &ReactiveRenderContext) -> (String
     }
     let accessibility = props
         .icon_only
-        .then(|| format!(r#" aria-label="{}""#, escape_attr(props.label.as_deref().unwrap_or_default())))
+        .then(|| {
+            format!(
+                r#" aria-label="{}""#,
+                escape_attr(props.label.as_deref().unwrap_or_default())
+            )
+        })
         .unwrap_or_default()
         + &reactive_button_attrs(props, context);
     match props.navigation.as_ref() {
@@ -692,7 +723,11 @@ fn button_tags(props: &VariantProps, context: &ReactiveRenderContext) -> (String
                     attrs(
                         classes,
                         Some(&props.element),
-                        Some(&format!("{}{}", navigation_attrs(&href, *operation), accessibility)),
+                        Some(&format!(
+                            "{}{}",
+                            navigation_attrs(&href, *operation),
+                            accessibility
+                        )),
                         context
                     )
                 ),
@@ -710,7 +745,11 @@ fn button_tags(props: &VariantProps, context: &ReactiveRenderContext) -> (String
                     attrs(
                         classes,
                         Some(&props.element),
-                        Some(&format!("{}{}", navigation_attrs(&href, *operation), accessibility)),
+                        Some(&format!(
+                            "{}{}",
+                            navigation_attrs(&href, *operation),
+                            accessibility
+                        )),
                         context
                     )
                 ),
@@ -727,7 +766,11 @@ fn button_tags(props: &VariantProps, context: &ReactiveRenderContext) -> (String
                 attrs(
                     classes,
                     Some(&props.element),
-                    Some(&format!("{}{}", external_attrs(url, *web_target, *native_external_mode), accessibility)),
+                    Some(&format!(
+                        "{}{}",
+                        external_attrs(url, *web_target, *native_external_mode),
+                        accessibility
+                    )),
                     context
                 )
             ),
@@ -739,7 +782,10 @@ fn button_tags(props: &VariantProps, context: &ReactiveRenderContext) -> (String
                 attrs(
                     classes,
                     Some(&props.element),
-                    Some(&format!(r#" type="button" data-dowe-history="back"{}"#, accessibility)),
+                    Some(&format!(
+                        r#" type="button" data-dowe-history="back"{}"#,
+                        accessibility
+                    )),
                     context
                 )
             ),
@@ -831,7 +877,9 @@ fn brand_tags(props: &BrandProps, context: &ReactiveRenderContext) -> (String, &
                 attrs(
                     classes,
                     Some(&props.style.element),
-                    Some(&format!(r#" type="button" data-dowe-history="back"{label}"#)),
+                    Some(&format!(
+                        r#" type="button" data-dowe-history="back"{label}"#
+                    )),
                     context
                 )
             ),
@@ -1092,21 +1140,38 @@ fn render_select_option_html(option: &SelectOption) -> String {
 
 fn render_code_html(props: &CodeProps, context: &ReactiveRenderContext) -> String {
     let source = if props.template_segments.is_empty() {
-        props.tokens.iter().map(|token| format!(r#"<span class="code-token-{}">{}</span>"#, token.kind.as_str(), escape_html(&token.text))).collect::<String>()
+        props
+            .tokens
+            .iter()
+            .map(|token| {
+                format!(
+                    r#"<span class="code-token-{}">{}</span>"#,
+                    token.kind.as_str(),
+                    escape_html(&token.text)
+                )
+            })
+            .collect::<String>()
     } else {
-        props.template_segments.iter().map(|segment| match segment {
-            CodeTemplateSegment::Static { tokens, .. } => tokens
-                .iter()
-                .map(|token| {
-                    format!(
-                        r#"<span class="code-token-{}">{}</span>"#,
-                        token.kind.as_str(),
-                        escape_html(&token.text)
-                    )
-                })
-                .collect::<String>(),
-            CodeTemplateSegment::Binding(path) => format!(r#"<span data-dowe-text="{}"></span>"#, escape_attr(&context.signal_path(path))),
-        }).collect::<String>()
+        props
+            .template_segments
+            .iter()
+            .map(|segment| match segment {
+                CodeTemplateSegment::Static { tokens, .. } => tokens
+                    .iter()
+                    .map(|token| {
+                        format!(
+                            r#"<span class="code-token-{}">{}</span>"#,
+                            token.kind.as_str(),
+                            escape_html(&token.text)
+                        )
+                    })
+                    .collect::<String>(),
+                CodeTemplateSegment::Binding(path) => format!(
+                    r#"<span data-dowe-text="{}"></span>"#,
+                    escape_attr(&context.signal_path(path))
+                ),
+            })
+            .collect::<String>()
     };
     let extra = format!(
         r#" data-dowe-code data-dowe-copy-label="{}" data-dowe-copied-label="{}""#,
@@ -1184,14 +1249,31 @@ fn render_iframe_html(props: &IframeProps, context: &ReactiveRenderContext) -> S
     } else {
         format!(r#" allow="{}""#, escape_attr(&props.allow.join("; ")))
     };
-    let sandbox = props.sandbox.as_ref().map(|tokens| {
-        let value = tokens.iter().map(|token| format!("allow-{token}")).collect::<Vec<_>>().join(" ");
-        format!(r#" sandbox="{}""#, escape_attr(&value))
-    }).unwrap_or_default();
-    let fullscreen = if props.allow_fullscreen { " allowfullscreen" } else { "" };
+    let sandbox = props
+        .sandbox
+        .as_ref()
+        .map(|tokens| {
+            let value = tokens
+                .iter()
+                .map(|token| format!("allow-{token}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!(r#" sandbox="{}""#, escape_attr(&value))
+        })
+        .unwrap_or_default();
+    let fullscreen = if props.allow_fullscreen {
+        " allowfullscreen"
+    } else {
+        ""
+    };
     format!(
         r#"<iframe{} src="{}" title="{}" loading="{}" referrerpolicy="strict-origin-when-cross-origin"{}{}{}></iframe>"#,
-        attrs(iframe_classes(props), Some(&props.style.element), None, context),
+        attrs(
+            iframe_classes(props),
+            Some(&props.style.element),
+            None,
+            context
+        ),
         escape_attr(&props.src),
         escape_attr(&props.title),
         props.loading.as_str(),

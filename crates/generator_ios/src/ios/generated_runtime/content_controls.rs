@@ -4,69 +4,95 @@ fn swift_runtime_content_controls() -> &'static str {
     let backgroundColor: Color
     let contentColor: Color
     let borderColor: Color?
-    @ViewBuilder var content: Content
+    let radius: CGFloat
+    @ViewBuilder let content: (Set<String>, @escaping (String) -> Void) -> Content
+    @State private var openIds: Set<String>
 
-    init(multiple: Bool, backgroundColor: Color, contentColor: Color, borderColor: Color?, @ViewBuilder content: () -> Content) {
+    init(multiple: Bool, defaultOpenIds: Set<String>, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: CGFloat, @ViewBuilder content: @escaping (Set<String>, @escaping (String) -> Void) -> Content) {
         self.multiple = multiple
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
         self.borderColor = borderColor
-        self.content = content()
+        self.radius = radius
+        self.content = content
+        _openIds = State(initialValue: defaultOpenIds)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(8)) {
-            content
+            content(openIds) { id in
+                if openIds.contains(id) {
+                    openIds.remove(id)
+                } else if multiple {
+                    openIds.insert(id)
+                } else {
+                    openIds = [id]
+                }
+            }
         }
         .padding(CGFloat(4))
         .foregroundStyle(contentColor)
         .background(backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
+        .clipShape(RoundedRectangle(cornerRadius: radius))
         .overlay(
-            RoundedRectangle(cornerRadius: CGFloat(12))
+            RoundedRectangle(cornerRadius: radius)
                 .stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1))
         )
     }
 }
 
-struct DoweAccordionItemView<Content: View>: View {
-    let id: String
+struct DoweAccordionItemView<Arrow: View, Content: View>: View {
     let label: String
     let disabled: Bool
-    let defaultOpen: Bool
-    @ViewBuilder var content: Content
-    @State private var open: Bool
+    let open: Bool
+    let contentColor: Color
+    let radius: CGFloat
+    let action: () -> Void
+    @ViewBuilder let arrowIcon: () -> Arrow
+    @ViewBuilder let content: () -> Content
 
-    init(id: String, label: String, disabled: Bool, defaultOpen: Bool, @ViewBuilder content: () -> Content) {
-        self.id = id
+    init(label: String, disabled: Bool, open: Bool, contentColor: Color, radius: CGFloat, action: @escaping () -> Void, @ViewBuilder arrowIcon: @escaping () -> Arrow, @ViewBuilder content: @escaping () -> Content) {
         self.label = label
         self.disabled = disabled
-        self.defaultOpen = defaultOpen
-        self.content = content()
-        _open = State(initialValue: defaultOpen)
+        self.open = open
+        self.contentColor = contentColor
+        self.radius = radius
+        self.action = action
+        self.arrowIcon = arrowIcon
+        self.content = content
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(0)) {
-            Button(action: { if !disabled { open.toggle() } }) {
+            Button(action: action) {
                 HStack {
-                    Text(label).fontWeight(.semibold)
+                    Text(label)
+                        .font(.system(size: CGFloat(14), weight: .semibold))
+                        .foregroundStyle(contentColor)
                     Spacer()
-                    Text(open ? "^" : "v")
+                    arrowIcon()
+                        .frame(width: CGFloat(20), height: CGFloat(20))
+                        .rotationEffect(open ? .degrees(90) : .degrees(0))
                 }
-                .padding(CGFloat(12))
+                .padding(.horizontal, CGFloat(16))
+                .padding(.vertical, CGFloat(12))
             }
             .buttonStyle(.plain)
+            .disabled(disabled)
             if open {
                 VStack(alignment: .leading, spacing: CGFloat(8)) {
-                    content
+                    content()
                 }
-                .padding(CGFloat(12))
+                .padding(.horizontal, CGFloat(16))
+                .padding(.vertical, CGFloat(12))
+                .transition(.opacity.combined(with: .scale(scale: CGFloat(0.98), anchor: .top)))
             }
         }
+        .animation(.easeInOut(duration: 0.16), value: open)
+        .clipShape(RoundedRectangle(cornerRadius: radius * CGFloat(0.85)))
         .overlay(
-            RoundedRectangle(cornerRadius: CGFloat(10))
-                .stroke(Color.primary.opacity(0.12), lineWidth: CGFloat(1))
+            RoundedRectangle(cornerRadius: radius * CGFloat(0.85))
+                .stroke(contentColor.opacity(0.12), lineWidth: CGFloat(1))
         )
         .opacity(disabled ? 0.5 : 1)
     }

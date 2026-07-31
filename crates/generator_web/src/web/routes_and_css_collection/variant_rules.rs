@@ -10,8 +10,17 @@ fn collect_variant_rules<'a>(
                 collect_variant_rules(child, variants);
             }
         }
-        ViewNode::Scope { children, .. }
-        | ViewNode::Each { children, .. }
+        ViewNode::Scope {
+            actions, children, ..
+        } => {
+            for action in actions {
+                collect_action_toast_variant_rules(action, variants);
+            }
+            for child in children {
+                collect_variant_rules(child, variants);
+            }
+        }
+        ViewNode::Each { children, .. }
         | ViewNode::Box { children, .. }
         | ViewNode::Section { children, .. }
         | ViewNode::Flex { children, .. }
@@ -98,7 +107,8 @@ fn collect_variant_rules<'a>(
             }
         }
         ViewNode::AlertDialog { props } => {
-            push_variant_rule(variants, "modal", &props.style);
+            let modal = alert_dialog_modal_props(props);
+            push_variant_rule(variants, "modal", &modal.style);
             let cancel = ("button", ColorFamily::Muted, ComponentVariant::Outlined);
             if !variants.contains(&cancel) {
                 variants.push(cancel);
@@ -158,8 +168,22 @@ fn collect_variant_rules<'a>(
         ViewNode::Toggle { .. } => {}
         ViewNode::Button { props, children } => {
             if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
-                for variant in [ComponentVariant::Solid, ComponentVariant::Soft, ComponentVariant::Outlined, ComponentVariant::Ghost] {
-                    for color in [ColorFamily::Primary, ColorFamily::Secondary, ColorFamily::Tertiary, ColorFamily::Muted, ColorFamily::Success, ColorFamily::Info, ColorFamily::Warning, ColorFamily::Danger] {
+                for variant in [
+                    ComponentVariant::Solid,
+                    ComponentVariant::Soft,
+                    ComponentVariant::Outlined,
+                    ComponentVariant::Ghost,
+                ] {
+                    for color in [
+                        ColorFamily::Primary,
+                        ColorFamily::Secondary,
+                        ColorFamily::Tertiary,
+                        ColorFamily::Muted,
+                        ColorFamily::Success,
+                        ColorFamily::Info,
+                        ColorFamily::Warning,
+                        ColorFamily::Danger,
+                    ] {
                         let mut reactive_props = props.clone();
                         reactive_props.variant = Some(variant);
                         reactive_props.color = Some(color);
@@ -261,7 +285,13 @@ fn collect_variant_rules<'a>(
             bottom,
         } => {
             push_variant_rule(variants, "appbar", &props.style);
-            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
+            for child in top
+                .iter()
+                .chain(start)
+                .chain(center)
+                .chain(end)
+                .chain(bottom)
+            {
                 collect_variant_rules(child, variants);
             }
         }
@@ -274,7 +304,13 @@ fn collect_variant_rules<'a>(
             bottom,
         } => {
             push_variant_rule(variants, "footer", &props.style);
-            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
+            for child in top
+                .iter()
+                .chain(start)
+                .chain(center)
+                .chain(end)
+                .chain(bottom)
+            {
                 collect_variant_rules(child, variants);
             }
         }
@@ -283,8 +319,22 @@ fn collect_variant_rules<'a>(
         }
         ViewNode::SideNav { props, .. } => {
             if props.style.reactive.variant.is_some() || props.style.reactive.scheme.is_some() {
-                for variant in [ComponentVariant::Solid, ComponentVariant::Soft, ComponentVariant::Outlined, ComponentVariant::Ghost] {
-                    for color in [ColorFamily::Primary, ColorFamily::Secondary, ColorFamily::Tertiary, ColorFamily::Muted, ColorFamily::Success, ColorFamily::Info, ColorFamily::Warning, ColorFamily::Danger] {
+                for variant in [
+                    ComponentVariant::Solid,
+                    ComponentVariant::Soft,
+                    ComponentVariant::Outlined,
+                    ComponentVariant::Ghost,
+                ] {
+                    for color in [
+                        ColorFamily::Primary,
+                        ColorFamily::Secondary,
+                        ColorFamily::Tertiary,
+                        ColorFamily::Muted,
+                        ColorFamily::Success,
+                        ColorFamily::Info,
+                        ColorFamily::Warning,
+                        ColorFamily::Danger,
+                    ] {
                         let mut reactive_props = props.style.clone();
                         reactive_props.variant = Some(variant);
                         reactive_props.color = Some(color);
@@ -354,6 +404,54 @@ fn collect_variant_rules<'a>(
         }
         ViewNode::Svg { .. } => {}
         ViewNode::Title { .. } | ViewNode::Text { .. } | ViewNode::Children => {}
+    }
+}
+
+fn collect_action_toast_variant_rules(
+    action: &ViewAction,
+    variants: &mut Vec<(&'static str, ColorFamily, ComponentVariant)>,
+) {
+    if let ViewActionKind::Sequence(statements) = &action.kind {
+        collect_statement_toast_variant_rules(statements, variants);
+    }
+}
+
+fn collect_statement_toast_variant_rules(
+    statements: &[ViewFunctionStatement],
+    variants: &mut Vec<(&'static str, ColorFamily, ComponentVariant)>,
+) {
+    for statement in statements {
+        match statement {
+            ViewFunctionStatement::Toast(toast) => {
+                let family = toast
+                    .scheme
+                    .as_deref()
+                    .and_then(ColorFamily::from_name)
+                    .or_else(|| ColorFamily::from_name(&toast.kind))
+                    .unwrap_or(if toast.kind == "error" {
+                        ColorFamily::Danger
+                    } else {
+                        ColorFamily::Info
+                    });
+                let variant = toast
+                    .variant
+                    .as_deref()
+                    .and_then(ComponentVariant::from_name)
+                    .unwrap_or(ComponentVariant::Solid);
+                let rule = ("toast", family, variant);
+                if !variants.contains(&rule) {
+                    variants.push(rule);
+                }
+            }
+            ViewFunctionStatement::If { success, error, .. } => {
+                collect_statement_toast_variant_rules(success, variants);
+                collect_statement_toast_variant_rules(error, variants);
+            }
+            ViewFunctionStatement::Request { .. }
+            | ViewFunctionStatement::Assign(_)
+            | ViewFunctionStatement::Reset(_)
+            | ViewFunctionStatement::Redirect { .. } => {}
+        }
     }
 }
 
@@ -451,12 +549,28 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
             }
         }
         ViewNode::AppBar {
-            top, start, center, end, bottom, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         }
         | ViewNode::Footer {
-            top, start, center, end, bottom, ..
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
         } => {
-            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
+            for child in top
+                .iter()
+                .chain(start)
+                .chain(center)
+                .chain(end)
+                .chain(bottom)
+            {
                 collect_tabs_variant_rules(child, variants);
             }
         }

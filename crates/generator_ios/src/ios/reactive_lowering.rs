@@ -570,6 +570,10 @@ fn swift_function_statement(
             swift_optional_string(toast.variant.as_deref()),
             swift_optional_string(toast.position.as_deref())
         ),
+        dowe_components::ViewFunctionStatement::Redirect { path } => format!(
+            ".redirect(\"{}\")",
+            escape_swift(path)
+        ),
     }
 }
 

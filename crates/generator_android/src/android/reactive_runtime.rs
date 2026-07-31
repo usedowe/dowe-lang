@@ -34,7 +34,10 @@ private sealed class DoweStep {
     data class Assign(val target: String, val source: String, val literal: Any?, val hasLiteral: Boolean, val call: DoweStdlibCall?) : DoweStep()
     data class Reset(val target: String) : DoweStep()
     data class Toast(val kind: String, val title: String, val message: String, val duration: Int?, val scheme: String?, val variant: String?, val position: String?) : DoweStep()
+    data class Redirect(val path: String) : DoweStep()
 }
+
+private data class DoweToastState(val id: Long, val kind: String, val title: String, val message: String, val duration: Int, val scheme: String, val variant: String, val position: String)
 
 private data class DoweStdlibCall(val namespace: String, val function: String, val args: List<DoweStdlibArg>)
 private data class DoweStdlibArg(val name: String, val value: DoweStdlibValue)
@@ -157,6 +160,11 @@ private class DoweReactiveState(
     }
 
     private val preferences = context.getSharedPreferences("dowe_view_state", android.content.Context.MODE_PRIVATE)
+    var toast by mutableStateOf<DoweToastState?>(null)
+        private set
+    var redirectPath by mutableStateOf<String?>(null)
+        private set
+    private var toastSequence = 0L
     private val values = mutableStateMapOf<String, Any?>().also { state ->
         state.putAll(initial)
         for ((id, metadata) in signals) {
@@ -292,7 +300,7 @@ private class DoweReactiveState(
         for (id in ids) run(id)
     }
 
-    private suspend fun runSteps(steps: List<DoweStep>, item: Map<String, Any?>?, results: MutableMap<String, Any?>) {
+    private suspend fun runSteps(steps: List<DoweStep>, item: Map<String, Any?>?, results: MutableMap<String, Any?>): Boolean {
         for (step in steps) {
             when (step) {
                 is DoweStep.Request -> {
@@ -301,7 +309,7 @@ private class DoweReactiveState(
                 }
                 is DoweStep.Branch -> {
                     val ok = readResult("${step.result}.ok", item, results) as? Boolean ?: false
-                    runSteps(if (ok) step.success else step.error, item, results)
+                    if (runSteps(if (ok) step.success else step.error, item, results)) return true
                 }
                 is DoweStep.Assign -> {
                     val value = if (step.hasLiteral) step.literal else step.call?.let { stdlib(it, item) }
@@ -310,8 +318,13 @@ private class DoweReactiveState(
                 }
                 is DoweStep.Reset -> initial[step.target]?.let { write(step.target, it) }
                 is DoweStep.Toast -> showToast(step)
+                is DoweStep.Redirect -> {
+                    redirectPath = step.path
+                    return true
+                }
             }
         }
+        return false
     }
 
     private fun valueFor(path: String, item: Map<String, Any?>?, results: Map<String, Any?>): Any? = when (path) {
@@ -333,9 +346,17 @@ private class DoweReactiveState(
     }
 
     private fun showToast(action: DoweStep.Toast) {
-        val message = listOf(action.title, action.message).filter { it.isNotEmpty() }.joinToString("\n")
-        val duration = if ((action.duration ?: 0) > 3000) android.widget.Toast.LENGTH_LONG else android.widget.Toast.LENGTH_SHORT
-        android.widget.Toast.makeText(context, message, duration).show()
+        val scheme = action.scheme ?: if (action.kind == "error") "danger" else action.kind
+        toastSequence += 1
+        toast = DoweToastState(toastSequence, action.kind, action.title, action.message, action.duration ?: 4000, scheme, action.variant ?: "solid", action.position ?: "top-right")
+    }
+
+    fun closeToast() {
+        toast = null
+    }
+
+    fun consumeRedirect() {
+        redirectPath = null
     }
 
     private fun read(path: String, item: Map<String, Any?>? = null): Any? {

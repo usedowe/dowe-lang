@@ -19,6 +19,36 @@ fn image_prompt_uses_vision_model() {
 }
 
 #[test]
+fn server_build_does_not_request_a_ui_reference() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let prepared = prepare_agent_request(
+        temp.path(),
+        "build the server API",
+        AgentPrepareOptions {
+            request_type: Some(AgentRequestType::Implementation),
+            ..AgentPrepareOptions::default()
+        },
+    )
+    .expect("prepared");
+
+    assert!(!prepared.context.needs_reference_image);
+    assert!(
+        prepared
+            .context
+            .skills
+            .iter()
+            .any(|skill| skill.name == "dowe-server-logic")
+    );
+    assert!(
+        !prepared
+            .context
+            .skills
+            .iter()
+            .any(|skill| skill.name == "dowe-ui-reference")
+    );
+}
+
+#[test]
 fn uses_crate_generation_contexts_and_ignores_workspace_agent_skills() {
     let temp = tempfile::tempdir().expect("tempdir");
     let skill_dir = temp.path().join("agents/skills/example");
@@ -62,6 +92,38 @@ fn uses_crate_generation_contexts_and_ignores_workspace_agent_skills() {
             .expect("prepared skills")
             .contains("Full body")
     );
+}
+
+#[test]
+fn selects_only_generation_contexts_relevant_to_the_prompt() {
+    let views = generation_skill_summaries_for("implement the responsive account view");
+    let server = generation_skill_summaries_for("implement the account API handler");
+    let build_server = generation_skill_summaries_for("build the server API");
+    let fullstack =
+        generation_skill_summaries_for("implement the account page and its server endpoint");
+
+    assert!(views.iter().any(|skill| skill.name == "dowe-ui-reference"));
+    assert!(!views.iter().any(|skill| skill.name == "dowe-server-logic"));
+    assert!(!views.iter().any(|skill| skill.name == "dowe-fullstack"));
+    assert!(!views.iter().any(|skill| skill.name == "dowe-terminal"));
+
+    assert!(server.iter().any(|skill| skill.name == "dowe-server-logic"));
+    assert!(!server.iter().any(|skill| skill.name == "dowe-ui-reference"));
+    assert!(!server.iter().any(|skill| skill.name == "dowe-terminal"));
+    assert!(
+        !build_server
+            .iter()
+            .any(|skill| skill.name == "dowe-ui-reference")
+    );
+
+    assert!(fullstack.iter().any(|skill| skill.name == "dowe-fullstack"));
+    assert!(!fullstack.iter().any(|skill| skill.name == "dowe-terminal"));
+    assert!([views, server, fullstack].iter().flatten().all(|skill| {
+        !skill.description.contains("Node.js")
+            && !skill.description.contains("Tailwind")
+            && !skill.context.contains("Node.js")
+            && !skill.context.contains("Tailwind")
+    }));
 }
 
 #[test]

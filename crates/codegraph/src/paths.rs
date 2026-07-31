@@ -82,6 +82,11 @@ fn should_include(relative: &Path, mode: CodeGraphMode) -> bool {
                 || relative.starts_with("docs")
                 || relative.starts_with(".agents")
                 || relative.starts_with(".dowe")
+                || (relative
+                    .extension()
+                    .is_some_and(|extension| extension == "dowe")
+                    && !relative.starts_with(".agents")
+                    && !relative.starts_with(".dowe"))
         }
     }
 }

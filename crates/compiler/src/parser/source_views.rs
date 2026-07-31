@@ -13,8 +13,9 @@ use crate::parser::source_stdlib::parse_stdlib_call;
 use crate::parser::source_types::{TypeRegistry, is_shared_type_path, validate_source_value_type};
 use crate::parser::source_values::parse_value;
 use dowe_components::{
-    BuiltinComponent, COMPONENT_REGISTRY, CodeTemplateSegment, ComponentError, ComponentProp,
-    DesignConfig, PropScalar, PropValue, ResponsivePropEntry, StdlibArgument, StdlibCall,
+    BuiltinComponent, COMPONENT_REGISTRY, CodeTemplateSegment, ColorFamily, ComponentError,
+    ComponentProp, ComponentVariant, DesignConfig, NavigationAction, NavigationOperation,
+    OverlayCornerPosition, PropScalar, PropValue, ResponsivePropEntry, StdlibArgument, StdlibCall,
     StdlibValue, ToggleGroupKind, VIEW_META_NAMES, ViewAction, ViewActionKind, ViewAssignAction,
     ViewConstant, ViewFunctionParameter, ViewFunctionReturn, ViewFunctionStatement, ViewMetadata,
     ViewNavigationAction, ViewRequestAction, ViewRequestHeader, ViewRequestHeaderValue,
@@ -46,12 +47,13 @@ use dowe_components::{
     scaffold_component_node, select_node_with_each, select_option_component,
     side_nav_component_node, side_nav_header_component, side_nav_icon_component,
     side_nav_item_component, side_nav_submenu_component, sidebar_component_node,
-    skeleton_component_node, slider_component_node, svg_component_node, svg_path_component,
-    table_column_component, table_node, tabs_component_node, tabs_tab_component, text_binding_path,
-    text_component_node, text_node, textarea_component_node, theme_select_component_node,
-    theme_toggle_component_node, toast_component_node, toggle_component_node,
-    toggle_group_component_node, toggle_group_item_component, tooltip_component_node,
-    type_writer_component_node, type_writer_item_component, validate_view_tree, video_node,
+    skeleton_component_node, slider_component_node, stepper_component_node, stepper_step_component,
+    svg_component_node, svg_path_component, table_column_component, table_node,
+    tabs_component_node, tabs_tab_component, text_binding_path, text_component_node, text_node,
+    textarea_component_node, theme_select_component_node, theme_toggle_component_node,
+    toast_component_node, toggle_component_node, toggle_group_component_node,
+    toggle_group_item_component, tooltip_component_node, type_writer_component_node,
+    type_writer_item_component, validate_view_tree, video_node,
 };
 use dowe_generator_web::{
     build_layout_chunk, build_page_chunk, build_translation_chunks, render_page_document,

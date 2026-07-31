@@ -23,37 +23,37 @@ fn generates_platform_icon_sets_from_one_svg() {
     assert!(
         project
             .path()
-            .join("assets/icons/web/favicon.ico")
+            .join("icons/web/favicon.ico")
             .is_file()
     );
     assert!(
         project
             .path()
-            .join("assets/icons/desktop/icon.icns")
+            .join("icons/desktop/icon.icns")
             .is_file()
     );
     assert!(
         project
             .path()
-            .join("assets/icons/ios/AppIcon.appiconset/Contents.json")
+            .join("icons/ios/AppIcon.appiconset/Contents.json")
             .is_file()
     );
     assert!(
         project
             .path()
-            .join("assets/icons/android/mipmap-anydpi-v26/ic_launcher.xml")
+            .join("icons/android/mipmap-anydpi-v26/ic_launcher.xml")
             .is_file()
     );
     assert_eq!(
-        png_dimensions(&project.path().join("assets/icons/ios/AppIcon.png")),
+        png_dimensions(&project.path().join("icons/ios/AppIcon.png")),
         (1024, 1024)
     );
-    let ios_pixels = png_rgba(&project.path().join("assets/icons/ios/AppIcon.png"));
+    let ios_pixels = png_rgba(&project.path().join("icons/ios/AppIcon.png"));
     assert!(ios_pixels.chunks_exact(4).all(|pixel| pixel[3] == 255));
     let ios_contents = fs::read_to_string(
         project
             .path()
-            .join("assets/icons/ios/AppIcon.appiconset/Contents.json"),
+            .join("icons/ios/AppIcon.appiconset/Contents.json"),
     )
     .expect("contents");
     let ios_contents: serde_json::Value = serde_json::from_str(&ios_contents).expect("json");
@@ -66,7 +66,7 @@ fn generates_platform_icon_sets_from_one_svg() {
     assert_eq!(marketing["scale"], "1x");
 
     let icon = IconDir::read(BufReader::new(
-        fs::File::open(project.path().join("assets/icons/web/favicon.ico")).expect("ico"),
+        fs::File::open(project.path().join("icons/web/favicon.ico")).expect("ico"),
     ))
     .expect("valid ico");
     assert_eq!(
@@ -77,7 +77,7 @@ fn generates_platform_icon_sets_from_one_svg() {
         [16, 32, 48]
     );
     let icns = IconFamily::read(
-        fs::File::open(project.path().join("assets/icons/desktop/icon.icns")).expect("icns"),
+        fs::File::open(project.path().join("icons/desktop/icon.icns")).expect("icns"),
     )
     .expect("valid icns");
     let available_icons = icns.available_icons();
@@ -118,7 +118,7 @@ fn generates_platform_icon_sets_from_one_svg() {
     assert!((macos_logo.center_x() - 255.5).abs() <= 1.0);
     assert!((macos_logo.center_y() - 255.5).abs() <= 1.0);
 
-    let desktop_png = png_rgba(&project.path().join("assets/icons/desktop/icon.png"));
+    let desktop_png = png_rgba(&project.path().join("icons/desktop/icon.png"));
     assert_eq!(&desktop_png[0..4], &[0, 0, 0, 0]);
     assert_eq!(pixel(&desktop_png, 512, 256, 0), [51, 102, 153, 255]);
 }
@@ -137,7 +137,7 @@ fn centers_svg_aspect_ratios_and_applies_rounded_background() {
     )
     .expect("icons");
 
-    let web = png_rgba(&project.path().join("assets/icons/web/favicon-48x48.png"));
+    let web = png_rgba(&project.path().join("icons/web/favicon-48x48.png"));
     assert_eq!(&web[0..4], &[0, 0, 0, 0]);
     assert_eq!(pixel(&web, 48, 24, 2), [255, 0, 0, 255]);
     let white = opaque_bounds(&web, 48, |value| {
@@ -150,7 +150,7 @@ fn centers_svg_aspect_ratios_and_applies_rounded_background() {
     let adaptive = png_rgba(
         &project
             .path()
-            .join("assets/icons/android/drawable-mdpi/ic_launcher_foreground.png"),
+            .join("icons/android/drawable-mdpi/ic_launcher_foreground.png"),
     );
     let center = 53.5_f32;
     let furthest = adaptive
@@ -183,7 +183,7 @@ fn centers_svg_aspect_ratios_and_applies_rounded_background() {
             .with_targets([IconTarget::Web]),
         )
         .expect("icons");
-        let pixels = png_rgba(&project.path().join("assets/icons/web/favicon-48x48.png"));
+        let pixels = png_rgba(&project.path().join("icons/web/favicon-48x48.png"));
         let bounds = opaque_bounds(&pixels, 48, |value| {
             value[0] > 240 && value[1] > 240 && value[2] > 240
         });
@@ -206,23 +206,23 @@ fn regeneration_is_deterministic_and_preserves_unselected_targets() {
     .with_targets(IconTarget::ALL);
     generate_project_icons(all.clone()).expect("first");
     let first_png =
-        fs::read(project.path().join("assets/icons/web/favicon-32x32.png")).expect("first png");
+        fs::read(project.path().join("icons/web/favicon-32x32.png")).expect("first png");
     let first_manifest =
-        fs::read(project.path().join("assets/icons/manifest.json")).expect("first manifest");
+        fs::read(project.path().join("icons/manifest.json")).expect("first manifest");
     generate_project_icons(all).expect("second");
     assert_eq!(
-        fs::read(project.path().join("assets/icons/web/favicon-32x32.png")).expect("second png"),
+        fs::read(project.path().join("icons/web/favicon-32x32.png")).expect("second png"),
         first_png
     );
     assert_eq!(
-        fs::read(project.path().join("assets/icons/manifest.json")).expect("second manifest"),
+        fs::read(project.path().join("icons/manifest.json")).expect("second manifest"),
         first_manifest
     );
 
     fs::write(
         project
             .path()
-            .join("assets/icons/ios/keep-until-ios-regenerates"),
+            .join("icons/ios/keep-until-ios-regenerates"),
         "preserved",
     )
     .expect("sentinel");
@@ -239,14 +239,14 @@ fn regeneration_is_deterministic_and_preserves_unselected_targets() {
     assert!(
         project
             .path()
-            .join("assets/icons/ios/keep-until-ios-regenerates")
+            .join("icons/ios/keep-until-ios-regenerates")
             .is_file()
     );
 
-    let current_web = fs::read(project.path().join("assets/icons/web/favicon-32x32.png"))
+    let current_web = fs::read(project.path().join("icons/web/favicon-32x32.png"))
         .expect("current web icon");
     let current_manifest =
-        fs::read(project.path().join("assets/icons/manifest.json")).expect("current manifest");
+        fs::read(project.path().join("icons/manifest.json")).expect("current manifest");
     fs::write(project.path().join("assets/icon.svg"), "not svg").expect("invalid svg");
     generate_project_icons(
         GenerateIconOptions::new(
@@ -259,12 +259,12 @@ fn regeneration_is_deterministic_and_preserves_unselected_targets() {
     )
     .expect_err("invalid render");
     assert_eq!(
-        fs::read(project.path().join("assets/icons/web/favicon-32x32.png"))
+        fs::read(project.path().join("icons/web/favicon-32x32.png"))
             .expect("preserved web icon"),
         current_web
     );
     assert_eq!(
-        fs::read(project.path().join("assets/icons/manifest.json")).expect("preserved manifest"),
+        fs::read(project.path().join("icons/manifest.json")).expect("preserved manifest"),
         current_manifest
     );
 }
@@ -281,7 +281,7 @@ fn generates_every_rounded_value() {
         assert!(
             project
                 .path()
-                .join("assets/icons/web/favicon-32x32.png")
+                .join("icons/web/favicon-32x32.png")
                 .is_file()
         );
     }
@@ -307,7 +307,7 @@ fn draws_the_macos_surface_on_the_apple_icon_grid() {
     .expect("desktop icons");
 
     let first_icns =
-        fs::read(project.path().join("assets/icons/desktop/icon.icns")).expect("first icns");
+        fs::read(project.path().join("icons/desktop/icon.icns")).expect("first icns");
     let icns = IconFamily::read(first_icns.as_slice()).expect("valid icns");
     let macos = icns
         .get_icon_with_type(IconType::RGBA32_512x512)
@@ -335,7 +335,7 @@ fn draws_the_macos_surface_on_the_apple_icon_grid() {
     )
     .expect("regenerated desktop icons");
     let second_icns =
-        fs::read(project.path().join("assets/icons/desktop/icon.icns")).expect("second icns");
+        fs::read(project.path().join("icons/desktop/icon.icns")).expect("second icns");
     assert_ne!(second_icns, first_icns);
     let icns = IconFamily::read(second_icns.as_slice()).expect("valid icns");
     let macos = icns
@@ -348,7 +348,7 @@ fn draws_the_macos_surface_on_the_apple_icon_grid() {
     let surface = opaque_bounds(pixels, 512, |value| value[3] > 8);
     assert!((0.80..=0.81).contains(&(surface.width() as f32 / 512.0)));
 
-    let desktop_png = png_rgba(&project.path().join("assets/icons/desktop/icon.png"));
+    let desktop_png = png_rgba(&project.path().join("icons/desktop/icon.png"));
     assert_eq!(pixel(&desktop_png, 512, 0, 0), [255, 0, 0, 255]);
 }
 
@@ -362,7 +362,7 @@ fn rejects_unsafe_sources_and_invalid_options_before_writing() {
     .expect("external svg");
     let cases = [
         ("../icon.svg", "#ffffff", "project-relative"),
-        ("assets/icons/source.svg", "#ffffff", "assets/icons"),
+        ("icons/source.svg", "#ffffff", "icons"),
         ("assets/icon.svg", "white", "#RRGGBB"),
         ("assets/external.svg", "#ffffff", "self-contained"),
     ];
@@ -374,7 +374,7 @@ fn rejects_unsafe_sources_and_invalid_options_before_writing() {
         );
         assert!(result.expect_err("error").to_string().contains(message));
     }
-    assert!(!project.path().join("assets/icons/web").exists());
+    assert!(!project.path().join("icons/web").exists());
 }
 
 #[test]
@@ -401,7 +401,7 @@ fn accepts_svg_doctype_without_resolving_external_entities() {
     assert!(
         project
             .path()
-            .join("assets/icons/web/favicon-32x32.png")
+            .join("icons/web/favicon-32x32.png")
             .is_file()
     );
 
@@ -452,7 +452,7 @@ fn rejects_source_and_output_symlink_escapes() {
     .expect_err("source escape");
     assert!(source_error.to_string().contains("inside the project"));
 
-    std::os::unix::fs::symlink(outside.path(), project.path().join("assets/icons"))
+    std::os::unix::fs::symlink(outside.path(), project.path().join("icons"))
         .expect("output symlink");
     let output_error = generate_project_icons(
         GenerateIconOptions::new(

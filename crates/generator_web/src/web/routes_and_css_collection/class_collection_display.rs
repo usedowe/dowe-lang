@@ -122,6 +122,7 @@ fn collect_display_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
                 "collapsible-label".to_string(),
                 "collapsible-arrow".to_string(),
                 "collapsible-content".to_string(),
+                "collapsible-content-inner".to_string(),
             ]);
             for child in children {
                 collect_classes(child, classes);

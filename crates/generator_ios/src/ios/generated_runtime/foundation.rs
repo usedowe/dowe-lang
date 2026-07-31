@@ -104,6 +104,60 @@ func doweButtonContent(_ variant: String, _ scheme: String) -> Color {
     variant == "solid" ? doweButtonOnFamily(scheme) : doweButtonFamily(scheme)
 }
 
+@MainActor
+func doweCardSoftFamily(_ scheme: String) -> Color {
+    switch scheme {
+    case "background": return DoweDesign.background
+    case "surface": return DoweDesign.surface
+    case "secondary": return DoweDesign.softSecondary
+    case "tertiary": return DoweDesign.softTertiary
+    case "muted": return DoweDesign.softMuted
+    case "success": return DoweDesign.softSuccess
+    case "info": return DoweDesign.softInfo
+    case "warning": return DoweDesign.softWarning
+    case "danger": return DoweDesign.softDanger
+    default: return DoweDesign.softPrimary
+    }
+}
+
+@MainActor
+func doweCardSoftContent(_ scheme: String) -> Color {
+    switch scheme {
+    case "background": return DoweDesign.onBackground
+    case "surface": return DoweDesign.onSurface
+    case "secondary": return DoweDesign.onSoftSecondary
+    case "tertiary": return DoweDesign.onSoftTertiary
+    case "muted": return DoweDesign.onSoftMuted
+    case "success": return DoweDesign.onSoftSuccess
+    case "info": return DoweDesign.onSoftInfo
+    case "warning": return DoweDesign.onSoftWarning
+    case "danger": return DoweDesign.onSoftDanger
+    default: return DoweDesign.onSoftPrimary
+    }
+}
+
+@MainActor
+func doweCardContainer(_ variant: String, _ scheme: String) -> Color {
+    if variant == "soft" { return doweCardSoftFamily(scheme) }
+    if variant == "outlined" { return scheme == "background" ? DoweDesign.background : DoweDesign.surface }
+    if variant == "ghost" { return Color.clear }
+    return doweButtonFamily(scheme)
+}
+
+@MainActor
+func doweCardContent(_ variant: String, _ scheme: String) -> Color {
+    if variant == "solid" { return doweButtonOnFamily(scheme) }
+    if variant == "soft" { return doweCardSoftContent(scheme) }
+    if variant == "outlined" { return scheme == "background" ? DoweDesign.onBackground : DoweDesign.onSurface }
+    if variant == "ghost" && (scheme == "background" || scheme == "surface") { return doweButtonOnFamily(scheme) }
+    return doweButtonFamily(scheme)
+}
+
+@MainActor
+func doweCardBorder(_ variant: String, _ scheme: String) -> Color? {
+    variant == "outlined" ? doweButtonFamily(scheme) : nil
+}
+
 func doweSideNavMetric(_ size: String, small: Int, medium: Int, large: Int) -> Int {
     if size == "sm" { return small }
     if size == "lg" { return large }

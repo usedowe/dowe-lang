@@ -258,6 +258,43 @@ private fun doweButtonContainer(variant: String, scheme: String): Color = when (
 private fun doweButtonContent(variant: String, scheme: String): Color =
     if (variant == "solid") doweButtonOnFamily(scheme) else doweButtonFamily(scheme)
 
+private fun doweCardSoftFamily(scheme: String): Color = when (scheme) {
+    "background" -> DoweDesign.background
+    "surface" -> DoweDesign.surface
+    else -> doweButtonSoftFamily(scheme)
+}
+
+private fun doweCardSoftContent(scheme: String): Color = when (scheme) {
+    "background" -> DoweDesign.onBackground
+    "surface" -> DoweDesign.onSurface
+    "secondary" -> DoweDesign.onSoftSecondary
+    "tertiary" -> DoweDesign.onSoftTertiary
+    "muted" -> DoweDesign.onSoftMuted
+    "success" -> DoweDesign.onSoftSuccess
+    "info" -> DoweDesign.onSoftInfo
+    "warning" -> DoweDesign.onSoftWarning
+    "danger" -> DoweDesign.onSoftDanger
+    else -> DoweDesign.onSoftPrimary
+}
+
+private fun doweCardContainer(variant: String, scheme: String): Color = when (variant) {
+    "soft" -> doweCardSoftFamily(scheme)
+    "outlined" -> if (scheme == "background") DoweDesign.background else DoweDesign.surface
+    "ghost" -> Color.Transparent
+    else -> doweButtonFamily(scheme)
+}
+
+private fun doweCardContent(variant: String, scheme: String): Color = when (variant) {
+    "solid" -> doweButtonOnFamily(scheme)
+    "soft" -> doweCardSoftContent(scheme)
+    "outlined" -> if (scheme == "background") DoweDesign.onBackground else DoweDesign.onSurface
+    "ghost" -> if (scheme == "background" || scheme == "surface") doweButtonOnFamily(scheme) else doweButtonFamily(scheme)
+    else -> doweButtonOnFamily(scheme)
+}
+
+private fun doweCardBorder(variant: String, scheme: String): Color? =
+    if (variant == "outlined") doweButtonFamily(scheme) else null
+
 private fun doweSideNavMetric(size: String, small: Int, medium: Int, large: Int): Float = when (size) {
     "sm" -> small.toFloat()
     "lg" -> large.toFloat()

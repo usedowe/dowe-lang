@@ -117,18 +117,16 @@ fn validate_relative_source(source: &Path) -> IconResult<()> {
             _ => None,
         })
         .collect::<Vec<_>>();
+    if components.first().is_some_and(|value| value == "icons") {
+        return Err(IconError::new(
+            "icon source cannot be stored inside generated icons",
+        ));
+    }
     let allowed =
         components.len() == 1 || components.first().is_some_and(|value| value == "assets");
     if !allowed {
         return Err(IconError::new(
             "icon source must be in the project root or under assets",
-        ));
-    }
-    if components.first().is_some_and(|value| value == "assets")
-        && components.get(1).is_some_and(|value| value == "icons")
-    {
-        return Err(IconError::new(
-            "icon source cannot be stored inside generated assets/icons",
         ));
     }
     if source

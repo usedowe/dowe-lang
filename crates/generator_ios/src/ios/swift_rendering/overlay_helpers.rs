@@ -14,8 +14,8 @@ fn render_swift_modal(
     output.push_str(&format!(
         "{pad}DoweModal(open: state.bool(\"{path}\"), close: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, radius: {}, disableOverlayClose: {}, hideCloseButton: {}, hasHeader: {}, hasFooter: {}) {{\n",
         swift_close_action(&path, props.on_close.as_deref(), context),
-        variant_container(&props.style),
-        variant_content(&props.style),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
         swift_variant_border(&props.style),
         swift_card_radius(&props.style.style),
         props.disable_overlay_close,
@@ -63,19 +63,20 @@ fn render_swift_alert_dialog(
     let mut panel_style = props.style.clone();
     panel_style.color = Some(ColorFamily::Surface);
     output.push_str(&format!(
-        "{pad}DoweAlertDialog(open: state.bool(\"{path}\"), close: {}, title: {}, description: {}, confirmText: {}, cancelText: {}, backgroundColor: {}, contentColor: {}, dangerColor: {}, radius: {}, loading: {}, confirm: {}, cancel: {})\n",
+        "{pad}DoweAlertDialog(open: state.bool(\"{path}\"), close: {}, title: {}, description: {}, confirmText: {}, cancelText: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, confirmBackgroundColor: {}, confirmContentColor: {}, radius: {}, loading: {}, confirm: {})\n",
         swift_close_action(&path, props.on_cancel.as_deref(), context),
         swift_string_literal(&props.title),
         swift_string_literal(&props.description),
         swift_string_literal(&props.confirm_text),
         swift_string_literal(&props.cancel_text),
-        variant_container(&panel_style),
-        variant_content(&panel_style),
+        card_variant_container(&panel_style),
+        card_variant_content(&panel_style),
+        swift_variant_border(&panel_style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Danger))),
+        color_ref(family_on_color(props.style.color.unwrap_or(ColorFamily::Danger))),
         swift_card_radius(&props.style.style),
         props.loading,
         swift_optional_component_action(props.on_confirm.as_deref(), None, context),
-        swift_optional_component_action(props.on_cancel.as_deref(), None, context),
     ));
 }
 
@@ -144,10 +145,11 @@ fn render_swift_toast(
         )
     };
     output.push_str(&format!(
-        "{pad}DoweToast(visible: {visible}, title: {title}, description: {description}, position: {}, backgroundColor: {}, contentColor: {}, showIcon: {}, kind: {}, close: {close})\n",
+        "{pad}DoweToast(visible: {visible}, title: {title}, description: {description}, position: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, showIcon: {}, kind: {}, close: {close})\n",
         swift_string_literal(props.position.as_str()),
-        variant_container(&props.style),
-        variant_content(&props.style),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        swift_variant_border(&props.style),
         props.show_icon,
         swift_string_literal(props.kind.as_str()),
     ));
@@ -342,7 +344,11 @@ fn render_swift_overlay_item(
     close: Option<&str>,
 ) {
     let pad = " ".repeat(indent);
-    let action = swift_optional_component_action(item.on_click.as_deref(), item.navigation.as_ref(), context);
+    let action = swift_optional_component_action(
+        item.on_click.as_deref(),
+        item.navigation.as_ref(),
+        context,
+    );
     let action = close
         .map(|close| swift_closing_action(action.clone(), close))
         .unwrap_or(action);

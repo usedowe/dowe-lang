@@ -30,7 +30,7 @@ use dowe_components::{
     TranslationValue,
     TypeWriterItem, TypeWriterProps, VariantProps, VideoAspect, VideoProps, ViewAction,
     ViewActionKind, ViewAnimation, ViewAssignAction, ViewFunctionStatement, ViewIcon, ViewNode,
-    ViewResetAction, ViewSignal, ViewSignalValue,
+    ViewResetAction, ViewSignal, ViewSignalValue, ViewToastAction,
     VisibilityCondition, icon_component_node, solar_control_icon, svg_spinner_control_icon,
 };
 use std::path::{Path, PathBuf};

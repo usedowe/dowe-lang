@@ -332,16 +332,20 @@ fn render_compose_collapsible(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let arrow = solar_control_icon("alt-arrow-down").expect("bundled Collapsible arrow icon");
     output.push_str(&format!(
-        "{pad}DoweCollapsible(label = {}, defaultOpen = {}, disabled = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, modifier = {}) {{\n",
+        "{pad}DoweCollapsible(label = {}, defaultOpen = {}, disabled = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, radius = {}, modifier = {}, arrowIcon = {{\n",
         compose_string_literal(&props.label),
         props.default_open,
         props.disabled,
         card_variant_container(&props.style),
         card_variant_content(&props.style),
         compose_variant_border(&props.style),
+        compose_card_radius(&props.style.style),
         modifier_for_style(&props.style.style),
     ));
+    render_compose_side_icon(&arrow, indent + 4, output);
+    output.push_str(&format!("{pad}}}) {{\n"));
     for child in children {
         render_compose_node_in_flow(
             child,

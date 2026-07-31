@@ -15,19 +15,21 @@ private fun DoweTabs(items: List<DoweTabItem>, initialId: String, modifier: Modi
     val tabList: @Composable () -> Unit = {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             if (vertical) {
-                Column(modifier = listModifier, verticalArrangement = Arrangement.spacedBy(if (variant == "line") 16.dp else 8.dp)) {
-                    items.forEach { item ->
-                        DoweTabButton(item = item, active = activeId == item.id, position = position, variant = variant, activeBackgroundColor = activeBackgroundColor, activeContentColor = activeContentColor, accentColor = accentColor, radius = radius, fontFamily = fontFamily) {
+                Column(modifier = listModifier, verticalArrangement = Arrangement.spacedBy(if (variant == "stepper") 0.dp else if (variant == "line") 16.dp else 8.dp)) {
+                    items.forEachIndexed { index, item ->
+                        DoweTabButton(item = item, index = index, active = activeId == item.id, position = position, variant = variant, activeBackgroundColor = activeBackgroundColor, activeContentColor = activeContentColor, accentColor = accentColor, radius = radius, fontFamily = fontFamily) {
                             activeId = item.id
                         }
+                        if (variant == "stepper" && index < items.lastIndex) Box(modifier = Modifier.padding(start = 15.dp).width(2.dp).height(20.dp).background(contentColor.copy(alpha = 0.35f)))
                     }
                 }
             } else {
-                Row(modifier = listModifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(if (variant == "line") 16.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    items.forEach { item ->
-                        DoweTabButton(item = item, active = activeId == item.id, position = position, variant = variant, activeBackgroundColor = activeBackgroundColor, activeContentColor = activeContentColor, accentColor = accentColor, radius = radius, fontFamily = fontFamily) {
+                Row(modifier = listModifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(if (variant == "stepper") 0.dp else if (variant == "line") 16.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    items.forEachIndexed { index, item ->
+                        DoweTabButton(item = item, index = index, active = activeId == item.id, position = position, variant = variant, activeBackgroundColor = activeBackgroundColor, activeContentColor = activeContentColor, accentColor = accentColor, radius = radius, fontFamily = fontFamily) {
                             activeId = item.id
                         }
+                        if (variant == "stepper" && index < items.lastIndex) Box(modifier = Modifier.padding(horizontal = 8.dp).width(48.dp).height(2.dp).background(contentColor.copy(alpha = 0.35f)))
                     }
                 }
             }
@@ -59,7 +61,7 @@ private fun DoweTabs(items: List<DoweTabItem>, initialId: String, modifier: Modi
 }
 
 @Composable
-private fun DoweTabButton(item: DoweTabItem, active: Boolean, position: String, variant: String, activeBackgroundColor: Color, activeContentColor: Color, accentColor: Color, radius: Dp, fontFamily: FontFamily, onClick: () -> Unit) {
+private fun DoweTabButton(item: DoweTabItem, index: Int, active: Boolean, position: String, variant: String, activeBackgroundColor: Color, activeContentColor: Color, accentColor: Color, radius: Dp, fontFamily: FontFamily, onClick: () -> Unit) {
     val shape = RoundedCornerShape(if (variant == "pills") 999.dp else radius)
     val selectedFill = variant == "solid" || variant == "outlined" || variant == "pills"
     val selectedLine = variant == "line"
@@ -86,10 +88,19 @@ private fun DoweTabButton(item: DoweTabItem, active: Boolean, position: String, 
                 }
             })
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = if (variant == "stepper") 0.dp else 16.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = item.label, color = color, fontFamily = fontFamily)
+        if (variant == "stepper") {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(if (active) activeBackgroundColor else Color.Transparent).border(2.dp, if (active) accentColor else LocalContentColor.current.copy(alpha = 0.45f), CircleShape), contentAlignment = Alignment.Center) {
+                    Text(text = (index + 1).toString(), color = if (active) activeContentColor else LocalContentColor.current, fontFamily = fontFamily, fontWeight = FontWeight.Bold)
+                }
+                Text(text = item.label, color = color, fontFamily = fontFamily, maxLines = 1)
+            }
+        } else {
+            Text(text = item.label, color = color, fontFamily = fontFamily)
+        }
     }
 }
 
@@ -203,13 +214,7 @@ private fun sideNavAction(item: DoweSideNavEntry, navigate: (String, String, Str
 private val doweSideNavArrowViewBox = DoweSvgViewBox(0f, 0f, 24f, 24f)
 private val doweSideNavArrowPaths = listOf(
     DoweSvgPath("M0 0h24v24H0z", DoweSvgFill.None),
-    DoweSvgPath("m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z", DoweSvgFill.CurrentColor)
-)
-
-private val doweDrawerCloseViewBox = DoweSvgViewBox(0f, 0f, 24f, 24f)
-private val doweDrawerClosePaths = listOf(
-    DoweSvgPath("M0 0h24v24H0z", DoweSvgFill.None),
-    DoweSvgPath("m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z", DoweSvgFill.CurrentColor)
+    DoweSvgPath("__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__", DoweSvgFill.CurrentColor)
 )
 
 @Composable
@@ -340,7 +345,7 @@ private fun DoweDrawer(open: Boolean, onClose: () -> Unit, position: String, bac
                             .height(28.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        DoweSvg(viewBox = doweDrawerCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweDrawerClosePaths)
+                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweOverlayClosePaths)
                     }
                 }
             }

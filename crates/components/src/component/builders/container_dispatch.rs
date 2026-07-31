@@ -445,6 +445,12 @@ pub fn container_component_node(
         BuiltinComponent::Tab => Err(ComponentError::invalid_prop_combination(
             "tab can only be used inside Tabs",
         )),
+        BuiltinComponent::Stepper => Err(ComponentError::invalid_prop_combination(
+            "Stepper requires step entries",
+        )),
+        BuiltinComponent::Step => Err(ComponentError::invalid_prop_combination(
+            "step can only be used inside Stepper",
+        )),
         BuiltinComponent::NavMenu => Err(ComponentError::invalid_prop_combination(
             "NavMenu requires item, submenu or megamenu entries",
         )),

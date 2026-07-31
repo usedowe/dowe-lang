@@ -352,11 +352,18 @@ fn java_function_statement(
             escape_java(&context.signal_path(&reset.target))
         ),
         dowe_components::ViewFunctionStatement::Toast(toast) => format!(
-            "DoweStep.toast(\"{}\", \"{}\", \"{}\", {})",
+            "DoweStep.toast(\"{}\", \"{}\", \"{}\", {}, {}, {}, {})",
             escape_java(&toast.kind),
             escape_java(&toast.title),
             escape_java(&toast.message),
-            toast.duration.map(|duration| duration.to_string()).unwrap_or_else(|| "null".to_string())
+            toast.duration.map(|duration| duration.to_string()).unwrap_or_else(|| "null".to_string()),
+            toast.scheme.as_deref().map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string()),
+            toast.variant.as_deref().map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string()),
+            toast.position.as_deref().map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string())
+        ),
+        dowe_components::ViewFunctionStatement::Redirect { path } => format!(
+            "DoweStep.redirect(\"{}\")",
+            escape_java(path)
         ),
     }
 }

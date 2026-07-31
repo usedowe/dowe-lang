@@ -1,6 +1,6 @@
 ---
 name: dowe-views
-description: Author Dowe route graphs, Scaffold layouts, Section pages, Dowe-native reference- or screenshot-driven UI reproduction, visual fidelity without screenshot crops, init hooks, Splash boundaries, UI composition and container selection, components, View Stores, signals, view functions, requests, styles, responsive UI, i18n, forms, navigation, charts, Canvas, web, desktop, Android, and iOS.
+description: Use for Dowe view modules, routes, layouts, pages, UI composition, components, state, requests, responsive styles, reference-driven fidelity, Canvas, and view targets; skip for server-only work.
 ---
 
 # Dowe views authoring
@@ -42,13 +42,12 @@ Keep every new frontend module under `views/`; only root `main.dowe` and `theme.
 15. Render reference-driven work at the reference viewport and compare it band by band against the
     source image. Iterate on geometry, line wrapping, spacing, density, and assets before finishing.
 
-Read `references/views.md` for route, layout, page, state, function, request, i18n, and UI/UX
-contracts.
-Read `references/composition.md` before composing a screen or translating a reference design:
-layout versus page ownership, the Section/Grid/Flex/Card/Box decision tree, anti-patterns, and the
-image-to-source decomposition workflow.
-Read `references/components.md` when selecting a built-in component or checking its essential data,
-binding, child, interaction, and portability contract.
-Read `references/styles.md` for color tokens, variants, style and responsive props, typography,
-`show`, `animation`, cover and overlay, anchors, and Button navigation.
-Read `references/canvas.md` before drawing with `Canvas`.
+## Reference routing
+
+| Task | Read only |
+| --- | --- |
+| Routes, layouts, pages, state, functions, requests, repeated views, or i18n | `references/views.md` |
+| New screen, reference image, shell ownership, container choice, hero, or landing composition | `references/composition.md` |
+| Built-in component selection, children, bindings, interaction, or portability | `references/components.md` |
+| Colors, variants, responsive props, typography, sizing, visibility, overlay, or motion | `references/styles.md` |
+| Canvas drawing, input, animation, dynamic scenes, or limits | `references/canvas.md` |

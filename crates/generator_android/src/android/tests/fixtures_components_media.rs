@@ -545,7 +545,8 @@ fn display_overlay_tree() -> ViewNode {
             ViewNode::Toast {
                 props: ToastProps {
                     style: VariantProps {
-                        color: Some(ColorFamily::Success),
+                        variant: Some(ComponentVariant::Outlined),
+                        color: Some(ColorFamily::Warning),
                         ..Default::default()
                     },
                     source: None,

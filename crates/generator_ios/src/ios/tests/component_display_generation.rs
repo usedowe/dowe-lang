@@ -27,6 +27,54 @@ fn dropzone_picker_route() -> ViewRoute {
     }
 }
 
+fn overlay_parity_route() -> ViewRoute {
+    ViewRoute {
+        id: "overlay-parity".to_string(),
+        route_path: "/overlay-parity".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Box {
+            props: StyleProps::default(),
+            children: vec![
+                ViewNode::Modal {
+                    props: ModalProps {
+                        style: VariantProps {
+                            variant: Some(ComponentVariant::Outlined),
+                            color: Some(ColorFamily::Warning),
+                            ..Default::default()
+                        },
+                        open: "modal01".to_string(),
+                        on_close: None,
+                        disable_overlay_close: false,
+                        hide_close_button: false,
+                    },
+                    header: vec![text("Settings")],
+                    body: vec![text("Body")],
+                    footer: Vec::new(),
+                },
+                ViewNode::AlertDialog {
+                    props: AlertDialogProps {
+                        style: VariantProps {
+                            variant: Some(ComponentVariant::Soft),
+                            color: Some(ColorFamily::Warning),
+                            ..Default::default()
+                        },
+                        open: "alert01".to_string(),
+                        title: "Archive?".to_string(),
+                        description: "Archive this project.".to_string(),
+                        confirm_text: "Archive".to_string(),
+                        cancel_text: "Cancel".to_string(),
+                        on_confirm: None,
+                        on_cancel: None,
+                        loading: false,
+                    },
+                },
+            ],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
 #[test]
 fn generates_native_dropzone_file_picker_hooks() {
     let output = generate_ios(
@@ -77,12 +125,91 @@ fn generates_swiftui_display_overlay_components() {
     assert!(!modal_output.contains("} content: { close in"));
     assert!(views.contains("DoweAlertDialog(open: state.bool(\"modal01\")"));
     assert!(views.contains(
-        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, dangerColor: DoweDesign.danger"
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: nil, confirmBackgroundColor: DoweDesign.danger, confirmContentColor: DoweDesign.onDanger"
     ));
     assert!(views.contains("DoweTooltip(label: \"More actions\", position: \"end\""));
     assert!(!views.contains(".onTapGesture { open.toggle() }"));
     assert!(!views.contains("private var popoverPoint"));
     assert!(views.contains("DoweToast(visible: true, title: \"Saved\""));
+    assert!(views.contains(
+        "position: \"top-right\", backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: Optional(DoweDesign.warning)"
+    ));
+    assert!(views.contains(
+        "struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable"
+    ));
+    let toast_presenter_start = views
+        .find("struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable")
+        .expect("toast overlay presenter");
+    let toast_presenter_end = views[toast_presenter_start..]
+        .find("struct DoweModal<")
+        .map(|offset| toast_presenter_start + offset)
+        .expect("modal after toast overlay presenter");
+    let toast_presenter_output = &views[toast_presenter_start..toast_presenter_end];
+    assert!(toast_presenter_output.contains("UIHostingController<Content>"));
+    assert!(toast_presenter_output.contains("private var containerView: UIView?"));
+    assert!(toast_presenter_output.contains("context.coordinator.scheduleShow(from: uiView)"));
+    assert!(toast_presenter_output.contains("private var presentationRevision = 0"));
+    assert!(toast_presenter_output.contains("private var showScheduled = false"));
+    assert!(toast_presenter_output.contains("private var isDismissing = false"));
+    assert!(toast_presenter_output.contains("guard !showScheduled else"));
+    assert!(toast_presenter_output.contains(
+        "if containerView?.superview != nil {\n                showScheduled = false\n                isDismissing = false"
+    ));
+    assert_eq!(
+        toast_presenter_output
+            .matches("presentationRevision += 1")
+            .count(),
+        2
+    );
+    assert!(toast_presenter_output.contains(
+        "guard revision == self.presentationRevision else"
+    ));
+    assert!(toast_presenter_output.contains(
+        "self.showScheduled = false\n                guard self.parent.isPresented else"
+    ));
+    let toast_dismiss_start = toast_presenter_output
+        .find("func dismiss(immediate: Bool = false)")
+        .expect("toast dismissal");
+    let toast_dismiss_output = &toast_presenter_output[toast_dismiss_start..];
+    let dismiss_idempotence_guard = toast_dismiss_output
+        .find("guard immediate || !isDismissing else")
+        .expect("toast dismissal idempotence guard");
+    let dismiss_revision = toast_dismiss_output
+        .find("presentationRevision += 1")
+        .expect("toast dismissal revision");
+    assert!(dismiss_idempotence_guard < dismiss_revision);
+    assert!(toast_dismiss_output.contains(
+        "guard immediate || showScheduled || containerView?.superview != nil else"
+    ));
+    assert!(toast_dismiss_output.contains(
+        "guard revision == self.presentationRevision, !self.parent.isPresented, self.isDismissing else"
+    ));
+    assert!(toast_dismiss_output.contains("self.isDismissing = false"));
+    assert!(toast_dismiss_output.contains("container.removeFromSuperview()"));
+    assert!(toast_presenter_output.contains(
+        "height: UIView.layoutFittingExpandedSize.height"
+    ));
+    assert!(toast_presenter_output.contains(
+        "container.bounds = CGRect(origin: .zero, size: frame.size)"
+    ));
+    assert!(toast_presenter_output.contains(
+        "container.center = CGPoint(x: frame.midX, y: frame.midY)"
+    ));
+    let toast_measurement = toast_presenter_output
+        .find("let measured = controller.sizeThatFits(")
+        .expect("toast measurement");
+    let toast_mount = toast_presenter_output
+        .find("window.addSubview(container)")
+        .expect("toast compact container mount");
+    assert!(toast_measurement < toast_mount);
+    assert!(!toast_presenter_output.contains("DoweToastOverlayHostView"));
+    assert!(!toast_presenter_output.contains("point(inside"));
+    assert!(!toast_presenter_output.contains("interactionFrame"));
+    assert!(!toast_presenter_output.contains("backdrop"));
+    assert!(!toast_presenter_output.contains("UIControl"));
+    assert!(views.contains("DoweToastOverlayPresenter(isPresented: visible && !dismissed, position: position)"));
+    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)"));
+    assert!(views.contains(".accessibilityLabel(\"Close toast\")"));
     assert!(views.contains("DoweDropdown(backgroundColor: DoweDesign.surface"));
     let dropdown_start = views
         .find("DoweDropdown(backgroundColor: DoweDesign.surface")
@@ -194,8 +321,37 @@ fn generates_swiftui_display_overlay_components() {
         .expect("overlay item after dropdown popover");
     assert!(!views[popover_start..popover_end].contains("ScrollView"));
     assert!(!views[popover_start..popover_end].contains(".shadow("));
-    assert!(!views[popover_start..popover_end].contains(".presentationCompactAdaptation(.popover)"));
+    assert!(
+        !views[popover_start..popover_end].contains(".presentationCompactAdaptation(.popover)")
+    );
     assert!(views.contains("DoweCommand(open: state.bool(\"modal01\")"));
+}
+
+#[test]
+fn generates_ios_overlay_surface_action_and_close_parity() {
+    let output = generate_ios(
+        &[overlay_parity_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    assert!(views.contains(
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: Optional(DoweDesign.warning)"
+    ));
+    assert!(views.contains(
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: nil"
+    ));
+    assert!(views.contains(
+        "confirmBackgroundColor: DoweDesign.warning, confirmContentColor: DoweDesign.onWarning"
+    ));
+    assert!(views.contains("struct DoweOverlayCloseIcon: View"));
+    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)"));
+    assert!(views.contains("let modalWidth = geometry.size.width * 0.95"));
+    assert!(views.contains(".frame(maxWidth: modalWidth, alignment: .leading)"));
+    assert!(views.contains(".frame(width: CGFloat(28), height: CGFloat(28))"));
+    assert!(views.contains(".frame(width: CGFloat(18), height: CGFloat(18))"));
+    assert!(views.contains(".accessibilityLabel(\"Close modal\")"));
 }
 
 #[test]
@@ -304,7 +460,23 @@ fn generates_swiftui_rich_control_map_components() {
     assert!(views.contains("previousIcon: {"));
     assert!(views.contains("nextIcon: {"));
     assert!(views.contains("DoweCollapsible(label: \"Details\""));
+    assert!(views.contains("arrowIcon: {"));
+    let collapsible_runtime = views
+        .split("struct DoweCollapsible<")
+        .nth(1)
+        .expect("collapsible runtime")
+        .split("struct DoweCountdown")
+        .next()
+        .expect("countdown after collapsible");
+    assert!(!collapsible_runtime.contains("Image(systemName: \"chevron.down\")"));
     assert!(views.contains("DoweCountdown(target: \"2030-01-01T00:00:00Z\""));
+    assert!(views.contains("ScrollView(.horizontal)"));
+    assert!(views.contains("ViewThatFits(in: .horizontal)"));
+    assert!(views.contains(".frame(maxWidth: .infinity, alignment: .center)"));
+    assert!(views.contains("countdownContent(displaySize: \"sm\")"));
+    assert!(views.contains(".frame(minWidth: metrics(for: displaySize).1, minHeight: metrics(for: displaySize).2)"));
+    assert!(views.contains("if targetDate <= value && !completed"));
+    assert!(views.contains("ISO8601DateFormatter().date(from: target) ?? .distantPast"));
     assert!(views.contains("DoweMap(centerLat: \"4.7109\", centerLng: \"-74.0721\""));
     assert!(views.contains("DoweMapMarker(id: \"office\""));
 }
@@ -657,6 +829,18 @@ fn generates_swiftui_media_display_form_components() {
     assert!(!image_runtime.contains(".background(backgroundColor.opacity(0.72))"));
     assert!(!image_runtime.contains(".aspectRatio(doweImageAspect(aspect)"));
     assert!(views.contains("DoweAccordionView(multiple:"));
+    assert!(views.contains("defaultOpenIds: [\"intro\"]"));
+    assert!(views.contains("{ openIds, toggleItem in"));
+    assert!(views.contains("open: openIds.contains(\"intro\")"));
+    assert!(views.contains(
+        "@ViewBuilder let content: (Set<String>, @escaping (String) -> Void) -> Content"
+    ));
+    assert!(views.contains("arrowIcon: {"));
+    assert!(views.matches("m19.704 12l-8.491-8.727a.75.75").count() >= 2);
+    assert!(!views.contains("__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__"));
+    assert!(views.contains(".rotationEffect(open ? .degrees(90) : .degrees(0))"));
+    assert!(views.contains("Text(label)\n                        .font(.system(size: CGFloat(14), weight: .semibold))\n                        .foregroundStyle(contentColor)"));
+    assert!(!views.contains("Text(open ? \"^\" : \"v\")"));
     assert!(views.contains("DoweCarouselView(variant: \"snapping\""));
     assert!(views.contains("ScrollView(.horizontal"));
     assert!(views.contains("showsIndicators: false"));
@@ -665,21 +849,11 @@ fn generates_swiftui_media_display_form_components() {
     assert!(!views.contains(".onChange(of: scrollId) { value in"));
     assert!(views.contains(".scrollTransition(.interactive, axis: .horizontal)"));
     assert!(views.contains("rotation3DEffect"));
-    assert!(views.contains(
-        "nonisolated private func carouselRotation(_ phase: Double) -> Double"
-    ));
-    assert!(views.contains(
-        "nonisolated private func carouselScale(_ phase: Double) -> CGFloat"
-    ));
-    assert!(views.contains(
-        "nonisolated private func carouselTilt(_ phase: Double) -> Double"
-    ));
-    assert!(views.contains(
-        "nonisolated private func carouselOffset(_ phase: Double) -> CGFloat"
-    ));
-    assert!(views.contains(
-        "nonisolated private func carouselOpacity(_ phase: Double) -> Double"
-    ));
+    assert!(views.contains("nonisolated private func carouselRotation(_ phase: Double) -> Double"));
+    assert!(views.contains("nonisolated private func carouselScale(_ phase: Double) -> CGFloat"));
+    assert!(views.contains("nonisolated private func carouselTilt(_ phase: Double) -> Double"));
+    assert!(views.contains("nonisolated private func carouselOffset(_ phase: Double) -> CGFloat"));
+    assert!(views.contains("nonisolated private func carouselOpacity(_ phase: Double) -> Double"));
     let carousel_runtime = views
         .split("struct DoweCarouselView<Content: View>: View")
         .nth(1)
@@ -1093,9 +1267,7 @@ fn generates_swiftui_svg_views() {
     let views = swift_content(&output);
 
     assert!(views.contains("struct DoweSvgView: View"));
-    assert!(views.contains(
-        "DoweRuntimeSvgView(payload: state.json(\"iconData01\")"
-    ));
+    assert!(views.contains("DoweRuntimeSvgView(payload: state.json(\"iconData01\")"));
     assert!(views.contains("private enum DoweRuntimeSvgParser"));
     assert!(views.contains("DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24))"));
     assert!(views.contains("DoweSvgFill.currentColor"));
@@ -1162,7 +1334,9 @@ fn generates_loading_button_with_animated_spinner_and_disabled_state() {
         layout_tree: ViewNode::Children,
         page_tree: ViewNode::Button {
             props: VariantProps {
-                loading_icon: Some(svg_spinner_control_icon("3-dots-move").expect("button spinner")),
+                loading_icon: Some(
+                    svg_spinner_control_icon("3-dots-move").expect("button spinner"),
+                ),
                 reactive: ReactiveVariantProps {
                     loading: Some("saving".to_string()),
                     ..Default::default()
@@ -1210,9 +1384,7 @@ fn generates_full_hit_targets_for_icon_and_text_buttons() {
                             },
                             ..Default::default()
                         },
-                        icon_start: Some(
-                            solar_control_icon("settings").expect("settings icon"),
-                        ),
+                        icon_start: Some(solar_control_icon("settings").expect("settings icon")),
                         icon_only: true,
                         label: Some("Open settings".to_string()),
                         navigation: Some(NavigationAction::Internal {
@@ -1279,7 +1451,9 @@ fn generates_full_hit_targets_for_icon_and_text_buttons() {
     let text_hit_target = text_output
         .find(".contentShape(Rectangle())")
         .expect("text button hit target");
-    let text_background = text_output.find(".background(").expect("text button background");
+    let text_background = text_output
+        .find(".background(")
+        .expect("text button background");
     assert!(text_padding < text_hit_target);
     assert!(text_hit_target < text_background);
 }
@@ -1299,9 +1473,9 @@ fn generates_swiftui_viewport_minus_height() {
                     min_h: Some(ResponsiveValue::scalar(
                         dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(40)),
                     )),
-                    max_w: Some(ResponsiveValue::scalar(
-                        dowe_components::SizeValue::Scale(ScaleValue::from_half_steps(128)),
-                    )),
+                    max_w: Some(ResponsiveValue::scalar(dowe_components::SizeValue::Scale(
+                        ScaleValue::from_half_steps(128),
+                    ))),
                     max_h: Some(ResponsiveValue::scalar(
                         dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(48)),
                     )),

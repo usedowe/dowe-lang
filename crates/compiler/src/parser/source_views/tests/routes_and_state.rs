@@ -32,7 +32,7 @@
     if res.ok
       set session value:res.data
       set loginForm value:{ email:"" password:"" }
-      toast value:{ type:"success" title:"Success" message:"Signed in." visible:true }
+      toast value:{ type:"success" title:"Success" message:"Signed in." visible:true } variant:"outlined" scheme:"surface" position:"top-right"
     else
       toast value:{ type:"error" title:"Error" message:"Login failed." visible:true }
   Text
@@ -46,6 +46,105 @@
             panic!("sequence")
         };
         assert_eq!(statements.len(), 2);
+        let ViewFunctionStatement::If { success, .. } = &statements[1] else {
+            panic!("branch")
+        };
+        let ViewFunctionStatement::Toast(toast) = &success[2] else {
+            panic!("toast")
+        };
+        assert_eq!(toast.variant.as_deref(), Some("outlined"));
+        assert_eq!(toast.scheme.as_deref(), Some("surface"));
+        assert_eq!(toast.position.as_deref(), Some("top-right"));
+    }
+
+    #[test]
+    fn parses_redirect_in_view_function_and_init_branch() {
+        let function = parse_page(
+            r#"page LoginPage
+  fn finish
+    redirect path:"/dashboard"
+  Button onClick:finish
+    "Continue""#,
+        )
+        .expect("redirect function");
+        let ViewNode::Scope { actions, .. } = function else {
+            panic!("scope")
+        };
+        assert!(matches!(
+            &actions[0].kind,
+            ViewActionKind::Sequence(statements)
+                if matches!(statements.first(), Some(ViewFunctionStatement::Redirect { path }) if path == "/dashboard")
+        ));
+
+        let init = parse_page(
+            r#"page HomePage
+  init
+    request session method:"GET" route:"/api/session"
+    if session.ok
+      toast value:{ type:"success" message:"Ready" visible:true }
+    else
+      redirect path:"/login"
+  Text
+    "Home""#,
+        )
+        .expect("redirect init branch");
+        let ViewNode::Scope { actions, .. } = init else {
+            panic!("scope")
+        };
+        let ViewActionKind::Sequence(statements) = &actions[0].kind else {
+            panic!("sequence")
+        };
+        let ViewFunctionStatement::If { error, .. } = &statements[1] else {
+            panic!("branch")
+        };
+        assert!(matches!(
+            error.first(),
+            Some(ViewFunctionStatement::Redirect { path }) if path == "/login"
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_redirect_statements() {
+        for (source, expected) in [
+            (
+                "page HomePage\n  fn leave\n    redirect\n  Text\n    \"Home\"",
+                "`path` must be a quoted string",
+            ),
+            (
+                "page HomePage\n  fn leave\n    redirect path:\"login\"\n  Text\n    \"Home\"",
+                "`redirect` path must start with `/`",
+            ),
+            (
+                "page HomePage\n  fn leave\n    redirect path:\"/login\" mode:\"push\"\n  Text\n    \"Home\"",
+                "`redirect` does not support `mode`",
+            ),
+        ] {
+            let error = parse_page(source).expect_err("invalid redirect");
+            assert!(error.to_string().contains(expected), "{error}");
+        }
+    }
+
+    #[test]
+    fn rejects_non_card_global_toast_surface_values() {
+        let variant = parse_page(
+            r#"page HomePage
+  fn notify
+    toast value:{ type:"info" message:"Saved" visible:true } variant:"line"
+  Text
+    "Home""#,
+        )
+        .expect_err("toast line variant");
+        assert!(variant.to_string().contains("toast variant"));
+
+        let scheme = parse_page(
+            r#"page HomePage
+  fn notify
+    toast value:{ type:"info" message:"Saved" visible:true } scheme:"onPrimary"
+  Text
+    "Home""#,
+        )
+        .expect_err("toast scheme");
+        assert!(scheme.to_string().contains("toast scheme"));
     }
 
     #[test]

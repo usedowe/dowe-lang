@@ -1,28 +1,28 @@
 use std::{fs, path::Path};
 
 use super::{
-    AvatarGroupProps, BrandProps, Breakpoint, BuiltinComponent, ButtonSize, COMPONENT_REGISTRY, CanvasBackground, CanvasFit,
-    CarouselVariant, ChartCurve,
-    ChartLegendPosition, ChartPalette, ChartSize, CodeLanguage, CodeTemplateSegment, CodeTokenKind, ColorFamily,
-    ColorToken, ComponentError, ComponentProp, ComponentVariant, DividerOrientation, FlexDirection, FontFamily,
-    BoxPosition, FabProps, GapValue, GridAlignment, GridTracks, OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation,
-    ResponsivePropEntry, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap, SvgLineJoin, SvgPathFill, SvgTransform, TableColumnAlign,
-    BarPosition, DeviceProfile, IframeLoading, NativeExternalMode, NavigationAction, TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing,
-    TextWeight, VideoAspect, WebTarget,
-    ViewAnimation, ViewIcon, ViewNode, VisibilityCondition,
-    arc_chart_component_node, area_chart_component_node, bar_chart_component_node,
-    bar_component_node, box_node, canvas_component_node, candlestick_node, children_node, code_node, compose_tree, fixed_box_nodes, fixed_fab_nodes,
-    carousel_component_node, carousel_slide_component, container_component_node, device_node,
-    divider_node, first_text, font_catalog, icon_component_node, iframe_node, input_node,
-    line_chart_component_node, pie_chart_component_node, radio_group_component_node,
-    radio_option_component, select_node, select_option_component, svg_component_node,
-    svg_path_component, table_column_component, table_node,
-    tabs_component_node, tabs_tab_component, text_binding_path, text_component_node, text_node,
-    text_spacing_em,
-    all_icon_names, country_flag_icon, phone_countries, text_typography, text_weight_number,
-    section_content_spacing, validate_solar_icon_catalog, validate_svg_logo_catalog,
-    validate_svg_spinner_catalog, validate_view_tree, video_node, COUNTRY_FLAGS, SVG_LOGOS,
-    SVG_SPINNERS,
+    AvatarGroupProps, BarPosition, BoxPosition, BrandProps, Breakpoint, BuiltinComponent,
+    ButtonSize, COMPONENT_REGISTRY, COUNTRY_FLAGS, CanvasBackground, CanvasFit, CarouselVariant,
+    ChartCurve, ChartLegendPosition, ChartPalette, ChartSize, CodeLanguage, CodeTemplateSegment,
+    CodeTokenKind, ColorFamily, ColorToken, ComponentError, ComponentProp, ComponentVariant,
+    DeviceProfile, DividerOrientation, FabProps, FlexDirection, FontFamily, GapValue,
+    GridAlignment, GridTracks, IframeLoading, NativeExternalMode, NavigationAction,
+    OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation, ResponsivePropEntry,
+    SVG_LOGOS, SVG_SPINNERS, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap,
+    SvgLineJoin, SvgPathFill, SvgTransform, TableColumnAlign, TableSize, TabsPosition, TabsVariant,
+    TextSize, TextSpacing, TextWeight, VideoAspect, ViewAnimation, ViewIcon, ViewNode,
+    VisibilityCondition, WebTarget, all_icon_names, arc_chart_component_node,
+    area_chart_component_node, bar_chart_component_node, bar_component_node, box_node,
+    candlestick_node, canvas_component_node, carousel_component_node, carousel_slide_component,
+    children_node, code_node, compose_tree, container_component_node, country_flag_icon,
+    device_node, divider_node, first_text, fixed_box_nodes, fixed_fab_nodes, font_catalog,
+    icon_component_node, iframe_node, input_node, line_chart_component_node, phone_countries,
+    pie_chart_component_node, radio_group_component_node, radio_option_component,
+    section_content_spacing, select_node, select_option_component, stepper_component_node,
+    stepper_step_component, svg_component_node, svg_path_component, table_column_component,
+    table_node, tabs_component_node, tabs_tab_component, text_binding_path, text_component_node,
+    text_node, text_spacing_em, text_typography, text_weight_number, validate_solar_icon_catalog,
+    validate_svg_logo_catalog, validate_svg_spinner_catalog, validate_view_tree, video_node,
 };
 
 #[test]
@@ -69,9 +69,18 @@ fn registry_finds_builtin_components() {
         COMPONENT_REGISTRY.get("Video"),
         Some(BuiltinComponent::Video)
     );
-    assert_eq!(COMPONENT_REGISTRY.get("Canvas"), Some(BuiltinComponent::Canvas));
-    assert_eq!(COMPONENT_REGISTRY.get("Iframe"), Some(BuiltinComponent::Iframe));
-    assert_eq!(COMPONENT_REGISTRY.get("Device"), Some(BuiltinComponent::Device));
+    assert_eq!(
+        COMPONENT_REGISTRY.get("Canvas"),
+        Some(BuiltinComponent::Canvas)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("Iframe"),
+        Some(BuiltinComponent::Iframe)
+    );
+    assert_eq!(
+        COMPONENT_REGISTRY.get("Device"),
+        Some(BuiltinComponent::Device)
+    );
     assert_eq!(
         COMPONENT_REGISTRY.get("Candlestick"),
         Some(BuiltinComponent::Candlestick)
@@ -154,10 +163,7 @@ fn registry_finds_builtin_components() {
         COMPONENT_REGISTRY.get("Scaffold"),
         Some(BuiltinComponent::Scaffold)
     );
-    assert_eq!(
-        COMPONENT_REGISTRY.get("Tabs"),
-        Some(BuiltinComponent::Tabs)
-    );
+    assert_eq!(COMPONENT_REGISTRY.get("Tabs"), Some(BuiltinComponent::Tabs));
     assert_eq!(COMPONENT_REGISTRY.get("tab"), Some(BuiltinComponent::Tab));
     assert_eq!(
         COMPONENT_REGISTRY.get("Drawer"),
@@ -185,7 +191,10 @@ fn builtin_component_catalog_is_complete_and_unique() {
 
     assert_eq!(names.len(), unique.len());
     for component in BuiltinComponent::ALL {
-        assert_eq!(BuiltinComponent::from_name(component.as_str()), Some(*component));
+        assert_eq!(
+            BuiltinComponent::from_name(component.as_str()),
+            Some(*component)
+        );
     }
 }
 
@@ -368,7 +377,7 @@ fn validates_code_source_and_highlighting() {
     );
     assert_eq!(
         code_node(vec![string_prop("language", "ruby")], "puts()".to_string())
-        .expect_err("language"),
+            .expect_err("language"),
         ComponentError::invalid_prop(
             "language",
             "dowe, typescript, javascript, go, rust or python"
@@ -412,8 +421,18 @@ fn highlights_javascript_python_and_reactive_code_segments() {
                 .collect::<String>(),
             props.source
         );
-        assert!(props.tokens.iter().any(|token| token.kind == CodeTokenKind::Keyword));
-        assert!(props.tokens.iter().any(|token| token.kind == CodeTokenKind::Type));
+        assert!(
+            props
+                .tokens
+                .iter()
+                .any(|token| token.kind == CodeTokenKind::Keyword)
+        );
+        assert!(
+            props
+                .tokens
+                .iter()
+                .any(|token| token.kind == CodeTokenKind::Type)
+        );
     }
 
     let ViewNode::Code { props } = template else {
@@ -474,28 +493,49 @@ fn validates_iframe_source_policy_and_defaults() {
         string_prop("title", "Example embed"),
         string_prop("allow", "fullscreen; autoplay"),
         string_prop("sandbox", "scripts same-origin"),
-    ]).expect("iframe");
-    let ViewNode::Iframe { props } = node else { panic!("iframe") };
+    ])
+    .expect("iframe");
+    let ViewNode::Iframe { props } = node else {
+        panic!("iframe")
+    };
     assert_eq!(props.loading, IframeLoading::Lazy);
     assert_eq!(props.allow, vec!["fullscreen", "autoplay"]);
-    assert_eq!(props.sandbox, Some(vec!["scripts".to_string(), "same-origin".to_string()]));
+    assert_eq!(
+        props.sandbox,
+        Some(vec!["scripts".to_string(), "same-origin".to_string()])
+    );
     assert!(!props.allow_fullscreen);
     let internal = iframe_node(vec![
         string_prop("src", "/examples/appbar-one"),
         string_prop("title", "Local example"),
-    ]).expect("internal iframe");
-    let ViewNode::Iframe { props } = internal else { panic!("iframe") };
+    ])
+    .expect("internal iframe");
+    let ViewNode::Iframe { props } = internal else {
+        panic!("iframe")
+    };
     assert_eq!(props.src, "/examples/appbar-one");
     assert_eq!(
-        iframe_node(vec![string_prop("src", "http://example.com"), string_prop("title", "Example")]).expect_err("https"),
+        iframe_node(vec![
+            string_prop("src", "http://example.com"),
+            string_prop("title", "Example")
+        ])
+        .expect_err("https"),
         ComponentError::invalid_prop("src", "https URL or internal route")
     );
     assert_eq!(
-        iframe_node(vec![string_prop("src", "//example.com"), string_prop("title", "Example")]).expect_err("scheme relative"),
+        iframe_node(vec![
+            string_prop("src", "//example.com"),
+            string_prop("title", "Example")
+        ])
+        .expect_err("scheme relative"),
         ComponentError::invalid_prop("src", "https URL or internal route")
     );
     assert_eq!(
-        iframe_node(vec![string_prop("src", "/examples/../admin"), string_prop("title", "Example")]).expect_err("traversal"),
+        iframe_node(vec![
+            string_prop("src", "/examples/../admin"),
+            string_prop("title", "Example")
+        ])
+        .expect_err("traversal"),
         ComponentError::invalid_prop("src", "https URL or internal route")
     );
     assert_eq!(
@@ -511,9 +551,13 @@ fn validates_device_profile_and_iframe_child() {
         string_prop("title", "Preview"),
     ])
     .expect("iframe");
-    let node = device_node(vec![string_prop("device", "laptop")], vec![iframe.clone()])
-        .expect("device");
-    let ViewNode::Device { props, iframe: nested } = node else {
+    let node =
+        device_node(vec![string_prop("device", "laptop")], vec![iframe.clone()]).expect("device");
+    let ViewNode::Device {
+        props,
+        iframe: nested,
+    } = node
+    else {
         panic!("device")
     };
     assert_eq!(props.device, DeviceProfile::Laptop);
@@ -554,7 +598,10 @@ fn validates_canvas_props_and_defaults() {
             assert_eq!(props.fit, CanvasFit::Cover);
             assert_eq!(props.fps, 30);
             assert!(!props.autoplay);
-            assert_eq!(props.background, CanvasBackground::Color(ColorToken::Surface));
+            assert_eq!(
+                props.background,
+                CanvasBackground::Color(ColorToken::Surface)
+            );
             assert!(props.pixelated);
             assert_eq!(props.label, "Game scene");
             assert_eq!(props.on_pointer.as_deref(), Some("capturePointer"));
@@ -566,10 +613,37 @@ fn validates_canvas_props_and_defaults() {
     }
 
     assert!(canvas_component_node(vec![string_prop("label", "Missing scene")]).is_err());
-    assert!(canvas_component_node(vec![string_prop("scene", "scene"), string_prop("label", "")]).is_err());
-    assert!(canvas_component_node(vec![string_prop("scene", "scene"), string_prop("label", "Scene"), number_prop("fps", 121)]).is_err());
-    assert!(canvas_component_node(vec![string_prop("scene", "scene"), string_prop("label", "Scene"), string_prop("fit", "center")]).is_err());
-    assert!(canvas_component_node(vec![string_prop("scene", "scene"), string_prop("label", "Scene"), number_prop("motionRate", 61)]).is_err());
+    assert!(
+        canvas_component_node(vec![
+            string_prop("scene", "scene"),
+            string_prop("label", "")
+        ])
+        .is_err()
+    );
+    assert!(
+        canvas_component_node(vec![
+            string_prop("scene", "scene"),
+            string_prop("label", "Scene"),
+            number_prop("fps", 121)
+        ])
+        .is_err()
+    );
+    assert!(
+        canvas_component_node(vec![
+            string_prop("scene", "scene"),
+            string_prop("label", "Scene"),
+            string_prop("fit", "center")
+        ])
+        .is_err()
+    );
+    assert!(
+        canvas_component_node(vec![
+            string_prop("scene", "scene"),
+            string_prop("label", "Scene"),
+            number_prop("motionRate", 61)
+        ])
+        .is_err()
+    );
 }
 
 #[test]
@@ -886,12 +960,18 @@ fn rejects_invalid_table_props_and_columns() {
 #[test]
 fn validates_tabs_props_entries_and_defaults() {
     let overview = tabs_tab_component(
-        vec![string_prop("id", "overview"), string_prop("label", "Overview")],
+        vec![
+            string_prop("id", "overview"),
+            string_prop("label", "Overview"),
+        ],
         vec![text_node("Overview content").expect("text")],
     )
     .expect("overview tab");
     let details = tabs_tab_component(
-        vec![string_prop("id", "details"), string_prop("label", "Details")],
+        vec![
+            string_prop("id", "details"),
+            string_prop("label", "Details"),
+        ],
         vec![text_node("Details content").expect("text")],
     )
     .expect("details tab");
@@ -913,7 +993,10 @@ fn validates_tabs_props_entries_and_defaults() {
             assert_eq!(tabs.len(), 2);
             assert_eq!(tabs[0].id, "overview");
             assert_eq!(tabs[0].label, "Overview");
-            assert_eq!(first_text(&tabs[1].children[0]), Some("Details content".to_string()));
+            assert_eq!(
+                first_text(&tabs[1].children[0]),
+                Some("Details content".to_string())
+            );
         }
         _ => panic!("tabs"),
     }
@@ -999,6 +1082,61 @@ fn rejects_invalid_tabs_contracts() {
 }
 
 #[test]
+fn validates_stepper_entries_orientation_and_errors() {
+    let account = stepper_step_component(
+        vec![
+            string_prop("id", "account"),
+            string_prop("label", "Account"),
+        ],
+        vec![text_node("Account content").expect("text")],
+    )
+    .expect("account step");
+    let profile = stepper_step_component(
+        vec![
+            string_prop("id", "profile"),
+            string_prop("label", "Profile"),
+        ],
+        vec![text_node("Profile content").expect("text")],
+    )
+    .expect("profile step");
+    let node = stepper_component_node(
+        vec![
+            string_prop("scheme", "success"),
+            string_prop("orientation", "vertical"),
+        ],
+        vec![account, profile],
+    )
+    .expect("stepper");
+
+    let ViewNode::Tabs { props, tabs } = node else {
+        panic!("stepper");
+    };
+    assert_eq!(props.variant, TabsVariant::Stepper);
+    assert_eq!(props.color, ColorFamily::Success);
+    assert_eq!(props.position, TabsPosition::Start);
+    assert_eq!(tabs.len(), 2);
+
+    assert_eq!(
+        stepper_component_node(Vec::new(), Vec::new()).expect_err("empty"),
+        ComponentError::invalid_prop_combination("Stepper requires at least one step")
+    );
+    assert_eq!(
+        stepper_component_node(
+            vec![string_prop("orientation", "diagonal")],
+            vec![
+                stepper_step_component(
+                    vec![string_prop("id", "one"), string_prop("label", "One")],
+                    vec![text_node("One").expect("text")],
+                )
+                .expect("step")
+            ],
+        )
+        .expect_err("orientation"),
+        ComponentError::invalid_prop("orientation", "horizontal or vertical")
+    );
+}
+
+#[test]
 fn validates_divider_props_and_defaults() {
     let default_node = divider_node(Vec::new()).expect("divider");
     match default_node {
@@ -1077,8 +1215,7 @@ fn validates_carousel_variants_and_defaults() {
         vec![text_node("Slide").expect("text")],
     )
     .expect("slide");
-    let default_node =
-        carousel_component_node(Vec::new(), vec![slide.clone()]).expect("carousel");
+    let default_node = carousel_component_node(Vec::new(), vec![slide.clone()]).expect("carousel");
     match default_node {
         ViewNode::Carousel { props, .. } => assert_eq!(props.variant, CarouselVariant::Simple),
         _ => panic!("carousel"),
@@ -1096,13 +1233,7 @@ fn validates_carousel_variants_and_defaults() {
         }
     }
 
-    assert!(
-        carousel_component_node(
-            vec![string_prop("variant", "wheel")],
-            vec![slide],
-        )
-        .is_err()
-    );
+    assert!(carousel_component_node(vec![string_prop("variant", "wheel")], vec![slide],).is_err());
 }
 
 #[test]
@@ -1351,17 +1482,19 @@ fn validates_relative_absolute_and_fixed_box_positioning() {
     let tree = container_component_node(
         BuiltinComponent::Box,
         vec![string_prop("position", "relative")],
-        vec![container_component_node(
-            BuiltinComponent::Box,
-            vec![
-                string_prop("position", "absolute"),
-                number_prop("top", 4),
-                number_prop("right", 6),
-            ],
-            vec![text_node("Proof").expect("text")],
-            false,
-        )
-        .expect("absolute box")],
+        vec![
+            container_component_node(
+                BuiltinComponent::Box,
+                vec![
+                    string_prop("position", "absolute"),
+                    number_prop("top", 4),
+                    number_prop("right", 6),
+                ],
+                vec![text_node("Proof").expect("text")],
+                false,
+            )
+            .expect("absolute box"),
+        ],
         false,
     )
     .expect("relative box");
@@ -1406,12 +1539,12 @@ fn validates_relative_absolute_and_fixed_box_positioning() {
 #[test]
 fn rejects_invalid_box_positioning_contracts() {
     let static_offset_error = container_component_node(
-            BuiltinComponent::Box,
-            vec![number_prop("top", 4)],
-            Vec::new(),
-            false,
-        )
-        .expect_err("static offset");
+        BuiltinComponent::Box,
+        vec![number_prop("top", 4)],
+        Vec::new(),
+        false,
+    )
+    .expect_err("static offset");
     assert!(
         static_offset_error
             .to_string()
@@ -1452,13 +1585,15 @@ fn rejects_invalid_box_positioning_contracts() {
         item: "item".to_string(),
         collection: "items".to_string(),
         key: "item.id".to_string(),
-        children: vec![container_component_node(
-            BuiltinComponent::Box,
-            vec![string_prop("position", "fixed")],
-            Vec::new(),
-            false,
-        )
-        .expect("fixed box")],
+        children: vec![
+            container_component_node(
+                BuiltinComponent::Box,
+                vec![string_prop("position", "fixed")],
+                Vec::new(),
+                false,
+            )
+            .expect("fixed box"),
+        ],
     };
     assert!(
         validate_view_tree(&fixed_in_each)
@@ -1934,7 +2069,9 @@ fn derives_section_axis_padding_defaults_and_preserves_overrides() {
     assert_eq!(vertical.entries[1].value, ScaleValue::from_half_steps(32));
 
     let authored = SpacingProps {
-        py: Some(super::ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+        py: Some(super::ResponsiveValue::scalar(ScaleValue::from_half_steps(
+            12,
+        ))),
         ..Default::default()
     };
     let effective = section_content_spacing(&authored);
@@ -1991,7 +2128,10 @@ fn validates_button_events_and_alert_props() {
 fn resolves_icon_button_and_control_icon_regions() {
     let icon_button = container_component_node(
         BuiltinComponent::IconButton,
-        vec![string_prop("icon", "settings"), string_prop("label", "Open settings")],
+        vec![
+            string_prop("icon", "settings"),
+            string_prop("label", "Open settings"),
+        ],
         Vec::new(),
         false,
     )
@@ -2036,13 +2176,15 @@ fn resolves_icon_button_and_control_icon_regions() {
         _ => panic!("input"),
     }
 
-    assert!(container_component_node(
-        BuiltinComponent::IconButton,
-        vec![string_prop("icon", "settings")],
-        Vec::new(),
-        false,
-    )
-    .is_err());
+    assert!(
+        container_component_node(
+            BuiltinComponent::IconButton,
+            vec![string_prop("icon", "settings")],
+            Vec::new(),
+            false,
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -2085,7 +2227,11 @@ fn normalizes_button_visual_props() {
 fn validates_country_flag_catalog_and_icon_names() {
     assert_eq!(COUNTRY_FLAGS.len(), 245);
     for country in phone_countries() {
-        assert!(country_flag_icon(country.code).is_some(), "missing flag {}", country.code);
+        assert!(
+            country_flag_icon(country.code).is_some(),
+            "missing flag {}",
+            country.code
+        );
     }
     let colombia = country_flag_icon("CO").expect("Colombia flag");
     assert!(!colombia.paths.is_empty());

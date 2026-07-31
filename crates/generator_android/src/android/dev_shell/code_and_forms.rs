@@ -66,6 +66,90 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         return view;
     }
 
+    private HorizontalScrollView doweCountdown(String target, boolean showDays, boolean showHours, boolean showMinutes, boolean showSeconds, String size, String daysLabel, String hoursLabel, String minutesLabel, String secondsLabel, int backgroundColor, int contentColor, Integer borderColor, String font, Runnable onComplete) {
+        HorizontalScrollView scroll = new HorizontalScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout row = doweContainer(true);
+        row.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.TOP);
+        String displaySize = viewportWidth < 480 && !"sm".equals(size) ? "sm" : size;
+        ArrayList<TextView> digits = new ArrayList<>();
+        ArrayList<Integer> units = new ArrayList<>();
+        boolean separator = false;
+        if (showDays) {
+            doweCountdownUnit(row, digits, units, 0, daysLabel, displaySize, backgroundColor, contentColor, borderColor, font, separator);
+            separator = true;
+        }
+        if (showHours) {
+            doweCountdownUnit(row, digits, units, 1, hoursLabel, displaySize, backgroundColor, contentColor, borderColor, font, separator);
+            separator = true;
+        }
+        if (showMinutes) {
+            doweCountdownUnit(row, digits, units, 2, minutesLabel, displaySize, backgroundColor, contentColor, borderColor, font, separator);
+            separator = true;
+        }
+        if (showSeconds) doweCountdownUnit(row, digits, units, 3, secondsLabel, displaySize, backgroundColor, contentColor, borderColor, font, separator);
+        scroll.addView(row, new HorizontalScrollView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        long parsedTarget;
+        try {
+            parsedTarget = java.time.Instant.parse(target).toEpochMilli();
+        } catch (RuntimeException error) {
+            parsedTarget = System.currentTimeMillis();
+        }
+        final long deadline = parsedTarget;
+        final boolean[] completed = new boolean[] { false };
+        final Runnable[] update = new Runnable[1];
+        update[0] = () -> {
+            long current = System.currentTimeMillis();
+            long remaining = Math.max(0L, (deadline - current) / 1000L);
+            long[] values = new long[] { remaining / 86400L, remaining % 86400L / 3600L, remaining % 3600L / 60L, remaining % 60L };
+            for (int index = 0; index < digits.size(); index += 1) {
+                digits.get(index).setText(String.format(java.util.Locale.ROOT, "%02d", values[units.get(index)]));
+            }
+            if (deadline <= current) {
+                if (!completed[0]) {
+                    completed[0] = true;
+                    if (onComplete != null) onComplete.run();
+                }
+            } else {
+                scroll.postDelayed(() -> {
+                    if (scroll.isAttachedToWindow()) update[0].run();
+                }, 1000L);
+            }
+        };
+        update[0].run();
+        return scroll;
+    }
+
+    private void doweCountdownUnit(LinearLayout row, ArrayList<TextView> digits, ArrayList<Integer> units, int unit, String label, String size, int backgroundColor, int contentColor, Integer borderColor, String font, boolean separator) {
+        int width = "xl".equals(size) ? 112 : "lg".equals(size) ? 80 : "sm".equals(size) ? 40 : 56;
+        int height = "xl".equals(size) ? 128 : "lg".equals(size) ? 96 : "sm".equals(size) ? 48 : 64;
+        float textSize = "xl".equals(size) ? 72f : "lg".equals(size) ? 48f : "sm".equals(size) ? 20f : 30f;
+        int padding = "xl".equals(size) ? 16 : "lg".equals(size) ? 12 : "sm".equals(size) ? 6 : 8;
+        if (separator) {
+            TextView divider = doweText(":", doweAlpha(contentColor, 0.5f), textSize, 700, 0f, 1f, font);
+            divider.setPadding(0, doweDp("xl".equals(size) ? 28 : "lg".equals(size) ? 20 : "sm".equals(size) ? 8 : 12), 0, 0);
+            doweAdd(row, divider, doweDp(8), true);
+        }
+        LinearLayout column = doweContainer(false);
+        doweWrapContentWidth(column);
+        column.setGravity(Gravity.CENTER_HORIZONTAL);
+        TextView digit = doweText("00", contentColor, textSize, 700, 0f, 1f, font);
+        digit.setGravity(Gravity.CENTER);
+        digit.setMinWidth(doweDp(width));
+        digit.setMinHeight(doweDp(height));
+        digit.setPadding(doweDp(padding), 0, doweDp(padding), 0);
+        digit.setBackground(doweInputBackground(backgroundColor, borderColor, DOWE_RADIUS));
+        TextView caption = doweText(label.toUpperCase(java.util.Locale.ROOT), doweAlpha(contentColor, 0.72f), "xl".equals(size) ? 16f : "lg".equals(size) ? 14f : "sm".equals(size) ? 10f : 12f, 500, 0.08f, 1f, font);
+        caption.setSingleLine(true);
+        caption.setGravity(Gravity.CENTER);
+        doweAdd(column, digit);
+        doweAdd(column, caption, doweDp(4), false);
+        doweAdd(row, column, separator ? null : 0, true);
+        digits.add(digit);
+        units.add(unit);
+    }
+
     private TextView doweControlLabel(String value, int color, String font) {
         TextView view = doweText(value, color, 14f, 700, 0f, 1.2f, font);
         view.setGravity(Gravity.START);

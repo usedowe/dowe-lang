@@ -26,32 +26,143 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(html.contains("is-pulse"));
     assert!(html.contains("is-rounded"));
     assert!(html.contains(r#"data-dowe-modal data-dowe-modal-open="modal01""#));
+    assert!(html.contains(r#"aria-label="Close modal" data-dowe-modal-close><svg"#));
+    assert!(html.contains("m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073"));
+    assert!(!html.contains("data-dowe-modal-close>&times;"));
     assert!(html.contains(r#"class="alert-dialog-actions""#));
     assert!(html.contains(r#"class="modal is-solid is-surface" role="alertdialog""#));
     assert!(html.contains(r#"class="button button-md is-solid is-danger""#));
     assert!(html.contains(r#"class="tooltip-popover is-solid is-muted position-end""#));
-    assert!(html.contains(r#"class="toast"#));
-    assert!(html.contains("is-solid"));
-    assert!(html.contains("is-success"));
+    assert!(html.contains(r#"class="toast is-outlined is-warning is-top-right"#));
+    assert!(html.contains(r#"<span class="toast-icon" aria-hidden="true">✓</span>"#));
+    assert!(html.contains(r#"aria-label="Close toast" data-dowe-toast-close><svg"#));
+    assert!(!html.contains("data-dowe-toast-close>&times;"));
     assert!(html.contains(r#"class="dropdown-popover is-solid is-surface""#));
     assert!(html.contains(r#"data-dowe-command-open="modal01""#));
     assert!(page.css_content.contains(".avatar.is-soft.is-success"));
-    assert!(page
-        .css_content
-        .contains(".badge-content.is-solid.is-danger"));
+    assert!(
+        page.css_content
+            .contains(".badge-content.is-solid.is-danger")
+    );
     assert!(!page.css_content.contains(".badge.is-solid.is-danger"));
     assert!(page.css_content.contains(".modal.is-solid.is-surface"));
+    assert!(page.css_content.contains(
+        ".toast.is-outlined.is-warning{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-warning);}"
+    ));
     assert!(
         page.css_content
             .contains(".dropdown-popover.is-solid.is-surface")
     );
     assert!(css.contains(".tooltip-popover{position:fixed;"));
+    assert!(css.contains(".toast-icon{flex:0 0 auto;"));
     assert!(css.contains(".tooltip-arrow{background-color:inherit;}"));
     assert!(css.contains("@keyframes dowe-skeleton-pulse"));
+    assert!(css.contains(".modal{position:relative;display:flex;max-width:min(100%,35rem);max-height:calc(100vh - 2rem);flex-direction:column;gap:1rem;overflow:hidden;padding:1.25rem;"));
+    assert!(css.contains(
+        ".drawer-close,.modal-close,.toast-close{display:inline-flex;width:1.75rem;height:1.75rem;"
+    ));
+    assert!(css.contains(".drawer-close svg,.modal-close svg,.toast-close svg{display:block;width:1.125rem;height:1.125rem;}"));
     assert!(router.contains("function renderModals(root,state,scope)"));
     assert!(router.contains("function renderToasts(root,state,scope)"));
+    assert!(router.contains("data-dowe-toast-close"));
+    assert!(router.contains("toastClose.closest(\"[data-dowe-toast],#dowe-global-toast\")"));
+    assert!(router.contains("is-${toast.variant||\"solid\"}"));
     assert!(router.contains("function openCommand(command)"));
     assert!(router.contains("data-dowe-dropdown-trigger"));
+}
+
+#[test]
+fn resolves_modal_and_alert_dialog_panels_like_card_surfaces() {
+    let root = Path::new("/project");
+    let modal = ViewNode::Modal {
+        props: ModalProps {
+            style: VariantProps {
+                variant: Some(ComponentVariant::Outlined),
+                color: Some(ColorFamily::Warning),
+                ..Default::default()
+            },
+            open: "modal01".to_string(),
+            on_close: None,
+            disable_overlay_close: false,
+            hide_close_button: false,
+        },
+        header: Vec::new(),
+        body: vec![text("Body")],
+        footer: Vec::new(),
+    };
+    let modal_page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/modal.dowe"),
+        "modal",
+        &modal,
+    );
+    assert!(modal_page.css_content.contains(
+        ".modal.is-outlined.is-warning{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-warning);}"
+    ));
+
+    let alert = ViewNode::AlertDialog {
+        props: AlertDialogProps {
+            style: VariantProps {
+                variant: Some(ComponentVariant::Soft),
+                color: Some(ColorFamily::Warning),
+                ..Default::default()
+            },
+            open: "alert01".to_string(),
+            title: "Archive?".to_string(),
+            description: "Archive this project.".to_string(),
+            confirm_text: "Archive".to_string(),
+            cancel_text: "Cancel".to_string(),
+            on_confirm: None,
+            on_cancel: None,
+            loading: false,
+        },
+    };
+    let alert_page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/alert.dowe"),
+        "alert",
+        &alert,
+    );
+    assert!(alert_page.css_content.contains(".modal.is-soft.is-surface"));
+    assert!(
+        alert_page
+            .css_content
+            .contains(".button.is-solid.is-warning")
+    );
+}
+
+#[test]
+fn emits_global_toast_action_surface_rules() {
+    let tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: vec![ViewAction {
+            id: "notify01".to_string(),
+            name: "notify".to_string(),
+            params: Vec::new(),
+            return_type: None,
+            kind: ViewActionKind::Sequence(vec![ViewFunctionStatement::Toast(ViewToastAction {
+                kind: "warning".to_string(),
+                title: "Review".to_string(),
+                message: "Check the changes".to_string(),
+                duration: Some(4000),
+                scheme: Some("warning".to_string()),
+                variant: Some("outlined".to_string()),
+                position: Some("top-right".to_string()),
+            })]),
+        }],
+        children: vec![text("Notify")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/views/pages/notify.dowe"),
+        "notify",
+        &tree,
+    );
+
+    assert!(page.css_content.contains(
+        ".toast.is-outlined.is-warning{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-warning);}"
+    ));
 }
 
 #[test]
@@ -230,6 +341,8 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(html.contains(r#"aria-label="Previous page""#));
     assert!(html.contains(r#"class="pagination-icon""#));
     assert!(html.contains(r#"data-dowe-collapsible"#));
+    assert!(html.contains(r#"class="collapsible-arrow" aria-hidden="true"><svg"#));
+    assert!(!html.contains(r#"class="collapsible-arrow" aria-hidden="true">⌄"#));
     assert!(html.contains(r#"data-dowe-countdown-target="2030-01-01T00:00:00Z""#));
     assert!(html.contains(r#"data-dowe-map"#));
     assert!(html.contains(r#"data-dowe-map-marker="office""#));
@@ -252,7 +365,14 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(css.contains(".toggle-group-item"));
     assert!(css.contains(".pagination-nav"));
     assert!(css.contains(".collapsible-content"));
+    assert!(css.contains(".collapsible-arrow>svg{width:100%;height:100%;}"));
     assert!(css.contains(".countdown-box"));
+    assert!(css.contains("overflow-x:auto"));
+    assert!(css.contains("min-width:3.5rem"));
+    assert!(css.contains("padding-inline:.5rem"));
+    assert!(css.contains("container-type:inline-size"));
+    assert!(css.contains("@container(max-width:30rem)"));
+    assert!(css.contains(".countdown-lg .countdown-box,.countdown-xl .countdown-box{min-width:2.5rem;height:3rem;padding-inline:.375rem;}"));
     assert!(css.contains(".map-grid"));
     assert!(router.contains("function hydrateRecords(root)"));
     assert!(router.contains("function renderToggleGroups(root,state,scope)"));
@@ -287,6 +407,9 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"class="image is-solid is-secondary square fit-contain""#));
     assert!(html.contains(r#"data-dowe-image"#));
     assert!(html.contains(r#"data-dowe-accordion data-dowe-accordion-multiple="true""#));
+    assert!(html.contains(r#"class="accordion-arrow" aria-hidden="true"><svg"#));
+    assert!(html.contains(r#"d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z""#));
+    assert!(!html.contains(r#"class="accordion-arrow">⌄"#));
     assert!(html.contains(r#"data-dowe-carousel data-dowe-carousel-index="0""#));
     assert!(html.contains(r#"data-dowe-carousel-variant="coverFlow""#));
     assert!(html.contains("is-cover-flow"));
@@ -305,6 +428,9 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
         page.css_content
             .contains(".accordion.is-outlined.is-surface")
     );
+    assert!(page.css_content.contains(
+        ".accordion.is-outlined.is-surface{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-surface);}"
+    ));
     assert!(page.css_content.contains(".carousel.is-solid.is-info"));
     assert!(css.contains(".checkbox-input{position:relative;"));
     assert!(css.contains("border-radius:.25rem"));
@@ -313,6 +439,8 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(css.contains(".toggle-input{position:relative;"));
     assert!(css.contains(".date-control-trigger{display:flex;"));
     assert!(css.contains(".date-range-calendars{display:flex;"));
+    assert!(css.contains(".accordion-arrow>svg{width:100%;height:100%;}"));
+    assert!(css.contains(".accordion-header.is-open .accordion-arrow{transform:rotate(90deg);}"));
     assert!(router.contains("function hydrateAudios(root)"));
     assert!(router.contains("function toggleAccordion(trigger)"));
     assert!(router.contains("function renderCarousel(root)"));
@@ -851,9 +979,9 @@ fn renders_viewport_minus_height_classes() {
                 min_h: Some(ResponsiveValue::scalar(
                     dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(40)),
                 )),
-                max_w: Some(ResponsiveValue::scalar(
-                    dowe_components::SizeValue::Scale(ScaleValue::from_half_steps(128)),
-                )),
+                max_w: Some(ResponsiveValue::scalar(dowe_components::SizeValue::Scale(
+                    ScaleValue::from_half_steps(128),
+                ))),
                 max_h: Some(ResponsiveValue::scalar(
                     dowe_components::SizeValue::ViewportMinus(ScaleValue::from_half_steps(48)),
                 )),

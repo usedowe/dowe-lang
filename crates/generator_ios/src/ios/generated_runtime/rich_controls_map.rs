@@ -132,23 +132,27 @@ struct DowePagination<PreviousIcon: View, NextIcon: View>: View {
     }
 }
 
-struct DoweCollapsible<Content: View>: View {
+struct DoweCollapsible<Arrow: View, Content: View>: View {
     let label: String
     let defaultOpen: Bool
     let disabled: Bool
     let backgroundColor: Color
     let contentColor: Color
     let borderColor: Color?
+    let radius: CGFloat
+    @ViewBuilder let arrowIcon: () -> Arrow
     @ViewBuilder let content: () -> Content
     @State private var open: Bool
 
-    init(label: String, defaultOpen: Bool, disabled: Bool, backgroundColor: Color, contentColor: Color, borderColor: Color?, @ViewBuilder content: @escaping () -> Content) {
+    init(label: String, defaultOpen: Bool, disabled: Bool, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: CGFloat, @ViewBuilder arrowIcon: @escaping () -> Arrow, @ViewBuilder content: @escaping () -> Content) {
         self.label = label
         self.defaultOpen = defaultOpen
         self.disabled = disabled
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
         self.borderColor = borderColor
+        self.radius = radius
+        self.arrowIcon = arrowIcon
         self.content = content
         _open = State(initialValue: defaultOpen)
     }
@@ -159,24 +163,29 @@ struct DoweCollapsible<Content: View>: View {
                 if !disabled { withAnimation(.easeInOut(duration: 0.16)) { open.toggle() } }
             } label: {
                 HStack {
-                    Text(label).font(.subheadline.weight(.semibold))
+                    Text(label).font(.system(size: CGFloat(14), weight: .semibold))
                     Spacer()
-                    Image(systemName: "chevron.down").rotationEffect(open ? .degrees(180) : .degrees(0))
+                    arrowIcon()
+                        .frame(width: CGFloat(20), height: CGFloat(20))
+                        .rotationEffect(open ? .degrees(180) : .degrees(0))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
             .buttonStyle(.plain)
+            .disabled(disabled)
             if open {
                 VStack(alignment: .leading, spacing: 8) { content() }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
+                    .transition(.opacity.combined(with: .scale(scale: CGFloat(0.98), anchor: .top)))
             }
         }
+        .animation(.easeInOut(duration: 0.16), value: open)
         .background(backgroundColor)
         .foregroundStyle(contentColor)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor ?? .clear, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: radius))
+        .overlay(RoundedRectangle(cornerRadius: radius).stroke(borderColor ?? .clear, lineWidth: borderColor == nil ? 0 : 1))
         .opacity(disabled ? 0.5 : 1)
     }
 }
@@ -200,58 +209,78 @@ struct DoweCountdown: View {
     @State private var completed = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            if showDays {
-                countdownUnit(value: values.days, label: daysLabel)
-                if showHours || showMinutes || showSeconds { countdownSeparator }
+        ViewThatFits(in: .horizontal) {
+            countdownContent(displaySize: size)
+            countdownContent(displaySize: "sm")
+            ScrollView(.horizontal) {
+                countdownContent(displaySize: "sm")
             }
-            if showHours {
-                countdownUnit(value: values.hours, label: hoursLabel)
-                if showMinutes || showSeconds { countdownSeparator }
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .onAppear {
+            let value = Date()
+            now = value
+            if targetDate <= value && !completed {
+                completed = true
+                onComplete?()
             }
-            if showMinutes {
-                countdownUnit(value: values.minutes, label: minutesLabel)
-                if showSeconds { countdownSeparator }
-            }
-            if showSeconds { countdownUnit(value: values.seconds, label: secondsLabel) }
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { value in
             now = value
-            if remaining <= 0 && !completed {
+            if targetDate <= value && !completed {
                 completed = true
                 onComplete?()
             }
         }
     }
 
-    private func countdownUnit(value: Int, label: String) -> some View {
+    private func countdownContent(displaySize: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            if showDays {
+                countdownUnit(value: values.days, label: daysLabel, displaySize: displaySize)
+                if showHours || showMinutes || showSeconds { countdownSeparator(displaySize: displaySize) }
+            }
+            if showHours {
+                countdownUnit(value: values.hours, label: hoursLabel, displaySize: displaySize)
+                if showMinutes || showSeconds { countdownSeparator(displaySize: displaySize) }
+            }
+            if showMinutes {
+                countdownUnit(value: values.minutes, label: minutesLabel, displaySize: displaySize)
+                if showSeconds { countdownSeparator(displaySize: displaySize) }
+            }
+            if showSeconds { countdownUnit(value: values.seconds, label: secondsLabel, displaySize: displaySize) }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func countdownUnit(value: Int, label: String, displaySize: String) -> some View {
         VStack(spacing: 4) {
             ZStack {
                 Text(String(format: "%02d", value))
-                    .font(.system(size: metrics.0, weight: .bold, design: .rounded))
+                    .font(.system(size: metrics(for: displaySize).0, weight: .bold, design: .rounded))
                     .monospacedDigit()
             }
-            .frame(width: metrics.1, height: metrics.2)
+            .frame(minWidth: metrics(for: displaySize).1, minHeight: metrics(for: displaySize).2)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(borderColor ?? .clear, lineWidth: 1))
             Text(label.uppercased())
-                .font(.system(size: labelSize, weight: .medium))
+                .font(.system(size: labelSize(for: displaySize), weight: .medium))
                 .tracking(1.2)
                 .opacity(0.72)
         }
         .foregroundStyle(contentColor)
     }
 
-    private var countdownSeparator: some View {
+    private func countdownSeparator(displaySize: String) -> some View {
         Text(":")
-            .font(.system(size: metrics.0, weight: .bold, design: .rounded))
+            .font(.system(size: metrics(for: displaySize).0, weight: .bold, design: .rounded))
             .foregroundStyle(contentColor.opacity(0.5))
-            .padding(.top, separatorOffset)
+            .padding(.top, separatorOffset(for: displaySize))
     }
 
     private var targetDate: Date {
-        ISO8601DateFormatter().date(from: target) ?? Date()
+        ISO8601DateFormatter().date(from: target) ?? .distantPast
     }
 
     private var remaining: Int {
@@ -262,16 +291,16 @@ struct DoweCountdown: View {
         (remaining / 86400, remaining % 86400 / 3600, remaining % 3600 / 60, remaining % 60)
     }
 
-    private var metrics: (CGFloat, CGFloat, CGFloat) {
-        size == "xl" ? (72, 112, 128) : size == "lg" ? (48, 80, 96) : size == "sm" ? (20, 40, 48) : (30, 56, 64)
+    private func metrics(for displaySize: String) -> (CGFloat, CGFloat, CGFloat) {
+        displaySize == "xl" ? (72, 112, 128) : displaySize == "lg" ? (48, 80, 96) : displaySize == "sm" ? (20, 40, 48) : (30, 56, 64)
     }
 
-    private var labelSize: CGFloat {
-        size == "xl" ? 16 : size == "lg" ? 14 : size == "sm" ? 10 : 12
+    private func labelSize(for displaySize: String) -> CGFloat {
+        displaySize == "xl" ? 16 : displaySize == "lg" ? 14 : displaySize == "sm" ? 10 : 12
     }
 
-    private var separatorOffset: CGFloat {
-        size == "xl" ? 28 : size == "lg" ? 20 : size == "sm" ? 8 : 12
+    private func separatorOffset(for displaySize: String) -> CGFloat {
+        displaySize == "xl" ? 28 : displaySize == "lg" ? 20 : displaySize == "sm" ? 8 : 12
     }
 }
 

@@ -513,6 +513,10 @@ fn compose_function_statement(
             compose_optional_string(toast.variant.as_deref()),
             compose_optional_string(toast.position.as_deref())
         ),
+        dowe_components::ViewFunctionStatement::Redirect { path } => format!(
+            "DoweStep.Redirect(\"{}\")",
+            escape_kotlin(path)
+        ),
     }
 }
 

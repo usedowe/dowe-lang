@@ -37,6 +37,10 @@ fn generated_views(
         "__DOWE_PHONE_COUNTRIES__",
         &compose_phone_country_catalog(),
     );
+    output = output.replace(
+        "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__",
+        SIDE_NAV_SUBMENU_ARROW_PATH,
+    );
     replace_android_font_support(&mut output, font_config, font_families);
 
     if routes.first().is_some() {
@@ -149,6 +153,7 @@ fn generated_views(
             reactive.signals,
             reactive.actions
         ));
+        output.push_str("    LaunchedEffect(state.redirectPath) { state.redirectPath?.let { path -> state.consumeRedirect(); navigate(\"replace\", path, null) } }\n");
         let startup = reactive
             .init
             .iter()
@@ -207,6 +212,7 @@ fn generated_views(
                 output.push_str("        }\n");
             }
         }
+        output.push_str("        DoweGlobalToast(toast = state.toast, close = state::closeToast, viewportWidth = viewportWidth)\n");
         output.push_str("    }\n");
         output.push_str("}\n");
         output.push_str("}\n");

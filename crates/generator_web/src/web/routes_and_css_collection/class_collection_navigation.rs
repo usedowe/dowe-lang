@@ -105,6 +105,10 @@ fn collect_navigation_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             classes.extend(tabs_list_classes(props));
             classes.insert("tab".to_string());
             classes.insert("tabs-label".to_string());
+            if props.variant == TabsVariant::Stepper {
+                classes.insert("stepper".to_string());
+                classes.insert("step-indicator".to_string());
+            }
             classes.insert("tabs-wrapper".to_string());
             classes.insert("tabs-content".to_string());
             for tab in tabs {

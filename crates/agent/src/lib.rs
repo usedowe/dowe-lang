@@ -13,9 +13,14 @@ mod request;
 mod skills;
 mod tools;
 
-pub use authoring::{PublicSkill, PublicSkillDocument, get_public_skill, public_skills};
+pub use authoring::{
+    PublicSkill, PublicSkillDocument, PublicSkillResourceDocument, get_public_skill,
+    get_public_skill_resource, public_skills,
+};
 pub use client::send_agent_request;
-pub use context::{AgentCodeGraphNodeSummary, AgentCodeGraphSummary, summarize_codegraph};
+pub use context::{
+    AgentCodeGraphNodeSummary, AgentCodeGraphSummary, summarize_codegraph, summarize_codegraph_for,
+};
 pub use error::{AgentError, AgentResult};
 pub use examples::{PublicExampleResult, PublicExampleSearch, search_public_examples};
 pub use images::{encode_image, encode_image_paths};
@@ -34,7 +39,7 @@ pub use project::{AgentHarnessSummary, ProjectContext, project_context};
 pub use request::{
     default_llm_server_url, infer_language, infer_request_type, prepare_agent_request,
 };
-pub use skills::generation_skill_summaries;
+pub use skills::{generation_skill_summaries, generation_skill_summaries_for};
 pub use tools::agent_tool_definitions;
 
 #[cfg(test)]

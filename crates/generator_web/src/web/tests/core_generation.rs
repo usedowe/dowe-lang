@@ -203,6 +203,38 @@ fn emits_init_and_reactive_splash_boundary() {
 }
 
 #[test]
+fn emits_terminal_replace_redirect_steps() {
+    let tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: vec![ViewAction::init(
+            "init01".to_string(),
+            vec![ViewFunctionStatement::Redirect {
+                path: "/login".to_string(),
+            }],
+        )],
+        children: vec![text("Home")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/views/pages/home.dowe"),
+        "page HomePage",
+        &tree,
+    );
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+
+    assert!(page.content.contains(r#"{"kind":"redirect","path":"/login"}"#));
+    assert!(router.contains(r#"if(step.kind==="redirect"){await navigate(step.path,{replace:true});return true;}"#));
+    assert!(router.contains("if(step.kind===\"if\"&&await runSteps"));
+}
+
+#[test]
 fn emits_fab_actions_as_intrinsic_colored_capsules() {
     let tree = ViewNode::Fab {
         props: FabProps {

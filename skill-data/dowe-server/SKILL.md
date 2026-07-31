@@ -1,6 +1,6 @@
 ---
 name: dowe-server
-description: Author Dowe APIs, endpoint groups, handlers, middleware, server functions, providers, services, repositories, tasks, spawn, HTTP, crypto, JWT, WebSockets, CORS, TLS, Database, Cache, Vector, and responses.
+description: Use for Dowe source under server or server blocks: routes, handlers, middleware, functions, persistence, tasks, protocols, security, and responses; skip for view- or theme-only edits.
 ---
 
 # Dowe server authoring
@@ -30,9 +30,10 @@ Keep every new backend module under `server/`; only root `main.dowe` connects it
    of nesting a group.
 9. Validate the complete import chain with the compiler.
 
-Read `references/server.md` for declarations, binding rules, routing, sessions, and the canonical
-layer boundaries.
-Read `references/data.md` for Database, Cache, and Vector handles, entities, seeders, and their
-operation utilities.
-Read `references/runtime.md` for TLS, outbound HTTP, responses, crypto, spawn, JWT, WebSockets,
-CORS, background jobs, protocol transports, and local models.
+## Reference routing
+
+| Task | Read only |
+| --- | --- |
+| Declarations, binding rules, functions, routing, sessions, or layer boundaries | `references/server.md` |
+| Database, Cache, Vector, entities, seeders, or persistence operations | `references/data.md` |
+| TLS, HTTP, responses, crypto, spawn, JWT, WebSockets, CORS, jobs, transports, or models | `references/runtime.md` |

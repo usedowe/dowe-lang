@@ -299,7 +299,6 @@ pub fn toast_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Toast, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::Toast, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     if !explicit_scheme {
         style.color.get_or_insert(kind.color());

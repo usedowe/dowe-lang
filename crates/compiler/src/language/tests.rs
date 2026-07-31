@@ -1905,6 +1905,29 @@ fn completions_include_quoted_static_component_values() {
 }
 
 #[test]
+fn completions_include_stepper_props_and_orientation_values() {
+    let root = Path::new("/project");
+    let component_document = LanguageDocument {
+        path: Path::new("/project/pages/onboarding.dowe").to_path_buf(),
+        source: "page onboardingPage\n  Stepper \n    step \n".to_string(),
+    };
+    let stepper = complete_document(root, &component_document, 2, 11);
+    assert!(stepper.iter().any(|item| item.label == "scheme"));
+    assert!(stepper.iter().any(|item| item.label == "orientation"));
+    let step = complete_document(root, &component_document, 3, 10);
+    assert!(step.iter().any(|item| item.label == "id"));
+    assert!(step.iter().any(|item| item.label == "label"));
+
+    let value_document = LanguageDocument {
+        path: Path::new("/project/pages/onboarding.dowe").to_path_buf(),
+        source: "page onboardingPage\n  Stepper orientation:\n".to_string(),
+    };
+    let values = complete_document(root, &value_document, 2, 23);
+    assert!(values.iter().any(|item| item.label == "\"horizontal\""));
+    assert!(values.iter().any(|item| item.label == "\"vertical\""));
+}
+
+#[test]
 fn completions_include_appbar_position_prop_and_values() {
     let props_document = LanguageDocument {
         path: Path::new("/project/layouts/main.dowe").to_path_buf(),
@@ -1938,6 +1961,7 @@ fn completions_include_display_overlay_component_props_and_values() {
         "  AlertDialog variant:",
         "  Tooltip position:",
         "  Toast type:",
+        "  Toast variant:",
         "  Dropdown ",
         "  Command ",
         "  Command variant:",
@@ -2019,23 +2043,30 @@ fn completions_include_display_overlay_component_props_and_values() {
     let toast_type = complete_document(root, &document, 12, "  Toast type:".len() + 1);
     assert!(toast_type.iter().any(|item| item.label == "\"success\""));
     assert!(toast_type.iter().any(|item| item.label == "\"error\""));
+    let toast_variant = complete_document(root, &document, 13, "  Toast variant:".len() + 1);
+    assert!(
+        toast_variant
+            .iter()
+            .any(|item| item.label == "\"outlined\"")
+    );
+    assert!(toast_variant.iter().any(|item| item.label == "\"ghost\""));
 
-    let dropdown_props = complete_document(root, &document, 13, "  Dropdown ".len() + 1);
+    let dropdown_props = complete_document(root, &document, 14, "  Dropdown ".len() + 1);
     assert!(dropdown_props.iter().any(|item| item.label == "scheme"));
     assert!(!dropdown_props.iter().any(|item| item.label == "variant"));
 
-    let command_props = complete_document(root, &document, 14, "  Command ".len() + 1);
+    let command_props = complete_document(root, &document, 15, "  Command ".len() + 1);
     assert!(command_props.iter().any(|item| item.label == "shortcut"));
     assert!(command_props.iter().any(|item| item.label == "scheme"));
 
-    let command_variant = complete_document(root, &document, 15, "  Command variant:".len() + 1);
+    let command_variant = complete_document(root, &document, 16, "  Command variant:".len() + 1);
     assert!(command_variant.iter().any(|item| item.label == "\"ghost\""));
 
-    let item_props = complete_document(root, &document, 16, "  item ".len() + 1);
+    let item_props = complete_document(root, &document, 17, "  item ".len() + 1);
     assert!(item_props.iter().any(|item| item.label == "history"));
     assert!(item_props.iter().any(|item| item.label == "onClick"));
 
-    let group_props = complete_document(root, &document, 17, "  group ".len() + 1);
+    let group_props = complete_document(root, &document, 18, "  group ".len() + 1);
     assert!(group_props.iter().any(|item| item.label == "label"));
 }
 
@@ -2523,6 +2554,8 @@ fn every_builtin_view_component_and_prop_has_editor_documentation() {
         "Card",
         "Tabs",
         "tab",
+        "Stepper",
+        "step",
         "Title",
         "Text",
     ];
@@ -2689,6 +2722,7 @@ fn server_constructs_and_portable_utilities_have_editor_documentation() {
         "model",
         "cors",
         "init",
+        "redirect",
         "response",
         "return",
         "str",

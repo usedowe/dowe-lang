@@ -69,7 +69,7 @@ async fn views_server_advances_when_the_preferred_port_is_occupied() {
 async fn serves_project_icons_without_cache_and_rejects_traversal() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
-    let icon = temp.path().join("assets/icons/web/favicon-32x32.png");
+    let icon = temp.path().join("icons/web/favicon-32x32.png");
     fs::create_dir_all(icon.parent().expect("icon parent")).expect("icon directory");
     fs::write(&icon, "png").expect("icon");
     let project = compile_dev(temp.path()).expect("project");
@@ -87,7 +87,7 @@ async fn serves_project_icons_without_cache_and_rejects_traversal() {
     let client = reqwest::Client::new();
 
     let response = client
-        .get(format!("{views}/assets/icons/web/favicon-32x32.png"))
+        .get(format!("{views}/icons/web/favicon-32x32.png"))
         .send()
         .await
         .expect("icon response");

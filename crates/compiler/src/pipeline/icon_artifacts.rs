@@ -15,8 +15,7 @@ pub(super) struct ProjectIconTargets {
 
 impl ProjectIconTargets {
     pub fn detect(root: &Path) -> DoweResult<Self> {
-        let icons = root.join("assets/icons");
-        reject_icon_root_symlink(&root.join("assets"))?;
+        let icons = root.join("icons");
         reject_icon_root_symlink(&icons)?;
         Ok(Self {
             web_favicon: regular_icon_file(&icons, "web/favicon-32x32.png")?,
@@ -70,27 +69,25 @@ fn regular_icon_file(root: &Path, relative: &str) -> DoweResult<bool> {
 }
 
 pub(super) fn apply_web_icon_documents(web: &mut WebOutput, icons: &ProjectIconTargets) {
-    let favicon = icons
-        .web_favicon
-        .then_some("/assets/icons/web/favicon-32x32.png");
+    let favicon = icons.web_favicon.then_some("/icons/web/favicon-32x32.png");
     let apple_touch = icons
         .web_apple_touch
-        .then_some("/assets/icons/web/apple-touch-icon.png");
+        .then_some("/icons/web/apple-touch-icon.png");
     for page in &mut web.pages {
         page.html_document = render_page_document_with_icons(page, favicon, apple_touch);
     }
 }
 
 pub(super) fn sync_project_icons(root: &Path, icons: &ProjectIconTargets) -> DoweResult<()> {
-    let source = root.join("assets/icons");
+    let source = root.join("icons");
     sync_optional_directory(
         &source.join("web"),
-        &root.join(".dowe/web/assets/icons/web"),
+        &root.join(".dowe/web/icons/web"),
         icons.web_favicon,
     )?;
     sync_optional_directory(
         &source.join("web"),
-        &root.join(".dowe/apps/desktop/web/assets/icons/web"),
+        &root.join(".dowe/apps/desktop/web/icons/web"),
         icons.web_favicon,
     )?;
     sync_optional_file(

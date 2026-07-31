@@ -8,7 +8,7 @@ use dowe_components::{
     DividerOrientation, DividerProps, DragGroup, DragItem, DrawerProps, DropzoneProps, DropdownProps, ElementProps, EmptyProps,
     FabAction, FabProps, FlexDirection, FontConfig, FontFamily, GapSize, GapValue, GridAlignment, GridProps,
     GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify,
-    LayoutProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, solar_control_icon, view_icon,
+    LayoutProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, SIDE_NAV_SUBMENU_ARROW_PATH, side_nav_submenu_arrow_icon, solar_control_icon, view_icon,
     NavigationAction, OverlayEntry, OverlayCornerPosition, OverlayItemProps, OverlayPaint, PositionProps,
     RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark, RoundedSize, ScaleValue, ScaffoldProps,
     RailNavItem, RailNavProps,

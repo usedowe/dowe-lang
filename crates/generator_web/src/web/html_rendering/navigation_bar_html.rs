@@ -19,7 +19,13 @@ fn render_bar_html(
             context,
         )
     );
-    html.push_str(&render_bar_region_html(base, "top", top, children_html, context));
+    html.push_str(&render_bar_region_html(
+        base,
+        "top",
+        top,
+        children_html,
+        context,
+    ));
     html.push_str(&format!(
         "<div{}>",
         class_attr(bar_content_classes(base, props))
@@ -46,7 +52,13 @@ fn render_bar_html(
         context,
     ));
     html.push_str("</div>");
-    html.push_str(&render_bar_region_html(base, "bottom", bottom, children_html, context));
+    html.push_str(&render_bar_region_html(
+        base,
+        "bottom",
+        bottom,
+        children_html,
+        context,
+    ));
     html.push_str(&format!("</{tag}>"));
     html
 }
@@ -59,7 +71,12 @@ fn render_bottom_bar_html(
     let boxed = if props.boxed { " is-boxed" } else { "" };
     let mut html = format!(
         "<nav{}><div class=\"bottombar-tabs{boxed}\">",
-        attrs(bar_classes("bottombar", props), Some(&props.style.element), None, context)
+        attrs(
+            bar_classes("bottombar", props),
+            Some(&props.style.element),
+            None,
+            context
+        )
     );
     for tab in tabs {
         let featured = if tab.featured { " is-featured" } else { "" };
@@ -178,16 +195,30 @@ fn collect_tabs_js_segments(
         if active {
             classes.push("on-active".to_string());
         }
+        let label = localized_span("tabs-label", &tab.label, tab.i18n.as_deref());
+        let content = if props.variant == TabsVariant::Stepper {
+            format!(
+                r#"<span class="step-indicator" aria-hidden="true">{}</span>{label}"#,
+                index + 1
+            )
+        } else {
+            label
+        };
         push_literal(
             segments,
             &format!(
-                r#"<button{} type="button" role="tab" id="{}" aria-selected="{}" aria-controls="{}" data-dowe-tab="{}">{}</button>"#,
+                r#"<button{} type="button" role="tab" id="{}" aria-selected="{}" aria-controls="{}"{} data-dowe-tab="{}">{}</button>"#,
                 class_attr(classes),
                 escape_attr(&tab_button_id(tab)),
                 if active { "true" } else { "false" },
                 escape_attr(&tab_panel_id(tab)),
+                if props.variant == TabsVariant::Stepper && active {
+                    r#" aria-current="step""#
+                } else {
+                    ""
+                },
                 escape_attr(&tab.id),
-                localized_span("tabs-label", &tab.label, tab.i18n.as_deref())
+                content
             ),
         );
     }

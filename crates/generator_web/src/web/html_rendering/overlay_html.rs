@@ -109,7 +109,7 @@ fn render_modal_html(
         html.push_str("</div>");
     }
     if !props.hide_close_button {
-        html.push_str(modal_close_html());
+        html.push_str(&modal_close_html());
     }
     html.push_str("</div></div>");
     html
@@ -130,8 +130,11 @@ fn modal_attrs(props: &ModalProps, context: &ReactiveRenderContext) -> String {
     attrs
 }
 
-fn modal_close_html() -> &'static str {
-    r#"<button class="modal-close" type="button" aria-label="Close modal" data-dowe-modal-close>&times;</button>"#
+fn modal_close_html() -> String {
+    format!(
+        r#"<button class="modal-close" type="button" aria-label="Close modal" data-dowe-modal-close>{}</button>"#,
+        overlay_close_icon_html()
+    )
 }
 
 fn render_alert_dialog_html(props: &AlertDialogProps, context: &ReactiveRenderContext) -> String {
@@ -224,8 +227,19 @@ fn render_toast_html(props: &ToastProps, context: &ReactiveRenderContext) -> Str
         .as_deref()
         .map(|title| format!(r#"<div class="toast-title">{}</div>"#, escape_html(title)))
         .unwrap_or_default();
+    let icon = if props.show_icon {
+        let value = match props.kind {
+            ToastKind::Success => "✓",
+            ToastKind::Warning => "!",
+            ToastKind::Danger | ToastKind::Error => "x",
+            ToastKind::Primary | ToastKind::Secondary | ToastKind::Muted | ToastKind::Info => "i",
+        };
+        format!(r#"<span class="toast-icon" aria-hidden="true">{value}</span>"#)
+    } else {
+        String::new()
+    };
     format!(
-        r#"<div{}{}><div class="toast-content">{title}<div class="toast-description">{}</div></div><button class="toast-close" type="button" aria-label="Close toast" data-dowe-toast-close>&times;</button></div>"#,
+        r#"<div{}{}>{icon}<div class="toast-content">{title}<div class="toast-description">{}</div></div><button class="toast-close" type="button" aria-label="Close toast" data-dowe-toast-close>{}</button></div>"#,
         attrs(
             toast_classes(props),
             Some(&props.style.element),
@@ -233,7 +247,8 @@ fn render_toast_html(props: &ToastProps, context: &ReactiveRenderContext) -> Str
             context
         ),
         hidden,
-        escape_html(&props.description)
+        escape_html(&props.description),
+        overlay_close_icon_html()
     )
 }
 

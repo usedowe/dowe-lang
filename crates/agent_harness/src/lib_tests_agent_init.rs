@@ -105,6 +105,8 @@
         assert!(!root_agents.contains("dowe agent examples search"));
         assert!(!root_agents.contains("dowe agent skills"));
         assert!(!root_agents.contains("dowe agent chat"));
+        assert!(!root_agents.contains("Node.js"));
+        assert!(!root_agents.contains("Tailwind"));
         let root_claude =
             fs::read_to_string(temp.path().join("CLAUDE.md")).expect("root claude");
         assert!(root_claude.contains("AGENTS.md"));
@@ -122,6 +124,31 @@
         assert!(repeated.created.is_empty());
         assert_eq!(repeated.preserved.len(), 8);
         assert!(!temp.path().join(".dowe").exists());
+    }
+
+    #[test]
+    fn harness_check_warns_when_project_agent_version_differs() {
+        let temp = TempDir::new().expect("tempdir");
+        init_agent_project_with_skills(temp.path(), InitOptions::default(), &managed_skills())
+            .expect("agent init");
+        let path = temp.path().join(".agents/manifest.json");
+        let content = fs::read_to_string(&path).expect("manifest");
+        fs::write(
+            &path,
+            content.replace(env!("CARGO_PKG_VERSION"), "0.0.0"),
+        )
+        .expect("stale manifest");
+
+        let report = check_harness(temp.path()).expect("check");
+        let diagnostic = report
+            .diagnostics
+            .iter()
+            .find(|diagnostic| diagnostic.code == "dowe_version_mismatch")
+            .expect("version warning");
+
+        assert_eq!(diagnostic.severity, DiagnosticSeverity::Warning);
+        assert!(diagnostic.action.contains("verify `dowe version`"));
+        assert!(!report.has_errors());
     }
 
     #[test]

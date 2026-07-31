@@ -116,6 +116,35 @@ fn builds_project_graph_without_agents() {
 }
 
 #[test]
+fn builds_project_graph_from_root_dowe_source() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("views/pages")).expect("views");
+    fs::create_dir_all(temp.path().join("server/handlers")).expect("server");
+    fs::write(temp.path().join("main.dowe"), "main\n").expect("main");
+    fs::write(
+        temp.path().join("views/pages/account.dowe"),
+        "page AccountPage\n",
+    )
+    .expect("page");
+    fs::write(
+        temp.path().join("server/handlers/account.dowe"),
+        "handler account\n",
+    )
+    .expect("handler");
+
+    let graph = build_codegraph(temp.path(), BuildOptions::default()).expect("graph");
+    let paths = graph
+        .nodes
+        .iter()
+        .filter_map(|node| node.path.as_deref())
+        .collect::<Vec<_>>();
+
+    assert!(paths.contains(&"main.dowe"));
+    assert!(paths.contains(&"views/pages/account.dowe"));
+    assert!(paths.contains(&"server/handlers/account.dowe"));
+}
+
+#[test]
 fn builds_project_graph_with_agents() {
     let temp = TempDir::new().expect("tempdir");
     fs::create_dir_all(temp.path().join(".agents/harnesses")).expect("agents");

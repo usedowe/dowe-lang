@@ -77,8 +77,14 @@ pub(crate) fn project_asset_response(
     path: &str,
     cache_control: &'static str,
 ) -> Option<Response> {
-    let relative = path.strip_prefix("/assets/")?;
-    let Some(path) = safe_project_asset_path(&project.root, relative) else {
+    let (directory, relative) = if let Some(relative) = path.strip_prefix("/assets/") {
+        ("assets", relative)
+    } else if let Some(relative) = path.strip_prefix("/icons/") {
+        ("icons", relative)
+    } else {
+        return None;
+    };
+    let Some(path) = safe_project_asset_path(&project.root, directory, relative) else {
         return Some(StatusCode::NOT_FOUND.into_response());
     };
     let Ok(content) = fs::read(&path) else {
@@ -88,17 +94,18 @@ pub(crate) fn project_asset_response(
     Some(
         (
             StatusCode::OK,
-            [
-                (CONTENT_TYPE, content_type),
-                (CACHE_CONTROL, cache_control),
-            ],
+            [(CONTENT_TYPE, content_type), (CACHE_CONTROL, cache_control)],
             content,
         )
             .into_response(),
     )
 }
 
-fn safe_project_asset_path(root: &Path, relative: &str) -> Option<std::path::PathBuf> {
+fn safe_project_asset_path(
+    root: &Path,
+    directory: &str,
+    relative: &str,
+) -> Option<std::path::PathBuf> {
     let relative = Path::new(relative);
     if relative.as_os_str().is_empty()
         || relative.is_absolute()
@@ -108,11 +115,11 @@ fn safe_project_asset_path(root: &Path, relative: &str) -> Option<std::path::Pat
     {
         return None;
     }
-    let assets = root.join("assets");
-    if fs::symlink_metadata(&assets).ok()?.file_type().is_symlink() {
+    let base = root.join(directory);
+    if fs::symlink_metadata(&base).ok()?.file_type().is_symlink() {
         return None;
     }
-    let mut current = assets;
+    let mut current = base;
     for component in relative.components() {
         let Component::Normal(value) = component else {
             return None;
@@ -246,36 +253,27 @@ mod project_asset_tests {
     #[test]
     fn resolves_regular_project_assets_and_rejects_traversal() {
         let temp = TempDir::new().expect("tempdir");
-        fs::create_dir_all(temp.path().join("assets/icons/web")).expect("assets");
-        fs::write(
-            temp.path().join("assets/icons/web/favicon-32x32.png"),
-            "png",
-        )
-        .expect("asset");
+        fs::create_dir_all(temp.path().join("icons/web")).expect("icons");
+        fs::write(temp.path().join("icons/web/favicon-32x32.png"), "png").expect("asset");
 
-        assert!(
-            safe_project_asset_path(temp.path(), "icons/web/favicon-32x32.png").is_some()
-        );
-        assert!(safe_project_asset_path(temp.path(), "../main.dowe").is_none());
-        assert!(safe_project_asset_path(temp.path(), "/etc/passwd").is_none());
-        assert_eq!(
-            asset_content_type(Path::new("favicon.png")),
-            "image/png"
-        );
+        assert!(safe_project_asset_path(temp.path(), "icons", "web/favicon-32x32.png").is_some());
+        assert!(safe_project_asset_path(temp.path(), "icons", "../main.dowe").is_none());
+        assert!(safe_project_asset_path(temp.path(), "icons", "/etc/passwd").is_none());
+        assert_eq!(asset_content_type(Path::new("favicon.png")), "image/png");
     }
 
     #[cfg(unix)]
     #[test]
     fn rejects_symlinked_project_assets() {
         let temp = TempDir::new().expect("tempdir");
-        fs::create_dir_all(temp.path().join("assets/icons")).expect("assets");
+        fs::create_dir_all(temp.path().join("icons")).expect("icons");
         fs::write(temp.path().join("outside.png"), "outside").expect("outside");
         std::os::unix::fs::symlink(
             temp.path().join("outside.png"),
-            temp.path().join("assets/icons/favicon.png"),
+            temp.path().join("icons/favicon.png"),
         )
         .expect("symlink");
 
-        assert!(safe_project_asset_path(temp.path(), "icons/favicon.png").is_none());
+        assert!(safe_project_asset_path(temp.path(), "icons", "favicon.png").is_none());
     }
 }

@@ -140,6 +140,106 @@ fn dev_activity_layout_widgets() -> &'static str {
         return view;
     }
 
+    private static final class DoweAccordionState {
+        final boolean multiple;
+        final int contentColor;
+        final float radius;
+        final ArrayList<DoweAccordionItemState> items = new ArrayList<>();
+
+        DoweAccordionState(boolean multiple, int contentColor, float radius) {
+            this.multiple = multiple;
+            this.contentColor = contentColor;
+            this.radius = radius;
+        }
+    }
+
+    private static final class DoweAccordionItemState {
+        final LinearLayout body;
+        final DoweSvgView arrow;
+        boolean open;
+
+        DoweAccordionItemState(LinearLayout body, DoweSvgView arrow) {
+            this.body = body;
+            this.arrow = arrow;
+        }
+    }
+
+    private LinearLayout doweAccordion(boolean multiple, int backgroundColor, int contentColor, Integer borderColor, float radius) {
+        LinearLayout view = doweContainer(false);
+        view.setPadding(doweDp(4), doweDp(4), doweDp(4), doweDp(4));
+        view.setBackground(borderColor == null
+            ? doweBackground(backgroundColor, radius)
+            : doweInputBackground(backgroundColor, borderColor, radius));
+        doweRound(view, radius);
+        view.setTag(new DoweAccordionState(multiple, contentColor, radius));
+        return view;
+    }
+
+    private LinearLayout doweAccordionItem(LinearLayout accordion, String label, boolean disabled, boolean defaultOpen, String font, DoweSvgView arrow) {
+        DoweAccordionState accordionState = (DoweAccordionState) accordion.getTag();
+        float itemRadius = accordionState.radius * 0.85f;
+        LinearLayout item = doweContainer(false);
+        item.setBackground(doweInputBackground(Color.TRANSPARENT, doweAlpha(accordionState.contentColor, 0.12f), itemRadius));
+        doweRound(item, itemRadius);
+        item.setAlpha(disabled ? 0.5f : 1f);
+        LinearLayout header = doweContainer(true);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(doweDp(16), doweDp(12), doweDp(16), doweDp(12));
+        header.setContentDescription(label);
+        header.setFocusable(!disabled);
+        header.setEnabled(!disabled);
+        TextView labelView = doweText(label, accordionState.contentColor, 14f, 600, 0f, 20f, font);
+        labelView.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        doweAdd(header, labelView);
+        arrow.setLayoutParams(new LinearLayout.LayoutParams(doweDp(20), doweDp(20)));
+        arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        doweAdd(header, arrow, 12, true);
+        LinearLayout body = doweContainer(false);
+        body.setPadding(doweDp(16), doweDp(12), doweDp(16), doweDp(12));
+        doweAdd(item, header);
+        doweAdd(item, body);
+        DoweAccordionItemState itemState = new DoweAccordionItemState(body, arrow);
+        accordionState.items.add(itemState);
+        if (!disabled) {
+            header.setOnClickListener(target -> {
+                if (!itemState.open && !accordionState.multiple) {
+                    for (DoweAccordionItemState sibling : accordionState.items) {
+                        if (sibling != itemState) {
+                            doweSetAccordionOpen(sibling, false, true);
+                        }
+                    }
+                }
+                doweSetAccordionOpen(itemState, !itemState.open, true);
+            });
+        }
+        doweSetAccordionOpen(itemState, defaultOpen, false);
+        doweAdd(accordion, item, 8, false);
+        return body;
+    }
+
+    private void doweSetAccordionOpen(DoweAccordionItemState item, boolean open, boolean animate) {
+        item.open = open;
+        item.arrow.animate().cancel();
+        item.body.animate().cancel();
+        item.arrow.animate().rotation(open ? 90f : 0f).setDuration(animate ? 160 : 0).start();
+        if (open) {
+            item.body.setVisibility(View.VISIBLE);
+            item.body.setAlpha(animate ? 0f : 1f);
+            item.body.setTranslationY(animate ? -doweDp(4) : 0f);
+            item.body.animate().alpha(1f).translationY(0f).setDuration(animate ? 160 : 0).start();
+        } else if (animate && item.body.getVisibility() == View.VISIBLE) {
+            item.body.animate().alpha(0f).translationY(-doweDp(4)).setDuration(160).withEndAction(() -> {
+                if (!item.open) {
+                    item.body.setVisibility(View.GONE);
+                }
+            }).start();
+        } else {
+            item.body.setAlpha(0f);
+            item.body.setTranslationY(-doweDp(4));
+            item.body.setVisibility(View.GONE);
+        }
+    }
+
     private LinearLayout doweTable(String dataPath, String[] fields, String[] labels, int[] alignments, String[] widths, int tableSize, boolean striped, boolean bordered, boolean dividers, String emptyTitle, String emptyDescription, int backgroundColor, int contentColor, Integer borderColor) {
         LinearLayout view = doweContainer(false);
         view.setBackground(borderColor == null
@@ -465,7 +565,7 @@ fn dev_activity_layout_widgets() -> &'static str {
     private DoweSvgView doweSideNavArrow(int color) {
         ArrayList<DoweSvgPathEntry> paths = new ArrayList<>();
         paths.add(new DoweSvgPathEntry("M0 0h24v24H0z", false, null));
-        paths.add(new DoweSvgPathEntry("m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z", true, null));
+        paths.add(new DoweSvgPathEntry("__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__", true, null));
         DoweSvgView view = new DoweSvgView(this, 0f, 0f, 24f, 24f, color, paths);
         view.setLayoutParams(new LinearLayout.LayoutParams(doweDp(16), doweDp(16)));
         return view;

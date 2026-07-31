@@ -380,11 +380,47 @@ fn generates_global_toasts_for_sequential_request_functions() {
     assert!(generated.contains("DoweAction.Sequence(listOf(DoweStep.Request"));
     assert!(generated.contains("DoweStep.Toast(\"success\", \"Success\", \"Signed in\", 3000"));
     assert!(generated.contains("DoweAction.sequence(new DoweStep[] {DoweStep.request"));
-    assert!(generated.contains("DoweStep.toast(\"success\", \"Success\", \"Signed in\", 3000)"));
-    assert!(generated.contains("android.widget.Toast.makeText(context, message, duration).show()"));
-    assert!(generated.contains("android.widget.Toast.makeText(this, text, duration).show()"));
+    assert!(generated.contains(
+        "return new DoweStep(\"assign\", null, null, null, null, target, source, literal, hasLiteral, call, null, null, null, null, null, null);"
+    ));
+    assert!(generated.contains("DoweStep.toast(\"success\", \"Success\", \"Signed in\", 3000, \"success\", \"soft\", \"top-right\")"));
+    assert!(generated.contains("DoweGlobalToast(toast = state.toast, close = state::closeToast, viewportWidth = viewportWidth)"));
+    assert!(generated.contains("doweCardContainer(toast.variant, toast.scheme)"));
+    assert!(generated.contains("doweShowToast(step);"));
+    assert!(generated.contains("setContentDescription(\"Close toast\")"));
+    assert!(generated.contains("contentDescription = \"Close toast\""));
+    assert!(!generated.contains("android.widget.Toast.makeText"));
     assert!(generated.contains("signals.entries.lastOrNull { it.value.name == name }"));
     assert!(generated.contains("doweRequestPath(action.path, body, item)"));
+}
+
+#[test]
+fn generates_terminal_replace_redirect_for_compose_and_dev_shell() {
+    let mut redirect_route = route();
+    redirect_route.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: vec![ViewAction::init(
+            "init01".to_string(),
+            vec![ViewFunctionStatement::Redirect {
+                path: "/login".to_string(),
+            }],
+        )],
+        children: vec![text("Home")],
+    };
+    let output = generate_android(
+        &[redirect_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+
+    assert!(generated.contains("DoweStep.Redirect(\"/login\")"));
+    assert!(generated.contains("redirectPath = step.path"));
+    assert!(generated.contains("navigate(\"replace\", path, null)"));
+    assert!(generated.contains("DoweStep.redirect(\"/login\")"));
+    assert!(generated.contains("doweNavigate(\"replace\", step.target, null);"));
 }
 
 #[test]

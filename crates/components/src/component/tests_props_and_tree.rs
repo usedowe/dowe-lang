@@ -8,6 +8,48 @@
     }
 
     #[test]
+    fn normalizes_accordion_single_open_defaults() {
+        let default_open_items = || {
+            ["first", "second"]
+            .into_iter()
+            .map(|id| {
+                super::accordion_item_component(
+                    vec![
+                        string_prop("id", id),
+                        string_prop("label", id),
+                        boolean_prop("defaultOpen", true),
+                    ],
+                    vec![text_node(id).expect("text")],
+                )
+                .expect("accordion item")
+            })
+            .collect::<Vec<_>>()
+        };
+        let node =
+            super::accordion_component_node(Vec::new(), default_open_items()).expect("accordion");
+
+        match node {
+            ViewNode::Accordion { props, items } => {
+                assert!(!props.multiple);
+                assert!(items[0].default_open);
+                assert!(!items[1].default_open);
+            }
+            _ => panic!("accordion"),
+        }
+
+        let node = super::accordion_component_node(
+            vec![boolean_prop("multiple", true)],
+            default_open_items(),
+        )
+        .expect("multiple accordion");
+        let ViewNode::Accordion { props, items } = node else {
+            panic!("accordion");
+        };
+        assert!(props.multiple);
+        assert!(items.iter().all(|item| item.default_open));
+    }
+
+    #[test]
     fn validates_button_visual_props() {
         let node = container_component_node(
             BuiltinComponent::Button,
@@ -477,6 +519,21 @@
             panic!("icon svg");
         };
         assert!(paths.iter().any(|path| matches!(path.fill, SvgPathFill::Fill { opacity: 128, .. })));
+    }
+
+    #[test]
+    fn exposes_the_shared_side_nav_submenu_arrow_geometry() {
+        let arrow = super::side_nav_submenu_arrow_icon();
+
+        assert_eq!(arrow.props.view_box.as_str(), "0 0 24 24");
+        assert_eq!(
+            arrow.props.style.sizing.w.expect("width").entries[0].value,
+            SizeValue::Scale(ScaleValue::from_half_steps(8))
+        );
+        assert_eq!(arrow.paths.len(), 2);
+        assert_eq!(arrow.paths[1].data, super::SIDE_NAV_SUBMENU_ARROW_PATH);
+        assert!(matches!(arrow.paths[0].fill, SvgPathFill::None));
+        assert!(matches!(arrow.paths[1].fill, SvgPathFill::CurrentColor));
     }
 
     #[test]
@@ -1181,6 +1238,8 @@
             string_prop("type", "success"),
             string_prop("description", "Saved"),
             string_prop("position", "top-right"),
+            string_prop("variant", "outlined"),
+            string_prop("scheme", "surface"),
             boolean_prop("showIcon", true),
         ])
         .expect("toast");
@@ -1191,6 +1250,11 @@
                     kind: super::ToastKind::Success,
                     position: super::OverlayCornerPosition::TopRight,
                     show_icon: true,
+                    style: super::VariantProps {
+                        variant: Some(super::ComponentVariant::Outlined),
+                        color: Some(super::ColorFamily::Surface),
+                        ..
+                    },
                     ..
                 },
             }

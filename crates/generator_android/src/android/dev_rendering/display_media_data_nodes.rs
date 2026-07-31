@@ -41,41 +41,48 @@ fn render_dev_android_display_media_data_node(
         }
         ViewNode::Accordion { props, items } => {
             let current_font = props.style.style.font.as_ref().or(inherited_font);
-            let current_color = Some(dev_variant_content(&props.style).to_string());
+            let content_color = dev_card_variant_content(&props.style);
+            let current_color = Some(content_color.to_string());
+            let radius = dev_style_radius(&props.style.style);
             let view = next_dev_view(counter);
             output.push_str(&format!(
-                                        "        LinearLayout {view} = doweContainer(false);\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS));\n",
-                                        dev_variant_container(&props.style)
+                                        "        LinearLayout {view} = doweAccordion({}, {}, {}, {}, {radius});\n",
+                                        props.multiple,
+                                        dev_card_variant_container(&props.style),
+                                        content_color,
+                                        dev_card_border(&props.style),
                                     ));
             apply_dev_android_style(&props.style.style, &view, true, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             for item in items {
-                render_dev_android_variant_label(
-                    &item.label,
-                    &props.style,
-                    &view,
-                    None,
-                    false,
+                let arrow = side_nav_submenu_arrow_icon();
+                let arrow_view = render_dev_android_icon_view(
+                    &arrow,
                     counter,
                     output,
-                    current_font,
-                    context,
+                    Some(content_color),
                 );
-                if item.default_open {
-                    for child in &item.children {
-                        render_dev_android_node(
-                            child,
-                            &view,
-                            None,
-                            false,
-                            counter,
-                            output,
-                            current_font,
-                            current_color.clone(),
-                            context,
-                            children_method,
-                        );
-                    }
+                let body = next_dev_view(counter);
+                output.push_str(&format!(
+                    "        LinearLayout {body} = doweAccordionItem({view}, \"{}\", {}, {}, {}, {arrow_view});\n",
+                    escape_java(&item.label),
+                    item.disabled,
+                    item.default_open,
+                    dev_font_value(current_font),
+                ));
+                for child in &item.children {
+                    render_dev_android_node(
+                        child,
+                        &body,
+                        Some("8"),
+                        false,
+                        counter,
+                        output,
+                        current_font,
+                        current_color.clone(),
+                        context,
+                        children_method,
+                    );
                 }
             }
         }

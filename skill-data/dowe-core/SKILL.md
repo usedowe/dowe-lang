@@ -1,12 +1,11 @@
 ---
 name: dowe-core
-description: Author or restructure a Dowe project, understand Dowe Source Format, configure main.dowe, use imports, types, translation catalogs, the standard library, native tests, diagnose source, and apply Harness or CodeGraph when needed.
+description: Use for Dowe project roots, main.dowe, imports, types, translations, native tests, diagnostics, Harness, CodeGraph, or portable functions; skip for view-, server-, or theme-only edits.
 ---
 
 # Dowe project authoring
 
-Dowe Source Format is a small declarative language compiled by Rust. It does not execute user source
-through JavaScript or Node.js.
+Dowe Source Format is a small declarative language compiled through Dowe's shared Rust toolchain.
 
 ## Syntax model
 
@@ -39,6 +38,14 @@ View props continue to use bare bindings such as `bind:form.title` and `show:rea
 4. Preserve existing ownership and reuse declared bindings before adding new ones.
 5. Run the narrowest compiler, test, Harness, or CodeGraph validation required by the change.
 
+## Reference routing
+
+| Task | Read only |
+| --- | --- |
+| Root files, `main.dowe`, imports, types, translations, or project tree | `references/main.md` |
+| Diagnostics, validation, native tests, Harness, CodeGraph, or generated output | `references/workflow.md` |
+| Portable `str`, `math`, `parse`, `url`, `csv`, `sort`, `list`, `json`, or `date` function | `references/standard-library.md` |
+
 ## Boundaries
 
 - Keep `main.dowe`, `theme.dowe`, `.env.example`, and `.env` at the project root.
@@ -48,14 +55,8 @@ View props continue to use bare bindings such as `bind:form.title` and `show:rea
 - Frontend modules belong under `views`; backend modules belong under `server`. Keep this canonical
   separation for new source even though declarations and imports remain the compiler authority.
 - Treat `main.dowe` and `theme.dowe` as the only Dowe files with fixed root locations.
-- Do not require Node.js, `node_modules`, Tailwind, React, or browser-only runtime behavior.
 - Do not write comments in `.dowe` source or in any generated code; Dowe source expresses intent
   through declarations, and generated output must stay comment-free.
 - Do not edit generated `.dowe` artifacts as source of truth.
 - Treat compiler diagnostics as the final authority for syntax and props.
 - Keep server behavior in Rust-owned Dowe compilation and views target-neutral.
-
-Read `references/main.md` for root files, imports, type declarations, translation catalogs, and
-the canonical project tree. Read `references/workflow.md` for validation, native tests, Harness,
-CodeGraph, generated output, and security. Read `references/standard-library.md` for the complete
-portable function catalog shared by server statements and view `set` sources.

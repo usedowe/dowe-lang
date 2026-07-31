@@ -386,6 +386,7 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "request",
         "set",
         "reset",
+        "redirect",
         "if",
         "else",
         "each",
@@ -800,6 +801,7 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::Map
             | BuiltinComponent::Image
             | BuiltinComponent::Accordion
+            | BuiltinComponent::Toast
             | BuiltinComponent::Checkbox
             | BuiltinComponent::Color
             | BuiltinComponent::Date
@@ -823,7 +825,6 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::AvatarGroup
             | BuiltinComponent::Badge
             | BuiltinComponent::Tooltip
-            | BuiltinComponent::Toast
             | BuiltinComponent::Fab
             | BuiltinComponent::Record,
             "variant",
@@ -852,6 +853,7 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::BottomBar
             | BuiltinComponent::Sidebar
             | BuiltinComponent::Tabs
+            | BuiltinComponent::Stepper
             | BuiltinComponent::Drawer
             | BuiltinComponent::Avatar
             | BuiltinComponent::Badge
@@ -1087,6 +1089,9 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Tabs, "position") => Some(quoted_values(
             TabsPosition::all().iter().map(|value| value.as_str()),
         )),
+        (BuiltinComponent::Stepper, "orientation") => {
+            Some(quoted_values(["horizontal", "vertical"]))
+        }
         (BuiltinComponent::Avatar, "status") => Some(quoted_values(
             AvatarStatus::all().iter().map(|value| value.as_str()),
         )),
@@ -1280,6 +1285,8 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Splash" => vec!["bind"],
         "Tabs" => TABS_PROPS.to_vec(),
         "tab" => TAB_PROPS.to_vec(),
+        "Stepper" => STEPPER_PROPS.to_vec(),
+        "step" => STEP_PROPS.to_vec(),
         "Drawer" => DRAWER_PROPS.to_vec(),
         "Avatar" => AVATAR_PROPS.to_vec(),
         "Badge" => BADGE_PROPS.to_vec(),
@@ -1754,6 +1761,29 @@ const TAB_PROPS: &[&str] = &[
     "externalMode",
     "featured",
 ];
+const STEPPER_PROPS: &[&str] = &[
+    "scheme",
+    "orientation",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
+    "border",
+];
+const STEP_PROPS: &[&str] = &["id", "label", "i18n"];
 const DRAWER_PROPS: &[&str] = &[
     "open",
     "position",

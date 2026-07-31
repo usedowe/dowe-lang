@@ -1,41 +1,60 @@
 fn android_runtime_overlays() -> &'static str {
-    r#"@Composable
+    r#"private val doweOverlayCloseViewBox = DoweSvgViewBox(0f, 0f, 24f, 24f)
+private val doweOverlayClosePaths = listOf(
+    DoweSvgPath("M0 0h24v24H0z", DoweSvgFill.None),
+    DoweSvgPath("m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z", DoweSvgFill.CurrentColor)
+)
+
+@Composable
 private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: Dp, disableOverlayClose: Boolean, hideCloseButton: Boolean, header: (@Composable () -> Unit)?, footer: (@Composable () -> Unit)?, content: @Composable () -> Unit) {
     if (!open) {
         return
     }
-    Popup(properties = PopupProperties(focusable = true)) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Dialog(
+        onDismissRequest = { if (!disableOverlayClose) close() },
+        properties = DialogProperties(dismissOnClickOutside = !disableOverlayClose, usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val modalMaxWidth = (maxWidth * 0.95f).coerceAtMost(560.dp)
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(Color.Black.copy(alpha = 0.48f))
                     .clickable { if (!disableOverlayClose) close() }
             )
-            Column(
+            Box(
                 modifier = Modifier
-                    .widthIn(max = 560.dp)
+                    .width(modalMaxWidth)
+                    .padding(16.dp)
                     .clip(RoundedCornerShape(radius))
                     .background(backgroundColor)
                     .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(radius)))
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 CompositionLocalProvider(LocalContentColor provides contentColor) {
-                    if (header != null) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.weight(1f)) { header() }
-                            if (!hideCloseButton) {
-                                Text(text = "x", modifier = Modifier.clickable(onClick = close).padding(4.dp), color = contentColor.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    } else if (!hideCloseButton) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            Text(text = "x", modifier = Modifier.clickable(onClick = close).padding(4.dp), color = contentColor.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
-                        }
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        header?.invoke()
+                        content()
+                        footer?.invoke()
                     }
-                    content()
-                    footer?.invoke()
+                }
+                if (!hideCloseButton) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(DoweDesign.softMuted)
+                            .clickable(onClick = close)
+                            .semantics { contentDescription = "Close modal" }
+                            .width(28.dp)
+                            .height(28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweOverlayClosePaths)
+                    }
                 }
             }
         }
@@ -43,26 +62,36 @@ private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, 
 }
 
 @Composable
-private fun DoweAlertDialog(open: Boolean, close: () -> Unit, title: String, description: String, confirmText: String, cancelText: String, backgroundColor: Color, contentColor: Color, dangerColor: Color, radius: Dp, loading: Boolean, onConfirm: (() -> Unit)?, onCancel: (() -> Unit)?) {
+private fun DoweAlertDialog(open: Boolean, close: () -> Unit, title: String, description: String, confirmText: String, cancelText: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, confirmBackgroundColor: Color, confirmContentColor: Color, radius: Dp, loading: Boolean, onConfirm: (() -> Unit)?) {
     DoweModal(
         open = open,
         close = close,
         backgroundColor = backgroundColor,
         contentColor = contentColor,
-        borderColor = null,
+        borderColor = borderColor,
         radius = radius,
         disableOverlayClose = true,
         hideCloseButton = true,
         header = { Text(text = title, color = contentColor, fontSize = 18.sp, fontWeight = FontWeight.SemiBold) },
         footer = {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                 Button(
                     enabled = !loading,
-                    onClick = { close(); onCancel?.invoke() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = contentColor),
-                    border = BorderStroke(1.dp, contentColor.copy(alpha = 0.24f))
+                    onClick = close,
+                    modifier = Modifier.defaultMinSize(minWidth = 0.dp, minHeight = doweButtonMinHeight("md")),
+                    shape = RoundedCornerShape(DoweDesign.radius),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = DoweDesign.muted),
+                    border = BorderStroke(1.dp, DoweDesign.muted),
+                    contentPadding = PaddingValues(horizontal = doweButtonHorizontalPadding("md"), vertical = doweButtonVerticalPadding("md"))
                 ) { Text(cancelText) }
-                Button(enabled = !loading, onClick = { onConfirm?.invoke() }, colors = ButtonDefaults.buttonColors(containerColor = dangerColor, contentColor = DoweDesign.onDanger)) { Text(confirmText) }
+                Button(
+                    enabled = !loading,
+                    onClick = { onConfirm?.invoke() },
+                    modifier = Modifier.defaultMinSize(minWidth = 0.dp, minHeight = doweButtonMinHeight("md")),
+                    shape = RoundedCornerShape(DoweDesign.radius),
+                    colors = ButtonDefaults.buttonColors(containerColor = confirmBackgroundColor, contentColor = confirmContentColor),
+                    contentPadding = PaddingValues(horizontal = doweButtonHorizontalPadding("md"), vertical = doweButtonVerticalPadding("md"))
+                ) { Text(confirmText) }
             }
         }
     ) {
@@ -78,20 +107,23 @@ private fun DoweTooltip(label: String, position: String, backgroundColor: Color,
 }
 
 @Composable
-private fun DoweToast(visible: Boolean, title: String, description: String, position: String, backgroundColor: Color, contentColor: Color, showIcon: Boolean, kind: String, close: (() -> Unit)?) {
-    if (!visible) {
+private fun DoweToast(visible: Boolean, title: String, description: String, position: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, showIcon: Boolean, kind: String, close: (() -> Unit)?, viewportWidth: Dp) {
+    var dismissed by remember(visible, title, description) { mutableStateOf(false) }
+    if (!visible || dismissed) {
         return
     }
+    val toastWidth = (viewportWidth - 32.dp).coerceAtLeast(1.dp).coerceAtMost(420.dp)
     Popup(alignment = doweCornerAlignment(position)) {
         Row(
             modifier = Modifier
                 .padding(16.dp)
-                .widthIn(max = 420.dp)
+                .width(toastWidth)
                 .clip(RoundedCornerShape(DoweDesign.radius))
                 .background(backgroundColor)
+                .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(DoweDesign.radius)))
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (showIcon) {
                 Text(text = doweToastIcon(kind), color = contentColor, fontWeight = FontWeight.Bold)
@@ -102,11 +134,44 @@ private fun DoweToast(visible: Boolean, title: String, description: String, posi
                 }
                 Text(text = description, color = contentColor.copy(alpha = 0.9f), fontSize = 14.sp)
             }
-            if (close != null) {
-                Text(text = "x", modifier = Modifier.clickable(onClick = close), color = contentColor.copy(alpha = 0.72f), fontWeight = FontWeight.Bold)
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(DoweDesign.softMuted)
+                    .clickable { dismissed = true; close?.invoke() }
+                    .semantics { contentDescription = "Close toast" }
+                    .width(28.dp)
+                    .height(28.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweOverlayClosePaths)
             }
         }
     }
+}
+
+@Composable
+private fun DoweGlobalToast(toast: DoweToastState?, close: () -> Unit, viewportWidth: Dp) {
+    if (toast == null) {
+        return
+    }
+    LaunchedEffect(toast) {
+        delay(toast.duration.toLong().coerceAtLeast(500L))
+        close()
+    }
+    DoweToast(
+        visible = true,
+        title = toast.title,
+        description = toast.message,
+        position = toast.position,
+        backgroundColor = doweCardContainer(toast.variant, toast.scheme),
+        contentColor = doweCardContent(toast.variant, toast.scheme),
+        borderColor = doweCardBorder(toast.variant, toast.scheme),
+        showIcon = false,
+        kind = toast.kind,
+        close = close,
+        viewportWidth = viewportWidth
+    )
 }
 
 private fun doweCornerAlignment(position: String): Alignment =

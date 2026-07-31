@@ -461,6 +461,9 @@ pub enum ViewFunctionStatement {
     Assign(ViewAssignAction),
     Reset(ViewResetAction),
     Toast(ViewToastAction),
+    Redirect {
+        path: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -781,9 +784,7 @@ impl StyleProps {
     }
 
     pub fn position(&self) -> &PositionProps {
-        self.position
-            .as_deref()
-            .unwrap_or(&PositionProps::STATIC)
+        self.position.as_deref().unwrap_or(&PositionProps::STATIC)
     }
 
     pub fn position_mut(&mut self) -> &mut PositionProps {
@@ -949,9 +950,7 @@ pub struct SvgMotion {
 
 impl SvgProps {
     pub fn is_animated(&self) -> bool {
-        self.motion
-            .as_ref()
-            .is_some_and(|source| source.animated)
+        self.motion.as_ref().is_some_and(|source| source.animated)
     }
 }
 
@@ -2243,12 +2242,7 @@ impl SkeletonVariant {
     }
 
     pub fn all() -> &'static [Self] {
-        &[
-            Self::Text,
-            Self::Circular,
-            Self::Rectangular,
-            Self::Rounded,
-        ]
+        &[Self::Text, Self::Circular, Self::Rectangular, Self::Rounded]
     }
 }
 
@@ -2472,6 +2466,7 @@ pub enum TabsVariant {
     Line,
     Ghost,
     Pills,
+    Stepper,
 }
 
 impl TabsVariant {
@@ -2493,6 +2488,7 @@ impl TabsVariant {
             Self::Line => "line",
             Self::Ghost => "ghost",
             Self::Pills => "pills",
+            Self::Stepper => "stepper",
         }
     }
 
@@ -3922,6 +3918,8 @@ pub enum BuiltinComponent {
     Card,
     Tabs,
     Tab,
+    Stepper,
+    Step,
     Title,
     Text,
 }
@@ -4019,6 +4017,8 @@ impl BuiltinComponent {
         Self::Card,
         Self::Tabs,
         Self::Tab,
+        Self::Stepper,
+        Self::Step,
         Self::Title,
         Self::Text,
     ];
@@ -4116,6 +4116,8 @@ impl BuiltinComponent {
             "Card" => Some(Self::Card),
             "Tabs" => Some(Self::Tabs),
             "tab" => Some(Self::Tab),
+            "Stepper" => Some(Self::Stepper),
+            "step" => Some(Self::Step),
             "Title" => Some(Self::Title),
             "Text" => Some(Self::Text),
             _ => None,
@@ -4215,6 +4217,8 @@ impl BuiltinComponent {
             Self::Card => "Card",
             Self::Tabs => "Tabs",
             Self::Tab => "tab",
+            Self::Stepper => "Stepper",
+            Self::Step => "step",
             Self::Title => "Title",
             Self::Text => "Text",
         }

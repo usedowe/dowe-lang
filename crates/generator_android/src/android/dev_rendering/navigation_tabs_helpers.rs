@@ -22,7 +22,7 @@ fn render_dev_android_tabs(
     let list_radius = match props.variant {
         TabsVariant::Pills => "999f",
         TabsVariant::Solid | TabsVariant::Outlined => "DOWE_RADIUS",
-        TabsVariant::Line | TabsVariant::Ghost => "0f",
+        TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => "0f",
     };
     let tab_radius = match props.variant {
         TabsVariant::Pills => "999f",
@@ -31,7 +31,7 @@ fn render_dev_android_tabs(
     let active_background = dev_tab_background(props, true, tab_radius);
     let inactive_background = dev_tab_background(props, false, tab_radius);
     let active_content = match props.variant {
-        TabsVariant::Line | TabsVariant::Ghost => dev_tabs_accent(props),
+        TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => dev_tabs_accent(props),
         TabsVariant::Solid | TabsVariant::Outlined | TabsVariant::Pills => {
             dev_tabs_active_content(props)
         }
@@ -45,28 +45,31 @@ fn render_dev_android_tabs(
     output.push_str(&dev_add(parent, &root, parent_gap, parent_horizontal));
     output.push_str(&format!(
         "        LinearLayout {list} = doweContainer({list_horizontal});\n        {list}.setGravity(Gravity.CENTER_VERTICAL);\n        doweWrapContentWidth({list});\n        {list}.setPadding(doweDp({}), doweDp({}), doweDp({}), doweDp({}));\n",
-        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost) {
+        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper) {
             0
         } else {
             4
         },
-        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost) {
+        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper) {
             0
         } else {
             4
         },
-        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost) {
+        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper) {
             0
         } else {
             4
         },
-        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost) {
+        if matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper) {
             0
         } else {
             4
         }
     ));
-    if !matches!(props.variant, TabsVariant::Line | TabsVariant::Ghost) {
+    if !matches!(
+        props.variant,
+        TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper
+    ) {
         let background = if dev_tabs_border(props) == "null" {
             format!(
                 "doweBackground({}, {list_radius})",
@@ -104,9 +107,18 @@ fn render_dev_android_tabs(
         let panel = next_dev_view(counter);
         button_names.push(button.clone());
         panel_names.push(panel.clone());
+        let label = if props.variant == TabsVariant::Stepper {
+            format!(
+                "\"{}  \" + {}",
+                index + 1,
+                dev_localized_literal(&tab.label, tab.i18n.as_deref())
+            )
+        } else {
+            dev_localized_literal(&tab.label, tab.i18n.as_deref())
+        };
         output.push_str(&format!(
             "        TextView {button} = doweText({}, {}, 16f, 500, 0f, 1.25f, {font});\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setPadding(doweDp(16), doweDp(6), doweDp(16), doweDp(6));\n        {button}.setTextColor({});\n        {button}.setBackground({});\n",
-            dev_localized_literal(&tab.label, tab.i18n.as_deref()),
+            label,
             if index == 0 { active_content } else { inactive_content },
             if index == 0 { active_content } else { inactive_content },
             if index == 0 {
@@ -116,6 +128,15 @@ fn render_dev_android_tabs(
             }
         ));
         output.push_str(&dev_add(&list, &button, Some("8"), !vertical));
+        if props.variant == TabsVariant::Stepper && index + 1 < tabs.len() {
+            let connector = next_dev_view(counter);
+            output.push_str(&format!(
+                "        View {connector} = new View(this);\n        {connector}.setBackgroundColor(DOWE_SOFT_MUTED);\n        {connector}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({}), doweDp({})));\n",
+                if vertical { 2 } else { 48 },
+                if vertical { 20 } else { 2 }
+            ));
+            output.push_str(&dev_add(&list, &connector, None, !vertical));
+        }
         output.push_str(&format!(
             "        LinearLayout {panel} = doweContainer(false);\n        {panel}.setVisibility({});\n        {panels}.addView({panel}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n",
             if index == 0 {
@@ -168,6 +189,16 @@ fn dev_tab_background(props: &TabsProps, active: bool, radius: &str) -> String {
                 )
             }
             TabsVariant::Ghost => format!("doweBackground(Color.TRANSPARENT, {radius})"),
+            TabsVariant::Stepper => {
+                if active {
+                    format!(
+                        "doweBackground({}, 999f)",
+                        dev_tabs_active_background(props)
+                    )
+                } else {
+                    "doweInputBackground(Color.TRANSPARENT, DOWE_SOFT_MUTED, 999f)".to_string()
+                }
+            }
         }
     } else {
         format!("doweBackground(Color.TRANSPARENT, {radius})")

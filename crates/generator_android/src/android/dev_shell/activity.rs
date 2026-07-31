@@ -414,6 +414,10 @@ fn dev_activity_sources(
             .android_family_name,
     );
     output = output.replace("__DOWE_JAVA_REACTIVE_RUNTIME__", dev_java_reactive_runtime());
+    output = output.replace(
+        "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__",
+        SIDE_NAV_SUBMENU_ARROW_PATH,
+    );
 
     let mut shards = routes
         .iter()

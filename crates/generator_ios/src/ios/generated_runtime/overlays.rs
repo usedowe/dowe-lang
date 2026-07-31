@@ -81,6 +81,167 @@ fn swift_runtime_overlays() -> &'static str {
     }
 }
 
+struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable {
+    let isPresented: Bool
+    let position: String
+    let content: Content
+
+    init(isPresented: Bool, position: String, @ViewBuilder content: () -> Content) {
+        self.isPresented = isPresented
+        self.position = position
+        self.content = content()
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.parent = self
+        if isPresented {
+            context.coordinator.scheduleShow(from: uiView)
+        } else {
+            context.coordinator.dismiss()
+        }
+    }
+
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        coordinator.dismiss(immediate: true)
+    }
+
+    @MainActor final class Coordinator: NSObject {
+        var parent: DoweToastOverlayPresenter
+        private var hosting: UIHostingController<Content>?
+        private var containerView: UIView?
+        private var presentationRevision = 0
+        private var showScheduled = false
+        private var isDismissing = false
+
+        init(parent: DoweToastOverlayPresenter) {
+            self.parent = parent
+        }
+
+        func scheduleShow(from anchor: UIView) {
+            if containerView?.superview != nil {
+                showScheduled = false
+                isDismissing = false
+                show(from: anchor)
+                return
+            }
+            guard !showScheduled else {
+                return
+            }
+            showScheduled = true
+            presentationRevision += 1
+            let revision = presentationRevision
+            DispatchQueue.main.async {
+                guard revision == self.presentationRevision else {
+                    return
+                }
+                self.showScheduled = false
+                guard self.parent.isPresented else {
+                    return
+                }
+                self.show(from: anchor)
+            }
+        }
+
+        func show(from anchor: UIView) {
+            guard let window = anchor.window else {
+                return
+            }
+            window.layoutIfNeeded()
+            let controller = hosting ?? UIHostingController(rootView: parent.content)
+            controller.rootView = parent.content
+            controller.view.backgroundColor = .clear
+            let safeArea = window.safeAreaLayoutGuide.layoutFrame
+            let availableWidth = max(CGFloat(0), safeArea.width - CGFloat(32))
+            let targetWidth = min(CGFloat(420), max(CGFloat(1), availableWidth))
+            let measured = controller.sizeThatFits(
+                in: CGSize(width: targetWidth, height: UIView.layoutFittingExpandedSize.height)
+            )
+            let width = max(CGFloat(1), min(targetWidth, measured.width))
+            let height = max(CGFloat(1), measured.height)
+            let x = parent.position.hasSuffix("right")
+                ? safeArea.maxX - width - CGFloat(16)
+                : safeArea.minX + CGFloat(16)
+            let y = parent.position.hasPrefix("top")
+                ? safeArea.minY + CGFloat(16)
+                : safeArea.maxY - height - CGFloat(16)
+            let frame = CGRect(x: x, y: y, width: width, height: height)
+            hosting = controller
+            let container = containerView ?? UIView()
+            if containerView == nil {
+                container.backgroundColor = .clear
+                containerView = container
+            }
+            if controller.view.superview !== container {
+                controller.view.removeFromSuperview()
+                container.addSubview(controller.view)
+            }
+            controller.view.frame = CGRect(origin: .zero, size: frame.size)
+            container.bounds = CGRect(origin: .zero, size: frame.size)
+            container.center = CGPoint(x: frame.midX, y: frame.midY)
+            let animateIn = container.superview == nil
+            if animateIn {
+                container.alpha = CGFloat(0)
+                container.transform = CGAffineTransform(translationX: CGFloat(0), y: CGFloat(-4)).scaledBy(x: CGFloat(0.98), y: CGFloat(0.98))
+                window.addSubview(container)
+            }
+            isDismissing = false
+            container.layer.removeAllAnimations()
+            if animateIn {
+                UIView.animate(withDuration: 0.16, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+                    container.alpha = CGFloat(1)
+                    container.transform = .identity
+                }
+            } else {
+                container.alpha = CGFloat(1)
+                container.transform = .identity
+            }
+        }
+
+        func dismiss(immediate: Bool = false) {
+            guard immediate || !isDismissing else {
+                return
+            }
+            guard immediate || showScheduled || containerView?.superview != nil else {
+                return
+            }
+            presentationRevision += 1
+            let revision = presentationRevision
+            showScheduled = false
+            if immediate {
+                isDismissing = false
+                containerView?.removeFromSuperview()
+                return
+            }
+            guard let container = containerView, container.superview != nil else {
+                return
+            }
+            isDismissing = true
+            container.layer.removeAllAnimations()
+            UIView.animate(withDuration: 0.12, delay: 0, options: [.curveEaseIn, .allowUserInteraction]) {
+                container.alpha = CGFloat(0)
+                container.transform = CGAffineTransform(translationX: CGFloat(0), y: CGFloat(-4)).scaledBy(x: CGFloat(0.98), y: CGFloat(0.98))
+            } completion: { _ in
+                guard revision == self.presentationRevision, !self.parent.isPresented, self.isDismissing else {
+                    return
+                }
+                self.isDismissing = false
+                container.removeFromSuperview()
+            }
+        }
+    }
+}
+
 struct DoweModal<Header: View, Content: View, Footer: View>: View {
     let open: Bool
     let close: () -> Void
@@ -121,38 +282,47 @@ struct DoweModal<Header: View, Content: View, Footer: View>: View {
     }
 
     private var modalLayer: some View {
-        ZStack {
-            Color.black.opacity(0.48)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if !disableOverlayClose {
-                        close()
-                    }
-                }
-            VStack(alignment: .leading, spacing: CGFloat(16)) {
-                if hasHeader || !hideCloseButton {
-                    HStack {
-                        if hasHeader { header }
-                        Spacer()
-                        if !hideCloseButton {
-                            Button(action: close) { Text("x").fontWeight(.bold) }
-                                .buttonStyle(.plain)
+        GeometryReader { geometry in
+            let modalWidth = geometry.size.width * 0.95
+            ZStack {
+                Color.black.opacity(0.48)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if !disableOverlayClose {
+                            close()
                         }
                     }
+                VStack(alignment: .leading, spacing: CGFloat(16)) {
+                    if hasHeader { header }
+                    content
+                    if hasFooter { footer }
                 }
-                content
-                if hasFooter { footer }
+                .padding(CGFloat(20))
+                .frame(maxWidth: modalWidth, alignment: .leading)
+                .background(backgroundColor)
+                .foregroundStyle(contentColor)
+                .clipShape(RoundedRectangle(cornerRadius: radius))
+                .overlay(RoundedRectangle(cornerRadius: radius).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
+                .overlay(alignment: .topTrailing) {
+                    if !hideCloseButton {
+                        Button(action: close) {
+                            DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)
+                                .frame(width: CGFloat(28), height: CGFloat(28))
+                                .background(DoweDesign.softMuted)
+                                .foregroundStyle(DoweDesign.onSoftMuted)
+                                .clipShape(Circle())
+                                .frame(width: CGFloat(44), height: CGFloat(44))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Close modal")
+                    }
+                }
             }
-            .padding(CGFloat(20))
-            .frame(maxWidth: CGFloat(560), alignment: .leading)
-            .background(backgroundColor)
-            .foregroundStyle(contentColor)
-            .clipShape(RoundedRectangle(cornerRadius: radius))
-            .overlay(RoundedRectangle(cornerRadius: radius).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
+            .transition(.opacity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .transition(.opacity)
     }
 }
 
@@ -165,42 +335,62 @@ struct DoweAlertDialog: View {
     let cancelText: String
     let backgroundColor: Color
     let contentColor: Color
-    let dangerColor: Color
+    let borderColor: Color?
+    let confirmBackgroundColor: Color
+    let confirmContentColor: Color
     let radius: CGFloat
     let loading: Bool
     let confirm: (() -> Void)?
-    let cancel: (() -> Void)?
 
     var body: some View {
-        DoweModal(open: open, close: close, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: nil, radius: radius, disableOverlayClose: true, hideCloseButton: true, hasHeader: true, hasFooter: true) {
+        DoweModal(open: open, close: close, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, radius: radius, disableOverlayClose: true, hideCloseButton: true, hasHeader: true, hasFooter: true) {
             Text(title).font(.headline)
         } content: {
             Text(description).opacity(0.72)
         } footer: {
-            HStack {
+            HStack(spacing: CGFloat(12)) {
                 Spacer()
                 Button(cancelText) {
                     close()
-                    cancel?()
                 }
-                .padding(.horizontal, CGFloat(12))
-                .padding(.vertical, CGFloat(8))
+                .padding(.horizontal, CGFloat(16))
+                .padding(.vertical, CGFloat(10))
+                .frame(minHeight: CGFloat(40))
                 .background(Color.clear)
-                .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(contentColor.opacity(0.24), lineWidth: CGFloat(1)))
+                .foregroundStyle(DoweDesign.muted)
+                .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
+                .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(DoweDesign.muted, lineWidth: CGFloat(1)))
                 .disabled(loading)
                 .buttonStyle(.plain)
                 Button(confirmText) {
                     confirm?()
                 }
-                .padding(.horizontal, CGFloat(12))
-                .padding(.vertical, CGFloat(8))
-                .background(dangerColor)
-                .foregroundStyle(DoweDesign.onDanger)
+                .padding(.horizontal, CGFloat(16))
+                .padding(.vertical, CGFloat(10))
+                .frame(minHeight: CGFloat(40))
+                .background(confirmBackgroundColor)
+                .foregroundStyle(confirmContentColor)
                 .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
                 .disabled(loading)
                 .buttonStyle(.plain)
             }
         }
+    }
+}
+
+struct DoweOverlayCloseIcon: View {
+    let color: Color
+
+    var body: some View {
+        DoweSvgView(
+            viewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24)),
+            color: color,
+            paths: [
+                DoweSvgPathData(data: "M0 0h24v24H0z", fill: .none),
+                DoweSvgPathData(data: "m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z", fill: .currentColor)
+            ]
+        )
+        .frame(width: CGFloat(18), height: CGFloat(18))
     }
 }
 
@@ -223,30 +413,21 @@ struct DoweToast: View {
     let position: String
     let backgroundColor: Color
     let contentColor: Color
+    let borderColor: Color?
     let showIcon: Bool
     let kind: String
     let close: (() -> Void)?
+    @State private var dismissed = false
 
     var body: some View {
-        DoweWindowOverlayPresenter(isPresented: visible) {
+        DoweToastOverlayPresenter(isPresented: visible && !dismissed, position: position) {
             VStack {
-                if position.hasPrefix("bottom") {
-                    Spacer()
-                }
-                HStack {
-                    if position.hasSuffix("right") {
-                        Spacer()
-                    }
-                    toast
-                    if position.hasSuffix("left") {
-                        Spacer()
-                    }
-                }
-                if position.hasPrefix("top") {
-                    Spacer()
-                }
+                toast
             }
             .padding(CGFloat(16))
+        }
+        .onChange(of: visible) { _, next in
+            if next { dismissed = false }
         }
         .frame(width: CGFloat(0), height: CGFloat(0))
         .allowsHitTesting(false)
@@ -254,25 +435,39 @@ struct DoweToast: View {
 
     private var toast: some View {
         HStack(spacing: CGFloat(12)) {
-            if showIcon {
-                Text(icon).fontWeight(.bold)
-            }
-            VStack(alignment: .leading, spacing: CGFloat(4)) {
-                if !title.isEmpty {
-                    Text(title).fontWeight(.semibold)
+            HStack(spacing: CGFloat(12)) {
+                if showIcon {
+                    Text(icon).fontWeight(.bold)
                 }
-                Text(description).opacity(0.9)
+                VStack(alignment: .leading, spacing: CGFloat(4)) {
+                    if !title.isEmpty {
+                        Text(title).fontWeight(.semibold)
+                    }
+                    Text(description).opacity(0.9)
+                }
             }
-            if let close {
-                Button(action: close) { Text("x").fontWeight(.bold) }
-                    .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                dismissed = true
+                close?()
+            } label: {
+                DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)
+                    .frame(width: CGFloat(28), height: CGFloat(28))
+                    .background(DoweDesign.softMuted)
+                    .foregroundStyle(DoweDesign.onSoftMuted)
+                    .clipShape(Circle())
+                    .frame(width: CGFloat(44), height: CGFloat(44))
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close toast")
         }
         .padding(CGFloat(16))
         .frame(maxWidth: CGFloat(420), alignment: .leading)
         .background(backgroundColor)
         .foregroundStyle(contentColor)
         .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
+        .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
     }
 
     private var icon: String {
@@ -281,6 +476,35 @@ struct DoweToast: View {
         case "warning": return "!"
         case "danger", "error": return "x"
         default: return "i"
+        }
+    }
+}
+
+struct DoweGlobalToast: View {
+    let toast: DoweToastState?
+    let close: () -> Void
+
+    var body: some View {
+        if let toast {
+            DoweToast(
+                visible: true,
+                title: toast.title,
+                description: toast.message,
+                position: toast.position,
+                backgroundColor: doweCardContainer(toast.variant, toast.scheme),
+                contentColor: doweCardContent(toast.variant, toast.scheme),
+                borderColor: doweCardBorder(toast.variant, toast.scheme),
+                showIcon: false,
+                kind: toast.kind,
+                close: close
+            )
+            .id(toast)
+            .task {
+                try? await Task.sleep(nanoseconds: UInt64(toast.duration) * 1_000_000)
+                if !Task.isCancelled {
+                    close()
+                }
+            }
         }
     }
 }

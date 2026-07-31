@@ -1,6 +1,7 @@
 use dowe_agent::{
-    get_public_skill, handle_mcp_message, init_dowe_project, init_external_agent_project,
-    project_context, public_skills, search_public_examples, update_external_agent_project,
+    get_public_skill, get_public_skill_resource, handle_mcp_message, init_dowe_project,
+    init_external_agent_project, project_context, public_skills, search_public_examples,
+    summarize_codegraph_for, update_external_agent_project,
 };
 use dowe_agent_harness::{InitOptions, init_project_harness};
 use dowe_components::BuiltinComponent;
@@ -165,6 +166,11 @@ fn lists_public_authoring_skills_without_workspace_skills() {
     assert!(views.description.contains("without screenshot crops"));
     assert!(!encoded.contains("/agents/skills"));
     assert!(!encoded.contains("dowe-dev-artifacts"));
+    for skill in &skills {
+        let full = get_public_skill(&skill.id, true).expect("full skill");
+        assert!(!full.content.contains("Node.js"));
+        assert!(!full.content.contains("Tailwind"));
+    }
 }
 
 #[test]
@@ -352,6 +358,36 @@ fn gets_compact_and_full_view_skill_documents() {
 }
 
 #[test]
+fn gets_one_declared_public_skill_resource() {
+    let resource =
+        get_public_skill_resource("views", "references/styles.md").expect("styles resource");
+
+    assert_eq!(resource.id, "views");
+    assert_eq!(resource.name, "dowe-views");
+    assert_eq!(resource.path, "references/styles.md");
+    assert!(
+        resource
+            .content
+            .contains("# Style and design-system reference")
+    );
+    assert!(!resource.content.contains("# Canvas reference"));
+
+    let traversal = get_public_skill_resource("views", "../SKILL.md").expect_err("traversal");
+    let unknown =
+        get_public_skill_resource("views", "references/missing.md").expect_err("unknown resource");
+    assert!(
+        traversal
+            .to_string()
+            .contains("unknown public Dowe skill resource")
+    );
+    assert!(
+        unknown
+            .to_string()
+            .contains("unknown public Dowe skill resource")
+    );
+}
+
+#[test]
 fn view_skill_requires_faithful_reference_driven_composition() {
     let compact = get_public_skill("views", false).expect("compact views skill");
     let full = get_public_skill("views", true).expect("full views skill");
@@ -487,6 +523,41 @@ fn searches_curated_examples_deterministically() {
             .iter()
             .all(|example| !example.source_path.contains("/.dowe/"))
     );
+    let paths = result
+        .results
+        .iter()
+        .map(|example| example.source_path.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(paths.len(), result.results.len());
+}
+
+#[test]
+fn ranks_project_codegraph_nodes_from_the_request() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("views/pages")).expect("views");
+    fs::create_dir_all(temp.path().join("server/handlers")).expect("server");
+    fs::write(temp.path().join("main.dowe"), "main\n").expect("main");
+    fs::write(
+        temp.path().join("views/pages/billing.dowe"),
+        "page BillingPage\n",
+    )
+    .expect("billing");
+    fs::write(
+        temp.path().join("server/handlers/health.dowe"),
+        "handler health\n",
+    )
+    .expect("health");
+
+    let summary =
+        summarize_codegraph_for(temp.path(), "update the billing page", 8).expect("summary");
+    let paths = summary
+        .relevant_nodes
+        .iter()
+        .filter_map(|node| node.path.as_deref())
+        .collect::<Vec<_>>();
+
+    assert_eq!(paths.first().copied(), Some("views/pages/billing.dowe"));
+    assert!(!paths.contains(&"server/handlers/health.dowe"));
 }
 
 #[test]
@@ -572,6 +643,22 @@ fn handles_mcp_initialize_tools_and_resources() {
             .iter()
             .any(|resource| resource["uri"] == "dowe://skills/views")
     );
+    assert!(
+        listed_resources["result"]["resources"]
+            .as_array()
+            .expect("resources array")
+            .iter()
+            .any(|resource| { resource["uri"] == "dowe://skills/views/references/styles.md" })
+    );
+    assert!(
+        listed_resources["result"]["resources"]
+            .as_array()
+            .expect("resources array")
+            .iter()
+            .all(|resource| !resource["uri"]
+                .as_str()
+                .is_some_and(|uri| uri.ends_with("/full")))
+    );
 }
 
 #[test]
@@ -601,6 +688,36 @@ fn handles_mcp_tool_calls_and_notifications() {
             .any(|result| result["id"] == "dashboard-layout")
     );
     assert!(notification.is_none());
+}
+
+#[test]
+fn handles_mcp_public_skill_resource_tool_call() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let response = handle_mcp_message(
+        temp.path(),
+        r#"{"jsonrpc":"2.0","id":"resource","method":"tools/call","params":{"name":"dowe_skills_get","arguments":{"id":"views","resource":"references/styles.md"}}}"#,
+    )
+    .expect("call")
+    .expect("response");
+    let payload: Value = serde_json::from_str(&response).expect("response json");
+
+    assert_eq!(payload["result"]["isError"], false);
+    assert_eq!(
+        payload["result"]["structuredContent"]["path"],
+        "references/styles.md"
+    );
+    assert!(
+        payload["result"]["structuredContent"]["content"]
+            .as_str()
+            .expect("content")
+            .contains("# Style and design-system reference")
+    );
+    assert!(
+        !payload["result"]["structuredContent"]["content"]
+            .as_str()
+            .expect("content")
+            .contains("# Canvas reference")
+    );
 }
 
 #[test]

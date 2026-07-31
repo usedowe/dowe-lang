@@ -15,9 +15,13 @@ use tempfile::TempDir;
 fn generates_static_dist_with_web_assets() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), "");
-    let icon = temp.path().join("assets/icons/web/favicon-32x32.png");
+    let icon = temp.path().join("icons/web/favicon-32x32.png");
     fs::create_dir_all(icon.parent().expect("icon parent")).expect("icon directory");
     fs::write(&icon, "icon").expect("icon");
+    let desktop_icon = temp.path().join("icons/desktop/icon.icns");
+    fs::create_dir_all(desktop_icon.parent().expect("desktop icon parent"))
+        .expect("desktop icon directory");
+    fs::write(&desktop_icon, "desktop icon").expect("desktop icon");
     let social_image = temp.path().join("assets/social/share.png");
     fs::create_dir_all(social_image.parent().expect("social image parent"))
         .expect("social image directory");
@@ -34,12 +38,13 @@ fn generates_static_dist_with_web_assets() {
     assert!(
         report
             .output_dir
-            .join("assets/icons/web/favicon-32x32.png")
+            .join("icons/web/favicon-32x32.png")
             .is_file()
     );
     assert!(report.output_dir.join("assets/social/share.png").is_file());
+    assert!(!report.output_dir.join("icons/desktop/icon.icns").exists());
     let index = fs::read_to_string(report.output_dir.join("index.html")).expect("index");
-    assert!(index.contains(r#"href="assets/icons/web/favicon-32x32.png""#));
+    assert!(index.contains(r#"href="icons/web/favicon-32x32.png""#));
 }
 
 #[test]
@@ -48,6 +53,9 @@ fn generates_distroless_docker_context_without_local_dotenv() {
     write_fixture(temp.path(), "");
     fs::write(temp.path().join(".env"), "PRIVATE_TOKEN=secret\n").expect("dotenv");
     fs::write(temp.path().join(".env.example"), "PRIVATE_TOKEN=\n").expect("dotenv example");
+    let icon = temp.path().join("icons/desktop/icon.icns");
+    fs::create_dir_all(icon.parent().expect("icon parent")).expect("icon directory");
+    fs::write(&icon, "icon").expect("icon");
     let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
     options.registry = Some("ghcr.io/dowe".to_string());
     options.image = Some("example-app:stable".to_string());
@@ -62,6 +70,12 @@ fn generates_distroless_docker_context_without_local_dotenv() {
     assert!(docker.output_dir.join("app/theme.dowe").is_file());
     assert!(docker.output_dir.join("app/routes/view.dowe").is_file());
     assert!(docker.output_dir.join("app/.env.example").is_file());
+    assert!(
+        docker
+            .output_dir
+            .join("app/icons/desktop/icon.icns")
+            .is_file()
+    );
     assert!(!docker.output_dir.join("app/env.dowe").exists());
     assert!(!docker.output_dir.join("app/.env").exists());
     assert!(dockerfile.contains("gcr.io/distroless/cc-debian12:nonroot"));
@@ -202,6 +216,13 @@ main
 fn generates_cloudflare_pages_web_distribution_without_node_project() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), "");
+    let icon = temp.path().join("icons/web/favicon-32x32.png");
+    fs::create_dir_all(icon.parent().expect("icon parent")).expect("icon directory");
+    fs::write(&icon, "icon").expect("icon");
+    let desktop_icon = temp.path().join("icons/desktop/icon.icns");
+    fs::create_dir_all(desktop_icon.parent().expect("desktop icon parent"))
+        .expect("desktop icon directory");
+    fs::write(&desktop_icon, "desktop icon").expect("desktop icon");
     let social_image = temp.path().join("assets/social/share.png");
     fs::create_dir_all(social_image.parent().expect("social image parent"))
         .expect("social image directory");
@@ -232,9 +253,23 @@ fn generates_cloudflare_pages_web_distribution_without_node_project() {
             .is_file()
     );
     assert!(index.contains(r#"href="/design.css""#));
+    assert!(index.contains(r#"href="/icons/web/favicon-32x32.png""#));
     assert!(index.contains(r#"src="/router.js""#));
     assert!(page.contains(r#"href="/design.css""#));
+    assert!(page.contains(r#"href="/icons/web/favicon-32x32.png""#));
     assert!(page.contains(r#"src="/router.js""#));
+    assert!(
+        report
+            .output_dir
+            .join("assets/icons/web/favicon-32x32.png")
+            .is_file()
+    );
+    assert!(
+        !report
+            .output_dir
+            .join("assets/icons/desktop/icon.icns")
+            .exists()
+    );
     assert!(manifest.contains(r#""surface": "web""#));
     assert!(manifest.contains(r#""provider": "cloudflare-pages""#));
     assert!(manifest.contains(r#""projectName": "example-pages""#));

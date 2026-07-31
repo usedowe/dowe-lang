@@ -5,6 +5,7 @@ pub use dowe_agent::{
     AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
     AgentToolDefinition, AgentToolFunction, DoweProjectInitReport, ImageUrl, ProjectContext,
     PublicExampleResult, PublicExampleSearch, PublicSkill, PublicSkillDocument,
+    PublicSkillResourceDocument,
 };
 pub use dowe_agent_harness::{
     CheckReport, DetectedMode, Diagnostic, HarnessManifest, HarnessMode, InitOptions, InitReport,
@@ -48,6 +49,13 @@ pub fn get_agent_public_skill(
     full: bool,
 ) -> dowe_agent::AgentResult<PublicSkillDocument> {
     dowe_agent::get_public_skill(id, full)
+}
+
+pub fn get_agent_public_skill_resource(
+    id: &str,
+    path: &str,
+) -> dowe_agent::AgentResult<PublicSkillResourceDocument> {
+    dowe_agent::get_public_skill_resource(id, path)
 }
 
 pub fn search_agent_public_examples(

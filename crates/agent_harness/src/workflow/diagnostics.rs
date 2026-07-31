@@ -12,3 +12,18 @@ fn error_diagnostic(
         action: action.into(),
     }
 }
+
+fn warning_diagnostic(
+    code: impl Into<String>,
+    path: impl Into<String>,
+    message: impl Into<String>,
+    action: impl Into<String>,
+) -> Diagnostic {
+    Diagnostic {
+        code: code.into(),
+        severity: DiagnosticSeverity::Warning,
+        path: path.into(),
+        message: message.into(),
+        action: action.into(),
+    }
+}

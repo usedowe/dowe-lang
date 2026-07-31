@@ -67,15 +67,17 @@ private fun DowePaginationButton(enabled: Boolean, selected: Boolean, dimension:
 }
 
 @Composable
-private fun DoweCollapsible(label: String, defaultOpen: Boolean, disabled: Boolean, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, content: @Composable () -> Unit) {
+private fun DoweCollapsible(label: String, defaultOpen: Boolean, disabled: Boolean, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: Dp, modifier: Modifier, arrowIcon: @Composable () -> Unit, content: @Composable () -> Unit) {
     var open by remember { mutableStateOf(defaultOpen) }
-    Column(modifier = modifier.clip(RoundedCornerShape(16.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(16.dp)) else Modifier)) {
+    Column(modifier = modifier.clip(RoundedCornerShape(radius)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(radius)) else Modifier).alpha(if (disabled) 0.5f else 1f)) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             Row(modifier = Modifier.fillMaxWidth().clickable(enabled = !disabled) { open = !open }.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = label, color = contentColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Text(text = if (open) "⌃" else "⌄", color = contentColor)
+                Text(text = label, color = contentColor, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Box(modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = if (open) 180f else 0f }, contentAlignment = Alignment.Center) {
+                    arrowIcon()
+                }
             }
-            AnimatedVisibility(visible = open, enter = fadeIn(tween(160)) + expandVertically(), exit = fadeOut(tween(160)) + shrinkVertically()) {
+            AnimatedVisibility(visible = open, enter = fadeIn(tween(160)) + expandVertically(tween(160)), exit = fadeOut(tween(160)) + shrinkVertically(tween(160))) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
             }
         }
@@ -89,34 +91,39 @@ private fun DoweCountdown(target: String, showDays: Boolean, showHours: Boolean,
     val targetMillis = remember(target) { runCatching { Instant.parse(target).toEpochMilli() }.getOrDefault(now) }
     val remaining = max(0L, (targetMillis - now) / 1000L)
     LaunchedEffect(targetMillis) {
-        while (true) {
-            delay(1000)
+        completed = false
+        while (!completed) {
             now = System.currentTimeMillis()
             if ((targetMillis - now) <= 0 && !completed) {
                 completed = true
                 onComplete?.invoke()
+            } else {
+                delay(1000)
             }
         }
     }
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
-        var needsSeparator = false
-        if (showDays) {
-            DoweCountdownUnit((remaining / 86400).toInt(), daysLabel, size, backgroundColor, contentColor, borderColor)
-            needsSeparator = true
-        }
-        if (showHours) {
-            if (needsSeparator) DoweCountdownSeparator(size, contentColor)
-            DoweCountdownUnit(((remaining % 86400) / 3600).toInt(), hoursLabel, size, backgroundColor, contentColor, borderColor)
-            needsSeparator = true
-        }
-        if (showMinutes) {
-            if (needsSeparator) DoweCountdownSeparator(size, contentColor)
-            DoweCountdownUnit(((remaining % 3600) / 60).toInt(), minutesLabel, size, backgroundColor, contentColor, borderColor)
-            needsSeparator = true
-        }
-        if (showSeconds) {
-            if (needsSeparator) DoweCountdownSeparator(size, contentColor)
-            DoweCountdownUnit((remaining % 60).toInt(), secondsLabel, size, backgroundColor, contentColor, borderColor)
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val displaySize = if (maxWidth < 480.dp && size != "sm") "sm" else size
+        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Top) {
+            var needsSeparator = false
+            if (showDays) {
+                DoweCountdownUnit((remaining / 86400).toInt(), daysLabel, displaySize, backgroundColor, contentColor, borderColor)
+                needsSeparator = true
+            }
+            if (showHours) {
+                if (needsSeparator) DoweCountdownSeparator(displaySize, contentColor)
+                DoweCountdownUnit(((remaining % 86400) / 3600).toInt(), hoursLabel, displaySize, backgroundColor, contentColor, borderColor)
+                needsSeparator = true
+            }
+            if (showMinutes) {
+                if (needsSeparator) DoweCountdownSeparator(displaySize, contentColor)
+                DoweCountdownUnit(((remaining % 3600) / 60).toInt(), minutesLabel, displaySize, backgroundColor, contentColor, borderColor)
+                needsSeparator = true
+            }
+            if (showSeconds) {
+                if (needsSeparator) DoweCountdownSeparator(displaySize, contentColor)
+                DoweCountdownUnit((remaining % 60).toInt(), secondsLabel, displaySize, backgroundColor, contentColor, borderColor)
+            }
         }
     }
 }
@@ -127,7 +134,7 @@ private fun DoweCountdownUnit(value: Int, label: String, size: String, backgroun
     val height = when (size) { "sm" -> 48.dp; "lg" -> 96.dp; "xl" -> 128.dp; else -> 64.dp }
     val font = when (size) { "sm" -> 20.sp; "lg" -> 48.sp; "xl" -> 72.sp; else -> 30.sp }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(modifier = Modifier.width(width).height(height).clip(RoundedCornerShape(16.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(16.dp)) else Modifier), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.widthIn(min = width).height(height).clip(RoundedCornerShape(16.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(16.dp)) else Modifier).padding(horizontal = when (size) { "sm" -> 6.dp; "lg" -> 12.dp; "xl" -> 16.dp; else -> 8.dp }), contentAlignment = Alignment.Center) {
             Text(text = value.toString().padStart(2, '0'), color = contentColor, fontSize = font, fontWeight = FontWeight.Bold)
         }
         Text(text = label.uppercase(), color = contentColor.copy(alpha = 0.72f), fontSize = when (size) { "sm" -> 10.sp; "lg" -> 14.sp; "xl" -> 16.sp; else -> 12.sp }, fontWeight = FontWeight.Medium)

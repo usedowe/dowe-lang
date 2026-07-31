@@ -89,6 +89,7 @@ fn normalize_cloudflare_pages_html(document: &str) -> String {
                     r#"href="/design.css""#,
                 )
                 .replace(&format!(r#"href="{prefix}chunks/"#), r#"href="/chunks/"#)
+                .replace(&format!(r#"href="{prefix}icons/"#), r#"href="/icons/"#)
                 .replace(
                     &format!(r#"src="{prefix}router.js""#),
                     r#"src="/router.js""#,
@@ -121,6 +122,7 @@ pub(crate) fn copy_app(root: &Path, output: &Path) -> DeployResult<()> {
     }
     copy_project_modules(root, output)?;
     copy_tree(&root.join("assets"), &output.join("assets"))?;
+    copy_tree(&root.join("icons"), &output.join("icons"))?;
     copy_tree(&root.join(".dowe/fonts"), &output.join("assets/fonts"))
 }
 
@@ -137,7 +139,7 @@ fn copy_project_modules(root: &Path, output: &Path) -> DeployResult<()> {
         if name.starts_with('.')
             || matches!(
                 name.as_ref(),
-                "assets" | "target" | "node_modules" | "dist" | "build"
+                "assets" | "icons" | "target" | "node_modules" | "dist" | "build"
             )
         {
             continue;

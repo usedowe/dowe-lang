@@ -34,7 +34,7 @@ orientation and `dowe codegraph check` for declared structural validation. CodeG
 
 A test file is any `.dowe` file below the project root whose top level contains only `test`
 declarations; no reserved directory or filename suffix is required. `dowe test` discovers them
-recursively, skipping `.agents`, `.dowe`, `.git`, `target`, and `node_modules`. Each test has one
+recursively while skipping agent, generated, version-control, vendor, and build trees. Each test has one
 quoted name and direct `assert` children comparing parser literals; the runner does not execute
 variables, functions, requests, or targets.
 

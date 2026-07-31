@@ -80,8 +80,11 @@ struct DoweTabs<Content: View>: View {
     private var tabList: some View {
         if vertical {
             VStack(alignment: .leading, spacing: variant == "line" ? CGFloat(16) : CGFloat(8)) {
-                ForEach(items) { item in
-                    tabButton(item)
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    tabButton(item, index: index)
+                    if variant == "stepper" && index < items.count - 1 {
+                        Rectangle().fill(Color.secondary.opacity(0.35)).frame(width: CGFloat(2), height: CGFloat(20)).padding(.leading, CGFloat(15))
+                    }
                 }
             }
             .padding(listPadding)
@@ -105,9 +108,12 @@ struct DoweTabs<Content: View>: View {
     }
 
     private var horizontalTabButtons: some View {
-        HStack(spacing: variant == "line" ? CGFloat(16) : CGFloat(8)) {
-            ForEach(items) { item in
-                tabButton(item)
+        HStack(spacing: variant == "stepper" ? CGFloat(0) : variant == "line" ? CGFloat(16) : CGFloat(8)) {
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                tabButton(item, index: index)
+                if variant == "stepper" && index < items.count - 1 {
+                    Rectangle().fill(Color.secondary.opacity(0.35)).frame(width: CGFloat(48), height: CGFloat(2)).padding(.horizontal, CGFloat(8))
+                }
             }
         }
     }
@@ -117,7 +123,7 @@ struct DoweTabs<Content: View>: View {
             .frame(maxWidth: vertical ? nil : .infinity, alignment: .leading)
     }
 
-    private func tabButton(_ item: DoweTabItem) -> some View {
+    private func tabButton(_ item: DoweTabItem, index: Int) -> some View {
         let active = activeId == item.id
         let selectedFill = variant == "solid" || variant == "outlined" || variant == "pills"
         let selectedLine = variant == "line"
@@ -126,19 +132,32 @@ struct DoweTabs<Content: View>: View {
         return Button(action: {
             activeId = item.id
         }) {
-            Text(item.label)
-                .font(font)
-                .lineLimit(1)
-                .padding(.horizontal, CGFloat(16))
-                .padding(.vertical, CGFloat(6))
-                .background(fill)
-                .foregroundStyle(foreground)
-                .clipShape(RoundedRectangle(cornerRadius: tabRadius))
-                .overlay {
-                    if active && selectedLine {
-                        tabLineIndicator
+            Group {
+                if variant == "stepper" {
+                    HStack(spacing: CGFloat(10)) {
+                        Text(String(index + 1))
+                            .font(font.weight(.bold))
+                            .frame(width: CGFloat(32), height: CGFloat(32))
+                            .background(active ? activeBackgroundColor : Color.clear)
+                            .foregroundStyle(active ? activeContentColor : contentColor)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(active ? accentColor : Color.secondary.opacity(0.45), lineWidth: CGFloat(2)))
+                        Text(item.label).font(font).lineLimit(1)
                     }
+                } else {
+                    Text(item.label).font(font).lineLimit(1)
                 }
+            }
+            .padding(.horizontal, variant == "stepper" ? CGFloat(0) : CGFloat(16))
+            .padding(.vertical, CGFloat(6))
+            .background(variant == "stepper" ? Color.clear : fill)
+            .foregroundStyle(foreground)
+            .clipShape(RoundedRectangle(cornerRadius: tabRadius))
+            .overlay {
+                if active && selectedLine {
+                    tabLineIndicator
+                }
+            }
         }
         .buttonStyle(.plain)
     }
@@ -535,7 +554,7 @@ struct DoweSideNavArrow: View {
             color: DoweDesign.onBackground,
             paths: [
                 DoweSvgPathData(data: "M0 0h24v24H0z", fill: .none),
-                DoweSvgPathData(data: "m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z", fill: .currentColor)
+                DoweSvgPathData(data: "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__", fill: .currentColor)
             ]
         )
         .frame(width: CGFloat(16), height: CGFloat(16))

@@ -36,7 +36,7 @@ pub fn generate_project_icons(options: GenerateIconOptions) -> IconResult<IconRe
         };
         generated.push((*target, artifacts));
     }
-    let output_dir = source.root.join("assets/icons");
+    let output_dir = source.root.join("icons");
     validate_output_root(&output_dir, &targets)?;
     let manifest_path = output_dir.join("manifest.json");
     let mut manifest = IconManifest::read(&manifest_path)?;
@@ -51,13 +51,13 @@ pub fn generate_project_icons(options: GenerateIconOptions) -> IconResult<IconRe
             artifacts,
         );
         files.extend(artifacts.iter().map(|artifact| {
-            PathBuf::from("assets/icons")
+            PathBuf::from("icons")
                 .join(target.as_str())
                 .join(&artifact.relative_path)
         }));
     }
     write_manifest(&output_dir, &manifest_path, manifest.bytes()?)?;
-    files.push(PathBuf::from("assets/icons/manifest.json"));
+    files.push(PathBuf::from("icons/manifest.json"));
     files.sort();
     Ok(IconReport {
         output_dir,
@@ -79,10 +79,10 @@ fn normalize_targets(targets: Vec<IconTarget>) -> IconResult<Vec<IconTarget>> {
 }
 
 fn validate_output_root(output_dir: &Path, targets: &[IconTarget]) -> IconResult<()> {
-    let assets = output_dir
+    let root = output_dir
         .parent()
-        .ok_or_else(|| IconError::new("icon output root has no assets parent"))?;
-    validate_output_directory(assets, "project assets must be a directory")?;
+        .ok_or_else(|| IconError::new("icon output root has no project parent"))?;
+    validate_output_directory(root, "project root must be a directory")?;
     validate_output_directory(output_dir, "icon output root must be a directory")?;
     validate_output_file(&output_dir.join("manifest.json"))?;
     for target in targets {

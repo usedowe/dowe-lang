@@ -1,4 +1,4 @@
-use crate::authoring::{get_public_skill, public_skills};
+use crate::authoring::{get_public_skill, get_public_skill_resource, public_skills};
 use crate::error::AgentResult;
 use crate::examples::search_public_examples;
 use crate::project::project_context;
@@ -65,9 +65,18 @@ fn call_tool(root: &Path, params: &Value) -> Result<Value, (i64, String)> {
         "dowe_skills_get" => {
             let id = required_string(&arguments, "id")?;
             let full = optional_bool(&arguments, "full")?.unwrap_or(false);
-            get_public_skill(id, full)
-                .map(|skill| json!(skill))
-                .map_err(|error| error.to_string())
+            let resource = optional_string(&arguments, "resource")?;
+            if full && resource.is_some() {
+                Err("`resource` and `full:true` are mutually exclusive".to_string())
+            } else if let Some(resource) = resource {
+                get_public_skill_resource(id, resource)
+                    .map(|document| json!(document))
+                    .map_err(|error| error.to_string())
+            } else {
+                get_public_skill(id, full)
+                    .map(|skill| json!(skill))
+                    .map_err(|error| error.to_string())
+            }
         }
         "dowe_examples_search" => {
             let query = required_string(&arguments, "query")?;
@@ -100,9 +109,16 @@ fn read_resource(root: &Path, params: &Value) -> Result<Value, (i64, String)> {
     {
         let skill = get_public_skill(id, true).map_err(|error| (-32602, error.to_string()))?;
         ("text/markdown", skill.content)
-    } else if let Some(id) = uri.strip_prefix("dowe://skills/") {
-        let skill = get_public_skill(id, false).map_err(|error| (-32602, error.to_string()))?;
-        ("text/markdown", skill.content)
+    } else if let Some(path) = uri.strip_prefix("dowe://skills/") {
+        if let Some((id, resource)) = path.split_once('/') {
+            let document = get_public_skill_resource(id, resource)
+                .map_err(|error| (-32602, error.to_string()))?;
+            ("text/markdown", document.content)
+        } else {
+            let skill =
+                get_public_skill(path, false).map_err(|error| (-32602, error.to_string()))?;
+            ("text/markdown", skill.content)
+        }
     } else {
         return Err((-32602, format!("unknown Dowe resource `{uri}`")));
     };
@@ -139,6 +155,17 @@ fn optional_bool(value: &Value, key: &str) -> Result<Option<bool>, (i64, String)
     }
 }
 
+fn optional_string<'a>(value: &'a Value, key: &str) -> Result<Option<&'a str>, (i64, String)> {
+    match value.get(key) {
+        Some(value) => value
+            .as_str()
+            .filter(|value| !value.trim().is_empty())
+            .map(Some)
+            .ok_or_else(|| (-32602, format!("`{key}` must be a non-empty string"))),
+        None => Ok(None),
+    }
+}
+
 fn optional_usize(value: &Value, key: &str) -> Result<Option<usize>, (i64, String)> {
     match value.get(key) {
         Some(value) => value
@@ -159,12 +186,14 @@ fn resources() -> Vec<Value> {
             "description": skill.description,
             "mimeType": "text/markdown"
         }));
-        resources.push(json!({
-            "uri": format!("dowe://skills/{}/full", skill.id),
-            "name": format!("{} full", skill.name),
-            "description": format!("{} Includes declared references and examples.", skill.description),
-            "mimeType": "text/markdown"
-        }));
+        for resource in skill.resources {
+            resources.push(json!({
+                "uri": format!("dowe://skills/{}/{}", skill.id, resource),
+                "name": format!("{} {}", skill.name, resource),
+                "description": format!("One focused declared reference from {}.", skill.name),
+                "mimeType": "text/markdown"
+            }));
+        }
     }
     resources.push(json!({
         "uri": "dowe://context/project",
@@ -184,12 +213,20 @@ fn tool_definitions() -> Vec<Value> {
         ),
         tool_definition(
             "dowe_skills_get",
-            "Get a compact or full public Dowe source-authoring skill.",
+            "Get a compact public Dowe skill or one declared focused resource. Complete retrieval remains available for compatibility.",
             json!({
                 "type": "object",
                 "properties": {
                     "id": { "type": "string" },
-                    "full": { "type": "boolean", "default": false }
+                    "resource": {
+                        "type": "string",
+                        "description": "One path declared by the selected skill. Prefer this after reading the compact skill routing table."
+                    },
+                    "full": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Compatibility and audit mode only. Do not use for normal authoring tasks."
+                    }
                 },
                 "required": ["id"],
                 "additionalProperties": false

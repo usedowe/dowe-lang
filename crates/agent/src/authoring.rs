@@ -22,6 +22,15 @@ pub struct PublicSkillDocument {
     pub content: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicSkillResourceDocument {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub content: String,
+}
+
 pub fn public_skills() -> Vec<PublicSkill> {
     skill_records()
         .iter()
@@ -61,6 +70,30 @@ pub fn get_public_skill(id: &str, full: bool) -> AgentResult<PublicSkillDocument
         name: record.name.to_string(),
         full,
         content,
+    })
+}
+
+pub fn get_public_skill_resource(id: &str, path: &str) -> AgentResult<PublicSkillResourceDocument> {
+    let normalized = normalize_skill_id(id)?;
+    let record = skill_records()
+        .iter()
+        .find(|record| record.id == normalized)
+        .ok_or_else(|| AgentError::new(format!("unknown public Dowe skill `{id}`")))?;
+    let resource = record
+        .resources
+        .iter()
+        .find(|resource| resource.path == path)
+        .ok_or_else(|| {
+            AgentError::new(format!(
+                "unknown public Dowe skill resource `{path}` for `{}`",
+                record.name
+            ))
+        })?;
+    Ok(PublicSkillResourceDocument {
+        id: record.id.to_string(),
+        name: record.name.to_string(),
+        path: resource.path.to_string(),
+        content: resource.content.trim_end().to_string(),
     })
 }
 

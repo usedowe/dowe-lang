@@ -9,7 +9,7 @@
 | `.env.example` | Shared environment names with empty values or non-secret placeholders |
 | `.env` | Local effective values; never read, print, or commit this file |
 | `assets/icon.svg` | Recommended transparent vector source for `dowe icons` |
-| `assets/icons` | Versioned generated icon sets for web, desktop, iOS, and Android |
+| `icons` | Versioned generated icon sets for web, desktop, iOS, and Android |
 | `assets/**` | Public project media served under `/assets/**` in web deployments |
 
 `main.dowe` declares exactly one `main` block. It can own application metadata, one or more view
@@ -164,8 +164,9 @@ responsibilities are:
 Pure types imported by both surfaces may live in a root `types` folder. Do not place a type there
 when it belongs exclusively to either `views/types` or `server/types`.
 
-Run `dowe icons` to generate the versioned `assets/icons` tree from a local SVG. Keep that tree in
-source control and treat copies under `.dowe` as disposable generated output.
+Run `dowe icons` to generate the versioned `icons` tree from a local SVG. Keep that tree in
+source control and treat copies under `.dowe` as disposable generated output. Web packages expose
+only the synchronized `icons/web` set under `/icons/**`; native icon targets are not public assets.
 
 Web exports preserve the complete public `assets/**` tree under `/assets/**`, including files used
 only by document metadata. A source file such as `assets/social/home.png` is therefore available as

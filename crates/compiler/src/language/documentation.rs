@@ -13,7 +13,7 @@ pub(super) const VIEW_COMPONENTS: &[&str] = &[
     "Skeleton", "Modal", "AlertDialog", "Tooltip", "Toast", "Dropdown", "Command", "AvatarGroup", "ChatBox",
     "Empty", "Marquee", "TypeWriter", "RichText", "Record", "ToggleGroup", "Collapsible", "Countdown", "Map",
     "Audio", "Image", "Accordion", "Carousel", "Checkbox", "Color", "Date", "DateRange", "RadioGroup", "Toggle",
-    "Card", "Tabs", "tab", "Title", "Text",
+    "Card", "Tabs", "tab", "Stepper", "step", "Title", "Text",
 ];
 
 struct ServerDocumentation {
@@ -172,6 +172,11 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
         name: "init",
         signature: "init",
         description: "Runs server startup statements before traffic, or an unnamed page/layout workflow once when that view scope mounts.",
+    },
+    ServerDocumentation {
+        name: "redirect",
+        signature: "redirect path:\"/...\"",
+        description: "Replaces the active internal route and terminates the current view fn or init workflow.",
     },
     ServerDocumentation {
         name: "response",
@@ -506,7 +511,7 @@ fn component_description(name: &str) -> &'static str {
             "Direct layout or page boundary that replaces normal content while its bound boolean Signal is true."
         }
         "AppBar" | "Footer" | "BottomBar" | "SideNav" | "RailNav" | "Sidebar" | "NavMenu"
-        | "Tabs" | "tab" | "Drawer" => {
+        | "Tabs" | "tab" | "Stepper" | "step" | "Drawer" => {
             "Built-in cross-platform navigation and application-shell component."
         }
         "Input" | "Select" | "Option" | "Slider" | "Dropzone" | "ComboBox" | "comboOption"
@@ -623,6 +628,8 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
         "Fab" => &[("fabAction", "(zero or more secondary actions)")],
         "Tabs" => &[("tab", "(one or more tab entries)")],
         "tab" => &[("view components", "(one or more)")],
+        "Stepper" => &[("step", "(one or more ordered step entries)")],
+        "step" => &[("view components", "(one or more)")],
         _ => &[],
     }
 }

@@ -39,6 +39,13 @@ fn collect_navigation_actions_from_node(
     route_id: &str,
     actions: &mut Vec<ViewNavigationAction>,
 ) {
+    if let ViewNode::Scope { actions: view_actions, .. } = node {
+        for action in view_actions {
+            if let ViewActionKind::Sequence(statements) = &action.kind {
+                collect_redirect_navigation_actions(statements, route_id, actions);
+            }
+        }
+    }
     if let Some(action) = navigation_action(node) {
         actions.push(ViewNavigationAction {
             id: format!("nav-{}-{}", route_id, actions.len()),
@@ -91,6 +98,33 @@ fn collect_navigation_actions_from_node(
     for group in node_child_groups(node) {
         for child in group {
             collect_navigation_actions_from_node(child, route_id, actions);
+        }
+    }
+}
+
+fn collect_redirect_navigation_actions(
+    statements: &[ViewFunctionStatement],
+    route_id: &str,
+    actions: &mut Vec<ViewNavigationAction>,
+) {
+    for statement in statements {
+        match statement {
+            ViewFunctionStatement::Redirect { path } => actions.push(ViewNavigationAction {
+                id: format!("nav-{}-{}", route_id, actions.len()),
+                action: NavigationAction::Internal {
+                    path: path.clone(),
+                    fragment: None,
+                    operation: NavigationOperation::Replace,
+                },
+            }),
+            ViewFunctionStatement::If { success, error, .. } => {
+                collect_redirect_navigation_actions(success, route_id, actions);
+                collect_redirect_navigation_actions(error, route_id, actions);
+            }
+            ViewFunctionStatement::Request { .. }
+            | ViewFunctionStatement::Assign(_)
+            | ViewFunctionStatement::Reset(_)
+            | ViewFunctionStatement::Toast(_) => {}
         }
     }
 }
@@ -217,4 +251,3 @@ fn collect_overlay_item_navigation_action(
         });
     }
 }
-

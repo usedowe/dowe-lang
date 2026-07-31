@@ -13,16 +13,16 @@ fn synchronizes_project_icons_into_generated_targets() {
     assert!(
         project.web.pages[0]
             .html_document
-            .contains(r#"href="/assets/icons/web/favicon-32x32.png""#)
+            .contains(r#"href="/icons/web/favicon-32x32.png""#)
     );
     assert!(
         project.web.pages[0]
             .html_document
-            .contains(r#"rel="apple-touch-icon" href="/assets/icons/web/apple-touch-icon.png""#)
+            .contains(r#"rel="apple-touch-icon" href="/icons/web/apple-touch-icon.png""#)
     );
     for path in [
-        ".dowe/web/assets/icons/web/favicon-32x32.png",
-        ".dowe/apps/desktop/web/assets/icons/web/favicon-32x32.png",
+        ".dowe/web/icons/web/favicon-32x32.png",
+        ".dowe/apps/desktop/web/icons/web/favicon-32x32.png",
         ".dowe/apps/desktop/macos/icon.icns",
         ".dowe/apps/desktop/windows/icon.ico",
         ".dowe/apps/desktop/linux/icon.png",
@@ -43,8 +43,7 @@ fn synchronizes_project_icons_into_generated_targets() {
             .join(".dowe/apps/android/dev/AndroidManifest.xml"),
     )
     .expect("android dev manifest");
-    let ios = fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist"))
-        .expect("ios plist");
+    let ios = fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist")).expect("ios plist");
     assert!(android.contains(r#"android:icon="@mipmap/ic_launcher""#));
     assert!(android.contains(r#"android:roundIcon="@mipmap/ic_launcher_round""#));
     assert!(android_dev.contains(r#"android:icon="@mipmap/ic_launcher""#));
@@ -67,17 +66,28 @@ fn removes_stale_generated_icon_copies_when_source_set_disappears() {
     write_icon_fixture(temp.path());
     compile_dev(temp.path()).expect("first compile");
 
-    fs::remove_dir_all(temp.path().join("assets/icons")).expect("remove icons");
+    fs::remove_dir_all(temp.path().join("icons")).expect("remove icons");
     let project = compile_dev(temp.path()).expect("second compile");
 
-    assert!(!temp.path().join(".dowe/web/assets/icons").exists());
-    assert!(!temp.path().join(".dowe/apps/desktop/macos/icon.icns").exists());
+    assert!(!temp.path().join(".dowe/web/icons").exists());
+    assert!(
+        !temp
+            .path()
+            .join(".dowe/apps/desktop/macos/icon.icns")
+            .exists()
+    );
     assert!(!temp.path().join(".dowe/apps/ios/Assets.xcassets").exists());
-    assert!(!temp
-        .path()
-        .join(".dowe/apps/android/app/src/main/res/mipmap-mdpi/ic_launcher.png")
-        .exists());
-    assert!(project.web.pages[0].html_document.contains("data:image/svg+xml"));
+    assert!(
+        !temp
+            .path()
+            .join(".dowe/apps/android/app/src/main/res/mipmap-mdpi/ic_launcher.png")
+            .exists()
+    );
+    assert!(
+        project.web.pages[0]
+            .html_document
+            .contains("data:image/svg+xml")
+    );
 }
 
 #[cfg(unix)]
@@ -91,13 +101,17 @@ fn rejects_symlinked_project_icon_outputs() {
     );
     let outside = temp.path().join("outside.png");
     fs::write(&outside, "icon").expect("outside");
-    let favicon = temp.path().join("assets/icons/web/favicon-32x32.png");
+    let favicon = temp.path().join("icons/web/favicon-32x32.png");
     fs::create_dir_all(favicon.parent().expect("parent")).expect("icon directory");
     std::os::unix::fs::symlink(outside, favicon).expect("symlink");
 
     let error = compile_dev(temp.path()).expect_err("symlink error");
 
-    assert!(error.to_string().contains("icon output cannot contain symlinks"));
+    assert!(
+        error
+            .to_string()
+            .contains("icon output cannot contain symlinks")
+    );
 }
 
 fn write_icon_fixture(root: &Path) {
@@ -116,7 +130,7 @@ fn write_icon_fixture(root: &Path) {
         "android/drawable/ic_launcher_background.xml",
     ];
     for path in paths {
-        let output = root.join("assets/icons").join(path);
+        let output = root.join("icons").join(path);
         fs::create_dir_all(output.parent().expect("parent")).expect("icon directory");
         fs::write(output, path.as_bytes()).expect("icon");
     }

@@ -38,6 +38,46 @@ fn tabs_tab_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
         .collect()
 }
 
+fn lower_stepper_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNode> {
+    let props = component_props(node, BuiltinComponent::Stepper)?;
+    let mut steps = Vec::new();
+    for child in &node.children {
+        if child.name != "step" {
+            return Err(node_error(child, "Stepper only accepts step entries"));
+        }
+        if !child.args.is_empty() {
+            return Err(node_error(child, "Stepper step cannot declare args"));
+        }
+        let children = lower_node_sequence(&child.children, allow_children)?;
+        steps.push(
+            stepper_step_component(stepper_step_props(child)?, children)
+                .map_err(|error| component_error(child, error))?,
+        );
+    }
+    stepper_component_node(props, steps).map_err(|error| component_error(node, error))
+}
+
+fn stepper_step_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+    node.props
+        .iter()
+        .map(|prop| {
+            if !matches!(prop.name.as_str(), "id" | "label" | "i18n") {
+                return Err(node_error(
+                    node,
+                    ComponentError::unknown_prop(BuiltinComponent::Step, &prop.name).to_string(),
+                ));
+            }
+            if static_value_has_bareword(&prop.value) {
+                return Err(quoted_static_string_error(prop));
+            }
+            Ok(ComponentProp {
+                name: prop.name.clone(),
+                value: prop_value(prop)?,
+            })
+        })
+        .collect()
+}
+
 fn lower_table_node(node: &SourceNode) -> DoweResult<ViewNode> {
     let props = component_props(node, BuiltinComponent::Table)?;
     let mut columns = Vec::new();
@@ -255,4 +295,3 @@ fn nav_menu_entry_props(node: &SourceNode, allowed: &[&str]) -> DoweResult<Vec<C
         })
         .collect()
 }
-

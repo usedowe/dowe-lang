@@ -103,7 +103,7 @@ fn scan_dir(
                         path.file_name().and_then(|value| value.to_str()),
                         Some(".env" | ".env.example")
                     )
-                || path.starts_with(root.join("assets/icons")))
+                || path.starts_with(root.join("icons")))
         {
             insert_file(root, &path, files)?;
         }
@@ -187,18 +187,14 @@ mod tests {
     #[test]
     fn detects_project_icons_without_watching_unrelated_assets() {
         let temp = TempDir::new().expect("tempdir");
-        fs::create_dir_all(temp.path().join("assets/icons/web")).expect("icons");
+        fs::create_dir_all(temp.path().join("icons/web")).expect("icons");
         fs::create_dir_all(temp.path().join("assets/photos")).expect("photos");
         let mut watcher = SourceWatcher::new(temp.path()).expect("watcher");
 
-        fs::write(
-            temp.path().join("assets/icons/web/favicon-32x32.png"),
-            "icon",
-        )
-        .expect("icon");
+        fs::write(temp.path().join("icons/web/favicon-32x32.png"), "icon").expect("icon");
         fs::write(temp.path().join("assets/photos/hero.png"), "photo").expect("photo");
         let changes = watcher.poll().expect("poll");
 
-        assert_eq!(changes, ["assets/icons/web/favicon-32x32.png"]);
+        assert_eq!(changes, ["icons/web/favicon-32x32.png"]);
     }
 }

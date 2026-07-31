@@ -36,7 +36,16 @@ fn parse_style_props(
             {
                 style.element.bind = Some(parse_required_string(&prop.name, &prop.value)?)
             }
-            "onClick" if matches!(component, BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Avatar | BuiltinComponent::Fab | BuiltinComponent::Empty) => {
+            "onClick"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button
+                        | BuiltinComponent::IconButton
+                        | BuiltinComponent::Avatar
+                        | BuiltinComponent::Fab
+                        | BuiltinComponent::Empty
+                ) =>
+            {
                 style.element.on_click = Some(parse_required_string(&prop.name, &prop.value)?)
             }
             "bg" if style_accepts_colors(mode) => {
@@ -69,10 +78,7 @@ fn parse_style_props(
             "position" if matches!(mode, StylePropMode::Box) => {
                 let value = parse_required_string(&prop.name, &prop.value)?;
                 style.position_mut().mode = BoxPosition::from_name(&value).ok_or_else(|| {
-                    ComponentError::invalid_prop(
-                        "position",
-                        "static, relative, absolute or fixed",
-                    )
+                    ComponentError::invalid_prop("position", "static, relative, absolute or fixed")
                 })?;
             }
             "top" if matches!(mode, StylePropMode::Box) => {
@@ -132,9 +138,7 @@ fn parse_style_props(
         || position.right.is_some()
         || position.bottom.is_some()
         || position.left.is_some();
-    if has_position_offset
-        && matches!(position.mode, BoxPosition::Static | BoxPosition::Relative)
-    {
+    if has_position_offset && matches!(position.mode, BoxPosition::Static | BoxPosition::Relative) {
         return Err(ComponentError::invalid_prop_combination(
             "`top`, `right`, `bottom` and `left` require `position:\"absolute\"` or `position:\"fixed\"`",
         ));
@@ -201,9 +205,7 @@ fn parse_layout_props(
 
     for prop in props {
         match prop.name.as_str() {
-            "direction" => {
-                layout.direction = parse_flex_direction_prop(&prop.name, &prop.value)?
-            }
+            "direction" => layout.direction = parse_flex_direction_prop(&prop.name, &prop.value)?,
             "wrap" => layout.wrap = parse_static_bool(&prop.name, &prop.value)?,
             "justify" => layout.justify = Some(parse_justify_prop(&prop.name, &prop.value)?),
             "align" => layout.align = Some(parse_align_prop(&prop.name, &prop.value)?),
@@ -276,7 +278,12 @@ fn parse_variant_props(
             "i18n" if component == BuiltinComponent::Button => {
                 variant_props.i18n = Some(parse_i18n_key_prop(&prop.name, &prop.value)?);
             }
-            "iconStart" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Input) => {
+            "iconStart"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button | BuiltinComponent::Input
+                ) =>
+            {
                 let name = parse_static_string(&prop.name, &prop.value)?;
                 let (condition, name, comparison) = conditional_icon_value(&name);
                 variant_props.reactive.icon_start_when = condition;
@@ -285,7 +292,12 @@ fn parse_variant_props(
                     variant_props.icon_start = Some(solar_control_icon(name)?);
                 }
             }
-            "iconEnd" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Input) => {
+            "iconEnd"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button | BuiltinComponent::Input
+                ) =>
+            {
                 let name = parse_static_string(&prop.name, &prop.value)?;
                 let (condition, name, comparison) = conditional_icon_value(&name);
                 variant_props.reactive.icon_end_when = condition;
@@ -381,19 +393,59 @@ fn parse_variant_props(
             {
                 variant_props.label_floating = parse_static_bool(&prop.name, &prop.value)?
             }
-            "href" if matches!(component, BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
+            "href"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button
+                        | BuiltinComponent::IconButton
+                        | BuiltinComponent::Avatar
+                        | BuiltinComponent::Empty
+                ) =>
+            {
                 href = Some(parse_required_string(&prop.name, &prop.value)?)
             }
-            "navigate" if matches!(component, BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
+            "navigate"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button
+                        | BuiltinComponent::IconButton
+                        | BuiltinComponent::Avatar
+                        | BuiltinComponent::Empty
+                ) =>
+            {
                 navigate = Some(parse_navigation_operation(&prop.name, &prop.value)?)
             }
-            "history" if matches!(component, BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
+            "history"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button
+                        | BuiltinComponent::IconButton
+                        | BuiltinComponent::Avatar
+                        | BuiltinComponent::Empty
+                ) =>
+            {
                 history = Some(parse_history_prop(&prop.name, &prop.value)?)
             }
-            "target" if matches!(component, BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
+            "target"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button
+                        | BuiltinComponent::IconButton
+                        | BuiltinComponent::Avatar
+                        | BuiltinComponent::Empty
+                ) =>
+            {
                 target = Some(parse_web_target(&prop.name, &prop.value)?)
             }
-            "externalMode" if matches!(component, BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Avatar | BuiltinComponent::Empty) => {
+            "externalMode"
+                if matches!(
+                    component,
+                    BuiltinComponent::Button
+                        | BuiltinComponent::IconButton
+                        | BuiltinComponent::Avatar
+                        | BuiltinComponent::Empty
+                ) =>
+            {
                 external_mode = Some(parse_native_external_mode(&prop.name, &prop.value)?)
             }
             _ => style_props.push(prop.clone()),
@@ -420,10 +472,16 @@ fn parse_variant_props(
     if component == BuiltinComponent::IconButton {
         variant_props.icon_only = true;
         if variant_props.icon_start.is_none() {
-            return Err(ComponentError::invalid_prop("icon", "known quoted Solar icon name"));
+            return Err(ComponentError::invalid_prop(
+                "icon",
+                "known quoted Solar icon name",
+            ));
         }
         if variant_props.label.as_deref().is_none_or(str::is_empty) {
-            return Err(ComponentError::invalid_prop("label", "non-empty accessibility label"));
+            return Err(ComponentError::invalid_prop(
+                "label",
+                "non-empty accessibility label",
+            ));
         }
         normalize_icon_button_visual_props(&mut variant_props);
     }
@@ -487,9 +545,7 @@ fn parse_banner_props(
     })
 }
 
-fn conditional_icon_value(
-    value: &str,
-) -> (Option<String>, &str, Option<ReactiveNumberComparison>) {
+fn conditional_icon_value(value: &str) -> (Option<String>, &str, Option<ReactiveNumberComparison>) {
     let Some(value) = value.strip_prefix("@conditional-icon:") else {
         return (None, value, None);
     };
@@ -550,18 +606,20 @@ fn parse_bar_props(
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Surface);
     if component == BuiltinComponent::Footer {
-        style.style.spacing = style.style.spacing.with_horizontal_padding_default(
-            ResponsiveValue::ordered(vec![
-                ResponsiveEntry {
-                    breakpoint: Breakpoint::Xs,
-                    value: ScaleValue::from_half_steps(8),
-                },
-                ResponsiveEntry {
-                    breakpoint: Breakpoint::Md,
-                    value: ScaleValue::from_half_steps(12),
-                },
-            ]),
-        );
+        style.style.spacing =
+            style
+                .style
+                .spacing
+                .with_horizontal_padding_default(ResponsiveValue::ordered(vec![
+                    ResponsiveEntry {
+                        breakpoint: Breakpoint::Xs,
+                        value: ScaleValue::from_half_steps(8),
+                    },
+                    ResponsiveEntry {
+                        breakpoint: Breakpoint::Md,
+                        value: ScaleValue::from_half_steps(12),
+                    },
+                ]));
     }
     bar.style = style;
     Ok(bar)
@@ -604,6 +662,50 @@ fn parse_tabs_props(
     })
 }
 
+fn parse_stepper_props(props: &[ComponentProp]) -> ComponentResult<TabsProps> {
+    let mut color = ColorFamily::Primary;
+    let mut position = TabsPosition::Top;
+    let mut style_props = Vec::new();
+
+    for prop in props {
+        match prop.name.as_str() {
+            "scheme" => {
+                color = parse_family_prop(BuiltinComponent::Stepper, &prop.name, &prop.value)?;
+            }
+            "orientation" => {
+                let orientation = parse_required_string(&prop.name, &prop.value)?;
+                position = match orientation.as_str() {
+                    "horizontal" => TabsPosition::Top,
+                    "vertical" => TabsPosition::Start,
+                    _ => {
+                        return Err(ComponentError::invalid_prop(
+                            "orientation",
+                            "horizontal or vertical",
+                        ));
+                    }
+                };
+            }
+            "color" => {
+                return Err(ComponentError::new(
+                    "unknown prop `color` on `Stepper`; use `scheme` for visual family",
+                ));
+            }
+            _ => style_props.push(prop.clone()),
+        }
+    }
+
+    Ok(TabsProps {
+        style: parse_style_props(
+            BuiltinComponent::Stepper,
+            &style_props,
+            StylePropMode::Variant,
+        )?,
+        variant: TabsVariant::Stepper,
+        color,
+        position,
+    })
+}
+
 fn normalize_button_visual_props(props: &mut VariantProps) {
     let size = *props.size.get_or_insert(ButtonSize::Md);
     if props.reactive.size.is_none() {
@@ -626,16 +728,17 @@ fn normalize_icon_button_visual_props(props: &mut VariantProps) {
     }
 
     if let Some(icon) = props.icon_start.as_mut() {
-        let icon_size =
-            ResponsiveValue::scalar(SizeValue::Scale(size.icon_button_icon_size()));
+        let icon_size = ResponsiveValue::scalar(SizeValue::Scale(size.icon_button_icon_size()));
         icon.props.style.sizing.w = Some(icon_size.clone());
         icon.props.style.sizing.h = Some(icon_size);
     }
 }
 
 fn normalize_card_visual_props(props: &mut VariantProps) {
-    props.style.spacing = props.style.spacing.with_padding_default(
-        ResponsiveValue::ordered(vec![
+    props.style.spacing = props
+        .style
+        .spacing
+        .with_padding_default(ResponsiveValue::ordered(vec![
             ResponsiveEntry {
                 breakpoint: Breakpoint::Xs,
                 value: ScaleValue::from_half_steps(8),
@@ -644,8 +747,7 @@ fn normalize_card_visual_props(props: &mut VariantProps) {
                 breakpoint: Breakpoint::Lg,
                 value: ScaleValue::from_half_steps(10),
             },
-        ]),
-    );
+        ]));
 }
 
 fn apply_button_size_defaults(style: &mut StyleProps, size: ButtonSize) {
@@ -805,9 +907,7 @@ fn parse_svg_path_props(
         match prop.name.as_str() {
             "d" => data = Some(parse_svg_path_data(&prop.name, &prop.value)?),
             "fill" => fill = Some(parse_svg_path_fill(&prop.name, &prop.value)?),
-            "transform" => {
-                transform = Some(parse_svg_transform(&prop.name, &prop.value)?)
-            }
+            "transform" => transform = Some(parse_svg_transform(&prop.name, &prop.value)?),
             _ => return Err(ComponentError::unknown_prop(component, &prop.name)),
         }
     }

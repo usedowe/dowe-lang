@@ -48,7 +48,12 @@ fn render_sidebar_html(
 ) -> String {
     let mut html = format!(
         "<aside{}>",
-        attrs(sidebar_classes(props), Some(&props.style.element), None, context)
+        attrs(
+            sidebar_classes(props),
+            Some(&props.style.element),
+            None,
+            context
+        )
     );
     if !header.is_empty() {
         html.push_str("<div class=\"sidebar-header\">");
@@ -93,7 +98,7 @@ fn render_drawer_html(
         class_attr(drawer_classes(props))
     );
     if !props.hide_close_button {
-        html.push_str(drawer_close_html());
+        html.push_str(&drawer_close_html());
     }
     if !header.is_empty() {
         html.push_str("<div class=\"drawer-header\">");
@@ -126,6 +131,13 @@ fn drawer_panel_attrs(props: &DrawerProps, context: &ReactiveRenderContext) -> S
     )
 }
 
-fn drawer_close_html() -> &'static str {
-    r#"<button class="drawer-close" type="button" aria-label="Close drawer" data-dowe-drawer-close><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z"/></svg></button>"#
+fn drawer_close_html() -> String {
+    format!(
+        r#"<button class="drawer-close" type="button" aria-label="Close drawer" data-dowe-drawer-close>{}</button>"#,
+        overlay_close_icon_html()
+    )
+}
+
+fn overlay_close_icon_html() -> &'static str {
+    r#"<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z"/></svg>"#
 }

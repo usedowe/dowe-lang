@@ -50,27 +50,38 @@ fn render_compose_accordion(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let arrow = side_nav_submenu_arrow_icon();
+    let default_open_ids = items
+        .iter()
+        .filter(|item| item.default_open)
+        .map(|item| compose_string_literal(&item.id))
+        .collect::<Vec<_>>()
+        .join(", ");
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             variant_content(&props.style)
         } else {
             "null"
-        };
+    };
     output.push_str(&format!(
-        "{pad}DoweAccordion(multiple = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border}) {{\n",
+        "{pad}DoweAccordion(multiple = {}, defaultOpenIds = setOf({default_open_ids}), modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border}, radius = {}) {{ openIds, toggleItem ->\n",
         props.multiple,
         modifier_for_style(&props.style.style),
-        variant_container(&props.style),
-        variant_content(&props.style),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        compose_card_radius(&props.style.style),
     ));
     for item in items {
         output.push_str(&format!(
-            "{pad}    DoweAccordionItem(id = {}, label = {}, disabled = {}, defaultOpen = {}) {{\n",
-            compose_string_literal(&item.id),
+            "{pad}    DoweAccordionItem(label = {}, disabled = {}, open = openIds.contains({}), radius = {}, onToggle = {{ toggleItem({}) }}, arrowIcon = {{\n",
             compose_string_literal(&item.label),
             item.disabled,
-            item.default_open
+            compose_string_literal(&item.id),
+            compose_card_radius(&props.style.style),
+            compose_string_literal(&item.id),
         ));
+        render_compose_side_icon(&arrow, indent + 8, output);
+        output.push_str(&format!("{pad}    }}) {{\n"));
         for child in &item.children {
             render_compose_node_in_flow(
                 child,

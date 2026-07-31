@@ -203,6 +203,12 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
             ComponentError::invalid_prop_combination("tab can only be used inside Tabs")
                 .to_string(),
         )),
+        BuiltinComponent::Stepper => lower_stepper_node(node, allow_children),
+        BuiltinComponent::Step => Err(node_error(
+            node,
+            ComponentError::invalid_prop_combination("step can only be used inside Stepper")
+                .to_string(),
+        )),
         BuiltinComponent::NavMenu => lower_nav_menu_node(node, allow_children),
         BuiltinComponent::Divider => {
             reject_children(node)?;

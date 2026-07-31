@@ -37,6 +37,18 @@ enum DoweStep {
     case assign(String, String, Any?, Bool, DoweStdlibCall?)
     case reset(String)
     case toast(String, String, String, Int?, String?, String?, String?)
+    case redirect(String)
+}
+
+struct DoweToastState: Hashable {
+    let id: Int
+    let kind: String
+    let title: String
+    let message: String
+    let duration: Int
+    let scheme: String
+    let variant: String
+    let position: String
 }
 
 struct DoweStdlibCall {
@@ -234,6 +246,9 @@ final class DoweReactiveState: ObservableObject {
     private static var globalValues: [String: Any] = [:]
     private static var globalStorage: [String: String] = [:]
     @Published private var values: [String: Any]
+    @Published private(set) var toast: DoweToastState? = nil
+    @Published private(set) var redirectPath: String? = nil
+    private var toastSequence = 0
     private let constants: [String: Any]
     private let initial: [String: Any]
     private let signals: [String: DoweSignalMetadata]
@@ -468,11 +483,11 @@ final class DoweReactiveState: ObservableObject {
         case .request(let request, _):
             _ = await execute(request, item: item)
         case .sequence(let steps, _):
-            await runSteps(steps, item: item, results: [:])
+            _ = await runSteps(steps, item: item, results: [:])
         }
     }
 
-    private func runSteps(_ steps: [DoweStep], item: [String: Any]?, results: [String: Any]) async {
+    private func runSteps(_ steps: [DoweStep], item: [String: Any]?, results: [String: Any]) async -> Bool {
         var results = results
         for step in steps {
             switch step {
@@ -481,7 +496,7 @@ final class DoweReactiveState: ObservableObject {
                 results[result] = ["ok": response.0, "data": response.1 ?? NSNull()]
             case .branch(let result, let success, let error):
                 let ok = stepValue(result + ".ok", item: item, results: results) as? Bool ?? false
-                await runSteps(ok ? success : error, item: item, results: results)
+                if await runSteps(ok ? success : error, item: item, results: results) { return true }
             case .assign(let target, let source, let literal, let hasLiteral, let call):
                 let current = hasLiteral ? literal : call.map { stdlib($0, item: item) } ?? stepValue(source, item: item, results: results)
                 write(target, value: current ?? NSNull())
@@ -489,10 +504,14 @@ final class DoweReactiveState: ObservableObject {
                 if let current = value(target, in: initial) {
                     write(target, value: current)
                 }
-            case .toast(_, let title, let message, let duration, _, _, _):
-                showToast(title: title, message: message, duration: duration)
+            case .toast(let kind, let title, let message, let duration, let scheme, let variant, let position):
+                showToast(kind: kind, title: title, message: message, duration: duration, scheme: scheme, variant: variant, position: position)
+            case .redirect(let path):
+                redirectPath = path
+                return true
             }
         }
+        return false
     }
 
     private func stepValue(_ source: String, item: [String: Any]?, results: [String: Any]) -> Any? {
@@ -505,19 +524,26 @@ final class DoweReactiveState: ObservableObject {
         return value(source, in: results) ?? value(source, item: item)
     }
 
-    private func showToast(title: String, message: String, duration: Int?) {
-        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
-              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
-            return
-        }
-        var presenter = root
-        while let presented = presenter.presentedViewController { presenter = presented }
-        let alert = UIAlertController(title: title.isEmpty ? nil : title, message: message, preferredStyle: .alert)
-        presenter.present(alert, animated: true)
-        Task {
-            try? await Task.sleep(nanoseconds: UInt64(max(500, duration ?? 3000)) * 1_000_000)
-            alert.dismiss(animated: true)
-        }
+    private func showToast(kind: String, title: String, message: String, duration: Int?, scheme: String?, variant: String?, position: String?) {
+        toastSequence += 1
+        toast = DoweToastState(
+            id: toastSequence,
+            kind: kind,
+            title: title,
+            message: message,
+            duration: max(500, duration ?? 4000),
+            scheme: scheme ?? (kind == "error" ? "danger" : kind),
+            variant: variant ?? "solid",
+            position: position ?? "top-right"
+        )
+    }
+
+    func closeToast() {
+        toast = nil
+    }
+
+    func consumeRedirect() {
+        redirectPath = nil
     }
 
     func canvasValue(_ path: String) -> Any? {

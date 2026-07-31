@@ -419,8 +419,7 @@ fn class_body(class_name: &str) -> Option<String> {
         return Some(button_size_css(size));
     }
     for prefix in [
-        "p", "px", "py", "pl", "pr", "pt", "pb", "top", "right", "bottom", "left",
-        "gap", "w", "h",
+        "p", "px", "py", "pl", "pr", "pt", "pb", "top", "right", "bottom", "left", "gap", "w", "h",
     ] {
         if let Some(suffix) = class_name.strip_prefix(&format!("{prefix}-"))
             && let Some(rem) = scale_suffix_rem(suffix)
@@ -670,6 +669,17 @@ fn append_single_variant_css(
         ));
         return;
     }
+    if matches!(base, "accordion" | "collapsible") && variant == ComponentVariant::Outlined {
+        let (surface, content) = if family == ColorFamily::Background {
+            ("background", "onBackground")
+        } else {
+            ("surface", "onSurface")
+        };
+        css.push_str(&format!(
+            ".{base}.is-outlined.is-{name}{{background-color:var(--dowe-{surface});color:var(--dowe-{content});border:1px solid var(--dowe-{color});}}"
+        ));
+        return;
+    }
     if base == "toggle-group-item" {
         match variant {
             ComponentVariant::Solid => css.push_str(&format!(
@@ -802,7 +812,7 @@ fn append_single_variant_css(
             ".{base}.is-soft.is-{name}{{background-color:var(--dowe-{soft});color:var(--dowe-{on_soft});border-color:var(--dowe-{soft});}}"
         )),
         ComponentVariant::Outlined => {
-            let (surface, content) = if base == "card" {
+            let (surface, content) = if matches!(base, "card" | "modal" | "toast") {
                 if family == ColorFamily::Background {
                     ("var(--dowe-background)", "onBackground")
                 } else {
@@ -870,6 +880,9 @@ fn append_tabs_variant_css(css: &mut String, family: ColorFamily, variant: TabsV
         )),
         TabsVariant::Pills => css.push_str(&format!(
             ".tabs-list.is-pills.is-{name}{{border-radius:9999px;background-color:var(--dowe-{soft});color:var(--dowe-{on_soft});}}.tabs-list.is-pills.is-{name} .tab{{border-radius:9999px;}}.tabs-list.is-pills.is-{name} .tab.on-active{{background-color:var(--dowe-{active_background});color:var(--dowe-{active_content});}}"
+        )),
+        TabsVariant::Stepper => css.push_str(&format!(
+            ".tabs-list.is-stepper.is-{name}{{gap:0;padding:0;overflow-x:auto;scroll-snap-type:x proximity;}}.tabs-list.is-stepper.is-{name} .tab{{gap:0.625rem;padding:0.5rem 0;scroll-snap-align:start;color:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{content:\"\";display:block;width:2rem;height:2px;margin-inline:0.5rem;background:var(--dowe-softMuted);}}.tabs-list.is-stepper.is-{name} .tab.on-active{{color:var(--dowe-{accent});}}.tabs-list.is-stepper.is-{name} .step-indicator{{display:inline-grid;place-items:center;flex:0 0 auto;width:2rem;height:2rem;border:2px solid var(--dowe-softMuted);border-radius:9999px;background:var(--dowe-background);color:var(--dowe-muted);font-weight:700;}}.tabs-list.is-stepper.is-{name} .tab.on-active .step-indicator{{border-color:var(--dowe-{accent});background:var(--dowe-{active_background});color:var(--dowe-{active_content});}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab{{width:100%;}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{position:absolute;top:2.5rem;left:0.9375rem;width:2px;height:1.5rem;margin:0;background:var(--dowe-softMuted);}}"
         )),
     }
 }

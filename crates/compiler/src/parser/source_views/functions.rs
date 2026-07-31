@@ -90,6 +90,7 @@ fn parse_function_statements(nodes: &[SourceNode]) -> DoweResult<Vec<ViewFunctio
             "set" => statements.push(ViewFunctionStatement::Assign(parse_set_action(node)?)),
             "reset" => statements.push(ViewFunctionStatement::Reset(parse_reset_action(node)?)),
             "toast" => statements.push(ViewFunctionStatement::Toast(parse_toast_statement(node)?)),
+            "redirect" => statements.push(parse_redirect_statement(node)?),
             "if" => {
                 let else_node = nodes.get(index + 1).filter(|next| next.name == "else");
                 statements.push(parse_function_if(node, else_node)?);
@@ -116,13 +117,35 @@ fn parse_function_statements(nodes: &[SourceNode]) -> DoweResult<Vec<ViewFunctio
             _ => {
                 return Err(node_error(
                     node,
-                    "view function statements must be `request`, `if`, `set`, `reset`, or `toast`",
+                    "view function statements must be `request`, `if`, `set`, `reset`, `toast`, or `redirect`",
                 ));
             }
         }
         index += 1;
     }
     Ok(statements)
+}
+
+fn parse_redirect_statement(node: &SourceNode) -> DoweResult<ViewFunctionStatement> {
+    if !node.args.is_empty() || !node.children.is_empty() {
+        return Err(node_error(
+            node,
+            "`redirect` does not accept arguments or children",
+        ));
+    }
+    for prop in &node.props {
+        if prop.name != "path" {
+            return Err(prop_error(
+                prop,
+                format!("`redirect` does not support `{}`", prop.name),
+            ));
+        }
+    }
+    let path = required_static_string_prop(node, "path")?;
+    if !path.starts_with('/') {
+        return Err(node_error(node, "`redirect` path must start with `/`"));
+    }
+    Ok(ViewFunctionStatement::Redirect { path })
 }
 
 fn parse_request_statement(node: &SourceNode) -> DoweResult<ViewFunctionStatement> {
@@ -183,4 +206,3 @@ fn parse_request_statement(node: &SourceNode) -> DoweResult<ViewFunctionStatemen
         },
     })
 }
-

@@ -68,6 +68,8 @@ fn render_accordion_html(
     children_html: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
+    let arrow = side_nav_submenu_arrow_icon();
+    let arrow_html = render_svg_html(&arrow.props, &arrow.paths, context);
     let mut extra = format!(
         r#" data-dowe-accordion data-dowe-accordion-multiple="{}""#,
         props.multiple
@@ -95,18 +97,19 @@ fn render_accordion_html(
         let hidden = if item.default_open { "" } else { " hidden" };
         let expanded = if item.default_open { "true" } else { "false" };
         html.push_str(&format!(
-            r#"<div{} data-dowe-accordion-item><button class="accordion-header{}" type="button" aria-expanded="{}" data-dowe-accordion-trigger{}><span class="accordion-start"><span class="accordion-label">{}</span></span><span class="accordion-end"><span class="accordion-arrow">⌄</span></span></button><div class="accordion-content" data-dowe-accordion-content{}>"#,
+            r#"<div{} data-dowe-accordion-item><button class="accordion-header{}" type="button" aria-expanded="{}" data-dowe-accordion-trigger{}><span class="accordion-start"><span class="accordion-label">{}</span></span><span class="accordion-end"><span class="accordion-arrow" aria-hidden="true">{}</span></span></button><div class="accordion-content" data-dowe-accordion-content{}><div class="accordion-content-inner">"#,
             class_attr(item_classes),
             if item.default_open { " is-open" } else { "" },
             expanded,
             if item.disabled { " disabled" } else { "" },
             escape_html(&item.label),
+            arrow_html,
             hidden
         ));
         for child in &item.children {
             html.push_str(&render_html_with_context(child, children_html, context));
         }
-        html.push_str("</div></div>");
+        html.push_str("</div></div></div>");
     }
     html.push_str("</div>");
     html

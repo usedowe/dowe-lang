@@ -1,11 +1,11 @@
-use crate::context::summarize_codegraph;
+use crate::context::summarize_codegraph_for;
 use crate::error::AgentResult;
 use crate::images::encode_image_paths;
 use crate::model::{
     AgentContext, AgentPrepareOptions, AgentPreparedRequest, AgentRequest, AgentRequestType,
 };
 use crate::prompts::messages_for;
-use crate::skills::generation_skill_summaries;
+use crate::skills::generation_skill_summaries_for;
 use crate::tools::agent_tool_definitions;
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -26,12 +26,12 @@ pub fn prepare_agent_request(
     let model = options
         .model
         .unwrap_or_else(|| request_type.default_model().to_string());
-    let skills = generation_skill_summaries();
+    let skills = generation_skill_summaries_for(prompt);
     let codegraph = if matches!(
         request_type,
         AgentRequestType::SpecPlan | AgentRequestType::Implementation
     ) {
-        Some(summarize_codegraph(root, 16)?)
+        Some(summarize_codegraph_for(root, prompt, 16)?)
     } else {
         None
     };
@@ -153,8 +153,12 @@ fn is_under_specified(prompt: &str) -> bool {
 
 fn is_ui_request(prompt: &str) -> bool {
     let lower = prompt.to_ascii_lowercase();
-    contains_any(
-        &lower,
+    let terms = lower
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
+        .filter(|term| !term.is_empty())
+        .collect::<Vec<_>>();
+    contains_term(
+        &terms,
         &[
             "ui",
             "ux",
@@ -162,14 +166,22 @@ fn is_ui_request(prompt: &str) -> bool {
             "dashboard",
             "vista",
             "view",
+            "vista",
             "layout",
             "pantalla",
             "screen",
             "landing",
             "card",
             "form",
+            "formulario",
+            "component",
+            "componente",
         ],
     )
+}
+
+fn contains_term(terms: &[&str], needles: &[&str]) -> bool {
+    needles.iter().any(|needle| terms.contains(needle))
 }
 
 fn contains_any(text: &str, needles: &[&str]) -> bool {

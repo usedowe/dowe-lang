@@ -1,25 +1,108 @@
 use crate::model::AgentSkillSummary;
 
 pub fn generation_skill_summaries() -> Vec<AgentSkillSummary> {
-    generation_skills()
-        .iter()
-        .map(|skill| AgentSkillSummary {
-            name: skill.name.to_string(),
-            source: "dowe_agent_crate".to_string(),
-            path: None,
-            description: skill.description.to_string(),
-            context: skill.context.to_string(),
-            token_policy: "crate_context_compact".to_string(),
-        })
-        .collect()
+    generation_skills().iter().map(skill_summary).collect()
+}
+
+pub fn generation_skill_summaries_for(prompt: &str) -> Vec<AgentSkillSummary> {
+    let lower = prompt.to_ascii_lowercase();
+    let terms = lower
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
+        .filter(|term| !term.is_empty())
+        .collect::<Vec<_>>();
+    let fullstack = terms.contains(&"fullstack");
+    let views = fullstack
+        || contains_any(
+            &terms,
+            &[
+                "ui",
+                "ux",
+                "frontend",
+                "dashboard",
+                "view",
+                "vista",
+                "layout",
+                "page",
+                "screen",
+                "pantalla",
+                "component",
+                "componente",
+                "form",
+                "formulario",
+                "theme",
+                "tema",
+                "responsive",
+                "mobile",
+                "movil",
+                "desktop",
+                "escritorio",
+                "android",
+                "ios",
+                "button",
+            ],
+        );
+    let server = fullstack
+        || contains_any(
+            &terms,
+            &[
+                "backend",
+                "server",
+                "servidor",
+                "api",
+                "endpoint",
+                "handler",
+                "middleware",
+                "database",
+                "cache",
+                "vector",
+                "websocket",
+            ],
+        );
+    let terminal = contains_any(
+        &terms,
+        &[
+            "terminal",
+            "cli",
+            "command",
+            "comando",
+            "argument",
+            "argumento",
+            "stdout",
+            "stderr",
+        ],
+    );
+    let selected = generation_skills().iter().filter(|skill| match skill.name {
+        "dowe-source-format" | "dowe-sdd-validation" => true,
+        "dowe-fullstack" => views && server,
+        "dowe-ui-reference" => views && !server,
+        "dowe-server-logic" => server && !views,
+        "dowe-terminal" => terminal && !views && !server,
+        _ => false,
+    });
+    selected.map(skill_summary).collect()
+}
+
+fn skill_summary(skill: &GenerationSkill) -> AgentSkillSummary {
+    AgentSkillSummary {
+        name: skill.name.to_string(),
+        source: "dowe_agent_crate".to_string(),
+        path: None,
+        description: skill.description.to_string(),
+        context: skill.context.to_string(),
+        token_policy: "crate_context_compact".to_string(),
+    }
+}
+
+fn contains_any(terms: &[&str], needles: &[&str]) -> bool {
+    needles.iter().any(|needle| terms.contains(needle))
 }
 
 fn generation_skills() -> &'static [GenerationSkill] {
     &[
         GenerationSkill {
             name: "dowe-source-format",
-            description: "Generate Dowe Source Format source without Node.js, Tailwind, or browser-only runtime assumptions.",
-            context: "Use .dowe as source DSL. Keep server behavior in main/server blocks, views in views/layout/page files, and generated artifacts under project .dowe only. Do not execute user source through Node.js.",
+            description: "Generate Dowe Source Format through compiler-owned declarations and target contracts.",
+            context: "Use .dowe as the source DSL. Keep server behavior in main and server modules, views in view modules, and generated artifacts under the project .dowe directory.",
         },
         GenerationSkill {
             name: "dowe-ui-reference",

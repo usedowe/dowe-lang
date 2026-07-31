@@ -46,12 +46,10 @@ pub(crate) fn run_icons_command(args: &[String]) -> Result<(), Box<dyn std::erro
         let count = report
             .files
             .iter()
-            .filter(|path| {
-                path.starts_with(std::path::Path::new("assets/icons").join(target.as_str()))
-            })
+            .filter(|path| path.starts_with(std::path::Path::new("icons").join(target.as_str())))
             .count();
         println!(
-            "Generated {count} {} icon files in assets/icons/{}",
+            "Generated {count} {} icon files in icons/{}",
             target.as_str(),
             target.as_str()
         );

@@ -256,6 +256,8 @@ fn render_collapsible_html(
     children_html: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
+    let arrow = solar_control_icon("alt-arrow-down").expect("bundled Collapsible arrow icon");
+    let arrow_html = render_svg_html(&arrow.props, &arrow.paths, context);
     let body = children
         .iter()
         .map(|child| render_html_with_context(child, children_html, context))
@@ -265,7 +267,7 @@ fn render_collapsible_html(
         props.default_open
     );
     format!(
-        r#"<div{}><button class="collapsible-header" type="button" aria-expanded="{}" data-dowe-collapsible-trigger{}><span class="collapsible-label">{}</span><span class="collapsible-arrow" aria-hidden="true">⌄</span></button><div class="collapsible-content" data-dowe-collapsible-content{}>{}</div></div>"#,
+        r#"<div{}><button class="collapsible-header" type="button" aria-expanded="{}" data-dowe-collapsible-trigger{}><span class="collapsible-label">{}</span><span class="collapsible-arrow" aria-hidden="true">{}</span></button><div class="collapsible-content" data-dowe-collapsible-content{}><div class="collapsible-content-inner">{}</div></div></div>"#,
         attrs(
             collapsible_classes(props),
             Some(&props.style.element),
@@ -275,6 +277,7 @@ fn render_collapsible_html(
         props.default_open,
         if props.disabled { " disabled" } else { "" },
         escape_html(&props.label),
+        arrow_html,
         if props.default_open { "" } else { " hidden" },
         body
     )

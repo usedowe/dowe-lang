@@ -35,6 +35,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
                 "accordion-end".to_string(),
                 "accordion-arrow".to_string(),
                 "accordion-content".to_string(),
+                "accordion-content-inner".to_string(),
             ]);
             for item in items {
                 for child in &item.children {

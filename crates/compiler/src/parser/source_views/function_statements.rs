@@ -104,6 +104,44 @@ fn parse_toast_statement(node: &SourceNode) -> DoweResult<ViewToastAction> {
             "`toast value` requires a valid type and non-empty message",
         ));
     }
+    let scheme = optional_static_string_prop(node, "scheme")?;
+    if scheme
+        .as_deref()
+        .is_some_and(|value| ColorFamily::from_name(value).is_none())
+    {
+        return Err(node_error(
+            node,
+            "`toast scheme` must be a Card design family",
+        ));
+    }
+    let variant = optional_static_string_prop(node, "variant")?;
+    let variant = match variant {
+        Some(value) => match ComponentVariant::from_name(&value) {
+            Some(
+                parsed @ (ComponentVariant::Solid
+                | ComponentVariant::Soft
+                | ComponentVariant::Outlined
+                | ComponentVariant::Ghost),
+            ) => Some(parsed.as_str().to_string()),
+            _ => {
+                return Err(node_error(
+                    node,
+                    "`toast variant` must be solid, soft, outlined, or ghost",
+                ));
+            }
+        },
+        None => None,
+    };
+    let position = optional_static_string_prop(node, "position")?;
+    if position
+        .as_deref()
+        .is_some_and(|value| OverlayCornerPosition::from_name(value).is_none())
+    {
+        return Err(node_error(
+            node,
+            "`toast position` must be top-left, top-right, bottom-left, or bottom-right",
+        ));
+    }
     Ok(ViewToastAction {
         kind,
         title,
@@ -112,9 +150,9 @@ fn parse_toast_statement(node: &SourceNode) -> DoweResult<ViewToastAction> {
             SourceValue::Number(value) => value.parse().ok(),
             _ => None,
         }),
-        scheme: optional_static_string_prop(node, "scheme")?,
-        variant: optional_static_string_prop(node, "variant")?,
-        position: optional_static_string_prop(node, "position")?,
+        scheme,
+        variant,
+        position,
     })
 }
 
@@ -339,4 +377,3 @@ fn optional_prop_bool(node: &SourceNode, name: &str) -> DoweResult<Option<bool>>
         })
         .transpose()
 }
-

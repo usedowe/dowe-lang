@@ -3,42 +3,39 @@ use crate::model::{HarnessManifest, HarnessMode, ValidationCommand, ValidationCo
 pub(crate) fn root_agents_markdown() -> String {
     r#"# Dowe Project Agent
 
-This project uses Dowe Source Format. Dowe compiles declarative `.dowe` source through Rust-owned
-compiler and runtime contracts.
+This project uses Dowe Source Format. Dowe compiles declarative `.dowe` source through its shared
+Rust compiler and runtime contracts.
 
 ## Start
 
 1. Read `main.dowe` and the imported files that own the requested surface.
-2. Read one focused installed skill from `.agents/skills`: `dowe-core`, `dowe-server`, `dowe-views`,
-   or `dowe-theme`.
-3. Load only that skill's focused references.
-4. Read `theme.dowe` before changing repeated visual props.
+2. Select one installed skill under `.agents/skills`: `dowe-core` for root structure,
+   `dowe-server` for server modules, `dowe-views` for view modules, or `dowe-theme` for `theme.dowe`.
+3. Open its `SKILL.md`, then only the reference named for the current task.
+4. Add a second skill or reference only when the request crosses that ownership boundary.
 5. Treat compiler diagnostics as the final syntax and prop authority.
 
 ## Spec-Driven Development
 
-For behavior changes, follow Spec -> Contract -> Tests -> Implementation -> Validation ->
-Documentation. Select a project spec, derive tests first, record the expected failure when practical,
-then implement the smallest compliant change.
+When the task selects or changes a project behavior contract, follow Spec -> Contract -> Tests ->
+Implementation -> Validation -> Documentation. Copy, local styling, and structure-preserving source
+edits do not require a Harness plan unless the project declares one.
 
 The Agent Harness under `.agents` owns plans and TDD state. Use its commands when a change needs a
-plan, status, check, or validation evidence. Do not require Harness ceremony for a simple source edit
-that does not change behavior.
+plan, status, check, or validation evidence.
 
 ## CodeGraph And Validation
 
-- Use CodeGraph for ownership, modularity, dependencies, and duplication checks.
+- Use CodeGraph when ownership, dependencies, modularity, or duplication are part of the change.
 - Persist CodeGraph or Harness evidence only when declared validation requires it.
 - Keep native Dowe tests in any project directory and run `dowe test [path ...]` for supported
   literal assertions.
-- Treat compiler diagnostics and shared Rust contracts as authoritative.
 - Keep server, views, desktop, Android, and iOS behavior unified through Dowe source.
 
 ## Boundaries
 
 - Do not edit generated `.dowe` artifacts as source.
 - Do not read or expose `.env` values, credentials, or private workspace instructions.
-- Do not add Node.js, `node_modules`, Tailwind, React, or browser-only runtime assumptions.
 - Do not use private Dowe implementation skills when authoring this project.
 - Keep server-only bindings and secrets out of views and generated client data.
 "#
@@ -58,31 +55,20 @@ Do not invent a separate Claude-specific architecture or syntax.
 pub(crate) fn project_agents_markdown() -> String {
     r#"# Dowe Project Agents
 
-This project uses Dowe Agent Harnesses.
+This directory owns optional project Harness configuration and generated plans.
 
-## Required Reading
+## When Working With A Harness
 
 1. Read the project-root `AGENTS.md`.
-2. Read this file.
-3. Read `.agents/manifest.json`.
-4. Read the relevant installed skill under `.agents/skills`.
-5. Read the applicable harness under `.agents/harnesses`.
-6. Read the selected project spec before implementation.
-7. Follow Spec -> Contract -> Tests -> Implementation -> Validation -> Documentation.
+2. Read `.agents/manifest.json` and the applicable file under `.agents/harnesses`.
+3. Read the selected project spec and its contracts.
+4. Follow Spec -> Contract -> Tests -> Implementation -> Validation -> Documentation.
 
-## Modes
+Installed authoring skills live under `.agents/skills`. Open only the skill and focused reference
+required by the source surface being changed.
 
-- Project-specific agent support lives under `.agents`.
-- Generated validation evidence lives under `.dowe/agent-harnesses`.
-- Dowe framework agent instructions live in Dowe's `/agents` directory and must not be edited from project harness commands.
-
-## TDD
-
-TDD means Test-Driven Development.
-
-Implementation work must start from a spec, derive tests before implementation, record the expected failure when practical, implement the smallest behavior that satisfies the tests, then validate, update documentation, and review applicable skills before closing.
-
-Native Dowe literal tests can live in any project directory. Run `dowe test [path ...]` for the selected test file or directory when the contract is covered by `test` and `assert` declarations.
+Project-specific agent support stays under `.agents`. Generated validation evidence stays under
+`.dowe/agent-harnesses`.
 "#
     .to_string()
 }

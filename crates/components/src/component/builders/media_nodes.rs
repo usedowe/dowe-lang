@@ -284,7 +284,7 @@ pub fn image_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
 
 pub fn accordion_component_node(
     props: Vec<ComponentProp>,
-    items: Vec<AccordionItem>,
+    mut items: Vec<AccordionItem>,
 ) -> ComponentResult<ViewNode> {
     if items.is_empty() {
         return Err(ComponentError::invalid_prop_combination(
@@ -312,6 +312,15 @@ pub fn accordion_component_node(
     let mut style = parse_variant_props(BuiltinComponent::Accordion, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Background);
+    if !multiple {
+        let mut found_open = false;
+        for item in &mut items {
+            if item.default_open {
+                item.default_open = !found_open;
+                found_open = true;
+            }
+        }
+    }
     Ok(ViewNode::Accordion {
         props: AccordionProps { style, multiple },
         items,

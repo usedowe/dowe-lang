@@ -3,9 +3,10 @@ use super::{
     DeployOptions, DeployTarget, DevTarget, DevTargetSelection, GenerateIconOptions, HostOs,
     IconRounded, IconTarget, InitOptions, InitProjectOptions, ProjectTemplate, SpawnConfig,
     SpawnEvent, build_codegraph, build_project, deploy_project, generate_project_icons,
-    get_agent_public_skill, handle_agent_mcp_message, init_agent_harness, init_dowe_project,
-    init_external_agent_project, list_agent_public_skills, prepare_agent_project_context,
-    prepare_agent_request, run_spawn, search_agent_public_examples, update_external_agent_project,
+    get_agent_public_skill, get_agent_public_skill_resource, handle_agent_mcp_message,
+    init_agent_harness, init_dowe_project, init_external_agent_project, list_agent_public_skills,
+    prepare_agent_project_context, prepare_agent_request, run_spawn, search_agent_public_examples,
+    update_external_agent_project,
 };
 use std::fs;
 use tempfile::TempDir;
@@ -173,6 +174,8 @@ fn exposes_public_agent_bridge_through_ipc() {
 
     let skills = list_agent_public_skills();
     let views = get_agent_public_skill("views", false).expect("views");
+    let styles =
+        get_agent_public_skill_resource("views", "references/styles.md").expect("styles resource");
     let examples = search_agent_public_examples("dashboard sidebar form", 3).expect("examples");
     let context = prepare_agent_project_context(temp.path()).expect("context");
     let mcp = handle_agent_mcp_message(temp.path(), r#"{"jsonrpc":"2.0","id":1,"method":"ping"}"#)
@@ -181,6 +184,7 @@ fn exposes_public_agent_bridge_through_ipc() {
 
     assert_eq!(skills.len(), 4);
     assert_eq!(views.id, "views");
+    assert_eq!(styles.path, "references/styles.md");
     assert_eq!(examples.results[0].id, "dashboard-layout");
     assert_eq!(context.mode, "project");
     assert!(mcp.contains(r#""result":{}"#));
@@ -218,7 +222,7 @@ fn generates_project_icons_through_ipc_wrapper() {
     assert_eq!(report.targets, [IconTarget::Web]);
     let serialized = serde_json::to_value(&report).expect("serialized report");
     assert_eq!(serialized["targets"], serde_json::json!(["web"]));
-    assert!(temp.path().join("assets/icons/web/favicon.ico").is_file());
+    assert!(temp.path().join("icons/web/favicon.ico").is_file());
 }
 
 #[test]

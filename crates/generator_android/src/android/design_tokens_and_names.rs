@@ -223,14 +223,16 @@ fn dev_button_border(props: &VariantProps) -> &'static str {
 fn tabs_list_background(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_color(props.color)),
-        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost => "Color.Transparent",
+        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
+            "Color.Transparent"
+        }
     }
 }
 
 fn tabs_list_content(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Solid | TabsVariant::Pills => color_ref(family_on_soft_color(props.color)),
-        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost => {
+        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             color_ref(tabs_accent_token(props.color))
         }
     }
@@ -260,7 +262,9 @@ fn tabs_border(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Outlined => color_ref(ColorToken::Muted),
         TabsVariant::Line => tabs_accent(props),
-        TabsVariant::Solid | TabsVariant::Ghost | TabsVariant::Pills => "null",
+        TabsVariant::Solid | TabsVariant::Ghost | TabsVariant::Pills | TabsVariant::Stepper => {
+            "null"
+        }
     }
 }
 
@@ -276,14 +280,16 @@ fn tabs_accent_token(value: ColorFamily) -> ColorToken {
 fn dev_tabs_list_background(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Solid | TabsVariant::Pills => java_color(family_soft_color(props.color)),
-        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost => "Color.TRANSPARENT",
+        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
+            "Color.TRANSPARENT"
+        }
     }
 }
 
 fn dev_tabs_list_content(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Solid | TabsVariant::Pills => java_color(family_on_soft_color(props.color)),
-        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost => {
+        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             java_color(tabs_accent_token(props.color))
         }
     }
@@ -313,7 +319,9 @@ fn dev_tabs_border(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Outlined => java_color(ColorToken::Muted),
         TabsVariant::Line => dev_tabs_accent(props),
-        TabsVariant::Solid | TabsVariant::Ghost | TabsVariant::Pills => "null",
+        TabsVariant::Solid | TabsVariant::Ghost | TabsVariant::Pills | TabsVariant::Stepper => {
+            "null"
+        }
     }
 }
 

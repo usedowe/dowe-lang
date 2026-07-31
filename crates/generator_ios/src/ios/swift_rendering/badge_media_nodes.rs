@@ -172,26 +172,37 @@ fn render_swift_accordion(
     context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let arrow = side_nav_submenu_arrow_icon();
+    let content_color = card_variant_content(&props.style);
+    let default_open_ids = items
+        .iter()
+        .filter(|item| item.default_open)
+        .map(|item| swift_string_literal(&item.id))
+        .collect::<Vec<_>>()
+        .join(", ");
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             format!("Optional({})", variant_content(&props.style))
         } else {
             "nil".to_string()
-        };
+    };
     output.push_str(&format!(
-        "{pad}DoweAccordionView(multiple: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}) {{\n",
+        "{pad}DoweAccordionView(multiple: {}, defaultOpenIds: [{default_open_ids}], backgroundColor: {}, contentColor: {content_color}, borderColor: {border}, radius: {}) {{ openIds, toggleItem in\n",
         props.multiple,
-        variant_container(&props.style),
-        variant_content(&props.style),
+        card_variant_container(&props.style),
+        swift_card_radius(&props.style.style),
     ));
     for item in items {
         output.push_str(&format!(
-            "{pad}    DoweAccordionItemView(id: {}, label: {}, disabled: {}, defaultOpen: {}) {{\n",
-            swift_string_literal(&item.id),
+            "{pad}    DoweAccordionItemView(label: {}, disabled: {}, open: openIds.contains({}), contentColor: {content_color}, radius: {}, action: {{ toggleItem({}) }}, arrowIcon: {{\n",
             swift_string_literal(&item.label),
             item.disabled,
-            item.default_open
+            swift_string_literal(&item.id),
+            swift_card_radius(&props.style.style),
+            swift_string_literal(&item.id),
         ));
+        render_swift_button_icon(&arrow, content_color, indent + 8, output);
+        output.push_str(&format!("{pad}    }}) {{\n"));
         for child in &item.children {
             render_swift_node_in_flow(
                 child,

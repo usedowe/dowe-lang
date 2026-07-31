@@ -68,7 +68,9 @@ fn renders_layout_bars_markup_and_css() {
     assert!(css.contains(".appbar,.footer,.bottombar{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));width:100%;"));
     assert!(css.contains(".appbar.position-sticky{position:sticky;top:0;}"));
     assert!(css.contains(".appbar.position-fixed{position:fixed;top:0;left:0;right:0;}"));
-    assert!(css.contains(".appbar-top>*,.appbar-bottom>*,.footer-top>*,.footer-bottom>*{width:100%;}"));
+    assert!(
+        css.contains(".appbar-top>*,.appbar-bottom>*,.footer-top>*,.footer-bottom>*{width:100%;}")
+    );
     assert!(css.contains(".appbar{padding-top:0;}"));
     assert!(css.contains(
         ".appbar-content.is-boxed,.footer-content.is-boxed,.bottombar-content.is-boxed{max-width:96rem;margin:0 auto;}"
@@ -168,11 +170,9 @@ fn renders_side_nav_markup_active_runtime_and_css() {
     );
     assert!(css.contains(".sidenav-chevron svg{display:block;width:1em;height:1em;}"));
     assert!(css.contains(".sidenav-status{flex:0 0 auto;border-radius:999px;padding:0.125rem 0.5rem;background:var(--dowe-softMuted);color:var(--dowe-onSoftMuted);"));
-    assert!(
-        css.contains(
-            ".sidenav-submenu.is-open>.sidenav-submenu-content{grid-template-rows:1fr;opacity:1;"
-        )
-    );
+    assert!(css.contains(
+        ".sidenav-submenu.is-open>.sidenav-submenu-content{grid-template-rows:1fr;opacity:1;"
+    ));
     assert!(!css.contains("max-height:40rem"));
     assert!(
         page.css_content
@@ -351,9 +351,7 @@ fn renders_navigation_shell_markup_runtime_and_css() {
             .contains(".sidenav.is-ghost.is-muted .sidenav-entry.is-active")
     );
     assert!(router.contains("openNavMenu"));
-    assert!(router.contains(
-        "if(target.closest(\"[data-dowe-navmenu-popover]\"))closeNavMenus();"
-    ));
+    assert!(router.contains("if(target.closest(\"[data-dowe-navmenu-popover]\"))closeNavMenus();"));
     assert!(router.contains("hydrateNavTreeSubmenus(root,\"sidenav\")"));
     assert!(router.contains("function hydrateScaffoldInsets(root)"));
     assert!(router.contains("appBar.getBoundingClientRect().bottom"));
@@ -401,6 +399,35 @@ fn renders_tabs_markup_runtime_and_css() {
     ));
     assert!(router.contains("function setActiveTab(root,id)"));
     assert!(router.contains("[data-dowe-tab]"));
+}
+
+#[test]
+fn renders_responsive_stepper_markup_and_css() {
+    let root = Path::new("/project");
+    let mut page_tree = tabs_tree();
+    let ViewNode::Tabs { props, .. } = &mut page_tree else {
+        panic!("stepper");
+    };
+    props.variant = TabsVariant::Stepper;
+    props.position = TabsPosition::Top;
+    let page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/stepper.dowe"),
+        "stepper",
+        &page_tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+
+    assert!(html.contains(r#"class="tabs is-top stepper" data-dowe-tabs"#));
+    assert!(html.contains(r#"class="tabs-list is-stepper is-primary" role="tablist""#));
+    assert!(html.contains(r#"class="step-indicator" aria-hidden="true">1</span>"#));
+    assert!(html.contains(r#"aria-current="step""#));
+    assert!(
+        page.css_content
+            .contains(".tabs-list.is-stepper.is-primary")
+    );
+    assert!(page.css_content.contains("overflow-x:auto"));
+    assert!(page.css_content.contains("scroll-snap-type:x proximity"));
 }
 
 #[test]

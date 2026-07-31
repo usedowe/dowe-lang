@@ -287,6 +287,7 @@ fn validate_function_statements(
                 validate_optional_signal_name(path, signals, Some(&reset.target), "reset")?
             }
             ViewFunctionStatement::Toast(_) => {}
+            ViewFunctionStatement::Redirect { .. } => {}
         }
     }
     Ok(())
@@ -419,4 +420,3 @@ fn valid_request_base_url(value: &str) -> bool {
     };
     !rest.is_empty() && !rest.starts_with('/') && !rest.starts_with('?') && !rest.starts_with('#')
 }
-

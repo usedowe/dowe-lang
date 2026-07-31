@@ -54,7 +54,9 @@ fn card_variant_content(props: &VariantProps) -> &'static str {
             ColorFamily::Background => color_ref(ColorToken::OnBackground),
             _ => color_ref(ColorToken::OnSurface),
         },
-        ComponentVariant::Ghost if matches!(color, ColorFamily::Background | ColorFamily::Surface) => {
+        ComponentVariant::Ghost
+            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
+        {
             color_ref(family_on_color(color))
         }
         _ => variant_content(props),
@@ -91,14 +93,16 @@ fn table_variant_content(props: &VariantProps) -> &'static str {
 fn tabs_list_background(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_color(props.color)),
-        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost => "Color.clear",
+        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
+            "Color.clear"
+        }
     }
 }
 
 fn tabs_list_content(props: &TabsProps) -> &'static str {
     match props.variant {
         TabsVariant::Solid | TabsVariant::Pills => color_ref(family_on_soft_color(props.color)),
-        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost => {
+        TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             color_ref(tabs_accent_token(props.color))
         }
     }
@@ -128,7 +132,9 @@ fn tabs_border(props: &TabsProps) -> String {
     match props.variant {
         TabsVariant::Outlined => format!("Optional({})", color_ref(ColorToken::Muted)),
         TabsVariant::Line => format!("Optional({})", tabs_accent(props)),
-        TabsVariant::Solid | TabsVariant::Ghost | TabsVariant::Pills => "nil".to_string(),
+        TabsVariant::Solid | TabsVariant::Ghost | TabsVariant::Pills | TabsVariant::Stepper => {
+            "nil".to_string()
+        }
     }
 }
 

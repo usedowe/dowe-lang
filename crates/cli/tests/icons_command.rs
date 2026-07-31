@@ -30,13 +30,8 @@ fn generates_selected_icons_without_an_interactive_terminal() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(
-        project
-            .path()
-            .join("assets/icons/web/favicon.ico")
-            .is_file()
-    );
-    assert!(!project.path().join("assets/icons/desktop").exists());
+    assert!(project.path().join("icons/web/favicon.ico").is_file());
+    assert!(!project.path().join("icons/desktop").exists());
     assert!(String::from_utf8_lossy(&output.stdout).contains("Generated 7 web icon files"));
 }
 
@@ -54,7 +49,7 @@ fn requires_explicit_rendering_options_without_a_terminal() {
         String::from_utf8_lossy(&output.stderr)
             .contains("requires --source, --background and --rounded")
     );
-    assert!(!project.path().join("assets/icons").exists());
+    assert!(!project.path().join("icons").exists());
 }
 
 #[test]

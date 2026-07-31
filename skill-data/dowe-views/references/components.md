@@ -41,6 +41,8 @@ contract declares them.
 | `Drawer` | Openable side surface with optional `header`, required `body`, and optional `footer`; direct view children also form body content. |
 | `Tabs` | Related panels selected through one or more direct `tab` entries with unique quoted `id` and `label`. |
 | `tab` | Context-only child of Tabs or BottomBar. A Tabs entry owns panel children; a BottomBar entry owns navigation metadata and one Icon. |
+| `Stepper` | Ordered numbered workflow selected through direct `step` entries; use `scheme` and `horizontal` or `vertical` orientation. |
+| `step` | Context-only child of Stepper with unique quoted `id`, quoted `label`, and panel children. |
 
 `Scaffold boxed:true` centers and limits only the `start`, `main`, and `end` body while leaving the outer shell, bars, and overlays full width.
 
@@ -165,7 +167,7 @@ are outside the Table contract.
 | `RichText` | Portable styled text composed from one or more direct `mark` runs. |
 | `mark` | Context-only RichText run with quoted text and one supported style. |
 | `Collapsible` | Expandable content with a quoted label and one or more view children. |
-| `Countdown` | Time-based display with an optional named completion function. |
+| `Countdown` | Time-based display with an optional named completion function; large values expand, while narrow containers compact `lg` and `xl` before bounded horizontal scrolling. |
 | `Map` | Portable map with direct `marker` and optional route `waypoint` entries plus named location or route functions. |
 | `marker` | Context-only Map marker with stable id, latitude, longitude, and optional named click function. |
 | `waypoint` | Context-only Map route point with latitude and longitude. |
@@ -176,10 +178,10 @@ are outside the Table contract.
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Modal` | Open state, named close function, optional `header` and `footer`, and required body view content. |
-| `AlertDialog` | Open confirmation surface with named confirm, cancel, and close functions. |
+| `Modal` | Open state, named close function, optional `header` and `footer`, required body content, Card-equivalent `variant` and `scheme`, and a generated Drawer-style close control unless hidden. |
+| `AlertDialog` | Open confirmation surface with named confirm and cancel functions; `variant` styles the neutral Card-equivalent panel, while `scheme` styles the generated solid confirm Button and cancel remains outlined muted. |
 | `Tooltip` | Accessible contextual label around one or more trigger view children. |
-| `Toast` | Renders feedback from a compatible source value. It is distinct from the lowercase `toast` statement that updates feedback state inside a view function. |
+| `Toast` | Renders static or Signal-backed feedback with Card-equivalent `solid`, `soft`, `outlined`, and `ghost` variants, a design `scheme`, one of four corner positions, and the generated Drawer-style close control. It is distinct from the recommended lowercase `toast` statement that updates the global feedback presenter inside a view function. |
 | `Dropdown` | Anchored surface with required `trigger`, optional `header` and `footer`, and direct `item` or `divider` entries. |
 | `Command` | Searchable command surface with direct `item` entries or `group` collections and named item functions. |
 
@@ -201,6 +203,7 @@ components and cannot be used as independent page roots.
 | `mark` | RichText |
 | `marker`, `waypoint` | Map |
 | `slide` | Carousel |
+| `step` | Stepper |
 
 Do not infer a contextual child from a similarly named component. Use the exact owner-child shape and
 let compiler diagnostics reject children, props, or bindings outside that context.

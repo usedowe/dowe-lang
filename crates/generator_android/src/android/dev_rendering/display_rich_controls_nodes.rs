@@ -209,22 +209,27 @@ fn render_dev_android_display_rich_controls_node(
         }
         ViewNode::Countdown { props } => {
             let view = next_dev_view(counter);
-            let parts = [
-                (props.show_days, props.days_label.as_str()),
-                (props.show_hours, props.hours_label.as_str()),
-                (props.show_minutes, props.minutes_label.as_str()),
-                (props.show_seconds, props.seconds_label.as_str()),
-            ]
-            .iter()
-            .filter_map(|(show, label)| show.then_some(*label))
-            .collect::<Vec<_>>()
-            .join("  ");
+            let on_complete = props
+                .on_complete
+                .as_deref()
+                .and_then(|name| context.action_id(name))
+                .map(|id| format!("() -> doweRunAction(\"{}\", null)", escape_java(id)))
+                .unwrap_or_else(|| "null".to_string());
             output.push_str(&format!(
-                                        "        TextView {view} = doweText(\"00 {}\", {}, 18f, 700, 0f, 1.2f, {});\n        {view}.setPadding(doweDp(12), doweDp(10), doweDp(12), doweDp(10));\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS));\n",
-                                        escape_java(&parts),
+                                        "        HorizontalScrollView {view} = doweCountdown(\"{}\", {}, {}, {}, {}, \"{}\", \"{}\", \"{}\", \"{}\", \"{}\", {}, {}, null, {}, {on_complete});\n",
+                                        escape_java(&props.target),
+                                        props.show_days,
+                                        props.show_hours,
+                                        props.show_minutes,
+                                        props.show_seconds,
+                                        props.size.as_str(),
+                                        escape_java(&props.days_label),
+                                        escape_java(&props.hours_label),
+                                        escape_java(&props.minutes_label),
+                                        escape_java(&props.seconds_label),
+                                        dev_variant_container(&props.style),
                                         dev_variant_content(&props.style),
                                         dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
-                                        dev_variant_container(&props.style)
                                     ));
             apply_dev_android_style(&props.style.style, &view, false, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));

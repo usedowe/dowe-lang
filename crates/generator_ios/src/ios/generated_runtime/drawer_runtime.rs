@@ -169,7 +169,7 @@ struct DoweDrawerSurface<Content: View>: View {
                     .overlay(alignment: .topTrailing) {
                         if !hideCloseButton {
                             Button(action: close) {
-                                DoweDrawerCloseIcon(color: DoweDesign.onSoftMuted)
+                                DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)
                                     .frame(width: CGFloat(28), height: CGFloat(28))
                                     .background(DoweDesign.softMuted)
                                     .foregroundStyle(DoweDesign.onSoftMuted)
@@ -239,22 +239,6 @@ struct DoweDrawerSurface<Content: View>: View {
         }
     }
 
-}
-
-struct DoweDrawerCloseIcon: View {
-    let color: Color
-
-    var body: some View {
-        DoweSvgView(
-            viewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24)),
-            color: color,
-            paths: [
-                DoweSvgPathData(data: "M0 0h24v24H0z", fill: .none),
-                DoweSvgPathData(data: "m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z", fill: .currentColor)
-            ]
-        )
-        .frame(width: CGFloat(18), height: CGFloat(18))
-    }
 }
 
 "#

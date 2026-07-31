@@ -1,4 +1,16 @@
 fn validate_manifest(manifest: &HarnessManifest, report: &mut CheckReport) {
+    if manifest.dowe_version != env!("CARGO_PKG_VERSION") {
+        report.diagnostics.push(warning_diagnostic(
+            "dowe_version_mismatch",
+            ".agents/manifest.json",
+            format!(
+                "Project agent version {} differs from running Dowe {}.",
+                manifest.dowe_version,
+                env!("CARGO_PKG_VERSION")
+            ),
+            "Install the intended Dowe version, verify `dowe version`, then run `dowe agent update`.",
+        ));
+    }
     if manifest.schema_version != "1" {
         report.diagnostics.push(error_diagnostic(
             "schema_unsupported",
@@ -230,5 +242,4 @@ fn relative_project_file(root: &Path, relative: &str) -> HarnessResult<PathBuf> 
     }
     Ok(full)
 }
-
 

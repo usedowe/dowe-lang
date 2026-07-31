@@ -60,6 +60,68 @@ pub fn tabs_tab_component(
     })
 }
 
+pub fn stepper_component_node(
+    props: Vec<ComponentProp>,
+    steps: Vec<TabItem>,
+) -> ComponentResult<ViewNode> {
+    if steps.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(
+            "Stepper requires at least one step",
+        ));
+    }
+    let mut seen = BTreeSet::new();
+    for step in &steps {
+        if !seen.insert(step.id.clone()) {
+            return Err(ComponentError::invalid_prop_combination(format!(
+                "duplicate Stepper step id `{}`",
+                step.id
+            )));
+        }
+        if step.children.is_empty() {
+            return Err(ComponentError::invalid_prop_combination(format!(
+                "Stepper step `{}` requires at least one child",
+                step.id
+            )));
+        }
+    }
+    let props = parse_stepper_props(&props)?;
+    Ok(ViewNode::Tabs { props, tabs: steps })
+}
+
+pub fn stepper_step_component(
+    props: Vec<ComponentProp>,
+    children: Vec<ViewNode>,
+) -> ComponentResult<TabItem> {
+    let mut id = None;
+    let mut label = None;
+    let mut i18n = None;
+    for prop in props {
+        match prop.name.as_str() {
+            "id" => id = Some(parse_id_prop(&prop.name, &prop.value)?),
+            "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
+            "i18n" => i18n = Some(parse_i18n_key_prop(&prop.name, &prop.value)?),
+            _ => {
+                return Err(ComponentError::unknown_prop(
+                    BuiltinComponent::Step,
+                    &prop.name,
+                ));
+            }
+        }
+    }
+    let id = id.ok_or_else(|| ComponentError::invalid_prop("id", "portable step id"))?;
+    if children.is_empty() {
+        return Err(ComponentError::invalid_prop_combination(format!(
+            "Stepper step `{id}` requires at least one child"
+        )));
+    }
+    Ok(TabItem {
+        id,
+        label: label.ok_or_else(|| ComponentError::invalid_prop("label", "non-empty string"))?,
+        i18n,
+        children,
+    })
+}
+
 pub fn bar_component_node(
     component: BuiltinComponent,
     props: Vec<ComponentProp>,
@@ -70,14 +132,23 @@ pub fn bar_component_node(
     bottom: Vec<ViewNode>,
     allow_children: bool,
 ) -> ComponentResult<ViewNode> {
-    if top.is_empty() && start.is_empty() && center.is_empty() && end.is_empty() && bottom.is_empty() {
+    if top.is_empty()
+        && start.is_empty()
+        && center.is_empty()
+        && end.is_empty()
+        && bottom.is_empty()
+    {
         return Err(ComponentError::invalid_prop_combination(format!(
             "{} requires at least one region with content",
             component.as_str()
         )));
     }
     if !allow_children
-        && (contains_children(&top) || contains_children(&start) || contains_children(&center) || contains_children(&end) || contains_children(&bottom))
+        && (contains_children(&top)
+            || contains_children(&start)
+            || contains_children(&center)
+            || contains_children(&end)
+            || contains_children(&bottom))
     {
         return Err(ComponentError::children_outside_layout());
     }

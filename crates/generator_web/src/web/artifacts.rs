@@ -1,35 +1,34 @@
 use dowe_components::{
-    AccordionItem, AccordionProps, AlertDialogProps, AlertProps, Align, AudioProps,
-    AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps, BannerProps, BarProps, BottomBarTab, BoxPosition, BrandProps, Breakpoint, ButtonSize,
-    ArcChartProps, AreaChartProps, BarChartProps, CanvasBackground, CanvasProps, CandlestickProps, CarouselIndicatorType,
-    ChartCommonProps, ChatBoxProps, CollapsibleProps, LineChartProps, PieChartProps,
-    CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, CheckboxProps, ChipProps, CodeProps,
-    CodeTemplateSegment,
+    AccordionItem, AccordionProps, AlertDialogProps, AlertProps, Align, ArcChartProps,
+    AreaChartProps, AudioProps, AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps,
+    BannerProps, BarChartProps, BarProps, BottomBarTab, BoxPosition, BrandProps, Breakpoint,
+    ButtonSize, CandlestickProps, CanvasBackground, CanvasProps, CarouselIndicatorType,
+    CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps,
+    ChatBoxProps, CheckboxProps, ChipProps, CodeProps, CodeTemplateSegment, CollapsibleProps,
     ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption, CommandEntry, CommandProps,
     ComponentVariant, CountdownProps, CoverSource, CsvColumn, CsvFieldProps, DateProps,
-    DateRangeProps, DesignConfig, DesignTheme, DeviceProps, DividerProps, DragDropProps, DragGroup, DragItem,
-    DrawerProps, DropzoneProps, DropdownProps, EditorProps, ElementProps, EmptyKind, EmptyProps,
-    FabAction, FabProps, FlexDirection, FontConfig, FontFamily,
-    GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
-    INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, IframeProps, ImageCropperProps, ImageProps, Justify, LayoutProps,
-    MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps,
-    NativeExternalMode, NavMenuItem, NavMenuItemProps, solar_control_icon,
-    NavMenuProps, NavigationAction, NavigationOperation, OverlayEntry, OverlayItemProps,
-    OverlayPaint, PasswordFieldProps, PhoneFieldProps, PinFieldKind, PinFieldProps,
-    ordered_phone_countries, phone_country, phone_countries, phone_country_flag_icon,
-    RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark,
-    RailNavItem, RailNavItemProps, RailNavProps,
-    ScaleValue, ScaffoldProps,
-    SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
-    SidebarProps,
-    SizeValue, SkeletonProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill, SvgProps, TabItem, TableColumn,
-    SliderProps, TableColumnAlign, TableProps, TabsProps, TabsVariant, TextProps, TextSize,
-    TextSpacing, TextWeight, TextareaProps, ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem,
-    ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
-    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, VideoProps, ViewAction, ViewActionKind, ViewAnimation,
-    ViewAssignAction, ViewIcon, ViewMetadata, ViewNavigationAction, ViewNode, ViewRequestAction,
-    ViewConstant, ViewResetAction, ViewSection, ViewSignal, ViewSignalValue, VisibilityCondition, WebTarget,
-    collect_node_font_families, text_binding_path, text_spacing_em,
+    DateRangeProps, DesignConfig, DesignTheme, DeviceProps, DividerProps, DragDropProps, DragGroup,
+    DragItem, DrawerProps, DropdownProps, DropzoneProps, EditorProps, ElementProps, EmptyKind,
+    EmptyProps, FabAction, FabProps, FlexDirection, FontConfig, FontFamily, GapSize, GapValue,
+    GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT,
+    INPUT_TEXT_SIZE, IframeProps, ImageCropperProps, ImageProps, Justify, LayoutProps,
+    LineChartProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NativeExternalMode,
+    NavMenuItem, NavMenuItemProps, NavMenuProps, NavigationAction, NavigationOperation,
+    OverlayEntry, OverlayItemProps, OverlayPaint, PasswordFieldProps, PhoneFieldProps,
+    PieChartProps, PinFieldKind, PinFieldProps, RadioGroupProps, RadioOption, RailNavItem,
+    RailNavItemProps, RailNavProps, RecordProps, ResponsiveValue, RichTextMark, ScaffoldProps,
+    ScaleValue, SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon,
+    SideNavItem, SideNavItemProps, SideNavProps, SidebarProps, SizeValue, SkeletonProps,
+    SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill, SvgProps, TabItem,
+    TableColumn, TableColumnAlign, TableProps, TabsProps, TabsVariant, TextProps, TextSize,
+    TextSpacing, TextWeight, TextareaProps, ThemeSelectProps, ThemeToggleProps, ToastKind,
+    ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
+    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, VideoProps, ViewAction,
+    ViewActionKind, ViewAnimation, ViewAssignAction, ViewConstant, ViewFunctionStatement, ViewIcon,
+    ViewMetadata, ViewNavigationAction, ViewNode, ViewRequestAction, ViewResetAction, ViewSection,
+    ViewSignal, ViewSignalValue, VisibilityCondition, WebTarget, collect_node_font_families,
+    ordered_phone_countries, phone_countries, phone_country, phone_country_flag_icon,
+    side_nav_submenu_arrow_icon, solar_control_icon, text_binding_path, text_spacing_em,
     text_typography, text_weight_number,
 };
 use dowe_minifier::minify_js;
@@ -469,6 +468,9 @@ fn static_route_href(href: &str, asset_prefix: &str) -> String {
     let (path, fragment) = href.split_once('#').unwrap_or((href, ""));
     if let Some(asset) = path.strip_prefix("/assets/") {
         return format!("{asset_prefix}assets/{asset}");
+    }
+    if let Some(icon) = path.strip_prefix("/icons/") {
+        return format!("{asset_prefix}icons/{icon}");
     }
     let file = if path == "/" {
         if asset_prefix.is_empty() {

@@ -60,6 +60,8 @@ pub fn search_public_examples(query: &str, limit: usize) -> AgentResult<PublicEx
             .cmp(&left.score)
             .then_with(|| left.id.cmp(&right.id))
     });
+    let mut source_paths = BTreeSet::new();
+    results.retain(|result| source_paths.insert(result.source_path.clone()));
     results.truncate(limit);
     Ok(PublicExampleSearch {
         query: query.trim().to_string(),

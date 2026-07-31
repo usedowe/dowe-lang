@@ -228,18 +228,23 @@ fn dev_java_reactive_runtime() -> &'static str {
         private final String title;
         private final String message;
         private final Integer duration;
+        private final String scheme;
+        private final String variant;
+        private final String position;
 
-        private DoweStep(String kind, String result, DoweAction request, DoweStep[] success, DoweStep[] error, String target, String source, Object literal, boolean hasLiteral, DoweAction call, String title, String message, Integer duration) {
+        private DoweStep(String kind, String result, DoweAction request, DoweStep[] success, DoweStep[] error, String target, String source, Object literal, boolean hasLiteral, DoweAction call, String title, String message, Integer duration, String scheme, String variant, String position) {
             this.kind = kind; this.result = result; this.request = request; this.success = success; this.error = error;
             this.target = target; this.source = source; this.literal = literal; this.hasLiteral = hasLiteral; this.call = call;
             this.title = title; this.message = message; this.duration = duration;
+            this.scheme = scheme; this.variant = variant; this.position = position;
         }
 
-        private static DoweStep request(String result, DoweAction action) { return new DoweStep("request", result, action, null, null, null, null, null, false, null, null, null, null); }
-        private static DoweStep branch(String result, DoweStep[] success, DoweStep[] error) { return new DoweStep("branch", result, null, success, error, null, null, null, false, null, null, null, null); }
-        private static DoweStep assign(String target, String source, Object literal, boolean hasLiteral, DoweAction call) { return new DoweStep("assign", null, null, null, null, target, source, literal, hasLiteral, call, null, null, null); }
-        private static DoweStep reset(String target) { return new DoweStep("reset", null, null, null, null, target, null, null, false, null, null, null, null); }
-        private static DoweStep toast(String kind, String title, String message, Integer duration) { return new DoweStep(kind, null, null, null, null, null, null, null, false, null, title, message, duration); }
+        private static DoweStep request(String result, DoweAction action) { return new DoweStep("request", result, action, null, null, null, null, null, false, null, null, null, null, null, null, null); }
+        private static DoweStep branch(String result, DoweStep[] success, DoweStep[] error) { return new DoweStep("branch", result, null, success, error, null, null, null, false, null, null, null, null, null, null, null); }
+        private static DoweStep assign(String target, String source, Object literal, boolean hasLiteral, DoweAction call) { return new DoweStep("assign", null, null, null, null, target, source, literal, hasLiteral, call, null, null, null, null, null, null); }
+        private static DoweStep reset(String target) { return new DoweStep("reset", null, null, null, null, target, null, null, false, null, null, null, null, null, null, null); }
+        private static DoweStep toast(String kind, String title, String message, Integer duration, String scheme, String variant, String position) { return new DoweStep(kind, null, null, null, null, null, null, null, false, null, title, message, duration, scheme, variant, position); }
+        private static DoweStep redirect(String path) { return new DoweStep("redirect", null, null, null, null, path, null, null, false, null, null, null, null, null, null, null); }
     }
 
     private HashMap<String, Object> doweObject(Object... values) {
@@ -761,17 +766,120 @@ fn dev_java_reactive_runtime() -> &'static str {
             doweRunSteps(ok ? step.success : step.error, 0, item, results, () -> doweRunSteps(steps, index + 1, item, results, completion));
             return;
         }
+        if ("redirect".equals(step.kind)) {
+            doweNavigate("replace", step.target, null);
+            return;
+        }
         if ("assign".equals(step.kind)) {
             Object value = step.hasLiteral ? step.literal : step.call == null ? doweSetValue(step.source, item, results) : doweStdlib(step.call, item);
             doweWrite(step.target, value);
         } else if ("reset".equals(step.kind)) {
             doweWrite(step.target, doweInitial.get(step.target));
         } else {
-            String text = (step.title == null || step.title.isEmpty() ? "" : step.title + "\n") + (step.message == null ? "" : step.message);
-            int duration = step.duration != null && step.duration > 3000 ? android.widget.Toast.LENGTH_LONG : android.widget.Toast.LENGTH_SHORT;
-            android.widget.Toast.makeText(this, text, duration).show();
+            doweShowToast(step);
         }
         doweRunSteps(steps, index + 1, item, results, completion);
+    }
+
+    private int doweToastFamily(String scheme) {
+        if ("background".equals(scheme)) return DOWE_BACKGROUND;
+        if ("surface".equals(scheme)) return DOWE_SURFACE;
+        if ("secondary".equals(scheme)) return DOWE_SECONDARY;
+        if ("tertiary".equals(scheme)) return DOWE_TERTIARY;
+        if ("muted".equals(scheme)) return DOWE_MUTED;
+        if ("success".equals(scheme)) return DOWE_SUCCESS;
+        if ("info".equals(scheme)) return DOWE_INFO;
+        if ("warning".equals(scheme)) return DOWE_WARNING;
+        if ("danger".equals(scheme)) return DOWE_DANGER;
+        return DOWE_PRIMARY;
+    }
+
+    private int doweToastOnFamily(String scheme) {
+        if ("background".equals(scheme)) return DOWE_ON_BACKGROUND;
+        if ("surface".equals(scheme)) return DOWE_ON_SURFACE;
+        if ("secondary".equals(scheme)) return DOWE_ON_SECONDARY;
+        if ("tertiary".equals(scheme)) return DOWE_ON_TERTIARY;
+        if ("muted".equals(scheme)) return DOWE_ON_MUTED;
+        if ("success".equals(scheme)) return DOWE_ON_SUCCESS;
+        if ("info".equals(scheme)) return DOWE_ON_INFO;
+        if ("warning".equals(scheme)) return DOWE_ON_WARNING;
+        if ("danger".equals(scheme)) return DOWE_ON_DANGER;
+        return DOWE_ON_PRIMARY;
+    }
+
+    private int doweToastSoftFamily(String scheme) {
+        if ("background".equals(scheme)) return DOWE_BACKGROUND;
+        if ("surface".equals(scheme)) return DOWE_SURFACE;
+        if ("secondary".equals(scheme)) return DOWE_SOFT_SECONDARY;
+        if ("tertiary".equals(scheme)) return DOWE_SOFT_TERTIARY;
+        if ("muted".equals(scheme)) return DOWE_SOFT_MUTED;
+        if ("success".equals(scheme)) return DOWE_SOFT_SUCCESS;
+        if ("info".equals(scheme)) return DOWE_SOFT_INFO;
+        if ("warning".equals(scheme)) return DOWE_SOFT_WARNING;
+        if ("danger".equals(scheme)) return DOWE_SOFT_DANGER;
+        return DOWE_SOFT_PRIMARY;
+    }
+
+    private int doweToastOnSoftFamily(String scheme) {
+        if ("background".equals(scheme)) return DOWE_ON_BACKGROUND;
+        if ("surface".equals(scheme)) return DOWE_ON_SURFACE;
+        if ("secondary".equals(scheme)) return DOWE_ON_SOFT_SECONDARY;
+        if ("tertiary".equals(scheme)) return DOWE_ON_SOFT_TERTIARY;
+        if ("muted".equals(scheme)) return DOWE_ON_SOFT_MUTED;
+        if ("success".equals(scheme)) return DOWE_ON_SOFT_SUCCESS;
+        if ("info".equals(scheme)) return DOWE_ON_SOFT_INFO;
+        if ("warning".equals(scheme)) return DOWE_ON_SOFT_WARNING;
+        if ("danger".equals(scheme)) return DOWE_ON_SOFT_DANGER;
+        return DOWE_ON_SOFT_PRIMARY;
+    }
+
+    private void doweShowToast(DoweStep step) {
+        String scheme = step.scheme == null ? ("error".equals(step.kind) ? "danger" : step.kind) : step.scheme;
+        String variant = step.variant == null ? "solid" : step.variant;
+        String position = step.position == null ? "top-right" : step.position;
+        int background = "soft".equals(variant) ? doweToastSoftFamily(scheme) : "outlined".equals(variant) ? ("background".equals(scheme) ? DOWE_BACKGROUND : DOWE_SURFACE) : "ghost".equals(variant) ? Color.TRANSPARENT : doweToastFamily(scheme);
+        int content = "solid".equals(variant) ? doweToastOnFamily(scheme) : "soft".equals(variant) ? doweToastOnSoftFamily(scheme) : "outlined".equals(variant) ? ("background".equals(scheme) ? DOWE_ON_BACKGROUND : DOWE_ON_SURFACE) : ("background".equals(scheme) || "surface".equals(scheme) ? doweToastOnFamily(scheme) : doweToastFamily(scheme));
+        Integer border = "outlined".equals(variant) ? doweToastFamily(scheme) : null;
+        LinearLayout panel = doweContainer(true);
+        panel.setGravity(Gravity.CENTER_VERTICAL);
+        panel.setPadding(doweDp(16), doweDp(12), doweDp(12), doweDp(12));
+        panel.setBackground(doweInputBackground(background, border, DOWE_RADIUS));
+        String text = (step.title == null || step.title.isEmpty() ? "" : step.title + "\n") + (step.message == null ? "" : step.message);
+        TextView message = doweText(text, content, 14f, 500, 0f, 1.25f, null);
+        message.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        doweAdd(panel, message);
+        FrameLayout close = new FrameLayout(this);
+        close.setBackground(doweBackground(DOWE_SOFT_MUTED, 999f));
+        close.setContentDescription("Close toast");
+        close.setFocusable(true);
+        close.setLayoutParams(new LinearLayout.LayoutParams(doweDp(28), doweDp(28), 0f));
+        ArrayList<DoweSvgPathEntry> paths = new ArrayList<>();
+        paths.add(new DoweSvgPathEntry("M0 0h24v24H0z", false, null));
+        paths.add(new DoweSvgPathEntry("m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z", true, null));
+        DoweSvgView icon = new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_ON_SOFT_MUTED, paths);
+        icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        close.addView(icon, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));
+        LinearLayout.LayoutParams closeParams = (LinearLayout.LayoutParams) close.getLayoutParams();
+        closeParams.setMargins(doweDp(8), 0, 0, 0);
+        close.setLayoutParams(closeParams);
+        doweAdd(panel, close);
+        final int gravity = (position.startsWith("top") ? Gravity.TOP : Gravity.BOTTOM)
+            | (position.endsWith("left") ? Gravity.START : Gravity.END);
+        PopupWindow popup = new PopupWindow(panel, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, false);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        close.setOnClickListener(view -> popup.dismiss());
+        root.post(() -> {
+            if (root.getWindowToken() == null) return;
+            int toastWidth = Math.max(doweDp(1), Math.min(doweDp(420), Math.max(0, root.getWidth() - doweDp(32))));
+            popup.setWidth(toastWidth);
+            ViewGroup.LayoutParams panelParams = panel.getLayoutParams();
+            if (panelParams != null) {
+                panelParams.width = toastWidth;
+                panel.setLayoutParams(panelParams);
+            }
+            popup.showAtLocation(root, gravity, doweDp(16), doweDp(16));
+            root.postDelayed(() -> { if (popup.isShowing()) popup.dismiss(); }, Math.max(500, step.duration == null ? 4000 : step.duration));
+        });
     }
 
     void doweRunStartup(String[] ids) {

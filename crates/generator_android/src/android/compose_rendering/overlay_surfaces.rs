@@ -31,10 +31,7 @@ fn render_compose_drawer(
     ));
     output.push_str(&format!(
         "{pad}    Column(modifier = {}) {{\n",
-        modifier_for_style_with_base(
-            &props.style.style,
-            "Modifier.fillMaxSize()".to_string(),
-        )
+        modifier_for_style_with_base(&props.style.style, "Modifier.fillMaxSize()".to_string(),)
     ));
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     if !header.is_empty() {
@@ -106,8 +103,8 @@ fn render_compose_modal(
     output.push_str(&format!(
         "{pad}DoweModal(open = state.bool(\"{path}\"), close = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, radius = {}, disableOverlayClose = {}, hideCloseButton = {}, header = ",
         compose_close_action(&path, props.on_close.as_deref(), context),
-        variant_container(&props.style),
-        variant_content(&props.style),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
         compose_variant_border(&props.style),
         compose_card_radius(&props.style.style),
         props.disable_overlay_close,
@@ -156,19 +153,20 @@ fn render_compose_alert_dialog(
     let mut panel_style = props.style.clone();
     panel_style.color = Some(ColorFamily::Surface);
     output.push_str(&format!(
-        "{pad}DoweAlertDialog(open = state.bool(\"{path}\"), close = {}, title = {}, description = {}, confirmText = {}, cancelText = {}, backgroundColor = {}, contentColor = {}, dangerColor = {}, radius = {}, loading = {}, onConfirm = {}, onCancel = {})\n",
+        "{pad}DoweAlertDialog(open = state.bool(\"{path}\"), close = {}, title = {}, description = {}, confirmText = {}, cancelText = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, confirmBackgroundColor = {}, confirmContentColor = {}, radius = {}, loading = {}, onConfirm = {})\n",
         compose_close_action(&path, props.on_cancel.as_deref(), context),
         compose_string_literal(&props.title),
         compose_string_literal(&props.description),
         compose_string_literal(&props.confirm_text),
         compose_string_literal(&props.cancel_text),
-        variant_container(&panel_style),
-        variant_content(&panel_style),
+        card_variant_container(&panel_style),
+        card_variant_content(&panel_style),
+        compose_variant_border(&panel_style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Danger))),
+        color_ref(family_on_color(props.style.color.unwrap_or(ColorFamily::Danger))),
         compose_card_radius(&props.style.style),
         props.loading,
         compose_optional_component_action(props.on_confirm.as_deref(), None, context),
-        compose_optional_component_action(props.on_cancel.as_deref(), None, context),
     ));
 }
 
@@ -233,10 +231,11 @@ fn render_compose_toast(
         )
     };
     output.push_str(&format!(
-        "{pad}DoweToast(visible = {visible}, title = {title}, description = {description}, position = {}, backgroundColor = {}, contentColor = {}, showIcon = {}, kind = {}, close = {close})\n",
+        "{pad}DoweToast(visible = {visible}, title = {title}, description = {description}, position = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, showIcon = {}, kind = {}, close = {close})\n",
         compose_string_literal(props.position.as_str()),
-        variant_container(&props.style),
-        variant_content(&props.style),
+        card_variant_container(&props.style),
+        card_variant_content(&props.style),
+        compose_variant_border(&props.style),
         props.show_icon,
         compose_string_literal(props.kind.as_str()),
     ));

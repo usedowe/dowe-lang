@@ -473,15 +473,19 @@ fn render_swift_collapsible(
     context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let arrow = solar_control_icon("alt-arrow-down").expect("bundled Collapsible arrow icon");
+    let content_color = card_variant_content(&props.style);
     output.push_str(&format!(
-        "{pad}DoweCollapsible(label: {}, defaultOpen: {}, disabled: {}, backgroundColor: {}, contentColor: {}, borderColor: {}) {{\n",
+        "{pad}DoweCollapsible(label: {}, defaultOpen: {}, disabled: {}, backgroundColor: {}, contentColor: {content_color}, borderColor: {}, radius: {}, arrowIcon: {{\n",
         swift_string_literal(&props.label),
         props.default_open,
         props.disabled,
         card_variant_container(&props.style),
-        card_variant_content(&props.style),
         swift_variant_border(&props.style),
+        swift_card_radius(&props.style.style),
     ));
+    render_swift_button_icon(&arrow, content_color, indent + 4, output);
+    output.push_str(&format!("{pad}}}) {{\n"));
     for child in children {
         render_swift_node_in_flow(
             child,

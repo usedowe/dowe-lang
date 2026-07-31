@@ -156,13 +156,19 @@ fn collect_js_segments(
                     segments,
                     r#"<span class="button-loading" data-dowe-button-loading hidden aria-hidden="true">"#,
                 );
-                push_literal(segments, &render_svg_html(&icon.props, &icon.paths, context));
+                push_literal(
+                    segments,
+                    &render_svg_html(&icon.props, &icon.paths, context),
+                );
                 push_literal(segments, "</span>");
                 push_literal(segments, "<span data-dowe-button-content>");
             }
             if let Some(icon) = props.icon_start.as_ref() {
                 push_literal(segments, "<span data-dowe-button-icon-start>");
-                push_literal(segments, &render_svg_html(&icon.props, &icon.paths, context));
+                push_literal(
+                    segments,
+                    &render_svg_html(&icon.props, &icon.paths, context),
+                );
                 push_literal(segments, "</span>");
             }
             for child in children {
@@ -170,7 +176,10 @@ fn collect_js_segments(
             }
             if let Some(icon) = props.icon_end.as_ref() {
                 push_literal(segments, "<span data-dowe-button-icon-end>");
-                push_literal(segments, &render_svg_html(&icon.props, &icon.paths, context));
+                push_literal(
+                    segments,
+                    &render_svg_html(&icon.props, &icon.paths, context),
+                );
                 push_literal(segments, "</span>");
             }
             if props.loading_icon.is_some() {
@@ -385,11 +394,9 @@ fn collect_js_segments(
         } => collect_bar_js_segments(
             "footer", "footer", props, top, start, center, end, bottom, segments, context,
         ),
-        ViewNode::BottomBar {
-            props,
-            tabs,
-            ..
-        } => push_literal(segments, &render_bottom_bar_html(props, tabs, context)),
+        ViewNode::BottomBar { props, tabs, .. } => {
+            push_literal(segments, &render_bottom_bar_html(props, tabs, context))
+        }
         ViewNode::SideNav { props, items } => {
             push_literal(
                 segments,
@@ -409,7 +416,12 @@ fn collect_js_segments(
                 segments,
                 &format!(
                     "<aside{}>",
-                    attrs(sidebar_classes(props), Some(&props.style.element), None, context)
+                    attrs(
+                        sidebar_classes(props),
+                        Some(&props.style.element),
+                        None,
+                        context
+                    )
                 ),
             );
             if !header.is_empty() {
@@ -467,7 +479,7 @@ fn collect_js_segments(
                 ),
             );
             if !props.hide_close_button {
-                push_literal(segments, drawer_close_html());
+                push_literal(segments, &drawer_close_html());
             }
             if !header.is_empty() {
                 push_literal(segments, "<div class=\"drawer-header\">");

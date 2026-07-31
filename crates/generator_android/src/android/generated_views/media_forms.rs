@@ -484,34 +484,47 @@ private fun doweImageAspect(value: String): Float {
 }
 
 @Composable
-private fun DoweAccordion(multiple: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?, content: @Composable () -> Unit) {
+private fun DoweAccordion(multiple: Boolean, defaultOpenIds: Set<String>, modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: Dp, content: @Composable (Set<String>, (String) -> Unit) -> Unit) {
+    var openIds by remember(multiple, defaultOpenIds) { mutableStateOf(defaultOpenIds) }
+    val toggleItem: (String) -> Unit = { id ->
+        openIds = if (id in openIds) {
+            openIds - id
+        } else if (multiple) {
+            openIds + id
+        } else {
+            setOf(id)
+        }
+    }
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(radius))
             .background(backgroundColor)
-            .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(12.dp))),
+            .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(radius)))
+            .padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
-            content()
+            content(openIds, toggleItem)
         }
     }
 }
 
 @Composable
-private fun DoweAccordionItem(id: String, label: String, disabled: Boolean, defaultOpen: Boolean, content: @Composable () -> Unit) {
-    var open by remember(id) { mutableStateOf(defaultOpen) }
-    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).border(1.dp, LocalContentColor.current.copy(alpha = 0.12f), RoundedCornerShape(10.dp))) {
+private fun DoweAccordionItem(label: String, disabled: Boolean, open: Boolean, radius: Dp, onToggle: () -> Unit, arrowIcon: @Composable () -> Unit, content: @Composable () -> Unit) {
+    val itemShape = RoundedCornerShape(radius * 0.85f)
+    Column(modifier = Modifier.fillMaxWidth().clip(itemShape).border(1.dp, LocalContentColor.current.copy(alpha = 0.12f), itemShape).alpha(if (disabled) 0.5f else 1f)) {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable(enabled = !disabled) { open = !open }.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().clickable(enabled = !disabled, onClick = onToggle).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(label, fontWeight = FontWeight.SemiBold)
-            Text(if (open) "^" else "v")
+            Text(label, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = if (open) 90f else 0f }, contentAlignment = Alignment.Center) {
+                arrowIcon()
+            }
         }
-        AnimatedVisibility(visible = open, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+        AnimatedVisibility(visible = open, enter = fadeIn(tween(160)) + expandVertically(tween(160)), exit = fadeOut(tween(160)) + shrinkVertically(tween(160))) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 content()
             }
         }

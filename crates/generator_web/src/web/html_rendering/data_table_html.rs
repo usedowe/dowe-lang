@@ -83,21 +83,13 @@ fn render_svg_spinner_html(
     let mut classes = svg_classes(&props.style);
     classes.push("is-svg-spinner".to_string());
     let body_start = motion.source.find('>').map(|index| index + 1).unwrap_or(0);
-    let body_end = motion
-        .source
-        .rfind("</svg>")
-        .unwrap_or(motion.source.len());
+    let body_end = motion.source.rfind("</svg>").unwrap_or(motion.source.len());
     let body = &motion.source[body_start..body_end];
     let fill = svg_spinner_color(motion.fill);
     let stroke = svg_spinner_color(motion.stroke);
     format!(
         r#"<svg{} xmlns="http://www.w3.org/2000/svg" viewBox="{}" fill="{}" stroke="{}" aria-hidden="true">{}<path class="dowe-svg-spinner-fallback" d="M12 3a9 9 0 1 1-6.364 2.636" fill="none" stroke="{}" stroke-width="2.5" stroke-linecap="round"></path><style>.dowe-svg-spinner-fallback{{display:none}}@media (prefers-reduced-motion:reduce){{.is-svg-spinner>*:not(style):not(.dowe-svg-spinner-fallback){{display:none!important}}.dowe-svg-spinner-fallback{{display:inline}}}}</style></svg>"#,
-        attrs(
-            classes,
-            Some(&props.style.element),
-            None,
-            context
-        ),
+        attrs(classes, Some(&props.style.element), None, context),
         escape_attr(&props.view_box.as_str()),
         fill,
         stroke,
@@ -200,7 +192,13 @@ fn render_arc_chart_html(props: &ArcChartProps, context: &ReactiveRenderContext)
         optional_chart_attr("center-text", props.center_text.as_deref()),
         optional_chart_attr("center-value", props.center_value.as_deref()),
     );
-    render_chart_html("arc-chart-container", "Arc chart", &props.common, extra, context)
+    render_chart_html(
+        "arc-chart-container",
+        "Arc chart",
+        &props.common,
+        extra,
+        context,
+    )
 }
 
 fn render_area_chart_html(props: &AreaChartProps, context: &ReactiveRenderContext) -> String {
@@ -218,7 +216,13 @@ fn render_area_chart_html(props: &AreaChartProps, context: &ReactiveRenderContex
         props.hide_y_axis,
         props.show_glow,
     );
-    render_chart_html("area-chart-container", "Area chart", &props.common, extra, context)
+    render_chart_html(
+        "area-chart-container",
+        "Area chart",
+        &props.common,
+        extra,
+        context,
+    )
 }
 
 fn render_bar_chart_html(props: &BarChartProps, context: &ReactiveRenderContext) -> String {
@@ -232,7 +236,13 @@ fn render_bar_chart_html(props: &BarChartProps, context: &ReactiveRenderContext)
         props.hide_grid,
         props.show_glow,
     );
-    render_chart_html("bar-chart-container", "Bar chart", &props.common, extra, context)
+    render_chart_html(
+        "bar-chart-container",
+        "Bar chart",
+        &props.common,
+        extra,
+        context,
+    )
 }
 
 fn render_line_chart_html(props: &LineChartProps, context: &ReactiveRenderContext) -> String {
@@ -249,7 +259,13 @@ fn render_line_chart_html(props: &LineChartProps, context: &ReactiveRenderContex
         props.show_gradient_fill,
         props.show_glow,
     );
-    render_chart_html("line-chart-container", "Line chart", &props.common, extra, context)
+    render_chart_html(
+        "line-chart-container",
+        "Line chart",
+        &props.common,
+        extra,
+        context,
+    )
 }
 
 fn render_pie_chart_html(props: &PieChartProps, context: &ReactiveRenderContext) -> String {
@@ -267,7 +283,13 @@ fn render_pie_chart_html(props: &PieChartProps, context: &ReactiveRenderContext)
         optional_chart_attr("center-label", props.center_label.as_deref()),
         optional_chart_attr("center-value", props.center_value.as_deref()),
     );
-    render_chart_html("pie-chart-container", "Pie chart", &props.common, extra, context)
+    render_chart_html(
+        "pie-chart-container",
+        "Pie chart",
+        &props.common,
+        extra,
+        context,
+    )
 }
 
 fn render_chart_html(
@@ -377,15 +399,25 @@ fn render_tabs_html(
         if active {
             classes.push("on-active".to_string());
         }
+        let label = localized_span("tabs-label", &tab.label, tab.i18n.as_deref());
+        let content = if props.variant == TabsVariant::Stepper {
+            format!(
+                r#"<span class="step-indicator" aria-hidden="true">{}</span>{label}"#,
+                index + 1
+            )
+        } else {
+            label
+        };
         html.push_str(&format!(
-            r#"<button{} type="button" role="tab" id="{}" aria-selected="{}" aria-controls="{}" tabindex="{}" data-dowe-tab="{}">{}</button>"#,
+            r#"<button{} type="button" role="tab" id="{}" aria-selected="{}" aria-controls="{}" tabindex="{}"{} data-dowe-tab="{}">{}</button>"#,
             class_attr(classes),
             escape_attr(&tab_button_id(tab)),
             if active { "true" } else { "false" },
             escape_attr(&tab_panel_id(tab)),
             if active { "0" } else { "-1" },
+            if props.variant == TabsVariant::Stepper && active { r#" aria-current="step""# } else { "" },
             escape_attr(&tab.id),
-            localized_span("tabs-label", &tab.label, tab.i18n.as_deref())
+            content
         ));
     }
     html.push_str("</div><div class=\"tabs-wrapper\">");

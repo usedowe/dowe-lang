@@ -1040,6 +1040,40 @@ pub fn solar_control_icon(name: &str) -> ComponentResult<SideNavIcon> {
     }
 }
 
+pub const SIDE_NAV_SUBMENU_ARROW_PATH: &str = "m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z";
+
+pub fn side_nav_submenu_arrow_icon() -> SideNavIcon {
+    let mut style = StyleProps::default();
+    let size = ResponsiveValue::scalar(SizeValue::Scale(ScaleValue::from_half_steps(8)));
+    style.sizing.w = Some(size.clone());
+    style.sizing.h = Some(size);
+    SideNavIcon {
+        props: SvgProps {
+            style,
+            view_box: SvgViewBox {
+                min_x: "0".to_string(),
+                min_y: "0".to_string(),
+                width: "24".to_string(),
+                height: "24".to_string(),
+            },
+            data: None,
+            motion: None,
+        },
+        paths: vec![
+            SvgPath {
+                data: "M0 0h24v24H0z".to_string(),
+                fill: SvgPathFill::None,
+                transform: None,
+            },
+            SvgPath {
+                data: SIDE_NAV_SUBMENU_ARROW_PATH.to_string(),
+                fill: SvgPathFill::CurrentColor,
+                transform: None,
+            },
+        ],
+    }
+}
+
 pub fn svg_spinner_control_icon(name: &str) -> ComponentResult<SideNavIcon> {
     match icon_component_node(vec![ComponentProp {
         name: "name".to_string(),

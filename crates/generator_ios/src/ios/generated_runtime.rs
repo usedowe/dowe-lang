@@ -53,6 +53,10 @@ fn generated_views(
     );
     output = output.replace("__DOWE_FONT_CASES__", &swift_font_cases(font_families));
     output = output.replace("__DOWE_FONT_SWITCH__", &swift_font_switch(font_families));
+    output = output.replace(
+        "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__",
+        SIDE_NAV_SUBMENU_ARROW_PATH,
+    );
 
     if routes.first().is_some() {
         output.push_str("        GeometryReader { geometry in\n            routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))\n                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)\n            DoweSafeAreaReporter { insets in\n                if !doweInsetsEqual(safeAreaInsets, insets) {\n                    safeAreaInsets = insets\n                }\n            }\n            .frame(width: CGFloat(0), height: CGFloat(0))\n            .allowsHitTesting(false)\n        }\n        .ignoresSafeArea()\n        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background.ignoresSafeArea())\n        .foregroundStyle(DoweDesign.onBackground)\n        .simultaneousGesture(backSwipeGesture)\n        .sheet(item: $externalUrl) { item in\n            DoweExternalWebView(url: item.url)\n        }\n        .onOpenURL { url in\n            applyDeepLink(url)\n        }\n");
@@ -260,6 +264,7 @@ fn generated_route_view(
             output.push_str(&format!("            fixedFab{index}()\n"));
         }
     }
+    output.push_str("            DoweGlobalToast(toast: state.toast, close: state.closeToast)\n");
     output.push_str("        }\n");
     let startup = reactive
         .init
@@ -277,6 +282,7 @@ fn generated_route_view(
         ));
     }
     output.push_str("        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background)\n        .foregroundStyle(DoweDesign.onBackground)\n");
+    output.push_str("        .onChange(of: state.redirectPath) { _, path in if let path { state.consumeRedirect(); navigate(\"replace\", path, nil) } }\n");
     output.push_str("    }\n\n");
     for (index, node) in route_nodes.iter().enumerate() {
         output.push_str(&format!(

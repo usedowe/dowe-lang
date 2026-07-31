@@ -73,7 +73,8 @@ fn collect_statement_environment(
             }
             ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Reset(_)
-            | ViewFunctionStatement::Toast(_) => {}
+            | ViewFunctionStatement::Toast(_)
+            | ViewFunctionStatement::Redirect { .. } => {}
         }
     }
 }
