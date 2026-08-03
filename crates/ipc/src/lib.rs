@@ -17,8 +17,9 @@ pub use dowe_codegraph::{
 };
 use dowe_compiler::{CompiledProject, DoweResult, compile_dev};
 pub use dowe_deploy::{
-    BuildOptions, BuildReport, BuildTarget, DeployOptions, DeployReport, DeploySurface,
-    DeployTarget, available_build_targets, available_deploy_surfaces, deploy_targets_for_surface,
+    BuildOptions, BuildReport, BuildTarget, DeployEnvironment, DeployOptions, DeployReport,
+    DeploySurface, DeployTarget, available_build_targets, available_deploy_surfaces,
+    deploy_targets_for_surface,
 };
 pub use dowe_icons::{GenerateIconOptions, IconReport, IconRounded, IconTarget};
 pub use dowe_runtime::{

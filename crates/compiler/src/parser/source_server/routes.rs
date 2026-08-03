@@ -198,6 +198,7 @@ fn parse_endpoint_method(
         });
     }
     if let Some(behavior) = http_endpoint_behavior(node)? {
+        validate_reverse_proxy_source(node, &action, &behavior)?;
         return Ok(Endpoint {
             method,
             path: path.to_string(),
@@ -231,4 +232,3 @@ fn parse_endpoint_method(
         middlewares: middlewares.to_vec(),
     })
 }
-

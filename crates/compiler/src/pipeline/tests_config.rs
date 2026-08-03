@@ -1,7 +1,7 @@
-use super::compile_dev;
+use super::{compile_dev, compile_for_environment};
 use crate::model::{
-    EndpointBehavior, EnvironmentValueSource, EnvironmentVisibility, HttpMethod, ServerLogLevel,
-    ServerLogValue, ServerStatement,
+    CompileEnvironment, EndpointBehavior, EnvironmentValueSource, EnvironmentVisibility,
+    HttpMethod, ServerLogLevel, ServerLogValue, ServerStatement,
 };
 use crate::parser::validate_design_copilot_dowe;
 use std::fs;
@@ -1326,6 +1326,66 @@ fn compiles_client_environment_for_request_base() {
     assert!(ios.contains(r#"static let BACKEND_URL = "https://api.example.com""#));
     assert!(!android.contains("INTERNAL_TOKEN"));
     assert!(!ios.contains("INTERNAL_TOKEN"));
+}
+
+#[test]
+fn isolates_development_and_deploy_environment_files() {
+    let temp = TempDir::new().expect("tempdir");
+    write_blog_fixture(temp.path());
+    fs::write(temp.path().join(".env.example"), "BACKEND_URL=\n").expect("env example");
+    fs::write(
+        temp.path().join(".env"),
+        "BACKEND_URL=https://dev.example.com\n",
+    )
+    .expect("development env");
+    fs::write(
+        temp.path().join(".env.live"),
+        "BACKEND_URL=https://live.example.com\n",
+    )
+    .expect("live env");
+    fs::write(
+        temp.path().join(".env.stage"),
+        "BACKEND_URL=https://stage.example.com\n",
+    )
+    .expect("stage env");
+    fs::write(
+        temp.path().join(".env.uat"),
+        "BACKEND_URL=https://uat.example.com\n",
+    )
+    .expect("uat env");
+
+    let development = compile_dev(temp.path()).expect("development project");
+    let live = compile_for_environment(temp.path(), CompileEnvironment::Live).expect("live");
+    let stage = compile_for_environment(temp.path(), CompileEnvironment::Stage).expect("stage");
+    let uat = compile_for_environment(temp.path(), CompileEnvironment::Uat).expect("uat");
+
+    assert_eq!(
+        development
+            .environment_config
+            .variable("BACKEND_URL")
+            .and_then(|variable| variable.resolved_value.as_deref()),
+        Some("https://dev.example.com")
+    );
+    assert_eq!(
+        live
+            .environment_config
+            .variable("BACKEND_URL")
+            .and_then(|variable| variable.resolved_value.as_deref()),
+        Some("https://live.example.com")
+    );
+    assert_eq!(
+        stage
+            .environment_config
+            .variable("BACKEND_URL")
+            .and_then(|variable| variable.resolved_value.as_deref()),
+        Some("https://stage.example.com")
+    );
+    assert_eq!(
+        uat.environment_config
+            .variable("BACKEND_URL")
+            .and_then(|variable| variable.resolved_value.as_deref()),
+        Some("https://uat.example.com")
+    );
 }
 
 #[test]

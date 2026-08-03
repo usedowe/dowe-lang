@@ -1,6 +1,8 @@
+use crate::access::DeployAccess;
 use crate::cloudflare_wasm;
 use crate::error::{DeployError, DeployResult};
 use crate::files::write_file;
+use crate::model::DeployEnvironment;
 use crate::package::{copy_static_assets, write_manifest};
 use dowe_compiler::{CompiledProject, EndpointBehavior};
 use serde_json::json;
@@ -13,9 +15,11 @@ pub fn generate_cloudflare(
     project: &CompiledProject,
     output: &Path,
     requested_name: Option<&str>,
+    environment: DeployEnvironment,
+    access: Option<&DeployAccess>,
 ) -> DeployResult<()> {
     validate_cloudflare(project)?;
-    let name = worker_name(project, requested_name)?;
+    let name = worker_name(project, requested_name, environment)?;
     let assets = output.join("assets");
     fs::create_dir_all(&assets)?;
     copy_static_assets(&project.root, &assets)?;
@@ -23,20 +27,32 @@ pub fn generate_cloudflare(
         &output.join("worker/dowe-worker.wasm"),
         cloudflare_wasm::generate(&project.backend.endpoints),
     )?;
-    write_file(&output.join("worker/index.js"), worker_adapter())?;
+    let adapter = access
+        .map(|access| access.protect_worker_adapter(worker_adapter()))
+        .unwrap_or_else(|| worker_adapter().to_string());
+    write_file(&output.join("worker/index.js"), adapter)?;
+    let mut assets_config = json!({
+        "directory": "../assets",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application"
+    });
+    if access.is_some() {
+        assets_config["run_worker_first"] = json!(true);
+    }
     let mut config = serde_json::to_string_pretty(&json!({
         "name": name,
         "main": "index.js",
         "compatibility_date": COMPATIBILITY_DATE,
-        "assets": {
-            "directory": "../assets",
-            "binding": "ASSETS",
-            "not_found_handling": "single-page-application"
-        }
+        "assets": assets_config
     }))?;
     config.push('\n');
     write_file(&output.join("worker/wrangler.jsonc"), config)?;
-    write_manifest(output, crate::model::DeployTarget::Cloudflare)
+    write_manifest(
+        output,
+        crate::model::DeployTarget::Cloudflare,
+        environment,
+        access.is_some(),
+    )
 }
 
 pub fn pages_project_name(
@@ -98,6 +114,7 @@ fn validate_cloudflare(project: &CompiledProject) -> DeployResult<()> {
         if matches!(
             endpoint.behavior,
             EndpointBehavior::HttpProxy(_)
+                | EndpointBehavior::HttpReverseProxy(_)
                 | EndpointBehavior::HttpBytes(_)
                 | EndpointBehavior::HttpActionJson(_)
                 | EndpointBehavior::AgentResponse(_)
@@ -106,6 +123,7 @@ fn validate_cloudflare(project: &CompiledProject) -> DeployResult<()> {
                 | EndpointBehavior::StoreTransactionJson(_)
                 | EndpointBehavior::StoreActionJson(_)
                 | EndpointBehavior::KvActionJson(_)
+                | EndpointBehavior::QueueActionJson(_)
                 | EndpointBehavior::VectorActionJson(_)
         ) {
             return Err(unsupported("server runtime actions"));
@@ -120,8 +138,12 @@ fn unsupported(capability: &str) -> DeployError {
     ))
 }
 
-fn worker_name(project: &CompiledProject, requested_name: Option<&str>) -> DeployResult<String> {
-    let name = requested_name
+fn worker_name(
+    project: &CompiledProject,
+    requested_name: Option<&str>,
+    environment: DeployEnvironment,
+) -> DeployResult<String> {
+    let base_name = requested_name
         .map(str::to_string)
         .or_else(|| {
             project
@@ -131,6 +153,11 @@ fn worker_name(project: &CompiledProject, requested_name: Option<&str>) -> Deplo
                 .map(str::to_string)
         })
         .ok_or_else(|| DeployError::new("cloudflare deploy requires a worker name"))?;
+    let name = if environment == DeployEnvironment::Live {
+        base_name
+    } else {
+        format!("{base_name}-{}", environment.as_str())
+    };
     if name.is_empty()
         || name.len() > 63
         || name.starts_with('-')

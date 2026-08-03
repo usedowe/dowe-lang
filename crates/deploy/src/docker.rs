@@ -1,6 +1,7 @@
+use crate::access::DeployAccess;
 use crate::error::{DeployError, DeployResult};
 use crate::files::write_file;
-use crate::model::DeployTarget;
+use crate::model::{DeployEnvironment, DeployTarget};
 use crate::package::copy_app;
 use serde_json::json;
 use std::path::Path;
@@ -27,6 +28,7 @@ pub fn resolve_docker_image(
     root: &Path,
     registry: Option<&str>,
     image: Option<&str>,
+    environment: DeployEnvironment,
 ) -> DeployResult<DockerImage> {
     let registry = registry
         .unwrap_or(DEFAULT_DOCKER_REGISTRY)
@@ -38,7 +40,12 @@ pub fn resolve_docker_image(
     let image = if image_has_tag(image) {
         image.to_string()
     } else {
-        format!("{image}:latest")
+        let tag = match environment {
+            DeployEnvironment::Live => "latest",
+            DeployEnvironment::Stage => "stage",
+            DeployEnvironment::Uat => "uat",
+        };
+        format!("{image}:{tag}")
     };
     Ok(DockerImage {
         registry: registry.to_string(),
@@ -73,9 +80,25 @@ pub fn default_docker_image_name(root: &Path) -> String {
     }
 }
 
-pub fn generate_docker(root: &Path, output: &Path, image: &DockerImage) -> DeployResult<()> {
+pub fn generate_docker(
+    root: &Path,
+    output: &Path,
+    image: &DockerImage,
+    environment: DeployEnvironment,
+    access: Option<&DeployAccess>,
+    server_port: u16,
+    http_port: Option<u16>,
+) -> DeployResult<()> {
     copy_app(root, &output.join("app"))?;
-    write_file(&output.join("Dockerfile"), release_dockerfile())?;
+    write_file(
+        &output.join("Dockerfile"),
+        release_dockerfile(access, server_port, http_port),
+    )?;
+    let mut ports = vec![server_port];
+    if let Some(port) = http_port {
+        ports.push(port);
+        ports.sort_unstable();
+    }
     let mut manifest = serde_json::to_string_pretty(&json!({
         "version": 1,
         "target": DeployTarget::Docker,
@@ -83,7 +106,10 @@ pub fn generate_docker(root: &Path, output: &Path, image: &DockerImage) -> Deplo
         "registry": image.registry,
         "image": image.image,
         "imageRef": image.reference,
-        "runtime": "release"
+        "runtime": "release",
+        "environment": environment,
+        "accessProtected": access.is_some(),
+        "ports": ports
     }))?;
     manifest.push('\n');
     write_file(&output.join("deploy.json"), manifest)
@@ -190,10 +216,32 @@ fn image_has_tag(value: &str) -> bool {
         .is_some_and(|part| part.contains(':'))
 }
 
-fn release_dockerfile() -> String {
+fn release_dockerfile(
+    access: Option<&DeployAccess>,
+    server_port: u16,
+    http_port: Option<u16>,
+) -> String {
     let version = env!("CARGO_PKG_VERSION");
     let archive_url = format!("https://get.dowe.dev/v{version}/linux-amd64.tar.gz");
+    let access_arguments = access
+        .map(|access| {
+            format!(
+                ",\"--environment\",\"{}\",\"--access-hash\",\"{}\"",
+                access.environment, access.password_hash
+            )
+        })
+        .unwrap_or_default();
+    let mut ports = vec![server_port];
+    if let Some(port) = http_port {
+        ports.push(port);
+        ports.sort_unstable();
+    }
+    let exposed_ports = ports
+        .iter()
+        .map(u16::to_string)
+        .collect::<Vec<_>>()
+        .join(" ");
     format!(
-        "FROM debian:bookworm-slim AS dowe-runtime\nARG DOWE_ARCHIVE_URL={archive_url}\nRUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tar && curl -fsSL \"$DOWE_ARCHIVE_URL\" -o /dowe.tar.gz && tar -xzf /dowe.tar.gz -C /tmp && mv /tmp/dowe /dowe && chmod 0755 /dowe && rm -rf /var/lib/apt/lists/* /dowe.tar.gz /tmp/assets\nFROM {DISTROLESS_IMAGE}\nWORKDIR /app\nCOPY --from=dowe-runtime /dowe /usr/local/bin/dowe\nCOPY --chown=nonroot:nonroot app /app\nEXPOSE 8080\nUSER nonroot:nonroot\nENTRYPOINT [\"/usr/local/bin/dowe\",\"server\",\"--root\",\"/app\",\"--bind\",\"0.0.0.0:8080\"]\n"
+        "FROM debian:bookworm-slim AS dowe-runtime\nARG DOWE_ARCHIVE_URL={archive_url}\nRUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tar && curl -fsSL \"$DOWE_ARCHIVE_URL\" -o /dowe.tar.gz && tar -xzf /dowe.tar.gz -C /tmp && mv /tmp/dowe /dowe && chmod 0755 /dowe && rm -rf /var/lib/apt/lists/* /dowe.tar.gz /tmp/assets\nFROM {DISTROLESS_IMAGE}\nWORKDIR /app\nCOPY --from=dowe-runtime /dowe /usr/local/bin/dowe\nCOPY --chown=nonroot:nonroot app /app\nEXPOSE {exposed_ports}\nUSER nonroot:nonroot\nENTRYPOINT [\"/usr/local/bin/dowe\",\"server\",\"--root\",\"/app\",\"--bind\",\"0.0.0.0:{server_port}\"{access_arguments}]\n"
     )
 }

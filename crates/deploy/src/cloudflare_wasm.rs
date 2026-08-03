@@ -149,6 +149,7 @@ fn endpoint_plan(endpoint: &Endpoint, data: &mut DataStore) -> EndpointPlan {
         },
         EndpointBehavior::CreatePostJson => ResponsePlan::CreatedJson,
         EndpointBehavior::HttpProxy(_)
+        | EndpointBehavior::HttpReverseProxy(_)
         | EndpointBehavior::HttpBytes(_)
         | EndpointBehavior::HttpActionJson(_)
         | EndpointBehavior::AgentResponse(_)
@@ -157,6 +158,7 @@ fn endpoint_plan(endpoint: &Endpoint, data: &mut DataStore) -> EndpointPlan {
         | EndpointBehavior::StoreTransactionJson(_)
         | EndpointBehavior::StoreActionJson(_)
         | EndpointBehavior::KvActionJson(_)
+        | EndpointBehavior::QueueActionJson(_)
         | EndpointBehavior::VectorActionJson(_) => ResponsePlan::Static(
             data.add_text("Unsupported Cloudflare route"),
             BodyKind::Text,

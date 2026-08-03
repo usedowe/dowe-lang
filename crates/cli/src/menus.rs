@@ -1,7 +1,7 @@
 use dialoguer::{Confirm, Input, MultiSelect, Select, theme::ColorfulTheme};
 use dowe_deploy::{
-    BuildTarget, DeploySurface, DeployTarget, available_build_targets, available_deploy_surfaces,
-    deploy_targets_for_surface,
+    BuildTarget, DeployEnvironment, DeploySurface, DeployTarget, available_build_targets,
+    available_deploy_surfaces, deploy_targets_for_surface,
 };
 use dowe_icons::{IconRounded, IconTarget};
 use dowe_runtime::{
@@ -141,8 +141,9 @@ pub(crate) fn prompt_agent_example_query() -> Result<Option<String>, Box<dyn std
 
 pub(crate) fn prompt_deploy_surface(
     root: &std::path::Path,
+    environment: DeployEnvironment,
 ) -> Result<Option<DeploySurface>, Box<dyn std::error::Error>> {
-    let surfaces = available_deploy_surfaces(root)?;
+    let surfaces = available_deploy_surfaces(root, environment)?;
     if surfaces.is_empty() {
         return Err(
             "main.dowe does not configure a deploy surface; add `server` or `views` under `main`"
@@ -160,6 +161,18 @@ pub(crate) fn prompt_deploy_surface(
         .interact_opt()?;
 
     Ok(selection.map(|index| surfaces[index]))
+}
+
+pub(crate) fn prompt_deploy_environment()
+-> Result<Option<DeployEnvironment>, Box<dyn std::error::Error>> {
+    let environments = DeployEnvironment::ALL;
+    let items = environments.map(DeployEnvironment::label);
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select deploy environment")
+        .items(&items)
+        .default(0)
+        .interact_opt()?;
+    Ok(selection.map(|index| environments[index]))
 }
 
 pub(crate) fn prompt_build_target() -> Result<Option<BuildTarget>, Box<dyn std::error::Error>> {
@@ -207,6 +220,38 @@ pub(crate) fn prompt_docker_image(default: &str) -> Result<String, Box<dyn std::
         .default(default.to_string())
         .allow_empty(false)
         .interact_text()?)
+}
+
+pub(crate) fn prompt_ssh_host() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt("SSH host")
+        .allow_empty(false)
+        .interact_text()?)
+}
+
+pub(crate) fn prompt_ssh_user() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt("SSH user")
+        .allow_empty(false)
+        .interact_text()?)
+}
+
+pub(crate) fn prompt_ssh_key_file() -> Result<Option<std::path::PathBuf>, Box<dyn std::error::Error>>
+{
+    let methods = ["Password", "Key file"];
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("SSH authentication")
+        .items(&methods)
+        .default(0)
+        .interact()?;
+    if selection == 0 {
+        return Ok(None);
+    }
+    let path = Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt("SSH key file")
+        .allow_empty(false)
+        .interact_text()?;
+    Ok(Some(std::path::PathBuf::from(path)))
 }
 
 pub(crate) fn prompt_harness_command() -> Result<Option<String>, Box<dyn std::error::Error>> {
@@ -341,7 +386,7 @@ pub(crate) fn dev_target_default_states(
         .collect()
 }
 
-pub(crate) fn root_commands() -> [&'static str; 15] {
+pub(crate) fn root_commands() -> [&'static str; 17] {
     [
         "dev",
         "agent",
@@ -353,6 +398,8 @@ pub(crate) fn root_commands() -> [&'static str; 15] {
         "deploy",
         "icons",
         "init",
+        "login",
+        "queue",
         "test",
         "uninstall",
         "upgrade",
@@ -397,6 +444,8 @@ mod tests {
                 "deploy",
                 "icons",
                 "init",
+                "login",
+                "queue",
                 "test",
                 "uninstall",
                 "upgrade",
@@ -410,11 +459,16 @@ mod tests {
     fn deploy_menu_contains_surface_targets() {
         assert_eq!(
             deploy_targets_for_surface(DeploySurface::Web),
-            [DeployTarget::CloudflarePages]
+            [DeployTarget::Dowe, DeployTarget::CloudflarePages]
         );
         assert_eq!(
             deploy_targets_for_surface(DeploySurface::Server),
-            [DeployTarget::Docker, DeployTarget::Cloudflare]
+            [
+                DeployTarget::Dowe,
+                DeployTarget::Docker,
+                DeployTarget::Ssh,
+                DeployTarget::Cloudflare
+            ]
         );
         assert_eq!(
             deploy_targets_for_surface(DeploySurface::Android),

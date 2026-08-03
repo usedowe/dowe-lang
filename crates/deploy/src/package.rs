@@ -1,29 +1,37 @@
+use crate::access::DeployAccess;
 use crate::error::DeployResult;
 use crate::files::{collect_files, copy_file, copy_tree, write_file};
-use crate::model::DeployTarget;
+use crate::model::{DeployEnvironment, DeployTarget};
 use serde_json::json;
 use std::fs;
 use std::path::Path;
 
 pub fn generate_static(root: &Path, output: &Path) -> DeployResult<()> {
     copy_static_assets(root, output)?;
-    write_manifest(output, DeployTarget::Static)
+    write_manifest(output, DeployTarget::Static, DeployEnvironment::Live, false)
 }
 
 pub fn generate_cloudflare_pages(
     root: &Path,
     output: &Path,
     project_name: &str,
+    environment: DeployEnvironment,
+    access: Option<&DeployAccess>,
 ) -> DeployResult<()> {
     let assets = output.join("assets");
     copy_static_assets(root, &assets)?;
     normalize_cloudflare_pages_assets(&assets)?;
     write_cloudflare_pages_redirects(&assets)?;
+    if let Some(access) = access {
+        write_file(&assets.join("_worker.js"), access.pages_worker())?;
+    }
     let mut content = serde_json::to_string_pretty(&json!({
         "version": 1,
         "surface": "web",
         "provider": "cloudflare-pages",
-        "projectName": project_name
+        "projectName": project_name,
+        "environment": environment,
+        "accessProtected": access.is_some()
     }))?;
     content.push('\n');
     write_file(&output.join("deploy.json"), content)
@@ -104,10 +112,17 @@ pub fn copy_static_assets(root: &Path, output: &Path) -> DeployResult<()> {
     copy_tree(&root.join(".dowe/fonts"), &output.join("fonts"))
 }
 
-pub fn write_manifest(output: &Path, target: DeployTarget) -> DeployResult<()> {
+pub fn write_manifest(
+    output: &Path,
+    target: DeployTarget,
+    environment: DeployEnvironment,
+    access_protected: bool,
+) -> DeployResult<()> {
     let mut content = serde_json::to_string_pretty(&json!({
         "version": 1,
         "target": target,
+        "environment": environment,
+        "accessProtected": access_protected,
     }))?;
     content.push('\n');
     write_file(&output.join("deploy.json"), content)

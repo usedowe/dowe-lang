@@ -51,13 +51,17 @@ pub fn complete_document(
     {
         return quoted_values(["dowe"]);
     }
+    if prop_value_context(&prefix, "provider") && prefix.split_whitespace().next() == Some("queue")
+    {
+        return quoted_values(["dowe", "rabbitmq"]);
+    }
     if prop_value_context(&prefix, "source") {
         match prefix.split_whitespace().next() {
             Some(namespace) if dowe_stdlib::is_stdlib_namespace(namespace) => {
                 return quoted_values(dowe_stdlib::functions(namespace).iter().copied());
             }
             Some("request") => {
-                return quoted_values(["query", "rawQuery", "header", "cookie"]);
+                return quoted_values(["query", "rawQuery", "header", "cookie", "bytes"]);
             }
             Some("ws") => return quoted_values(["json"]),
             Some("agent") => return quoted_values(["chat"]),
@@ -378,6 +382,7 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "database",
         "vector",
         "emb",
+        "msg",
         "entity",
         "seeder",
         "store",
@@ -402,7 +407,7 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "bearer",
         "send",
         "bridge",
-        "go",
+        "task",
         "cron",
         "http",
         "jwt",

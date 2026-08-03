@@ -1,6 +1,6 @@
 use super::{
-    BuildOptions, BuildTarget, DeployOptions, DeploySurface, DeployTarget, available_build_targets,
-    available_deploy_surfaces, build, deploy,
+    BuildOptions, BuildTarget, DeployEnvironment, DeployOptions, DeploySurface, DeployTarget,
+    available_build_targets, available_deploy_surfaces, build, deploy,
 };
 use crate::docker::{docker_build_command, resolve_docker_image};
 use crate::package::cloudflare_pages_redirects;
@@ -48,11 +48,51 @@ fn generates_static_dist_with_web_assets() {
 }
 
 #[test]
+fn deploy_and_build_use_live_environment() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join("pages/home.dowe"),
+        "page homePage\n  fn load\n    request status method:\"GET\" route:\"/status\" base:env.BACKEND_URL\n  Text\n    \"Home\"\n",
+    )
+    .expect("page");
+    fs::write(
+        temp.path().join(".env"),
+        "BACKEND_URL=https://dev.example.com\n",
+    )
+    .expect("development env");
+    fs::write(
+        temp.path().join(".env.live"),
+        "BACKEND_URL=https://live.example.com\n",
+    )
+    .expect("live env");
+
+    let deploy_report =
+        deploy(DeployOptions::new(temp.path(), DeployTarget::Static)).expect("deploy");
+    let deploy_environment =
+        fs::read_to_string(deploy_report.output_dir.join("env.json")).expect("deploy env");
+    assert!(deploy_environment.contains("https://live.example.com"));
+    assert!(!deploy_environment.contains("https://dev.example.com"));
+
+    let mut build_options = BuildOptions::new(temp.path(), BuildTarget::Android);
+    build_options.dry_run = true;
+    build(build_options).expect("build");
+    let build_environment = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DoweEnvironment.kt"),
+    )
+    .expect("build env");
+    assert!(build_environment.contains("https://live.example.com"));
+    assert!(!build_environment.contains("https://dev.example.com"));
+}
+
+#[test]
 fn generates_distroless_docker_context_without_local_dotenv() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), "");
     fs::write(temp.path().join(".env"), "PRIVATE_TOKEN=secret\n").expect("dotenv");
     fs::write(temp.path().join(".env.example"), "PRIVATE_TOKEN=\n").expect("dotenv example");
+    fs::write(temp.path().join(".env.live"), "PRIVATE_TOKEN=production\n").expect("live dotenv");
     let icon = temp.path().join("icons/desktop/icon.icns");
     fs::create_dir_all(icon.parent().expect("icon parent")).expect("icon directory");
     fs::write(&icon, "icon").expect("icon");
@@ -78,6 +118,7 @@ fn generates_distroless_docker_context_without_local_dotenv() {
     );
     assert!(!docker.output_dir.join("app/env.dowe").exists());
     assert!(!docker.output_dir.join("app/.env").exists());
+    assert!(!docker.output_dir.join("app/.env.live").exists());
     assert!(dockerfile.contains("gcr.io/distroless/cc-debian12:nonroot"));
     assert!(dockerfile.contains(&format!(
         "v{}/linux-amd64.tar.gz",
@@ -106,6 +147,33 @@ fn generates_distroless_docker_context_without_local_dotenv() {
             "ghcr.io/dowe/example-app:stable"
         ))
     );
+}
+
+#[test]
+fn docker_uses_declared_https_and_redirect_ports() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"main
+  server port:443
+    tls:
+      mode:"local"
+      domains:["localhost"]
+      httpPort:80
+"#,
+    )
+    .expect("main");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
+    options.dry_run = true;
+
+    let report = deploy(options).expect("docker");
+    let dockerfile = fs::read_to_string(report.output_dir.join("Dockerfile")).expect("dockerfile");
+    let manifest = fs::read_to_string(report.output_dir.join("deploy.json")).expect("manifest");
+
+    assert!(dockerfile.contains("EXPOSE 80 443"));
+    assert!(dockerfile.contains("\"--bind\",\"0.0.0.0:443\""));
+    assert!(manifest.contains("\"ports\": [\n    80,\n    443\n  ]"));
 }
 
 #[test]
@@ -293,7 +361,8 @@ fn cloudflare_pages_dry_run_builds_npx_command_without_publishing() {
         report.command,
         Some(cloudflare_pages_command(
             &report.output_dir,
-            "example-pages"
+            "example-pages",
+            DeployEnvironment::Live,
         ))
     );
 }
@@ -311,8 +380,12 @@ fn deploy_surfaces_follow_main_capabilities() {
         fullstack_surfaces.push(DeploySurface::Ios);
     }
     assert_eq!(
-        available_deploy_surfaces(fullstack.path()).expect("surfaces"),
+        available_deploy_surfaces(fullstack.path(), DeployEnvironment::Live).expect("surfaces"),
         fullstack_surfaces
+    );
+    assert_eq!(
+        available_deploy_surfaces(fullstack.path(), DeployEnvironment::Stage).expect("surfaces"),
+        [DeploySurface::Server, DeploySurface::Web]
     );
 
     let views_only = TempDir::new().expect("views only");
@@ -326,7 +399,7 @@ fn deploy_surfaces_follow_main_capabilities() {
         views_surfaces.push(DeploySurface::Ios);
     }
     assert_eq!(
-        available_deploy_surfaces(views_only.path()).expect("surfaces"),
+        available_deploy_surfaces(views_only.path(), DeployEnvironment::Live).expect("surfaces"),
         views_surfaces
     );
 
@@ -337,8 +410,26 @@ fn deploy_surfaces_follow_main_capabilities() {
     )
     .expect("main");
     assert_eq!(
-        available_deploy_surfaces(server_only.path()).expect("surfaces"),
+        available_deploy_surfaces(server_only.path(), DeployEnvironment::Live).expect("surfaces"),
         [DeploySurface::Server]
+    );
+}
+
+#[test]
+fn ssh_is_a_server_deploy_target() {
+    assert_eq!(
+        "ssh".parse::<DeployTarget>().expect("target"),
+        DeployTarget::Ssh
+    );
+    assert_eq!(DeployTarget::Ssh.surface(), DeploySurface::Server);
+    assert_eq!(
+        super::deploy_targets_for_surface(DeploySurface::Server),
+        [
+            DeployTarget::Dowe,
+            DeployTarget::Docker,
+            DeployTarget::Ssh,
+            DeployTarget::Cloudflare,
+        ]
     );
 }
 
@@ -477,12 +568,19 @@ fn plans_desktop_release_artifacts_without_running_toolchains() {
 }
 
 #[test]
-fn resolves_docker_defaults_and_rejects_retired_targets() {
-    let image = resolve_docker_image(Path::new("/project/My App"), None, None).expect("image");
+fn resolves_docker_defaults_and_rejects_retired_linux_host_target() {
+    let image = resolve_docker_image(
+        Path::new("/project/My App"),
+        None,
+        None,
+        DeployEnvironment::Live,
+    )
+    .expect("image");
     let private = resolve_docker_image(
         Path::new("/project/app"),
         Some("registry.example:5000/team"),
         Some("api"),
+        DeployEnvironment::Live,
     )
     .expect("private image");
 
@@ -490,8 +588,68 @@ fn resolves_docker_defaults_and_rejects_retired_targets() {
     assert_eq!(image.image, "my-app:latest");
     assert_eq!(image.reference, "docker.io/my-app:latest");
     assert_eq!(private.reference, "registry.example:5000/team/api:latest");
-    assert!("ssh".parse::<DeployTarget>().is_err());
     assert!("linux-host".parse::<DeployTarget>().is_err());
+}
+
+#[test]
+fn docker_uses_environment_default_tags_and_preserves_explicit_tags() {
+    let stage = resolve_docker_image(
+        Path::new("/project/app"),
+        None,
+        None,
+        DeployEnvironment::Stage,
+    )
+    .expect("stage image");
+    let uat = resolve_docker_image(
+        Path::new("/project/app"),
+        None,
+        Some("app:acceptance"),
+        DeployEnvironment::Uat,
+    )
+    .expect("uat image");
+
+    assert_eq!(stage.image, "app:stage");
+    assert_eq!(uat.image, "app:acceptance");
+}
+
+#[test]
+fn stage_docker_packages_only_the_access_hash() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    write_environment(temp.path(), DeployEnvironment::Stage, "stage-password-123");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
+    options.environment = DeployEnvironment::Stage;
+    options.image = Some("app".to_string());
+    options.dry_run = true;
+
+    let report = deploy(options).expect("stage docker");
+    let dockerfile = fs::read_to_string(report.output_dir.join("Dockerfile")).expect("dockerfile");
+
+    assert_eq!(report.image_ref.as_deref(), Some("docker.io/app:stage"));
+    assert!(dockerfile.contains(r#""--environment","stage","--access-hash""#));
+    assert!(!dockerfile.contains("stage-password-123"));
+    assert!(report.access_protected);
+}
+
+#[test]
+fn non_live_deploy_rejects_live_only_targets() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    write_environment(
+        temp.path(),
+        DeployEnvironment::Stage,
+        "https://stage-password.example",
+    );
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Static);
+    options.environment = DeployEnvironment::Stage;
+
+    let error = deploy(options).expect_err("live-only target");
+
+    assert!(
+        error
+            .to_string()
+            .contains("only available in the live environment")
+    );
 }
 
 #[test]
@@ -500,7 +658,8 @@ fn rejects_invalid_docker_references() {
         resolve_docker_image(
             Path::new("/project/app"),
             Some("https://ghcr.io"),
-            Some("app")
+            Some("app"),
+            DeployEnvironment::Live,
         )
         .is_err()
     );
@@ -508,12 +667,19 @@ fn rejects_invalid_docker_references() {
         resolve_docker_image(
             Path::new("/project/app"),
             Some("ghcr.io"),
-            Some("Owner/App")
+            Some("Owner/App"),
+            DeployEnvironment::Live,
         )
         .is_err()
     );
     assert!(
-        resolve_docker_image(Path::new("/project/app"), Some("ghcr.io"), Some("app:")).is_err()
+        resolve_docker_image(
+            Path::new("/project/app"),
+            Some("ghcr.io"),
+            Some("app:"),
+            DeployEnvironment::Live,
+        )
+        .is_err()
     );
 }
 
@@ -572,7 +738,7 @@ fn builds_cloudflare_pages_publish_command_from_assets() {
     let output = Path::new("/project/.dowe/dist/web/cloudflare-pages");
 
     assert_eq!(
-        cloudflare_pages_command(output, "docs-app"),
+        cloudflare_pages_command(output, "docs-app", DeployEnvironment::Live),
         vec![
             "npx",
             "--yes",
@@ -584,6 +750,120 @@ fn builds_cloudflare_pages_publish_command_from_assets() {
             "docs-app",
         ]
     );
+}
+
+#[test]
+fn stage_pages_use_a_protected_branch_deployment() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    write_environment(temp.path(), DeployEnvironment::Stage, "stage-password-123");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::CloudflarePages);
+    options.environment = DeployEnvironment::Stage;
+    options.name = Some("docs-app".to_string());
+    options.publish = true;
+    options.dry_run = true;
+
+    let report = deploy(options).expect("stage pages");
+    let worker =
+        fs::read_to_string(report.output_dir.join("assets/_worker.js")).expect("access worker");
+
+    assert_eq!(report.environment, DeployEnvironment::Stage);
+    assert!(report.access_protected);
+    assert!(
+        report
+            .output_dir
+            .ends_with(".dowe/dist/stage/web/cloudflare-pages")
+    );
+    assert!(!worker.contains("stage-password-123"));
+    assert!(worker.contains("www-authenticate"));
+    assert!(worker.contains("env.ASSETS.fetch(request)"));
+    assert_eq!(
+        report.command,
+        Some(vec![
+            "npx".into(),
+            "--yes".into(),
+            "wrangler".into(),
+            "pages".into(),
+            "deploy".into(),
+            report.output_dir.join("assets").display().to_string(),
+            "--project-name".into(),
+            "docs-app".into(),
+            "--branch".into(),
+            "stage".into(),
+        ])
+    );
+}
+
+#[test]
+fn uat_worker_uses_a_distinct_name_and_access_gate() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    write_environment(temp.path(), DeployEnvironment::Uat, "uat-password-12345");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Cloudflare);
+    options.environment = DeployEnvironment::Uat;
+    options.name = Some("docs-app".to_string());
+
+    let report = deploy(options).expect("uat worker");
+    let config =
+        fs::read_to_string(report.output_dir.join("worker/wrangler.jsonc")).expect("worker config");
+    let adapter =
+        fs::read_to_string(report.output_dir.join("worker/index.js")).expect("worker adapter");
+
+    assert!(config.contains(r#""name": "docs-app-uat""#));
+    assert!(config.contains(r#""run_worker_first": true"#));
+    assert!(!adapter.contains("uat-password-12345"));
+    assert!(adapter.contains("doweDeployAccess"));
+}
+
+#[test]
+fn non_live_deploy_requires_a_long_server_only_password() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(temp.path().join(".env.stage"), "BACKEND_URL=\n").expect("stage environment");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::CloudflarePages);
+    options.environment = DeployEnvironment::Stage;
+
+    let error = deploy(options).expect_err("missing access password");
+
+    assert!(error.to_string().contains("DOWE_DEPLOY_ACCESS_PASSWORD"));
+}
+
+#[test]
+fn non_live_deploy_rejects_a_view_exposed_access_password() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    write_environment(
+        temp.path(),
+        DeployEnvironment::Stage,
+        "https://stage-password.example",
+    );
+    fs::write(
+        temp.path().join("pages/home.dowe"),
+        "page homePage\n  fn load\n    request result method:\"GET\" route:\"/api/status\" base:env.DOWE_DEPLOY_ACCESS_PASSWORD\n  Section\n    Text\n      \"Home\"\n",
+    )
+    .expect("view");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::CloudflarePages);
+    options.environment = DeployEnvironment::Stage;
+
+    let error = deploy(options).expect_err("public access password");
+
+    assert!(
+        error.to_string().contains("must remain server-only"),
+        "{error}"
+    );
+}
+
+#[test]
+fn live_pages_do_not_include_an_access_worker() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::CloudflarePages);
+    options.name = Some("docs-app".to_string());
+    let report = deploy(options).expect("live pages");
+
+    assert!(!report.access_protected);
+    assert!(!report.output_dir.join("assets/_worker.js").exists());
 }
 
 #[test]
@@ -631,7 +911,11 @@ fn write_fixture(root: &Path, init: &str) {
     )
     .expect("main");
     fs::write(root.join("theme.dowe"), "theme\n").expect("theme");
-    fs::write(root.join(".env.example"), "BACKEND_URL=\n").expect("env example");
+    fs::write(
+        root.join(".env.example"),
+        "BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n",
+    )
+    .expect("env example");
     fs::write(root.join(".env"), "BACKEND_URL=\n").expect("env");
     fs::write(
         root.join("routes/view.dowe"),
@@ -648,4 +932,12 @@ fn write_fixture(root: &Path, init: &str) {
         "page homePage\n  Text\n    \"Home\"\n",
     )
     .expect("page");
+}
+
+fn write_environment(root: &Path, environment: DeployEnvironment, password: &str) {
+    fs::write(
+        root.join(format!(".env.{}", environment.as_str())),
+        format!("BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD={password}\n"),
+    )
+    .expect("deploy environment");
 }

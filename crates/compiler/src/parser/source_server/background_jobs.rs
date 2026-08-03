@@ -1,8 +1,67 @@
-fn parse_background_job(
+fn parse_task(
+    node: &SourceNode,
+    context: ActionContext,
+    types: &TypeRegistry,
+    environment: &EnvironmentConfig,
+    imports: &ServerImports,
+    bindings: &HashMap<String, DoweType>,
+) -> DoweResult<ServerBackgroundJob> {
+    let timing = parse_task_timing(node, context)?;
+    if node.args.is_empty() {
+        if node.children.is_empty() {
+            return Err(node_error(
+                node,
+                "task must declare one imported target or a non-empty inline body",
+            ));
+        }
+        let args = parse_background_args(node, context, bindings, false)?;
+        let action = parse_inline_task_action(node, types, environment, imports)?;
+        return Ok(ServerBackgroundJob {
+            id: background_job_id(node, "task", "inline"),
+            target: None,
+            args,
+            action: Box::new(action),
+            schedule: None,
+            timing,
+            source_path: node.location.relative_path.clone(),
+            source_line: node.location.line,
+        });
+    }
+    if !node.children.is_empty() {
+        return Err(node_error(node, "named task does not accept child blocks"));
+    }
+    parse_target_background_job(node, context, &imports.callables, bindings, false, timing)
+}
+
+fn parse_cron_job(
     node: &SourceNode,
     context: ActionContext,
     callables: &HashMap<String, ServerCallable>,
+    bindings: &HashMap<String, DoweType>,
+) -> DoweResult<ServerBackgroundJob> {
+    if let Some(prop) = node.prop("after") {
+        return Err(prop_error(
+            prop,
+            "`after` is only valid on a direct reverse-proxy task",
+        ));
+    }
+    parse_target_background_job(
+        node,
+        context,
+        callables,
+        bindings,
+        true,
+        crate::model::ServerTaskTiming::Immediate,
+    )
+}
+
+fn parse_target_background_job(
+    node: &SourceNode,
+    context: ActionContext,
+    callables: &HashMap<String, ServerCallable>,
+    bindings: &HashMap<String, DoweType>,
     cron: bool,
+    timing: crate::model::ServerTaskTiming,
 ) -> DoweResult<ServerBackgroundJob> {
     if cron && !matches!(context, ActionContext::Init) {
         return Err(node_error(node, "`cron` is only valid inside server init"));
@@ -10,18 +69,35 @@ fn parse_background_job(
     if !node.children.is_empty() {
         return Err(node_error(
             node,
-            "background jobs do not accept child blocks",
+            if cron {
+                "cron does not accept child blocks"
+            } else {
+                "named task does not accept child blocks"
+            },
         ));
     }
     let target = node
         .args
         .first()
         .and_then(SourceValue::as_string_like)
-        .ok_or_else(|| node_error(node, "background job must declare a target"))?;
+        .ok_or_else(|| {
+            node_error(
+                node,
+                if cron {
+                    "cron must declare one imported target"
+                } else {
+                    "task must declare one imported target"
+                },
+            )
+        })?;
     if node.args.len() != 1 {
         return Err(node_error(
             node,
-            "background jobs accept one target and named props",
+            if cron {
+                "cron accepts exactly one target and named props"
+            } else {
+                "task accepts exactly one target and named props"
+            },
         ));
     }
     let callable = callables
@@ -32,20 +108,11 @@ fn parse_background_job(
         if cron {
             &["args", "schedule"]
         } else {
-            &["args"]
+            &["args", "after"]
         },
     )?;
-    let args = if let Some(prop) = node.prop("args") {
-        let SourceValue::Object(_) = &prop.value else {
-            return Err(prop_error(prop, "`args` must be an object"));
-        };
-        let value = store_literal(&prop.value)?;
-        reject_background_references(node, &value)?;
-        value
-    } else {
-        StoreLiteral::Object(Vec::new())
-    };
-    validate_server_function_args(node, &args, &callable.action.params, &HashMap::new())?;
+    let args = parse_background_args(node, context, bindings, cron)?;
+    validate_server_function_args(node, &args, &callable.action.params, bindings)?;
     let schedule = if cron {
         let prop = node
             .prop("schedule")
@@ -59,18 +126,249 @@ fn parse_background_job(
         None
     };
     Ok(ServerBackgroundJob {
-        id: format!(
-            "{}:{}:{}:{}",
-            node.location.relative_path.display(),
-            node.location.line,
-            node.name,
-            target
-        ),
-        target: callable.name.clone(),
+        id: background_job_id(node, if cron { "cron" } else { "task" }, &target),
+        target: Some(callable.name.clone()),
         args,
         action: Box::new(callable.action.clone()),
         schedule,
+        timing,
+        source_path: node.location.relative_path.clone(),
+        source_line: node.location.line,
     })
+}
+
+fn parse_task_timing(
+    node: &SourceNode,
+    context: ActionContext,
+) -> DoweResult<crate::model::ServerTaskTiming> {
+    reject_unknown_props(node, &["args", "after"])?;
+    let Some(prop) = node.prop("after") else {
+        return Ok(crate::model::ServerTaskTiming::Immediate);
+    };
+    let SourceValue::String(value) = &prop.value else {
+        return Err(prop_error(
+            prop,
+            "`after` must be the quoted string \"headers\"",
+        ));
+    };
+    if value != "headers" {
+        return Err(prop_error(prop, "`after` must be \"headers\""));
+    }
+    if !matches!(context, ActionContext::HttpHandler { .. }) {
+        return Err(prop_error(
+            prop,
+            "`after:\"headers\"` is only valid directly in an HTTP handler that returns `reverse`",
+        ));
+    }
+    validate_response_headers_task_event(node)?;
+    Ok(crate::model::ServerTaskTiming::ResponseHeaders)
+}
+
+fn validate_response_headers_task_event(node: &SourceNode) -> DoweResult<()> {
+    let Some(prop) = node.prop("args") else {
+        return Err(node_error(
+            node,
+            "`after:\"headers\"` requires `args:{ event:{ ... } }`",
+        ));
+    };
+    let SourceValue::Object(entries) = &prop.value else {
+        return Err(prop_error(prop, "`args` must be an object"));
+    };
+    let event = entries.iter().find_map(|entry| match entry {
+        SourceObjectEntry::KeyValue { key, value } if key == "event" => Some(value),
+        _ => None,
+    });
+    if !matches!(event, Some(SourceValue::Object(_))) {
+        return Err(node_error(
+            node,
+            "`after:\"headers\"` requires `args.event` to be an object",
+        ));
+    }
+    Ok(())
+}
+
+fn parse_background_args(
+    node: &SourceNode,
+    context: ActionContext,
+    bindings: &HashMap<String, DoweType>,
+    static_only: bool,
+) -> DoweResult<StoreLiteral> {
+    let Some(prop) = node.prop("args") else {
+        return Ok(StoreLiteral::Object(Vec::new()));
+    };
+    let SourceValue::Object(_) = &prop.value else {
+        return Err(prop_error(prop, "`args` must be an object"));
+    };
+    let value = store_literal(&prop.value)?;
+    if static_only
+        || !matches!(
+            context,
+            ActionContext::HttpHandler { .. } | ActionContext::Function
+        )
+    {
+        reject_background_references(node, &value)?;
+    } else {
+        validate_store_literal_references(node, &value, bindings)?;
+    }
+    Ok(value)
+}
+
+fn parse_inline_task_action(
+    node: &SourceNode,
+    types: &TypeRegistry,
+    environment: &EnvironmentConfig,
+    imports: &ServerImports,
+) -> DoweResult<ServerFunctionAction> {
+    validate_inline_task_body(node, imports)?;
+    let mut action_node = node.clone();
+    action_node.name = "fn".to_string();
+    action_node.args.clear();
+    action_node.props.clear();
+    action_node.children.push(SourceNode {
+        location: node.location.clone(),
+        name: "return".to_string(),
+        args: Vec::new(),
+        props: vec![SourceProp {
+            name: "value".to_string(),
+            value: SourceValue::Null,
+            location: node.location.clone(),
+        }],
+        children: Vec::new(),
+    });
+    parse_server_function_action(&action_node, types, environment, imports)
+}
+
+fn validate_inline_task_body(node: &SourceNode, imports: &ServerImports) -> DoweResult<()> {
+    let mut bindings = imports
+        .config_bindings
+        .keys()
+        .cloned()
+        .collect::<HashSet<_>>();
+    bindings.insert("args".to_string());
+    for child in &node.children {
+        validate_inline_task_node(child, &bindings)?;
+        if let Some(binding) = inline_task_binding(child, imports) {
+            bindings.insert(binding);
+        }
+    }
+    Ok(())
+}
+
+fn validate_inline_task_node(node: &SourceNode, bindings: &HashSet<String>) -> DoweResult<()> {
+    match node.name.as_str() {
+        "return" | "task" | "cron" | "response" | "next" | "send" | "bridge" | "ws" => {
+            return Err(node_error(
+                node,
+                format!("inline task body cannot use `{}`", node.name),
+            ));
+        }
+        _ => {}
+    }
+    if matches!(node.name.as_str(), "log" | "info" | "warn" | "error") {
+        for value in &node.args {
+            validate_inline_task_value(node, value, bindings)?;
+        }
+    }
+    for prop in &node.props {
+        validate_inline_task_value(node, &prop.value, bindings)?;
+    }
+    for child in &node.children {
+        validate_inline_task_node(child, bindings)?;
+    }
+    Ok(())
+}
+
+fn validate_inline_task_value(
+    node: &SourceNode,
+    value: &SourceValue,
+    bindings: &HashSet<String>,
+) -> DoweResult<()> {
+    match value {
+        SourceValue::Bareword(reference) => {
+            let binding = reference.split('.').next().unwrap_or(reference);
+            if !bindings.contains(binding) {
+                return Err(node_error(
+                    node,
+                    format!(
+                        "inline task body cannot capture outer binding `{binding}`; pass it through `args`"
+                    ),
+                ));
+            }
+        }
+        SourceValue::Array(values) => {
+            for value in values {
+                validate_inline_task_value(node, value, bindings)?;
+            }
+        }
+        SourceValue::Object(entries) => {
+            for entry in entries {
+                match entry {
+                    SourceObjectEntry::KeyValue { value, .. } => {
+                        validate_inline_task_value(node, value, bindings)?;
+                    }
+                    SourceObjectEntry::Spread(_) => {
+                        return Err(node_error(
+                            node,
+                            "inline task values do not support object spread",
+                        ));
+                    }
+                }
+            }
+        }
+        SourceValue::String(_)
+        | SourceValue::Number(_)
+        | SourceValue::Boolean(_)
+        | SourceValue::Null => {}
+    }
+    Ok(())
+}
+
+fn inline_task_binding(node: &SourceNode, imports: &ServerImports) -> Option<String> {
+    let creates_binding = matches!(
+        node.name.as_str(),
+        "database"
+            | "db"
+            | "cache"
+            | "kv"
+            | "query"
+            | "vector"
+            | "emb"
+            | "spawn"
+            | "file"
+            | "password"
+            | "http"
+            | "crypto"
+            | "jwt"
+            | "agent"
+    ) || dowe_stdlib::is_stdlib_namespace(&node.name)
+        || imports.callables.contains_key(&node.name);
+    creates_binding
+        .then(|| node.args.first().and_then(SourceValue::as_required_string))
+        .flatten()
+        .map(|binding| binding.split(':').next().unwrap_or(&binding).to_string())
+}
+
+fn background_job_id(node: &SourceNode, kind: &str, target: &str) -> String {
+    format!(
+        "{}:{}:{kind}:{target}",
+        node.location.relative_path.display(),
+        node.location.line,
+    )
+}
+
+fn legacy_task_error(node: &SourceNode) -> DoweError {
+    let mut repair = "task".to_string();
+    for argument in &node.args {
+        repair.push(' ');
+        repair.push_str(&argument.to_source());
+    }
+    for prop in &node.props {
+        repair.push(' ');
+        repair.push_str(&prop.name);
+        repair.push(':');
+        repair.push_str(&prop.value.to_source());
+    }
+    node_error(node, format!("`go` was renamed to `task`; use `{repair}`"))
 }
 
 fn reject_background_references(node: &SourceNode, value: &StoreLiteral) -> DoweResult<()> {
@@ -292,4 +590,3 @@ fn parse_server_function_return_value(node: &SourceNode) -> DoweResult<StoreLite
     reject_unknown_props(node, &["value"])?;
     required_store_literal_prop(node, "value")
 }
-

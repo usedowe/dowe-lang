@@ -8,6 +8,9 @@
 | `theme.dowe` | Fonts, named color themes, and component visual defaults for views |
 | `.env.example` | Shared environment names with empty values or non-secret placeholders |
 | `.env` | Local effective values; never read, print, or commit this file |
+| `.env.live` | Local Live build and deploy values; never read, print, or commit this file |
+| `.env.stage` | Local Stage deploy values; never read, print, or commit this file |
+| `.env.uat` | Local UAT deploy values; never read, print, or commit this file |
 | `assets/icon.svg` | Recommended transparent vector source for `dowe icons` |
 | `icons` | Versioned generated icon sets for web, desktop, iOS, and Android |
 | `assets/**` | Public project media served under `/assets/**` in web deployments |
@@ -97,10 +100,13 @@ missing keys, duplicate keys, and invalid locale names fail before target genera
 emits native localization resources; the web runtime falls back from a regional locale such as
 `es-CO` to `es`, then to the default locale.
 
-Declare every allowed name in `.env.example` or `.env` as `NAME=value`. The process environment
-overrides `.env`; `.env.example` values are examples and never become effective values. Dowe source
-uses static references such as `env.BACKEND_URL`. A name referenced from views becomes public client
-configuration, while names used only by server remain private.
+Declare every allowed name in `.env.example` or the selected local file as `NAME=value`. The process
+environment overrides `.env` during `dowe dev`, `.env.live` during build or Live deploy, and the
+selected `.env.stage` or `.env.uat` during non-Live deploy. The local profiles never fall back to
+each other. `.env.example` values are examples and never
+become effective values. Dowe source uses static references such as `env.BACKEND_URL`. A name
+referenced from views becomes public client configuration, while names used only by server remain
+private.
 
 ## Example tree
 
@@ -135,6 +141,9 @@ main.dowe
 theme.dowe
 .env.example
 .env
+.env.live
+.env.stage
+.env.uat
 ```
 
 This tree is the canonical organization for new source and generated examples, not a parser
@@ -149,7 +158,7 @@ responsibilities are:
 - `server/providers` owns external provider calls.
 - `server/services` coordinates business behavior.
 - `server/repositories` owns Database and KV logic.
-- `server/tasks` owns functions targeted by `go` or `cron`.
+- `server/tasks` owns functions targeted by named `task` or `cron` registrations.
 - `server/utils` owns small reusable server transformations.
 - `server/endpoints.dowe` connects handlers and middleware to routes.
 - `types` owns shared declared data shapes.

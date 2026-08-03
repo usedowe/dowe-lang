@@ -25,7 +25,7 @@ orientation and `dowe codegraph check` for declared structural validation. CodeG
 | Compile or run the project | `dowe dev`, or non-interactive targets such as `dowe dev --target server --target web`, `--target android`, `--target ios` |
 | Generate project icons | `dowe icons` or its explicit `--source`, `--background`, `--rounded`, and `--target` options |
 | Literal source assertions | `dowe test [path ...]`, with `--json` for stable agent or CI reports |
-| Produce production output | `dowe deploy` interactive, `dowe deploy --target static`, `--target docker --registry <registry> --image <name>`, `--target cloudflare --name <worker>`, or `dowe deploy web --name <project> --publish` |
+| Produce production output | `dowe deploy` interactive, `dowe deploy --target static`, `--target docker --registry <registry> --image <name>`, `--target ssh [--publish --host <host> --user <user> [--key-file <path>]]`, `--target cloudflare --name <worker>`, or `dowe deploy web --name <project> --publish` |
 | Validate project agent state | Use the Agent Harness check configured under `.agents` |
 | Validate a planned feature | Use the selected Harness plan and its declared validation |
 | Validate structure | `dowe codegraph check` |
@@ -50,6 +50,6 @@ valid literals. For a contract covered by literal values, write the failing test
 `dowe test <path>`, implement the smallest compliant change, and run it again. A failed assertion
 reports its file, line, and message; no discovered tests is a successful empty run.
 
-Do not start watchers unless the task needs an active development session. Do not read `.env`
-values, serialize server-only bindings into views, or expose Database, KV, HTTP provider, crypto, or
-spawn handles to client targets.
+Do not start watchers unless the task needs an active development session. Do not read `.env` or
+deploy-profile values, serialize server-only bindings into views, or expose Database, KV, HTTP provider,
+crypto, or spawn handles to client targets.

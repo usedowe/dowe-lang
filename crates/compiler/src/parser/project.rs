@@ -1,10 +1,10 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    AppConfig, DatabaseBinding, EnvironmentConfig, ProjectCapabilities, ServerConfig,
-    ViewTargetRoutes, WebOutput,
+    AppConfig, CompileEnvironment, DatabaseBinding, EnvironmentConfig, ProjectCapabilities,
+    ServerConfig, ViewTargetRoutes, WebOutput,
 };
 use crate::parser::source_config::parse_app;
-use crate::parser::source_config::parse_project_config;
+use crate::parser::source_config::parse_project_config_for;
 use crate::parser::source_i18n::parse_translation_catalog;
 use crate::parser::source_parser::parse_source_file;
 use crate::parser::source_server::parse_server_source;
@@ -28,8 +28,11 @@ pub struct ParsedProject {
     pub view_routes: ViewTargetRoutes,
 }
 
-pub fn parse_project(root: &Path) -> DoweResult<ParsedProject> {
-    let config = parse_project_config(root)?;
+pub(crate) fn parse_project_for(
+    root: &Path,
+    environment: CompileEnvironment,
+) -> DoweResult<ParsedProject> {
+    let config = parse_project_config_for(root, environment)?;
     let mut environment_config = config.environment_config;
     let legacy_main_path = root.join("src/main.dowe");
     if legacy_main_path.exists() {

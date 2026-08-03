@@ -103,6 +103,7 @@ async fn execute_store_action_json(
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
         handle_databases: HashMap::new(),
         cache_mode,
     };
@@ -147,6 +148,7 @@ async fn execute_kv_action_json(
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
         handle_databases: HashMap::new(),
         cache_mode,
     };
@@ -191,6 +193,7 @@ async fn execute_vector_action_json(
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
         handle_databases: HashMap::new(),
         cache_mode,
     };
@@ -202,6 +205,51 @@ async fn execute_vector_action_json(
         Ok(ResolvedValue::Json(value)) => {
             json_response(status_from_u16(response.status), value)
         }
+        Ok(ResolvedValue::Missing) => json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "invalid_response",
+            "Response value is missing",
+        ),
+        Err(error) => json_error(error.status, error.code, error.message),
+    }
+}
+
+async fn execute_queue_action_json(
+    project: &CompiledProject,
+    root: &Path,
+    action: &dowe_compiler::ServerAction,
+    response: &QueueActionJsonEndpoint,
+    params: &HashMap<String, String>,
+    body: &Bytes,
+    raw_query: Option<&str>,
+    headers: &HeaderMap,
+    cache_mode: CacheRuntimeMode,
+) -> Response {
+    let mut context = StoreActionContext {
+        project,
+        root,
+        params,
+        body,
+        raw_query,
+        headers: Some(headers),
+        request_context: None,
+        request_body: None,
+        bindings: HashMap::new(),
+        http_results: HashMap::new(),
+        bytes_results: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+        cache_mode,
+    };
+    match context
+        .execute(action)
+        .await
+        .and_then(|_| context.evaluate(&response.value))
+    {
+        Ok(ResolvedValue::Json(value)) => json_response(status_from_u16(response.status), value),
         Ok(ResolvedValue::Missing) => json_error(
             StatusCode::INTERNAL_SERVER_ERROR,
             "invalid_response",

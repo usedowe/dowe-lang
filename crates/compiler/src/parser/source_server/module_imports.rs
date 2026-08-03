@@ -185,7 +185,7 @@ fn parse_server_module(
                     "`repository` was replaced by `fn` in `server/repositories`",
                 ));
             }
-            "database" | "db" | "cache" | "kv" | "let" | "query" | "vector" => {
+            "database" | "db" | "cache" | "kv" | "let" | "query" | "vector" | "queue" => {
                 let binding = parse_config_binding_node(
                     node,
                     environment,
@@ -216,7 +216,7 @@ fn parse_server_module(
             _ => {
                 return Err(node_error(
                     node,
-                    "server modules only accept `type`, `handler`, `middleware`, `fn`, `endpoints`, `entity`, `seeder`, `database`, `cache`, or `vector` declarations",
+                    "server modules only accept `type`, `handler`, `middleware`, `fn`, `endpoints`, `entity`, `seeder`, `database`, `cache`, `vector`, or `queue` declarations",
                 ));
             }
         }
@@ -238,7 +238,7 @@ fn server_module_surface(file: &SourceFile) -> ServerModuleSurface {
     if file.nodes.iter().any(|node| {
         matches!(
             node.name.as_str(),
-            "database" | "db" | "cache" | "kv" | "let" | "query" | "vector"
+            "database" | "db" | "cache" | "kv" | "let" | "query" | "vector" | "queue"
         )
     }) {
         ServerModuleSurface::Config
@@ -372,4 +372,3 @@ fn module_has_views_export(file: &SourceFile, name: &str) -> bool {
                 .is_some_and(|export| export == name)
     })
 }
-

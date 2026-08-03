@@ -1,5 +1,8 @@
 use crate::DevEventType;
-use crate::server::{DevServerTargets, start_dev, start_dev_servers, start_production};
+use crate::ProductionAccess;
+use crate::server::{
+    DevServerTargets, start_dev, start_dev_servers, start_production, start_production_with_access,
+};
 use axum::Router;
 use axum::body::Bytes;
 use axum::extract::State;
@@ -17,6 +20,9 @@ use dowe_database::{
     DatabaseServiceConfig, DoweDatabaseClient, DoweDatabaseConfig, create_account,
     start_database_service,
 };
+use dowe_queue::{
+    QueueClient, QueueConfig, QueueProvider, create_account as create_queue_account, open_namespace,
+};
 use dowe_vector::{
     DoweVectorClient, DoweVectorConfig, VectorServerConfig,
     close_remote_connections as close_vector_connections, create_account as create_vector_account,
@@ -24,6 +30,7 @@ use dowe_vector::{
 };
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -1144,6 +1151,445 @@ fn createTicketRepository params:{ title:string priority:string status:string }
 }
 
 #[tokio::test]
+async fn server_standard_library_reusable_fn_chains_parse_sort_and_math() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("server/handlers")).expect("handlers directory");
+    fs::create_dir_all(temp.path().join("server/functions")).expect("functions directory");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import summarize from "@/server/handlers/summarize"
+
+main
+  server port:0
+    route "/api/stdlib"
+      method POST handler:summarize"#,
+    )
+    .expect("main");
+    fs::write(
+        temp.path().join("server/handlers/summarize.dowe"),
+        r#"import summarizeScores from "@/server/functions/scores"
+
+handler summarize
+  const body value:req.json
+  summarizeScores result args:{ payload:body.payload }
+  return json:result"#,
+    )
+    .expect("handler");
+    fs::write(
+        temp.path().join("server/functions/scores.dowe"),
+        r#"fn summarizeScores params:{ payload:string }
+  parse parsed source:"json" value:args.payload fallback:[]
+  sort sorted source:"asc" values:parsed
+  math total source:"sum" values:sorted
+  return value:{ total:total sorted:sorted }"#,
+    )
+    .expect("function");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+    let result = client
+        .post(format!("{backend}/api/stdlib"))
+        .json(&json!({ "payload": "[3,1,2]" }))
+        .send()
+        .await
+        .expect("stdlib request");
+    assert_eq!(result.status(), reqwest::StatusCode::OK);
+    let result = result
+        .json::<serde_json::Value>()
+        .await
+        .expect("result json");
+    assert_eq!(result["total"], json!(6.0));
+    assert_eq!(result["sorted"], json!([1, 2, 3]));
+
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn simplified_http_handler_and_function_resolve_dynamic_task_args() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("server/tasks")).expect("tasks directory");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import dispatch from "@/server/tasks/dispatch"
+import recordAudit from "@/server/tasks/record-audit"
+
+main
+  server port:0
+    route "/api/posts"
+      method POST
+        const body value:req.json
+        str auditKey source:"join" values:["post", body.id] delimiter:":"
+        task recordAudit args:{ requestId:body.id auditKey:auditKey }
+        task args:{ requestId:body.id auditKey:auditKey }
+          log args.auditKey
+        dispatch dispatched args:{ requestId:body.id auditKey:auditKey }
+        return json:{ created:true ...body }"#,
+    )
+    .expect("main");
+    fs::write(
+        temp.path().join("server/tasks/record-audit.dowe"),
+        r#"fn recordAudit params:{ requestId:string auditKey:string }
+  log args.auditKey
+  return value:null"#,
+    )
+    .expect("task");
+    fs::write(
+        temp.path().join("server/tasks/dispatch.dowe"),
+        r#"import recordAudit from "./record-audit"
+
+fn dispatch params:{ requestId:string auditKey:string }
+  task recordAudit args:{ requestId:args.requestId auditKey:args.auditKey }
+  task args:{ requestId:args.requestId auditKey:args.auditKey }
+    log args.auditKey
+  return value:null"#,
+    )
+    .expect("dispatch");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let capture_root = project.root.clone();
+    crate::background_jobs::start_task_launch_capture(&capture_root);
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+    let response = client
+        .post(format!("{backend}/api/posts"))
+        .json(&json!({ "id": "order-7", "title": "Task order" }))
+        .send()
+        .await
+        .expect("post request");
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(
+        response
+            .json::<serde_json::Value>()
+            .await
+            .expect("response json"),
+        json!({ "created": true, "id": "order-7", "title": "Task order" })
+    );
+
+    let launches = crate::background_jobs::take_task_launches(&capture_root);
+    assert_eq!(launches.len(), 4);
+    assert_eq!(launches[0].target.as_deref(), Some("recordAudit"));
+    assert_eq!(
+        launches[0].args,
+        json!({ "requestId": "order-7", "auditKey": "post:order-7" })
+    );
+    assert_eq!(launches[1].target, None);
+    assert_eq!(
+        launches[1].args,
+        json!({ "requestId": "order-7", "auditKey": "post:order-7" })
+    );
+    assert_eq!(launches[2].target.as_deref(), Some("recordAudit"));
+    assert_eq!(
+        launches[2].args,
+        json!({ "requestId": "order-7", "auditKey": "post:order-7" })
+    );
+    assert_eq!(launches[3].target, None);
+    assert_eq!(
+        launches[3].args,
+        json!({ "requestId": "order-7", "auditKey": "post:order-7" })
+    );
+
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn direct_store_task_handlers_resolve_dynamic_task_args_once() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("server/tasks")).expect("tasks directory");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import dispatch from "@/server/tasks/dispatch"
+import recordAudit from "@/server/tasks/record-audit"
+
+main
+  server port:0
+    route "/api/events"
+      method POST
+        const body value:req.json
+        str auditKey source:"join" values:["event", body.id] delimiter:":"
+        database db provider:"postgres" host:"unreachable.invalid" port:5432 account:"unused" secret:"unused" name:"events"
+        query created db:db.insert table:"events" value:{ kind:"task" }
+        task recordAudit args:{ requestId:body.id auditKey:auditKey }
+        task args:{ requestId:body.id auditKey:auditKey }
+          log args.auditKey
+        dispatch dispatched args:{ requestId:body.id auditKey:auditKey }
+        return json:created
+      method GET
+        database db provider:"postgres" host:"unreachable.invalid" port:5432 account:"unused" secret:"unused" name:"events"
+        query events db:db.list table:"events"
+        return json:events"#,
+    )
+    .expect("main");
+    fs::write(
+        temp.path().join("server/tasks/record-audit.dowe"),
+        r#"fn recordAudit params:{ requestId:string auditKey:string }
+  log args.auditKey
+  return value:null"#,
+    )
+    .expect("task");
+    fs::write(
+        temp.path().join("server/tasks/dispatch.dowe"),
+        r#"import recordAudit from "./record-audit"
+
+fn dispatch params:{ requestId:string auditKey:string }
+  task recordAudit args:{ requestId:args.requestId auditKey:args.auditKey }
+  task args:{ requestId:args.requestId auditKey:args.auditKey }
+    log args.auditKey
+  return value:null"#,
+    )
+    .expect("dispatch");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let capture_root = project.root.clone();
+    crate::background_jobs::start_task_launch_capture(&capture_root);
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let client = reqwest::Client::new();
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+    let created = client
+        .post(format!("{backend}/api/events"))
+        .json(&json!({ "id": "event-7" }))
+        .send()
+        .await
+        .expect("create request");
+    assert_eq!(created.status(), reqwest::StatusCode::OK);
+    let created = created
+        .json::<serde_json::Value>()
+        .await
+        .expect("created json");
+    assert_eq!(created["kind"], "task");
+    assert!(created["id"].as_str().is_some());
+
+    let launches = crate::background_jobs::take_task_launches(&capture_root);
+    assert_eq!(launches.len(), 4);
+    assert_eq!(launches[0].target.as_deref(), Some("recordAudit"));
+    assert_eq!(launches[1].target, None);
+    assert_eq!(launches[2].target.as_deref(), Some("recordAudit"));
+    assert_eq!(launches[3].target, None);
+    for launch in launches {
+        assert_eq!(
+            launch.args,
+            json!({ "requestId": "event-7", "auditKey": "event:event-7" })
+        );
+    }
+
+    let events = client
+        .get(format!("{backend}/api/events"))
+        .send()
+        .await
+        .expect("list request");
+    assert_eq!(events.status(), reqwest::StatusCode::OK);
+    let events = events
+        .json::<serde_json::Value>()
+        .await
+        .expect("events json");
+    assert_eq!(events.as_array().expect("events").len(), 1);
+    assert_eq!(events[0]["kind"], "task");
+
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn reverse_proxy_response_headers_tasks_wait_for_real_upstream_headers() {
+    let upstream_listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("upstream listener");
+    let upstream_addr = upstream_listener.local_addr().expect("upstream address");
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("server/tasks")).expect("tasks directory");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import delayedFirst from "@/server/tasks/delayed-first"
+import delayedSecond from "@/server/tasks/delayed-second"
+import immediateFirst from "@/server/tasks/immediate-first"
+import immediateSecond from "@/server/tasks/immediate-second"
+
+main
+  server port:0
+    route "/setup"
+      handler
+        cache routes provider:"dowe" host:"local" port:4148 account:"proxy" secret:"secret" name:"routes"
+        kv saved conn:routes.set key:"route" value:{ url:"UPSTREAM_URL" projectId:"project_1" state:"ready" }
+        return json:saved
+    route "/proxy/*path"
+      method POST
+        cache routes provider:"dowe" host:"local" port:4148 account:"proxy" secret:"secret" name:"routes"
+        kv route conn:routes.get key:"route" required:true
+        task immediateFirst args:{ event:{ phase:"first" } }
+        task delayedFirst args:{ event:{ projectId:route.projectId label:"first" custom:"custom-first" status:0 method:"placeholder" path:"placeholder" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
+        task immediateSecond args:{ event:{ phase:"second" } }
+        task delayedSecond args:{ event:{ projectId:route.projectId label:"second" custom:"custom-second" status:0 method:"placeholder" path:"placeholder" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
+        return reverse:route.url"#
+            .replace("UPSTREAM_URL", &format!("http://{upstream_addr}")),
+    )
+    .expect("main");
+    fs::write(
+        temp.path().join("server/tasks/immediate-first.dowe"),
+        r#"type ImmediateFirstEvent
+  phase:string
+
+fn immediateFirst params:{ event:ImmediateFirstEvent }
+  return value:null"#,
+    )
+    .expect("immediate first");
+    fs::write(
+        temp.path().join("server/tasks/immediate-second.dowe"),
+        r#"type ImmediateSecondEvent
+  phase:string
+
+fn immediateSecond params:{ event:ImmediateSecondEvent }
+  return value:null"#,
+    )
+    .expect("immediate second");
+    fs::write(
+        temp.path().join("server/tasks/delayed-first.dowe"),
+        r#"type DelayedFirstEvent
+  projectId:string
+  label:string
+  custom:string
+  status:number
+  method:string
+  path:string
+  latencyMs:number
+  bytesIn:number
+  bytesOut:number
+
+fn delayedFirst params:{ event:DelayedFirstEvent }
+  return value:null"#,
+    )
+    .expect("delayed first");
+    fs::write(
+        temp.path().join("server/tasks/delayed-second.dowe"),
+        r#"type DelayedSecondEvent
+  projectId:string
+  label:string
+  custom:string
+  status:number
+  method:string
+  path:string
+  latencyMs:number
+  bytesIn:number
+  bytesOut:number
+
+fn delayedSecond params:{ event:DelayedSecondEvent }
+  return value:null"#,
+    )
+    .expect("delayed second");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let capture_root = project.root.clone();
+    crate::background_jobs::start_task_launch_capture(&capture_root);
+    let observed_at_headers = Arc::new(Mutex::new(Vec::new()));
+    let upstream_capture_root = capture_root.clone();
+    let upstream_observed = observed_at_headers.clone();
+    let upstream_server = tokio::spawn(async move {
+        let upstream = Router::new().fallback(move || {
+            let capture_root = upstream_capture_root.clone();
+            let observed = upstream_observed.clone();
+            async move {
+                *observed.lock().await = crate::background_jobs::task_launches(&capture_root)
+                    .into_iter()
+                    .filter_map(|launch| launch.target)
+                    .collect();
+                let mut response = "1234567890123456789".into_response();
+                *response.status_mut() = StatusCode::CREATED;
+                response
+                    .headers_mut()
+                    .insert("content-length", axum::http::HeaderValue::from_static("19"));
+                response
+            }
+        });
+        axum::serve(upstream_listener, upstream)
+            .await
+            .expect("upstream server");
+    });
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let backend = format!("http://{}", servers.backend_addr.expect("backend address"));
+    let client = reqwest::Client::new();
+    let setup = client
+        .get(format!("{backend}/setup"))
+        .send()
+        .await
+        .expect("setup request");
+    assert_eq!(setup.status(), reqwest::StatusCode::OK);
+
+    let forwarded = client
+        .post(format!("{backend}/proxy/items"))
+        .body("payload")
+        .send()
+        .await
+        .expect("forwarded request");
+    assert_eq!(forwarded.status(), reqwest::StatusCode::CREATED);
+    assert_eq!(forwarded.text().await.expect("forwarded body").len(), 19);
+    assert_eq!(
+        *observed_at_headers.lock().await,
+        vec!["immediateFirst".to_string(), "immediateSecond".to_string()]
+    );
+
+    let launches = crate::background_jobs::take_task_launches(&capture_root);
+    assert_eq!(launches.len(), 4);
+    assert_eq!(launches[0].target.as_deref(), Some("immediateFirst"));
+    assert_eq!(launches[1].target.as_deref(), Some("immediateSecond"));
+    assert_eq!(launches[2].target.as_deref(), Some("delayedFirst"));
+    assert_eq!(launches[3].target.as_deref(), Some("delayedSecond"));
+    assert_eq!(launches[0].args, json!({ "event": { "phase": "first" } }));
+    assert_eq!(launches[1].args, json!({ "event": { "phase": "second" } }));
+    for launch in &launches[2..] {
+        assert_eq!(launch.args["event"]["projectId"], "project_1");
+        assert_eq!(launch.args["event"]["status"], 201);
+        assert_eq!(launch.args["event"]["method"], "POST");
+        assert_eq!(launch.args["event"]["path"], "/proxy/items");
+        assert!(launch.args["event"]["latencyMs"].as_f64().is_some());
+        assert_eq!(launch.args["event"]["bytesIn"], 7);
+        assert_eq!(launch.args["event"]["bytesOut"], 19);
+    }
+    assert_eq!(launches[2].args["event"]["label"], "first");
+    assert_eq!(launches[3].args["event"]["label"], "second");
+    assert_eq!(launches[2].args["event"]["custom"], "custom-first");
+    assert_eq!(launches[3].args["event"]["custom"], "custom-second");
+
+    servers.shutdown().await.expect("shutdown");
+    upstream_server.abort();
+}
+
+#[tokio::test]
 async fn starts_only_selected_backend_server() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
@@ -1249,6 +1695,44 @@ async fn production_server_serves_backend_and_web_without_dev_endpoints() {
         .await
         .expect("dev client");
     assert_eq!(dev_client.status(), reqwest::StatusCode::NOT_FOUND);
+
+    server.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn production_access_protects_routes_and_assets_before_the_application() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    let project = compile_dev(temp.path()).expect("project");
+    let hash = format!("{:x}", Sha256::digest(b"stage-password-123"));
+    let access = ProductionAccess::new("stage", &hash).expect("access");
+    let server =
+        start_production_with_access(project, "127.0.0.1:0".parse().expect("addr"), Some(access))
+            .await
+            .expect("server");
+    let origin = format!("http://{}", server.addr);
+    let client = reqwest::Client::new();
+
+    for path in ["/api/status", "/design.css"] {
+        let blocked = client
+            .get(format!("{origin}{path}"))
+            .send()
+            .await
+            .expect("blocked request");
+        assert_eq!(blocked.status(), reqwest::StatusCode::UNAUTHORIZED);
+        assert_eq!(blocked.headers()["cache-control"], "no-store");
+        assert!(blocked.headers().contains_key("www-authenticate"));
+    }
+
+    let allowed = client
+        .get(format!("{origin}/api/status"))
+        .basic_auth("tester@example.com", Some("stage-password-123"))
+        .send()
+        .await
+        .expect("allowed request");
+    assert_eq!(allowed.status(), reqwest::StatusCode::OK);
+    assert_eq!(allowed.headers()["x-robots-tag"], "noindex");
+    assert_eq!(allowed.text().await.expect("body"), "OK");
 
     server.shutdown().await.expect("shutdown");
 }
@@ -2440,6 +2924,81 @@ async fn serves_vector_handlers_with_local_persistence() {
 }
 
 #[tokio::test]
+async fn serves_queue_handlers_with_local_durable_direct_publish() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    let queue = open_namespace(temp.path(), "jobs").expect("queue");
+    queue.declare("notifications").expect("declare");
+    drop(queue);
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"main
+  server port:0
+    route "/api/messages"
+      handler
+        queue appQueue provider:"dowe" host:"unresolved.example" port:4150 account:"unused" secret:"unused" vhost:"jobs"
+        msg sent conn:appQueue.publish queue:"notifications" payload:{ userId:"123" event:"user_created" }
+        return json:{ ok:sent.ok messageId:sent.id }
+    route "/api/missing"
+      handler
+        queue appQueue provider:"dowe" host:"unresolved.example" port:4150 account:"unused" secret:"unused" vhost:"jobs"
+        msg sent conn:appQueue.publish queue:"missing" payload:{ event:"ignored" }
+        return json:sent"#,
+    )
+    .expect("server");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+    let client = reqwest::Client::new();
+    let sent = client
+        .get(format!("{backend}/api/messages"))
+        .send()
+        .await
+        .expect("message")
+        .json::<serde_json::Value>()
+        .await
+        .expect("message json");
+
+    assert_eq!(sent["ok"], true, "unexpected response: {sent}");
+    assert!(
+        sent["messageId"]
+            .as_str()
+            .is_some_and(|value| !value.is_empty())
+    );
+    let missing = client
+        .get(format!("{backend}/api/missing"))
+        .send()
+        .await
+        .expect("missing");
+    assert_eq!(missing.status(), reqwest::StatusCode::NOT_FOUND);
+    let missing = missing
+        .json::<serde_json::Value>()
+        .await
+        .expect("missing json");
+    assert_eq!(missing["error"]["code"], "not_found");
+
+    let queue = open_namespace(temp.path(), "jobs").expect("reopen queue");
+    let mut subscription = queue
+        .subscribe("notifications", "runtime")
+        .expect("subscription");
+    let mut delivery = subscription.next().await.expect("next").expect("delivery");
+    assert_eq!(delivery.message.value["userId"], "123");
+    assert_eq!(delivery.message.value["event"], "user_created");
+    delivery.ack().await.expect("ack");
+    assert!(temp.path().join(".dowe/queue/jobs").exists());
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
 async fn production_vector_host_local_uses_embedded_storage() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
@@ -2540,6 +3099,85 @@ async fn production_dowe_vector_uses_websocket_without_local_storage() {
 }
 
 #[tokio::test]
+async fn file_storage_round_trips_request_bytes() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    fs::create_dir_all(temp.path().join("server/handlers")).expect("server directory");
+    let storage = temp.path().join("registry");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import artifactEndpoints from "@/server/endpoints"
+
+main
+  server port:0
+    endpoints:artifactEndpoints
+"#,
+    )
+    .expect("main");
+    fs::write(
+        temp.path().join("server/endpoints.dowe"),
+        r#"import { uploadArtifact, readArtifact } from "@/server/handlers/artifacts"
+
+endpoints artifactEndpoints
+  group path:"/artifacts"
+    post path:"/:name" handler:uploadArtifact
+    get path:"/:name" handler:readArtifact
+"#,
+    )
+    .expect("endpoints");
+    fs::write(
+        temp.path().join("server/handlers/artifacts.dowe"),
+        format!(
+            r#"handler uploadArtifact
+  request payload source:"bytes"
+  file stored source:"write" root:"{}" path:req.params.name data:payload
+  return status:201 json:stored
+
+handler readArtifact
+  file artifact source:"read" root:"{}" path:req.params.name
+  return bytes:artifact contentType:"application/octet-stream"
+"#,
+            storage.display(),
+            storage.display()
+        ),
+    )
+    .expect("handlers");
+    let project = compile_dev(temp.path()).expect("project");
+    let server = start_production(project, SocketAddr::from(([127, 0, 0, 1], 0)))
+        .await
+        .expect("server");
+    let client = reqwest::Client::new();
+    let payload = vec![0, 1, 2, 127, 128, 255];
+    let written = client
+        .post(format!("http://{}/artifacts/build.dowebin", server.addr))
+        .body(payload.clone())
+        .send()
+        .await
+        .expect("write");
+    let written_status = written.status();
+    let written_body = written.text().await.expect("write response");
+    assert_eq!(
+        written_status,
+        reqwest::StatusCode::CREATED,
+        "{written_body}"
+    );
+    let downloaded = client
+        .get(format!("http://{}/artifacts/build.dowebin", server.addr))
+        .send()
+        .await
+        .expect("read")
+        .bytes()
+        .await
+        .expect("bytes");
+    assert_eq!(downloaded.as_ref(), payload.as_slice());
+    assert_eq!(
+        fs::read(storage.join("build.dowebin")).expect("stored"),
+        payload
+    );
+    server.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
 async fn vector_service_declaration_hosts_authenticated_websocket() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
@@ -2581,6 +3219,55 @@ async fn vector_service_declaration_hosts_authenticated_websocket() {
     assert_eq!(matches[0]["id"], "alpha");
     drop(client);
     close_vector_connections();
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn queue_service_declaration_hosts_authenticated_websocket() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    create_queue_account(temp.path(), "orders", "worker-api", Some("secret-token"))
+        .expect("account");
+    fs::write(
+        temp.path().join("main.dowe"),
+        "main\n  server port:0\n    queue service\n",
+    )
+    .expect("server");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let addr = servers.backend_addr.expect("backend addr");
+    let client = QueueClient::new(QueueConfig {
+        provider: QueueProvider::Dowe,
+        host: addr.ip().to_string(),
+        port: addr.port(),
+        account: "worker-api".to_string(),
+        secret: "secret-token".to_string(),
+        name: "orders".to_string(),
+    })
+    .expect("client");
+    client.declare("workers").await.expect("declare");
+    client.bind("workers", "orders.#").await.expect("bind");
+    client
+        .publish("orders.created", json!({ "id": "one" }))
+        .await
+        .expect("publish");
+    let mut subscription = client
+        .subscribe("workers", "runtime")
+        .await
+        .expect("subscribe");
+    let mut delivery = subscription.next().await.expect("next").expect("delivery");
+    assert_eq!(delivery.message.value["id"], "one");
+    delivery.ack().await.expect("ack");
+    subscription.close().await.expect("close");
     servers.shutdown().await.expect("shutdown");
 }
 

@@ -11,11 +11,14 @@ candle = ["dowe_inference/candle"]
 [dependencies]
 axum.workspace = true
 axum-server.workspace = true
+argon2.workspace = true
+base64.workspace = true
 bytes.workspace = true
 dowe_components = { path = "../components" }
 dowe_compiler = { path = "../compiler" }
 dowe_crypto = { path = "../crypto" }
 dowe_cache = { path = "../cache" }
+dowe_queue = { path = "../queue" }
 dowe_inference = { path = "../inference" }
 dowe_id = { path = "../id" }
 dowe_spawn = { path = "../spawn" }

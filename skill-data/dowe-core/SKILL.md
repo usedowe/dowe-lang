@@ -48,9 +48,10 @@ View props continue to use bare bindings such as `bind:form.title` and `show:rea
 
 ## Boundaries
 
-- Keep `main.dowe`, `theme.dowe`, `.env.example`, and `.env` at the project root.
-- Declare environment names in `.env.example`, keep local values in the ignored `.env`, and use
-  static `env.NAME` references only on supported view and server surfaces.
+- Keep `main.dowe`, `theme.dowe`, `.env.example`, `.env`, `.env.live`, `.env.stage`, and `.env.uat` at the project root.
+- Declare environment names in `.env.example`, keep development values in the ignored `.env`, keep
+  build and Live values in `.env.live`, Stage values in `.env.stage`, UAT values in `.env.uat`, and use static `env.NAME` references only on
+  supported view and server surfaces.
 - Treat every environment name referenced from views as public client configuration.
 - Frontend modules belong under `views`; backend modules belong under `server`. Keep this canonical
   separation for new source even though declarations and imports remain the compiler authority.

@@ -1,35 +1,34 @@
-    #[test]
-    fn parses_main_server_route() {
-        let file = parse_source_file(
-            Path::new("/project"),
-            Path::new("/project/main.dowe"),
-            r#"main
+#[test]
+fn parses_main_server_route() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        r#"main
   server port:8080
     route "/api/status"
       response text:"OK""#
-                .to_string(),
-        )
-        .expect("source");
+            .to_string(),
+    )
+    .expect("source");
 
-        let server =
-            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
-        let endpoint = server
-            .backend
-            .find_endpoint(&HttpMethod::Get, "/api/status")
-            .expect("route");
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let endpoint = server
+        .backend
+        .find_endpoint(&HttpMethod::Get, "/api/status")
+        .expect("route");
 
-        assert_eq!(
-            endpoint.endpoint.behavior,
-            EndpointBehavior::StaticText("OK".to_string())
-        );
-    }
+    assert_eq!(
+        endpoint.endpoint.behavior,
+        EndpointBehavior::StaticText("OK".to_string())
+    );
+}
 
-    #[test]
-    fn parses_acme_tls_with_managed_kv_domains() {
-        let file = parse_source_file(
-            Path::new("/project"),
-            Path::new("/project/main.dowe"),
-            r#"main
+#[test]
+fn parses_acme_tls_with_managed_kv_domains() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        r#"main
   server port:443
     tls:
       mode:"acme"
@@ -38,102 +37,150 @@
       staging:false
       domainsFrom:{ kv:"domains" key:"tls" }
       refreshSeconds:90"#
-                .to_string(),
-        )
-        .expect("source");
+            .to_string(),
+    )
+    .expect("source");
 
-        let server =
-            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
-        let tls = server.backend.tls.expect("tls");
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let tls = server.backend.tls.expect("tls");
 
-        assert_eq!(tls.mode, TlsMode::Acme);
-        assert_eq!(tls.domains, ["example.com", "www.example.com"]);
-        assert_eq!(tls.email.as_deref(), Some("admin@example.com"));
-        assert!(!tls.staging);
-        assert_eq!(tls.refresh_seconds, 90);
-        assert_eq!(
-            tls.domains_from,
-            Some(TlsDomainsSource::Kv {
-                database: "domains".to_string(),
-                key: "tls".to_string(),
-            })
-        );
-    }
+    assert_eq!(tls.mode, TlsMode::Acme);
+    assert_eq!(tls.domains, ["example.com", "www.example.com"]);
+    assert_eq!(tls.email.as_deref(), Some("admin@example.com"));
+    assert!(!tls.staging);
+    assert_eq!(tls.refresh_seconds, 90);
+    assert_eq!(
+        tls.domains_from,
+        Some(TlsDomainsSource::Kv {
+            database: "domains".to_string(),
+            key: "tls".to_string(),
+        })
+    );
+}
 
-    #[test]
-    fn parses_local_tls_and_database_domain_source() {
-        let local = parse_source_file(
+#[test]
+fn parses_local_tls_and_database_domain_source() {
+    let local = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
             "main\n  server port:8443\n    tls mode:\"local\" domains:[\"localhost\", \"app.localhost\"]\n"
                 .to_string(),
         )
         .expect("source");
-        let local =
-            parse_server_file(Path::new("/project/main.dowe"), &local.nodes).expect("local server");
-        assert_eq!(local.backend.tls.expect("tls").mode, TlsMode::Local);
+    let local =
+        parse_server_file(Path::new("/project/main.dowe"), &local.nodes).expect("local server");
+    assert_eq!(local.backend.tls.expect("tls").mode, TlsMode::Local);
 
-        let database = parse_source_file(
+    let database = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
             "main\n  server port:443\n    tls mode:\"acme\" email:\"admin@example.com\" domainsFrom:{ db:\"admin\" table:\"domains\" field:\"hostname\" }\n"
                 .to_string(),
         )
         .expect("source");
-        let database = parse_server_file(Path::new("/project/main.dowe"), &database.nodes)
-            .expect("database server");
-        assert!(matches!(
-            database.backend.tls.expect("tls").domains_from,
-            Some(TlsDomainsSource::Database { .. })
-        ));
-    }
+    let database = parse_server_file(Path::new("/project/main.dowe"), &database.nodes)
+        .expect("database server");
+    assert!(matches!(
+        database.backend.tls.expect("tls").domains_from,
+        Some(TlsDomainsSource::Database { .. })
+    ));
+}
 
-    #[test]
-    fn rejects_invalid_tls_contracts() {
-        for (tls, message) in [
-            (
-                "tls mode:\"acme\" domains:[\"localhost\"] email:\"admin@example.com\"",
-                "invalid public ACME domain",
-            ),
-            (
-                "tls mode:\"acme\" domains:[\"192.0.2.1\"] email:\"admin@example.com\"",
-                "invalid public ACME domain",
-            ),
-            (
-                "tls mode:\"local\" domains:[\"example.com\"]",
-                "local TLS does not support public domain",
-            ),
-            (
-                "tls mode:\"acme\" domains:[\"example.com\"]",
-                "requires a valid `email`",
-            ),
-            (
-                "tls mode:\"acme\" domains:[\"example.com\"] email:\"admin@example.com\" cache:\"../tls\"",
-                "must stay inside `.dowe`",
-            ),
-            (
-                "tls mode:\"acme\" email:\"admin@example.com\" domainsFrom:{ kv:\"domains\" table:\"domains\" }",
-                "must be `{ kv:",
-            ),
-        ] {
-            let file = parse_source_file(
-                Path::new("/project"),
-                Path::new("/project/main.dowe"),
-                format!("main\n  server port:443\n    {tls}\n"),
-            )
-            .expect("source");
-            let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
-                .expect_err("invalid tls");
-            assert!(error.to_string().contains(message), "{error}");
-        }
-    }
+#[test]
+fn parses_tls_endpoint_domains_and_http_redirect_port() {
+    let root = tempfile::tempdir().expect("root");
+    let source = r#"main
+  server port:443
+    tls:
+      mode:"acme"
+      email:"admin@example.com"
+      staging:false
+      domainsFrom:{ endpoint:env.CLOUD_API_URL path:"/v1/domains" bearer:env.CLOUD_TOKEN timeoutMs:2500 }
+      refreshSeconds:30
+      httpPort:80"#;
+    let path = root.path().join("main.dowe");
+    let file = parse_source_file(root.path(), &path, source.to_string()).expect("source");
+    let environment = EnvironmentConfig {
+        variables: vec![
+            EnvironmentVariable {
+                name: "CLOUD_API_URL".to_string(),
+                visibility: EnvironmentVisibility::Server,
+                resolved_source: EnvironmentValueSource::Missing,
+                resolved_value: None,
+            },
+            EnvironmentVariable {
+                name: "CLOUD_TOKEN".to_string(),
+                visibility: EnvironmentVisibility::Server,
+                resolved_source: EnvironmentValueSource::Missing,
+                resolved_value: None,
+            },
+        ],
+    };
+    let server = parse_server_source(root.path(), &file, &environment).expect("server");
+    let tls = server.backend.tls.expect("tls");
 
-    #[test]
-    fn parses_protocol_transports_and_rtp_pool() {
+    assert_eq!(tls.http_port, Some(80));
+    assert!(matches!(
+        tls.domains_from,
+        Some(TlsDomainsSource::Endpoint {
+            base: HttpConnectionValue::Environment(base),
+            path,
+            bearer: ServerSecret::Environment(bearer),
+            timeout_ms: 2500,
+        }) if base == "CLOUD_API_URL" && path == "/v1/domains" && bearer == "CLOUD_TOKEN"
+    ));
+}
+
+#[test]
+fn rejects_invalid_tls_contracts() {
+    for (tls, message) in [
+        (
+            "tls mode:\"acme\" domains:[\"localhost\"] email:\"admin@example.com\"",
+            "invalid public ACME domain",
+        ),
+        (
+            "tls mode:\"acme\" domains:[\"192.0.2.1\"] email:\"admin@example.com\"",
+            "invalid public ACME domain",
+        ),
+        (
+            "tls mode:\"local\" domains:[\"example.com\"]",
+            "local TLS does not support public domain",
+        ),
+        (
+            "tls mode:\"acme\" domains:[\"example.com\"]",
+            "requires a valid `email`",
+        ),
+        (
+            "tls mode:\"acme\" domains:[\"example.com\"] email:\"admin@example.com\" cache:\"../tls\"",
+            "must stay inside `.dowe`",
+        ),
+        (
+            "tls mode:\"acme\" email:\"admin@example.com\" domainsFrom:{ kv:\"domains\" table:\"domains\" }",
+            "must be a KV, Database, or authenticated endpoint source",
+        ),
+        (
+            "tls mode:\"local\" domains:[\"localhost\"] httpPort:443",
+            "different from `server.port`",
+        ),
+    ] {
         let file = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
-            r#"main
+            format!("main\n  server port:443\n    {tls}\n"),
+        )
+        .expect("source");
+        let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
+            .expect_err("invalid tls");
+        assert!(error.to_string().contains(message), "{error}");
+    }
+}
+
+#[test]
+fn parses_protocol_transports_and_rtp_pool() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        r#"main
   server port:8080
     udp name:"sip-udp" bind:"0.0.0.0" port:5060
       packet pkt
@@ -144,35 +191,34 @@
     rtp bind:"0.0.0.0" min:40000 max:40100
     route "/api/status"
       response text:"OK""#
-                .to_string(),
-        )
-        .expect("source");
+            .to_string(),
+    )
+    .expect("source");
 
-        let server =
-            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
 
-        assert_eq!(server.backend.transports.len(), 2);
-        assert_eq!(server.backend.transports[0].name, "sip-udp");
-        assert_eq!(
-            server.backend.transports[0].protocol,
-            ServerTransportProtocol::Udp
-        );
-        assert_eq!(server.backend.transports[0].binding, "pkt");
-        assert_eq!(
-            server.backend.transports[1].protocol,
-            ServerTransportProtocol::Tcp
-        );
-        assert_eq!(server.backend.transports[1].binding, "conn");
-        let rtp = server.backend.rtp.expect("rtp");
-        assert_eq!(rtp.bind, "0.0.0.0");
-        assert!(rtp.contains(40000));
-        assert!(rtp.contains(40100));
-        assert!(!rtp.contains(40101));
-    }
+    assert_eq!(server.backend.transports.len(), 2);
+    assert_eq!(server.backend.transports[0].name, "sip-udp");
+    assert_eq!(
+        server.backend.transports[0].protocol,
+        ServerTransportProtocol::Udp
+    );
+    assert_eq!(server.backend.transports[0].binding, "pkt");
+    assert_eq!(
+        server.backend.transports[1].protocol,
+        ServerTransportProtocol::Tcp
+    );
+    assert_eq!(server.backend.transports[1].binding, "conn");
+    let rtp = server.backend.rtp.expect("rtp");
+    assert_eq!(rtp.bind, "0.0.0.0");
+    assert!(rtp.contains(40000));
+    assert!(rtp.contains(40100));
+    assert!(!rtp.contains(40101));
+}
 
-    #[test]
-    fn parses_server_model_declarations() {
-        let file = parse_source_file(
+#[test]
+fn parses_server_model_declarations() {
+    let file = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
             r#"main
@@ -184,20 +230,19 @@
         )
         .expect("source");
 
-        let server =
-            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
-        let model = server.backend.models.first().expect("model");
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let model = server.backend.models.first().expect("model");
 
-        assert_eq!(model.name, "voice-vad");
-        assert_eq!(model.kind, ServerModelKind::VadSilero);
-        assert_eq!(model.engine, ServerModelEngine::Candle);
-        assert_eq!(model.format, ServerModelFormat::Onnx);
-        assert_eq!(model.sample_rates, vec![8_000, 16_000]);
-    }
+    assert_eq!(model.name, "voice-vad");
+    assert_eq!(model.kind, ServerModelKind::VadSilero);
+    assert_eq!(model.engine, ServerModelEngine::Candle);
+    assert_eq!(model.format, ServerModelFormat::Onnx);
+    assert_eq!(model.sample_rates, vec![8_000, 16_000]);
+}
 
-    #[test]
-    fn parses_media_proxy_primitives() {
-        let file = parse_source_file(
+#[test]
+fn parses_media_proxy_primitives() {
+    let file = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
             r#"main
@@ -217,92 +262,91 @@
         )
         .expect("source");
 
-        let server =
-            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
-        let endpoint = server
-            .backend
-            .find_endpoint(&HttpMethod::Get, "/dash/news/video/1.m4s")
-            .expect("route");
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let endpoint = server
+        .backend
+        .find_endpoint(&HttpMethod::Get, "/dash/news/video/1.m4s")
+        .expect("route");
 
-        assert!(matches!(
-            endpoint.endpoint.behavior,
-            EndpointBehavior::HttpBytes(_)
-        ));
-        assert!(matches!(
-            endpoint.endpoint.action.statements[0],
-            ServerStatement::RequestQuery { .. }
-        ));
-        assert!(matches!(
-            endpoint.endpoint.action.statements[4],
-            ServerStatement::Http(_)
-        ));
-        assert!(matches!(
-            endpoint.endpoint.action.statements[5],
-            ServerStatement::CryptoAesCtr(_)
-        ));
-        assert!(matches!(
-            endpoint.endpoint.action.statements[6],
-            ServerStatement::CryptoCencAesCtr(_)
-        ));
-        assert!(matches!(
-            endpoint.endpoint.action.statements[7],
-            ServerStatement::Spawn(_)
-        ));
-    }
+    assert!(matches!(
+        endpoint.endpoint.behavior,
+        EndpointBehavior::HttpBytes(_)
+    ));
+    assert!(matches!(
+        endpoint.endpoint.action.statements[0],
+        ServerStatement::RequestQuery { .. }
+    ));
+    assert!(matches!(
+        endpoint.endpoint.action.statements[4],
+        ServerStatement::Http(_)
+    ));
+    assert!(matches!(
+        endpoint.endpoint.action.statements[5],
+        ServerStatement::CryptoAesCtr(_)
+    ));
+    assert!(matches!(
+        endpoint.endpoint.action.statements[6],
+        ServerStatement::CryptoCencAesCtr(_)
+    ));
+    assert!(matches!(
+        endpoint.endpoint.action.statements[7],
+        ServerStatement::Spawn(_)
+    ));
+}
 
-    #[test]
-    fn rejects_legacy_spawn_assignment() {
-        let file = parse_source_file(
-            Path::new("/project"),
-            Path::new("/project/main.dowe"),
-            r#"main
+#[test]
+fn rejects_legacy_spawn_assignment() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        r#"main
   server port:8080
     route "/inspect"
       method GET async req
         let ffmpeg = dowe.spawn command:"ffmpeg" args:["-version"]
         return json:{ ok:true }"#
-                .to_string(),
-        )
-        .expect("source");
+            .to_string(),
+    )
+    .expect("source");
 
-        let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
-            .expect_err("legacy spawn assignment must fail");
+    let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
+        .expect_err("legacy spawn assignment must fail");
 
-        assert!(
-            error
-                .to_string()
-                .contains("spawn uses `spawn <binding> command:<value> [args:<array>]`")
-        );
-    }
+    assert!(
+        error
+            .to_string()
+            .contains("spawn uses `spawn <binding> command:<value> [args:<array>]`")
+    );
+}
 
-    #[test]
-    fn rejects_legacy_http_assignment() {
-        let file = parse_source_file(
-            Path::new("/project"),
-            Path::new("/project/main.dowe"),
-            r#"main
+#[test]
+fn rejects_legacy_http_assignment() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        r#"main
   server port:8080
     route "/status"
       method GET async req
         let upstream = http.get base:"https://media.example" path:"/api/status"
         return json:{ ok:true }"#
-                .to_string(),
-        )
-        .expect("source");
+            .to_string(),
+    )
+    .expect("source");
 
-        let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
-            .expect_err("legacy HTTP assignment must fail");
+    let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
+        .expect_err("legacy HTTP assignment must fail");
 
-        assert!(
-            error
-                .to_string()
-                .contains("http uses `http <binding> method:\"get\" base:<url> path:\"/...\"`")
-        );
-    }
+    assert!(
+        error
+            .to_string()
+            .contains("http uses `http <binding> method:\"get\" base:<url> path:\"/...\"`")
+    );
+}
 
-    #[test]
-    fn rejects_legacy_crypto_assignment() {
-        let file = parse_source_file(
+#[test]
+fn rejects_legacy_crypto_assignment() {
+    let file = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
             r#"main
@@ -315,19 +359,19 @@
         )
         .expect("source");
 
-        let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
-            .expect_err("legacy crypto assignment must fail");
+    let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
+        .expect_err("legacy crypto assignment must fail");
 
-        assert!(
+    assert!(
             error.to_string().contains(
                 "crypto uses `crypto <binding> encryption:\"cencAesCtr\" data:<reference> key:<value> iv:<value>`"
             )
         );
-    }
+}
 
-    #[test]
-    fn parses_cenc_crypto_declaration_without_subsamples() {
-        let file = parse_source_file(
+#[test]
+fn parses_cenc_crypto_declaration_without_subsamples() {
+    let file = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
             r#"main
@@ -341,78 +385,76 @@
         )
         .expect("source");
 
-        let server =
-            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
-        let endpoint = server
-            .backend
-            .find_endpoint(&HttpMethod::Get, "/segment")
-            .expect("route");
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let endpoint = server
+        .backend
+        .find_endpoint(&HttpMethod::Get, "/segment")
+        .expect("route");
 
-        assert!(matches!(
-            endpoint.endpoint.action.statements[1],
-            ServerStatement::CryptoCencAesCtr(_)
-        ));
-    }
+    assert!(matches!(
+        endpoint.endpoint.action.statements[1],
+        ServerStatement::CryptoCencAesCtr(_)
+    ));
+}
 
-    #[test]
-    fn parses_route_middlewares_from_imports() {
-        let temp = TempDir::new().expect("tempdir");
-        let root = temp.path();
-        fs::create_dir_all(root.join("features/blogs")).expect("api");
-        fs::create_dir_all(root.join("shared/authentication")).expect("middleware");
-        fs::write(
-            root.join("main.dowe"),
-            r#"import apiRoutes from "@/features/blogs/api"
+#[test]
+fn parses_route_middlewares_from_imports() {
+    let temp = TempDir::new().expect("tempdir");
+    let root = temp.path();
+    fs::create_dir_all(root.join("features/blogs")).expect("api");
+    fs::create_dir_all(root.join("shared/authentication")).expect("middleware");
+    fs::write(
+        root.join("main.dowe"),
+        r#"import apiRoutes from "@/features/blogs/api"
 
 main
   server port:8080
     endpoints:apiRoutes"#,
-        )
-        .expect("main");
-        fs::write(
-            root.join("features/blogs/api.dowe"),
-            r#"import requireBearer from "../../shared/authentication/bearer"
+    )
+    .expect("main");
+    fs::write(
+        root.join("features/blogs/api.dowe"),
+        r#"import requireBearer from "../../shared/authentication/bearer"
 
 endpoints apiRoutes
   get path:"/users/:id" middleware:[requireBearer]
     return text:"Hello""#,
-        )
-        .expect("api");
-        fs::write(
-            root.join("shared/authentication/bearer.dowe"),
-            r#"middleware requireBearer params:{}
+    )
+    .expect("api");
+    fs::write(
+        root.join("shared/authentication/bearer.dowe"),
+        r#"middleware requireBearer params:{}
   bearer token value:req.header.Authorization
   jwt verified secret:env.JWT_SECRET algorithm:"HS256" token:token
   if verified.valid
     next context:{ auth:{ subject:verified.claims.sub claims:verified.claims } }
   return status:401 json:{ ok:false error:"Unauthorized" }"#,
-        )
-        .expect("middleware");
-        let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
-        let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
-        let environment = EnvironmentConfig {
-            variables: vec![EnvironmentVariable {
-                name: "JWT_SECRET".to_string(),
-                visibility: EnvironmentVisibility::Server,
-                resolved_source: EnvironmentValueSource::Missing,
-                resolved_value: None,
-            }],
-        };
-        let server = parse_server_source(root, &file, &environment).expect("server");
-        let endpoint = server
-            .backend
-            .find_endpoint(&HttpMethod::Get, "/users/123")
-            .expect("endpoint");
+    )
+    .expect("middleware");
+    let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
+    let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
+    let environment = EnvironmentConfig {
+        variables: vec![EnvironmentVariable {
+            name: "JWT_SECRET".to_string(),
+            visibility: EnvironmentVisibility::Server,
+            resolved_source: EnvironmentValueSource::Missing,
+            resolved_value: None,
+        }],
+    };
+    let server = parse_server_source(root, &file, &environment).expect("server");
+    let endpoint = server
+        .backend
+        .find_endpoint(&HttpMethod::Get, "/users/123")
+        .expect("endpoint");
 
-        assert_eq!(endpoint.endpoint.middlewares.len(), 1);
-        assert_eq!(endpoint.endpoint.middlewares[0].name, "requireBearer");
-        assert!(matches!(
-            &endpoint.endpoint.middlewares[0].action.statements[1],
-            ServerMiddlewareStatement::Jwt(ServerJwtStatement::Verify {
-                secret: ServerSecret::Environment(name),
-                algorithm,
-                ..
-            }) if name == "JWT_SECRET" && algorithm == "HS256"
-        ));
-    }
-
+    assert_eq!(endpoint.endpoint.middlewares.len(), 1);
+    assert_eq!(endpoint.endpoint.middlewares[0].name, "requireBearer");
+    assert!(matches!(
+        &endpoint.endpoint.middlewares[0].action.statements[1],
+        ServerMiddlewareStatement::Jwt(ServerJwtStatement::Verify {
+            secret: ServerSecret::Environment(name),
+            algorithm,
+            ..
+        }) if name == "JWT_SECRET" && algorithm == "HS256"
+    ));
+}

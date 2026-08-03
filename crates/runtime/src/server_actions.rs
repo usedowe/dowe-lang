@@ -18,6 +18,7 @@ pub(crate) fn execute_server_action_with_resolver(
             ServerStatement::RequestRawQuery { .. } => {}
             ServerStatement::RequestHeader { .. } => {}
             ServerStatement::RequestCookie { .. } => {}
+            ServerStatement::RequestBytes { .. } => {}
             ServerStatement::Stdlib(_) => {}
             ServerStatement::Http(_) => {}
             ServerStatement::Spawn(_) => {}
@@ -31,8 +32,11 @@ pub(crate) fn execute_server_action_with_resolver(
             ServerStatement::Store(_) => {}
             ServerStatement::Kv(_) => {}
             ServerStatement::Vector(_) => {}
+            ServerStatement::Queue(_) => {}
+            ServerStatement::File(_) => {}
+            ServerStatement::Password(_) => {}
             ServerStatement::Call(_) => {}
-            ServerStatement::Go(_) | ServerStatement::Cron(_) => {}
+            ServerStatement::Task(_) | ServerStatement::Cron(_) => {}
         }
     }
 }

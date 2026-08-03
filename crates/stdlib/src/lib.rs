@@ -1101,7 +1101,12 @@ fn eval_sort(function: &str, args: &EvaluatedArgs) -> StdlibResult<Value> {
                 let left_value = read_path(&left.1, &field).unwrap_or(&Value::Null);
                 let right_value = read_path(&right.1, &field).unwrap_or(&Value::Null);
                 let order = compare_nullable(left_value, right_value, nulls_last);
-                stable_order(order, left.0, right.0, descending)
+                stable_order(
+                    order,
+                    left.0,
+                    right.0,
+                    descending && !left_value.is_null() && !right_value.is_null(),
+                )
             });
             Ok(Value::Array(
                 indexed.into_iter().map(|(_, value)| value).collect(),
@@ -1992,6 +1997,66 @@ mod tests {
         assert_eq!(
             read_path(&value, "0.id"),
             Some(&Value::String("b".to_string()))
+        );
+    }
+
+    #[test]
+    fn descending_sort_by_preserves_null_policy() {
+        let rows = StdlibValue::Array(vec![
+            StdlibValue::Object(vec![
+                ("id".to_string(), string("a")),
+                ("score".to_string(), StdlibValue::Number("2".to_string())),
+            ]),
+            StdlibValue::Object(vec![
+                ("id".to_string(), string("b")),
+                ("score".to_string(), StdlibValue::Null),
+            ]),
+            StdlibValue::Object(vec![
+                ("id".to_string(), string("c")),
+                ("score".to_string(), StdlibValue::Number("3".to_string())),
+            ]),
+            StdlibValue::Object(vec![("id".to_string(), string("d"))]),
+            StdlibValue::Object(vec![
+                ("id".to_string(), string("e")),
+                ("score".to_string(), StdlibValue::Number("2".to_string())),
+            ]),
+        ]);
+        let descending_last = call(
+            "sort",
+            "by",
+            vec![
+                ("values", rows.clone()),
+                ("field", string("score")),
+                ("direction", string("desc")),
+                ("nulls", string("last")),
+            ],
+        );
+        let descending_first = call(
+            "sort",
+            "by",
+            vec![
+                ("values", rows),
+                ("field", string("score")),
+                ("direction", string("desc")),
+                ("nulls", string("first")),
+            ],
+        );
+
+        let ids = |value: Value| {
+            value
+                .as_array()
+                .expect("sorted rows")
+                .iter()
+                .map(|row| row["id"].as_str().expect("row id").to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            ids(evaluate(&descending_last, |_| None).expect("descending last")),
+            vec!["c", "a", "e", "b", "d"]
+        );
+        assert_eq!(
+            ids(evaluate(&descending_first, |_| None).expect("descending first")),
+            vec!["b", "d", "c", "a", "e"]
         );
     }
 

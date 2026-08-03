@@ -13,6 +13,7 @@
 | `seeder Bootstrap` | Importable seed data | Declares static inserts applied once by fingerprint |
 | `cache appCache provider:"dowe" ...` | Reusable Cache connection | Imported config binding or server action connection |
 | `vector appVector provider:"dowe" ...` | Reusable Vector connection | Imported config binding or server action connection |
+| `queue appQueue provider:"dowe|rabbitmq" ...` | Reusable Queue connection | Server-only direct publication to an existing queue |
 
 Handlers call service functions. `req` is implicit inside every HTTP handler, so route parameters,
 request metadata, middleware context, and the typed JSON declaration can use `req` directly.
@@ -49,7 +50,7 @@ an action without creating a value, such as `next context:{ auth:verified }`.
 
 The binding is a new server-local name. Props are named `name:value` inputs. An imported function
 name is the capability at its call site. Control capabilities can select a target instead of
-creating a binding, for example `go refreshIndex args:{ force:true }`; the target is not a result
+creating a binding, for example `task refreshIndex args:{ force:true }`; the target is not a result
 binding. Server source never uses assignment syntax.
 
 Standard-library operations use
@@ -89,6 +90,7 @@ Request metadata also declares its binding without an assignment:
 request query source:"query"
 request range source:"header" name:"Range"
 request sessionCookie source:"cookie" name:"session"
+request payload source:"bytes"
 ```
 
 ## General function utilities
@@ -98,11 +100,12 @@ request sessionCookie source:"cookie" name:"session"
 | `function result` | `result` | Imported function name | `args:{...}` when params exist |
 | `namespace result source:"function"` | `result` | `source` and function-specific named props | Portable standard library; `id result source:"ulid"` is server-only |
 | `spawn process` | `process` | `command:string` | `args:string[]`, `cwd:string`, `timeoutMs:number`, `maxOutputBytes:number`, `background:boolean` |
+| `file artifact` | `artifact` | `source:"write|read|exists|delete"`, `root`, `path` | `data` and `sha256` for writes; server-only confined storage |
 | `http upstream` | `upstream` | `method:string`, `base:string or env`, `path:string` | `bearer`, `headers`, `json`, `mode:"json|proxy|bytes"`, `redirect`, `maxRedirects`, `timeoutMs` |
 | `crypto output` | `output` | `encryption:"aesCtr|cencAesCtr"`, `data`, `key`, `iv` | `subsamples:[{ clear:number encrypted:number }]` |
 | `jwt token` | `token` | `secret` or `key`, plus `claims` or `token` | `algorithm`, `encryption`; see `references/runtime.md` |
-| `go function` | none | Imported function name | `args:{...}`; fire-and-forget from server actions or functions |
-| `cron function` | none | Imported function name, `schedule:string` | `args:{...}`; valid only directly under `server.init` or `desktop.server.init` |
+| `task function` | none | Imported function name or an indented inline body | `args:{...}`; immediate fire-and-forget from server actions or functions. `after:"headers"` requires `args:{ event:{...} }` and only a direct handler ending `return reverse:...` |
+| `cron function` | none | Imported function name, `schedule:string` | `args:{...}`; valid only directly under `server.init` or `desktop.server.init`; `after` is invalid |
 
 ## Routes in `main.dowe`
 
@@ -175,3 +178,22 @@ opaque token or trust client-provided Cache values.
 Connections and operation results stay server-only. Return serializable values, never connections,
 secrets, complete provider URLs, authorization headers, encryption keys, or process metadata that
 the client does not need.
+
+### Queue publication
+
+Queue connections accept `host`, `port`, `account`, `secret`, and `vhost` as literals or server-only
+environment references. Add the names to `.env.example`, keep development values in ignored `.env`,
+and keep deploy values in `.env.live`, `.env.stage`, or `.env.uat`.
+
+```text
+queue appQueue provider:"dowe" host:env.QUEUE_HOST port:env.QUEUE_PORT account:env.QUEUE_USER secret:env.QUEUE_PASSWORD vhost:env.QUEUE_VHOST
+msg sent conn:appQueue.publish queue:"notifications" payload:{ userId:"123" event:"user_created" }
+return json:{ ok:sent.ok messageId:sent.id }
+```
+
+During `dowe dev`, only `vhost` selects persistent local Dowe storage. Production resolves the
+authored provider and full connection; RabbitMQ uses `vhost` as its AMQP virtual host. The target
+queue must already be provisioned by the CLI or Rust provider API. Direct `msg ... publish` does not
+declare or bind topology and does not retry after an ambiguous response. The result is exactly
+`{ ok, id }`. Consume, subscribe, ACK, and NACK remain streaming Rust provider APIs with
+session-bound receipts, not finite source statements.

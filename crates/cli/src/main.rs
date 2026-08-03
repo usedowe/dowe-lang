@@ -8,7 +8,9 @@ mod deploy;
 mod dev;
 mod icons;
 mod init;
+mod login;
 mod menus;
+mod queue_cli;
 mod server;
 mod spawn_cli;
 mod test_cli;
@@ -33,6 +35,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     if dowe_runtime::run_development_desktop_host_from_env()? {
         return Ok(());
     }
+    if server::run_embedded_ssh_server().await? {
+        return Ok(());
+    }
     if dowe_runtime::run_embedded_desktop_app().await? {
         return Ok(());
     }
@@ -44,6 +49,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     match args.first().map(String::as_str) {
         None => run_root_menu().await,
         Some("init") => init::run_init_command(&args[1..]),
+        Some("login") => login::run_login_command(&args[1..]),
         Some("icons") => icons::run_icons_command(&args[1..]),
         Some("dev") => dev::run_dev_command(&args[1..]).await,
         Some("test") => test_cli::run_test_command(&args[1..]),
@@ -53,6 +59,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("codegraph") => codegraph::run_codegraph_command(&args[1..]).await,
         Some("d1") => d1_cli::run_d1_command(&args[1..]),
         Some("cache") => cache_cli::run_cache_command(&args[1..]).await,
+        Some("queue") => queue_cli::run_queue_command(&args[1..]).await,
         Some("spawn") => spawn_cli::run_spawn_command(args[1..].to_vec()).await,
         Some("database") => database_cli::run_database_command(&args[1..]).await,
         Some("server") => server::run_server_command(&args[1..]).await,
@@ -77,6 +84,7 @@ async fn run_root_menu() -> Result<(), Box<dyn std::error::Error>> {
 
     match command.as_str() {
         "init" => init::run_init_command(&[]),
+        "login" => login::run_login_command(&[]),
         "icons" => icons::run_icons_command(&[]),
         "dev" => dev::run_dev_command(&[]).await,
         "test" => test_cli::run_test_command(&[]),
@@ -86,6 +94,7 @@ async fn run_root_menu() -> Result<(), Box<dyn std::error::Error>> {
         "codegraph" => codegraph::run_codegraph_command(&[]).await,
         "d1" => d1_cli::run_d1_command(&[]),
         "cache" => cache_cli::run_cache_command(&[]).await,
+        "queue" => queue_cli::run_queue_command(&[]).await,
         "database" => database_cli::run_database_command(&[]).await,
         "vector" => vector_cli::run_vector_command(&[]).await,
         "uninstall" => uninstall::run_uninstall_command(&[]),

@@ -5,6 +5,64 @@ use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DeployEnvironment {
+    #[default]
+    Live,
+    Stage,
+    Uat,
+}
+
+impl DeployEnvironment {
+    pub const ALL: [Self; 3] = [Self::Live, Self::Stage, Self::Uat];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Live => "live",
+            Self::Stage => "stage",
+            Self::Uat => "uat",
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Live => "Live",
+            Self::Stage => "Stage",
+            Self::Uat => "UAT",
+        }
+    }
+
+    pub fn compile_environment(self) -> dowe_compiler::CompileEnvironment {
+        match self {
+            Self::Live => dowe_compiler::CompileEnvironment::Live,
+            Self::Stage => dowe_compiler::CompileEnvironment::Stage,
+            Self::Uat => dowe_compiler::CompileEnvironment::Uat,
+        }
+    }
+
+    pub fn requires_access(self) -> bool {
+        !matches!(self, Self::Live)
+    }
+}
+
+impl Display for DeployEnvironment {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl FromStr for DeployEnvironment {
+    type Err = DeployError;
+
+    fn from_str(value: &str) -> DeployResult<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|environment| environment.as_str() == value)
+            .ok_or_else(|| DeployError::new(format!("unknown deploy environment `{value}`")))
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DeploySurface {
@@ -64,7 +122,9 @@ impl FromStr for DeploySurface {
 #[serde(rename_all = "lowercase")]
 pub enum DeployTarget {
     Static,
+    Dowe,
     Docker,
+    Ssh,
     Cloudflare,
     #[serde(rename = "cloudflare-pages")]
     CloudflarePages,
@@ -76,7 +136,9 @@ impl DeployTarget {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Static => "static",
+            Self::Dowe => "dowe",
             Self::Docker => "docker",
+            Self::Ssh => "ssh",
             Self::Cloudflare => "cloudflare",
             Self::CloudflarePages => "cloudflare-pages",
             Self::Android => "android",
@@ -87,7 +149,7 @@ impl DeployTarget {
     pub fn surface(self) -> DeploySurface {
         match self {
             Self::Static | Self::CloudflarePages => DeploySurface::Web,
-            Self::Docker | Self::Cloudflare => DeploySurface::Server,
+            Self::Dowe | Self::Docker | Self::Ssh | Self::Cloudflare => DeploySurface::Server,
             Self::Android => DeploySurface::Android,
             Self::Ios => DeploySurface::Ios,
         }
@@ -96,7 +158,9 @@ impl DeployTarget {
     pub fn label(self) -> &'static str {
         match self {
             Self::Static => "Static files",
+            Self::Dowe => "Dowe Cloud",
             Self::Docker => "Docker",
+            Self::Ssh => "SSH",
             Self::Cloudflare => "Cloudflare Worker",
             Self::CloudflarePages => "Cloudflare Pages",
             Self::Android => "Google Play",
@@ -117,7 +181,9 @@ impl FromStr for DeployTarget {
     fn from_str(value: &str) -> DeployResult<Self> {
         match value {
             "static" => Ok(Self::Static),
+            "dowe" => Ok(Self::Dowe),
             "docker" => Ok(Self::Docker),
+            "ssh" => Ok(Self::Ssh),
             "cloudflare" => Ok(Self::Cloudflare),
             "cloudflare-pages" => Ok(Self::CloudflarePages),
             "android" => Ok(Self::Android),
@@ -127,7 +193,10 @@ impl FromStr for DeployTarget {
     }
 }
 
-pub fn available_deploy_surfaces(root: impl AsRef<Path>) -> DeployResult<Vec<DeploySurface>> {
+pub fn available_deploy_surfaces(
+    root: impl AsRef<Path>,
+    environment: DeployEnvironment,
+) -> DeployResult<Vec<DeploySurface>> {
     let capabilities = inspect_project_capabilities(root.as_ref())?;
     Ok(DeploySurface::canonical()
         .iter()
@@ -135,16 +204,25 @@ pub fn available_deploy_surfaces(root: impl AsRef<Path>) -> DeployResult<Vec<Dep
         .filter(|surface| match surface {
             DeploySurface::Server => capabilities.server,
             DeploySurface::Web => capabilities.views,
-            DeploySurface::Android => capabilities.views,
-            DeploySurface::Ios => capabilities.views && cfg!(target_os = "macos"),
+            DeploySurface::Android => capabilities.views && environment == DeployEnvironment::Live,
+            DeploySurface::Ios => {
+                capabilities.views
+                    && environment == DeployEnvironment::Live
+                    && cfg!(target_os = "macos")
+            }
         })
         .collect())
 }
 
 pub fn deploy_targets_for_surface(surface: DeploySurface) -> &'static [DeployTarget] {
     match surface {
-        DeploySurface::Server => &[DeployTarget::Docker, DeployTarget::Cloudflare],
-        DeploySurface::Web => &[DeployTarget::CloudflarePages],
+        DeploySurface::Server => &[
+            DeployTarget::Dowe,
+            DeployTarget::Docker,
+            DeployTarget::Ssh,
+            DeployTarget::Cloudflare,
+        ],
+        DeploySurface::Web => &[DeployTarget::Dowe, DeployTarget::CloudflarePages],
         DeploySurface::Android => &[DeployTarget::Android],
         DeploySurface::Ios => &[DeployTarget::Ios],
     }
@@ -153,32 +231,47 @@ pub fn deploy_targets_for_surface(surface: DeploySurface) -> &'static [DeployTar
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeployOptions {
     pub root: PathBuf,
+    pub environment: DeployEnvironment,
     pub target: DeployTarget,
+    pub surface: Option<DeploySurface>,
     pub name: Option<String>,
     pub publish: bool,
     pub dry_run: bool,
     pub registry: Option<String>,
     pub image: Option<String>,
     pub track: Option<String>,
+    pub ssh_host: Option<String>,
+    pub ssh_user: Option<String>,
+    pub ssh_key_file: Option<PathBuf>,
 }
 
 impl DeployOptions {
     pub fn new(root: impl Into<PathBuf>, target: DeployTarget) -> Self {
         Self {
             root: root.into(),
+            environment: DeployEnvironment::Live,
             target,
+            surface: None,
             name: None,
             publish: false,
             dry_run: false,
             registry: None,
             image: None,
             track: None,
+            ssh_host: None,
+            ssh_user: None,
+            ssh_key_file: None,
         }
+    }
+
+    pub fn surface(&self) -> DeploySurface {
+        self.surface.unwrap_or_else(|| self.target.surface())
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeployReport {
+    pub environment: DeployEnvironment,
     pub target: DeployTarget,
     pub output_dir: PathBuf,
     pub files: Vec<PathBuf>,
@@ -187,6 +280,9 @@ pub struct DeployReport {
     pub image_ref: Option<String>,
     pub image_built: bool,
     pub artifact: Option<PathBuf>,
+    pub access_protected: bool,
+    pub deployment_id: Option<String>,
+    pub url: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -34,6 +34,25 @@ pub struct ProjectCapabilities {
     pub views: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompileEnvironment {
+    Development,
+    Live,
+    Stage,
+    Uat,
+}
+
+impl CompileEnvironment {
+    pub fn file_name(self) -> &'static str {
+        match self {
+            Self::Development => ".env",
+            Self::Live => ".env.live",
+            Self::Stage => ".env.stage",
+            Self::Uat => ".env.uat",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub name: String,
@@ -134,6 +153,7 @@ pub struct ServerConfig {
     pub database_service: bool,
     pub cache_service: bool,
     pub vector_service: bool,
+    pub queue_service: bool,
 }
 
 impl ServerConfig {
@@ -193,6 +213,7 @@ impl Default for ServerConfig {
             database_service: false,
             cache_service: false,
             vector_service: false,
+            queue_service: false,
         }
     }
 }
@@ -212,6 +233,7 @@ pub struct TlsConfig {
     pub cache: String,
     pub domains_from: Option<TlsDomainsSource>,
     pub refresh_seconds: u64,
+    pub http_port: Option<u16>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -224,6 +246,12 @@ pub enum TlsDomainsSource {
         database: String,
         table: String,
         field: String,
+    },
+    Endpoint {
+        base: HttpConnectionValue,
+        path: String,
+        bearer: ServerSecret,
+        timeout_ms: u64,
     },
 }
 
@@ -326,6 +354,7 @@ pub enum EndpointBehavior {
     UserGreeting,
     CreatePostJson,
     HttpProxy(HttpProxyEndpoint),
+    HttpReverseProxy(HttpReverseProxyEndpoint),
     HttpBytes(HttpBytesEndpoint),
     HttpActionJson(HttpActionJsonEndpoint),
     AgentResponse(AgentResponseEndpoint),
@@ -335,6 +364,7 @@ pub enum EndpointBehavior {
     StoreActionJson(StoreActionJsonEndpoint),
     KvActionJson(KvActionJsonEndpoint),
     VectorActionJson(VectorActionJsonEndpoint),
+    QueueActionJson(QueueActionJsonEndpoint),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -396,6 +426,21 @@ pub enum ServerSecret {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HttpProxyEndpoint {
     pub binding: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HttpReverseProxyEndpoint {
+    pub upstream: String,
+    pub strategy: ReverseProxyStrategy,
+    pub state: Option<String>,
+    pub loading_url: Option<String>,
+    pub error_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReverseProxyStrategy {
+    Single,
+    RoundRobin,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -620,6 +665,12 @@ pub struct VectorActionJsonEndpoint {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueueActionJsonEndpoint {
+    pub status: u16,
+    pub value: StoreLiteral,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CacheConnection {
     pub binding: String,
     pub provider: CacheProvider,
@@ -661,6 +712,29 @@ pub enum VectorProvider {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VectorConnectionValue {
+    Static(String),
+    Environment(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueueConnection {
+    pub binding: String,
+    pub provider: QueueProvider,
+    pub host: QueueConnectionValue,
+    pub port: QueueConnectionValue,
+    pub account: QueueConnectionValue,
+    pub secret: QueueConnectionValue,
+    pub vhost: QueueConnectionValue,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueueProvider {
+    Dowe,
+    RabbitMq,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum QueueConnectionValue {
     Static(String),
     Environment(String),
 }
@@ -788,6 +862,9 @@ pub enum ServerStatement {
         binding: String,
         name: String,
     },
+    RequestBytes {
+        binding: String,
+    },
     Stdlib(ServerStdlibStatement),
     Http(OutboundHttpRequest),
     Spawn(ServerSpawnStatement),
@@ -801,18 +878,70 @@ pub enum ServerStatement {
     Store(ServerStoreStatement),
     Kv(ServerKvStatement),
     Vector(ServerVectorStatement),
+    Queue(ServerQueueStatement),
+    File(ServerFileStatement),
+    Password(ServerPasswordStatement),
     Call(ServerCallStatement),
-    Go(ServerBackgroundJob),
+    Task(ServerBackgroundJob),
     Cron(ServerBackgroundJob),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerPasswordStatement {
+    Hash {
+        binding: String,
+        value: StoreLiteral,
+    },
+    Verify {
+        binding: String,
+        value: StoreLiteral,
+        hash: StoreLiteral,
+        required: bool,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerFileStatement {
+    Write {
+        binding: String,
+        root: StoreLiteral,
+        path: StoreLiteral,
+        data: String,
+        sha256: Option<StoreLiteral>,
+    },
+    Read {
+        binding: String,
+        root: StoreLiteral,
+        path: StoreLiteral,
+    },
+    Exists {
+        binding: String,
+        root: StoreLiteral,
+        path: StoreLiteral,
+    },
+    Delete {
+        binding: String,
+        root: StoreLiteral,
+        path: StoreLiteral,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServerTaskTiming {
+    Immediate,
+    ResponseHeaders,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerBackgroundJob {
     pub id: String,
-    pub target: String,
+    pub target: Option<String>,
     pub args: StoreLiteral,
     pub action: Box<ServerFunctionAction>,
     pub schedule: Option<String>,
+    pub timing: ServerTaskTiming,
+    pub source_path: PathBuf,
+    pub source_line: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1031,6 +1160,19 @@ pub enum ServerVectorStatement {
         handle: String,
         limit: usize,
         filter: Option<StoreLiteral>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ServerQueueStatement {
+    Handle {
+        connection: QueueConnection,
+    },
+    Publish {
+        binding: String,
+        handle: String,
+        queue: StoreLiteral,
+        payload: StoreLiteral,
     },
 }
 
@@ -1362,6 +1504,7 @@ mod tests {
             database_service: false,
             cache_service: false,
             vector_service: false,
+            queue_service: false,
         };
 
         let matched = server
@@ -1392,6 +1535,7 @@ mod tests {
             database_service: false,
             cache_service: false,
             vector_service: false,
+            queue_service: false,
         };
 
         let matched = server

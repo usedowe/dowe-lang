@@ -106,9 +106,10 @@ pub fn hover_at(
     {
         return Some(format!("Dowe inferred field `{token}`"));
     }
-    if token == "go" {
+    if token == "task" {
         return Some(
-            "Dowe server go job: starts an imported server fn in an isolated process".to_string(),
+            "Dowe server task: starts immediate isolated work; after:\"headers\" is only for direct reverse-proxy handler telemetry"
+                .to_string(),
         );
     }
     if token == "cron" {

@@ -2,7 +2,7 @@ use crate::error::{DeployError, DeployResult};
 use crate::files::{copy_file, copy_tree, reset_dir, write_file};
 use crate::model::{BuildOptions, BuildReport, BuildTarget};
 use base64::Engine;
-use dowe_compiler::{CompiledProject, compile_dev};
+use dowe_compiler::{CompileEnvironment, CompiledProject, compile_for_environment};
 use rand_core::{OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -36,7 +36,7 @@ pub fn build(options: BuildOptions) -> DeployResult<BuildReport> {
 fn build_on_current_thread(options: BuildOptions) -> DeployResult<BuildReport> {
     let root = options.root.canonicalize()?;
     validate_host(options.target)?;
-    let project = compile_dev(&root)?;
+    let project = compile_for_environment(&root, CompileEnvironment::Live)?;
     if !project.capabilities.views {
         return Err(DeployError::new(format!(
             "build target `{}` requires `views` in main.dowe",

@@ -3,12 +3,16 @@ use crate::server::DevRuntimeState;
 use crate::server_actions::{
     execute_resolved_log, execute_server_action, execute_server_action_with_resolver,
 };
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
+};
 use axum::body::{Body, Bytes};
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{State, WebSocketUpgrade};
 use axum::http::header::{
     ACCESS_CONTROL_REQUEST_HEADERS, ACCESS_CONTROL_REQUEST_METHOD, CACHE_CONTROL, CONTENT_TYPE,
-    ORIGIN, VARY,
+    LOCATION, ORIGIN, VARY,
 };
 use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Uri};
 use axum::response::{Html, IntoResponse, Response};
@@ -20,10 +24,13 @@ use dowe_compiler::{
     AgentResponseEndpoint, CacheConnection, CacheConnectionValue, CacheProvider, CompiledProject,
     CorsConfig, DoweType, EndpointBehavior, HttpActionJsonEndpoint, HttpBytesEndpoint,
     HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint, HttpRedirectPolicy,
-    HttpResponseMode, KvActionJsonEndpoint, OutboundHttpRequest, ResponseCookie, ServerConfig,
-    ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement, ServerFunctionAction,
-    ServerJwtStatement, ServerKvStatement, ServerMiddleware, ServerMiddlewareResponseBody,
-    ServerMiddlewareStatement, ServerSecret, ServerSpawnStatement, ServerStatement,
+    HttpResponseMode, HttpReverseProxyEndpoint, KvActionJsonEndpoint, OutboundHttpRequest,
+    QueueActionJsonEndpoint, QueueConnection, QueueConnectionValue,
+    QueueProvider as CompilerQueueProvider, ResponseCookie, ReverseProxyStrategy, ServerConfig,
+    ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement, ServerFileStatement,
+    ServerFunctionAction, ServerJwtStatement, ServerKvStatement, ServerMiddleware,
+    ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerPasswordStatement,
+    ServerQueueStatement, ServerSecret, ServerSpawnStatement, ServerStatement,
     ServerStoreStatement, ServerVectorStatement, StoreActionJsonEndpoint, StoreConnection,
     StoreFilter, StoreLiteral, StoreTransactionEndpoint, StoreTransactionOperation,
     VectorActionJsonEndpoint, VectorConnection, VectorConnectionValue, ViewPage, WebOutput,
@@ -38,17 +45,22 @@ use dowe_database::{
     D1Client, Database, DoweDatabaseClient, PostgresClient, StoreRecord, StoreValue,
     bind_query_params, init_database, open_database,
 };
+use dowe_queue::{
+    DoweQueue, QueueClient, QueueConfig, QueueError, QueueProvider as RuntimeQueueProvider,
+    open_namespace as open_queue_namespace,
+};
 use dowe_vector::{
     DoweVectorClient, DoweVectorConfig, VectorDatabase, open_database as open_vector_database,
 };
 use futures_util::StreamExt;
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 include!("handlers/entrypoints.rs");
 include!("handlers/websocket.rs");
@@ -64,6 +76,8 @@ include!("handlers/store_context_store.rs");
 include!("handlers/store_context_kv.rs");
 include!("handlers/store_context_session.rs");
 include!("handlers/store_context_vector.rs");
+include!("handlers/store_context_queue.rs");
+include!("handlers/store_context_file.rs");
 include!("handlers/store_context_resolve.rs");
 
 pub(crate) async fn execute_background_action(

@@ -239,6 +239,22 @@ fn deploys_cloudflare_pages_package_through_ipc_wrapper() {
 }
 
 #[test]
+fn exposes_ssh_deploy_contract_through_ipc() {
+    let mut options = DeployOptions::new("/project", DeployTarget::Ssh);
+    options.ssh_host = Some("server.example.com".into());
+    options.ssh_user = Some("deploy".into());
+    options.ssh_key_file = Some(std::path::PathBuf::from("/keys/deploy"));
+
+    assert_eq!(options.target, DeployTarget::Ssh);
+    assert_eq!(options.ssh_host.as_deref(), Some("server.example.com"));
+    assert_eq!(options.ssh_user.as_deref(), Some("deploy"));
+    assert_eq!(
+        options.ssh_key_file,
+        Some(std::path::PathBuf::from("/keys/deploy"))
+    );
+}
+
+#[test]
 fn plans_native_build_through_ipc_wrapper() {
     let temp = TempDir::new().expect("tempdir");
     write_deploy_fixture(temp.path());

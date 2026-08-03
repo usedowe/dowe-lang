@@ -1,4 +1,5 @@
 use crate::error::{DeployError, DeployResult};
+use crate::model::DeployEnvironment;
 use reqwest::blocking::{Client, Response};
 use reqwest::header::CONTENT_TYPE;
 use serde_json::{Value, json};
@@ -20,9 +21,10 @@ pub fn publish_cloudflare(output: &Path, dry_run: bool) -> DeployResult<Vec<Stri
 pub fn publish_cloudflare_pages(
     output: &Path,
     project_name: &str,
+    environment: DeployEnvironment,
     dry_run: bool,
 ) -> DeployResult<Vec<String>> {
-    let command = cloudflare_pages_command(output, project_name);
+    let command = cloudflare_pages_command(output, project_name, environment);
     if !dry_run {
         let npm_cache = tempfile::tempdir()?;
         let mut process = Command::new(&command[0]);
@@ -34,8 +36,12 @@ pub fn publish_cloudflare_pages(
     Ok(command)
 }
 
-pub(crate) fn cloudflare_pages_command(output: &Path, project_name: &str) -> Vec<String> {
-    vec![
+pub(crate) fn cloudflare_pages_command(
+    output: &Path,
+    project_name: &str,
+    environment: DeployEnvironment,
+) -> Vec<String> {
+    let mut command = vec![
         "npx".to_string(),
         "--yes".to_string(),
         "wrangler".to_string(),
@@ -44,7 +50,12 @@ pub(crate) fn cloudflare_pages_command(output: &Path, project_name: &str) -> Vec
         output.join("assets").display().to_string(),
         "--project-name".to_string(),
         project_name.to_string(),
-    ]
+    ];
+    if environment != DeployEnvironment::Live {
+        command.push("--branch".to_string());
+        command.push(environment.as_str().to_string());
+    }
+    command
 }
 
 pub(crate) fn cloudflare_command(

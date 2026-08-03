@@ -31,7 +31,7 @@ fn symbol_kind(node: &SourceNode) -> Option<LanguageSymbolKind> {
             Some(LanguageSymbolKind::Module)
         }
         "layout" | "page" | "component" | "type" | "entity" => Some(LanguageSymbolKind::Class),
-        "fn" | "handler" | "middleware" | "seeder" | "init" | "go" | "cron" | "test" => {
+        "fn" | "handler" | "middleware" | "seeder" | "init" | "task" | "cron" | "test" => {
             Some(LanguageSymbolKind::Function)
         }
         "method" | "get" | "post" | "put" | "patch" | "delete" | "websocket" => {
@@ -39,7 +39,9 @@ fn symbol_kind(node: &SourceNode) -> Option<LanguageSymbolKind> {
         }
         "const" | "signal" | "store" | "database" | "cache" | "vector" | "query" | "kv" | "emb"
         | "request" | "ws" | "agent" | "str" | "math" | "parse" | "url" | "csv" | "sort"
-        | "list" | "json" | "date" | "id" | "let" => Some(LanguageSymbolKind::Variable),
+        | "list" | "json" | "date" | "id" | "queue" | "msg" | "let" => {
+            Some(LanguageSymbolKind::Variable)
+        }
         "fonts" | "env" | "variable" | "cors" | "design" | "theme" => {
             Some(LanguageSymbolKind::Property)
         }

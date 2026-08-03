@@ -1,8 +1,9 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    AppConfig, AppOutput, CompiledProject, EnvironmentConfig, GeneratedFile, ViewTargetRoutes,
+    AppConfig, AppOutput, CompileEnvironment, CompiledProject, EnvironmentConfig, GeneratedFile,
+    ViewTargetRoutes,
 };
-use crate::parser::parse_project;
+use crate::parser::parse_project_for;
 use crate::typecheck_artifacts::{obsolete_typecheck_artifacts, typecheck_artifacts};
 use dowe_components::{
     DesignConfig, FontConfig, FontFamily, collect_route_font_families, font_catalog,
@@ -16,8 +17,22 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 pub fn compile_dev(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
+    compile_project(root, CompileEnvironment::Development)
+}
+
+pub fn compile_for_environment(
+    root: impl AsRef<Path>,
+    environment: CompileEnvironment,
+) -> DoweResult<CompiledProject> {
+    compile_project(root, environment)
+}
+
+fn compile_project(
+    root: impl AsRef<Path>,
+    environment: CompileEnvironment,
+) -> DoweResult<CompiledProject> {
     let root = normalize_root(root.as_ref())?;
-    let mut parsed = parse_project(&root)?;
+    let mut parsed = parse_project_for(&root, environment)?;
     let icon_targets = icon_artifacts::ProjectIconTargets::detect(&root)?;
     icon_artifacts::apply_web_icon_documents(&mut parsed.web, &icon_targets);
     icon_artifacts::apply_web_icon_documents(&mut parsed.desktop_web, &icon_targets);

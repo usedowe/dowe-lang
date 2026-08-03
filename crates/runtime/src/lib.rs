@@ -15,6 +15,7 @@ mod init;
 mod init_templates;
 mod logging;
 mod model_runtime;
+mod production_access;
 mod production_handlers;
 mod rtp;
 mod server;
@@ -23,6 +24,7 @@ mod server_actions;
 mod server_tests;
 mod tls;
 mod tls_domains;
+mod tls_redirect;
 mod watch;
 
 pub use background_jobs::run_worker_from_env as run_background_worker_from_env;
@@ -54,10 +56,12 @@ pub use init::{
     has_dowe_project_marker, init_project,
 };
 pub use model_runtime::{LoadedModelRuntime, LoadedVadModel};
+pub use production_access::ProductionAccess;
 pub use rtp::RtpPortPool;
 pub use server::{
     DevRuntimeState, DevServerTargets, RunningDevServers, RunningProductionServer, serve_dev,
-    serve_production, start_dev, start_dev_servers, start_production,
+    serve_production, serve_production_with_access, start_dev, start_dev_servers, start_production,
+    start_production_with_access,
 };
 
 #[cfg(test)]

@@ -75,6 +75,11 @@ fn validate_return(node: &SourceNode, context: ActionContext) -> DoweResult<()> 
             "text",
             "json",
             "proxy",
+            "reverse",
+            "strategy",
+            "state",
+            "loadingUrl",
+            "errorUrl",
             "agent",
             "bytes",
             "contentType",
@@ -83,20 +88,20 @@ fn validate_return(node: &SourceNode, context: ActionContext) -> DoweResult<()> 
             "request",
         ],
     )?;
-    let body_count = ["text", "json", "proxy", "agent", "bytes"]
+    let body_count = ["text", "json", "proxy", "reverse", "agent", "bytes"]
         .iter()
         .filter(|name| node.prop(name).is_some())
         .count();
     if body_count == 0 {
         return Err(node_error(
             node,
-            "return must declare text, json, proxy, agent, or bytes",
+            "return must declare text, json, proxy, reverse, agent, or bytes",
         ));
     }
     if body_count > 1 {
         return Err(node_error(
             node,
-            "return must declare exactly one of text, json, proxy, agent, or bytes",
+            "return must declare exactly one of text, json, proxy, reverse, agent, or bytes",
         ));
     }
     if let Some(prop) = node.prop("text") {
@@ -106,6 +111,16 @@ fn validate_return(node: &SourceNode, context: ActionContext) -> DoweResult<()> 
         return Err(node_error(
             node,
             "agent response must declare `request` binding",
+        ));
+    }
+    if node.prop("reverse").is_none()
+        && ["strategy", "state", "loadingUrl", "errorUrl"]
+            .iter()
+            .any(|name| node.prop(name).is_some())
+    {
+        return Err(node_error(
+            node,
+            "strategy, state, loadingUrl, and errorUrl are only valid with reverse",
         ));
     }
     Ok(())
@@ -184,4 +199,3 @@ fn context_allows_await(context: ActionContext) -> bool {
         }
     )
 }
-

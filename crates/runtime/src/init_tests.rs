@@ -91,10 +91,18 @@ fn blank_template_writes_hello_page_and_endpoint() {
     assert_eq!(report.template(), ProjectTemplate::Blank);
     assert_eq!(
         fs::read_to_string(temp.path().join(".gitignore")).expect("gitignore"),
-        ".dowe\n.env\n"
+        ".dowe\n.env\n.env.live\n.env.stage\n.env.uat\n"
     );
     assert!(temp.path().join(".env.example").is_file());
     assert!(temp.path().join(".env").is_file());
+    assert!(temp.path().join(".env.live").is_file());
+    assert!(temp.path().join(".env.stage").is_file());
+    assert!(temp.path().join(".env.uat").is_file());
+    assert!(
+        fs::read_to_string(temp.path().join(".env.example"))
+            .expect("environment example")
+            .contains("DOWE_DEPLOY_ACCESS_PASSWORD=")
+    );
     assert!(temp.path().join("main.dowe").is_file());
     assert!(temp.path().join("views/routes/view.dowe").is_file());
     assert!(temp.path().join("views/pages/home.dowe").is_file());

@@ -1,10 +1,10 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    AppConfig, CorsConfig, EnvironmentConfig, ProjectServerConfig, normalize_cors_method,
-    normalize_cors_origin, normalize_http_header_name,
+    AppConfig, CompileEnvironment, CorsConfig, EnvironmentConfig, ProjectServerConfig,
+    normalize_cors_method, normalize_cors_origin, normalize_http_header_name,
 };
 use crate::parser::source_ast::{SourceFile, SourceNode, SourceProp, SourceValue};
-use crate::parser::source_environment::parse_environment_files;
+use crate::parser::source_environment::parse_environment_files_for;
 use crate::parser::source_parser::parse_source_file;
 use dowe_components::{
     BorderWidth, ButtonSize, ColorFamily, ColorToken, ComponentVariant, DesignComponentSlot,
@@ -44,7 +44,10 @@ struct RawTheme {
     colors: BTreeMap<ColorToken, String>,
 }
 
-pub fn parse_project_config(root: &Path) -> DoweResult<ParsedConfig> {
+pub(crate) fn parse_project_config_for(
+    root: &Path,
+    environment: CompileEnvironment,
+) -> DoweResult<ParsedConfig> {
     let json_path = root.join("dowe.json");
     if json_path.exists() {
         return Err(DoweError::at_path(
@@ -77,7 +80,7 @@ pub fn parse_project_config(root: &Path) -> DoweResult<ParsedConfig> {
         )
     };
 
-    let environment_config = parse_environment_files(root)?;
+    let environment_config = parse_environment_files_for(root, environment)?;
 
     Ok(ParsedConfig {
         app_config,

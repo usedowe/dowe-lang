@@ -15,6 +15,11 @@ enum VectorHandle {
     Remote(DoweVectorClient),
 }
 
+enum QueueHandle {
+    Local(DoweQueue),
+    Remote(QueueClient),
+}
+
 #[derive(Clone, Copy)]
 pub(crate) enum CacheRuntimeMode {
     Local,
@@ -36,6 +41,7 @@ struct StoreActionContext<'a> {
     handles: HashMap<String, StoreHandle>,
     kv_handles: HashMap<String, KvHandle>,
     vector_handles: HashMap<String, VectorHandle>,
+    queue_handles: HashMap<String, QueueHandle>,
     handle_databases: HashMap<String, String>,
     cache_mode: CacheRuntimeMode,
 }
@@ -55,6 +61,7 @@ enum ResolvedValue {
     Missing,
 }
 
+#[derive(Debug)]
 struct StoreActionError {
     status: StatusCode,
     code: &'static str,
@@ -102,6 +109,38 @@ impl StoreActionError {
         }
     }
 
+    fn queue() -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "queue_error",
+            message: "Queue operation failed",
+        }
+    }
+
+    fn file() -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "file_error",
+            message: "File operation failed",
+        }
+    }
+
+    fn invalid_file_path() -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code: "invalid_file_path",
+            message: "File path is invalid",
+        }
+    }
+
+    fn file_hash_mismatch() -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code: "file_hash_mismatch",
+            message: "File SHA-256 does not match",
+        }
+    }
+
     fn http() -> Self {
         Self {
             status: StatusCode::BAD_GATEWAY,
@@ -123,6 +162,30 @@ impl StoreActionError {
             status: StatusCode::BAD_REQUEST,
             code: "crypto_error",
             message: "Crypto operation failed",
+        }
+    }
+
+    fn password() -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "password_error",
+            message: "Password operation failed",
+        }
+    }
+
+    fn invalid_password() -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code: "invalid_password",
+            message: "Password must be a non-empty string",
+        }
+    }
+
+    fn password_unauthorized() -> Self {
+        Self {
+            status: StatusCode::UNAUTHORIZED,
+            code: "invalid_credentials",
+            message: "Invalid credentials",
         }
     }
 
@@ -231,9 +294,7 @@ impl StoreActionError {
                 code: "vector_authorization",
                 message: "Vector authorization failed",
             },
-            dowe_vector::VectorError::NotFound(_) => {
-                Self::not_found("Embedding not found")
-            }
+            dowe_vector::VectorError::NotFound(_) => Self::not_found("Embedding not found"),
             dowe_vector::VectorError::InvalidName(_)
             | dowe_vector::VectorError::InvalidRequest(_) => Self {
                 status: StatusCode::BAD_REQUEST,
@@ -241,6 +302,38 @@ impl StoreActionError {
                 message: "Vector request is invalid",
             },
             _ => Self::vector(),
+        }
+    }
+
+    fn from_queue(error: QueueError) -> Self {
+        match error {
+            QueueError::Authentication(_) => Self {
+                status: StatusCode::UNAUTHORIZED,
+                code: "queue_authentication",
+                message: "Queue authentication failed",
+            },
+            QueueError::Authorization(_) => Self {
+                status: StatusCode::FORBIDDEN,
+                code: "queue_authorization",
+                message: "Queue authorization failed",
+            },
+            QueueError::QueueNotFound(_) => Self::not_found("Queue not found"),
+            QueueError::InvalidName(_) | QueueError::InvalidTopic(_) | QueueError::InvalidRequest(_) => {
+                Self {
+                    status: StatusCode::BAD_REQUEST,
+                    code: "queue_invalid_request",
+                    message: "Queue request is invalid",
+                }
+            }
+            QueueError::Remote(_) => Self {
+                status: StatusCode::BAD_GATEWAY,
+                code: "queue_remote",
+                message: "Queue provider request failed",
+            },
+            QueueError::InvalidReceipt(_)
+            | QueueError::DurabilityError(_)
+            | QueueError::Corruption(_)
+            | QueueError::Io(_) => Self::queue(),
         }
     }
 }

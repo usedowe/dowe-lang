@@ -265,6 +265,7 @@ fn assert_log(statement: &ServerStatement, level: ServerLogLevel, values: &[Serv
         ServerStatement::RequestRawQuery { .. } => panic!("expected log statement"),
         ServerStatement::RequestHeader { .. } => panic!("expected log statement"),
         ServerStatement::RequestCookie { .. } => panic!("expected log statement"),
+        ServerStatement::RequestBytes { .. } => panic!("expected log statement"),
         ServerStatement::Stdlib(_) => panic!("expected log statement"),
         ServerStatement::Http(_) => panic!("expected log statement"),
         ServerStatement::Spawn(_) => panic!("expected log statement"),
@@ -278,7 +279,10 @@ fn assert_log(statement: &ServerStatement, level: ServerLogLevel, values: &[Serv
         ServerStatement::Store(_) => panic!("expected log statement"),
         ServerStatement::Kv(_) => panic!("expected log statement"),
         ServerStatement::Vector(_) => panic!("expected log statement"),
-        ServerStatement::Call(_) | ServerStatement::Go(_) | ServerStatement::Cron(_) => {
+        ServerStatement::Queue(_) => panic!("expected log statement"),
+        ServerStatement::File(_) => panic!("expected log statement"),
+        ServerStatement::Password(_) => panic!("expected log statement"),
+        ServerStatement::Call(_) | ServerStatement::Task(_) | ServerStatement::Cron(_) => {
             panic!("expected log statement")
         }
     }

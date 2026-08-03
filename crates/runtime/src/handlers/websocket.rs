@@ -24,7 +24,7 @@ async fn handle_websocket(
     handlers: WebSocketHandlers,
     cache_mode: CacheRuntimeMode,
 ) {
-    crate::background_jobs::launch_go_statements(&project.root, &handlers.open, cache_mode);
+    crate::background_jobs::launch_task_statements(&project.root, &handlers.open, cache_mode);
     execute_server_action(&handlers.open);
     let mut closed = false;
 
@@ -36,7 +36,7 @@ async fn handle_websocket(
                 }
             }
             Ok(Message::Close(_)) => {
-                crate::background_jobs::launch_go_statements(
+                crate::background_jobs::launch_task_statements(
                     &project.root,
                     &handlers.close,
                     cache_mode,
@@ -80,7 +80,7 @@ async fn handle_websocket(
     }
 
     if !closed {
-        crate::background_jobs::launch_go_statements(&project.root, &handlers.close, cache_mode);
+        crate::background_jobs::launch_task_statements(&project.root, &handlers.close, cache_mode);
         execute_server_action(&handlers.close);
     }
 }
@@ -120,6 +120,7 @@ async fn execute_websocket_action(
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
         handle_databases: HashMap::new(),
         cache_mode,
     };

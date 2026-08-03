@@ -1052,23 +1052,85 @@ fn language_support_recognizes_view_constants() {
 }
 
 #[test]
-fn completions_and_hover_include_server_background_jobs() {
+fn queue_publication_completions_and_documentation_are_available() {
+    let root = tempdir().expect("root");
+    let document = LanguageDocument {
+        path: root.path().join("main.dowe"),
+        source: "main\n  server port:0\n    route \"/messages\"\n      handler\n        queue appQueue provider:\"dowe\" host:\"local\" port:4150 account:\"app\" secret:\"secret\" vhost:\"jobs\"\n        msg sent conn:appQueue.publish queue:\"notifications\" payload:{ event:\"created\" }\n        log sent.\n"
+            .to_string(),
+    };
+    let fields = complete_document(root.path(), &document, 7, "        log sent.".len() + 1);
+    let queue_document = LanguageDocument {
+        path: root.path().join("main.dowe"),
+        source: "queue\n".to_string(),
+    };
+    let message_document = LanguageDocument {
+        path: root.path().join("main.dowe"),
+        source: "msg\n".to_string(),
+    };
+
+    assert_eq!(
+        fields
+            .iter()
+            .map(|completion| completion.label.as_str())
+            .collect::<Vec<_>>(),
+        ["ok", "id"]
+    );
+    assert!(
+        hover_at(root.path(), &queue_document, 1, 1)
+            .is_some_and(|hover| hover.contains("queue service") && hover.contains("vhost"))
+    );
+    assert!(
+        hover_at(root.path(), &message_document, 1, 1).is_some_and(|hover| hover
+            .contains("conn:<queue>.publish")
+            && hover.contains("{ ok, id }"))
+    );
+}
+
+#[test]
+fn completions_and_hover_include_server_tasks_and_cron() {
     let document = LanguageDocument {
         path: Path::new("/project/main.dowe").to_path_buf(),
-        source: "main\n  server port:8080\n    init\n      go cleanup\n      cron cleanup schedule:\"0 * * * *\"\n"
+        source: "main\n  server port:8080\n    init\n      task cleanup args:{ event:{ source:\"startup\" } } after:\"headers\"\n      task\n        log args.source\n      cron cleanup schedule:\"0 * * * *\"\n"
             .to_string(),
     };
     let completions = complete_document(Path::new("/project"), &document, 4, 7);
+    let task_props = complete_document(
+        Path::new("/project"),
+        &document,
+        4,
+        document.source.lines().nth(3).expect("task line").len() + 1,
+    );
 
-    assert!(completions.iter().any(|item| item.label == "go"));
+    assert!(completions.iter().any(|item| item.label == "task"));
+    assert!(!completions.iter().any(|item| item.label == "go"));
     assert!(completions.iter().any(|item| item.label == "cron"));
+    assert!(task_props.iter().any(|item| item.label == "after"));
     assert!(
         hover_at(Path::new("/project"), &document, 4, 7)
-            .expect("go hover")
-            .contains("isolated process")
+            .expect("task hover")
+            .contains("real upstream response headers")
+    );
+    let after_column = document
+        .source
+        .lines()
+        .nth(3)
+        .expect("task line")
+        .find("after")
+        .expect("after prop")
+        + 2;
+    assert!(
+        hover_at(Path::new("/project"), &document, 4, after_column)
+            .expect("after hover")
+            .contains("after:\"headers\"")
     );
     assert!(
         hover_at(Path::new("/project"), &document, 5, 7)
+            .expect("inline task hover")
+            .contains("inline")
+    );
+    assert!(
+        hover_at(Path::new("/project"), &document, 7, 7)
             .expect("cron hover")
             .contains("UTC")
     );
@@ -2715,6 +2777,8 @@ fn server_constructs_and_portable_utilities_have_editor_documentation() {
         "kv",
         "vector",
         "emb",
+        "queue",
+        "msg",
         "websocket",
         "udp",
         "tcp",
@@ -2736,13 +2800,14 @@ fn server_constructs_and_portable_utilities_have_editor_documentation() {
         "date",
         "id",
         "request",
+        "file",
         "if",
         "next",
         "log",
         "info",
         "warn",
         "error",
-        "go",
+        "task",
         "cron",
         "send",
         "bridge",
@@ -2831,6 +2896,7 @@ fn server_constructs_and_portable_utilities_have_editor_documentation() {
         "cache",
         "domainsFrom",
         "refreshSeconds",
+        "httpPort",
     ] {
         assert!(
             tls_props.iter().any(|completion| {
@@ -2856,6 +2922,10 @@ fn server_source_completions_offer_capability_selectors() {
     for (source, expected) in [
         ("handler normalize\n  str result source:\n", "\"trim\""),
         ("handler readQuery\n  request query source:\n", "\"query\""),
+        (
+            "handler readBytes\n  request payload source:\n",
+            "\"bytes\"",
+        ),
         (
             "websocket \"/events\"\n  onMessage\n    ws event source:\n",
             "\"json\"",

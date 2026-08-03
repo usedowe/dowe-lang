@@ -35,8 +35,8 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "tls",
-        signature: "tls mode:\"acme|local\" domains:<array> [email:<string>] [staging:<boolean>] [cache:<string>] [domainsFrom:<object>] [refreshSeconds:<number>]",
-        description: "Terminates HTTPS in the Rust server with automatically renewed ACME certificates or a local self-signed certificate.",
+        signature: "tls mode:\"acme|local\" domains:<array> [email:<string>] [staging:<boolean>] [cache:<string>] [domainsFrom:<object>] [refreshSeconds:<number>] [httpPort:<number>]",
+        description: "Terminates HTTPS in the Rust server, reloads managed domain catalogs, and can redirect authorized HTTP hosts.",
     },
     ServerDocumentation {
         name: "endpoints",
@@ -134,6 +134,16 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
         description: "Declares a server-only Vector database that is embedded during development and can be local or WebSocket-backed in production.",
     },
     ServerDocumentation {
+        name: "queue",
+        signature: "queue service | queue <binding> provider:\"dowe|rabbitmq\" host:<value> port:<value> account:<value> secret:<value> vhost:<value>",
+        description: "Hosts the authenticated Dowe Queue WebSocket service at `/v1/queues/:name` or declares a server-only Queue connection.",
+    },
+    ServerDocumentation {
+        name: "msg",
+        signature: "msg <binding> conn:<queue>.publish queue:<value> payload:<json>",
+        description: "Directly publishes JSON to an already declared durable Queue and returns `{ ok, id }` after a durable or confirmed enqueue.",
+    },
+    ServerDocumentation {
         name: "emb",
         signature: "emb <binding> conn:<vector>.<upsert|search|read|delete|list> ...",
         description: "Stores, searches, reads, deletes, or lists embeddings through a Vector connection.",
@@ -185,7 +195,7 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "return",
-        signature: "return [status:<number>] json:<value>|text:<string>|bytes:<binding>|proxy:<binding>|agent:<binding>",
+        signature: "return [status:<number>] json:<value>|text:<string>|bytes:<binding>|proxy:<binding>|reverse:<cacheBinding.url> [strategy:\"roundRobin\" state:<cacheBinding.state> loadingUrl:<cacheBinding.url> errorUrl:<cacheBinding.url>]|agent:<binding>",
         description: "Returns an HTTP response directly from a handler or middleware; server functions use `return value:<value>`.",
     },
     ServerDocumentation {
@@ -274,9 +284,9 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
         description: "Writes an error server log event.",
     },
     ServerDocumentation {
-        name: "go",
-        signature: "go <fn> [args...]",
-        description: "Starts an imported server function in an isolated process running in the background.",
+        name: "task",
+        signature: "task <fn> [args:{ ... }] [after:\"headers\"] | task [args:{ ... }] [after:\"headers\"] <server statements...>",
+        description: "Starts an imported server function or inline server-function body in an isolated process and discards its result. Tasks are immediate and source-ordered by default; `after:\"headers\"` is valid only directly in a reverse-proxy HTTP handler, requires `args.event` to be an object, and launches once after real upstream response headers arrive.",
     },
     ServerDocumentation {
         name: "cron",
@@ -295,8 +305,18 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "request",
-        signature: "request <binding> source:\"query|rawQuery|header|cookie\" [name:<string>]",
-        description: "Reads request metadata into an explicit result binding; header and cookie sources require `name`.",
+        signature: "request <binding> source:\"query|rawQuery|header|cookie|bytes\" [name:<string>]",
+        description: "Reads request metadata or the byte-exact HTTP body into an explicit result binding; header and cookie sources require `name`.",
+    },
+    ServerDocumentation {
+        name: "file",
+        signature: "file <binding> source:\"write|read|exists|delete\" root:<path> path:<relative-path> [data:<bytes>]",
+        description: "Reads or atomically mutates server-only files confined below a configured storage root.",
+    },
+    ServerDocumentation {
+        name: "password",
+        signature: "password <binding> source:\"hash|verify\" value:<password> [hash:<phc>] [required:true]",
+        description: "Hashes passwords with salted Argon2id PHC strings or verifies them in the server runtime.",
     },
     ServerDocumentation {
         name: "bearer",

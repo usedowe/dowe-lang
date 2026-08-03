@@ -34,6 +34,7 @@ async fn verify_opaque_session(
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
         handle_databases: HashMap::new(),
         cache_mode,
     };

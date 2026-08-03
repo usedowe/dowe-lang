@@ -10,5 +10,5 @@ fn routes_server_arguments_to_the_production_subcommand() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(!output.status.success());
-    assert!(stderr.contains("Usage: dowe server --root <path>"));
+    assert!(stderr.contains("Usage: dowe server (--root <path>|--artifact <path>)"));
 }

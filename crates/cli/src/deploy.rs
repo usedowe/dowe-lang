@@ -1,6 +1,9 @@
 use crate::menus;
 use crate::usage::USAGE;
-use dowe_deploy::{DeployOptions, DeploySurface, DeployTarget, default_docker_image_name, deploy};
+use dowe_deploy::{
+    DeployEnvironment, DeployOptions, DeploySurface, DeployTarget, default_docker_image_name,
+    deploy,
+};
 use std::env;
 use std::path::PathBuf;
 
@@ -18,14 +21,19 @@ pub(crate) fn run_deploy_command(args: &[String]) -> Result<(), Box<dyn std::err
                 "dowe deploy requires --target when no interactive terminal is available".into(),
             );
         }
-        let Some(surface) = menus::prompt_deploy_surface(&root)? else {
+        let Some(environment) = menus::prompt_deploy_environment()? else {
+            return Ok(());
+        };
+        let Some(surface) = menus::prompt_deploy_surface(&root, environment)? else {
             return Ok(());
         };
         let Some(target) = menus::prompt_deploy_target(surface)? else {
             return Ok(());
         };
         let mut options = DeployOptions::new(root, target);
-        configure_interactive_docker(&mut options)?;
+        options.environment = environment;
+        options.surface = Some(surface);
+        configure_interactive_target(&mut options)?;
         options.publish = should_auto_publish(surface, target);
         let report = deploy(options)?;
         print_report(&report);
@@ -42,6 +50,14 @@ fn run_surface_deploy(
     root: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let interactive = args.is_empty() && menus::is_interactive_terminal();
+    let interactive_environment = if interactive {
+        menus::prompt_deploy_environment()?
+    } else {
+        None
+    };
+    if interactive && interactive_environment.is_none() {
+        return Ok(());
+    }
     let interactive_target = if interactive {
         menus::prompt_deploy_target(surface)?
     } else {
@@ -58,7 +74,11 @@ fn run_surface_deploy(
         (DeploySurface::Server, None) => None,
     };
     let mut options = parse_deploy_flags(args, root, default_target)?;
-    if options.target.surface() != surface {
+    options.surface = Some(surface);
+    if let Some(environment) = interactive_environment {
+        options.environment = environment;
+    }
+    if options.target != DeployTarget::Dowe && options.target.surface() != surface {
         return Err(format!(
             "deploy target `{}` does not belong to the `{surface}` deploy surface",
             options.target
@@ -66,7 +86,7 @@ fn run_surface_deploy(
         .into());
     }
     if interactive {
-        configure_interactive_docker(&mut options)?;
+        configure_interactive_target(&mut options)?;
         options.publish = should_auto_publish(surface, options.target);
     }
     let report = deploy(options)?;
@@ -79,6 +99,9 @@ fn should_auto_publish(surface: DeploySurface, target: DeployTarget) -> bool {
         (surface, target),
         (DeploySurface::Web, DeployTarget::CloudflarePages)
             | (DeploySurface::Server, DeployTarget::Cloudflare)
+            | (DeploySurface::Server, DeployTarget::Dowe)
+            | (DeploySurface::Server, DeployTarget::Ssh)
+            | (DeploySurface::Web, DeployTarget::Dowe)
             | (DeploySurface::Android, DeployTarget::Android)
             | (DeploySurface::Ios, DeployTarget::Ios)
     )
@@ -107,10 +130,19 @@ fn parse_deploy_flags(
     let mut registry = None;
     let mut image = None;
     let mut track = None;
+    let mut environment = DeployEnvironment::Live;
+    let mut ssh_host = None;
+    let mut ssh_user = None;
+    let mut ssh_key_file = None;
     while index < args.len() {
         match args[index].as_str() {
             "--target" => {
                 target = Some(required_value(args, index, "--target")?.parse::<DeployTarget>()?);
+                index += 2;
+            }
+            "--environment" => {
+                environment =
+                    required_value(args, index, "--environment")?.parse::<DeployEnvironment>()?;
                 index += 2;
             }
             "--name" => {
@@ -137,6 +169,18 @@ fn parse_deploy_flags(
                 track = Some(required_value(args, index, "--track")?.to_string());
                 index += 2;
             }
+            "--host" => {
+                ssh_host = Some(required_value(args, index, "--host")?.to_string());
+                index += 2;
+            }
+            "--user" => {
+                ssh_user = Some(required_value(args, index, "--user")?.to_string());
+                index += 2;
+            }
+            "--key-file" => {
+                ssh_key_file = Some(PathBuf::from(required_value(args, index, "--key-file")?));
+                index += 2;
+            }
             _ => return Err(USAGE.into()),
         }
     }
@@ -144,25 +188,43 @@ fn parse_deploy_flags(
     if track.is_some() && target != DeployTarget::Android {
         return Err("--track is only valid for the Android deploy target".into());
     }
+    if target != DeployTarget::Ssh
+        && (ssh_host.is_some() || ssh_user.is_some() || ssh_key_file.is_some())
+    {
+        return Err(
+            "--host, --user and --key-file are only valid for the SSH deploy target".into(),
+        );
+    }
     let mut options = DeployOptions::new(root, target);
+    options.environment = environment;
     options.name = name;
     options.publish = publish;
     options.dry_run = dry_run;
     options.registry = registry;
     options.image = image;
     options.track = track;
+    options.ssh_host = ssh_host;
+    options.ssh_user = ssh_user;
+    options.ssh_key_file = ssh_key_file;
     Ok(options)
 }
 
-fn configure_interactive_docker(
+fn configure_interactive_target(
     options: &mut DeployOptions,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if options.target != DeployTarget::Docker {
-        return Ok(());
+    match options.target {
+        DeployTarget::Docker => {
+            let default_image = default_docker_image_name(&options.root);
+            options.registry = Some(menus::prompt_docker_registry()?);
+            options.image = Some(menus::prompt_docker_image(&default_image)?);
+        }
+        DeployTarget::Ssh => {
+            options.ssh_host = Some(menus::prompt_ssh_host()?);
+            options.ssh_user = Some(menus::prompt_ssh_user()?);
+            options.ssh_key_file = menus::prompt_ssh_key_file()?;
+        }
+        _ => {}
     }
-    let default_image = default_docker_image_name(&options.root);
-    options.registry = Some(menus::prompt_docker_registry()?);
-    options.image = Some(menus::prompt_docker_image(&default_image)?);
     Ok(())
 }
 
@@ -178,12 +240,13 @@ fn required_value<'a>(
 
 fn print_report(report: &dowe_deploy::DeployReport) {
     println!(
-        "{} deploy package written to {}",
+        "{} {} deploy package written to {}",
+        report.environment,
         report.target,
         report.output_dir.display()
     );
     if report.published {
-        println!("{} deploy published", report.target);
+        println!("{} {} deploy published", report.environment, report.target);
     }
     if let Some(image) = report.image_ref.as_deref() {
         if report.image_built {
@@ -202,12 +265,21 @@ fn print_report(report: &dowe_deploy::DeployReport) {
             artifact.display()
         );
     }
+    if let Some(url) = report.url.as_deref() {
+        println!("Dowe Cloud URL: {url}");
+    }
+    if report.target == DeployTarget::Ssh && !report.published {
+        if let Some(command) = report.command.as_ref() {
+            println!("SSH install command: {}", command.join(" "));
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::parse_deploy_options;
     use super::should_auto_publish;
+    use dowe_deploy::DeployEnvironment;
     use dowe_deploy::DeploySurface;
     use dowe_deploy::DeployTarget;
     use std::path::PathBuf;
@@ -230,6 +302,47 @@ mod tests {
         assert_eq!(options.name.as_deref(), Some("docs-app"));
         assert!(options.publish);
         assert!(options.dry_run);
+    }
+
+    #[test]
+    fn parses_stage_environment() {
+        let args = vec![
+            "--target".to_string(),
+            "cloudflare-pages".to_string(),
+            "--environment".to_string(),
+            "stage".to_string(),
+        ];
+
+        let options = parse_deploy_options(&args, PathBuf::from("/project"))
+            .expect("parse")
+            .expect("options");
+
+        assert_eq!(options.environment, DeployEnvironment::Stage);
+    }
+
+    #[test]
+    fn parses_ssh_publish_options_without_password() {
+        let args = vec![
+            "--target".to_string(),
+            "ssh".to_string(),
+            "--host".to_string(),
+            "server.example.com".to_string(),
+            "--user".to_string(),
+            "deploy".to_string(),
+            "--key-file".to_string(),
+            "/keys/deploy".to_string(),
+            "--publish".to_string(),
+        ];
+
+        let options = parse_deploy_options(&args, PathBuf::from("/project"))
+            .expect("parse")
+            .expect("options");
+
+        assert_eq!(options.target, DeployTarget::Ssh);
+        assert_eq!(options.ssh_host.as_deref(), Some("server.example.com"));
+        assert_eq!(options.ssh_user.as_deref(), Some("deploy"));
+        assert_eq!(options.ssh_key_file, Some(PathBuf::from("/keys/deploy")));
+        assert!(options.publish);
     }
 
     #[test]
@@ -312,5 +425,14 @@ mod tests {
             DeployTarget::Android
         ));
         assert!(should_auto_publish(DeploySurface::Ios, DeployTarget::Ios));
+        assert!(should_auto_publish(
+            DeploySurface::Server,
+            DeployTarget::Dowe
+        ));
+        assert!(should_auto_publish(
+            DeploySurface::Server,
+            DeployTarget::Ssh
+        ));
+        assert!(should_auto_publish(DeploySurface::Web, DeployTarget::Dowe));
     }
 }

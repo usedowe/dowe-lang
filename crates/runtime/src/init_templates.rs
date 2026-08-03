@@ -8,7 +8,7 @@ use crud_server::{
     CRUD_USERS, CRUD_USERS_HANDLER, CRUD_USERS_REPOSITORY, CRUD_USERS_SERVICE,
 };
 
-const GITIGNORE: &str = ".dowe\n.env\n";
+const GITIGNORE: &str = ".dowe\n.env\n.env.live\n.env.stage\n.env.uat\n";
 
 const ZED_SETTINGS: &str = r#"{
   "languages": {
@@ -46,8 +46,12 @@ const CRUD_THEME: &str = r##"theme
       colors danger:"#98504b" onDanger:"#ffffff" softDanger:"#f3dfdc" onSoftDanger:"#542a27"
 "##;
 
-const BLANK_ENV_EXAMPLE: &str = "BACKEND_URL=\n";
+const BLANK_ENV_EXAMPLE: &str = "BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n";
 const BLANK_ENV: &str = "BACKEND_URL=http://127.0.0.1:8081\n";
+const BLANK_ENV_LIVE: &str = "BACKEND_URL=\n";
+const BLANK_ENV_STAGE: &str =
+    "BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=replace-with-stage-password\n";
+const BLANK_ENV_UAT: &str = "BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=replace-with-uat-password\n";
 
 const BLANK_MAIN: &str = r#"import viewRoutes from "@/views/routes/view"
 import apiRoutes from "@/server/endpoints"
@@ -87,8 +91,11 @@ const BLANK_HELLO_HANDLER: &str = r#"handler getHello
   return text:"Hello Dowe"
 "#;
 
-const CRUD_ENV_EXAMPLE: &str = "BACKEND_URL=\nDOWE_HOST=\nDOWE_PORT=\nDOWE_USER=\nDOWE_PASSWORD=\nDOWE_DATABASE=\nCACHE_HOST=\nCACHE_PORT=\nCACHE_USER=\nCACHE_PASSWORD=\nCACHE_DATABASE=\n";
+const CRUD_ENV_EXAMPLE: &str = "BACKEND_URL=\nDOWE_HOST=\nDOWE_PORT=\nDOWE_USER=\nDOWE_PASSWORD=\nDOWE_DATABASE=\nCACHE_HOST=\nCACHE_PORT=\nCACHE_USER=\nCACHE_PASSWORD=\nCACHE_DATABASE=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n";
 const CRUD_ENV: &str = "BACKEND_URL=http://127.0.0.1:8081\nDOWE_HOST=127.0.0.1\nDOWE_PORT=4147\nDOWE_USER=local\nDOWE_PASSWORD=local\nDOWE_DATABASE=dowe-blog\nCACHE_HOST=127.0.0.1\nCACHE_PORT=4148\nCACHE_USER=local\nCACHE_PASSWORD=local\nCACHE_DATABASE=dowe-sessions\n";
+const CRUD_ENV_LIVE: &str = "BACKEND_URL=\nDOWE_HOST=\nDOWE_PORT=\nDOWE_USER=\nDOWE_PASSWORD=\nDOWE_DATABASE=\nCACHE_HOST=\nCACHE_PORT=\nCACHE_USER=\nCACHE_PASSWORD=\nCACHE_DATABASE=\n";
+const CRUD_ENV_STAGE: &str = "BACKEND_URL=\nDOWE_HOST=\nDOWE_PORT=\nDOWE_USER=\nDOWE_PASSWORD=\nDOWE_DATABASE=\nCACHE_HOST=\nCACHE_PORT=\nCACHE_USER=\nCACHE_PASSWORD=\nCACHE_DATABASE=\nDOWE_DEPLOY_ACCESS_PASSWORD=replace-with-stage-password\n";
+const CRUD_ENV_UAT: &str = "BACKEND_URL=\nDOWE_HOST=\nDOWE_PORT=\nDOWE_USER=\nDOWE_PASSWORD=\nDOWE_DATABASE=\nCACHE_HOST=\nCACHE_PORT=\nCACHE_USER=\nCACHE_PASSWORD=\nCACHE_DATABASE=\nDOWE_DEPLOY_ACCESS_PASSWORD=replace-with-uat-password\n";
 
 #[derive(Clone, Copy)]
 struct InitTranslation {
@@ -670,6 +677,9 @@ const BLANK_FILES: &[TemplateFile] = &[
     TemplateFile::new("theme.dowe", BLANK_THEME),
     TemplateFile::new(".env.example", BLANK_ENV_EXAMPLE),
     TemplateFile::new(".env", BLANK_ENV),
+    TemplateFile::new(".env.live", BLANK_ENV_LIVE),
+    TemplateFile::new(".env.stage", BLANK_ENV_STAGE),
+    TemplateFile::new(".env.uat", BLANK_ENV_UAT),
     TemplateFile::new("main.dowe", BLANK_MAIN),
     TemplateFile::new("views/routes/view.dowe", BLANK_VIEW_ROUTES),
     TemplateFile::new("views/pages/home.dowe", BLANK_HOME_PAGE),
@@ -683,6 +693,9 @@ const CRUD_FILES: &[TemplateFile] = &[
     TemplateFile::new("theme.dowe", CRUD_THEME),
     TemplateFile::new(".env.example", CRUD_ENV_EXAMPLE),
     TemplateFile::new(".env", CRUD_ENV),
+    TemplateFile::new(".env.live", CRUD_ENV_LIVE),
+    TemplateFile::new(".env.stage", CRUD_ENV_STAGE),
+    TemplateFile::new(".env.uat", CRUD_ENV_UAT),
     TemplateFile::new("main.dowe", CRUD_MAIN),
     TemplateFile::new("views/routes/view.dowe", CRUD_VIEW_ROUTES),
     TemplateFile::new("views/layouts/app.dowe", CRUD_LAYOUT),

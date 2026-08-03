@@ -6,12 +6,12 @@ use crate::handlers::{
 };
 use crate::logging::log_info;
 use crate::production_handlers::{production_declared_websocket_handler, production_handler};
-use crate::{DevEventBus, DevEventType};
-use axum::Router;
+use crate::{DevEventBus, DevEventType, ProductionAccess};
 use axum::extract::{Path as AxumPath, State, WebSocketUpgrade};
 use axum::http::HeaderMap;
 use axum::response::Response;
 use axum::routing::get;
+use axum::{Router, middleware};
 use dowe_compiler::{CompiledProject, ServerAction, ServerTransport, ServerTransportProtocol};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -173,7 +173,9 @@ pub async fn start_dev_servers(
     let backend_cache_service = project.backend.cache_service;
     let backend_database_service = project.backend.database_service;
     let backend_vector_service = project.backend.vector_service;
+    let backend_queue_service = project.backend.queue_service;
     let backend_tls = project.backend.tls.clone();
+    let backend_environment = project.environment_config.clone();
     let desktop_websocket_paths = project
         .desktop_server
         .as_ref()
@@ -207,13 +209,19 @@ pub async fn start_dev_servers(
             backend_cache_service,
             backend_database_service,
             backend_vector_service,
+            backend_queue_service,
             project_root.clone(),
         );
         let (shutdown, signal) = oneshot::channel();
         let handle = match backend_tls.clone() {
-            Some(tls) => {
-                crate::tls::spawn_tls_server(listener, router, tls, project_root.clone(), signal)
-            }
+            Some(tls) => crate::tls::spawn_tls_server(
+                listener,
+                router,
+                tls,
+                backend_environment,
+                project_root.clone(),
+                signal,
+            ),
             None => spawn_server(listener, router, signal),
         };
         let scheme = if backend_tls.is_some() {
@@ -307,13 +315,29 @@ pub async fn serve_dev(project: CompiledProject) -> RuntimeResult<()> {
 }
 
 pub async fn serve_production(project: CompiledProject, addr: SocketAddr) -> RuntimeResult<()> {
-    let server = start_production(project, addr).await?;
+    serve_production_with_access(project, addr, None).await
+}
+
+pub async fn serve_production_with_access(
+    project: CompiledProject,
+    addr: SocketAddr,
+    access: Option<ProductionAccess>,
+) -> RuntimeResult<()> {
+    let server = start_production_with_access(project, addr, access).await?;
     server.wait().await
 }
 
 pub async fn start_production(
+    project: CompiledProject,
+    addr: SocketAddr,
+) -> RuntimeResult<RunningProductionServer> {
+    start_production_with_access(project, addr, None).await
+}
+
+pub async fn start_production_with_access(
     mut project: CompiledProject,
     addr: SocketAddr,
+    access: Option<ProductionAccess>,
 ) -> RuntimeResult<RunningProductionServer> {
     project.local_databases = false;
     crate::database_bootstrap::prepare_databases(&project).await?;
@@ -337,9 +361,11 @@ pub async fn start_production(
     let cache_service = project.backend.cache_service;
     let database_service = project.backend.database_service;
     let vector_service = project.backend.vector_service;
+    let queue_service = project.backend.queue_service;
     let tls = project.backend.tls.clone();
     let tls_enabled = tls.is_some();
     let project_root = project.root.clone();
+    let environment = project.environment_config.clone();
     let state = DevRuntimeState {
         project: Arc::new(RwLock::new(Arc::new(project))),
         events: DevEventBus::default(),
@@ -352,13 +378,20 @@ pub async fn start_production(
         cache_service,
         database_service,
         vector_service,
+        queue_service,
         project_root.clone(),
+        access,
     );
     let (shutdown, signal) = oneshot::channel();
     let handle = match tls {
-        Some(tls) => {
-            crate::tls::spawn_tls_server(listener, router, tls, project_root.clone(), signal)
-        }
+        Some(tls) => crate::tls::spawn_tls_server(
+            listener,
+            router,
+            tls,
+            environment,
+            project_root.clone(),
+            signal,
+        ),
         None => spawn_server(listener, router, signal),
     };
     let listeners = spawn_transport_listeners(
@@ -659,7 +692,11 @@ fn spawn_udp_transport(
                 _ = &mut shutdown => return Ok(()),
                 received = socket.recv_from(&mut buffer) => {
                     let (len, addr) = received?;
-                    crate::background_jobs::launch_go_statements(&root, &transport.action, cache_mode);
+                    crate::background_jobs::launch_task_statements(
+                        &root,
+                        &transport.action,
+                        cache_mode,
+                    );
                     execute_transport_action(&transport.action, &transport.binding, &buffer[..len], addr);
                 }
             }
@@ -710,7 +747,7 @@ async fn handle_tcp_connection(
 ) -> RuntimeResult<()> {
     let mut buffer = Vec::new();
     stream.read_to_end(&mut buffer).await?;
-    crate::background_jobs::launch_go_statements(&root, &action, cache_mode);
+    crate::background_jobs::launch_task_statements(&root, &action, cache_mode);
     execute_transport_action(&action, &binding, &buffer, addr);
     Ok(())
 }
@@ -758,6 +795,7 @@ fn backend_router(
     cache_service: bool,
     database_service: bool,
     vector_service: bool,
+    queue_service: bool,
     project_root: std::path::PathBuf,
 ) -> Router {
     let mut router = Router::new().route("/_dowe/dev/ws", get(dev_websocket_handler));
@@ -766,6 +804,9 @@ fn backend_router(
     }
     if vector_service {
         router = router.route("/v1/vectors/{name}", get(vector_service_handler));
+    }
+    if queue_service {
+        router = router.route("/v1/queues/{name}", get(queue_service_handler));
     }
     for path in websocket_paths {
         let websocket_path = path.clone();
@@ -827,7 +868,9 @@ fn production_router(
     cache_service: bool,
     database_service: bool,
     vector_service: bool,
+    queue_service: bool,
     project_root: std::path::PathBuf,
+    access: Option<ProductionAccess>,
 ) -> Router {
     let mut router = Router::new();
     if cache_service {
@@ -835,6 +878,9 @@ fn production_router(
     }
     if vector_service {
         router = router.route("/v1/vectors/{name}", get(vector_service_handler));
+    }
+    if queue_service {
+        router = router.route("/v1/queues/{name}", get(queue_service_handler));
     }
     for path in websocket_paths {
         let websocket_path = path.clone();
@@ -855,8 +901,16 @@ fn production_router(
         );
     }
     let router = router.fallback(production_handler).with_state(state);
-    if database_service {
+    let router = if database_service {
         router.merge(dowe_database::database_service_router(project_root))
+    } else {
+        router
+    };
+    if let Some(access) = access {
+        router.layer(middleware::from_fn_with_state(
+            access,
+            crate::production_access::require_production_access,
+        ))
     } else {
         router
     }
@@ -880,6 +934,16 @@ async fn vector_service_handler(
 ) -> Response {
     let project = state.project.read().await;
     dowe_vector::vector_service_upgrade(project.root.clone(), name, headers, upgrade).await
+}
+
+async fn queue_service_handler(
+    State(state): State<DevRuntimeState>,
+    AxumPath(name): AxumPath<String>,
+    headers: HeaderMap,
+    upgrade: WebSocketUpgrade,
+) -> Response {
+    let project = state.project.read().await;
+    dowe_queue::queue_service_upgrade(project.root.clone(), name, headers, upgrade).await
 }
 
 fn spawn_server(

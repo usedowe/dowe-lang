@@ -156,17 +156,44 @@ pub(crate) async fn server_response(
                         return cors_actual_response(&server.cors, dev_origins, &headers, response);
                     }
                 };
-                if !matches!(
+                let uses_simplified_action = matches!(
                     &matched.endpoint.behavior,
-                    EndpointBehavior::HttpProxy(_)
-                        | EndpointBehavior::HttpBytes(_)
-                        | EndpointBehavior::HttpActionJson(_)
-                        | EndpointBehavior::AgentResponse(_)
-                        | EndpointBehavior::StoreActionJson(_)
-                        | EndpointBehavior::KvActionJson(_)
-                        | EndpointBehavior::VectorActionJson(_)
-                ) {
-                    crate::background_jobs::launch_go_statements(
+                    EndpointBehavior::StaticText(_)
+                        | EndpointBehavior::TextTemplate(_)
+                        | EndpointBehavior::UserGreeting
+                        | EndpointBehavior::CreatePostJson
+                );
+                let action_result = if uses_simplified_action {
+                    execute_simplified_http_action(
+                        project,
+                        &project.root,
+                        &matched.endpoint.action,
+                        &matched.params,
+                        &body,
+                        raw_query,
+                        &headers,
+                        &middleware_context,
+                        cache_mode,
+                    )
+                    .await
+                } else {
+                    Ok(())
+                };
+                if !uses_simplified_action
+                    && !matches!(
+                        &matched.endpoint.behavior,
+                        EndpointBehavior::HttpProxy(_)
+                            | EndpointBehavior::HttpReverseProxy(_)
+                            | EndpointBehavior::HttpBytes(_)
+                            | EndpointBehavior::HttpActionJson(_)
+                            | EndpointBehavior::AgentResponse(_)
+                            | EndpointBehavior::StoreActionJson(_)
+                            | EndpointBehavior::KvActionJson(_)
+                            | EndpointBehavior::VectorActionJson(_)
+                            | EndpointBehavior::QueueActionJson(_)
+                    )
+                {
+                    crate::background_jobs::launch_task_statements(
                         &project.root,
                         &matched.endpoint.action,
                         cache_mode,
@@ -177,142 +204,176 @@ pub(crate) async fn server_response(
                     });
                 }
 
-                match matched.endpoint.behavior {
-                    EndpointBehavior::StaticText(text) => text_response(StatusCode::OK, text),
-                    EndpointBehavior::TextTemplate(text) => text_response(
-                        StatusCode::OK,
-                        render_text_template(&text, &matched.params, &middleware_context),
-                    ),
-                    EndpointBehavior::UserGreeting => {
-                        let id = matched.params.get("id").cloned().unwrap_or_default();
-                        text_response(StatusCode::OK, format!("Hello User {id}!"))
-                    }
-                    EndpointBehavior::CreatePostJson => created_json_response(&body),
-                    EndpointBehavior::HttpProxy(response) => {
-                        execute_http_proxy(
-                            project,
-                            &project.root,
-                            &matched.endpoint.action,
-                            &response,
-                            &matched.params,
-                            &body,
-                            raw_query,
-                            &headers,
-                            cache_mode,
-                        )
-                        .await
-                    }
-                    EndpointBehavior::HttpBytes(response) => {
-                        execute_http_bytes(
-                            project,
-                            &project.root,
-                            &matched.endpoint.action,
-                            &response,
-                            &matched.params,
-                            &body,
-                            raw_query,
-                            &headers,
-                            cache_mode,
-                        )
-                        .await
-                    }
-                    EndpointBehavior::HttpActionJson(response) => {
-                        execute_http_action_json(
-                            project,
-                            &project.root,
-                            &matched.endpoint.action,
-                            &response,
-                            &matched.params,
-                            &body,
-                            raw_query,
-                            &headers,
-                            &middleware_context,
-                            cache_mode,
-                        )
-                        .await
-                    }
-                    EndpointBehavior::AgentResponse(response) => {
-                        execute_agent_response(
-                            project,
-                            &project.root,
-                            &matched.endpoint.action,
-                            &response,
-                            &matched.params,
-                            &body,
-                            raw_query,
-                            &headers,
-                            cache_mode,
-                        )
-                        .await
-                    }
-                    EndpointBehavior::StoreInsertJson(insert) => {
-                        match execute_store_insert(
-                            project,
-                            &insert.connection,
-                            &insert.table,
-                            &insert.value,
-                        )
-                        .await
-                        {
-                            Ok(value) => json_response(StatusCode::OK, value),
-                            Err(error) => store_error_response(error),
+                match action_result {
+                    Err(error) => json_error(error.status, error.code, error.message),
+                    Ok(()) => match matched.endpoint.behavior {
+                        EndpointBehavior::StaticText(text) => text_response(StatusCode::OK, text),
+                        EndpointBehavior::TextTemplate(text) => text_response(
+                            StatusCode::OK,
+                            render_text_template(&text, &matched.params, &middleware_context),
+                        ),
+                        EndpointBehavior::UserGreeting => {
+                            let id = matched.params.get("id").cloned().unwrap_or_default();
+                            text_response(StatusCode::OK, format!("Hello User {id}!"))
                         }
-                    }
-                    EndpointBehavior::StoreQueryJson(query) => {
-                        match execute_store_query(project, &query.connection, &query.sql).await {
-                            Ok(value) => json_response(StatusCode::OK, value),
-                            Err(error) => store_error_response(error),
+                        EndpointBehavior::CreatePostJson => created_json_response(&body),
+                        EndpointBehavior::HttpProxy(response) => {
+                            execute_http_proxy(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
                         }
-                    }
-                    EndpointBehavior::StoreTransactionJson(transaction) => {
-                        match execute_store_transaction(&project.root, &transaction) {
-                            Ok(value) => json_response(StatusCode::OK, value),
-                            Err(error) => store_error_response(error),
+                        EndpointBehavior::HttpReverseProxy(response) => {
+                            execute_http_reverse_proxy(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                &method,
+                                path,
+                                cache_mode,
+                            )
+                            .await
                         }
-                    }
-                    EndpointBehavior::StoreActionJson(response) => {
-                        execute_store_action_json(
-                            project,
-                            &project.root,
-                            &matched.endpoint.action,
-                            &response,
-                            &matched.params,
-                            &body,
-                            raw_query,
-                            &headers,
-                            &middleware_context,
-                            cache_mode,
-                        )
-                        .await
-                    }
-                    EndpointBehavior::KvActionJson(response) => {
-                        execute_kv_action_json(
-                            project,
-                            &project.root,
-                            &matched.endpoint.action,
-                            &response,
-                            &matched.params,
-                            &body,
-                            raw_query,
-                            &headers,
-                            cache_mode,
-                        )
-                        .await
-                    }
-                    EndpointBehavior::VectorActionJson(response) => {
-                        execute_vector_action_json(
-                            project,
-                            &project.root,
-                            &matched.endpoint.action,
-                            &response,
-                            &matched.params,
-                            &body,
-                            raw_query,
-                            &headers,
-                            cache_mode,
-                        )
-                        .await
-                    }
+                        EndpointBehavior::HttpBytes(response) => {
+                            execute_http_bytes(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::HttpActionJson(response) => {
+                            execute_http_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                &middleware_context,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::AgentResponse(response) => {
+                            execute_agent_response(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::StoreInsertJson(insert) => {
+                            match execute_store_insert(
+                                project,
+                                &insert.connection,
+                                &insert.table,
+                                &insert.value,
+                            )
+                            .await
+                            {
+                                Ok(value) => json_response(StatusCode::OK, value),
+                                Err(error) => store_error_response(error),
+                            }
+                        }
+                        EndpointBehavior::StoreQueryJson(query) => {
+                            match execute_store_query(project, &query.connection, &query.sql).await
+                            {
+                                Ok(value) => json_response(StatusCode::OK, value),
+                                Err(error) => store_error_response(error),
+                            }
+                        }
+                        EndpointBehavior::StoreTransactionJson(transaction) => {
+                            match execute_store_transaction(&project.root, &transaction) {
+                                Ok(value) => json_response(StatusCode::OK, value),
+                                Err(error) => store_error_response(error),
+                            }
+                        }
+                        EndpointBehavior::StoreActionJson(response) => {
+                            execute_store_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                &middleware_context,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::KvActionJson(response) => {
+                            execute_kv_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::VectorActionJson(response) => {
+                            execute_vector_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::QueueActionJson(response) => {
+                            execute_queue_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                    },
                 }
             }
             None => {

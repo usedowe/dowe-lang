@@ -60,6 +60,14 @@ impl<'a> StoreActionContext<'a> {
                     Value::String(request_cookie(self.headers, name).unwrap_or_default()),
                 );
             }
+            ServerStatement::RequestBytes { binding } => {
+                self.bytes_results
+                    .insert(binding.clone(), self.body.clone());
+                self.bindings.insert(
+                    binding.clone(),
+                    bytes_binding_json(self.body.len(), "request"),
+                );
+            }
             ServerStatement::Stdlib(statement) => {
                 let value = dowe_stdlib::evaluate(&statement.call, |reference| {
                     self.resolve_reference(reference).into_json()
@@ -96,6 +104,9 @@ impl<'a> StoreActionContext<'a> {
             ServerStatement::Store(statement) => self.execute_store(statement).await?,
             ServerStatement::Kv(statement) => self.execute_kv(statement).await?,
             ServerStatement::Vector(statement) => self.execute_vector(statement).await?,
+            ServerStatement::Queue(statement) => self.execute_queue(statement).await?,
+            ServerStatement::File(statement) => self.execute_file(statement).await?,
+            ServerStatement::Password(statement) => self.execute_password(statement).await?,
             ServerStatement::Call(statement) => {
                 let args = self.evaluate(&statement.args)?.into_json().ok_or_else(|| {
                     StoreActionError::invalid_body("Reusable call args must be JSON")
@@ -118,12 +129,56 @@ impl<'a> StoreActionContext<'a> {
                     self.bytes_results.insert(statement.binding.clone(), bytes);
                 }
             }
-            ServerStatement::Go(job) => {
-                crate::background_jobs::launch_go(self.root, job, self.cache_mode)
+            ServerStatement::Task(job) => {
+                let args = self.evaluate(&job.args)?.into_json().ok_or_else(|| {
+                    StoreActionError::invalid_body("Background args must be JSON")
+                })?;
+                crate::background_jobs::launch_task_with_args(self.root, job, args, self.cache_mode)
             }
             ServerStatement::Cron(_) => {}
         }
         Ok(())
+    }
+
+    async fn execute_password(
+        &mut self,
+        statement: &ServerPasswordStatement,
+    ) -> Result<(), StoreActionError> {
+        let (binding, password, hash, required) = match statement {
+            ServerPasswordStatement::Hash { binding, value } => {
+                (binding, self.password_string(value)?, None, false)
+            }
+            ServerPasswordStatement::Verify {
+                binding,
+                value,
+                hash,
+                required,
+            } => (
+                binding,
+                self.password_string(value)?,
+                Some(self.password_string(hash)?),
+                *required,
+            ),
+        };
+        let result = tokio::task::spawn_blocking(move || match hash {
+            None => hash_password_value(&password),
+            Some(hash) => verify_password_value(&password, &hash),
+        })
+        .await
+        .map_err(|_| StoreActionError::password())??;
+        if required && result["valid"] != true {
+            return Err(StoreActionError::password_unauthorized());
+        }
+        self.bindings.insert(binding.clone(), result);
+        Ok(())
+    }
+
+    fn password_string(&self, value: &StoreLiteral) -> Result<String, StoreActionError> {
+        self.evaluate(value)?
+            .into_json()
+            .and_then(|value| value.as_str().map(ToOwned::to_owned))
+            .filter(|value| !value.is_empty())
+            .ok_or_else(StoreActionError::invalid_password)
     }
 
     fn execute_jwt(&mut self, statement: &ServerJwtStatement) -> Result<(), StoreActionError> {
@@ -524,6 +579,79 @@ impl<'a> StoreActionContext<'a> {
     }
 }
 
+async fn execute_simplified_http_action(
+    project: &CompiledProject,
+    root: &Path,
+    action: &dowe_compiler::ServerAction,
+    params: &HashMap<String, String>,
+    body: &Bytes,
+    raw_query: Option<&str>,
+    headers: &HeaderMap,
+    request_context: &HashMap<String, Value>,
+    cache_mode: CacheRuntimeMode,
+) -> Result<(), StoreActionError> {
+    let mut context = StoreActionContext {
+        project,
+        root,
+        params,
+        body,
+        raw_query,
+        headers: Some(headers),
+        request_context: Some(request_context),
+        request_body: None,
+        bindings: HashMap::new(),
+        http_results: HashMap::new(),
+        bytes_results: HashMap::new(),
+        handles: HashMap::new(),
+        kv_handles: HashMap::new(),
+        vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
+        handle_databases: HashMap::new(),
+        cache_mode,
+    };
+    context.execute(action).await
+}
+
+fn hash_password_value(password: &str) -> Result<Value, StoreActionError> {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(password.as_bytes(), &salt)
+        .map(|value| Value::String(value.to_string()))
+        .map_err(|_| StoreActionError::password())
+}
+
+fn verify_password_value(password: &str, hash: &str) -> Result<Value, StoreActionError> {
+    let parsed = PasswordHash::new(hash).map_err(|_| StoreActionError::password())?;
+    let valid = Argon2::default()
+        .verify_password(password.as_bytes(), &parsed)
+        .is_ok();
+    Ok(json!({ "valid": valid }))
+}
+
+#[cfg(test)]
+mod password_tests {
+    use super::{hash_password_value, verify_password_value};
+
+    #[test]
+    fn hashes_are_salted_and_verify_without_exposing_passwords() {
+        let first = hash_password_value("correct horse battery staple").expect("first hash");
+        let second = hash_password_value("correct horse battery staple").expect("second hash");
+        let first = first.as_str().expect("PHC hash");
+        let second = second.as_str().expect("PHC hash");
+        assert!(first.starts_with("$argon2id$"));
+        assert_ne!(first, second);
+        assert_eq!(
+            verify_password_value("correct horse battery staple", first).expect("valid")["valid"],
+            true
+        );
+        assert_eq!(
+            verify_password_value("incorrect", first).expect("invalid")["valid"],
+            false
+        );
+        assert!(!first.contains("correct horse battery staple"));
+    }
+}
+
 struct ReusableActionOutput {
     value: Value,
     bytes: Option<Bytes>,
@@ -557,6 +685,7 @@ async fn execute_reusable_action(
         handles: HashMap::new(),
         kv_handles: HashMap::new(),
         vector_handles: HashMap::new(),
+        queue_handles: HashMap::new(),
         handle_databases: HashMap::new(),
         cache_mode,
     };

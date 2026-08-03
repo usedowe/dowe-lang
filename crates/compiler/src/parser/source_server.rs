@@ -5,12 +5,14 @@ use crate::model::{
     DatabaseEntity, DatabaseSeeder, DoweType, DoweTypeField, Endpoint, EndpointBehavior,
     EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint, HttpBytesEndpoint,
     HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint, HttpRedirectPolicy,
-    HttpResponseMode, OutboundHttpHeader, OutboundHttpRequest, ResponseCookie, ResponseHeader,
-    RtpConfig, ServerAction, ServerBackgroundJob, ServerCallStatement, ServerConfig,
-    ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement, ServerFunctionAction,
-    ServerFunctionParameter, ServerFunctionReturn, ServerJwtStatement, ServerLog, ServerLogLevel,
-    ServerLogValue, ServerMiddleware, ServerMiddlewareAction, ServerMiddlewareResponseBody,
-    ServerMiddlewareStatement, ServerModel, ServerModelEngine, ServerModelFormat, ServerModelKind,
+    HttpResponseMode, HttpReverseProxyEndpoint, OutboundHttpHeader, OutboundHttpRequest,
+    ResponseCookie, ResponseHeader, ReverseProxyStrategy, RtpConfig, ServerAction,
+    ServerBackgroundJob, ServerCallStatement, ServerConfig, ServerCryptoAesCtrStatement,
+    ServerCryptoCencAesCtrStatement, ServerFileStatement, ServerFunctionAction,
+    ServerFunctionParameter, ServerFunctionReturn, ServerJwtStatement, ServerKvStatement,
+    ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware, ServerMiddlewareAction,
+    ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerModel, ServerModelEngine,
+    ServerModelFormat, ServerModelKind, ServerPasswordStatement, ServerQueueStatement,
     ServerSecret, ServerSpawnStatement, ServerStatement, ServerStdlibStatement, ServerTransport,
     ServerTransportProtocol, ServerVectorStatement, StoreConnection, StoreLiteral, TlsConfig,
     TlsDomainsSource, TlsMode, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
@@ -30,6 +32,10 @@ use crate::parser::source_kv::{
     validate_kv_statement_references,
 };
 use crate::parser::source_parser::parse_source_file;
+use crate::parser::source_queue::{
+    infer_queue_statement, parse_queue_statement, queue_action_endpoint_behavior,
+    validate_queue_handles, validate_queue_statement_references,
+};
 use crate::parser::source_stdlib::{dowe_type_from_stdlib_return, parse_stdlib_call};
 use crate::parser::source_types::{
     TypeRegistry, is_shared_type_path, type_from_store_literal, validate_reference_path,
@@ -61,6 +67,8 @@ include!("source_server/request_actions.rs");
 include!("source_server/capability_actions.rs");
 include!("source_server/background_jobs.rs");
 include!("source_server/http_and_crypto.rs");
+include!("source_server/file_actions.rs");
+include!("source_server/password_actions.rs");
 include!("source_server/validation.rs");
 include!("source_server/action_helpers.rs");
 include!("source_server/behavior.rs");

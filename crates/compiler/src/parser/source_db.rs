@@ -369,6 +369,9 @@ pub fn database_endpoint_behavior(
     let Some(return_binding) = return_binding else {
         return Ok(None);
     };
+    if statements_contain_task_work(&action.statements) {
+        return Ok(None);
+    }
     let mut handles = Vec::<(String, StoreConnection)>::new();
 
     for statement in &action.statements {
@@ -444,6 +447,14 @@ pub fn database_endpoint_behavior(
     }
 
     Ok(None)
+}
+
+fn statements_contain_task_work(statements: &[ServerStatement]) -> bool {
+    statements.iter().any(|statement| match statement {
+        ServerStatement::Task(_) => true,
+        ServerStatement::Call(call) => statements_contain_task_work(&call.action.statements),
+        _ => false,
+    })
 }
 
 fn is_static_store_literal(value: &StoreLiteral) -> bool {
@@ -1249,12 +1260,14 @@ fn node_error(node: &SourceNode, message: impl AsRef<str>) -> DoweError {
 #[cfg(test)]
 mod tests {
     use crate::model::{
-        DatabaseProvider, EndpointBehavior, ServerStatement, ServerStoreStatement,
-        StoreConnectionValue,
+        DatabaseProvider, EndpointBehavior, EnvironmentConfig, ServerStatement,
+        ServerStoreStatement, StoreConnectionValue,
     };
     use crate::parser::source_parser::parse_source_file;
-    use crate::parser::source_server::parse_server_file;
+    use crate::parser::source_server::{parse_server_file, parse_server_source};
+    use std::fs;
     use std::path::Path;
+    use tempfile::TempDir;
 
     #[test]
     fn parses_store_insert_endpoint() {
@@ -1286,6 +1299,62 @@ mod tests {
                     && connection.database == "db1"
                     && connection.provider == DatabaseProvider::Dowe
         ));
+    }
+
+    #[test]
+    fn direct_store_candidates_with_task_work_use_store_action_behavior() {
+        let temp = TempDir::new().expect("tempdir");
+        let root = temp.path();
+        fs::create_dir_all(root.join("server/tasks")).expect("tasks");
+        fs::write(
+            root.join("server/tasks/record.dowe"),
+            r#"fn record
+  log "record"
+  return value:null"#,
+        )
+        .expect("record");
+        fs::write(
+            root.join("server/tasks/dispatch.dowe"),
+            r#"import record from "./record"
+
+fn dispatch
+  task record
+  return value:null"#,
+        )
+        .expect("dispatch");
+
+        for source in [
+            r#"main
+  server port:0
+    route "/events"
+      handler
+        database db provider:"dowe" name:"events" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
+        query created db:db.insert table:"events" value:{ kind:"created" }
+        task
+          log "inline"
+        return json:created"#,
+            r#"import dispatch from "@/server/tasks/dispatch"
+
+main
+  server port:0
+    route "/events"
+      handler
+        database db provider:"dowe" name:"events" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
+        query created db:db.insert table:"events" value:{ kind:"created" }
+        dispatch result
+        return json:created"#,
+        ] {
+            fs::write(root.join("main.dowe"), source).expect("main");
+            let source = fs::read_to_string(root.join("main.dowe")).expect("source");
+            let file = parse_source_file(root, &root.join("main.dowe"), source).expect("file");
+            let server =
+                parse_server_source(root, &file, &EnvironmentConfig::default()).expect("server");
+
+            assert!(matches!(
+                server.backend.endpoints[0].behavior,
+                EndpointBehavior::StoreActionJson(_)
+            ));
+        }
     }
 
     #[test]

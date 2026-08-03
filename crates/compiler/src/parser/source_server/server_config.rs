@@ -18,6 +18,7 @@ fn parse_server_config(
     let mut database_service = false;
     let mut cache_service = false;
     let mut vector_service = false;
+    let mut queue_service = false;
 
     for child in &node.children {
         match child.name.as_str() {
@@ -91,6 +92,19 @@ fn parse_server_config(
                 parse_vector_service(child)?;
                 vector_service = true;
             }
+            "queue" => {
+                if !matches!(target, ServerTarget::Server) {
+                    return Err(node_error(
+                        child,
+                        "`queue service` is only supported by `main.server`",
+                    ));
+                }
+                if queue_service {
+                    return Err(node_error(child, "duplicate `queue service` block"));
+                }
+                parse_queue_service(child)?;
+                queue_service = true;
+            }
             "cors" => {
                 if cors_seen {
                     return Err(node_error(child, "duplicate `cors` block"));
@@ -111,7 +125,7 @@ fn parse_server_config(
                 if tls.is_some() {
                     return Err(node_error(child, "duplicate `tls` block"));
                 }
-                tls = Some(parse_tls_config(child)?);
+                tls = Some(parse_tls_config(child, environment, port)?);
             }
             "init" => {
                 init_action = parse_action(child, ActionContext::Init, types, environment, imports)?
@@ -160,6 +174,19 @@ fn parse_server_config(
             "`vector service` reserves WebSocket path `/v1/vectors/:name`",
         ));
     }
+    if queue_service
+        && (endpoints
+            .iter()
+            .any(|route| route.path == "/v1/queues/:name")
+            || websockets
+                .iter()
+                .any(|route| route.path == "/v1/queues/:name"))
+    {
+        return Err(node_error(
+            node,
+            "`queue service` reserves WebSocket path `/v1/queues/:name`",
+        ));
+    }
 
     Ok(ServerConfig {
         port,
@@ -174,6 +201,7 @@ fn parse_server_config(
         database_service,
         cache_service,
         vector_service,
+        queue_service,
     })
 }
 
@@ -219,7 +247,25 @@ fn parse_vector_service(node: &SourceNode) -> DoweResult<()> {
     Ok(())
 }
 
-fn parse_tls_config(node: &SourceNode) -> DoweResult<TlsConfig> {
+fn parse_queue_service(node: &SourceNode) -> DoweResult<()> {
+    if node.args.len() != 1
+        || node.args[0].as_string_like().as_deref() != Some("service")
+        || !node.props.is_empty()
+        || !node.children.is_empty()
+    {
+        return Err(node_error(
+            node,
+            "the built-in Dowe Queue server uses `queue service`",
+        ));
+    }
+    Ok(())
+}
+
+fn parse_tls_config(
+    node: &SourceNode,
+    environment: &EnvironmentConfig,
+    server_port: u16,
+) -> DoweResult<TlsConfig> {
     reject_unknown_props(
         node,
         &[
@@ -230,6 +276,7 @@ fn parse_tls_config(node: &SourceNode) -> DoweResult<TlsConfig> {
             "cache",
             "domainsFrom",
             "refreshSeconds",
+            "httpPort",
         ],
     )?;
     if !node.args.is_empty() || !node.children.is_empty() {
@@ -250,7 +297,7 @@ fn parse_tls_config(node: &SourceNode) -> DoweResult<TlsConfig> {
         .unwrap_or_default();
     let domains_from = node
         .prop("domainsFrom")
-        .map(parse_tls_domains_source)
+        .map(|prop| parse_tls_domains_source(prop, environment))
         .transpose()?;
     if domains.is_empty() && domains_from.is_none() {
         return Err(node_error(
@@ -297,6 +344,22 @@ fn parse_tls_config(node: &SourceNode) -> DoweResult<TlsConfig> {
     if domains_from.is_none() && node.prop("refreshSeconds").is_some() {
         return Err(node_error(node, "`refreshSeconds` requires `domainsFrom`"));
     }
+    let http_port = node
+        .prop("httpPort")
+        .map(|prop| required_u64_value(prop, &prop.value, "httpPort"))
+        .transpose()?
+        .map(|value| {
+            u16::try_from(value)
+                .ok()
+                .filter(|value| *value != 0 && *value != server_port)
+                .ok_or_else(|| {
+                    node_error(
+                        node,
+                        "`tls.httpPort` must be a valid port different from `server.port`",
+                    )
+                })
+        })
+        .transpose()?;
     Ok(TlsConfig {
         mode,
         domains,
@@ -305,6 +368,7 @@ fn parse_tls_config(node: &SourceNode) -> DoweResult<TlsConfig> {
         cache,
         domains_from,
         refresh_seconds,
+        http_port,
     })
 }
 
@@ -334,44 +398,46 @@ fn parse_tls_domains(prop: &SourceProp) -> DoweResult<Vec<String>> {
     Ok(domains)
 }
 
-fn parse_tls_domains_source(prop: &SourceProp) -> DoweResult<TlsDomainsSource> {
+fn parse_tls_domains_source(
+    prop: &SourceProp,
+    environment: &EnvironmentConfig,
+) -> DoweResult<TlsDomainsSource> {
     let SourceValue::Object(entries) = &prop.value else {
         return Err(prop_error(
             prop,
-            "`domainsFrom` must be a KV or Database object",
+            "`domainsFrom` must be a KV, Database, or endpoint object",
         ));
     };
-    let mut values = HashMap::new();
+    let mut values = HashMap::<&str, &SourceValue>::new();
     for entry in entries {
         let SourceObjectEntry::KeyValue { key, value } = entry else {
             return Err(prop_error(prop, "`domainsFrom` does not support spread"));
         };
-        let SourceValue::String(value) = value else {
-            return Err(prop_error(
-                prop,
-                "`domainsFrom` values must be quoted strings",
-            ));
-        };
-        if values.insert(key.as_str(), value.clone()).is_some() {
+        if values.insert(key.as_str(), value).is_some() {
             return Err(prop_error(prop, format!("duplicate `domainsFrom.{key}`")));
         }
     }
+    if values.contains_key("endpoint") {
+        return parse_tls_endpoint_source(prop, values, environment);
+    }
+    let static_value = |name: &str| {
+        values.get(name).and_then(|value| match value {
+            SourceValue::String(value) if !value.is_empty() => Some((*value).clone()),
+            _ => None,
+        })
+    };
     match (
-        values.remove("kv"),
-        values.remove("key"),
-        values.remove("db"),
-        values.remove("table"),
-        values.remove("field"),
-        values.is_empty(),
+        static_value("kv"),
+        static_value("key"),
+        static_value("db"),
+        static_value("table"),
+        static_value("field"),
+        values.len(),
     ) {
-        (Some(database), Some(key), None, None, None, true)
-            if !database.is_empty() && !key.is_empty() =>
-        {
+        (Some(database), Some(key), None, None, None, 2) => {
             Ok(TlsDomainsSource::Kv { database, key })
         }
-        (None, None, Some(database), Some(table), Some(field), true)
-            if !database.is_empty() && !table.is_empty() && !field.is_empty() =>
-        {
+        (None, None, Some(database), Some(table), Some(field), 3) => {
             Ok(TlsDomainsSource::Database {
                 database,
                 table,
@@ -380,9 +446,92 @@ fn parse_tls_domains_source(prop: &SourceProp) -> DoweResult<TlsDomainsSource> {
         }
         _ => Err(prop_error(
             prop,
-            "`domainsFrom` must be `{ kv:\"name\" key:\"key\" }` or `{ db:\"name\" table:\"table\" field:\"field\" }`",
+            "`domainsFrom` must be a KV, Database, or authenticated endpoint source",
         )),
     }
+}
+
+fn parse_tls_endpoint_source(
+    prop: &SourceProp,
+    values: HashMap<&str, &SourceValue>,
+    environment: &EnvironmentConfig,
+) -> DoweResult<TlsDomainsSource> {
+    if !values
+        .keys()
+        .all(|key| matches!(*key, "endpoint" | "path" | "bearer" | "timeoutMs"))
+    {
+        return Err(prop_error(prop, "unknown endpoint domain source field"));
+    }
+    let base = match values.get("endpoint") {
+        Some(SourceValue::String(value)) if value.starts_with("https://") => {
+            HttpConnectionValue::Static((*value).clone())
+        }
+        Some(SourceValue::Bareword(value)) => {
+            let name = value.strip_prefix("env.").ok_or_else(|| {
+                prop_error(
+                    prop,
+                    "`domainsFrom.endpoint` must be HTTPS or a server env reference",
+                )
+            })?;
+            let variable = environment.variable(name).ok_or_else(|| {
+                prop_error(prop, format!("unknown environment variable `{name}`"))
+            })?;
+            if variable.visibility != EnvironmentVisibility::Server {
+                return Err(prop_error(
+                    prop,
+                    "TLS endpoint environment must be server-only",
+                ));
+            }
+            HttpConnectionValue::Environment(name.to_string())
+        }
+        _ => {
+            return Err(prop_error(
+                prop,
+                "`domainsFrom.endpoint` must be HTTPS or a server env reference",
+            ));
+        }
+    };
+    let path = match values.get("path") {
+        Some(SourceValue::String(value)) if value.starts_with('/') => (*value).clone(),
+        _ => return Err(prop_error(prop, "`domainsFrom.path` must start with `/`")),
+    };
+    let bearer = match values
+        .get("bearer")
+        .and_then(|value| value.as_string_like())
+    {
+        Some(value) => {
+            let name = value.strip_prefix("env.").ok_or_else(|| {
+                prop_error(prop, "`domainsFrom.bearer` must use a server env variable")
+            })?;
+            let variable = environment.variable(name).ok_or_else(|| {
+                prop_error(prop, format!("unknown environment variable `{name}`"))
+            })?;
+            if variable.visibility != EnvironmentVisibility::Server {
+                return Err(prop_error(prop, "TLS endpoint bearer must be server-only"));
+            }
+            ServerSecret::Environment(name.to_string())
+        }
+        None => return Err(prop_error(prop, "missing `domainsFrom.bearer`")),
+    };
+    let timeout_ms = match values.get("timeoutMs") {
+        Some(value) => value
+            .as_string_like()
+            .and_then(|value| value.parse::<u64>().ok())
+            .filter(|value| (100..=30_000).contains(value))
+            .ok_or_else(|| {
+                prop_error(
+                    prop,
+                    "`domainsFrom.timeoutMs` must be between 100 and 30000",
+                )
+            })?,
+        None => 5_000,
+    };
+    Ok(TlsDomainsSource::Endpoint {
+        base,
+        path,
+        bearer,
+        timeout_ms,
+    })
 }
 
 fn validate_tls_domain(node: &SourceNode, mode: TlsMode, domain: &str) -> DoweResult<()> {
@@ -438,4 +587,3 @@ fn validate_tls_cache(node: &SourceNode, cache: &str) -> DoweResult<()> {
     }
     Ok(())
 }
-

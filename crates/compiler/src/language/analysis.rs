@@ -6,9 +6,10 @@ use crate::model::{DesignConfig, DoweType, DoweTypeField, EnvironmentConfig};
 use crate::parser::{
     SourceFile, SourceNode, SourceObjectEntry, SourceValue, parse_config_file,
     parse_environment_files, parse_server_source, parse_source_file, parse_theme_file,
-    parse_translation_catalog, parse_views_file, reference_fields_for_type, resolve_import,
-    type_from_source_value, validate_server_module_source, validate_shared_type_source,
-    validate_translation_source, validate_view_source, validate_view_store_source,
+    parse_translation_catalog, parse_views_file, queue_publish_result_type,
+    reference_fields_for_type, resolve_import, type_from_source_value,
+    validate_server_module_source, validate_shared_type_source, validate_translation_source,
+    validate_view_source, validate_view_store_source,
 };
 use crate::test_runner::validate_test_file;
 use std::collections::HashMap;
@@ -121,7 +122,16 @@ fn is_server_config_source(file: &SourceFile) -> bool {
     file.nodes.iter().any(|node| {
         matches!(
             node.name.as_str(),
-            "database" | "entity" | "seeder" | "cache" | "kv" | "vector" | "emb" | "let" | "query"
+            "database"
+                | "entity"
+                | "seeder"
+                | "cache"
+                | "kv"
+                | "vector"
+                | "emb"
+                | "queue"
+                | "let"
+                | "query"
         )
     })
 }
@@ -280,6 +290,7 @@ pub(super) fn exports_symbol(file: &SourceFile, name: &str) -> bool {
                 | "database"
                 | "cache"
                 | "vector"
+                | "queue"
                 | "entity"
                 | "seeder"
                 | "store"
@@ -570,6 +581,11 @@ fn find_reference_fields(
         {
             return Some(reference_fields_for_type(&fields));
         }
+        if let Some((binding, fields)) = queue_binding_fields(node)
+            && binding == reference_root
+        {
+            return Some(reference_fields_for_type(&fields));
+        }
         if let Some(fields) = find_reference_fields(&node.children, tables, types, reference_root) {
             return Some(fields);
         }
@@ -725,6 +741,20 @@ fn vector_binding_fields(node: &SourceNode) -> Option<(String, DoweType)> {
         return None;
     };
     Some((binding, DoweType::Object(fields)))
+}
+
+fn queue_binding_fields(node: &SourceNode) -> Option<(String, DoweType)> {
+    if node.name != "msg"
+        || !node
+            .prop("conn")?
+            .value
+            .as_required_string()?
+            .ends_with(".publish")
+    {
+        return None;
+    }
+    let binding = node.args.first()?.as_required_string()?;
+    Some((binding, queue_publish_result_type()))
 }
 
 fn request_json_binding_fields(

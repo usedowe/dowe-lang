@@ -138,7 +138,7 @@ fn parse_request_declaration(
     if node.args.len() != 1 || !node.children.is_empty() {
         return Err(node_error(
             node,
-            "request uses `request <binding> source:\"query|rawQuery|header|cookie\" [name:<name>]`",
+            "request uses `request <binding> source:\"query|rawQuery|header|cookie|bytes\" [name:<name>]`",
         ));
     }
     let binding = node
@@ -171,10 +171,14 @@ fn parse_request_declaration(
                 name: required_cookie_name_prop(node, "name")?,
             }
         }
+        "bytes" => {
+            reject_unknown_props(node, &["source"])?;
+            ServerStatement::RequestBytes { binding }
+        }
         _ => {
             return Err(node_error(
                 node,
-                "request `source` must be `query`, `rawQuery`, `header`, or `cookie`",
+                "request `source` must be `query`, `rawQuery`, `header`, `cookie`, or `bytes`",
             ));
         }
     };
@@ -206,6 +210,9 @@ fn legacy_request_metadata_error(node: &SourceNode, statement: &ServerStatement)
         }
         ServerStatement::RequestCookie { binding, name } => {
             format!("request {binding} source:\"cookie\" name:\"{name}\"")
+        }
+        ServerStatement::RequestBytes { binding } => {
+            format!("request {binding} source:\"bytes\"")
         }
         _ => unreachable!(),
     };

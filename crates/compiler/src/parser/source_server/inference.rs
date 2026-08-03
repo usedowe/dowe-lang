@@ -65,6 +65,9 @@ fn infer_request_metadata_statement(
         | ServerStatement::RequestCookie { binding, .. } => {
             bindings.insert(binding.clone(), DoweType::String);
         }
+        ServerStatement::RequestBytes { binding } => {
+            bindings.insert(binding.clone(), DoweType::Unknown);
+        }
         _ => {}
     }
 }

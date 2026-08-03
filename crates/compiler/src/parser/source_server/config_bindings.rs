@@ -40,9 +40,21 @@ fn parse_config_binding_node(
             statement: ServerStatement::Vector(statement),
         });
     }
+    if let Some(statement) = parse_queue_statement(node, Some(environment))? {
+        if !matches!(statement, ServerQueueStatement::Handle { .. }) {
+            return Err(node_error(
+                node,
+                "config modules only support Queue connection bindings",
+            ));
+        }
+        validate_binding_name(node, binding_name_from_queue(&statement))?;
+        return Ok(ServerConfigBinding {
+            statement: ServerStatement::Queue(statement),
+        });
+    }
     Err(node_error(
         node,
-        "config modules only support `database`, `cache`, and `vector` declarations",
+        "config modules only support `database`, `cache`, `vector`, and `queue` declarations",
     ))
 }
 
@@ -51,6 +63,7 @@ fn binding_name(statement: &ServerStatement) -> &str {
         ServerStatement::Store(statement) => binding_name_from_database(statement),
         ServerStatement::Kv(statement) => binding_name_from_kv(statement),
         ServerStatement::Vector(statement) => binding_name_from_vector(statement),
+        ServerStatement::Queue(statement) => binding_name_from_queue(statement),
         _ => "",
     }
 }
@@ -87,6 +100,13 @@ fn binding_name_from_vector(statement: &ServerVectorStatement) -> &str {
         | ServerVectorStatement::Read { binding, .. }
         | ServerVectorStatement::Delete { binding, .. }
         | ServerVectorStatement::List { binding, .. } => binding,
+    }
+}
+
+fn binding_name_from_queue(statement: &ServerQueueStatement) -> &str {
+    match statement {
+        ServerQueueStatement::Handle { connection } => &connection.binding,
+        ServerQueueStatement::Publish { binding, .. } => binding,
     }
 }
 
@@ -179,7 +199,7 @@ fn collect_database_statement(
                 collect_database_statement(statement, connections)?;
             }
         }
-        ServerStatement::Go(job) | ServerStatement::Cron(job) => {
+        ServerStatement::Task(job) | ServerStatement::Cron(job) => {
             for statement in &job.action.statements {
                 collect_database_statement(statement, connections)?;
             }
@@ -226,8 +246,10 @@ fn seed_config_bindings(statements: &[ServerStatement], bindings: &mut HashMap<S
             ServerStatement::Vector(ServerVectorStatement::Handle { connection }) => {
                 bindings.insert(connection.binding.clone(), DoweType::Unknown);
             }
+            ServerStatement::Queue(ServerQueueStatement::Handle { connection }) => {
+                bindings.insert(connection.binding.clone(), DoweType::Unknown);
+            }
             _ => {}
         }
     }
 }
-

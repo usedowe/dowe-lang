@@ -1,17 +1,25 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    EnvironmentConfig, EnvironmentValueSource, EnvironmentVariable, EnvironmentVisibility,
+    CompileEnvironment, EnvironmentConfig, EnvironmentValueSource, EnvironmentVariable,
+    EnvironmentVisibility,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
 pub(crate) fn parse_environment_files(root: &Path) -> DoweResult<EnvironmentConfig> {
+    parse_environment_files_for(root, CompileEnvironment::Development)
+}
+
+pub(crate) fn parse_environment_files_for(
+    root: &Path,
+    environment: CompileEnvironment,
+) -> DoweResult<EnvironmentConfig> {
     reject_environment_source(root, "env.dowe")?;
     reject_environment_source(root, "src/env.dowe")?;
 
     let example_path = root.join(".env.example");
-    let local_path = root.join(".env");
+    let local_path = root.join(environment.file_name());
     let examples = parse_optional_file(&example_path)?;
     let locals = parse_optional_file(&local_path)?;
     let names = examples
@@ -46,7 +54,7 @@ fn reject_environment_source(root: &Path, relative: &str) -> DoweResult<()> {
         return Err(DoweError::at_path(
             &path,
             format!(
-                "`{relative}` is no longer supported; declare names in `.env.example`, values in `.env`, and keep using `env.NAME` in Dowe source"
+                "`{relative}` is no longer supported; declare names in `.env.example`, development values in `.env`, deploy values in `.env.live`, `.env.stage`, or `.env.uat`, and keep using `env.NAME` in Dowe source"
             ),
         ));
     }

@@ -42,11 +42,31 @@ fn parse_action(
                     ));
                 }
             }
+            "queue" | "msg" => {
+                let statement = parse_queue_statement(child, Some(environment))?.ok_or_else(|| {
+                    node_error(child, "invalid Queue connection or publication declaration")
+                })?;
+                validate_queue_statement_references(child, &statement, &inferred_bindings)?;
+                infer_queue_statement(&statement, &mut inferred_bindings);
+                statements.push(ServerStatement::Queue(statement));
+            }
             "spawn" => {
                 let statement = parse_spawn_declaration(child)?;
                 validate_spawn_statement_references(child, &statement, &inferred_bindings)?;
                 infer_spawn_statement(&statement, &mut inferred_bindings);
                 statements.push(ServerStatement::Spawn(statement));
+            }
+            "file" => {
+                let statement = parse_file_declaration(child)?;
+                validate_file_statement_references(child, &statement, &inferred_bindings)?;
+                infer_file_statement(&statement, &mut inferred_bindings);
+                statements.push(ServerStatement::File(statement));
+            }
+            "password" => {
+                let statement = parse_password_declaration(child)?;
+                validate_password_statement_references(child, &statement, &inferred_bindings)?;
+                infer_password_statement(&statement, &mut inferred_bindings);
+                statements.push(ServerStatement::Password(statement));
             }
             "http" => {
                 let statement = parse_http_declaration(child, context, environment)?;
@@ -187,17 +207,20 @@ fn parse_action(
                 validate_log_references(child, &log, &inferred_bindings)?;
                 statements.push(ServerStatement::Log(log));
             }
-            "go" => statements.push(ServerStatement::Go(parse_background_job(
+            "task" => statements.push(ServerStatement::Task(parse_task(
                 child,
                 context,
-                &imports.callables,
-                false,
+                types,
+                environment,
+                imports,
+                &inferred_bindings,
             )?)),
-            "cron" => statements.push(ServerStatement::Cron(parse_background_job(
+            "go" => return Err(legacy_task_error(child)),
+            "cron" => statements.push(ServerStatement::Cron(parse_cron_job(
                 child,
                 context,
                 &imports.callables,
-                true,
+                &inferred_bindings,
             )?)),
             "send" => {
                 let statement = parse_websocket_send_json(child, context)?;
@@ -243,6 +266,6 @@ fn parse_action(
     statements.splice(0..0, config_statements);
     validate_kv_handles(&statements)?;
     validate_vector_handles(&statements)?;
+    validate_queue_handles(&statements)?;
     Ok(ServerAction { statements })
 }
-

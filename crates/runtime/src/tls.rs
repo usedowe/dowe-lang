@@ -3,7 +3,7 @@ use crate::logging::{log_error, log_info};
 use axum::Router;
 use axum_server::Handle;
 use axum_server::tls_rustls::RustlsConfig;
-use dowe_compiler::{TlsConfig, TlsMode};
+use dowe_compiler::{EnvironmentConfig, TlsConfig, TlsMode};
 use futures_util::StreamExt;
 use rcgen::generate_simple_self_signed;
 use rustls_acme::rustls::ServerConfig as RustlsServerConfig;
@@ -20,27 +20,97 @@ use tokio::task::JoinHandle;
 use tokio::time::{Duration, interval};
 
 use crate::tls_domains::{effective_domains, validated_static_domains};
+use crate::tls_redirect::{TlsDomainCatalog, new_domain_catalog, replace_domains, serve_redirects};
 
 pub(crate) fn spawn_tls_server(
     listener: TcpListener,
     router: Router,
     config: TlsConfig,
+    environment: EnvironmentConfig,
     root: PathBuf,
     shutdown: oneshot::Receiver<()>,
 ) -> JoinHandle<RuntimeResult<()>> {
-    tokio::spawn(run_tls_server(listener, router, config, root, shutdown))
+    tokio::spawn(run_tls_service(
+        listener,
+        router,
+        config,
+        environment,
+        root,
+        shutdown,
+    ))
+}
+
+async fn run_tls_service(
+    listener: TcpListener,
+    router: Router,
+    config: TlsConfig,
+    environment: EnvironmentConfig,
+    root: PathBuf,
+    mut shutdown: oneshot::Receiver<()>,
+) -> RuntimeResult<()> {
+    let catalog = new_domain_catalog();
+    let redirect_listener = match config.http_port {
+        Some(port) => {
+            let addr = SocketAddr::new(listener.local_addr()?.ip(), port);
+            Some(TcpListener::bind(addr).await.map_err(RuntimeError::from)?)
+        }
+        None => None,
+    };
+    let (tls_shutdown, tls_signal) = oneshot::channel();
+    let mut tls = tokio::spawn(run_tls_server(
+        listener,
+        router,
+        config,
+        environment,
+        root,
+        catalog.clone(),
+        tls_signal,
+    ));
+    if let Some(listener) = redirect_listener {
+        let (redirect_shutdown, redirect_signal) = oneshot::channel();
+        let mut redirect = tokio::spawn(serve_redirects(listener, catalog, redirect_signal));
+        tokio::select! {
+            result = &mut tls => {
+                let _ = redirect_shutdown.send(());
+                let _ = redirect.await;
+                result.map_err(RuntimeError::from)?
+            }
+            result = &mut redirect => {
+                let _ = tls_shutdown.send(());
+                let _ = tls.await;
+                result.map_err(RuntimeError::from)?
+            }
+            _ = &mut shutdown => {
+                let _ = tls_shutdown.send(());
+                let _ = redirect_shutdown.send(());
+                let tls_result = tls.await.map_err(RuntimeError::from)?;
+                let redirect_result = redirect.await.map_err(RuntimeError::from)?;
+                tls_result.and(redirect_result)
+            }
+        }
+    } else {
+        tokio::select! {
+            result = &mut tls => result.map_err(RuntimeError::from)?,
+            _ = &mut shutdown => {
+                let _ = tls_shutdown.send(());
+                tls.await.map_err(RuntimeError::from)?
+            }
+        }
+    }
 }
 
 async fn run_tls_server(
     listener: TcpListener,
     router: Router,
     config: TlsConfig,
+    environment: EnvironmentConfig,
     root: PathBuf,
+    catalog: TlsDomainCatalog,
     mut shutdown: oneshot::Receiver<()>,
 ) -> RuntimeResult<()> {
     let addr = listener.local_addr()?;
     let mut listener = Some(listener);
-    let mut domains = match effective_domains(&root, &config) {
+    let mut domains = match effective_domains(&root, &config, &environment).await {
         Ok(domains) => domains,
         Err(error) if !config.domains.is_empty() => {
             log_error(format!("TLS domain source unavailable at startup: {error}"));
@@ -53,6 +123,7 @@ async fn run_tls_server(
             "TLS requires at least one effective domain",
         ));
     }
+    replace_domains(&catalog, &domains).await;
 
     loop {
         let active_listener = match listener.take() {
@@ -84,9 +155,10 @@ async fn run_tls_server(
                     return result;
                 }
                 _ = refresh.tick(), if config.domains_from.is_some() => {
-                    match effective_domains(&root, &config) {
+                    match effective_domains(&root, &config, &environment).await {
                         Ok(next) if !next.is_empty() && next != domains => {
                             domains = next;
+                            replace_domains(&catalog, &domains).await;
                             handle.shutdown();
                             break true;
                         }
