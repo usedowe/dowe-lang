@@ -22,6 +22,7 @@ fn render_dev_android_navigation_node(
             render_dev_android_bar(
                 props,
                 1536,
+                false,
                 top,
                 start,
                 center,
@@ -48,6 +49,7 @@ fn render_dev_android_navigation_node(
             render_dev_android_bar(
                 props,
                 1536,
+                true,
                 top,
                 start,
                 center,
@@ -183,6 +185,7 @@ fn render_dev_android_navigation_node(
 fn render_dev_android_bar(
     props: &BarProps,
     boxed_max_width: u16,
+    boxed_regions: bool,
     top: &[ViewNode],
     start: &[ViewNode],
     center: &[ViewNode],
@@ -200,27 +203,34 @@ fn render_dev_android_bar(
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     let current_color = Some(dev_variant_content(&props.style).to_string());
     let surface = next_dev_view(counter);
+    let surface_color = dev_variant_container(&props.style);
+    let background = if props.dock_on_scroll {
+        format!("doweStyledBackground({surface_color}, DOWE_MUTED, 1, DOWE_RADIUS)")
+    } else {
+        format!(
+            "doweBackground({surface_color}, {})",
+            if props.floating { "DOWE_RADIUS" } else { "0" }
+        )
+    };
     output.push_str(&format!(
-        "        LinearLayout {surface} = doweContainer(false);\n        {surface}.setMinimumHeight(doweDp(48));\n        {surface}.setBackground(doweBackground({}, {}));\n",
-        dev_variant_container(&props.style),
-        if props.floating {
-            "DOWE_RADIUS"
-        } else {
-            "0"
-        }
+        "        LinearLayout {surface} = doweContainer(false);\n        {surface}.setMinimumHeight(doweDp(48));\n        {surface}.setBackground({background});\n"
     ));
     apply_dev_android_style(&props.style.style, &surface, true, output);
     if props.position == BarPosition::Static {
-        output.push_str(&dev_add(
-            parent,
-            &surface,
-            parent_gap,
-            parent_horizontal,
-        ));
+        output.push_str(&dev_add(parent, &surface, parent_gap, parent_horizontal));
     }
+    let regions_parent = if props.boxed && boxed_regions {
+        let inner = next_dev_view(counter);
+        output.push_str(&format!(
+            "        LinearLayout {inner} = doweBoxedContainer(false, {boxed_max_width});\n        doweAdd({surface}, {inner});\n"
+        ));
+        inner
+    } else {
+        surface.clone()
+    };
     render_dev_android_bar_edge_region(
         top,
-        &surface,
+        &regions_parent,
         counter,
         output,
         current_font,
@@ -229,13 +239,13 @@ fn render_dev_android_bar(
         children_method,
     );
     let content = next_dev_view(counter);
-    let content_constructor = if props.boxed {
+    let content_constructor = if props.boxed && !boxed_regions {
         format!("doweBoxedContainer(true, {boxed_max_width})")
     } else {
         "doweContainer(true)".to_string()
     };
     output.push_str(&format!(
-        "        LinearLayout {content} = {content_constructor};\n        {content}.setGravity(Gravity.CENTER_VERTICAL);\n        doweAdd({surface}, {content});\n"
+        "        LinearLayout {content} = {content_constructor};\n        {content}.setGravity(Gravity.CENTER_VERTICAL);\n        doweAdd({regions_parent}, {content});\n"
     ));
     render_dev_android_bar_region(
         start,
@@ -278,7 +288,7 @@ fn render_dev_android_bar(
     );
     render_dev_android_bar_edge_region(
         bottom,
-        &surface,
+        &regions_parent,
         counter,
         output,
         current_font,
@@ -288,7 +298,8 @@ fn render_dev_android_bar(
     );
     if props.position != BarPosition::Static {
         output.push_str(&format!(
-            "        dowePinAppBar({parent}, {surface});\n"
+            "        dowePinAppBar({parent}, {surface}, {}, {surface_color});\n",
+            props.dock_on_scroll
         ));
     }
 }

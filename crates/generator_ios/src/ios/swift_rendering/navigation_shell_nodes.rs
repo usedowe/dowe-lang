@@ -28,6 +28,7 @@ fn render_swift_navigation_shell_node(
                 center_padding: 12,
                 end_padding: 12,
                 boxed_width: 1536,
+                boxed_regions: false,
             },
             indent,
             output,
@@ -43,8 +44,7 @@ fn render_swift_navigation_shell_node(
             center,
             end,
             bottom,
-        }
-        => render_swift_bar(
+        } => render_swift_bar(
             props,
             top,
             start,
@@ -56,6 +56,7 @@ fn render_swift_navigation_shell_node(
                 center_padding: 8,
                 end_padding: 8,
                 boxed_width: 1536,
+                boxed_regions: true,
             },
             indent,
             output,

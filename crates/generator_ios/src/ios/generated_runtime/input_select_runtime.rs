@@ -70,6 +70,7 @@ struct DoweInputField: View {
                         .font(.caption)
                         .offset(y: active ? CGFloat(-12) : CGFloat(0))
                         .scaleEffect(active ? CGFloat(0.9) : CGFloat(1), anchor: .leading)
+                        .padding(.leading, active && startIcon != nil ? CGFloat(32) : CGFloat(0))
                 }
                 HStack(spacing: CGFloat(8)) {
                     if let startIcon, iconsVisible {
@@ -832,17 +833,22 @@ struct DoweImageCropper: View {
     }
 }
 
-struct DowePasswordField: View {
+struct DowePassword: View {
     let value: Binding<String>?
     let initialValue: String
     let label: String?
     let placeholder: String
     let floating: Bool
+    let minHeight: CGFloat
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
     let hideStrength: Bool
     let weakLabel: String
     let mediumLabel: String
     let strongLabel: String
     let readOnly: Bool
+    let showIcon: DoweControlIcon
+    let hideIcon: DoweControlIcon
     let backgroundColor: Color
     let contentColor: Color
     @State private var localValue: String?
@@ -937,19 +943,26 @@ struct DowePasswordField: View {
                     .focused($focused)
                     .disabled(readOnly)
                     .textFieldStyle(.plain)
+                    .font(.system(size: fontSize))
+                    .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
                     .padding(.top, floating ? CGFloat(10) : CGFloat(0))
                     Button(action: { visible.toggle() }) {
-                        Text(visible ? "Hide" : "Show")
-                            .font(.caption)
-                            .fontWeight(.semibold)
+                        DoweSvgView(
+                            viewBox: visible ? hideIcon.viewBox : showIcon.viewBox,
+                            color: contentColor,
+                            paths: visible ? hideIcon.paths : showIcon.paths
+                        )
+                        .frame(width: CGFloat(20), height: CGFloat(20))
                     }
                     .buttonStyle(.plain)
+                    .frame(width: CGFloat(32), height: CGFloat(32))
                     .disabled(readOnly)
+                    .accessibilityLabel(visible ? "Hide password" : "Show password")
                 }
             }
             .foregroundStyle(contentColor)
             .padding(.horizontal, CGFloat(12))
-            .frame(maxWidth: .infinity, minHeight: CGFloat(48), alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
             .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(contentColor.opacity(0.22), lineWidth: CGFloat(1)))
@@ -987,7 +1000,6 @@ struct DowePhoneCountryAnchorPresenter: View {
     let searchPlaceholder: String
     let emptyText: String
     let loadingText: String
-    let accentColor: Color
     let query: Binding<String>
     let onSelect: (DowePhoneCountry) -> Void
     let onDismiss: () -> Void
@@ -995,8 +1007,8 @@ struct DowePhoneCountryAnchorPresenter: View {
     var body: some View {
         DoweAnchoredPopoverPresenter(
             isPresented: isPresented,
-            minWidth: CGFloat(300),
-            maxWidth: CGFloat(380),
+            minWidth: CGFloat(280),
+            maxWidth: CGFloat(384),
             maxHeight: CGFloat(380),
             preferredHeight: CGFloat(360),
             onDismiss: onDismiss
@@ -1007,7 +1019,6 @@ struct DowePhoneCountryAnchorPresenter: View {
                 searchPlaceholder: searchPlaceholder,
                 emptyText: emptyText,
                 loadingText: loadingText,
-                accentColor: accentColor,
                 query: query,
                 onSelect: onSelect
             )
@@ -1021,7 +1032,6 @@ struct DowePhoneCountryPopover: View {
     let searchPlaceholder: String
     let emptyText: String
     let loadingText: String
-    let accentColor: Color
     let query: Binding<String>
     let onSelect: (DowePhoneCountry) -> Void
 
@@ -1072,7 +1082,7 @@ struct DowePhoneCountryPopover: View {
                                 .padding(.horizontal, CGFloat(12))
                                 .padding(.vertical, CGFloat(8))
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(item.code.caseInsensitiveCompare(selectedCode) == .orderedSame ? accentColor.opacity(0.08) : Color.clear)
+                                .background(item.code.caseInsensitiveCompare(selectedCode) == .orderedSame ? DoweDesign.onSurface.opacity(0.07) : Color.clear)
                                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
                             }
                             .buttonStyle(.plain)
@@ -1090,7 +1100,7 @@ struct DowePhoneCountryPopover: View {
     }
 }
 
-struct DowePhoneField: View {
+struct DowePhone: View {
     let value: Binding<String>?
     let initialValue: String
     let label: String?
@@ -1103,6 +1113,9 @@ struct DowePhoneField: View {
     let emptyText: String
     let loadingText: String
     let floating: Bool
+    let minHeight: CGFloat
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
     let disabled: Bool
     let backgroundColor: Color
     let contentColor: Color
@@ -1178,9 +1191,11 @@ struct DowePhoneField: View {
                         .disabled(disabled)
                 }
             }
+            .font(.system(size: fontSize))
+            .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
             .foregroundStyle(contentColor)
             .padding(.horizontal, CGFloat(12))
-            .frame(maxWidth: .infinity, minHeight: CGFloat(48), alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
             .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(contentColor.opacity(0.22), lineWidth: CGFloat(1)))
@@ -1192,7 +1207,6 @@ struct DowePhoneField: View {
                     searchPlaceholder: searchPlaceholder,
                     emptyText: emptyText,
                     loadingText: loadingText,
-                    accentColor: contentColor,
                     query: $query,
                     onSelect: { item in
                         selectedCode = item.code
@@ -1212,13 +1226,15 @@ struct DowePhoneField: View {
     }
 }
 
-struct DowePinField: View {
+struct DowePin: View {
     let value: Binding<String>?
     let initialValue: String
     let label: String?
     let length: Int
     let kind: String
     let size: String
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
     let variant: String
     let helpText: String?
     let errorText: String?
@@ -1228,7 +1244,6 @@ struct DowePinField: View {
     let borderWidth: CGFloat
     let radius: CGFloat
     @State private var localValue: String?
-    @State private var focusAfterInput: Int?
     @FocusState private var focusedCell: Int?
 
     private var currentValue: String {
@@ -1244,7 +1259,7 @@ struct DowePinField: View {
 
     var body: some View {
         let cellWidth: CGFloat = size == "sm" ? 40 : (size == "lg" ? 52 : 44)
-        let cellHeight: CGFloat = size == "sm" ? 34 : (size == "lg" ? 48 : 40)
+        let cellHeight: CGFloat = size == "sm" ? 32 : (size == "lg" ? 48 : 40)
         VStack(alignment: .leading, spacing: CGFloat(6)) {
             if let label {
                 Text(label)
@@ -1263,7 +1278,8 @@ struct DowePinField: View {
                         .textFieldStyle(.plain)
                         .multilineTextAlignment(.center)
                         .keyboardType(kind == "number" ? .numberPad : .default)
-                        .font(.system(size: size == "sm" ? CGFloat(16) : (size == "lg" ? CGFloat(20) : CGFloat(18)), weight: .bold))
+                        .font(.system(size: fontSize, weight: .bold))
+                        .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
                         .foregroundStyle(contentColor)
                         .frame(width: cellWidth, height: cellHeight)
                         .background(backgroundColor)
@@ -1280,16 +1296,6 @@ struct DowePinField: View {
                             }
                         }
                         .focused($focusedCell, equals: index)
-                        .onChange(of: cellValue(at: index)) { previous, next in
-                            if let focusAfterInput {
-                                focusedCell = focusAfterInput
-                                self.focusAfterInput = nil
-                            } else if !next.isEmpty && previous.isEmpty && index + 1 < length {
-                                focusedCell = index + 1
-                            } else if next.isEmpty && !previous.isEmpty && index > 0 {
-                                focusedCell = index - 1
-                            }
-                        }
                 }
                 }
             }
@@ -1305,10 +1311,6 @@ struct DowePinField: View {
         }
     }
 
-    private func cellValue(at index: Int) -> String {
-        cells[index]
-    }
-
     private func binding(for index: Int) -> Binding<String> {
         Binding(
             get: {
@@ -1318,21 +1320,27 @@ struct DowePinField: View {
                 let filtered = kind == "number" ? next.filter { $0.isNumber } : next
                 var nextCells = cells
                 let tokens = Array(filtered)
+                let nextFocus: Int?
                 if tokens.count > 1 {
                     for (offset, character) in tokens.prefix(length - index).enumerated() {
                         nextCells[index + offset] = String(character)
                     }
                     let last = min(index + tokens.count - 1, length - 1)
-                    focusAfterInput = last < length - 1 ? last : nil
+                    nextFocus = last
                 } else {
                     nextCells[index] = tokens.last.map { String($0) } ?? ""
-                    focusAfterInput = !nextCells[index].isEmpty && index + 1 < length ? index + 1 : nil
+                    nextFocus = !nextCells[index].isEmpty && index + 1 < length ? index + 1 : nil
                 }
                 let nextValue = nextCells.joined()
                 if let value {
                     value.wrappedValue = nextValue
                 } else {
                     localValue = nextValue
+                }
+                if let nextFocus {
+                    DispatchQueue.main.async {
+                        focusedCell = nextFocus
+                    }
                 }
             }
         )
@@ -1347,6 +1355,8 @@ struct DoweTextarea: View {
     let floating: Bool
     let rows: Int
     let maxLength: Int?
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
     let readOnly: Bool
     let backgroundColor: Color
     let contentColor: Color
@@ -1386,6 +1396,8 @@ struct DoweTextarea: View {
             ZStack(alignment: .topLeading) {
                 if visiblePlaceholder {
                     Text(placeholder)
+                        .font(.system(size: fontSize))
+                        .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
                         .foregroundStyle(contentColor.opacity(0.55))
                         .padding(CGFloat(8))
                         .padding(.top, floating ? CGFloat(12) : CGFloat(0))
@@ -1400,6 +1412,8 @@ struct DoweTextarea: View {
                 }
                 TextEditor(text: textBinding)
                     .focused($focused)
+                    .font(.system(size: fontSize))
+                    .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
                     .foregroundStyle(contentColor)
                     .frame(minHeight: CGFloat(rows * 28))
                     .disabled(readOnly)

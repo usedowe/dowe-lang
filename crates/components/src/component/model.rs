@@ -100,14 +100,14 @@ pub enum ViewNode {
     ImageCropper {
         props: ImageCropperProps,
     },
-    PasswordField {
-        props: PasswordFieldProps,
+    Password {
+        props: PasswordProps,
     },
-    PhoneField {
-        props: PhoneFieldProps,
+    Phone {
+        props: PhoneProps,
     },
-    PinField {
-        props: PinFieldProps,
+    Pin {
+        props: PinProps,
     },
     Textarea {
         props: TextareaProps,
@@ -718,7 +718,7 @@ pub struct StyleProps {
     pub overlay: Option<ResponsiveValue<OverlayPaint>>,
     pub background: Option<ResponsiveValue<SectionBackground>>,
     pub boxed: bool,
-    pub animation: Option<ViewAnimation>,
+    pub extras: Option<Box<StyleExtras>>,
     pub spacing: SpacingProps,
     pub sizing: SizingProps,
     pub rounded: Option<ResponsiveValue<RoundedSize>>,
@@ -726,8 +726,24 @@ pub struct StyleProps {
     pub border_color: Option<ColorFamily>,
     pub shadow: Option<ResponsiveValue<ShadowSize>>,
     pub shadow_color: Option<ColorFamily>,
-    pub grid_item: Option<Box<GridItemProps>>,
-    pub position: Option<Box<PositionProps>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct StyleExtras {
+    pub motion: ViewMotionStyle,
+    pub grid_item: GridItemProps,
+    pub position: PositionProps,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ViewMotionStyle {
+    pub animation: Option<ViewAnimation>,
+    pub rotate: Option<ResponsiveValue<ViewRotation>>,
+    pub scale: Option<ResponsiveValue<ViewScale>>,
+    pub translate_x: Option<ResponsiveValue<ViewTranslation>>,
+    pub translate_y: Option<ResponsiveValue<ViewTranslation>>,
+    pub transition: Option<ViewTransition>,
+    pub gesture: Option<ViewGesture>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -774,23 +790,69 @@ pub struct PositionProps {
 }
 
 impl StyleProps {
+    pub fn animation(&self) -> Option<ViewAnimation> {
+        self.motion().animation
+    }
+
+    pub fn set_animation(&mut self, animation: Option<ViewAnimation>) {
+        if animation.is_some() || self.extras.is_some() {
+            self.motion_mut().animation = animation;
+        }
+    }
+
+    pub fn motion(&self) -> &ViewMotionStyle {
+        self.extras
+            .as_deref()
+            .map(|extras| &extras.motion)
+            .unwrap_or(&ViewMotionStyle::EMPTY)
+    }
+
+    pub fn motion_mut(&mut self) -> &mut ViewMotionStyle {
+        &mut self
+            .extras
+            .get_or_insert_with(|| Box::new(StyleExtras::default()))
+            .motion
+    }
+
     pub fn grid_item(&self) -> &GridItemProps {
-        self.grid_item.as_deref().unwrap_or(&GridItemProps::EMPTY)
+        self.extras
+            .as_deref()
+            .map(|extras| &extras.grid_item)
+            .unwrap_or(&GridItemProps::EMPTY)
     }
 
     pub fn grid_item_mut(&mut self) -> &mut GridItemProps {
-        self.grid_item
-            .get_or_insert_with(|| Box::new(GridItemProps::default()))
+        &mut self
+            .extras
+            .get_or_insert_with(|| Box::new(StyleExtras::default()))
+            .grid_item
     }
 
     pub fn position(&self) -> &PositionProps {
-        self.position.as_deref().unwrap_or(&PositionProps::STATIC)
+        self.extras
+            .as_deref()
+            .map(|extras| &extras.position)
+            .unwrap_or(&PositionProps::STATIC)
     }
 
     pub fn position_mut(&mut self) -> &mut PositionProps {
-        self.position
-            .get_or_insert_with(|| Box::new(PositionProps::default()))
+        &mut self
+            .extras
+            .get_or_insert_with(|| Box::new(StyleExtras::default()))
+            .position
     }
+}
+
+impl ViewMotionStyle {
+    pub const EMPTY: Self = Self {
+        animation: None,
+        rotate: None,
+        scale: None,
+        translate_x: None,
+        translate_y: None,
+        transition: None,
+        gesture: None,
+    };
 }
 
 impl GridItemProps {
@@ -921,6 +983,7 @@ pub struct TextProps {
     pub weight: Option<ResponsiveValue<TextWeight>>,
     pub letter_spacing: Option<ResponsiveValue<TextSpacing>>,
     pub i18n: Option<String>,
+    pub title: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -963,6 +1026,7 @@ pub struct BarProps {
     pub floating: bool,
     pub position: BarPosition,
     pub hide_on_scroll: bool,
+    pub dock_on_scroll: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1862,7 +1926,7 @@ impl ImageCropperShape {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PasswordFieldProps {
+pub struct PasswordProps {
     pub style: VariantProps,
     pub value: Option<String>,
     pub hide_strength: bool,
@@ -1877,7 +1941,7 @@ pub struct PasswordFieldProps {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PhoneFieldProps {
+pub struct PhoneProps {
     pub style: VariantProps,
     pub value: Option<String>,
     pub country: Option<String>,
@@ -1893,24 +1957,24 @@ pub struct PhoneFieldProps {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PinFieldProps {
+pub struct PinProps {
     pub style: VariantProps,
     pub value: Option<String>,
     pub length: u8,
-    pub kind: PinFieldKind,
+    pub kind: PinKind,
     pub name: Option<String>,
     pub help_text: Option<String>,
     pub error_text: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PinFieldKind {
+pub enum PinKind {
     Text,
     Password,
     Number,
 }
 
-impl PinFieldKind {
+impl PinKind {
     pub fn from_name(value: &str) -> Option<Self> {
         match value {
             "text" => Some(Self::Text),
@@ -3596,6 +3660,25 @@ impl SpacingProps {
         spacing
     }
 
+    pub fn with_vertical_padding_defaults(
+        &self,
+        top: ResponsiveValue<ScaleValue>,
+        bottom: ResponsiveValue<ScaleValue>,
+    ) -> Self {
+        if self.p.is_some() {
+            return self.clone();
+        }
+
+        let mut spacing = self.clone();
+        if spacing.py.is_none() && spacing.pt.is_none() {
+            spacing.pt = Some(top);
+        }
+        if spacing.py.is_none() && spacing.pb.is_none() {
+            spacing.pb = Some(bottom);
+        }
+        spacing
+    }
+
     pub fn with_padding_default(&self, value: ResponsiveValue<ScaleValue>) -> Self {
         if self.p.is_some() {
             return self.clone();
@@ -3866,9 +3949,9 @@ pub enum BuiltinComponent {
     DragItem,
     Editor,
     ImageCropper,
-    PasswordField,
-    PhoneField,
-    PinField,
+    Password,
+    Phone,
+    Pin,
     Textarea,
     Alert,
     Icon,
@@ -3965,9 +4048,9 @@ impl BuiltinComponent {
         Self::DragItem,
         Self::Editor,
         Self::ImageCropper,
-        Self::PasswordField,
-        Self::PhoneField,
-        Self::PinField,
+        Self::Password,
+        Self::Phone,
+        Self::Pin,
         Self::Textarea,
         Self::Alert,
         Self::Icon,
@@ -4064,9 +4147,9 @@ impl BuiltinComponent {
             "dragItem" => Some(Self::DragItem),
             "Editor" => Some(Self::Editor),
             "ImageCropper" => Some(Self::ImageCropper),
-            "PasswordField" => Some(Self::PasswordField),
-            "PhoneField" => Some(Self::PhoneField),
-            "PinField" => Some(Self::PinField),
+            "Password" => Some(Self::Password),
+            "Phone" => Some(Self::Phone),
+            "Pin" => Some(Self::Pin),
             "Textarea" => Some(Self::Textarea),
             "Alert" => Some(Self::Alert),
             "Icon" => Some(Self::Icon),
@@ -4165,9 +4248,9 @@ impl BuiltinComponent {
             Self::DragItem => "dragItem",
             Self::Editor => "Editor",
             Self::ImageCropper => "ImageCropper",
-            Self::PasswordField => "PasswordField",
-            Self::PhoneField => "PhoneField",
-            Self::PinField => "PinField",
+            Self::Password => "Password",
+            Self::Phone => "Phone",
+            Self::Pin => "Pin",
             Self::Textarea => "Textarea",
             Self::Alert => "Alert",
             Self::Icon => "Icon",

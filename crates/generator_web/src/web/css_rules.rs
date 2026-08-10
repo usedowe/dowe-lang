@@ -17,6 +17,66 @@ fn responsive_custom_class(breakpoint: Breakpoint, base: &str) -> String {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CssRuleFragment {
+    breakpoint: Breakpoint,
+    content: String,
+}
+
+fn push_css_rule_fragment(rules: &mut Vec<CssRuleFragment>, fragment: String) {
+    for breakpoint in [
+        Breakpoint::Xs,
+        Breakpoint::Sm,
+        Breakpoint::Md,
+        Breakpoint::Lg,
+        Breakpoint::Xl,
+    ] {
+        let prefix = format!("@media (min-width:{}px){{", breakpoint.min_width());
+        if let Some(content) = fragment
+            .strip_prefix(&prefix)
+            .and_then(|content| content.strip_suffix('}'))
+        {
+            rules.push(CssRuleFragment {
+                breakpoint,
+                content: content.to_string(),
+            });
+            return;
+        }
+    }
+    rules.push(CssRuleFragment {
+        breakpoint: Breakpoint::Xs,
+        content: fragment,
+    });
+}
+
+fn append_css_rule_fragments(css: &mut String, rules: &mut [CssRuleFragment]) {
+    rules.sort_by_key(|rule| rule.breakpoint);
+    for breakpoint in [
+        Breakpoint::Xs,
+        Breakpoint::Sm,
+        Breakpoint::Md,
+        Breakpoint::Lg,
+        Breakpoint::Xl,
+    ] {
+        let has_rules = rules.iter().any(|rule| rule.breakpoint == breakpoint);
+        if !has_rules {
+            continue;
+        }
+        if breakpoint != Breakpoint::Xs {
+            css.push_str(&format!(
+                "@media (min-width:{}px){{",
+                breakpoint.min_width()
+            ));
+        }
+        for rule in rules.iter().filter(|rule| rule.breakpoint == breakpoint) {
+            css.push_str(&rule.content);
+        }
+        if breakpoint != Breakpoint::Xs {
+            css.push('}');
+        }
+    }
+}
+
 fn push_variant_rule(
     variants: &mut Vec<(&'static str, ColorFamily, ComponentVariant)>,
     base: &'static str,
@@ -163,30 +223,30 @@ fn class_body(class_name: &str) -> Option<String> {
             | "image-cropper-canvas"
             | "image-cropper-box"
             | "image-cropper-modal-actions"
-            | "password-field"
-            | "password-field-input"
-            | "password-field-toggle"
+            | "password"
+            | "password-input"
+            | "password-toggle"
             | "password-strength"
             | "password-strength-bars"
             | "password-strength-bar"
             | "password-strength-label"
-            | "phone-field"
-            | "phone-field-country-trigger"
-            | "phone-field-flag"
-            | "phone-field-dial"
-            | "phone-field-input"
-            | "phone-field-popover"
-            | "phone-field-search-wrap"
-            | "phone-field-search"
-            | "phone-field-search-icon"
-            | "phone-field-countries"
-            | "phone-field-country"
-            | "phone-field-country-name"
-            | "phone-field-empty"
-            | "phone-field-loading"
-            | "pin-field"
-            | "pin-field-cells"
-            | "pin-field-cell"
+            | "phone"
+            | "phone-country-trigger"
+            | "phone-flag"
+            | "phone-dial"
+            | "phone-input"
+            | "phone-popover"
+            | "phone-search-wrap"
+            | "phone-search"
+            | "phone-search-icon"
+            | "phone-countries"
+            | "phone-country"
+            | "phone-country-name"
+            | "phone-empty"
+            | "phone-loading"
+            | "pin"
+            | "pin-cells"
+            | "pin-cell"
             | "textarea-field"
             | "textarea-control"
             | "svg"
@@ -231,10 +291,22 @@ fn class_body(class_name: &str) -> Option<String> {
             | "label-md"
             | "label"
             | "color-field"
+            | "color-control-shell"
+            | "color-control-trigger"
             | "color-input"
-            | "color-field-display"
             | "color-field-swatch"
             | "color-field-value"
+            | "color-picker-popover"
+            | "color-picker-canvas"
+            | "color-picker-cursor"
+            | "color-picker-hue"
+            | "color-picker-slider-thumb"
+            | "color-picker-preview"
+            | "color-picker-preview-swatch"
+            | "color-picker-preview-color"
+            | "color-picker-preview-info"
+            | "color-picker-preview-hex"
+            | "color-picker-preview-foreground"
             | "color-picker-values"
             | "color-picker-value-code"
             | "date-field"

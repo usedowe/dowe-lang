@@ -1,6 +1,7 @@
 mod auth;
 mod bench;
 mod codec;
+mod commit;
 mod d1;
 mod engine;
 mod error;
@@ -9,8 +10,12 @@ mod names;
 mod postgres;
 mod query;
 mod remote;
+mod security;
+mod state;
+mod storage;
 mod transaction;
 mod value;
+mod wal;
 
 pub use auth::{CreatedDatabaseAccount, create_account, verify_account};
 pub use bench::run_bench;
@@ -23,8 +28,8 @@ pub use error::{StoreError, StoreResult};
 pub use postgres::{PostgresClient, PostgresConfig};
 pub use query::bind_query_params;
 pub use remote::{
-    DatabaseRequest, DatabaseServiceConfig, DoweDatabaseClient, DoweDatabaseConfig,
-    RunningDatabaseService, database_service_router, serve_database_service,
+    DatabaseRequest, DatabaseServiceConfig, DatabaseTransactionInsert, DoweDatabaseClient,
+    DoweDatabaseConfig, RunningDatabaseService, database_service_router, serve_database_service,
     start_database_service,
 };
 pub use transaction::Transaction;

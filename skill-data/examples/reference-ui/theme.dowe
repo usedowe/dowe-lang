@@ -1,0 +1,17 @@
+theme
+  fonts default:"manrope" install:["manrope"]
+  design defaultTheme:"reference-light"
+    Card variant:"outlined" scheme:"surface" radius:"lg" shadow:"sm"
+    Button variant:"solid" scheme:"primary" radius:"full" size:"md"
+    Chip variant:"soft" scheme:"secondary" radius:"full" size:"sm"
+    theme name:"reference-light"
+      colors primary:"#151c2c" onPrimary:"#f8fbff" softPrimary:"#e7ecf7" onSoftPrimary:"#151c2c"
+      colors secondary:"#c8f04c" onSecondary:"#151c2c" softSecondary:"#edf8c7" onSoftSecondary:"#27320b"
+      colors tertiary:"#256d85" onTertiary:"#f8fbff" softTertiary:"#d9eef3" onSoftTertiary:"#153943"
+      colors muted:"#657083" onMuted:"#ffffff" softMuted:"#eef1f6" onSoftMuted:"#313b4c"
+      colors background:"#f7f9fc" onBackground:"#151c2c"
+      colors surface:"#ffffff" onSurface:"#151c2c"
+      colors success:"#24724c" onSuccess:"#ffffff" softSuccess:"#d9f1e5" onSoftSuccess:"#113b27"
+      colors info:"#326a9d" onInfo:"#ffffff" softInfo:"#dfedf9" onSoftInfo:"#173753"
+      colors warning:"#886312" onWarning:"#ffffff" softWarning:"#f7ebc9" onSoftWarning:"#433107"
+      colors danger:"#a33a45" onDanger:"#ffffff" softDanger:"#f7dfe2" onSoftDanger:"#551d23"

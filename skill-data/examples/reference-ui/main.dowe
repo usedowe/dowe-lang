@@ -1,0 +1,5 @@
+import referenceRoutes from "@/views/routes/view"
+
+main
+  app name:"Reference Workspace" bundle:"com.example.referenceworkspace"
+  views:referenceRoutes

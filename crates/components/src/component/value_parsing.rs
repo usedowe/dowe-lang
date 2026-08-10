@@ -191,6 +191,69 @@ fn parse_animation_prop(name: &str, value: &PropValue) -> ComponentResult<ViewAn
     }
 }
 
+fn parse_rotation_prop(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<ResponsiveValue<ViewRotation>> {
+    parse_responsive(name, value, "whole degrees from -180 to 180", |scalar| match scalar {
+        PropScalar::Number(value) => value
+            .parse::<i16>()
+            .ok()
+            .filter(|value| (-180..=180).contains(value))
+            .map(ViewRotation),
+        PropScalar::String(_) | PropScalar::Boolean(_) => None,
+    })
+}
+
+fn parse_view_scale_prop(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<ResponsiveValue<ViewScale>> {
+    parse_responsive(name, value, "decimal factor from 0.5 to 2", |scalar| match scalar {
+        PropScalar::Number(value) => parse_decimal_hundredths(value)
+            .filter(|value| (50..=200).contains(value))
+            .map(ViewScale),
+        PropScalar::String(_) | PropScalar::Boolean(_) => None,
+    })
+}
+
+fn parse_translation_prop(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<ResponsiveValue<ViewTranslation>> {
+    parse_responsive(
+        name,
+        value,
+        "signed Dowe scale value from -96 to 96 in half steps",
+        |scalar| match scalar {
+            PropScalar::Number(value) => signed_half_steps(value)
+                .filter(|value| (-192..=192).contains(value))
+                .map(ViewTranslation),
+            PropScalar::String(_) | PropScalar::Boolean(_) => None,
+        },
+    )
+}
+
+fn parse_transition_prop(name: &str, value: &PropValue) -> ComponentResult<ViewTransition> {
+    match value {
+        PropValue::String(value) => ViewTransition::from_name(value)
+            .ok_or_else(|| ComponentError::invalid_prop(name, "none, quick, smooth or spring")),
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+            Err(ComponentError::invalid_prop(name, "none, quick, smooth or spring"))
+        }
+    }
+}
+
+fn parse_gesture_prop(name: &str, value: &PropValue) -> ComponentResult<ViewGesture> {
+    match value {
+        PropValue::String(value) => ViewGesture::from_name(value)
+            .ok_or_else(|| ComponentError::invalid_prop(name, "none, lift, press, grow or tilt")),
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+            Err(ComponentError::invalid_prop(name, "none, lift, press, grow or tilt"))
+        }
+    }
+}
+
 fn parse_text_size_prop(
     name: &str,
     value: &PropValue,
@@ -369,9 +432,9 @@ fn parse_family_prop(
             | BuiltinComponent::DragDrop
             | BuiltinComponent::Editor
             | BuiltinComponent::ImageCropper
-            | BuiltinComponent::PasswordField
-            | BuiltinComponent::PhoneField
-            | BuiltinComponent::PinField
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
             | BuiltinComponent::Textarea
             | BuiltinComponent::SelectTheme
             | BuiltinComponent::Tabs
@@ -518,6 +581,30 @@ fn scale_half_steps(value: &str) -> Option<u16> {
         return integer.parse::<u16>().ok().map(|value| value * 2 + 1);
     }
     value.parse::<u16>().ok().map(|value| value * 2)
+}
+
+fn signed_half_steps(value: &str) -> Option<i16> {
+    let negative = value.starts_with('-');
+    let unsigned = value.strip_prefix('-').unwrap_or(value);
+    let half_steps = scale_half_steps(unsigned)?;
+    i16::try_from(half_steps)
+        .ok()
+        .map(|value| if negative { -value } else { value })
+}
+
+fn parse_decimal_hundredths(value: &str) -> Option<u16> {
+    let (whole, fraction) = value.split_once('.').unwrap_or((value, ""));
+    if fraction.len() > 2 || whole.is_empty() || value.starts_with('-') {
+        return None;
+    }
+    let whole = whole.parse::<u16>().ok()?;
+    let fraction = match fraction.len() {
+        0 => 0,
+        1 => fraction.parse::<u16>().ok()? * 10,
+        2 => fraction.parse::<u16>().ok()?,
+        _ => return None,
+    };
+    whole.checked_mul(100)?.checked_add(fraction)
 }
 
 fn parse_gap_value(value: &str, pair_allowed: bool) -> Option<GapValue> {

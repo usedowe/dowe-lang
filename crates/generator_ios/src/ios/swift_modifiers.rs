@@ -96,6 +96,14 @@ fn swift_modifiers_for_bar(props: &BarProps, flow: NativeFlow) -> Vec<String> {
     if props.position != BarPosition::Static {
         modifiers.push(".zIndex(1)".to_string());
     }
+    if props.dock_on_scroll {
+        modifiers.push(format!(
+            ".modifier(DoweDockingAppBarModifier(backgroundColor: {}, contentColor: {}))",
+            variant_container(&props.style),
+            variant_content(&props.style)
+        ));
+        return modifiers;
+    }
     let radius = if props.floating {
         "DoweDesign.radius"
     } else {
@@ -321,7 +329,59 @@ fn swift_modifiers_for_style_with_width_alignment(
     if let Some(modifier) = swift_shadow_modifier(props) {
         modifiers.push(modifier);
     }
-    if let Some(animation) = props.animation {
+    let motion = props.motion();
+    if let Some(value) = motion.rotate.as_ref() {
+        modifiers.push(format!(
+            ".rotationEffect(.degrees({} ?? Double(0)))",
+            swift_responsive_value(value, |value| format!("Double({})", value.degrees()))
+        ));
+    }
+    if let Some(value) = motion.scale.as_ref() {
+        modifiers.push(format!(
+            ".scaleEffect(CGFloat({} ?? Double(1)))",
+            swift_responsive_value(value, |value| format!("Double({})", value.factor()))
+        ));
+    }
+    let translate_x = motion
+        .translate_x
+        .as_ref()
+        .map(|value| {
+            format!(
+                "CGFloat({} ?? Double(0))",
+                swift_responsive_value(value, |value| format!(
+                    "Double({})",
+                    value.native_units()
+                ))
+            )
+        })
+        .unwrap_or_else(|| "CGFloat(0)".to_string());
+    let translate_y = motion
+        .translate_y
+        .as_ref()
+        .map(|value| {
+            format!(
+                "CGFloat({} ?? Double(0))",
+                swift_responsive_value(value, |value| format!(
+                    "Double({})",
+                    value.native_units()
+                ))
+            )
+        })
+        .unwrap_or_else(|| "CGFloat(0)".to_string());
+    if motion.translate_x.is_some() || motion.translate_y.is_some() {
+        modifiers.push(format!(".offset(x: {translate_x}, y: {translate_y})"));
+    }
+    if let Some(gesture) = motion.gesture
+        && gesture != ViewGesture::None
+    {
+        let transition = motion.transition.unwrap_or(ViewTransition::Smooth);
+        modifiers.push(format!(
+            ".modifier(DoweGestureModifier(preset: .{}, transition: .{}))",
+            gesture.as_str(),
+            transition.as_str()
+        ));
+    }
+    if let Some(animation) = props.animation() {
         modifiers.push(format!(
             ".modifier(DoweAnimationModifier(preset: {}))",
             swift_animation_preset(animation)

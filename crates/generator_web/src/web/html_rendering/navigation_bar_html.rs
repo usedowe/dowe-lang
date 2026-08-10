@@ -19,6 +19,9 @@ fn render_bar_html(
             context,
         )
     );
+    if base == "footer" {
+        html.push_str(&format!("<div{}>", class_attr(footer_inner_classes(props))));
+    }
     html.push_str(&render_bar_region_html(
         base,
         "top",
@@ -59,6 +62,9 @@ fn render_bar_html(
         children_html,
         context,
     ));
+    if base == "footer" {
+        html.push_str("</div>");
+    }
     html.push_str(&format!("</{tag}>"));
     html
 }
@@ -134,6 +140,12 @@ fn collect_bar_js_segments(
             )
         ),
     );
+    if base == "footer" {
+        push_literal(
+            segments,
+            &format!("<div{}>", class_attr(footer_inner_classes(props))),
+        );
+    }
     collect_bar_region_js_segments(base, "top", top, segments, context);
     push_literal(
         segments,
@@ -144,6 +156,9 @@ fn collect_bar_js_segments(
     collect_bar_region_js_segments(base, "end", end, segments, context);
     push_literal(segments, "</div>");
     collect_bar_region_js_segments(base, "bottom", bottom, segments, context);
+    if base == "footer" {
+        push_literal(segments, "</div>");
+    }
     push_literal(segments, &format!("</{tag}>"));
 }
 

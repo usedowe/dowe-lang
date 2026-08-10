@@ -280,9 +280,9 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             | BuiltinComponent::ComboBox
             | BuiltinComponent::Editor
             | BuiltinComponent::ImageCropper
-            | BuiltinComponent::PasswordField
-            | BuiltinComponent::PhoneField
-            | BuiltinComponent::PinField
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
             | BuiltinComponent::Textarea,
             "bind",
             SourceValue::Bareword(_),
@@ -316,7 +316,10 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             BuiltinComponent::Button
             | BuiltinComponent::IconButton
             | BuiltinComponent::Avatar
-            | BuiltinComponent::Empty,
+            | BuiltinComponent::Empty
+            | BuiltinComponent::Box
+            | BuiltinComponent::Card
+            | BuiltinComponent::Chip,
             "onClick",
             SourceValue::Bareword(_),
         )
@@ -363,4 +366,3 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
         _ => false,
     }
 }
-

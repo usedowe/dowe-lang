@@ -24,14 +24,12 @@ fn emits_persistent_view_store_metadata() {
         &tree,
     );
 
-    assert!(
-        page.content
-            .contains(r#""storageKey":"views/store/session:session""#)
-    );
-    assert!(
-        page.content
-            .contains(r#""scope":"global","storage":"local""#)
-    );
+    assert!(page
+        .content
+        .contains(r#""storageKey":"views/store/session:session""#));
+    assert!(page
+        .content
+        .contains(r#""scope":"global","storage":"local""#));
 }
 
 #[test]
@@ -144,10 +142,9 @@ fn emits_select_options_from_constant_each() {
         &tree,
     );
     assert!(page.content.contains("data-dowe-each=\\\"options01\\\""));
-    assert!(
-        page.content
-            .contains("data-dowe-option-value-path=\\\"option.value\\\"")
-    );
+    assert!(page
+        .content
+        .contains("data-dowe-option-value-path=\\\"option.value\\\""));
 }
 
 #[test]
@@ -229,8 +226,12 @@ fn emits_terminal_replace_redirect_steps() {
         router_js: String::new(),
     });
 
-    assert!(page.content.contains(r#"{"kind":"redirect","path":"/login"}"#));
-    assert!(router.contains(r#"if(step.kind==="redirect"){await navigate(step.path,{replace:true});return true;}"#));
+    assert!(page
+        .content
+        .contains(r#"{"kind":"redirect","path":"/login"}"#));
+    assert!(router.contains(
+        r#"if(step.kind==="redirect"){await navigate(step.path,{replace:true});return true;}"#
+    ));
     assert!(router.contains("if(step.kind===\"if\"&&await runSteps"));
 }
 
@@ -266,11 +267,8 @@ fn emits_fab_actions_as_intrinsic_colored_capsules() {
     let body = render_page_body(&ViewNode::Children, &tree);
     let css = show_design_css();
 
-    assert!(
-        body.contains(
-            "data-dowe-fab-action><span class=\"fab-action-label\">View Button</span><svg"
-        )
-    );
+    assert!(body
+        .contains("data-dowe-fab-action><span class=\"fab-action-label\">View Button</span><svg"));
     assert!(!body.contains("</span><a"));
     assert!(css.contains(
         ".fab-action-button{width:auto;min-width:0;height:auto;padding:.5rem .75rem;gap:.75rem"
@@ -380,12 +378,10 @@ fn creates_stable_chunk_ids() {
 
     assert_eq!(first.id, second.id);
     assert_eq!(first.id.len(), 8);
-    assert!(
-        first
-            .id
-            .chars()
-            .all(|value| value.is_ascii_lowercase() || value.is_ascii_digit())
-    );
+    assert!(first
+        .id
+        .chars()
+        .all(|value| value.is_ascii_lowercase() || value.is_ascii_digit()));
 }
 
 #[test]
@@ -396,11 +392,9 @@ fn creates_locale_chunks_and_browser_translation_runtime() {
     assert_eq!(first, second);
     assert_eq!(first.len(), 2);
     assert!(first[0].relative_path.starts_with("web/chunks/i18n"));
-    assert!(
-        first
-            .iter()
-            .any(|chunk| chunk.content.contains("Dowe construye sistemas."))
-    );
+    assert!(first
+        .iter()
+        .any(|chunk| chunk.content.contains("Dowe construye sistemas.")));
 
     let tree = ViewNode::Title {
         props: TextProps {
@@ -409,10 +403,8 @@ fn creates_locale_chunks_and_browser_translation_runtime() {
         },
         value: "Dowe builds systems.".to_string(),
     };
-    assert!(
-        render_page_body(&ViewNode::Children, &tree)
-            .contains(r#"data-dowe-i18n="home.hero.title""#)
-    );
+    assert!(render_page_body(&ViewNode::Children, &tree)
+        .contains(r#"data-dowe-i18n="home.hero.title""#));
 
     let router = super::router_js(&super::WebOutput {
         chunks: Vec::new(),
@@ -438,9 +430,16 @@ fn emits_portable_svg_import_runtime() {
     let router = super::router_js(&web);
 
     assert!(router.contains("function stdSvgConvert("));
+    assert!(router.contains("function stdSvgRect("));
+    assert!(router.contains("function stdSvgColorEqual("));
+    assert!(router.contains("function stdSvgOriginalFill("));
+    assert!(router.contains("name===\"rect\""));
+    assert!(router.contains(r#"fillRule:\"evenodd\""#));
+    assert!(router.contains("evenOdd:path.evenOdd===true"));
     assert!(router.contains(r#"path.transform?" transform:\""+path.transform+"\"":"""#));
     assert!(!router.contains(r#"path.transform?`transform:"#));
-    assert!(router.contains("case\"parse.svg\":return stdSvgConvert(a.value,a.fallback)"));
+    assert!(router.contains("case\"parse.svg\":return stdSvgConvert(a.value,a.fallback,a.colors||\"tokens\",a.format||\"source\")"));
+    assert!(router.contains("if(format===\"data\")return JSON.stringify"));
 }
 
 #[test]
@@ -537,7 +536,7 @@ fn renders_section_markup_and_background_css() {
         .expect("base section vertical padding");
     let responsive_vertical_padding = page
         .css_content
-        .rfind("@media (min-width:768px){.md\\:py-16{padding-top:4rem;padding-bottom:4rem;}}")
+        .rfind(".md\\:py-16{padding-top:4rem;padding-bottom:4rem;}")
         .expect("responsive section vertical padding");
     assert!(base_vertical_padding < responsive_vertical_padding);
     let design_css = super::design_css();
@@ -628,6 +627,60 @@ fn scopes_layout_and_page_reactivity_by_generated_id() {
 }
 
 #[test]
+fn emits_interactive_motion_classes_rules_and_chip_event() {
+    let mut style = VariantProps::default();
+    style.style.set_animation(Some(ViewAnimation::ScaleIn));
+    {
+        let motion = style.style.motion_mut();
+        motion.rotate = Some(ResponsiveValue::scalar(ViewRotation(-7)));
+        motion.scale = Some(ResponsiveValue::scalar(ViewScale(105)));
+        motion.translate_x = Some(ResponsiveValue::scalar(ViewTranslation(-3)));
+        motion.translate_y = Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: ViewTranslation(0),
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: ViewTranslation(4),
+            },
+        ]));
+        motion.transition = Some(ViewTransition::Spring);
+        motion.gesture = Some(ViewGesture::Lift);
+    }
+    style.element.on_click = Some("selectMobile".to_string());
+    let tree = ViewNode::Chip {
+        props: ChipProps {
+            style,
+            on_close: None,
+        },
+        value: "Mobile Apps".to_string(),
+        start: None,
+        end: None,
+    };
+
+    let html = render_page_body(&ViewNode::Children, &tree);
+    let chunk = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/views/pages/motion.dowe"),
+        "motion",
+        &tree,
+    );
+
+    assert!(html.contains("has-transform"));
+    assert!(html.contains("rotate-neg-7"));
+    assert!(html.contains("scale-1_05"));
+    assert!(html.contains("translate-x-neg-1.5"));
+    assert!(html.contains("md:translate-y-2"));
+    assert!(html.contains("transition-spring"));
+    assert!(html.contains("gesture-lift"));
+    assert!(html.contains("data-dowe-click=\"selectMobile\""));
+    assert!(chunk.css_content.contains("--dowe-rotate:-7deg"));
+    assert!(chunk.css_content.contains("--dowe-scale:1.05"));
+    assert!(chunk.css_content.contains("--dowe-translate-x:-0.75rem"));
+}
+
+#[test]
 fn emits_web_manifest_and_html_artifacts() {
     let root = Path::new("/project");
     let layout_tree = layout_tree();
@@ -676,11 +729,9 @@ fn emits_web_manifest_and_html_artifacts() {
             .html_document
             .contains(r#"<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content">"#)
     );
-    assert!(
-        view_page
-            .html_document
-            .contains(r#"<link rel="icon" href="data:image/svg+xml,"#)
-    );
+    assert!(view_page
+        .html_document
+        .contains(r#"<link rel="icon" href="data:image/svg+xml,"#));
     let mut web = super::WebOutput {
         chunks: vec![layout, page],
         pages: vec![view_page],
@@ -691,22 +742,21 @@ fn emits_web_manifest_and_html_artifacts() {
     web.router_js = super::router_js(&web);
     let artifacts = web_artifacts(&web, &FontConfig::default(), &DesignConfig::default());
 
-    assert!(
-        artifacts
-            .iter()
-            .any(|artifact| artifact.relative_path == Path::new("web/manifest.json"))
-    );
-    assert!(
-        artifacts
-            .iter()
-            .any(|artifact| artifact.relative_path == Path::new("web/pages/login.html"))
-    );
+    assert!(artifacts
+        .iter()
+        .any(|artifact| artifact.relative_path == Path::new("web/manifest.json")));
+    assert!(artifacts
+        .iter()
+        .any(|artifact| artifact.relative_path == Path::new("web/pages/login.html")));
     let index = artifacts
         .iter()
         .find(|artifact| artifact.relative_path == Path::new("web/index.html"))
         .expect("index");
     assert!(index.content.contains(r#"href="design.css""#));
     assert!(index.content.contains(r#"src="chunks/layouts/"#));
+    assert!(index
+        .content
+        .contains(r#"document.documentElement.classList.add("dowe-entrance-pending")"#));
     let page = artifacts
         .iter()
         .find(|artifact| artifact.relative_path == Path::new("web/pages/login.html"))
@@ -718,88 +768,79 @@ fn emits_web_manifest_and_html_artifacts() {
     assert!(web.router_js.contains("staticMode"));
     assert!(web.router_js.contains("doweHref"));
     assert!(web.router_js.contains("function positionSelect(control)"));
-    assert!(
-        web.router_js
-            .contains("function mountSelectPopover(control)")
-    );
+    assert!(web
+        .router_js
+        .contains("function mountSelectPopover(control)"));
     assert!(web.router_js.contains("document.body.appendChild(popover)"));
     assert!(web.router_js.contains("popover.__doweControl"));
-    assert!(
-        web.router_js
-            .contains("const above=bottom<Math.min(height,224)&&top>bottom")
-    );
-    assert!(
-        web.router_js
-            .contains("scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\"})")
-    );
-    assert!(
-        web.router_js
-            .contains("if(\"scrollRestoration\"in history)history.scrollRestoration=\"manual\"")
-    );
+    assert!(web
+        .router_js
+        .contains("const above=bottom<Math.min(height,224)&&top>bottom"));
+    assert!(web
+        .router_js
+        .contains("scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\"})"));
+    assert!(web
+        .router_js
+        .contains("if(\"scrollRestoration\"in history)history.scrollRestoration=\"manual\""));
     assert!(web.router_js.contains("function pageScrollViewport()"));
-    assert!(
-        web.router_js
-            .contains("viewport.scrollTop=0;viewport.scrollLeft=0")
-    );
-    assert!(
-        web.router_js
-            .contains("viewport.style.scrollBehavior=\"auto\"")
-    );
-    assert!(
-        web.router_js
-            .contains("viewport.style.scrollBehavior=behavior")
-    );
-    assert!(
-        web.router_js
-            .contains("scrollToPageDestination(currentFragment)")
-    );
-    assert!(
-        web.router_js
-            .contains("new RegExp(\"^https?:/{2}\",\"i\").test(source)")
-    );
-    assert!(
-        web.router_js
-            .contains("const boundary=document.querySelector('[data-dowe-boundary^=\"page:\"]')")
-    );
-    assert!(
-        web.router_js
-            .contains("boundary.outerHTML=wrapPage(route,page.render())")
-    );
+    assert!(web
+        .router_js
+        .contains("viewport.scrollTop=0;viewport.scrollLeft=0"));
+    assert!(web
+        .router_js
+        .contains("viewport.style.scrollBehavior=\"auto\""));
+    assert!(web
+        .router_js
+        .contains("viewport.style.scrollBehavior=behavior"));
+    assert!(web
+        .router_js
+        .contains("scrollToPageDestination(currentFragment)"));
+    assert!(web
+        .router_js
+        .contains("new RegExp(\"^https?:/{2}\",\"i\").test(source)"));
+    assert!(web
+        .router_js
+        .contains("const boundary=document.querySelector('[data-dowe-boundary^=\"page:\"]')"));
+    assert!(web
+        .router_js
+        .contains("boundary.outerHTML=wrapPage(route,page.render())"));
     assert!(web.router_js.contains("window.__doweHotUpdate=hotUpdate"));
-    assert!(
-        web.router_js
-            .contains("fetch(versionedAsset(\"manifest.json\",version)")
-    );
-    assert!(
-        web.router_js
-            .contains("hydrate(route,modules,preserveLayouts,true)")
-    );
+    assert!(web
+        .router_js
+        .contains("fetch(versionedAsset(\"manifest.json\",version)"));
+    assert!(web
+        .router_js
+        .contains("hydrate(route,modules,preserveLayouts,true)"));
     assert!(web.router_js.contains("previous.state[signal.id]"));
-    assert!(
-        web.router_js
-            .contains("const boundState=captureBoundState(app)")
-    );
+    assert!(web
+        .router_js
+        .contains("const boundState=captureBoundState(app)"));
     assert!(web.router_js.contains("restoreBoundState(boundState)"));
-    assert!(
-        web.router_js
-            .contains("compatibleSignalValue(previous.state[signal.id]")
-    );
+    assert!(web
+        .router_js
+        .contains("function prepareEntranceAnimations()"));
+    assert!(web
+        .router_js
+        .contains("function releaseEntranceAnimations()"));
+    assert!(web.router_js.contains(
+        "requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove(entranceMotionClass)))"
+    ));
+    assert!(web
+        .router_js
+        .contains("compatibleSignalValue(previous.state[signal.id]"));
     assert!(web
         .router_js
         .contains("if(current&&!version){document.head.appendChild(current)"));
     assert!(web
         .router_js
         .contains("return Promise.all(route.cssChunks.map(path=>loadCss(path"));
-    assert!(web.router_js.contains(
-        "if(!document.querySelector('script[src=\"/_dowe/dev/client.js\"]'))return"
-    ));
+    assert!(web
+        .router_js
+        .contains("if(!document.querySelector('script[src=\"/_dowe/dev/client.js\"]'))return"));
     assert!(web
         .router_js
         .contains("await syncDevRoutes();const route=routes[destination.path]"));
-    assert_eq!(
-        web.router_js.matches("await loadRouteCss(route").count(),
-        2
-    );
+    assert_eq!(web.router_js.matches("await loadRouteCss(route").count(), 2);
     assert!(web
         .router_js
         .contains("reject(new Error(\"Dowe CSS chunk failed: \"+link.href))"));
@@ -842,8 +883,11 @@ fn emits_container_refactor_css() {
                     overlay: Some(ResponsiveValue::scalar(OverlayPaint::BlackOpacity(
                         "0.6".to_string(),
                     ))),
-                    grid_item: Some(Box::new(dowe_components::GridItemProps {
-                        col_span: Some(ResponsiveValue::scalar(GridSpan(2))),
+                    extras: Some(Box::new(dowe_components::StyleExtras {
+                        grid_item: dowe_components::GridItemProps {
+                            col_span: Some(ResponsiveValue::scalar(GridSpan(2))),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     })),
                     ..Default::default()
@@ -872,27 +916,113 @@ fn emits_container_refactor_css() {
     assert!(page.content.contains("col-span-2"));
     assert!(page.content.contains("has-cover"));
     assert!(page.content.contains("has-overlay"));
-    assert!(
-        page.css_content
-            .contains("grid-template-columns:repeat(3,minmax(0,1fr));")
-    );
+    assert!(page
+        .css_content
+        .contains("grid-template-columns:repeat(3,minmax(0,1fr));"));
     assert!(page.css_content.contains("grid-template-rows:100px auto;"));
     assert!(page.css_content.contains("row-gap:10px;column-gap:20px;"));
-    assert!(
-        page.css_content
-            .contains("background-image:url(\"/mobile.jpg\")")
-    );
+    assert!(page
+        .css_content
+        .contains("background-image:url(\"/mobile.jpg\")"));
     assert!(page.css_content.contains("@media (min-width:768px)"));
     assert!(page.css_content.contains("rgba(0,0,0,0.6)"));
     assert!(page.css_content.contains(".card.is-soft.is-surface"));
 }
 
 #[test]
+fn emits_responsive_css_in_ascending_breakpoint_blocks() {
+    let page_tree = ViewNode::Grid {
+        props: GridProps {
+            columns: Some(ResponsiveValue::ordered(vec![
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xs,
+                    value: GridTracks::Count(1),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Sm,
+                    value: GridTracks::Count(2),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Md,
+                    value: GridTracks::Count(3),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Lg,
+                    value: GridTracks::Count(4),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xl,
+                    value: GridTracks::Count(5),
+                },
+            ])),
+            rows: Some(ResponsiveValue::ordered(vec![
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xs,
+                    value: GridTracks::Template("auto".to_string()),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Sm,
+                    value: GridTracks::Template("auto 1fr".to_string()),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Md,
+                    value: GridTracks::Template("auto 1fr auto".to_string()),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Lg,
+                    value: GridTracks::Template("repeat(4,auto)".to_string()),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xl,
+                    value: GridTracks::Template("repeat(5,auto)".to_string()),
+                },
+            ])),
+            ..Default::default()
+        },
+        children: vec![text("Responsive grid")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/views/pages/responsive.dowe"),
+        "page ResponsivePage",
+        &page_tree,
+    );
+    let css = &page.css_content;
+    let base = css
+        .find(".grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr));}")
+        .expect("base responsive rule");
+    let sm = css
+        .find("@media (min-width:640px)")
+        .expect("sm responsive block");
+    let md = css
+        .find("@media (min-width:768px)")
+        .expect("md responsive block");
+    let lg = css
+        .find("@media (min-width:1024px)")
+        .expect("lg responsive block");
+    let xl = css
+        .find("@media (min-width:1280px)")
+        .expect("xl responsive block");
+
+    assert!(base < sm && sm < md && md < lg && lg < xl);
+    for min_width in [640, 768, 1024, 1280] {
+        assert_eq!(
+            css.matches(&format!("@media (min-width:{min_width}px)"))
+                .count(),
+            1
+        );
+    }
+}
+
+#[test]
 fn emits_portable_box_positioning_css() {
     let page_tree = ViewNode::Box {
         props: StyleProps {
-            position: Some(Box::new(dowe_components::PositionProps {
-                mode: BoxPosition::Relative,
+            extras: Some(Box::new(dowe_components::StyleExtras {
+                position: dowe_components::PositionProps {
+                    mode: BoxPosition::Relative,
+                    ..Default::default()
+                },
                 ..Default::default()
             })),
             ..Default::default()
@@ -900,19 +1030,22 @@ fn emits_portable_box_positioning_css() {
         children: vec![
             ViewNode::Box {
                 props: StyleProps {
-                    position: Some(Box::new(dowe_components::PositionProps {
-                        mode: BoxPosition::Absolute,
-                        top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
-                        right: Some(ResponsiveValue::ordered(vec![
-                            ResponsiveEntry {
-                                breakpoint: Breakpoint::Xs,
-                                value: ScaleValue::from_half_steps(8),
-                            },
-                            ResponsiveEntry {
-                                breakpoint: Breakpoint::Md,
-                                value: ScaleValue::from_half_steps(12),
-                            },
-                        ])),
+                    extras: Some(Box::new(dowe_components::StyleExtras {
+                        position: dowe_components::PositionProps {
+                            mode: BoxPosition::Absolute,
+                            top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            right: Some(ResponsiveValue::ordered(vec![
+                                ResponsiveEntry {
+                                    breakpoint: Breakpoint::Xs,
+                                    value: ScaleValue::from_half_steps(8),
+                                },
+                                ResponsiveEntry {
+                                    breakpoint: Breakpoint::Md,
+                                    value: ScaleValue::from_half_steps(12),
+                                },
+                            ])),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     })),
                     ..Default::default()
@@ -921,8 +1054,11 @@ fn emits_portable_box_positioning_css() {
             },
             ViewNode::Box {
                 props: StyleProps {
-                    position: Some(Box::new(dowe_components::PositionProps {
-                        mode: BoxPosition::Fixed,
+                    extras: Some(Box::new(dowe_components::StyleExtras {
+                        position: dowe_components::PositionProps {
+                            mode: BoxPosition::Fixed,
+                            ..Default::default()
+                        },
                         ..Default::default()
                     })),
                     ..Default::default()
@@ -943,16 +1079,22 @@ fn emits_portable_box_positioning_css() {
     assert!(page.content.contains("position-fixed top-0 left-0"));
     assert!(page.content.contains("top-4"));
     assert!(page.content.contains("right-4 md:right-6"));
-    assert!(page.css_content.contains(".position-relative{position:relative;}"));
-    assert!(page.css_content.contains(".position-absolute{position:absolute;}"));
-    assert!(page.css_content.contains(".position-fixed{position:fixed;}"));
+    assert!(page
+        .css_content
+        .contains(".position-relative{position:relative;}"));
+    assert!(page
+        .css_content
+        .contains(".position-absolute{position:absolute;}"));
+    assert!(page
+        .css_content
+        .contains(".position-fixed{position:fixed;}"));
     assert!(page.css_content.contains(".top-4{top:1rem;}"));
     assert!(page.css_content.contains(".top-0{top:0rem;}"));
     assert!(page.css_content.contains(".left-0{left:0rem;}"));
     assert!(page.css_content.contains(".right-4{right:1rem;}"));
-    assert!(page.css_content.contains(
-        "@media (min-width:768px){.md\\:right-6{right:1.5rem;}}"
-    ));
+    assert!(page
+        .css_content
+        .contains("@media (min-width:768px){.md\\:right-6{right:1.5rem;}}"));
 }
 
 #[test]

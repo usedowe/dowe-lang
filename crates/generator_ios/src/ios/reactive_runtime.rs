@@ -96,7 +96,15 @@ private struct DoweSvgImportMatrix {
 private struct DoweSvgImportContext {
     let matrix: DoweSvgImportMatrix
     let fill: String?
+    let evenOdd: Bool
     let hidden: Bool
+}
+
+private struct DoweSvgImportedPath {
+    let data: String
+    let fill: String
+    let evenOdd: Bool
+    let transform: String?
 }
 
 private final class DoweSvgImporter: NSObject, XMLParserDelegate {
@@ -104,21 +112,42 @@ private final class DoweSvgImporter: NSObject, XMLParserDelegate {
     private let tokens = ["primary", "secondary", "tertiary", "muted", "success", "info", "warning", "danger"]
     private var stack: [DoweSvgImportContext] = []
     private var colors: [String] = []
-    private var paths: [String] = []
+    private var paths: [DoweSvgImportedPath] = []
     private var viewBox: String?
     private var valid = true
+    private var originalColors = false
 
-    static func convert(_ source: String) -> String? {
+    static func convert(_ source: String, colors: String = "tokens", format: String = "source") -> String? {
         guard source.utf8.count <= 262_144,
+              ["tokens", "original"].contains(colors),
+              ["source", "data"].contains(format),
+              format != "data" || colors == "original",
               !source.localizedCaseInsensitiveContains("<!entity"),
               let data = source.data(using: .utf8) else { return nil }
         let importer = DoweSvgImporter()
-        importer.stack = [DoweSvgImportContext(matrix: importer.identity, fill: nil, hidden: false)]
+        importer.originalColors = colors == "original"
+        importer.stack = [DoweSvgImportContext(matrix: importer.identity, fill: nil, evenOdd: false, hidden: false)]
         let parser = XMLParser(data: data)
         parser.shouldResolveExternalEntities = false
         parser.delegate = importer
         guard parser.parse(), importer.valid, let viewBox = importer.viewBox, !importer.paths.isEmpty else { return nil }
-        return "Svg viewBox:\"" + viewBox + "\" w:\"full\" h:\"full\"\n" + importer.paths.joined(separator: "\n")
+        if format == "data" {
+            let paths = importer.paths.map { path -> [String: Any] in
+                var value: [String: Any] = [
+                    "d": path.data,
+                    "paint": path.fill == "none" ? "none" : path.fill == "currentColor" ? "currentColor" : "fill"
+                ]
+                if path.fill != "none" && path.fill != "currentColor" { value["color"] = path.fill }
+                if path.evenOdd { value["evenOdd"] = true }
+                if let transform = path.transform { value["transform"] = transform }
+                return value
+            }
+            guard let data = try? JSONSerialization.data(withJSONObject: ["viewBox": viewBox, "paths": paths]) else { return nil }
+            return String(data: data, encoding: .utf8)
+        }
+        return "Svg viewBox:\"" + viewBox + "\" w:\"full\" h:\"full\"\n" + importer.paths.map { path in
+            "  Path d:\"" + path.data + "\" fill:\"" + path.fill + "\"" + (path.evenOdd ? " fillRule:\"evenodd\"" : "") + (path.transform.map { " transform:\"" + $0 + "\"" } ?? "")
+        }.joined(separator: "\n")
     }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String] = [:]) {
@@ -143,6 +172,25 @@ private final class DoweSvgImporter: NSObject, XMLParserDelegate {
                 : nil
         }.first
         let fill = attrs["fill"] ?? styleFill ?? parent.fill
+        let styleFillRule = attrs["style"]?.split(separator: ";").compactMap { entry -> String? in
+            let pair = entry.split(separator: ":", maxSplits: 1).map(String.init)
+            return pair.count == 2 && pair[0].trimmingCharacters(in: .whitespaces).lowercased() == "fill-rule"
+                ? pair[1].trimmingCharacters(in: .whitespaces)
+                : nil
+        }.first
+        let fillRule = attrs["fill-rule"] ?? styleFillRule
+        let evenOdd: Bool
+        if let fillRule {
+            switch fillRule.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "nonzero": evenOdd = false
+            case "evenodd": evenOdd = true
+            default:
+                valid = false
+                return
+            }
+        } else {
+            evenOdd = parent.evenOdd
+        }
         let hidden = parent.hidden || ["defs", "clippath", "mask", "symbol", "script", "style"].contains(name)
         if name == "svg" && viewBox == nil {
             let raw: String
@@ -161,18 +209,26 @@ private final class DoweSvgImporter: NSObject, XMLParserDelegate {
             }
             viewBox = values.map(number).joined(separator: " ")
         }
-        if name == "path" && !hidden {
+        let drawable = name == "path" || (name == "rect" && attrs["rx"] == nil && attrs["ry"] == nil)
+        if drawable && !hidden {
+            let data = name == "path"
+                ? attrs["d"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+                : rectangle(attrs)
             guard paths.count < 1_024,
-                  let data = attrs["d"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let data,
                   !data.isEmpty,
                   data.range(of: "^[0-9\\sMmZzLlHhVvCcSsQqTtAa+.,eE-]+$", options: .regularExpression) != nil else {
                 valid = false
                 return
             }
-            let transform = same(combined, identity) ? "" : " transform:\"" + matrixSource(combined) + "\""
-            paths.append("  Path d:\"" + data + "\" fill:\"" + portableFill(fill) + "\"" + transform)
+            let transform = same(combined, identity) ? nil : matrixSource(combined)
+            guard let portableFill = originalColors ? originalFill(fill) : portableFill(fill) else {
+                valid = false
+                return
+            }
+            paths.append(DoweSvgImportedPath(data: data, fill: portableFill, evenOdd: evenOdd, transform: transform))
         }
-        stack.append(DoweSvgImportContext(matrix: combined, fill: fill, hidden: hidden))
+        stack.append(DoweSvgImportContext(matrix: combined, fill: fill, evenOdd: evenOdd, hidden: hidden))
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
@@ -209,19 +265,65 @@ private final class DoweSvgImporter: NSObject, XMLParserDelegate {
         return number(value)
     }
 
-    private func portableFill(_ source: String?) -> String {
+    private func rectangle(_ attrs: [String: String]) -> String? {
+        let x = attrs["x"].flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) } ?? 0
+        let y = attrs["y"].flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) } ?? 0
+        guard let width = attrs["width"].flatMap({ Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }),
+              let height = attrs["height"].flatMap({ Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }),
+              x.isFinite,
+              y.isFinite,
+              width.isFinite,
+              height.isFinite,
+              width > 0,
+              height > 0 else { return nil }
+        let right = x + width
+        let bottom = y + height
+        guard right.isFinite, bottom.isFinite else { return nil }
+        return "M" + number(x) + " " + number(y) + "H" + number(right) + "V" + number(bottom) + "H" + number(x) + "Z"
+    }
+
+    private func portableFill(_ source: String?) -> String? {
         let value = source?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if value.lowercased() == "none" { return "none" }
         if value.isEmpty || value.lowercased() == "currentcolor" { return "currentColor" }
         let key = value.lowercased()
         let index: Int
-        if let existing = colors.firstIndex(of: key) {
+        if let existing = colors.firstIndex(where: { sameColor($0, key) }) {
             index = existing
         } else {
             colors.append(key)
             index = colors.count - 1
         }
         return tokens[index % tokens.count]
+    }
+
+    private func originalFill(_ source: String?) -> String? {
+        let value = source?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if value.lowercased() == "none" { return "none" }
+        if value.isEmpty || value.lowercased() == "currentcolor" { return "currentColor" }
+        let normalized = value.lowercased()
+        if normalized.range(of: "^#[0-9a-f]{3,4}$|^#[0-9a-f]{6}([0-9a-f]{2})?$", options: .regularExpression) != nil {
+            return normalized
+        }
+        guard let channels = rgb(normalized) else { return nil }
+        return String(UnicodeScalar(35)!) + String(format: "%02x%02x%02x", channels[0], channels[1], channels[2])
+    }
+
+    private func sameColor(_ left: String, _ right: String) -> Bool {
+        if left == right { return true }
+        guard let leftChannels = rgb(left), let rightChannels = rgb(right) else { return false }
+        return zip(leftChannels, rightChannels).allSatisfy { abs($0 - $1) <= 1 }
+    }
+
+    private func rgb(_ source: String) -> [Int]? {
+        let value = source.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard value.hasPrefix("rgb("), value.hasSuffix(")") else { return nil }
+        let body = value.dropFirst(4).dropLast()
+        let channels = body.split(separator: ",").compactMap { part in
+            Int(part.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        guard channels.count == 3, channels.allSatisfy({ 0...255 ~= $0 }) else { return nil }
+        return channels
     }
 
     private func matrixSource(_ value: DoweSvgImportMatrix) -> String {
@@ -638,7 +740,7 @@ final class DoweReactiveState: ObservableObject {
         case "parse.int": return Int(text("value").trimmingCharacters(in: .whitespacesAndNewlines)) ?? args["fallback"] ?? nil
         case "parse.float": return number("value") ?? args["fallback"] ?? nil
         case "parse.string": return stdlibText(args["value"] ?? nil)
-        case "parse.svg": return DoweSvgImporter.convert(text("value")) ?? args["fallback"] ?? nil
+        case "parse.svg": return DoweSvgImporter.convert(text("value"), colors: text("colors").isEmpty ? "tokens" : text("colors"), format: text("format").isEmpty ? "source" : text("format")) ?? args["fallback"] ?? nil
         case "parse.json", "json.parse":
             guard let data = text("value").data(using: .utf8) else { return args["fallback"] ?? nil }
             return (try? JSONSerialization.jsonObject(with: data)) ?? args["fallback"] ?? nil

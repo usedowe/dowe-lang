@@ -74,7 +74,7 @@ fn is_known_display_prop(component: BuiltinComponent, name: &str) -> bool {
             BuiltinComponent::RichText => {
                 matches!(
                     name,
-                    "size" | "weight" | "spacing" | "bg" | "color" | "i18n"
+                    "size" | "weight" | "spacing" | "bg" | "color" | "i18n" | "title"
                 )
             }
             BuiltinComponent::Record => matches!(

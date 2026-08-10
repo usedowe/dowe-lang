@@ -338,6 +338,7 @@ struct DoweSideNavEntry: Identifiable {
 
 struct DoweSideNav: View {
     let items: [DoweSideNavEntry]
+    let stateKey: String
     let activePath: String
     let wide: Bool
     let paddingHorizontal: CGFloat
@@ -367,7 +368,7 @@ struct DoweSideNav: View {
             Divider()
                 .padding(.vertical, CGFloat(8))
         case "submenu":
-            DoweSideNavSubmenu(open: item.open, bordered: item.bordered, wide: wide) {
+            DoweSideNavSubmenu(stateKey: stateKey + ":" + item.id, open: item.open, bordered: item.bordered, wide: wide) {
                 ForEach(item.children) { child in
                     row(child, header: false, action: action(for: child))
                 }
@@ -563,15 +564,34 @@ struct DoweSideNavArrow: View {
     }
 }
 
+final class DoweSideNavMemory {
+    static let shared = DoweSideNavMemory()
+    private var expanded: [String: Bool] = [:]
+
+    func value(for key: String, initial: Bool) -> Bool {
+        if let value = expanded[key] {
+            return value
+        }
+        expanded[key] = initial
+        return initial
+    }
+
+    func set(_ value: Bool, for key: String) {
+        expanded[key] = value
+    }
+}
+
 struct DoweSideNavSubmenu<Label: View, Content: View>: View {
     @State private var expanded: Bool
+    let stateKey: String
     let bordered: Bool
     let wide: Bool
     let label: (Bool) -> Label
     let content: Content
 
-    init(open: Bool, bordered: Bool, wide: Bool, @ViewBuilder content: () -> Content, @ViewBuilder label: @escaping (Bool) -> Label) {
-        _expanded = State(initialValue: open)
+    init(stateKey: String, open: Bool, bordered: Bool, wide: Bool, @ViewBuilder content: () -> Content, @ViewBuilder label: @escaping (Bool) -> Label) {
+        _expanded = State(initialValue: DoweSideNavMemory.shared.value(for: stateKey, initial: open))
+        self.stateKey = stateKey
         self.bordered = bordered
         self.wide = wide
         self.content = content()
@@ -582,7 +602,9 @@ struct DoweSideNavSubmenu<Label: View, Content: View>: View {
         VStack(alignment: .leading, spacing: CGFloat(0)) {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.18)) {
-                    expanded.toggle()
+                    let next = !expanded
+                    expanded = next
+                    DoweSideNavMemory.shared.set(next, for: stateKey)
                 }
             }) {
                 label(expanded)

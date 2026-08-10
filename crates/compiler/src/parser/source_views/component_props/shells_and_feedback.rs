@@ -9,7 +9,14 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
         BuiltinComponent::Card => {
             matches!(
                 name,
-                "variant" | "scheme" | "cover" | "overlay" | "animation" | "colSpan" | "rowSpan"
+                "variant"
+                    | "scheme"
+                    | "cover"
+                    | "overlay"
+                    | "animation"
+                    | "colSpan"
+                    | "rowSpan"
+                    | "onClick"
             )
         }
         BuiltinComponent::Svg => {
@@ -24,7 +31,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
                 "name" | "style" | "fill" | "stroke" | "id" | "show" | "w" | "h"
             )
         }
-        BuiltinComponent::Path => matches!(name, "d" | "fill"),
+        BuiltinComponent::Path => matches!(name, "d" | "fill" | "fillRule" | "transform"),
         BuiltinComponent::AppBar => {
             matches!(
                 name,
@@ -36,6 +43,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
                     | "boxed"
                     | "floating"
                     | "hideOnScroll"
+                    | "dockOnScroll"
             )
         }
         BuiltinComponent::BottomBar => {
@@ -90,7 +98,10 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
             matches!(name, "text" | "variant" | "scheme" | "position" | "color")
         }
         BuiltinComponent::Chip => {
-            matches!(name, "onClose" | "variant" | "scheme" | "size" | "color")
+            matches!(
+                name,
+                "onClose" | "onClick" | "variant" | "scheme" | "size" | "color"
+            )
         }
         BuiltinComponent::Skeleton => matches!(name, "variant" | "animation"),
         BuiltinComponent::Modal => matches!(

@@ -55,13 +55,25 @@ fn motion_route() -> ViewRoute {
         layout_tree: ViewNode::Children,
         page_tree: ViewNode::Box {
             props: StyleProps {
-                animation: Some(ViewAnimation::FadeIn),
+                extras: Some(Box::new(StyleExtras {
+                    motion: ViewMotionStyle {
+                        animation: Some(ViewAnimation::FadeIn),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })),
                 ..Default::default()
             },
             children: vec![ViewNode::Card {
                 props: VariantProps {
                     style: StyleProps {
-                        animation: Some(ViewAnimation::SlideUp),
+                        extras: Some(Box::new(StyleExtras {
+                            motion: ViewMotionStyle {
+                                animation: Some(ViewAnimation::SlideUp),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        })),
                         ..Default::default()
                     },
                     ..Default::default()

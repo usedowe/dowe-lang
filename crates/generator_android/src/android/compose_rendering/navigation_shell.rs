@@ -244,11 +244,13 @@ fn render_compose_side_nav(
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     let wide = compose_side_nav_wide(props, context);
     let modifier = compose_side_nav_modifier(props, flow, &wide);
+    let memory_key = side_nav_memory_key(props, items);
     output.push_str(&format!(
         "{pad}Column(modifier = {}, verticalArrangement = Arrangement.spacedBy(2.dp)) {{\n",
         modifier
     ));
-    for item in items {
+    for (index, item) in items.iter().enumerate() {
+        let item_memory_key = format!("{memory_key}:{index}");
         render_compose_side_nav_item(
             item,
             indent + 4,
@@ -258,6 +260,7 @@ fn render_compose_side_nav(
             current_font,
             default_family,
             context,
+            &item_memory_key,
         );
     }
     output.push_str(&format!("{pad}}}\n"));
@@ -366,8 +369,9 @@ fn render_compose_side_nav_data(
     let border = if let Some(variant) = variant.as_ref() { format!("if ({variant} == \"outlined\") {content} else null") } else if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined { content.clone() } else { "null".to_string() };
     let modifier = compose_side_nav_modifier(props, flow, &wide);
     output.push_str(&format!(
-        "{pad}DoweSideNav(items = {}, modifier = {}, activePath = activePath, wide = {}, paddingHorizontal = {padding_horizontal}.dp, paddingVertical = {padding_vertical}.dp, gap = {gap}.dp, labelSize = {label_size}f, descriptionSize = {description_size}f, fontFamily = {}, backgroundColor = {}, contentColor = {}, activeContentColor = {}, borderColor = {border}, navigate = navigate)\n",
+        "{pad}DoweSideNav(items = {}, stateKey = \"{}\", modifier = {}, activePath = activePath, wide = {}, paddingHorizontal = {padding_horizontal}.dp, paddingVertical = {padding_vertical}.dp, gap = {gap}.dp, labelSize = {label_size}f, descriptionSize = {description_size}f, fontFamily = {}, backgroundColor = {}, contentColor = {}, activeContentColor = {}, borderColor = {border}, navigate = navigate)\n",
         compose_side_nav_entries(items, indent),
+        escape_kotlin(&side_nav_memory_key(props, items)),
         modifier,
         wide,
         compose_font_value(current_font, default_family),
@@ -566,6 +570,7 @@ fn render_compose_side_nav_item(
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
     context: &ComposeReactiveContext,
+    memory_key: &str,
 ) {
     let pad = " ".repeat(indent);
     match item {
@@ -602,7 +607,7 @@ fn render_compose_side_nav_item(
             bordered,
             items,
         } => {
-            output.push_str(&format!("{pad}DoweSideNavSubmenu(open = {open}, bordered = {bordered}, wide = {wide}, trigger = {{ expanded, toggle ->\n"));
+            output.push_str(&format!("{pad}DoweSideNavSubmenu(stateKey = \"{}\", open = {open}, bordered = {bordered}, wide = {wide}, trigger = {{ expanded, toggle ->\n", escape_kotlin(memory_key)));
             render_compose_side_nav_row(
                 props,
                 true,

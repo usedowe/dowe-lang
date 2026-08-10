@@ -326,7 +326,7 @@ fn render_swift_structure_node(
             let mut card_style = props.style.clone();
             card_style.shadow = None;
             card_style.shadow_color = None;
-            card_style.animation = None;
+            card_style.set_animation(None);
             let mut modifiers = swift_modifiers_for_container_style(&card_style, flow);
             modifiers.push(format!(".background({})", card_variant_container(props)));
             modifiers.push(format!(".foregroundStyle({})", card_variant_content(props)));
@@ -343,10 +343,16 @@ fn render_swift_structure_node(
             if let Some(modifier) = swift_shadow_modifier_with_radius(&props.style, &radius) {
                 modifiers.push(modifier);
             }
-            if let Some(animation) = props.style.animation {
+            if let Some(animation) = props.style.animation() {
                 modifiers.push(format!(
                     ".modifier(DoweAnimationModifier(preset: {}))",
                     swift_animation_preset(animation)
+                ));
+            }
+            if props.style.element.on_click.is_some() {
+                modifiers.push(format!(
+                    ".onTapGesture(perform: {})",
+                    swift_component_action(props.style.element.on_click.as_deref(), None, context)
                 ));
             }
             append_swift_modifiers(output, indent, &modifiers);
@@ -548,6 +554,16 @@ fn render_swift_box(
             if positioned { NativeFlow::Inline } else { flow },
         ),
     );
+    if props.element.on_click.is_some() {
+        append_swift_modifiers(
+            output,
+            indent,
+            &[format!(
+                ".onTapGesture(perform: {})",
+                swift_component_action(props.element.on_click.as_deref(), None, context)
+            )],
+        );
+    }
     if positioned {
         append_swift_modifiers(
             output,

@@ -1,28 +1,39 @@
 fn render_color_html(props: &ColorProps, context: &ReactiveRenderContext) -> String {
-    let input = format!(
-        r#"<input class="color-input" type="color" value="{}"{}{}>"#,
+    let name = props
+        .name
+        .as_deref()
+        .map(|name| format!(r#" name="{}""#, escape_attr(name)))
+        .unwrap_or_default();
+    let bind = props
+        .style
+        .element
+        .bind
+        .as_deref()
+        .map(|value| {
+            format!(
+                r#" data-dowe-color-bind="{}""#,
+                escape_attr(&context.signal_path(value))
+            )
+        })
+        .unwrap_or_default();
+    let values = render_color_values(props);
+    let picker = format!(
+        r#"<div class="color-control-shell" data-dowe-color-picker data-dowe-color-value="{}"{}><button class="color-control-trigger" data-dowe-color-trigger type="button" aria-haspopup="dialog" aria-expanded="false"><span class="color-field-swatch is-{}" data-dowe-color-swatch></span><span class="color-field-value" data-dowe-color-value-label></span></button><input class="color-input" type="hidden" value="{}"{}><div class="color-picker-popover" data-dowe-color-popover role="dialog" aria-label="Color picker"><div class="color-picker-canvas" data-dowe-color-sv role="slider" tabindex="0" aria-label="Saturation and brightness" aria-valuemin="0" aria-valuemax="100"><span class="color-picker-cursor" data-dowe-color-cursor></span></div><div class="color-picker-hue" data-dowe-color-hue role="slider" tabindex="0" aria-label="Hue" aria-valuemin="0" aria-valuemax="360"><span class="color-picker-slider-thumb" data-dowe-color-hue-thumb></span></div><div class="color-picker-preview"><span class="color-picker-preview-swatch"><span class="color-picker-preview-color" data-dowe-color-preview></span></span><span class="color-picker-preview-info"><strong class="color-picker-preview-hex" data-dowe-color-preview-hex></strong><span class="color-picker-preview-foreground" data-dowe-color-foreground></span></span></div>{values}</div></div>"#,
         escape_attr(&props.value),
-        props
-            .name
-            .as_deref()
-            .map(|name| format!(r#" name="{}""#, escape_attr(name)))
-            .unwrap_or_default(),
-        bind_attr(props.style.element.bind.as_deref(), context)
-    );
-    let preview = format!(
-        r#"<span class="color-field-swatch is-{}" style="background-color:{}"></span><span class="color-field-value">{}</span>"#,
+        bind,
         props.size.as_str(),
         escape_attr(&props.value),
-        escape_html(&props.value.to_ascii_uppercase())
+        name
     );
-    let values = render_color_values(props);
     render_field_control(
         "color-field",
         &props.style,
         props.size,
         props.help_text.as_deref(),
         props.error_text.as_deref(),
-        &format!("{input}<span class=\"color-field-display\">{preview}</span>{values}"),
+        &picker,
+        true,
+        true,
         context,
     )
 }
@@ -81,6 +92,8 @@ fn render_date_html(props: &DateProps, context: &ReactiveRenderContext) -> Strin
         props.help_text.as_deref(),
         props.error_text.as_deref(),
         &input,
+        false,
+        props.value.as_deref().is_some_and(|value| !value.is_empty()),
         context,
     )
 }
@@ -152,6 +165,15 @@ fn render_date_range_html(props: &DateRangeProps, context: &ReactiveRenderContex
         props.help_text.as_deref(),
         props.error_text.as_deref(),
         &input,
+        false,
+        props
+            .start_value
+            .as_deref()
+            .is_some_and(|value| !value.is_empty())
+            || props
+                .end_value
+                .as_deref()
+                .is_some_and(|value| !value.is_empty()),
         context,
     )
 }
@@ -682,12 +704,19 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
     )
 }
 
-fn render_password_field_html(
-    props: &PasswordFieldProps,
+fn render_password_html(
+    props: &PasswordProps,
     context: &ReactiveRenderContext,
 ) -> String {
+    let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
+    let hide_icon = solar_control_icon("eye-closed").expect("bundled Password conceal icon");
+    let toggle = format!(
+        r#"<button class="password-toggle" type="button" aria-label="Show password" data-dowe-password-toggle><span data-dowe-password-show-icon>{}</span><span data-dowe-password-hide-icon hidden>{}</span></button>"#,
+        render_svg_html(&show_icon.props, &show_icon.paths, context),
+        render_svg_html(&hide_icon.props, &hide_icon.paths, context)
+    );
     let input = format!(
-        r#"<input class="password-field-input input" type="password"{}{}{}{}{} data-dowe-password-input><button class="password-field-toggle" type="button" aria-label="Show password" data-dowe-password-toggle>Show</button>"#,
+        r#"<input class="password-input input" type="password"{}{}{}{}{} data-dowe-password-input>{toggle}"#,
         input_placeholder_attr(&props.style),
         props
             .value
@@ -709,7 +738,7 @@ fn render_password_field_html(
         }
     );
     let mut classes = variant_classes("control", &props.style);
-    classes.push("password-field".to_string());
+    classes.push("password".to_string());
     classes.push(format!(
         "is-{}",
         props.style.size.unwrap_or(ButtonSize::Md).as_str()
@@ -735,7 +764,7 @@ fn render_password_field_html(
     )
 }
 
-fn render_password_strength(props: &PasswordFieldProps) -> String {
+fn render_password_strength(props: &PasswordProps) -> String {
     if props.hide_strength {
         return String::new();
     }
@@ -750,14 +779,14 @@ fn render_password_strength(props: &PasswordFieldProps) -> String {
     )
 }
 
-fn render_phone_field_html(props: &PhoneFieldProps, context: &ReactiveRenderContext) -> String {
+fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> String {
     let country = phone_country(props.country.as_deref()).unwrap_or_else(|| phone_countries()[0]);
     let selected_code = country.code;
     let options = ordered_phone_countries(Some(country.code), &props.priority_countries)
         .iter()
         .map(|country| {
             format!(
-                r#"<button type="button" class="phone-field-country" data-dowe-phone-option data-dowe-country="{}" data-dowe-dial="{}" aria-selected="{}"><span class="phone-field-flag">{}</span><span class="phone-field-country-name">{}</span><span class="phone-field-dial">+{}</span></button>"#,
+                r#"<button type="button" class="phone-country" data-dowe-phone-option data-dowe-country="{}" data-dowe-dial="{}" aria-selected="{}"><span class="phone-flag">{}</span><span class="phone-country-name">{}</span><span class="phone-dial">+{}</span></button>"#,
                 escape_attr(country.code),
                 escape_attr(country.dial),
                 country.code == selected_code,
@@ -769,7 +798,7 @@ fn render_phone_field_html(props: &PhoneFieldProps, context: &ReactiveRenderCont
         .collect::<String>();
     let priority = props.priority_countries.join(",");
     let input = format!(
-        r#"<input type="hidden" name="{}" value="{}" data-dowe-phone-dial><button class="phone-field-country-trigger" type="button" data-dowe-phone-country aria-expanded="false" aria-haspopup="listbox"><span class="phone-field-flag">{}</span><span class="phone-field-dial">+{}</span>{}</button><input class="phone-field-input input" type="tel" inputmode="numeric" pattern="[0-9]*"{}{}{}{}{} data-dowe-phone-input><div class="phone-field-popover" data-dowe-phone-popover hidden><div class="phone-field-search-wrap">{}<input class="phone-field-search" type="search" placeholder="{}" data-dowe-phone-search></div><div class="phone-field-countries" data-dowe-phone-countries role="listbox">{options}</div><div class="phone-field-empty" hidden>{}</div><div class="phone-field-loading" hidden>{}</div></div>"#,
+        r#"<input type="hidden" name="{}" value="{}" data-dowe-phone-dial><button class="phone-country-trigger" type="button" data-dowe-phone-country aria-expanded="false" aria-haspopup="listbox"><span class="phone-flag">{}</span><span class="phone-dial">+{}</span>{}</button><input class="phone-input input" type="tel" inputmode="numeric" pattern="[0-9]*"{}{}{}{}{} data-dowe-phone-input><div class="phone-popover" data-dowe-phone-popover hidden><div class="phone-search-wrap">{}<input class="phone-search" type="search" placeholder="{}" data-dowe-phone-search></div><div class="phone-countries" data-dowe-phone-countries role="listbox">{options}</div><div class="phone-empty" hidden>{}</div><div class="phone-loading" hidden>{}</div></div>"#,
         escape_attr(&props.dial_code_name),
         escape_attr(country.dial),
         country_flag_html(country.code, context),
@@ -788,18 +817,18 @@ fn render_phone_field_html(props: &PhoneFieldProps, context: &ReactiveRenderCont
             .unwrap_or_default(),
         bind_attr(props.style.element.bind.as_deref(), context),
         if props.disabled { " disabled" } else { "" },
-        view_icon_svg(ViewIcon::Search, "phone-field-search-icon"),
+        view_icon_svg(ViewIcon::Search, "phone-search-icon"),
         escape_attr(&props.search_placeholder),
         escape_html(&props.empty_text),
         escape_html(&props.loading_text)
     );
     let extra = format!(
-        r#" data-dowe-phone-field data-dowe-country="{}" data-dowe-priority-countries="{}""#,
+        r#" data-dowe-phone data-dowe-country="{}" data-dowe-priority-countries="{}""#,
         escape_attr(country.code),
         escape_attr(&priority)
     );
     let mut control_classes = variant_classes("control", &props.style);
-    control_classes.push("phone-field".to_string());
+    control_classes.push("phone".to_string());
     control_classes.push(format!(
         "is-{}",
         props.style.size.unwrap_or(ButtonSize::Md).as_str()
@@ -830,33 +859,37 @@ fn render_phone_field_html(props: &PhoneFieldProps, context: &ReactiveRenderCont
 fn country_flag_html(code: &str, context: &ReactiveRenderContext) -> String {
     phone_country_flag_icon(code)
         .map(|icon| render_svg_html(&icon.props, &icon.paths, context))
-        .unwrap_or_else(|| "<span class=\"phone-field-flag-fallback\">--</span>".to_string())
+        .unwrap_or_else(|| "<span class=\"phone-flag-fallback\">--</span>".to_string())
 }
 
-fn render_pin_field_html(props: &PinFieldProps, context: &ReactiveRenderContext) -> String {
+fn render_pin_html(props: &PinProps, context: &ReactiveRenderContext) -> String {
     let value = props.value.as_deref().unwrap_or_default();
     let size = props.style.size.unwrap_or(ButtonSize::Md);
     let inputs = (0..props.length)
         .map(|index| {
-            let char_value = value.chars().nth(index as usize).unwrap_or_default();
+            let char_value = value
+                .chars()
+                .nth(index as usize)
+                .map(|character| character.to_string())
+                .unwrap_or_default();
             let input_type = match props.kind {
-                PinFieldKind::Password => "password",
-                PinFieldKind::Text | PinFieldKind::Number => "text",
+                PinKind::Password => "password",
+                PinKind::Text | PinKind::Number => "text",
             };
-            let input_mode = if props.kind == PinFieldKind::Number {
+            let input_mode = if props.kind == PinKind::Number {
                 "numeric"
             } else {
                 "text"
             };
             let mut cell_classes = variant_classes("control", &props.style);
-            cell_classes.push("pin-field-cell".to_string());
+            cell_classes.push("pin-cell".to_string());
             cell_classes.push(format!("is-{}", size.as_str()));
             format!(
-                r#"<label{}><input class="pin-field-input" inputmode="{}" type="{}" maxlength="1" value="{}" autocomplete="one-time-code" data-dowe-pin-cell></label>"#,
+                r#"<label{}><input class="pin-input" inputmode="{}" type="{}" maxlength="1" value="{}" autocomplete="one-time-code" data-dowe-pin-cell></label>"#,
                 attrs(cell_classes, None, None, context),
                 input_mode,
                 input_type,
-                escape_attr(&char_value.to_string()),
+                escape_attr(&char_value),
             )
         })
         .collect::<String>();
@@ -872,15 +905,15 @@ fn render_pin_field_html(props: &PinFieldProps, context: &ReactiveRenderContext)
         })
         .unwrap_or_default();
     let extra = format!(
-        r#" data-dowe-pin-field data-dowe-pin-length="{}" data-dowe-pin-type="{}"{}"#,
+        r#" data-dowe-pin data-dowe-pin-length="{}" data-dowe-pin-type="{}"{}"#,
         props.length,
         props.kind.as_str(),
         bind_attr(props.style.element.bind.as_deref(), context)
     );
     let body = format!(
-        r#"<div{}>{hidden}<div class="pin-field-cells">{inputs}</div></div>"#,
+        r#"<div{}>{hidden}<div class="pin-cells">{inputs}</div></div>"#,
         attrs(
-            vec!["pin-field".to_string()],
+            vec!["pin".to_string()],
             Some(&props.style.element),
             Some(&extra),
             context
@@ -930,6 +963,11 @@ fn render_textarea_html(props: &TextareaProps, context: &ReactiveRenderContext) 
         props.help_text.as_deref(),
         props.error_text.as_deref(),
         &control,
+        false,
+        props
+            .value
+            .as_deref()
+            .is_some_and(|value| !value.is_empty()),
         context,
     );
     if props.resize {
@@ -948,6 +986,8 @@ fn render_field_control(
     help_text: Option<&str>,
     error_text: Option<&str>,
     control_html: &str,
+    has_start_adornment: bool,
+    has_value: bool,
     context: &ReactiveRenderContext,
 ) -> String {
     let mut classes = variant_classes("control", props);
@@ -955,6 +995,12 @@ fn render_field_control(
     classes.push(format!("is-{}", size.as_str()));
     if props.label_floating {
         classes.push("is-floating".to_string());
+    }
+    if has_start_adornment {
+        classes.push("has-start-adornment".to_string());
+    }
+    if has_value {
+        classes.push("has-value".to_string());
     }
     if error_text.is_some() {
         classes.push("is-error".to_string());
@@ -1011,68 +1057,17 @@ fn render_color_values(props: &ColorProps) -> String {
     }
     let mut html = String::from("<span class=\"color-picker-values\">");
     if props.show_hex {
-        html.push_str(&format!(
-            r#"<code class="color-picker-value-code">hex: {}</code>"#,
-            escape_html(&props.value)
-        ));
+        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="hex"></code>"#);
     }
     if props.show_rgb {
-        html.push_str(&format!(
-            r#"<code class="color-picker-value-code">rgb: {}</code>"#,
-            escape_html(&hex_rgb_label(&props.value))
-        ));
+        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="rgb"></code>"#);
     }
     if props.show_cmyk {
-        html.push_str(&format!(
-            r#"<code class="color-picker-value-code">cmyk: {}</code>"#,
-            escape_html(&hex_cmyk_label(&props.value))
-        ));
+        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="cmyk"></code>"#);
     }
     if props.show_oklch {
-        html.push_str(r#"<code class="color-picker-value-code">oklch: target-derived</code>"#);
+        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="oklch"></code>"#);
     }
     html.push_str("</span>");
     html
-}
-
-fn hex_rgb_label(value: &str) -> String {
-    let Some((r, g, b)) = parse_hex_rgb(value) else {
-        return "rgb(0, 0, 0)".to_string();
-    };
-    format!("rgb({r}, {g}, {b})")
-}
-
-fn hex_cmyk_label(value: &str) -> String {
-    let Some((r, g, b)) = parse_hex_rgb(value) else {
-        return "cmyk(0%, 0%, 0%, 100%)".to_string();
-    };
-    let r = r as f32 / 255.0;
-    let g = g as f32 / 255.0;
-    let b = b as f32 / 255.0;
-    let k = 1.0 - r.max(g).max(b);
-    if k >= 1.0 {
-        return "cmyk(0%, 0%, 0%, 100%)".to_string();
-    }
-    let c = ((1.0 - r - k) / (1.0 - k) * 100.0).round() as u8;
-    let m = ((1.0 - g - k) / (1.0 - k) * 100.0).round() as u8;
-    let y = ((1.0 - b - k) / (1.0 - k) * 100.0).round() as u8;
-    let k = (k * 100.0).round() as u8;
-    format!("cmyk({c}%, {m}%, {y}%, {k}%)")
-}
-
-fn parse_hex_rgb(value: &str) -> Option<(u8, u8, u8)> {
-    let hex = value.strip_prefix('#')?;
-    if hex.len() == 6 {
-        let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
-        let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
-        let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
-        return Some((r, g, b));
-    }
-    if hex.len() == 3 {
-        let r = u8::from_str_radix(&hex[0..1].repeat(2), 16).ok()?;
-        let g = u8::from_str_radix(&hex[1..2].repeat(2), 16).ok()?;
-        let b = u8::from_str_radix(&hex[2..3].repeat(2), 16).ok()?;
-        return Some((r, g, b));
-    }
-    None
 }

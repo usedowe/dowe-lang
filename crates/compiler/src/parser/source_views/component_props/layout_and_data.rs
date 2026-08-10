@@ -15,6 +15,7 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                         | "right"
                         | "bottom"
                         | "left"
+                        | "onClick"
                 )
             }
             BuiltinComponent::Section => {
@@ -43,6 +44,7 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                     "bind"
                         | "variant"
                         | "scheme"
+                        | "size"
                         | "label"
                         | "placeholder"
                         | "labelFloating"

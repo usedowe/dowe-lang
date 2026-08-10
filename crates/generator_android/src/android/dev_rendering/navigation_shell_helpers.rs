@@ -270,6 +270,7 @@ fn render_dev_android_side_nav(
             output,
             current_font,
             context,
+            &format!("{}:{index}", side_nav_memory_key(props, items)),
         );
         output.push_str(&format!(
             "        }};\n        {renderer}.accept({view});\n"
@@ -306,7 +307,8 @@ fn render_dev_android_side_nav_data(
     let wide = dev_side_nav_wide(props, context);
     let entries = dev_side_nav_entries(items);
     output.push_str(&format!(
-        "        doweRenderSideNav({parent}, {entries}, {wide}, {padding_horizontal}, {padding_vertical}, {gap}, {label_size}, {description_size}, {}, {}, {});\n",
+        "        doweRenderSideNav({parent}, {entries}, \"{}\", {wide}, {padding_horizontal}, {padding_vertical}, {gap}, {label_size}, {description_size}, {}, {}, {});\n",
+        escape_java(&side_nav_memory_key(props, items)),
         container,
         content,
         dev_font_value(inherited_font)
@@ -460,6 +462,7 @@ fn render_dev_android_side_nav_item(
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     context: &ComposeReactiveContext,
+    memory_key: &str,
 ) {
     match item {
         SideNavItem::Header(props) => {
@@ -502,6 +505,10 @@ fn render_dev_android_side_nav_item(
             bordered,
             items,
         } => {
+            let expanded = format!(
+                "doweSideNavExpanded(\"{}\", {open})",
+                escape_java(memory_key)
+            );
             let trigger = render_dev_android_side_nav_row(
                 props,
                 true,
@@ -517,9 +524,9 @@ fn render_dev_android_side_nav_item(
             let submenu = next_dev_view(counter);
             let submenu_content = next_dev_view(counter);
             output.push_str(&format!(
-                "        LinearLayout {submenu} = doweContainer({bordered});\n        {submenu}.setLayoutParams(new LinearLayout.LayoutParams({}, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {submenu}.setPadding(doweDp(16), 0, 0, 0);\n        {submenu}.setVisibility({});\n        doweAdd({parent}, {submenu});\n        LinearLayout {submenu_content} = doweSideNavSubmenuContent({submenu}, {bordered});\n        {trigger}.setOnClickListener(v -> doweToggleSideNavSubmenu({submenu}, {trigger}Arrow));\n",
+                "        boolean {submenu}Expanded = {expanded};\n        {trigger}Arrow.setRotation({submenu}Expanded ? 90f : 0f);\n        LinearLayout {submenu} = doweContainer({bordered});\n        {submenu}.setLayoutParams(new LinearLayout.LayoutParams({}, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {submenu}.setPadding(doweDp(16), 0, 0, 0);\n        {submenu}.setVisibility({submenu}Expanded ? View.VISIBLE : View.GONE);\n        doweAdd({parent}, {submenu});\n        LinearLayout {submenu_content} = doweSideNavSubmenuContent({submenu}, {bordered});\n        {trigger}.setOnClickListener(v -> doweToggleSideNavSubmenu({submenu}, {trigger}Arrow, \"{}\"));\n",
                 format!("{wide} ? ViewGroup.LayoutParams.MATCH_PARENT : ViewGroup.LayoutParams.WRAP_CONTENT"),
-                if *open { "View.VISIBLE" } else { "View.GONE" }
+                escape_java(memory_key)
             ));
             for (index, item) in items.iter().enumerate() {
                 let renderer = format!("{submenu_content}Item{index}");

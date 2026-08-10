@@ -331,23 +331,23 @@ pub fn container_component_node(
                 Err(ComponentError::children_not_allowed(component))
             }
         }
-        BuiltinComponent::PasswordField => {
+        BuiltinComponent::Password => {
             if children.is_empty() {
-                password_field_component_node(props)
+                password_component_node(props)
             } else {
                 Err(ComponentError::children_not_allowed(component))
             }
         }
-        BuiltinComponent::PhoneField => {
+        BuiltinComponent::Phone => {
             if children.is_empty() {
-                phone_field_component_node(props)
+                phone_component_node(props)
             } else {
                 Err(ComponentError::children_not_allowed(component))
             }
         }
-        BuiltinComponent::PinField => {
+        BuiltinComponent::Pin => {
             if children.is_empty() {
-                pin_field_component_node(props)
+                pin_component_node(props)
             } else {
                 Err(ComponentError::children_not_allowed(component))
             }

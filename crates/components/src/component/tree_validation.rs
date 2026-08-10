@@ -351,9 +351,9 @@ fn validate_view_tree_with_parent(
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
@@ -450,9 +450,9 @@ fn node_style_props(node: &ViewNode) -> Option<&StyleProps> {
         ViewNode::DragDrop { props, .. } => Some(&props.style.style),
         ViewNode::Editor { props } => Some(&props.style.style),
         ViewNode::ImageCropper { props } => Some(&props.style.style),
-        ViewNode::PasswordField { props } => Some(&props.style.style),
-        ViewNode::PhoneField { props } => Some(&props.style.style),
-        ViewNode::PinField { props } => Some(&props.style.style),
+        ViewNode::Password { props } => Some(&props.style.style),
+        ViewNode::Phone { props } => Some(&props.style.style),
+        ViewNode::Pin { props } => Some(&props.style.style),
         ViewNode::Textarea { props } => Some(&props.style.style),
         ViewNode::Skeleton { props } => Some(&props.style),
         ViewNode::Code { props } => Some(&props.style.style),

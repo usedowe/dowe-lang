@@ -222,8 +222,8 @@ fn collect_variant_rules<'a>(
             push_variant_rule(variants, "control", props);
         }
         ViewNode::ComboBox { props, .. } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::PasswordField { props } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::PhoneField { props } => push_variant_rule(variants, "control", &props.style),
+        ViewNode::Password { props } => push_variant_rule(variants, "control", &props.style),
+        ViewNode::Phone { props } => push_variant_rule(variants, "control", &props.style),
         ViewNode::Textarea { props } => push_variant_rule(variants, "control", &props.style),
         ViewNode::CsvField { props, .. } => {
             push_variant_rule(variants, "button", &props.style);
@@ -237,7 +237,7 @@ fn collect_variant_rules<'a>(
         ViewNode::ImageCropper { props } => {
             push_variant_rule(variants, "image-cropper", &props.style);
         }
-        ViewNode::PinField { props } => {
+        ViewNode::Pin { props } => {
             push_variant_rule(variants, "control", &props.style);
         }
         ViewNode::Slider { .. } => {}
@@ -606,9 +606,9 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::ToggleTheme { .. }
         | ViewNode::SelectTheme { .. }

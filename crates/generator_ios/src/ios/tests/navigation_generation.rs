@@ -13,6 +13,19 @@ fn generates_swiftui_layout_bars() {
     assert!(views.contains("Text(verbatim: \"Brand\")"));
     assert!(views.contains("Text(verbatim: \"Directory\")"));
     assert!(views.contains("Text(verbatim: \"Copyright\")"));
+    let directory = views
+        .find("Text(verbatim: \"Directory\")")
+        .expect("Footer top");
+    let copyright = views[directory..]
+        .find("Text(verbatim: \"Copyright\")")
+        .map(|index| directory + index)
+        .expect("Footer bottom");
+    let footer_boxed = views[copyright..]
+        .find(".frame(maxWidth: CGFloat(1536), alignment: .center)")
+        .map(|index| copyright + index)
+        .expect("Footer boxed regions");
+    assert!(directory < copyright);
+    assert!(copyright < footer_boxed);
     assert!(views.contains(".background(DoweDesign.surface)"));
     assert!(views.contains(".foregroundStyle(DoweDesign.onSurface)"));
     assert!(views.contains(".zIndex(1)"));
@@ -42,6 +55,44 @@ fn generates_swiftui_layout_bars() {
     assert!(views.contains("itemSize: CGFloat(56)"));
     assert!(views.contains("backgroundColor: DoweDesign.primary"));
     assert!(views.contains("featured: true"));
+}
+
+#[test]
+fn generates_scroll_docking_appbar_for_swiftui() {
+    let output = generate_ios(
+        &[docking_appbar_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains("DoweDockingScaffold"));
+    assert!(views.contains("@StateObject private var state = DoweDockingState()"));
+    assert!(views.contains(".environment(\\.doweDockingState, state)"));
+    assert!(views.contains("state.scrollOffset > CGFloat(100)"));
+    assert!(views.contains("struct DoweDockingScrollObserver: UIViewRepresentable"));
+    assert!(
+        views.contains("fileprivate func connect(from view: UIView, state: DoweDockingState?)")
+    );
+    assert!(views.contains("scrollView.observe(\\.contentOffset"));
+    assert!(views.contains("scrollView.contentOffset.y + scrollView.adjustedContentInset.top"));
+    assert!(views.contains(".background(DoweDockingScrollObserver())"));
+    assert!(!views.contains("DoweDockingScrollOffsetKey"));
+    assert!(!views.contains("DoweDockingScrollOffsetReader"));
+    assert!(!views.contains("doweDockingScroll"));
+    assert_eq!(views.matches(".layoutPriority(1)").count(), 2);
+    assert_eq!(
+        views
+            .matches(".fixedSize(horizontal: true, vertical: false)")
+            .count(),
+        3
+    );
+    assert!(views.contains("DoweDockingAppBarModifier"));
+    assert!(views.contains(".timingCurve(0.4, 0, 0.2, 1, duration: 0.3)"));
+    assert!(views.contains("reduceMotion ? nil"));
+    assert!(views.contains("docked ? CGFloat(0) : CGFloat(16)"));
+    assert!(views.contains("docked ? CGFloat(0) : CGFloat(8)"));
 }
 
 #[test]
@@ -79,7 +130,7 @@ fn generates_swiftui_side_nav() {
     assert!(views.contains("DoweSideNav(items: ["));
     assert!(views.contains("kind: \"submenu\""));
     assert!(
-        views.contains("DoweSideNavSubmenu(open: item.open, bordered: item.bordered, wide: wide)")
+        views.contains("DoweSideNavSubmenu(stateKey: stateKey + \":\" + item.id, open: item.open, bordered: item.bordered, wide: wide)")
     );
     assert!(views.contains("DoweSideNavRow(active: item.path == activePath"));
     assert!(views.contains(".frame(maxWidth: wide ? .infinity : nil, alignment: .leading)"));
@@ -87,6 +138,9 @@ fn generates_swiftui_side_nav() {
     assert!(views.contains("label(expanded)\n                    .frame(maxWidth: wide ? .infinity : nil, alignment: .leading)\n                    .contentShape(Rectangle())"));
     assert!(views.contains(".buttonStyle(.plain)\n            .frame(maxWidth: wide ? .infinity : nil, alignment: .leading)\n            .contentShape(Rectangle())"));
     assert!(views.contains("struct DoweSideNavArrow: View"));
+    assert!(views.contains("final class DoweSideNavMemory"));
+    assert!(views.contains("DoweSideNavMemory.shared.value(for: stateKey, initial: open)"));
+    assert!(views.contains("DoweSideNavMemory.shared.set(next, for: stateKey)"));
     assert!(views.contains("m19.704 12l-8.491-8.727a.75.75"));
     assert!(views.contains("withAnimation(.easeInOut(duration: 0.18))"));
     assert!(views.contains(".transition(.opacity)"));
@@ -138,7 +192,7 @@ fn keeps_explicit_swiftui_side_nav_for_complex_icon_styles() {
     );
     let views = swift_content(&output);
 
-    assert!(views.contains("DoweSideNavSubmenu(open: true, bordered: true, wide: state.bool(\"wideEnabled\", fallback: false))"));
+    assert!(views.contains("open: true, bordered: true, wide: state.bool(\"wideEnabled\", fallback: false)"));
     assert!(views.contains("DoweSideNavRow(active: activePath == \"/bars\""));
     assert!(views.contains("DoweSvgView(viewBox: DoweSvgViewBox"));
     assert!(views.contains(

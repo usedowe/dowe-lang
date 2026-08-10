@@ -2,7 +2,7 @@ fn android_runtime_input_helpers() -> &'static str {
     r#"private data class DoweSelectOption(val value: String, val label: String, val description: String?)
 
 @Composable
-private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: Modifier, label: String?, placeholder: String, floating: Boolean, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, startIcon: (@Composable () -> Unit)? = null, endIcon: (@Composable () -> Unit)? = null) {
+private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: Modifier, label: String?, placeholder: String, floating: Boolean, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, startIcon: (@Composable () -> Unit)? = null, endIcon: (@Composable () -> Unit)? = null, visualTransformation: VisualTransformation = VisualTransformation.None, keyboardOptions: KeyboardOptions = KeyboardOptions.Default) {
     var focused by remember { mutableStateOf(false) }
     val active = focused || value.isNotEmpty()
     val surface = modifier
@@ -21,6 +21,8 @@ private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: 
             onValueChange = onValueChange,
             modifier = surface,
             singleLine = true,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
             textStyle = TextStyle(fontFamily = fontFamily, fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.Normal, color = contentColor),
             decorationBox = { innerTextField ->
                 Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -232,9 +234,10 @@ private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, lab
 }
 
 @Composable
-private fun DowePasswordField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, hideStrength: Boolean, weakLabel: String, mediumLabel: String, strongLabel: String, readOnly: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+private fun DowePassword(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, minHeight: Dp, fontSize: TextUnit, lineHeight: TextUnit, hideStrength: Boolean, weakLabel: String, mediumLabel: String, strongLabel: String, readOnly: Boolean, showIcon: @Composable () -> Unit, hideIcon: @Composable () -> Unit, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    var visible by remember { mutableStateOf(false) }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        DoweInput(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth(), label = label, placeholder = placeholder, floating = floating, fontFamily = FontFamily.Default, fontSize = 16.sp, lineHeight = 20.sp, minHeight = 48.dp, horizontalPadding = 12.dp, shape = RoundedCornerShape(12.dp), backgroundColor = backgroundColor, contentColor = contentColor, borderColor = contentColor.copy(alpha = 0.22f))
+        DoweInput(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth(), label = label, placeholder = placeholder, floating = floating, fontFamily = FontFamily.Default, fontSize = fontSize, lineHeight = lineHeight, minHeight = minHeight, horizontalPadding = 12.dp, shape = RoundedCornerShape(12.dp), backgroundColor = backgroundColor, contentColor = contentColor, borderColor = contentColor.copy(alpha = 0.22f), endIcon = { Box(modifier = Modifier.size(32.dp).semantics { contentDescription = if (visible) "Hide password" else "Show password" }.clickable(enabled = !readOnly) { visible = !visible }, contentAlignment = Alignment.Center) { if (visible) hideIcon() else showIcon() } }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
         if (!hideStrength) {
             val score = listOf(value.length >= 8, value.length >= 12, value.any { it.isDigit() }, value.any { it.isUpperCase() }, value.any { it.isLowerCase() }, value.any { !it.isLetterOrDigit() }).count { it }
             val strengthColor = if (score <= 2) DoweDesign.danger else if (score <= 4) DoweDesign.warning else DoweDesign.success
@@ -249,8 +252,10 @@ private data class DowePhoneCountry(val code: String, val name: String, val dial
 __DOWE_PHONE_COUNTRIES__
 
 @Composable
-private fun DowePhoneField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, country: String, countries: List<DowePhoneCountry>, priorityCountries: List<String>, searchPlaceholder: String, emptyText: String, loadingText: String, floating: Boolean, disabled: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, country: String, countries: List<DowePhoneCountry>, priorityCountries: List<String>, searchPlaceholder: String, emptyText: String, loadingText: String, floating: Boolean, minHeight: Dp, fontSize: TextUnit, lineHeight: TextUnit, disabled: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
     var expanded by remember { mutableStateOf(false) }
+    var popupMounted by remember { mutableStateOf(false) }
+    var triggerHeight by remember { mutableStateOf(0) }
     var selectedCode by remember(country) { mutableStateOf(country) }
     var query by remember { mutableStateOf("") }
     var localValue by remember(value) { mutableStateOf(value.filter { it.isDigit() }) }
@@ -264,31 +269,40 @@ private fun DowePhoneField(value: String, onValueChange: (String) -> Unit, label
     }
     val normalizedQuery = query.trim().lowercase()
     val filtered = if (normalizedQuery.isEmpty()) ordered else ordered.filter { it.name.lowercase().contains(normalizedQuery) || it.code.lowercase().contains(normalizedQuery) || it.dialCode.contains(normalizedQuery) }
-    val popupOffset = with(LocalDensity.current) { IntOffset(0, 54.dp.roundToPx()) }
+    val popupOffset = with(LocalDensity.current) { IntOffset(0, triggerHeight + 4.dp.roundToPx()) }
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            popupMounted = true
+        } else if (popupMounted) {
+            delay(160)
+            popupMounted = false
+        }
+    }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null && !floating) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
         Box {
-            Row(modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).onGloballyPositioned { triggerHeight = it.size.height }.clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(modifier = Modifier.clickable(enabled = !disabled && countries.isNotEmpty()) { expanded = true }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (selected != null) DoweSvg(viewBox = selected.viewBox, modifier = Modifier.size(24.dp).clip(RoundedCornerShape(999.dp)), color = contentColor, paths = selected.paths)
-                    Text(if (selected == null) "+$country" else "+${selected.dialCode}", fontWeight = FontWeight.Bold, color = contentColor)
-                    DoweSvg(viewBox = doweSelectArrowViewBox, modifier = Modifier.size(16.dp), color = contentColor, paths = doweSelectArrowPaths)
+                    if (selected != null) DoweSvg(viewBox = selected.viewBox, modifier = Modifier.size(24.dp).align(Alignment.CenterVertically).clip(RoundedCornerShape(999.dp)), color = contentColor, paths = selected.paths)
+                    Text(if (selected == null) "+$country" else "+${selected.dialCode}", modifier = Modifier.align(Alignment.CenterVertically), fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.Bold, color = contentColor)
+                    DoweSvg(viewBox = doweSelectArrowViewBox, modifier = Modifier.size(16.dp).align(Alignment.CenterVertically), color = contentColor, paths = doweSelectArrowPaths)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Box(modifier = Modifier.weight(1f).heightIn(min = 48.dp), contentAlignment = Alignment.CenterStart) {
-                    if (label != null && floating) Text(label, modifier = Modifier.align(Alignment.TopStart), fontSize = if (localValue.isEmpty()) 16.sp else 12.sp, color = contentColor, fontWeight = FontWeight.SemiBold)
-                    if (localValue.isEmpty() && (!floating || expanded)) Text(placeholder, modifier = Modifier.padding(top = if (label != null && floating) 10.dp else 0.dp), color = contentColor.copy(alpha = 0.55f))
-                    BasicTextField(value = localValue, onValueChange = { next -> if (!disabled) { val filtered = next.filter { char -> char.isDigit() }; localValue = filtered; onValueChange(filtered) } }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = if (label != null && floating) 10.dp else 0.dp), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = TextStyle(color = contentColor), enabled = !disabled)
+                Box(modifier = Modifier.weight(1f).heightIn(min = minHeight), contentAlignment = Alignment.CenterStart) {
+                    if (label != null && floating) Text(label, modifier = Modifier.align(Alignment.TopStart), fontSize = if (localValue.isEmpty()) fontSize else 12.sp, color = contentColor, fontWeight = FontWeight.SemiBold)
+                    if (localValue.isEmpty() && (!floating || expanded)) Text(placeholder, modifier = Modifier.padding(top = if (label != null && floating) 10.dp else 0.dp), color = contentColor.copy(alpha = 0.55f), fontSize = fontSize, lineHeight = lineHeight)
+                    BasicTextField(value = localValue, onValueChange = { next -> if (!disabled) { val filtered = next.filter { char -> char.isDigit() }; localValue = filtered; onValueChange(filtered) } }, modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).padding(top = if (label != null && floating) 10.dp else 0.dp), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = TextStyle(color = contentColor, fontSize = fontSize, lineHeight = lineHeight), enabled = !disabled)
                 }
             }
-            if (expanded) DoweAnchoredPopover(visible = true, offset = popupOffset, shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, contentPadding = PaddingValues(vertical = 4.dp), onDismiss = { expanded = false }) {
-                BasicTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), singleLine = true, textStyle = TextStyle(color = DoweDesign.onSurface), decorationBox = { inner -> Box { if (query.isEmpty()) Text(searchPlaceholder, color = DoweDesign.onSurface.copy(alpha = 0.55f)); inner() } })
+            if (triggerHeight > 0 && (expanded || popupMounted)) DoweAnchoredPopover(visible = expanded, offset = popupOffset, shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, contentPadding = PaddingValues(0.dp), minWidth = 280.dp, maxWidth = 384.dp, maxHeight = 380.dp, onDismiss = { expanded = false; query = "" }) {
+                BasicTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(6.dp).clip(RoundedCornerShape(10.dp)).background(DoweDesign.onSurface.copy(alpha = 0.07f)).padding(horizontal = 12.dp, vertical = 9.dp), singleLine = true, textStyle = TextStyle(color = DoweDesign.onSurface), decorationBox = { inner -> Box { if (query.isEmpty()) Text(searchPlaceholder, color = DoweDesign.onSurface.copy(alpha = 0.55f)); inner() } })
                 if (countries.isEmpty()) Text(loadingText, modifier = Modifier.padding(16.dp), color = DoweDesign.onSurface.copy(alpha = 0.68f))
                 else if (filtered.isEmpty()) Text(emptyText, modifier = Modifier.padding(16.dp), color = DoweDesign.onSurface.copy(alpha = 0.68f))
                 else filtered.forEach { item ->
-                    Row(modifier = Modifier.fillMaxWidth().clickable { selectedCode = item.code; expanded = false; query = "" }.background(if (item.code == selectedCode) contentColor.copy(alpha = 0.08f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { selectedCode = item.code; expanded = false; query = "" }.background(if (item.code == selectedCode) DoweDesign.onSurface.copy(alpha = 0.07f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         DoweSvg(viewBox = item.viewBox, modifier = Modifier.size(28.dp).clip(RoundedCornerShape(999.dp)), color = DoweDesign.onSurface, paths = item.paths)
-                        Column(modifier = Modifier.weight(1f)) { Text(item.name, fontWeight = FontWeight.SemiBold, color = DoweDesign.onSurface); Text("+${item.dialCode}", fontSize = 12.sp, color = DoweDesign.onSurface.copy(alpha = 0.68f)) }
+                        Text(item.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, color = DoweDesign.onSurface, maxLines = 1)
+                        Text("+${item.dialCode}", fontWeight = FontWeight.Bold, color = DoweDesign.onSurface)
                     }
                 }
             }
@@ -297,7 +311,7 @@ private fun DowePhoneField(value: String, onValueChange: (String) -> Unit, label
 }
 
 @Composable
-private fun DowePinField(value: String, onValueChange: (String) -> Unit, label: String?, length: Int, kind: String, size: String, modifier: Modifier, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, helpText: String?, errorText: String?) {
+private fun DowePin(value: String, onValueChange: (String) -> Unit, label: String?, length: Int, kind: String, size: String, fontSize: TextUnit, lineHeight: TextUnit, modifier: Modifier, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, helpText: String?, errorText: String?) {
     var cells by remember(value, length) { mutableStateOf(value.padEnd(length).take(length).map { if (it == ' ') "" else it.toString() }) }
     val focusRequesters = remember(length) { List(length) { FocusRequester() } }
     val cellWidth = when (size) {
@@ -305,46 +319,46 @@ private fun DowePinField(value: String, onValueChange: (String) -> Unit, label: 
         "lg" -> 52.dp
         else -> 44.dp
     }
-    val fontSize = when (size) {
-        "sm" -> 14.sp
-        "lg" -> 18.sp
-        else -> 16.sp
-    }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
-        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            cells.forEachIndexed { index, cell ->
-                val cellModifier = Modifier
-                    .width(cellWidth)
-                    .height(doweControlHeight(size))
-                    .clip(shape)
-                    .background(backgroundColor)
-                    .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
-                    .padding(horizontal = if (size == "sm") 8.dp else 12.dp)
-                    .focusRequester(focusRequesters[index])
-                    .onPreviewKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DEL && cell.isEmpty() && index > 0) {
-                            focusRequesters[index - 1].requestFocus()
-                            true
-                        } else {
-                            false
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val cellGap = 8.dp
+            val cellCount = length.coerceAtLeast(1)
+            val responsiveCellWidth = minOf(cellWidth, ((maxWidth - cellGap * (cellCount - 1)).coerceAtLeast(1.dp) / cellCount.toFloat()))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(cellGap)) {
+                cells.forEachIndexed { index, cell ->
+                    val cellModifier = Modifier
+                        .width(responsiveCellWidth)
+                        .height(doweControlHeight(size))
+                        .clip(shape)
+                        .background(backgroundColor)
+                        .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
+                        .padding(horizontal = if (size == "sm") 8.dp else 12.dp)
+                        .focusRequester(focusRequesters[index])
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DEL && cell.isEmpty() && index > 0) {
+                                focusRequesters[index - 1].requestFocus()
+                                true
+                            } else {
+                                false
+                            }
                         }
-                    }
-                BasicTextField(value = cell, onValueChange = { next ->
-                    val filtered = if (kind == "number") next.filter { it.isDigit() } else next
-                    val updated = cells.toMutableList()
-                    if (filtered.length > 1) {
-                        filtered.take(length - index).forEachIndexed { offset, character -> updated[index + offset] = character.toString() }
-                    } else {
-                        updated[index] = filtered.takeLast(1)
-                    }
-                    cells = updated
-                    onValueChange(updated.joinToString(""))
-                    if (filtered.isNotEmpty()) {
-                        val focusIndex = if (filtered.length > 1) minOf(index + filtered.length - 1, length - 1) else index + 1
-                        if (focusIndex < length) focusRequesters[focusIndex].requestFocus()
-                    }
-                }, modifier = cellModifier, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = if (kind == "number") KeyboardType.Number else KeyboardType.Text), textStyle = TextStyle(color = contentColor, fontSize = fontSize, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), visualTransformation = if (kind == "password") PasswordVisualTransformation() else VisualTransformation.None)
+                    BasicTextField(value = cell, onValueChange = { next ->
+                        val filtered = if (kind == "number") next.filter { it.isDigit() } else next
+                        val updated = cells.toMutableList()
+                        if (filtered.length > 1) {
+                            filtered.take(length - index).forEachIndexed { offset, character -> updated[index + offset] = character.toString() }
+                        } else {
+                            updated[index] = filtered.takeLast(1)
+                        }
+                        cells = updated
+                        onValueChange(updated.joinToString(""))
+                        if (filtered.isNotEmpty()) {
+                            val focusIndex = if (filtered.length > 1) minOf(index + filtered.length - 1, length - 1) else index + 1
+                            if (focusIndex < length) focusRequesters[focusIndex].requestFocus()
+                        }
+                    }, modifier = cellModifier, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = if (kind == "number") KeyboardType.Number else KeyboardType.Text), textStyle = TextStyle(color = contentColor, fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center), visualTransformation = if (kind == "password") PasswordVisualTransformation() else VisualTransformation.None)
+                }
             }
         }
         if (errorText != null || helpText != null) {
@@ -354,11 +368,11 @@ private fun DowePinField(value: String, onValueChange: (String) -> Unit, label: 
 }
 
 @Composable
-private fun DoweTextarea(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, rows: Int, maxLength: Int?, readOnly: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+private fun DoweTextarea(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, rows: Int, maxLength: Int?, fontSize: TextUnit, lineHeight: TextUnit, readOnly: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
     var focused by remember { mutableStateOf(false) }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null && !floating) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
-        BasicTextField(value = value, onValueChange = { next -> if (!readOnly) onValueChange(maxLength?.let { next.take(it) } ?: next) }, modifier = Modifier.fillMaxWidth().heightIn(min = (rows * 28).dp).clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(12.dp).onFocusChanged { focused = it.isFocused }, textStyle = TextStyle(color = contentColor), decorationBox = { inner -> Box(modifier = Modifier.fillMaxSize()) { if (value.isEmpty() && placeholder.isNotEmpty() && (!floating || focused)) Text(placeholder, modifier = Modifier.align(Alignment.TopStart).padding(top = if (floating) 18.dp else 0.dp), color = contentColor.copy(alpha = 0.55f)); if (label != null && floating) Text(label, modifier = Modifier.align(Alignment.TopStart), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = contentColor.copy(alpha = 0.72f)); Box(modifier = Modifier.align(Alignment.TopStart).padding(top = if (label != null && floating) 18.dp else 0.dp)) { inner() } } })
+        BasicTextField(value = value, onValueChange = { next -> if (!readOnly) onValueChange(maxLength?.let { next.take(it) } ?: next) }, modifier = Modifier.fillMaxWidth().heightIn(min = (rows * 28).dp).clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(12.dp).onFocusChanged { focused = it.isFocused }, textStyle = TextStyle(color = contentColor, fontSize = fontSize, lineHeight = lineHeight), decorationBox = { inner -> Box(modifier = Modifier.fillMaxSize()) { if (value.isEmpty() && placeholder.isNotEmpty() && (!floating || focused)) Text(placeholder, modifier = Modifier.align(Alignment.TopStart).padding(top = if (floating) 18.dp else 0.dp), color = contentColor.copy(alpha = 0.55f), fontSize = fontSize, lineHeight = lineHeight); if (label != null && floating) Text(label, modifier = Modifier.align(Alignment.TopStart), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = contentColor.copy(alpha = 0.72f)); Box(modifier = Modifier.align(Alignment.TopStart).padding(top = if (label != null && floating) 18.dp else 0.dp)) { inner() } } })
     }
 }
 

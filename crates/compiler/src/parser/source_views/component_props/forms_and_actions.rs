@@ -117,7 +117,7 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "name"
                     | "color"
             ),
-            BuiltinComponent::PasswordField => matches!(
+            BuiltinComponent::Password => matches!(
                 name,
                 "bind"
                     | "value"
@@ -138,7 +138,7 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "name"
                     | "color"
             ),
-            BuiltinComponent::PhoneField => matches!(
+            BuiltinComponent::Phone => matches!(
                 name,
                 "bind"
                     | "value"
@@ -160,7 +160,7 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "name"
                     | "color"
             ),
-            BuiltinComponent::PinField => matches!(
+            BuiltinComponent::Pin => matches!(
                 name,
                 "bind"
                     | "value"

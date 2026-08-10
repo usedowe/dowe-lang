@@ -19,6 +19,7 @@ fn render_compose_navigation_node(
             render_compose_bar(
                 props,
                 1536,
+                false,
                 top,
                 start,
                 center,
@@ -43,6 +44,7 @@ fn render_compose_navigation_node(
             render_compose_bar(
                 props,
                 1536,
+                true,
                 top,
                 start,
                 center,

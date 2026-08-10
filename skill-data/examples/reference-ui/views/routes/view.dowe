@@ -1,0 +1,6 @@
+import ReferenceLayout from "@/views/layouts/reference-layout"
+import ReferencePage from "@/views/pages/reference-page"
+
+views referenceRoutes
+  group path:"/" layout:ReferenceLayout
+    route path:"" page:ReferencePage

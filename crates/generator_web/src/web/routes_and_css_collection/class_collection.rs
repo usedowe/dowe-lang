@@ -7,24 +7,34 @@ fn css_for_tree(tree: &ViewNode) -> String {
     collect_tabs_variant_rules(tree, &mut tabs_variants);
     let mut custom_rules = Vec::new();
     collect_custom_rules(tree, &mut custom_rules);
-    let mut css = String::new();
+    let mut rules = Vec::new();
 
     for class_name in &classes {
-        append_class_css(&mut css, class_name);
+        let mut fragment = String::new();
+        append_class_css(&mut fragment, class_name);
+        if !fragment.is_empty() {
+            push_css_rule_fragment(&mut rules, fragment);
+        }
     }
 
     for (base, family, variant) in variants {
-        append_single_variant_css(&mut css, base, family, variant);
+        let mut fragment = String::new();
+        append_single_variant_css(&mut fragment, base, family, variant);
+        push_css_rule_fragment(&mut rules, fragment);
     }
 
     for (family, variant) in tabs_variants {
-        append_tabs_variant_css(&mut css, family, variant);
+        let mut fragment = String::new();
+        append_tabs_variant_css(&mut fragment, family, variant);
+        push_css_rule_fragment(&mut rules, fragment);
     }
 
     for rule in custom_rules {
-        css.push_str(&rule);
+        push_css_rule_fragment(&mut rules, rule);
     }
 
+    let mut css = String::new();
+    append_css_rule_fragments(&mut css, &mut rules);
     css
 }
 
@@ -90,9 +100,9 @@ fn collect_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }

@@ -250,21 +250,34 @@ impl<'a> StoreActionContext<'a> {
                 operations,
                 return_binding,
             } => {
-                if !matches!(self.handle(handle)?, StoreHandle::Local(_)) {
-                    return Err(StoreActionError::store());
-                }
-                let database_name = self
-                    .handle_databases
-                    .get(handle)
-                    .cloned()
-                    .ok_or_else(StoreActionError::store)?;
                 let transaction = StoreTransactionEndpoint {
-                    database: database_name,
+                    connection: self
+                        .project
+                        .databases
+                        .iter()
+                        .find(|binding| binding.binding == *handle)
+                        .map(|binding| binding.connection.clone())
+                        .ok_or_else(StoreActionError::store)?,
                     operations: operations.clone(),
                     return_binding: return_binding.clone(),
                 };
-                let value = execute_store_transaction(self.root, &transaction)
-                    .map_err(|_| StoreActionError::store())?;
+                let value = match self.handle(handle)? {
+                    StoreHandle::Local(database) => {
+                        execute_local_store_transaction(database, &transaction)
+                            .map_err(StoreActionError::from_store)?
+                    }
+                    StoreHandle::Dowe(client) => {
+                        let committed = client
+                            .transaction(&transaction_insert_requests(operations))
+                            .await
+                            .map_err(StoreActionError::from_store)?;
+                        transaction_result(committed, &transaction)
+                            .map_err(StoreActionError::from_store)?
+                    }
+                    StoreHandle::D1(_) | StoreHandle::Postgres(_) => {
+                        return Err(StoreActionError::store());
+                    }
+                };
                 self.bindings.insert(binding.clone(), value);
             }
         }

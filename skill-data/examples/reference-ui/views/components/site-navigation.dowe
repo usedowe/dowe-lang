@@ -1,0 +1,6 @@
+component SiteNavigation
+  NavMenu variant:"ghost" scheme:"primary" size:"sm"
+    item label:"Overview" href:"/"
+    item label:"Product" href:"/#product"
+    item label:"Services" href:"/#services"
+    item label:"Contact" href:"/#contact"

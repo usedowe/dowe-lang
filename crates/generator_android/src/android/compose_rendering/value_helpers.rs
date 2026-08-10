@@ -221,10 +221,10 @@ fn compose_rich_text_marks(marks: &[RichTextMark]) -> String {
         .iter()
         .map(|mark| {
             format!(
-                "DoweRichTextMark(text = {}, style = {}, color = {})",
+                "DoweRichTextMark(text = {}, style = {}, scheme = {})",
                 compose_string_literal(&mark.text),
                 compose_string_literal(mark.style.as_str()),
-                color_ref(family_color(mark.color))
+                compose_string_literal(mark.color.as_str())
             )
         })
         .collect::<Vec<_>>()

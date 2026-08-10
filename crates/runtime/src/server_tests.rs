@@ -2230,9 +2230,13 @@ main
     route "/api/appointments"
       handler
         database db provider:"dowe" host:env.DB_HOST port:env.DB_PORT account:"clinic-api" secret:env.DB_TOKEN name:"clinic"
-        query created db:db.insert table:"appointments" value:{ patientName:"Ana" }
+        query created db:db.tx
+          query appointment db:db.insert table:"appointments" value:{ patientName:"Ana" }
+          query outboxEntry db:db.insert table:"outbox" value:{ event:"appointment.created" }
+          commit value:appointment
         query appointments db:db.list table:"appointments"
-        return json:{ ok:true data:appointments created:created.patientName }"#,
+        query outbox db:db.list table:"outbox"
+        return json:{ ok:true data:appointments outbox:outbox created:created.patientName }"#,
     )
     .expect("server");
     let project = compile_dev(app.path()).expect("project");
@@ -2254,6 +2258,7 @@ main
     assert_eq!(response["ok"], true);
     assert_eq!(response["created"], "Ana");
     assert_eq!(response["data"][0]["patientName"], "Ana");
+    assert_eq!(response["outbox"][0]["event"], "appointment.created");
     assert!(!app.path().join(".dowe/db/clinic").exists());
     assert!(remote.path().join(".dowe/db/clinic").exists());
 

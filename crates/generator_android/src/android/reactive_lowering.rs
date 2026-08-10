@@ -349,9 +349,9 @@ fn collect_compose_reactive(
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::AvatarGroup { .. }
         | ViewNode::ChatBox { .. }

@@ -70,6 +70,26 @@ target. The numeric scale is `0` to `4` in `0.5` steps, `4` to `12` in `1` steps
 set upper bounds without forcing the component to occupy the limit. `h:"vh-16"`, `minH:"vh-16"`,
 and `maxH:"vh-16"` resolve against the viewport height minus the scale value.
 
+### Sizing, border, radius, and shadow compatibility
+
+The following built-in components use the full shared style surface and therefore accept `w`,
+`minW`, `maxW`, `h`, `minH`, `maxH`, `border`, `borderColor`, `rounded`, `shadow`, and
+`shadowColor`:
+
+| Group | Components |
+| --- | --- |
+| Layout and shell | `Box`, `Section`, `Flex`, `Grid`, `AppBar`, `Footer`, `BottomBar`, `Sidebar`, `Scaffold`, `Drawer` |
+| Navigation | `NavMenu`, `SideNav`, `RailNav`, `Tabs`, `Stepper` |
+| Content and display | `Text`, `Title`, `Code`, `Video`, `Iframe`, `Device`, `Canvas`, `Table`, `Divider`, `Brand`, `Banner`, `Alert`, `Icon`, `Avatar`, `AvatarGroup`, `Badge`, `Chip`, `Skeleton`, `Card`, `Empty`, `Marquee`, `TypeWriter`, `RichText`, `Collapsible`, `Countdown`, `Map`, `Audio`, `Image`, `Accordion`, `Carousel`, `ChatBox` |
+| Charts | `Candlestick`, `ArcChart`, `AreaChart`, `BarChart`, `LineChart`, `PieChart` |
+| Controls and forms | `Input`, `Select`, `Button`, `IconButton`, `ToggleTheme`, `SelectTheme`, `Fab`, `Slider`, `Dropzone`, `ComboBox`, `CsvField`, `DragDrop`, `Editor`, `ImageCropper`, `Password`, `Phone`, `Pin`, `Textarea`, `Record`, `ToggleGroup`, `Checkbox`, `Color`, `Date`, `DateRange`, `RadioGroup`, `Toggle` |
+| Overlays | `Modal`, `AlertDialog`, `Tooltip`, `Toast`, `Dropdown`, `Command` |
+
+`Svg` is the sizing exception: it accepts `w` and `h`, but not minimum or maximum sizing,
+`border`, `borderColor`, `rounded`, `shadow`, or `shadowColor`. Context-only entries such as
+`Option`, `fabAction`, `comboOption`, `csvColumn`, `dragGroup`, `dragItem`, `tab`, `step`, region
+entries, `Splash`, and `Path` do not accept these shared style props.
+
 ## Typography
 
 `Text` and `Title` use fluid typography driven by `size`, defaulting to `md`. `Title` defaults to
@@ -211,7 +231,21 @@ context-only entries such as `Option`, `fabAction`, `Path`, `column`, `tab`, or 
 
 ## View motion
 
-`Box` and `Card` accept the static `animation` prop; it is invalid on other components.
+All styled view components accept portable transforms, entrance animation, transition, and gesture
+props. This includes layout and shell roots, navigation roots, content components, charts, controls,
+forms, and overlays. Context-only entries such as `Option`, `fabAction`, `comboOption`, `csvColumn`,
+`dragGroup`, `dragItem`, `tab`, `step`, region entries, `Svg`, and `Path` do not.
+
+| Prop | Values | Default | Responsive |
+| --- | --- | --- | --- |
+| `rotate` | whole degrees `-180` through `180` | `0` | Yes |
+| `scale` | decimal factor `0.5` through `2` | `1` | Yes |
+| `translateX`, `translateY` | signed Dowe scale `-96` through `96` in half steps | `0` | Yes |
+| `animation` | `none`, `fadeIn`, `slideUp`, `slideDown`, `slideLeft`, `slideRight`, `scaleIn` | `none` | No |
+| `transition` | `none`, `quick`, `smooth`, `spring` | target feedback timing | No |
+| `gesture` | `none`, `lift`, `press`, `grow`, `tilt` | `none` | No |
+
+`animation` accepts:
 
 | Value | Behavior |
 | --- | --- |
@@ -220,5 +254,40 @@ context-only entries such as `Option`, `fabAction`, `Path`, `column`, `tab`, or 
 | `slideUp`, `slideDown`, `slideLeft`, `slideRight` | Enters from the named offset while fading in |
 | `scaleIn` | Enters from a slightly smaller scale while fading in |
 
-Animations run once when the component appears, and every target generates the equivalent native
-motion. Unsupported values fail before target generation.
+Animations run once when the component appears. Transforms compose with entrance and gesture
+motion instead of replacing it. Web and desktop use hover plus active feedback; touch targets use
+press feedback. Every target disables non-essential motion when the operating system requests
+reduced motion.
+
+Use an internal Button that replaces its current route when a page needs an explicit portable
+replay control. Same-route replacement remounts the page without adding a history entry:
+
+```text
+Button href:"/motion" navigate:"replace"
+  "Replay animations"
+```
+
+Whole-surface `onClick` is a separate action contract supported by `Button`, `IconButton`, `Avatar`,
+`Fab`, `Empty`, `Box`, `Card`, and `Chip`. Its value is a visible Dowe `fn` reference or supported
+inline `set` action, and the same source dispatches on web, desktop, Android, and iOS. Other compound
+entries can expose their own separately documented action props.
+
+```text
+page chipMotionPage
+  signal selected value:""
+
+  fn selectMobile
+    set selected value:"mobile"
+
+  Flex direction:"column" align:"center" gap:3 animation:"fadeIn"
+    Chip variant:"solid" scheme:"warning" size:"sm" rotate:-7 transition:"spring" gesture:"lift" onClick:selectMobile
+      "Mobile Apps"
+    Chip variant:"soft" scheme:"muted" size:"sm" rotate:4 transition:"smooth" gesture:"press"
+      "Web Sites"
+    Chip variant:"solid" scheme:"success" size:"sm" rotate:-4 transition:"quick" gesture:"grow"
+      "Software"
+    Chip variant:"solid" scheme:"muted" size:"sm" rotate:8 gesture:"tilt"
+      "UI/UX Design"
+```
+
+Unsupported presets and out-of-range transform values fail before target generation.

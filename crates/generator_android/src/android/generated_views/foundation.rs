@@ -21,10 +21,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -42,6 +48,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -57,6 +64,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.Activity
+import android.animation.ValueAnimator
 import android.app.PictureInPictureParams
 import android.content.ContextWrapper
 import android.content.Intent
@@ -76,6 +84,10 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.atan2
+import kotlin.math.pow
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -104,6 +116,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -126,6 +140,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.shadow.Shadow as DoweDropShadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
@@ -145,6 +160,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
@@ -198,6 +215,7 @@ import java.net.URL
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -211,6 +229,29 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 __DOWE_DESIGN__
+
+@Composable
+private fun doweDockingAppBarModifier(modifier: Modifier, scrollState: ScrollState, backgroundColor: Color): Modifier {
+    val threshold = with(LocalDensity.current) { 100.dp.roundToPx() }
+    val docked by remember(scrollState, threshold) { derivedStateOf { scrollState.value > threshold } }
+    val progress by animateFloatAsState(
+        targetValue = if (docked) 1f else 0f,
+        animationSpec = tween(durationMillis = 300, easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)),
+        label = "Dowe AppBar docking"
+    )
+    val radius = DoweDesign.radius * (1f - progress)
+    val shape = RoundedCornerShape(radius)
+    return modifier
+        .padding(horizontal = 16.dp * (1f - progress), vertical = 8.dp * (1f - progress))
+        .clip(shape)
+        .background(backgroundColor)
+        .border(1.dp, DoweDesign.muted.copy(alpha = 1f - progress), shape)
+        .drawBehind {
+            val stroke = 1.dp.toPx()
+            val y = size.height - stroke / 2f
+            drawLine(DoweDesign.muted.copy(alpha = progress), Offset(0f, y), Offset(size.width, y), stroke)
+        }
+}
 
 private fun doweButtonFamily(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.background
@@ -366,6 +407,21 @@ private enum class DoweAnimationPreset {
     ScaleIn
 }
 
+private enum class DoweGesturePreset {
+    None,
+    Lift,
+    Press,
+    Grow,
+    Tilt
+}
+
+private enum class DoweTransitionPreset {
+    None,
+    Quick,
+    Smooth,
+    Spring
+}
+
 class DoweSectionRegistry {
     val positions = mutableStateMapOf<String, Int>()
 }
@@ -436,6 +492,51 @@ private fun Modifier.doweAnimation(preset: DoweAnimationPreset): Modifier {
             scaleY = value
         }
     }
+}
+
+@Composable
+private fun Modifier.doweGesture(
+    preset: DoweGesturePreset,
+    transition: DoweTransitionPreset
+): Modifier {
+    var pressed by remember(preset) { mutableStateOf(false) }
+    val motionEnabled = ValueAnimator.areAnimatorsEnabled()
+    val target = if (pressed && motionEnabled) 1f else 0f
+    val spec: FiniteAnimationSpec<Float> = when (transition) {
+        DoweTransitionPreset.None -> snap()
+        DoweTransitionPreset.Quick -> tween(durationMillis = 120)
+        DoweTransitionPreset.Smooth -> tween(durationMillis = 220)
+        DoweTransitionPreset.Spring -> spring(dampingRatio = 0.72f, stiffness = 600f)
+    }
+    val progress by animateFloatAsState(targetValue = target, animationSpec = spec)
+    return this
+        .pointerInput(preset, motionEnabled) {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                pressed = true
+                waitForUpOrCancellation()
+                pressed = false
+            }
+        }
+        .graphicsLayer {
+            when (preset) {
+                DoweGesturePreset.Lift -> {
+                    translationY = -4f * progress
+                    scaleX = 1f - 0.02f * progress
+                    scaleY = scaleX
+                }
+                DoweGesturePreset.Press -> {
+                    scaleX = 1f - 0.04f * progress
+                    scaleY = scaleX
+                }
+                DoweGesturePreset.Grow -> {
+                    scaleX = 1f + 0.04f * progress
+                    scaleY = scaleX
+                }
+                DoweGesturePreset.Tilt -> rotationZ = 3f * progress
+                DoweGesturePreset.None -> Unit
+            }
+        }
 }
 
 private enum class DoweFont {

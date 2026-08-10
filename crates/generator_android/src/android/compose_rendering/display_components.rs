@@ -183,7 +183,7 @@ fn render_compose_rich_text(
     default_family: FontFamily,
 ) {
     let pad = " ".repeat(indent);
-    let size = text_size(false, props);
+    let size = text_size(props.title, props);
     output.push_str(&format!(
         "{pad}DoweRichText(marks = {}, fontFamily = {}, fontSize = {size}, contentColor = {}, modifier = {})\n",
         compose_rich_text_marks(marks),
@@ -462,6 +462,13 @@ fn render_compose_chip(
 ) {
     let pad = " ".repeat(indent);
     let size = props.style.size.unwrap_or(ButtonSize::Md);
+    let mut modifier = modifier_for_style(&props.style.style);
+    if props.style.element.on_click.is_some() {
+        modifier.push_str(&format!(
+            ".clickable(onClick = {})",
+            compose_component_action(props.style.element.on_click.as_deref(), None, context)
+        ));
+    }
     output.push_str(&format!(
         "{pad}DoweChip(text = {}, size = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, modifier = {}, onClose = {}, start = ",
         compose_string_literal(value),
@@ -469,7 +476,7 @@ fn render_compose_chip(
         variant_container(&props.style),
         variant_content(&props.style),
         compose_variant_border(&props.style),
-        modifier_for_style(&props.style.style),
+        modifier,
         compose_optional_component_action(props.on_close.as_deref(), None, context)
     ));
     render_compose_optional_icon_lambda(start, indent, output);

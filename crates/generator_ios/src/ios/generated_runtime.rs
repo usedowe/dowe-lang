@@ -59,7 +59,7 @@ fn generated_views(
     );
 
     if routes.first().is_some() {
-        output.push_str("        GeometryReader { geometry in\n            routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))\n                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)\n            DoweSafeAreaReporter { insets in\n                if !doweInsetsEqual(safeAreaInsets, insets) {\n                    safeAreaInsets = insets\n                }\n            }\n            .frame(width: CGFloat(0), height: CGFloat(0))\n            .allowsHitTesting(false)\n        }\n        .ignoresSafeArea()\n        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background.ignoresSafeArea())\n        .foregroundStyle(DoweDesign.onBackground)\n        .simultaneousGesture(backSwipeGesture)\n        .sheet(item: $externalUrl) { item in\n            DoweExternalWebView(url: item.url)\n        }\n        .onOpenURL { url in\n            applyDeepLink(url)\n        }\n");
+        output.push_str("        GeometryReader { geometry in\n            routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))\n                .id(routeRevision)\n                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)\n            DoweSafeAreaReporter { insets in\n                if !doweInsetsEqual(safeAreaInsets, insets) {\n                    safeAreaInsets = insets\n                }\n            }\n            .frame(width: CGFloat(0), height: CGFloat(0))\n            .allowsHitTesting(false)\n        }\n        .ignoresSafeArea()\n        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background.ignoresSafeArea())\n        .foregroundStyle(DoweDesign.onBackground)\n        .simultaneousGesture(backSwipeGesture)\n        .sheet(item: $externalUrl) { item in\n            DoweExternalWebView(url: item.url)\n        }\n        .onOpenURL { url in\n            applyDeepLink(url)\n        }\n");
         output.push_str("        .onChange(of: currentEntry.path) { _, path in\n            routeChanged(path)\n        }\n");
     } else {
         output.push_str("        EmptyView()\n");
@@ -113,7 +113,10 @@ fn generated_views(
             DoweRoutes.sections[path]?.contains(value) == true ? value : nil
         }
         let destination = DoweRouteEntry(path: path, fragment: resolvedFragment)
-        guard destination != currentEntry else {
+        if destination == currentEntry {
+            if operation == "replace" {
+                routeRevision += 1
+            }
             return
         }
         if operation == "replace" {

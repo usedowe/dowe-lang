@@ -4,6 +4,7 @@ fn render_side_nav_html(
     items: &[SideNavItem],
     context: &ReactiveRenderContext,
 ) -> String {
+    let memory_key = side_nav_memory_key(props, items);
     let mut reactive_attrs = String::new();
     for (name, value) in [
         ("variant", props.style.reactive.variant.as_deref()),
@@ -25,14 +26,15 @@ fn render_side_nav_html(
             side_nav_classes(base, props),
             Some(&props.style.element),
             Some(&format!(
-                r#" aria-label="Side navigation"{}"#,
-                reactive_attrs
+                r#" aria-label="Side navigation" data-dowe-nav-memory-key="{}"{}"#,
+                escape_attr(&memory_key),
+                reactive_attrs,
             )),
             context,
         )
     );
-    for item in items {
-        html.push_str(&render_side_nav_item_html(base, item, context));
+    for (index, item) in items.iter().enumerate() {
+        html.push_str(&render_side_nav_item_html(base, item, index, context));
     }
     html.push_str("</nav>");
     html

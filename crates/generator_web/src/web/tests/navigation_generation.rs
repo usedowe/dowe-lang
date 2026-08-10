@@ -6,7 +6,8 @@ fn renders_layout_bars_markup_and_css() {
         children: vec![
             ViewNode::AppBar {
                 props: BarProps {
-                    position: BarPosition::Sticky,
+                    position: BarPosition::Fixed,
+                    dock_on_scroll: true,
                     ..bar_props(true)
                 },
                 top: vec![text("Notice")],
@@ -49,7 +50,7 @@ fn renders_layout_bars_markup_and_css() {
     let css = super::design_css();
 
     assert!(html.contains(
-        r#"<header class="appbar is-soft is-surface position-sticky is-bordered is-blurred is-floating"><div class="appbar-top">"#
+        r#"<header class="appbar is-soft is-surface position-fixed is-bordered is-blurred is-floating is-dock-on-scroll"><div class="appbar-top">"#
     ));
     assert!(
         html.contains(r#"</div><div class="appbar-content is-boxed"><div class="appbar-start">"#)
@@ -57,9 +58,11 @@ fn renders_layout_bars_markup_and_css() {
     assert!(html.contains(r#"</div></div><div class="appbar-bottom">"#));
     assert!(html.contains(r#"<div class="appbar-start">"#));
     assert!(html.contains(r#"<footer class="footer is-soft is-surface is-bordered is-blurred">"#));
-    assert!(html.contains(r#"<div class="footer-top">"#));
-    assert!(html.contains(r#"<div class="footer-content is-boxed">"#));
-    assert!(html.contains(r#"<div class="footer-bottom">"#));
+    assert!(html.contains(
+        r#"<footer class="footer is-soft is-surface is-bordered is-blurred"><div class="footer-inner is-boxed"><div class="footer-top">"#
+    ));
+    assert!(html.contains(r#"</div><div class="footer-content"><div class="footer-start">"#));
+    assert!(html.contains(r#"</div></div><div class="footer-bottom">"#));
     assert!(html.contains(r#"<nav class="bottombar is-soft is-surface is-bordered is-blurred">"#));
     assert!(html.contains(r#"<div class="bottombar-tabs is-boxed">"#));
     assert!(html.contains(r#"class="bottombar-tab is-featured""#));
@@ -68,16 +71,30 @@ fn renders_layout_bars_markup_and_css() {
     assert!(css.contains(".appbar,.footer,.bottombar{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));width:100%;"));
     assert!(css.contains(".appbar.position-sticky{position:sticky;top:0;}"));
     assert!(css.contains(".appbar.position-fixed{position:fixed;top:0;left:0;right:0;}"));
+    assert!(css.contains(".appbar.is-dock-on-scroll:not(.is-floating){margin-top:0;border-bottom:1px solid var(--dowe-muted);border-radius:0;overflow:hidden;}"));
     assert!(
         css.contains(".appbar-top>*,.appbar-bottom>*,.footer-top>*,.footer-bottom>*{width:100%;}")
     );
     assert!(css.contains(".appbar{padding-top:0;}"));
     assert!(css.contains(
-        ".appbar-content.is-boxed,.footer-content.is-boxed,.bottombar-content.is-boxed{max-width:96rem;margin:0 auto;}"
+        ".appbar-content.is-boxed,.footer-inner.is-boxed,.bottombar-content.is-boxed{max-width:96rem;margin:0 auto;}"
     ));
     assert!(css.contains(".bottombar-tabs.is-boxed{max-width:96rem;margin:0 auto;}"));
     assert!(page.css_content.contains(".appbar.is-soft.is-surface"));
     assert!(page.css_content.contains(".bottombar.is-soft.is-surface"));
+
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+    assert!(router.contains("function hydrateScrollDockingAppBars(root)"));
+    assert!(router.contains("const floating=(window.scrollY||0)<=100"));
+    assert!(router.contains("bar.classList.toggle(\"is-floating\",floating)"));
+    assert!(router.contains("bar.addEventListener(\"transitionend\""));
+    assert!(router.contains("hydrateScrollDockingAppBars(root)"));
 }
 
 #[test]
@@ -142,13 +159,14 @@ fn renders_side_nav_markup_active_runtime_and_css() {
     let css = super::design_css();
 
     assert!(html.contains(r#"<nav class="sidenav is-ghost is-muted sidenav-md is-wide""#));
+    assert!(html.contains(r#"data-dowe-nav-memory-key="structure:"#));
     assert!(html.contains(r#"data-dowe-sidenav-variant="variantChoice""#));
     assert!(html.contains(r#"data-dowe-sidenav-scheme="schemeChoice""#));
     assert!(html.contains(r#"data-dowe-sidenav-size="sizeChoice""#));
     assert!(html.contains(r#"data-dowe-sidenav-wide="wideEnabled""#));
     assert!(html.contains(r#"data-dowe-sidenav-href="/blogs""#));
     assert!(html.contains(
-        r#"<details class="sidenav-submenu is-open is-unbordered" data-dowe-sidenav-submenu open>"#
+        r#"<details class="sidenav-submenu is-open is-unbordered" data-dowe-sidenav-submenu data-dowe-nav-submenu-key="3" open>"#
     ));
     assert!(html.contains(r#"<span class="sidenav-chevron" aria-hidden="true"><svg"#));
     assert!(html.contains(r#"<span class="sidenav-status">2</span>"#));
@@ -205,6 +223,16 @@ fn renders_side_nav_markup_active_runtime_and_css() {
             "event.stopPropagation();toggleNavTreeSubmenu(\"sidenav\",sideNavTrigger);},true)"
         )
     );
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+    assert!(router.contains("const navTreeSubmenuMemory=new Map()"));
+    assert!(router.contains("navTreeSubmenuMemory.set(memoryKey,open)"));
+    assert!(router.contains("navTreeSubmenuMemory.has(memoryKey)"));
 }
 
 #[test]

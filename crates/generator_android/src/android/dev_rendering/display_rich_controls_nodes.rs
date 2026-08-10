@@ -90,23 +90,27 @@ fn render_dev_android_display_rich_controls_node(
         }
         ViewNode::RichText { props, marks } => {
             let view = next_dev_view(counter);
-            let text = marks
-                .iter()
-                .map(|mark| mark.text.as_str())
-                .collect::<Vec<_>>()
-                .join(" ");
             output.push_str(&format!(
-                "        TextView {view} = doweText(\"{}\", {}, {}, {}, {}, {}, {});\n",
-                escape_java(&text),
-                dev_text_color(props, inherited_color.as_deref()),
-                dev_text_size(false, props),
-                dev_text_weight(false, props),
-                dev_text_spacing(false, props),
-                dev_text_line_height(false, props),
-                dev_font_value(props.style.font.as_ref().or(inherited_font))
+                "        DoweFlexLayout {view} = doweFlex(DOWE_DIRECTION_ROW, true, DOWE_JUSTIFY_CENTER, DOWE_ALIGN_CENTER, 4);\n"
             ));
-            apply_dev_android_style(&props.style, &view, false, output);
+            apply_dev_android_style(&props.style, &view, true, output);
+            apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+            for mark in marks {
+                let mark_view = next_dev_view(counter);
+                output.push_str(&format!(
+                    "        TextView {mark_view} = doweRichTextView(\"{}\", {}, {}, {}, {}, {}, {});\n        doweRichTextMark({mark_view}, \"{}\", \"{}\");\n        doweAdd({view}, {mark_view});\n",
+                    escape_java(&mark.text),
+                    dev_text_color(props, inherited_color.as_deref()),
+                    dev_text_size(props.title, props),
+                    dev_text_weight(props.title, props),
+                    dev_text_spacing(props.title, props),
+                    dev_text_line_height(props.title, props),
+                    dev_font_value(props.style.font.as_ref().or(inherited_font)),
+                    mark.style.as_str(),
+                    mark.color.as_str(),
+                ));
+            }
         }
         ViewNode::Record { props } => {
             render_dev_android_variant_label(

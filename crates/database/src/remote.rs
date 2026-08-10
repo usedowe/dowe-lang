@@ -1,5 +1,5 @@
 use crate::auth::verify_account;
-use crate::engine::{StoreRecord, open_database};
+use crate::engine::{Database, StoreRecord, open_database};
 use crate::error::{StoreError, StoreResult};
 use crate::names::validate_field_name;
 use crate::query::bind_query_params;
@@ -76,6 +76,14 @@ pub struct DatabaseRequest {
     pub sql: Option<String>,
     #[serde(default)]
     pub params: Vec<Value>,
+    #[serde(default)]
+    pub operations: Vec<DatabaseTransactionInsert>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DatabaseTransactionInsert {
+    pub table: String,
+    pub value: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -200,8 +208,18 @@ impl DoweDatabaseClient {
         self.send(request("inspect", None)).await
     }
 
+    pub async fn transaction(
+        &self,
+        operations: &[DatabaseTransactionInsert],
+    ) -> StoreResult<Value> {
+        let mut request = request("transaction", None);
+        request.operations = operations.to_vec();
+        self.send(request).await
+    }
+
     async fn send(&self, mut request: DatabaseRequest) -> StoreResult<Value> {
         request.id = REQUEST_ID.fetch_add(1, Ordering::Relaxed);
+        let retry_safe = matches!(request.operation.as_str(), "list" | "read" | "inspect");
         let mut socket = self.socket.lock().await;
         for attempt in 0..2 {
             if socket.is_none() {
@@ -215,7 +233,7 @@ impl DoweDatabaseClient {
             .map_err(|_| StoreError::Remote("Dowe Database request timed out".to_string()))?;
             match result {
                 Ok(value) => return Ok(value),
-                Err(error) if attempt == 0 && is_transport_error(&error) => {
+                Err(error) if attempt == 0 && retry_safe && is_transport_error(&error) => {
                     *socket = None;
                 }
                 Err(error) => return Err(error),
@@ -308,15 +326,18 @@ async fn database_upgrade(
         .unwrap_or_default();
     let secret = bearer_secret(&headers).unwrap_or_default();
     match verify_account(&state.root, &database, account, secret) {
-        Ok(()) => upgrade
-            .on_upgrade(move |socket| handle_socket(socket, state.root, database))
-            .into_response(),
+        Ok(()) => match open_database(&state.root, &database) {
+            Ok(database) => upgrade
+                .on_upgrade(move |socket| handle_socket(socket, database))
+                .into_response(),
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        },
         Err(StoreError::Authorization(_)) => StatusCode::FORBIDDEN.into_response(),
         Err(_) => StatusCode::UNAUTHORIZED.into_response(),
     }
 }
 
-async fn handle_socket(mut socket: WebSocket, root: PathBuf, database: String) {
+async fn handle_socket(mut socket: WebSocket, database: Database) {
     while let Some(message) = socket.recv().await {
         let Ok(message) = message else {
             return;
@@ -330,9 +351,8 @@ async fn handle_socket(mut socket: WebSocket, root: PathBuf, database: String) {
         let response = match serde_json::from_str::<DatabaseRequest>(&text) {
             Ok(request) => {
                 let id = request.id;
-                let root = root.clone();
                 let database = database.clone();
-                tokio::task::spawn_blocking(move || response_for_request(&root, &database, request))
+                tokio::task::spawn_blocking(move || response_for_request(&database, request))
                     .await
                     .unwrap_or_else(|error| DatabaseResponse {
                         id,
@@ -363,13 +383,9 @@ async fn handle_socket(mut socket: WebSocket, root: PathBuf, database: String) {
     }
 }
 
-fn response_for_request(
-    root: &std::path::Path,
-    database_name: &str,
-    request: DatabaseRequest,
-) -> DatabaseResponse {
+fn response_for_request(database: &Database, request: DatabaseRequest) -> DatabaseResponse {
     let id = request.id;
-    match execute_request(root, database_name, request) {
+    match execute_request(database, request) {
         Ok(data) => DatabaseResponse {
             id,
             ok: true,
@@ -388,12 +404,7 @@ fn response_for_request(
     }
 }
 
-fn execute_request(
-    root: &std::path::Path,
-    database_name: &str,
-    request: DatabaseRequest,
-) -> StoreResult<Value> {
-    let database = open_database(root, database_name)?;
+fn execute_request(database: &Database, request: DatabaseRequest) -> StoreResult<Value> {
     match request.operation.as_str() {
         "list" => {
             let table = required_table(&request)?;
@@ -471,6 +482,20 @@ fn execute_request(
         }
         "inspect" => serde_json::to_value(database.inspect()?)
             .map_err(|error| StoreError::Remote(error.to_string())),
+        "transaction" => {
+            if request.operations.is_empty() {
+                return Err(StoreError::InvalidQuery(
+                    "transaction requires at least one operation".to_string(),
+                ));
+            }
+            let mut transaction = database.transaction();
+            for operation in request.operations {
+                transaction.insert(&operation.table, json_record(operation.value)?)?;
+            }
+            Ok(Value::Array(
+                transaction.commit()?.iter().map(record_to_json).collect(),
+            ))
+        }
         operation => Err(StoreError::InvalidQuery(format!(
             "unsupported remote Database operation `{operation}`"
         ))),
@@ -488,6 +513,7 @@ fn request(operation: &str, table: Option<&str>) -> DatabaseRequest {
         required: false,
         sql: None,
         params: Vec::new(),
+        operations: Vec::new(),
     }
 }
 

@@ -1,7 +1,9 @@
 use crate::codec::{Reader, Writer};
 use crate::error::{StoreError, StoreResult};
+use crate::security::{create_private_directory, secure_file};
 use dowe_id::generate_ulid;
-use std::fs;
+use std::fs::{self, File, OpenOptions};
+use std::io::Write;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -48,7 +50,34 @@ pub fn write_metadata(path: &Path, metadata: &DatabaseMetadata) -> StoreResult<(
     writer.string(&metadata.engine_version);
     writer.string(&metadata.sharding);
     writer.string(&metadata.replication);
-    fs::write(path, writer.into_bytes())?;
+    let parent = path.parent().ok_or_else(|| {
+        StoreError::DurabilityError("Database metadata path has no parent".to_string())
+    })?;
+    create_private_directory(parent)?;
+    let temporary = parent.join(format!("metadata-{}.tmp", std::process::id()));
+    let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&temporary)?;
+    secure_file(&file)?;
+    file.write_all(&writer.into_bytes())?;
+    file.sync_all()
+        .map_err(|error| StoreError::DurabilityError(error.to_string()))?;
+    fs::rename(temporary, path)?;
+    sync_directory(parent)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn sync_directory(path: &Path) -> StoreResult<()> {
+    File::open(path)?
+        .sync_all()
+        .map_err(|error| StoreError::DurabilityError(error.to_string()))
+}
+
+#[cfg(not(unix))]
+fn sync_directory(_path: &Path) -> StoreResult<()> {
     Ok(())
 }
 

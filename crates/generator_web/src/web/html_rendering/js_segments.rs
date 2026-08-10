@@ -253,14 +253,14 @@ fn collect_js_segments(
         ViewNode::ImageCropper { props } => {
             push_literal(segments, &render_image_cropper_html(props, context));
         }
-        ViewNode::PasswordField { props } => {
-            push_literal(segments, &render_password_field_html(props, context));
+        ViewNode::Password { props } => {
+            push_literal(segments, &render_password_html(props, context));
         }
-        ViewNode::PhoneField { props } => {
-            push_literal(segments, &render_phone_field_html(props, context));
+        ViewNode::Phone { props } => {
+            push_literal(segments, &render_phone_html(props, context));
         }
-        ViewNode::PinField { props } => {
-            push_literal(segments, &render_pin_field_html(props, context));
+        ViewNode::Pin { props } => {
+            push_literal(segments, &render_pin_html(props, context));
         }
         ViewNode::Textarea { props } => {
             push_literal(segments, &render_textarea_html(props, context));

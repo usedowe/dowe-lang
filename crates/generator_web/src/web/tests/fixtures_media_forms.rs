@@ -102,6 +102,7 @@ fn media_display_form_tree() -> ViewNode {
                         variant: Some(ComponentVariant::Outlined),
                         color: Some(ColorFamily::Primary),
                         label: Some("Theme".to_string()),
+                        label_floating: true,
                         element: ElementProps {
                             bind: Some("themeColor".to_string()),
                             ..Default::default()
@@ -125,6 +126,7 @@ fn media_display_form_tree() -> ViewNode {
                         variant: Some(ComponentVariant::Outlined),
                         color: Some(ColorFamily::Warning),
                         label: Some("Ship date".to_string()),
+                        label_floating: true,
                         element: ElementProps {
                             bind: Some("shipDate".to_string()),
                             ..Default::default()
@@ -146,6 +148,7 @@ fn media_display_form_tree() -> ViewNode {
                         variant: Some(ComponentVariant::Outlined),
                         color: Some(ColorFamily::Danger),
                         label: Some("Range".to_string()),
+                        label_floating: true,
                         ..Default::default()
                     },
                     start: Some("startDate".to_string()),

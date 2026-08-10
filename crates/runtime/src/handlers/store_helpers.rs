@@ -185,14 +185,35 @@ fn json_error(status: StatusCode, code: &'static str, message: &'static str) -> 
     json_response(status, Value::Object(output))
 }
 
-fn execute_store_transaction(
-    root: &Path,
+async fn execute_store_transaction(
+    project: &CompiledProject,
     transaction: &StoreTransactionEndpoint,
 ) -> dowe_database::StoreResult<Value> {
-    init_database(root, &transaction.database)?;
-    let database = open_database(root, &transaction.database)?;
+    if let Some(client) = remote_client_for_connection(project, &transaction.connection)? {
+        return match client {
+            StoreEndpointClient::Dowe(client) => {
+                let value = client
+                    .transaction(&transaction_insert_requests(&transaction.operations))
+                    .await?;
+                transaction_result(value, transaction)
+            }
+            StoreEndpointClient::D1(_) | StoreEndpointClient::Postgres(_) => Err(
+                dowe_database::StoreError::InvalidQuery(
+                    "Database transactions require provider `dowe`".to_string(),
+                ),
+            ),
+        };
+    }
+    init_database(&project.root, &transaction.connection.database)?;
+    let database = open_database(&project.root, &transaction.connection.database)?;
+    execute_local_store_transaction(&database, transaction)
+}
+
+fn execute_local_store_transaction(
+    database: &Database,
+    transaction: &StoreTransactionEndpoint,
+) -> dowe_database::StoreResult<Value> {
     let mut tx = database.transaction();
-    let mut bindings = std::collections::BTreeMap::<String, StoreRecord>::new();
 
     for operation in &transaction.operations {
         match operation {
@@ -201,19 +222,60 @@ fn execute_store_transaction(
                 table,
                 value,
             } => {
-                let record = tx.insert(table, literal_record(value))?;
-                bindings.insert(binding.clone(), record);
+                let _ = binding;
+                tx.insert(table, literal_record(value))?;
             }
         }
     }
 
     let committed = tx.commit()?;
-    if let Some(binding) = &transaction.return_binding
-        && let Some(record) = bindings.get(binding)
-    {
-        return Ok(record_json(record));
+    transaction_result(
+        Value::Array(committed.iter().map(record_json).collect()),
+        transaction,
+    )
+}
+
+fn transaction_insert_requests(
+    operations: &[StoreTransactionOperation],
+) -> Vec<DatabaseTransactionInsert> {
+    operations
+        .iter()
+        .map(|operation| match operation {
+            StoreTransactionOperation::Insert { table, value, .. } => DatabaseTransactionInsert {
+                table: table.clone(),
+                value: record_json(&literal_record(value)),
+            },
+        })
+        .collect()
+}
+
+fn transaction_result(
+    committed: Value,
+    transaction: &StoreTransactionEndpoint,
+) -> dowe_database::StoreResult<Value> {
+    if let Some(return_binding) = &transaction.return_binding {
+        let index = transaction
+            .operations
+            .iter()
+            .position(|operation| match operation {
+                StoreTransactionOperation::Insert { binding, .. } => binding == return_binding,
+            })
+            .ok_or_else(|| {
+                dowe_database::StoreError::InvalidQuery(format!(
+                    "transaction return binding `{return_binding}` is missing"
+                ))
+            })?;
+        return committed
+            .as_array()
+            .and_then(|records| records.get(index))
+            .cloned()
+            .ok_or_else(|| {
+                dowe_database::StoreError::DurabilityError(
+                    "Database transaction returned an incomplete result".to_string(),
+                )
+            });
     }
-    Ok(Value::Array(committed.iter().map(record_json).collect()))
+    Ok(committed)
 }
 
 #[cfg(test)]

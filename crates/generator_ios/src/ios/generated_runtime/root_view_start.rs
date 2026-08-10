@@ -3,6 +3,7 @@ fn swift_runtime_root_view_start() -> &'static str {
     @StateObject private var design = DoweDesign.shared
     @State private var rootEntry: DoweRouteEntry
     @State private var navigationPath: [DoweRouteEntry] = []
+    @State private var routeRevision = 0
     @State private var externalUrl: DoweExternalUrl?
     @State private var safeAreaInsets = EdgeInsets()
     private let routeChanged: (String) -> Void

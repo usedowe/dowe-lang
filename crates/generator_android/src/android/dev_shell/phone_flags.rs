@@ -1,11 +1,11 @@
 const DEV_PHONE_FLAGS_PER_SHARD: usize = 24;
 
-fn dev_tree_has_phone_field(node: &ViewNode) -> bool {
-    matches!(node, ViewNode::PhoneField { .. })
+fn dev_tree_has_phone(node: &ViewNode) -> bool {
+    matches!(node, ViewNode::Phone { .. })
         || node_child_groups(node)
             .into_iter()
             .flatten()
-            .any(dev_tree_has_phone_field)
+            .any(dev_tree_has_phone)
 }
 
 fn dev_activity_phone_flag_runtime() -> &'static str {

@@ -18,9 +18,11 @@ use dowe_components::{
     TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem,
     ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
     TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction,
-    ViewActionKind, ViewAnimation, ViewConstant, ViewNode, ViewRequestAction, ViewRoute, ViewSignal,
-    ViewSignalValue, VisibilityCondition, collect_route_font_families, compose_tree, fixed_box_nodes, fixed_fab_nodes,
-    phone_countries, phone_country_flag_icon,
+    ViewActionKind, ViewAnimation, ViewConstant, ViewGesture, ViewNode, ViewRequestAction,
+    ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
+    collect_route_font_families, compose_tree, fixed_box_nodes, fixed_fab_nodes,
+    form_control_min_height, form_control_text_size, phone_countries, phone_country_flag_icon,
+    side_nav_memory_key,
     node_child_groups, node_element_props, text_binding_path, text_spacing_em, text_typography,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -204,7 +206,7 @@ pub fn generate_ios_with_app_translations_and_icons(
     files.extend(ios_layout_artifacts(&layouts, font_config));
     files.extend(ios_route_artifacts(routes, font_config, &route_layouts));
     if routes.iter().any(|route| {
-        ios_tree_has_phone_field(&route.layout_tree) || ios_tree_has_phone_field(&route.page_tree)
+        ios_tree_has_phone(&route.layout_tree) || ios_tree_has_phone(&route.page_tree)
     }) {
         files.extend(ios_phone_catalog_artifacts());
     }
@@ -884,14 +886,14 @@ fn ios_video_playback(node: &ViewNode) -> bool {
         .any(ios_video_playback)
 }
 
-fn ios_tree_has_phone_field(node: &ViewNode) -> bool {
-    if matches!(node, ViewNode::PhoneField { .. }) {
+fn ios_tree_has_phone(node: &ViewNode) -> bool {
+    if matches!(node, ViewNode::Phone { .. }) {
         return true;
     }
     node_child_groups(node)
         .into_iter()
         .flatten()
-        .any(ios_tree_has_phone_field)
+        .any(ios_tree_has_phone)
 }
 
 fn escape_xml(value: &str) -> String {

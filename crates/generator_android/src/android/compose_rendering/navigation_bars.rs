@@ -1,6 +1,7 @@
 fn render_compose_bar(
     props: &BarProps,
     boxed_max_width: u16,
+    boxed_regions: bool,
     top: &[ViewNode],
     start: &[ViewNode],
     center: &[ViewNode],
@@ -15,12 +16,65 @@ fn render_compose_bar(
 ) {
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
-    output.push_str(&format!("{pad}Column(modifier = {}) {{\n", modifier_for_bar(props, flow)));
+    output.push_str(&format!(
+        "{pad}Column(modifier = {}) {{\n",
+        modifier_for_bar(props, flow)
+    ));
     output.push_str(&format!(
         "{pad}    CompositionLocalProvider(LocalContentColor provides {}) {{\n",
         variant_content(&props.style)
     ));
-    render_compose_bar_edge_region(top, indent + 8, output, current_font, default_family, context);
+    if props.boxed && boxed_regions {
+        output.push_str(&format!(
+            "{pad}        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {{\n"
+        ));
+        output.push_str(&format!(
+            "{pad}            Column(modifier = Modifier.widthIn(max = {boxed_max_width}.dp).fillMaxWidth()) {{\n"
+        ));
+        render_compose_bar_edge_region(
+            top,
+            indent + 16,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
+        output.push_str(&format!(
+            "{pad}                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {{\n"
+        ));
+        render_compose_bar_regions(
+            start,
+            center,
+            end,
+            indent + 20,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
+        output.push_str(&format!("{pad}                }}\n"));
+        render_compose_bar_edge_region(
+            bottom,
+            indent + 16,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
+        output.push_str(&format!("{pad}            }}\n"));
+        output.push_str(&format!("{pad}        }}\n"));
+        output.push_str(&format!("{pad}    }}\n"));
+        output.push_str(&format!("{pad}}}\n"));
+        return;
+    }
+    render_compose_bar_edge_region(
+        top,
+        indent + 8,
+        output,
+        current_font,
+        default_family,
+        context,
+    );
     if props.boxed {
         output.push_str(&format!(
             "{pad}        Box(modifier = {}, contentAlignment = Alignment.Center) {{\n",
@@ -58,14 +112,36 @@ fn render_compose_bar(
         );
         output.push_str(&format!("{pad}        }}\n"));
     }
-    render_compose_bar_edge_region(bottom, indent + 8, output, current_font, default_family, context);
+    render_compose_bar_edge_region(
+        bottom,
+        indent + 8,
+        output,
+        current_font,
+        default_family,
+        context,
+    );
     output.push_str(&format!("{pad}    }}\n"));
     output.push_str(&format!("{pad}}}\n"));
 }
 
-fn render_compose_bar_edge_region(children: &[ViewNode], indent: usize, output: &mut String, inherited_font: Option<&ResponsiveValue<FontFamily>>, default_family: FontFamily, context: &ComposeReactiveContext) {
+fn render_compose_bar_edge_region(
+    children: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &ComposeReactiveContext,
+) {
     for child in children {
-        render_compose_node_in_flow(child, indent, output, ComposeFlow::Block, inherited_font, default_family, context);
+        render_compose_node_in_flow(
+            child,
+            indent,
+            output,
+            ComposeFlow::Block,
+            inherited_font,
+            default_family,
+            context,
+        );
     }
 }
 

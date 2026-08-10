@@ -155,6 +155,7 @@ fn form_route() -> ViewRoute {
                         label: Some("Name".to_string()),
                         placeholder: Some("Full name".to_string()),
                         label_floating: true,
+                        size: Some(ButtonSize::Sm),
                         variant: Some(ComponentVariant::Outlined),
                         icon_start: Some(control_icon("M4 12h16")),
                         icon_end: Some(control_icon("M12 4v16")),
@@ -166,6 +167,7 @@ fn form_route() -> ViewRoute {
                         label: Some("Role".to_string()),
                         placeholder: Some("Choose role".to_string()),
                         label_floating: true,
+                        size: Some(ButtonSize::Lg),
                         variant: Some(ComponentVariant::Outlined),
                         ..Default::default()
                     },
@@ -270,7 +272,7 @@ fn media_display_form_route() -> ViewRoute {
                         show_navigation: true,
                         show_counter: true,
                         orientation: CarouselOrientation::Horizontal,
-                        size: ButtonSize::Md,
+                        size: ButtonSize::Sm,
                         indicator_type: CarouselIndicatorType::Bar,
                         title: Some("Samples".to_string()),
                         slide_width: None,
@@ -304,6 +306,7 @@ fn media_display_form_route() -> ViewRoute {
                         style: VariantProps {
                             color: Some(ColorFamily::Primary),
                             label: Some("Theme".to_string()),
+                            label_floating: true,
                             element: ElementProps {
                                 bind: Some("themeColor".to_string()),
                                 ..Default::default()
@@ -311,7 +314,7 @@ fn media_display_form_route() -> ViewRoute {
                             ..Default::default()
                         },
                         value: "#3366ff".to_string(),
-                        size: ButtonSize::Md,
+                        size: ButtonSize::Lg,
                         name: None,
                         help_text: None,
                         error_text: None,
@@ -333,7 +336,7 @@ fn media_display_form_route() -> ViewRoute {
                             ..Default::default()
                         },
                         value: Some("2026-06-05".to_string()),
-                        size: ButtonSize::Md,
+                        size: ButtonSize::Sm,
                         name: None,
                         help_text: None,
                         error_text: None,

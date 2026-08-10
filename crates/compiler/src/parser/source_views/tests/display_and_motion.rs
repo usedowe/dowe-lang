@@ -250,7 +250,7 @@ page displayPage
   fn done
     reset mode
   Box
-    RichText size:"lg" weight:"bold"
+    RichText title:true size:"lg" weight:"bold"
       mark text:"Launch" style:"grad" scheme:"primary"
       mark text:"ready" style:"pill" scheme:"success"
     Record name:"voice" maxDuration:90 onStart:choose onConfirm:done variant:"soft" scheme:"primary"
@@ -290,6 +290,7 @@ page displayPage
             Some("lg")
         );
         assert_eq!(marks.len(), 2);
+        assert!(props.title);
         assert_eq!(marks[0].style, RichTextMarkStyle::Grad);
         assert_eq!(marks[1].color, ColorFamily::Success);
 
@@ -350,4 +351,3 @@ page displayPage
         assert_eq!(waypoints.len(), 1);
         assert_eq!(waypoints[0].lng, "-74.08");
     }
-

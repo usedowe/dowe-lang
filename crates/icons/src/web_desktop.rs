@@ -8,22 +8,27 @@ use std::io::Cursor;
 
 const MACOS_SURFACE_SCALE: f32 = 824.0 / 1024.0;
 const MACOS_LOGO_SCALE: f32 = 0.7;
+const WEB_FAVICON_LOGO_SCALE: f32 = 0.9;
 
 pub(crate) fn web_artifacts(
     renderer: &IconRenderer,
     background: IconColor,
     rounded: IconRounded,
 ) -> IconResult<Vec<IconArtifact>> {
-    let style = composite_style(background, rounded);
-    let rendered = render_sizes(renderer, &[16, 32, 48, 180, 192, 512], style)?;
+    let favicons = render_sizes(renderer, &[16, 32, 48], favicon_style(background, rounded))?;
+    let web_icons = render_sizes(
+        renderer,
+        &[180, 192, 512],
+        composite_style(background, rounded),
+    )?;
     let mut artifacts = vec![
-        IconArtifact::new("favicon.ico", encode_ico(&rendered, &[16, 32, 48])?),
-        png_artifact("favicon-16x16.png", &rendered, 16),
-        png_artifact("favicon-32x32.png", &rendered, 32),
-        png_artifact("favicon-48x48.png", &rendered, 48),
-        png_artifact("apple-touch-icon.png", &rendered, 180),
-        png_artifact("icon-192x192.png", &rendered, 192),
-        png_artifact("icon-512x512.png", &rendered, 512),
+        IconArtifact::new("favicon.ico", encode_ico(&favicons, &[16, 32, 48])?),
+        png_artifact("favicon-16x16.png", &favicons, 16),
+        png_artifact("favicon-32x32.png", &favicons, 32),
+        png_artifact("favicon-48x48.png", &favicons, 48),
+        png_artifact("apple-touch-icon.png", &web_icons, 180),
+        png_artifact("icon-192x192.png", &web_icons, 192),
+        png_artifact("icon-512x512.png", &web_icons, 512),
     ];
     artifacts.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(artifacts)
@@ -63,6 +68,13 @@ fn composite_style(background: IconColor, rounded: IconRounded) -> RenderStyle {
         radius: rounded.ratio(),
         logo_scale: 0.7,
         circular_safe_zone: None,
+    }
+}
+
+fn favicon_style(background: IconColor, rounded: IconRounded) -> RenderStyle {
+    RenderStyle {
+        logo_scale: WEB_FAVICON_LOGO_SCALE,
+        ..composite_style(background, rounded)
     }
 }
 

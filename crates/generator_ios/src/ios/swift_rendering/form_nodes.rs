@@ -125,8 +125,14 @@ fn render_swift_form_node(
                         render_swift_button_icon(icon, &content, content_indent + 4, output);
                     }
                 }
-                let modifier = opacity.map(|value| format!(".opacity({value})")).unwrap_or_default();
-                output.push_str(&format!("{content_pad}}}{modifier}\n"));
+                output.push_str(&format!("{content_pad}}}\n"));
+                output.push_str(&format!("{content_pad}    .lineLimit(1)\n"));
+                output.push_str(&format!(
+                    "{content_pad}    .fixedSize(horizontal: true, vertical: false)\n"
+                ));
+                if let Some(value) = opacity {
+                    output.push_str(&format!("{content_pad}    .opacity({value})\n"));
+                }
             };
             if let Some(loading) = loading.as_ref() {
                 output.push_str(&format!("{pad}    ZStack {{\n"));
@@ -145,7 +151,7 @@ fn render_swift_form_node(
             let mut button_style = props.style.clone();
             button_style.shadow = None;
             button_style.shadow_color = None;
-            button_style.animation = None;
+            button_style.set_animation(None);
             let mut modifiers = swift_modifiers_for_style(&button_style);
             if let Some(size) = props.reactive.size.as_ref().map(|path| reactive_text(path, "md")) {
                 modifiers.push(format!(".padding(.horizontal, doweButtonHorizontalPadding({size}))"));
@@ -189,7 +195,7 @@ fn render_swift_form_node(
             if let Some(modifier) = swift_shadow_modifier_with_radius(&props.style, &radius) {
                 modifiers.push(modifier);
             }
-            if let Some(animation) = props.style.animation {
+            if let Some(animation) = props.style.animation() {
                 modifiers.push(format!(
                     ".modifier(DoweAnimationModifier(preset: {}))",
                     swift_animation_preset(animation)
@@ -220,7 +226,9 @@ fn render_swift_form_node(
                     )
                 })
                 .unwrap_or_else(|| "nil".to_string());
-            let size = swift_text_size_expr(false, INPUT_TEXT_SIZE);
+            let control_size = props.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
+            let size = swift_text_size_expr(false, text_size);
             let base_border =
                 if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
                     (
@@ -245,8 +253,9 @@ fn render_swift_form_node(
                     &size,
                     default_family,
                 ),
-                text_typography(false, INPUT_TEXT_SIZE).line_height,
-                INPUT_MIN_HEIGHT.native_units(),
+                text_typography(false, text_size).line_height,
+                form_control_min_height(control_size, props.label_floating)
+                .native_units(),
                 INPUT_HORIZONTAL_PADDING.native_units(),
                 variant_container(props),
                 variant_content(props),
@@ -280,7 +289,9 @@ fn render_swift_form_node(
                     )
                 })
                 .unwrap_or_else(|| "nil".to_string());
-            let size = swift_text_size_expr(false, INPUT_TEXT_SIZE);
+            let control_size = props.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
+            let size = swift_text_size_expr(false, text_size);
             let border =
                 if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
                     format!("Optional({})", color_ref(ColorToken::Muted))
@@ -294,8 +305,9 @@ fn render_swift_form_node(
                 props.label_floating,
                 swift_select_options(options, option_each.as_ref(), context),
                 swift_font_value(props.style.font.as_ref().or(inherited_font), &size, default_family),
-                text_typography(false, INPUT_TEXT_SIZE).line_height,
-                INPUT_MIN_HEIGHT.native_units(),
+                text_typography(false, text_size).line_height,
+                form_control_min_height(control_size, props.label_floating)
+                .native_units(),
                 INPUT_HORIZONTAL_PADDING.native_units(),
                 variant_container(props),
                 variant_content(props),
@@ -364,27 +376,40 @@ fn render_swift_form_node(
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
         }
-        ViewNode::PasswordField { props } => {
+        ViewNode::Password { props } => {
+            let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
+            let hide_icon =
+                solar_control_icon("eye-closed").expect("bundled Password conceal icon");
+            let control_size = props.style.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
             output.push_str(&format!(
-                "{pad}DowePasswordField(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, hideStrength: {}, weakLabel: {}, mediumLabel: {}, strongLabel: {}, readOnly: {}, backgroundColor: {}, contentColor: {})\n",
+                "{pad}DowePassword(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, minHeight: CGFloat({}), fontSize: {}, lineHeight: CGFloat({}), hideStrength: {}, weakLabel: {}, mediumLabel: {}, strongLabel: {}, readOnly: {}, showIcon: {}, hideIcon: {}, backgroundColor: {}, contentColor: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.value.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
                 swift_string_literal(props.style.placeholder.as_deref().unwrap_or_default()),
                 props.style.label_floating,
+                form_control_min_height(control_size, props.style.label_floating)
+                .native_units(),
+                swift_text_size_expr(false, text_size),
+                text_typography(false, text_size).line_height,
                 props.hide_strength,
                 swift_string_literal(&props.weak_label),
                 swift_string_literal(&props.medium_label),
                 swift_string_literal(&props.strong_label),
                 props.readonly || props.disabled,
+                swift_control_icon(Some(&show_icon)),
+                swift_control_icon(Some(&hide_icon)),
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
         }
-        ViewNode::PhoneField { props } => {
+        ViewNode::Phone { props } => {
+            let control_size = props.style.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
             output.push_str(&format!(
-                "{pad}DowePhoneField(value: {}, initialValue: {}, label: {}, placeholder: {}, country: {}, countries: {}, priorityCountries: {}, dialCodeName: {}, searchPlaceholder: {}, emptyText: {}, loadingText: {}, floating: {}, disabled: {}, backgroundColor: {}, contentColor: {})\n",
+                "{pad}DowePhone(value: {}, initialValue: {}, label: {}, placeholder: {}, country: {}, countries: {}, priorityCountries: {}, dialCodeName: {}, searchPlaceholder: {}, emptyText: {}, loadingText: {}, floating: {}, minHeight: CGFloat({}), fontSize: {}, lineHeight: CGFloat({}), disabled: {}, backgroundColor: {}, contentColor: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.value.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
@@ -397,14 +422,19 @@ fn render_swift_form_node(
                 swift_string_literal(&props.empty_text),
                 swift_string_literal(&props.loading_text),
                 props.style.label_floating,
+                form_control_min_height(control_size, props.style.label_floating)
+                .native_units(),
+                swift_text_size_expr(false, text_size),
+                text_typography(false, text_size).line_height,
                 props.disabled,
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
         }
-        ViewNode::PinField { props } => {
+        ViewNode::Pin { props } => {
             let size = props.style.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(size);
             let base_border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined
             {
@@ -418,13 +448,15 @@ fn render_swift_form_node(
             let (border, border_width) =
                 swift_style_border(&props.style.style, &base_border.0, &base_border.1);
             output.push_str(&format!(
-                "{pad}DowePinField(value: {}, initialValue: {}, label: {}, length: {}, kind: {}, size: {}, variant: {}, helpText: {}, errorText: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, borderWidth: {}, radius: {})\n",
+                "{pad}DowePin(value: {}, initialValue: {}, label: {}, length: {}, kind: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), variant: {}, helpText: {}, errorText: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, borderWidth: {}, radius: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.value.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
                 props.length,
                 swift_string_literal(props.kind.as_str()),
                 swift_string_literal(size.as_str()),
+                swift_text_size_expr(false, text_size),
+                text_typography(false, text_size).line_height,
                 swift_string_literal(props.style.variant.unwrap_or(ComponentVariant::Solid).as_str()),
                 swift_optional_literal(props.help_text.as_deref()),
                 swift_optional_literal(props.error_text.as_deref()),
@@ -437,8 +469,9 @@ fn render_swift_form_node(
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
         }
         ViewNode::Textarea { props } => {
+            let text_size = form_control_text_size(props.style.size.unwrap_or(ButtonSize::Md));
             output.push_str(&format!(
-                "{pad}DoweTextarea(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, rows: {}, maxLength: {}, readOnly: {}, backgroundColor: {}, contentColor: {})\n",
+                "{pad}DoweTextarea(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, rows: {}, maxLength: {}, fontSize: {}, lineHeight: CGFloat({}), readOnly: {}, backgroundColor: {}, contentColor: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.value.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
@@ -448,6 +481,8 @@ fn render_swift_form_node(
                 props.max_length
                     .map(|value| value.to_string())
                     .unwrap_or_else(|| "nil".to_string()),
+                swift_text_size_expr(false, text_size),
+                text_typography(false, text_size).line_height,
                 props.readonly || props.disabled,
                 variant_container(&props.style),
                 variant_content(&props.style)
@@ -496,7 +531,9 @@ fn render_swift_combo_box(
     context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
-    let size = swift_text_size_expr(false, INPUT_TEXT_SIZE);
+    let control_size = props.style.size.unwrap_or(ButtonSize::Md);
+    let text_size = form_control_text_size(control_size);
+    let size = swift_text_size_expr(false, text_size);
     let border = if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
         format!("Optional({})", color_ref(ColorToken::Muted))
     } else {
@@ -514,8 +551,9 @@ fn render_swift_combo_box(
         props.clearable,
         swift_combo_options(options),
         swift_font_value(props.style.style.font.as_ref().or(inherited_font), &size, default_family),
-        text_typography(false, INPUT_TEXT_SIZE).line_height,
-        INPUT_MIN_HEIGHT.native_units(),
+        text_typography(false, text_size).line_height,
+        form_control_min_height(control_size, props.style.label_floating)
+        .native_units(),
         INPUT_HORIZONTAL_PADDING.native_units(),
         variant_container(&props.style),
         variant_content(&props.style),

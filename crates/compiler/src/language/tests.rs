@@ -900,6 +900,21 @@ fn diagnostics_accept_svg_paths() {
 }
 
 #[test]
+fn completions_include_svg_path_fill_rule() {
+    let document = LanguageDocument {
+        path: Path::new("/project/pages/icon.dowe").to_path_buf(),
+        source: "page iconPage\n  Path \n  Path fillRule:\n".to_string(),
+    };
+
+    let props = complete_document(Path::new("/project"), &document, 2, 8);
+    assert!(props.iter().any(|item| item.label == "fillRule"));
+
+    let values = complete_document(Path::new("/project"), &document, 3, 17);
+    assert!(values.iter().any(|item| item.label == "\"nonzero\""));
+    assert!(values.iter().any(|item| item.label == "\"evenodd\""));
+}
+
+#[test]
 fn diagnostics_place_component_prop_errors_on_prop_token() {
     let root = tempdir().expect("tempdir");
     fs::create_dir_all(root.path().join("pages")).expect("src");
@@ -991,7 +1006,7 @@ fn diagnostics_accept_input_and_select_form_props() {
     fs::create_dir_all(root.path().join("pages")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("pages/login.dowe"),
-        source: "page loginPage\n  signal profile value:{ name:\"\" role:\"admin\" }\n  Box\n    Input bind:profile.name label:\"Name\" placeholder:\"Full name\" labelFloating:true\n    Select bind:profile.role label:\"Role\" placeholder:\"Choose role\" labelFloating:true\n      Option value:\"admin\" label:\"Admin\"\n      Option value:\"viewer\" label:\"Viewer\"\n".to_string(),
+        source: "page loginPage\n  signal profile value:{ name:\"\" role:\"admin\" }\n  Box\n    Input bind:profile.name label:\"Name\" placeholder:\"Full name\" labelFloating:true size:\"sm\"\n    Select bind:profile.role label:\"Role\" placeholder:\"Choose role\" labelFloating:true size:\"lg\"\n      Option value:\"admin\" label:\"Admin\"\n      Option value:\"viewer\" label:\"Viewer\"\n".to_string(),
     };
 
     let diagnostics = analyze_document(root.path(), &document);
@@ -1534,10 +1549,12 @@ fn completions_include_current_view_component_props() {
             .iter()
             .any(|item| item.label == "showIconStart")
     );
-    for (line, column) in [(5, 8), (7, 9), (8, 9)] {
+    for (line, column) in [(5, 8), (8, 9)] {
         let props = complete_document(Path::new("/project"), &document, line, column);
         assert!(!props.iter().any(|item| item.label == "size"));
     }
+    let input_props = complete_document(Path::new("/project"), &document, 7, 9);
+    assert!(input_props.iter().any(|item| item.label == "size"));
     let card_props = complete_document(Path::new("/project"), &document, 5, 8);
     assert!(card_props.iter().any(|item| item.label == "animation"));
 
@@ -1552,6 +1569,7 @@ fn completions_include_current_view_component_props() {
     let select_props = complete_document(Path::new("/project"), &document, 11, 10);
     assert!(select_props.iter().any(|item| item.label == "label"));
     assert!(select_props.iter().any(|item| item.label == "placeholder"));
+    assert!(select_props.iter().any(|item| item.label == "size"));
 
     let option_props = complete_document(Path::new("/project"), &document, 12, 12);
     assert!(option_props.iter().any(|item| item.label == "value"));
@@ -1587,6 +1605,7 @@ fn completions_include_current_view_component_props() {
     };
     let appbar_props = complete_document(Path::new("/project"), &bar_document, 2, 11);
     assert!(appbar_props.iter().any(|item| item.label == "floating"));
+    assert!(appbar_props.iter().any(|item| item.label == "dockOnScroll"));
     assert!(appbar_props.iter().any(|item| item.label == "bordered"));
 
     let footer_props = complete_document(Path::new("/project"), &bar_document, 3, 10);
@@ -2139,6 +2158,7 @@ fn completions_include_rich_control_map_component_props_and_values() {
         "  RichText ",
         "    mark ",
         "  RichText size:",
+        "  RichText title:",
         "  Record ",
         "  Record variant:",
         "  ToggleGroup ",
@@ -2174,6 +2194,7 @@ fn completions_include_rich_control_map_component_props_and_values() {
     let rich_text_props = complete_document(root, &document, 2, "  RichText ".len() + 1);
     assert!(rich_text_props.iter().any(|item| item.label == "i18n"));
     assert!(rich_text_props.iter().any(|item| item.label == "weight"));
+    assert!(rich_text_props.iter().any(|item| item.label == "title"));
 
     let mark_props = complete_document(root, &document, 3, "    mark ".len() + 1);
     assert!(mark_props.iter().any(|item| item.label == "text"));
@@ -2183,31 +2204,35 @@ fn completions_include_rich_control_map_component_props_and_values() {
     let rich_text_size = complete_document(root, &document, 4, "  RichText size:".len() + 1);
     assert!(rich_text_size.iter().any(|item| item.label == "\"xl\""));
 
-    let record_props = complete_document(root, &document, 5, "  Record ".len() + 1);
+    let rich_text_title = complete_document(root, &document, 5, "  RichText title:".len() + 1);
+    assert!(rich_text_title.iter().any(|item| item.label == "true"));
+    assert!(rich_text_title.iter().any(|item| item.label == "false"));
+
+    let record_props = complete_document(root, &document, 6, "  Record ".len() + 1);
     assert!(record_props.iter().any(|item| item.label == "name"));
     assert!(record_props.iter().any(|item| item.label == "maxDuration"));
     assert!(record_props.iter().any(|item| item.label == "onConfirm"));
     assert!(!record_props.iter().any(|item| item.label == "color"));
 
-    let record_variant = complete_document(root, &document, 6, "  Record variant:".len() + 1);
+    let record_variant = complete_document(root, &document, 7, "  Record variant:".len() + 1);
     assert!(record_variant.iter().any(|item| item.label == "\"solid\""));
     assert!(record_variant.iter().any(|item| item.label == "\"soft\""));
     assert!(!record_variant.iter().any(|item| item.label == "\"ghost\""));
 
-    let toggle_props = complete_document(root, &document, 7, "  ToggleGroup ".len() + 1);
+    let toggle_props = complete_document(root, &document, 8, "  ToggleGroup ".len() + 1);
     assert!(toggle_props.iter().any(|item| item.label == "value"));
     assert!(toggle_props.iter().any(|item| item.label == "selected"));
     assert!(toggle_props.iter().any(|item| item.label == "onChange"));
 
-    let item_props = complete_document(root, &document, 8, "    item ".len() + 1);
+    let item_props = complete_document(root, &document, 9, "    item ".len() + 1);
     assert!(item_props.iter().any(|item| item.label == "id"));
     assert!(item_props.iter().any(|item| item.label == "label"));
     assert!(item_props.iter().any(|item| item.label == "icon"));
 
-    let toggle_size = complete_document(root, &document, 9, "  ToggleGroup size:".len() + 1);
+    let toggle_size = complete_document(root, &document, 10, "  ToggleGroup size:".len() + 1);
     assert!(toggle_size.iter().any(|item| item.label == "\"sm\""));
 
-    let collapsible_props = complete_document(root, &document, 10, "  Collapsible ".len() + 1);
+    let collapsible_props = complete_document(root, &document, 11, "  Collapsible ".len() + 1);
     assert!(collapsible_props.iter().any(|item| item.label == "label"));
     assert!(
         collapsible_props
@@ -2215,7 +2240,7 @@ fn completions_include_rich_control_map_component_props_and_values() {
             .any(|item| item.label == "defaultOpen")
     );
 
-    let countdown_props = complete_document(root, &document, 11, "  Countdown ".len() + 1);
+    let countdown_props = complete_document(root, &document, 12, "  Countdown ".len() + 1);
     assert!(countdown_props.iter().any(|item| item.label == "target"));
     assert!(
         countdown_props
@@ -2228,10 +2253,10 @@ fn completions_include_rich_control_map_component_props_and_values() {
             .any(|item| item.label == "onComplete")
     );
 
-    let countdown_size = complete_document(root, &document, 12, "  Countdown size:".len() + 1);
+    let countdown_size = complete_document(root, &document, 13, "  Countdown size:".len() + 1);
     assert!(countdown_size.iter().any(|item| item.label == "\"xl\""));
 
-    let map_props = complete_document(root, &document, 13, "  Map ".len() + 1);
+    let map_props = complete_document(root, &document, 14, "  Map ".len() + 1);
     assert!(map_props.iter().any(|item| item.label == "centerLat"));
     assert!(
         map_props
@@ -2240,16 +2265,16 @@ fn completions_include_rich_control_map_component_props_and_values() {
     );
     assert!(map_props.iter().any(|item| item.label == "onRoute"));
 
-    let marker_props = complete_document(root, &document, 14, "    marker ".len() + 1);
+    let marker_props = complete_document(root, &document, 15, "    marker ".len() + 1);
     assert!(marker_props.iter().any(|item| item.label == "lat"));
     assert!(marker_props.iter().any(|item| item.label == "popup"));
     assert!(marker_props.iter().any(|item| item.label == "onClick"));
 
-    let waypoint_props = complete_document(root, &document, 15, "    waypoint ".len() + 1);
+    let waypoint_props = complete_document(root, &document, 16, "    waypoint ".len() + 1);
     assert!(waypoint_props.iter().any(|item| item.label == "lat"));
     assert!(waypoint_props.iter().any(|item| item.label == "lng"));
 
-    let map_scheme = complete_document(root, &document, 16, "  Map scheme:".len() + 1);
+    let map_scheme = complete_document(root, &document, 17, "  Map scheme:".len() + 1);
     assert!(map_scheme.iter().any(|item| item.label == "\"primary\""));
     assert!(!map_scheme.iter().any(|item| item.label == "\"surface\""));
 }
@@ -2279,7 +2304,7 @@ fn completions_include_flex_direction_prop_and_values() {
 fn completions_include_view_animation_values() {
     let document = LanguageDocument {
         path: Path::new("/project/pages/login.dowe").to_path_buf(),
-        source: "page loginPage\n  Box animation:\n  Section animation:\n  Section background:\n  Card animation:\n  Flex animation:\n"
+        source: "page loginPage\n  Box animation:\n  Section animation:\n  Section background:\n  Card animation:\n  Flex animation:\n  Chip transition:\n  Chip gesture:\n  Chip \n"
             .to_string(),
     };
 
@@ -2318,7 +2343,31 @@ fn completions_include_view_animation_values() {
     );
 
     let flex_animation = complete_document(Path::new("/project"), &document, 6, 18);
-    assert!(!flex_animation.iter().any(|item| item.label == "\"fadeIn\""));
+    assert!(flex_animation.iter().any(|item| item.label == "\"fadeIn\""));
+
+    let chip_transition = complete_document(Path::new("/project"), &document, 7, 19);
+    assert!(
+        chip_transition
+            .iter()
+            .any(|item| item.label == "\"spring\"")
+    );
+
+    let chip_gesture = complete_document(Path::new("/project"), &document, 8, 16);
+    assert!(chip_gesture.iter().any(|item| item.label == "\"tilt\""));
+
+    let chip_props = complete_document(Path::new("/project"), &document, 9, 8);
+    for prop in [
+        "animation",
+        "rotate",
+        "scale",
+        "translateX",
+        "translateY",
+        "transition",
+        "gesture",
+        "onClick",
+    ] {
+        assert!(chip_props.iter().any(|item| item.label == prop));
+    }
 }
 
 #[test]
@@ -2565,9 +2614,9 @@ fn every_builtin_view_component_and_prop_has_editor_documentation() {
         "dragItem",
         "Editor",
         "ImageCropper",
-        "PasswordField",
-        "PhoneField",
-        "PinField",
+        "Password",
+        "Phone",
+        "Pin",
         "Textarea",
         "Alert",
         "Svg",

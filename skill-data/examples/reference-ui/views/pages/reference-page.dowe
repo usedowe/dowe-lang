@@ -1,0 +1,107 @@
+import Metric from "@/views/types/metric"
+
+page ReferencePage
+  const features value:[
+    { id:"systems" title:"One system" description:"Keep structure and behavior aligned across every target." },
+    { id:"contracts" title:"Clear contracts" description:"Choose semantic components before adding local visual details." },
+    { id:"iteration" title:"Measured iteration" description:"Compare every visual band at the original reference viewport." },
+  ]
+  const metricSkeletons value:[
+    { id:"first" },
+    { id:"second" },
+    { id:"third" },
+  ]
+  signal metrics type:Metric[] value:[]
+  signal loadingMetrics value:false
+  signal emptyMetrics value:true
+  signal metricError value:false
+
+  fn loadMetrics
+    set loadingMetrics value:true
+    set emptyMetrics value:false
+    set metricError value:false
+    request result method:"GET" route:"/api/metrics"
+    if result.ok
+      set metrics value:result.data.metrics
+      set emptyMetrics value:result.data.empty
+    else
+      set metricError value:true
+    set loadingMetrics value:false
+
+  Section id:"hero" bg:"primary" color:"onPrimary" boxed:true py:{ xs:10 md:16 }
+    Grid columns:{ xs:1 md:"5fr 4fr" } gap:{ xs:8 md:14 } align:"center" minH:"vh-16"
+      Flex direction:"column" align:"start" gap:5
+        Chip
+          "REFERENCE-DRIVEN UI"
+        Title size:{ xs:"4xl" md:"6xl" } weight:"black"
+          "Build the interface the evidence describes"
+        Text size:"lg" color:"softPrimary"
+          "Preserve hierarchy, ownership, copy, and repeated content while Dowe keeps the result portable."
+        Flex direction:{ xs:"column" sm:"row" } gap:3
+          Button href:"/#product" scheme:"secondary"
+            "Explore the system"
+          Button href:"/#services" variant:"outlined" scheme:"muted"
+            "Review the workflow"
+      Box bg:"softPrimary" rounded:"xl" p:{ xs:6 md:10 } minH:80 w:"full"
+        Flex direction:"column" align:"center" justify:"center" gap:3 minH:64
+          Icon name:"gallery" style:"bold-duotone" fill:"primary" w:16 h:16
+          Text color:"onSoftPrimary"
+            "Original hero media placeholder"
+
+  Section id:"product" boxed:true py:{ xs:8 md:12 }
+    Grid columns:1 gap:6
+      Flex direction:"column" gap:2
+        Text size:"xs" weight:"bold" spacing:"widest" color:"muted"
+          "PRODUCT"
+        Title size:{ xs:"3xl" md:"5xl" } weight:"black"
+          "One collection, one visual unit"
+        Text color:"muted"
+          "Reference-defined records stay immutable and render through a keyed each template."
+      Grid columns:{ xs:1 md:3 } gap:4
+        each in:features as:feature key:feature.id
+          Card p:6
+            Grid columns:1 gap:3
+              Icon name:"layers-minimalistic" style:"bold-duotone" fill:"primary" w:9 h:9
+              Title size:"xl" weight:"black"
+                "{feature.title}"
+              Text color:"muted"
+                "{feature.description}"
+
+  Section id:"services" bg:"softMuted" boxed:true py:{ xs:8 md:12 }
+    Grid columns:1 gap:6
+      Grid columns:{ xs:1 md:"1fr auto" } gap:4 align:"end"
+        Flex direction:"column" gap:2
+          Text size:"xs" weight:"bold" spacing:"widest" color:"muted"
+            "LIVE METRICS"
+          Title size:"3xl" weight:"black"
+            "Backend state remains declarative"
+          Text color:"muted"
+            "Loading, empty, populated, and error states belong to the page workflow."
+        Button onClick:loadMetrics loading:loadingMetrics
+          "Refresh metrics"
+      Alert type:"error" message:"Metrics could not be loaded. Try again." visible:metricError
+      Grid columns:{ xs:1 md:3 } gap:4 show:loadingMetrics
+        each in:metricSkeletons as:skeleton key:skeleton.id
+          Skeleton variant:"rounded" animation:"wave" w:"full" h:32
+      Empty type:"data" title:"No metrics yet" description:"Refresh to load the latest workspace metrics." actionLabel:"Refresh metrics" onClick:loadMetrics show:emptyMetrics
+      Grid columns:{ xs:1 md:3 } gap:4
+        each in:metrics as:metric key:metric.id
+          Card p:6
+            Grid columns:1 gap:2
+              Text size:"sm" color:"muted"
+                "{metric.label}"
+              Title size:"3xl" weight:"black"
+                "{metric.value}"
+              Text size:"sm" color:"muted"
+                "{metric.detail}"
+
+  Section id:"contact" boxed:true py:{ xs:8 md:12 }
+    Card variant:"solid" scheme:"primary" p:{ xs:6 md:10 }
+      Grid columns:{ xs:1 md:"1fr auto" } gap:6 align:"center"
+        Flex direction:"column" gap:2
+          Title size:"3xl" weight:"black"
+            "Ready for evidence-backed UI?"
+          Text color:"softPrimary"
+            "Start from a blueprint, compile, render, and compare before declaring parity."
+        Button href:"https://example.com/contact" scheme:"secondary"
+          "Contact the team"

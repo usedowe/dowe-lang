@@ -29,11 +29,11 @@ contract declares them.
 
 | Component | Use and essential contract |
 | --- | --- |
-| `AppBar` | Top application bar with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; `boxed:true` centers its inner content at `96rem` web or `1536` native while preserving the full-width surface. It stays visually flat across targets unless `border`, `bordered:true`, or `floating:true` requests separation. |
-| `Footer` | Page or shell footer with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; it includes horizontal padding `4` from `xs` and `6` from `md`, overridable with `p`, `px`, `pl`, or `pr`. `boxed:true` centers its central row at `96rem` web or `1536` native. Put responsive `show` on children inside a region, not on the structural region block. |
+| `AppBar` | Top application bar with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; `boxed:true` centers its inner content at `96rem` web or `1536` native while preserving the full-width surface. It stays visually flat across targets unless `border`, `bordered:true`, or `floating:true` requests separation. `dockOnScroll:true` requires `position:"fixed" floating:true` and makes web, desktop, Android, and iOS dock the floating surface at the viewport top after `100` logical scroll units. |
+| `Footer` | Page or shell footer with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; it includes horizontal padding `4` from `xs` and `6` from `md`, top padding `10` from `xs` and `16` from `md`, and bottom padding `4` from `xs` and `6` from `md`, overridable with `p`, `px`, `py`, `pl`, `pr`, `pt`, or `pb`. `boxed:true` centers one shared inner container holding `top`, the central row, and `bottom` at `96rem` web or `1536` native while the surface remains full width. Put responsive `show` on children inside a region, not on the structural region block. |
 | `BottomBar` | Bottom navigation containing one or more direct `tab` entries; each entry owns one Icon and navigation metadata; `boxed:true` centers the tab row at `96rem` web or `1536` native. |
 | `NavMenu` | Horizontal navigation composed from direct `item`, `submenu`, or `megamenu` entries. Submenu and megamenu content opens in a Dowe-owned floating overlay on web, Android, and iOS, uses the structural background surface, preserves `scheme` for trigger and active states, dispatches fragment or route navigation before closing, and uses the same anchored overlay strategy as `Dropdown` on iOS. |
-| `SideNav` | Detailed vertical navigation with optional `header`, direct `item`, `divider`, and `submenu` entries. |
+| `SideNav` | Detailed vertical navigation with optional `header`, direct `item`, `divider`, and `submenu` entries. `submenu open` is initial state; the runtime retains later toggles in session memory across unmount and remount. Use distinct `id` values for structurally identical SideNav instances that need independent memory. |
 | `RailNav` | Narrow icon navigation with direct `item` and `divider` entries; each item requires quoted `label` and Solar `icon`. |
 | `Sidebar` | Shell side surface with optional `header`, required `body`, and optional `footer` regions. |
 | `Scaffold` | The single normal layout root. It accepts optional `appBar`, `start`, `end`, `bottomBar`, and `overlays` regions plus required `main`; `boxed:true` centers only the `start`/`main`/`end` body at `96rem` web or `1536` native. |
@@ -66,8 +66,8 @@ Section, Scaffold, AppBar, Footer, and BottomBar use the wide boxed content cap 
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Input` | Single-line value bound through `bind`; add a quoted label and the input type accepted by diagnostics. |
-| `Select` | Bound choice control containing one or more direct `Option` entries. |
+| `Input` | Single-line value bound through `bind`; add a quoted label and the input type accepted by diagnostics. `size` accepts `sm`, `md`, or `lg`. |
+| `Select` | Bound choice control containing one or more direct `Option` entries. `size` accepts `sm`, `md`, or `lg`. |
 | `Option` | Context-only Select entry with quoted `value`, `label`, and optional description. |
 | `Slider` | Bound numeric value constrained by its minimum, maximum, and step. |
 | `Dropzone` | File-drop and picker surface with accepted file and size limits; web uses drag-and-drop, while iOS and Android open their native document selectors and show selected file summaries. |
@@ -80,16 +80,22 @@ Section, Scaffold, AppBar, Footer, and BottomBar use the wide boxed content cap 
 | `dragItem` | Context-only draggable entry with stable identity and display data. |
 | `Editor` | Bound rich text or source editor using the supported language, limits, and named change workflow. |
 | `ImageCropper` | Bound image-selection and crop result with portable aspect and file limits. |
-| `PasswordField` | Bound password input with Dowe-owned reveal, strength, and validation behavior. |
-| `PhoneField` | Bound digit-only local phone input with separate dial-code storage and the same Dowe-owned searchable country popover, flags, and ordering on web, Android, and iOS. |
-| `PinField` | Bound fixed-length PIN or verification-code input with Input-sized cells, automatic focus movement, distributed paste, and text, password, or numeric modes. |
+| `Password` | Bound password input with Dowe-owned strength and validation behavior plus a shared `Icon` reveal action using `eye` and `eye-closed`; visible Show/Hide text is not rendered. |
+| `Phone` | Bound digit-only local phone input with separate dial-code storage and the same Dowe-owned anchored searchable country popover, 12-unit trigger inset, compact search, horizontal flag/name/dial rows, selected state, and ordering on web, Android Compose, the Android launcher, and iOS. |
+| `Pin` | Bound fixed-length PIN or verification-code input with Input-scaled `sm`, `md`, and `lg` cells, automatic focus movement after accepted characters, distributed paste, and text, password, or numeric modes. Android reduces cell widths evenly when a narrow parent cannot fit their nominal widths. `PinField` is rejected. |
 | `Textarea` | Bound multiline text with row and length limits. |
 | `Checkbox` | Bound boolean choice with a quoted accessible label. |
-| `Color` | Bound color value using the implemented picker formats and optional displayed representations. |
+| `Color` | Bound canonical `#RRGGBB` value using the portable saturation/brightness plane, hue slider, preview, contrast foreground, and optional Hex, RGB, CMYK, and OKLCH rows. |
 | `Date` | Input-like bound date with a Dowe-owned calendar dropdown, month navigation, selected/today states, and optional minimum and maximum values. |
 | `DateRange` | Input-like bound start/end range with a Dowe-owned calendar dropdown, range highlighting, automatic ordering, and optional limits. |
 | `RadioGroup` | Bound single choice composed from one or more direct `item` entries. |
 | `Toggle` | Bound boolean control with a quoted accessible label. |
+
+`Input`, `Select`, `ComboBox`, `Password`, `Phone`, `Color`, `Date`, and `DateRange`
+share one single-line height contract. `sm`, `md`, and `lg` are 32, 40, and 48 logical units;
+`labelFloating:true` adds 8 units, producing 40, 48, and 56. Their value and placeholder use the
+matching body `sm`, `md`, or `lg` typography on web, Android, and iOS. `Textarea` remains
+rows-driven, but its text follows the same typography scale.
 
 ## Media, code, icons, and custom drawing
 
@@ -104,7 +110,7 @@ Section, Scaffold, AppBar, Footer, and BottomBar use the wide boxed content cap 
 | `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
 | `Icon` | Bundled vector selected by quoted `name`: Solar names, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or brand-colored `svg-logos:<name>`. Solar supports six styles; namespaced catalogs use `linear`. |
 | `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. |
-| `Path` | Context-only Svg path with quoted `d`, paint, and optional matrix transform. |
+| `Path` | Context-only Svg path with quoted `d`, paint, optional `fillRule:"nonzero|evenodd"`, and optional matrix transform. Use `evenodd` to preserve holes in compound paths. |
 
 `Icon name` is always a static quoted value; it cannot bind an `each` item or Signal path, so a
 collection with distinct icons uses explicit sibling declarations. Names must exist in the bundled
@@ -158,14 +164,14 @@ are outside the Table contract.
 | `Badge` | Compact status or count surface containing one or more view children. |
 | `Brand` | Logo or identity container with one or more arbitrary view children, optional quoted `href` navigation, optional accessible `label`, and Box-compatible `w` and `h`; it adds no Button chrome. |
 | `Banner` | Full-width external surface with one or more arbitrary view children, required quoted HTTPS `href`, optional accessible `label`, and common background, cover, spacing, sizing, border, radius, shadow, and visibility props; web opens a protected new tab and native targets use the system browser. |
-| `Chip` | Compact labeled token with optional `start` and `end` icon regions and supported close behavior. |
+| `Chip` | Compact labeled token with optional `start` and `end` icon regions, supported close behavior, portable motion props, and an optional whole-chip `onClick` action. |
 | `Skeleton` | Loading placeholder sized to the content surface it represents. |
 | `ChatBox` | Bound message list with named send and pagination functions plus loading, sending, and streaming state. |
 | `Empty` | Empty-state icon, title, description, and optional action or navigation target. |
 | `Marquee` | Repeating overflow presentation for one or more view children. |
 | `TypeWriter` | Sequential text presentation composed from one or more direct `item` entries. |
-| `RichText` | Portable styled text composed from one or more direct `mark` runs. |
-| `mark` | Context-only RichText run with quoted text and one supported style. |
+| `RichText` | Portable wrapping styled text composed from one or more direct `mark` runs. Use `title:true` for the Title scale or leave it false for the Text scale. Across web, Android, and iOS, mark backgrounds remain content-sized and oversized marks wrap on whole-word boundaries with centered lines inside the available container. |
+| `mark` | Context-only RichText run with quoted text, a semantic scheme, and one of `mark`, `grad`, `pill`, `slant`, `glow`, `under`, `strike`, `box`, `wave`, `neon`, `pop`, or `tag`. |
 | `Collapsible` | Expandable content with a quoted label and one or more view children. |
 | `Countdown` | Time-based display with an optional named completion function; large values expand, while narrow containers compact `lg` and `xl` before bounded horizontal scrolling. |
 | `Map` | Portable map with direct `marker` and optional route `waypoint` entries plus named location or route functions. |

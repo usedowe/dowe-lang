@@ -49,6 +49,7 @@ fn generated_views(
     val initialPath = if (DoweRoutes.paths.contains(startPath)) startPath else DoweRoutes.initialPath
     val initialFragment = startFragment?.takeIf { DoweRoutes.sections[initialPath]?.contains(it) == true }
     var currentEntry by remember { mutableStateOf(DoweRouteEntry(initialPath, initialFragment)) }
+    var routeRevision by remember { mutableIntStateOf(0) }
     var externalUrl by remember { mutableStateOf<String?>(null) }
     val backStack = remember { mutableStateListOf<DoweRouteEntry>() }
     val scrollState = rememberScrollState()
@@ -61,6 +62,7 @@ fn generated_views(
         }
         val destination = DoweRouteEntry(path, fragment?.takeIf { DoweRoutes.sections[path]?.contains(it) == true })
         if (destination == currentEntry) {
+            if (operation == "replace") routeRevision += 1
             return
         }
         if (operation == "replace") {
@@ -119,7 +121,9 @@ fn generated_views(
         } else {
             BoxWithConstraints(modifier = Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopStart) {
                 val viewportWidth = maxWidth
-                DoweRouteDispatcher(currentEntry.path, viewportWidth, scrollState, sectionRegistry, ::navigate, ::goBack, ::openExternal)
+                key(currentEntry.path, routeRevision) {
+                    DoweRouteDispatcher(currentEntry.path, viewportWidth, scrollState, sectionRegistry, ::navigate, ::goBack, ::openExternal)
+                }
 "#,
         );
         output.push_str("            }\n        }\n    }\n");

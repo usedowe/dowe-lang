@@ -28,6 +28,13 @@ fn is_known_component_prop(component: BuiltinComponent, name: &str) -> bool {
             | "maxH"
             | "rounded"
             | "border"
+            | "animation"
+            | "rotate"
+            | "scale"
+            | "translateX"
+            | "translateY"
+            | "transition"
+            | "gesture"
     );
     shared_style
         || is_known_layout_and_data_prop(component, name)

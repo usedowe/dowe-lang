@@ -293,8 +293,10 @@ catalog shape. Every referenced key must exist in every locale catalog, and `i18
 supported surface fails before target generation.
 
 Portable standard-library calls use `set target source:namespace.function` inside `fn`. Convert SVG
-XML text with `set output source:parse.svg value:input fallback:""`. The result is Dowe `Svg`/`Path`
-source text; `parse.svg` does not mount or execute the XML.
+XML text with `set output source:parse.svg value:input fallback:""`. Add
+`colors:"original" format:"source"` to preserve hexadecimal fills in copyable Dowe source. Use a
+second assignment with `colors:"original" format:"data"` when a normalized JSON result must feed
+`Svg data:<reference>` for a safe preview. `parse.svg` does not mount or execute the XML.
 
 `Svg` is for portable vector marks such as logos and simple geometry. Original photographs,
 illustrations, textures, and authentic screenshots explicitly supplied or requested by the user are
@@ -304,7 +306,8 @@ components and use named missing paths for unavailable original media.
 Static `Svg` requires a quoted `viewBox` and one or more direct `Path` children. Runtime `Svg`
 instead uses `data:<reference>` and cannot declare `viewBox` or `Path`. The runtime reference resolves
 to one normalized Dowe vector record or JSON string; it does not accept SVG markup. `Path` accepts
-quoted `d`, quoted `fill`, and optional `transform:"matrix(a b c d e f)"`. Keep `Path` documented
+quoted `d`, a `fill` using `currentColor`, `none`, a design color token, or a hexadecimal color, and
+optional `transform:"matrix(a b c d e f)"`. Keep `Path` documented
 with `Svg` rather than treating it as a standalone component.
 
 Canvas is a built-in View component, not a separate application surface. Use it only when semantic

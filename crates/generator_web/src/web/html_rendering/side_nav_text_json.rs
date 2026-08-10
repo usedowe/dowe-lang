@@ -1,6 +1,7 @@
 fn render_side_nav_item_html(
     base: &str,
     item: &SideNavItem,
+    index: usize,
     context: &ReactiveRenderContext,
 ) -> String {
     match item {
@@ -28,7 +29,7 @@ fn render_side_nav_item_html(
                 format!("{classes} is-unbordered")
             };
             let mut html = format!(
-                r#"<details class="{classes}" data-dowe-{base}-submenu{}><summary class="{base}-entry {base}-trigger" aria-expanded="{}">{}{}{}</summary><div class="{base}-submenu-content"><div class="{base}-submenu-content-inner">"#,
+                r#"<details class="{classes}" data-dowe-{base}-submenu data-dowe-nav-submenu-key="{index}"{}><summary class="{base}-entry {base}-trigger" aria-expanded="{}">{}{}{}</summary><div class="{base}-submenu-content"><div class="{base}-submenu-content-inner">"#,
                 if *open { " open" } else { "" },
                 if *open { "true" } else { "false" },
                 render_side_nav_icon_html(base, props.icon.as_ref(), context),

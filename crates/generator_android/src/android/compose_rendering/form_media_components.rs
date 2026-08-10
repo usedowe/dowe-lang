@@ -403,6 +403,8 @@ fn render_compose_color(
 ) {
     let pad = " ".repeat(indent);
     let (value, change) = compose_text_value_and_change(&props.style, &props.value, context);
+    let text_size = form_control_text_size(props.size);
+    let font_size = compose_text_size_expr(false, text_size);
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
@@ -411,11 +413,12 @@ fn render_compose_color(
         "null"
     };
     output.push_str(&format!(
-        "{pad}DoweColorField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, size = {}, name = {}, helpText = {}, errorText = {}, showHex = {}, showRgb = {}, showCmyk = {}, showOklch = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+        "{pad}DoweColorField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), name = {}, helpText = {}, errorText = {}, showHex = {}, showRgb = {}, showCmyk = {}, showOklch = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
         compose_optional_string(props.style.label.as_deref()),
         compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Select color")),
         props.style.label_floating,
         compose_string_literal(props.size.as_str()),
+        text_typography(false, text_size).line_height,
         compose_optional_string(props.name.as_deref()),
         compose_optional_string(props.help_text.as_deref()),
         compose_optional_string(props.error_text.as_deref()),
@@ -436,6 +439,8 @@ fn render_compose_date(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let text_size = form_control_text_size(props.size);
+    let font_size = compose_text_size_expr(false, text_size);
     let (value, change) = compose_text_value_and_change(
         &props.style,
         props.value.as_deref().unwrap_or_default(),
@@ -449,11 +454,12 @@ fn render_compose_date(
         "null"
     };
     output.push_str(&format!(
-        "{pad}DoweDateField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, size = {}, name = {}, helpText = {}, errorText = {}, min = {}, max = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+        "{pad}DoweDateField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), name = {}, helpText = {}, errorText = {}, min = {}, max = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
         compose_optional_string(props.style.label.as_deref()),
         compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Select date")),
         props.style.label_floating,
         compose_string_literal(props.size.as_str()),
+        text_typography(false, text_size).line_height,
         compose_optional_string(props.name.as_deref()),
         compose_optional_string(props.help_text.as_deref()),
         compose_optional_string(props.error_text.as_deref()),
@@ -472,6 +478,8 @@ fn render_compose_date_range(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let text_size = form_control_text_size(props.size);
+    let font_size = compose_text_size_expr(false, text_size);
     let (start_value, start_change) = compose_optional_text_path_and_change(
         props.start.as_deref(),
         props.start_value.as_deref().unwrap_or_default(),
@@ -490,11 +498,12 @@ fn render_compose_date_range(
         "null"
     };
     output.push_str(&format!(
-        "{pad}DoweDateRangeField(startValue = {start_value}, endValue = {end_value}, onStartChange = {start_change}, onEndChange = {end_change}, label = {}, placeholder = {}, floating = {}, size = {}, name = {}, helpText = {}, errorText = {}, min = {}, max = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+        "{pad}DoweDateRangeField(startValue = {start_value}, endValue = {end_value}, onStartChange = {start_change}, onEndChange = {end_change}, label = {}, placeholder = {}, floating = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), name = {}, helpText = {}, errorText = {}, min = {}, max = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
         compose_optional_string(props.style.label.as_deref()),
         compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Select date range")),
         props.style.label_floating,
         compose_string_literal(props.size.as_str()),
+        text_typography(false, text_size).line_height,
         compose_optional_string(props.name.as_deref()),
         compose_optional_string(props.help_text.as_deref()),
         compose_optional_string(props.error_text.as_deref()),

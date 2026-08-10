@@ -8,7 +8,7 @@ pub(super) const VIEW_COMPONENTS: &[&str] = &[
     "Candlestick", "ArcChart", "AreaChart", "BarChart", "LineChart", "PieChart", "Table", "Divider",
     "Button", "Brand", "Banner", "ToggleTheme", "SelectTheme", "Fab", "fabAction", "Slider", "Dropzone", "ComboBox",
     "comboOption", "CsvField", "csvColumn", "DragDrop", "dragGroup", "dragItem", "Editor", "ImageCropper",
-    "PasswordField", "PhoneField", "PinField", "Textarea", "Alert", "Icon", "Svg", "Path", "AppBar", "Footer",
+    "Password", "Phone", "Pin", "Textarea", "Alert", "Icon", "Svg", "Path", "AppBar", "Footer",
     "BottomBar", "NavMenu", "SideNav", "RailNav", "Sidebar", "Scaffold", "Splash", "Drawer", "Avatar", "Badge", "Chip",
     "Skeleton", "Modal", "AlertDialog", "Tooltip", "Toast", "Dropdown", "Command", "AvatarGroup", "ChatBox",
     "Empty", "Marquee", "TypeWriter", "RichText", "Record", "ToggleGroup", "Collapsible", "Countdown", "Map",
@@ -536,8 +536,8 @@ fn component_description(name: &str) -> &'static str {
         }
         "Input" | "Select" | "Option" | "Slider" | "Dropzone" | "ComboBox" | "comboOption"
         | "CsvField" | "csvColumn" | "DragDrop" | "dragGroup" | "dragItem" | "Editor"
-        | "ImageCropper" | "PasswordField" | "PhoneField" | "PinField" | "Textarea"
-        | "Checkbox" | "Color" | "Date" | "DateRange" | "RadioGroup" | "Toggle" | "ToggleGroup" => {
+        | "ImageCropper" | "Password" | "Phone" | "Pin" | "Textarea" | "Checkbox" | "Color"
+        | "Date" | "DateRange" | "RadioGroup" | "Toggle" | "ToggleGroup" => {
             "Built-in cross-platform form and interaction component."
         }
         "Code" | "Video" | "Iframe" | "Device" | "Audio" | "Image" | "Canvas" | "Icon" | "Svg"
@@ -683,6 +683,7 @@ fn prop_type(component: &str, prop: &str) -> String {
         | "blurred"
         | "boxed"
         | "floating"
+        | "dockOnScroll"
         | "fixed"
         | "hideLabel"
         | "labelFloating"
@@ -700,6 +701,12 @@ fn prop_type(component: &str, prop: &str) -> String {
         "template" => "boolean".to_string(),
         "w" | "h" | "minW" | "minH" | "maxW" | "maxH" => {
             "Dowe size | responsive Dowe size".to_string()
+        }
+        "fillRule" => "quoted nonzero | evenodd".to_string(),
+        "rotate" => "number from -180 to 180 | responsive number".to_string(),
+        "scale" => "number from 0.5 to 2 | responsive number".to_string(),
+        "translateX" | "translateY" => {
+            "Dowe scale from -96 to 96 | responsive Dowe scale".to_string()
         }
         "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "top" | "right" | "bottom" | "left"
         | "gap" | "columns" | "rows" | "colSpan" | "rowSpan" | "min" | "max" | "step"
@@ -730,14 +737,28 @@ fn prop_description(prop: &str) -> &'static str {
         "boxed" => {
             "Constrains and centers the component's generated content body while preserving its full-width structural container."
         }
+        "dockOnScroll" => {
+            "Animates a fixed floating AppBar into the viewport top edge after the document passes 100px of scroll. Requires `floating:true` and `position:\"fixed\"`."
+        }
         "position" => {
             "Controls Box flow and overlay placement with static, relative, absolute, or fixed positioning."
         }
         "top" | "right" | "bottom" | "left" => {
             "Offsets an absolute or fixed Box using a scalar or responsive Dowe scale value."
         }
+        "rotate" => "Rotates the component by a validated number of degrees.",
+        "scale" => "Scales the component uniformly around its center.",
+        "translateX" | "translateY" => {
+            "Moves the component visually on one axis without changing document flow."
+        }
+        "animation" => "Runs the selected entrance animation when the component appears.",
+        "transition" => "Selects the timing preset used by interactive gesture state changes.",
+        "gesture" => {
+            "Adds portable hover or press feedback while respecting reduced-motion settings."
+        }
         "maxW" => "Limits the component width without forcing it to occupy the full limit.",
         "maxH" => "Limits the component height without adding implicit overflow behavior.",
+        "fillRule" => "Selects the portable fill rule used to resolve compound Path regions.",
         "size" => "Selects the component's canonical Dowe size.",
         "i18n" => {
             "References a translation key for the component's primary visible text while preserving the authored text as fallback."

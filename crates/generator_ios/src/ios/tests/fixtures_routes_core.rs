@@ -108,6 +108,40 @@ fn bar_route() -> ViewRoute {
     }
 }
 
+fn docking_appbar_route() -> ViewRoute {
+    ViewRoute {
+        id: "docking-appbar".to_string(),
+        route_path: "/docking-appbar".to_string(),
+        layout_tree: ViewNode::Scaffold {
+            props: ScaffoldProps::default(),
+            app_bar: vec![ViewNode::AppBar {
+                props: BarProps {
+                    position: BarPosition::Fixed,
+                    floating: true,
+                    dock_on_scroll: true,
+                    ..bar_props(false)
+                },
+                top: Vec::new(),
+                start: vec![text("Brand")],
+                center: vec![text("Navigation")],
+                end: vec![text("Account")],
+                bottom: Vec::new(),
+            }],
+            start: Vec::new(),
+            main: vec![ViewNode::Children],
+            end: Vec::new(),
+            bottom_bar: Vec::new(),
+            overlays: Vec::new(),
+        },
+        page_tree: ViewNode::Box {
+            props: Default::default(),
+            children: vec![text("Scrollable content")],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
 fn appbar_divider_route() -> ViewRoute {
     ViewRoute {
         id: "appbar-divider".to_string(),

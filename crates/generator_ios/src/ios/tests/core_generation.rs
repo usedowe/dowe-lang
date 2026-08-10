@@ -147,8 +147,11 @@ fn generates_relative_absolute_and_fixed_boxes_as_swiftui_overlays() {
 fn positioned_box_page() -> ViewNode {
     ViewNode::Box {
         props: StyleProps {
-            position: Some(Box::new(dowe_components::PositionProps {
-                mode: BoxPosition::Relative,
+            extras: Some(Box::new(dowe_components::StyleExtras {
+                position: dowe_components::PositionProps {
+                    mode: BoxPosition::Relative,
+                    ..Default::default()
+                },
                 ..Default::default()
             })),
             sizing: SizingProps {
@@ -163,10 +166,13 @@ fn positioned_box_page() -> ViewNode {
             text("Flow content"),
             ViewNode::Box {
                 props: StyleProps {
-                    position: Some(Box::new(dowe_components::PositionProps {
-                        mode: BoxPosition::Absolute,
-                        top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
-                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                    extras: Some(Box::new(dowe_components::StyleExtras {
+                        position: dowe_components::PositionProps {
+                            mode: BoxPosition::Absolute,
+                            top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     })),
                     ..Default::default()
@@ -175,10 +181,13 @@ fn positioned_box_page() -> ViewNode {
             },
             ViewNode::Box {
                 props: StyleProps {
-                    position: Some(Box::new(dowe_components::PositionProps {
-                        mode: BoxPosition::Fixed,
-                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
-                        bottom: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                    extras: Some(Box::new(dowe_components::StyleExtras {
+                        position: dowe_components::PositionProps {
+                            mode: BoxPosition::Fixed,
+                            right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            bottom: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     })),
                     ..Default::default()
@@ -874,7 +883,18 @@ fn keeps_card_shadow_after_swiftui_card_shape() {
                 shadow: Some(ResponsiveValue::scalar(ShadowSize::Lg)),
                 shadow_color: Some(ColorFamily::Primary),
                 rounded: Some(ResponsiveValue::scalar(RoundedSize::Md)),
-                animation: Some(ViewAnimation::FadeIn),
+                extras: Some(Box::new(StyleExtras {
+                    motion: ViewMotionStyle {
+                        animation: Some(ViewAnimation::FadeIn),
+                        rotate: Some(ResponsiveValue::scalar(ViewRotation(-7))),
+                        scale: Some(ResponsiveValue::scalar(ViewScale(105))),
+                        translate_x: Some(ResponsiveValue::scalar(ViewTranslation(-3))),
+                        transition: Some(ViewTransition::Spring),
+                        gesture: Some(ViewGesture::Lift),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })),
                 ..Default::default()
             },
             ..Default::default()
@@ -905,6 +925,29 @@ fn keeps_card_shadow_after_swiftui_card_shape() {
 
     assert!(shadow > clip);
     assert!(animation > shadow);
+    assert!(card_output.contains(".rotationEffect(.degrees(doweResponsive(viewportWidth, xs: Double(-7)) ?? Double(0)))"));
+    assert!(card_output.contains(".scaleEffect(CGFloat(doweResponsive(viewportWidth, xs: Double(1.05)) ?? Double(1)))"));
+    assert!(card_output.contains(".offset(x: CGFloat(doweResponsive(viewportWidth, xs: Double(-6)) ?? Double(0)), y: CGFloat(0))"));
+    assert!(card_output.contains(".modifier(DoweGestureModifier(preset: .lift, transition: .spring))"));
+    assert!(views.contains("@Environment(\\.accessibilityReduceMotion) private var reduceMotion"));
+}
+
+#[test]
+fn generates_touch_driven_swiftui_gestures() {
+    let output = generate_ios(
+        &[route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains("@GestureState private var pressed = false"));
+    assert!(views.contains("DragGesture(minimumDistance: 0)"));
+    assert!(views.contains(".simultaneousGesture(pressGesture)"));
+    assert!(views.contains("preset == .grow && (activeHover || activePress)"));
+    assert!(views.contains("preset == .tilt && (activeHover || activePress)"));
+    assert!(!views.contains(".onLongPressGesture(minimumDuration: 0"));
 }
 
 #[test]
@@ -1131,7 +1174,13 @@ fn keeps_button_shadow_after_reactive_effective_radius() {
                 rounded: Some(ResponsiveValue::scalar(RoundedSize::Md)),
                 shadow: Some(ResponsiveValue::scalar(ShadowSize::Sm)),
                 shadow_color: Some(ColorFamily::Secondary),
-                animation: Some(ViewAnimation::SlideUp),
+                extras: Some(Box::new(StyleExtras {
+                    motion: ViewMotionStyle {
+                        animation: Some(ViewAnimation::SlideUp),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })),
                 ..Default::default()
             },
             reactive: ReactiveVariantProps {

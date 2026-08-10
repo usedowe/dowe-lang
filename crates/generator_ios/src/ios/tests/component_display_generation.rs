@@ -134,9 +134,7 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains(
         "position: \"top-right\", backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: Optional(DoweDesign.warning)"
     ));
-    assert!(views.contains(
-        "struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable"
-    ));
+    assert!(views.contains("struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable"));
     let toast_presenter_start = views
         .find("struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable")
         .expect("toast overlay presenter");
@@ -161,9 +159,7 @@ fn generates_swiftui_display_overlay_components() {
             .count(),
         2
     );
-    assert!(toast_presenter_output.contains(
-        "guard revision == self.presentationRevision else"
-    ));
+    assert!(toast_presenter_output.contains("guard revision == self.presentationRevision else"));
     assert!(toast_presenter_output.contains(
         "self.showScheduled = false\n                guard self.parent.isPresented else"
     ));
@@ -178,23 +174,19 @@ fn generates_swiftui_display_overlay_components() {
         .find("presentationRevision += 1")
         .expect("toast dismissal revision");
     assert!(dismiss_idempotence_guard < dismiss_revision);
-    assert!(toast_dismiss_output.contains(
-        "guard immediate || showScheduled || containerView?.superview != nil else"
-    ));
+    assert!(toast_dismiss_output
+        .contains("guard immediate || showScheduled || containerView?.superview != nil else"));
     assert!(toast_dismiss_output.contains(
         "guard revision == self.presentationRevision, !self.parent.isPresented, self.isDismissing else"
     ));
     assert!(toast_dismiss_output.contains("self.isDismissing = false"));
     assert!(toast_dismiss_output.contains("container.removeFromSuperview()"));
-    assert!(toast_presenter_output.contains(
-        "height: UIView.layoutFittingExpandedSize.height"
-    ));
-    assert!(toast_presenter_output.contains(
-        "container.bounds = CGRect(origin: .zero, size: frame.size)"
-    ));
-    assert!(toast_presenter_output.contains(
-        "container.center = CGPoint(x: frame.midX, y: frame.midY)"
-    ));
+    assert!(toast_presenter_output.contains("height: UIView.layoutFittingExpandedSize.height"));
+    assert!(toast_presenter_output
+        .contains("container.bounds = CGRect(origin: .zero, size: frame.size)"));
+    assert!(
+        toast_presenter_output.contains("container.center = CGPoint(x: frame.midX, y: frame.midY)")
+    );
     let toast_measurement = toast_presenter_output
         .find("let measured = controller.sizeThatFits(")
         .expect("toast measurement");
@@ -207,7 +199,9 @@ fn generates_swiftui_display_overlay_components() {
     assert!(!toast_presenter_output.contains("interactionFrame"));
     assert!(!toast_presenter_output.contains("backdrop"));
     assert!(!toast_presenter_output.contains("UIControl"));
-    assert!(views.contains("DoweToastOverlayPresenter(isPresented: visible && !dismissed, position: position)"));
+    assert!(views.contains(
+        "DoweToastOverlayPresenter(isPresented: visible && !dismissed, position: position)"
+    ));
     assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)"));
     assert!(views.contains(".accessibilityLabel(\"Close toast\")"));
     assert!(views.contains("DoweDropdown(backgroundColor: DoweDesign.surface"));
@@ -256,14 +250,10 @@ fn generates_swiftui_display_overlay_components() {
         .find("window.addSubview(container)")
         .expect("anchored popover window mount");
     assert!(first_measurement < first_mount);
-    assert!(
-        !views[anchored_presenter_start..anchored_presenter_end]
-            .contains("context.coordinator.show(from: uiView)")
-    );
-    assert!(
-        !views[anchored_presenter_start..anchored_presenter_end]
-            .contains("anchor.layoutIfNeeded()\n                DispatchQueue.main.async")
-    );
+    assert!(!views[anchored_presenter_start..anchored_presenter_end]
+        .contains("context.coordinator.show(from: uiView)"));
+    assert!(!views[anchored_presenter_start..anchored_presenter_end]
+        .contains("anchor.layoutIfNeeded()\n                DispatchQueue.main.async"));
     assert_eq!(
         views[anchored_presenter_start..anchored_presenter_end]
             .matches("presentationRevision += 1")
@@ -300,11 +290,8 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains("scroller.frame = container.bounds"));
     assert!(views.contains("container.layer.shadowOpacity = Float(0.12)"));
     assert!(views.contains("container.layer.shadowRadius = CGFloat(16)"));
-    assert!(
-        views.contains(
-            "container.layer.shadowOffset = CGSize(width: CGFloat(0), height: CGFloat(8))"
-        )
-    );
+    assert!(views
+        .contains("container.layer.shadowOffset = CGSize(width: CGFloat(0), height: CGFloat(8))"));
     assert!(views.contains(
         "container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: DoweDesign.radius).cgPath"
     ));
@@ -321,9 +308,7 @@ fn generates_swiftui_display_overlay_components() {
         .expect("overlay item after dropdown popover");
     assert!(!views[popover_start..popover_end].contains("ScrollView"));
     assert!(!views[popover_start..popover_end].contains(".shadow("));
-    assert!(
-        !views[popover_start..popover_end].contains(".presentationCompactAdaptation(.popover)")
-    );
+    assert!(!views[popover_start..popover_end].contains(".presentationCompactAdaptation(.popover)"));
     assert!(views.contains("DoweCommand(open: state.bool(\"modal01\")"));
 }
 
@@ -448,9 +433,31 @@ fn generates_swiftui_rich_control_map_components() {
     let views = swift_content(&output);
 
     assert!(views.contains("struct DoweRichText: View"));
-    assert!(views.contains("DoweRichText(marks: [DoweRichTextMark(text: \"Launch\""));
+    assert!(views.contains("DoweRichTextLayout(gap: CGFloat(4))"));
+    let rich_text_runtime = views
+        .split("struct DoweRichText: View")
+        .nth(1)
+        .expect("rich text runtime")
+        .split("private struct DoweRichTextRun: View")
+        .next()
+        .expect("rich text run after runtime");
+    assert!(rich_text_runtime.contains(".frame(maxWidth: .infinity, alignment: .center)"));
+    assert!(views.contains("private struct DoweRichTextLayout: Layout"));
+    assert!(views.contains("let ideal = subview.sizeThatFits(.unspecified)"));
+    assert!(views.contains("let constrainedWidth = min(ideal.width, width)"));
+    assert!(views
+        .contains("subview.sizeThatFits(ProposedViewSize(width: constrainedWidth, height: nil))"));
+    assert!(views.contains(
+        "let resolvedWidth = proposal.width.map { min(contentWidth, $0) } ?? contentWidth"
+    ));
+    assert!(views.contains("private struct DoweRichTextRun: View"));
+    assert!(views.contains(".multilineTextAlignment(.center)"));
+    assert!(views.contains(".fixedSize(horizontal: false, vertical: true)"));
+    assert!(views.contains("DoweRichText(marks: [DoweRichTextMark(text: \"Launch\", style: \"grad\", scheme: \"primary\")"));
     assert!(views.contains("], font: .inter, fontSize:"));
-    assert!(!views.contains("DoweRichText(marks: [DoweRichTextMark(text: \"Launch\", style: \"grad\", color: DoweDesign.primary), DoweRichTextMark(text: \"ready\", style: \"pill\", color: DoweDesign.success)], font: doweFont("));
+    assert!(views.contains("contentColor: DoweDesign.onBackground"));
+    assert!(views.contains("RoundedRectangle(cornerRadius: CGFloat(2)).fill(accent)"));
+    assert!(views.contains("doweButtonOnFamily(mark.scheme)"));
     assert!(views.contains("DoweRecord(name: \"voice\""));
     assert!(views.contains("DoweToggleGroup(value: state.binding(\"mode\""));
     assert!(views.contains("DowePagination(value: state.binding(\"page\""));
@@ -474,7 +481,9 @@ fn generates_swiftui_rich_control_map_components() {
     assert!(views.contains("ViewThatFits(in: .horizontal)"));
     assert!(views.contains(".frame(maxWidth: .infinity, alignment: .center)"));
     assert!(views.contains("countdownContent(displaySize: \"sm\")"));
-    assert!(views.contains(".frame(minWidth: metrics(for: displaySize).1, minHeight: metrics(for: displaySize).2)"));
+    assert!(views.contains(
+        ".frame(minWidth: metrics(for: displaySize).1, minHeight: metrics(for: displaySize).2)"
+    ));
     assert!(views.contains("if targetDate <= value && !completed"));
     assert!(views.contains("ISO8601DateFormatter().date(from: target) ?? .distantPast"));
     assert!(views.contains("DoweMap(centerLat: \"4.7109\", centerLng: \"-74.0721\""));
@@ -713,9 +722,19 @@ fn generates_labeled_input_and_select_fields() {
         .find(|line| line.contains("DoweInputField(value: nil"))
         .expect("generated input field");
     assert!(input.contains("borderWidth: CGFloat(1)"), "{input}");
+    assert!(input.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(12), preferredBase: CGFloat(11.2), preferredViewport: CGFloat(0.2), max: CGFloat(14))"), "{input}");
     assert!(views.contains(
         r#"DoweInputField(value: nil, label: "Name", placeholder: "Full name", floating: true"#
     ));
+    assert!(views.contains(
+        r#"DoweInputField(value: nil, label: "Name", placeholder: "Full name", floating: true, font:"#
+    ));
+    assert!(views.contains("minHeight: CGFloat(40), horizontalPadding: CGFloat(12)"));
+    let select = views
+        .lines()
+        .find(|line| line.contains(r#"label: "Role", placeholder: "Choose role""#))
+        .expect("generated large select");
+    assert!(select.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(16), preferredBase: CGFloat(15.2), preferredViewport: CGFloat(0.3), max: CGFloat(18))"), "{select}");
     assert!(views.contains("let value: Binding<String>?"));
     assert!(views.contains("@State private var localText = \"\""));
     assert!(views.contains("private var visiblePlaceholder: String"));
@@ -752,12 +771,23 @@ fn generates_labeled_input_and_select_fields() {
     assert!(views.contains("DoweSelectAnchorPresenter("));
     assert!(views.contains(".contentShape(Rectangle())"));
     assert!(views.contains(".zIndex(expanded ? 1000 : 0)"));
+    assert!(views.contains("doweControlHeight(size) + (floating ? CGFloat(8) : CGFloat(0))"));
+    assert!(views.contains("ZStack(alignment: floating ? .topLeading : .leading)"));
+    assert!(views.contains(".padding(.top, floating ? CGFloat(18) : CGFloat(0))"));
     assert!(!views.contains("Menu {"));
     assert!(!views.contains("Picker("));
     assert!(!views.contains("DoweSelectPortalOverlay"));
     assert!(views.contains(
         r#"DoweSelectField(value: nil, label: "Role", placeholder: "Choose role", floating: true"#
     ));
+    let large_select = views
+        .lines()
+        .find(|line| line.contains(r#"DoweSelectField(value: nil, label: "Role""#))
+        .expect("large floating select");
+    assert!(
+        large_select.contains("minHeight: CGFloat(56)"),
+        "{large_select}"
+    );
     assert!(views.contains(
         r#"DoweSelectOption(value: "admin", label: "Admin", description: "Manages users")"#
     ));
@@ -792,6 +822,9 @@ fn generates_floating_input_icons_with_active_visibility() {
     assert!(views.contains("private var iconsVisible: Bool {\n        !floating || active\n    }"));
     assert!(views.contains("if let startIcon, iconsVisible {"));
     assert!(views.contains("if let endIcon, iconsVisible {"));
+    assert!(
+        views.contains(".padding(.leading, active && startIcon != nil ? CGFloat(32) : CGFloat(0))")
+    );
 }
 
 #[test]
@@ -816,10 +849,8 @@ fn generates_swiftui_media_display_form_components() {
         .expect("image aspect helper");
     assert!(image_runtime.contains("DoweImageAspectLayout(ratio: doweImageAspect(aspect))"));
     assert!(image_runtime.contains("struct DoweImageAspectLayout: Layout"));
-    assert!(
-        image_runtime
-            .contains("return CGSize(width: resolvedWidth, height: resolvedWidth / resolvedRatio)")
-    );
+    assert!(image_runtime
+        .contains("return CGSize(width: resolvedWidth, height: resolvedWidth / resolvedRatio)"));
     assert!(image_runtime.contains("proposal: ProposedViewSize(bounds.size)"));
     assert!(image_runtime.contains(".clipped()"));
     assert!(image_runtime.contains(".accessibilityAddTraits(.isImage)"));
@@ -882,6 +913,13 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("DoweColorField(value:"));
     assert!(views.contains("DoweDateField(value:"));
     assert!(views.contains("DoweDateRangeField(startValue:"));
+    assert!(views.contains("DoweColorField(value:") && views.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(12), preferredBase: CGFloat(11.2), preferredViewport: CGFloat(0.2), max: CGFloat(14))"));
+    assert!(views.contains("DoweDateField(value:") && views.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(16), preferredBase: CGFloat(15.2), preferredViewport: CGFloat(0.3), max: CGFloat(18))"));
+    assert!(views.contains("let fontSize: CGFloat"));
+    assert!(views.contains("case \"sm\":\n        return CGFloat(32)"));
+    assert!(
+        views.contains("minHeight: doweControlHeight(size) + (floating ? CGFloat(8) : CGFloat(0))")
+    );
     assert!(views.contains("DoweDateCalendar("));
     assert!(views.contains("DoweAnchoredPopoverPresenter("));
     assert!(views.contains("DoweRadioGroupView(value:"));
@@ -889,7 +927,18 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("DoweToggleView(checked:"));
     assert!(views.contains("struct DoweSliderView: View"));
     assert!(views.contains("Image(systemName: \"checkmark\")"));
-    assert!(views.contains("doweColorFromHex(value.wrappedValue"));
+    assert!(views.contains("private struct DoweColorPickerPanel: View"));
+    assert!(views.contains("doweColorFromHsv(hue, saturation, brightness)"));
+    assert!(views.contains("doweColorCmykText(doweColorRgb(value))"));
+    assert!(views.contains("doweColorOklchText(doweColorRgb(value))"));
+    assert!(views
+        .contains("DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(300)"));
+    assert!(views.contains("trigger\n                    .allowsHitTesting(false)"));
+    assert!(views.contains(".padding(.leading, doweControlSwatchSize(size) + CGFloat(10))"));
+    assert!(
+        views.contains("Button(action: { expanded.toggle() }) {\n                    Color.clear")
+    );
+    assert!(views.contains(".zIndex(expanded ? 1000 : 0)"));
     assert!(!views.contains("TextField(\"Start\", text: startValue)"));
     assert!(views.contains("DoweRadioOptionView(value:"));
     assert!(views.contains(".tint(accentColor)"));
@@ -908,8 +957,8 @@ fn generates_swiftui_advanced_form_components() {
     let phone_page = output
         .files
         .iter()
-        .find(|file| file.content.contains("DowePhoneField(value:"))
-        .expect("phone field page");
+        .find(|file| file.content.contains("DowePhone(value:"))
+        .expect("phone page");
     let phone_catalogs = output
         .files
         .iter()
@@ -924,6 +973,12 @@ fn generates_swiftui_advanced_form_components() {
 
     assert!(views.contains("struct DoweComboBox: View"));
     assert!(views.contains("DoweComboBox(value: state.binding(\"profile.role\")"));
+    let combo_box = views
+        .lines()
+        .find(|line| line.contains("DoweComboBox(value: state.binding(\"profile.role\")"))
+        .expect("combo box call");
+    assert!(combo_box.contains("minHeight: CGFloat(40)"), "{combo_box}");
+    assert!(combo_box.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(12), preferredBase: CGFloat(11.2), preferredViewport: CGFloat(0.2), max: CGFloat(14))"), "{combo_box}");
     assert!(views.contains("DoweSelectOption(value: \"admin\", label: \"Admin\""));
     assert!(views.contains("struct DoweCsvColumn: Identifiable"));
     assert!(views.contains("DoweCsvField(label: \"Import\""));
@@ -933,7 +988,24 @@ fn generates_swiftui_advanced_form_components() {
     assert!(views.contains("DoweDragItem(id: \"draft\", label: \"Draft\""));
     assert!(views.contains("DoweEditorField(value: state.binding(\"profile.notes\")"));
     assert!(views.contains("DoweImageCropper(value: state.binding(\"profile.avatar\")"));
-    assert!(views.contains("DowePasswordField(value: state.binding(\"profile.password\")"));
+    assert!(views.contains("DowePassword(value: state.binding(\"profile.password\")"));
+    let password_call = views
+        .lines()
+        .find(|line| line.contains("DowePassword(value: state.binding(\"profile.password\")"))
+        .expect("password call");
+    assert!(
+        password_call.contains("minHeight: CGFloat(48)"),
+        "{password_call}"
+    );
+    assert!(
+        password_call.contains("showIcon: DoweControlIcon("),
+        "{password_call}"
+    );
+    assert!(
+        password_call.contains("hideIcon: DoweControlIcon("),
+        "{password_call}"
+    );
+    assert!(password_call.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(14), preferredBase: CGFloat(13.12), preferredViewport: CGFloat(0.25), max: CGFloat(16))"), "{password_call}");
     assert!(views.contains("private var strengthColor: Color"));
     assert!(views.contains("DoweDesign.danger"));
     assert!(views.contains("DoweDesign.warning"));
@@ -941,34 +1013,44 @@ fn generates_swiftui_advanced_form_components() {
     assert!(
         views.contains(".frame(maxWidth: .infinity, minHeight: CGFloat(4), maxHeight: CGFloat(4))")
     );
-    let password_field = views
-        .split("struct DowePasswordField: View")
+    let password = views
+        .split("struct DowePassword: View")
         .nth(1)
-        .expect("password field runtime");
-    assert!(password_field.contains("private var visiblePlaceholder: String"));
-    assert!(password_field.contains("TextField(visiblePlaceholder, text: textBinding)"));
-    assert!(password_field.contains("SecureField(visiblePlaceholder, text: textBinding)"));
-    assert!(views.contains("DowePhoneField(value: state.binding(\"profile.phone\")"));
+        .expect("password runtime");
+    assert!(password.contains("private var visiblePlaceholder: String"));
+    assert!(password.contains("TextField(visiblePlaceholder, text: textBinding)"));
+    assert!(password.contains("SecureField(visiblePlaceholder, text: textBinding)"));
+    assert!(password.contains("DoweSvgView("));
+    assert!(password.contains(".frame(width: CGFloat(32), height: CGFloat(32))"));
     assert!(
-        phone_page
-            .content
-            .contains("countries: DowePhoneCatalog.countries")
+        password.contains(".accessibilityLabel(visible ? \"Hide password\" : \"Show password\")")
     );
+    assert!(views.contains("DowePhone(value: state.binding(\"profile.phone\")"));
+    let phone_call = views
+        .lines()
+        .find(|line| line.contains("DowePhone(value: state.binding(\"profile.phone\")"))
+        .expect("phone call");
+    assert!(
+        phone_call.contains("minHeight: CGFloat(56)"),
+        "{phone_call}"
+    );
+    assert!(phone_call.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(16), preferredBase: CGFloat(15.2), preferredViewport: CGFloat(0.3), max: CGFloat(18))"), "{phone_call}");
+    assert!(phone_page
+        .content
+        .contains("countries: DowePhoneCatalog.countries"));
     assert!(!phone_page.content.contains("DowePhoneCountry(code:"));
     assert!(phone_catalogs.len() > 2);
-    assert!(
-        phone_catalogs
-            .iter()
-            .all(|file| file.content.len() < 128_000)
-    );
+    assert!(phone_catalogs
+        .iter()
+        .all(|file| file.content.len() < 128_000));
     assert!(views.contains("DowePhoneCountry(code: \"US\""));
     let phone = views
-        .split("struct DowePhoneField: View")
+        .split("struct DowePhone: View")
         .nth(1)
-        .expect("phone field runtime")
-        .split("struct DowePinField: View")
+        .expect("phone runtime")
+        .split("struct DowePin: View")
         .next()
-        .expect("phone field body");
+        .expect("phone body");
     assert!(views.contains("struct DowePhoneCountryAnchorPresenter: View"));
     assert!(views.contains("struct DowePhoneCountryPopover: View"));
     assert!(phone.contains("DowePhoneCountryAnchorPresenter("));
@@ -980,6 +1062,9 @@ fn generates_swiftui_advanced_form_components() {
         .next()
         .expect("phone country anchor body");
     assert!(phone_anchor.contains("DoweAnchoredPopoverPresenter("));
+    assert!(phone_anchor.contains("minWidth: CGFloat(280)"));
+    assert!(phone_anchor.contains("maxWidth: CGFloat(384)"));
+    assert!(views.contains("DoweDesign.onSurface.opacity(0.07)"));
     assert!(phone.contains("filter { $0.isNumber }"));
     assert!(phone.contains(".keyboardType(.numberPad)"));
     assert!(phone.contains("DoweSvgView(viewBox: selectedCountry.flag.viewBox"));
@@ -987,22 +1072,37 @@ fn generates_swiftui_advanced_form_components() {
     assert!(!phone.contains("NavigationStack"));
     assert!(!phone.contains("List(filteredCountries)"));
     assert!(!phone.contains(".searchable(text:"));
-    assert!(views.contains("DowePinField(value: state.binding(\"profile.pin\")"));
+    assert!(views.contains("DowePin(value: state.binding(\"profile.pin\")"));
     let pin = views
-        .split("struct DowePinField: View")
+        .split("struct DowePin: View")
         .nth(1)
         .expect("pin field runtime");
     assert!(pin.contains("@FocusState private var focusedCell: Int?"));
     assert!(pin.contains(".focused($focusedCell, equals: index)"));
-    assert!(pin.contains(".onChange(of: cellValue(at: index))"));
-    assert!(pin.contains("focusedCell = index + 1"));
+    assert!(
+        pin.contains("let cellWidth: CGFloat = size == \"sm\" ? 40 : (size == \"lg\" ? 52 : 44)")
+    );
+    assert!(
+        pin.contains("let cellHeight: CGFloat = size == \"sm\" ? 32 : (size == \"lg\" ? 48 : 40)")
+    );
+    assert!(pin.contains(".font(.system(size: fontSize, weight: .bold))"));
+    assert!(pin
+        .contains("nextFocus = !nextCells[index].isEmpty && index + 1 < length ? index + 1 : nil"));
+    assert!(pin.contains("DispatchQueue.main.async"));
     assert!(pin.contains("SecureField(\"\", text: binding(for: index))"));
     assert!(views.contains("DoweTextarea(value: state.binding(\"profile.bio\")"));
+    let textarea_call = views
+        .lines()
+        .find(|line| line.contains("DoweTextarea(value: state.binding(\"profile.bio\")"))
+        .expect("textarea call");
+    assert!(textarea_call.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(14), preferredBase: CGFloat(13.12), preferredViewport: CGFloat(0.25), max: CGFloat(16))"), "{textarea_call}");
     let textarea = views
         .split("struct DoweTextarea: View")
         .nth(1)
         .expect("textarea runtime");
     assert!(textarea.contains("@FocusState private var focused: Bool"));
+    assert!(textarea.contains("let fontSize: CGFloat"));
+    assert!(textarea.contains(".font(.system(size: fontSize))"));
     assert!(textarea.contains("private var visiblePlaceholder: Bool"));
     assert!(textarea.contains("!floating || focused"));
     assert!(textarea.contains("if visiblePlaceholder"));
@@ -1028,6 +1128,7 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     assert!(views.contains("@State private var rootEntry: DoweRouteEntry"));
     assert!(views.contains("_rootEntry = State(initialValue: DoweRouteEntry"));
     assert!(views.contains("@State private var navigationPath: [DoweRouteEntry] = []"));
+    assert!(views.contains("@State private var routeRevision = 0"));
     assert!(views.contains(
         "routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))"
     ));
@@ -1042,6 +1143,9 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     assert!(views.contains(
         "private func navigate(_ operation: String, _ target: String, _ fragment: String?)"
     ));
+    assert!(views.contains("if destination == currentEntry"));
+    assert!(views.contains("routeRevision += 1"));
+    assert!(views.contains(".id(routeRevision)"));
     assert!(views.contains(r#"{ navigate("push", "/signup", "join") }"#));
     assert!(views.contains(r#"{ navigate("replace", "", "hero") }"#));
     assert!(views.contains("{ goBack() }"));
@@ -1055,11 +1159,9 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     );
     assert!(!views.contains(".onChange(of: activeFragment) { value in doweScroll(proxy, value) }"));
     assert!(views.contains(".id(\"hero\")"));
-    assert!(
-        routing
-            .content
-            .contains("static let sections: [String: [String]]")
-    );
+    assert!(routing
+        .content
+        .contains("static let sections: [String: [String]]"));
     assert!(routing.content.contains(r#""/signup": ["join"]"#));
 }
 
@@ -1080,7 +1182,12 @@ fn advanced_form_tree() -> ViewNode {
         children: vec![
             ViewNode::ComboBox {
                 props: ComboBoxProps {
-                    style: bound_style("profile.role", "Role", "Choose role"),
+                    style: bound_style_with_size(
+                        "profile.role",
+                        "Role",
+                        "Choose role",
+                        ButtonSize::Sm,
+                    ),
                     value: Some("editor".to_string()),
                     search_placeholder: "Search roles".to_string(),
                     empty_text: "No roles".to_string(),
@@ -1174,9 +1281,14 @@ fn advanced_form_tree() -> ViewNode {
                     error_text: None,
                 },
             },
-            ViewNode::PasswordField {
-                props: PasswordFieldProps {
-                    style: bound_style("profile.password", "Password", "Create password"),
+            ViewNode::Password {
+                props: PasswordProps {
+                    style: bound_style_with_size(
+                        "profile.password",
+                        "Password",
+                        "Create password",
+                        ButtonSize::Md,
+                    ),
                     value: None,
                     hide_strength: false,
                     weak_label: "Weak".to_string(),
@@ -1189,9 +1301,14 @@ fn advanced_form_tree() -> ViewNode {
                     error_text: None,
                 },
             },
-            ViewNode::PhoneField {
-                props: PhoneFieldProps {
-                    style: bound_style("profile.phone", "Phone", "Phone number"),
+            ViewNode::Phone {
+                props: PhoneProps {
+                    style: bound_style_with_size(
+                        "profile.phone",
+                        "Phone",
+                        "Phone number",
+                        ButtonSize::Lg,
+                    ),
                     value: None,
                     country: Some("US".to_string()),
                     dial_code_name: "dialCode".to_string(),
@@ -1205,12 +1322,12 @@ fn advanced_form_tree() -> ViewNode {
                     error_text: None,
                 },
             },
-            ViewNode::PinField {
-                props: PinFieldProps {
+            ViewNode::Pin {
+                props: PinProps {
                     style: bound_style("profile.pin", "Code", ""),
                     value: None,
                     length: 6,
-                    kind: PinFieldKind::Number,
+                    kind: PinKind::Number,
                     name: None,
                     help_text: None,
                     error_text: None,
@@ -1239,6 +1356,17 @@ fn bound_style(bind: &str, label: &str, placeholder: &str) -> VariantProps {
     let mut style = advanced_style(label, Some(placeholder), ComponentVariant::Outlined);
     style.element.bind = Some(bind.to_string());
     style.label_floating = true;
+    style
+}
+
+fn bound_style_with_size(
+    bind: &str,
+    label: &str,
+    placeholder: &str,
+    size: ButtonSize,
+) -> VariantProps {
+    let mut style = bound_style(bind, label, placeholder);
+    style.size = Some(size);
     style
 }
 
@@ -1279,7 +1407,14 @@ fn generates_swiftui_svg_views() {
     assert!(views.contains("storage.countLimit = 2048"));
     assert!(views.contains("transform: CGAffineTransform(a: 2, b: 0, c: 0, d: 2, tx: 4, ty: 6)"));
     assert!(views.contains("private final class DoweSvgImporter: NSObject, XMLParserDelegate"));
-    assert!(views.contains("case \"parse.svg\": return DoweSvgImporter.convert(text(\"value\"))"));
+    assert!(views.contains("private func rectangle(_ attrs: [String: String]) -> String?"));
+    assert!(views.contains("private func sameColor(_ left: String, _ right: String) -> Bool"));
+    assert!(views.contains("private func originalFill(_ source: String?) -> String?"));
+    assert!(views.contains("let evenOdd: Bool"));
+    assert!(views.contains("if path.evenOdd { value[\"evenOdd\"] = true }"));
+    assert!(views.contains("path.evenOdd ? \" fillRule:\\\"evenodd\\\"\" : \"\""));
+    assert!(views
+        .contains("case \"parse.svg\": return DoweSvgImporter.convert(text(\"value\"), colors:"));
     assert!(views.contains("c.253.847.1 1.895-.62 2.618a.75.75"));
     assert!(views.contains("if characters[index] == \"-\" || characters[index] == \"+\""));
     assert!(views.contains(
@@ -1454,6 +1589,14 @@ fn generates_full_hit_targets_for_icon_and_text_buttons() {
     let text_background = text_output
         .find(".background(")
         .expect("text button background");
+    let text_line_limit = text_output
+        .find(".lineLimit(1)")
+        .expect("single-line label");
+    let text_intrinsic_width = text_output
+        .find(".fixedSize(horizontal: true, vertical: false)")
+        .expect("intrinsic label width");
+    assert!(text_line_limit < text_intrinsic_width);
+    assert!(text_intrinsic_width < text_padding);
     assert!(text_padding < text_hit_target);
     assert!(text_hit_target < text_background);
 }

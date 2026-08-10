@@ -198,22 +198,41 @@
             r#"page svgPage
   signal source value:"<svg viewBox='0 0 10 10'><path d='M0 0L10 10'/></svg>"
   signal output value:""
+  signal preview value:""
   fn convert
-    set output source:parse.svg value:source fallback:""
+    set output source:parse.svg value:source fallback:"" colors:"original" format:"source"
+    set preview source:parse.svg value:source fallback:"" colors:"original" format:"data"
   Code content:"{output}" template:true"#,
         )
         .expect("tree");
         let ViewNode::Scope { actions, .. } = tree else {
             panic!("scope");
         };
-        let ViewActionKind::Assign(assign) = &actions[0].kind else {
-            panic!("set");
+        let ViewActionKind::Sequence(statements) = &actions[0].kind else {
+            panic!("sequence");
+        };
+        let ViewFunctionStatement::Assign(assign) = &statements[0] else {
+            panic!("source set");
         };
         let call = assign.call.as_ref().expect("stdlib call");
 
         assert_eq!(call.namespace, "parse");
         assert_eq!(call.function, "svg");
-        assert_eq!(call.args.len(), 2);
+        assert_eq!(call.args.len(), 4);
+        let ViewFunctionStatement::Assign(preview) = &statements[1] else {
+            panic!("preview set");
+        };
+        assert_eq!(
+            preview
+                .call
+                .as_ref()
+                .expect("preview call")
+                .args
+                .iter()
+                .find(|argument| argument.name == "format")
+                .map(|argument| &argument.value),
+            Some(&dowe_stdlib::StdlibValue::String("data".to_string()))
+        );
     }
 
     #[test]

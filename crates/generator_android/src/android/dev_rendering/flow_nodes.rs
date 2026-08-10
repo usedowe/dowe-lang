@@ -141,6 +141,7 @@ fn render_dev_android_flow_node(
                     "        LinearLayout {view} = doweContainer(false);\n"
                 ));
                 apply_dev_android_style(props, &view, true, output);
+                apply_dev_android_click(props, &view, context, output);
                 apply_dev_android_inline_width(props, &view, parent_horizontal, output);
                 output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
                 for child in children {
@@ -269,6 +270,7 @@ fn render_dev_android_flow_node(
                 dev_card_border(props)
             ));
             apply_dev_android_style(&props.style, &view, false, output);
+            apply_dev_android_click(&props.style, &view, context, output);
             apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             for child in children {
@@ -529,7 +531,13 @@ fn render_dev_android_relative_box(
     output.push_str(&format!(
         "        FrameLayout {view} = new FrameLayout(this);\n"
     ));
+    if !parent_horizontal && props.sizing.w.is_none() {
+        output.push_str(&format!(
+            "        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
+        ));
+    }
     apply_dev_android_style(props, &view, true, output);
+    apply_dev_android_click(props, &view, context, output);
     apply_dev_android_inline_width(props, &view, parent_horizontal, output);
     output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
     output.push_str(&format!(
@@ -554,9 +562,16 @@ fn render_dev_android_relative_box(
     for child in children.iter().filter(|child| {
         matches!(child, ViewNode::Box { props, .. } if props.position().mode == BoxPosition::Absolute)
     }) {
+        let show = node_element_props(child).and_then(|props| props.show.as_ref());
         let ViewNode::Box { props, children } = child else {
             unreachable!();
         };
+        if let Some(show) = show {
+            output.push_str(&format!(
+                "        if ({}) {{\n",
+                dev_show_condition(show, context)
+            ));
+        }
         render_dev_android_positioned_box(
             props,
             children,
@@ -568,6 +583,9 @@ fn render_dev_android_relative_box(
             context,
             children_method,
         );
+        if show.is_some() {
+            output.push_str("        }\n");
+        }
     }
 }
 
@@ -589,6 +607,7 @@ fn render_dev_android_positioned_box(
         "        LinearLayout {view} = doweContainer(false);\n"
     ));
     apply_dev_android_style(props, &view, true, output);
+    apply_dev_android_click(props, &view, context, output);
     for child in children {
         render_dev_android_node(
             child,

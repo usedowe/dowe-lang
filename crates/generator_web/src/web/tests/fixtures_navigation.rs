@@ -11,6 +11,7 @@ fn bar_props(floating: bool) -> BarProps {
         floating,
         position: BarPosition::Static,
         hide_on_scroll: false,
+        dock_on_scroll: false,
     }
 }
 

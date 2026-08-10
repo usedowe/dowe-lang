@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 mod svg;
 
-use svg::convert_svg;
+use svg::{convert_svg, convert_svg_data};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StdlibCall {
@@ -433,9 +433,9 @@ pub fn signature(namespace: &str, function: &str) -> Option<StdlibSignature> {
             namespace,
             function,
             &["value"],
-            &["fallback"],
+            &["fallback", "colors", "format"],
             StdlibReturnKind::Unknown,
-            "Convert portable SVG XML into Dowe Svg and Path source.",
+            "Convert portable SVG XML into Dowe source or normalized preview data.",
         ),
         ("url", "encode") => sig(
             namespace,
@@ -1010,9 +1010,26 @@ fn eval_parse(function: &str, args: &EvaluatedArgs) -> StdlibResult<Value> {
         },
         "json" => serde_json::from_str::<Value>(&value).or(Ok(fallback)),
         "string" => Ok(Value::String(json_text(args.required("value")?))),
-        "svg" => convert_svg(&value)
-            .map(Value::String)
-            .or_else(|_| Ok(fallback)),
+        "svg" => {
+            let colors = args
+                .optional_string("colors")?
+                .unwrap_or_else(|| "tokens".to_string());
+            let format = args
+                .optional_string("format")?
+                .unwrap_or_else(|| "source".to_string());
+            let result = match (colors.as_str(), format.as_str()) {
+                ("tokens", "source") => convert_svg(&value, false).map(Value::String),
+                ("original", "source") => convert_svg(&value, true).map(Value::String),
+                ("original", "data") => convert_svg_data(&value),
+                ("tokens", "data") => Err(StdlibError::invalid_argument(
+                    "parse.svg format data requires colors original",
+                )),
+                _ => Err(StdlibError::invalid_argument(
+                    "parse.svg colors must be tokens or original and format must be source or data",
+                )),
+            };
+            result.or_else(|_| Ok(fallback))
+        }
         _ => Err(StdlibError::unsupported("unsupported parse function")),
     }
 }

@@ -214,9 +214,9 @@ fn dev_collect_scope_bindings(node: &ViewNode, bindings: &mut DevLayoutBindings)
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
@@ -384,21 +384,21 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
                     .as_deref()
                     .is_some_and(|value| bindings.references_signal(value))
         }
-        ViewNode::PasswordField { props } => {
+        ViewNode::Password { props } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
                 || props
                     .value
                     .as_deref()
                     .is_some_and(|value| bindings.references_signal(value))
         }
-        ViewNode::PhoneField { props } => {
+        ViewNode::Phone { props } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
                 || props
                     .value
                     .as_deref()
                     .is_some_and(|value| bindings.references_signal(value))
         }
-        ViewNode::PinField { props } => {
+        ViewNode::Pin { props } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
                 || props
                     .value
@@ -1155,9 +1155,9 @@ fn dev_children_boundary(
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::Slider { .. }
         | ViewNode::Dropzone { .. }

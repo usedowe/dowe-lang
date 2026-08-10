@@ -67,6 +67,9 @@ fn collect_bar_classes(
 ) {
     classes.extend(bar_classes(base, props));
     classes.extend(bar_content_classes(base, props));
+    if base == "footer" {
+        classes.extend(footer_inner_classes(props));
+    }
     if !top.is_empty() {
         classes.insert(format!("{base}-top"));
     }
@@ -82,7 +85,13 @@ fn collect_bar_classes(
     if !bottom.is_empty() {
         classes.insert(format!("{base}-bottom"));
     }
-    for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
+    for child in top
+        .iter()
+        .chain(start)
+        .chain(center)
+        .chain(end)
+        .chain(bottom)
+    {
         collect_classes(child, classes);
     }
 }

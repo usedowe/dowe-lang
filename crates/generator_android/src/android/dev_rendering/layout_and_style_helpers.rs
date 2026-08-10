@@ -397,10 +397,64 @@ fn apply_dev_android_style(
         ));
     }
 
-    if let Some(animation) = props.animation {
+    let motion = props.motion();
+    if let Some(value) = motion.rotate.as_ref() {
+        output.push_str(&format!(
+            "        {view}.setRotation({});\n",
+            dev_responsive_float_value(value, |value| format!("{}f", value.degrees()))
+        ));
+    }
+    if let Some(value) = motion.scale.as_ref() {
+        let scale = dev_responsive_float_value(value, |value| format!("{}f", value.factor()));
+        output.push_str(&format!(
+            "        {view}.setScaleX({scale});\n        {view}.setScaleY({scale});\n"
+        ));
+    }
+    if let Some(value) = motion.translate_x.as_ref() {
+        output.push_str(&format!(
+            "        {view}.setTranslationX(doweDp({}));\n",
+            dev_responsive_value(value, |value| value.native_units().to_string())
+        ));
+    }
+    if let Some(value) = motion.translate_y.as_ref() {
+        output.push_str(&format!(
+            "        {view}.setTranslationY(doweDp({}));\n",
+            dev_responsive_value(value, |value| value.native_units().to_string())
+        ));
+    }
+    if let Some(gesture) = motion.gesture
+        && gesture != ViewGesture::None
+    {
+        output.push_str(&format!(
+            "        doweGesture({view}, \"{}\", \"{}\");\n",
+            gesture.as_str(),
+            motion.transition.unwrap_or(ViewTransition::Smooth).as_str()
+        ));
+    }
+
+    if let Some(animation) = props.animation() {
         output.push_str(&format!(
             "        doweAnimate({view}, \"{}\");\n",
             animation.as_str()
+        ));
+    }
+}
+
+fn apply_dev_android_click(
+    props: &StyleProps,
+    view: &str,
+    context: &ComposeReactiveContext,
+    output: &mut String,
+) {
+    if let Some(action) = props
+        .element
+        .on_click
+        .as_deref()
+        .and_then(|name| context.action_id(name))
+    {
+        output.push_str(&format!(
+            "        {view}.setOnClickListener(v -> doweRunAction(\"{}\", null));\n",
+            escape_java(action)
         ));
     }
 }

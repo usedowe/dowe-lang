@@ -331,6 +331,9 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     });
 
     assert!(html.contains(r#"class="rich-text"#));
+    assert!(html.contains(r#"data-dowe-rich-text"#));
+    assert!(html.contains(r#"data-dowe-rich-mark"#));
+    assert!(html.contains("title-md"));
     assert!(html.contains("rich-mark-grad"));
     assert!(html.contains(r#"data-dowe-record"#));
     assert!(html.contains(r#"data-dowe-toggle-group"#));
@@ -361,6 +364,12 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     );
     assert!(page.css_content.contains(".map.is-soft.is-surface"));
     assert!(css.contains(".rich-mark-grad"));
+    assert!(css.contains("max-width:100%;width:100%;text-align:center;line-height:inherit"));
+    assert!(css.contains("background:var(--rich-accent);color:var(--rich-on-accent)"));
+    assert!(css.contains("padding:.125rem .5rem"));
+    assert!(css.contains("display:inline-block;box-sizing:border-box;max-width:100%;text-align:center;white-space:normal;overflow-wrap:normal;word-break:normal"));
+    assert!(css.contains("dowe-rich-neon-flicker"));
+    assert!(css.contains(".rich-mark-slant::before"));
     assert!(css.contains(".record-wave"));
     assert!(css.contains(".toggle-group-item"));
     assert!(css.contains(".pagination-nav"));
@@ -375,6 +384,11 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(css.contains(".countdown-lg .countdown-box,.countdown-xl .countdown-box{min-width:2.5rem;height:3rem;padding-inline:.375rem;}"));
     assert!(css.contains(".map-grid"));
     assert!(router.contains("function hydrateRecords(root)"));
+    assert!(router.contains("function fitRichTextMark(mark,availableWidth)"));
+    assert!(router.contains("range.getClientRects()"));
+    assert!(router.contains("function hydrateRichTexts(root)"));
+    assert!(router.contains("new ResizeObserver(fit)"));
+    assert!(router.contains("hydrateRichTexts(root)"));
     assert!(router.contains("function renderToggleGroups(root,state,scope)"));
     assert!(router.contains("function paginationPages(group,state,scope)"));
     assert!(router.contains("group.dataset.dowePagination"));
@@ -415,7 +429,12 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(html.contains("is-cover-flow"));
     assert!(html.contains(r#"class="checkbox-input is-success""#));
     assert!(html.contains(r#"data-dowe-bind="accepted""#));
-    assert!(html.contains(r#"class="color-input" type="color""#));
+    assert!(html.contains(r#"data-dowe-color-picker"#));
+    assert!(html.contains("has-start-adornment"));
+    assert!(html.contains("has-value"));
+    assert!(html.contains(r#"data-dowe-color-sv role="slider""#));
+    assert!(html.contains(r#"data-dowe-color-hue role="slider""#));
+    assert!(!html.contains(r#"type="color""#));
     assert!(html.contains(r#"data-dowe-date-field"#));
     assert!(html.contains(r#"data-dowe-date-range"#));
     assert!(!html.contains(r#"type="date""#));
@@ -437,6 +456,10 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(css.contains(".radio-group.is-vertical{flex-direction:column;}"));
     assert!(css.contains(".radio-group.is-horizontal{flex-direction:row;flex-wrap:wrap;}"));
     assert!(css.contains(".toggle-input{position:relative;"));
+    assert!(css.contains(".color-picker-popover{position:fixed;"));
+    assert!(css.contains(".color-picker-canvas{position:relative;"));
+    assert!(css.contains(".color-field.is-floating.is-lg{min-height:3.5rem}"));
+    assert!(css.contains(".color-field.is-floating .color-control-trigger{min-height:var(--dowe-control-min-height);padding-top:.5rem;}"));
     assert!(css.contains(".date-control-trigger{display:flex;"));
     assert!(css.contains(".date-range-calendars{display:flex;"));
     assert!(css.contains(".accordion-arrow>svg{width:100%;height:100%;}"));
@@ -445,6 +468,11 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(router.contains("function toggleAccordion(trigger)"));
     assert!(router.contains("function renderCarousel(root)"));
     assert!(router.contains("function renderDateField(root,state,scope)"));
+    assert!(router.contains("function renderDoweColor(root,state,scope)"));
+    assert!(router.contains("function doweColorOklch(rgb)"));
+    assert!(router.contains("function updateDoweColorPointer(target,event)"));
+    assert!(router.contains("},true);function splitDestination"));
+    assert!(!router.contains(")window.addEventListener"));
     assert!(router.contains("function selectDateValue(root,value)"));
     assert!(router.contains("function syncCarousel(root)"));
     assert!(router.contains("maximum-position<=edge"));
@@ -512,13 +540,18 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(html.contains("image-cropper"));
     assert!(html.contains("is-circle"));
     assert!(html.contains(r#"data-dowe-image-cropper"#));
-    assert!(html.contains(r#"class="password-field"#));
+    assert!(html.contains(r#"class="password"#));
     assert!(html.contains(r#"data-dowe-password-input"#));
-    assert!(html.contains(
-        r#"data-dowe-password-toggle>Show</button></span><span class="password-strength"#
-    ));
-    assert!(html.contains(r#"class="phone-field"#));
-    assert!(html.contains(r#"data-dowe-phone-field"#));
+    assert!(html.contains(r#"data-dowe-password-toggle"#));
+    assert!(html.contains(r#"data-dowe-password-show-icon"#));
+    assert!(html.contains(r#"data-dowe-password-hide-icon hidden"#));
+    assert!(html.contains(r#"aria-label="Show password""#));
+    assert!(html.contains(r#"class="password-strength"#));
+    assert!(router.contains("passwordToggle.setAttribute(\"aria-label\""));
+    assert!(router.contains("[data-dowe-password-show-icon]"));
+    assert!(router.contains("[data-dowe-password-hide-icon]"));
+    assert!(html.contains(r#"class="phone"#));
+    assert!(html.contains(r#"data-dowe-phone"#));
     assert!(html.contains(r#"data-dowe-phone-option"#));
     assert!(html.contains(r#"viewBox="0 0 512 512""#));
     assert!(html.contains(r##"fill="#d80027""##));
@@ -530,12 +563,17 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(router.contains("function sanitizePhoneInput(input)"));
     assert!(router.contains("function positionPhone(root)"));
     assert!(router.contains("popover.hidden=open"));
-    assert!(css.contains(".phone-field-popover{position:fixed;"));
-    assert!(html.contains(r#"class="pin-field"#));
-    assert!(html.contains(r#"data-dowe-pin-field"#));
-    assert!(html.contains("pin-field-cell"));
-    assert!(html.contains(r#"class="pin-field-input"#));
-    assert!(!html.contains(r#"class="pin-field is-outlined"#));
+    assert!(css.contains(".phone-popover{position:fixed;"));
+    assert!(css.contains(".phone-country-trigger{display:inline-flex"));
+    assert!(css.contains("padding:0 .75rem;"));
+    assert!(css.contains(".phone-search-wrap{display:flex"));
+    assert!(css.contains(".phone-country{gap:.625rem;padding:.5rem .75rem;"));
+    assert!(html.contains(r#"class="pin"#));
+    assert!(html.contains(r#"data-dowe-pin"#));
+    assert!(!html.contains('�'));
+    assert!(html.contains("pin-cell"));
+    assert!(html.contains(r#"class="pin-input"#));
+    assert!(!html.contains(r#"class="pin is-outlined"#));
     assert!(!html.contains(r#"<input type="number""#));
     assert!(html.contains(r#"inputmode="numeric""#));
     assert!(html.contains(r#"class="textarea"#));
@@ -544,9 +582,10 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(page.css_content.contains(".button.is-outlined.is-primary"));
     assert!(page.css_content.contains(".drag-drop.is-soft.is-primary"));
     assert!(css.contains(".combo-box-options"));
+    assert!(css.contains(".password-toggle .svg{width:1.25rem;height:1.25rem;}"));
     assert!(css.contains(".csv-field-modal"));
     assert!(css.contains(".drag-drop-item"));
-    assert!(css.contains(".pin-field-cell.control"));
+    assert!(css.contains(".pin-cell.control"));
     assert!(css.contains(".editor-toolbar"));
     assert!(css.contains(".password-strength"));
     assert!(css.contains(
@@ -565,8 +604,22 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(router.contains("clipboardData"));
     assert!(router.contains("event.key===\"Backspace\""));
     assert!(router.contains("target.value=next.slice(0,1)"));
+    assert!(router.contains(
+        "const rootIndex=Array.from(document.querySelectorAll(\"[data-dowe-pin]\")).indexOf(root)"
+    ));
+    assert!(router.contains(
+        "nextRoot=Array.from(document.querySelectorAll(\"[data-dowe-pin]\"))[rootIndex]||root"
+    ));
+    assert!(router.contains("requestAnimationFrame(()=>Array.from(nextRoot.querySelectorAll(\"[data-dowe-pin-cell]\"))[focusIndex]?.focus())"));
+    assert!(
+        router.contains("updatePin(root,true,target.value&&index+1<cells.length?index+1:null)")
+    );
     assert!(router.contains("input.closest(\".field\")"));
     assert!(router.contains("function updatePin(root"));
+    assert!(css.contains(".pin-cell.control.is-sm{flex-basis:2.5rem;width:2.5rem;min-width:2.5rem;height:2rem;min-height:2rem;}"));
+    assert!(css.contains(".pin-cell.control.is-md{flex-basis:2.75rem;width:2.75rem;min-width:2.75rem;height:2.5rem;min-height:2.5rem;}"));
+    assert!(css.contains(".pin-cell.control.is-lg{flex-basis:3.25rem;width:3.25rem;min-width:3.25rem;height:3rem;min-height:3rem;}"));
+    assert!(css.contains("font-size:var(--dowe-control-font-size);line-height:var(--dowe-control-line-height);font-weight:800"));
 }
 
 #[test]
@@ -588,13 +641,32 @@ fn emits_portable_input_metrics_and_outlined_colors() {
     let css = super::design_css();
 
     assert!(css.contains(
-            ".control{--dowe-component-display:flex;position:relative;display:var(--dowe-show,var(--dowe-component-display));align-items:center;width:100%;min-height:2.5rem;"
+            ".control{--dowe-component-display:flex;--dowe-control-min-height:2.5rem;--dowe-control-height:var(--dowe-control-min-height);--dowe-control-font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);--dowe-control-line-height:1.6;position:relative;display:var(--dowe-show,var(--dowe-component-display));align-items:center;width:100%;height:var(--dowe-control-height);min-height:var(--dowe-control-height);"
         ));
-    assert!(css.contains("min-height:2.5rem;padding:0 0.75rem;"));
+    assert!(css.contains(".control.is-sm{--dowe-control-min-height:2rem;--dowe-control-font-size:clamp(0.75rem, 0.7rem + 0.2vw, 0.875rem);--dowe-control-line-height:1.5;}"));
+    assert!(css.contains(".control.is-md{--dowe-control-min-height:2.5rem;--dowe-control-font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);--dowe-control-line-height:1.6;}"));
+    assert!(css.contains(".control.is-lg{--dowe-control-min-height:3rem;--dowe-control-font-size:clamp(1rem, 0.95rem + 0.3vw, 1.125rem);--dowe-control-line-height:1.6;}"));
+    assert!(css.contains(
+        ".control.is-floating{--dowe-control-height:calc(var(--dowe-control-min-height) + 0.5rem);padding-top:0.5rem;}"
+    ));
+    assert!(css.contains(".textarea-field{align-items:stretch;height:auto;"));
+    assert!(css.contains("min-height:var(--dowe-control-min-height);padding:0 0.75rem;"));
     assert!(css.contains(".control-icon.icon-start{margin-left:.75rem}"));
     assert!(css.contains(".control-icon.icon-end{margin-right:.75rem}"));
     assert!(css.contains(
         ".control.is-floating:has(>.control-label):not(:focus-within):has(.input:placeholder-shown)>.control-icon{display:none}"
+    ));
+    assert!(css.contains(".control.is-floating.has-start-adornment:focus-within>.control-label"));
+    assert!(css.contains("left:2.75rem;max-width:calc(100% - 3.5rem);"));
+    assert!(css.contains(".control.is-floating.has-start-adornment>.input{padding-left:0;}"));
+    assert!(css.contains(
+        ".color-field.is-floating.is-sm.has-start-adornment.has-value>.control-label{left:2.5rem;max-width:calc(100% - 3.25rem);}",
+    ));
+    assert!(css.contains(
+        ".color-field.is-floating.is-md.has-start-adornment.has-value>.control-label{left:2.75rem;max-width:calc(100% - 3.5rem);}",
+    ));
+    assert!(css.contains(
+        ".color-field.is-floating.is-lg.has-start-adornment.has-value>.control-label{left:3.25rem;max-width:calc(100% - 4rem);}",
     ));
     assert!(!css.contains(".control-icon:first-child"));
     assert!(css.contains(".field{display:flex;flex-direction:column;"));
@@ -609,6 +681,10 @@ fn emits_portable_input_metrics_and_outlined_colors() {
             ".select-control.is-floating:not(.is-open):not(.has-value) .select-value{visibility:hidden;}"
         ));
     assert!(css.contains("font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem)"));
+    assert!(css.contains(
+        "font-size:var(--dowe-control-font-size);line-height:var(--dowe-control-line-height);"
+    ));
+    assert!(css.contains(".color-field-value{font-size:var(--dowe-control-font-size);line-height:var(--dowe-control-line-height);}"));
     assert!(css.contains(
         ".grid>[data-dowe-each],.flex>[data-dowe-each],[data-dowe-each-row]{display:contents;}"
     ));
@@ -761,8 +837,8 @@ fn advanced_form_tree() -> ViewNode {
                     error_text: None,
                 },
             },
-            ViewNode::PasswordField {
-                props: PasswordFieldProps {
+            ViewNode::Password {
+                props: PasswordProps {
                     style: bound_style("profile.password", "Password", "Create password"),
                     value: None,
                     hide_strength: false,
@@ -776,8 +852,8 @@ fn advanced_form_tree() -> ViewNode {
                     error_text: None,
                 },
             },
-            ViewNode::PhoneField {
-                props: PhoneFieldProps {
+            ViewNode::Phone {
+                props: PhoneProps {
                     style: bound_style("profile.phone", "Phone", "Phone number"),
                     value: None,
                     country: Some("US".to_string()),
@@ -792,12 +868,12 @@ fn advanced_form_tree() -> ViewNode {
                     error_text: None,
                 },
             },
-            ViewNode::PinField {
-                props: PinFieldProps {
+            ViewNode::Pin {
+                props: PinProps {
                     style: bound_style("profile.pin", "Code", ""),
                     value: None,
                     length: 6,
-                    kind: PinFieldKind::Number,
+                    kind: PinKind::Number,
                     name: None,
                     help_text: None,
                     error_text: None,
@@ -854,6 +930,7 @@ fn renders_labeled_input_and_select_markup() {
                     label: Some("Name".to_string()),
                     placeholder: Some("Full name".to_string()),
                     label_floating: true,
+                    size: Some(ButtonSize::Sm),
                     icon_start: Some(solar_control_icon("magnifier").expect("start icon")),
                     icon_end: Some(solar_control_icon("close-circle").expect("end icon")),
                     ..Default::default()
@@ -864,6 +941,7 @@ fn renders_labeled_input_and_select_markup() {
                     label: Some("Role".to_string()),
                     placeholder: Some("Choose role".to_string()),
                     label_floating: true,
+                    size: Some(ButtonSize::Lg),
                     ..Default::default()
                 },
                 options: vec![
@@ -890,6 +968,9 @@ fn renders_labeled_input_and_select_markup() {
     );
 
     assert!(page.content.contains("is-floating"));
+    assert!(page.content.contains(r#"class=\"control is-sm"#));
+    assert!(page.content.contains(r#"class=\"control is-lg"#));
+    assert!(page.content.contains("has-start-adornment"));
     assert!(page.content.contains(r#"placeholder=\"Full name\""#));
     assert!(
         page.content
@@ -934,7 +1015,7 @@ fn renders_svg_markup_and_color_classes() {
     );
     assert!(
         page.content
-            .contains(r#"<path d=\"M22 12c0-5.523-4.477-10-10-10\" fill=\"currentColor\" transform=\"matrix(2 0 0 2 4 6)\"></path>"#)
+            .contains(r#"<path d=\"M22 12c0-5.523-4.477-10-10-10\" fill=\"currentColor\" fill-rule=\"evenodd\" clip-rule=\"evenodd\" transform=\"matrix(2 0 0 2 4 6)\"></path>"#)
     );
     assert!(page.css_content.contains(".svg"));
     assert!(

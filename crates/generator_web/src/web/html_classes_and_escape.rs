@@ -62,11 +62,22 @@ fn bar_classes(base: &str, props: &BarProps) -> Vec<String> {
     if props.hide_on_scroll {
         classes.push("is-hide-on-scroll".to_string());
     }
+    if props.dock_on_scroll {
+        classes.push("is-dock-on-scroll".to_string());
+    }
     classes
 }
 
 fn bar_content_classes(base: &str, props: &BarProps) -> Vec<String> {
     let mut classes = vec![format!("{base}-content")];
+    if props.boxed && base != "footer" {
+        classes.push("is-boxed".to_string());
+    }
+    classes
+}
+
+fn footer_inner_classes(props: &BarProps) -> Vec<String> {
+    let mut classes = vec!["footer-inner".to_string()];
     if props.boxed {
         classes.push("is-boxed".to_string());
     }
@@ -208,12 +219,13 @@ fn type_writer_classes(props: &TypeWriterProps) -> Vec<String> {
 
 fn rich_text_classes(props: &TextProps) -> Vec<String> {
     let mut classes = vec!["rich-text".to_string()];
+    let typography = if props.title { "title" } else { "text" };
     if let Some(size) = &props.size {
-        append_responsive_classes(&mut classes, "text", Some(size), |value| {
+        append_responsive_classes(&mut classes, typography, Some(size), |value| {
             value.as_str().to_string()
         });
     } else {
-        classes.push("text-md".to_string());
+        classes.push(format!("{typography}-md"));
     }
     append_style_classes(&mut classes, &props.style);
     append_responsive_classes(&mut classes, "weight", props.weight.as_ref(), |value| {
@@ -537,10 +549,45 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
     append_responsive_classes(classes, "color", props.text.as_ref(), |value| {
         value.as_str().to_string()
     });
-    if let Some(animation) = props.animation
+    if let Some(animation) = props.animation()
         && animation != ViewAnimation::None
     {
         classes.push(format!("animate-{}", animation.class_suffix()));
+    }
+    let motion = props.motion();
+    let transformed = motion.rotate.is_some()
+        || motion.scale.is_some()
+        || motion.translate_x.is_some()
+        || motion.translate_y.is_some();
+    if transformed || !matches!(motion.gesture, None | Some(ViewGesture::None)) {
+        classes.push("has-transform".to_string());
+    }
+    append_responsive_classes(classes, "rotate", motion.rotate.as_ref(), |value| {
+        value.class_suffix()
+    });
+    append_responsive_classes(classes, "scale", motion.scale.as_ref(), |value| {
+        value.class_suffix()
+    });
+    append_responsive_classes(
+        classes,
+        "translate-x",
+        motion.translate_x.as_ref(),
+        |value| value.class_suffix(),
+    );
+    append_responsive_classes(
+        classes,
+        "translate-y",
+        motion.translate_y.as_ref(),
+        |value| value.class_suffix(),
+    );
+    if let Some(transition) = motion.transition {
+        classes.push(format!("transition-{}", transition.as_str()));
+    }
+    if let Some(gesture) = motion.gesture
+        && gesture != ViewGesture::None
+    {
+        classes.push("has-gesture".to_string());
+        classes.push(format!("gesture-{}", gesture.as_str()));
     }
     let position = props.position();
     if position.mode != BoxPosition::Static {
@@ -1005,7 +1052,7 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
         let control = format!(
             "<span{}>{}</span>",
             attrs(
-                variant_classes("control", props),
+                input_control_classes(props),
                 Some(&props.element),
                 None,
                 context
@@ -1019,7 +1066,7 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
         );
     }
     if props.label_floating {
-        let mut classes = variant_classes("control", props);
+        let mut classes = input_control_classes(props);
         classes.push("is-floating".to_string());
         return format!(
             "<label{}>{}{}</label>",
@@ -1031,13 +1078,25 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
     format!(
         r#"<div{}>{}</div>"#,
         attrs(
-            variant_classes("control", props),
+            input_control_classes(props),
             Some(&props.element),
             None,
             context
         ),
         input
     )
+}
+
+fn input_control_classes(props: &VariantProps) -> Vec<String> {
+    let mut classes = variant_classes("control", props);
+    classes.insert(
+        1,
+        format!("is-{}", props.size.unwrap_or(ButtonSize::Md).as_str()),
+    );
+    if props.icon_start.is_some() {
+        classes.push("has-start-adornment".to_string());
+    }
+    classes
 }
 
 fn render_select_html(
@@ -1057,6 +1116,10 @@ fn render_select_html_with_attrs(
     extra_attrs: &str,
 ) -> String {
     let mut classes = variant_classes("control", props);
+    classes.insert(
+        1,
+        format!("is-{}", props.size.unwrap_or(ButtonSize::Md).as_str()),
+    );
     classes.push("select-control".to_string());
     if props.label_floating {
         classes.push("is-floating".to_string());

@@ -11,8 +11,9 @@ use dowe_components::{
     MarqueeOrientation, MarqueeSpeed, NativeExternalMode, NavigationAction, OverlayCornerPosition,
     OverlayEntry, OverlayPosition, RichTextMarkStyle, SectionBackground, SkeletonAnimation,
     SkeletonVariant, SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect,
-    ViewActionKind, ViewAnimation, ViewFunctionStatement, ViewIcon, ViewNode, ViewSignalScope,
-    ViewSignalStorage, VisibilityCondition, WebTarget,
+    ViewActionKind, ViewAnimation, ViewFunctionStatement, ViewGesture, ViewIcon, ViewNode,
+    ViewRotation, ViewScale, ViewSignalScope, ViewSignalStorage, ViewTransition, ViewTranslation,
+    VisibilityCondition, WebTarget,
 };
 use std::fs;
 use std::path::Path;

@@ -359,17 +359,17 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
             reject_children(node)?;
             image_cropper_component_node(props).map_err(|error| component_error(node, error))
         }
-        BuiltinComponent::PasswordField => {
+        BuiltinComponent::Password => {
             reject_children(node)?;
-            password_field_component_node(props).map_err(|error| component_error(node, error))
+            password_component_node(props).map_err(|error| component_error(node, error))
         }
-        BuiltinComponent::PhoneField => {
+        BuiltinComponent::Phone => {
             reject_children(node)?;
-            phone_field_component_node(props).map_err(|error| component_error(node, error))
+            phone_component_node(props).map_err(|error| component_error(node, error))
         }
-        BuiltinComponent::PinField => {
+        BuiltinComponent::Pin => {
             reject_children(node)?;
-            pin_field_component_node(props).map_err(|error| component_error(node, error))
+            pin_component_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Textarea => {
             reject_children(node)?;

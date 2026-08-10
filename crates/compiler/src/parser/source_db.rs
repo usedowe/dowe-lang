@@ -425,12 +425,12 @@ pub fn database_endpoint_behavior(
                 let connection = connection_for_handle(&handles, handle)?;
                 if connection.provider != DatabaseProvider::Dowe {
                     return Err(DoweError::new(
-                        "remote Database transactions are not supported yet",
+                        "Database transactions require provider `dowe`",
                     ));
                 }
                 return Ok(Some(EndpointBehavior::StoreTransactionJson(
                     StoreTransactionEndpoint {
-                        database: connection.database,
+                        connection,
                         operations: operations.clone(),
                         return_binding: tx_return_binding.clone(),
                     },
@@ -518,7 +518,7 @@ fn validate_store_handles(action: &ServerAction) -> DoweResult<()> {
                     && connection.provider != DatabaseProvider::Dowe
                 {
                     return Err(DoweError::new(
-                        "remote Database transactions are not supported yet",
+                        "Database transactions require provider `dowe`",
                     ));
                 }
             }
@@ -1533,7 +1533,7 @@ main
         assert!(matches!(
             &server.backend.endpoints[0].behavior,
             EndpointBehavior::StoreTransactionJson(transaction)
-                if transaction.database == "db1" && transaction.operations.len() == 1
+                if transaction.connection.database == "db1" && transaction.operations.len() == 1
         ));
     }
 
@@ -1805,7 +1805,11 @@ main
         let error =
             parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
 
-        assert!(error.to_string().contains("remote Database transactions"));
+        assert!(
+            error
+                .to_string()
+                .contains("Database transactions require provider `dowe`")
+        );
     }
 
     #[test]

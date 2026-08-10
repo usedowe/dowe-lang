@@ -1,4 +1,5 @@
 use crate::{StdlibError, StdlibResult};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 const MAX_SVG_BYTES: usize = 262_144;
@@ -73,16 +74,72 @@ impl Matrix {
 struct Context {
     matrix: Matrix,
     fill: Option<String>,
+    even_odd: bool,
     suppressed: bool,
 }
 
 struct SvgPathSource {
     data: String,
     fill: String,
+    even_odd: bool,
     transform: Option<String>,
 }
 
-pub fn convert_svg(source: &str) -> StdlibResult<String> {
+struct SvgDocument {
+    view_box: String,
+    paths: Vec<SvgPathSource>,
+}
+
+pub fn convert_svg(source: &str, original_colors: bool) -> StdlibResult<String> {
+    let document = parse_svg(source, original_colors)?;
+    let mut output = format!(
+        "Svg viewBox:\"{}\" w:\"full\" h:\"full\"",
+        document.view_box
+    );
+    for path in document.paths {
+        output.push_str("\n  Path d:\"");
+        output.push_str(&path.data);
+        output.push_str("\" fill:\"");
+        output.push_str(&path.fill);
+        output.push('"');
+        if path.even_odd {
+            output.push_str(" fillRule:\"evenodd\"");
+        }
+        if let Some(transform) = path.transform {
+            output.push_str(" transform:\"");
+            output.push_str(&transform);
+            output.push('"');
+        }
+    }
+    Ok(output)
+}
+
+pub fn convert_svg_data(source: &str) -> StdlibResult<Value> {
+    let document = parse_svg(source, true)?;
+    let paths = document
+        .paths
+        .into_iter()
+        .map(|path| {
+            let mut value = match path.fill.as_str() {
+                "none" => json!({ "d": path.data, "paint": "none" }),
+                "currentColor" => json!({ "d": path.data, "paint": "currentColor" }),
+                _ => json!({ "d": path.data, "paint": "fill", "color": path.fill }),
+            };
+            if let Some(transform) = path.transform {
+                value["transform"] = Value::String(transform);
+            }
+            if path.even_odd {
+                value["evenOdd"] = Value::Bool(true);
+            }
+            value
+        })
+        .collect::<Vec<_>>();
+    serde_json::to_string(&json!({ "viewBox": document.view_box, "paths": paths }))
+        .map(Value::String)
+        .map_err(|_| StdlibError::parse_error("parse.svg could not serialize preview data"))
+}
+
+fn parse_svg(source: &str, original_colors: bool) -> StdlibResult<SvgDocument> {
     if source.len() > MAX_SVG_BYTES {
         return Err(StdlibError::limit_exceeded(
             "parse.svg input exceeds 262144 bytes",
@@ -94,6 +151,7 @@ pub fn convert_svg(source: &str) -> StdlibResult<String> {
     let mut stack = vec![Context {
         matrix: Matrix::identity(),
         fill: None,
+        even_odd: false,
         suppressed: false,
     }];
     let mut cursor = 0usize;
@@ -121,6 +179,7 @@ pub fn convert_svg(source: &str) -> StdlibResult<String> {
         let parent = stack.last().cloned().unwrap_or(Context {
             matrix: Matrix::identity(),
             fill: None,
+            even_odd: false,
             suppressed: false,
         });
         let local = attrs
@@ -129,6 +188,7 @@ pub fn convert_svg(source: &str) -> StdlibResult<String> {
             .transpose()?
             .unwrap_or_else(Matrix::identity);
         let fill = tag_fill(&attrs).or(parent.fill.clone());
+        let even_odd = tag_fill_rule(&attrs)?.unwrap_or(parent.even_odd);
         let suppressed = parent.suppressed
             || matches!(
                 name.as_str(),
@@ -137,26 +197,38 @@ pub fn convert_svg(source: &str) -> StdlibResult<String> {
         let context = Context {
             matrix: parent.matrix.multiply(local),
             fill,
+            even_odd,
             suppressed,
         };
         if name == "svg" && view_box.is_none() {
             view_box = Some(svg_view_box(&attrs)?);
         }
-        if name == "path" && !context.suppressed {
+        let data = if context.suppressed {
+            None
+        } else if name == "path" {
+            Some(
+                attrs
+                    .get("d")
+                    .map(|value| decode_xml(value).trim().to_string())
+                    .filter(|value| !value.is_empty() && value.chars().all(is_path_character))
+                    .ok_or_else(|| StdlibError::parse_error("parse.svg path has invalid d data"))?,
+            )
+        } else if name == "rect" {
+            rect_path_data(&attrs)?
+        } else {
+            None
+        };
+        if let Some(data) = data {
             if paths.len() >= MAX_SVG_PATHS {
                 return Err(StdlibError::limit_exceeded(
                     "parse.svg input exceeds 1024 paths",
                 ));
             }
-            let data = attrs
-                .get("d")
-                .map(|value| decode_xml(value).trim().to_string())
-                .filter(|value| !value.is_empty() && value.chars().all(is_path_character))
-                .ok_or_else(|| StdlibError::parse_error("parse.svg path has invalid d data"))?;
-            let fill = portable_fill(context.fill.as_deref(), &mut colors);
+            let fill = portable_fill(context.fill.as_deref(), &mut colors, original_colors)?;
             paths.push(SvgPathSource {
                 data,
                 fill,
+                even_odd: context.even_odd,
                 transform: (!context.matrix.is_identity()).then(|| context.matrix.source()),
             });
         }
@@ -171,20 +243,7 @@ pub fn convert_svg(source: &str) -> StdlibResult<String> {
             "parse.svg requires at least one portable path",
         ));
     }
-    let mut output = format!("Svg viewBox:\"{view_box}\" w:\"full\" h:\"full\"");
-    for path in paths {
-        output.push_str("\n  Path d:\"");
-        output.push_str(&path.data);
-        output.push_str("\" fill:\"");
-        output.push_str(&path.fill);
-        output.push('"');
-        if let Some(transform) = path.transform {
-            output.push_str(" transform:\"");
-            output.push_str(&transform);
-            output.push('"');
-        }
-    }
-    Ok(output)
+    Ok(SvgDocument { view_box, paths })
 }
 
 fn tag_end(source: &str, start: usize) -> Option<usize> {
@@ -271,6 +330,28 @@ fn tag_fill(attrs: &BTreeMap<String, String>) -> Option<String> {
             })
         })
     })
+}
+
+fn tag_fill_rule(attrs: &BTreeMap<String, String>) -> StdlibResult<Option<bool>> {
+    let value = attrs.get("fill-rule").cloned().or_else(|| {
+        attrs.get("style").and_then(|style| {
+            style.split(';').find_map(|entry| {
+                let (name, value) = entry.split_once(':')?;
+                name.trim()
+                    .eq_ignore_ascii_case("fill-rule")
+                    .then(|| value.trim().to_string())
+            })
+        })
+    });
+    value
+        .map(|value| match value.trim().to_ascii_lowercase().as_str() {
+            "nonzero" => Ok(false),
+            "evenodd" => Ok(true),
+            _ => Err(StdlibError::parse_error(
+                "parse.svg fill-rule must be nonzero or evenodd",
+            )),
+        })
+        .transpose()
 }
 
 fn svg_view_box(attrs: &BTreeMap<String, String>) -> StdlibResult<String> {
@@ -363,21 +444,110 @@ fn parse_matrix_list(value: &str) -> StdlibResult<Matrix> {
     Ok(output)
 }
 
-fn portable_fill(value: Option<&str>, colors: &mut Vec<String>) -> String {
+fn rect_path_data(attrs: &BTreeMap<String, String>) -> StdlibResult<Option<String>> {
+    if attrs.contains_key("rx") || attrs.contains_key("ry") {
+        return Ok(None);
+    }
+    let x = rect_number(attrs.get("x"), 0.0, false)?;
+    let y = rect_number(attrs.get("y"), 0.0, false)?;
+    let width = rect_number(attrs.get("width"), 0.0, true)?;
+    let height = rect_number(attrs.get("height"), 0.0, true)?;
+    let right = x + width;
+    let bottom = y + height;
+    if !right.is_finite() || !bottom.is_finite() {
+        return Err(StdlibError::parse_error(
+            "parse.svg rect dimensions must be finite",
+        ));
+    }
+    Ok(Some(format!(
+        "M{} {}H{}V{}H{}Z",
+        number(x),
+        number(y),
+        number(right),
+        number(bottom),
+        number(x)
+    )))
+}
+
+fn rect_number(value: Option<&String>, default: f64, positive: bool) -> StdlibResult<f64> {
+    let parsed = match value {
+        Some(value) => value
+            .trim()
+            .parse::<f64>()
+            .map_err(|_| StdlibError::parse_error("parse.svg rect has invalid dimensions"))?,
+        None => default,
+    };
+    if !parsed.is_finite() || (positive && parsed <= 0.0) {
+        return Err(StdlibError::parse_error(
+            "parse.svg rect has invalid dimensions",
+        ));
+    }
+    Ok(parsed)
+}
+
+fn portable_fill(
+    value: Option<&str>,
+    colors: &mut Vec<String>,
+    original_colors: bool,
+) -> StdlibResult<String> {
     let value = value.unwrap_or("currentColor").trim();
     if value.eq_ignore_ascii_case("none") {
-        return "none".to_string();
+        return Ok("none".to_string());
     }
     if value.eq_ignore_ascii_case("currentColor") || value.is_empty() {
-        return "currentColor".to_string();
+        return Ok("currentColor".to_string());
+    }
+    if original_colors {
+        return original_fill(value).ok_or_else(|| {
+            StdlibError::parse_error("parse.svg original colors require hex or integer rgb fills")
+        });
     }
     let normalized = value.to_ascii_lowercase();
-    if let Some(index) = colors.iter().position(|color| color == &normalized) {
-        return COLOR_TOKENS[index % COLOR_TOKENS.len()].to_string();
+    if let Some(index) = colors
+        .iter()
+        .position(|color| colors_are_equivalent(color, &normalized))
+    {
+        return Ok(COLOR_TOKENS[index % COLOR_TOKENS.len()].to_string());
     }
     let index = colors.len();
     colors.push(normalized);
-    COLOR_TOKENS[index % COLOR_TOKENS.len()].to_string()
+    Ok(COLOR_TOKENS[index % COLOR_TOKENS.len()].to_string())
+}
+
+fn original_fill(value: &str) -> Option<String> {
+    let normalized = value.trim().to_ascii_lowercase();
+    if let Some(hex) = normalized.strip_prefix('#') {
+        if matches!(hex.len(), 3 | 4 | 6 | 8) && hex.bytes().all(|value| value.is_ascii_hexdigit())
+        {
+            return Some(format!("#{hex}"));
+        }
+        return None;
+    }
+    let [red, green, blue] = rgb_channels(&normalized)?;
+    Some(format!("#{red:02x}{green:02x}{blue:02x}"))
+}
+
+fn colors_are_equivalent(left: &str, right: &str) -> bool {
+    if left == right {
+        return true;
+    }
+    let (Some(left), Some(right)) = (rgb_channels(left), rgb_channels(right)) else {
+        return false;
+    };
+    left.iter()
+        .zip(right)
+        .all(|(left, right)| left.abs_diff(right) <= 1)
+}
+
+fn rgb_channels(value: &str) -> Option<[u8; 3]> {
+    let value = value.trim();
+    let body = value.strip_prefix("rgb(")?.strip_suffix(')')?;
+    let channels = body
+        .split(',')
+        .map(|channel| channel.trim().parse::<u8>())
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
+    channels.try_into().ok()
 }
 
 fn decode_xml(value: &str) -> String {
@@ -447,7 +617,7 @@ mod tests {
     #[test]
     fn converts_nested_svg_paths_to_dowe_source() {
         let source = r#"<?xml version="1.0"?><svg width="48px" height="24px"><g transform="matrix(2,0,0,2,4,6)"><path d="M0 0L8 0Z" style="fill:rgb(31,58,95)"/><path d="M0 1L8 1Z" fill="rgb(107,198,112)"/></g></svg>"#;
-        let output = convert_svg(source).expect("svg");
+        let output = convert_svg(source, false).expect("svg");
 
         assert!(output.starts_with("Svg viewBox:\"0 0 48 24\" w:\"full\" h:\"full\""));
         assert!(output.contains("fill:\"primary\" transform:\"matrix(2 0 0 2 4 6)\""));
@@ -460,7 +630,7 @@ mod tests {
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg width="627px" height="145px"><g transform="matrix(1,0,0,1,-983.055297,-2551.972932)"><path d="M0 0L1 1Z" style="fill:rgb(31,58,95)"/></g></svg>"#;
 
-        let output = convert_svg(source).expect("svg source");
+        let output = convert_svg(source, false).expect("svg source");
 
         assert!(output.starts_with("Svg viewBox:\"0 0 627 145\""));
         assert!(output.contains("fill:\"primary\""));
@@ -468,10 +638,56 @@ mod tests {
     }
 
     #[test]
+    fn converts_rectangles_and_coalesces_near_rgb_fills() {
+        let source = r#"<svg viewBox="0 0 40 20"><path d="M0 0L1 1Z" fill="rgb(5,5,3)"/><g transform="matrix(2,0,0,2,4,6)"><rect x="2" y="3" width="4" height="5" fill="rgb(101,119,255)"/><path d="M1 1L2 2Z" fill="rgb(101,119,254)"/><path d="M2 2L3 3Z" fill="rgb(101,119,253)"/></g></svg>"#;
+        let output = convert_svg(source, false).expect("svg");
+
+        assert!(output.contains(
+            "Path d:\"M2 3H6V8H2Z\" fill:\"secondary\" transform:\"matrix(2 0 0 2 4 6)\""
+        ));
+        assert_eq!(output.matches("fill:\"secondary\"").count(), 2);
+        assert_eq!(output.matches("fill:\"tertiary\"").count(), 1);
+    }
+
+    #[test]
     fn rejects_svg_without_portable_paths() {
         assert!(
-            convert_svg(r#"<svg viewBox="0 0 10 10"><rect width="10" height="10"/></svg>"#)
-                .is_err()
+            convert_svg(
+                r#"<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5"/></svg>"#,
+                false
+            )
+            .is_err()
         );
+    }
+
+    #[test]
+    fn preserves_original_hex_colors_and_builds_preview_data() {
+        let source = r##"<svg viewBox="0 0 20 10"><path d="M0 0H10V10Z" fill="#000000"/><path d="M10 0H20V10Z" fill="rgb(107,198,112)"/></svg>"##;
+        let output = convert_svg(source, true).expect("source");
+        let data = convert_svg_data(source).expect("data");
+
+        assert!(output.contains("fill:\"#000000\""));
+        assert!(output.contains("fill:\"#6bc670\""));
+        let data = serde_json::from_str::<Value>(data.as_str().expect("json")).expect("record");
+        assert_eq!(data["viewBox"], "0 0 20 10");
+        assert_eq!(data["paths"][0]["color"], "#000000");
+        assert_eq!(data["paths"][1]["color"], "#6bc670");
+    }
+
+    #[test]
+    fn preserves_inherited_evenodd_fill_rule_for_source_and_preview_data() {
+        let source = r##"<svg viewBox="0 0 24 24" style="fill-rule:evenodd;clip-rule:evenodd"><g transform="matrix(1,0,0,1,2,3)"><path d="M0 0H20V20H0ZM4 4H16V16H4Z" fill="#6bc66e"/></g><g fill-rule="nonzero"><path d="M1 1H2V2Z" fill="#1f3a60"/></g></svg>"##;
+        let output = convert_svg(source, true).expect("source");
+        let data = convert_svg_data(source).expect("data");
+
+        assert!(
+            output.contains(
+                "fill:\"#6bc66e\" fillRule:\"evenodd\" transform:\"matrix(1 0 0 1 2 3)\""
+            )
+        );
+        assert!(!output.contains("fill:\"#1f3a60\" fillRule:"));
+        let data = serde_json::from_str::<Value>(data.as_str().expect("json")).expect("record");
+        assert_eq!(data["paths"][0]["evenOdd"], true);
+        assert!(data["paths"][1].get("evenOdd").is_none());
     }
 }

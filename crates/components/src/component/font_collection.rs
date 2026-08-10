@@ -168,9 +168,9 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         ViewNode::DragDrop { props, .. } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Editor { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::ImageCropper { props } => collect_style_font_families(&props.style.style, fonts),
-        ViewNode::PasswordField { props } => collect_style_font_families(&props.style.style, fonts),
-        ViewNode::PhoneField { props } => collect_style_font_families(&props.style.style, fonts),
-        ViewNode::PinField { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Password { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Phone { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Pin { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Textarea { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::AppBar {
             props,

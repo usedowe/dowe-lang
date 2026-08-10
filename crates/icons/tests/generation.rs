@@ -20,18 +20,8 @@ fn generates_platform_icon_sets_from_one_svg() {
     .expect("icons");
 
     assert_eq!(report.targets, IconTarget::ALL);
-    assert!(
-        project
-            .path()
-            .join("icons/web/favicon.ico")
-            .is_file()
-    );
-    assert!(
-        project
-            .path()
-            .join("icons/desktop/icon.icns")
-            .is_file()
-    );
+    assert!(project.path().join("icons/web/favicon.ico").is_file());
+    assert!(project.path().join("icons/desktop/icon.icns").is_file());
     assert!(
         project
             .path()
@@ -146,6 +136,13 @@ fn centers_svg_aspect_ratios_and_applies_rounded_background() {
     assert!((white.center_x() - 23.5).abs() <= 1.0);
     assert!((white.center_y() - 23.5).abs() <= 1.0);
     assert!((1.7..=2.2).contains(&(white.width() as f32 / white.height() as f32)));
+    assert!((0.86..=0.92).contains(&(white.width() as f32 / 48.0)));
+
+    let web_icon = png_rgba(&project.path().join("icons/web/apple-touch-icon.png"));
+    let web_icon_logo = opaque_bounds(&web_icon, 180, |value| {
+        value[0] > 240 && value[1] > 240 && value[2] > 240
+    });
+    assert!((0.69..=0.71).contains(&(web_icon_logo.width() as f32 / 180.0)));
 
     let adaptive = png_rgba(
         &project
@@ -220,9 +217,7 @@ fn regeneration_is_deterministic_and_preserves_unselected_targets() {
     );
 
     fs::write(
-        project
-            .path()
-            .join("icons/ios/keep-until-ios-regenerates"),
+        project.path().join("icons/ios/keep-until-ios-regenerates"),
         "preserved",
     )
     .expect("sentinel");
@@ -243,8 +238,8 @@ fn regeneration_is_deterministic_and_preserves_unselected_targets() {
             .is_file()
     );
 
-    let current_web = fs::read(project.path().join("icons/web/favicon-32x32.png"))
-        .expect("current web icon");
+    let current_web =
+        fs::read(project.path().join("icons/web/favicon-32x32.png")).expect("current web icon");
     let current_manifest =
         fs::read(project.path().join("icons/manifest.json")).expect("current manifest");
     fs::write(project.path().join("assets/icon.svg"), "not svg").expect("invalid svg");
@@ -259,8 +254,7 @@ fn regeneration_is_deterministic_and_preserves_unselected_targets() {
     )
     .expect_err("invalid render");
     assert_eq!(
-        fs::read(project.path().join("icons/web/favicon-32x32.png"))
-            .expect("preserved web icon"),
+        fs::read(project.path().join("icons/web/favicon-32x32.png")).expect("preserved web icon"),
         current_web
     );
     assert_eq!(
@@ -278,12 +272,7 @@ fn generates_every_rounded_value() {
                 .with_targets([IconTarget::Web]),
         )
         .expect("rounded icons");
-        assert!(
-            project
-                .path()
-                .join("icons/web/favicon-32x32.png")
-                .is_file()
-        );
+        assert!(project.path().join("icons/web/favicon-32x32.png").is_file());
     }
 }
 
@@ -306,8 +295,7 @@ fn draws_the_macos_surface_on_the_apple_icon_grid() {
     )
     .expect("desktop icons");
 
-    let first_icns =
-        fs::read(project.path().join("icons/desktop/icon.icns")).expect("first icns");
+    let first_icns = fs::read(project.path().join("icons/desktop/icon.icns")).expect("first icns");
     let icns = IconFamily::read(first_icns.as_slice()).expect("valid icns");
     let macos = icns
         .get_icon_with_type(IconType::RGBA32_512x512)
@@ -398,12 +386,7 @@ fn accepts_svg_doctype_without_resolving_external_entities() {
         .with_targets([IconTarget::Web]),
     )
     .expect("doctype icon");
-    assert!(
-        project
-            .path()
-            .join("icons/web/favicon-32x32.png")
-            .is_file()
-    );
+    assert!(project.path().join("icons/web/favicon-32x32.png").is_file());
 
     fs::write(
         project.path().join("assets/icon.svg"),

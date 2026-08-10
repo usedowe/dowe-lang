@@ -90,6 +90,16 @@ fn render_swift_chip(
     chip_style.border = None;
     chip_style.border_color = None;
     append_swift_modifiers(output, indent, &swift_modifiers_for_style(&chip_style));
+    if props.style.element.on_click.is_some() {
+        append_swift_modifiers(
+            output,
+            indent,
+            &[format!(
+                ".onTapGesture(perform: {})",
+                swift_component_action(props.style.element.on_click.as_deref(), None, context)
+            )],
+        );
+    }
 }
 
 fn render_swift_skeleton(

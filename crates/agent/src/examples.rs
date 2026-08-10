@@ -177,5 +177,61 @@ fn example_records() -> &'static [ExampleRecord] {
                 "/../../skill-data/examples/fullstack/server/endpoints.dowe"
             )),
         },
+        ExampleRecord {
+            id: "reference-layout",
+            title: "Reference-driven responsive shell",
+            description: "A Scaffold-owned AppBar, static reused navigation, responsive controls, and Drawer overlay.",
+            source_path: "skill-data/examples/reference-ui/views/layouts/reference-layout.dowe",
+            skill: "views",
+            tags: &[
+                "appbar",
+                "drawer",
+                "layout",
+                "reference-ui",
+                "responsive",
+                "scaffold",
+            ],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../skill-data/examples/reference-ui/views/layouts/reference-layout.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "reference-collections",
+            title: "Reference collections and backend states",
+            description: "Immutable and backend-driven collections rendered with each plus loading, empty, and error states.",
+            source_path: "skill-data/examples/reference-ui/views/pages/reference-page.dowe",
+            skill: "views",
+            tags: &[
+                "const",
+                "each",
+                "reference-ui",
+                "request",
+                "signal",
+                "states",
+            ],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../skill-data/examples/reference-ui/views/pages/reference-page.dowe"
+            )),
+        },
+        ExampleRecord {
+            id: "static-navigation-component",
+            title: "Reusable static navigation",
+            description: "A caller-independent NavMenu extracted for reuse in desktop and Drawer locations.",
+            source_path: "skill-data/examples/reference-ui/views/components/site-navigation.dowe",
+            skill: "views",
+            tags: &[
+                "component",
+                "navigation",
+                "navmenu",
+                "reference-ui",
+                "static",
+            ],
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../skill-data/examples/reference-ui/views/components/site-navigation.dowe"
+            )),
+        },
     ]
 }

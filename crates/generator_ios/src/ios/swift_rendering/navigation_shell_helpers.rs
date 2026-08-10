@@ -13,6 +13,65 @@ fn render_swift_scaffold(
     default_family: FontFamily,
     context: &SwiftReactiveContext,
 ) {
+    let docking_app_bar = app_bar
+        .iter()
+        .any(|node| matches!(node, ViewNode::AppBar { props, .. } if props.dock_on_scroll));
+    if docking_app_bar {
+        let pad = " ".repeat(indent);
+        output.push_str(&format!("{pad}DoweDockingScaffold {{\n"));
+        render_swift_scaffold_content(
+            props,
+            app_bar,
+            start,
+            main,
+            end,
+            bottom_bar,
+            overlays,
+            indent + 4,
+            output,
+            flow,
+            inherited_font,
+            default_family,
+            context,
+            true,
+        );
+        output.push_str(&format!("{pad}}}\n"));
+    } else {
+        render_swift_scaffold_content(
+            props,
+            app_bar,
+            start,
+            main,
+            end,
+            bottom_bar,
+            overlays,
+            indent,
+            output,
+            flow,
+            inherited_font,
+            default_family,
+            context,
+            false,
+        );
+    }
+}
+
+fn render_swift_scaffold_content(
+    props: &ScaffoldProps,
+    app_bar: &[ViewNode],
+    start: &[ViewNode],
+    main: &[ViewNode],
+    end: &[ViewNode],
+    bottom_bar: &[ViewNode],
+    overlays: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    flow: NativeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+    docking_app_bar: bool,
+) {
     let pad = " ".repeat(indent);
     let current_font = props.style.font.as_ref().or(inherited_font);
     let persistent_app_bar = app_bar.iter().any(|node| {
@@ -106,10 +165,20 @@ fn render_swift_scaffold(
             "{pad}    .frame(maxWidth: .infinity, alignment: .topLeading)\n"
         ));
     } else {
-        output.push_str(&format!("{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"));
+        output.push_str(&format!(
+            "{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"
+        ));
     }
     if persistent_app_bar {
-        output.push_str(&format!("{pad}    }}\n{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"));
+        if docking_app_bar {
+            output.push_str(&format!(
+                "{pad}    .background(DoweDockingScrollObserver())\n"
+            ));
+        }
+        output.push_str(&format!("{pad}    }}\n"));
+        output.push_str(&format!(
+            "{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"
+        ));
     }
     for child in bottom_bar {
         render_swift_node_in_flow(
@@ -224,7 +293,10 @@ fn render_swift_sidebar(
         modifiers.push(".clipped()".to_string());
     }
     modifiers.push(format!(".background({})", variant_container(&props.style)));
-    modifiers.push(format!(".foregroundStyle({})", variant_content(&props.style)));
+    modifiers.push(format!(
+        ".foregroundStyle({})",
+        variant_content(&props.style)
+    ));
     append_swift_modifiers(output, indent, &modifiers);
 }
 
@@ -254,10 +326,11 @@ fn render_swift_side_nav(
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     let wide = swift_side_nav_wide(props, context);
+    let memory_key = side_nav_memory_key(props, items);
     output.push_str(&format!(
         "{pad}VStack(alignment: .leading, spacing: CGFloat(2)) {{\n"
     ));
-    for item in items {
+    for (index, item) in items.iter().enumerate() {
         render_swift_side_nav_item(
             item,
             indent + 4,
@@ -267,6 +340,7 @@ fn render_swift_side_nav(
             current_font,
             default_family,
             context,
+            &format!("{memory_key}:{index}"),
         );
     }
     output.push_str(&format!("{pad}}}\n"));
@@ -355,30 +429,78 @@ fn render_swift_side_nav_data(
 ) {
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
-    let reactive_text = |path: &str, fallback: &str| format!("state.text(\"{}\", fallback: \"{fallback}\")", escape_swift(&context.signal_path(path)));
-    let variant = props.style.reactive.variant.as_ref().map(|path| reactive_text(path, "ghost"));
-    let scheme = props.style.reactive.scheme.as_ref().map(|path| reactive_text(path, "muted"));
-    let size = props.style.reactive.size.as_ref().map(|path| reactive_text(path, "md"));
-    let wide = swift_side_nav_wide(props, context);
-    let (padding_horizontal, padding_vertical, gap, label_size, description_size) = if let Some(size) = size.as_ref() {
-        (
-            format!("doweSideNavMetric({size}, small: 8, medium: 12, large: 16)"),
-            format!("doweSideNavMetric({size}, small: 6, medium: 8, large: 12)"),
-            format!("doweSideNavMetric({size}, small: 6, medium: 8, large: 12)"),
-            format!("doweSideNavMetric({size}, small: 12, medium: 14, large: 16)"),
-            format!("doweSideNavMetric({size}, small: 10, medium: 12, large: 14)"),
+    let reactive_text = |path: &str, fallback: &str| {
+        format!(
+            "state.text(\"{}\", fallback: \"{fallback}\")",
+            escape_swift(&context.signal_path(path))
         )
-    } else {
-        let values = swift_side_nav_metrics(props.size);
-        (values.0.to_string(), values.1.to_string(), values.2.to_string(), values.3.to_string(), values.4.to_string())
     };
-    let container = match (&variant, &scheme) { (None, None) => variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
-    let content = match (&variant, &scheme) { (None, None) => variant_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
+    let variant = props
+        .style
+        .reactive
+        .variant
+        .as_ref()
+        .map(|path| reactive_text(path, "ghost"));
+    let scheme = props
+        .style
+        .reactive
+        .scheme
+        .as_ref()
+        .map(|path| reactive_text(path, "muted"));
+    let size = props
+        .style
+        .reactive
+        .size
+        .as_ref()
+        .map(|path| reactive_text(path, "md"));
+    let wide = swift_side_nav_wide(props, context);
+    let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
+        if let Some(size) = size.as_ref() {
+            (
+                format!("doweSideNavMetric({size}, small: 8, medium: 12, large: 16)"),
+                format!("doweSideNavMetric({size}, small: 6, medium: 8, large: 12)"),
+                format!("doweSideNavMetric({size}, small: 6, medium: 8, large: 12)"),
+                format!("doweSideNavMetric({size}, small: 12, medium: 14, large: 16)"),
+                format!("doweSideNavMetric({size}, small: 10, medium: 12, large: 14)"),
+            )
+        } else {
+            let values = swift_side_nav_metrics(props.size);
+            (
+                values.0.to_string(),
+                values.1.to_string(),
+                values.2.to_string(),
+                values.3.to_string(),
+                values.4.to_string(),
+            )
+        };
+    let container = match (&variant, &scheme) {
+        (None, None) => variant_container(&props.style).to_string(),
+        _ => format!(
+            "doweButtonContainer({}, {})",
+            variant.as_deref().unwrap_or("\"ghost\""),
+            scheme.as_deref().unwrap_or("\"muted\"")
+        ),
+    };
+    let content = match (&variant, &scheme) {
+        (None, None) => variant_content(&props.style).to_string(),
+        _ => format!(
+            "doweButtonContent({}, {})",
+            variant.as_deref().unwrap_or("\"ghost\""),
+            scheme.as_deref().unwrap_or("\"muted\"")
+        ),
+    };
     let active_content = content.clone();
-    let border = if let Some(variant) = variant.as_ref() { format!("{variant} == \"outlined\" ? Optional({content}) : nil") } else if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined { format!("Optional({content})") } else { "nil".to_string() };
+    let border = if let Some(variant) = variant.as_ref() {
+        format!("{variant} == \"outlined\" ? Optional({content}) : nil")
+    } else if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined {
+        format!("Optional({content})")
+    } else {
+        "nil".to_string()
+    };
     output.push_str(&format!(
-        "{pad}DoweSideNav(items: {}, activePath: activePath, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), labelFont: {}, descriptionFont: {}, backgroundColor: {}, contentColor: {}, activeContentColor: {}, borderColor: {border}, navigate: navigate)\n",
+        "{pad}DoweSideNav(items: {}, stateKey: \"{}\", activePath: activePath, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), labelFont: {}, descriptionFont: {}, backgroundColor: {}, contentColor: {}, activeContentColor: {}, borderColor: {border}, navigate: navigate)\n",
         swift_side_nav_entries(items, indent),
+        escape_swift(&side_nav_memory_key(props, items)),
         wide,
         swift_font_value(
             current_font,
@@ -489,11 +611,7 @@ fn swift_side_nav_entries_with_prefix(
     output
 }
 
-fn swift_side_nav_child_entries(
-    items: &[SideNavItemProps],
-    indent: usize,
-    prefix: &str,
-) -> String {
+fn swift_side_nav_child_entries(items: &[SideNavItemProps], indent: usize, prefix: &str) -> String {
     if items.is_empty() {
         return "[]".to_string();
     }
@@ -511,18 +629,12 @@ fn swift_side_nav_child_entries(
     output
 }
 
-fn swift_side_nav_entry(
-    item: &SideNavItem,
-    indent: usize,
-    id: &str,
-) -> String {
+fn swift_side_nav_entry(item: &SideNavItem, indent: usize, id: &str) -> String {
     match item {
         SideNavItem::Header(props) => {
             swift_side_nav_entry_props("header", props, false, false, "", id)
         }
-        SideNavItem::Item(props) => {
-            swift_side_nav_entry_props("item", props, false, false, "", id)
-        }
+        SideNavItem::Item(props) => swift_side_nav_entry_props("item", props, false, false, "", id),
         SideNavItem::Divider => format!(
             "DoweSideNavEntry(id: \"{}\", kind: \"divider\", label: \"\", description: nil, status: nil, icon: nil, operation: nil, path: nil, fragment: nil, open: false, bordered: false, children: [])",
             escape_swift(id)
@@ -554,8 +666,16 @@ fn swift_side_nav_entry_props(
         escape_swift(id),
         kind,
         swift_localized_literal(&props.label, props.i18n.as_deref()),
-        props.description.as_deref().map(|value| swift_localized_literal(value, props.description_i18n.as_deref())).unwrap_or_else(|| "nil".to_string()),
-        props.status.as_deref().map(|value| swift_localized_literal(value, props.status_i18n.as_deref())).unwrap_or_else(|| "nil".to_string()),
+        props
+            .description
+            .as_deref()
+            .map(|value| swift_localized_literal(value, props.description_i18n.as_deref()))
+            .unwrap_or_else(|| "nil".to_string()),
+        props
+            .status
+            .as_deref()
+            .map(|value| swift_localized_literal(value, props.status_i18n.as_deref()))
+            .unwrap_or_else(|| "nil".to_string()),
         swift_side_nav_data_icon(props.icon.as_ref()),
         swift_side_nav_optional_string(operation),
         swift_side_nav_optional_string(path),
@@ -655,6 +775,7 @@ fn render_swift_side_nav_item(
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
     context: &SwiftReactiveContext,
+    memory_key: &str,
 ) {
     let pad = " ".repeat(indent);
     match item {
@@ -693,7 +814,10 @@ fn render_swift_side_nav_item(
             bordered,
             items,
         } => {
-            output.push_str(&format!("{pad}DoweSideNavSubmenu(open: {open}, bordered: {bordered}, wide: {wide}) {{\n"));
+            output.push_str(&format!(
+                "{pad}DoweSideNavSubmenu(stateKey: \"{}\", open: {open}, bordered: {bordered}, wide: {wide}) {{\n",
+                escape_swift(memory_key)
+            ));
             for item in items {
                 render_swift_side_nav_row(
                     item,
@@ -796,9 +920,7 @@ fn render_swift_side_nav_row(
         "{pad}    }}\n{pad}    .frame(maxWidth: {wide} ? .infinity : nil, alignment: .leading)\n"
     ));
     if props.status.is_some() || submenu_expanded.is_some() {
-        output.push_str(&format!(
-            "{pad}    HStack(spacing: CGFloat({gap})) {{\n"
-        ));
+        output.push_str(&format!("{pad}    HStack(spacing: CGFloat({gap})) {{\n"));
         if let Some(status) = props.status.as_deref() {
             output.push_str(&format!(
                 "{pad}        DoweSideNavStatus(text: {}, font: {})\n",
@@ -893,19 +1015,36 @@ fn render_swift_bar(
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     let content_width = if props.boxed {
-        format!("CGFloat({})", options.boxed_width)
+        if options.boxed_regions {
+            ".infinity".to_string()
+        } else {
+            format!("CGFloat({})", options.boxed_width)
+        }
     } else {
         ".infinity".to_string()
     };
+    let boxed_regions = props.boxed && options.boxed_regions;
+    let content_indent = if boxed_regions { indent + 4 } else { indent };
+    let content_pad = " ".repeat(content_indent);
     output.push_str(&format!("{pad}VStack(spacing: CGFloat(0)) {{\n"));
-    render_swift_bar_edge_region(top, indent + 4, output, current_font, default_family, context);
-    output.push_str(&format!("{pad}    ZStack {{\n"));
+    if boxed_regions {
+        output.push_str(&format!("{pad}    VStack(spacing: CGFloat(0)) {{\n"));
+    }
+    render_swift_bar_edge_region(
+        top,
+        content_indent + 4,
+        output,
+        current_font,
+        default_family,
+        context,
+    );
+    output.push_str(&format!("{content_pad}    ZStack {{\n"));
     output.push_str(&format!(
-        "{pad}    HStack(alignment: .center, spacing: 0) {{\n"
+        "{content_pad}    HStack(alignment: .center, spacing: 0) {{\n"
     ));
     render_swift_bar_region(
         start,
-        indent + 8,
+        content_indent + 8,
         output,
         ".leading",
         false,
@@ -915,11 +1054,13 @@ fn render_swift_bar(
         context,
     );
     if center.is_empty() && !start.is_empty() && !end.is_empty() {
-        output.push_str(&format!("{pad}        Spacer(minLength: CGFloat(0))\n"));
+        output.push_str(&format!(
+            "{content_pad}        Spacer(minLength: CGFloat(0))\n"
+        ));
     }
     render_swift_bar_region(
         center,
-        indent + 8,
+        content_indent + 8,
         output,
         ".center",
         true,
@@ -930,7 +1071,7 @@ fn render_swift_bar(
     );
     render_swift_bar_region(
         end,
-        indent + 8,
+        content_indent + 8,
         output,
         ".trailing",
         false,
@@ -939,19 +1080,48 @@ fn render_swift_bar(
         default_family,
         context,
     );
-    output.push_str(&format!("{pad}    }}\n"));
+    output.push_str(&format!("{content_pad}    }}\n"));
     output.push_str(&format!(
-        "{pad}    .frame(maxWidth: {content_width}, alignment: .center)\n"
+        "{content_pad}    .frame(maxWidth: {content_width}, alignment: .center)\n"
     ));
-    output.push_str(&format!("{pad}    }}\n"));
-    render_swift_bar_edge_region(bottom, indent + 4, output, current_font, default_family, context);
+    output.push_str(&format!("{content_pad}    }}\n"));
+    render_swift_bar_edge_region(
+        bottom,
+        content_indent + 4,
+        output,
+        current_font,
+        default_family,
+        context,
+    );
+    if boxed_regions {
+        output.push_str(&format!("{pad}    }}\n"));
+        output.push_str(&format!(
+            "{pad}    .frame(maxWidth: CGFloat({}), alignment: .center)\n",
+            options.boxed_width
+        ));
+    }
     output.push_str(&format!("{pad}}}\n"));
     append_swift_modifiers(output, indent, &swift_modifiers_for_bar(props, flow));
 }
 
-fn render_swift_bar_edge_region(children: &[ViewNode], indent: usize, output: &mut String, inherited_font: Option<&ResponsiveValue<FontFamily>>, default_family: FontFamily, context: &SwiftReactiveContext) {
+fn render_swift_bar_edge_region(
+    children: &[ViewNode],
+    indent: usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
     for child in children {
-        render_swift_node_in_flow(child, indent, output, NativeFlow::Block, inherited_font, default_family, context);
+        render_swift_node_in_flow(
+            child,
+            indent,
+            output,
+            NativeFlow::Block,
+            inherited_font,
+            default_family,
+            context,
+        );
     }
 }
 
@@ -1051,5 +1221,10 @@ fn render_swift_bar_region(
         ));
     } else {
         output.push_str(&format!("{pad}    .frame(alignment: {alignment})\n"));
+        output.push_str(&format!("{pad}    .lineLimit(1)\n"));
+        output.push_str(&format!("{pad}    .layoutPriority(1)\n"));
+        output.push_str(&format!(
+            "{pad}    .fixedSize(horizontal: true, vertical: false)\n"
+        ));
     }
 }

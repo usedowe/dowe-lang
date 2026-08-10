@@ -84,6 +84,7 @@ fn render_dev_android_variant_label(
         dev_variant_container(props)
     ));
     apply_dev_android_style(&props.style, &view, false, output);
+    apply_dev_android_click(&props.style, &view, context, output);
     output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
 }
 

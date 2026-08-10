@@ -243,6 +243,170 @@ impl ViewAnimation {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewRotation(pub i16);
+
+impl ViewRotation {
+    pub fn class_suffix(self) -> String {
+        signed_class_suffix(self.0)
+    }
+
+    pub fn degrees(self) -> i16 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewScale(pub u16);
+
+impl ViewScale {
+    pub fn class_suffix(self) -> String {
+        decimal_hundredths(self.0).replace('.', "_")
+    }
+
+    pub fn factor(self) -> String {
+        decimal_hundredths(self.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewTranslation(pub i16);
+
+impl ViewTranslation {
+    pub fn class_suffix(self) -> String {
+        if self.0 < 0 {
+            format!("neg-{}", half_step_value(self.0.unsigned_abs()))
+        } else {
+            half_step_value(self.0 as u16)
+        }
+    }
+
+    pub fn native_units(self) -> i16 {
+        self.0 * 2
+    }
+
+    pub fn css_rem(self) -> String {
+        decimal_hundredths_signed(i32::from(self.0) * 25)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewTransition {
+    None,
+    Quick,
+    Smooth,
+    Spring,
+}
+
+impl ViewTransition {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "none" => Some(Self::None),
+            "quick" => Some(Self::Quick),
+            "smooth" => Some(Self::Smooth),
+            "spring" => Some(Self::Spring),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Quick => "quick",
+            Self::Smooth => "smooth",
+            Self::Spring => "spring",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::None, Self::Quick, Self::Smooth, Self::Spring]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewGesture {
+    None,
+    Lift,
+    Press,
+    Grow,
+    Tilt,
+}
+
+impl ViewGesture {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "none" => Some(Self::None),
+            "lift" => Some(Self::Lift),
+            "press" => Some(Self::Press),
+            "grow" => Some(Self::Grow),
+            "tilt" => Some(Self::Tilt),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Lift => "lift",
+            Self::Press => "press",
+            Self::Grow => "grow",
+            Self::Tilt => "tilt",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::None,
+            Self::Lift,
+            Self::Press,
+            Self::Grow,
+            Self::Tilt,
+        ]
+    }
+}
+
+fn signed_class_suffix(value: i16) -> String {
+    if value < 0 {
+        format!("neg-{}", value.unsigned_abs())
+    } else {
+        value.to_string()
+    }
+}
+
+fn half_step_value(value: u16) -> String {
+    if value % 2 == 0 {
+        (value / 2).to_string()
+    } else {
+        format!("{}.5", value / 2)
+    }
+}
+
+fn decimal_hundredths(value: u16) -> String {
+    let whole = value / 100;
+    let fraction = value % 100;
+    if fraction == 0 {
+        whole.to_string()
+    } else if fraction % 10 == 0 {
+        format!("{whole}.{}", fraction / 10)
+    } else {
+        format!("{whole}.{fraction:02}")
+    }
+}
+
+fn decimal_hundredths_signed(value: i32) -> String {
+    let sign = if value < 0 { "-" } else { "" };
+    let value = value.unsigned_abs();
+    let whole = value / 100;
+    let fraction = value % 100;
+    if fraction == 0 {
+        format!("{sign}{whole}")
+    } else if fraction % 10 == 0 {
+        format!("{sign}{whole}.{}", fraction / 10)
+    } else {
+        format!("{sign}{whole}.{fraction:02}")
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GapSize {
     Scale(ScaleValue),
     Px(u16),
@@ -465,6 +629,35 @@ pub enum TextSize {
 pub const INPUT_MIN_HEIGHT: ScaleValue = ScaleValue::from_half_steps(20);
 pub const INPUT_HORIZONTAL_PADDING: ScaleValue = ScaleValue::from_half_steps(6);
 pub const INPUT_TEXT_SIZE: TextSize = TextSize::Md;
+pub const FORM_CONTROL_FLOATING_HEIGHT_INCREMENT: ScaleValue = ScaleValue::from_half_steps(4);
+
+pub fn form_control_min_height(size: ButtonSize, label_floating: bool) -> ScaleValue {
+    let base = match size {
+        ButtonSize::Xs => ScaleValue::from_half_steps(12),
+        ButtonSize::Sm => ScaleValue::from_half_steps(16),
+        ButtonSize::Md => INPUT_MIN_HEIGHT,
+        ButtonSize::Lg => ScaleValue::from_half_steps(24),
+        ButtonSize::Xl => ScaleValue::from_half_steps(28),
+    };
+    ScaleValue::from_half_steps(
+        base.0
+            + if label_floating {
+                FORM_CONTROL_FLOATING_HEIGHT_INCREMENT.0
+            } else {
+                0
+            },
+    )
+}
+
+pub fn form_control_text_size(size: ButtonSize) -> TextSize {
+    match size {
+        ButtonSize::Xs => TextSize::Xs,
+        ButtonSize::Sm => TextSize::Sm,
+        ButtonSize::Md => TextSize::Md,
+        ButtonSize::Lg => TextSize::Lg,
+        ButtonSize::Xl => TextSize::Xl,
+    }
+}
 
 impl TextSize {
     pub fn from_name(value: &str) -> Option<Self> {

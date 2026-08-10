@@ -47,13 +47,19 @@ fn generates_compose_and_dev_layout_bars() {
         .content
         .find("Text(\"Directory\"")
         .expect("Footer top");
-    let footer_start = views.content[..directory]
-        .rfind("Column(modifier =")
-        .expect("Footer column");
-    assert!(
-        views.content[footer_start..directory]
-            .contains("CompositionLocalProvider(LocalContentColor provides DoweDesign.onSurface)")
-    );
+    let footer_inner = views.content[..directory]
+        .rfind("Column(modifier = Modifier.widthIn(max = 1536.dp).fillMaxWidth())")
+        .expect("Footer boxed regions");
+    let footer_provider = views.content[..footer_inner]
+        .rfind("CompositionLocalProvider(LocalContentColor provides DoweDesign.onSurface)")
+        .expect("Footer content color");
+    let copyright = views.content[directory..]
+        .find("Text(\"Copyright\"")
+        .map(|index| directory + index)
+        .expect("Footer bottom");
+    assert!(footer_provider < footer_inner);
+    assert!(footer_inner < directory);
+    assert!(directory < copyright);
     assert!(views.content.contains("itemSize = 56.dp"));
     assert!(views.content.contains("featured = true"));
     assert!(
@@ -73,7 +79,13 @@ fn generates_compose_and_dev_layout_bars() {
         dev.content
             .matches("doweBoxedContainer(true, 1536)")
             .count(),
-        3
+        2
+    );
+    assert_eq!(
+        dev.content
+            .matches("doweBoxedContainer(false, 1536)")
+            .count(),
+        1
     );
     assert!(dev.content.contains("dowePinAppBar("));
     assert!(
@@ -167,6 +179,57 @@ fn generates_compose_and_dev_layout_bars() {
     assert!(dev.content.contains("doweText(\"Footer\""));
     assert!(dev.content.contains("doweText(\"Directory\""));
     assert!(dev.content.contains("doweText(\"Copyright\""));
+    let dev_directory = dev
+        .content
+        .find("doweText(\"Directory\"")
+        .expect("Footer top");
+    let dev_footer_inner = dev.content[..dev_directory]
+        .rfind("doweBoxedContainer(false, 1536)")
+        .expect("Footer boxed regions");
+    let dev_copyright = dev.content[dev_directory..]
+        .find("doweText(\"Copyright\"")
+        .map(|index| dev_directory + index)
+        .expect("Footer bottom");
+    assert!(dev_footer_inner < dev_directory);
+    assert!(dev_directory < dev_copyright);
+}
+
+#[test]
+fn generates_scroll_docking_appbar_for_compose_and_dev_launcher() {
+    let output = generate_android(
+        &[docking_appbar_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+
+    assert!(views.content.contains("doweDockingAppBarModifier("));
+    assert!(views.content.contains("scrollState.value > threshold"));
+    assert!(views.content.contains("100.dp.roundToPx()"));
+    assert!(
+        views
+            .content
+            .contains("CubicBezierEasing(0.4f, 0f, 0.2f, 1f)")
+    );
+    assert!(views.content.contains("durationMillis = 300"));
+    assert!(views.content.contains("16.dp * (1f - progress)"));
+    assert!(views.content.contains("8.dp * (1f - progress)"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("dowePinAppBar("));
+    assert!(dev.content.contains(", true,"));
+    assert!(dev.content.contains("scrollY > doweDp(100)"));
+    assert!(dev.content.contains("ValueAnimator.areAnimatorsEnabled()"));
+    assert!(dev.content.contains("setDuration(300)"));
+    assert!(
+        dev.content
+            .contains("new PathInterpolator(0.4f, 0f, 0.2f, 1f)")
+    );
 }
 
 #[test]
@@ -209,8 +272,11 @@ fn generates_compose_and_dev_side_nav() {
     assert!(
         views
             .content
-            .contains("DoweSideNavSubmenu(open = true, bordered = true")
+            .contains("DoweSideNavSubmenu(stateKey = \"structure:")
     );
+    assert!(views.content.contains("private val doweSideNavExpandedMemory = mutableStateMapOf<String, Boolean>()"));
+    assert!(views.content.contains("doweSideNavExpandedMemory.getOrPut(stateKey) { open }"));
+    assert!(views.content.contains("doweSideNavExpandedMemory[stateKey] = !expanded"));
     assert!(views.content.contains(".padding(start = 16.dp)"));
     assert!(
         views
@@ -250,7 +316,7 @@ fn generates_compose_and_dev_side_nav() {
     );
     assert!(views.content.contains("state.bool(\"wideEnabled\", false)"));
     assert!(views.content.contains(
-        "DoweSideNavSubmenu(open = true, bordered = true, wide = state.bool(\"wideEnabled\", false)"
+        "open = true, bordered = true, wide = state.bool(\"wideEnabled\", false)"
     ));
     assert!(
         views
@@ -261,6 +327,10 @@ fn generates_compose_and_dev_side_nav() {
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("setVisibility(View.VISIBLE)"));
     assert!(dev.content.contains("doweToggleSideNavSubmenu"));
+    assert!(dev.content.contains("private final HashMap<String, Boolean> doweSideNavMemory"));
+    assert!(dev.content.contains("doweSideNavExpanded("));
+    assert!(dev.content.contains("doweSideNavMemory.put(key, false)"));
+    assert!(dev.content.contains("doweSideNavMemory.put(key, true)"));
     assert!(dev.content.contains("doweSideNavArrow"));
     assert!(dev.content.contains("doweSideNavSubmenuContent"));
     assert!(

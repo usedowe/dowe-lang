@@ -160,19 +160,19 @@ private fun DoweSideNavStatus(text: String, descriptionSize: Float, fontFamily: 
 private data class DoweSideNavEntry(val id: String, val kind: String, val label: String, val description: String?, val status: String?, val operation: String?, val path: String?, val fragment: String?, val open: Boolean = false, val bordered: Boolean = true, val children: List<DoweSideNavEntry> = emptyList())
 
 @Composable
-private fun DoweSideNav(items: List<DoweSideNavEntry>, modifier: Modifier = Modifier, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
+private fun DoweSideNav(items: List<DoweSideNavEntry>, stateKey: String, modifier: Modifier = Modifier, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
     Column(modifier = modifier.then(if (wide) Modifier.fillMaxWidth() else Modifier), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         items.forEach { item ->
-            DoweSideNavEntryView(item = item, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, activeContentColor = activeContentColor, borderColor = borderColor, navigate = navigate)
+            DoweSideNavEntryView(item = item, stateKey = "$stateKey:${item.id}", activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, activeContentColor = activeContentColor, borderColor = borderColor, navigate = navigate)
         }
     }
 }
 
 @Composable
-private fun DoweSideNavEntryView(item: DoweSideNavEntry, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
+private fun DoweSideNavEntryView(item: DoweSideNavEntry, stateKey: String, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
     when (item.kind) {
         "divider" -> Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(DoweDesign.muted))
-        "submenu" -> DoweSideNavSubmenu(open = item.open, bordered = item.bordered, wide = wide, trigger = { expanded, toggle ->
+        "submenu" -> DoweSideNavSubmenu(stateKey = stateKey, open = item.open, bordered = item.bordered, wide = wide, trigger = { expanded, toggle ->
             DoweSideNavEntryRow(item = item, header = true, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = toggle, submenuExpanded = expanded)
         }) {
             item.children.forEach { child ->
@@ -223,11 +223,13 @@ private fun DoweSideNavArrow(expanded: Boolean) {
     DoweSvg(viewBox = doweSideNavArrowViewBox, modifier = Modifier.width(16.dp).height(16.dp).graphicsLayer { rotationZ = rotation }, color = LocalContentColor.current, paths = doweSideNavArrowPaths)
 }
 
+private val doweSideNavExpandedMemory = mutableStateMapOf<String, Boolean>()
+
 @Composable
-private fun DoweSideNavSubmenu(open: Boolean, bordered: Boolean, wide: Boolean, trigger: @Composable ((Boolean, () -> Unit) -> Unit), content: @Composable () -> Unit) {
-    var expanded by remember { mutableStateOf(open) }
+private fun DoweSideNavSubmenu(stateKey: String, open: Boolean, bordered: Boolean, wide: Boolean, trigger: @Composable ((Boolean, () -> Unit) -> Unit), content: @Composable () -> Unit) {
+    val expanded = doweSideNavExpandedMemory.getOrPut(stateKey) { open }
     Column(modifier = Modifier.then(if (wide) Modifier.fillMaxWidth() else Modifier)) {
-        trigger(expanded) { expanded = !expanded }
+        trigger(expanded) { doweSideNavExpandedMemory[stateKey] = !expanded }
         AnimatedVisibility(
             visible = expanded,
             enter = fadeIn(animationSpec = tween(160)) + expandVertically(animationSpec = tween(180)),

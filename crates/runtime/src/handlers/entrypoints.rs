@@ -311,7 +311,7 @@ pub(crate) async fn server_response(
                             }
                         }
                         EndpointBehavior::StoreTransactionJson(transaction) => {
-                            match execute_store_transaction(&project.root, &transaction) {
+                            match execute_store_transaction(project, &transaction).await {
                                 Ok(value) => json_response(StatusCode::OK, value),
                                 Err(error) => store_error_response(error),
                             }

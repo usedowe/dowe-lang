@@ -598,7 +598,7 @@ page homePage
         "Join the journal to publish stories and maintain your own work."
       Input bind:registerForm.name label:"Full name" placeholder:"Ada Lovelace" labelFloating:true variant:"outlined" scheme:"primary" iconStart:"user" w:"full"
       Input bind:registerForm.email label:"Email" placeholder:"ada@example.com" labelFloating:true variant:"outlined" scheme:"primary" w:"full"
-      PasswordField bind:registerForm.password label:"Password" placeholder:"Create a password" labelFloating:true hideStrength:false variant:"outlined" scheme:"primary" w:"full"
+      Password bind:registerForm.password label:"Password" placeholder:"Create a password" labelFloating:true hideStrength:false variant:"outlined" scheme:"primary" w:"full"
     footer
       Flex justify:"end" gap:3 wrap:true
         Button onClick:closeRegisterModal variant:"ghost" scheme:"muted"
@@ -617,7 +617,7 @@ page homePage
       Text size:"sm" color:"muted"
         "Continue writing with your protected editorial session."
       Input bind:loginForm.email label:"Email" placeholder:"ada@example.com" labelFloating:true variant:"outlined" scheme:"primary" w:"full"
-      PasswordField bind:loginForm.password label:"Password" placeholder:"Your password" labelFloating:true hideStrength:true variant:"outlined" scheme:"primary" w:"full"
+      Password bind:loginForm.password label:"Password" placeholder:"Your password" labelFloating:true hideStrength:true variant:"outlined" scheme:"primary" w:"full"
     footer
       Flex justify:"end" gap:3 wrap:true
         Button onClick:closeLoginModal variant:"ghost" scheme:"muted"

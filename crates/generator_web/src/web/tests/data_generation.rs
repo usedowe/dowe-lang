@@ -202,13 +202,25 @@ fn emits_view_motion_markup_and_css() {
     let root = Path::new("/project");
     let page_tree = ViewNode::Box {
         props: StyleProps {
-            animation: Some(ViewAnimation::FadeIn),
+            extras: Some(Box::new(StyleExtras {
+                motion: ViewMotionStyle {
+                    animation: Some(ViewAnimation::FadeIn),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })),
             ..Default::default()
         },
         children: vec![ViewNode::Card {
             props: VariantProps {
                 style: StyleProps {
-                    animation: Some(ViewAnimation::SlideUp),
+                    extras: Some(Box::new(StyleExtras {
+                        motion: ViewMotionStyle {
+                            animation: Some(ViewAnimation::SlideUp),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -235,6 +247,14 @@ fn emits_view_motion_markup_and_css() {
             .contains(".animate-slide-up{animation:dowe-slide-up 220ms ease-out both;}")
     );
     assert!(css.contains("@keyframes dowe-fade-in"));
+    assert!(css.contains("scale(var(--dowe-scale)) scale(var(--dowe-gesture-scale))"));
+    assert!(!css.contains("calc(var(--dowe-scale) *"));
+    assert!(css.contains(
+        ":root{--dowe-rotate:0deg;--dowe-scale:1;--dowe-translate-x:0rem;--dowe-translate-y:0rem;--dowe-gesture-rotate:0deg;--dowe-gesture-scale:1;--dowe-gesture-x:0rem;--dowe-gesture-y:0rem;}"
+    ));
+    assert!(css.contains(
+        "@media (prefers-reduced-motion:no-preference){html.dowe-entrance-pending [class*=\"animate-\"]{animation-play-state:paused!important;}}"
+    ));
     assert!(css.contains("@media (prefers-reduced-motion:reduce)"));
 }
 
@@ -430,7 +450,7 @@ fn emits_show_visibility_markup_and_css() {
     let design_css = show_design_css();
     assert!(design_css.contains(".show-false:not([hidden]){display:none;}"));
     assert!(design_css.contains(
-        "@media (min-width:768px){.md\\:show-false:not([hidden]){display:none;}.md\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}}"
+        "@media (min-width:768px){.md\\:show-false:not([hidden]){display:none;}.md\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}"
     ));
     let router = super::router_js(&super::WebOutput {
         chunks: Vec::new(),
@@ -443,6 +463,27 @@ fn emits_show_visibility_markup_and_css() {
     assert!(router.contains(
         "if(!scoped&&button.closest(\"[data-dowe-each-row]\"))continue"
     ));
+}
+
+#[test]
+fn emits_design_responsive_css_in_ascending_breakpoint_blocks() {
+    let css = show_design_css();
+    let base_end = css.find("@keyframes dowe-scale-in").unwrap();
+    let sm = css.find("@media (min-width:640px)").unwrap();
+    let md = css.find("@media (min-width:768px)").unwrap();
+    let lg = css.find("@media (min-width:1024px)").unwrap();
+    let xl = css.find("@media (min-width:1280px)").unwrap();
+
+    assert!(base_end < sm && sm < md && md < lg && lg < xl);
+    assert_eq!(css.matches("@media (min-width:").count(), 4);
+    for width in [640, 768, 1024, 1280] {
+        assert_eq!(
+            css.matches(&format!("@media (min-width:{width}px)")).count(),
+            1
+        );
+    }
+    assert!(css.contains(".pie-chart-container.legend-left{flex-direction:row-reverse;}"));
+    assert!(css.contains(".command-kbd{display:flex;}"));
 }
 
 #[test]

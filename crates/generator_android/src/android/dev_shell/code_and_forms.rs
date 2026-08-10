@@ -1,5 +1,5 @@
 fn dev_activity_code_and_forms() -> &'static str {
-    r#"    private LinearLayout doweCode(String source, String language, String[] tokenTexts, int[] tokenColors, String copyLabel, String copiedLabel, int backgroundColor, int contentColor, Integer borderColor) {
+    r##"    private LinearLayout doweCode(String source, String language, String[] tokenTexts, int[] tokenColors, String copyLabel, String copiedLabel, int backgroundColor, int contentColor, Integer borderColor) {
         LinearLayout view = doweContainer(false);
         view.setBackground(borderColor == null ? doweBackground(backgroundColor, DOWE_RADIUS) : doweInputBackground(backgroundColor, borderColor, DOWE_RADIUS));
         view.setClipChildren(true);
@@ -52,7 +52,14 @@ fn dev_activity_code_and_forms() -> &'static str {
 
 __DOWE_ANDROID_DEV_FONT_SUPPORT__
     private TextView doweText(String value, int color, float size, int weight, float letterSpacing, float lineHeight, String font) {
-        TextView view = new TextView(this);
+        return doweConfigureText(new TextView(this), value, color, size, weight, letterSpacing, lineHeight, font);
+    }
+
+    private TextView doweRichTextView(String value, int color, float size, int weight, float letterSpacing, float lineHeight, String font) {
+        return doweConfigureText(new DoweRichTextView(this), value, color, size, weight, letterSpacing, lineHeight, font);
+    }
+
+    private <T extends TextView> T doweConfigureText(T view, String value, int color, float size, int weight, float letterSpacing, float lineHeight, String font) {
         view.setText(value);
         view.setTextColor(color);
         view.setTextSize(size);
@@ -64,6 +71,90 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         view.setLineSpacing(0f, lineHeight);
         view.setIncludeFontPadding(false);
         return view;
+    }
+
+    private static final class DoweRichTextView extends TextView {
+        DoweRichTextView(Context context) {
+            super(context);
+        }
+
+        @Override
+        protected void onMeasure(int widthSpec, int heightSpec) {
+            super.onMeasure(widthSpec, heightSpec);
+            if (MeasureSpec.getMode(widthSpec) == MeasureSpec.EXACTLY) {
+                return;
+            }
+            android.text.Layout layout = getLayout();
+            if (layout == null || layout.getLineCount() == 0) {
+                return;
+            }
+            float lineWidth = 0f;
+            for (int index = 0; index < layout.getLineCount(); index += 1) {
+                lineWidth = Math.max(lineWidth, layout.getLineWidth(index));
+            }
+            int resolvedWidth = Math.min(getMeasuredWidth(), Math.max(1, (int) Math.ceil(lineWidth) + getCompoundPaddingLeft() + getCompoundPaddingRight()));
+            if (resolvedWidth < getMeasuredWidth()) {
+                super.onMeasure(MeasureSpec.makeMeasureSpec(resolvedWidth, MeasureSpec.EXACTLY), heightSpec);
+            }
+        }
+    }
+
+    private void doweRichTextMark(TextView view, String style, String scheme) {
+        int accent = doweButtonFamily(scheme);
+        int onAccent = doweButtonOnFamily(scheme);
+        view.setGravity(Gravity.CENTER);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            view.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_SIMPLE);
+            view.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE);
+        }
+        view.setTextColor("mark".equals(style) || "slant".equals(style) ? onAccent : "under".equals(style) || "strike".equals(style) || "wave".equals(style) ? view.getCurrentTextColor() : accent);
+        view.setTypeface(Typeface.create(view.getTypeface(), "strike".equals(style) ? Typeface.NORMAL : Typeface.BOLD));
+        if ("mark".equals(style) || "neon".equals(style)) view.setText(view.getText().toString().toUpperCase(java.util.Locale.ROOT));
+        if ("mark".equals(style)) {
+            view.setLetterSpacing(0.025f);
+            view.setBackground(doweBackground(accent, 2f));
+            view.setPadding(doweDp(8), doweDp(2), doweDp(8), doweDp(2));
+        } else if ("grad".equals(style)) {
+            view.setTypeface(Typeface.create(view.getTypeface(), Typeface.BOLD_ITALIC));
+            view.post(() -> {
+                view.getPaint().setShader(new android.graphics.LinearGradient(0f, 0f, Math.max(1f, view.getWidth()), 0f, accent, Color.WHITE, android.graphics.Shader.TileMode.CLAMP));
+                view.invalidate();
+            });
+        } else if ("pill".equals(style)) {
+            view.setBackground(doweStyledBackground(Color.TRANSPARENT, accent, 2, 9999f));
+            view.setPadding(doweDp(10), doweDp(2), doweDp(10), doweDp(2));
+        } else if ("slant".equals(style)) {
+            view.setBackground(doweBackground(accent, 2f));
+            view.setPadding(doweDp(6), doweDp(1), doweDp(6), doweDp(1));
+            view.setRotation(-1f);
+        } else if ("glow".equals(style)) {
+            view.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            view.setShadowLayer(doweDp(15), 0f, 0f, accent);
+        } else if ("under".equals(style) || "wave".equals(style)) {
+            view.setPaintFlags(view.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+            view.setPadding(0, 0, 0, doweDp("wave".equals(style) ? 4 : 2));
+        } else if ("strike".equals(style)) {
+            view.setPaintFlags(view.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+        } else if ("box".equals(style)) {
+            view.setBackground(doweStyledBackground(Color.TRANSPARENT, accent, 2, DOWE_RADIUS));
+            view.setPadding(doweDp(12), doweDp(4), doweDp(12), doweDp(4));
+        } else if ("neon".equals(style)) {
+            view.setLetterSpacing(0.05f);
+            view.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            view.setShadowLayer(doweDp(20), 0f, 0f, accent);
+            ValueAnimator flicker = ValueAnimator.ofFloat(1f, 0.9f, 1f, 0.95f, 1f);
+            flicker.setDuration(2000L);
+            flicker.setRepeatCount(ValueAnimator.INFINITE);
+            flicker.addUpdateListener(value -> view.setAlpha((Float) value.getAnimatedValue()));
+            flicker.start();
+        } else if ("pop".equals(style)) {
+            view.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            view.setShadowLayer(0f, doweDp(3), doweDp(3), doweAlpha(accent, 0.6f));
+        } else if ("tag".equals(style)) {
+            view.setBackground(doweBackground(doweToastSoftFamily(scheme), DOWE_RADIUS));
+            view.setPadding(doweDp(12), doweDp(4), doweDp(12), doweDp(4));
+            view.setElevation(doweDp(2));
+        }
     }
 
     private HorizontalScrollView doweCountdown(String target, boolean showDays, boolean showHours, boolean showMinutes, boolean showSeconds, String size, String daysLabel, String hoursLabel, String minutesLabel, String secondsLabel, int backgroundColor, int contentColor, Integer borderColor, String font, Runnable onComplete) {
@@ -291,6 +382,184 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         content.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f).setDuration(160).start();
     }
 
+    private void doweBindColor(LinearLayout anchor, View swatch, TextView valueView, String[] selected, String bindPath, boolean showHex, boolean showRgb, boolean showCmyk, boolean showOklch, int contentColor, String font) {
+        anchor.setClickable(true);
+        anchor.setFocusable(true);
+        anchor.setContentDescription("Color " + selected[0]);
+        anchor.setOnClickListener(view -> doweColorPopup(anchor, swatch, valueView, selected, bindPath, showHex, showRgb, showCmyk, showOklch, contentColor, font));
+    }
+
+    private void doweColorPopup(LinearLayout anchor, View swatch, TextView valueView, String[] selected, String bindPath, boolean showHex, boolean showRgb, boolean showCmyk, boolean showOklch, int contentColor, String font) {
+        int popupWidth = Math.min(doweDp(320), getResources().getDisplayMetrics().widthPixels - doweDp(16));
+        LinearLayout content = doweContainer(false);
+        content.setPadding(doweDp(16), doweDp(16), doweDp(16), doweDp(16));
+        content.setBackground(doweInputBackground(DOWE_BACKGROUND, doweAlpha(DOWE_ON_BACKGROUND, 0.08f), DOWE_RADIUS));
+        int[] rgb = doweColorRgb(selected[0]);
+        float[] hsv = new float[3];
+        Color.RGBToHSV(rgb[0], rgb[1], rgb[2], hsv);
+        FrameLayout plane = new FrameLayout(this);
+        plane.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(140)));
+        View planeGradient = new View(this);
+        planeGradient.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        View planeShade = new View(this);
+        planeShade.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        planeShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{Color.TRANSPARENT, Color.BLACK}));
+        View planeCursor = new View(this);
+        planeCursor.setLayoutParams(new FrameLayout.LayoutParams(doweDp(16), doweDp(16)));
+        plane.addView(planeGradient);
+        plane.addView(planeShade);
+        plane.addView(planeCursor);
+        FrameLayout hue = new FrameLayout(this);
+        hue.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(20)));
+        View hueGradient = new View(this);
+        hueGradient.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(16), Gravity.CENTER_VERTICAL));
+        hueGradient.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN, Color.BLUE, Color.MAGENTA, Color.RED}));
+        View hueThumb = new View(this);
+        hueThumb.setLayoutParams(new FrameLayout.LayoutParams(doweDp(20), doweDp(20)));
+        hue.addView(hueGradient);
+        hue.addView(hueThumb);
+        LinearLayout preview = doweContainer(true);
+        preview.setGravity(Gravity.CENTER_VERTICAL);
+        View previewSwatch = new View(this);
+        previewSwatch.setLayoutParams(new LinearLayout.LayoutParams(doweDp(48), doweDp(48)));
+        doweAdd(preview, previewSwatch);
+        LinearLayout previewInfo = doweContainer(false);
+        TextView previewHex = doweText(selected[0], DOWE_ON_BACKGROUND, 16f, 700, 0f, 1.2f, "monospace");
+        TextView foreground = doweText(" ", doweAlpha(DOWE_ON_BACKGROUND, 0.72f), 12f, 400, 0f, 1.2f, font);
+        doweAdd(previewInfo, previewHex);
+        doweAdd(previewInfo, foreground, 2, false);
+        doweAdd(preview, previewInfo, 12, true);
+        ArrayList<TextView> formats = new ArrayList<>();
+        if (showHex) formats.add(doweColorFormatView(font));
+        if (showRgb) formats.add(doweColorFormatView(font));
+        if (showCmyk) formats.add(doweColorFormatView(font));
+        if (showOklch) formats.add(doweColorFormatView(font));
+        doweAdd(content, plane);
+        doweAdd(content, hue, 16, false);
+        doweAdd(content, preview, 16, false);
+        for (TextView format : formats) doweAdd(content, format, 6, false);
+        Runnable update = () -> {
+            selected[0] = doweColorHex(doweColorFromHsv(hsv));
+            int selectedColor = Color.parseColor(selected[0]);
+            swatch.setBackgroundColor(selectedColor);
+            previewSwatch.setBackgroundColor(selectedColor);
+            valueView.setText(selected[0]);
+            previewHex.setText(selected[0]);
+            foreground.setText("Foreground: " + doweColorForeground(doweColorRgb(selected[0])));
+            planeGradient.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{Color.WHITE, Color.HSVToColor(new float[]{hsv[0], 1f, 1f})}));
+            doweCircleBackground(planeCursor, selectedColor, Color.WHITE, 2f);
+            doweCircleBackground(hueThumb, Color.WHITE, doweAlpha(DOWE_MUTED, 0.3f), 1f);
+            planeCursor.setTranslationX(Math.max(0, plane.getWidth() * hsv[1] - doweDp(8)));
+            planeCursor.setTranslationY(Math.max(0, plane.getHeight() * (1f - hsv[2]) - doweDp(8)));
+            hueThumb.setTranslationX(Math.max(0, hue.getWidth() * hsv[0] / 360f - doweDp(10)));
+            int index = 0;
+            if (showHex) formats.get(index++).setText("hex: " + selected[0]);
+            if (showRgb) formats.get(index++).setText("rgb: " + doweColorRgbText(doweColorRgb(selected[0])));
+            if (showCmyk) formats.get(index++).setText("cmyk: " + doweColorCmykText(doweColorRgb(selected[0])));
+            if (showOklch) formats.get(index).setText("oklch: " + doweColorOklchText(doweColorRgb(selected[0])));
+            anchor.setContentDescription("Color " + selected[0]);
+            if (bindPath != null) doweWrite(bindPath, selected[0]);
+        };
+        plane.setOnTouchListener((view, event) -> {
+            if (event.getAction() != MotionEvent.ACTION_DOWN && event.getAction() != MotionEvent.ACTION_MOVE) return true;
+            hsv[1] = Math.max(0f, Math.min(1f, event.getX() / Math.max(1f, plane.getWidth())));
+            hsv[2] = Math.max(0f, Math.min(1f, 1f - event.getY() / Math.max(1f, plane.getHeight())));
+            update.run();
+            return true;
+        });
+        hue.setOnTouchListener((view, event) -> {
+            if (event.getAction() != MotionEvent.ACTION_DOWN && event.getAction() != MotionEvent.ACTION_MOVE) return true;
+            hsv[0] = Math.max(0f, Math.min(360f, event.getX() / Math.max(1f, hue.getWidth()) * 360f));
+            update.run();
+            return true;
+        });
+        PopupWindow popup = new PopupWindow(content, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        popup.setOutsideTouchable(true);
+        popup.setElevation(doweDp(8));
+        content.measure(View.MeasureSpec.makeMeasureSpec(popupWidth, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        popup.setHeight(Math.min(content.getMeasuredHeight(), doweDp(480)));
+        popup.showAsDropDown(anchor, 0, doweDp(4));
+        content.post(update);
+    }
+
+    private TextView doweColorFormatView(String font) {
+        TextView view = doweText(" ", DOWE_ON_SOFT_MUTED, 12f, 400, 0f, 1.2f, "monospace");
+        view.setSingleLine(true);
+        view.setPadding(doweDp(8), doweDp(4), doweDp(8), doweDp(4));
+        view.setBackground(doweBackground(DOWE_SOFT_MUTED, DOWE_RADIUS));
+        return view;
+    }
+
+    private void doweCircleBackground(View view, int fill, int stroke, float strokeWidth) {
+        GradientDrawable background = new GradientDrawable();
+        background.setShape(GradientDrawable.OVAL);
+        background.setColor(fill);
+        background.setStroke(Math.round(doweDp(strokeWidth)), stroke);
+        view.setBackground(background);
+    }
+
+    private int[] doweColorRgb(String value) {
+        try {
+            String source = value == null ? "" : value.replace("#", "");
+            if (source.length() == 3) source = "" + source.charAt(0) + source.charAt(0) + source.charAt(1) + source.charAt(1) + source.charAt(2) + source.charAt(2);
+            int color = Color.parseColor(String.format(java.util.Locale.US, "%c%s", '#', source));
+            return new int[]{Color.red(color), Color.green(color), Color.blue(color)};
+        } catch (IllegalArgumentException ignored) {
+            return new int[]{59, 130, 246};
+        }
+    }
+
+    private String doweColorHex(int[] rgb) {
+        return String.format(java.util.Locale.US, "%c%02X%02X%02X", '#', rgb[0], rgb[1], rgb[2]);
+    }
+
+    private int[] doweColorFromHsv(float[] hsv) {
+        int color = Color.HSVToColor(hsv);
+        return new int[]{Color.red(color), Color.green(color), Color.blue(color)};
+    }
+
+    private String doweColorRgbText(int[] rgb) {
+        return String.format(java.util.Locale.US, "rgb(%d, %d, %d)", rgb[0], rgb[1], rgb[2]);
+    }
+
+    private String doweColorCmykText(int[] rgb) {
+        double red = rgb[0] / 255.0;
+        double green = rgb[1] / 255.0;
+        double blue = rgb[2] / 255.0;
+        double black = 1 - Math.max(red, Math.max(green, blue));
+        if (black >= 1) return "cmyk(0%, 0%, 0%, 100%)";
+        int cyan = (int) Math.round((1 - red - black) / (1 - black) * 100);
+        int magenta = (int) Math.round((1 - green - black) / (1 - black) * 100);
+        int yellow = (int) Math.round((1 - blue - black) / (1 - black) * 100);
+        return String.format(java.util.Locale.US, "cmyk(%d%%, %d%%, %d%%, %d%%)", cyan, magenta, yellow, (int) Math.round(black * 100));
+    }
+
+    private String doweColorOklchText(int[] rgb) {
+        double red = doweColorLinear(rgb[0]);
+        double green = doweColorLinear(rgb[1]);
+        double blue = doweColorLinear(rgb[2]);
+        double l = Math.cbrt(0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue);
+        double m = Math.cbrt(0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue);
+        double s = Math.cbrt(0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue);
+        double lightness = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+        double a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+        double b = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+        double chroma = Math.sqrt(a * a + b * b);
+        double hue = Math.toDegrees(Math.atan2(b, a));
+        if (hue < 0) hue += 360;
+        return String.format(java.util.Locale.US, "oklch(%.2f %.2f %.0f)", lightness, chroma, hue);
+    }
+
+    private double doweColorLinear(int value) {
+        double channel = value / 255.0;
+        return channel <= 0.04045 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+    }
+
+    private String doweColorForeground(int[] rgb) {
+        return (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255 > 0.5 ? doweColorHex(new int[]{0, 0, 0}) : doweColorHex(new int[]{255, 255, 255});
+    }
+
     private TextView doweDateTrigger(String placeholder, int color, String font) {
         TextView view = doweText(placeholder, color, 14f, 400, 0f, 1.2f, font);
         view.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
@@ -454,7 +723,11 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
 
     private void dowePhonePopup(View anchor, TextView dialView, DoweSvgView flagView, String[] codes, String[] names, String[] dials, String[] selected, String searchPlaceholder, String emptyText, String loadingText, int color, String font) {
         LinearLayout content = doweContainer(false);
-        content.setPadding(0, doweDp(4), 0, doweDp(4));
+        content.setAlpha(0f);
+        content.setScaleX(0.98f);
+        content.setScaleY(0.98f);
+        content.setTranslationY(-doweDp(4));
+        content.setPadding(0, 0, 0, doweDp(4));
         content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_ON_SURFACE, 0.08f), DOWE_RADIUS));
         EditText search = new EditText(this);
         search.setSingleLine(true);
@@ -463,12 +736,16 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         search.setTextColor(DOWE_ON_SURFACE);
         search.setHintTextColor(doweAlpha(DOWE_ON_SURFACE, 0.55f));
         search.setPadding(doweDp(12), 0, doweDp(12), 0);
-        content.addView(search, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(44)));
+        search.setBackground(doweInputBackground(doweAlpha(DOWE_ON_SURFACE, 0.07f), Color.TRANSPARENT, 10));
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(44));
+        searchParams.setMargins(doweDp(6), doweDp(6), doweDp(6), doweDp(2));
+        content.addView(search, searchParams);
         LinearLayout options = doweContainer(false);
         ScrollView scroll = new ScrollView(this);
         scroll.addView(options, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         content.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        PopupWindow popup = new PopupWindow(content, Math.max(anchor.getWidth(), doweDp(280)), ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        int popupWidth = Math.min(Math.max(anchor.getWidth(), doweDp(280)), Math.min(doweDp(384), getResources().getDisplayMetrics().widthPixels - doweDp(16)));
+        PopupWindow popup = new PopupWindow(content, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setOutsideTouchable(true);
         popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         Runnable render = () -> {
@@ -481,15 +758,16 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
                 LinearLayout row = doweContainer(true);
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));
-                if (codes[i].equals(selected[0])) row.setBackgroundColor(doweAlpha(color, 0.08f));
+                row.setBackground(doweInputBackground(codes[i].equals(selected[0]) ? doweAlpha(DOWE_ON_SURFACE, 0.07f) : Color.TRANSPARENT, Color.TRANSPARENT, 10));
                 DoweSvgView optionFlag = dowePhoneFlag(codes[i], color);
                 row.addView(optionFlag, new LinearLayout.LayoutParams(doweDp(28), doweDp(28)));
-                LinearLayout copy = doweContainer(false);
                 TextView name = doweText(names[i], DOWE_ON_SURFACE, 15f, 700, 0f, 1.2f, font);
-                TextView dial = doweText("+" + dials[i], doweAlpha(DOWE_ON_SURFACE, 0.68f), 12f, 400, 0f, 1.2f, font);
-                doweAdd(copy, name);
-                doweAdd(copy, dial, 2, false);
-                row.addView(copy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+                LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                nameParams.leftMargin = doweDp(10);
+                nameParams.rightMargin = doweDp(10);
+                row.addView(name, nameParams);
+                TextView dial = doweText("+" + dials[i], DOWE_ON_SURFACE, 15f, 700, 0f, 1.2f, font);
+                row.addView(dial, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 row.setOnClickListener(view -> {
                     selected[0] = codes[index];
                     dialView.setText("+" + dials[index]);
@@ -508,8 +786,9 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
             public void afterTextChanged(Editable value) {}
         });
         render.run();
-        popup.setHeight(doweDp(300));
+        popup.setHeight(doweDp(380));
         popup.showAsDropDown(anchor, 0, doweDp(4));
+        content.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f).setDuration(160).start();
         search.requestFocus();
         ((android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
     }
@@ -619,7 +898,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         parent.addView(child);
     }
 
-    private void dowePinAppBar(ViewGroup parent, ViewGroup appBar) {
+    private void dowePinAppBar(ViewGroup parent, ViewGroup appBar, boolean dockOnScroll, int surfaceColor) {
         ViewGroup background = (ViewGroup) scrollView.getParent();
         View previous = background.findViewWithTag("dowe-pinned-appbar");
         if (previous != null) {
@@ -637,9 +916,15 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
             child.measure(childWidthSpec, View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
             appBarHeight = Math.max(appBarHeight, child.getMeasuredHeight());
         }
+        dowePinnedAppBarDockOnScroll = dockOnScroll;
+        dowePinnedAppBarColor = surfaceColor;
+        dowePinnedAppBarHeight = appBarHeight;
+        dowePinnedAppBarDockProgress = dockOnScroll && scrollView.getScrollY() > doweDp(100) ? 1f : 0f;
         View placeholder = new View(this);
-        placeholder.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, appBarHeight));
+        int outerVertical = dockOnScroll ? Math.round(doweDp(8) * (1f - dowePinnedAppBarDockProgress)) : 0;
+        placeholder.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, appBarHeight + outerVertical * 2));
         doweAdd(parent, placeholder);
+        dowePinnedAppBarPlaceholder = placeholder;
         View safeArea = new View(this);
         safeArea.setTag("dowe-pinned-appbar-safe-area");
         safeArea.setBackgroundColor(DOWE_BACKGROUND);
@@ -654,7 +939,70 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, appBarHeight, Gravity.TOP | Gravity.START);
         params.setMargins(scrollView.getPaddingLeft(), scrollView.getPaddingTop(), scrollView.getPaddingRight(), 0);
         background.addView(appBar, params);
+        View divider = new View(this);
+        divider.setTag("dowe-pinned-appbar-divider");
+        divider.setBackgroundColor(DOWE_MUTED);
+        divider.setAlpha(dockOnScroll ? dowePinnedAppBarDockProgress : 0f);
+        background.addView(divider, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1), Gravity.TOP | Gravity.START));
+        dowePinnedAppBarDivider = divider;
         scrollView.post(this::doweRelayoutPinnedAppBar);
+    }
+
+    private void doweUpdatePinnedAppBarDock(boolean docked, boolean animate) {
+        if (!dowePinnedAppBarDockOnScroll) {
+            return;
+        }
+        float target = docked ? 1f : 0f;
+        if (Math.abs(target - dowePinnedAppBarDockProgress) < 0.001f) {
+            return;
+        }
+        if (dowePinnedAppBarAnimator != null) {
+            dowePinnedAppBarAnimator.cancel();
+        }
+        boolean animationsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled();
+        if (!animate || !animationsEnabled) {
+            doweApplyPinnedAppBarDockProgress(target);
+            return;
+        }
+        dowePinnedAppBarAnimator = ValueAnimator.ofFloat(dowePinnedAppBarDockProgress, target);
+        dowePinnedAppBarAnimator.setDuration(300);
+        dowePinnedAppBarAnimator.setInterpolator(new PathInterpolator(0.4f, 0f, 0.2f, 1f));
+        dowePinnedAppBarAnimator.addUpdateListener(value -> doweApplyPinnedAppBarDockProgress((float) value.getAnimatedValue()));
+        dowePinnedAppBarAnimator.start();
+    }
+
+    private void doweApplyPinnedAppBarDockProgress(float progress) {
+        dowePinnedAppBarDockProgress = progress;
+        if (scrollView == null || scrollView.getParent() == null) {
+            return;
+        }
+        ViewGroup background = (ViewGroup) scrollView.getParent();
+        View appBar = background.findViewWithTag("dowe-pinned-appbar");
+        if (appBar == null) {
+            return;
+        }
+        int horizontal = Math.round(doweDp(16) * (1f - progress));
+        int vertical = Math.round(doweDp(8) * (1f - progress));
+        int leftInset = scrollView.getPaddingLeft();
+        int topInset = scrollView.getPaddingTop();
+        int rightInset = scrollView.getPaddingRight();
+        if (appBar.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) appBar.getLayoutParams();
+            params.setMargins(leftInset + horizontal, topInset + vertical, rightInset + horizontal, 0);
+            appBar.setLayoutParams(params);
+        }
+        appBar.setBackground(doweStyledBackground(dowePinnedAppBarColor, doweAlpha(DOWE_MUTED, 1f - progress), 1, DOWE_RADIUS * (1f - progress)));
+        if (dowePinnedAppBarPlaceholder != null && dowePinnedAppBarPlaceholder.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+            LinearLayout.LayoutParams placeholderParams = (LinearLayout.LayoutParams) dowePinnedAppBarPlaceholder.getLayoutParams();
+            placeholderParams.height = dowePinnedAppBarHeight + vertical * 2;
+            dowePinnedAppBarPlaceholder.setLayoutParams(placeholderParams);
+        }
+        if (dowePinnedAppBarDivider != null && dowePinnedAppBarDivider.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+            FrameLayout.LayoutParams dividerParams = (FrameLayout.LayoutParams) dowePinnedAppBarDivider.getLayoutParams();
+            dividerParams.setMargins(leftInset + horizontal, topInset + vertical + dowePinnedAppBarHeight - doweDp(1), rightInset + horizontal, 0);
+            dowePinnedAppBarDivider.setLayoutParams(dividerParams);
+            dowePinnedAppBarDivider.setAlpha(progress);
+        }
     }
 
     private void doweRelayoutPinnedAppBar() {
@@ -683,7 +1031,9 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         }
         scrollView.setPadding(leftInset, topInset, rightInset, bottomInset);
         View appBar = background.findViewWithTag("dowe-pinned-appbar");
-        if (appBar != null && appBar.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+        if (dowePinnedAppBarDockOnScroll) {
+            doweApplyPinnedAppBarDockProgress(dowePinnedAppBarDockProgress);
+        } else if (appBar != null && appBar.getLayoutParams() instanceof FrameLayout.LayoutParams) {
             FrameLayout.LayoutParams appBarParams = (FrameLayout.LayoutParams) appBar.getLayoutParams();
             appBarParams.setMargins(leftInset, topInset, rightInset, 0);
             appBar.setLayoutParams(appBarParams);
@@ -752,5 +1102,5 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
     }
 
 __DOWE_JAVA_REACTIVE_RUNTIME__
-"#
+"##
 }

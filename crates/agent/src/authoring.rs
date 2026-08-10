@@ -251,6 +251,13 @@ fn skill_records() -> &'static [SkillRecord] {
                     )),
                 },
                 SkillResource {
+                    path: "references/reference-ui.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-views/references/reference-ui.md"
+                    )),
+                },
+                SkillResource {
                     path: "references/components.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
@@ -269,6 +276,27 @@ fn skill_records() -> &'static [SkillRecord] {
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/../../skill-data/dowe-views/references/canvas.md"
+                    )),
+                },
+                SkillResource {
+                    path: "scripts/visual_qa.py",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-views/scripts/visual_qa.py"
+                    )),
+                },
+                SkillResource {
+                    path: "scripts/visual_qa_blueprint.py",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-views/scripts/visual_qa_blueprint.py"
+                    )),
+                },
+                SkillResource {
+                    path: "scripts/visual_qa_png.py",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-views/scripts/visual_qa_png.py"
                     )),
                 },
             ],

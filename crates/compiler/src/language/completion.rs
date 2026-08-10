@@ -16,7 +16,8 @@ use dowe_components::{
     MarqueeSpeed, NativeExternalMode, NavigationOperation, OverlayCornerPosition, OverlayPosition,
     RoundedSize, SectionBackground, ShadowSize, SideNavSize, SkeletonAnimation, SkeletonVariant,
     TableColumnAlign, TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing, TextWeight,
-    ToastKind, VIEW_META_NAMES, VideoAspect, ViewAnimation, ViewIcon, WebTarget,
+    ToastKind, VIEW_META_NAMES, VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewTransition,
+    WebTarget,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -788,9 +789,9 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::DragDrop
             | BuiltinComponent::Editor
             | BuiltinComponent::ImageCropper
-            | BuiltinComponent::PasswordField
-            | BuiltinComponent::PhoneField
-            | BuiltinComponent::PinField
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
             | BuiltinComponent::Textarea
             | BuiltinComponent::Button
             | BuiltinComponent::IconButton
@@ -875,9 +876,9 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::DragDrop
             | BuiltinComponent::Editor
             | BuiltinComponent::ImageCropper
-            | BuiltinComponent::PasswordField
-            | BuiltinComponent::PhoneField
-            | BuiltinComponent::PinField
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
             | BuiltinComponent::Textarea
             | BuiltinComponent::AvatarGroup
             | BuiltinComponent::ChatBox
@@ -942,15 +943,17 @@ pub(super) fn component_value_completions(
             ButtonSize::all().iter().map(|value| value.as_str()),
         )),
         (
-            BuiltinComponent::Slider
+            BuiltinComponent::Input
+            | BuiltinComponent::Select
+            | BuiltinComponent::Slider
             | BuiltinComponent::RadioGroup
             | BuiltinComponent::Dropzone
             | BuiltinComponent::ComboBox
             | BuiltinComponent::DragDrop
             | BuiltinComponent::Editor
-            | BuiltinComponent::PasswordField
-            | BuiltinComponent::PhoneField
-            | BuiltinComponent::PinField
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
             | BuiltinComponent::Textarea,
             "size",
         ) => Some(control_size_values()),
@@ -990,7 +993,7 @@ pub(super) fn component_value_completions(
                 .map(|value| value.as_str()),
         )),
         (BuiltinComponent::ImageCropper, "shape") => Some(quoted_values(["circle", "square"])),
-        (BuiltinComponent::PinField, "type") => Some(quoted_values(["text", "password", "number"])),
+        (BuiltinComponent::Pin, "type") => Some(quoted_values(["text", "password", "number"])),
         (BuiltinComponent::Table, "size") => Some(quoted_values(
             TableSize::all().iter().map(|value| value.as_str()),
         )),
@@ -1116,16 +1119,20 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Skeleton, "animation") => Some(quoted_values(
             SkeletonAnimation::all().iter().map(|value| value.as_str()),
         )),
-        (
-            BuiltinComponent::Box | BuiltinComponent::Section | BuiltinComponent::Card,
-            "animation",
-        ) => Some(quoted_values(
+        (_, "animation") => Some(quoted_values(
             ViewAnimation::all().iter().map(|value| value.as_str()),
+        )),
+        (_, "transition") => Some(quoted_values(
+            ViewTransition::all().iter().map(|value| value.as_str()),
+        )),
+        (_, "gesture") => Some(quoted_values(
+            ViewGesture::all().iter().map(|value| value.as_str()),
         )),
         (BuiltinComponent::Section, "background") => Some(quoted_values(
             SectionBackground::all().iter().map(|value| value.as_str()),
         )),
         (BuiltinComponent::Section, "boxed") => Some(boolean_values()),
+        (BuiltinComponent::RichText, "title") => Some(boolean_values()),
         (BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText, "size") => {
             Some(quoted_values(
                 TextSize::all().iter().map(|value| value.as_str()),
@@ -1160,6 +1167,7 @@ pub(super) fn component_value_completions(
                 .into_iter()
                 .chain(ColorToken::all().iter().map(|value| value.as_str())),
         )),
+        (BuiltinComponent::Path, "fillRule") => Some(quoted_values(["nonzero", "evenodd"])),
         (_, "rounded") => Some(quoted_values(
             RoundedSize::all().iter().map(|value| value.as_str()),
         )),
@@ -1273,7 +1281,7 @@ fn boolean_values() -> Vec<LanguageCompletion> {
 }
 
 pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
-    match component {
+    let mut props = match component {
         "Box" => BOX_PROPS.to_vec(),
         "Section" => SECTION_PROPS.to_vec(),
         "Flex" => LAYOUT_PROPS.to_vec(),
@@ -1308,7 +1316,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Empty" => EMPTY_PROPS.to_vec(),
         "Marquee" => MARQUEE_PROPS.to_vec(),
         "TypeWriter" => TYPE_WRITER_PROPS.to_vec(),
-        "RichText" => TEXT_PROPS.to_vec(),
+        "RichText" => RICH_TEXT_PROPS.to_vec(),
         "mark" => RICH_TEXT_MARK_PROPS.to_vec(),
         "Record" => RECORD_PROPS.to_vec(),
         "ToggleGroup" => TOGGLE_GROUP_PROPS.to_vec(),
@@ -1336,9 +1344,9 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "dragItem" => DRAG_ITEM_PROPS.to_vec(),
         "Editor" => EDITOR_PROPS.to_vec(),
         "ImageCropper" => IMAGE_CROPPER_PROPS.to_vec(),
-        "PasswordField" => PASSWORD_FIELD_PROPS.to_vec(),
-        "PhoneField" => PHONE_FIELD_PROPS.to_vec(),
-        "PinField" => PIN_FIELD_PROPS.to_vec(),
+        "Password" => PASSWORD_PROPS.to_vec(),
+        "Phone" => PHONE_PROPS.to_vec(),
+        "Pin" => PIN_PROPS.to_vec(),
         "Textarea" => TEXTAREA_PROPS.to_vec(),
         "Input" => INPUT_PROPS.to_vec(),
         "Select" => SELECT_PROPS.to_vec(),
@@ -1446,7 +1454,27 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
             VARIANT_PROPS,
         ),
         _ => Vec::new(),
+    };
+    if BuiltinComponent::from_name(component).is_some_and(|component| {
+        !matches!(
+            component,
+            BuiltinComponent::Option
+                | BuiltinComponent::FabAction
+                | BuiltinComponent::ComboOption
+                | BuiltinComponent::CsvColumn
+                | BuiltinComponent::DragGroup
+                | BuiltinComponent::DragItem
+                | BuiltinComponent::Svg
+                | BuiltinComponent::Path
+        )
+    }) {
+        for &prop in INTERACTIVE_STYLE_PROPS {
+            if !props.contains(&prop) {
+                props.push(prop);
+            }
+        }
     }
+    props
 }
 
 fn combined_props(
@@ -1574,6 +1602,7 @@ const BOX_PROPS: &[&str] = &[
     "borderColor",
     "shadow",
     "shadowColor",
+    "onClick",
 ];
 const SECTION_PROPS: &[&str] = &[
     "id",
@@ -1674,6 +1703,7 @@ const VARIANT_PROPS: &[&str] = &[
     "borderColor",
     "shadow",
     "shadowColor",
+    "onClick",
 ];
 const BAR_PROPS: &[&str] = &[
     "variant", "scheme", "bordered", "blurred", "boxed", "id", "show", "font", "p", "px", "py",
@@ -1693,6 +1723,7 @@ const APP_BAR_PROPS: &[&str] = &[
     "boxed",
     "floating",
     "hideOnScroll",
+    "dockOnScroll",
     "id",
     "show",
     "font",
@@ -1862,9 +1893,18 @@ const BADGE_PROPS: &[&str] = &[
     "maxW", "maxH", "rounded",
 ];
 const CHIP_PROPS: &[&str] = &[
-    "variant", "scheme", "size", "onClose", "id", "show", "font", "bg", "cover", "overlay",
-    "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH",
-    "maxW", "maxH", "rounded",
+    "variant", "scheme", "size", "onClose", "onClick", "id", "show", "font", "bg", "cover",
+    "overlay", "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
+    "minH", "maxW", "maxH", "rounded",
+];
+const INTERACTIVE_STYLE_PROPS: &[&str] = &[
+    "animation",
+    "rotate",
+    "scale",
+    "translateX",
+    "translateY",
+    "transition",
+    "gesture",
 ];
 const SKELETON_PROPS: &[&str] = &[
     "variant",
@@ -2711,7 +2751,7 @@ const IMAGE_CROPPER_PROPS: &[&str] = &[
     "rounded",
     "border",
 ];
-const PASSWORD_FIELD_PROPS: &[&str] = &[
+const PASSWORD_PROPS: &[&str] = &[
     "bind",
     "value",
     "placeholder",
@@ -2748,7 +2788,7 @@ const PASSWORD_FIELD_PROPS: &[&str] = &[
     "rounded",
     "border",
 ];
-const PHONE_FIELD_PROPS: &[&str] = &[
+const PHONE_PROPS: &[&str] = &[
     "bind",
     "value",
     "country",
@@ -2786,7 +2826,7 @@ const PHONE_FIELD_PROPS: &[&str] = &[
     "rounded",
     "border",
 ];
-const PIN_FIELD_PROPS: &[&str] = &[
+const PIN_PROPS: &[&str] = &[
     "bind",
     "value",
     "length",
@@ -2859,6 +2899,7 @@ const INPUT_PROPS: &[&str] = &[
     "iconEnd",
     "variant",
     "scheme",
+    "size",
     "bind",
     "label",
     "placeholder",
@@ -2889,6 +2930,7 @@ const INPUT_PROPS: &[&str] = &[
 const SELECT_PROPS: &[&str] = &[
     "variant",
     "scheme",
+    "size",
     "bind",
     "label",
     "placeholder",
@@ -3417,6 +3459,10 @@ const TEXT_PROPS: &[&str] = &[
     "size", "weight", "spacing", "i18n", "font", "id", "show", "bg", "color", "p", "px", "py",
     "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
 ];
+const RICH_TEXT_PROPS: &[&str] = &[
+    "title", "size", "weight", "spacing", "i18n", "font", "id", "show", "bg", "color", "p", "px",
+    "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
+];
 const SVG_PROPS: &[&str] = &["viewBox", "data", "color", "w", "h", "id", "show"];
 const ICON_PROPS: &[&str] = &["name", "style", "fill", "stroke", "w", "h", "id", "show"];
-const PATH_PROPS: &[&str] = &["d", "fill", "transform"];
+const PATH_PROPS: &[&str] = &["d", "fill", "fillRule", "transform"];

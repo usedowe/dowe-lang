@@ -22,9 +22,9 @@ fn parse_style_props(
                         | BuiltinComponent::ComboBox
                         | BuiltinComponent::Editor
                         | BuiltinComponent::ImageCropper
-                        | BuiltinComponent::PasswordField
-                        | BuiltinComponent::PhoneField
-                        | BuiltinComponent::PinField
+                        | BuiltinComponent::Password
+                        | BuiltinComponent::Phone
+                        | BuiltinComponent::Pin
                         | BuiltinComponent::Textarea
                         | BuiltinComponent::Slider
                         | BuiltinComponent::Checkbox
@@ -44,6 +44,9 @@ fn parse_style_props(
                         | BuiltinComponent::Avatar
                         | BuiltinComponent::Fab
                         | BuiltinComponent::Empty
+                        | BuiltinComponent::Box
+                        | BuiltinComponent::Card
+                        | BuiltinComponent::Chip
                 ) =>
             {
                 style.element.on_click = Some(parse_required_string(&prop.name, &prop.value)?)
@@ -67,7 +70,28 @@ fn parse_style_props(
                 style.boxed = parse_static_bool(&prop.name, &prop.value)?
             }
             "animation" if style_accepts_animation(mode) => {
-                style.animation = Some(parse_animation_prop(&prop.name, &prop.value)?)
+                style.set_animation(Some(parse_animation_prop(&prop.name, &prop.value)?))
+            }
+            "rotate" => {
+                style.motion_mut().rotate = Some(parse_rotation_prop(&prop.name, &prop.value)?)
+            }
+            "scale" => {
+                style.motion_mut().scale = Some(parse_view_scale_prop(&prop.name, &prop.value)?)
+            }
+            "translateX" => {
+                style.motion_mut().translate_x =
+                    Some(parse_translation_prop(&prop.name, &prop.value)?)
+            }
+            "translateY" => {
+                style.motion_mut().translate_y =
+                    Some(parse_translation_prop(&prop.name, &prop.value)?)
+            }
+            "transition" => {
+                style.motion_mut().transition =
+                    Some(parse_transition_prop(&prop.name, &prop.value)?)
+            }
+            "gesture" => {
+                style.motion_mut().gesture = Some(parse_gesture_prop(&prop.name, &prop.value)?)
             }
             "colSpan" if style_accepts_grid_item(mode) => {
                 style.grid_item_mut().col_span = Some(parse_span_prop(&prop.name, &prop.value)?)
@@ -190,10 +214,8 @@ fn style_accepts_grid_item(mode: StylePropMode) -> bool {
 }
 
 fn style_accepts_animation(mode: StylePropMode) -> bool {
-    matches!(
-        mode,
-        StylePropMode::Box | StylePropMode::Banner | StylePropMode::Section | StylePropMode::Card
-    )
+    let _ = mode;
+    true
 }
 
 fn parse_layout_props(
@@ -328,6 +350,14 @@ fn parse_variant_props(
             {
                 variant_props.size = Some(parse_button_size_prop(&prop.name, &prop.value)?)
             }
+            "size"
+                if matches!(
+                    component,
+                    BuiltinComponent::Input | BuiltinComponent::Select
+                ) =>
+            {
+                variant_props.size = Some(parse_control_size_prop(&prop.name, &prop.value)?)
+            }
             "label" if component == BuiltinComponent::IconButton => {
                 variant_props.label = Some(parse_required_string(&prop.name, &prop.value)?)
             }
@@ -341,9 +371,9 @@ fn parse_variant_props(
                         | BuiltinComponent::DragDrop
                         | BuiltinComponent::Editor
                         | BuiltinComponent::ImageCropper
-                        | BuiltinComponent::PasswordField
-                        | BuiltinComponent::PhoneField
-                        | BuiltinComponent::PinField
+                        | BuiltinComponent::Password
+                        | BuiltinComponent::Phone
+                        | BuiltinComponent::Pin
                         | BuiltinComponent::Textarea
                         | BuiltinComponent::Checkbox
                         | BuiltinComponent::Color
@@ -366,8 +396,8 @@ fn parse_variant_props(
                         | BuiltinComponent::ComboBox
                         | BuiltinComponent::Editor
                         | BuiltinComponent::ImageCropper
-                        | BuiltinComponent::PasswordField
-                        | BuiltinComponent::PhoneField
+                        | BuiltinComponent::Password
+                        | BuiltinComponent::Phone
                         | BuiltinComponent::Textarea
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
@@ -383,8 +413,8 @@ fn parse_variant_props(
                     BuiltinComponent::Input
                         | BuiltinComponent::Select
                         | BuiltinComponent::ComboBox
-                        | BuiltinComponent::PasswordField
-                        | BuiltinComponent::PhoneField
+                        | BuiltinComponent::Password
+                        | BuiltinComponent::Phone
                         | BuiltinComponent::Textarea
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
@@ -598,28 +628,49 @@ fn parse_bar_props(
             "hideOnScroll" if component == BuiltinComponent::AppBar => {
                 bar.hide_on_scroll = parse_static_bool(&prop.name, &prop.value)?
             }
+            "dockOnScroll" if component == BuiltinComponent::AppBar => {
+                bar.dock_on_scroll = parse_static_bool(&prop.name, &prop.value)?
+            }
             _ => style_props.push(prop.clone()),
         }
+    }
+
+    if bar.dock_on_scroll && (!bar.floating || bar.position != BarPosition::Fixed) {
+        return Err(ComponentError::invalid_prop_combination(
+            "`dockOnScroll:true` requires `floating:true` and `position:\"fixed\"` on `AppBar`",
+        ));
     }
 
     let mut style = parse_variant_props(component, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Surface);
     if component == BuiltinComponent::Footer {
-        style.style.spacing =
-            style
-                .style
-                .spacing
-                .with_horizontal_padding_default(ResponsiveValue::ordered(vec![
-                    ResponsiveEntry {
-                        breakpoint: Breakpoint::Xs,
-                        value: ScaleValue::from_half_steps(8),
-                    },
-                    ResponsiveEntry {
-                        breakpoint: Breakpoint::Md,
-                        value: ScaleValue::from_half_steps(12),
-                    },
-                ]));
+        let horizontal_padding = ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: ScaleValue::from_half_steps(8),
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: ScaleValue::from_half_steps(12),
+            },
+        ]);
+        let top_padding = ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: ScaleValue::from_half_steps(20),
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: ScaleValue::from_half_steps(32),
+            },
+        ]);
+        let bottom_padding = horizontal_padding.clone();
+        style.style.spacing = style
+            .style
+            .spacing
+            .with_horizontal_padding_default(horizontal_padding)
+            .with_vertical_padding_defaults(top_padding, bottom_padding);
     }
     bar.style = style;
     Ok(bar)
@@ -802,6 +853,9 @@ fn parse_text_props(
                 text.letter_spacing = Some(parse_text_spacing_prop(&prop.name, &prop.value)?)
             }
             "i18n" => text.i18n = Some(parse_i18n_key_prop(&prop.name, &prop.value)?),
+            "title" if component == BuiltinComponent::RichText => {
+                text.title = parse_static_bool(&prop.name, &prop.value)?
+            }
             _ => style_props.push(prop.clone()),
         }
     }
@@ -901,12 +955,14 @@ fn parse_svg_path_props(
 ) -> ComponentResult<SvgPath> {
     let mut data = None;
     let mut fill = None;
+    let mut even_odd = false;
     let mut transform = None;
 
     for prop in props {
         match prop.name.as_str() {
             "d" => data = Some(parse_svg_path_data(&prop.name, &prop.value)?),
             "fill" => fill = Some(parse_svg_path_fill(&prop.name, &prop.value)?),
+            "fillRule" => even_odd = parse_svg_fill_rule(&prop.name, &prop.value)?,
             "transform" => transform = Some(parse_svg_transform(&prop.name, &prop.value)?),
             _ => return Err(ComponentError::unknown_prop(component, &prop.name)),
         }
@@ -914,9 +970,59 @@ fn parse_svg_path_props(
 
     Ok(SvgPath {
         data: data.ok_or_else(|| ComponentError::invalid_prop("d", "static SVG path data"))?,
-        fill: fill.unwrap_or(SvgPathFill::CurrentColor),
+        fill: svg_path_fill_rule(fill.unwrap_or(SvgPathFill::CurrentColor), even_odd),
         transform,
     })
+}
+
+fn parse_svg_fill_rule(name: &str, value: &PropValue) -> ComponentResult<bool> {
+    match parse_required_string(name, value)?.as_str() {
+        "nonzero" => Ok(false),
+        "evenodd" => Ok(true),
+        _ => Err(ComponentError::invalid_prop(name, "nonzero or evenodd")),
+    }
+}
+
+fn svg_path_fill_rule(fill: SvgPathFill, even_odd: bool) -> SvgPathFill {
+    if !even_odd {
+        return fill;
+    }
+    match fill {
+        SvgPathFill::CurrentColor => SvgPathFill::Fill {
+            color: None,
+            opacity: 255,
+            even_odd: true,
+        },
+        SvgPathFill::Color(color) => SvgPathFill::Fill {
+            color: Some(color),
+            opacity: 255,
+            even_odd: true,
+        },
+        SvgPathFill::RawFill { color, opacity, .. } => SvgPathFill::RawFill {
+            color,
+            opacity,
+            even_odd: true,
+        },
+        SvgPathFill::Fill { color, opacity, .. } => SvgPathFill::Fill {
+            color,
+            opacity,
+            even_odd: true,
+        },
+        SvgPathFill::LiteralFill {
+            red,
+            green,
+            blue,
+            opacity,
+            ..
+        } => SvgPathFill::LiteralFill {
+            red,
+            green,
+            blue,
+            opacity,
+            even_odd: true,
+        },
+        _ => fill,
+    }
 }
 
 fn parse_svg_transform(name: &str, value: &PropValue) -> ComponentResult<SvgTransform> {
@@ -953,10 +1059,47 @@ fn parse_svg_path_fill(name: &str, value: &PropValue) -> ComponentResult<SvgPath
     match value.as_str() {
         "none" => Ok(SvgPathFill::None),
         "currentColor" => Ok(SvgPathFill::CurrentColor),
-        _ => ColorToken::from_name(&value)
-            .map(SvgPathFill::Color)
-            .ok_or_else(|| ComponentError::invalid_prop(name, "currentColor, none or color token")),
+        _ => {
+            if let Some((red, green, blue, opacity)) = parse_svg_hex_fill(&value) {
+                return Ok(SvgPathFill::LiteralFill {
+                    red,
+                    green,
+                    blue,
+                    opacity,
+                    even_odd: false,
+                });
+            }
+            ColorToken::from_name(&value)
+                .map(SvgPathFill::Color)
+                .ok_or_else(|| {
+                    ComponentError::invalid_prop(
+                        name,
+                        "currentColor, none, hexadecimal color or color token",
+                    )
+                })
+        }
     }
+}
+
+fn parse_svg_hex_fill(value: &str) -> Option<(u8, u8, u8, u8)> {
+    let hex = value.strip_prefix('#')?;
+    let expanded = match hex.len() {
+        3 | 4 => hex
+            .chars()
+            .flat_map(|value| [value, value])
+            .collect::<String>(),
+        6 | 8 => hex.to_string(),
+        _ => return None,
+    };
+    let red = u8::from_str_radix(&expanded[0..2], 16).ok()?;
+    let green = u8::from_str_radix(&expanded[2..4], 16).ok()?;
+    let blue = u8::from_str_radix(&expanded[4..6], 16).ok()?;
+    let opacity = if expanded.len() == 8 {
+        u8::from_str_radix(&expanded[6..8], 16).ok()?
+    } else {
+        255
+    };
+    Some((red, green, blue, opacity))
 }
 
 fn parse_svg_path_data(name: &str, value: &PropValue) -> ComponentResult<String> {

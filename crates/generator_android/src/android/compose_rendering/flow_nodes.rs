@@ -260,9 +260,16 @@ fn render_compose_flow_node(
         }
         ViewNode::Card { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);
+            let mut modifier = modifier_for_container_style(&props.style, flow);
+            if props.style.element.on_click.is_some() {
+                modifier.push_str(&format!(
+                    ".clickable(onClick = {})",
+                    compose_component_action(props.style.element.on_click.as_deref(), None, context)
+                ));
+            }
             output.push_str(&format!(
                         "{pad}Card(modifier = {}, shape = RoundedCornerShape({}), colors = CardDefaults.cardColors(containerColor = {}, contentColor = {}), border = {}, elevation = {}) {{\n",
-                        modifier_for_container_style(&props.style, flow),
+                        modifier,
                         compose_card_radius(&props.style),
                         card_variant_container(props),
                         card_variant_content(props),
@@ -662,6 +669,12 @@ fn render_compose_box(
         props,
         if positioned { ComposeFlow::Inline } else { flow },
     );
+    if props.element.on_click.is_some() {
+        modifier.push_str(&format!(
+            ".clickable(onClick = {})",
+            compose_component_action(props.element.on_click.as_deref(), None, context)
+        ));
+    }
     if positioned {
         modifier.push_str(&compose_position_modifier(position));
     }

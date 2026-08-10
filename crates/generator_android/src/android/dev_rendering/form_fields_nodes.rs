@@ -13,6 +13,10 @@ fn render_dev_android_form_fields_node(
     match node {
         ViewNode::Input { props } => {
             let view = next_dev_view(counter);
+            let control_size = props.size.unwrap_or(ButtonSize::Md);
+            let control_height =
+                form_control_min_height(control_size, props.label_floating).native_units();
+            let text_size = dev_text_size_expr(false, form_control_text_size(control_size));
             let has_icons = props.icon_start.is_some() || props.icon_end.is_some();
             let field = if props.label.is_some() || has_icons {
                 next_dev_view(counter)
@@ -63,9 +67,9 @@ fn render_dev_android_form_fields_node(
             }
             output.push_str(&format!(
                                         "        EditText {field} = new EditText(this);\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(true);\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), {}, doweDp({}), 0);\n        {field}.{field_background};\n",
-                                        dev_text_size_expr(false, INPUT_TEXT_SIZE),
-                                        INPUT_MIN_HEIGHT.native_units(),
-                                        INPUT_MIN_HEIGHT.native_units(),
+                                        text_size,
+                                        control_height,
+                                        control_height,
                                         start_padding,
                                         if props.label_floating && props.label.is_some() {
                                             "doweDp(10)"
@@ -121,14 +125,14 @@ fn render_dev_android_form_fields_node(
                 .unwrap_or_else(|| "null".to_string());
             if let Some(label) = props.label.as_deref().filter(|_| props.label_floating) {
                 output.push_str(&format!(
-                                            "        FrameLayout {view} = doweFloatingInput({field}, \"{}\", \"{}\", {content}, {font}, {start_icon}, {end_icon}, {background});\n",
+                                            "        FrameLayout {view} = doweFloatingInput({field}, \"{}\", \"{}\", {content}, {font}, {start_icon}, {end_icon}, {background});\n        {view}.setMinimumHeight(doweDp({control_height}));\n",
                                             escape_java(label),
                                             escape_java(placeholder)
                                         ));
             } else if has_icons {
                 let frame = field_frame.as_deref().unwrap_or(&view);
                 output.push_str(&format!(
-                    "        FrameLayout {frame} = doweInputFrame({field}, {start_icon}, {end_icon}, {background});\n"
+                    "        FrameLayout {frame} = doweInputFrame({field}, {start_icon}, {end_icon}, {background});\n        {frame}.setMinimumHeight(doweDp({control_height}));\n"
                 ));
                 if props.label.is_some() {
                     output.push_str(&format!(
@@ -176,6 +180,10 @@ fn render_dev_android_form_fields_node(
         } => {
             let view = next_dev_view(counter);
             let field = next_dev_view(counter);
+            let control_size = props.size.unwrap_or(ButtonSize::Md);
+            let control_height =
+                form_control_min_height(control_size, props.label_floating).native_units();
+            let text_size = dev_text_size_expr(false, form_control_text_size(control_size));
             let frame = if props.label.is_some() && !props.label_floating {
                 Some(next_dev_view(counter))
             } else {
@@ -267,23 +275,24 @@ fn render_dev_android_form_fields_node(
                                         ));
             }
             output.push_str(&format!(
-                                        "        String[] {field}Labels = {labels};\n        String[] {field}Values = {values};\n        String[] {field}Descriptions = {descriptions};\n        TextView {field} = doweSelectTrigger(\"{}\", {content}, {font});\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), 0, doweDp(36), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n        final String[] {field}Selected = new String[]{{{selected}}};\n",
+                                        "        String[] {field}Labels = {labels};\n        String[] {field}Values = {values};\n        String[] {field}Descriptions = {descriptions};\n        TextView {field} = doweSelectTrigger(\"{}\", {content}, {font});\n        {field}.setTextSize({});\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), 0, doweDp(36), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n        final String[] {field}Selected = new String[]{{{selected}}};\n",
                                         escape_java(placeholder),
-                                        INPUT_MIN_HEIGHT.native_units(),
+                                        text_size,
+                                        control_height,
                                         INPUT_HORIZONTAL_PADDING.native_units()
                                     ));
             if let Some(label) = props.label.as_deref().filter(|_| props.label_floating) {
                 output.push_str(&format!(
-                                            "        TextView {field}Label = doweControlLabel(\"{}\", {content}, {font});\n        FrameLayout {view} = doweFloatingSelect({field}, {field}Label, {content}, {background});\n",
+                                            "        TextView {field}Label = doweControlLabel(\"{}\", {content}, {font});\n        FrameLayout {view} = doweFloatingSelect({field}, {field}Label, {content}, {background});\n        {view}.setMinimumHeight(doweDp({control_height}));\n",
                                             escape_java(label)
                                         ));
             } else if let Some(frame) = frame.as_deref() {
                 output.push_str(&format!(
-                                            "        FrameLayout {frame} = doweSelectFrame({field}, {content}, {background});\n        doweAdd({view}, {frame}, 4, false);\n"
+                                            "        FrameLayout {frame} = doweSelectFrame({field}, {content}, {background});\n        {frame}.setMinimumHeight(doweDp({control_height}));\n        doweAdd({view}, {frame}, 4, false);\n"
                                         ));
             } else {
                 output.push_str(&format!(
-                                            "        FrameLayout {view} = doweSelectFrame({field}, {content}, {background});\n"
+                                            "        FrameLayout {view} = doweSelectFrame({field}, {content}, {background});\n        {view}.setMinimumHeight(doweDp({control_height}));\n"
                                         ));
             }
             let floating_label = if props.label_floating && props.label.is_some() {
@@ -338,6 +347,10 @@ fn render_dev_android_textarea(
     let content = dev_variant_content(&props.style);
     let placeholder = props.style.placeholder.as_deref().unwrap_or_default();
     let read_only = props.readonly || props.disabled;
+    let text_size = dev_text_size_expr(
+        false,
+        form_control_text_size(props.style.size.unwrap_or(ButtonSize::Md)),
+    );
     output.push_str(&format!(
         "        LinearLayout {view} = doweContainer(false);\n"
     ));
@@ -354,7 +367,7 @@ fn render_dev_android_textarea(
     }
     output.push_str(&format!(
         "        EditText {field} = new EditText(this);\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.TOP | Gravity.START);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(false);\n        {field}.setMinLines({});\n        {field}.setMaxLines({});\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), doweDp({}), doweDp(12), doweDp(12));\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n",
-        dev_text_size_expr(false, INPUT_TEXT_SIZE),
+        text_size,
         props.rows,
         props.rows,
         props.rows * 28,
@@ -434,8 +447,8 @@ fn render_dev_android_textarea(
     output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
 }
 
-fn render_dev_android_phone_field(
-    props: &PhoneFieldProps,
+fn render_dev_android_phone(
+    props: &PhoneProps,
     parent: &str,
     parent_gap: Option<&str>,
     parent_horizontal: bool,
@@ -451,6 +464,15 @@ fn render_dev_android_phone_field(
     let trigger_arrow = next_dev_view(counter);
     let trigger_flag = next_dev_view(counter);
     let input = next_dev_view(counter);
+    let control_height = form_control_min_height(
+        props.style.size.unwrap_or(ButtonSize::Md),
+        props.style.label_floating,
+    )
+    .native_units();
+    let text_size = dev_text_size_expr(
+        false,
+        form_control_text_size(props.style.size.unwrap_or(ButtonSize::Md)),
+    );
     let radius = dev_style_radius(&props.style.style);
     let background = if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
         format!("doweInputBackground({}, {}, {radius})", dev_variant_container(&props.style), java_color(ColorToken::Muted))
@@ -471,15 +493,17 @@ fn render_dev_android_phone_field(
         ));
     }
     output.push_str(&format!(
-        "        FrameLayout {field} = doweFloatingControl({background});\n        {field}.setMinimumHeight(doweDp(48));\n        LinearLayout {trigger} = doweContainer(true);\n        {trigger}.setGravity(Gravity.CENTER_VERTICAL);\n        {trigger}.setPadding(doweDp(8), 0, doweDp(4), 0);\n        {trigger}.setClickable(true);\n        {trigger}.setFocusable(true);\n        DoweSvgView {trigger_flag} = dowePhoneFlag(\"{}\", {content});\n        {trigger}.addView({trigger_flag}, new LinearLayout.LayoutParams(doweDp(24), doweDp(24)));\n        TextView {dial} = doweText(\"+{}\", {content}, 15f, 700, 0f, 1.2f, {font});\n        {trigger}.addView({dial}, new LinearLayout.LayoutParams(doweDp(48), ViewGroup.LayoutParams.MATCH_PARENT));\n        {field}.addView({trigger}, new FrameLayout.LayoutParams(doweDp(92), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START | Gravity.CENTER_VERTICAL));\n        EditText {input} = new EditText(this);\n        {input}.setTextSize(16f);\n        {input}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {input}.setTextColor({content});\n        {input}.setSingleLine(true);\n        {input}.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);\n        {input}.setBackgroundColor(Color.TRANSPARENT);\n        {input}.setPadding(doweDp(4), 0, doweDp(12), 0);\n        {input}.setMinHeight(doweDp(48));\n        FrameLayout.LayoutParams {input}Params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL);\n        {input}Params.leftMargin = doweDp(92);\n        {field}.addView({input}, {input}Params);\n",
+        "        FrameLayout {field} = doweFloatingControl({background});\n        {field}.setMinimumHeight(doweDp({control_height}));\n        LinearLayout {trigger} = doweContainer(true);\n        {trigger}.setGravity(Gravity.CENTER_VERTICAL);\n        {trigger}.setPadding(doweDp(8), 0, doweDp(4), 0);\n        {trigger}.setClickable(true);\n        {trigger}.setFocusable(true);\n        DoweSvgView {trigger_flag} = dowePhoneFlag(\"{}\", {content});\n        LinearLayout.LayoutParams {trigger_flag}Params = new LinearLayout.LayoutParams(doweDp(24), doweDp(24));\n        {trigger_flag}Params.gravity = Gravity.CENTER_VERTICAL;\n        {trigger}.addView({trigger_flag}, {trigger_flag}Params);\n        TextView {dial} = doweText(\"+{}\", {content}, {}, 700, 0f, 1.2f, {font});\n        {dial}.setGravity(Gravity.CENTER_VERTICAL);\n        {dial}.setIncludeFontPadding(false);\n        LinearLayout.LayoutParams {dial}Params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);\n        {dial}Params.gravity = Gravity.CENTER_VERTICAL;\n        {dial}Params.leftMargin = doweDp(6);\n        {dial}Params.rightMargin = doweDp(4);\n        {trigger}.addView({dial}, {dial}Params);\n        {field}.addView({trigger}, new FrameLayout.LayoutParams(doweDp(92), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START | Gravity.CENTER_VERTICAL));\n        EditText {input} = new EditText(this);\n        {input}.setTextSize({});\n        {input}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {input}.setTextColor({content});\n        {input}.setSingleLine(true);\n        {input}.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);\n        {input}.setBackgroundColor(Color.TRANSPARENT);\n        {input}.setPadding(doweDp(4), 0, doweDp(12), 0);\n        {input}.setMinHeight(doweDp({control_height}));\n        FrameLayout.LayoutParams {input}Params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL);\n        {input}Params.leftMargin = doweDp(92);\n        {field}.addView({input}, {input}Params);\n",
         escape_java(selected_country.code),
         escape_java(selected_country.dial),
+        &text_size,
+        &text_size,
     ));
     output.push_str(&format!(
         "        {input}.setKeyListener(android.text.method.DigitsKeyListener.getInstance(\"0123456789\"));\n        {input}.setRawInputType(android.text.InputType.TYPE_CLASS_NUMBER);\n"
     ));
     output.push_str(&format!(
-        "        DoweSvgView {trigger_arrow} = doweSelectArrow({content});\n        {trigger}.addView({trigger_arrow}, new LinearLayout.LayoutParams(doweDp(16), doweDp(16)));\n"
+        "        DoweSvgView {trigger_arrow} = doweSelectArrow({content});\n        LinearLayout.LayoutParams {trigger_arrow}Params = new LinearLayout.LayoutParams(doweDp(16), doweDp(16));\n        {trigger_arrow}Params.gravity = Gravity.CENTER_VERTICAL;\n        {trigger}.addView({trigger_arrow}, {trigger_arrow}Params);\n"
     ));
     if let Some(placeholder) = props.style.placeholder.as_deref() {
         output.push_str(&format!(
@@ -529,8 +553,8 @@ fn render_dev_android_phone_field(
     output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
 }
 
-fn render_dev_android_pin_field(
-    props: &dowe_components::PinFieldProps,
+fn render_dev_android_pin(
+    props: &dowe_components::PinProps,
     parent: &str,
     parent_gap: Option<&str>,
     parent_horizontal: bool,
@@ -542,9 +566,11 @@ fn render_dev_android_pin_field(
     let view = next_dev_view(counter);
     let row = next_dev_view(counter);
     let pin_cells = format!("{view}PinCells");
+    let pin_updating = format!("{view}PinUpdating");
     let size = props.style.size.unwrap_or(ButtonSize::Md);
+    let text_size = dev_text_size_expr(false, form_control_text_size(size));
     let (width, height) = match size {
-        ButtonSize::Sm => (40, 34),
+        ButtonSize::Sm => (40, 32),
         ButtonSize::Lg => (52, 48),
         _ => (44, 40),
     };
@@ -566,11 +592,11 @@ fn render_dev_android_pin_field(
     let content = dev_variant_content(&props.style);
     let font = dev_font_value(props.style.style.font.as_ref().or(inherited_font));
     let input_type = match props.kind {
-        dowe_components::PinFieldKind::Number => "android.text.InputType.TYPE_CLASS_NUMBER",
-        dowe_components::PinFieldKind::Password => "android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD",
-        dowe_components::PinFieldKind::Text => "android.text.InputType.TYPE_CLASS_TEXT",
+        dowe_components::PinKind::Number => "android.text.InputType.TYPE_CLASS_NUMBER",
+        dowe_components::PinKind::Password => "android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD",
+        dowe_components::PinKind::Text => "android.text.InputType.TYPE_CLASS_TEXT",
     };
-    let sanitize = if props.kind == dowe_components::PinFieldKind::Number {
+    let sanitize = if props.kind == dowe_components::PinKind::Number {
         "next = next.replaceAll(\"[^0-9]\", \"\");"
     } else {
         ""
@@ -582,7 +608,7 @@ fn render_dev_android_pin_field(
         .as_deref()
         .map(|path| context.signal_path(path));
     output.push_str(&format!(
-        "        LinearLayout {view} = doweContainer(false);\n        LinearLayout {row} = doweContainer(true);\n        {row}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        EditText[] {pin_cells} = new EditText[{}];\n",
+        "        LinearLayout {view} = doweContainer(false);\n        LinearLayout {row} = doweContainer(true);\n        {row}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        EditText[] {pin_cells} = new EditText[{}];\n        boolean[] {pin_updating} = new boolean[] {{ false }};\n",
         props.length
     ));
     if let Some(label) = props.style.label.as_deref() {
@@ -611,20 +637,26 @@ fn render_dev_android_pin_field(
         };
         output.push_str(&format!(
             "        EditText {cell} = new EditText(this);\n        {cell}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({width}), doweDp({height})));\n        {cell}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {cell}.setTextSize({});\n        {cell}.setIncludeFontPadding(false);\n        {cell}.setGravity(Gravity.CENTER);\n        {cell}.setTextColor({content});\n        {cell}.setSingleLine(true);\n        {cell}.setInputType({input_type});\n        {cell}.setMaxLines(1);\n        {cell}.setPadding(doweDp(8), 0, doweDp(8), 0);\n        {cell}.setBackground({background});\n        {cell}.setText({initial});\n        {pin_cells}[{index}] = {cell};\n",
-            dev_text_size_expr(false, INPUT_TEXT_SIZE)
+            text_size
         ));
         let write = bind_path
             .as_deref()
             .map(|path| format!("doweWrite(\"{}\", pinValue.toString());", escape_java(path)))
             .unwrap_or_default();
         output.push_str(&format!(
-            "        {cell}.addTextChangedListener(new TextWatcher() {{\n            public void beforeTextChanged(CharSequence value, int start, int count, int after) {{}}\n            public void onTextChanged(CharSequence value, int start, int before, int count) {{}}\n            public void afterTextChanged(Editable value) {{ String next = value.toString(); {sanitize} if (next.length() > 1) {{ next = next.substring(0, 1); value.replace(0, value.length(), next); return; }} if (!next.equals(value.toString())) {{ value.replace(0, value.length(), next); return; }} StringBuilder pinValue = new StringBuilder(); for (EditText pinCell : {pin_cells}) pinValue.append(pinCell.getText().toString()); {write} if (!next.isEmpty() && {} + 1 < {pin_cells}.length) {pin_cells}[{} + 1].requestFocus(); }}\n        }});\n        {cell}.setOnKeyListener((focused, keyCode, event) -> {{ if (keyCode == KeyEvent.KEYCODE_DEL && event.getAction() == KeyEvent.ACTION_DOWN && {cell}.getText().length() == 0 && {} > 0) {{ {pin_cells}[{} - 1].requestFocus(); return true; }} return false; }});\n        doweAdd({row}, {cell}, 8, true);\n",
+            "        {cell}.addTextChangedListener(new TextWatcher() {{\n            public void beforeTextChanged(CharSequence value, int start, int count, int after) {{}}\n            public void onTextChanged(CharSequence value, int start, int before, int count) {{}}\n            public void afterTextChanged(Editable value) {{ if ({pin_updating}[0]) return; String next = value.toString(); {sanitize} if (!next.equals(value.toString())) {{ value.replace(0, value.length(), next); return; }} if (next.length() > 1) {{ {pin_updating}[0] = true; int accepted = Math.min(next.length(), {pin_cells}.length - {}); for (int offset = 0; offset < accepted; offset++) {pin_cells}[{} + offset].setText(String.valueOf(next.charAt(offset))); {pin_updating}[0] = false; StringBuilder pinValue = new StringBuilder(); for (EditText pinCell : {pin_cells}) pinValue.append(pinCell.getText().toString()); {write} {pin_cells}[{} + accepted - 1].requestFocus(); return; }} StringBuilder pinValue = new StringBuilder(); for (EditText pinCell : {pin_cells}) pinValue.append(pinCell.getText().toString()); {write} if (!next.isEmpty() && {} + 1 < {pin_cells}.length) {pin_cells}[{} + 1].requestFocus(); }}\n        }});\n        {cell}.setOnKeyListener((focused, keyCode, event) -> {{ if (keyCode == KeyEvent.KEYCODE_DEL && event.getAction() == KeyEvent.ACTION_DOWN && {cell}.getText().length() == 0 && {} > 0) {{ {pin_cells}[{} - 1].requestFocus(); return true; }} return false; }});\n        doweAdd({row}, {cell}, 8, true);\n",
+            index,
+            index,
+            index,
             index,
             index,
             index,
             index
         ));
     }
+    output.push_str(&format!(
+        "        {row}.addOnLayoutChangeListener((target, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {{ int availableCellWidth = Math.max(doweDp(1), ((right - left) - doweDp(8) * Math.max(0, {pin_cells}.length - 1)) / Math.max(1, {pin_cells}.length)); int responsiveCellWidth = Math.min(doweDp({width}), availableCellWidth); for (EditText pinCell : {pin_cells}) {{ ViewGroup.LayoutParams params = pinCell.getLayoutParams(); if (params.width != responsiveCellWidth) {{ params.width = responsiveCellWidth; pinCell.setLayoutParams(params); }} }} }});\n"
+    ));
     output.push_str(&format!("        doweAdd({view}, {row});\n"));
     if let Some(text) = props.error_text.as_deref().or(props.help_text.as_deref()) {
         let color = if props.error_text.is_some() {
@@ -647,8 +679,8 @@ fn render_dev_android_pin_field(
     output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
 }
 
-fn render_dev_android_password_field(
-    props: &dowe_components::PasswordFieldProps,
+fn render_dev_android_password(
+    props: &dowe_components::PasswordProps,
     parent: &str,
     parent_gap: Option<&str>,
     parent_horizontal: bool,
@@ -661,6 +693,11 @@ fn render_dev_android_password_field(
     let field = next_dev_view(counter);
     let frame = next_dev_view(counter);
     let toggle = next_dev_view(counter);
+    let control_height = form_control_min_height(
+        props.style.size.unwrap_or(ButtonSize::Md),
+        props.style.label_floating,
+    )
+    .native_units();
     let background =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             format!(
@@ -676,8 +713,18 @@ fn render_dev_android_password_field(
         };
     let font = dev_font_value(props.style.style.font.as_ref().or(inherited_font));
     let content = dev_variant_content(&props.style);
+    let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
+    let hide_icon = solar_control_icon("eye-closed").expect("bundled Password conceal icon");
+    let show_icon_view =
+        render_dev_android_icon_view(&show_icon, counter, output, Some(&content));
+    let hide_icon_view =
+        render_dev_android_icon_view(&hide_icon, counter, output, Some(&content));
     let placeholder = props.style.placeholder.as_deref().unwrap_or_default();
     let read_only = props.readonly || props.disabled;
+    let text_size = dev_text_size_expr(
+        false,
+        form_control_text_size(props.style.size.unwrap_or(ButtonSize::Md)),
+    );
     if let Some(label) = props
         .style
         .label
@@ -694,10 +741,10 @@ fn render_dev_android_password_field(
         ));
     }
     output.push_str(&format!(
-        "        EditText {field} = new EditText(this);\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(true);\n        {field}.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);\n        {field}.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), {}, doweDp(68), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n",
-        dev_text_size_expr(false, INPUT_TEXT_SIZE),
-        INPUT_MIN_HEIGHT.native_units(),
-        INPUT_MIN_HEIGHT.native_units(),
+        "        EditText {field} = new EditText(this);\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(true);\n        {field}.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);\n        {field}.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), {}, doweDp(48), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n",
+        text_size,
+        control_height,
+        control_height,
         INPUT_HORIZONTAL_PADDING.native_units(),
         if props.style.label_floating && props.style.label.is_some() {
             "doweDp(10)"
@@ -732,17 +779,17 @@ fn render_dev_android_password_field(
         .filter(|_| props.style.label_floating)
     {
         output.push_str(&format!(
-            "        FrameLayout {frame} = doweFloatingInput({field}, \"{}\", \"{}\", {content}, {font}, null, null, {background});\n",
+            "        FrameLayout {frame} = doweFloatingInput({field}, \"{}\", \"{}\", {content}, {font}, null, null, {background});\n        {frame}.setMinimumHeight(doweDp({control_height}));\n",
             escape_java(label),
             escape_java(placeholder)
         ));
     } else {
         output.push_str(&format!(
-            "        FrameLayout {frame} = new FrameLayout(this);\n        {frame}.setBackground({background});\n        {frame}.addView({field}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL));\n"
+            "        FrameLayout {frame} = new FrameLayout(this);\n        {frame}.setMinimumHeight(doweDp({control_height}));\n        {frame}.setBackground({background});\n        {frame}.addView({field}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL));\n"
         ));
     }
     output.push_str(&format!(
-        "        TextView {toggle} = doweText(\"Show\", {content}, 12f, 700, 0f, 1.2f, {font});\n        {toggle}.setGravity(Gravity.CENTER);\n        {toggle}.setPadding(doweDp(8), doweDp(6), doweDp(8), doweDp(6));\n        {toggle}.setBackground(doweBackground(Color.TRANSPARENT, DOWE_RADIUS));\n        FrameLayout.LayoutParams {toggle}Params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.END | Gravity.CENTER_VERTICAL);\n        {toggle}Params.setMargins(0, 0, doweDp(4), 0);\n        {frame}.addView({toggle}, {toggle}Params);\n        final boolean[] {toggle}Visible = new boolean[]{{false}};\n        {toggle}.setOnClickListener(target -> {{\n            {toggle}Visible[0] = !{toggle}Visible[0];\n            {field}.setTransformationMethod({toggle}Visible[0] ? android.text.method.HideReturnsTransformationMethod.getInstance() : android.text.method.PasswordTransformationMethod.getInstance());\n            {toggle}.setText({toggle}Visible[0] ? \"Hide\" : \"Show\");\n            {field}.setSelection({field}.length());\n        }});\n"
+        "        FrameLayout {toggle} = new FrameLayout(this);\n        {toggle}.setContentDescription(\"Show password\");\n        {toggle}.setBackground(doweBackground(Color.TRANSPARENT, DOWE_RADIUS));\n        {toggle}.addView({show_icon_view}, new FrameLayout.LayoutParams(doweDp(20), doweDp(20), Gravity.CENTER));\n        {hide_icon_view}.setVisibility(View.GONE);\n        {toggle}.addView({hide_icon_view}, new FrameLayout.LayoutParams(doweDp(20), doweDp(20), Gravity.CENTER));\n        FrameLayout.LayoutParams {toggle}Params = new FrameLayout.LayoutParams(doweDp(32), doweDp(32), Gravity.END | Gravity.CENTER_VERTICAL);\n        {toggle}Params.setMargins(0, 0, doweDp(4), 0);\n        {frame}.addView({toggle}, {toggle}Params);\n        final boolean[] {toggle}Visible = new boolean[]{{false}};\n        {toggle}.setOnClickListener(target -> {{\n            {toggle}Visible[0] = !{toggle}Visible[0];\n            {field}.setTransformationMethod({toggle}Visible[0] ? android.text.method.HideReturnsTransformationMethod.getInstance() : android.text.method.PasswordTransformationMethod.getInstance());\n            {show_icon_view}.setVisibility({toggle}Visible[0] ? View.GONE : View.VISIBLE);\n            {hide_icon_view}.setVisibility({toggle}Visible[0] ? View.VISIBLE : View.GONE);\n            {toggle}.setContentDescription({toggle}Visible[0] ? \"Hide password\" : \"Show password\");\n            {field}.setSelection({field}.length());\n        }});\n"
     ));
     if read_only {
         output.push_str(&format!("        {toggle}.setEnabled(false);\n"));

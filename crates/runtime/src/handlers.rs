@@ -42,8 +42,8 @@ use dowe_crypto::{
     encrypt_jwe_dir_a256gcm, sign_jws_hs256, verify_jws_hs256,
 };
 use dowe_database::{
-    D1Client, Database, DoweDatabaseClient, PostgresClient, StoreRecord, StoreValue,
-    bind_query_params, init_database, open_database,
+    D1Client, Database, DatabaseTransactionInsert, DoweDatabaseClient, PostgresClient, StoreRecord,
+    StoreValue, bind_query_params, init_database, open_database,
 };
 use dowe_queue::{
     DoweQueue, QueueClient, QueueConfig, QueueError, QueueProvider as RuntimeQueueProvider,

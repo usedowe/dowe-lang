@@ -251,13 +251,13 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         ViewNode::ImageCropper { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
-        ViewNode::PasswordField { props } => {
+        ViewNode::Password { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
-        ViewNode::PhoneField { props } => {
+        ViewNode::Phone { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
-        ViewNode::PinField { props } => {
+        ViewNode::Pin { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
         ViewNode::Textarea { props } => {

@@ -641,7 +641,7 @@ pub struct DatabaseSeedInsert {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoreTransactionEndpoint {
-    pub database: String,
+    pub connection: StoreConnection,
     pub operations: Vec<StoreTransactionOperation>,
     pub return_binding: Option<String>,
 }

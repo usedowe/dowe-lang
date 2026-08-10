@@ -51,11 +51,15 @@ Cache, or Vector. `id <binding> source:"ulid"` is server-only.
 | `parse.bool` | `value` | `fallback` | bool, fallback, or `null` |
 | `parse.json` | `value` | `fallback` | JSON value, fallback, or `null` |
 | `parse.string` | `value` | `fallback` | string |
-| `parse.svg` | `value` | `fallback` | Dowe `Svg`/`Path` source text, fallback, or `null` |
+| `parse.svg` | `value` | `fallback`, `colors`, `format` | Dowe `Svg`/`Path` source text, normalized preview JSON, fallback, or `null` |
 
-`parse.svg` accepts bounded SVG XML (`svg`, `g`, `path`, inline fills, `matrix(...)` transforms, at
-most 262144 UTF-8 bytes and 1024 paths), maps external colors to semantic tokens, and never
-executes DTD, entities, scripts, or external resources.
+`parse.svg` accepts bounded SVG XML (`svg`, `g`, `path`, non-rounded `rect`, inline fills and
+`fill-rule`, `matrix(...)` transforms, at most 262144 UTF-8 bytes and 1024 emitted paths).
+Rectangles become paths, integer RGB fills whose channels differ by at most 1 reuse one semantic
+token, and inherited `evenodd` becomes `Path fillRule:"evenodd"` or preview `evenOdd:true`. The
+importer never executes DTD, entities, scripts, or external resources.
+Use `colors:"original" format:"source"` for copyable paths with hexadecimal fills, or
+`colors:"original" format:"data"` for normalized JSON accepted by `Svg data`.
 
 ## url
 

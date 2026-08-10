@@ -9,6 +9,9 @@ fn dev_activity_navigation(first_path: &str) -> String {
         doweCloseDrawerForNavigation();
         if (path.equals(currentPath)) {{
             if (Objects.equals(resolvedFragment, currentFragment)) {{
+                if ("replace".equals(operation)) {{
+                    renderCurrentRoute();
+                }}
                 return;
             }}
             if (!"replace".equals(operation)) {{

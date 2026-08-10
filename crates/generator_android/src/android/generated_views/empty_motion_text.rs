@@ -162,43 +162,155 @@ private fun DoweTypeWriter(texts: List<String>, typeSpeed: Long, deleteSpeed: Lo
     }
 }
 
-private data class DoweRichTextMark(val text: String, val style: String, val color: Color)
+private data class DoweRichTextMark(val text: String, val style: String, val scheme: String)
+private data class DoweRichTextLine(val start: Int, val end: Int, val width: Int, val height: Int)
 
 @Composable
 private fun DoweRichText(marks: List<DoweRichTextMark>, fontFamily: FontFamily?, fontSize: TextUnit, contentColor: Color, modifier: Modifier) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Layout(modifier = modifier, content = {
         marks.forEach { mark ->
-            val accent = if (mark.color == Color.Unspecified) contentColor else mark.color
-            val shape = RoundedCornerShape(if (mark.style == "pill") 999.dp else 6.dp)
-            val decorated = when (mark.style) {
-                "mark" -> Modifier.clip(shape).background(accent.copy(alpha = 0.18f)).padding(horizontal = 4.dp, vertical = 1.dp)
-                "pill" -> Modifier.clip(shape).border(2.dp, accent, shape).padding(horizontal = 10.dp, vertical = 2.dp)
-                "slant" -> Modifier.clip(shape).background(accent).graphicsLayer(rotationZ = -1f).padding(horizontal = 6.dp, vertical = 1.dp)
-                "box" -> Modifier.clip(shape).border(2.dp, accent, shape).padding(horizontal = 12.dp, vertical = 4.dp)
-                "tag" -> Modifier.clip(shape).background(accent).padding(horizontal = 12.dp, vertical = 4.dp)
-                "pop" -> Modifier.graphicsLayer(rotationZ = -1f, scaleX = 1.04f, scaleY = 1.04f)
-                else -> Modifier
+            DoweRichTextRun(mark = mark, fontFamily = fontFamily, fontSize = fontSize, contentColor = contentColor)
+        }
+    }) { measurables, constraints ->
+        val gap = 4.dp.roundToPx()
+        val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+        val placeables = measurables.map { it.measure(childConstraints) }
+        val lines = mutableListOf<DoweRichTextLine>()
+        var start = 0
+        var width = 0
+        var height = 0
+        placeables.forEachIndexed { index, placeable ->
+            val nextWidth = if (index == start) placeable.width else width + gap + placeable.width
+            if (index > start && nextWidth > constraints.maxWidth) {
+                lines += DoweRichTextLine(start, index, width, height)
+                start = index
+                width = placeable.width
+                height = placeable.height
+            } else {
+                width = nextWidth
+                height = maxOf(height, placeable.height)
             }
-            val textColor = if (mark.style == "tag" || mark.style == "slant") DoweDesign.background else accent
-            Text(
-                text = mark.text,
-                modifier = decorated,
-                color = textColor,
-                fontFamily = fontFamily,
-                fontSize = fontSize,
-                fontWeight = if (mark.style in setOf("mark", "grad", "pill", "slant", "glow", "neon", "pop", "tag")) FontWeight.Bold else FontWeight.SemiBold,
-                fontStyle = if (mark.style == "grad" || mark.style == "slant") FontStyle.Italic else FontStyle.Normal,
-                textDecoration = when (mark.style) {
-                    "under", "wave" -> TextDecoration.Underline
-                    "strike" -> TextDecoration.LineThrough
-                    else -> TextDecoration.None
-                },
-                style = TextStyle(
-                    shadow = if (mark.style in setOf("glow", "neon", "pop")) Shadow(color = accent.copy(alpha = 0.7f), offset = Offset.Zero, blurRadius = 8f) else null
-                )
-            )
+        }
+        if (placeables.isNotEmpty()) {
+            lines += DoweRichTextLine(start, placeables.size, width, height)
+        }
+        val contentWidth = lines.maxOfOrNull { it.width } ?: 0
+        val contentHeight = lines.sumOf { it.height } + gap * maxOf(lines.size - 1, 0)
+        val layoutWidth = constraints.constrainWidth(contentWidth)
+        val layoutHeight = constraints.constrainHeight(contentHeight)
+        layout(layoutWidth, layoutHeight) {
+            var lineTop = 0
+            lines.forEach { line ->
+                var lineLeft = ((layoutWidth - line.width) / 2).coerceAtLeast(0)
+                for (index in line.start until line.end) {
+                    val placeable = placeables[index]
+                    placeable.placeRelative(lineLeft, lineTop + (line.height - placeable.height) / 2)
+                    lineLeft += placeable.width + gap
+                }
+                lineTop += line.height + gap
+            }
         }
     }
+}
+
+@Composable
+private fun DoweRichTextRun(mark: DoweRichTextMark, fontFamily: FontFamily?, fontSize: TextUnit, contentColor: Color) {
+    val accent = doweButtonFamily(mark.scheme)
+    val onAccent = doweButtonOnFamily(mark.scheme)
+    val softAccent = doweButtonSoftFamily(mark.scheme)
+    val inheritedColor = if (contentColor == Color.Unspecified) DoweDesign.onBackground else contentColor
+    val density = LocalDensity.current
+    var measuredTextWidth by remember(mark.text, fontFamily, fontSize) { mutableStateOf<Dp?>(null) }
+    val shape = when (mark.style) {
+        "mark" -> RoundedCornerShape(2.dp)
+        "pill" -> RoundedCornerShape(999.dp)
+        else -> RoundedCornerShape(DoweDesign.radius)
+    }
+    val neonTransition = rememberInfiniteTransition(label = "dowe-rich-neon")
+    val neonAlpha by neonTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (mark.style == "neon") 0.9f else 1f,
+        animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
+        label = "dowe-rich-neon-alpha"
+    )
+    val decoration = when (mark.style) {
+        "mark" -> Modifier.clip(shape).background(accent).padding(horizontal = 8.dp, vertical = 2.dp)
+        "pill" -> Modifier.border(2.dp, accent, shape).padding(horizontal = 10.dp, vertical = 2.dp)
+        "slant" -> Modifier.padding(horizontal = 6.dp, vertical = 1.dp).drawBehind {
+            val slant = 4.dp.toPx()
+            val path = Path().apply {
+                moveTo(slant, 0f)
+                lineTo(size.width, 0f)
+                lineTo(size.width - slant, size.height)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(path, accent)
+        }
+        "under" -> Modifier.padding(bottom = 2.dp).drawBehind {
+            drawLine(accent, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 3.dp.toPx())
+        }
+        "strike" -> Modifier.drawBehind {
+            drawLine(accent, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), strokeWidth = 3.dp.toPx())
+        }
+        "box" -> Modifier.border(2.dp, accent, shape).padding(horizontal = 12.dp, vertical = 4.dp)
+        "wave" -> Modifier.padding(bottom = 4.dp).drawBehind {
+            val baseline = size.height - 1.dp.toPx()
+            val amplitude = 1.5.dp.toPx()
+            val wavelength = 6.dp.toPx()
+            val path = Path()
+            var x = 0f
+            path.moveTo(0f, baseline)
+            while (x <= size.width) {
+                path.lineTo(x, baseline + sin(x / wavelength * 2f * Math.PI.toFloat()) * amplitude)
+                x += 1.dp.toPx()
+            }
+            drawPath(path, accent, style = Stroke(width = 2.dp.toPx()))
+        }
+        "tag" -> Modifier.doweShadow(radius = 8.dp, shape = shape, color = inheritedColor, alpha = 0.1f).clip(shape).background(softAccent).padding(horizontal = 12.dp, vertical = 4.dp)
+        else -> Modifier
+    }
+    val resolvedText = if (mark.style == "mark" || mark.style == "neon") mark.text.uppercase(Locale.ROOT) else mark.text
+    val textColor = when (mark.style) {
+        "mark", "slant" -> onAccent
+        "under", "strike", "wave" -> inheritedColor
+        else -> accent
+    }
+    Text(
+        text = resolvedText,
+        modifier = decoration.then(measuredTextWidth?.let { Modifier.width(it) } ?: Modifier).graphicsLayer(alpha = neonAlpha),
+        color = textColor,
+        fontFamily = fontFamily,
+        fontSize = fontSize,
+        textAlign = TextAlign.Center,
+        onTextLayout = { layout ->
+            val lineWidth = (0 until layout.lineCount).maxOfOrNull { index ->
+                layout.getLineRight(index) - layout.getLineLeft(index)
+            } ?: 0f
+            val nextWidth = with(density) { ceil(lineWidth).toDp() }
+            if (measuredTextWidth != nextWidth) measuredTextWidth = nextWidth
+        },
+        fontWeight = when (mark.style) {
+            "strike" -> FontWeight.Medium
+            "pill", "under", "box", "wave" -> FontWeight.SemiBold
+            else -> FontWeight.Bold
+        },
+        fontStyle = if (mark.style == "grad") FontStyle.Italic else FontStyle.Normal,
+        letterSpacing = when (mark.style) {
+            "mark" -> 0.025.em
+            "neon" -> 0.05.em
+            else -> TextUnit.Unspecified
+        },
+        style = TextStyle(
+            brush = if (mark.style == "grad") Brush.horizontalGradient(listOf(accent, Color.White.copy(alpha = 0.6f))) else null,
+            shadow = when (mark.style) {
+                "glow" -> Shadow(color = accent.copy(alpha = 0.7f), offset = Offset.Zero, blurRadius = 15f)
+                "neon" -> Shadow(color = accent, offset = Offset.Zero, blurRadius = 20f)
+                "pop" -> Shadow(color = accent.copy(alpha = 0.6f), offset = Offset(3f, 3f), blurRadius = 0f)
+                else -> null
+            }
+        )
+    )
 }
 
 @Composable

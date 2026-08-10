@@ -2,16 +2,21 @@ use crate::codec::{Reader, Writer};
 use crate::engine::{db_root, init_database};
 use crate::error::{StoreError, StoreResult};
 use crate::names::{validate_account_name, validate_database_name};
+use crate::security::{create_private_directory, secure_file};
+use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
+use argon2::{Argon2, password_hash};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use rand_core::{OsRng, RngCore};
 use sha2::{Digest, Sha256};
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions, TryLockError};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const AUTH_MAGIC: &[u8] = b"DOWE_DB_AUTH_V1\n";
+static AUTH_CATALOG: OnceLock<Mutex<()>> = OnceLock::new();
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CreatedStoreUser {
@@ -57,9 +62,14 @@ fn create_user(
         }
         None => (generate_credential(), true),
     };
-    let salt = generate_salt();
-    let token_hash = hash_credential(&salt, &credential);
+    let salt = String::new();
+    let token_hash = hash_credential(&credential)?;
     let now = timestamp();
+    let _catalog = AUTH_CATALOG
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| StoreError::DurabilityError("Database auth lock failed".to_string()))?;
+    let _file_lock = acquire_auth_lock(project_root)?;
     let mut users = read_users(project_root)?;
     if let Some(existing) = users
         .iter_mut()
@@ -121,25 +131,23 @@ fn verify_user(
         ));
     }
     let users = read_users(project_root)?;
-    let mut saw_user = false;
+    let mut credential_matches_other_database = false;
     for entry in users.iter().filter(|entry| entry.user == user) {
-        saw_user = true;
-        let expected = hash_credential(&entry.salt, credential);
-        if constant_time_eq(expected.as_bytes(), entry.token_hash.as_bytes()) {
+        if verify_credential(entry, credential) {
             if entry.database == database {
                 return Ok(());
             }
-            return Err(StoreError::Authorization(format!(
-                "Database account `{user}` is not assigned to database `{database}`"
-            )));
+            credential_matches_other_database = true;
         }
     }
-    let message = if saw_user {
-        "Database secret is invalid"
-    } else {
-        "Database account is invalid"
-    };
-    Err(StoreError::Authentication(message.to_string()))
+    if credential_matches_other_database {
+        return Err(StoreError::Authorization(format!(
+            "Database account `{user}` is not assigned to database `{database}`"
+        )));
+    }
+    Err(StoreError::Authentication(
+        "Database account or secret is invalid".to_string(),
+    ))
 }
 
 pub fn verify_account(
@@ -183,7 +191,7 @@ fn read_users(project_root: &Path) -> StoreResult<Vec<StoreUser>> {
 
 fn write_users(project_root: &Path, users: &[StoreUser]) -> StoreResult<()> {
     let root = auth_root(project_root);
-    fs::create_dir_all(&root)?;
+    create_private_directory(&root)?;
     let path = root.join("users.bin");
     let mut writer = Writer::new();
     writer.bytes(AUTH_MAGIC);
@@ -196,11 +204,37 @@ fn write_users(project_root: &Path, users: &[StoreUser]) -> StoreResult<()> {
         writer.string(&user.created_at);
         writer.string(&user.updated_at);
     }
-    let mut file = File::create(path)?;
+    let temporary = root.join(format!("users-{}.tmp", std::process::id()));
+    let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&temporary)?;
+    secure_file(&file)?;
     file.write_all(&writer.into_bytes())?;
     file.sync_all()
         .map_err(|error| StoreError::DurabilityError(error.to_string()))?;
+    fs::rename(&temporary, path)?;
+    sync_directory(&root)?;
     Ok(())
+}
+
+fn acquire_auth_lock(project_root: &Path) -> StoreResult<File> {
+    let root = auth_root(project_root);
+    create_private_directory(&root)?;
+    let lock = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(root.join(".lock"))?;
+    secure_file(&lock)?;
+    match lock.try_lock() {
+        Ok(()) => Ok(lock),
+        Err(TryLockError::WouldBlock) => Err(StoreError::TransactionConflict(
+            "Database auth catalog is being updated".to_string(),
+        )),
+        Err(TryLockError::Error(error)) => Err(StoreError::Io(error.to_string())),
+    }
 }
 
 fn auth_root(project_root: &Path) -> PathBuf {
@@ -217,18 +251,50 @@ fn generate_credential() -> String {
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
-fn generate_salt() -> String {
-    let mut bytes = [0u8; 32];
-    OsRng.fill_bytes(&mut bytes);
-    hex(&bytes)
+fn hash_credential(credential: &str) -> StoreResult<String> {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(credential.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+        .map_err(password_hash_error)
 }
 
-fn hash_credential(salt: &str, credential: &str) -> String {
+fn verify_credential(user: &StoreUser, credential: &str) -> bool {
+    if user.token_hash.starts_with("$argon2id$") {
+        return PasswordHash::new(&user.token_hash)
+            .ok()
+            .is_some_and(|hash| {
+                Argon2::default()
+                    .verify_password(credential.as_bytes(), &hash)
+                    .is_ok()
+            });
+    }
+    let expected = legacy_hash_credential(&user.salt, credential);
+    constant_time_eq(expected.as_bytes(), user.token_hash.as_bytes())
+}
+
+fn legacy_hash_credential(salt: &str, credential: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(salt.as_bytes());
     hasher.update([0]);
     hasher.update(credential.as_bytes());
     hex(&hasher.finalize())
+}
+
+fn password_hash_error(error: password_hash::Error) -> StoreError {
+    StoreError::Authentication(format!("Database secret hashing failed: {error}"))
+}
+
+#[cfg(unix)]
+fn sync_directory(path: &Path) -> StoreResult<()> {
+    File::open(path)?
+        .sync_all()
+        .map_err(|error| StoreError::DurabilityError(error.to_string()))
+}
+
+#[cfg(not(unix))]
+fn sync_directory(_path: &Path) -> StoreResult<()> {
+    Ok(())
 }
 
 fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {

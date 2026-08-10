@@ -196,12 +196,13 @@ fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
 fn generates_relative_absolute_and_fixed_boxes_as_native_overlays() {
     let mut positioned_route = route();
     positioned_route.page_tree = positioned_box_page();
-    let generated = all_android_source(&generate_android(
+    let output = generate_android(
         &[positioned_route],
         &FontConfig::default(),
         &DesignConfig::default(),
         &[],
-    ));
+    );
+    let generated = all_android_source(&output);
 
     assert!(generated.contains("Alignment.TopEnd"));
     assert!(generated.contains(".padding(top = doweResponsive(viewportWidth, xs = 16.dp) ?: 0.dp, end = doweResponsive(viewportWidth, xs = 24.dp) ?: 0.dp)"));
@@ -210,13 +211,26 @@ fn generates_relative_absolute_and_fixed_boxes_as_native_overlays() {
     assert!(generated.contains("FrameLayout"));
     assert!(generated.contains("Gravity.TOP | Gravity.END"));
     assert!(generated.contains("dowe-fixed-box"));
+    let dev = dev_java_source(&output).content;
+    let proof = dev.find("doweText(\"Proof\"").expect("positioned box content");
+    let visibility = dev[..proof]
+        .rfind("if (doweShow(doweResponsiveBool(viewportWidth, false, null, null, true, null))) {")
+        .expect("positioned box visibility");
+    assert!(proof - visibility < 2_000);
+    let relative_width = dev[..proof]
+        .rfind("setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));")
+        .expect("relative box width");
+    assert!(proof - relative_width < 3_000);
 }
 
 fn positioned_box_page() -> ViewNode {
     ViewNode::Box {
         props: StyleProps {
-            position: Some(Box::new(dowe_components::PositionProps {
-                mode: BoxPosition::Relative,
+            extras: Some(Box::new(dowe_components::StyleExtras {
+                position: dowe_components::PositionProps {
+                    mode: BoxPosition::Relative,
+                    ..Default::default()
+                },
                 ..Default::default()
             })),
             sizing: SizingProps {
@@ -231,10 +245,20 @@ fn positioned_box_page() -> ViewNode {
             text("Flow content"),
             ViewNode::Box {
                 props: StyleProps {
-                    position: Some(Box::new(dowe_components::PositionProps {
-                        mode: BoxPosition::Absolute,
-                        top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
-                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                    element: ElementProps {
+                        show: Some(VisibilityCondition::Static(responsive_bool(&[
+                            (Breakpoint::Xs, false),
+                            (Breakpoint::Lg, true),
+                        ]))),
+                        ..Default::default()
+                    },
+                    extras: Some(Box::new(dowe_components::StyleExtras {
+                        position: dowe_components::PositionProps {
+                            mode: BoxPosition::Absolute,
+                            top: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(12))),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     })),
                     ..Default::default()
@@ -243,10 +267,13 @@ fn positioned_box_page() -> ViewNode {
             },
             ViewNode::Box {
                 props: StyleProps {
-                    position: Some(Box::new(dowe_components::PositionProps {
-                        mode: BoxPosition::Fixed,
-                        right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
-                        bottom: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                    extras: Some(Box::new(dowe_components::StyleExtras {
+                        position: dowe_components::PositionProps {
+                            mode: BoxPosition::Fixed,
+                            right: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            bottom: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     })),
                     ..Default::default()
@@ -776,9 +803,11 @@ fn generates_compose_box_and_text() {
             .contains("doweApplyTheme(name);\n        doweApplySystemBarAppearance();")
     );
     assert!(dev.content.contains("view.setOnApplyWindowInsetsListener"));
+    assert!(dev.content.contains("scrollView.setClipToPadding(true);"));
     assert!(dev.content.contains(
-        "scrollView.setClipToPadding(true);\n        scrollView.addView(root"
+        "scrollView.setOnScrollChangeListener((view, scrollX, scrollY, oldScrollX, oldScrollY) -> doweUpdatePinnedAppBarDock(scrollY > doweDp(100), true));"
     ));
+    assert!(dev.content.contains("scrollView.addView(root"));
     assert!(dev.content.contains(
             "new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)"
         ));

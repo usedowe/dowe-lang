@@ -487,9 +487,9 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::AvatarGroup { .. }
         | ViewNode::ChatBox { .. }

@@ -33,7 +33,7 @@ fn render_dev_android_form_node(
             context,
             children_method,
         ),
-        ViewNode::PasswordField { props } => render_dev_android_password_field(
+        ViewNode::Password { props } => render_dev_android_password(
             props,
             parent,
             parent_gap,
@@ -53,7 +53,7 @@ fn render_dev_android_form_node(
             inherited_font,
             context,
         ),
-        ViewNode::PhoneField { props } => render_dev_android_phone_field(
+        ViewNode::Phone { props } => render_dev_android_phone(
             props,
             parent,
             parent_gap,
@@ -63,7 +63,7 @@ fn render_dev_android_form_node(
             inherited_font,
             context,
         ),
-        ViewNode::PinField { props } => render_dev_android_pin_field(
+        ViewNode::Pin { props } => render_dev_android_pin(
             props,
             parent,
             parent_gap,

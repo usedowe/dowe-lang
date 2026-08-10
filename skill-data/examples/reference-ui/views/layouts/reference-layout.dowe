@@ -1,0 +1,29 @@
+import SiteNavigation from "@/views/components/site-navigation"
+
+layout ReferenceLayout
+  signal openNavigation value:false
+  Scaffold
+    appBar
+      AppBar variant:"soft" scheme:"background" boxed:true bordered:true position:"fixed"
+        start
+          Brand href:"/" label:"Reference Workspace home"
+            Flex align:"center" gap:2
+              Icon name:"layers-minimalistic" style:"bold-duotone" fill:"secondary" w:7 h:7
+              Text weight:"black"
+                "REFERENCE"
+        center
+          Box show:{ xs:false md:true }
+            SiteNavigation
+        end
+          Button href:"/#contact" show:{ xs:false md:true }
+            "Get started"
+          IconButton icon:"menu-dots" label:"Open navigation" show:{ xs:true md:false } onClick:{ set:openNavigation value:!openNavigation }
+    main
+      children
+    overlays
+      Drawer open:openNavigation
+        header
+          Text weight:"bold"
+            "Navigation"
+        body
+          SiteNavigation

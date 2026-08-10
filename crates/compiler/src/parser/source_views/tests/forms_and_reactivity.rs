@@ -14,9 +14,9 @@
         dragItem id:"draft" label:"Draft" description:"Prepare"
     Editor bind:form.notes label:"Notes" placeholder:"Write notes" minHeight:180
     ImageCropper bind:form.avatar label:"Avatar" shape:"circle"
-    PasswordField bind:form.password label:"Password" hideStrength:false
-    PhoneField bind:form.phone label:"Phone" country:"US"
-    PinField bind:form.pin label:"Code" length:6 type:"number"
+    Password bind:form.password label:"Password" hideStrength:false
+    Phone bind:form.phone label:"Phone" country:"US"
+    Pin bind:form.pin label:"Code" length:6 type:"number"
     Textarea bind:form.bio label:"Bio" rows:4 maxLength:160"#,
         )
         .expect("tree");
@@ -63,21 +63,43 @@
         ));
         assert!(matches!(
             &children[5],
-            ViewNode::PasswordField { props } if !props.hide_strength
+            ViewNode::Password { props } if !props.hide_strength
         ));
         assert!(matches!(
             &children[6],
-            ViewNode::PhoneField { props } if props.country.as_deref() == Some("US")
+            ViewNode::Phone { props } if props.country.as_deref() == Some("US")
         ));
         assert!(matches!(
             &children[7],
-            ViewNode::PinField { props }
+            ViewNode::Pin { props }
                 if props.length == 6 && props.kind.as_str() == "number"
         ));
         assert!(matches!(
             &children[8],
             ViewNode::Textarea { props } if props.rows == 4 && props.max_length == Some(160)
         ));
+    }
+
+    #[test]
+    fn rejects_removed_phone_field_component_name() {
+        let error = parse_page(
+            r#"page contactPage
+  PhoneField country:"US""#,
+        )
+        .expect_err("removed phone component name");
+
+        assert!(error.to_string().contains("unknown component `PhoneField`"));
+    }
+
+    #[test]
+    fn rejects_removed_pin_field_component_name() {
+        let error = parse_page(
+            r#"page verificationPage
+  PinField length:6 type:"number""#,
+        )
+        .expect_err("removed pin component name");
+
+        assert!(error.to_string().contains("unknown component `PinField`"));
     }
 
     #[test]
@@ -367,25 +389,39 @@
     }
 
     #[test]
-    fn parses_box_and_card_animation_props() {
+    fn parses_interactive_motion_props() {
         let tree = parse_page(
             r#"page motionPage
-  Box animation:"fadeIn"
-    Card animation:"slideUp"
-      Text
-        "Motion""#,
+  signal selected value:""
+  fn selectMobile
+    set selected value:"mobile"
+  Flex direction:"column" animation:"fadeIn"
+    Chip variant:"solid" scheme:"warning" size:"sm" rotate:-7 scale:1.05 translateX:-1.5 translateY:{ xs:0 md:2 } transition:"spring" gesture:"lift" onClick:selectMobile
+      "Mobile Apps""#,
         )
         .expect("tree");
 
-        let ViewNode::Box { props, children } = tree else {
-            panic!("box");
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
         };
-        assert_eq!(props.animation, Some(ViewAnimation::FadeIn));
+        let ViewNode::Flex { props, children } = &children[0] else {
+            panic!("flex");
+        };
+        assert_eq!(props.style.animation(), Some(ViewAnimation::FadeIn));
 
-        let ViewNode::Card { props, .. } = &children[0] else {
-            panic!("card");
+        let ViewNode::Chip { props, .. } = &children[0] else {
+            panic!("chip");
         };
-        assert_eq!(props.style.animation, Some(ViewAnimation::SlideUp));
+        let motion = props.style.style.motion();
+        assert_eq!(motion.rotate.as_ref().unwrap().entries[0].value, ViewRotation(-7));
+        assert_eq!(motion.scale.as_ref().unwrap().entries[0].value, ViewScale(105));
+        assert_eq!(
+            motion.translate_x.as_ref().unwrap().entries[0].value,
+            ViewTranslation(-3)
+        );
+        assert_eq!(motion.transition, Some(ViewTransition::Spring));
+        assert_eq!(motion.gesture, Some(ViewGesture::Lift));
+        assert_eq!(props.style.element.on_click.as_deref(), Some("selectMobile"));
     }
 
     #[test]

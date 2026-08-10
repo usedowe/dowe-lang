@@ -39,6 +39,26 @@ fn compiles_the_self_contained_fullstack_example() {
     result.expect("fullstack example");
 }
 
+#[test]
+fn compiles_the_reference_ui_example() {
+    let _guard = ENV_LOCK.lock().expect("env lock");
+    let temp = TempDir::new().expect("tempdir");
+    let source =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../skill-data/examples/reference-ui");
+    copy_tree(&source, temp.path());
+    fs::copy(temp.path().join(".env.example"), temp.path().join(".env")).expect("env");
+
+    let root = temp.path().to_path_buf();
+    let result = std::thread::Builder::new()
+        .stack_size(16 * 1024 * 1024)
+        .spawn(move || dowe_compiler::compile_dev(root))
+        .expect("compiler thread")
+        .join()
+        .expect("compiler thread result");
+
+    result.expect("reference UI example");
+}
+
 fn copy_tree(source: &Path, target: &Path) {
     fs::create_dir_all(target).expect("target");
     for entry in fs::read_dir(source).expect("source") {

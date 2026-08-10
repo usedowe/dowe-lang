@@ -227,10 +227,16 @@ fn modifier_for_bar(props: &BarProps, flow: ComposeFlow) -> String {
     if props.position != BarPosition::Static {
         modifier.push_str(".zIndex(1f)");
     }
-    if props.floating {
+    if props.floating && !props.dock_on_scroll {
         modifier.push_str(".padding(horizontal = 16.dp, vertical = 8.dp)");
     }
     modifier = modifier_for_style_with_base(&props.style.style, modifier);
+    if props.dock_on_scroll {
+        return format!(
+            "doweDockingAppBarModifier({modifier}, scrollState, {})",
+            variant_container(&props.style)
+        );
+    }
     if props.floating {
         modifier.push_str(".clip(RoundedCornerShape(DoweDesign.radius))");
     }
@@ -357,13 +363,87 @@ fn modifier_for_style_with_base_and_shadow_shape(
             compose_optional_rounded(props.rounded.as_ref())
         ));
     }
-    if let Some(animation) = props.animation {
+    let motion = props.motion();
+    if motion.rotate.is_some()
+        || motion.scale.is_some()
+        || motion.translate_x.is_some()
+        || motion.translate_y.is_some()
+    {
+        let rotation = motion
+            .rotate
+            .as_ref()
+            .map(|value| {
+                format!(
+                    "{} ?: 0f",
+                    compose_responsive_value(value, |value| format!("{}f", value.degrees()))
+                )
+            })
+            .unwrap_or_else(|| "0f".to_string());
+        let scale = motion
+            .scale
+            .as_ref()
+            .map(|value| {
+                format!(
+                    "{} ?: 1f",
+                    compose_responsive_value(value, |value| format!("{}f", value.factor()))
+                )
+            })
+            .unwrap_or_else(|| "1f".to_string());
+        let translate_x = motion
+            .translate_x
+            .as_ref()
+            .map(|value| {
+                format!(
+                    "({} ?: 0.dp).toPx()",
+                    compose_responsive_value(value, |value| format!(
+                        "{}.dp",
+                        value.native_units()
+                    ))
+                )
+            })
+            .unwrap_or_else(|| "0f".to_string());
+        let translate_y = motion
+            .translate_y
+            .as_ref()
+            .map(|value| {
+                format!(
+                    "({} ?: 0.dp).toPx()",
+                    compose_responsive_value(value, |value| format!(
+                        "{}.dp",
+                        value.native_units()
+                    ))
+                )
+            })
+            .unwrap_or_else(|| "0f".to_string());
+        modifier.push_str(&format!(
+            ".graphicsLayer {{ rotationZ = {rotation}; scaleX = {scale}; scaleY = {scale}; translationX = {translate_x}; translationY = {translate_y} }}"
+        ));
+    }
+    if let Some(gesture) = motion.gesture
+        && gesture != ViewGesture::None
+    {
+        let transition = motion.transition.unwrap_or(ViewTransition::Smooth);
+        modifier.push_str(&format!(
+            ".doweGesture(DoweGesturePreset.{}, DoweTransitionPreset.{})",
+            title_case(gesture.as_str()),
+            title_case(transition.as_str())
+        ));
+    }
+    if let Some(animation) = props.animation() {
         modifier.push_str(&format!(
             ".doweAnimation({})",
             compose_animation_preset(animation)
         ));
     }
     modifier
+}
+
+fn title_case(value: &str) -> String {
+    let mut chars = value.chars();
+    chars
+        .next()
+        .map(|first| first.to_ascii_uppercase().to_string() + chars.as_str())
+        .unwrap_or_default()
 }
 
 fn compose_horizontal_arrangement(

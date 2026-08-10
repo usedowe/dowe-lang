@@ -413,25 +413,64 @@ fn dev_activity_layout_widgets() -> &'static str {
         if (preset == null || "none".equals(preset)) {
             return;
         }
+        float baseTranslationX = view.getTranslationX();
+        float baseTranslationY = view.getTranslationY();
+        float baseScaleX = view.getScaleX();
+        float baseScaleY = view.getScaleY();
         view.setAlpha(0f);
         if ("slideUp".equals(preset)) {
-            view.setTranslationY(doweDp(16));
+            view.setTranslationY(baseTranslationY + doweDp(16));
         } else if ("slideDown".equals(preset)) {
-            view.setTranslationY(-doweDp(16));
+            view.setTranslationY(baseTranslationY - doweDp(16));
         } else if ("slideLeft".equals(preset)) {
-            view.setTranslationX(doweDp(16));
+            view.setTranslationX(baseTranslationX + doweDp(16));
         } else if ("slideRight".equals(preset)) {
-            view.setTranslationX(-doweDp(16));
+            view.setTranslationX(baseTranslationX - doweDp(16));
         } else if ("scaleIn".equals(preset)) {
-            view.setScaleX(0.96f);
-            view.setScaleY(0.96f);
+            view.setScaleX(baseScaleX * 0.96f);
+            view.setScaleY(baseScaleY * 0.96f);
         }
-        view.animate().alpha(1f).translationX(0f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(220).start();
+        view.animate().alpha(1f).translationX(baseTranslationX).translationY(baseTranslationY).scaleX(baseScaleX).scaleY(baseScaleY).setDuration(220).start();
     }
 
-    private void doweToggleSideNavSubmenu(View view, View arrow) {
+    private void doweGesture(View view, String preset, String transition) {
+        float baseTranslationY = view.getTranslationY();
+        float baseScaleX = view.getScaleX();
+        float baseScaleY = view.getScaleY();
+        float baseRotation = view.getRotation();
+        long duration = "none".equals(transition) ? 0L : "quick".equals(transition) ? 120L : "spring".equals(transition) ? 320L : 220L;
+        view.setOnTouchListener((target, event) -> {
+            boolean active = event.getActionMasked() == android.view.MotionEvent.ACTION_DOWN;
+            boolean finish = event.getActionMasked() == android.view.MotionEvent.ACTION_UP || event.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL;
+            if (!active && !finish) return false;
+            android.view.ViewPropertyAnimator animation = target.animate().setDuration(duration);
+            if ("lift".equals(preset)) {
+                animation.translationY(active ? baseTranslationY - doweDp(4) : baseTranslationY).scaleX(active ? baseScaleX * 0.98f : baseScaleX).scaleY(active ? baseScaleY * 0.98f : baseScaleY);
+            } else if ("press".equals(preset)) {
+                animation.scaleX(active ? baseScaleX * 0.96f : baseScaleX).scaleY(active ? baseScaleY * 0.96f : baseScaleY);
+            } else if ("grow".equals(preset)) {
+                animation.scaleX(active ? baseScaleX * 1.04f : baseScaleX).scaleY(active ? baseScaleY * 1.04f : baseScaleY);
+            } else if ("tilt".equals(preset)) {
+                animation.rotation(active ? baseRotation + 3f : baseRotation);
+            }
+            animation.start();
+            return false;
+        });
+    }
+
+    private boolean doweSideNavExpanded(String key, boolean initial) {
+        Boolean expanded = doweSideNavMemory.get(key);
+        if (expanded == null) {
+            doweSideNavMemory.put(key, initial);
+            return initial;
+        }
+        return expanded;
+    }
+
+    private void doweToggleSideNavSubmenu(View view, View arrow, String key) {
         view.animate().withEndAction(null).cancel();
         if (view.getVisibility() == View.VISIBLE) {
+            doweSideNavMemory.put(key, false);
             if (arrow != null) {
                 arrow.animate().rotation(0f).setDuration(140).start();
             }
@@ -442,6 +481,7 @@ fn dev_activity_layout_widgets() -> &'static str {
             }).start();
             return;
         }
+        doweSideNavMemory.put(key, true);
         if (arrow != null) {
             arrow.animate().rotation(90f).setDuration(160).start();
         }
@@ -479,7 +519,7 @@ fn dev_activity_layout_widgets() -> &'static str {
         }
     }
 
-    private void doweRenderSideNav(LinearLayout parent, ArrayList<DoweSideNavEntry> entries, boolean wide, int paddingHorizontal, int paddingVertical, int gap, int labelSize, int descriptionSize, int backgroundColor, int activeContentColor, String font) {
+    private void doweRenderSideNav(LinearLayout parent, ArrayList<DoweSideNavEntry> entries, String stateKey, boolean wide, int paddingHorizontal, int paddingVertical, int gap, int labelSize, int descriptionSize, int backgroundColor, int activeContentColor, String font) {
         if (wide) parent.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         for (DoweSideNavEntry entry : entries) {
             if ("divider".equals(entry.kind)) {
@@ -488,16 +528,18 @@ fn dev_activity_layout_widgets() -> &'static str {
                 divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1)));
                 doweAdd(parent, divider, 8, false);
             } else if ("submenu".equals(entry.kind)) {
-                LinearLayout trigger = doweSideNavRow(entry, true, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font, null, entry.open);
+                String submenuKey = stateKey + ":" + entry.id;
+                boolean expanded = doweSideNavExpanded(submenuKey, entry.open);
+                LinearLayout trigger = doweSideNavRow(entry, true, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font, null, expanded);
                 doweAdd(parent, trigger);
                 LinearLayout submenu = doweContainer(entry.bordered);
                 submenu.setPadding(doweDp(16), 0, 0, 0);
-                submenu.setVisibility(entry.open ? View.VISIBLE : View.GONE);
+                submenu.setVisibility(expanded ? View.VISIBLE : View.GONE);
                 doweAdd(parent, submenu);
                 LinearLayout submenuContent = doweSideNavSubmenuContent(submenu, entry.bordered);
                 View arrow = (View) trigger.getTag();
-                trigger.setOnClickListener(v -> doweToggleSideNavSubmenu(submenu, arrow));
-                doweRenderSideNav(submenuContent, entry.children, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font);
+                trigger.setOnClickListener(v -> doweToggleSideNavSubmenu(submenu, arrow, submenuKey));
+                doweRenderSideNav(submenuContent, entry.children, stateKey, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font);
             } else {
                 LinearLayout row = doweSideNavRow(entry, "header".equals(entry.kind), wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font, doweSideNavAction(entry), null);
                 doweAdd(parent, row);

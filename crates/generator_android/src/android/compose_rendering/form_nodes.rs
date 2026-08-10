@@ -31,7 +31,9 @@ fn render_compose_form_node(
                     )
                 })
                 .unwrap_or_else(|| ("\"\"".to_string(), "{}".to_string()));
-            let size = compose_text_size_expr(false, INPUT_TEXT_SIZE);
+            let control_size = props.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
+            let size = compose_text_size_expr(false, text_size);
             let border =
                 if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
                     color_ref(ColorToken::Muted)
@@ -50,8 +52,9 @@ fn render_compose_form_node(
                         compose_string_literal(props.placeholder.as_deref().unwrap_or_default()),
                         props.label_floating,
                         compose_font_value(props.style.font.as_ref().or(inherited_font), default_family),
-                        text_typography(false, INPUT_TEXT_SIZE).line_height,
-                        INPUT_MIN_HEIGHT.native_units(),
+                        text_typography(false, text_size).line_height,
+                        form_control_min_height(control_size, props.label_floating)
+                        .native_units(),
                         INPUT_HORIZONTAL_PADDING.native_units(),
                         compose_control_radius(&props.style),
                         variant_container(props),
@@ -84,7 +87,9 @@ fn render_compose_form_node(
                     )
                 })
                 .unwrap_or_else(|| ("\"\"".to_string(), "{}".to_string(), "false"));
-            let size = compose_text_size_expr(false, INPUT_TEXT_SIZE);
+            let control_size = props.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
+            let size = compose_text_size_expr(false, text_size);
             let border =
                 if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
                     color_ref(ColorToken::Muted)
@@ -104,8 +109,9 @@ fn render_compose_form_node(
                         props.label_floating,
                         compose_select_options(options, option_each.as_ref(), context),
                         compose_font_value(props.style.font.as_ref().or(inherited_font), default_family),
-                        text_typography(false, INPUT_TEXT_SIZE).line_height,
-                        INPUT_MIN_HEIGHT.native_units(),
+                        text_typography(false, text_size).line_height,
+                        form_control_min_height(control_size, props.label_floating)
+                        .native_units(),
                         INPUT_HORIZONTAL_PADDING.native_units(),
                         compose_control_radius(&props.style),
                         variant_container(props),
@@ -188,35 +194,49 @@ fn render_compose_form_node(
                 variant_content(&props.style)
             ));
         }
-        ViewNode::PasswordField { props } => {
+        ViewNode::Password { props } => {
+            let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
+            let hide_icon =
+                solar_control_icon("eye-closed").expect("bundled Password conceal icon");
             let (value, change) = compose_bound_text(
                 props.style.element.bind.as_deref(),
                 props.value.as_deref().unwrap_or_default(),
                 context,
             );
+            let control_size = props.style.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
+            let font_size = compose_text_size_expr(false, text_size);
             output.push_str(&format!(
-                "{pad}DowePasswordField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, hideStrength = {}, weakLabel = {}, mediumLabel = {}, strongLabel = {}, readOnly = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                "{pad}DowePassword(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, minHeight = {}.dp, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), hideStrength = {}, weakLabel = {}, mediumLabel = {}, strongLabel = {}, readOnly = {}, showIcon = {}, hideIcon = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or_default()),
                 props.style.label_floating,
+                form_control_min_height(control_size, props.style.label_floating)
+                .native_units(),
+                text_typography(false, text_size).line_height,
                 props.hide_strength,
                 compose_string_literal(&props.weak_label),
                 compose_string_literal(&props.medium_label),
                 compose_string_literal(&props.strong_label),
                 props.readonly || props.disabled,
+                compose_password_icon(&show_icon),
+                compose_password_icon(&hide_icon),
                 modifier_for_style(&props.style.style),
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
         }
-        ViewNode::PhoneField { props } => {
+        ViewNode::Phone { props } => {
             let (value, change) = compose_bound_text(
                 props.style.element.bind.as_deref(),
                 props.value.as_deref().unwrap_or_default(),
                 context,
             );
+            let control_size = props.style.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(control_size);
+            let font_size = compose_text_size_expr(false, text_size);
             output.push_str(&format!(
-                "{pad}DowePhoneField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, country = {}, countries = {}, priorityCountries = {}, searchPlaceholder = {}, emptyText = {}, loadingText = {}, floating = {}, disabled = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                "{pad}DowePhone(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, country = {}, countries = {}, priorityCountries = {}, searchPlaceholder = {}, emptyText = {}, loadingText = {}, floating = {}, minHeight = {}.dp, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), disabled = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Enter phone number")),
                 compose_string_literal(props.country.as_deref().unwrap_or("US")),
@@ -226,19 +246,24 @@ fn render_compose_form_node(
                 compose_string_literal(&props.empty_text),
                 compose_string_literal(&props.loading_text),
                 props.style.label_floating,
+                form_control_min_height(control_size, props.style.label_floating)
+                .native_units(),
+                text_typography(false, text_size).line_height,
                 props.disabled,
                 modifier_for_style(&props.style.style),
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
         }
-        ViewNode::PinField { props } => {
+        ViewNode::Pin { props } => {
             let (value, change) = compose_bound_text(
                 props.style.element.bind.as_deref(),
                 props.value.as_deref().unwrap_or_default(),
                 context,
             );
             let size = props.style.size.unwrap_or(ButtonSize::Md);
+            let text_size = form_control_text_size(size);
+            let font_size = compose_text_size_expr(false, text_size);
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined
             {
@@ -247,11 +272,12 @@ fn render_compose_form_node(
                 "null"
             };
             output.push_str(&format!(
-                "{pad}DowePinField(value = {value}, onValueChange = {change}, label = {}, length = {}, kind = {}, size = {}, modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {}, helpText = {}, errorText = {})\n",
+                "{pad}DowePin(value = {value}, onValueChange = {change}, label = {}, length = {}, kind = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {}, helpText = {}, errorText = {})\n",
                 compose_optional_string(props.style.label.as_deref()),
                 props.length,
                 compose_string_literal(props.kind.as_str()),
                 compose_string_literal(size.as_str()),
+                text_typography(false, text_size).line_height,
                 modifier_for_style(&props.style.style),
                 compose_control_radius(&props.style.style),
                 variant_container(&props.style),
@@ -267,8 +293,10 @@ fn render_compose_form_node(
                 props.value.as_deref().unwrap_or_default(),
                 context,
             );
+            let text_size = form_control_text_size(props.style.size.unwrap_or(ButtonSize::Md));
+            let font_size = compose_text_size_expr(false, text_size);
             output.push_str(&format!(
-                "{pad}DoweTextarea(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, rows = {}, maxLength = {}, readOnly = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                "{pad}DoweTextarea(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, rows = {}, maxLength = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), readOnly = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or_default()),
                 props.style.label_floating,
@@ -276,6 +304,7 @@ fn render_compose_form_node(
                 props.max_length
                     .map(|value| value.to_string())
                     .unwrap_or_else(|| "null".to_string()),
+                text_typography(false, text_size).line_height,
                 props.readonly || props.disabled,
                 modifier_for_style(&props.style.style),
                 variant_container(&props.style),
@@ -311,6 +340,14 @@ fn compose_control_icon(icon: Option<&SideNavIcon>) -> String {
         compose_svg_paths(&icon.paths)
     ))
     .unwrap_or_else(|| "null".to_string())
+}
+
+fn compose_password_icon(icon: &SideNavIcon) -> String {
+    format!(
+        "{{ DoweSvg(viewBox = {}, modifier = Modifier.width(20.dp).height(20.dp), color = LocalContentColor.current, paths = {}) }}",
+        compose_svg_view_box(&icon.props.view_box),
+        compose_svg_paths(&icon.paths)
+    )
 }
 
 fn compose_phone_country_catalog() -> String {
@@ -387,7 +424,9 @@ fn render_compose_combo_box(
                 "false",
             )
         });
-    let size = compose_text_size_expr(false, INPUT_TEXT_SIZE);
+    let control_size = props.style.size.unwrap_or(ButtonSize::Md);
+    let text_size = form_control_text_size(control_size);
+    let size = compose_text_size_expr(false, text_size);
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             color_ref(ColorToken::Muted)
@@ -410,8 +449,9 @@ fn render_compose_combo_box(
         compose_combo_options(options),
         modifier,
         compose_font_value(props.style.style.font.as_ref().or(inherited_font), default_family),
-        text_typography(false, INPUT_TEXT_SIZE).line_height,
-        INPUT_MIN_HEIGHT.native_units(),
+        text_typography(false, text_size).line_height,
+        form_control_min_height(control_size, props.style.label_floating)
+        .native_units(),
         INPUT_HORIZONTAL_PADDING.native_units(),
         compose_control_radius(&props.style.style),
         variant_container(&props.style),

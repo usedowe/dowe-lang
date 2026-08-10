@@ -25,7 +25,7 @@ pub fn execute_sql(database: &Database, sql: &str) -> StoreResult<QueryOutcome> 
         return Err(StoreError::InvalidQuery("query is empty".to_string()));
     };
     if first {
-        return select(database, &tokens);
+        return select(database, &tokens, database.current_version()?);
     }
     if tokens
         .first()
@@ -105,7 +105,7 @@ pub fn bind_query_params(sql: &str, params: &[Value]) -> StoreResult<String> {
     Ok(output)
 }
 
-fn select(database: &Database, tokens: &[String]) -> StoreResult<QueryOutcome> {
+fn select(database: &Database, tokens: &[String], version: u64) -> StoreResult<QueryOutcome> {
     let from = position(tokens, "from")?;
     if from < 2 || from + 1 >= tokens.len() {
         return Err(StoreError::InvalidQuery(
@@ -132,22 +132,37 @@ fn select(database: &Database, tokens: &[String]) -> StoreResult<QueryOutcome> {
             "unexpected tokens after source table".to_string(),
         ));
     }
-    let mut rows = database.records(table)?;
+    let predicate = position(tokens, "where")
+        .ok()
+        .map(|index| parse_predicate_value(tokens, index))
+        .transpose()?;
+    let has_join = position(tokens, "join").is_ok();
     let mut detail = "table scan".to_string();
     let mut indexed = false;
+    let mut rows = if !has_join
+        && let Some((field, expected)) = &predicate
+        && let Some(records) =
+            database.indexed_records_at(table, simple_field(field), expected, version)?
+    {
+        indexed = true;
+        detail = format!("indexed filter on {}", simple_field(field));
+        records
+    } else {
+        database.records_at(table, version)?
+    };
 
     if let Ok(join_index) = position(tokens, "join") {
-        rows = join(database, table, &rows, tokens, join_index)?;
+        rows = join(database, table, &rows, tokens, join_index, version)?;
         detail = "join".to_string();
     }
 
-    if let Ok(where_index) = position(tokens, "where") {
-        let (field, expected) = parse_predicate(tokens, where_index)?;
+    if let Some((field, expected)) = predicate {
         let simple_field = simple_field(&field);
-        indexed = database.has_index(table, simple_field) || simple_field == "id";
+        indexed = indexed || database.has_index(table, simple_field);
         if indexed {
             detail = format!("indexed filter on {simple_field}");
         }
+        let expected = expected.comparable_text();
         rows.retain(|record| {
             lookup(record, &field).is_some_and(|value| value.comparable_text() == expected)
         });
@@ -274,6 +289,7 @@ fn join(
     left_rows: &[StoreRecord],
     tokens: &[String],
     join_index: usize,
+    version: u64,
 ) -> StoreResult<Vec<StoreRecord>> {
     let right_table = tokens
         .get(join_index + 1)
@@ -298,7 +314,7 @@ fn join(
     let right_field = tokens
         .get(join_index + 5)
         .ok_or_else(|| StoreError::InvalidQuery("missing join right field".to_string()))?;
-    let right_rows = database.records(right_table)?;
+    let right_rows = database.records_at(right_table, version)?;
     let mut output = Vec::new();
 
     for left in left_rows {
@@ -341,22 +357,6 @@ fn namespace_fields(output: &mut StoreRecord, table: &str, record: &StoreRecord)
     for (key, value) in record {
         output.insert(format!("{table}.{key}"), value.clone());
     }
-}
-
-fn parse_predicate(tokens: &[String], where_index: usize) -> StoreResult<(String, String)> {
-    if tokens.get(where_index + 2).map(String::as_str) != Some("=") {
-        return Err(StoreError::InvalidQuery(
-            "where predicate must use equality".to_string(),
-        ));
-    }
-    let field = tokens
-        .get(where_index + 1)
-        .ok_or_else(|| StoreError::InvalidQuery("missing where field".to_string()))?
-        .clone();
-    let value = tokens
-        .get(where_index + 3)
-        .ok_or_else(|| StoreError::InvalidQuery("missing where value".to_string()))?;
-    Ok((field, parse_value_token(value).comparable_text()))
 }
 
 fn parse_predicate_value(

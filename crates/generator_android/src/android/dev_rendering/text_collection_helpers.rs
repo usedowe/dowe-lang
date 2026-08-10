@@ -339,17 +339,17 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
             }
         }
         ViewNode::ImageCropper { props } => output.push(&props.alt),
-        ViewNode::PasswordField { props } => {
+        ViewNode::Password { props } => {
             if let Some(label) = props.style.label.as_deref() {
                 output.push(label);
             }
         }
-        ViewNode::PhoneField { props } => {
+        ViewNode::Phone { props } => {
             if let Some(label) = props.style.label.as_deref() {
                 output.push(label);
             }
         }
-        ViewNode::PinField { props } => {
+        ViewNode::Pin { props } => {
             if let Some(label) = props.style.label.as_deref() {
                 output.push(label);
             }

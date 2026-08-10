@@ -10,12 +10,13 @@ use dowe_components::{
     DateRangeProps, DesignConfig, DesignTheme, DeviceProps, DividerProps, DragDropProps, DragGroup,
     DragItem, DrawerProps, DropdownProps, DropzoneProps, EditorProps, ElementProps, EmptyKind,
     EmptyProps, FabAction, FabProps, FlexDirection, FontConfig, FontFamily, GapSize, GapValue,
-    GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT,
-    INPUT_TEXT_SIZE, IframeProps, ImageCropperProps, ImageProps, Justify, LayoutProps,
+    FORM_CONTROL_FLOATING_HEIGHT_INCREMENT, GridAlignment, GridProps, GridTracks,
+    INPUT_HORIZONTAL_PADDING, IframeProps, ImageCropperProps, ImageProps, Justify,
+    LayoutProps,
     LineChartProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NativeExternalMode,
     NavMenuItem, NavMenuItemProps, NavMenuProps, NavigationAction, NavigationOperation,
-    OverlayEntry, OverlayItemProps, OverlayPaint, PasswordFieldProps, PhoneFieldProps,
-    PieChartProps, PinFieldKind, PinFieldProps, RadioGroupProps, RadioOption, RailNavItem,
+    OverlayEntry, OverlayItemProps, OverlayPaint, PasswordProps, PhoneProps,
+    PieChartProps, PinKind, PinProps, RadioGroupProps, RadioOption, RailNavItem,
     RailNavItemProps, RailNavProps, RecordProps, ResponsiveValue, RichTextMark, ScaffoldProps,
     ScaleValue, SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon,
     SideNavItem, SideNavItemProps, SideNavProps, SidebarProps, SizeValue, SkeletonProps,
@@ -24,11 +25,13 @@ use dowe_components::{
     TextSpacing, TextWeight, TextareaProps, ThemeSelectProps, ThemeToggleProps, ToastKind,
     ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
     TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, VideoProps, ViewAction,
-    ViewActionKind, ViewAnimation, ViewAssignAction, ViewConstant, ViewFunctionStatement, ViewIcon,
-    ViewMetadata, ViewNavigationAction, ViewNode, ViewRequestAction, ViewResetAction, ViewSection,
+    ViewActionKind, ViewAnimation, ViewAssignAction, ViewConstant, ViewFunctionStatement,
+    ViewGesture, ViewIcon, ViewMetadata, ViewNavigationAction, ViewNode, ViewRequestAction,
+    ViewResetAction, ViewSection,
     ViewSignal, ViewSignalValue, VisibilityCondition, WebTarget, collect_node_font_families,
-    ordered_phone_countries, phone_countries, phone_country, phone_country_flag_icon,
-    side_nav_submenu_arrow_icon, solar_control_icon, text_binding_path, text_spacing_em,
+    form_control_min_height, form_control_text_size, ordered_phone_countries, phone_countries, phone_country,
+    phone_country_flag_icon,
+    side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon, text_binding_path, text_spacing_em,
     text_typography, text_weight_number,
 };
 use dowe_minifier::minify_js;
@@ -323,7 +326,7 @@ fn icon_links(favicon: Option<&str>, apple_touch_icon: Option<&str>) -> String {
 }
 
 fn theme_bootstrap_script() -> &'static str {
-    r#"<script>!function(){try{var k="theme-preference",t=localStorage.getItem(k);if(!t){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";localStorage.setItem(k,t)}if(t&&t!=="light")document.documentElement.setAttribute("data-dowe-theme",t);else document.documentElement.removeAttribute("data-dowe-theme")}catch(e){}}();</script>"#
+    r#"<script>!function(){document.documentElement.classList.add("dowe-entrance-pending");try{var k="theme-preference",t=localStorage.getItem(k);if(!t){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";localStorage.setItem(k,t)}if(t&&t!=="light")document.documentElement.setAttribute("data-dowe-theme",t);else document.documentElement.removeAttribute("data-dowe-theme")}catch(e){}}();</script>"#
 }
 
 pub fn web_artifacts(

@@ -1,0 +1,5 @@
+type Metric
+  id:string
+  label:string
+  value:string
+  detail:string

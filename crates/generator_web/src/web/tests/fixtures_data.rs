@@ -33,7 +33,11 @@ fn svg_tree() -> ViewNode {
             },
             SvgPath {
                 data: "M22 12c0-5.523-4.477-10-10-10".to_string(),
-                fill: SvgPathFill::CurrentColor,
+                fill: SvgPathFill::Fill {
+                    color: None,
+                    opacity: 255,
+                    even_odd: true,
+                },
                 transform: Some(SvgTransform {
                     a: "2".to_string(),
                     b: "0".to_string(),
@@ -82,13 +86,32 @@ fn video_tree() -> ViewNode {
 
 fn iframe_tree() -> ViewNode {
     dowe_components::iframe_node(vec![
-        ComponentProp { name: "src".to_string(), value: PropValue::String("https://example.com/embed".to_string()) },
-        ComponentProp { name: "title".to_string(), value: PropValue::String("Example embed".to_string()) },
-        ComponentProp { name: "loading".to_string(), value: PropValue::String("eager".to_string()) },
-        ComponentProp { name: "allow".to_string(), value: PropValue::String("fullscreen; autoplay".to_string()) },
-        ComponentProp { name: "sandbox".to_string(), value: PropValue::String("scripts same-origin".to_string()) },
-        ComponentProp { name: "allowFullscreen".to_string(), value: PropValue::Boolean(true) },
-    ]).expect("iframe")
+        ComponentProp {
+            name: "src".to_string(),
+            value: PropValue::String("https://example.com/embed".to_string()),
+        },
+        ComponentProp {
+            name: "title".to_string(),
+            value: PropValue::String("Example embed".to_string()),
+        },
+        ComponentProp {
+            name: "loading".to_string(),
+            value: PropValue::String("eager".to_string()),
+        },
+        ComponentProp {
+            name: "allow".to_string(),
+            value: PropValue::String("fullscreen; autoplay".to_string()),
+        },
+        ComponentProp {
+            name: "sandbox".to_string(),
+            value: PropValue::String("scripts same-origin".to_string()),
+        },
+        ComponentProp {
+            name: "allowFullscreen".to_string(),
+            value: PropValue::Boolean(true),
+        },
+    ])
+    .expect("iframe")
 }
 
 fn candlestick_tree() -> ViewNode {

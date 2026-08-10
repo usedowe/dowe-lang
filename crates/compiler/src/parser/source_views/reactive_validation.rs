@@ -268,7 +268,10 @@ fn validate_function_statements(
             }
             ViewFunctionStatement::Assign(assign) => {
                 validate_signal_path(path, signals, &assign.target, "target")?;
-                if assign.literal.is_some() || assign.source.starts_with("$dowe:") {
+                if assign.call.is_some()
+                    || assign.literal.is_some()
+                    || assign.source.starts_with("$dowe:")
+                {
                     continue;
                 }
                 let source = assign.source.strip_prefix('!').unwrap_or(&assign.source);

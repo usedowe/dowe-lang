@@ -156,9 +156,13 @@ fn lists_public_authoring_skills_without_workspace_skills() {
         [
             "references/views.md",
             "references/composition.md",
+            "references/reference-ui.md",
             "references/components.md",
             "references/styles.md",
-            "references/canvas.md"
+            "references/canvas.md",
+            "scripts/visual_qa.py",
+            "scripts/visual_qa_blueprint.py",
+            "scripts/visual_qa_png.py"
         ]
     );
     assert!(views.description.contains("reference-driven UI"));
@@ -174,24 +178,27 @@ fn lists_public_authoring_skills_without_workspace_skills() {
 }
 
 #[test]
-fn every_reference_named_by_a_public_skill_is_embedded() {
+fn every_resource_named_by_a_public_skill_is_embedded() {
     for skill in public_skills() {
         let compact = get_public_skill(&skill.id, false).expect("compact skill");
         let full = get_public_skill(&skill.id, true).expect("full skill");
-        let named_references = compact
+        let named_resources = compact
             .content
             .split('`')
-            .filter(|fragment| fragment.starts_with("references/") && fragment.ends_with(".md"))
+            .filter(|fragment| {
+                (fragment.starts_with("references/") && fragment.ends_with(".md"))
+                    || (fragment.starts_with("scripts/") && fragment.ends_with(".py"))
+            })
             .collect::<std::collections::BTreeSet<_>>();
-        let embedded_references = skill
+        let embedded_resources = skill
             .resources
             .iter()
             .map(String::as_str)
             .collect::<std::collections::BTreeSet<_>>();
 
         assert_eq!(
-            embedded_references, named_references,
-            "{} names a reference that is not embedded",
+            embedded_resources, named_resources,
+            "{} names a resource that is not embedded",
             skill.name
         );
         for resource in &skill.resources {
@@ -267,9 +274,13 @@ fn installs_and_updates_compiled_public_skills() {
     for resource in [
         "references/views.md",
         "references/composition.md",
+        "references/reference-ui.md",
         "references/components.md",
         "references/styles.md",
         "references/canvas.md",
+        "scripts/visual_qa.py",
+        "scripts/visual_qa_blueprint.py",
+        "scripts/visual_qa_png.py",
     ] {
         assert!(installed.join(resource).is_file(), "missing {resource}");
     }
@@ -341,10 +352,23 @@ fn gets_compact_and_full_view_skill_documents() {
     );
     assert!(
         full.content
+            .contains("## Resource: references/reference-ui.md")
+    );
+    assert!(
+        full.content
             .contains("## Resource: references/components.md")
     );
     assert!(full.content.contains("## Resource: references/styles.md"));
     assert!(full.content.contains("## Resource: references/canvas.md"));
+    assert!(full.content.contains("## Resource: scripts/visual_qa.py"));
+    assert!(
+        full.content
+            .contains("## Resource: scripts/visual_qa_blueprint.py")
+    );
+    assert!(
+        full.content
+            .contains("## Resource: scripts/visual_qa_png.py")
+    );
     assert!(!full.content.contains("docs/views/"));
     assert!(!full.content.contains("dowe-docs/"));
     assert!(full.content.len() > compact.content.len());
@@ -405,7 +429,7 @@ fn view_skill_requires_faithful_reference_driven_composition() {
         full.content
             .contains("even when the route graph has one page")
     );
-    assert!(full.content.contains("If an original is unavailable"));
+    assert!(full.content.contains("When an original is unavailable"));
     assert!(full.content.contains("AppBar and Footer"));
 }
 
@@ -424,13 +448,94 @@ fn view_skill_requires_dowe_native_reference_reconstruction() {
         compact_content
             .contains("never use the reference image or crops derived from it as assets")
     );
-    assert!(full.content.contains("validation evidence, not an asset"));
+    assert!(full.content.contains("validation evidence, never as"));
     assert!(
         full.content
-            .contains("Navigation, text, buttons, cards, charts, dashboards")
+            .contains("Rebuild navigation, headings, text, controls, cards, lists, metrics")
     );
     assert!(full.content.contains("independently obtained"));
-    assert!(full.content.contains("Do not crop or slice"));
+    assert!(full.content.contains("rasterization, or recomposition"));
+}
+
+#[test]
+fn view_skill_requires_semantic_ownership_and_collection_modeling() {
+    let compact = get_public_skill("views", false).expect("compact views skill");
+    let full = get_public_skill("views", true).expect("full views skill");
+
+    assert!(
+        compact
+            .content
+            .contains("composition map with ordered bands")
+    );
+    assert!(
+        compact
+            .content
+            .contains("never copy sibling Cards or list units")
+    );
+    assert!(full.content.contains("never invent `MenuBar`"));
+    assert!(
+        full.content
+            .contains("Fixed copy and records visible in the reference")
+    );
+    assert!(
+        full.content
+            .contains("Data loaded, filtered, paged, appended, or replaced")
+    );
+    assert!(
+        full.content
+            .contains("Reusable components do not accept dynamic caller inputs")
+    );
+}
+
+#[test]
+fn view_skill_requires_reference_blueprints_and_visual_qa() {
+    let compact = get_public_skill("views", false).expect("compact views skill");
+    let full = get_public_skill("views", true).expect("full views skill");
+    let script = get_public_skill_resource("views", "scripts/visual_qa.py").expect("script");
+
+    assert!(
+        compact
+            .content
+            .contains(".dowe/visual-qa/<screen>/blueprint.json")
+    );
+    assert!(full.content.contains("observed` or `inferred"));
+    assert!(full.content.contains("`regions[].bounds`"));
+    assert!(
+        full.content
+            .contains("Loading, populated, empty, and error")
+    );
+    assert!(full.content.contains("## Accessibility review"));
+    assert!(full.content.contains("## Theme extraction"));
+    assert!(full.content.contains("kind:\"dynamic\""));
+    assert!(full.content.contains("report.json"));
+    assert!(full.content.contains("diff.png"));
+    assert!(
+        script
+            .content
+            .contains("commands.add_parser(\"self-test\")")
+    );
+    assert!(
+        script
+            .content
+            .contains("[dowe, \"dev\", \"--target\", \"web\"]")
+    );
+}
+
+#[test]
+fn theme_skill_requires_semantic_reference_system_extraction() {
+    let compact = get_public_skill("theme", false).expect("compact theme skill");
+    let full = get_public_skill("theme", true).expect("full theme skill");
+
+    assert!(
+        compact
+            .content
+            .contains("extracting a repeated visual system")
+    );
+    assert!(compact.content.contains("anti-aliased shade"));
+    assert!(full.content.contains("## Reference-system extraction"));
+    assert!(full.content.contains("background` and `onBackground` pair"));
+    assert!(full.content.contains("smallest semantic palette"));
+    assert!(full.content.contains("does not authorize an"));
 }
 
 #[test]
@@ -529,6 +634,25 @@ fn searches_curated_examples_deterministically() {
         .map(|example| example.source_path.as_str())
         .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(paths.len(), result.results.len());
+}
+
+#[test]
+fn searches_reference_ui_examples() {
+    let result = search_public_examples("reference-ui each signal states", 5).expect("search");
+
+    assert_eq!(result.results[0].id, "reference-collections");
+    assert!(
+        result
+            .results
+            .iter()
+            .any(|example| example.id == "reference-layout")
+    );
+    assert!(result.results[0].content.contains("each in:features"));
+    assert!(
+        result.results[0]
+            .content
+            .contains("signal metrics type:Metric[]")
+    );
 }
 
 #[test]

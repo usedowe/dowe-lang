@@ -54,6 +54,36 @@ character is closest instead of trying to import the original; never invent a to
 Pair at most two families per project: one for `Title` and one for `Text`, configured once in
 `design`. A single family for both is a valid, quieter default.
 
+## Reference-system extraction
+
+Treat a screenshot or mockup as evidence of relationships, not as a bag of unrelated pixel values.
+Inventory repeated choices before editing `theme.dowe`.
+
+| Reference evidence | Theme decision |
+| --- | --- |
+| Page canvas and primary text | `background` and `onBackground` pair |
+| Cards, bars, menus, and raised panels | `surface` and `onSurface` pair |
+| Brand and primary action family | `primary`, `onPrimary`, `softPrimary`, and `onSoftPrimary` |
+| Supporting accent family | `secondary` or `tertiary` complete family |
+| Secondary copy and quiet fills | `muted`, `onMuted`, `softMuted`, and `onSoftMuted` |
+| Repeated success, information, warning, or error meaning | Matching semantic status family |
+| Repeated Card, Button, Avatar, or Chip treatment | Supported dedicated `design` slot |
+| Repeated control or surface treatment without a dedicated slot | Supported `Ui` defaults |
+| Heading and body character | Closest supported `Title` and `Text` font tokens |
+
+- Sample flat interior areas rather than anti-aliased edges, text fringes, blur transitions, or
+  compressed-image noise.
+- Consolidate visually equivalent samples into the smallest semantic palette that preserves the
+  reference hierarchy.
+- Validate every foreground against its paired background. Do not select an accurate-looking fill
+  while leaving its `on*` role unreadable.
+- Preserve brand meaning across light and inherited dark themes; an inherited theme overrides only
+  the roles whose relationship actually changes.
+- Move a treatment to `design` only when it repeats. Keep a one-off hero or campaign exception on
+  the owning Dowe component.
+- Use only the supported default slots and props below. A visual pattern does not authorize an
+  invented theme slot.
+
 ## Component defaults
 
 The default slots are `Card`, `Button`, `Avatar`, `Chip`, `Ui`, `Text`, and `Title`. `Ui` sets

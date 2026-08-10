@@ -20,6 +20,7 @@ include!("component/navigation_parsing.rs");
 include!("component/value_parsing.rs");
 include!("component/text_binding.rs");
 include!("component/tree_helpers.rs");
+include!("component/side_nav_memory.rs");
 
 #[cfg(test)]
 mod tests {

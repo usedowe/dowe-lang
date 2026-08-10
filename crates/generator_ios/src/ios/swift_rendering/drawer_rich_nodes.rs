@@ -324,16 +324,17 @@ fn render_swift_rich_text(
         .as_ref()
         .map(|value| value.entries[0].value)
         .unwrap_or(TextSize::Md);
-    let font_size = swift_text_size_expr(false, size);
+    let font_size = swift_text_size_expr(props.title, size);
+    let content_color = text_color(props).unwrap_or_else(|| "DoweDesign.onBackground".to_string());
     output.push_str(&format!(
-        "{pad}DoweRichText(marks: {}, font: {}, fontSize: {font_size})\n",
+        "{pad}DoweRichText(marks: {}, font: {}, fontSize: {font_size}, contentColor: {content_color})\n",
         swift_rich_text_marks(marks),
         swift_font_token_value(props.style.font.as_ref().or(inherited_font), default_family),
     ));
     append_swift_modifiers(
         output,
         indent,
-        &swift_modifiers_for_text(false, props, inherited_font, default_family),
+        &swift_modifiers_for_text(props.title, props, inherited_font, default_family),
     );
 }
 

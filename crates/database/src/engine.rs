@@ -1,23 +1,26 @@
-use crate::codec::{Reader, Writer, decode_record, encode_record};
 use crate::error::{StoreError, StoreResult};
 use crate::metadata::{DatabaseMetadata, read_metadata, write_metadata};
 use crate::names::{validate_database_name, validate_field_name, validate_table_name};
 use crate::query::{QueryOutcome, execute_sql};
+use crate::security::{create_private_directory, secure_file};
+use crate::state::{
+    DatabaseState, apply_recovered_transaction, ensure_available, legacy_state, prepare_insert,
+    validate_patch, values_equal,
+};
+use crate::storage;
 use crate::transaction::Transaction;
 use crate::value::{StoreValue, record_to_json};
-use dowe_id::{generate_ulid, validate_ulid};
+use crate::wal::{self, WalOperation};
+use dowe_id::validate_ulid;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
+use std::collections::{BTreeMap, HashMap};
+use std::fs::{self, File, OpenOptions, TryLockError};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, OnceLock, RwLock, Weak};
 
-const RECORD_MAGIC: &[u8] = b"DOWE_DB_RECORD_V1\n";
-const INDEX_MAGIC: &[u8] = b"DOWE_DB_INDEX_V1\n";
-const TABLE_MAGIC: &[u8] = b"DOWE_DB_TABLE_V1\n";
-const OP_UPSERT: u8 = 1;
-const OP_DELETE: u8 = 2;
+static DATABASES: OnceLock<Mutex<HashMap<PathBuf, Weak<SharedDatabase>>>> = OnceLock::new();
+static INITIALIZATION: OnceLock<Mutex<()>> = OnceLock::new();
 
 pub type StoreRecord = BTreeMap<String, StoreValue>;
 
@@ -33,6 +36,7 @@ pub struct DatabaseInspection {
     pub database_id: String,
     pub name: String,
     pub format_version: u32,
+    pub version: u64,
     pub tables: Vec<TableInspection>,
 }
 
@@ -58,9 +62,18 @@ pub struct QueryPlan {
 
 #[derive(Debug, Clone)]
 pub struct Database {
-    root: PathBuf,
-    name: String,
-    metadata: DatabaseMetadata,
+    pub(crate) shared: Arc<SharedDatabase>,
+}
+
+#[derive(Debug)]
+pub(crate) struct SharedDatabase {
+    pub(crate) root: PathBuf,
+    pub(crate) name: String,
+    pub(crate) metadata: DatabaseMetadata,
+    pub(crate) _lock: File,
+    pub(crate) state: RwLock<DatabaseState>,
+    pub(crate) wal: Mutex<File>,
+    pub(crate) commits: crate::commit::CommitGroup,
 }
 
 pub fn db_root(project_root: &Path) -> PathBuf {
@@ -70,8 +83,21 @@ pub fn db_root(project_root: &Path) -> PathBuf {
 pub fn init_database(project_root: &Path, name: &str) -> StoreResult<DatabaseMetadata> {
     validate_database_name(name)?;
     let database_root = db_root(project_root).join(name);
-    fs::create_dir_all(&database_root)?;
+    create_private_directory(&db_root(project_root))?;
+    create_private_directory(&database_root)?;
+    create_private_directory(&database_root.join("wal"))?;
     let metadata_path = database_root.join("metadata.bin");
+    if metadata_path.exists() {
+        return read_metadata(&metadata_path);
+    }
+    let _initialization = INITIALIZATION
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| StoreError::DurabilityError("Database init lock failed".to_string()))?;
+    let _lock = acquire_file_lock(
+        &database_root.join(".init.lock"),
+        "Database is being initialized",
+    )?;
     if metadata_path.exists() {
         return read_metadata(&metadata_path);
     }
@@ -89,13 +115,38 @@ pub fn open_database(project_root: &Path, name: &str) -> StoreResult<Database> {
             "database `{name}` does not exist"
         )));
     }
-    let metadata = read_metadata(&metadata_path)?;
+    let database_root = fs::canonicalize(database_root)?;
+    let registry = DATABASES.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut registry = registry
+        .lock()
+        .map_err(|_| StoreError::DurabilityError("Database registry lock failed".to_string()))?;
+    if let Some(shared) = registry.get(&database_root).and_then(Weak::upgrade) {
+        return Ok(Database { shared });
+    }
+    let lock = acquire_database_lock(&database_root)?;
+    let metadata = read_metadata(&database_root.join("metadata.bin"))?;
     validate_ulid(&metadata.database_id)?;
-    Ok(Database {
-        root: database_root,
+    if metadata.name != name {
+        return Err(StoreError::Corruption(
+            "Database metadata name does not match its directory".to_string(),
+        ));
+    }
+    let mut state = legacy_state(&database_root)?;
+    let recovered = wal::recover(&database_root)?;
+    for transaction in &recovered.transactions {
+        apply_recovered_transaction(&mut state, transaction)?;
+    }
+    let shared = Arc::new(SharedDatabase {
+        root: database_root.clone(),
         name: name.to_string(),
         metadata,
-    })
+        _lock: lock,
+        state: RwLock::new(state),
+        wal: Mutex::new(recovered.file),
+        commits: crate::commit::CommitGroup::default(),
+    });
+    registry.insert(database_root, Arc::downgrade(&shared));
+    Ok(Database { shared })
 }
 
 pub fn list_databases(project_root: &Path) -> StoreResult<Vec<DatabaseMetadata>> {
@@ -106,7 +157,7 @@ pub fn list_databases(project_root: &Path) -> StoreResult<Vec<DatabaseMetadata>>
     let mut databases = Vec::new();
     for entry in fs::read_dir(root)? {
         let entry = entry?;
-        if !entry.file_type()?.is_dir() {
+        if !entry.file_type()?.is_dir() || entry.file_name() == "_auth" {
             continue;
         }
         let metadata_path = entry.path().join("metadata.bin");
@@ -120,34 +171,16 @@ pub fn list_databases(project_root: &Path) -> StoreResult<Vec<DatabaseMetadata>>
 
 impl Database {
     pub fn metadata(&self) -> &DatabaseMetadata {
-        &self.metadata
+        &self.shared.metadata
     }
 
-    pub fn insert(&self, table: &str, mut record: StoreRecord) -> StoreResult<StoreRecord> {
-        validate_table_name(table)?;
-        let id = match record.get("id") {
-            Some(StoreValue::Ulid(value)) | Some(StoreValue::String(value)) => {
-                validate_ulid(value)?;
-                value.clone()
-            }
-            Some(_) => {
-                return Err(StoreError::InvalidUlid(
-                    "record id must be a ULID string".to_string(),
-                ));
-            }
-            None => generate_ulid(),
-        };
-        record.insert("id".to_string(), StoreValue::Ulid(id.clone()));
-        let mut records = self.load_table(table)?;
-        if records.contains_key(&id) {
-            return Err(StoreError::AlreadyExists(format!(
-                "record `{id}` already exists"
-            )));
-        }
-        self.append_operation(table, OP_UPSERT, &id, Some(&record))?;
-        records.insert(id, record.clone());
-        self.rewrite_indexes(table, &records)?;
-        Ok(record)
+    pub fn insert(&self, table: &str, record: StoreRecord) -> StoreResult<StoreRecord> {
+        let record = prepare_insert(record)?;
+        let base_version = self.current_version()?;
+        let mut inserted = self.commit_inserts(base_version, &[(table.to_string(), record)])?;
+        inserted.pop().ok_or_else(|| {
+            StoreError::DurabilityError("Database insert produced no record".to_string())
+        })
     }
 
     pub fn update(
@@ -159,9 +192,13 @@ impl Database {
     ) -> StoreResult<usize> {
         validate_table_name(table)?;
         validate_field_name(field)?;
-        let mut records = self.load_table(table)?;
-        let mut changed = 0usize;
-        for (id, record) in records.iter_mut() {
+        validate_patch(&patch)?;
+        storage::ensure_table(&self.shared.root, table)?;
+        let mut state = self.write_state()?;
+        ensure_available(&state)?;
+        let current = state.current_records(table, state.version);
+        let mut operations = Vec::new();
+        for (id, mut record) in current {
             if record
                 .get(field)
                 .is_some_and(|value| values_equal(value, expected))
@@ -169,38 +206,45 @@ impl Database {
                 for (key, value) in &patch {
                     record.insert(key.clone(), value.clone());
                 }
-                self.append_operation(table, OP_UPSERT, id, Some(record))?;
-                changed += 1;
+                operations.push(WalOperation::Upsert {
+                    table: table.to_string(),
+                    id,
+                    record,
+                });
             }
         }
-        self.rewrite_indexes(table, &records)?;
+        let changed = operations.len();
+        self.commit_operations(&mut state, operations)?;
         Ok(changed)
     }
 
     pub fn delete(&self, table: &str, field: &str, expected: &StoreValue) -> StoreResult<usize> {
         validate_table_name(table)?;
         validate_field_name(field)?;
-        let mut records = self.load_table(table)?;
-        let deleted = records
-            .iter()
-            .filter_map(|(id, record)| {
+        storage::ensure_table(&self.shared.root, table)?;
+        let mut state = self.write_state()?;
+        ensure_available(&state)?;
+        let operations = state
+            .current_records(table, state.version)
+            .into_iter()
+            .filter(|(_, record)| {
                 record
                     .get(field)
                     .is_some_and(|value| values_equal(value, expected))
-                    .then(|| id.clone())
+            })
+            .map(|(id, _)| WalOperation::Delete {
+                table: table.to_string(),
+                id,
             })
             .collect::<Vec<_>>();
-        for id in &deleted {
-            self.append_operation(table, OP_DELETE, id, None)?;
-            records.remove(id);
-        }
-        self.rewrite_indexes(table, &records)?;
-        Ok(deleted.len())
+        let changed = operations.len();
+        self.commit_operations(&mut state, operations)?;
+        Ok(changed)
     }
 
     pub fn records(&self, table: &str) -> StoreResult<Vec<StoreRecord>> {
-        validate_table_name(table)?;
-        Ok(self.load_table(table)?.into_values().collect())
+        let version = self.current_version()?;
+        self.records_at(table, version)
     }
 
     pub fn query(&self, sql: &str) -> StoreResult<Vec<StoreRecord>> {
@@ -237,18 +281,12 @@ impl Database {
     pub fn create_index(&self, table: &str, field: &str) -> StoreResult<IndexInfo> {
         validate_table_name(table)?;
         validate_field_name(field)?;
-        self.ensure_table(table)?;
-        let path = self
-            .table_root(table)
-            .join("indexes")
-            .join(format!("{field}.idx"));
-        let mut writer = Writer::new();
-        writer.bytes(INDEX_MAGIC);
-        writer.string(table);
-        writer.string(field);
-        fs::write(&path, writer.into_bytes())?;
-        let records = self.load_table(table)?;
-        self.rewrite_indexes(table, &records)?;
+        let mut state = self.write_state()?;
+        ensure_available(&state)?;
+        state.tables.entry(table.to_string()).or_default();
+        let records = state.current_records(table, state.version);
+        let path = storage::create_index(&self.shared.root, table, field, &records)?;
+        state.create_index(table, field);
         Ok(IndexInfo {
             table: table.to_string(),
             field: field.to_string(),
@@ -257,57 +295,58 @@ impl Database {
     }
 
     pub fn has_index(&self, table: &str, field: &str) -> bool {
-        self.table_root(table)
-            .join("indexes")
-            .join(format!("{field}.idx"))
-            .exists()
+        self.shared
+            .state
+            .read()
+            .ok()
+            .is_some_and(|state| state.has_index(table, field))
     }
 
     pub fn inspect(&self) -> StoreResult<DatabaseInspection> {
+        let state = self.read_state()?;
+        ensure_available(&state)?;
         let mut tables = Vec::new();
-        for table in self.table_names()? {
-            let records = self.load_table(&table)?.len();
-            let mut indexes = Vec::new();
-            let index_root = self.table_root(&table).join("indexes");
-            if index_root.exists() {
-                for entry in fs::read_dir(index_root)? {
-                    let entry = entry?;
-                    if entry.file_type()?.is_file()
-                        && let Some(name) = entry.path().file_stem().and_then(|name| name.to_str())
-                    {
-                        indexes.push(name.to_string());
-                    }
-                }
-            }
-            indexes.sort();
+        for table in state.tables.keys() {
             tables.push(TableInspection {
-                name: table,
-                indexes,
-                records,
+                name: table.clone(),
+                indexes: storage::index_fields(&self.shared.root, table)?,
+                records: state.current_records(table, state.version).len(),
             });
         }
-        tables.sort_by(|left, right| left.name.cmp(&right.name));
         Ok(DatabaseInspection {
-            database_id: self.metadata.database_id.clone(),
-            name: self.name.clone(),
-            format_version: self.metadata.format_version,
+            database_id: self.shared.metadata.database_id.clone(),
+            name: self.shared.name.clone(),
+            format_version: self.shared.metadata.format_version,
+            version: state.version,
             tables,
         })
     }
 
     pub fn compact(&self) -> StoreResult<CompactReport> {
+        let mut state = self.write_state()?;
+        ensure_available(&state)?;
         let mut report = CompactReport {
-            database: self.name.clone(),
+            database: self.shared.name.clone(),
             tables: 0,
             records: 0,
         };
-        for table in self.table_names()? {
-            let records = self.load_table(&table)?;
-            self.rewrite_table(&table, &records)?;
-            self.rewrite_indexes(&table, &records)?;
+        for table in state.tables.keys() {
+            let records = state.current_records(table, state.version);
+            storage::rewrite_table(&self.shared.root, table, &records)?;
+            storage::rewrite_indexes(&self.shared.root, table, &records)?;
             report.tables += 1;
             report.records += records.len();
         }
+        let mut file = self
+            .shared
+            .wal
+            .lock()
+            .map_err(|_| StoreError::DurabilityError("Database WAL lock failed".to_string()))?;
+        if let Err(error) = wal::reset(&mut file) {
+            state.poisoned = true;
+            return Err(error);
+        }
+        state.checkpoint();
         Ok(report)
     }
 
@@ -315,185 +354,80 @@ impl Database {
         Transaction::new(self.clone())
     }
 
-    fn table_root(&self, table: &str) -> PathBuf {
-        self.root.join(table)
+    pub(crate) fn current_version(&self) -> StoreResult<u64> {
+        let state = self.read_state()?;
+        ensure_available(&state)?;
+        Ok(state.version)
     }
 
-    fn ensure_table(&self, table: &str) -> StoreResult<()> {
+    pub(crate) fn records_at(&self, table: &str, version: u64) -> StoreResult<Vec<StoreRecord>> {
         validate_table_name(table)?;
-        let root = self.table_root(table);
-        fs::create_dir_all(root.join("wal"))?;
-        fs::create_dir_all(root.join("segments"))?;
-        fs::create_dir_all(root.join("indexes"))?;
-        fs::create_dir_all(root.join("snapshots"))?;
-        fs::create_dir_all(root.join("cache"))?;
-        let metadata = root.join("metadata.bin");
-        if !metadata.exists() {
-            let mut writer = Writer::new();
-            writer.bytes(TABLE_MAGIC);
-            writer.string(table);
-            fs::write(metadata, writer.into_bytes())?;
+        let state = self.read_state()?;
+        ensure_available(&state)?;
+        if version > state.version {
+            return Err(StoreError::TransactionConflict(
+                "transaction snapshot is newer than Database state".to_string(),
+            ));
         }
-        Ok(())
+        Ok(state
+            .current_records(table, version)
+            .into_values()
+            .collect())
     }
 
-    fn load_table(&self, table: &str) -> StoreResult<BTreeMap<String, StoreRecord>> {
+    pub(crate) fn indexed_records_at(
+        &self,
+        table: &str,
+        field: &str,
+        expected: &StoreValue,
+        version: u64,
+    ) -> StoreResult<Option<Vec<StoreRecord>>> {
         validate_table_name(table)?;
-        let path = self.table_root(table).join("segments").join("data.bin");
-        if !path.exists() {
-            return Ok(BTreeMap::new());
+        validate_field_name(field)?;
+        let state = self.read_state()?;
+        ensure_available(&state)?;
+        if version > state.version {
+            return Err(StoreError::TransactionConflict(
+                "transaction snapshot is newer than Database state".to_string(),
+            ));
         }
-        let mut file = File::open(path)?;
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)?;
-        let mut reader = Reader::new(&bytes);
-        let mut records = BTreeMap::new();
-        while !reader.is_done() {
-            reader.magic(RECORD_MAGIC)?;
-            let operation = reader.u8()?;
-            let id = reader.string()?;
-            match operation {
-                OP_UPSERT => {
-                    let record_bytes = reader.raw()?;
-                    let record = decode_record(&record_bytes)?;
-                    records.insert(id, record);
-                }
-                OP_DELETE => {
-                    reader.raw()?;
-                    records.remove(&id);
-                }
-                value => {
-                    return Err(StoreError::Corruption(format!(
-                        "unknown Database operation tag {value}"
-                    )));
-                }
-            }
-        }
-        Ok(records)
+        Ok(state.indexed_records(table, field, expected, version))
     }
 
-    fn append_operation(
+    fn read_state(&self) -> StoreResult<std::sync::RwLockReadGuard<'_, DatabaseState>> {
+        self.shared
+            .state
+            .read()
+            .map_err(|_| StoreError::DurabilityError("Database read lock failed".to_string()))
+    }
+
+    pub(crate) fn write_state(
         &self,
-        table: &str,
-        operation: u8,
-        id: &str,
-        record: Option<&StoreRecord>,
-    ) -> StoreResult<()> {
-        self.ensure_table(table)?;
-        let bytes = record.map(encode_record).transpose()?.unwrap_or_default();
-        let mut writer = Writer::new();
-        writer.bytes(RECORD_MAGIC);
-        writer.u8(operation);
-        writer.string(id);
-        writer.raw(&bytes);
-        let payload = writer.into_bytes();
-        append_synced(
-            &self
-                .table_root(table)
-                .join("wal")
-                .join("committed-transactions.bin"),
-            &payload,
-        )?;
-        append_synced(
-            &self.table_root(table).join("segments").join("data.bin"),
-            &payload,
-        )?;
-        Ok(())
-    }
-
-    fn rewrite_table(
-        &self,
-        table: &str,
-        records: &BTreeMap<String, StoreRecord>,
-    ) -> StoreResult<()> {
-        self.ensure_table(table)?;
-        let path = self.table_root(table).join("segments").join("data.bin");
-        let mut file = File::create(path)?;
-        for (id, record) in records {
-            let bytes = encode_record(record)?;
-            let mut writer = Writer::new();
-            writer.bytes(RECORD_MAGIC);
-            writer.u8(OP_UPSERT);
-            writer.string(id);
-            writer.raw(&bytes);
-            file.write_all(&writer.into_bytes())?;
-        }
-        file.sync_all()
-            .map_err(|error| StoreError::DurabilityError(error.to_string()))?;
-        Ok(())
-    }
-
-    fn rewrite_indexes(
-        &self,
-        table: &str,
-        records: &BTreeMap<String, StoreRecord>,
-    ) -> StoreResult<()> {
-        let index_root = self.table_root(table).join("indexes");
-        if !index_root.exists() {
-            return Ok(());
-        }
-        for entry in fs::read_dir(index_root)? {
-            let entry = entry?;
-            if !entry.file_type()?.is_file() {
-                continue;
-            }
-            let Some(field) = entry
-                .path()
-                .file_stem()
-                .and_then(|name| name.to_str())
-                .map(str::to_string)
-            else {
-                continue;
-            };
-            let path = entry.path();
-            let mut writer = Writer::new();
-            writer.bytes(INDEX_MAGIC);
-            writer.string(table);
-            writer.string(&field);
-            let mut values = Vec::new();
-            for (id, record) in records {
-                if let Some(value) = record.get(&field) {
-                    values.push((value.comparable_text(), id.clone()));
-                }
-            }
-            values.sort();
-            writer.u32(values.len() as u32);
-            for (value, id) in values {
-                writer.string(&value);
-                writer.string(&id);
-            }
-            fs::write(path, writer.into_bytes())?;
-        }
-        Ok(())
-    }
-
-    fn table_names(&self) -> StoreResult<Vec<String>> {
-        let mut tables = Vec::new();
-        if !self.root.exists() {
-            return Ok(tables);
-        }
-        for entry in fs::read_dir(&self.root)? {
-            let entry = entry?;
-            if entry.file_type()?.is_dir()
-                && entry.path().join("metadata.bin").exists()
-                && let Some(name) = entry.file_name().to_str()
-            {
-                tables.push(name.to_string());
-            }
-        }
-        tables.sort();
-        Ok(tables)
+    ) -> StoreResult<std::sync::RwLockWriteGuard<'_, DatabaseState>> {
+        self.shared
+            .state
+            .write()
+            .map_err(|_| StoreError::DurabilityError("Database write lock failed".to_string()))
     }
 }
 
-fn append_synced(path: &Path, bytes: &[u8]) -> StoreResult<()> {
-    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
-    file.write_all(bytes)?;
-    file.sync_all()
-        .map_err(|error| StoreError::DurabilityError(error.to_string()))?;
-    Ok(())
+fn acquire_database_lock(path: &Path) -> StoreResult<File> {
+    acquire_file_lock(&path.join(".lock"), "Database namespace is already in use")
 }
 
-fn values_equal(left: &StoreValue, right: &StoreValue) -> bool {
-    left.comparable_text() == right.comparable_text()
+fn acquire_file_lock(path: &Path, conflict: &str) -> StoreResult<File> {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)?;
+    secure_file(&file)?;
+    match file.try_lock() {
+        Ok(()) => Ok(file),
+        Err(TryLockError::WouldBlock) => Err(StoreError::TransactionConflict(conflict.to_string())),
+        Err(TryLockError::Error(_)) => Err(StoreError::DurabilityError(
+            "Database namespace lock cannot be acquired".to_string(),
+        )),
+    }
 }

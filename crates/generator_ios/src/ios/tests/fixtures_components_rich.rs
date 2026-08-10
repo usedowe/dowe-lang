@@ -140,7 +140,10 @@ fn rich_control_map_tree() -> ViewNode {
         props: StyleProps::default(),
         children: vec![
             ViewNode::RichText {
-                props: TextProps::default(),
+                props: TextProps {
+                    title: true,
+                    ..Default::default()
+                },
                 marks: vec![
                     RichTextMark {
                         text: "Launch".to_string(),

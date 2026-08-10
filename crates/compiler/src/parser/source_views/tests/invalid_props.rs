@@ -44,6 +44,22 @@
     }
 
     #[test]
+    fn rejects_quoted_rich_text_title_mode() {
+        let error = parse_page(
+            r#"page componentsPage
+  RichText title:"true"
+    mark text:"Launch" style:"mark" scheme:"primary""#,
+        )
+        .expect_err("static boolean");
+
+        assert!(
+            error
+                .to_string()
+                .contains("invalid value for prop `title`: expected boolean")
+        );
+    }
+
+    #[test]
     fn rejects_color_prop_for_display_and_overlay_components() {
         let error = parse_page(
             r#"page overlayPage
@@ -302,4 +318,3 @@ page appointmentsPage
                 .contains("`action` was replaced by `fn <name>` in views")
         );
     }
-

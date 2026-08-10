@@ -291,7 +291,7 @@ fn crud_generates_a_modal_editorial_dashboard() {
 
     let first_modal = page.find("  Modal open:").expect("first modal");
     let dashboard = &page[..first_modal];
-    for control in ["Input ", "PasswordField ", "Textarea "] {
+    for control in ["Input ", "Password ", "Textarea "] {
         assert!(
             !dashboard.contains(control),
             "{control} rendered outside Modal"

@@ -10,14 +10,15 @@ use super::{
     OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation, ResponsivePropEntry,
     SVG_LOGOS, SVG_SPINNERS, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap,
     SvgLineJoin, SvgPathFill, SvgTransform, TableColumnAlign, TableSize, TabsPosition, TabsVariant,
-    TextSize, TextSpacing, TextWeight, VideoAspect, ViewAnimation, ViewIcon, ViewNode,
-    VisibilityCondition, WebTarget, all_icon_names, arc_chart_component_node,
-    area_chart_component_node, bar_chart_component_node, bar_component_node, box_node,
-    candlestick_node, canvas_component_node, carousel_component_node, carousel_slide_component,
-    children_node, code_node, compose_tree, container_component_node, country_flag_icon,
-    device_node, divider_node, first_text, fixed_box_nodes, fixed_fab_nodes, font_catalog,
-    icon_component_node, iframe_node, input_node, line_chart_component_node, phone_countries,
-    pie_chart_component_node, radio_group_component_node, radio_option_component,
+    TextSize, TextSpacing, TextWeight, VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewNode,
+    ViewRotation, ViewScale, ViewTransition, ViewTranslation, VisibilityCondition, WebTarget,
+    all_icon_names, arc_chart_component_node, area_chart_component_node, bar_chart_component_node,
+    bar_component_node, box_node, candlestick_node, canvas_component_node, carousel_component_node,
+    carousel_slide_component, children_node, code_node, compose_tree, container_component_node,
+    country_flag_icon, device_node, divider_node, first_text, fixed_box_nodes, fixed_fab_nodes,
+    font_catalog, form_control_min_height, form_control_text_size, icon_component_node, iframe_node, input_node,
+    line_chart_component_node,
+    phone_countries, pie_chart_component_node, radio_group_component_node, radio_option_component,
     section_content_spacing, select_node, select_option_component, stepper_component_node,
     stepper_step_component, svg_component_node, svg_path_component, table_column_component,
     table_node, tabs_component_node, tabs_tab_component, text_binding_path, text_component_node,
@@ -176,6 +177,15 @@ fn registry_finds_builtin_components() {
         Some(BuiltinComponent::Title)
     );
     assert_eq!(COMPONENT_REGISTRY.get("Stack"), None);
+    assert_eq!(
+        COMPONENT_REGISTRY.get("Password"),
+        Some(BuiltinComponent::Password)
+    );
+    assert_eq!(COMPONENT_REGISTRY.get("PasswordField"), None);
+    assert_eq!(COMPONENT_REGISTRY.get("Phone"), Some(BuiltinComponent::Phone));
+    assert_eq!(COMPONENT_REGISTRY.get("PhoneField"), None);
+    assert_eq!(COMPONENT_REGISTRY.get("Pin"), Some(BuiltinComponent::Pin));
+    assert_eq!(COMPONENT_REGISTRY.get("PinField"), None);
 }
 
 #[test]
@@ -1621,11 +1631,11 @@ fn validates_section_background_props() {
     match node {
         ViewNode::Section { props, .. } => {
             assert_eq!(
-                props.background.expect("background").entries[0].value,
+                props.background.as_ref().expect("background").entries[0].value,
                 SectionBackground::Aurora
             );
             assert!(props.text.is_some());
-            assert_eq!(props.animation, Some(ViewAnimation::FadeIn));
+            assert_eq!(props.animation(), Some(ViewAnimation::FadeIn));
             assert!(props.boxed);
         }
         _ => panic!("section"),
@@ -1769,7 +1779,8 @@ fn validates_layout_bar_props_and_regions() {
             boolean_prop("blurred", true),
             boolean_prop("boxed", true),
             boolean_prop("floating", true),
-            string_prop("position", "sticky"),
+            string_prop("position", "fixed"),
+            boolean_prop("dockOnScroll", true),
         ],
         Vec::new(),
         vec![text_node("Menu").expect("text")],
@@ -1795,7 +1806,8 @@ fn validates_layout_bar_props_and_regions() {
             assert!(props.blurred);
             assert!(props.boxed);
             assert!(props.floating);
-            assert_eq!(props.position, BarPosition::Sticky);
+            assert_eq!(props.position, BarPosition::Fixed);
+            assert!(props.dock_on_scroll);
             assert_eq!(start.len(), 1);
             assert_eq!(center.len(), 1);
             assert_eq!(end, vec![ViewNode::Children]);
@@ -1880,10 +1892,44 @@ fn validates_layout_bar_props_and_regions() {
         error,
         ComponentError::unknown_prop(BuiltinComponent::BottomBar, "position")
     );
+
+    let error = bar_component_node(
+        BuiltinComponent::AppBar,
+        vec![boolean_prop("dockOnScroll", true)],
+        Vec::new(),
+        vec![text_node("Menu").expect("text")],
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        false,
+    )
+    .expect_err("dock without fixed floating AppBar");
+    assert_eq!(
+        error,
+        ComponentError::invalid_prop_combination(
+            "`dockOnScroll:true` requires `floating:true` and `position:\"fixed\"` on `AppBar`"
+        )
+    );
+
+    let error = bar_component_node(
+        BuiltinComponent::Footer,
+        vec![boolean_prop("dockOnScroll", true)],
+        Vec::new(),
+        vec![text_node("Footer").expect("text")],
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        false,
+    )
+    .expect_err("footer dock on scroll");
+    assert_eq!(
+        error,
+        ComponentError::unknown_prop(BuiltinComponent::Footer, "dockOnScroll")
+    );
 }
 
 #[test]
-fn applies_footer_horizontal_padding_defaults_and_preserves_overrides() {
+fn applies_footer_padding_defaults_and_preserves_overrides() {
     let default_footer = bar_component_node(
         BuiltinComponent::Footer,
         Vec::new(),
@@ -1905,10 +1951,22 @@ fn applies_footer_horizontal_padding_defaults_and_preserves_overrides() {
     assert_eq!(horizontal.entries[0].value, ScaleValue::from_half_steps(8));
     assert_eq!(horizontal.entries[1].breakpoint, Breakpoint::Md);
     assert_eq!(horizontal.entries[1].value, ScaleValue::from_half_steps(12));
+    let top = props.style.style.spacing.pt.expect("default pt");
+    assert_eq!(top.entries.len(), 2);
+    assert_eq!(top.entries[0].breakpoint, Breakpoint::Xs);
+    assert_eq!(top.entries[0].value, ScaleValue::from_half_steps(20));
+    assert_eq!(top.entries[1].breakpoint, Breakpoint::Md);
+    assert_eq!(top.entries[1].value, ScaleValue::from_half_steps(32));
+    let bottom = props.style.style.spacing.pb.expect("default pb");
+    assert_eq!(bottom.entries.len(), 2);
+    assert_eq!(bottom.entries[0].breakpoint, Breakpoint::Xs);
+    assert_eq!(bottom.entries[0].value, ScaleValue::from_half_steps(8));
+    assert_eq!(bottom.entries[1].breakpoint, Breakpoint::Md);
+    assert_eq!(bottom.entries[1].value, ScaleValue::from_half_steps(12));
 
     let authored_footer = bar_component_node(
         BuiltinComponent::Footer,
-        vec![number_prop("px", 2)],
+        vec![number_prop("px", 2), number_prop("py", 3)],
         vec![text_node("Directory").expect("text")],
         Vec::new(),
         Vec::new(),
@@ -1924,6 +1982,11 @@ fn applies_footer_horizontal_padding_defaults_and_preserves_overrides() {
     let horizontal = props.style.style.spacing.px.expect("authored px");
     assert_eq!(horizontal.entries.len(), 1);
     assert_eq!(horizontal.entries[0].value, ScaleValue::from_half_steps(4));
+    let vertical = props.style.style.spacing.py.expect("authored py");
+    assert_eq!(vertical.entries.len(), 1);
+    assert_eq!(vertical.entries[0].value, ScaleValue::from_half_steps(6));
+    assert!(props.style.style.spacing.pt.is_none());
+    assert!(props.style.style.spacing.pb.is_none());
 }
 
 #[test]

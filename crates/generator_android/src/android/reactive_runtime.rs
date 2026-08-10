@@ -55,7 +55,8 @@ private data class DoweSvgImportMatrix(val a: Double, val b: Double, val c: Doub
     )
 }
 
-private data class DoweSvgImportContext(val matrix: DoweSvgImportMatrix, val fill: String?, val hidden: Boolean)
+private data class DoweSvgImportContext(val matrix: DoweSvgImportMatrix, val fill: String?, val evenOdd: Boolean, val hidden: Boolean)
+private data class DoweSvgImportedPath(val data: String, val fill: String, val evenOdd: Boolean, val transform: String?)
 
 private object DoweSvgImporter {
     private val identity = DoweSvgImportMatrix(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
@@ -64,12 +65,15 @@ private object DoweSvgImporter {
     private val attrPattern = Regex("([A-Za-z_:][A-Za-z0-9_.:-]*)\\s*=\\s*([\\\"'])(.*?)\\2")
     private val pathPattern = Regex("[0-9\\sMmZzLlHhVvCcSsQqTtAa+.,eE-]+")
 
-    fun convert(source: String): String? = runCatching {
+    fun convert(source: String, colorsMode: String = "tokens", format: String = "source"): String? = runCatching {
+        require(colorsMode in setOf("tokens", "original"))
+        require(format in setOf("source", "data"))
+        require(format != "data" || colorsMode == "original")
         require(source.toByteArray(Charsets.UTF_8).size <= 262144)
         var viewBox: String? = null
         val colors = mutableListOf<String>()
-        val paths = mutableListOf<String>()
-        val stack = mutableListOf(DoweSvgImportContext(identity, null, false))
+        val paths = mutableListOf<DoweSvgImportedPath>()
+        val stack = mutableListOf(DoweSvgImportContext(identity, null, false, false))
         for (match in tagPattern.findAll(source)) {
             val closing = match.groupValues[1].isNotEmpty()
             if (closing) {
@@ -89,6 +93,17 @@ private object DoweSvgImporter {
                 pair.takeIf { it.size == 2 && it[0].trim().equals("fill", true) }?.get(1)?.trim()
             }
             val fill = attrs["fill"] ?: styleFill ?: parent.fill
+            val styleFillRule = attrs["style"]?.split(";")?.firstNotNullOfOrNull { entry ->
+                val pair = entry.split(":", limit = 2)
+                pair.takeIf { it.size == 2 && it[0].trim().equals("fill-rule", true) }?.get(1)?.trim()
+            }
+            val fillRule = attrs["fill-rule"] ?: styleFillRule
+            val evenOdd = when (fillRule?.trim()?.lowercase()) {
+                null -> parent.evenOdd
+                "nonzero" -> false
+                "evenodd" -> true
+                else -> error("fill-rule")
+            }
             val hidden = parent.hidden || name in setOf("defs", "clippath", "mask", "symbol", "script", "style")
             if (name == "svg" && viewBox == null) {
                 val raw = attrs["viewbox"] ?: "0 0 " + dimension(attrs["width"]) + " " + dimension(attrs["height"])
@@ -96,17 +111,36 @@ private object DoweSvgImporter {
                 require(values.size == 4 && values.all(Double::isFinite) && values[2] > 0 && values[3] > 0)
                 viewBox = values.joinToString(" ", transform = ::number)
             }
-            if (name == "path" && !hidden) {
+            val drawable = name == "path" || (name == "rect" && "rx" !in attrs && "ry" !in attrs)
+            if (drawable && !hidden) {
                 require(paths.size < 1024)
-                val data = attrs["d"]?.trim().orEmpty()
+                val data = if (name == "path") attrs["d"]?.trim().orEmpty() else rectangle(attrs)
                 require(data.isNotEmpty() && pathPattern.matches(data))
-                val transform = if (same(combined, identity)) "" else " transform:\"" + matrixSource(combined) + "\""
-                paths += "  Path d:\"" + data + "\" fill:\"" + fill(fill, colors) + "\"" + transform
+                val transform = if (same(combined, identity)) null else matrixSource(combined)
+                val portableFill = if (colorsMode == "original") originalFill(fill) else fill(fill, colors)
+                paths += DoweSvgImportedPath(data, portableFill, evenOdd, transform)
             }
-            if (!match.value.trimEnd().endsWith("/>")) stack += DoweSvgImportContext(combined, fill, hidden)
+            if (!match.value.trimEnd().endsWith("/>")) stack += DoweSvgImportContext(combined, fill, evenOdd, hidden)
         }
         require(viewBox != null && paths.isNotEmpty())
-        "Svg viewBox:\"" + viewBox + "\" w:\"full\" h:\"full\"\n" + paths.joinToString("\n")
+        if (format == "data") {
+            val values = org.json.JSONArray()
+            paths.forEach { path ->
+                val value = org.json.JSONObject().put("d", path.data).put(
+                    "paint",
+                    when (path.fill) { "none" -> "none"; "currentColor" -> "currentColor"; else -> "fill" }
+                )
+                if (path.fill != "none" && path.fill != "currentColor") value.put("color", path.fill)
+                if (path.evenOdd) value.put("evenOdd", true)
+                path.transform?.let { value.put("transform", it) }
+                values.put(value)
+            }
+            org.json.JSONObject().put("viewBox", viewBox).put("paths", values).toString()
+        } else {
+            "Svg viewBox:\"" + viewBox + "\" w:\"full\" h:\"full\"\n" + paths.joinToString("\n") { path ->
+                "  Path d:\"" + path.data + "\" fill:\"" + path.fill + "\"" + (if (path.evenOdd) " fillRule:\"evenodd\"" else "") + (path.transform?.let { " transform:\"" + it + "\"" } ?: "")
+            }
+        }
     }.getOrNull()
 
     private fun matrix(source: String): DoweSvgImportMatrix {
@@ -128,17 +162,51 @@ private object DoweSvgImporter {
         return number(number)
     }
 
+    private fun rectangle(attrs: Map<String, String>): String {
+        val x = attrs["x"]?.trim()?.toDoubleOrNull() ?: 0.0
+        val y = attrs["y"]?.trim()?.toDoubleOrNull() ?: 0.0
+        val width = attrs["width"]?.trim()?.toDoubleOrNull()
+        val height = attrs["height"]?.trim()?.toDoubleOrNull()
+        require(x.isFinite() && y.isFinite() && width != null && height != null && width.isFinite() && height.isFinite() && width > 0 && height > 0)
+        val right = x + width
+        val bottom = y + height
+        require(right.isFinite() && bottom.isFinite())
+        return "M" + number(x) + " " + number(y) + "H" + number(right) + "V" + number(bottom) + "H" + number(x) + "Z"
+    }
+
     private fun fill(value: String?, colors: MutableList<String>): String {
         val source = value?.trim().orEmpty()
         if (source.equals("none", true)) return "none"
         if (source.isEmpty() || source.equals("currentColor", true)) return "currentColor"
         val key = source.lowercase()
-        var index = colors.indexOf(key)
+        var index = colors.indexOfFirst { color -> sameColor(color, key) }
         if (index < 0) {
             colors += key
             index = colors.lastIndex
         }
         return tokens[index % tokens.size]
+    }
+
+    private fun originalFill(value: String?): String {
+        val source = value?.trim().orEmpty()
+        if (source.equals("none", true)) return "none"
+        if (source.isEmpty() || source.equals("currentColor", true)) return "currentColor"
+        val normalized = source.lowercase()
+        require(Regex("^#[0-9a-f]{3,4}$|^#[0-9a-f]{6}([0-9a-f]{2})?$").matches(normalized) || rgb(normalized) != null)
+        return if (normalized.startsWith(35.toChar())) normalized else 35.toChar().toString() + rgb(normalized)!!.joinToString("") { it.toString(16).padStart(2, '0') }
+    }
+
+    private fun sameColor(left: String, right: String): Boolean {
+        if (left == right) return true
+        val leftChannels = rgb(left) ?: return false
+        val rightChannels = rgb(right) ?: return false
+        return leftChannels.indices.all { index -> kotlin.math.abs(leftChannels[index] - rightChannels[index]) <= 1 }
+    }
+
+    private fun rgb(value: String): List<Int>? {
+        val match = Regex("^rgb\\s*\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*\\)$", RegexOption.IGNORE_CASE).matchEntire(value) ?: return null
+        val channels = match.groupValues.drop(1).map(String::toInt)
+        return channels.takeIf { values -> values.all { channel -> channel in 0..255 } }
     }
 
     private fun matrixSource(value: DoweSvgImportMatrix) = "matrix(" + listOf(value.a, value.b, value.c, value.d, value.e, value.f).joinToString(" ", transform = ::number) + ")"
@@ -410,7 +478,7 @@ private class DoweReactiveState(
             "parse.float" -> number("value") ?: args["fallback"]
             "parse.bool" -> stdlibBool(args["value"]) ?: args["fallback"]
             "parse.string" -> stdlibText(args["value"])
-            "parse.svg" -> DoweSvgImporter.convert(text("value")) ?: args["fallback"]
+            "parse.svg" -> DoweSvgImporter.convert(text("value"), text("colors").ifEmpty { "tokens" }, text("format").ifEmpty { "source" }) ?: args["fallback"]
             "parse.json", "json.parse" -> runCatching { doweNativeValue(JSONObject(text("value"))) }.getOrDefault(args["fallback"])
             "sort.asc" -> list("values").sortedBy { stdlibText(it) }
             "sort.desc" -> list("values").sortedByDescending { stdlibText(it) }

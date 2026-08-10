@@ -94,10 +94,22 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
                 "field-label".to_string(),
                 "field-help".to_string(),
                 "color-field".to_string(),
+                "color-control-shell".to_string(),
+                "color-control-trigger".to_string(),
                 "color-input".to_string(),
-                "color-field-display".to_string(),
                 "color-field-swatch".to_string(),
                 "color-field-value".to_string(),
+                "color-picker-popover".to_string(),
+                "color-picker-canvas".to_string(),
+                "color-picker-cursor".to_string(),
+                "color-picker-hue".to_string(),
+                "color-picker-slider-thumb".to_string(),
+                "color-picker-preview".to_string(),
+                "color-picker-preview-swatch".to_string(),
+                "color-picker-preview-color".to_string(),
+                "color-picker-preview-info".to_string(),
+                "color-picker-preview-hex".to_string(),
+                "color-picker-preview-foreground".to_string(),
                 "color-picker-values".to_string(),
                 "color-picker-value-code".to_string(),
             ]);
@@ -350,51 +362,51 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
                 "is-primary".to_string(),
             ]);
         }
-        ViewNode::PasswordField { props } => {
+        ViewNode::Password { props } => {
             classes.extend(variant_classes("control", &props.style));
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
                 "field-help".to_string(),
-                "password-field".to_string(),
-                "password-field-input".to_string(),
-                "password-field-toggle".to_string(),
+                "password".to_string(),
+                "password-input".to_string(),
+                "password-toggle".to_string(),
                 "password-strength".to_string(),
                 "password-strength-bars".to_string(),
                 "password-strength-bar".to_string(),
                 "password-strength-label".to_string(),
             ]);
         }
-        ViewNode::PhoneField { props } => {
+        ViewNode::Phone { props } => {
             classes.extend(variant_classes("control", &props.style));
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
                 "field-help".to_string(),
-                "phone-field".to_string(),
-                "phone-field-country-trigger".to_string(),
-                "phone-field-flag".to_string(),
-                "phone-field-dial".to_string(),
-                "phone-field-input".to_string(),
-                "phone-field-popover".to_string(),
-                "phone-field-search-wrap".to_string(),
-                "phone-field-search".to_string(),
-                "phone-field-search-icon".to_string(),
-                "phone-field-countries".to_string(),
-                "phone-field-country".to_string(),
-                "phone-field-country-name".to_string(),
-                "phone-field-empty".to_string(),
-                "phone-field-loading".to_string(),
+                "phone".to_string(),
+                "phone-country-trigger".to_string(),
+                "phone-flag".to_string(),
+                "phone-dial".to_string(),
+                "phone-input".to_string(),
+                "phone-popover".to_string(),
+                "phone-search-wrap".to_string(),
+                "phone-search".to_string(),
+                "phone-search-icon".to_string(),
+                "phone-countries".to_string(),
+                "phone-country".to_string(),
+                "phone-country-name".to_string(),
+                "phone-empty".to_string(),
+                "phone-loading".to_string(),
             ]);
         }
-        ViewNode::PinField { props } => {
+        ViewNode::Pin { props } => {
             classes.extend(variant_classes("control", &props.style));
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
                 "field-help".to_string(),
-                "pin-field-cells".to_string(),
-                "pin-field-cell".to_string(),
+                "pin-cells".to_string(),
+                "pin-cell".to_string(),
             ]);
         }
         ViewNode::Textarea { props } => {

@@ -378,7 +378,7 @@ fn render_rich_text_html(
         .iter()
         .map(|mark| {
             format!(
-                r#"<span class="rich-mark rich-mark-{} is-{}">{}</span>"#,
+                r#"<span class="rich-mark rich-mark-{} is-{}" data-dowe-rich-mark>{}</span>"#,
                 mark.style.as_str(),
                 mark.color.as_str(),
                 escape_html(&mark.text)
@@ -386,7 +386,7 @@ fn render_rich_text_html(
         })
         .collect::<Vec<_>>()
         .join(" ");
-    let mut extra = String::new();
+    let mut extra = " data-dowe-rich-text".to_string();
     if let Some(key) = props.i18n.as_ref() {
         extra.push_str(&format!(r#" data-dowe-i18n="{}""#, escape_attr(key)));
     }
@@ -395,7 +395,7 @@ fn render_rich_text_html(
         attrs(
             rich_text_classes(props),
             Some(&props.style.element),
-            (!extra.is_empty()).then_some(extra.as_str()),
+            Some(extra.as_str()),
             context
         ),
         content

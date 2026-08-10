@@ -28,6 +28,7 @@ fn render_swift_color(
 ) {
     let pad = " ".repeat(indent);
     let binding = swift_string_binding(&props.style, &props.value, context);
+    let text_size = form_control_text_size(props.size);
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
@@ -36,11 +37,13 @@ fn render_swift_color(
         "nil".to_string()
     };
     output.push_str(&format!(
-        "{pad}DoweColorField(value: {binding}, label: {}, placeholder: {}, floating: {}, size: {}, name: {}, helpText: {}, errorText: {}, showHex: {}, showRgb: {}, showCmyk: {}, showOklch: {}, backgroundColor: {}, contentColor: {}, borderColor: {border})\n",
+        "{pad}DoweColorField(value: {binding}, label: {}, placeholder: {}, floating: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), name: {}, helpText: {}, errorText: {}, showHex: {}, showRgb: {}, showCmyk: {}, showOklch: {}, backgroundColor: {}, contentColor: {}, borderColor: {border})\n",
         swift_optional_literal(props.style.label.as_deref()),
         swift_string_literal(props.style.placeholder.as_deref().unwrap_or("Select color")),
         props.style.label_floating,
         swift_string_literal(props.size.as_str()),
+        swift_text_size_expr(false, text_size),
+        text_typography(false, text_size).line_height,
         swift_optional_literal(props.name.as_deref()),
         swift_optional_literal(props.help_text.as_deref()),
         swift_optional_literal(props.error_text.as_deref()),
@@ -65,6 +68,7 @@ fn render_swift_date(
     context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let text_size = form_control_text_size(props.size);
     let binding = swift_string_binding(
         &props.style,
         props.value.as_deref().unwrap_or_default(),
@@ -78,11 +82,13 @@ fn render_swift_date(
         "nil".to_string()
     };
     output.push_str(&format!(
-        "{pad}DoweDateField(value: {binding}, label: {}, placeholder: {}, floating: {}, size: {}, name: {}, helpText: {}, errorText: {}, min: {}, max: {}, backgroundColor: {}, contentColor: {}, borderColor: {border})\n",
+        "{pad}DoweDateField(value: {binding}, label: {}, placeholder: {}, floating: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), name: {}, helpText: {}, errorText: {}, min: {}, max: {}, backgroundColor: {}, contentColor: {}, borderColor: {border})\n",
         swift_optional_literal(props.style.label.as_deref()),
         swift_string_literal(props.style.placeholder.as_deref().unwrap_or("Select date")),
         props.style.label_floating,
         swift_string_literal(props.size.as_str()),
+        swift_text_size_expr(false, text_size),
+        text_typography(false, text_size).line_height,
         swift_optional_literal(props.name.as_deref()),
         swift_optional_literal(props.help_text.as_deref()),
         swift_optional_literal(props.error_text.as_deref()),
@@ -105,6 +111,7 @@ fn render_swift_date_range(
     context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let text_size = form_control_text_size(props.size);
     let start_binding = swift_optional_string_binding(
         props.start.as_deref(),
         props.start_value.as_deref().unwrap_or_default(),
@@ -123,11 +130,13 @@ fn render_swift_date_range(
         "nil".to_string()
     };
     output.push_str(&format!(
-        "{pad}DoweDateRangeField(startValue: {start_binding}, endValue: {end_binding}, label: {}, placeholder: {}, floating: {}, size: {}, name: {}, helpText: {}, errorText: {}, min: {}, max: {}, backgroundColor: {}, contentColor: {}, borderColor: {border})\n",
+        "{pad}DoweDateRangeField(startValue: {start_binding}, endValue: {end_binding}, label: {}, placeholder: {}, floating: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), name: {}, helpText: {}, errorText: {}, min: {}, max: {}, backgroundColor: {}, contentColor: {}, borderColor: {border})\n",
         swift_optional_literal(props.style.label.as_deref()),
         swift_string_literal(props.style.placeholder.as_deref().unwrap_or("Select date range")),
         props.style.label_floating,
         swift_string_literal(props.size.as_str()),
+        swift_text_size_expr(false, text_size),
+        text_typography(false, text_size).line_height,
         swift_optional_literal(props.name.as_deref()),
         swift_optional_literal(props.help_text.as_deref()),
         swift_optional_literal(props.error_text.as_deref()),

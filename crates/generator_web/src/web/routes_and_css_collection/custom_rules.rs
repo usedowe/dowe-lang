@@ -177,9 +177,9 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         ViewNode::DragDrop { props, .. } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Editor { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::ImageCropper { props } => collect_style_custom_rules(&props.style.style, rules),
-        ViewNode::PasswordField { props } => collect_style_custom_rules(&props.style.style, rules),
-        ViewNode::PhoneField { props } => collect_style_custom_rules(&props.style.style, rules),
-        ViewNode::PinField { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Password { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Phone { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Pin { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Textarea { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Code { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Video { props } => collect_style_custom_rules(&props.style.style, rules),
@@ -311,6 +311,35 @@ fn collect_divider_custom_rules(props: &DividerProps, rules: &mut Vec<String>) {
 }
 
 fn collect_style_custom_rules(props: &StyleProps, rules: &mut Vec<String>) {
+    let motion = props.motion();
+    collect_transform_rules(
+        "rotate",
+        motion.rotate.as_ref(),
+        rules,
+        |value| value.class_suffix(),
+        |value| format!("--dowe-rotate:{}deg;", value.degrees()),
+    );
+    collect_transform_rules(
+        "scale",
+        motion.scale.as_ref(),
+        rules,
+        |value| value.class_suffix(),
+        |value| format!("--dowe-scale:{};", value.factor()),
+    );
+    collect_transform_rules(
+        "translate-x",
+        motion.translate_x.as_ref(),
+        rules,
+        |value| value.class_suffix(),
+        |value| format!("--dowe-translate-x:{}rem;", value.css_rem()),
+    );
+    collect_transform_rules(
+        "translate-y",
+        motion.translate_y.as_ref(),
+        rules,
+        |value| value.class_suffix(),
+        |value| format!("--dowe-translate-y:{}rem;", value.css_rem()),
+    );
     if let Some(cover) = props.cover.as_ref() {
         for entry in &cover.entries {
             push_custom_rule(
@@ -342,6 +371,36 @@ fn collect_style_custom_rules(props: &StyleProps, rules: &mut Vec<String>) {
                 ),
             );
         }
+    }
+}
+
+fn collect_transform_rules<T, S, B>(
+    prefix: &str,
+    value: Option<&ResponsiveValue<T>>,
+    rules: &mut Vec<String>,
+    suffix: S,
+    body: B,
+) where
+    T: Clone,
+    S: Fn(&T) -> String,
+    B: Fn(&T) -> String,
+{
+    let Some(value) = value else {
+        return;
+    };
+    for entry in &value.entries {
+        push_custom_rule(
+            rules,
+            entry.breakpoint,
+            &format!(
+                ".{}{{{}}}",
+                css_class_name(&responsive_custom_class(
+                    entry.breakpoint,
+                    &format!("{prefix}-{}", suffix(&entry.value))
+                )),
+                body(&entry.value)
+            ),
+        );
     }
 }
 

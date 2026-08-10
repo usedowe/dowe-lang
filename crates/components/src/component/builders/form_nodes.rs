@@ -944,7 +944,7 @@ pub fn image_cropper_component_node(props: Vec<ComponentProp>) -> ComponentResul
     })
 }
 
-pub fn password_field_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+pub fn password_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut value = None;
     let mut hide_strength = false;
     let mut weak_label = "Weak".to_string();
@@ -970,16 +970,16 @@ pub fn password_field_component_node(props: Vec<ComponentProp>) -> ComponentResu
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
-            "color" => return Err(scheme_prop_error(BuiltinComponent::PasswordField)),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Password)),
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::PasswordField, &style_props)?;
+    let mut style = parse_variant_props(BuiltinComponent::Password, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
     style.size = Some(size);
-    Ok(ViewNode::PasswordField {
-        props: PasswordFieldProps {
+    Ok(ViewNode::Password {
+        props: PasswordProps {
             style,
             value,
             hide_strength,
@@ -995,7 +995,7 @@ pub fn password_field_component_node(props: Vec<ComponentProp>) -> ComponentResu
     })
 }
 
-pub fn phone_field_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+pub fn phone_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut value = None;
     let mut country = None;
     let mut dial_code_name = "dialCode".to_string();
@@ -1027,19 +1027,19 @@ pub fn phone_field_component_node(props: Vec<ComponentProp>) -> ComponentResult<
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
-            "color" => return Err(scheme_prop_error(BuiltinComponent::PhoneField)),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Phone)),
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::PhoneField, &style_props)?;
+    let mut style = parse_variant_props(BuiltinComponent::Phone, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
     style.size = Some(size);
     style
         .placeholder
         .get_or_insert_with(|| "Enter phone number".to_string());
-    Ok(ViewNode::PhoneField {
-        props: PhoneFieldProps {
+    Ok(ViewNode::Phone {
+        props: PhoneProps {
             style,
             value,
             country,
@@ -1056,10 +1056,10 @@ pub fn phone_field_component_node(props: Vec<ComponentProp>) -> ComponentResult<
     })
 }
 
-pub fn pin_field_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+pub fn pin_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut value = None;
     let mut length = 6;
-    let mut kind = PinFieldKind::Text;
+    let mut kind = PinKind::Text;
     let mut name = None;
     let mut help_text = None;
     let mut error_text = None;
@@ -1069,21 +1069,21 @@ pub fn pin_field_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vi
         match prop.name.as_str() {
             "value" => value = Some(parse_required_string(&prop.name, &prop.value)?),
             "length" => length = parse_u8_in_range(&prop.name, &prop.value, 1, 12)?,
-            "type" => kind = parse_pin_field_kind(&prop.name, &prop.value)?,
+            "type" => kind = parse_pin_kind(&prop.name, &prop.value)?,
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
-            "color" => return Err(scheme_prop_error(BuiltinComponent::PinField)),
+            "color" => return Err(scheme_prop_error(BuiltinComponent::Pin)),
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::PinField, &style_props)?;
+    let mut style = parse_variant_props(BuiltinComponent::Pin, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
     style.size = Some(size);
-    Ok(ViewNode::PinField {
-        props: PinFieldProps {
+    Ok(ViewNode::Pin {
+        props: PinProps {
             style,
             value,
             length,
@@ -1160,9 +1160,9 @@ fn parse_image_cropper_shape(name: &str, value: &PropValue) -> ComponentResult<I
         .ok_or_else(|| ComponentError::invalid_prop(name, "circle or square"))
 }
 
-fn parse_pin_field_kind(name: &str, value: &PropValue) -> ComponentResult<PinFieldKind> {
+fn parse_pin_kind(name: &str, value: &PropValue) -> ComponentResult<PinKind> {
     let value = parse_required_string(name, value)?;
-    PinFieldKind::from_name(&value)
+    PinKind::from_name(&value)
         .ok_or_else(|| ComponentError::invalid_prop(name, "text, password or number"))
 }
 

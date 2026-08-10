@@ -322,7 +322,22 @@ fn render_dev_android_form_actions_node(
             let view = next_dev_view(counter);
             let field = next_dev_view(counter);
             let swatch = next_dev_view(counter);
+            let control_height = form_control_min_height(props.size, props.style.label_floating)
+                .native_units();
+            let text_size = dev_text_size_expr(false, form_control_text_size(props.size));
+            let swatch_size = match props.size {
+                ButtonSize::Sm => 20,
+                ButtonSize::Lg => 32,
+                _ => 24,
+            };
             let value = dev_bound_text(&props.style, &props.value, context);
+            let bind = props
+                .style
+                .element
+                .bind
+                .as_deref()
+                .map(|path| format!("\"{}\"", escape_java(&context.signal_path(path))))
+                .unwrap_or_else(|| "null".to_string());
             output.push_str(&format!(
                 "        LinearLayout {view} = doweContainer(false);\n"
             ));
@@ -336,19 +351,32 @@ fn render_dev_android_form_actions_node(
                                         ));
             }
             output.push_str(&format!(
-                                        "        LinearLayout {field} = doweContainer(true);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        View {swatch} = new View(this);\n        {swatch}.setLayoutParams(new LinearLayout.LayoutParams(doweDp(24), doweDp(24)));\n        try {{ {swatch}.setBackgroundColor(Color.parseColor({value})); }} catch (IllegalArgumentException ignored) {{ {swatch}.setBackgroundColor({}); }}\n        doweAdd({field}, {swatch});\n        TextView {field}Value = doweText({value}.toUpperCase(), {}, 14f, 500, 0f, 1.2f, {});\n        {field}Value.setPadding(doweDp(10), 0, 0, 0);\n        doweAdd({field}, {field}Value);\n        doweAdd({view}, {field}, 4, false);\n",
+                                        "        LinearLayout {field} = doweContainer(true);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        View {swatch} = new View(this);\n        {swatch}.setLayoutParams(new LinearLayout.LayoutParams(doweDp(24), doweDp(24)));\n        try {{ {swatch}.setBackgroundColor(Color.parseColor({value})); }} catch (IllegalArgumentException ignored) {{ {swatch}.setBackgroundColor({}); }}\n        doweAdd({field}, {swatch});\n        TextView {field}Value = doweText({value}.toUpperCase(), {}, {}, 600, 0f, 1.2f, {});\n        {field}Value.setPadding(doweDp(10), 0, 0, 0);\n        doweAdd({field}, {field}Value);\n        final String[] {field}Selected = new String[]{{doweColorHex(doweColorRgb({value}))}};\n        doweBindColor({field}, {swatch}, {field}Value, {field}Selected, {bind}, {}, {}, {}, {}, {}, {});\n        doweAdd({view}, {field}, 4, false);\n",
                                         dev_variant_container(&props.style),
                                         java_color(ColorToken::Muted),
                                         dev_variant_container(&props.style),
                                         dev_variant_content(&props.style),
+                                        text_size,
+                                        dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
+                                        props.show_hex,
+                                        props.show_rgb,
+                                        props.show_cmyk,
+                                        props.show_oklch,
+                                        dev_variant_content(&props.style),
                                         dev_font_value(props.style.style.font.as_ref().or(inherited_font))
                                     ));
+            output.push_str(&format!(
+                "        {field}.setMinimumHeight(doweDp({control_height}));\n        {swatch}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({swatch_size}), doweDp({swatch_size})));\n"
+            ));
             apply_dev_android_style(&props.style.style, &view, true, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::Date { props } => {
             let view = next_dev_view(counter);
             let field = next_dev_view(counter);
+            let control_height = form_control_min_height(props.size, props.style.label_floating)
+                .native_units();
+            let text_size = dev_text_size_expr(false, form_control_text_size(props.size));
             let value = dev_bound_text(
                 &props.style,
                 props.value.as_deref().unwrap_or_default(),
@@ -385,11 +413,12 @@ fn render_dev_android_form_actions_node(
                                         ));
             }
             output.push_str(&format!(
-                                        "        final String[] {field}Selected = new String[]{{{value}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, null, false, {}, {});\n",
+                                        "        final String[] {field}Selected = new String[]{{{value}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setTextSize({});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, null, false, {}, {});\n",
                                         escape_java(placeholder),
                                         dev_variant_content(&props.style),
                                         dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
-                                        INPUT_MIN_HEIGHT.native_units(),
+                                        text_size,
+                                        control_height,
                                         dev_variant_container(&props.style),
                                         java_color(ColorToken::Muted),
                                         escape_java(placeholder),
@@ -405,6 +434,9 @@ fn render_dev_android_form_actions_node(
         ViewNode::DateRange { props } => {
             let view = next_dev_view(counter);
             let field = next_dev_view(counter);
+            let control_height = form_control_min_height(props.size, props.style.label_floating)
+                .native_units();
+            let text_size = dev_text_size_expr(false, form_control_text_size(props.size));
             let start = dev_optional_bound_text(
                 props.start.as_deref(),
                 props.start_value.as_deref().unwrap_or_default(),
@@ -453,11 +485,12 @@ fn render_dev_android_form_actions_node(
                                         ));
             }
             output.push_str(&format!(
-                                        "        final String[] {field}Selected = new String[]{{{start}, {end}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, {}, true, {}, {});\n",
+                                        "        final String[] {field}Selected = new String[]{{{start}, {end}}};\n        TextView {field} = doweDateTrigger(\"{}\", {}, {});\n        {field}.setTextSize({});\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp(12), 0, doweDp(36), 0);\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        doweAdd({view}, {field}, 4, false);\n        doweBindDate({field}, {field}Selected, \"{}\", {}, {}, {}, {}, true, {}, {});\n",
                                         escape_java(placeholder),
                                         dev_variant_content(&props.style),
                                         dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
-                                        INPUT_MIN_HEIGHT.native_units(),
+                                        text_size,
+                                        control_height,
                                         dev_variant_container(&props.style),
                                         java_color(ColorToken::Muted),
                                         escape_java(placeholder),

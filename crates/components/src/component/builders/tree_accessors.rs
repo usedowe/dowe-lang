@@ -188,9 +188,9 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .or_else(|| Some(props.empty_text.clone())),
         ViewNode::Editor { props } => props.style.label.clone(),
         ViewNode::ImageCropper { props } => props.style.label.clone(),
-        ViewNode::PasswordField { props } => props.style.label.clone(),
-        ViewNode::PhoneField { props } => props.style.label.clone(),
-        ViewNode::PinField { props } => props.style.label.clone(),
+        ViewNode::Password { props } => props.style.label.clone(),
+        ViewNode::Phone { props } => props.style.label.clone(),
+        ViewNode::Pin { props } => props.style.label.clone(),
         ViewNode::Textarea { props } => props.style.label.clone(),
         ViewNode::Input { .. }
         | ViewNode::Select { .. }
@@ -245,9 +245,9 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         ViewNode::DragDrop { props, .. } => Some(&props.style.element),
         ViewNode::Editor { props } => Some(&props.style.element),
         ViewNode::ImageCropper { props } => Some(&props.style.element),
-        ViewNode::PasswordField { props } => Some(&props.style.element),
-        ViewNode::PhoneField { props } => Some(&props.style.element),
-        ViewNode::PinField { props } => Some(&props.style.element),
+        ViewNode::Password { props } => Some(&props.style.element),
+        ViewNode::Phone { props } => Some(&props.style.element),
+        ViewNode::Pin { props } => Some(&props.style.element),
         ViewNode::Textarea { props } => Some(&props.style.element),
         ViewNode::Avatar { props, .. } => Some(&props.style.element),
         ViewNode::Badge { props, .. } => Some(&props.style.element),
@@ -357,9 +357,9 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::DragDrop { .. }
         | ViewNode::Editor { .. }
         | ViewNode::ImageCropper { .. }
-        | ViewNode::PasswordField { .. }
-        | ViewNode::PhoneField { .. }
-        | ViewNode::PinField { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
         | ViewNode::Textarea { .. }
         | ViewNode::Select { .. }
         | ViewNode::Code { .. }

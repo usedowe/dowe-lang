@@ -204,10 +204,10 @@ fn swift_rich_text_marks(marks: &[RichTextMark]) -> String {
         .iter()
         .map(|mark| {
             format!(
-                "DoweRichTextMark(text: {}, style: {}, color: {})",
+                "DoweRichTextMark(text: {}, style: {}, scheme: {})",
                 swift_string_literal(&mark.text),
                 swift_string_literal(mark.style.as_str()),
-                color_ref(family_color(mark.color))
+                swift_string_literal(mark.color.as_str())
             )
         })
         .collect::<Vec<_>>()

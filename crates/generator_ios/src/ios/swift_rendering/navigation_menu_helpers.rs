@@ -45,17 +45,30 @@ fn render_swift_button_icon(icon: &SideNavIcon, color: &str, indent: usize, outp
         swift_svg_view_box(&icon.props.view_box),
         swift_svg_paths(&icon.paths)
     ));
-    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&icon.props.style));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_style(&icon.props.style),
+    );
 }
 
-fn render_swift_button_spinner(icon: &SideNavIcon, color: &str, indent: usize, output: &mut String) {
+fn render_swift_button_spinner(
+    icon: &SideNavIcon,
+    color: &str,
+    indent: usize,
+    output: &mut String,
+) {
     let pad = " ".repeat(indent);
     output.push_str(&format!(
         "{pad}DoweSvgView(viewBox: {}, color: {color}, paths: {}, animated: true)\n",
         swift_svg_view_box(&icon.props.view_box),
         swift_svg_paths(&icon.paths)
     ));
-    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&icon.props.style));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_style(&icon.props.style),
+    );
 }
 
 fn swift_optional_component_action(
@@ -188,6 +201,7 @@ struct SwiftBarOptions {
     center_padding: usize,
     end_padding: usize,
     boxed_width: usize,
+    boxed_regions: bool,
 }
 
 fn render_swift_nav_menu(
@@ -213,7 +227,9 @@ fn render_swift_nav_menu(
     let wide_indices = items
         .iter()
         .enumerate()
-        .filter_map(|(index, item)| matches!(item, NavMenuItem::Megamenu { .. }).then_some(index.to_string()))
+        .filter_map(|(index, item)| {
+            matches!(item, NavMenuItem::Megamenu { .. }).then_some(index.to_string())
+        })
         .collect::<Vec<_>>()
         .join(", ");
     output.push_str(&format!(

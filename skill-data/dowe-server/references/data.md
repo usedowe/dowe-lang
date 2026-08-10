@@ -92,6 +92,22 @@ query rows db:appDb.query sql:"SELECT id, name FROM icons WHERE category = ?1 LI
 Do not interpolate a request reference into `sql`. The runtime binds query parameters using the
 selected provider's native placeholder rules.
 
+`db:<handle>.tx` is supported by local development storage and remote `provider:"dowe"` handles.
+It stages literal `insert` children and ends with `commit` or `rollback`:
+
+```text
+query result db:appDb.tx
+  query delivery db:appDb.insert table:"sms_deliveries" value:{ recipient:args.recipient status:"queued" }
+  query outbox db:appDb.insert table:"sms_outbox" value:{ recipient:args.recipient status:"pending" }
+  commit value:delivery
+```
+
+Commit is atomic and durable: Dowe validates every staged insert, records one checksummed WAL frame,
+syncs the group to disk, and only then publishes the records. A conflict rejects the complete
+transaction. PostgreSQL and D1 handles reject `tx` during compilation. Write requests are not
+automatically retried after a transport failure; use a stable ULID or business idempotency key when
+the caller may retry.
+
 During `dowe dev`, Dowe uses its embedded persistent Database under `.dowe/db/<name>` for every
 provider and resolves only `name`; it does not start Wrangler or contact the authored provider.
 `dowe deploy` generates SQL migration artifacts for Postgres and D1, and production applies pending
