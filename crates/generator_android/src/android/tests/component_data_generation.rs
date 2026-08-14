@@ -87,10 +87,10 @@ fn generates_android_table_for_compose_and_dev_runtime() {
         .contains("background(DoweDesign.softMuted)"));
     assert!(views
         .content
-        .contains("DoweDesign.onSurface.copy(alpha = 0.12f)"));
+        .contains("DoweDesign.surfaceText.copy(alpha = 0.12f)"));
     assert!(views
         .content
-        .contains("DoweDesign.onSurface.copy(alpha = 0.28f)"));
+        .contains("DoweDesign.surfaceText.copy(alpha = 0.28f)"));
     assert!(views.content.contains("state.rows(dataPath)"));
     assert!(views.content.contains(
         "columns.fold(0.dp) { total, column -> total + doweTableColumnWidth(column.width) }"
@@ -126,12 +126,12 @@ fn generates_android_table_for_compose_and_dev_runtime() {
     assert!(dev.content.contains("header.setBackgroundColor(DOWE_SOFT_MUTED)"));
     assert!(dev
         .content
-        .contains("doweAlpha(DOWE_ON_SURFACE, 0.12f)"));
+        .contains("doweAlpha(DOWE_SURFACE_TEXT, 0.12f)"));
     assert!(dev
         .content
-        .contains("doweAlpha(DOWE_ON_SURFACE, 0.28f)"));
+        .contains("doweAlpha(DOWE_SURFACE_TEXT, 0.28f)"));
     assert!(dev.content.contains(
-        "bordered\n                ? doweInputBackground(backgroundColor, doweAlpha(DOWE_ON_SURFACE, 0.28f), DOWE_RADIUS)"
+        "bordered\n                ? doweInputBackground(backgroundColor, doweAlpha(DOWE_SURFACE_TEXT, 0.28f), DOWE_RADIUS)"
     ));
     assert!(dev.content.contains("scroll.setFillViewport(true);"));
     assert!(dev.content.contains(

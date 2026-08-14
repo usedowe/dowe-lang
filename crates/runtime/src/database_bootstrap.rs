@@ -1,9 +1,12 @@
 use crate::database_runtime::{ConfiguredDatabaseClient, configured_database_client};
 use crate::{RuntimeError, RuntimeResult};
 use dowe_compiler::{
-    CompiledProject, DatabaseSeeder, StoreConnection, StoreLiteral, database_migration_plan,
+    CompiledProject, DatabaseSeeder, StoreConnection, StoreLiteral, database_migrations,
 };
-use dowe_database::{Database, StoreError, StoreRecord, StoreValue, init_database, open_database};
+use dowe_database::{
+    Database, DatabaseTransactionInsert, StoreError, StoreRecord, StoreValue, init_database,
+    open_database,
+};
 use serde_json::{Map, Value, json};
 use std::collections::HashSet;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -17,6 +20,11 @@ pub(crate) async fn prepare_databases(project: &CompiledProject) -> RuntimeResul
         }
     }
     Ok(())
+}
+
+pub async fn seed_local_databases(mut project: CompiledProject) -> RuntimeResult<()> {
+    project.local_databases = true;
+    prepare_databases(&project).await
 }
 
 fn prepare_local_database(
@@ -69,45 +77,64 @@ async fn prepare_configured_database(
     connection: &StoreConnection,
 ) -> RuntimeResult<()> {
     let client = configured_database_client(project, connection).map_err(runtime_store_error)?;
-    apply_migration(&client, connection).await?;
+    apply_migrations(project, &client, connection).await?;
     apply_remote_seeders(&client, &connection.seeders).await
 }
 
-async fn apply_migration(
+async fn apply_migrations(
+    project: &CompiledProject,
     client: &ConfiguredDatabaseClient,
     connection: &StoreConnection,
 ) -> RuntimeResult<()> {
-    let plan = database_migration_plan(connection);
-    let Some(sql) = plan.sql else {
+    let migrations = database_migrations(project, connection)
+        .map_err(|error| RuntimeError::new(error.to_string()))?;
+    if migrations.is_empty() {
         return Ok(());
-    };
-    match client {
-        ConfiguredDatabaseClient::Postgres(client) => {
-            let transaction = format!(
-                "BEGIN;\n{sql}INSERT INTO \"_dowe_migrations\" (\"fingerprint\") VALUES ('{}') ON CONFLICT (\"fingerprint\") DO NOTHING;\nCOMMIT;\n",
-                sql_string(&plan.fingerprint)
-            );
-            client
-                .execute_batch(&transaction)
-                .await
-                .map_err(runtime_store_error)
-        }
-        ConfiguredDatabaseClient::D1(client) => {
-            client
-                .execute_batch(&sql)
-                .await
-                .map_err(runtime_store_error)?;
-            client
-                .query(&format!(
-                    "INSERT OR IGNORE INTO \"_dowe_migrations\" (\"fingerprint\") VALUES ('{}')",
-                    sql_string(&plan.fingerprint)
-                ))
-                .await
-                .map_err(runtime_store_error)?;
-            Ok(())
-        }
-        ConfiguredDatabaseClient::Dowe(_) => Ok(()),
     }
+    let applied = match database_list(client, "_dowe_migrations").await {
+        Ok(value) => value
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|record| {
+                record
+                    .get("fingerprint")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
+            .collect::<HashSet<_>>(),
+        Err(error) if error.to_string().contains("InvalidQuery") => HashSet::new(),
+        Err(error) => return Err(error),
+    };
+    for migration in migrations
+        .iter()
+        .filter(|migration| !applied.contains(&migration.fingerprint))
+    {
+        let Some(sql) = &migration.sql else {
+            continue;
+        };
+        let fingerprint = sql_string(&migration.fingerprint);
+        match client {
+            ConfiguredDatabaseClient::Postgres(client) => {
+                client
+                    .execute_batch(&format!(
+                        "BEGIN;\n{sql}INSERT INTO \"_dowe_migrations\" (\"fingerprint\") VALUES ('{fingerprint}') ON CONFLICT (\"fingerprint\") DO NOTHING;\nCOMMIT;\n"
+                    ))
+                    .await
+                    .map_err(runtime_store_error)?;
+            }
+            ConfiguredDatabaseClient::D1(client) => {
+                client
+                    .execute_batch(&format!(
+                        "{sql}INSERT OR IGNORE INTO \"_dowe_migrations\" (\"fingerprint\") VALUES ('{fingerprint}');\n"
+                    ))
+                    .await
+                    .map_err(runtime_store_error)?;
+            }
+            ConfiguredDatabaseClient::Dowe(_) => {}
+        }
+    }
+    Ok(())
 }
 
 async fn apply_remote_seeders(
@@ -130,18 +157,24 @@ async fn apply_remote_seeders(
         .iter()
         .filter(|seeder| !applied.contains(&seeder.fingerprint))
     {
-        for insert in &seeder.inserts {
-            database_insert(client, &insert.table, literal_json(&insert.value)?).await?;
-        }
-        database_insert(
-            client,
-            "_dowe_seeders",
-            json!({
+        let mut operations = seeder
+            .inserts
+            .iter()
+            .map(|insert| {
+                Ok(DatabaseTransactionInsert {
+                    table: insert.table.clone(),
+                    value: literal_json(&insert.value)?,
+                })
+            })
+            .collect::<RuntimeResult<Vec<_>>>()?;
+        operations.push(DatabaseTransactionInsert {
+            table: "_dowe_seeders".to_string(),
+            value: json!({
                 "fingerprint": seeder.fingerprint,
                 "applied_at": timestamp(),
             }),
-        )
-        .await?;
+        });
+        database_transaction(client, &operations).await?;
     }
     Ok(())
 }
@@ -155,15 +188,14 @@ async fn database_list(client: &ConfiguredDatabaseClient, table: &str) -> Runtim
     .map_err(runtime_store_error)
 }
 
-async fn database_insert(
+async fn database_transaction(
     client: &ConfiguredDatabaseClient,
-    table: &str,
-    value: Value,
+    operations: &[DatabaseTransactionInsert],
 ) -> RuntimeResult<Value> {
     match client {
-        ConfiguredDatabaseClient::Dowe(client) => client.insert(table, value).await,
-        ConfiguredDatabaseClient::D1(client) => client.insert(table, value).await,
-        ConfiguredDatabaseClient::Postgres(client) => client.insert(table, value).await,
+        ConfiguredDatabaseClient::Dowe(client) => client.transaction(operations).await,
+        ConfiguredDatabaseClient::D1(client) => client.transaction(operations).await,
+        ConfiguredDatabaseClient::Postgres(client) => client.transaction(operations).await,
     }
     .map_err(runtime_store_error)
 }

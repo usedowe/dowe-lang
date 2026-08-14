@@ -5,7 +5,7 @@
         fs::create_dir_all(root.join("config")).expect("config");
         fs::write(
             root.join("config/db.dowe"),
-            r#"query rows db:db.list table:"directvAccounts""#,
+            r#"query rows conn:db.list table:"directvAccounts""#,
         )
         .expect("config");
         let source = fs::read_to_string(root.join("config/db.dowe")).expect("config source");
@@ -100,7 +100,7 @@ handler listTickets req
     route "/api/users"
       handler
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api-user" secret:env.DB_TOKEN name:"db1"
-        query users db:db.list table:"users"
+        query users conn:db.list table:"users"
         return json:{ data:users }"#
                 .to_string(),
         )

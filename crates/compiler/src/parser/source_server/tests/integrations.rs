@@ -315,7 +315,7 @@ fn infers_store_insert_fields_for_log_references() {
     route "/api/blogs"
       handler
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query created db:db.insert table:"blogs" value:{ title:"First" }
+        query created conn:db.insert table:"blogs" value:{ title:"First" }
         log created.title
         return json:created"#
                 .to_string(),
@@ -356,7 +356,7 @@ fn rejects_unknown_store_insert_fields_in_logs() {
     route "/api/blogs"
       handler
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query created db:db.insert table:"blogs" value:{ title:"First" }
+        query created conn:db.insert table:"blogs" value:{ title:"First" }
         log created.missing
         return json:created"#
                 .to_string(),
@@ -382,7 +382,7 @@ fn rejects_unknown_store_insert_fields_in_json_responses() {
     route "/api/blogs"
       handler
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query created db:db.insert table:"blogs" value:{ title:"First" }
+        query created conn:db.insert table:"blogs" value:{ title:"First" }
         return json:{ data:created.missing }"#
                 .to_string(),
         )
@@ -412,7 +412,7 @@ main
       method POST async req
         const body:User value:req.json
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query created db:db.insert table:"users" value:{ name:body.name age:body.age }
+        query created conn:db.insert table:"users" value:{ name:body.name age:body.age }
         return json:{ ok:true user:created }"#
                 .to_string(),
         )
@@ -480,7 +480,7 @@ main
       method POST async req
         const body:UserInput value:req.json
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query created db:db.insert table:"users" value:{ name:body.name age:body.age }
+        query created conn:db.insert table:"users" value:{ name:body.name age:body.age }
         return json:{ ok:true user:created }"#
                 .to_string(),
         )
@@ -516,7 +516,7 @@ main
       method POST async req
         const body:User value:req.json
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query created db:db.insert table:"users" value:{ name:body.email }
+        query created conn:db.insert table:"users" value:{ name:body.email }
         return json:created"#
                 .to_string(),
         )

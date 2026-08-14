@@ -1,23 +1,62 @@
 ---
 name: dowe-theme
-description: Use only for root theme.dowe, semantic colors, theme inheritance, fonts, project-wide component defaults, or extracting a repeated visual system from a screenshot or UI reference; skip for one-off local view styling.
+description: Use only for root theme.dowe, semantic colors, tonal surface hierarchy, theme inheritance, fonts, project-wide component defaults, or extracting a repeated visual system for a modern interface from a screenshot, template, or UI reference; skip for one-off local view styling.
 ---
 
 # Dowe theme authoring
 
 Keep theme behavior in root `theme.dowe` and use semantic Dowe tokens from views. Preserve cross-platform meaning instead of targeting CSS-only behavior.
 
+Theme colors use grouped family roles only. Every declared family is written under `colors:` with
+`color`, `text`, and `title`. This grouped form is the only theme color syntax to author or emit.
+
+The following excerpt shows the family shape; a named theme must still declare the complete
+required semantic color set described in `references/theme.md`.
+
+```text
+theme
+  design defaultTheme:"dark"
+    theme name:"dark"
+      colors:
+        primary color:"#D6F966" text:"#08101A" title:"#08101A"
+        softPrimary color:"#2A3D12" text:"#E5FFA0" title:"#E5FFA0"
+        background color:"#010314" text:"#FFFFFF" title:"#FFFFFF"
+        surface color:"#063453" text:"#FFFFFF" title:"#FFFFFF"
+```
+
+## Theme/page contract
+
+- Extract or change the palette only when the user asks for a theme or visual-system change.
+- When `theme.dowe` already exists, treat its colors as the source of truth for page generation.
+  Do not replace, flatten, or re-sample that palette while authoring a page from an image.
+- A page consumes semantic family tokens from the existing theme. It does not recreate the theme
+  from local component props or literal color values.
+- When a theme must be created or explicitly changed, write one complete grouped `colors:` block
+  with `color`, `text`, and `title` for every declared family.
+- Before finishing, reread `theme.dowe`. If the request was page-only, its theme content must be
+  unchanged; if the request included theme changes, every family row must still contain all three
+  grouped roles.
+
 ## Workflow
 
-1. Inspect `theme.dowe` before changing component visual props in views.
+1. Inspect `theme.dowe` before changing component visual props in views. Preserve its palette for
+   page-only work.
 2. Put repeated Card, Button, Avatar, Chip, control, Text font, and Title font defaults under `design`.
 3. For reference-driven work, inventory recurring color families, foreground/background pairs,
-   typography, radii, borders, and shadows before choosing tokens or defaults. Do not turn every
-   sampled or anti-aliased shade into a token.
-4. Use semantic colors and complete the base theme before adding inherited themes.
-5. Keep local component visual props only when one instance intentionally differs.
-6. Validate contrast, completeness, font tokens, and target support.
-7. Use Dowe semantic names and the closed Dowe font token catalog, matched by typographic
+   typography, radii, borders, shadows, glow usage, and surface hierarchy before choosing tokens or
+   defaults. Do not turn every sampled or anti-aliased shade into a token.
+4. Use semantic colors and complete the base theme before adding inherited themes. Do not recreate
+   an existing base theme during page generation.
+5. Give modern dark interfaces distinct canvas, surface, quiet-surface, and accent roles. Do not
+   assign nearly identical dark values to every family or make every Card use the brand color.
+6. Choose defaults that establish a quiet baseline. Reserve stronger borders, shadows, glows,
+   covers, transforms, and motion for intentional focal instances in views.
+7. Keep local component visual props only when one instance intentionally differs.
+8. Treat `design` as the source of repeated visual policy. View generation must omit component
+   props already supplied by `design` or by the built-in component contract; emit only local
+   exceptions, reactive bindings, layout/behavior props, and required content or accessibility.
+9. Validate contrast, completeness, font tokens, surface separation, and target support.
+10. Use Dowe semantic names and the closed Dowe font token catalog, matched by typographic
    character when the reference family is unavailable.
 
 ## Reference routing

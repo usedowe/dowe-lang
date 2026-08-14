@@ -206,10 +206,10 @@ pub(crate) fn prompt_deploy_target(
     Ok(selection.map(|index| targets[index]))
 }
 
-pub(crate) fn prompt_docker_registry() -> Result<String, Box<dyn std::error::Error>> {
+pub(crate) fn prompt_docker_registry(default: &str) -> Result<String, Box<dyn std::error::Error>> {
     Ok(Input::<String>::with_theme(&ColorfulTheme::default())
         .with_prompt("Docker registry")
-        .default(dowe_deploy::DEFAULT_DOCKER_REGISTRY.to_string())
+        .default(default.to_string())
         .allow_empty(false)
         .interact_text()?)
 }
@@ -274,6 +274,50 @@ pub(crate) fn prompt_codegraph_command() -> Result<Option<String>, Box<dyn std::
         .interact_opt()?;
 
     Ok(selection.map(|index| commands[index].to_string()))
+}
+
+pub(crate) fn prompt_database_command() -> Result<Option<String>, Box<dyn std::error::Error>> {
+    let commands = database_commands();
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select Database command")
+        .items(&commands)
+        .default(0)
+        .interact_opt()?;
+
+    Ok(selection.map(|index| commands[index].to_string()))
+}
+
+pub(crate) fn prompt_database_command_args(
+    command: &str,
+) -> Result<Option<Vec<String>>, Box<dyn std::error::Error>> {
+    let mut args = vec![command.to_string()];
+    match command {
+        "start" | "list" | "bench" | "migrate" | "seeders" => {}
+        "create-account" => {
+            args.push(prompt_database_text("Database name")?);
+            args.push(prompt_database_text("Database account")?);
+        }
+        "init" => args.push(prompt_database_text("Database name")?),
+        "inspect" | "compact" => args.push(prompt_database_text("Database name")?),
+        "query" => {
+            args.push(prompt_database_text("Database name")?);
+            args.push(prompt_database_text("Database query")?);
+        }
+        "index" => {
+            args.push(prompt_database_text("Database name")?);
+            args.push(prompt_database_text("Table name")?);
+            args.push(prompt_database_text("Field name")?);
+        }
+        _ => return Ok(None),
+    }
+    Ok(Some(args))
+}
+
+fn prompt_database_text(prompt: &str) -> Result<String, Box<dyn std::error::Error>> {
+    Ok(Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
+        .allow_empty(false)
+        .interact_text()?)
 }
 
 pub(crate) fn prompt_dev_targets(
@@ -420,11 +464,27 @@ pub(crate) fn codegraph_commands() -> [&'static str; 4] {
     ["build", "check", "report", "baseline"]
 }
 
+pub(crate) fn database_commands() -> [&'static str; 11] {
+    [
+        "start",
+        "create-account",
+        "init",
+        "list",
+        "inspect",
+        "query",
+        "index",
+        "compact",
+        "bench",
+        "migrate",
+        "seeders",
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        agent_commands, codegraph_commands, dev_target_default_states, harness_commands,
-        root_commands, should_prompt_simulator_quit,
+        agent_commands, codegraph_commands, database_commands, dev_target_default_states,
+        harness_commands, root_commands, should_prompt_simulator_quit,
     };
     use dowe_deploy::{DeploySurface, DeployTarget, deploy_targets_for_surface};
     use dowe_runtime::{DevTarget, DevTargetSelection, HostOs};
@@ -459,7 +519,11 @@ mod tests {
     fn deploy_menu_contains_surface_targets() {
         assert_eq!(
             deploy_targets_for_surface(DeploySurface::Web),
-            [DeployTarget::Dowe, DeployTarget::CloudflarePages]
+            [
+                DeployTarget::Dowe,
+                DeployTarget::Docker,
+                DeployTarget::CloudflarePages
+            ]
         );
         assert_eq!(
             deploy_targets_for_surface(DeploySurface::Server),
@@ -495,6 +559,26 @@ mod tests {
         assert_eq!(
             codegraph_commands(),
             ["build", "check", "report", "baseline"]
+        );
+    }
+
+    #[test]
+    fn database_menu_contains_all_database_commands() {
+        assert_eq!(
+            database_commands(),
+            [
+                "start",
+                "create-account",
+                "init",
+                "list",
+                "inspect",
+                "query",
+                "index",
+                "compact",
+                "bench",
+                "migrate",
+                "seeders"
+            ]
         );
     }
 

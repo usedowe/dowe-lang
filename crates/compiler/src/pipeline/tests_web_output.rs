@@ -105,6 +105,191 @@ views viewRoutes
 }
 
 #[test]
+fn resolves_component_defaults_before_all_target_generators() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
+  Box
+    children"#,
+        r#"page loginPage
+  Button
+    "Default"
+  Button scheme:"secondary"
+    "Explicit scheme"
+  Card
+    Text
+      "Card"
+  Input
+  Section
+    Text
+      "Band""#,
+    );
+
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
+    assert!(body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-primary""#
+    ));
+    assert!(body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-secondary""#
+    ));
+    assert!(body.contains(r#"class="card p-4 lg:p-5 rounded-md is-solid is-surface""#));
+    assert!(body.contains(r#"class="control is-md is-outlined is-primary""#));
+    assert!(body.contains(r#"class="section bg-background""#));
+    assert!(!body.contains("button-md border-"));
+    assert!(!body.contains("button-md shadow-"));
+    let desktop_body = &project.desktop_web.pages[0].body_html;
+    assert!(desktop_body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-primary""#
+    ));
+    assert!(desktop_body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-secondary""#
+    ));
+
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("DoweDesign.primary"));
+    assert!(android.contains("DoweDesign.secondary"));
+    assert!(android.contains("DoweDesign.surface"));
+    assert!(android.contains("outlined") || android.contains("Outlined"));
+    assert!(android.contains("DoweDesign.background"));
+
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("DoweDesign.primary"));
+    assert!(ios.contains("DoweDesign.secondary"));
+    assert!(ios.contains("DoweDesign.surface"));
+    assert!(ios.contains("outlined") || ios.contains("Outlined"));
+    assert!(ios.contains("DoweDesign.background"));
+}
+
+#[test]
+fn lets_design_defaults_override_builtin_component_defaults() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
+  Box
+    children"#,
+        r#"page loginPage
+  Button
+    "Default variant"
+  Button scheme:"secondary"
+    "Explicit scheme""#,
+    );
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    Button variant:"outlined"
+    theme name:"light"
+      colors:
+        primary color:"#2563eb" text:"#ffffff" title:"#ffffff""##,
+    )
+    .expect("theme");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
+    assert!(body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-primary""#
+    ));
+    assert!(body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-secondary""#
+    ));
+    assert!(!body.contains("button-md border-"));
+    assert!(!body.contains("button-md shadow-"));
+    let desktop_body = &project.desktop_web.pages[0].body_html;
+    assert!(desktop_body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-primary""#
+    ));
+    assert!(desktop_body.contains(
+        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-secondary""#
+    ));
+
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android");
+    assert!(android.contains("DoweDesign.primary"));
+    assert!(android.contains("DoweDesign.secondary"));
+    assert!(android.contains("outlined") || android.contains("Outlined"));
+
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("DoweDesign.primary"));
+    assert!(ios.contains("DoweDesign.secondary"));
+    assert!(ios.contains("outlined") || ios.contains("Outlined"));
+}
+
+#[test]
+fn applies_toast_design_defaults_to_global_function_statements() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
+  Box
+    children"#,
+        r#"page loginPage
+  fn showDefault
+    toast value:{ type:"success" title:"Saved" message:"Saved" visible:true }
+  fn showExplicit
+    toast value:{ type:"success" title:"Saved" message:"Saved" visible:true } variant:"outlined"
+  Button onClick:showDefault
+    "Default"
+  Button onClick:showExplicit
+    "Explicit""#,
+    );
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r#"theme
+  design defaultTheme:"light"
+    Toast variant:"soft"
+    theme name:"light""#,
+    )
+    .expect("theme");
+
+    let project = compile_dev(temp.path()).expect("project");
+    let toast_variants = |tree: &dowe_components::ViewNode| {
+        let dowe_components::ViewNode::Scope { actions, .. } = tree else {
+            panic!("scope");
+        };
+        actions
+            .iter()
+            .filter_map(|action| {
+                let dowe_components::ViewActionKind::Sequence(statements) = &action.kind else {
+                    return None;
+                };
+                let [dowe_components::ViewFunctionStatement::Toast(toast)] = statements.as_slice()
+                else {
+                    return None;
+                };
+                Some(toast.variant.clone())
+            })
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        toast_variants(&project.web.pages[0].page_tree),
+        vec![Some("soft".to_string()), Some("outlined".to_string())]
+    );
+    assert_eq!(
+        project.view_routes.web[0].page_tree,
+        project.view_routes.desktop[0].page_tree
+    );
+    assert_eq!(
+        project.view_routes.web[0].page_tree,
+        project.view_routes.android[0].page_tree
+    );
+    assert_eq!(
+        project.view_routes.web[0].page_tree,
+        project.view_routes.ios[0].page_tree
+    );
+}
+
+#[test]
 fn copies_project_assets_to_android_bundle() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture_with_views(
@@ -134,7 +319,7 @@ fn compiles_design_system_components_and_responsive_props() {
     write_fixture_with_views(
         temp.path(),
         r#"layout AuthLayout
-  Box bg:"background" color:"onBackground" p:{ xs:2 md:4 }
+  Box bg:"background" color:"backgroundText" p:{ xs:2 md:4 }
     Text size:"sm"
       "Shell"
     children"#,
@@ -144,7 +329,7 @@ fn compiles_design_system_components_and_responsive_props() {
       Card variant:"soft" scheme:"primary" rounded:"lg" border:1 p:{ xs:4 md:8 }
         Title size:"2xl" bg:"softPrimary" weight:"extrabold" spacing:"tight" p:4
           "Welcome"
-        Text size:"md" bg:"surface" color:"onPrimary" weight:"bold" spacing:"wide" rounded:"md" border:1
+        Text size:"md" bg:"surface" color:"primaryText" weight:"bold" spacing:"wide" rounded:"md" border:1
           "Login"
         Button variant:"solid" scheme:"danger"
           "Save"
@@ -158,26 +343,25 @@ fn compiles_design_system_components_and_responsive_props() {
 
     let project = compile_dev(temp.path()).expect("project");
     let body = &project.web.pages[0].body_html;
-    eprintln!("{body}");
 
-    assert!(body.contains(r#"class="box bg-background color-onBackground p-2 md:p-4""#));
+    assert!(body.contains(r#"class="box bg-background color-backgroundText p-2 md:p-4""#));
     assert!(body.contains(r#"class="box p-10 px-0.5 w-full""#));
     assert!(body.contains(r#"class="flex direction-column md:direction-row flex-wrap justify-center align-center gap-2 lg:gap-6""#));
     assert!(body.contains(r#"class="card p-4 md:p-8 rounded-lg border-1 is-soft is-primary""#));
     assert!(
-        body.contains(r#"class="title-2xl bg-softPrimary p-4 weight-extrabold tracking-tight""#)
+        body.contains(r#"class="dowe-title title-2xl bg-softPrimary p-4 weight-extrabold tracking-tight""#)
     );
     assert!(body.contains(
-            r#"class="text-md bg-surface color-onPrimary rounded-md border-1 weight-bold tracking-wide""#
+            r#"class="dowe-text text-md bg-surface color-primaryText rounded-md border-1 weight-bold tracking-wide""#
         ));
-    assert!(body.contains(r#"class="button button-md px-4 py-2.5 min-h-10 is-solid is-danger""#));
+    assert!(body.contains(r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-danger""#));
     assert!(body.contains(
         r#"class="button button-lg px-5 py-3 min-h-11 rounded-full is-soft is-warning""#
     ));
     assert!(
-        body.contains(r#"<div class="control is-outlined is-info"><input class="input"></div>"#)
+        body.contains(r#"<div class="control is-md is-outlined is-info"><input class="input"></div>"#)
     );
-    assert!(body.contains(r#"class="card p-4 lg:p-5 is-solid is-primary""#));
+    assert!(body.contains(r#"class="card p-4 lg:p-5 rounded-md is-solid is-primary""#));
 
     let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
     assert!(css.contains("--dowe-primary"));
@@ -188,7 +372,7 @@ fn compiles_design_system_components_and_responsive_props() {
         .join(".dowe/web")
         .join(&project.web.pages[0].css_chunks[0]);
     let layout_css = fs::read_to_string(layout_css_path).expect("layout css");
-    assert!(layout_css.contains(".color-onBackground{color:var(--dowe-onBackground);}"));
+    assert!(layout_css.contains(".color-backgroundText{color:var(--dowe-backgroundText);}"));
 
     let page_css_path = temp
         .path()
@@ -206,7 +390,7 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(page_css.contains(".flex-wrap{flex-wrap:wrap;}"));
     assert!(page_css.contains(".title-2xl{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(1.75rem, 1.4rem + 1vw, 2.25rem);line-height:1.2;font-weight:700;letter-spacing:-0.025em;margin:0;}"));
     assert!(page_css.contains(".text-md{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);line-height:1.6;font-weight:400;margin:0;}"));
-    assert!(page_css.contains(".color-onPrimary{color:var(--dowe-onPrimary);}"));
+    assert!(page_css.contains(".color-primaryText{color:var(--dowe-primaryText);}"));
     assert!(page_css.contains(".button-md{padding:0.625rem 1rem;min-height:2.5rem;}"));
     assert!(page_css.contains(".button-lg{padding:0.75rem 1.25rem;min-height:2.75rem;}"));
     assert!(page_css.contains(".min-h-10{min-height:2.5rem;}"));
@@ -225,7 +409,7 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(android.contains("Button("));
     assert!(android.contains("DoweDesign.danger"));
     assert!(android.contains("DoweDesign.softWarning"));
-    assert!(android.contains("DoweDesign.onSoftWarning"));
+    assert!(android.contains("DoweDesign.softWarningText"));
     assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
     assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
     assert!(android.contains(
@@ -250,7 +434,7 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(ios.contains("Button(action: {})"));
     assert!(ios.contains("DoweDesign.danger"));
     assert!(ios.contains("DoweDesign.softWarning"));
-    assert!(ios.contains("DoweDesign.onSoftWarning"));
+    assert!(ios.contains("DoweDesign.softWarningText"));
     assert!(ios.contains("if (doweResponsive(viewportWidth, xs: DoweFlexDirection.column, md: DoweFlexDirection.row) ?? DoweFlexDirection.row) == DoweFlexDirection.column"));
     assert!(ios.contains("VStack(alignment:"));
     assert!(ios.contains("HStack(alignment:"));
@@ -671,9 +855,11 @@ fn compiles_theme_fab_slider_and_dropzone_across_targets() {
         r##"theme
   design defaultTheme:"light"
     theme name:"light"
-      colors primary:"#000000" onPrimary:"#ffffff"
+      colors:
+        primary color:"#000000" text:"#ffffff" title:"#ffffff"
     theme name:"dark"
-      colors primary:"#ffffff" onPrimary:"#000000""##,
+      colors:
+        primary color:"#ffffff" text:"#000000" title:"#000000""##,
     )
     .expect("theme");
 
@@ -798,8 +984,8 @@ fn compiles_expanded_text_weight_overrides() {
     let project = compile_dev(temp.path()).expect("project");
     let body = &project.web.pages[0].body_html;
 
-    assert!(body.contains(r#"class="text-md weight-thin md:weight-extralight lg:weight-black""#));
-    assert!(body.contains(r#"class="title-md weight-black""#));
+    assert!(body.contains(r#"class="dowe-text text-md weight-thin md:weight-extralight lg:weight-black""#));
+    assert!(body.contains(r#"class="dowe-title title-md weight-black""#));
 
     let page_css_path = temp
         .path()
@@ -861,19 +1047,19 @@ fn compiles_platform_reset_and_font_tokens() {
 
     let project = compile_dev(temp.path()).expect("project");
     let body = &project.web.pages[0].body_html;
-
     assert!(body.contains(r#"class="box font-roboto""#));
     assert!(body.contains(r#"class="box font-inter md:font-lato""#));
-    assert!(body.contains(r#"class="text-md font-manrope""#));
-    assert!(body.contains(r#"class="title-md font-poppins""#));
+    assert!(body.contains(r#"class="dowe-text text-md font-manrope""#));
+    assert!(body.contains(r#"class="dowe-title title-md font-poppins""#));
     assert!(body.contains(
-        r#"class="button button-md font-montserrat px-4 py-2.5 min-h-10 is-solid is-primary""#
+        r#"class="button button-md font-montserrat px-4 py-2.5 min-h-10 rounded-md is-solid is-primary""#
     ));
-    assert!(body.contains(r#"class="control font-roboto is-solid is-primary""#));
-    assert!(body.contains(r#"class="text-md font-lora""#));
+    assert!(body.contains("font-roboto"));
+    assert!(body.contains("is-md font-roboto is-outlined is-primary"));
+    assert!(body.contains(r#"class="dowe-text text-md font-lora""#));
 
     let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
-    assert!(css.contains("body{margin:0;"));
+    assert!(css.contains("body{--dowe-content-text:var(--dowe-backgroundText);--dowe-content-title:var(--dowe-backgroundTitle);margin:0;"));
     assert!(css.contains("scroll-behavior:smooth;"));
     assert!(css.contains("p,h1,h2,h3,h4,h5,h6{margin:0;"));
     assert!(css.contains("a{color:inherit;text-decoration:inherit;}"));
@@ -992,7 +1178,7 @@ fn compiles_configured_font_install_set() {
 
     let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
     assert!(css.contains("html{font-family:var(--dowe-font-manrope);"));
-    assert!(css.contains("body{margin:0;"));
+    assert!(css.contains("body{--dowe-content-text:var(--dowe-backgroundText);--dowe-content-title:var(--dowe-backgroundTitle);margin:0;"));
     assert!(css.contains("--dowe-font-manrope"));
     assert!(css.contains("--dowe-font-lora"));
     assert!(!css.contains("--dowe-font-inter"));
@@ -1083,13 +1269,17 @@ fn compiles_design_tokens_from_theme_dowe() {
     Text
       "Layout"
     children"#,
-        r#"page loginPage
+    r#"page loginPage
   Box
     Card
       Text
         "Default"
       Button
         "Go"
+    Tabs
+      tab id:"overview" label:"Overview"
+        Text
+          "Overview"
     Card variant:"soft" scheme:"success" p:5 rounded:"md"
       Text
         "Override""#,
@@ -1101,12 +1291,15 @@ fn compiles_design_tokens_from_theme_dowe() {
   design defaultTheme:"light"
     Card radius:"md" shadow:"xs" shadowColor:"primary" border:1 borderColor:"primary" scheme:"surface" variant:"outline"
     Button radius:"md" scheme:"primary" variant:"solid" size:"md"
+    Tabs variant:"line"
     Chip radius:"md"
     Avatar radius:"full"
     theme name:"light"
-      colors primary:"#000000" onPrimary:"#ffffff"
+      colors:
+        primary color:"#000000" text:"#ffffff" title:"#ffffff"
     theme name:"dark"
-      colors primary:"#ffffff" onPrimary:"#000000""##,
+      colors:
+        primary color:"#ffffff" text:"#000000" title:"#000000""##,
     )
     .expect("config");
 
@@ -1114,11 +1307,20 @@ fn compiles_design_tokens_from_theme_dowe() {
 
     assert_eq!(project.design_config.default_theme, "light");
     assert!(project.design_config.theme("dark").is_some());
+    assert_eq!(
+        project
+            .design_config
+            .defaults
+            .tabs_variant
+            .get(&dowe_components::DesignComponentSlot::Tabs),
+        Some(&dowe_components::TabsVariant::Line)
+    );
 
     let body = &project.web.pages[0].body_html;
     assert!(body.contains("card p-4 lg:p-5 rounded-md border-1 border-color-primary shadow-xs shadow-color-primary is-outlined is-surface"));
     assert!(body.contains("button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-primary"));
     assert!(body.contains("card p-5 rounded-md border-1 border-color-primary shadow-xs shadow-color-primary is-soft is-success"));
+    assert!(body.contains("tabs"));
 
     let css = fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("css");
     assert!(css.contains("--dowe-primary:#000000;"));
@@ -1208,10 +1410,10 @@ fn compiles_text_and_title_font_defaults_from_theme_dowe() {
     );
 
     let body = &project.web.pages[0].body_html;
-    assert!(body.contains(r#"class="text-md font-manrope">Default text"#));
-    assert!(body.contains(r#"class="text-md font-inter">Override text"#));
-    assert!(body.contains(r#"class="title-md font-syne">Default title"#));
-    assert!(body.contains(r#"class="title-md font-inter">Override title"#));
+    assert!(body.contains(r#"class="dowe-text text-md font-manrope">Default text"#));
+    assert!(body.contains(r#"class="dowe-text text-md font-inter">Override text"#));
+    assert!(body.contains(r#"class="dowe-title title-md font-syne">Default title"#));
+    assert!(body.contains(r#"class="dowe-title title-md font-inter">Override title"#));
 
     assert!(temp.path().join(".dowe/fonts/manrope/manrope-regular.ttf").is_file());
     assert!(temp.path().join(".dowe/fonts/syne/syne-variable.ttf").is_file());

@@ -73,7 +73,7 @@ fn render_swift_alert_dialog(
         card_variant_content(&panel_style),
         swift_variant_border(&panel_style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Danger))),
-        color_ref(family_on_color(props.style.color.unwrap_or(ColorFamily::Danger))),
+        color_ref(family_text_color(props.style.color.unwrap_or(ColorFamily::Danger))),
         swift_card_radius(&props.style.style),
         props.loading,
         swift_optional_component_action(props.on_confirm.as_deref(), None, context),
@@ -301,7 +301,7 @@ fn render_swift_command_entry(
             indent,
             output,
             "Color.clear",
-            "DoweDesign.onBackground",
+            "DoweDesign.backgroundText",
             context,
             None,
         ),
@@ -314,7 +314,7 @@ fn render_swift_command_entry(
                 render_swift_side_icon(icon, indent + 8, output);
             }
             output.push_str(&format!(
-                "{pad}        Text({})\n{pad}            .font(.caption)\n{pad}            .fontWeight(.semibold)\n{pad}            .foregroundStyle(DoweDesign.onMuted)\n",
+                "{pad}        Text({})\n{pad}            .font(.caption)\n{pad}            .fontWeight(.semibold)\n{pad}            .foregroundStyle(DoweDesign.mutedText)\n",
                 swift_string_literal(label)
             ));
             output.push_str(&format!("{pad}    }}\n"));
@@ -324,7 +324,7 @@ fn render_swift_command_entry(
                     indent + 4,
                     output,
                     "Color.clear",
-                    "DoweDesign.onBackground",
+                    "DoweDesign.backgroundText",
                     context,
                     None,
                 );

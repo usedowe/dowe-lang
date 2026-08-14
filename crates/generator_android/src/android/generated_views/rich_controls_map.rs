@@ -42,7 +42,7 @@ private fun DowePagination(value: String, onValueChange: (String) -> Unit, pageC
         DowePaginationButton(enabled = !disabled && current > 1, selected = true, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Previous page", onClick = { onValueChange((current - 1).toString()); onChange?.invoke() }) { previousIcon() }
         pages.forEach { page ->
             if (page == 0) {
-                Box(modifier = Modifier.size(dimension), contentAlignment = Alignment.Center) { Text("…", color = DoweDesign.onBackground.copy(alpha = 0.6f), fontSize = fontSize) }
+                Box(modifier = Modifier.size(dimension), contentAlignment = Alignment.Center) { Text("…", color = DoweDesign.backgroundText.copy(alpha = 0.6f), fontSize = fontSize) }
             } else {
                 DowePaginationButton(enabled = !disabled, selected = page == current, dimension = dimension, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, label = "Page $page", onClick = { if (page != current) { onValueChange(page.toString()); onChange?.invoke() } }) {
                     Text(page.toString(), fontSize = fontSize, fontWeight = FontWeight.Medium)
@@ -61,7 +61,7 @@ private fun DowePaginationButton(enabled: Boolean, selected: Boolean, dimension:
         modifier = Modifier.size(dimension).semantics { contentDescription = label },
         shape = RoundedCornerShape(10.dp),
         contentPadding = PaddingValues(0.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = if (selected) backgroundColor else Color.Transparent, contentColor = if (selected) contentColor else DoweDesign.onBackground, disabledContainerColor = if (selected) backgroundColor.copy(alpha = 0.4f) else Color.Transparent, disabledContentColor = DoweDesign.onBackground.copy(alpha = 0.4f)),
+        colors = ButtonDefaults.buttonColors(containerColor = if (selected) backgroundColor else Color.Transparent, contentColor = if (selected) contentColor else DoweDesign.backgroundText, disabledContainerColor = if (selected) backgroundColor.copy(alpha = 0.4f) else Color.Transparent, disabledContentColor = DoweDesign.backgroundText.copy(alpha = 0.4f)),
         border = if (selected && borderColor != null) BorderStroke(1.dp, borderColor) else null
     ) { content() }
 }

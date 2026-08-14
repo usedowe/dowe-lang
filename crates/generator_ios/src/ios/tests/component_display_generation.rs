@@ -125,14 +125,14 @@ fn generates_swiftui_display_overlay_components() {
     assert!(!modal_output.contains("} content: { close in"));
     assert!(views.contains("DoweAlertDialog(open: state.bool(\"modal01\")"));
     assert!(views.contains(
-        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: nil, confirmBackgroundColor: DoweDesign.danger, confirmContentColor: DoweDesign.onDanger"
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: nil, confirmBackgroundColor: DoweDesign.danger, confirmContentColor: DoweDesign.dangerText"
     ));
     assert!(views.contains("DoweTooltip(label: \"More actions\", position: \"end\""));
     assert!(!views.contains(".onTapGesture { open.toggle() }"));
     assert!(!views.contains("private var popoverPoint"));
     assert!(views.contains("DoweToast(visible: true, title: \"Saved\""));
     assert!(views.contains(
-        "position: \"top-right\", backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: Optional(DoweDesign.warning)"
+        "position: \"top-right\", backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: Optional(DoweDesign.warning)"
     ));
     assert!(views.contains("struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable"));
     let toast_presenter_start = views
@@ -202,7 +202,7 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains(
         "DoweToastOverlayPresenter(isPresented: visible && !dismissed, position: position)"
     ));
-    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)"));
+    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.softMutedText)"));
     assert!(views.contains(".accessibilityLabel(\"Close toast\")"));
     assert!(views.contains("DoweDropdown(backgroundColor: DoweDesign.surface"));
     let dropdown_start = views
@@ -322,16 +322,16 @@ fn generates_ios_overlay_surface_action_and_close_parity() {
     );
     let views = swift_content(&output);
     assert!(views.contains(
-        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: Optional(DoweDesign.warning)"
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: Optional(DoweDesign.warning)"
     ));
     assert!(views.contains(
-        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.onSurface, borderColor: nil"
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: nil"
     ));
     assert!(views.contains(
-        "confirmBackgroundColor: DoweDesign.warning, confirmContentColor: DoweDesign.onWarning"
+        "confirmBackgroundColor: DoweDesign.warning, confirmContentColor: DoweDesign.warningText"
     ));
     assert!(views.contains("struct DoweOverlayCloseIcon: View"));
-    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)"));
+    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.softMutedText)"));
     assert!(views.contains("let modalWidth = geometry.size.width * 0.95"));
     assert!(views.contains(".frame(maxWidth: modalWidth, alignment: .leading)"));
     assert!(views.contains(".frame(width: CGFloat(28), height: CGFloat(28))"));
@@ -455,9 +455,9 @@ fn generates_swiftui_rich_control_map_components() {
     assert!(views.contains(".fixedSize(horizontal: false, vertical: true)"));
     assert!(views.contains("DoweRichText(marks: [DoweRichTextMark(text: \"Launch\", style: \"grad\", scheme: \"primary\")"));
     assert!(views.contains("], font: .inter, fontSize:"));
-    assert!(views.contains("contentColor: DoweDesign.onBackground"));
+    assert!(views.contains("contentColor: DoweDesign.backgroundText"));
     assert!(views.contains("RoundedRectangle(cornerRadius: CGFloat(2)).fill(accent)"));
-    assert!(views.contains("doweButtonOnFamily(mark.scheme)"));
+    assert!(views.contains("doweButtonTextFamily(mark.scheme)"));
     assert!(views.contains("DoweRecord(name: \"voice\""));
     assert!(views.contains("DoweToggleGroup(value: state.binding(\"mode\""));
     assert!(views.contains("DowePagination(value: state.binding(\"page\""));
@@ -539,7 +539,7 @@ fn generates_full_scene_background_without_unsafe_content() {
     assert!(!views.contains(".padding(.top, safeAreaInsets.top)"));
     assert!(!views.contains(".padding(.bottom, safeAreaInsets.bottom)"));
     assert!(views.contains(
-            "        .background(DoweDesign.background)\n        .foregroundStyle(DoweDesign.onBackground)"
+            "        .background(DoweDesign.background)\n        .foregroundStyle(DoweDesign.backgroundText)"
         ));
     assert!(!views.contains(".ignoresSafeArea()\n        .foregroundStyle"));
 }
@@ -565,9 +565,9 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(views.contains(
             "backgroundColor: Color.clear, contentColor: DoweDesign.secondary, borderColor: Optional(DoweDesign.muted)"
         ));
-    assert!(views.contains(".foregroundStyle(DoweDesign.onSoftMuted)"));
+    assert!(views.contains(".foregroundStyle(DoweDesign.softMutedText)"));
     assert!(views.contains(".background(DoweDesign.surface)"));
-    assert!(views.contains(".foregroundStyle(DoweDesign.onSurface)"));
+    assert!(views.contains(".foregroundStyle(DoweDesign.surfaceText)"));
     assert!(views.contains(".stroke(DoweDesign.surface, lineWidth: CGFloat(1))"));
     assert!(views.contains("HStack(spacing: 8)"));
     assert!(views.contains("DoweSvgView(viewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24)), color: DoweDesign.primary"));
@@ -1064,7 +1064,7 @@ fn generates_swiftui_advanced_form_components() {
     assert!(phone_anchor.contains("DoweAnchoredPopoverPresenter("));
     assert!(phone_anchor.contains("minWidth: CGFloat(280)"));
     assert!(phone_anchor.contains("maxWidth: CGFloat(384)"));
-    assert!(views.contains("DoweDesign.onSurface.opacity(0.07)"));
+    assert!(views.contains("DoweDesign.surfaceText.opacity(0.07)"));
     assert!(phone.contains("filter { $0.isNumber }"));
     assert!(phone.contains(".keyboardType(.numberPad)"));
     assert!(phone.contains("DoweSvgView(viewBox: selectedCountry.flag.viewBox"));
@@ -1400,7 +1400,7 @@ fn generates_swiftui_svg_views() {
     assert!(views.contains("DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24))"));
     assert!(views.contains("DoweSvgFill.currentColor"));
     assert!(views.contains(
-        "doweResponsive(viewportWidth, xs: DoweDesign.tertiary) ?? DoweDesign.onBackground"
+        "doweResponsive(viewportWidth, xs: DoweDesign.tertiary) ?? DoweDesign.backgroundText"
     ));
     assert!(views.contains("private final class DoweSvgPathCache: @unchecked Sendable"));
     assert!(views.contains("DoweSvgPathCache.shared.path(for: data)"));

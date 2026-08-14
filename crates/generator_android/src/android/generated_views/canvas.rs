@@ -185,41 +185,41 @@ private fun doweCanvasBool(value: Any?): Boolean = value as? Boolean ?: false
 
 private fun doweCanvasColor(value: Any?, fallback: Color = Color.Transparent): Color = when (value?.toString()) {
     "primary" -> DoweDesign.primary
-    "onPrimary" -> DoweDesign.onPrimary
+    "primaryText" -> DoweDesign.primaryText
     "secondary" -> DoweDesign.secondary
-    "onSecondary" -> DoweDesign.onSecondary
+    "secondaryText" -> DoweDesign.secondaryText
     "tertiary" -> DoweDesign.tertiary
-    "onTertiary" -> DoweDesign.onTertiary
+    "tertiaryText" -> DoweDesign.tertiaryText
     "muted" -> DoweDesign.muted
-    "onMuted" -> DoweDesign.onMuted
+    "mutedText" -> DoweDesign.mutedText
     "background" -> DoweDesign.background
-    "onBackground", "foreground", "currentColor" -> DoweDesign.onBackground
+    "backgroundText", "foreground", "currentColor" -> DoweDesign.backgroundText
     "surface" -> DoweDesign.surface
-    "onSurface" -> DoweDesign.onSurface
+    "surfaceText" -> DoweDesign.surfaceText
     "success" -> DoweDesign.success
-    "onSuccess" -> DoweDesign.onSuccess
+    "successText" -> DoweDesign.successText
     "info" -> DoweDesign.info
-    "onInfo" -> DoweDesign.onInfo
+    "infoText" -> DoweDesign.infoText
     "warning" -> DoweDesign.warning
-    "onWarning" -> DoweDesign.onWarning
+    "warningText" -> DoweDesign.warningText
     "danger" -> DoweDesign.danger
-    "onDanger" -> DoweDesign.onDanger
+    "dangerText" -> DoweDesign.dangerText
     "softPrimary" -> DoweDesign.softPrimary
-    "onSoftPrimary" -> DoweDesign.onSoftPrimary
+    "softPrimaryText" -> DoweDesign.softPrimaryText
     "softSecondary" -> DoweDesign.softSecondary
-    "onSoftSecondary" -> DoweDesign.onSoftSecondary
+    "softSecondaryText" -> DoweDesign.softSecondaryText
     "softTertiary" -> DoweDesign.softTertiary
-    "onSoftTertiary" -> DoweDesign.onSoftTertiary
+    "softTertiaryText" -> DoweDesign.softTertiaryText
     "softMuted" -> DoweDesign.softMuted
-    "onSoftMuted" -> DoweDesign.onSoftMuted
+    "softMutedText" -> DoweDesign.softMutedText
     "softSuccess" -> DoweDesign.softSuccess
-    "onSoftSuccess" -> DoweDesign.onSoftSuccess
+    "softSuccessText" -> DoweDesign.softSuccessText
     "softInfo" -> DoweDesign.softInfo
-    "onSoftInfo" -> DoweDesign.onSoftInfo
+    "softInfoText" -> DoweDesign.softInfoText
     "softWarning" -> DoweDesign.softWarning
-    "onSoftWarning" -> DoweDesign.onSoftWarning
+    "softWarningText" -> DoweDesign.softWarningText
     "softDanger" -> DoweDesign.softDanger
-    "onSoftDanger" -> DoweDesign.onSoftDanger
+    "softDangerText" -> DoweDesign.softDangerText
     "transparent" -> Color.Transparent
     else -> value?.toString()?.let { doweHexColor(it, fallback) } ?: fallback
 }
@@ -278,7 +278,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.doweDrawCanvasComma
                 }
             }
             "text" -> drawIntoCanvas { canvas ->
-                val paint = Paint().apply { color = doweCanvasColor(command["fill"], DoweDesign.onBackground).copy(alpha = motion.alpha).toArgb(); textSize = max(1f, doweCanvasNumber(command["size"], 16f)); textAlign = when (command["align"]?.toString()) { "center" -> Paint.Align.CENTER; "end" -> Paint.Align.RIGHT; else -> Paint.Align.LEFT }; isAntiAlias = true }
+                val paint = Paint().apply { color = doweCanvasColor(command["fill"], DoweDesign.backgroundText).copy(alpha = motion.alpha).toArgb(); textSize = max(1f, doweCanvasNumber(command["size"], 16f)); textAlign = when (command["align"]?.toString()) { "center" -> Paint.Align.CENTER; "end" -> Paint.Align.RIGHT; else -> Paint.Align.LEFT }; isAntiAlias = true }
                 canvas.nativeCanvas.drawText(command["text"]?.toString() ?: "", x, y, paint)
             }
             "image" -> images[command["src"]?.toString()]?.let { image ->

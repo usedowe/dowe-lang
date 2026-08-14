@@ -121,6 +121,8 @@ fn renders_chart_markup_css_and_runtime() {
     assert!(html.contains(r#"data-dowe-chart-data="points""#));
     assert!(html.contains("dowe-chart-svg"));
     assert!(html.contains("dowe-chart-legend"));
+    assert!(html.contains(r#"preserveAspectRatio="xMidYMid meet""#));
+    assert!(html.contains("data-dowe-chart-show-inline-labels=\"true\""));
 
     let chunk = build_page_chunk(
         Path::new("/project"),
@@ -131,6 +133,9 @@ fn renders_chart_markup_css_and_runtime() {
     assert!(chunk.css_content.contains(".arc-chart-container"));
     assert!(chunk.css_content.contains(".line-chart-container"));
     assert!(chunk.css_content.contains(".dowe-chart-svg"));
+    let design_css = super::design_css();
+    assert!(design_css.contains(".arc-chart-container .dowe-chart-arc-viewport"));
+    assert!(design_css.contains(".dowe-chart-inline-label"));
     let router = super::router_js(&super::WebOutput {
         chunks: Vec::new(),
         pages: Vec::new(),
@@ -141,6 +146,10 @@ fn renders_chart_markup_css_and_runtime() {
     assert!(router.contains("function renderCharts"));
     assert!(router.contains("renderPieArcChart"));
     assert!(router.contains("renderLineAreaChart"));
+    assert!(router.contains("chart.dataset.doweChartDonut"));
+    assert!(router.contains("chart.dataset.doweChartHideLabels"));
+    assert!(router.contains("Math.abs(sweep)>=359.999"));
+    assert!(router.contains("chart.dataset.doweChartShowInlineLabels"));
 }
 
 #[test]
@@ -329,7 +338,7 @@ fn emits_centered_proportional_icon_button_css() {
         ".icon-button.button-xl>[data-dowe-button-icon-start]>.svg{width:2.5rem;height:2.5rem}"
     ));
     assert!(css.contains(
-        ".device-toggle{border:1px solid var(--dowe-onBackground);color:var(--dowe-onBackground);"
+        ".device-toggle{border:1px solid var(--dowe-backgroundText);color:var(--dowe-backgroundText);"
     ));
 }
 
@@ -483,6 +492,9 @@ fn emits_design_responsive_css_in_ascending_breakpoint_blocks() {
         );
     }
     assert!(css.contains(".pie-chart-container.legend-left{flex-direction:row-reverse;}"));
+    assert!(css.contains(".pie-chart-container .dowe-chart-viewport{flex:0 1 20rem;"));
+    assert!(css.contains(".pie-chart-container .dowe-chart-svg{min-height:0;aspect-ratio:1;"));
+    assert!(css.contains(".pie-chart-container.has-glow .dowe-chart-slice"));
     assert!(css.contains(".command-kbd{display:flex;}"));
 }
 

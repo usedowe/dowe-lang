@@ -29,7 +29,7 @@ main
   server port:8080
     endpoints:apiRoutes
     init
-      cron everyDay schedule:"0 3 * * *" args:{}
+      cron fn:everyDay schedule:"0 3 * * *" args:{}
 ```
 
 ### Main contracts

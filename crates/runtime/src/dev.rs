@@ -4,7 +4,8 @@ use crate::error::{RuntimeError, RuntimeResult};
 use crate::logging::LoadingStatus;
 use crate::server::{DevServerTargets, RunningDevServers, start_dev_servers};
 use dowe_compiler::{
-    CompiledProject, ProjectCapabilities, compile_dev, inspect_project_capabilities,
+    CompiledProject, ProjectCapabilities, ViewPlatform, compile_dev_for_platforms,
+    compile_dev_views_for_platforms, inspect_project_capabilities,
 };
 use dowe_spawn::{ChildProcess, ProcessControl, SpawnConfig, run};
 use futures_util::stream::{FuturesUnordered, StreamExt};
@@ -550,9 +551,30 @@ pub async fn run_dev_with_options(
     selection: DevTargetSelection,
     options: DevRunOptions,
 ) -> RuntimeResult<()> {
-    let project = compile_dev(root).map_err(RuntimeError::from)?;
+    let platforms = selected_view_platforms(&selection);
+    let project =
+        if selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop) {
+            compile_dev_for_platforms(root, platforms)
+        } else {
+            compile_dev_views_for_platforms(root, platforms)
+        }
+        .map_err(RuntimeError::from)?;
     let session = start_dev_session_with_options(project, selection, options).await?;
     session.wait().await
+}
+
+pub(crate) fn selected_view_platforms(selection: &DevTargetSelection) -> Vec<ViewPlatform> {
+    selection
+        .targets()
+        .iter()
+        .filter_map(|target| match target {
+            DevTarget::Server => None,
+            DevTarget::Web => Some(ViewPlatform::Web),
+            DevTarget::Desktop => Some(ViewPlatform::Desktop),
+            DevTarget::Android => Some(ViewPlatform::Android),
+            DevTarget::Ios => Some(ViewPlatform::Ios),
+        })
+        .collect()
 }
 
 pub async fn start_dev_session(
@@ -929,9 +951,10 @@ mod tests {
         dev_server_targets, dev_target_selection_path, load_dev_target_preferences,
         load_dev_target_preferences_for_project, load_dev_target_selection, loading_status_message,
         record_external_startup_failure, save_dev_target_preferences, save_dev_target_selection,
-        validate_dev_target_selection_for_project,
+        selected_view_platforms, validate_dev_target_selection_for_project,
     };
     use crate::error::RuntimeError;
+    use dowe_compiler::ViewPlatform;
     use std::cell::Cell;
     use std::fs;
     use std::path::Path;
@@ -949,6 +972,20 @@ mod tests {
         let selection = default_dev_targets(HostOs::Linux);
 
         assert_eq!(selection.targets(), &[DevTarget::Server, DevTarget::Web]);
+    }
+
+    #[test]
+    fn maps_only_selected_view_targets_to_compiler_platforms() {
+        let selection = DevTargetSelection::new(
+            [DevTarget::Server, DevTarget::Web, DevTarget::Android],
+            HostOs::Linux,
+        )
+        .expect("selection");
+
+        assert_eq!(
+            selected_view_platforms(&selection),
+            [ViewPlatform::Web, ViewPlatform::Android]
+        );
     }
 
     #[test]

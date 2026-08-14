@@ -136,6 +136,7 @@ pub(crate) fn copy_app(root: &Path, output: &Path) -> DeployResult<()> {
         }
     }
     copy_project_modules(root, output)?;
+    copy_tree(&root.join("migrations"), &output.join("migrations"))?;
     copy_tree(&root.join("assets"), &output.join("assets"))?;
     copy_tree(&root.join("icons"), &output.join("icons"))?;
     copy_tree(&root.join(".dowe/fonts"), &output.join("assets/fonts"))
@@ -154,7 +155,7 @@ fn copy_project_modules(root: &Path, output: &Path) -> DeployResult<()> {
         if name.starts_with('.')
             || matches!(
                 name.as_ref(),
-                "assets" | "icons" | "target" | "node_modules" | "dist" | "build"
+                "assets" | "icons" | "migrations" | "target" | "node_modules" | "dist" | "build"
             )
         {
             continue;

@@ -12,23 +12,46 @@ fn variant_container(props: &VariantProps) -> &'static str {
 fn variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Solid => color_ref(family_on_color(color)),
-        ComponentVariant::Soft => color_ref(family_on_soft_color(color)),
+        ComponentVariant::Solid => color_ref(family_text_color(color)),
+        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             color_ref(family_color(color))
         }
     }
 }
 
+fn variant_title(props: &VariantProps) -> &'static str {
+    let color = props.color.unwrap_or(ColorFamily::Primary);
+    match props.variant.unwrap_or(ComponentVariant::Solid) {
+        ComponentVariant::Solid => color_ref(family_title_color(color)),
+        ComponentVariant::Soft => color_ref(family_soft_title_color(color)),
+        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
+            color_ref(family_color(color))
+        }
+    }
+}
+
+fn scheme_title(props: &VariantProps) -> &'static str {
+    let color = props.color.unwrap_or(ColorFamily::Primary);
+    match props.variant.unwrap_or(ComponentVariant::Solid) {
+        ComponentVariant::Soft => color_ref(family_soft_title_color(color)),
+        _ => color_ref(family_title_color(color)),
+    }
+}
+
+fn side_nav_header_content(props: &VariantProps) -> &'static str {
+    color_ref(family_color(props.color.unwrap_or(ColorFamily::Primary)))
+}
+
 fn nav_active_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Ghost) {
-        ComponentVariant::Solid => color_ref(family_on_color(color)),
-        ComponentVariant::Soft => color_ref(family_on_soft_color(color)),
+        ComponentVariant::Solid => color_ref(family_text_color(color)),
+        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
-            color_ref(family_on_color(color))
+            color_ref(family_text_color(color))
         }
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             color_ref(family_color(color))
@@ -51,15 +74,32 @@ fn card_variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Outlined => match color {
-            ColorFamily::Background => color_ref(ColorToken::OnBackground),
-            _ => color_ref(ColorToken::OnSurface),
+            ColorFamily::Background => color_ref(ColorToken::BackgroundText),
+            _ => color_ref(ColorToken::SurfaceText),
         },
         ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
-            color_ref(family_on_color(color))
+            color_ref(family_text_color(color))
         }
         _ => variant_content(props),
+    }
+}
+
+fn card_variant_title(props: &VariantProps) -> &'static str {
+    let color = props.color.unwrap_or(ColorFamily::Primary);
+    match props.variant.unwrap_or(ComponentVariant::Solid) {
+        ComponentVariant::Outlined => match color {
+            ColorFamily::Background => color_ref(ColorToken::BackgroundTitle),
+            _ => color_ref(ColorToken::SurfaceTitle),
+        },
+        ComponentVariant::Ghost
+            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
+        {
+            color_ref(family_text_color(color))
+        }
+        ComponentVariant::Solid | ComponentVariant::Soft => variant_title(props),
+        ComponentVariant::Line | ComponentVariant::Ghost => variant_content(props),
     }
 }
 
@@ -77,12 +117,12 @@ fn table_variant_container(props: &VariantProps) -> &'static str {
 fn table_variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Solid => color_ref(family_on_color(color)),
-        ComponentVariant::Soft => color_ref(family_on_soft_color(color)),
+        ComponentVariant::Solid => color_ref(family_text_color(color)),
+        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
-            color_ref(family_on_color(color))
+            color_ref(family_text_color(color))
         }
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             color_ref(family_color(color))
@@ -101,7 +141,7 @@ fn tabs_list_background(props: &TabsProps) -> &'static str {
 
 fn tabs_list_content(props: &TabsProps) -> &'static str {
     match props.variant {
-        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_on_soft_color(props.color)),
+        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_text_color(props.color)),
         TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             color_ref(tabs_accent_token(props.color))
         }
@@ -110,7 +150,7 @@ fn tabs_list_content(props: &TabsProps) -> &'static str {
 
 fn tabs_active_background(props: &TabsProps) -> &'static str {
     if props.color == ColorFamily::Muted {
-        color_ref(family_on_color(props.color))
+        color_ref(family_text_color(props.color))
     } else {
         color_ref(family_color(props.color))
     }
@@ -120,7 +160,7 @@ fn tabs_active_content(props: &TabsProps) -> &'static str {
     if props.color == ColorFamily::Muted {
         color_ref(family_color(props.color))
     } else {
-        color_ref(family_on_color(props.color))
+        color_ref(family_text_color(props.color))
     }
 }
 
@@ -141,51 +181,26 @@ fn tabs_border(props: &TabsProps) -> String {
 fn tabs_accent_token(value: ColorFamily) -> ColorToken {
     match value {
         ColorFamily::Muted | ColorFamily::Background | ColorFamily::Surface => {
-            family_on_color(value)
+            family_text_color(value)
         }
         _ => family_color(value),
     }
 }
 
 fn color_ref(value: ColorToken) -> &'static str {
-    match value {
-        ColorToken::Primary => "DoweDesign.primary",
-        ColorToken::OnPrimary => "DoweDesign.onPrimary",
-        ColorToken::Secondary => "DoweDesign.secondary",
-        ColorToken::OnSecondary => "DoweDesign.onSecondary",
-        ColorToken::Tertiary => "DoweDesign.tertiary",
-        ColorToken::OnTertiary => "DoweDesign.onTertiary",
-        ColorToken::Muted => "DoweDesign.muted",
-        ColorToken::OnMuted => "DoweDesign.onMuted",
-        ColorToken::Background => "DoweDesign.background",
-        ColorToken::OnBackground => "DoweDesign.onBackground",
-        ColorToken::Surface => "DoweDesign.surface",
-        ColorToken::OnSurface => "DoweDesign.onSurface",
-        ColorToken::Success => "DoweDesign.success",
-        ColorToken::OnSuccess => "DoweDesign.onSuccess",
-        ColorToken::Info => "DoweDesign.info",
-        ColorToken::OnInfo => "DoweDesign.onInfo",
-        ColorToken::Warning => "DoweDesign.warning",
-        ColorToken::OnWarning => "DoweDesign.onWarning",
-        ColorToken::Danger => "DoweDesign.danger",
-        ColorToken::OnDanger => "DoweDesign.onDanger",
-        ColorToken::SoftPrimary => "DoweDesign.softPrimary",
-        ColorToken::OnSoftPrimary => "DoweDesign.onSoftPrimary",
-        ColorToken::SoftSecondary => "DoweDesign.softSecondary",
-        ColorToken::OnSoftSecondary => "DoweDesign.onSoftSecondary",
-        ColorToken::SoftTertiary => "DoweDesign.softTertiary",
-        ColorToken::OnSoftTertiary => "DoweDesign.onSoftTertiary",
-        ColorToken::SoftMuted => "DoweDesign.softMuted",
-        ColorToken::OnSoftMuted => "DoweDesign.onSoftMuted",
-        ColorToken::SoftSuccess => "DoweDesign.softSuccess",
-        ColorToken::OnSoftSuccess => "DoweDesign.onSoftSuccess",
-        ColorToken::SoftInfo => "DoweDesign.softInfo",
-        ColorToken::OnSoftInfo => "DoweDesign.onSoftInfo",
-        ColorToken::SoftWarning => "DoweDesign.softWarning",
-        ColorToken::OnSoftWarning => "DoweDesign.onSoftWarning",
-        ColorToken::SoftDanger => "DoweDesign.softDanger",
-        ColorToken::OnSoftDanger => "DoweDesign.onSoftDanger",
+    intern_generated_color_name(format!("DoweDesign.{}", value.as_str()))
+}
+
+fn intern_generated_color_name(value: String) -> &'static str {
+    static NAMES: OnceLock<Mutex<BTreeSet<&'static str>>> = OnceLock::new();
+    let names = NAMES.get_or_init(|| Mutex::new(BTreeSet::new()));
+    let mut names = names.lock().expect("generated color name registry");
+    if let Some(existing) = names.get(value.as_str()) {
+        return existing;
     }
+    let value = Box::leak(value.into_boxed_str());
+    names.insert(value);
+    value
 }
 
 fn swift_design_block(design: &DesignConfig) -> String {
@@ -197,12 +212,12 @@ fn swift_design_block(design: &DesignConfig) -> String {
         "    private init() {{\n        let stored = UserDefaults.standard.string(forKey: \"theme-preference\") ?? \"{}\"\n        let theme = DoweThemeModule.themes.first(where: {{ $0.name == stored }}) ?? DoweThemeModule.themes.first(where: {{ $0.name == DoweThemeModule.defaultTheme }})!\n        name = theme.name\n        colors = theme.colors\n        currentRadius = theme.radius\n    }}\n    static func applyTheme(_ name: String) {{\n        guard let theme = DoweThemeModule.themes.first(where: {{ $0.name == name }}) else {{ return }}\n        UserDefaults.standard.set(theme.name, forKey: \"theme-preference\")\n        shared.name = theme.name\n        shared.colors = theme.colors\n        shared.currentRadius = theme.radius\n    }}\n",
         escape_swift(&design.default_theme)
     ));
-    for token in ColorToken::all() {
+    for token in theme.ordered_color_tokens() {
         output.push_str(&format!(
             "    static var {}: Color {{ shared.colors[\"{}\"] ?? {} }}\n",
             token.as_str(),
             token.as_str(),
-            swift_color_literal(theme.color_value(*token))
+            swift_color_literal(theme.color_value(token))
         ));
     }
     output.push_str("    static var radius: CGFloat { shared.currentRadius }\n}\n");
@@ -249,13 +264,14 @@ enum DoweThemeModule {{
 }
 
 fn swift_theme_record(theme: &DesignTheme) -> String {
-    let colors = ColorToken::all()
-        .iter()
+    let colors = theme
+        .ordered_color_tokens()
+        .into_iter()
         .map(|token| {
             format!(
                 "            \"{}\": {},",
                 token.as_str(),
-                swift_color_literal(theme.color_value(*token))
+                swift_color_literal(theme.color_value(token))
             )
         })
         .collect::<Vec<_>>()
@@ -297,63 +313,27 @@ fn hex_components(value: &str) -> (u8, u8, u8, u8) {
 }
 
 fn family_color(value: ColorFamily) -> ColorToken {
-    match value {
-        ColorFamily::Primary => ColorToken::Primary,
-        ColorFamily::Secondary => ColorToken::Secondary,
-        ColorFamily::Tertiary => ColorToken::Tertiary,
-        ColorFamily::Muted => ColorToken::Muted,
-        ColorFamily::Background => ColorToken::Background,
-        ColorFamily::Surface => ColorToken::Surface,
-        ColorFamily::Success => ColorToken::Success,
-        ColorFamily::Info => ColorToken::Info,
-        ColorFamily::Warning => ColorToken::Warning,
-        ColorFamily::Danger => ColorToken::Danger,
-    }
+    value.color_token()
 }
 
-fn family_on_color(value: ColorFamily) -> ColorToken {
-    match value {
-        ColorFamily::Primary => ColorToken::OnPrimary,
-        ColorFamily::Secondary => ColorToken::OnSecondary,
-        ColorFamily::Tertiary => ColorToken::OnTertiary,
-        ColorFamily::Muted => ColorToken::OnMuted,
-        ColorFamily::Background => ColorToken::OnBackground,
-        ColorFamily::Surface => ColorToken::OnSurface,
-        ColorFamily::Success => ColorToken::OnSuccess,
-        ColorFamily::Info => ColorToken::OnInfo,
-        ColorFamily::Warning => ColorToken::OnWarning,
-        ColorFamily::Danger => ColorToken::OnDanger,
-    }
+fn family_text_color(value: ColorFamily) -> ColorToken {
+    value.text_token()
+}
+
+fn family_title_color(value: ColorFamily) -> ColorToken {
+    value.title_token()
 }
 
 fn family_soft_color(value: ColorFamily) -> ColorToken {
-    match value {
-        ColorFamily::Primary => ColorToken::SoftPrimary,
-        ColorFamily::Secondary => ColorToken::SoftSecondary,
-        ColorFamily::Tertiary => ColorToken::SoftTertiary,
-        ColorFamily::Muted => ColorToken::SoftMuted,
-        ColorFamily::Background => ColorToken::Background,
-        ColorFamily::Surface => ColorToken::Surface,
-        ColorFamily::Success => ColorToken::SoftSuccess,
-        ColorFamily::Info => ColorToken::SoftInfo,
-        ColorFamily::Warning => ColorToken::SoftWarning,
-        ColorFamily::Danger => ColorToken::SoftDanger,
-    }
+    value.soft_color_token()
 }
 
-fn family_on_soft_color(value: ColorFamily) -> ColorToken {
-    match value {
-        ColorFamily::Primary => ColorToken::OnSoftPrimary,
-        ColorFamily::Secondary => ColorToken::OnSoftSecondary,
-        ColorFamily::Tertiary => ColorToken::OnSoftTertiary,
-        ColorFamily::Muted => ColorToken::OnSoftMuted,
-        ColorFamily::Background => ColorToken::OnBackground,
-        ColorFamily::Surface => ColorToken::OnSurface,
-        ColorFamily::Success => ColorToken::OnSoftSuccess,
-        ColorFamily::Info => ColorToken::OnSoftInfo,
-        ColorFamily::Warning => ColorToken::OnSoftWarning,
-        ColorFamily::Danger => ColorToken::OnSoftDanger,
-    }
+fn family_soft_text_color(value: ColorFamily) -> ColorToken {
+    value.soft_text_token()
+}
+
+fn family_soft_title_color(value: ColorFamily) -> ColorToken {
+    value.soft_title_token()
 }
 
 fn swift_view_name(route: &str) -> String {

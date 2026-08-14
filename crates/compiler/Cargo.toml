@@ -6,12 +6,14 @@ license.workspace = true
 
 [dependencies]
 dowe_components = { path = "../components" }
+dowe_database_query = { path = "../database_query" }
 dowe_generator_android = { path = "../generator_android" }
 dowe_generator_desktop = { path = "../generator_desktop" }
 dowe_generator_ios = { path = "../generator_ios" }
 dowe_generator_web = { path = "../generator_web" }
 dowe_stdlib = { path = "../stdlib" }
 serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 
 [dev-dependencies]

@@ -441,43 +441,4 @@ fn collect_gap_custom_rules(value: Option<&ResponsiveValue<GapValue>>, rules: &m
 
 fn collect_grid_custom_rules(props: &GridProps, rules: &mut Vec<String>) {
     collect_gap_custom_rules(props.gap.as_ref(), rules);
-    collect_grid_track_rules(
-        "grid-cols",
-        "grid-template-columns",
-        props.columns.as_ref(),
-        rules,
-    );
-    collect_grid_track_rules(
-        "grid-rows",
-        "grid-template-rows",
-        props.rows.as_ref(),
-        rules,
-    );
-}
-
-fn collect_grid_track_rules(
-    prefix: &str,
-    property: &str,
-    value: Option<&ResponsiveValue<GridTracks>>,
-    rules: &mut Vec<String>,
-) {
-    let Some(value) = value else {
-        return;
-    };
-    for entry in &value.entries {
-        if let GridTracks::Template(template) = &entry.value {
-            push_custom_rule(
-                rules,
-                entry.breakpoint,
-                &format!(
-                    ".{}{{{property}:{};}}",
-                    css_class_name(&responsive_custom_class(
-                        entry.breakpoint,
-                        &format!("{prefix}-{}", entry.value.class_suffix())
-                    )),
-                    template
-                ),
-            );
-        }
-    }
 }

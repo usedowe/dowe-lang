@@ -150,4 +150,3 @@ fn legacy_request_outcome(node: &SourceNode) -> DoweResult<LegacyRequestOutcome>
     let target = optional_prop_string(node, "target")?.unwrap_or_else(|| "alert".to_string());
     Ok(LegacyRequestOutcome { target, message })
 }
-

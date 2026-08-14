@@ -190,19 +190,19 @@ fn render_swift_media_data_node(
             );
         }
         ViewNode::ArcChart { props } => {
-            render_swift_chart("arc", &props.common, indent, output, context);
+            render_swift_chart("arc", &props.common, None, Some(props), indent, output, context);
         }
         ViewNode::AreaChart { props } => {
-            render_swift_chart("area", &props.common, indent, output, context);
+            render_swift_chart("area", &props.common, None, None, indent, output, context);
         }
         ViewNode::BarChart { props } => {
-            render_swift_chart("bar", &props.common, indent, output, context);
+            render_swift_chart("bar", &props.common, None, None, indent, output, context);
         }
         ViewNode::LineChart { props } => {
-            render_swift_chart("line", &props.common, indent, output, context);
+            render_swift_chart("line", &props.common, None, None, indent, output, context);
         }
         ViewNode::PieChart { props } => {
-            render_swift_chart("pie", &props.common, indent, output, context);
+            render_swift_chart("pie", &props.common, Some(props), None, indent, output, context);
         }
         ViewNode::Table { props } => {
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
@@ -259,6 +259,8 @@ fn swift_video_icons() -> String {
 fn render_swift_chart(
     chart_type: &str,
     props: &ChartCommonProps,
+    pie_props: Option<&PieChartProps>,
+    arc_props: Option<&ArcChartProps>,
     indent: usize,
     output: &mut String,
     context: &SwiftReactiveContext,
@@ -283,8 +285,40 @@ fn render_swift_chart(
     } else {
         "nil".to_string()
     };
+    let pie_args = format!(
+        ", donut: {}, donutWidth: {}, centerLabel: {}, centerValue: {}, startAngle: {}, padAngle: {}, hideLabels: {}, hideValues: {}, hidePercentages: {}, showGlow: {}",
+        pie_props.is_some_and(|pie| pie.donut),
+        pie_props.map_or(60, |pie| pie.donut_width),
+        pie_props
+            .and_then(|pie| pie.center_label.as_deref())
+            .map(|value| swift_optional_literal(Some(value)))
+            .unwrap_or_else(|| "nil".to_string()),
+        pie_props
+            .and_then(|pie| pie.center_value.as_deref())
+            .map(|value| swift_optional_literal(Some(value)))
+            .unwrap_or_else(|| "nil".to_string()),
+        pie_props
+            .map(|pie| pie.start_angle)
+            .or_else(|| arc_props.map(|arc| arc.start_angle))
+            .unwrap_or(-90),
+        pie_props.map_or(0, |pie| pie.pad_angle),
+        pie_props.is_some_and(|pie| pie.hide_labels),
+        pie_props.is_some_and(|pie| pie.hide_values),
+        pie_props.is_some_and(|pie| pie.hide_percentages),
+        pie_props.is_some_and(|pie| pie.show_glow),
+    );
+    let arc_args = format!(
+        ", centerText: {}, thickness: {}, gap: {}, endAngle: {}, showInlineLabels: {}, arcHideValues: {}, arcShowGlow: {}",
+        swift_optional_literal(arc_props.and_then(|arc| arc.center_text.as_deref())),
+        arc_props.map_or(16, |arc| arc.thickness),
+        arc_props.map_or(8, |arc| arc.gap),
+        arc_props.map_or(270, |arc| arc.end_angle),
+        arc_props.is_some_and(|arc| arc.show_inline_labels),
+        arc_props.is_some_and(|arc| arc.hide_values),
+        arc_props.is_some_and(|arc| arc.show_glow),
+    );
     output.push_str(&format!(
-        "{pad}DoweChartView(state: state, chartType: {}, dataPath: {}, seriesPath: {}, palette: {}, legendPosition: {}, emptyLabel: {}, loading: {}, hideLegend: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {})\n",
+        "{pad}DoweChartView(state: state, chartType: {}, dataPath: {}, seriesPath: {}, palette: {}, legendPosition: {}, emptyLabel: {}, loading: {}, hideLegend: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {}{pie_args}{arc_args})\n",
         swift_string_literal(chart_type),
         data_path,
         series_path,
@@ -295,7 +329,7 @@ fn render_swift_chart(
         props.hide_legend,
         card_variant_container(&props.style),
         card_variant_content(&props.style),
-        swift_card_radius(&props.style.style)
+        swift_card_radius(&props.style.style),
     ));
     append_swift_modifiers(
         output,

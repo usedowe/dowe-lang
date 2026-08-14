@@ -287,12 +287,12 @@ struct DoweSelectPopover: View {
                             .fontWeight(.semibold)
                         if let description = option.description {
                             Text(description).font(.caption)
-                                .foregroundStyle(DoweDesign.onSurface.opacity(0.68))
+                                .foregroundStyle(DoweDesign.surfaceText.opacity(0.68))
                         }
                     }
                     .font(font)
                     .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
-                    .foregroundStyle(DoweDesign.onSurface)
+                    .foregroundStyle(DoweDesign.surfaceText)
                     .padding(.horizontal, CGFloat(16))
                     .padding(.vertical, CGFloat(10))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -305,7 +305,7 @@ struct DoweSelectPopover: View {
         .frame(minWidth: CGFloat(220), maxWidth: .infinity, alignment: .leading)
         .background(DoweDesign.surface)
         .clipShape(RoundedRectangle(cornerRadius: radius))
-        .overlay(RoundedRectangle(cornerRadius: radius).stroke(DoweDesign.onSurface.opacity(0.08), lineWidth: CGFloat(1)))
+        .overlay(RoundedRectangle(cornerRadius: radius).stroke(DoweDesign.surfaceText.opacity(0.08), lineWidth: CGFloat(1)))
     }
 }
 
@@ -1051,17 +1051,17 @@ struct DowePhoneCountryPopover: View {
                 .textFieldStyle(.plain)
                 .padding(.horizontal, CGFloat(12))
                 .padding(.vertical, CGFloat(9))
-                .background(DoweDesign.onSurface.opacity(0.07))
+                .background(DoweDesign.surfaceText.opacity(0.07))
                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
             if countries.isEmpty {
                 Text(loadingText)
                     .font(.footnote)
-                    .foregroundStyle(DoweDesign.onSurface.opacity(0.68))
+                    .foregroundStyle(DoweDesign.surfaceText.opacity(0.68))
                     .padding(CGFloat(12))
             } else if filteredCountries.isEmpty {
                 Text(emptyText)
                     .font(.footnote)
-                    .foregroundStyle(DoweDesign.onSurface.opacity(0.68))
+                    .foregroundStyle(DoweDesign.surfaceText.opacity(0.68))
                     .padding(CGFloat(12))
             } else {
                 ScrollView {
@@ -1069,7 +1069,7 @@ struct DowePhoneCountryPopover: View {
                         ForEach(filteredCountries) { item in
                             Button(action: { onSelect(item) }) {
                                 HStack(spacing: CGFloat(10)) {
-                                    DoweSvgView(viewBox: item.flag.viewBox, color: DoweDesign.onSurface, paths: item.flag.paths)
+                                    DoweSvgView(viewBox: item.flag.viewBox, color: DoweDesign.surfaceText, paths: item.flag.paths)
                                         .frame(width: CGFloat(28), height: CGFloat(28))
                                         .clipShape(Circle())
                                     Text(item.name)
@@ -1078,11 +1078,11 @@ struct DowePhoneCountryPopover: View {
                                     Text("+\(item.dialCode)")
                                         .fontWeight(.bold)
                                 }
-                                .foregroundStyle(DoweDesign.onSurface)
+                                .foregroundStyle(DoweDesign.surfaceText)
                                 .padding(.horizontal, CGFloat(12))
                                 .padding(.vertical, CGFloat(8))
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(item.code.caseInsensitiveCompare(selectedCode) == .orderedSame ? DoweDesign.onSurface.opacity(0.07) : Color.clear)
+                                .background(item.code.caseInsensitiveCompare(selectedCode) == .orderedSame ? DoweDesign.surfaceText.opacity(0.07) : Color.clear)
                                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
                             }
                             .buttonStyle(.plain)
@@ -1096,7 +1096,7 @@ struct DowePhoneCountryPopover: View {
         .frame(minWidth: CGFloat(280), maxWidth: .infinity, alignment: .leading)
         .background(DoweDesign.surface)
         .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
-        .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(DoweDesign.onSurface.opacity(0.08), lineWidth: CGFloat(1)))
+        .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(DoweDesign.surfaceText.opacity(0.08), lineWidth: CGFloat(1)))
     }
 }
 

@@ -24,7 +24,8 @@ use crate::parser::source_ast::{
 use crate::parser::source_config::{parse_desktop_cors_config, parse_server_cors_config};
 use crate::parser::source_db::{
     database_action_endpoint_behavior, database_endpoint_behavior, parse_database_entity,
-    parse_database_seeder, parse_database_statement, store_literal,
+    parse_database_seeder, parse_database_statement, parse_database_statement_without_seeders,
+    store_literal,
 };
 use crate::parser::source_imports::resolve_import;
 use crate::parser::source_kv::{

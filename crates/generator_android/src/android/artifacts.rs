@@ -1,7 +1,7 @@
 use dowe_components::{
     AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
     AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BoxPosition, Breakpoint, ButtonSize,
-    CanvasBackground, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
+    ArcChartProps, CanvasBackground, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
     CodeTemplateSegment, CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
     CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation,
@@ -20,7 +20,7 @@ use dowe_components::{
     ScaffoldProps, SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps,
     SideNavProps, SidebarProps, SideNavSize, SkeletonProps, SizeValue, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath,
     SvgPathFill, SvgTransform, SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableProps, TableSize,
-    TabsProps, TabsVariant, TextProps, TextSize, TextSpacing, TextWeight, ThemeSelectProps, ThemeToggleProps,
+    PieChartProps, TabsProps, TabsVariant, TextProps, TextSize, TextSpacing, TextWeight, ThemeSelectProps, ThemeToggleProps,
     ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem, TypeWriterProps,
     VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewGesture, ViewNode, ViewTransition,
     PhoneProps, phone_country, phone_countries, phone_country_flag_icon,
@@ -31,6 +31,7 @@ use dowe_components::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AndroidOutput {

@@ -2,10 +2,14 @@ fn server_imports(
     root: &Path,
     file: &SourceFile,
     environment: &EnvironmentConfig,
+    include_seeders: bool,
 ) -> DoweResult<ServerImports> {
     let mut imports = ServerImports::default();
     for import in &file.imports {
         let path = resolve_import(root, &file.path, import)?;
+        if !include_seeders && seeder_import_names(file).contains(&import.local) {
+            continue;
+        }
         if is_shared_type_path(root, &path) {
             continue;
         }
@@ -15,7 +19,13 @@ fn server_imports(
         if module_has_views_export(&module_file, &import.local) {
             continue;
         }
-        let module = parse_server_module(root, &module_file, environment, &mut Vec::new())?;
+        let module = parse_server_module(
+            root,
+            &module_file,
+            environment,
+            &mut Vec::new(),
+            include_seeders,
+        )?;
         if let Some(handler) = module.handlers.get(&import.local).cloned() {
             if imports
                 .handlers
@@ -108,6 +118,7 @@ fn parse_server_module(
     file: &SourceFile,
     environment: &EnvironmentConfig,
     stack: &mut Vec<std::path::PathBuf>,
+    include_seeders: bool,
 ) -> DoweResult<ServerImports> {
     if stack.iter().any(|path| path == &file.path) {
         return Err(DoweError::at_path(
@@ -117,7 +128,7 @@ fn parse_server_module(
     }
     stack.push(file.path.clone());
     let surface = server_module_surface(file);
-    let imported = module_imports(root, file, environment, stack, surface)?;
+    let imported = module_imports(root, file, environment, stack, surface, include_seeders)?;
     let types = TypeRegistry::parse_file(root, file)?;
     let mut imports = ServerImports::default();
     let mut available_entities = imported.entities.clone();
@@ -134,19 +145,25 @@ fn parse_server_module(
         }
         imports.entities.insert(entity.binding.clone(), entity);
     }
-    let mut available_seeders = imported.seeders.clone();
-    for node in file.nodes.iter().filter(|node| node.name == "seeder") {
-        let seeder = parse_database_seeder(node, &available_entities)?;
-        if available_seeders
-            .insert(seeder.binding.clone(), seeder.clone())
-            .is_some()
-        {
-            return Err(node_error(
-                node,
-                format!("duplicate seeder `{}`", seeder.binding),
-            ));
+    let mut available_seeders = if include_seeders {
+        imported.seeders.clone()
+    } else {
+        HashMap::new()
+    };
+    if include_seeders {
+        for node in file.nodes.iter().filter(|node| node.name == "seeder") {
+            let seeder = parse_database_seeder(node, &available_entities)?;
+            if available_seeders
+                .insert(seeder.binding.clone(), seeder.clone())
+                .is_some()
+            {
+                return Err(node_error(
+                    node,
+                    format!("duplicate seeder `{}`", seeder.binding),
+                ));
+            }
+            imports.seeders.insert(seeder.binding.clone(), seeder);
         }
-        imports.seeders.insert(seeder.binding.clone(), seeder);
     }
     for node in &file.nodes {
         match node.name.as_str() {
@@ -191,6 +208,7 @@ fn parse_server_module(
                     environment,
                     &available_entities,
                     &available_seeders,
+                    include_seeders,
                 )?;
                 if imports
                     .config_bindings
@@ -259,17 +277,21 @@ fn module_imports(
     environment: &EnvironmentConfig,
     stack: &mut Vec<std::path::PathBuf>,
     surface: ServerModuleSurface,
+    include_seeders: bool,
 ) -> DoweResult<ServerImports> {
     let mut imports = ServerImports::default();
     for import in &file.imports {
         let path = resolve_import(root, &file.path, import)?;
+        if !include_seeders && seeder_import_names(file).contains(&import.local) {
+            continue;
+        }
         if is_shared_type_path(root, &path) {
             continue;
         }
         let source = fs::read_to_string(&path)
             .map_err(|error| DoweError::at_path(&path, error.to_string()))?;
         let module_file = parse_source_file(root, &path, source)?;
-        let module = parse_server_module(root, &module_file, environment, stack)?;
+        let module = parse_server_module(root, &module_file, environment, stack, include_seeders)?;
         if let Some(handler) = module.handlers.get(&import.local).cloned() {
             if imports
                 .handlers
@@ -371,4 +393,18 @@ fn module_has_views_export(file: &SourceFile, name: &str) -> bool {
                 .and_then(SourceValue::as_required_string)
                 .is_some_and(|export| export == name)
     })
+}
+
+fn seeder_import_names(file: &SourceFile) -> HashSet<String> {
+    file.nodes
+        .iter()
+        .filter(|node| node.name == "database" || node.name == "db")
+        .filter_map(|node| node.prop("seeders"))
+        .filter_map(|prop| match &prop.value {
+            SourceValue::Array(values) => Some(values),
+            _ => None,
+        })
+        .flat_map(|values| values.iter())
+        .filter_map(SourceValue::as_string_like)
+        .collect()
 }

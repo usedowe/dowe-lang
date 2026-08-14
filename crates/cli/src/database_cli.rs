@@ -1,12 +1,34 @@
+use crate::menus;
+use dowe_compiler::{compile_dev, compile_dev_with_seeders, generate_database_migrations};
 use dowe_database::{
     DatabaseServiceConfig, create_account, init_database, list_databases, open_database, run_bench,
     start_database_service,
 };
+use dowe_runtime::seed_local_databases;
 use std::env;
 
 pub(crate) async fn run_database_command(
     args: &[String],
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let interactive_args;
+    let args = if args.is_empty() {
+        if !menus::is_interactive_terminal() {
+            return Err(
+                "dowe database requires a subcommand when no interactive terminal is available"
+                    .into(),
+            );
+        }
+        let Some(command) = menus::prompt_database_command()? else {
+            return Ok(());
+        };
+        let Some(command_args) = menus::prompt_database_command_args(&command)? else {
+            return Err(database_usage().into());
+        };
+        interactive_args = command_args;
+        interactive_args.as_slice()
+    } else {
+        args
+    };
     let root = env::current_dir()?;
     match args.first().map(String::as_str) {
         Some("start") => {
@@ -92,6 +114,26 @@ pub(crate) async fn run_database_command(
             let report = run_bench(&root)?;
             println!("{}", serde_json::to_string_pretty(&report)?);
         }
+        Some("seeders") => {
+            if args.len() > 1 {
+                return Err("dowe database seeders does not accept arguments".into());
+            }
+            let project = compile_dev_with_seeders(&root)?;
+            let databases = project.databases.len();
+            seed_local_databases(project).await?;
+            println!("applied local seeders for {databases} database(s)");
+        }
+        Some("migrate") => {
+            if args.len() > 1 {
+                return Err("dowe database migrate does not accept arguments".into());
+            }
+            let project = compile_dev(&root)?;
+            let report = generate_database_migrations(&project)?;
+            println!(
+                "database migrations created {} unchanged {} dynamic {}",
+                report.created, report.unchanged, report.dynamic
+            );
+        }
         _ => return Err(database_usage().into()),
     }
     Ok(())
@@ -108,7 +150,7 @@ fn required<'a>(
 }
 
 fn database_usage() -> &'static str {
-    "Usage: dowe database start [--host <host>] [--port <port>] | create-account <database> <account> [--secret <secret>] | init <database> | list | inspect <database> | query <database> <sql> | index <database> <table> <field> | compact <database> | bench"
+    "Usage: dowe database start [--host <host>] [--port <port>] | create-account <database> <account> [--secret <secret>] | init <database> | list | inspect <database> | query <database> <sql> | index <database> <table> <field> | compact <database> | bench | migrate | seeders"
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -226,6 +268,50 @@ mod tests {
                 account: "clinic-api".to_string(),
                 secret: Some("secret".to_string()),
             }
+        );
+    }
+
+    #[test]
+    fn database_usage_includes_manual_seeders() {
+        assert!(super::database_usage().contains("seeders"));
+        assert!(super::database_usage().contains("migrate"));
+        for command in crate::menus::database_commands() {
+            assert!(super::database_usage().contains(command));
+        }
+    }
+
+    #[tokio::test]
+    async fn database_without_subcommand_requires_interactive_terminal() {
+        let error = super::run_database_command(&[])
+            .await
+            .expect_err("non-interactive database menu");
+        assert_eq!(
+            error.to_string(),
+            "dowe database requires a subcommand when no interactive terminal is available"
+        );
+    }
+
+    #[tokio::test]
+    async fn database_seeders_rejects_extra_arguments() {
+        let args = vec!["seeders".to_string(), "--remote".to_string()];
+        let error = super::run_database_command(&args)
+            .await
+            .expect_err("unsupported arguments");
+        assert_eq!(
+            error.to_string(),
+            "dowe database seeders does not accept arguments"
+        );
+    }
+
+    #[tokio::test]
+    async fn database_migrate_rejects_extra_arguments() {
+        let args = vec!["migrate".to_string(), "--remote".to_string()];
+        let error = super::run_database_command(&args)
+            .await
+            .expect_err("unsupported arguments");
+        assert_eq!(
+            error.to_string(),
+            "dowe database migrate does not accept arguments"
         );
     }
 }

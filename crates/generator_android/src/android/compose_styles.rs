@@ -19,7 +19,7 @@ fn render_compose_text(
         "{pad}Text({}, modifier = {}, color = {}, fontSize = {size}, lineHeight = {}, fontFamily = {}, fontWeight = {}{spacing})\n",
         compose_visible_text_expression(value, props.i18n.as_deref(), context),
         modifier_for_style(&props.style),
-        text_color(props),
+        text_color(title, props),
         text_line_height(title, props, &size),
         compose_font_value(font, default_family),
         text_weight(title, props)
@@ -356,7 +356,7 @@ fn modifier_for_style_with_base_and_shadow_shape(
             .border_color
             .map(family_color)
             .map(color_ref)
-            .unwrap_or("DoweDesign.onBackground");
+            .unwrap_or("DoweDesign.backgroundText");
         modifier.push_str(&format!(
             ".border({} ?: 0.dp, {color}, RoundedCornerShape({} ?: DoweDesign.radius))",
             compose_border_value(value),

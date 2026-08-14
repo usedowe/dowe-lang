@@ -216,9 +216,9 @@ private fun DoweRichText(marks: List<DoweRichTextMark>, fontFamily: FontFamily?,
 @Composable
 private fun DoweRichTextRun(mark: DoweRichTextMark, fontFamily: FontFamily?, fontSize: TextUnit, contentColor: Color) {
     val accent = doweButtonFamily(mark.scheme)
-    val onAccent = doweButtonOnFamily(mark.scheme)
+    val onAccent = doweButtonTextFamily(mark.scheme)
     val softAccent = doweButtonSoftFamily(mark.scheme)
-    val inheritedColor = if (contentColor == Color.Unspecified) DoweDesign.onBackground else contentColor
+    val inheritedColor = if (contentColor == Color.Unspecified) DoweDesign.backgroundText else contentColor
     val density = LocalDensity.current
     var measuredTextWidth by remember(mark.text, fontFamily, fontSize) { mutableStateOf<Dp?>(null) }
     val shape = when (mark.style) {

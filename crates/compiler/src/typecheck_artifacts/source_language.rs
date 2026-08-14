@@ -96,7 +96,7 @@ const SERVER_SURFACE: &str = r#"{
   "root": "main.dowe",
   "blocks": ["type", "entity", "seeder", "database", "cache", "vector", "queue", "main", "app", "views", "server", "tls", "desktop", "endpoints", "group", "get", "post", "put", "delete", "patch", "route", "websocket", "udp", "tcp", "packet", "connection", "rtp", "model", "init", "handler", "middleware", "fn"],
   "httpMethods": ["get", "post", "put", "delete", "patch"],
-  "actions": ["functionName result args:{ ... }", "const binding value:req.json", "namespace result source:\"stdlibFunction\"", "request result source:\"query|rawQuery|header|cookie|bytes\"", "file result source:\"write|read|exists|delete\" root:<path> path:<path>", "password result source:\"hash|verify\" value:<password>", "queue appQueue provider:\"dowe|rabbitmq\" host:<value> port:<value> account:<value> secret:<value> vhost:<value>", "msg sent conn:appQueue.publish queue:<value> payload:<json>", "ws result source:\"json\"", "agent result source:\"chat\" request:request", "session result cache:cache database:database token:token", "return status:201 json:value", "return reverse:route.upstreams strategy:\"roundRobin\" state:route.state loadingUrl:route.loadingUrl errorUrl:route.errorUrl", "return value", "next", "response text", "response json", "send ws", "bridge sse", "task functionName args:{ ... }", "task functionName args:{ event:{ ... } } after:\"headers\"", "task args:{ ... } <server statements...>", "cron functionName schedule:\"0 * * * *\" args:{ ... }", "log", "info", "warn", "error"],
+  "actions": ["functionName result args:{ ... }", "const binding value:req.json", "namespace result source:\"stdlibFunction\"", "request result source:\"query|rawQuery|header|cookie|bytes\"", "file result source:\"write|read|exists|delete\" root:<path> path:<path>", "password result source:\"hash|verify\" value:<password>", "queue appQueue provider:\"dowe|rabbitmq\" host:<value> port:<value> account:<value> secret:<value> vhost:<value>", "msg sent conn:appQueue.publish queue:<value> payload:<json>", "ws result source:\"json\"", "agent result source:\"chat\" request:request", "session result cache:cache database:database token:token", "return status:201 json:value", "return reverse:route.upstreams strategy:\"roundRobin\" state:route.state loadingUrl:route.loadingUrl errorUrl:route.errorUrl", "return value", "next", "response text", "response json", "send ws", "bridge sse", "task fn:functionName args:{ ... }", "task fn:functionName args:{ event:{ ... } } after:\"headers\"", "task args:{ ... } <server statements...>", "cron fn:functionName schedule:\"0 * * * *\" args:{ ... }", "log", "info", "warn", "error"],
   "request": ["req.params", "req.json", "req.context", "request result source:\"query\"", "request result source:\"rawQuery\"", "request result source:\"header\" name:\"Range\"", "request result source:\"cookie\" name:\"session\"", "request result source:\"bytes\"", "ws result source:\"json\""],
   "outboundHttp": ["http <binding>", "method:\"get\"", "base", "path", "bearer", "headers", "json", "mode:\"json\"", "mode:\"proxy\"", "mode:\"bytes\"", "redirect:\"follow\"", "redirect:\"manual\"", "redirect:\"error\"", "maxRedirects", "timeoutMs"],
   "serverProcess": ["spawn <binding>", "command", "args", "cwd", "timeoutMs", "maxOutputBytes", "background"],
@@ -188,18 +188,25 @@ const CONFIG_SURFACE: &str = r##"{
   "themes": {
     "defaultTheme": "light",
     "builtInInheritance": ["light", "dark"],
-    "runtimeSwitching": false
+    "runtimeSwitching": false,
+    "colors": {
+      "declaration": "colors: -> primary color:\"#2563eb\" text:\"#ffffff\" title:\"#ffffff\"",
+      "families": ["primary", "secondary", "tertiary", "muted", "background", "surface", "success", "info", "warning", "danger", "softPrimary", "softSecondary", "softTertiary", "softMuted", "softSuccess", "softInfo", "softWarning", "softDanger"],
+      "roles": ["color", "text", "title"],
+      "flatRoleAuthoring": "rejected"
+    }
   },
   "colorValues": ["#RGB", "#RRGGBB", "#RRGGBBAA"],
   "themeRadius": "radius:<non-negative integer>",
   "componentDefaults": {
-    "slots": ["card", "button", "chip", "avatar", "ui", "text", "title"],
+    "slots": ["card", "button", "chip", "avatar", "tabs", "ui", "text", "title"],
     "fontSlots": ["text", "title"],
     "radius": ["xs", "sm", "md", "lg", "xl", "full"],
     "shadow": ["xs", "sm", "md", "lg", "xl"],
     "border": [1, 2, 3, 4],
     "scheme": ["primary", "secondary", "tertiary", "muted", "background", "surface", "success", "info", "warning", "danger"],
-    "variant": ["solid", "soft", "outline", "outlined", "ghost", "line"]
+    "variant": ["solid", "soft", "outline", "outlined", "ghost", "line"],
+    "tabsVariant": ["solid", "outlined", "line", "ghost", "pills"]
   },
   "environment": {
     "declaration": "BACKEND_URL=",

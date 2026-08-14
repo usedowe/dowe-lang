@@ -1,0 +1,11 @@
+[package]
+name = "dowe_database_query"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[lib]
+path = "src/lib.rs"

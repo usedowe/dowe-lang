@@ -1,5 +1,9 @@
 use crate::access::DeployAccess;
 use crate::cloud;
+use crate::embedded::{
+    SSH_TRAILER_MAGIC, encode_embedded_payload, materialize_application, read_embedded_payload,
+    set_executable, validate_access_metadata, validate_client_environment,
+};
 use crate::error::{DeployError, DeployResult};
 use crate::files::write_file;
 use crate::model::{DeployEnvironment, DeployTarget};
@@ -8,25 +12,29 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::{Cursor, Read, Seek, SeekFrom};
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-const TRAILER_MAGIC: &[u8; 8] = b"DOWESSH1";
-const TRAILER_VERSION: u64 = 1;
-const TRAILER_SIZE: usize = 112;
 const DEFAULT_RELEASE_BASE_URL: &str = "https://get.dowe.dev";
 const MAX_ARCHIVE_SIZE: u64 = 256 * 1024 * 1024;
 const MAX_RUNTIME_SIZE: u64 = 512 * 1024 * 1024;
 const REMOTE_SCRIPT: &str = r#"set -eu
-upload=$1
-service=$2
-run_user=$3
-binary=$4
-cleanup() {
-  rm -f "$upload"
-}
-trap cleanup EXIT HUP INT TERM
+action=$1
+run_user=$2
+case "$action" in
+  preflight) ;;
+  install)
+    upload=$3
+    service=$4
+    binary=$5
+    cleanup() {
+      rm -f "$upload"
+    }
+    trap cleanup EXIT HUP INT TERM
+    ;;
+  *) echo "SSH deploy action is invalid" >&2; exit 1 ;;
+esac
 if [ ! -r /etc/os-release ]; then
   echo "SSH deploy requires Debian or Ubuntu" >&2
   exit 1
@@ -41,14 +49,26 @@ case "$(uname -m)" in
   *) echo "SSH deploy requires a Linux amd64 host" >&2; exit 1 ;;
 esac
 command -v systemctl >/dev/null 2>&1 || { echo "SSH deploy requires systemd" >&2; exit 1; }
-command -v sudo >/dev/null 2>&1 || { echo "SSH deploy requires sudo" >&2; exit 1; }
 id "$run_user" >/dev/null 2>&1 || { echo "SSH deploy user does not exist" >&2; exit 1; }
-sudo -v
+if [ "$(id -u)" -eq 0 ]; then
+  as_root() {
+    "$@"
+  }
+else
+  command -v sudo >/dev/null 2>&1 || { echo "SSH deploy requires root or sudo" >&2; exit 1; }
+  sudo -v
+  as_root() {
+    sudo "$@"
+  }
+fi
+if [ "$action" = preflight ]; then
+  exit 0
+fi
 install_dir="/opt/dowe/$service"
 unit="/etc/systemd/system/$service.service"
 group=$(id -gn "$run_user")
-sudo install -d -m 0755 -o root -g root "$install_dir"
-sudo install -m 0755 -o root -g root "$upload" "$install_dir/$binary"
+as_root install -d -m 0755 -o root -g root "$install_dir"
+as_root install -m 0755 -o root -g root "$upload" "$install_dir/$binary"
 unit_file=$(mktemp)
 trap 'rm -f "$unit_file"; cleanup' EXIT HUP INT TERM
 printf '%s\n' \
@@ -75,13 +95,13 @@ printf '%s\n' \
   '' \
   '[Install]' \
   'WantedBy=multi-user.target' > "$unit_file"
-sudo install -d -m 0755 /etc/dowe
-sudo install -d -m 0755 -o root -g root /var/lib/dowe "/var/lib/dowe/$service"
-sudo install -d -m 0755 -o "$run_user" -g "$group" "/var/lib/dowe/$service/app"
-sudo install -m 0644 -o root -g root "$unit_file" "$unit"
-sudo systemctl daemon-reload
-sudo systemctl enable --now "$service.service"
-sudo systemctl --no-pager --full status "$service.service"
+as_root install -d -m 0755 /etc/dowe
+as_root install -d -m 0755 -o root -g root /var/lib/dowe "/var/lib/dowe/$service"
+as_root install -d -m 0755 -o "$run_user" -g "$group" "/var/lib/dowe/$service/app"
+as_root install -m 0644 -o root -g root "$unit_file" "$unit"
+as_root systemctl daemon-reload
+as_root systemctl enable --now "$service.service"
+as_root systemctl --no-pager --full status "$service.service"
 "#;
 
 #[derive(Clone, Debug)]
@@ -203,7 +223,7 @@ fn generate_ssh_with_runtime(
 ) -> DeployResult<SshPackage> {
     let binary_name = project_slug(root)?;
     let service_name = format!("dowe-{binary_name}-{}", environment.as_str());
-    validate_linux_amd64_elf(runtime)?;
+    validate_linux_amd64_runtime(runtime, SSH_TRAILER_MAGIC, "embedded SSH applications")?;
     let application = cloud::application_binary(root)?;
     let metadata = serde_json::to_vec(&ExecutableMetadata {
         environment,
@@ -211,7 +231,7 @@ fn generate_ssh_with_runtime(
         bind: "0.0.0.0:8080",
         client_environment,
     })?;
-    let executable = encode_executable(runtime, &application, &metadata);
+    let executable = encode_embedded_payload(runtime, &application, &metadata, SSH_TRAILER_MAGIC);
     let executable_path = output.join(&binary_name);
     write_file(&executable_path, &executable)?;
     set_executable(&executable_path)?;
@@ -263,18 +283,23 @@ pub(crate) fn publish_ssh(
         None
     };
     let install_args = format!(
-        "sh -s -- {} {} {} {}",
+        "sh -s -- install {} {} {} {}",
+        shell_word(&destination.user),
         shell_word(&remote_upload),
         shell_word(&package.service_name),
-        shell_word(&destination.user),
         shell_word(&package.binary_name),
     );
-    let remote_command = format!(
-        "sh -c {} -- {} {} {} {}",
+    let preflight_command = format!(
+        "sh -c {} -- preflight {}",
         shell_word(REMOTE_SCRIPT),
+        shell_word(&destination.user),
+    );
+    let install_command = format!(
+        "sh -c {} -- install {} {} {} {}",
+        shell_word(REMOTE_SCRIPT),
+        shell_word(&destination.user),
         shell_word(&remote_upload),
         shell_word(&package.service_name),
-        shell_word(&destination.user),
         shell_word(&package.binary_name),
     );
     let mut reported = vec!["ssh".to_string()];
@@ -282,6 +307,12 @@ pub(crate) fn publish_ssh(
     reported.extend([destination.target(), install_args]);
     if dry_run {
         return Ok(reported);
+    }
+    let mut preflight_args = ssh_args.clone();
+    preflight_args.extend(["-tt".into(), destination.target(), preflight_command]);
+    if let Err(error) = run_inherited("ssh", &preflight_args) {
+        close_control(control_path.as_deref(), destination);
+        return Err(DeployError::new(format!("SSH preflight failed: {error}")));
     }
     scp_args.extend([
         package.executable.display().to_string(),
@@ -291,15 +322,16 @@ pub(crate) fn publish_ssh(
         close_control(control_path.as_deref(), destination);
         return Err(error);
     }
-    ssh_args.extend(["-tt".into(), destination.target(), remote_command]);
+    ssh_args.extend(["-tt".into(), destination.target(), install_command]);
     let status = Command::new("ssh")
         .args(&ssh_args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .status()
-        .map_err(|error| DeployError::new(format!("failed to start ssh: {error}")))?;
+        .status();
     close_control(control_path.as_deref(), destination);
+    let status =
+        status.map_err(|error| DeployError::new(format!("failed to start ssh: {error}")))?;
     if !status.success() {
         return Err(DeployError::new(format!(
             "SSH installation failed with status {status}"
@@ -330,33 +362,18 @@ pub fn materialize_embedded_ssh_executable(
     executable: &Path,
     output: &Path,
 ) -> DeployResult<Option<EmbeddedSshMetadata>> {
-    let mut file = fs::File::open(executable)?;
-    let length = usize::try_from(file.metadata()?.len())
-        .map_err(|_| DeployError::new("embedded SSH executable is too large"))?;
-    if length < TRAILER_SIZE {
-        return Ok(None);
-    }
-    file.seek(SeekFrom::End(-(TRAILER_SIZE as i64)))?;
-    let mut trailer = [0u8; TRAILER_SIZE];
-    file.read_exact(&mut trailer)?;
-    if &trailer[..8] != TRAILER_MAGIC {
-        return Ok(None);
-    }
-    file.seek(SeekFrom::Start(0))?;
-    let mut bytes = Vec::with_capacity(length);
-    file.read_to_end(&mut bytes)?;
-    let Some((application, metadata)) = decode_executable(&bytes)? else {
+    let Some(payload) = read_embedded_payload(executable, SSH_TRAILER_MAGIC, "SSH")? else {
         return Ok(None);
     };
-    let metadata = serde_json::from_slice::<EmbeddedSshMetadata>(metadata)
+    let metadata = serde_json::from_slice::<EmbeddedSshMetadata>(&payload.metadata)
         .map_err(|_| DeployError::new("invalid embedded SSH metadata"))?;
     validate_metadata(&metadata)?;
-    reset_runtime_root(output)?;
-    let artifact = output.join("app.dowebin");
-    write_file(&artifact, application)?;
-    cloud::materialize_cloud_artifact(&artifact, output)?;
-    fs::remove_file(artifact)?;
-    write_client_environment(output, &metadata.client_environment)?;
+    materialize_application(
+        output,
+        &payload.application,
+        &metadata.client_environment,
+        "SSH",
+    )?;
     Ok(Some(metadata))
 }
 
@@ -364,123 +381,50 @@ fn validate_metadata(metadata: &EmbeddedSshMetadata) -> DeployResult<()> {
     if metadata.bind != "0.0.0.0:8080" {
         return Err(DeployError::new("invalid embedded SSH bind address"));
     }
-    match (metadata.environment, metadata.access_hash.as_deref()) {
-        (DeployEnvironment::Live, None) => {}
-        (DeployEnvironment::Stage | DeployEnvironment::Uat, Some(hash)) if is_sha256_hex(hash) => {}
-        _ => return Err(DeployError::new("invalid embedded SSH access metadata")),
-    }
-    if metadata
-        .client_environment
-        .iter()
-        .any(|(name, _)| !is_environment_name(name))
-    {
-        return Err(DeployError::new("invalid embedded SSH environment name"));
-    }
-    Ok(())
-}
-
-fn reset_runtime_root(output: &Path) -> DeployResult<()> {
-    fs::create_dir_all(output)?;
-    for entry in fs::read_dir(output)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        if entry.file_name() == ".dowe" && file_type.is_dir() && !file_type.is_symlink() {
-            continue;
-        }
-        if file_type.is_dir() && !file_type.is_symlink() {
-            fs::remove_dir_all(entry.path())?;
-        } else {
-            fs::remove_file(entry.path())?;
-        }
-    }
-    Ok(())
-}
-
-fn write_client_environment(output: &Path, values: &[(String, String)]) -> DeployResult<()> {
-    let mut content = String::new();
-    for (name, value) in values {
-        if !is_environment_name(name) {
-            return Err(DeployError::new("invalid embedded SSH environment name"));
-        }
-        let escaped = value
-            .replace('\\', "\\\\")
-            .replace('"', "\\\"")
-            .replace('\n', "\\n")
-            .replace('\r', "\\r")
-            .replace('\t', "\\t");
-        content.push_str(name);
-        content.push_str("=\"");
-        content.push_str(&escaped);
-        content.push_str("\"\n");
-    }
-    if !content.is_empty() {
-        write_file(&output.join(".env"), content)?;
-    }
-    Ok(())
-}
-
-fn encode_executable(runtime: &[u8], application: &[u8], metadata: &[u8]) -> Vec<u8> {
-    let application_offset = runtime.len() as u64;
-    let metadata_offset = application_offset + application.len() as u64;
-    let mut output =
-        Vec::with_capacity(runtime.len() + application.len() + metadata.len() + TRAILER_SIZE);
-    output.extend_from_slice(runtime);
-    output.extend_from_slice(application);
-    output.extend_from_slice(metadata);
-    output.extend_from_slice(TRAILER_MAGIC);
-    output.extend_from_slice(&TRAILER_VERSION.to_le_bytes());
-    output.extend_from_slice(&application_offset.to_le_bytes());
-    output.extend_from_slice(&(application.len() as u64).to_le_bytes());
-    output.extend_from_slice(&metadata_offset.to_le_bytes());
-    output.extend_from_slice(&(metadata.len() as u64).to_le_bytes());
-    output.extend_from_slice(&Sha256::digest(application));
-    output.extend_from_slice(&Sha256::digest(metadata));
-    output
-}
-
-fn decode_executable(bytes: &[u8]) -> DeployResult<Option<(&[u8], &[u8])>> {
-    if bytes.len() < TRAILER_SIZE {
-        return Ok(None);
-    }
-    let trailer = &bytes[bytes.len() - TRAILER_SIZE..];
-    if &trailer[..8] != TRAILER_MAGIC {
-        return Ok(None);
-    }
-    if read_u64(trailer, 8)? != TRAILER_VERSION {
-        return Err(DeployError::new(
-            "unsupported embedded SSH executable version",
-        ));
-    }
-    let application_offset = usize_value(read_u64(trailer, 16)?)?;
-    let application_length = usize_value(read_u64(trailer, 24)?)?;
-    let metadata_offset = usize_value(read_u64(trailer, 32)?)?;
-    let metadata_length = usize_value(read_u64(trailer, 40)?)?;
-    let payload_end = bytes.len() - TRAILER_SIZE;
-    let application_end = checked_end(application_offset, application_length, payload_end)?;
-    let metadata_end = checked_end(metadata_offset, metadata_length, payload_end)?;
-    if application_end != metadata_offset || metadata_end != payload_end {
-        return Err(DeployError::new("invalid embedded SSH executable layout"));
-    }
-    let application = &bytes[application_offset..application_end];
-    let metadata = &bytes[metadata_offset..metadata_end];
-    if Sha256::digest(application).as_slice() != &trailer[48..80] {
-        return Err(DeployError::new(
-            "embedded SSH application checksum mismatch",
-        ));
-    }
-    if Sha256::digest(metadata).as_slice() != &trailer[80..112] {
-        return Err(DeployError::new("embedded SSH metadata checksum mismatch"));
-    }
-    Ok(Some((application, metadata)))
+    validate_access_metadata(metadata.environment, metadata.access_hash.as_deref(), "SSH")?;
+    validate_client_environment(&metadata.client_environment, "SSH")
 }
 
 pub(crate) fn prepare_linux_runtime() -> DeployResult<Vec<u8>> {
+    if let Some(runtime) = installed_linux_runtime()? {
+        return Ok(runtime);
+    }
     let url = format!(
         "{}/v{}/linux-amd64.tar.gz",
         DEFAULT_RELEASE_BASE_URL,
         env!("CARGO_PKG_VERSION")
     );
-    let response = reqwest::blocking::get(&url)
+    download_linux_runtime_on_worker(url)
+}
+
+fn installed_linux_runtime() -> DeployResult<Option<Vec<u8>>> {
+    let executable = std::env::current_exe()?;
+    if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        return fs::read(executable).map(Some).map_err(DeployError::from);
+    }
+    let Some(install_dir) = executable.parent() else {
+        return Ok(None);
+    };
+    let runtime = install_dir
+        .join("assets")
+        .join("runtimes")
+        .join("linux-amd64")
+        .join("dowe");
+    match fs::read(runtime) {
+        Ok(runtime) => Ok(Some(runtime)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn download_linux_runtime_on_worker(url: String) -> DeployResult<Vec<u8>> {
+    std::thread::spawn(move || download_linux_runtime(&url))
+        .join()
+        .map_err(|_| DeployError::new("Dowe Linux runtime download worker failed"))?
+}
+
+fn download_linux_runtime(url: &str) -> DeployResult<Vec<u8>> {
+    let response = reqwest::blocking::get(url)
         .map_err(|_| DeployError::new("failed to download the Dowe Linux runtime"))?;
     if !response.status().is_success() {
         return Err(DeployError::new(format!(
@@ -543,7 +487,11 @@ fn extract_runtime(archive: &[u8]) -> DeployResult<Vec<u8>> {
     ))
 }
 
-fn validate_linux_amd64_elf(runtime: &[u8]) -> DeployResult<()> {
+pub(crate) fn validate_linux_amd64_runtime(
+    runtime: &[u8],
+    capability: &[u8],
+    capability_name: &str,
+) -> DeployResult<()> {
     if runtime.len() < 20
         || &runtime[..4] != b"\x7fELF"
         || runtime[4] != 2
@@ -551,16 +499,16 @@ fn validate_linux_amd64_elf(runtime: &[u8]) -> DeployResult<()> {
         || u16::from_le_bytes([runtime[18], runtime[19]]) != 62
     {
         return Err(DeployError::new(
-            "SSH deploy requires a Linux amd64 Dowe runtime",
+            "deploy requires a Linux amd64 Dowe runtime",
         ));
     }
     if !runtime
-        .windows(TRAILER_MAGIC.len())
-        .any(|window| window == TRAILER_MAGIC)
+        .windows(capability.len())
+        .any(|window| window == capability)
     {
-        return Err(DeployError::new(
-            "the Dowe Linux runtime does not support embedded SSH applications",
-        ));
+        return Err(DeployError::new(format!(
+            "the Dowe Linux runtime does not support {capability_name}"
+        )));
     }
     Ok(())
 }
@@ -631,57 +579,15 @@ fn run_inherited(program: &str, args: &[String]) -> DeployResult<()> {
     Ok(())
 }
 
-fn read_u64(bytes: &[u8], offset: usize) -> DeployResult<u64> {
-    let end = offset
-        .checked_add(8)
-        .filter(|end| *end <= bytes.len())
-        .ok_or_else(|| DeployError::new("truncated embedded SSH executable"))?;
-    Ok(u64::from_le_bytes(
-        bytes[offset..end].try_into().expect("u64 bytes"),
-    ))
-}
-
-fn usize_value(value: u64) -> DeployResult<usize> {
-    usize::try_from(value).map_err(|_| DeployError::new("embedded SSH offset is too large"))
-}
-
-fn checked_end(offset: usize, length: usize, limit: usize) -> DeployResult<usize> {
-    offset
-        .checked_add(length)
-        .filter(|end| *end <= limit)
-        .ok_or_else(|| DeployError::new("invalid embedded SSH executable bounds"))
-}
-
-fn is_sha256_hex(value: &str) -> bool {
-    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
-}
-
-fn is_environment_name(value: &str) -> bool {
-    let mut characters = value.chars();
-    matches!(characters.next(), Some(first) if first.is_ascii_uppercase())
-        && characters.all(|character| {
-            character.is_ascii_uppercase() || character.is_ascii_digit() || character == '_'
-        })
-}
-
-#[cfg(unix)]
-fn set_executable(path: &Path) -> DeployResult<()> {
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn set_executable(_path: &Path) -> DeployResult<()> {
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        EmbeddedSshMetadata, REMOTE_SCRIPT, SshDestination, decode_executable, encode_executable,
+        EmbeddedSshMetadata, REMOTE_SCRIPT, SshDestination, download_linux_runtime_on_worker,
         generate_ssh_with_runtime, materialize_embedded_ssh_executable, publish_ssh,
-        reset_runtime_root, validate_linux_amd64_elf,
+        validate_linux_amd64_runtime,
+    };
+    use crate::embedded::{
+        SSH_TRAILER_MAGIC, decode_embedded_payload, encode_embedded_payload, reset_runtime_root,
     };
     use crate::model::DeployEnvironment;
     use sha2::{Digest, Sha256};
@@ -701,16 +607,17 @@ mod tests {
             client_environment: Vec::new(),
         })
         .expect("metadata");
-        let executable = encode_executable(&runtime, application, &metadata);
-        let (decoded_application, decoded_metadata) = decode_executable(&executable)
+        let executable =
+            encode_embedded_payload(&runtime, application, &metadata, SSH_TRAILER_MAGIC);
+        let payload = decode_embedded_payload(&executable, SSH_TRAILER_MAGIC, "SSH")
             .expect("decode")
             .expect("embedded");
-        assert_eq!(decoded_application, application);
-        assert_eq!(decoded_metadata, metadata);
+        assert_eq!(payload.application, application);
+        assert_eq!(payload.metadata, metadata);
 
         let mut corrupted = executable;
         corrupted[runtime.len()] ^= 1;
-        assert!(decode_executable(&corrupted).is_err());
+        assert!(decode_embedded_payload(&corrupted, SSH_TRAILER_MAGIC, "SSH").is_err());
     }
 
     #[test]
@@ -732,8 +639,33 @@ mod tests {
 
     #[test]
     fn runtime_must_be_linux_amd64_elf() {
-        assert!(validate_linux_amd64_elf(&linux_runtime()).is_ok());
-        assert!(validate_linux_amd64_elf(&Sha256::digest(b"not elf")).is_err());
+        assert!(
+            validate_linux_amd64_runtime(
+                &linux_runtime(),
+                SSH_TRAILER_MAGIC,
+                "embedded SSH applications"
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_linux_amd64_runtime(
+                &Sha256::digest(b"not elf"),
+                SSH_TRAILER_MAGIC,
+                "embedded SSH applications"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn runtime_download_worker_is_safe_inside_tokio_runtime() {
+        let runtime = tokio::runtime::Runtime::new().expect("runtime");
+        runtime.block_on(async {
+            let result = std::panic::catch_unwind(|| {
+                download_linux_runtime_on_worker("http://127.0.0.1:1/runtime.tar.gz".into())
+            });
+            assert!(result.expect("download must not panic").is_err());
+        });
     }
 
     #[test]
@@ -816,6 +748,86 @@ mod tests {
         assert!(REMOTE_SCRIPT.contains("ReadWritePaths=/var/lib/dowe/$service"));
     }
 
+    #[test]
+    fn remote_script_preflights_before_installing() {
+        let action = REMOTE_SCRIPT.find("action=$1").expect("action");
+        let validation = REMOTE_SCRIPT
+            .find("command -v systemctl")
+            .expect("validation");
+        let preflight_exit = REMOTE_SCRIPT
+            .find("if [ \"$action\" = preflight ]; then")
+            .expect("preflight exit");
+        let installation = REMOTE_SCRIPT.find("as_root install").expect("installation");
+
+        assert!(action < validation);
+        assert!(validation < preflight_exit);
+        assert!(preflight_exit < installation);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn remote_installer_skips_sudo_for_a_root_session() {
+        let output = run_privilege_setup("0", false);
+
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"ready");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn remote_installer_requires_sudo_for_a_non_root_session() {
+        let output = run_privilege_setup("1000", false);
+
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("requires root or sudo"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn remote_installer_uses_validated_sudo_for_a_non_root_session() {
+        let output = run_privilege_setup("1000", true);
+
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"ready");
+    }
+
+    #[cfg(unix)]
+    fn run_privilege_setup(uid: &str, sudo_available: bool) -> std::process::Output {
+        let tools = tempfile::tempdir().expect("tools");
+        write_executable(
+            &tools.path().join("id"),
+            "#!/bin/sh\nprintf '%s\\n' \"$DOWE_TEST_UID\"\n",
+        );
+        if sudo_available {
+            write_executable(
+                &tools.path().join("sudo"),
+                "#!/bin/sh\nif [ \"${1:-}\" = -v ]; then exit 0; fi\n\"$@\"\n",
+            );
+        }
+        let start = REMOTE_SCRIPT
+            .find("if [ \"$(id -u)\" -eq 0 ]; then")
+            .expect("privilege setup");
+        let end = REMOTE_SCRIPT[start..]
+            .find("if [ \"$action\" = preflight ]; then")
+            .map(|offset| start + offset)
+            .expect("install setup");
+        let script = format!("{}\nas_root printf ready", &REMOTE_SCRIPT[start..end]);
+        Command::new("/bin/sh")
+            .args(["-c", &script])
+            .env("PATH", tools.path())
+            .env("DOWE_TEST_UID", uid)
+            .output()
+            .expect("shell")
+    }
+
+    #[cfg(unix)]
+    fn write_executable(path: &std::path::Path, content: &str) {
+        std::fs::write(path, content).expect("executable");
+        let mut permissions = std::fs::metadata(path).expect("metadata").permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut permissions, 0o755);
+        std::fs::set_permissions(path, permissions).expect("permissions");
+    }
+
     #[cfg(unix)]
     #[test]
     fn remote_installer_is_valid_posix_shell() {
@@ -853,7 +865,7 @@ mod tests {
         runtime[4] = 2;
         runtime[5] = 1;
         runtime[18..20].copy_from_slice(&62u16.to_le_bytes());
-        runtime[64..72].copy_from_slice(super::TRAILER_MAGIC);
+        runtime[64..72].copy_from_slice(SSH_TRAILER_MAGIC);
         runtime
     }
 }

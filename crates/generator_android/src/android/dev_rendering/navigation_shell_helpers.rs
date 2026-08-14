@@ -177,7 +177,10 @@ fn render_dev_android_sidebar(
                 counter,
                 output,
                 current_font,
-                Some(dev_variant_content(&props.style).to_string()),
+                Some(dev_content_colors(
+                    dev_scheme_title(&props.style),
+                    dev_scheme_title(&props.style),
+                )),
                 context,
                 children_method,
             );
@@ -195,7 +198,10 @@ fn render_dev_android_sidebar(
             counter,
             output,
             current_font,
-            Some(dev_variant_content(&props.style).to_string()),
+            Some(dev_content_colors(
+                dev_variant_content(&props.style),
+                dev_scheme_title(&props.style),
+            )),
             context,
             children_method,
         );
@@ -214,7 +220,10 @@ fn render_dev_android_sidebar(
                 counter,
                 output,
                 current_font,
-                Some(dev_variant_content(&props.style).to_string()),
+                Some(dev_content_colors(
+                    dev_variant_content(&props.style),
+                    dev_scheme_title(&props.style),
+                )),
                 context,
                 children_method,
             );
@@ -304,13 +313,15 @@ fn render_dev_android_side_nav_data(
     };
     let container = match (&variant, &scheme) { (None, None) => dev_variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
     let content = match (&variant, &scheme) { (None, None) => dev_nav_active_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
+    let title = match (&variant, &scheme) { (None, None) => dev_side_nav_header_content(&props.style).to_string(), _ => format!("doweSideNavHeaderColor({})", scheme.as_deref().unwrap_or("\"muted\"")) };
     let wide = dev_side_nav_wide(props, context);
     let entries = dev_side_nav_entries(items);
     output.push_str(&format!(
-        "        doweRenderSideNav({parent}, {entries}, \"{}\", {wide}, {padding_horizontal}, {padding_vertical}, {gap}, {label_size}, {description_size}, {}, {}, {});\n",
+        "        doweRenderSideNav({parent}, {entries}, \"{}\", {wide}, {padding_horizontal}, {padding_vertical}, {gap}, {label_size}, {description_size}, {}, {}, {}, {});\n",
         escape_java(&side_nav_memory_key(props, items)),
         container,
         content,
+        title,
         dev_font_value(inherited_font)
     ));
 }
@@ -511,7 +522,7 @@ fn render_dev_android_side_nav_item(
             );
             let trigger = render_dev_android_side_nav_row(
                 props,
-                true,
+                false,
                 parent,
                 nav,
                 wide,
@@ -580,7 +591,7 @@ fn render_dev_android_rail_nav(
                 let view = next_dev_view(counter);
                 let active = dev_side_nav_active(item.navigation.as_ref());
                 let active_content = dev_nav_active_content(&props.style);
-                let content = format!("({active}) ? {active_content} : DOWE_ON_BACKGROUND");
+                let content = format!("({active}) ? {active_content} : DOWE_BACKGROUND_TEXT");
                 output.push_str(&format!(
                     "        LinearLayout {view} = doweContainer(false);\n        {view}.setGravity(Gravity.CENTER_HORIZONTAL);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({item_size}), doweDp({item_size})));\n        {view}.setPadding(doweDp(6), doweDp(6), doweDp(6), doweDp(6));\n        {view}.setContentDescription({});\n        if ({active}) {{ {view}.setBackground(doweBackground({}, DOWE_RADIUS)); }}\n        doweAdd({rail}, {view}, 4, false);\n",
                     dev_localized_literal(&item.label, item.i18n.as_deref()),
@@ -666,7 +677,7 @@ fn render_dev_android_bottom_bar(
             &tab.icon,
             counter,
             output,
-            tab.featured.then_some("DOWE_ON_PRIMARY"),
+            tab.featured.then_some("DOWE_PRIMARY_TEXT"),
         );
         output.push_str(&format!(
             "        {icon}.setLayoutParams(new LinearLayout.LayoutParams(doweDp(20), doweDp(20)));\n        doweAdd({view}, {icon});\n"
@@ -674,7 +685,7 @@ fn render_dev_android_bottom_bar(
         output.push_str(&format!(
             "        TextView {view}Label = doweText({}, {}, 10f, 600, 0f, 10f, {});\n        {view}Label.setGravity(Gravity.CENTER);\n        {view}Label.setMaxLines(1);\n        doweAdd({view}, {view}Label, 2, false);\n",
             dev_localized_literal(&tab.label, tab.i18n.as_deref()),
-            if tab.featured { "DOWE_ON_PRIMARY" } else { "DOWE_ON_BACKGROUND" },
+            if tab.featured { "DOWE_PRIMARY_TEXT" } else { "DOWE_BACKGROUND_TEXT" },
             dev_font_value(inherited_font),
         ));
         if let Some(action) = dev_android_navigation_action(Some(&tab.navigation)) {
@@ -705,7 +716,12 @@ fn render_dev_android_side_nav_row(
     };
     let active = dev_side_nav_active(props.navigation.as_ref());
     let active_content = dev_nav_active_content(&nav.style);
-    let content = format!("({active}) ? {active_content} : DOWE_ON_BACKGROUND");
+    let content = format!("({active}) ? {active_content} : DOWE_BACKGROUND_TEXT");
+    let label_content = if header {
+        dev_side_nav_header_content(&nav.style).to_string()
+    } else {
+        content.clone()
+    };
     output.push_str(&format!(
         "        LinearLayout {view} = doweContainer(true);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams({}, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setGravity(Gravity.CENTER_VERTICAL);\n        {view}.setPadding(doweDp({padding_horizontal}), doweDp({padding_vertical}), doweDp({padding_horizontal}), doweDp({padding_vertical}));\n        if ({}) {{ {view}.setBackground(doweBackground({}, DOWE_RADIUS)); }}\n",
         format!("{wide} ? ViewGroup.LayoutParams.MATCH_PARENT : ViewGroup.LayoutParams.WRAP_CONTENT"),
@@ -714,11 +730,16 @@ fn render_dev_android_side_nav_row(
     ));
     output.push_str(&format!("        doweAdd({parent}, {view});\n"));
     if let Some(icon) = props.icon.as_ref() {
-        render_dev_android_side_nav_icon(icon, &view, counter, output, Some(&content));
+        let icon_content = if header {
+            dev_side_nav_header_content(&nav.style)
+        } else {
+            content.as_str()
+        };
+        render_dev_android_side_nav_icon(icon, &view, counter, output, Some(icon_content));
     }
     let copy = next_dev_view(counter);
     output.push_str(&format!(
-        "        LinearLayout {copy} = doweContainer(false);\n        {copy}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n        doweAdd({view}, {copy}{copy_gap});\n        TextView {copy}Label = doweText({}, {content}, {label_size}f, {}, 0f, {label_size}f, {});\n        doweAdd({copy}, {copy}Label);\n",
+        "        LinearLayout {copy} = doweContainer(false);\n        {copy}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n        doweAdd({view}, {copy}{copy_gap});\n        TextView {copy}Label = doweText({}, {label_content}, {label_size}f, {}, 0f, {label_size}f, {});\n        doweAdd({copy}, {copy}Label);\n",
         dev_localized_literal(&props.label, props.i18n.as_deref()),
         if header { "600" } else { "400" },
         dev_font_value(inherited_font)

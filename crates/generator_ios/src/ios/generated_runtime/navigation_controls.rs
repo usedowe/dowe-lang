@@ -217,7 +217,7 @@ struct DoweSideNavRow<Content: View>: View {
         .frame(maxWidth: wide ? .infinity : nil, alignment: .leading)
         .contentShape(Rectangle())
         .background(active ? backgroundColor : Color.clear)
-        .foregroundStyle(active ? contentColor : DoweDesign.onBackground)
+        .foregroundStyle(active ? contentColor : DoweDesign.backgroundText)
         .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
         .overlay(
             RoundedRectangle(cornerRadius: DoweDesign.radius)
@@ -249,7 +249,7 @@ struct DoweSideNavStatus: View {
             .padding(.horizontal, CGFloat(8))
             .padding(.vertical, CGFloat(2))
             .background(DoweDesign.softMuted)
-            .foregroundStyle(DoweDesign.onSoftMuted)
+            .foregroundStyle(DoweDesign.softMutedText)
             .clipShape(Capsule())
     }
 }
@@ -297,7 +297,7 @@ struct DoweRailNavItem: View {
             .frame(width: itemSize)
             .frame(minHeight: itemSize)
             .background(active || featured ? backgroundColor : Color.clear)
-            .foregroundStyle(active || featured ? contentColor : DoweDesign.onBackground)
+            .foregroundStyle(active || featured ? contentColor : DoweDesign.backgroundText)
             .clipShape(RoundedRectangle(cornerRadius: featured ? itemSize / 2 : DoweDesign.radius))
             .overlay(
                 RoundedRectangle(cornerRadius: featured ? itemSize / 2 : DoweDesign.radius)
@@ -348,6 +348,7 @@ struct DoweSideNav: View {
     let descriptionFont: Font
     let backgroundColor: Color
     let contentColor: Color
+    let titleColor: Color
     let activeContentColor: Color
     let borderColor: Color?
     let navigate: (String, String, String?) -> Void
@@ -373,7 +374,7 @@ struct DoweSideNav: View {
                     row(child, header: false, action: action(for: child))
                 }
             } label: { expanded in
-                row(item, header: true, action: nil, expanded: expanded)
+                row(item, header: false, action: nil, expanded: expanded)
             }
         case "header":
             row(item, header: true, action: action(for: item))
@@ -385,7 +386,7 @@ struct DoweSideNav: View {
     private func row(_ item: DoweSideNavEntry, header: Bool, action: (() -> Void)?, expanded: Bool? = nil) -> some View {
         DoweSideNavRow(active: item.path == activePath, wide: wide, paddingHorizontal: paddingHorizontal, paddingVertical: paddingVertical, gap: gap, backgroundColor: backgroundColor, contentColor: contentColor, borderColor: borderColor, action: action) {
             if let icon = item.icon {
-                DoweSvgView(viewBox: icon.viewBox, color: icon.color ?? (item.path == activePath ? activeContentColor : DoweDesign.onBackground), paths: icon.paths)
+                DoweSvgView(viewBox: icon.viewBox, color: icon.color ?? (header ? titleColor : (item.path == activePath ? activeContentColor : DoweDesign.backgroundText)), paths: icon.paths)
                     .frame(width: icon.width)
                     .frame(maxWidth: icon.maxWidth)
                     .frame(height: icon.height)
@@ -397,6 +398,7 @@ struct DoweSideNav: View {
                 Text(item.label)
                     .font(labelFont)
                     .fontWeight(header ? .semibold : .regular)
+                    .foregroundStyle(header ? titleColor : (item.path == activePath ? contentColor : DoweDesign.backgroundText))
                 if let description = item.description {
                     Text(description)
                         .font(descriptionFont)
@@ -526,7 +528,7 @@ struct DoweNavMenuItem<Content: View>: View {
         .padding(.horizontal, paddingHorizontal)
         .padding(.vertical, paddingVertical)
         .background(active ? backgroundColor : Color.clear)
-        .foregroundStyle(active ? contentColor : DoweDesign.onBackground)
+        .foregroundStyle(active ? contentColor : DoweDesign.backgroundText)
         .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
         .overlay(
             RoundedRectangle(cornerRadius: DoweDesign.radius)
@@ -552,7 +554,7 @@ struct DoweSideNavArrow: View {
     var body: some View {
         DoweSvgView(
             viewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24)),
-            color: DoweDesign.onBackground,
+            color: DoweDesign.backgroundText,
             paths: [
                 DoweSvgPathData(data: "M0 0h24v24H0z", fill: .none),
                 DoweSvgPathData(data: "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__", fill: .currentColor)

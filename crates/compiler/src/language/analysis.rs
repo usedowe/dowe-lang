@@ -632,7 +632,7 @@ fn store_binding_fields(
 fn store_binding_expression(node: &SourceNode) -> Option<(String, String)> {
     if node.name == "query" {
         let binding = node.args.first()?.as_required_string()?;
-        let expression = node.prop("db")?.value.as_required_string()?;
+        let expression = node.prop("conn")?.value.as_required_string()?;
         return Some((binding, expression));
     }
     assignment_expression(node)

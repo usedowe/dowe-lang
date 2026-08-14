@@ -165,9 +165,7 @@ pub fn modal_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Modal, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Solid);
-    style.color.get_or_insert(ColorFamily::Surface);
+    let style = parse_variant_props(BuiltinComponent::Modal, &style_props)?;
     Ok(ViewNode::Modal {
         props: ModalProps {
             style,
@@ -252,10 +250,8 @@ pub fn tooltip_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Tooltip, &style_props)?;
+    let style = parse_variant_props(BuiltinComponent::Tooltip, &style_props)?;
     require_solid_or_soft(BuiltinComponent::Tooltip, style.variant)?;
-    style.variant.get_or_insert(ComponentVariant::Solid);
-    style.color.get_or_insert(ColorFamily::Muted);
     Ok(ViewNode::Tooltip {
         props: TooltipProps {
             style,
@@ -275,7 +271,6 @@ pub fn toast_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
     let mut position = OverlayCornerPosition::BottomLeft;
     let mut show_icon = false;
     let mut style_props = Vec::new();
-    let mut explicit_scheme = false;
     for prop in props {
         match prop.name.as_str() {
             "source" => {
@@ -291,18 +286,13 @@ pub fn toast_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
             "position" => position = parse_overlay_corner_position(&prop.name, &prop.value)?,
             "showIcon" => show_icon = parse_static_bool(&prop.name, &prop.value)?,
             "scheme" => {
-                explicit_scheme = true;
                 style_props.push(prop);
             }
             "color" => return Err(scheme_prop_error(BuiltinComponent::Toast)),
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Toast, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Solid);
-    if !explicit_scheme {
-        style.color.get_or_insert(kind.color());
-    }
+    let style = parse_variant_props(BuiltinComponent::Toast, &style_props)?;
     Ok(ViewNode::Toast {
         props: ToastProps {
             style,
@@ -350,9 +340,7 @@ pub fn dropdown_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Dropdown, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Solid);
-    style.color.get_or_insert(ColorFamily::Primary);
+    let style = parse_variant_props(BuiltinComponent::Dropdown, &style_props)?;
     Ok(ViewNode::Dropdown {
         props: DropdownProps { style },
         trigger,

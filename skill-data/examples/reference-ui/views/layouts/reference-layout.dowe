@@ -4,22 +4,36 @@ layout ReferenceLayout
   signal openNavigation value:false
   Scaffold
     appBar
-      AppBar variant:"soft" scheme:"background" boxed:true bordered:true position:"fixed"
+      AppBar variant:"soft" scheme:"background" boxed:true bordered:true position:"fixed" shadow:"sm"
         start
           Brand href:"/" label:"Reference Workspace home"
             Flex align:"center" gap:2
-              Icon name:"layers-minimalistic" style:"bold-duotone" fill:"secondary" w:7 h:7
+              Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:7 h:7
               Text weight:"black"
                 "REFERENCE"
         center
-          Box show:{ xs:false md:true }
-            SiteNavigation
+          NavMenu show:{ xs:false md:true }
+            item label:"Overview" href:"/"
+            item label:"Product" href:"/#product"
+            item label:"Services" href:"/#services"
+            item label:"Workflow" href:"/#workflow"
+            item label:"Contact" href:"/#contact"
         end
           Button href:"/#contact" show:{ xs:false md:true }
             "Get started"
           IconButton icon:"menu-dots" label:"Open navigation" show:{ xs:true md:false } onClick:{ set:openNavigation value:!openNavigation }
     main
       children
+      Footer boxed:true variant:"soft" scheme:"background" bordered:true
+        start
+          Brand href:"/" label:"Reference Workspace home"
+            Flex align:"center" gap:2
+              Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:7 h:7
+              Text weight:"black"
+                "REFERENCE"
+        end
+          Text size:"sm" color:"muted"
+            "Portable source · authored visual direction"
     overlays
       Drawer open:openNavigation
         header

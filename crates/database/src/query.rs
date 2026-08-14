@@ -2,6 +2,9 @@ use crate::engine::{Database, QueryPlan, StoreRecord};
 use crate::error::{StoreError, StoreResult};
 use crate::names::{validate_field_name, validate_table_name};
 use crate::value::StoreValue;
+use dowe_database_query::{
+    QueryIdentifier, QueryOperand, QueryProjectionValue, QueryValue, SelectQuery,
+};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -103,6 +106,183 @@ pub fn bind_query_params(sql: &str, params: &[Value]) -> StoreResult<String> {
         index = end;
     }
     Ok(output)
+}
+
+pub fn execute_portable_select(
+    database: &Database,
+    query: &SelectQuery,
+    params: &[Value],
+) -> StoreResult<QueryOutcome> {
+    query
+        .validate_parameters(params.len())
+        .map_err(StoreError::InvalidQuery)?;
+    validate_table_name(&query.source.table)?;
+    let version = database.current_version()?;
+    let mut rows = database
+        .records_at(&query.source.table, version)?
+        .into_iter()
+        .map(|record| portable_base_row(query.source.qualifier(), record))
+        .collect::<Vec<_>>();
+
+    for join in &query.joins {
+        validate_table_name(&join.source.table)?;
+        let right_rows = database.records_at(&join.source.table, version)?;
+        let mut joined = Vec::new();
+        for left in rows {
+            for right in &right_rows {
+                let mut candidate = left.clone();
+                namespace_fields(&mut candidate, join.source.qualifier(), right);
+                let Some(left_value) = lookup_identifier(&candidate, &join.left) else {
+                    continue;
+                };
+                let Some(right_value) = lookup_identifier(&candidate, &join.right) else {
+                    continue;
+                };
+                if left_value.comparable_text() == right_value.comparable_text() {
+                    joined.push(candidate);
+                }
+            }
+        }
+        rows = joined;
+    }
+
+    for filter in &query.filters {
+        match &filter.right {
+            QueryOperand::Identifier(identifier) => rows.retain(|record| {
+                let Some(left) = lookup_identifier(record, &filter.left) else {
+                    return false;
+                };
+                let Some(right) = lookup_identifier(record, identifier) else {
+                    return false;
+                };
+                left.comparable_text() == right.comparable_text()
+            }),
+            operand => {
+                let expected = operand_value(operand, params)?;
+                rows.retain(|record| {
+                    lookup_identifier(record, &filter.left)
+                        .is_some_and(|value| value.comparable_text() == expected.comparable_text())
+                });
+            }
+        }
+    }
+
+    for order in query.order.iter().rev() {
+        rows.sort_by(|left, right| {
+            let ordering = lookup_order_value(left, &order.field, query)
+                .map(StoreValue::comparable_text)
+                .cmp(
+                    &lookup_order_value(right, &order.field, query)
+                        .map(StoreValue::comparable_text),
+                );
+            if order.descending {
+                ordering.reverse()
+            } else {
+                ordering
+            }
+        });
+    }
+
+    if let Some(offset) = query.offset {
+        rows = rows.into_iter().skip(offset).collect();
+    }
+    if let Some(limit) = query.limit {
+        rows.truncate(limit);
+    }
+
+    let rows = rows
+        .into_iter()
+        .map(|record| project_portable(&record, query))
+        .collect::<Vec<_>>();
+    Ok(QueryOutcome::Rows {
+        rows,
+        plan: QueryPlan {
+            indexed: false,
+            detail: if query.joins.is_empty() {
+                "portable table scan".to_string()
+            } else {
+                "portable join".to_string()
+            },
+        },
+    })
+}
+
+fn portable_base_row(qualifier: &str, record: StoreRecord) -> StoreRecord {
+    let mut row = record.clone();
+    namespace_fields(&mut row, qualifier, &record);
+    row
+}
+
+fn operand_value(operand: &QueryOperand, params: &[Value]) -> StoreResult<StoreValue> {
+    match operand {
+        QueryOperand::Identifier(_) => Err(StoreError::InvalidQuery(
+            "portable query identifier value requires a result row".to_string(),
+        )),
+        QueryOperand::Value(QueryValue::Parameter(index)) => params
+            .get(index.saturating_sub(1))
+            .cloned()
+            .map(StoreValue::from_json)
+            .ok_or_else(|| {
+                StoreError::InvalidQuery(format!("query parameter `?{index}` is missing"))
+            }),
+        QueryOperand::Value(QueryValue::Null) => Ok(StoreValue::Null),
+        QueryOperand::Value(QueryValue::Bool(value)) => Ok(StoreValue::Bool(*value)),
+        QueryOperand::Value(QueryValue::Number(value)) => {
+            Ok(StoreValue::from_json(serde_json::from_str(value)?))
+        }
+        QueryOperand::Value(QueryValue::String(value)) => Ok(StoreValue::String(value.clone())),
+    }
+}
+
+fn lookup_identifier<'a>(
+    record: &'a StoreRecord,
+    identifier: &QueryIdentifier,
+) -> Option<&'a StoreValue> {
+    let field = identifier.key();
+    lookup(record, &field)
+}
+
+fn lookup_order_value<'a>(
+    record: &'a StoreRecord,
+    identifier: &QueryIdentifier,
+    query: &SelectQuery,
+) -> Option<&'a StoreValue> {
+    lookup_identifier(record, identifier).or_else(|| {
+        let alias = (identifier.parts.len() == 1).then(|| identifier.parts[0].as_str())?;
+        query.projections.iter().find_map(|projection| {
+            if projection.alias.as_deref() != Some(alias) {
+                return None;
+            }
+            let QueryProjectionValue::Identifier(identifier) = &projection.value else {
+                return None;
+            };
+            lookup_identifier(record, identifier)
+        })
+    })
+}
+
+fn project_portable(record: &StoreRecord, query: &SelectQuery) -> StoreRecord {
+    if query.projections.len() == 1
+        && matches!(query.projections[0].value, QueryProjectionValue::Wildcard)
+    {
+        return record
+            .iter()
+            .filter(|(field, _)| !field.contains('.'))
+            .map(|(field, value)| (field.clone(), value.clone()))
+            .collect();
+    }
+    let mut output = StoreRecord::new();
+    for projection in &query.projections {
+        let QueryProjectionValue::Identifier(identifier) = &projection.value else {
+            continue;
+        };
+        if let Some(value) = lookup_identifier(record, identifier)
+            && let Some(name) = projection.output_name()
+        {
+            output.insert(name.to_string(), value.clone());
+        }
+    }
+    output
 }
 
 fn select(database: &Database, tokens: &[String], version: u64) -> StoreResult<QueryOutcome> {
@@ -491,7 +671,10 @@ fn push_current(tokens: &mut Vec<String>, current: &mut String) {
 #[cfg(test)]
 mod tests {
     use super::bind_query_params;
-    use serde_json::json;
+    use crate::{StoreRecord, StoreValue, init_database, open_database};
+    use dowe_database_query::parse_select;
+    use serde_json::{Value, json};
+    use tempfile::tempdir;
 
     #[test]
     fn binds_dowe_query_parameters_outside_literals() {
@@ -503,5 +686,69 @@ mod tests {
             .expect("query"),
             "select * from users where name = \"Ana\" and template = \"?2\""
         );
+    }
+
+    #[test]
+    fn executes_documented_multi_join_query_with_portable_aliases() {
+        let root = tempdir().expect("root");
+        init_database(root.path(), "app").expect("database");
+        let database = open_database(root.path(), "app").expect("open");
+        for (table, value) in [
+            (
+                "users",
+                json!({ "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV", "name": "Ana" }),
+            ),
+            (
+                "roles",
+                json!({ "id": "01ARZ3NDEKTSV4RRFFQ69G5FAW", "name": "admin" }),
+            ),
+            (
+                "user_roles",
+                json!({
+                    "id": "01ARZ3NDEKTSV4RRFFQ69G5FAX",
+                    "userId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                    "roleId": "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+                }),
+            ),
+        ] {
+            let Value::Object(record) = value else {
+                unreachable!();
+            };
+            let record = record
+                .into_iter()
+                .map(|(field, value)| (field, StoreValue::from_json(value)))
+                .collect::<StoreRecord>();
+            database.insert(table, record).expect("insert");
+        }
+        let query = parse_select("SELECT users.name, roles.name AS roleName FROM users JOIN user_roles ON user_roles.userId = users.id JOIN roles ON user_roles.roleId = roles.id WHERE users.id = ?1").expect("query");
+        let result = database
+            .query_portable_json(&query, &[json!("01ARZ3NDEKTSV4RRFFQ69G5FAV")])
+            .expect("result");
+        assert_eq!(result, json!([{ "name": "Ana", "roleName": "admin" }]));
+    }
+
+    #[test]
+    fn executes_portable_identifier_filters() {
+        let root = tempdir().expect("root");
+        init_database(root.path(), "app").expect("database");
+        let database = open_database(root.path(), "app").expect("open");
+        let record = [
+            (
+                "id".to_string(),
+                StoreValue::String("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
+            ),
+            (
+                "externalId".to_string(),
+                StoreValue::String("01ARZ3NDEKTSV4RRFFQ69G5FAV".to_string()),
+            ),
+        ]
+        .into_iter()
+        .collect::<StoreRecord>();
+        database.insert("users", record).expect("insert");
+        let query = parse_select("SELECT id FROM users WHERE id = externalId").expect("query");
+
+        let result = database.query_portable_json(&query, &[]).expect("result");
+
+        assert_eq!(result, json!([{ "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV" }]));
     }
 }

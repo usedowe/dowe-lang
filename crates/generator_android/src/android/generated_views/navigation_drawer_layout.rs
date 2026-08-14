@@ -150,7 +150,7 @@ private fun DoweSideNavStatus(text: String, descriptionSize: Float, fontFamily: 
             .clip(RoundedCornerShape(999.dp))
             .background(DoweDesign.softMuted)
             .padding(horizontal = 8.dp, vertical = 2.dp),
-        color = DoweDesign.onSoftMuted,
+        color = DoweDesign.softMutedText,
         fontSize = descriptionSize.sp,
         fontFamily = fontFamily,
         fontWeight = FontWeight.SemiBold
@@ -160,35 +160,35 @@ private fun DoweSideNavStatus(text: String, descriptionSize: Float, fontFamily: 
 private data class DoweSideNavEntry(val id: String, val kind: String, val label: String, val description: String?, val status: String?, val operation: String?, val path: String?, val fragment: String?, val open: Boolean = false, val bordered: Boolean = true, val children: List<DoweSideNavEntry> = emptyList())
 
 @Composable
-private fun DoweSideNav(items: List<DoweSideNavEntry>, stateKey: String, modifier: Modifier = Modifier, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
+private fun DoweSideNav(items: List<DoweSideNavEntry>, stateKey: String, modifier: Modifier = Modifier, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, titleColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
     Column(modifier = modifier.then(if (wide) Modifier.fillMaxWidth() else Modifier), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         items.forEach { item ->
-            DoweSideNavEntryView(item = item, stateKey = "$stateKey:${item.id}", activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, activeContentColor = activeContentColor, borderColor = borderColor, navigate = navigate)
+            DoweSideNavEntryView(item = item, stateKey = "$stateKey:${item.id}", activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, titleColor = titleColor, activeContentColor = activeContentColor, borderColor = borderColor, navigate = navigate)
         }
     }
 }
 
 @Composable
-private fun DoweSideNavEntryView(item: DoweSideNavEntry, stateKey: String, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
+private fun DoweSideNavEntryView(item: DoweSideNavEntry, stateKey: String, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, titleColor: Color, activeContentColor: Color, borderColor: Color?, navigate: (String, String, String?) -> Unit) {
     when (item.kind) {
         "divider" -> Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(DoweDesign.muted))
         "submenu" -> DoweSideNavSubmenu(stateKey = stateKey, open = item.open, bordered = item.bordered, wide = wide, trigger = { expanded, toggle ->
-            DoweSideNavEntryRow(item = item, header = true, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = toggle, submenuExpanded = expanded)
+            DoweSideNavEntryRow(item = item, header = false, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, titleColor = titleColor, borderColor = borderColor, onClick = toggle, submenuExpanded = expanded)
         }) {
             item.children.forEach { child ->
-                DoweSideNavEntryRow(item = child, header = false, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = sideNavAction(child, navigate))
+                DoweSideNavEntryRow(item = child, header = false, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, titleColor = titleColor, borderColor = borderColor, onClick = sideNavAction(child, navigate))
             }
         }
-        "header" -> DoweSideNavEntryRow(item = item, header = true, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = sideNavAction(item, navigate))
-        else -> DoweSideNavEntryRow(item = item, header = false, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = sideNavAction(item, navigate))
+        "header" -> DoweSideNavEntryRow(item = item, header = true, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, titleColor = titleColor, borderColor = borderColor, onClick = sideNavAction(item, navigate))
+        else -> DoweSideNavEntryRow(item = item, header = false, activePath = activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, labelSize = labelSize, descriptionSize = descriptionSize, fontFamily = fontFamily, backgroundColor = backgroundColor, contentColor = contentColor, titleColor = titleColor, borderColor = borderColor, onClick = sideNavAction(item, navigate))
     }
 }
 
 @Composable
-private fun DoweSideNavEntryRow(item: DoweSideNavEntry, header: Boolean, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, borderColor: Color?, onClick: (() -> Unit)?, submenuExpanded: Boolean? = null) {
+private fun DoweSideNavEntryRow(item: DoweSideNavEntry, header: Boolean, activePath: String, wide: Boolean, paddingHorizontal: Dp, paddingVertical: Dp, gap: Dp, labelSize: Float, descriptionSize: Float, fontFamily: FontFamily, backgroundColor: Color, contentColor: Color, titleColor: Color, borderColor: Color?, onClick: (() -> Unit)?, submenuExpanded: Boolean? = null) {
     DoweSideNavRow(active = item.path == activePath, wide = wide, paddingHorizontal = paddingHorizontal, paddingVertical = paddingVertical, gap = gap, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor, onClick = onClick) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = item.label, fontSize = labelSize.sp, fontFamily = fontFamily, fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal)
+            Text(text = item.label, fontSize = labelSize.sp, fontFamily = fontFamily, fontWeight = if (header) FontWeight.SemiBold else FontWeight.Normal, color = if (header) titleColor else LocalContentColor.current)
             item.description?.let { description ->
                 Text(text = description, fontSize = descriptionSize.sp, fontFamily = fontFamily, color = LocalContentColor.current.copy(alpha = 0.72f))
             }
@@ -347,7 +347,7 @@ private fun DoweDrawer(open: Boolean, onClose: () -> Unit, position: String, bac
                             .height(28.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweOverlayClosePaths)
+                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.softMutedText, paths = doweOverlayClosePaths)
                     }
                 }
             }

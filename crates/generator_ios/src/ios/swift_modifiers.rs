@@ -300,7 +300,7 @@ fn swift_modifiers_for_style_with_width_alignment(
     }
     if let Some(value) = props.text.as_ref() {
         modifiers.push(format!(
-            ".foregroundStyle({} ?? DoweDesign.onBackground)",
+            ".foregroundStyle({} ?? DoweDesign.backgroundText)",
             swift_color_value(value)
         ));
     }
@@ -320,7 +320,7 @@ fn swift_modifiers_for_style_with_width_alignment(
             .border_color
             .map(family_color)
             .map(color_ref)
-            .unwrap_or("DoweDesign.onBackground");
+            .unwrap_or("DoweDesign.backgroundText");
         modifiers.push(format!(
             ".overlay(RoundedRectangle(cornerRadius: {radius}).stroke({border_color}, lineWidth: {} ?? CGFloat(0)))",
             swift_border_value(value)
@@ -436,7 +436,7 @@ fn swift_style_border(
                 .border_color
                 .map(family_color)
                 .map(color_ref)
-                .unwrap_or("DoweDesign.onBackground");
+                .unwrap_or("DoweDesign.backgroundText");
             (
                 format!("({width}) == nil ? {fallback_color} : Optional({color})"),
                 format!("{width} ?? {fallback_width}"),

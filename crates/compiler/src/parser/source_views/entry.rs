@@ -12,7 +12,14 @@ pub fn parse_views_file(
     design_config: &DesignConfig,
 ) -> DoweResult<ParsedViews> {
     let declarations = view_declarations(file)?;
-    let built = build_views_declarations(root, file, declarations, environment, design_config)?;
+    let built = build_views_declarations(
+        root,
+        file,
+        declarations,
+        environment,
+        design_config,
+        ViewPlatform::all(),
+    )?;
     finalize_built_views(root, &file.path, built, translations)
 }
 
@@ -22,6 +29,7 @@ fn build_views_declarations(
     declarations: Vec<ViewDeclaration>,
     environment: &EnvironmentConfig,
     design_config: &DesignConfig,
+    selected_platforms: &[ViewPlatform],
 ) -> DoweResult<BuiltViews> {
     let imports = view_imports(root, file)?;
     let used = declarations
@@ -49,6 +57,7 @@ fn build_views_declarations(
         outputs: PlatformRouteOutputs::default(),
         environment,
         design_config,
+        selected_platforms,
     };
 
     for declaration in declarations {
@@ -101,6 +110,7 @@ pub fn parse_views_entry(
     environment: &EnvironmentConfig,
     translations: &TranslationCatalog,
     design_config: &DesignConfig,
+    selected_platforms: &[ViewPlatform],
 ) -> DoweResult<ParsedViews> {
     let main = single_main(file)?;
     let views_child = main.children.iter().find(|child| child.name == "views");
@@ -129,6 +139,7 @@ pub fn parse_views_entry(
                 declarations,
                 environment,
                 design_config,
+                selected_platforms,
             )?;
             merge_built_views(&mut combined, built, &module_file.path)?;
         }
@@ -145,6 +156,7 @@ pub fn parse_views_entry(
         non_empty_view_declarations(file, declarations)?,
         environment,
         design_config,
+        selected_platforms,
     )?;
     finalize_built_views(root, &file.path, built, translations)
 }
@@ -245,6 +257,7 @@ pub(crate) fn validate_view_source(
         outputs: PlatformRouteOutputs::default(),
         environment,
         design_config: &design_config,
+        selected_platforms: ViewPlatform::all(),
     };
     let root_node = context.expand_export_node(root_node, &imports)?;
     match root_node.name.as_str() {

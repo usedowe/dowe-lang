@@ -161,12 +161,14 @@ fn render_compose_sidebar(
     let modifier = format!("{}.background({})", modifier, variant_container(&props.style));
     output.push_str(&format!("{pad}Column(modifier = {modifier}) {{\n"));
     output.push_str(&format!(
-        "{pad}    CompositionLocalProvider(LocalContentColor provides {}) {{\n",
-        variant_content(&props.style)
+        "{pad}    CompositionLocalProvider(LocalContentColor provides {}, LocalDoweTitleColor provides {}) {{\n",
+        variant_content(&props.style),
+        scheme_title(&props.style)
     ));
     if !header.is_empty() {
         output.push_str(&format!(
-            "{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n"
+            "{pad}        CompositionLocalProvider(LocalContentColor provides {}) {{\n{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n",
+            scheme_title(&props.style)
         ));
         for child in header {
             render_compose_node_in_flow(
@@ -179,7 +181,7 @@ fn render_compose_sidebar(
                 context,
             );
         }
-        output.push_str(&format!("{pad}        }}\n"));
+        output.push_str(&format!("{pad}        }}\n{pad}        }}\n"));
     }
     output.push_str(&format!(
         "{pad}        Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {{\n"
@@ -365,11 +367,12 @@ fn render_compose_side_nav_data(
     };
     let container = match (&variant, &scheme) { (None, None) => variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
     let content = match (&variant, &scheme) { (None, None) => variant_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
+    let title = match (&variant, &scheme) { (None, None) => side_nav_header_content(&props.style).to_string(), _ => format!("doweSideNavHeaderColor({})", scheme.as_deref().unwrap_or("\"muted\"")) };
     let active_content = content.clone();
     let border = if let Some(variant) = variant.as_ref() { format!("if ({variant} == \"outlined\") {content} else null") } else if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined { content.clone() } else { "null".to_string() };
     let modifier = compose_side_nav_modifier(props, flow, &wide);
     output.push_str(&format!(
-        "{pad}DoweSideNav(items = {}, stateKey = \"{}\", modifier = {}, activePath = activePath, wide = {}, paddingHorizontal = {padding_horizontal}.dp, paddingVertical = {padding_vertical}.dp, gap = {gap}.dp, labelSize = {label_size}f, descriptionSize = {description_size}f, fontFamily = {}, backgroundColor = {}, contentColor = {}, activeContentColor = {}, borderColor = {border}, navigate = navigate)\n",
+        "{pad}DoweSideNav(items = {}, stateKey = \"{}\", modifier = {}, activePath = activePath, wide = {}, paddingHorizontal = {padding_horizontal}.dp, paddingVertical = {padding_vertical}.dp, gap = {gap}.dp, labelSize = {label_size}f, descriptionSize = {description_size}f, fontFamily = {}, backgroundColor = {}, contentColor = {}, titleColor = {}, activeContentColor = {}, borderColor = {border}, navigate = navigate)\n",
         compose_side_nav_entries(items, indent),
         escape_kotlin(&side_nav_memory_key(props, items)),
         modifier,
@@ -377,6 +380,7 @@ fn render_compose_side_nav_data(
         compose_font_value(current_font, default_family),
         container,
         content,
+        title,
         active_content,
     ));
 }
@@ -610,7 +614,7 @@ fn render_compose_side_nav_item(
             output.push_str(&format!("{pad}DoweSideNavSubmenu(stateKey = \"{}\", open = {open}, bordered = {bordered}, wide = {wide}, trigger = {{ expanded, toggle ->\n", escape_kotlin(memory_key)));
             render_compose_side_nav_row(
                 props,
-                true,
+                false,
                 "toggle".to_string(),
                 indent + 4,
                 output,
@@ -669,11 +673,18 @@ fn render_compose_side_nav_row(
         variant_content(&nav.style),
     ));
     if let Some(icon) = props.icon.as_ref() {
+        let icon_color = if icon.props.style.text.is_some() {
+            compose_svg_color(&icon.props.style)
+        } else if header {
+            side_nav_header_content(&nav.style).to_string()
+        } else {
+            "LocalContentColor.current".to_string()
+        };
         output.push_str(&format!(
             "{pad}    DoweSvg(viewBox = {}, modifier = {}, color = {}, paths = {})\n",
             compose_svg_view_box(&icon.props.view_box),
             modifier_for_style(&icon.props.style),
-            compose_svg_color(&icon.props.style),
+            icon_color,
             compose_svg_paths(&icon.paths)
         ));
     }
@@ -681,14 +692,15 @@ fn render_compose_side_nav_row(
         "{pad}    Column(modifier = Modifier.weight(1f)) {{\n"
     ));
     output.push_str(&format!(
-        "{pad}        Text(text = {}, fontSize = {label_size}.sp, fontFamily = {}, fontWeight = {})\n",
+        "{pad}        Text(text = {}, fontSize = {label_size}.sp, fontFamily = {}, fontWeight = {}, color = {})\n",
         compose_localized_literal(&props.label, props.i18n.as_deref()),
         compose_font_value(inherited_font, default_family),
         if header {
             "FontWeight.SemiBold"
         } else {
             "FontWeight.Normal"
-        }
+        },
+        if header { side_nav_header_content(&nav.style) } else { "LocalContentColor.current" }
     ));
     if let Some(description) = props.description.as_deref() {
         output.push_str(&format!(

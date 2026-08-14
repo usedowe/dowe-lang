@@ -367,7 +367,7 @@ struct DoweColorField: View {
             }
             .background(
                 DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(300), maxWidth: CGFloat(340), maxHeight: CGFloat(480), preferredHeight: pickerHeight, onDismiss: { expanded = false }) {
-                    DoweColorPickerPanel(value: canonicalValue, hue: $hue, saturation: $saturation, brightness: $brightness, showHex: showHex, showRgb: showRgb, showCmyk: showCmyk, showOklch: showOklch, contentColor: DoweDesign.onBackground, backgroundColor: DoweDesign.background, onChange: updateValue)
+                    DoweColorPickerPanel(value: canonicalValue, hue: $hue, saturation: $saturation, brightness: $brightness, showHex: showHex, showRgb: showRgb, showCmyk: showCmyk, showOklch: showOklch, contentColor: DoweDesign.backgroundText, backgroundColor: DoweDesign.background, onChange: updateValue)
                 }
             )
             .overlay {
@@ -535,7 +535,7 @@ private struct DoweColorPickerPanel: View {
             .padding(.horizontal, CGFloat(8))
             .padding(.vertical, CGFloat(4))
             .background(DoweDesign.softMuted)
-            .foregroundStyle(DoweDesign.onSoftMuted)
+            .foregroundStyle(DoweDesign.softMutedText)
             .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
     }
 }

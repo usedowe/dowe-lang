@@ -304,7 +304,8 @@ pub(crate) async fn server_response(
                             }
                         }
                         EndpointBehavior::StoreQueryJson(query) => {
-                            match execute_store_query(project, &query.connection, &query.sql).await
+                            match execute_store_query(project, &query.connection, &query.query)
+                                .await
                             {
                                 Ok(value) => json_response(StatusCode::OK, value),
                                 Err(error) => store_error_response(error),

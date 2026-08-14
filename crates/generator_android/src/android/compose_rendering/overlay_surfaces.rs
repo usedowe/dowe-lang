@@ -163,7 +163,7 @@ fn render_compose_alert_dialog(
         card_variant_content(&panel_style),
         compose_variant_border(&panel_style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Danger))),
-        color_ref(family_on_color(props.style.color.unwrap_or(ColorFamily::Danger))),
+        color_ref(family_text_color(props.style.color.unwrap_or(ColorFamily::Danger))),
         compose_card_radius(&props.style.style),
         props.loading,
         compose_optional_component_action(props.on_confirm.as_deref(), None, context),

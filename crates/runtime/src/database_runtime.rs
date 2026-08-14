@@ -1,7 +1,7 @@
 use dowe_compiler::{CompiledProject, DatabaseProvider, StoreConnection, StoreConnectionValue};
 use dowe_database::{
-    D1Client, D1Config, DoweDatabaseClient, DoweDatabaseConfig, PostgresClient, PostgresConfig,
-    StoreError, StoreResult,
+    D1Client, D1Config, D1TableSchema, DoweDatabaseClient, DoweDatabaseConfig, PostgresClient,
+    PostgresConfig, StoreError, StoreResult,
 };
 
 #[derive(Clone)]
@@ -29,6 +29,25 @@ pub(crate) fn configured_database_client(
             account: required_value(project, &connection.account, "account")?,
             database: connection.database.clone(),
             secret: required_value(project, &connection.secret, "secret")?,
+            schema: connection
+                .entities
+                .iter()
+                .map(|entity| D1TableSchema {
+                    table: entity.table.clone(),
+                    bool_fields: entity
+                        .fields
+                        .iter()
+                        .filter(|field| field.field_type == dowe_compiler::DatabaseFieldType::Bool)
+                        .map(|field| field.name.clone())
+                        .collect(),
+                    json_fields: entity
+                        .fields
+                        .iter()
+                        .filter(|field| field.field_type == dowe_compiler::DatabaseFieldType::Json)
+                        .map(|field| field.name.clone())
+                        .collect(),
+                })
+                .collect(),
         })?)),
         DatabaseProvider::Postgres => Ok(ConfiguredDatabaseClient::Postgres(PostgresClient::new(
             PostgresConfig {

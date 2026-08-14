@@ -4,7 +4,7 @@ use crate::control::ControlMessage;
 use crate::error::{SpawnError, SpawnPhase, SpawnResult};
 use crate::event::{SpawnEvent, SpawnOutput};
 use crate::platform::{
-    configure_command_platform, exit_status_parts, terminate_child, terminate_pid,
+    ProcessTree, configure_command_platform, exit_status_parts, terminate_child, terminate_pid,
 };
 use crate::validation::apply_environment;
 use std::io::{Read, Write};
@@ -161,6 +161,7 @@ fn read_stream<R: Read + Send + 'static>(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn supervise_stdio(
     spawn_id: u64,
     config: SpawnConfig,
@@ -174,6 +175,7 @@ fn supervise_stdio(
 ) {
     let started_at = Instant::now();
     let system_pid = child.id();
+    let mut process_tree = ProcessTree::new(Some(system_pid), &config.options.kill_target);
     let mut timed_out = false;
     let mut canceled = false;
     let mut termination_started_at = None;
@@ -189,6 +191,7 @@ fn supervise_stdio(
                 &mut canceled,
                 &mut termination_started_at,
                 &mut termination_signal,
+                &mut process_tree,
                 message,
             );
         }
@@ -205,10 +208,11 @@ fn supervise_stdio(
                 timeout_ms,
                 signal: termination_signal.clone(),
             });
-            let _ = terminate_child(
+            terminate_stdio_child(
                 &mut child,
-                &config.options.kill_target,
+                &config,
                 termination_signal.clone(),
+                &mut process_tree,
             );
         }
 
@@ -217,7 +221,7 @@ fn supervise_stdio(
             && should_force(config.options.kill_grace_ms, started)
         {
             termination_signal = Signal::Kill;
-            let _ = terminate_child(&mut child, &config.options.kill_target, Signal::Kill);
+            terminate_stdio_child(&mut child, &config, Signal::Kill, &mut process_tree);
         }
 
         match child.try_wait() {
@@ -234,7 +238,9 @@ fn supervise_stdio(
     };
 
     if termination_started_at.is_some() && matches!(config.options.kill_target, KillTarget::Group) {
+        process_tree.capture();
         let _ = terminate_pid(system_pid, &config.options.kill_target, Signal::Kill);
+        process_tree.terminate(Signal::Kill);
     }
     drop(stdin);
     for stream_thread in stream_threads {
@@ -261,6 +267,7 @@ fn supervise_stdio(
     let _ = result_tx.send(output);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_control(
     spawn_id: u64,
     config: &SpawnConfig,
@@ -270,21 +277,22 @@ fn handle_control(
     canceled: &mut bool,
     termination_started_at: &mut Option<Instant>,
     termination_signal: &mut Signal,
+    process_tree: &mut ProcessTree,
     message: ControlMessage,
 ) {
     match message {
         ControlMessage::Input(bytes) => {
-            if let Some(stdin) = stdin {
-                if let Err(error) = stdin.write_all(&bytes) {
-                    let _ = event_tx.send(SpawnEvent::Error {
-                        spawn_id,
-                        error: SpawnError::new(
-                            &config.command,
-                            SpawnPhase::StreamWrite,
-                            error.to_string(),
-                        ),
-                    });
-                }
+            if let Some(stdin) = stdin
+                && let Err(error) = stdin.write_all(&bytes)
+            {
+                let _ = event_tx.send(SpawnEvent::Error {
+                    spawn_id,
+                    error: SpawnError::new(
+                        &config.command,
+                        SpawnPhase::StreamWrite,
+                        error.to_string(),
+                    ),
+                });
             }
         }
         ControlMessage::CloseStdin => {
@@ -300,23 +308,30 @@ fn handle_control(
                 spawn_id,
                 signal: termination_signal.clone(),
             });
-            let _ = terminate_child(
-                child,
-                &config.options.kill_target,
-                termination_signal.clone(),
-            );
+            terminate_stdio_child(child, config, termination_signal.clone(), process_tree);
         }
         ControlMessage::Signal(signal) => {
             *termination_signal = signal.clone();
             *termination_started_at = Some(Instant::now());
-            let _ = terminate_child(child, &config.options.kill_target, signal);
+            terminate_stdio_child(child, config, signal, process_tree);
         }
         ControlMessage::ForceKill => {
             *termination_signal = Signal::Kill;
             *termination_started_at = Some(Instant::now());
-            let _ = terminate_child(child, &config.options.kill_target, Signal::Kill);
+            terminate_stdio_child(child, config, Signal::Kill, process_tree);
         }
     }
+}
+
+fn terminate_stdio_child(
+    child: &mut Child,
+    config: &SpawnConfig,
+    signal: Signal,
+    process_tree: &mut ProcessTree,
+) {
+    process_tree.capture();
+    let _ = terminate_child(child, &config.options.kill_target, signal.clone());
+    process_tree.terminate(signal);
 }
 
 fn build_output(

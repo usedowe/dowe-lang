@@ -25,7 +25,7 @@ orientation and `dowe codegraph check` for declared structural validation. CodeG
 | Compile or run the project | `dowe dev`, or non-interactive targets such as `dowe dev --target server --target web`, `--target android`, `--target ios` |
 | Generate project icons | `dowe icons` or its explicit `--source`, `--background`, `--rounded`, and `--target` options |
 | Literal source assertions | `dowe test [path ...]`, with `--json` for stable agent or CI reports |
-| Produce production output | `dowe deploy` interactive, `dowe deploy --target static`, `--target docker --registry <registry> --image <name>`, `--target ssh [--publish --host <host> --user <user> [--key-file <path>]]`, `--target cloudflare --name <worker>`, or `dowe deploy web --name <project> --publish` |
+| Produce production output | `dowe deploy` interactive, `dowe deploy --target static`, `--target docker --registry <registry> --image <name>`, `--target ssh [--publish --host <host> --user <user> [--key-file <path>]]`, `--target cloudflare --name <worker>`, or `dowe deploy web --name <project> --publish`; selecting the Dowe Cloud provider currently reports that deployment is coming soon and exits without compiling or publishing |
 | Validate project agent state | Use the Agent Harness check configured under `.agents` |
 | Validate a planned feature | Use the selected Harness plan and its declared validation |
 | Validate structure | `dowe codegraph check` |

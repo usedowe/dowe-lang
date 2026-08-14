@@ -246,6 +246,10 @@ fn render_swift_sidebar(
         output.push_str(&format!(
             "{pad}    .frame(maxWidth: .infinity, alignment: .topLeading)\n"
         ));
+        output.push_str(&format!(
+            "{pad}    .foregroundStyle({})\n",
+            scheme_title(&props.style)
+        ));
     }
     output.push_str(&format!(
         "{pad}    ScrollView {{\n{pad}        VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
@@ -296,6 +300,10 @@ fn render_swift_sidebar(
     modifiers.push(format!(
         ".foregroundStyle({})",
         variant_content(&props.style)
+    ));
+    modifiers.push(format!(
+        ".environment(\\.doweTitleColor, {})",
+        scheme_title(&props.style)
     ));
     append_swift_modifiers(output, indent, &modifiers);
 }
@@ -490,6 +498,13 @@ fn render_swift_side_nav_data(
         ),
     };
     let active_content = content.clone();
+    let title = match (&variant, &scheme) {
+        (None, None) => side_nav_header_content(&props.style).to_string(),
+        _ => format!(
+            "doweSideNavHeaderColor({})",
+            scheme.as_deref().unwrap_or("\"muted\"")
+        ),
+    };
     let border = if let Some(variant) = variant.as_ref() {
         format!("{variant} == \"outlined\" ? Optional({content}) : nil")
     } else if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined {
@@ -498,7 +513,7 @@ fn render_swift_side_nav_data(
         "nil".to_string()
     };
     output.push_str(&format!(
-        "{pad}DoweSideNav(items: {}, stateKey: \"{}\", activePath: activePath, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), labelFont: {}, descriptionFont: {}, backgroundColor: {}, contentColor: {}, activeContentColor: {}, borderColor: {border}, navigate: navigate)\n",
+        "{pad}DoweSideNav(items: {}, stateKey: \"{}\", activePath: activePath, wide: {}, paddingHorizontal: CGFloat({padding_horizontal}), paddingVertical: CGFloat({padding_vertical}), gap: CGFloat({gap}), labelFont: {}, descriptionFont: {}, backgroundColor: {}, contentColor: {}, titleColor: {}, activeContentColor: {}, borderColor: {border}, navigate: navigate)\n",
         swift_side_nav_entries(items, indent),
         escape_swift(&side_nav_memory_key(props, items)),
         wide,
@@ -514,6 +529,7 @@ fn render_swift_side_nav_data(
         ),
         container,
         content,
+        title,
         active_content,
     ));
     let mut modifiers = swift_modifiers_for_container_style(&props.style.style, flow);
@@ -835,7 +851,7 @@ fn render_swift_side_nav_item(
             output.push_str(&format!("{pad}}} label: {{ expanded in\n"));
             render_swift_side_nav_row(
                 props,
-                true,
+                false,
                 "nil".to_string(),
                 indent + 4,
                 output,
@@ -864,6 +880,14 @@ fn render_swift_side_nav_row(
 ) {
     let pad = " ".repeat(indent);
     let active = swift_side_nav_active(props.navigation.as_ref());
+    let label_color = if header {
+        side_nav_header_content(&nav.style).to_string()
+    } else {
+        format!(
+            "{active} ? {} : DoweDesign.backgroundText",
+            variant_content(&nav.style)
+        )
+    };
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
         swift_side_nav_metrics(nav.size);
     let border =
@@ -883,7 +907,7 @@ fn render_swift_side_nav_row(
         output.push_str(&format!(
             "{pad}    DoweSvgView(viewBox: {}, color: {}, paths: {})\n",
             swift_svg_view_box(&icon.props.view_box),
-            swift_side_nav_explicit_icon_color(icon, nav, &active),
+            swift_side_nav_explicit_icon_color(icon, nav, &active, header),
             swift_svg_paths(&icon.paths)
         ));
         append_swift_modifiers(
@@ -896,14 +920,15 @@ fn render_swift_side_nav_row(
         "{pad}    VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
     ));
     output.push_str(&format!(
-        "{pad}        Text({})\n{pad}            .font({})\n{pad}            .fontWeight({})\n",
+        "{pad}        Text({})\n{pad}            .font({})\n{pad}            .fontWeight({})\n{pad}            .foregroundStyle({})\n",
         swift_localized_literal(&props.label, props.i18n.as_deref()),
         swift_font_value(
             inherited_font,
             &format!("CGFloat({label_size})"),
             default_family
         ),
-        if header { ".semibold" } else { ".regular" }
+        if header { ".semibold" } else { ".regular" },
+        label_color
     ));
     if let Some(description) = props.description.as_deref() {
         output.push_str(&format!(
@@ -978,12 +1003,15 @@ fn swift_side_nav_explicit_icon_color(
     icon: &SideNavIcon,
     nav: &SideNavProps,
     active: &str,
+    header: bool,
 ) -> String {
     if icon.props.style.text.is_some() {
         swift_svg_color(&icon.props.style)
+    } else if header {
+        side_nav_header_content(&nav.style).to_string()
     } else {
         format!(
-            "{active} ? {} : DoweDesign.onBackground",
+            "{active} ? {} : DoweDesign.backgroundText",
             nav_active_content(&nav.style)
         )
     }
@@ -1154,12 +1182,12 @@ fn render_swift_bottom_bar(
             variant_container(&props.style)
         };
         let content = if featured {
-            "DoweDesign.onPrimary"
+            "DoweDesign.primaryText"
         } else {
             variant_content(&props.style)
         };
         let icon_color = if featured {
-            "DoweDesign.onPrimary".to_string()
+            "DoweDesign.primaryText".to_string()
         } else {
             swift_svg_color(&tab.icon.props.style)
         };

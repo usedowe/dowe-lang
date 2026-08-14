@@ -33,7 +33,7 @@ fn generates_compose_and_dev_layout_bars() {
     assert!(
         views
             .content
-            .contains("CompositionLocalProvider(LocalContentColor provides DoweDesign.onSurface)")
+            .contains("CompositionLocalProvider(LocalContentColor provides DoweDesign.surfaceText)")
     );
     assert!(
         views
@@ -51,7 +51,7 @@ fn generates_compose_and_dev_layout_bars() {
         .rfind("Column(modifier = Modifier.widthIn(max = 1536.dp).fillMaxWidth())")
         .expect("Footer boxed regions");
     let footer_provider = views.content[..footer_inner]
-        .rfind("CompositionLocalProvider(LocalContentColor provides DoweDesign.onSurface)")
+        .rfind("CompositionLocalProvider(LocalContentColor provides DoweDesign.surfaceText)")
         .expect("Footer content color");
     let copyright = views.content[directory..]
         .find("Text(\"Copyright\"")
@@ -299,6 +299,21 @@ fn generates_compose_and_dev_side_nav() {
     ));
     assert!(views.content.contains(r#"active = activePath == "/bars""#));
     assert!(views.content.contains(r#"Text(text = "Workspace""#));
+    assert!(views.content.contains("color = DoweDesign.surface"));
+    let submenu_label = views
+        .content
+        .find(r#"Text(text = "Content""#)
+        .expect("submenu label");
+    let submenu_label = &views.content[submenu_label..];
+    let submenu_label = &submenu_label[..submenu_label.find('\n').expect("submenu label line")];
+    assert!(submenu_label.contains("fontWeight = FontWeight.Normal"));
+    assert!(submenu_label.contains("color = LocalContentColor.current"));
+    assert!(views.content.contains(
+        "DoweSideNavEntryRow(item = item, header = false, activePath = activePath"
+    ));
+    assert!(views.content.contains(
+        "color = if (header) titleColor else LocalContentColor.current"
+    ));
     assert!(views.content.contains(r#"Text(text = "Blogs""#));
     assert!(views.content.contains("gap = 10.dp"));
     assert!(views.content.contains("private fun DoweSideNavStatus"));
@@ -308,7 +323,7 @@ fn generates_compose_and_dev_side_nav() {
             .content
             .contains("padding(horizontal = 8.dp, vertical = 2.dp)")
     );
-    assert!(views.content.contains("color = DoweDesign.onSoftMuted"));
+    assert!(views.content.contains("color = DoweDesign.softMutedText"));
     assert!(
         views
             .content
@@ -335,11 +350,11 @@ fn generates_compose_and_dev_side_nav() {
     assert!(dev.content.contains("doweSideNavSubmenuContent"));
     assert!(
         dev.content
-            .contains("int rowContentColor = active ? activeContentColor : DOWE_ON_BACKGROUND;")
+            .contains("int rowContentColor = active ? activeContentColor : DOWE_BACKGROUND_TEXT;")
     );
     assert!(
         dev.content
-            .contains("doweText(\"Blogs\", (false) ? DOWE_ON_SURFACE : DOWE_ON_BACKGROUND")
+            .contains("doweText(\"Blogs\", (false) ? DOWE_SURFACE_TEXT : DOWE_BACKGROUND_TEXT")
     );
     assert!(dev.content.contains(
         "wide ? ViewGroup.LayoutParams.MATCH_PARENT : ViewGroup.LayoutParams.WRAP_CONTENT"
@@ -349,6 +364,16 @@ fn generates_compose_and_dev_side_nav() {
             .contains("view.animate().alpha(0f).translationY(-doweDp(4)).setDuration(140)")
     );
     assert!(dev.content.contains("doweText(\"Blogs\""));
+    assert!(dev.content.contains("DOWE_SURFACE"));
+    assert!(dev.content.contains(
+        "doweText(\"Content\", (false) ? DOWE_SURFACE_TEXT : DOWE_BACKGROUND_TEXT, 14f, 400"
+    ));
+    assert!(dev.content.contains(
+        "LinearLayout trigger = doweSideNavRow(entry, false, wide"
+    ));
+    assert!(dev
+        .content
+        .contains("header ? titleColor : rowContentColor"));
     assert!(
         dev.content
             .contains("new DoweSvgView(this, 0f, 0f, 24f, 24f")
@@ -363,6 +388,38 @@ fn generates_compose_and_dev_side_nav() {
     assert!(dev.content.contains("Arrow, 10, true);"));
     assert!(dev.content.contains("if (doweBool(\"wideEnabled\", null))"));
     assert!(dev.content.contains("doweBool(\"wideEnabled\", null) ? ViewGroup.LayoutParams.MATCH_PARENT : ViewGroup.LayoutParams.WRAP_CONTENT"));
+}
+
+#[test]
+fn colors_android_side_nav_header_icons_from_scheme() {
+    let mut route = side_nav_route();
+    let ViewNode::SideNav { items, .. } = &mut route.layout_tree else {
+        panic!("expected side nav layout");
+    };
+    let SideNavItem::Header(header) = &mut items[0] else {
+        panic!("expected side nav header");
+    };
+    header.icon = side_nav_item("Home", None).icon;
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains(
+        "DoweSvg(viewBox = DoweSvgViewBox(0f, 0f, 24f, 24f), modifier = Modifier, color = DoweDesign.surface, paths ="
+    ));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains(
+        "DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_SURFACE,"
+    ));
 }
 
 #[test]
@@ -455,7 +512,7 @@ fn generates_compose_and_dev_navigation_shell_components() {
     assert!(views.content.contains("PointerEventPass.Final"));
     assert!(views.content.contains("PointerEventType.Release"));
     assert!(views.content.contains(
-        "popoverBackgroundColor = DoweDesign.background, popoverContentColor = DoweDesign.onBackground"
+        "popoverBackgroundColor = DoweDesign.background, popoverContentColor = DoweDesign.backgroundText"
     ));
     let resource = dowe_components::translation_resource_name("home.hero.title");
     assert!(
@@ -517,7 +574,7 @@ fn generates_compose_and_dev_navigation_shell_components() {
         dev.content
             .contains("doweInputBackground(DOWE_BACKGROUND, null, DOWE_RADIUS)")
     );
-    assert!(dev.content.contains("doweNavMenuArrow(DOWE_ON_BACKGROUND)"));
+    assert!(dev.content.contains("doweNavMenuArrow(DOWE_BACKGROUND_TEXT)"));
     assert!(dev.content.contains("setOnDismissListener"));
     assert!(
         dev.content
@@ -618,7 +675,7 @@ fn generates_compose_and_dev_tabs() {
     assert!(dev.content.contains("doweText(\"Overview\", DOWE_PRIMARY"));
     assert!(
         !dev.content
-            .contains("doweText(\"Overview\", DOWE_ON_PRIMARY")
+            .contains("doweText(\"Overview\", DOWE_PRIMARY_TEXT")
     );
     assert!(
         dev.content
@@ -766,7 +823,7 @@ fn generates_compose_and_dev_drawer() {
     assert!(dev.content.contains("new ScrollView(this);"));
     assert!(
         dev.content
-            .contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_ON_SOFT_MUTED")
+            .contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_SOFT_MUTED_TEXT")
     );
     assert!(
         dev.content

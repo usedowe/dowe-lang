@@ -50,18 +50,18 @@ async fn execute_store_insert(
 async fn execute_store_query(
     project: &CompiledProject,
     connection: &StoreConnection,
-    sql: &str,
+    query: &SelectQuery,
 ) -> dowe_database::StoreResult<Value> {
     if let Some(client) = remote_client_for_connection(project, connection)? {
         return match client {
-            StoreEndpointClient::Dowe(client) => client.query(sql).await,
-            StoreEndpointClient::D1(client) => client.query(sql).await,
-            StoreEndpointClient::Postgres(client) => client.query(sql).await,
+            StoreEndpointClient::Dowe(client) => client.query_select(query, &[]).await,
+            StoreEndpointClient::D1(client) => client.query_select(query, &[]).await,
+            StoreEndpointClient::Postgres(client) => client.query_select(query, &[]).await,
         };
     }
     init_database(&project.root, &connection.database)?;
     let database = open_database(&project.root, &connection.database)?;
-    database.query_json(sql)
+    database.query_portable_json(query, &[])
 }
 
 fn remote_client_for_connection(
@@ -202,9 +202,7 @@ async fn execute_vector_action_json(
         .await
         .and_then(|_| context.evaluate(&response.value))
     {
-        Ok(ResolvedValue::Json(value)) => {
-            json_response(status_from_u16(response.status), value)
-        }
+        Ok(ResolvedValue::Json(value)) => json_response(status_from_u16(response.status), value),
         Ok(ResolvedValue::Missing) => json_error(
             StatusCode::INTERNAL_SERVER_ERROR,
             "invalid_response",

@@ -14,7 +14,7 @@ use dowe_cache::{
     CacheServerConfig, clear_memory as clear_kv_memory, create_account as create_cache_account,
     start_cache_server,
 };
-use dowe_compiler::compile_dev;
+use dowe_compiler::{compile_dev, compile_dev_web, compile_dev_with_seeders};
 use dowe_crypto::sign_jws_hs256;
 use dowe_database::{
     DatabaseServiceConfig, DoweDatabaseClient, DoweDatabaseConfig, create_account,
@@ -902,13 +902,13 @@ main
       method POST async req
         const body value:req.json
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query created db:db.insert table:"blogs" value:{ title:body.title ownerId:req.context.auth.subject }
+        query created conn:db.insert table:"blogs" value:{ title:body.title ownerId:req.context.auth.subject }
         return status:201 json:created
     route "/api/blogs/:id/edit" middleware:[requireBearer]
       method PATCH async req
         const body value:req.json
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-        query updated db:db.update table:"blogs" where:{ id:req.params.id ownerId:req.context.auth.subject } value:{ title:body.title } required:true
+        query updated conn:db.update table:"blogs" where:{ id:req.params.id ownerId:req.context.auth.subject } value:{ title:body.title } required:true
         return json:updated"#,
     )
     .expect("server");
@@ -1076,15 +1076,15 @@ fn createTicketService params:{ title:string priority:string status:string }
         temp.path().join("server/repositories/tickets.dowe"),
         r#"fn listTicketsRepository params:{ status:string }
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"support"
-  query rows db:db.list table:"tickets"
+  query rows conn:db.list table:"tickets"
   cache appCache provider:"dowe" host:"127.0.0.1" port:4148 account:"app" secret:"secret" name:"support-cache"
   kv saved conn:appCache.set key:"tickets:last-list" value:{ status:args.status }
   return value:{ rows:rows cache:saved }
 
 fn createTicketRepository params:{ title:string priority:string status:string }
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"support"
-  query created db:db.insert table:"tickets" value:{ title:args.title priority:args.priority status:args.status createdAt:now updatedAt:now } required:["title","priority","status"]
-  query rows db:db.list table:"tickets"
+  query created conn:db.insert table:"tickets" value:{ title:args.title priority:args.priority status:args.status createdAt:now updatedAt:now } required:["title","priority","status"]
+  query rows conn:db.list table:"tickets"
   cache appCache provider:"dowe" host:"127.0.0.1" port:4148 account:"app" secret:"secret" name:"support-cache"
   kv saved conn:appCache.set key:"tickets:last-created" value:{ id:created.id title:created.title }
   return value:{ rows:rows created:created cache:saved }"#,
@@ -1230,7 +1230,7 @@ main
       method POST
         const body value:req.json
         str auditKey source:"join" values:["post", body.id] delimiter:":"
-        task recordAudit args:{ requestId:body.id auditKey:auditKey }
+        task fn:recordAudit args:{ requestId:body.id auditKey:auditKey }
         task args:{ requestId:body.id auditKey:auditKey }
           log args.auditKey
         dispatch dispatched args:{ requestId:body.id auditKey:auditKey }
@@ -1249,7 +1249,7 @@ main
         r#"import recordAudit from "./record-audit"
 
 fn dispatch params:{ requestId:string auditKey:string }
-  task recordAudit args:{ requestId:args.requestId auditKey:args.auditKey }
+  task fn:recordAudit args:{ requestId:args.requestId auditKey:args.auditKey }
   task args:{ requestId:args.requestId auditKey:args.auditKey }
     log args.auditKey
   return value:null"#,
@@ -1328,15 +1328,15 @@ main
         const body value:req.json
         str auditKey source:"join" values:["event", body.id] delimiter:":"
         database db provider:"postgres" host:"unreachable.invalid" port:5432 account:"unused" secret:"unused" name:"events"
-        query created db:db.insert table:"events" value:{ kind:"task" }
-        task recordAudit args:{ requestId:body.id auditKey:auditKey }
+        query created conn:db.insert table:"events" value:{ kind:"task" }
+        task fn:recordAudit args:{ requestId:body.id auditKey:auditKey }
         task args:{ requestId:body.id auditKey:auditKey }
           log args.auditKey
         dispatch dispatched args:{ requestId:body.id auditKey:auditKey }
         return json:created
       method GET
         database db provider:"postgres" host:"unreachable.invalid" port:5432 account:"unused" secret:"unused" name:"events"
-        query events db:db.list table:"events"
+        query events conn:db.list table:"events"
         return json:events"#,
     )
     .expect("main");
@@ -1352,7 +1352,7 @@ main
         r#"import recordAudit from "./record-audit"
 
 fn dispatch params:{ requestId:string auditKey:string }
-  task recordAudit args:{ requestId:args.requestId auditKey:args.auditKey }
+  task fn:recordAudit args:{ requestId:args.requestId auditKey:args.auditKey }
   task args:{ requestId:args.requestId auditKey:args.auditKey }
     log args.auditKey
   return value:null"#,
@@ -1443,10 +1443,10 @@ main
       method POST
         cache routes provider:"dowe" host:"local" port:4148 account:"proxy" secret:"secret" name:"routes"
         kv route conn:routes.get key:"route" required:true
-        task immediateFirst args:{ event:{ phase:"first" } }
-        task delayedFirst args:{ event:{ projectId:route.projectId label:"first" custom:"custom-first" status:0 method:"placeholder" path:"placeholder" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
-        task immediateSecond args:{ event:{ phase:"second" } }
-        task delayedSecond args:{ event:{ projectId:route.projectId label:"second" custom:"custom-second" status:0 method:"placeholder" path:"placeholder" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
+        task fn:immediateFirst args:{ event:{ phase:"first" } }
+        task fn:delayedFirst args:{ event:{ projectId:route.projectId label:"first" custom:"custom-first" status:0 method:"placeholder" path:"placeholder" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
+        task fn:immediateSecond args:{ event:{ phase:"second" } }
+        task fn:delayedSecond args:{ event:{ projectId:route.projectId label:"second" custom:"custom-second" status:0 method:"placeholder" path:"placeholder" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
         return reverse:route.url"#
             .replace("UPSTREAM_URL", &format!("http://{upstream_addr}")),
     )
@@ -1700,6 +1700,33 @@ async fn production_server_serves_backend_and_web_without_dev_endpoints() {
 }
 
 #[tokio::test]
+async fn production_server_serves_view_only_projects() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    fs::write(
+        temp.path().join("main.dowe"),
+        "import viewRoutes from \"@/routes/view\"\n\nmain\n  views:viewRoutes\n",
+    )
+    .expect("view-only main");
+    let project = compile_dev_web(temp.path()).expect("project");
+    assert!(!project.capabilities.server);
+    assert!(project.capabilities.views);
+
+    let server = start_production(project, "127.0.0.1:0".parse().expect("addr"))
+        .await
+        .expect("server");
+    let response = reqwest::get(format!("http://{}/", server.addr))
+        .await
+        .expect("response");
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let html = response.text().await.expect("html");
+    assert!(html.contains("Layout"));
+    assert!(html.contains("Login"));
+
+    server.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
 async fn production_access_protects_routes_and_assets_before_the_application() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
@@ -1930,12 +1957,12 @@ main
     route "/api/users/create"
       handler
         database db provider:"postgres" host:"unreachable.invalid" port:5432 account:"unused" secret:"unused" name:"db1"
-        query created db:db.insert table:"users" value:{ name:"Ana" roleId:"admin" }
+        query created conn:db.insert table:"users" value:{ name:"Ana" roleId:"admin" }
         return json:created
     route "/api/users"
       handler
         database db provider:"d1" account:"unused" secret:"unused" name:"db1"
-        query rows db:db.query sql:"select * from users where roleId = \"admin\""
+        query rows conn:db.query sql:"select * from users where roleId = \"admin\""
         return json:rows"#,
     )
     .expect("server");
@@ -1998,10 +2025,27 @@ main
   server port:0
     route "/api/users"
       handler
-        query users db:appDb.list table:"users"
+        query users conn:appDb.list table:"users"
         return json:users"#,
     )
     .expect("server");
+
+    let development_project = compile_dev(temp.path()).expect("development project");
+    assert!(
+        development_project.databases[0]
+            .connection
+            .seeders
+            .is_empty()
+    );
+
+    let seed_project = compile_dev_with_seeders(temp.path()).expect("seeder project");
+    crate::seed_local_databases(seed_project)
+        .await
+        .expect("seed local database");
+    let second_seed_project = compile_dev_with_seeders(temp.path()).expect("second seeder project");
+    crate::seed_local_databases(second_seed_project)
+        .await
+        .expect("seed local database twice");
 
     for _ in 0..2 {
         let project = compile_dev(temp.path()).expect("project");
@@ -2230,12 +2274,12 @@ main
     route "/api/appointments"
       handler
         database db provider:"dowe" host:env.DB_HOST port:env.DB_PORT account:"clinic-api" secret:env.DB_TOKEN name:"clinic"
-        query created db:db.tx
-          query appointment db:db.insert table:"appointments" value:{ patientName:"Ana" }
-          query outboxEntry db:db.insert table:"outbox" value:{ event:"appointment.created" }
+        query created conn:db.tx
+          query appointment conn:db.insert table:"appointments" value:{ patientName:"Ana" }
+          query outboxEntry conn:db.insert table:"outbox" value:{ event:"appointment.created" }
           commit value:appointment
-        query appointments db:db.list table:"appointments"
-        query outbox db:db.list table:"outbox"
+        query appointments conn:db.list table:"appointments"
+        query outbox conn:db.list table:"outbox"
         return json:{ ok:true data:appointments outbox:outbox created:created.patientName }"#,
     )
     .expect("server");
@@ -2297,7 +2341,7 @@ main
     route "/api/appointments"
       handler
         database db provider:"dowe" host:env.DB_HOST port:env.DB_PORT account:"clinic-api" secret:env.DB_TOKEN name:"clinic"
-        query created db:db.insert table:"appointments" value:{ patientName:"Ana" }
+        query created conn:db.insert table:"appointments" value:{ patientName:"Ana" }
         return json:created"#,
     )
     .expect("server");
@@ -2660,7 +2704,7 @@ main
     route "/api/users/create"
       handler
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"db1"
-        query created db:db.insert table:"users" value:{ name:"Ana" roleId:"admin" }
+        query created conn:db.insert table:"users" value:{ name:"Ana" roleId:"admin" }
         return json:created"#,
     )
     .expect("server");
@@ -2675,7 +2719,7 @@ main
     route "/api/users/create"
       method GET
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"db1"
-        query created db:db.insert table:"users" value:{ name:"Ana" roleId:"admin" }
+        query created conn:db.insert table:"users" value:{ name:"Ana" roleId:"admin" }
         return json:created"#,
     )
     .expect("server");
@@ -3374,33 +3418,33 @@ type BlogPatch
 
 handler listBlogs req
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query blogs db:db.list table:"blogs"
+  query blogs conn:db.list table:"blogs"
   return json:{ ok:true data:blogs }
 
 handler createBlog
   const body:BlogInput value:req.json
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query created db:db.insert table:"blogs" value:{ title:body.title content:body.content createdAt:now updatedAt:now } required:["title","content"]
+  query created conn:db.insert table:"blogs" value:{ title:body.title content:body.content createdAt:now updatedAt:now } required:["title","content"]
   log created.title
-  query blogs db:db.list table:"blogs"
+  query blogs conn:db.list table:"blogs"
   return status:201 json:{ ok:true data:blogs }
 
 handler readBlog req
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query blog db:db.read table:"blogs" where:{ id:req.params.id } required:true
+  query blog conn:db.read table:"blogs" where:{ id:req.params.id } required:true
   return json:{ ok:true data:blog }
 
 handler updateBlog
   const body:BlogPatch value:req.json
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query updated db:db.update table:"blogs" where:{ id:req.params.id } value:{ title:body.title content:body.content updatedAt:now } required:true match:{ id:req.params.id }
-  query blogs db:db.list table:"blogs"
+  query updated conn:db.update table:"blogs" where:{ id:req.params.id } value:{ title:body.title content:body.content updatedAt:now } required:true match:{ id:req.params.id }
+  query blogs conn:db.list table:"blogs"
   return json:{ ok:true data:blogs }
 
 handler deleteBlog req
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query deleted db:db.delete table:"blogs" where:{ id:req.params.id } required:true
-  query blogs db:db.list table:"blogs"
+  query deleted conn:db.delete table:"blogs" where:{ id:req.params.id } required:true
+  query blogs conn:db.list table:"blogs"
   return json:{ ok:true data:blogs }"#,
     )
     .expect("blogs handler");

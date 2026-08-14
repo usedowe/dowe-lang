@@ -1,10 +1,22 @@
 import Metric from "@/views/types/metric"
 
 page ReferencePage
+  const proofMetrics value:[
+    { id:"targets" value:"4" label:"Portable targets" },
+    { id:"regions" value:"12" label:"Measured regions" },
+    { id:"layers" value:"5" label:"Visual layers" },
+    { id:"parity" value:"1:1" label:"Evidence loop" },
+  ]
   const features value:[
-    { id:"systems" title:"One system" description:"Keep structure and behavior aligned across every target." },
-    { id:"contracts" title:"Clear contracts" description:"Choose semantic components before adding local visual details." },
-    { id:"iteration" title:"Measured iteration" description:"Compare every visual band at the original reference viewport." },
+    { id:"direction" index:"01" title:"Visual direction" description:"One product-specific concept guides typography, surfaces, media, and motion." },
+    { id:"layers" index:"02" title:"Layered scenes" description:"Focal media, floating proof, ornament, and foreground remain real Dowe source." },
+    { id:"rhythm" index:"03" title:"Section rhythm" description:"Every band changes composition while the rail, palette, and motifs stay coherent." },
+    { id:"evidence" index:"04" title:"Measured iteration" description:"Reference bands, responsive states, and visual diffs shape the final refinement." },
+  ]
+  const steps value:[
+    { id:"map" number:"01" title:"Map the design grammar" description:"Identify the silhouette, focal hierarchy, tonal fields, density, and recurring details." },
+    { id:"compose" number:"02" title:"Compose the visual payload" description:"Build the product stage, charts, media, proof, and ornament before polishing copy." },
+    { id:"refine" number:"03" title:"Refine at real viewports" description:"Inspect section rhythm, wrapping, overlap, state coverage, and reduced motion." },
   ]
   const metricSkeletons value:[
     { id:"first" },
@@ -28,80 +40,173 @@ page ReferencePage
       set metricError value:true
     set loadingMetrics value:false
 
-  Section id:"hero" bg:"primary" color:"onPrimary" boxed:true py:{ xs:10 md:16 }
-    Grid columns:{ xs:1 md:"5fr 4fr" } gap:{ xs:8 md:14 } align:"center" minH:"vh-16"
-      Flex direction:"column" align:"start" gap:5
-        Chip
-          "REFERENCE-DRIVEN UI"
-        Title size:{ xs:"4xl" md:"6xl" } weight:"black"
-          "Build the interface the evidence describes"
-        Text size:"lg" color:"softPrimary"
-          "Preserve hierarchy, ownership, copy, and repeated content while Dowe keeps the result portable."
-        Flex direction:{ xs:"column" sm:"row" } gap:3
-          Button href:"/#product" scheme:"secondary"
-            "Explore the system"
-          Button href:"/#services" variant:"outlined" scheme:"muted"
-            "Review the workflow"
-      Box bg:"softPrimary" rounded:"xl" p:{ xs:6 md:10 } minH:80 w:"full"
-        Flex direction:"column" align:"center" justify:"center" gap:3 minH:64
-          Icon name:"gallery" style:"bold-duotone" fill:"primary" w:16 h:16
-          Text color:"onSoftPrimary"
-            "Original hero media placeholder"
+  Section id:"hero" background:"ocean" boxed:true py:{ xs:12 md:20 }
+    Grid columns:1 gap:{ xs:10 md:14 }
+      Grid columns:{ xs:1 lg:2 } gap:{ xs:10 lg:16 } align:"center"
+        Flex direction:"column" align:"start" gap:5
+          Chip variant:"soft" scheme:"primary"
+            "REFERENCE SYSTEM · LIVE"
+          Title size:{ xs:"5xl" md:"7xl" } weight:"black"
+            "Build interfaces with a point of view"
+          Text size:{ xs:"md" md:"lg" } color:"muted"
+            "Translate evidence into layered, natural product design without sacrificing Dowe portability."
+          Flex direction:{ xs:"column" sm:"row" } align:{ xs:"stretch" sm:"center" } gap:3
+            Button href:"/#product" size:"lg"
+              "Explore the system"
+            Button href:"/#workflow" variant:"outlined" scheme:"muted" size:"lg"
+              "See the workflow"
+          Flex align:"center" gap:3 wrap:true
+            Icon name:"check-circle-bold-duotone" fill:"success" w:6 h:6
+            Text size:"sm" color:"muted"
+              "Semantic components · authored composition · deterministic review"
+        Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
+          Flex direction:"column" align:"center" justify:"center" minH:{ xs:64 md:80 }
+            Card variant:"soft" scheme:"surface" p:{ xs:6 md:8 } rounded:"xl" shadow:"lg" shadowColor:"tertiary"
+              Grid columns:1 gap:4
+                Flex align:"center" justify:"between" gap:4
+                  Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:12 h:12
+                  Chip variant:"outlined" scheme:"secondary"
+                    "DOWE UI"
+                Title size:{ xs:"2xl" md:"3xl" } weight:"black"
+                  "Portable visual stage"
+                Text size:"sm" color:"muted"
+                  "One focal object anchors proof, status, and spatial detail."
+                Grid columns:3 gap:2
+                  Divider scheme:"primary"
+                  Divider scheme:"secondary"
+                  Divider scheme:"tertiary"
+          Box position:"absolute" top:4 right:4
+            Chip variant:"solid" scheme:"primary" shadow:"md" shadowColor:"primary"
+              "COMPILED"
+          Box position:"absolute" left:4 bottom:4
+            Card variant:"solid" scheme:"background" p:4 shadow:"lg"
+              Flex align:"center" gap:3
+                Title size:"2xl" weight:"black" color:"primary"
+                  "32%"
+                Text size:"xs" color:"muted"
+                  "Less generic drift"
+      Grid columns:{ xs:2 md:4 } gap:3
+        each in:proofMetrics as:metric key:metric.id
+          Card variant:"soft" scheme:"surface" p:{ xs:4 md:5 } h:"full" border:1 borderColor:"muted"
+            Flex direction:"column" gap:1
+              Title size:{ xs:"2xl" md:"3xl" } weight:"black" color:"primary"
+                "{metric.value}"
+              Text size:"xs" color:"muted"
+                "{metric.label}"
 
-  Section id:"product" boxed:true py:{ xs:8 md:12 }
-    Grid columns:1 gap:6
-      Flex direction:"column" gap:2
-        Text size:"xs" weight:"bold" spacing:"widest" color:"muted"
-          "PRODUCT"
-        Title size:{ xs:"3xl" md:"5xl" } weight:"black"
-          "One collection, one visual unit"
+  Section bg:"softMuted" boxed:true py:6
+    Marquee
+      Flex align:"center" gap:{ xs:8 md:16 }
+        Flex align:"center" gap:2
+          Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:6 h:6
+          Text size:"sm" weight:"bold"
+            "SEMANTIC LAYOUT"
+        Flex align:"center" gap:2
+          Icon name:"gallery-bold-duotone" fill:"secondary" w:6 h:6
+          Text size:"sm" weight:"bold"
+            "ORIGINAL MEDIA"
+        Flex align:"center" gap:2
+          Icon name:"check-circle-bold-duotone" fill:"success" w:6 h:6
+          Text size:"sm" weight:"bold"
+            "RESPONSIVE PROOF"
+        Flex align:"center" gap:2
+          Icon name:"layers-minimalistic-bold-duotone" fill:"tertiary" w:6 h:6
+          Text size:"sm" weight:"bold"
+            "VISUAL QA"
+
+  Section id:"product" boxed:true bg:"surface" py:{ xs:12 md:20 }
+    Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:14 } align:"start"
+      Flex direction:"column" align:"start" gap:4
+        Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+          "DESIGN GRAMMAR"
+        Title size:{ xs:"4xl" md:"5xl" } weight:"black"
+          "Structure that still feels designed"
         Text color:"muted"
-          "Reference-defined records stay immutable and render through a keyed each template."
-      Grid columns:{ xs:1 md:3 } gap:4
+          "The system keeps semantic ownership while giving every important band a visual payload and a distinct composition."
+        Card variant:"solid" scheme:"primary" p:6 shadow:"xl" shadowColor:"primary"
+          Flex direction:"column" gap:5
+            Flex align:"center" justify:"between" gap:4
+              Icon name:"gallery-bold-duotone" fill:"primaryText" w:10 h:10
+              Chip variant:"soft" scheme:"muted"
+                "QUALITY FLOOR"
+            Title size:"3xl" weight:"black"
+              "Foundation + payload + detail"
+            Text size:"sm"
+              "A shorter page may use fewer bands. It should not use flatter bands."
+      Grid columns:{ xs:1 sm:2 } gap:4 align:"stretch"
         each in:features as:feature key:feature.id
-          Card p:6
-            Grid columns:1 gap:3
-              Icon name:"layers-minimalistic" style:"bold-duotone" fill:"primary" w:9 h:9
-              Title size:"xl" weight:"black"
-                "{feature.title}"
-              Text color:"muted"
-                "{feature.description}"
+          Card variant:"soft" scheme:"background" p:{ xs:5 md:6 } h:"full" border:1 borderColor:"muted"
+            Flex direction:"column" justify:"between" gap:8 h:"full"
+              Flex direction:"column" gap:3
+                Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+                  "{feature.index}"
+                Title size:"2xl" weight:"black"
+                  "{feature.title}"
+                Text size:"sm" color:"muted"
+                  "{feature.description}"
+              Divider scheme:"primary"
 
-  Section id:"services" bg:"softMuted" boxed:true py:{ xs:8 md:12 }
-    Grid columns:1 gap:6
-      Grid columns:{ xs:1 md:"1fr auto" } gap:4 align:"end"
-        Flex direction:"column" gap:2
-          Text size:"xs" weight:"bold" spacing:"widest" color:"muted"
-            "LIVE METRICS"
-          Title size:"3xl" weight:"black"
-            "Backend state remains declarative"
+  Section id:"services" background:"aurora" boxed:true py:{ xs:12 md:20 }
+    Grid columns:1 gap:{ xs:8 md:12 }
+      Grid columns:{ xs:1 md:2 } gap:5 align:"end"
+        Flex direction:"column" align:"start" gap:3
+          Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+            "STATEFUL PRODUCT UI"
+          Title size:{ xs:"4xl" md:"6xl" } weight:"black"
+            "Behavior belongs inside the composition"
           Text color:"muted"
-            "Loading, empty, populated, and error states belong to the page workflow."
-        Button onClick:loadMetrics loading:loadingMetrics
+            "Loading, empty, populated, and error states remain declarative without reducing the page to dashboard boilerplate."
+        Button onClick:loadMetrics loading:loadingMetrics size:"lg"
           "Refresh metrics"
       Alert type:"error" message:"Metrics could not be loaded. Try again." visible:metricError
       Grid columns:{ xs:1 md:3 } gap:4 show:loadingMetrics
         each in:metricSkeletons as:skeleton key:skeleton.id
-          Skeleton variant:"rounded" animation:"wave" w:"full" h:32
+          Skeleton variant:"rounded" animation:"wave" w:"full" h:36
       Empty type:"data" title:"No metrics yet" description:"Refresh to load the latest workspace metrics." actionLabel:"Refresh metrics" onClick:loadMetrics show:emptyMetrics
       Grid columns:{ xs:1 md:3 } gap:4
         each in:metrics as:metric key:metric.id
-          Card p:6
-            Grid columns:1 gap:2
-              Text size:"sm" color:"muted"
-                "{metric.label}"
-              Title size:"3xl" weight:"black"
+          Card variant:"solid" scheme:"surface" p:6 shadow:"lg"
+            Grid columns:1 gap:3
+              Flex align:"center" justify:"between" gap:3
+                Text size:"sm" color:"muted"
+                  "{metric.label}"
+                Icon name:"check-circle-bold-duotone" fill:"success" w:6 h:6
+              Title size:"4xl" weight:"black" color:"primary"
                 "{metric.value}"
+              Divider scheme:"muted"
               Text size:"sm" color:"muted"
                 "{metric.detail}"
 
-  Section id:"contact" boxed:true py:{ xs:8 md:12 }
-    Card variant:"solid" scheme:"primary" p:{ xs:6 md:10 }
-      Grid columns:{ xs:1 md:"1fr auto" } gap:6 align:"center"
-        Flex direction:"column" gap:2
-          Title size:"3xl" weight:"black"
-            "Ready for evidence-backed UI?"
-          Text color:"softPrimary"
-            "Start from a blueprint, compile, render, and compare before declaring parity."
-        Button href:"https://example.com/contact" scheme:"secondary"
+  Section id:"workflow" boxed:true bg:"background" py:{ xs:12 md:20 }
+    Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:16 } align:"start"
+      Flex direction:"column" align:"start" gap:4
+        Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+          "FROM EVIDENCE TO SOURCE"
+        Title size:{ xs:"4xl" md:"5xl" } weight:"black"
+          "Three deliberate passes"
+        Text color:"muted"
+          "Direction first, visual payload second, responsive refinement last."
+      Flex direction:"column" gap:3
+        each in:steps as:step key:step.id
+          Card variant:"soft" scheme:"muted" rounded:"xl" p:{ xs:5 md:6 }
+            Flex align:"start" gap:{ xs:4 md:6 }
+              Chip variant:"solid" scheme:"primary"
+                "{step.number}"
+              Flex direction:"column" gap:2
+                Title size:"2xl" weight:"black"
+                  "{step.title}"
+                Text size:"sm" color:"muted"
+                  "{step.description}"
+
+  Section id:"contact" background:"meadow" boxed:true py:{ xs:12 md:20 }
+    Card variant:"solid" scheme:"primary" p:{ xs:7 md:10 } shadow:"xl" shadowColor:"primary"
+      Grid columns:{ xs:1 md:2 } gap:8 align:"center"
+        Flex direction:"column" align:"start" gap:3
+          Chip variant:"soft" scheme:"muted"
+            "REFERENCE-DRIVEN · PRODUCT-READY"
+          Title size:{ xs:"4xl" md:"5xl" } weight:"black"
+            "Make technical correctness look intentional"
+          Text size:"md"
+            "Use one visual direction, meaningful layers, and evidence-backed refinement."
+        Button href:"https://example.com/contact" scheme:"secondary" size:"lg"
           "Contact the team"

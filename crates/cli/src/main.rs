@@ -35,7 +35,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     if dowe_runtime::run_development_desktop_host_from_env()? {
         return Ok(());
     }
-    if server::run_embedded_ssh_server().await? {
+    if server::run_embedded_server().await? {
         return Ok(());
     }
     if dowe_runtime::run_embedded_desktop_app().await? {

@@ -20,7 +20,7 @@ fn lower_node_sequence(nodes: &[SourceNode], allow_children: bool) -> DoweResult
                 index += 1;
             }
             _ => {
-                output.push(lower_view_node(node, allow_children)?);
+                output.push(*lower_view_node(node, allow_children)?);
                 index += 1;
             }
         }
@@ -86,9 +86,11 @@ fn parse_each_header(node: &SourceNode) -> DoweResult<(String, String, String)> 
     Ok((item, collection, key))
 }
 
-fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNode> {
+fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<Box<ViewNode>> {
     if node.name == "children" {
-        return children_node(allow_children).map_err(|error| node_error(node, error.to_string()));
+        return children_node(allow_children)
+            .map(Box::new)
+            .map_err(|error| node_error(node, error.to_string()));
     }
     if node.name == "Splash" {
         return Err(node_error(
@@ -97,7 +99,7 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         ));
     }
     if node.name == "Pagination" {
-        return lower_pagination_node(node);
+        return lower_pagination_node(node).map(Box::new);
     }
     let component = COMPONENT_REGISTRY.get(&node.name).ok_or_else(|| {
         node_error(
@@ -106,10 +108,32 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         )
     })?;
     if component == BuiltinComponent::Code {
-        return lower_code_node(node);
+        return lower_code_node(node).map(Box::new);
     }
     let props = component_props(node, component)?;
-    match component {
+    if matches!(
+        component,
+        BuiltinComponent::Box
+            | BuiltinComponent::Section
+            | BuiltinComponent::Flex
+            | BuiltinComponent::Grid
+            | BuiltinComponent::Card
+    ) {
+        let children = lower_node_sequence(&node.children, allow_children)?;
+        return container_component_node(component, props, children, allow_children)
+            .map(Box::new)
+            .map_err(|error| component_error(node, error));
+    }
+    lower_remaining_view_node(node, allow_children, component, props)
+}
+
+fn lower_remaining_view_node(
+    node: &SourceNode,
+    allow_children: bool,
+    component: BuiltinComponent,
+    props: Vec<ComponentProp>,
+) -> DoweResult<Box<ViewNode>> {
+    let lowered = match component {
         BuiltinComponent::Input => {
             reject_children(node)?;
             input_node(props).map_err(|error| component_error(node, error))
@@ -400,10 +424,7 @@ fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<ViewNo
         | BuiltinComponent::Section
         | BuiltinComponent::Flex
         | BuiltinComponent::Grid
-        | BuiltinComponent::Card => {
-            let children = lower_node_sequence(&node.children, allow_children)?;
-            container_component_node(component, props, children, allow_children)
-                .map_err(|error| component_error(node, error))
-        }
-    }
+        | BuiltinComponent::Card => unreachable!("containers lower before scalar components"),
+    }?;
+    Ok(Box::new(lowered))
 }

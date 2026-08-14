@@ -1,12 +1,3 @@
-fn stable_slug(value: &str) -> String {
-    let mut hash = 0xcbf29ce484222325u64;
-    for byte in value.bytes() {
-        hash ^= byte as u64;
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    format!("{:x}", hash)[..8].to_string()
-}
-
 fn static_text(value: impl AsRef<str>, component: BuiltinComponent) -> ComponentResult<String> {
     let value = value.as_ref().trim().to_string();
     if value.is_empty() {

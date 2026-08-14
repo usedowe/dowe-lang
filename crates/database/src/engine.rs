@@ -1,7 +1,7 @@
 use crate::error::{StoreError, StoreResult};
 use crate::metadata::{DatabaseMetadata, read_metadata, write_metadata};
 use crate::names::{validate_database_name, validate_field_name, validate_table_name};
-use crate::query::{QueryOutcome, execute_sql};
+use crate::query::{QueryOutcome, execute_portable_select, execute_sql};
 use crate::security::{create_private_directory, secure_file};
 use crate::state::{
     DatabaseState, apply_recovered_transaction, ensure_available, legacy_state, prepare_insert,
@@ -11,6 +11,7 @@ use crate::storage;
 use crate::transaction::Transaction;
 use crate::value::{StoreValue, record_to_json};
 use crate::wal::{self, WalOperation};
+use dowe_database_query::SelectQuery;
 use dowe_id::validate_ulid;
 use serde::Serialize;
 use serde_json::Value;
@@ -258,6 +259,16 @@ impl Database {
                 .map(record_to_json)
                 .collect::<Vec<_>>(),
         ))
+    }
+
+    pub fn query_portable_json(&self, query: &SelectQuery, params: &[Value]) -> StoreResult<Value> {
+        let outcome = execute_portable_select(self, query, params)?;
+        let QueryOutcome::Rows { rows, .. } = outcome else {
+            return Err(StoreError::InvalidQuery(
+                "portable database query must return rows".to_string(),
+            ));
+        };
+        Ok(Value::Array(rows.iter().map(record_to_json).collect()))
     }
 
     pub fn query_with_plan(&self, sql: &str) -> StoreResult<(Vec<StoreRecord>, QueryPlan)> {

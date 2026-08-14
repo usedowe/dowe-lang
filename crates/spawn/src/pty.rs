@@ -3,7 +3,7 @@ use crate::config::{KillTarget, Signal, SpawnConfig};
 use crate::control::ControlMessage;
 use crate::error::{SpawnError, SpawnPhase, SpawnResult};
 use crate::event::{SpawnEvent, SpawnOutput};
-use crate::platform::{portable_status_parts, terminate_pid};
+use crate::platform::{ProcessTree, portable_status_parts, terminate_pid};
 use crate::validation::apply_pty_environment;
 use portable_pty::{CommandBuilder, MasterPty, PtySize, native_pty_system};
 use std::io::{Read, Write};
@@ -130,6 +130,7 @@ fn read_terminal(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn supervise_pty(
     spawn_id: u64,
     config: SpawnConfig,
@@ -144,6 +145,7 @@ fn supervise_pty(
 ) {
     let started_at = Instant::now();
     let system_pid = child.process_id();
+    let mut process_tree = ProcessTree::new(system_pid, &config.options.kill_target);
     let mut timed_out = false;
     let mut canceled = false;
     let mut termination_started_at = None;
@@ -161,6 +163,7 @@ fn supervise_pty(
                 &mut canceled,
                 &mut termination_started_at,
                 &mut termination_signal,
+                &mut process_tree,
                 message,
             );
         }
@@ -177,7 +180,12 @@ fn supervise_pty(
                 timeout_ms,
                 signal: termination_signal.clone(),
             });
-            terminate_pty_child(child.as_mut(), &config, termination_signal.clone());
+            terminate_pty_child(
+                child.as_mut(),
+                &config,
+                termination_signal.clone(),
+                &mut process_tree,
+            );
         }
 
         if let Some(started) = termination_started_at
@@ -185,7 +193,7 @@ fn supervise_pty(
             && should_force(config.options.kill_grace_ms, started)
         {
             termination_signal = Signal::Kill;
-            terminate_pty_child(child.as_mut(), &config, Signal::Kill);
+            terminate_pty_child(child.as_mut(), &config, Signal::Kill, &mut process_tree);
         }
 
         match child.try_wait() {
@@ -205,7 +213,9 @@ fn supervise_pty(
         && matches!(config.options.kill_target, KillTarget::Group)
         && let Some(system_pid) = system_pid
     {
+        process_tree.capture();
         let _ = terminate_pid(system_pid, &config.options.kill_target, Signal::Kill);
+        process_tree.terminate(Signal::Kill);
     }
     drop(writer);
     drop(master);
@@ -231,6 +241,7 @@ fn supervise_pty(
     let _ = result_tx.send(output);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_control(
     spawn_id: u64,
     config: &SpawnConfig,
@@ -241,6 +252,7 @@ fn handle_control(
     canceled: &mut bool,
     termination_started_at: &mut Option<Instant>,
     termination_signal: &mut Signal,
+    process_tree: &mut ProcessTree,
     message: ControlMessage,
 ) {
     match message {
@@ -298,28 +310,36 @@ fn handle_control(
                 spawn_id,
                 signal: termination_signal.clone(),
             });
-            terminate_pty_child(child, config, termination_signal.clone());
+            terminate_pty_child(child, config, termination_signal.clone(), process_tree);
         }
         ControlMessage::Signal(signal) => {
             *termination_signal = signal.clone();
             *termination_started_at = Some(Instant::now());
-            terminate_pty_child(child, config, signal);
+            terminate_pty_child(child, config, signal, process_tree);
         }
         ControlMessage::ForceKill => {
             *termination_signal = Signal::Kill;
             *termination_started_at = Some(Instant::now());
-            terminate_pty_child(child, config, Signal::Kill);
+            terminate_pty_child(child, config, Signal::Kill, process_tree);
         }
     }
 }
 
-fn terminate_pty_child(child: &mut dyn portable_pty::Child, config: &SpawnConfig, signal: Signal) {
+fn terminate_pty_child(
+    child: &mut dyn portable_pty::Child,
+    config: &SpawnConfig,
+    signal: Signal,
+    process_tree: &mut ProcessTree,
+) {
+    process_tree.capture();
     if let Some(pid) = child.process_id()
-        && terminate_pid(pid, &config.options.kill_target, signal).is_ok()
+        && terminate_pid(pid, &config.options.kill_target, signal.clone()).is_ok()
     {
+        process_tree.terminate(signal);
         return;
     }
 
+    process_tree.terminate(signal);
     let _ = child.kill();
 }
 

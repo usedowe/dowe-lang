@@ -300,13 +300,23 @@ fn render_chart_html(
     context: &ReactiveRenderContext,
 ) -> String {
     format!(
-        r#"<figure{}><div class="dowe-chart-viewport"><svg class="dowe-chart-svg" viewBox="0 0 600 300" preserveAspectRatio="none" aria-hidden="true"></svg><div class="dowe-chart-loading">Loading</div><figcaption class="dowe-chart-empty">{}</figcaption></div><div class="dowe-chart-legend" data-dowe-chart-legend></div></figure>"#,
+        r#"<figure{}><div class="dowe-chart-viewport{}"><svg class="dowe-chart-svg" viewBox="0 0 600 300" preserveAspectRatio="{}" aria-hidden="true"></svg><div class="dowe-chart-loading">Loading</div><figcaption class="dowe-chart-empty">{}</figcaption></div><div class="dowe-chart-legend" data-dowe-chart-legend></div></figure>"#,
         attrs(
             chart_classes(class_base, props),
             Some(&props.style.element),
             Some(&format!(r#" role="figure" aria-label="{label}"{extra}"#)),
             context,
         ),
+        if class_base == "arc-chart-container" {
+            " dowe-chart-arc-viewport"
+        } else {
+            ""
+        },
+        if class_base == "arc-chart-container" {
+            "xMidYMid meet"
+        } else {
+            "none"
+        },
         escape_html(&props.empty_label)
     )
 }

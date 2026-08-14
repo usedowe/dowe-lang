@@ -1,7 +1,7 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
     AppConfig, AppOutput, CompileEnvironment, CompiledProject, EnvironmentConfig, GeneratedFile,
-    ViewTargetRoutes,
+    ViewPlatform, ViewTargetRoutes,
 };
 use crate::parser::parse_project_for;
 use crate::typecheck_artifacts::{obsolete_typecheck_artifacts, typecheck_artifacts};
@@ -17,39 +17,151 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 pub fn compile_dev(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
-    compile_project(root, CompileEnvironment::Development)
+    compile_project(
+        root,
+        CompileEnvironment::Development,
+        false,
+        true,
+        true,
+        None,
+    )
+}
+
+pub fn compile_dev_server(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
+    compile_project(
+        root,
+        CompileEnvironment::Development,
+        false,
+        true,
+        false,
+        None,
+    )
+}
+
+pub fn compile_dev_web(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
+    compile_project(
+        root,
+        CompileEnvironment::Development,
+        false,
+        false,
+        true,
+        None,
+    )
+}
+
+pub fn compile_dev_for_platforms(
+    root: impl AsRef<Path>,
+    platforms: impl IntoIterator<Item = ViewPlatform>,
+) -> DoweResult<CompiledProject> {
+    let platforms = platforms.into_iter().collect::<BTreeSet<_>>();
+    compile_project(
+        root,
+        CompileEnvironment::Development,
+        false,
+        true,
+        !platforms.is_empty(),
+        Some(platforms),
+    )
+}
+
+pub fn compile_dev_views_for_platforms(
+    root: impl AsRef<Path>,
+    platforms: impl IntoIterator<Item = ViewPlatform>,
+) -> DoweResult<CompiledProject> {
+    compile_project(
+        root,
+        CompileEnvironment::Development,
+        false,
+        false,
+        true,
+        Some(platforms.into_iter().collect()),
+    )
+}
+
+pub fn compile_dev_with_seeders(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
+    compile_project(
+        root,
+        CompileEnvironment::Development,
+        true,
+        true,
+        true,
+        None,
+    )
 }
 
 pub fn compile_for_environment(
     root: impl AsRef<Path>,
     environment: CompileEnvironment,
 ) -> DoweResult<CompiledProject> {
-    compile_project(root, environment)
+    compile_project(root, environment, true, true, true, None)
+}
+
+pub fn compile_for_server_environment(
+    root: impl AsRef<Path>,
+    environment: CompileEnvironment,
+) -> DoweResult<CompiledProject> {
+    compile_project(root, environment, true, true, false, None)
+}
+
+pub fn compile_for_web_environment(
+    root: impl AsRef<Path>,
+    environment: CompileEnvironment,
+) -> DoweResult<CompiledProject> {
+    compile_project(root, environment, true, false, true, None)
 }
 
 fn compile_project(
     root: impl AsRef<Path>,
     environment: CompileEnvironment,
+    include_seeders: bool,
+    compile_server: bool,
+    compile_views: bool,
+    selected_platforms: Option<BTreeSet<ViewPlatform>>,
 ) -> DoweResult<CompiledProject> {
     let root = normalize_root(root.as_ref())?;
-    let mut parsed = parse_project_for(&root, environment)?;
-    let icon_targets = icon_artifacts::ProjectIconTargets::detect(&root)?;
-    icon_artifacts::apply_web_icon_documents(&mut parsed.web, &icon_targets);
-    icon_artifacts::apply_web_icon_documents(&mut parsed.desktop_web, &icon_targets);
+    let mut parsed = parse_project_for(
+        &root,
+        environment,
+        include_seeders,
+        compile_server,
+        compile_views,
+        selected_platforms.as_ref(),
+    )?;
+    let icon_targets = if compile_views {
+        icon_artifacts::ProjectIconTargets::detect(&root)?
+    } else {
+        icon_artifacts::ProjectIconTargets::default()
+    };
+    if compile_views {
+        icon_artifacts::apply_web_icon_documents(&mut parsed.web, &icon_targets);
+        icon_artifacts::apply_web_icon_documents(&mut parsed.desktop_web, &icon_targets);
+    }
     write_typecheck_artifacts(&root)?;
-    let font_families = parsed
-        .font_config
-        .effective_families(&collect_target_route_font_families(&parsed.view_routes));
-    let apps = build_app_outputs(
-        &parsed.view_routes,
-        &parsed.desktop_web,
-        &parsed.app_config,
-        &parsed.font_config,
-        &parsed.design_config,
-        &parsed.environment_config,
-        &parsed.translations,
-        &icon_targets,
-    );
+    let font_families = if compile_views {
+        parsed
+            .font_config
+            .effective_families(&collect_target_route_font_families(
+                &parsed.view_routes,
+                selected_platforms.as_ref(),
+            ))
+    } else {
+        BTreeSet::new()
+    };
+    let apps = if compile_views {
+        build_app_outputs(
+            &parsed.view_routes,
+            &parsed.desktop_web,
+            &parsed.app_config,
+            &parsed.font_config,
+            &parsed.design_config,
+            &parsed.environment_config,
+            &parsed.translations,
+            &icon_targets,
+            selected_platforms.as_ref(),
+        )
+    } else {
+        AppOutput { files: Vec::new() }
+    };
     let project = CompiledProject {
         root: root.clone(),
         capabilities: parsed.capabilities,
@@ -68,12 +180,38 @@ fn compile_project(
         apps,
     };
 
-    if project.capabilities.views {
-        write_web_artifacts(&project)?;
-        write_app_artifacts(&project)?;
-        copy_font_assets(&project.root, &font_families)?;
-        copy_project_assets(&project.root)?;
-        icon_artifacts::sync_project_icons(&project.root, &icon_targets)?;
+    if compile_views && project.capabilities.views {
+        if platform_selected(selected_platforms.as_ref(), ViewPlatform::Web) {
+            write_web_artifacts(&project)?;
+        } else {
+            remove_output_directory(&project.root.join(".dowe/web"))?;
+        }
+        if project.apps.files.is_empty() {
+            remove_output_directory(&project.root.join(".dowe/apps"))?;
+        } else {
+            write_app_artifacts(&project)?;
+        }
+        if selected_platforms
+            .as_ref()
+            .map(|platforms| !platforms.is_empty())
+            .unwrap_or(true)
+        {
+            copy_font_assets(
+                &project.root,
+                &font_families,
+                selected_platforms.as_ref(),
+            )?;
+            if platform_selected(selected_platforms.as_ref(), ViewPlatform::Android) {
+                copy_project_assets(&project.root)?;
+            }
+            icon_artifacts::sync_project_icons(
+                &project.root,
+                &icon_targets,
+                selected_platforms.as_ref(),
+            )?;
+        } else {
+            remove_output_directory(&project.root.join(".dowe/fonts"))?;
+        }
     } else {
         remove_output_directory(&project.root.join(".dowe/web"))?;
         remove_output_directory(&project.root.join(".dowe/apps"))?;
@@ -90,12 +228,33 @@ fn remove_output_directory(path: &Path) -> DoweResult<()> {
     Ok(())
 }
 
-fn collect_target_route_font_families(routes: &ViewTargetRoutes) -> BTreeSet<FontFamily> {
+fn collect_target_route_font_families(
+    routes: &ViewTargetRoutes,
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+) -> BTreeSet<FontFamily> {
     let mut fonts = BTreeSet::new();
-    for route_set in [&routes.web, &routes.desktop, &routes.android, &routes.ios] {
+    for platform in ViewPlatform::all() {
+        if !platform_selected(selected_platforms, *platform) {
+            continue;
+        }
+        let route_set = match platform {
+            ViewPlatform::Web => &routes.web,
+            ViewPlatform::Desktop => &routes.desktop,
+            ViewPlatform::Android => &routes.android,
+            ViewPlatform::Ios => &routes.ios,
+        };
         fonts.extend(collect_route_font_families(route_set));
     }
     fonts
+}
+
+fn platform_selected(
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+    platform: ViewPlatform,
+) -> bool {
+    selected_platforms
+        .map(|platforms| platforms.contains(&platform))
+        .unwrap_or(true)
 }
 
 fn write_typecheck_artifacts(root: &Path) -> DoweResult<()> {
@@ -184,7 +343,11 @@ fn remove_obsolete_generated_files(
     Ok(empty)
 }
 
-fn copy_font_assets(root: &Path, fonts: &BTreeSet<FontFamily>) -> DoweResult<()> {
+fn copy_font_assets(
+    root: &Path,
+    fonts: &BTreeSet<FontFamily>,
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+) -> DoweResult<()> {
     let source_roots = font_assets_source_roots(root);
     let fonts_root = root.join(".dowe/fonts");
 
@@ -224,21 +387,25 @@ fn copy_font_assets(root: &Path, fonts: &BTreeSet<FontFamily>) -> DoweResult<()>
                 .join(entry.token.as_str())
                 .join(format!("{}.ttf", weight.asset_stem));
             copy_font_asset(&source, &shared)?;
-            copy_font_asset(
-                &shared,
-                &root
-                    .join(".dowe/apps/ios/Fonts")
-                    .join(format!("{}.ttf", weight.asset_stem)),
-            )?;
-            copy_font_asset(
-                &shared,
-                &root
-                    .join(".dowe/apps/android/app/src/main/res/font")
-                    .join(format!(
-                        "{}.ttf",
-                        android_font_resource_name(weight.asset_stem)
-                    )),
-            )?;
+            if platform_selected(selected_platforms, ViewPlatform::Ios) {
+                copy_font_asset(
+                    &shared,
+                    &root
+                        .join(".dowe/apps/ios/Fonts")
+                        .join(format!("{}.ttf", weight.asset_stem)),
+                )?;
+            }
+            if platform_selected(selected_platforms, ViewPlatform::Android) {
+                copy_font_asset(
+                    &shared,
+                    &root
+                        .join(".dowe/apps/android/app/src/main/res/font")
+                        .join(format!(
+                            "{}.ttf",
+                            android_font_resource_name(weight.asset_stem)
+                        )),
+                )?;
+            }
         }
     }
 
@@ -362,12 +529,52 @@ fn build_app_outputs(
     environment_config: &EnvironmentConfig,
     translations: &dowe_components::TranslationCatalog,
     icon_targets: &icon_artifacts::ProjectIconTargets,
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
 ) -> AppOutput {
     let mut files = Vec::new();
     let client_environment = environment_config.client_values();
 
-    files.extend(
-        generate_desktop_with_app(&routes.desktop, &app_config.name, &app_config.bundle)
+    if platform_selected(selected_platforms, ViewPlatform::Desktop) {
+        files.extend(
+            generate_desktop_with_app(&routes.desktop, &app_config.name, &app_config.bundle)
+                .files
+                .into_iter()
+                .map(|file| GeneratedFile {
+                    relative_path: file.relative_path,
+                    content: file.content,
+                    kind: format!("{:?}", file.kind),
+                    target: file.target.to_string(),
+                }),
+        );
+        files.extend(
+            web_artifacts_for_target(
+                desktop_web,
+                font_config,
+                design_config,
+                Path::new("apps/desktop"),
+                "desktop-web",
+            )
+            .into_iter()
+            .map(|file| GeneratedFile {
+                relative_path: file.relative_path,
+                content: file.content,
+                kind: format!("{:?}", file.kind),
+                target: file.target.to_string(),
+            }),
+        );
+    }
+    if platform_selected(selected_platforms, ViewPlatform::Android) {
+        files.extend(
+            generate_android_with_app_translations_and_icons(
+                &routes.android,
+                font_config,
+                design_config,
+                &client_environment,
+                translations,
+                &app_config.name,
+                &app_config.bundle,
+                icon_targets.android,
+            )
             .files
             .into_iter()
             .map(|file| GeneratedFile {
@@ -376,70 +583,39 @@ fn build_app_outputs(
                 kind: format!("{:?}", file.kind),
                 target: file.target.to_string(),
             }),
-    );
-    files.extend(
-        web_artifacts_for_target(
-            desktop_web,
-            font_config,
-            design_config,
-            Path::new("apps/desktop"),
-            "desktop-web",
-        )
-        .into_iter()
-        .map(|file| GeneratedFile {
-            relative_path: file.relative_path,
-            content: file.content,
-            kind: format!("{:?}", file.kind),
-            target: file.target.to_string(),
-        }),
-    );
-    files.extend(
-        generate_android_with_app_translations_and_icons(
-            &routes.android,
-            font_config,
-            design_config,
-            &client_environment,
-            translations,
-            &app_config.name,
-            &app_config.bundle,
-            icon_targets.android,
-        )
-        .files
-        .into_iter()
-        .map(|file| GeneratedFile {
-            relative_path: file.relative_path,
-            content: file.content,
-            kind: format!("{:?}", file.kind),
-            target: file.target.to_string(),
-        }),
-    );
-    files.extend(
-        generate_ios_with_app_translations_and_icons(
-            &routes.ios,
-            font_config,
-            design_config,
-            &client_environment,
-            translations,
-            &app_config.name,
-            &app_config.bundle,
-            icon_targets.ios,
-        )
-        .files
-        .into_iter()
-        .map(|file| GeneratedFile {
-            relative_path: file.relative_path,
-            content: file.content,
-            kind: format!("{:?}", file.kind),
-            target: file.target.to_string(),
-        }),
-    );
+        );
+    }
+    if platform_selected(selected_platforms, ViewPlatform::Ios) {
+        files.extend(
+            generate_ios_with_app_translations_and_icons(
+                &routes.ios,
+                font_config,
+                design_config,
+                &client_environment,
+                translations,
+                &app_config.name,
+                &app_config.bundle,
+                icon_targets.ios,
+            )
+            .files
+            .into_iter()
+            .map(|file| GeneratedFile {
+                relative_path: file.relative_path,
+                content: file.content,
+                kind: format!("{:?}", file.kind),
+                target: file.target.to_string(),
+            }),
+        );
+    }
 
-    files.push(GeneratedFile {
-        relative_path: PathBuf::from("apps/manifest.json"),
-        content: app_manifest(&files, routes, app_config),
-        kind: "Manifest".to_string(),
-        target: "apps".to_string(),
-    });
+    if !files.is_empty() {
+        files.push(GeneratedFile {
+            relative_path: PathBuf::from("apps/manifest.json"),
+            content: app_manifest(&files, routes, app_config),
+            kind: "Manifest".to_string(),
+            target: "apps".to_string(),
+        });
+    }
 
     AppOutput { files }
 }

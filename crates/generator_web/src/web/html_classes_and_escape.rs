@@ -427,7 +427,7 @@ fn command_classes(props: &CommandProps) -> Vec<String> {
 }
 
 fn text_classes(base: &str, props: &TextProps) -> Vec<String> {
-    let mut classes = Vec::new();
+    let mut classes = vec![format!("dowe-{base}")];
     if let Some(size) = &props.size {
         append_responsive_classes(&mut classes, base, Some(size), |value| {
             value.as_str().to_string()

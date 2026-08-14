@@ -13,11 +13,12 @@ use crate::parser::source_stdlib::parse_stdlib_call;
 use crate::parser::source_types::{TypeRegistry, is_shared_type_path, validate_source_value_type};
 use crate::parser::source_values::parse_value;
 use dowe_components::{
-    BuiltinComponent, COMPONENT_REGISTRY, CodeTemplateSegment, ColorFamily, ComponentError,
-    ComponentProp, ComponentVariant, DesignConfig, NavigationAction, NavigationOperation,
-    OverlayCornerPosition, PropScalar, PropValue, ResponsivePropEntry, StdlibArgument, StdlibCall,
-    StdlibValue, ToggleGroupKind, VIEW_META_NAMES, ViewAction, ViewActionKind, ViewAssignAction,
-    ViewConstant, ViewFunctionParameter, ViewFunctionReturn, ViewFunctionStatement, ViewMetadata,
+    BuiltinComponent, COMPONENT_REGISTRY, CodeTemplateSegment, ColorFamily, ColorToken,
+    ComponentError, ComponentProp, ComponentVariant, DesignComponentSlot, DesignConfig,
+    NavigationAction, NavigationOperation, OverlayCornerPosition, PropScalar, PropValue,
+    ResponsivePropEntry, StdlibArgument, StdlibCall, StdlibValue, TabsVariant, ToggleGroupKind,
+    VIEW_META_NAMES, ViewAction, ViewActionKind, ViewAssignAction, ViewConstant,
+    ViewFunctionParameter, ViewFunctionReturn, ViewFunctionStatement, ViewMetadata,
     ViewNavigationAction, ViewRequestAction, ViewRequestHeader, ViewRequestHeaderValue,
     ViewRequestMethod, ViewResetAction, ViewSection, ViewSignal, ViewSignalScope,
     ViewSignalStorage, ViewSignalValue, ViewToastAction, VisibilityCondition,
@@ -93,6 +94,7 @@ include!("source_views/navigation_collect.rs");
 include!("source_views/reactive_validation.rs");
 include!("source_views/node_validation.rs");
 include!("source_views/node_variant_validation.rs");
+include!("source_views/theme_validation.rs");
 include!("source_views/action_validation.rs");
 include!("source_views/data_validation.rs");
 include!("source_views/path_validation.rs");

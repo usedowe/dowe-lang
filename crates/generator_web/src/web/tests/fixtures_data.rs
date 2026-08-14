@@ -153,6 +153,42 @@ fn charts_tree() -> ViewNode {
                     name: "palette".to_string(),
                     value: PropValue::String("ocean".to_string()),
                 },
+                ComponentProp {
+                    name: "centerText".to_string(),
+                    value: PropValue::String("Share".to_string()),
+                },
+                ComponentProp {
+                    name: "centerValue".to_string(),
+                    value: PropValue::String("88%".to_string()),
+                },
+                ComponentProp {
+                    name: "thickness".to_string(),
+                    value: PropValue::Number("18".to_string()),
+                },
+                ComponentProp {
+                    name: "gap".to_string(),
+                    value: PropValue::Number("4".to_string()),
+                },
+                ComponentProp {
+                    name: "startAngle".to_string(),
+                    value: PropValue::Number("-90".to_string()),
+                },
+                ComponentProp {
+                    name: "endAngle".to_string(),
+                    value: PropValue::Number("270".to_string()),
+                },
+                ComponentProp {
+                    name: "showInlineLabels".to_string(),
+                    value: PropValue::Boolean(true),
+                },
+                ComponentProp {
+                    name: "hideValues".to_string(),
+                    value: PropValue::Boolean(true),
+                },
+                ComponentProp {
+                    name: "showGlow".to_string(),
+                    value: PropValue::Boolean(true),
+                },
             ])
             .expect("arc chart"),
             dowe_components::area_chart_component_node(vec![

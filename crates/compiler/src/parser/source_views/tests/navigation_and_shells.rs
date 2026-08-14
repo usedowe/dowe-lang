@@ -154,7 +154,7 @@ fn rejects_invalid_side_nav_structure() {
     assert!(
         icon_name
             .to_string()
-            .contains("known Solar icon with the selected style")
+            .contains("known Solar icon variant name")
     );
 
     let duplicate_icon = parse_page(

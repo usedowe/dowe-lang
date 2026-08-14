@@ -105,6 +105,7 @@ fn generated_views(
         goBack()
     }
     Box(modifier = Modifier.fillMaxSize().background(DoweDesign.background)) {
+        CompositionLocalProvider(LocalContentColor provides DoweDesign.backgroundText, LocalDoweTitleColor provides DoweDesign.backgroundTitle) {
         if (externalUrl != null) {
             AndroidView(
                 modifier = Modifier.fillMaxSize().safeDrawingPadding(),
@@ -126,7 +127,7 @@ fn generated_views(
                 }
 "#,
         );
-        output.push_str("            }\n        }\n    }\n");
+    output.push_str("            }\n        }\n        }\n    }\n");
     } else {
         output.push_str("    Column {\n    }\n");
     }

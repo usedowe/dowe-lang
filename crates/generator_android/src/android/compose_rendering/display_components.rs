@@ -188,7 +188,7 @@ fn render_compose_rich_text(
         "{pad}DoweRichText(marks = {}, fontFamily = {}, fontSize = {size}, contentColor = {}, modifier = {})\n",
         compose_rich_text_marks(marks),
         compose_font_value(props.style.font.as_ref().or(inherited_font), default_family),
-        text_color(props),
+        text_color(props.title, props),
         modifier_for_style(&props.style),
     ));
 }

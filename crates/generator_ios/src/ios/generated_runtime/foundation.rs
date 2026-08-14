@@ -12,6 +12,26 @@ import WebKit
 
 __DOWE_DESIGN__
 
+struct DoweTitleColorKey: EnvironmentKey {
+    static let defaultValue: Color? = nil
+}
+
+extension EnvironmentValues {
+    var doweTitleColor: Color? {
+        get { self[DoweTitleColorKey.self] }
+        set { self[DoweTitleColorKey.self] = newValue }
+    }
+}
+
+struct DoweTitleColorModifier: ViewModifier {
+    @Environment(\.doweTitleColor) private var inheritedColor
+    let explicitColor: Color?
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(explicitColor ?? inheritedColor ?? DoweDesign.backgroundTitle)
+    }
+}
+
 struct DoweShadowSpec {
     let color: Color
     let blurRadius: CGFloat
@@ -77,19 +97,56 @@ func doweButtonFamily(_ scheme: String) -> Color {
 }
 
 @MainActor
-func doweButtonOnFamily(_ scheme: String) -> Color {
+func doweButtonTextFamily(_ scheme: String) -> Color {
     switch scheme {
-    case "background": return DoweDesign.onBackground
-    case "surface": return DoweDesign.onSurface
-    case "secondary": return DoweDesign.onSecondary
-    case "tertiary": return DoweDesign.onTertiary
-    case "muted": return DoweDesign.onMuted
-    case "success": return DoweDesign.onSuccess
-    case "info": return DoweDesign.onInfo
-    case "warning": return DoweDesign.onWarning
-    case "danger": return DoweDesign.onDanger
-    default: return DoweDesign.onPrimary
+    case "background": return DoweDesign.backgroundText
+    case "surface": return DoweDesign.surfaceText
+    case "secondary": return DoweDesign.secondaryText
+    case "tertiary": return DoweDesign.tertiaryText
+    case "muted": return DoweDesign.mutedText
+    case "success": return DoweDesign.successText
+    case "info": return DoweDesign.infoText
+    case "warning": return DoweDesign.warningText
+    case "danger": return DoweDesign.dangerText
+    default: return DoweDesign.primaryText
     }
+}
+
+@MainActor
+func doweButtonTitleFamily(_ scheme: String) -> Color {
+    switch scheme {
+    case "background": return DoweDesign.backgroundTitle
+    case "surface": return DoweDesign.surfaceTitle
+    case "secondary": return DoweDesign.secondaryTitle
+    case "tertiary": return DoweDesign.tertiaryTitle
+    case "muted": return DoweDesign.mutedTitle
+    case "success": return DoweDesign.successTitle
+    case "info": return DoweDesign.infoTitle
+    case "warning": return DoweDesign.warningTitle
+    case "danger": return DoweDesign.dangerTitle
+    default: return DoweDesign.primaryTitle
+    }
+}
+
+@MainActor
+func doweButtonSoftTitleFamily(_ scheme: String) -> Color {
+    switch scheme {
+    case "background": return DoweDesign.backgroundTitle
+    case "surface": return DoweDesign.surfaceTitle
+    case "secondary": return DoweDesign.softSecondaryTitle
+    case "tertiary": return DoweDesign.softTertiaryTitle
+    case "muted": return DoweDesign.softMutedTitle
+    case "success": return DoweDesign.softSuccessTitle
+    case "info": return DoweDesign.softInfoTitle
+    case "warning": return DoweDesign.softWarningTitle
+    case "danger": return DoweDesign.softDangerTitle
+    default: return DoweDesign.softPrimaryTitle
+    }
+}
+
+@MainActor
+func doweSideNavHeaderColor(_ scheme: String) -> Color {
+    doweButtonContent("ghost", scheme)
 }
 
 @MainActor
@@ -101,7 +158,7 @@ func doweButtonContainer(_ variant: String, _ scheme: String) -> Color {
 
 @MainActor
 func doweButtonContent(_ variant: String, _ scheme: String) -> Color {
-    variant == "solid" ? doweButtonOnFamily(scheme) : doweButtonFamily(scheme)
+    variant == "solid" ? doweButtonTextFamily(scheme) : doweButtonFamily(scheme)
 }
 
 @MainActor
@@ -123,16 +180,16 @@ func doweCardSoftFamily(_ scheme: String) -> Color {
 @MainActor
 func doweCardSoftContent(_ scheme: String) -> Color {
     switch scheme {
-    case "background": return DoweDesign.onBackground
-    case "surface": return DoweDesign.onSurface
-    case "secondary": return DoweDesign.onSoftSecondary
-    case "tertiary": return DoweDesign.onSoftTertiary
-    case "muted": return DoweDesign.onSoftMuted
-    case "success": return DoweDesign.onSoftSuccess
-    case "info": return DoweDesign.onSoftInfo
-    case "warning": return DoweDesign.onSoftWarning
-    case "danger": return DoweDesign.onSoftDanger
-    default: return DoweDesign.onSoftPrimary
+    case "background": return DoweDesign.backgroundText
+    case "surface": return DoweDesign.surfaceText
+    case "secondary": return DoweDesign.softSecondaryText
+    case "tertiary": return DoweDesign.softTertiaryText
+    case "muted": return DoweDesign.softMutedText
+    case "success": return DoweDesign.softSuccessText
+    case "info": return DoweDesign.softInfoText
+    case "warning": return DoweDesign.softWarningText
+    case "danger": return DoweDesign.softDangerText
+    default: return DoweDesign.softPrimaryText
     }
 }
 
@@ -146,10 +203,10 @@ func doweCardContainer(_ variant: String, _ scheme: String) -> Color {
 
 @MainActor
 func doweCardContent(_ variant: String, _ scheme: String) -> Color {
-    if variant == "solid" { return doweButtonOnFamily(scheme) }
+    if variant == "solid" { return doweButtonTextFamily(scheme) }
     if variant == "soft" { return doweCardSoftContent(scheme) }
-    if variant == "outlined" { return scheme == "background" ? DoweDesign.onBackground : DoweDesign.onSurface }
-    if variant == "ghost" && (scheme == "background" || scheme == "surface") { return doweButtonOnFamily(scheme) }
+    if variant == "outlined" { return scheme == "background" ? DoweDesign.backgroundText : DoweDesign.surfaceText }
+    if variant == "ghost" && (scheme == "background" || scheme == "surface") { return doweButtonTextFamily(scheme) }
     return doweButtonFamily(scheme)
 }
 

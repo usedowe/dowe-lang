@@ -44,13 +44,13 @@ Read server statements from left to right:
 ```
 
 Use the first form when the capability produces a named value, such as
-`query blogs db:appDb.list table:"blogs"` or
+`query blogs conn:appDb.list table:"blogs"` or
 `createBlogService result args:{ title:body.title }`. Use the second when the capability performs
 an action without creating a value, such as `next context:{ auth:verified }`.
 
 The binding is a new server-local name. Props are named `name:value` inputs. An imported function
 name is the capability at its call site. Control capabilities can select a target instead of
-creating a binding, for example `task refreshIndex args:{ force:true }`; the target is not a result
+creating a binding, for example `task fn:refreshIndex args:{ force:true }`; the target is not a result
 binding. Server source never uses assignment syntax.
 
 Standard-library operations use
@@ -104,8 +104,8 @@ request payload source:"bytes"
 | `http upstream` | `upstream` | `method:string`, `base:string or env`, `path:string` | `bearer`, `headers`, `json`, `mode:"json|proxy|bytes"`, `redirect`, `maxRedirects`, `timeoutMs` |
 | `crypto output` | `output` | `encryption:"aesCtr|cencAesCtr"`, `data`, `key`, `iv` | `subsamples:[{ clear:number encrypted:number }]` |
 | `jwt token` | `token` | `secret` or `key`, plus `claims` or `token` | `algorithm`, `encryption`; see `references/runtime.md` |
-| `task function` | none | Imported function name or an indented inline body | `args:{...}`; immediate fire-and-forget from server actions or functions. `after:"headers"` requires `args:{ event:{...} }` and only a direct handler ending `return reverse:...` |
-| `cron function` | none | Imported function name, `schedule:string` | `args:{...}`; valid only directly under `server.init` or `desktop.server.init`; `after` is invalid |
+| `task fn:function` | none | Imported function through `fn` or an indented inline body | `args:{...}`; immediate fire-and-forget from server actions or functions. `after:"headers"` requires `args:{ event:{...} }` and only a direct handler ending `return reverse:...` |
+| `cron fn:function` | none | Imported function through `fn`, `schedule:string` | `args:{...}`; valid only directly under `server.init` or `desktop.server.init`; `after` is invalid |
 
 ## Routes in `main.dowe`
 

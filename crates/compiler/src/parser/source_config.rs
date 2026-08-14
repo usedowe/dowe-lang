@@ -9,7 +9,7 @@ use crate::parser::source_parser::parse_source_file;
 use dowe_components::{
     BorderWidth, ButtonSize, ColorFamily, ColorToken, ComponentVariant, DesignComponentSlot,
     DesignConfig, DesignDefaults, DesignTheme, FontConfig, FontFamily, RoundedSize, ShadowSize,
-    integrated_design_theme,
+    TabsVariant, integrated_design_theme,
 };
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
@@ -47,7 +47,18 @@ struct RawTheme {
 pub(crate) fn parse_project_config_for(
     root: &Path,
     environment: CompileEnvironment,
+    compile_views: bool,
 ) -> DoweResult<ParsedConfig> {
+    let environment_config = parse_environment_files_for(root, environment)?;
+    if !compile_views {
+        return Ok(ParsedConfig {
+            app_config: AppConfig::default(),
+            font_config: FontConfig::default(),
+            design_config: DesignConfig::default(),
+            environment_config,
+        });
+    }
+
     let json_path = root.join("dowe.json");
     if json_path.exists() {
         return Err(DoweError::at_path(
@@ -79,8 +90,6 @@ pub(crate) fn parse_project_config_for(
             DesignConfig::default(),
         )
     };
-
-    let environment_config = parse_environment_files_for(root, environment)?;
 
     Ok(ParsedConfig {
         app_config,
@@ -595,7 +604,7 @@ fn parse_design(node: &SourceNode) -> DoweResult<DesignConfig> {
     };
 
     let mut themes = HashMap::new();
-    let mut defaults = DesignDefaults::default();
+    let mut configured_defaults = DesignDefaults::empty();
     for child in &node.children {
         match child.name.as_str() {
             "theme" => {
@@ -607,9 +616,10 @@ fn parse_design(node: &SourceNode) -> DoweResult<DesignConfig> {
                     ));
                 }
             }
-            "Card" | "Button" | "Chip" | "Avatar" | "Ui" | "Text" | "Title" => {
-                parse_component_defaults(child, &mut defaults)?
-            }
+            "Card" | "Button" | "IconButton" | "Drawer" | "Toast" | "Section" | "Accordion"
+            | "Checkbox" | "Input" | "Date" | "Password" | "Select" | "Pin" | "AppBar"
+            | "Footer" | "Modal" | "Dropdown" | "Tooltip" | "Tabs" | "Chip" | "Avatar" | "Ui"
+            | "Text" | "Title" => parse_component_defaults(child, &mut configured_defaults)?,
             _ => {
                 return Err(node_error(
                     child,
@@ -640,11 +650,98 @@ fn parse_design(node: &SourceNode) -> DoweResult<DesignConfig> {
         )?);
     }
 
+    let default_custom_colors = output
+        .iter()
+        .find(|theme| theme.name == default_theme)
+        .map(|theme| {
+            theme
+                .colors
+                .iter()
+                .filter(|(token, _)| !token.is_builtin())
+                .map(|(token, value)| (*token, value.clone()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    for theme in &mut output {
+        if theme.name == default_theme {
+            continue;
+        }
+        for (token, value) in &default_custom_colors {
+            theme.colors.entry(*token).or_insert_with(|| value.clone());
+        }
+    }
+
+    let resolved_default = output
+        .iter()
+        .find(|theme| theme.name == default_theme)
+        .expect("resolved default theme");
+    let defaults = DesignDefaults::with_builtin_overrides(configured_defaults);
+    validate_design_custom_color_defaults(node, &defaults, resolved_default)?;
+
     Ok(DesignConfig {
         default_theme,
         themes: output,
         defaults,
     })
+}
+
+fn validate_design_custom_color_defaults(
+    node: &SourceNode,
+    defaults: &DesignDefaults,
+    theme: &DesignTheme,
+) -> DoweResult<()> {
+    for child in &node.children {
+        let Some(slot) = DesignComponentSlot::from_name(&child.name) else {
+            continue;
+        };
+        for (prop_name, families) in [
+            ("scheme", &defaults.scheme),
+            ("borderColor", &defaults.border_color),
+            ("shadowColor", &defaults.shadow_color),
+        ] {
+            let Some(prop) = child.prop(prop_name) else {
+                continue;
+            };
+            let Some(family) = families.get(&slot).copied() else {
+                continue;
+            };
+            if family.is_builtin() {
+                continue;
+            }
+            validate_design_custom_color_default(prop, theme, family, false)?;
+            let soft_variant = if slot == DesignComponentSlot::Tabs {
+                defaults
+                    .tabs_variant
+                    .get(&slot)
+                    .is_some_and(|variant| *variant == TabsVariant::Pills)
+            } else {
+                defaults.variant.get(&slot) == Some(&ComponentVariant::Soft)
+            };
+            if prop_name == "scheme" && soft_variant {
+                validate_design_custom_color_default(prop, theme, family, true)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_design_custom_color_default(
+    prop: &SourceProp,
+    theme: &DesignTheme,
+    family: ColorFamily,
+    soft: bool,
+) -> DoweResult<()> {
+    if theme.contains_color_family(family, soft) {
+        return Ok(());
+    }
+    let name = family.theme_name(soft);
+    Err(prop_error(
+        prop,
+        format!(
+            "`{}` requires complete `{name}` color, text and title roles in default theme `{}`",
+            prop.name, theme.name
+        ),
+    ))
 }
 
 fn parse_component_defaults(node: &SourceNode, defaults: &mut DesignDefaults) -> DoweResult<()> {
@@ -708,13 +805,23 @@ fn parse_component_defaults(node: &SourceNode, defaults: &mut DesignDefaults) ->
             }
             "variant" => {
                 let value = required_design_string(prop, "variant")?;
-                let value = ComponentVariant::from_name(&value).ok_or_else(|| {
-                    prop_error(
-                        prop,
-                        "variant must be solid, soft, outline, outlined, line or ghost",
-                    )
-                })?;
-                set_component_default(prop, &mut defaults.variant, slot, value)?;
+                if slot == DesignComponentSlot::Tabs {
+                    let value = TabsVariant::from_name(&value).ok_or_else(|| {
+                        prop_error(
+                            prop,
+                            "variant must be solid, outlined, line, ghost or pills",
+                        )
+                    })?;
+                    set_component_default(prop, &mut defaults.tabs_variant, slot, value)?;
+                } else {
+                    let value = ComponentVariant::from_name(&value).ok_or_else(|| {
+                        prop_error(
+                            prop,
+                            "variant must be solid, soft, outline, outlined, line or ghost",
+                        )
+                    })?;
+                    set_component_default(prop, &mut defaults.variant, slot, value)?;
+                }
             }
             "size" => {
                 let value = required_design_string(prop, "size")?;
@@ -777,10 +884,11 @@ fn parse_raw_theme(node: &SourceNode) -> DoweResult<RawTheme> {
         None => None,
     };
     let mut colors = BTreeMap::new();
+    let mut color_families = HashSet::new();
 
     for child in &node.children {
         match child.name.as_str() {
-            "colors" => parse_colors(child, &mut colors)?,
+            "colors" => parse_colors(child, &mut colors, &mut color_families)?,
             _ => {
                 return Err(node_error(
                     child,
@@ -798,21 +906,68 @@ fn parse_raw_theme(node: &SourceNode) -> DoweResult<RawTheme> {
     })
 }
 
-fn parse_colors(node: &SourceNode, colors: &mut BTreeMap<ColorToken, String>) -> DoweResult<()> {
-    if !node.args.is_empty() || !node.children.is_empty() {
-        return Err(node_error(node, "`colors` only accepts color token props"));
+fn parse_colors(
+    node: &SourceNode,
+    colors: &mut BTreeMap<ColorToken, String>,
+    color_families: &mut HashSet<String>,
+) -> DoweResult<()> {
+    if !node.args.is_empty() {
+        return Err(node_error(node, "`colors` does not accept args"));
     }
-    for prop in &node.props {
-        let token = ColorToken::from_name(&prop.name)
-            .ok_or_else(|| prop_error(prop, format!("unknown color token `{}`", prop.name)))?;
-        if colors.contains_key(&token) {
-            return Err(prop_error(
-                prop,
-                format!("duplicate color token `{}`", prop.name),
+    if let Some(prop) = node.props.first() {
+        return Err(prop_error(
+            prop,
+            "`colors` accepts grouped color families such as `primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"`",
+        ));
+    }
+    for family_node in &node.children {
+        let Some((family, soft)) = ColorFamily::from_theme_name(&family_node.name) else {
+            return Err(node_error(
+                family_node,
+                format!("unknown color family `{}`", family_node.name),
+            ));
+        };
+        if !color_families.insert(family_node.name.clone()) {
+            return Err(node_error(
+                family_node,
+                format!("duplicate color family `{}`", family_node.name),
             ));
         }
-        let value = required_static_string_prop(prop)?;
-        colors.insert(token, normalize_hex_color(prop, &value)?);
+        if !family_node.args.is_empty() || !family_node.children.is_empty() {
+            return Err(node_error(
+                family_node,
+                format!("color family `{}` only accepts props", family_node.name),
+            ));
+        }
+        reject_unknown_props(family_node, &["color", "text", "title"])?;
+        if family_node.props.is_empty() {
+            return Err(node_error(
+                family_node,
+                format!(
+                    "color family `{}` requires at least one of `color`, `text`, or `title`",
+                    family_node.name
+                ),
+            ));
+        }
+        let tokens = family.theme_tokens(soft).ok_or_else(|| {
+            node_error(
+                family_node,
+                format!("unknown color family `{}`", family_node.name),
+            )
+        })?;
+        for (role, token) in ["color", "text", "title"].into_iter().zip(tokens) {
+            let Some(prop) = family_node.prop(role) else {
+                continue;
+            };
+            if colors.contains_key(&token) {
+                return Err(prop_error(
+                    prop,
+                    format!("duplicate `{role}` role for `{}`", family_node.name),
+                ));
+            }
+            let value = required_static_string_prop(prop)?;
+            colors.insert(token, normalize_hex_color(prop, &value)?);
+        }
     }
     Ok(())
 }

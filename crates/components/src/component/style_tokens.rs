@@ -440,7 +440,6 @@ impl GapValue {
 pub enum GridTracks {
     Auto,
     Count(u16),
-    Template(String),
 }
 
 impl GridTracks {
@@ -448,14 +447,12 @@ impl GridTracks {
         match self {
             Self::Auto => "auto".to_string(),
             Self::Count(value) => value.to_string(),
-            Self::Template(value) => format!("tpl-{}", stable_slug(value)),
         }
     }
 
     pub fn count(&self) -> Option<u16> {
         match self {
             Self::Count(value) => Some(*value),
-            Self::Template(value) => Some(value.split_whitespace().count() as u16),
             Self::Auto => None,
         }
     }

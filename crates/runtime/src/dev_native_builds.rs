@@ -2,6 +2,7 @@ use crate::dev::{DevTarget, DevTargetSelection};
 use crate::dev_modules::{DevModuleRevision, PublishedDevModule};
 use crate::dev_targets::{build_hot_module_if_current, cancel_active_external_commands};
 use crate::error::RuntimeResult;
+use crate::logging::log_error;
 use crate::{DevEventType, DevRuntimeState};
 use dowe_compiler::CompiledProject;
 use sha2::{Digest, Sha256};
@@ -243,6 +244,7 @@ async fn run_native_build_worker(
             Ok(Err(error)) => {
                 mark_native_build_retryable(&fingerprints, &request);
                 let _ = revision.run_if_current(|| {
+                    log_error(native_build_failure_message(target, &error));
                     state.events.emit(
                         DevEventType::ModuleBuildFailed,
                         Some(target.as_str()),
@@ -254,6 +256,7 @@ async fn run_native_build_worker(
             Err(error) => {
                 mark_native_build_retryable(&fingerprints, &request);
                 let _ = revision.run_if_current(|| {
+                    log_error(native_build_failure_message(target, &error));
                     state.events.emit(
                         DevEventType::ModuleBuildFailed,
                         Some(target.as_str()),
@@ -264,6 +267,10 @@ async fn run_native_build_worker(
             }
         }
     }
+}
+
+fn native_build_failure_message(target: DevTarget, error: &impl std::fmt::Display) -> String {
+    format!("{} module build failed: {error}", target.label())
 }
 
 fn mark_native_build_published(
@@ -305,7 +312,7 @@ fn native_target_fingerprint(project: &CompiledProject, target: DevTarget) -> [u
 
 #[cfg(test)]
 mod tests {
-    use super::{NativeBuildRequest, native_target_fingerprint};
+    use super::{NativeBuildRequest, native_build_failure_message, native_target_fingerprint};
     use crate::{
         DevEventBus, DevEventType, DevRuntimeState, DevTarget, DevTargetSelection, HostOs,
     };
@@ -318,6 +325,14 @@ mod tests {
     use tempfile::TempDir;
     use tokio::sync::{RwLock, watch};
     use tokio::time::timeout;
+
+    #[test]
+    fn labels_native_build_failures_for_terminal_output() {
+        assert_eq!(
+            native_build_failure_message(DevTarget::Ios, &"generated Swift is invalid"),
+            "iOS app module build failed: generated Swift is invalid"
+        );
+    }
 
     #[tokio::test]
     async fn pending_native_requests_collapse_to_the_latest_revision() {

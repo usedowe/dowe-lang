@@ -247,9 +247,9 @@ private fun DoweDeviceIconButton(icon: DoweDeviceIcon, selected: Boolean, onClic
         shape = RoundedCornerShape(DoweDesign.radius),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (selected) DoweDesign.softPrimary else Color.Transparent,
-            contentColor = if (selected) DoweDesign.primary else DoweDesign.onBackground
+            contentColor = if (selected) DoweDesign.primary else DoweDesign.backgroundText
         ),
-        border = BorderStroke(1.dp, if (selected) DoweDesign.primary else DoweDesign.onBackground),
+        border = BorderStroke(1.dp, if (selected) DoweDesign.primary else DoweDesign.backgroundText),
         contentPadding = PaddingValues(0.dp)
     ) {
         DoweSvg(viewBox = icon.viewBox, modifier = Modifier.size(24.dp), color = LocalContentColor.current, paths = icon.paths)
@@ -686,7 +686,7 @@ private fun DoweColorField(value: String, onValueChange: (String) -> Unit, label
                     DoweColorTriggerContent(canonical, placeholder, size, fontSize, lineHeight, contentColor, Modifier.weight(1f))
                 }
             }
-            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.background, contentColor = DoweDesign.onBackground, contentPadding = PaddingValues(16.dp), maxHeight = 480.dp, onDismiss = { expanded = false }) {
+            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.background, contentColor = DoweDesign.backgroundText, contentPadding = PaddingValues(16.dp), maxHeight = 480.dp, onDismiss = { expanded = false }) {
                 DoweColorPickerPanel(value = canonical, hsv = hsv, onHsvChange = { next -> hsv = next; onValueChange(doweColorHex(doweColorFromHsv(next))) }, showHex = showHex, showRgb = showRgb, showCmyk = showCmyk, showOklch = showOklch)
             }
         }
@@ -762,10 +762,10 @@ private fun DoweColorPickerPanel(value: String, hsv: DoweColorHsv, onHsvChange: 
             Box(modifier = Modifier.offset(x = maxWidth * (hsv.hue / 360f) - 10.dp, y = (-2).dp).size(20.dp).clip(RoundedCornerShape(999.dp)).background(Color.White).border(1.dp, DoweDesign.muted.copy(alpha = 0.3f), RoundedCornerShape(999.dp)))
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(doweHexColor(value, DoweDesign.primary)).border(1.dp, DoweDesign.onBackground.copy(alpha = 0.22f), RoundedCornerShape(8.dp)))
+            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(doweHexColor(value, DoweDesign.primary)).border(1.dp, DoweDesign.backgroundText.copy(alpha = 0.22f), RoundedCornerShape(8.dp)))
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(value, color = DoweDesign.onBackground, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                Text("Foreground: ${doweColorForeground(rgb)}", color = DoweDesign.onBackground.copy(alpha = 0.72f), fontSize = 12.sp)
+                Text(value, color = DoweDesign.backgroundText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text("Foreground: ${doweColorForeground(rgb)}", color = DoweDesign.backgroundText.copy(alpha = 0.72f), fontSize = 12.sp)
             }
         }
         if (showHex || showRgb || showCmyk || showOklch) {
@@ -781,7 +781,7 @@ private fun DoweColorPickerPanel(value: String, hsv: DoweColorHsv, onHsvChange: 
 
 @Composable
 private fun DoweColorFormatRow(value: String) {
-    Text(value, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(DoweDesign.softMuted).padding(horizontal = 8.dp, vertical = 4.dp), color = DoweDesign.onSoftMuted, fontSize = 12.sp, maxLines = 1)
+    Text(value, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(DoweDesign.softMuted).padding(horizontal = 8.dp, vertical = 4.dp), color = DoweDesign.softMutedText, fontSize = 12.sp, maxLines = 1)
 }
 
 private fun doweColorRgb(value: String): DoweColorRgb {
@@ -858,7 +858,7 @@ private fun DoweDateField(value: String, onValueChange: (String) -> Unit, label:
                 }
                 Text("⌄", fontSize = 20.sp, color = contentColor)
             }
-            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false }) {
+            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false }) {
                 DoweDateCalendar(month = month, selected = value, start = "", end = "", min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = true, showNext = true, onPrevious = { month = month.minusMonths(1) }, onNext = { month = month.plusMonths(1) }, onSelect = { next -> onValueChange(next); month = YearMonth.from(LocalDate.parse(next)); expanded = false })
             }
         }
@@ -898,7 +898,7 @@ private fun DoweDateRangeField(startValue: String, endValue: String, onStartChan
                 }
                 Text("⌄", fontSize = 20.sp, color = contentColor)
             }
-            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false }) {
+            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false }) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DoweDateCalendar(month = month, selected = "", start = startValue, end = endValue, min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = true, showNext = false, onPrevious = { month = month.minusMonths(1) }, onNext = {}, onSelect = { next -> if (!selectingEnd) { onStartChange(next); onEndChange(""); selectingEnd = true; month = YearMonth.from(LocalDate.parse(next)) } else { if (next < startValue) { onEndChange(startValue); onStartChange(next) } else onEndChange(next); selectingEnd = false; expanded = false } }, modifier = Modifier.weight(1f))
                     DoweDateCalendar(month = month.plusMonths(1), selected = "", start = startValue, end = endValue, min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = false, showNext = true, onPrevious = {}, onNext = { month = month.plusMonths(1) }, onSelect = { next -> if (!selectingEnd) { onStartChange(next); onEndChange(""); selectingEnd = true; month = YearMonth.from(LocalDate.parse(next)) } else { if (next < startValue) { onEndChange(startValue); onStartChange(next) } else onEndChange(next); selectingEnd = false; expanded = false } }, modifier = Modifier.weight(1f))

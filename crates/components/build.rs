@@ -3,6 +3,19 @@ use std::fs;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
+fn solar_public_name(name: &str, style: &str) -> String {
+    let suffix = match style {
+        "Linear" => "",
+        "Broken" => "-broken",
+        "Outline" => "-outline",
+        "Bold" => "-bold",
+        "LineDuotone" => "-line-duotone",
+        "BoldDuotone" => "-bold-duotone",
+        _ => panic!("unsupported Solar style {style}"),
+    };
+    format!("{name}{suffix}")
+}
+
 fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let solar_root = manifest.join("../../assets/icons/solar");
@@ -23,24 +36,28 @@ fn main() {
         let category = parts[0].as_ref();
         let name = parts[2].strip_suffix(".svg").unwrap();
         let style = parts[1].as_ref();
+        let public_name = solar_public_name(name, style);
         entries.push((
             category.to_string(),
             name.to_string(),
             style.to_string(),
+            public_name,
             path.to_path_buf(),
         ));
     }
-    entries.sort_by(|left, right| {
-        left.1
-            .cmp(&right.1)
-            .then(left.2.cmp(&right.2))
-            .then(left.0.cmp(&right.0))
-    });
+    entries.sort_by(|left, right| left.3.cmp(&right.3).then(left.0.cmp(&right.0)));
+    for pair in entries.windows(2) {
+        assert_ne!(
+            pair[0].3, pair[1].3,
+            "duplicate Solar public icon name {}",
+            pair[0].3
+        );
+    }
     let mut source = String::from("static SOLAR_ICONS: &[SolarIconSource] = &[\n");
-    for (category, name, style, path) in entries {
+    for (category, name, style, public_name, path) in entries {
         source.push_str(&format!(
-            "SolarIconSource {{ category: {:?}, name: {:?}, style: {:?}, svg: include_str!({:?}) }},\n",
-            category, name, style, path
+            "SolarIconSource {{ category: {:?}, name: {:?}, style: {:?}, public_name: {:?}, svg: include_str!({:?}) }},\n",
+            category, name, style, public_name, path
         ));
     }
     source.push_str("];\n");

@@ -1,19 +1,23 @@
 mod access;
+mod application;
 mod cloud;
 mod cloudflare;
 mod cloudflare_wasm;
 mod database;
 mod desktop_runtime;
 mod docker;
+mod embedded;
 mod error;
 mod files;
 mod gradle;
 mod model;
 mod native;
 mod package;
+mod preferences;
 mod publish;
 mod ssh;
 
+pub use application::{EmbeddedApplicationMetadata, materialize_embedded_application_executable};
 pub use cloud::authenticate_cloud_session;
 pub use cloud::materialize_cloud_artifact;
 pub use docker::{DEFAULT_DOCKER_REGISTRY, DOCKER_PLATFORM, default_docker_image_name};
@@ -24,16 +28,41 @@ pub use model::{
     deploy_targets_for_surface,
 };
 pub use native::build;
+pub use preferences::{
+    DockerDeployPreferences, docker_deploy_preferences_path, load_docker_deploy_preferences,
+    save_docker_deploy_preferences,
+};
 pub use ssh::{EmbeddedSshMetadata, materialize_embedded_ssh_executable};
 
 use access::DeployAccess;
-use dowe_compiler::compile_for_environment;
+use dowe_compiler::{compile_for_server_environment, compile_for_web_environment};
 use files::{collect_files, reset_dir, target_dir, web_target_dir};
 use std::path::Path;
 
 pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
+    deploy_with_runtime(options, None)
+}
+
+#[cfg(test)]
+fn deploy_with_linux_runtime(
+    options: DeployOptions,
+    linux_runtime: &[u8],
+) -> DeployResult<DeployReport> {
+    deploy_with_runtime(options, Some(linux_runtime))
+}
+
+fn deploy_with_runtime(
+    options: DeployOptions,
+    linux_runtime_override: Option<&[u8]>,
+) -> DeployResult<DeployReport> {
     let root = options.root.canonicalize()?;
     let surface = options.surface();
+    if !options.target.supports_surface(surface) {
+        return Err(DeployError::new(format!(
+            "deploy target `{}` does not belong to the `{surface}` deploy surface",
+            options.target
+        )));
+    }
     let cloud_session = (options.target == DeployTarget::Dowe)
         .then(cloud::CloudSession::resolve_and_validate)
         .transpose()?;
@@ -48,7 +77,14 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
             options.target
         )));
     }
-    let project = compile_for_environment(&root, options.environment.compile_environment())?;
+    let project = match surface {
+        DeploySurface::Server => {
+            compile_for_server_environment(&root, options.environment.compile_environment())?
+        }
+        DeploySurface::Web | DeploySurface::Android | DeploySurface::Ios => {
+            compile_for_web_environment(&root, options.environment.compile_environment())?
+        }
+    };
     let access = DeployAccess::resolve(&project, options.environment)?;
     if matches!(
         surface,
@@ -95,14 +131,21 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
             )
         })
         .transpose()?;
-    let ssh_runtime = (options.target == DeployTarget::Ssh)
-        .then(ssh::prepare_linux_runtime)
-        .transpose()?;
     if options.publish && options.target == DeployTarget::Docker {
         return Err(DeployError::new(
             "docker deploy builds and tags a local image; registry push is not configured",
         ));
     }
+    let needs_linux_runtime =
+        options.target == DeployTarget::Ssh || options.target == DeployTarget::Docker;
+    let linux_runtime = if needs_linux_runtime {
+        Some(match linux_runtime_override {
+            Some(runtime) => runtime.to_vec(),
+            None => ssh::prepare_linux_runtime()?,
+        })
+    } else {
+        None
+    };
     reset_dir(&output)?;
 
     let mut artifact = None;
@@ -137,11 +180,14 @@ pub fn deploy(options: DeployOptions) -> DeployResult<DeployReport> {
                 .ok_or_else(|| DeployError::new("docker image is missing"))?,
             options.environment,
             access.as_ref(),
+            surface,
             project.backend.port,
             project.backend.tls.as_ref().and_then(|tls| tls.http_port),
+            &project.environment_config.client_values(),
+            linux_runtime.as_deref(),
         )?,
         DeployTarget::Ssh => {
-            let runtime = ssh_runtime
+            let runtime = linux_runtime
                 .as_deref()
                 .ok_or_else(|| DeployError::new("SSH runtime is missing"))?;
             let package = ssh::generate_ssh(
@@ -287,7 +333,7 @@ fn deploy_output_dir_for_surface(
     }
     match surface {
         DeploySurface::Web => {
-            if target == DeployTarget::CloudflarePages {
+            if matches!(target, DeployTarget::CloudflarePages | DeployTarget::Docker) {
                 web_target_dir(root, target.as_str())
             } else {
                 target_dir(root, target.as_str())

@@ -326,14 +326,27 @@ fn android_font_resource_name(asset_stem: &str) -> String {
     asset_stem.replace('-', "_")
 }
 
-fn text_color(props: &TextProps) -> String {
+fn text_color(title: bool, props: &TextProps) -> String {
     props
         .style
         .text
         .as_ref()
         .map(compose_color_value)
-        .map(|value| format!("{value} ?: DoweDesign.onBackground"))
-        .unwrap_or_else(|| "Color.Unspecified".to_string())
+        .map(|value| {
+            let fallback = if title {
+                "LocalDoweTitleColor.current"
+            } else {
+                "LocalContentColor.current"
+            };
+            format!("{value} ?: {fallback}")
+        })
+        .unwrap_or_else(|| {
+            if title {
+                "LocalDoweTitleColor.current".to_string()
+            } else {
+                "Color.Unspecified".to_string()
+            }
+        })
 }
 
 fn text_size(title: bool, props: &TextProps) -> String {

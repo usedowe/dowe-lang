@@ -10,6 +10,7 @@ use axum::extract::{Path as AxumPath, State, WebSocketUpgrade};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use dowe_database_query::SelectQuery;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -76,6 +77,8 @@ pub struct DatabaseRequest {
     pub sql: Option<String>,
     #[serde(default)]
     pub params: Vec<Value>,
+    #[serde(default)]
+    pub query: Option<SelectQuery>,
     #[serde(default)]
     pub operations: Vec<DatabaseTransactionInsert>,
 }
@@ -200,6 +203,13 @@ impl DoweDatabaseClient {
     pub async fn query_with_params(&self, sql: &str, params: &[Value]) -> StoreResult<Value> {
         let mut request = request("query", None);
         request.sql = Some(sql.to_string());
+        request.params = params.to_vec();
+        self.send(request).await
+    }
+
+    pub async fn query_select(&self, query: &SelectQuery, params: &[Value]) -> StoreResult<Value> {
+        let mut request = request("query", None);
+        request.query = Some(query.clone());
         request.params = params.to_vec();
         self.send(request).await
     }
@@ -474,6 +484,9 @@ fn execute_request(database: &Database, request: DatabaseRequest) -> StoreResult
             Ok(json!({ "changed": changed }))
         }
         "query" => {
+            if let Some(query) = &request.query {
+                return database.query_portable_json(query, &request.params);
+            }
             let sql = request
                 .sql
                 .as_deref()
@@ -513,6 +526,7 @@ fn request(operation: &str, table: Option<&str>) -> DatabaseRequest {
         required: false,
         sql: None,
         params: Vec::new(),
+        query: None,
         operations: Vec::new(),
     }
 }

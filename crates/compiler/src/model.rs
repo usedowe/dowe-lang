@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use dowe_database_query::SelectQuery;
 use dowe_stdlib::StdlibCall;
 
 pub use dowe_components::{
@@ -563,6 +564,7 @@ pub struct StoreInsertEndpoint {
 pub struct StoreQueryEndpoint {
     pub connection: StoreConnection,
     pub sql: String,
+    pub query: SelectQuery,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -644,6 +646,7 @@ pub struct StoreTransactionEndpoint {
     pub connection: StoreConnection,
     pub operations: Vec<StoreTransactionOperation>,
     pub return_binding: Option<String>,
+    pub rollback: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1081,6 +1084,7 @@ pub enum ServerStoreStatement {
         binding: String,
         handle: String,
         sql: String,
+        query: SelectQuery,
         params: Vec<StoreLiteral>,
     },
     Transaction {
@@ -1088,6 +1092,7 @@ pub enum ServerStoreStatement {
         handle: String,
         operations: Vec<StoreTransactionOperation>,
         return_binding: Option<String>,
+        rollback: bool,
     },
 }
 

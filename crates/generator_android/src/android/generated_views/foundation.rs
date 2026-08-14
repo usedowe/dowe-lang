@@ -101,6 +101,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -230,6 +231,8 @@ import org.json.JSONObject
 
 __DOWE_DESIGN__
 
+val LocalDoweTitleColor = compositionLocalOf { DoweDesign.backgroundTitle }
+
 @Composable
 private fun doweDockingAppBarModifier(modifier: Modifier, scrollState: ScrollState, backgroundColor: Color): Modifier {
     val threshold = with(LocalDensity.current) { 100.dp.roundToPx() }
@@ -266,17 +269,30 @@ private fun doweButtonFamily(scheme: String): Color = when (scheme) {
     else -> DoweDesign.primary
 }
 
-private fun doweButtonOnFamily(scheme: String): Color = when (scheme) {
-    "background" -> DoweDesign.onBackground
-    "surface" -> DoweDesign.onSurface
-    "secondary" -> DoweDesign.onSecondary
-    "tertiary" -> DoweDesign.onTertiary
-    "muted" -> DoweDesign.onMuted
-    "success" -> DoweDesign.onSuccess
-    "info" -> DoweDesign.onInfo
-    "warning" -> DoweDesign.onWarning
-    "danger" -> DoweDesign.onDanger
-    else -> DoweDesign.onPrimary
+private fun doweButtonTextFamily(scheme: String): Color = when (scheme) {
+    "background" -> DoweDesign.backgroundText
+    "surface" -> DoweDesign.surfaceText
+    "secondary" -> DoweDesign.secondaryText
+    "tertiary" -> DoweDesign.tertiaryText
+    "muted" -> DoweDesign.mutedText
+    "success" -> DoweDesign.successText
+    "info" -> DoweDesign.infoText
+    "warning" -> DoweDesign.warningText
+    "danger" -> DoweDesign.dangerText
+    else -> DoweDesign.primaryText
+}
+
+private fun doweButtonTitleFamily(scheme: String): Color = when (scheme) {
+    "background" -> DoweDesign.backgroundTitle
+    "surface" -> DoweDesign.surfaceTitle
+    "secondary" -> DoweDesign.secondaryTitle
+    "tertiary" -> DoweDesign.tertiaryTitle
+    "muted" -> DoweDesign.mutedTitle
+    "success" -> DoweDesign.successTitle
+    "info" -> DoweDesign.infoTitle
+    "warning" -> DoweDesign.warningTitle
+    "danger" -> DoweDesign.dangerTitle
+    else -> DoweDesign.primaryTitle
 }
 
 private fun doweButtonSoftFamily(scheme: String): Color = when (scheme) {
@@ -290,6 +306,21 @@ private fun doweButtonSoftFamily(scheme: String): Color = when (scheme) {
     else -> DoweDesign.softPrimary
 }
 
+private fun doweButtonSoftTitleFamily(scheme: String): Color = when (scheme) {
+    "background" -> DoweDesign.backgroundTitle
+    "surface" -> DoweDesign.surfaceTitle
+    "secondary" -> DoweDesign.softSecondaryTitle
+    "tertiary" -> DoweDesign.softTertiaryTitle
+    "muted" -> DoweDesign.softMutedTitle
+    "success" -> DoweDesign.softSuccessTitle
+    "info" -> DoweDesign.softInfoTitle
+    "warning" -> DoweDesign.softWarningTitle
+    "danger" -> DoweDesign.softDangerTitle
+    else -> DoweDesign.softPrimaryTitle
+}
+
+private fun doweSideNavHeaderColor(scheme: String): Color = doweButtonContent("ghost", scheme)
+
 private fun doweButtonContainer(variant: String, scheme: String): Color = when (variant) {
     "soft" -> doweButtonSoftFamily(scheme)
     "outlined", "ghost" -> Color.Transparent
@@ -297,7 +328,7 @@ private fun doweButtonContainer(variant: String, scheme: String): Color = when (
 }
 
 private fun doweButtonContent(variant: String, scheme: String): Color =
-    if (variant == "solid") doweButtonOnFamily(scheme) else doweButtonFamily(scheme)
+    if (variant == "solid") doweButtonTextFamily(scheme) else doweButtonFamily(scheme)
 
 private fun doweCardSoftFamily(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.background
@@ -306,16 +337,16 @@ private fun doweCardSoftFamily(scheme: String): Color = when (scheme) {
 }
 
 private fun doweCardSoftContent(scheme: String): Color = when (scheme) {
-    "background" -> DoweDesign.onBackground
-    "surface" -> DoweDesign.onSurface
-    "secondary" -> DoweDesign.onSoftSecondary
-    "tertiary" -> DoweDesign.onSoftTertiary
-    "muted" -> DoweDesign.onSoftMuted
-    "success" -> DoweDesign.onSoftSuccess
-    "info" -> DoweDesign.onSoftInfo
-    "warning" -> DoweDesign.onSoftWarning
-    "danger" -> DoweDesign.onSoftDanger
-    else -> DoweDesign.onSoftPrimary
+    "background" -> DoweDesign.backgroundText
+    "surface" -> DoweDesign.surfaceText
+    "secondary" -> DoweDesign.softSecondaryText
+    "tertiary" -> DoweDesign.softTertiaryText
+    "muted" -> DoweDesign.softMutedText
+    "success" -> DoweDesign.softSuccessText
+    "info" -> DoweDesign.softInfoText
+    "warning" -> DoweDesign.softWarningText
+    "danger" -> DoweDesign.softDangerText
+    else -> DoweDesign.softPrimaryText
 }
 
 private fun doweCardContainer(variant: String, scheme: String): Color = when (variant) {
@@ -326,11 +357,11 @@ private fun doweCardContainer(variant: String, scheme: String): Color = when (va
 }
 
 private fun doweCardContent(variant: String, scheme: String): Color = when (variant) {
-    "solid" -> doweButtonOnFamily(scheme)
+    "solid" -> doweButtonTextFamily(scheme)
     "soft" -> doweCardSoftContent(scheme)
-    "outlined" -> if (scheme == "background") DoweDesign.onBackground else DoweDesign.onSurface
-    "ghost" -> if (scheme == "background" || scheme == "surface") doweButtonOnFamily(scheme) else doweButtonFamily(scheme)
-    else -> doweButtonOnFamily(scheme)
+    "outlined" -> if (scheme == "background") DoweDesign.backgroundText else DoweDesign.surfaceText
+    "ghost" -> if (scheme == "background" || scheme == "surface") doweButtonTextFamily(scheme) else doweButtonFamily(scheme)
+    else -> doweButtonTextFamily(scheme)
 }
 
 private fun doweCardBorder(variant: String, scheme: String): Color? =

@@ -47,7 +47,7 @@ fn render_dev_android_display_text_svg_node(
             output.push_str(&format!(
                 "        TextView {view} = doweText({}, {}, {}, {}, {}, {}, {});\n",
                 dev_visible_text_expression(value, props.i18n.as_deref(), context),
-                dev_text_color(props, inherited_color.as_deref()),
+                dev_text_color(true, props, inherited_color.as_deref()),
                 dev_text_size(true, props),
                 dev_text_weight(true, props),
                 dev_text_spacing(true, props),
@@ -62,7 +62,7 @@ fn render_dev_android_display_text_svg_node(
             output.push_str(&format!(
                 "        TextView {view} = doweText({}, {}, {}, {}, {}, {}, {});\n",
                 dev_visible_text_expression(value, props.i18n.as_deref(), context),
-                dev_text_color(props, inherited_color.as_deref()),
+                dev_text_color(false, props, inherited_color.as_deref()),
                 dev_text_size(false, props),
                 dev_text_weight(false, props),
                 dev_text_spacing(false, props),

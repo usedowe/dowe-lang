@@ -221,8 +221,8 @@ main
   server port:0
     init
       runCleanup startupResult args:{ source:"direct" }
-      task runCleanup args:{ source:"startup" }
-      cron runCleanup schedule:"*/15 * * * *" args:{ source:"cron" }"#,
+      task fn:runCleanup args:{ source:"startup" }
+      cron fn:runCleanup schedule:"*/15 * * * *" args:{ source:"cron" }"#,
     )
     .expect("main");
     fs::write(
@@ -255,6 +255,40 @@ main
 }
 
 #[test]
+fn rejects_positional_cron_target() {
+    let temp = TempDir::new().expect("tempdir");
+    let root = temp.path();
+    fs::create_dir_all(root.join("server/tasks")).expect("tasks");
+    fs::write(
+        root.join("main.dowe"),
+        r#"import runCleanup from "@/server/tasks/cleanup"
+
+main
+  server port:0
+    init
+      cron runCleanup schedule:"0 * * * *""#,
+    )
+    .expect("main");
+    fs::write(
+        root.join("server/tasks/cleanup.dowe"),
+        r#"fn runCleanup
+  return value:{ ok:true }"#,
+    )
+    .expect("function");
+
+    let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
+    let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
+    let error = parse_server_source(root, &file, &EnvironmentConfig::default())
+        .expect_err("positional cron target");
+
+    assert!(
+        error
+            .to_string()
+            .contains("cron does not accept positional targets; use `fn:<imported-fn>`")
+    );
+}
+
+#[test]
 fn parses_named_task_with_handler_binding() {
     let temp = TempDir::new().expect("tempdir");
     let root = temp.path();
@@ -268,7 +302,7 @@ main
     route "/telemetry"
       handler req
         const event value:req.json
-        task emitTelemetry args:{ event:event }
+        task fn:emitTelemetry args:{ event:event }
         return status:202 json:{ queued:true }"#,
     )
     .expect("main");
@@ -315,7 +349,7 @@ main
       method POST
         cache routes provider:"dowe" host:"local" port:4148 account:"proxy" secret:"secret" name:"routes"
         kv route conn:routes.get key:"route" required:true
-        task emitTelemetry args:{ event:{ projectId:route.projectId kind:"named" } } after:"headers"
+        task fn:emitTelemetry args:{ event:{ projectId:route.projectId kind:"named" } } after:"headers"
         task args:{ event:{ projectId:route.projectId kind:"inline" } } after:"headers"
           log args.event.projectId
         return reverse:route.url"#,
@@ -376,19 +410,19 @@ fn emitTelemetry params:{ event:TelemetryEvent }
 
     for (task, expected) in [
         (
-            "task emitTelemetry args:{ event:{ projectId:route.projectId } } after:\"body\"",
+            "task fn:emitTelemetry args:{ event:{ projectId:route.projectId } } after:\"body\"",
             "`after` must be \"headers\"",
         ),
         (
-            "task emitTelemetry args:{ event:{ projectId:route.projectId } } after:headers",
+            "task fn:emitTelemetry args:{ event:{ projectId:route.projectId } } after:headers",
             "`after` must be the quoted string \"headers\"",
         ),
         (
-            "task emitTelemetry after:\"headers\"",
+            "task fn:emitTelemetry after:\"headers\"",
             "requires `args:{ event:{ ... } }`",
         ),
         (
-            "task emitTelemetry args:{ event:route.projectId } after:\"headers\"",
+            "task fn:emitTelemetry args:{ event:route.projectId } after:\"headers\"",
             "requires `args.event` to be an object",
         ),
     ] {
@@ -466,7 +500,7 @@ fn rejects_response_headers_task_outside_a_direct_reverse_proxy_handler() {
         r#"main
   server port:0
     init
-      cron missing schedule:"0 * * * *" after:"headers""#,
+      cron fn:missing schedule:"0 * * * *" after:"headers""#,
     )
     .expect("main");
     let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
@@ -533,10 +567,10 @@ fn rejects_invalid_background_jobs() {
 main
   server port:0
     init
-      cron runCleanup schedule:"60 * * * *"
+      cron fn:runCleanup schedule:"60 * * * *"
     route "/run"
       handler req
-        task runCleanup args:{ source:req.params.id }
+        task fn:runCleanup args:{ source:req.params.id }
         return text:"OK""#,
     )
     .expect("main");
@@ -617,13 +651,11 @@ fn validates_named_task_shape_and_static_background_arguments() {
             "task must declare one imported target or a non-empty inline body",
         ),
         (
-            r#"import runCleanup from "@/server/tasks/cleanup"
-
-main
+            r#"main
   server port:0
     init
-      task runCleanup extra"#,
-            "task accepts exactly one target and named props",
+      cron schedule:"0 * * * *""#,
+            "cron must declare `fn:<imported-fn>`",
         ),
         (
             r#"import runCleanup from "@/server/tasks/cleanup"
@@ -631,7 +663,16 @@ main
 main
   server port:0
     init
-      task runCleanup
+      task runCleanup extra"#,
+            "task does not accept positional targets; use `fn:<imported-fn>`",
+        ),
+        (
+            r#"import runCleanup from "@/server/tasks/cleanup"
+
+main
+  server port:0
+    init
+      task fn:runCleanup
         log "invalid""#,
             "named task does not accept child blocks",
         ),
@@ -639,7 +680,7 @@ main
             r#"main
   server port:0
     init
-      task missing"#,
+      task fn:missing"#,
             "missing server function import `missing`",
         ),
         (
@@ -656,7 +697,7 @@ main
 main
   server port:0
     init
-      cron runCleanup schedule:"0 * * * *" args:{ source:req.params.id }"#,
+      cron fn:runCleanup schedule:"0 * * * *" args:{ source:req.params.id }"#,
             "background args must be static JSON",
         ),
         (
@@ -665,7 +706,7 @@ main
 main
   server port:0
     init
-      task runCleanup args:{ ...payload }"#,
+      task fn:runCleanup args:{ ...payload }"#,
             "store literals do not support spread",
         ),
         (
@@ -674,7 +715,7 @@ main
 main
   server port:0
     init
-      task runCleanup"#,
+      task fn:runCleanup"#,
             "function call is missing required argument `source`",
         ),
     ] {
@@ -715,7 +756,7 @@ fn rejects_inline_task_captures_and_control_statements() {
             "inline task body cannot use `task`",
         ),
         (
-            "cron runCleanup schedule:\"0 * * * *\"",
+            "cron fn:runCleanup schedule:\"0 * * * *\"",
             "inline task body cannot use `cron`",
         ),
         (
@@ -776,7 +817,7 @@ main
     assert!(
         error
             .to_string()
-            .contains("`go` was renamed to `task`; use `task runCleanup`")
+            .contains("`go` was renamed to `task`; use `task fn:runCleanup`")
     );
 }
 
@@ -833,7 +874,7 @@ database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"sec
         r#"import db from "../config/db"
 
 fn listAccountsRepository
-  query rows db:db.list table:"directvAccounts"
+  query rows conn:db.list table:"directvAccounts"
   return value:{ rows:rows }"#,
     )
     .expect("function");

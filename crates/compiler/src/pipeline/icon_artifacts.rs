@@ -1,8 +1,11 @@
 use crate::error::{DoweError, DoweResult};
+use crate::model::ViewPlatform;
 use dowe_generator_web::{WebOutput, render_page_document_with_icons};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
+#[derive(Default)]
 pub(super) struct ProjectIconTargets {
     pub web_favicon: bool,
     pub web_apple_touch: bool,
@@ -78,35 +81,57 @@ pub(super) fn apply_web_icon_documents(web: &mut WebOutput, icons: &ProjectIconT
     }
 }
 
-pub(super) fn sync_project_icons(root: &Path, icons: &ProjectIconTargets) -> DoweResult<()> {
+pub(super) fn sync_project_icons(
+    root: &Path,
+    icons: &ProjectIconTargets,
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+) -> DoweResult<()> {
     let source = root.join("icons");
-    sync_optional_directory(
-        &source.join("web"),
-        &root.join(".dowe/web/icons/web"),
-        icons.web_favicon,
-    )?;
-    sync_optional_directory(
-        &source.join("web"),
-        &root.join(".dowe/apps/desktop/web/icons/web"),
-        icons.web_favicon,
-    )?;
-    sync_optional_file(
-        &source.join("desktop/icon.icns"),
-        &root.join(".dowe/apps/desktop/macos/icon.icns"),
-        icons.desktop_macos,
-    )?;
-    sync_optional_file(
-        &source.join("desktop/icon.ico"),
-        &root.join(".dowe/apps/desktop/windows/icon.ico"),
-        icons.desktop_windows,
-    )?;
-    sync_optional_file(
-        &source.join("desktop/icon.png"),
-        &root.join(".dowe/apps/desktop/linux/icon.png"),
-        icons.desktop_linux,
-    )?;
-    sync_ios_icons(root, &source, icons.ios)?;
-    sync_android_icons(root, &source, icons.android)
+    if platform_selected(selected_platforms, ViewPlatform::Web) {
+        sync_optional_directory(
+            &source.join("web"),
+            &root.join(".dowe/web/icons/web"),
+            icons.web_favicon,
+        )?;
+    }
+    if platform_selected(selected_platforms, ViewPlatform::Desktop) {
+        sync_optional_directory(
+            &source.join("web"),
+            &root.join(".dowe/apps/desktop/web/icons/web"),
+            icons.web_favicon,
+        )?;
+        sync_optional_file(
+            &source.join("desktop/icon.icns"),
+            &root.join(".dowe/apps/desktop/macos/icon.icns"),
+            icons.desktop_macos,
+        )?;
+        sync_optional_file(
+            &source.join("desktop/icon.ico"),
+            &root.join(".dowe/apps/desktop/windows/icon.ico"),
+            icons.desktop_windows,
+        )?;
+        sync_optional_file(
+            &source.join("desktop/icon.png"),
+            &root.join(".dowe/apps/desktop/linux/icon.png"),
+            icons.desktop_linux,
+        )?;
+    }
+    if platform_selected(selected_platforms, ViewPlatform::Ios) {
+        sync_ios_icons(root, &source, icons.ios)?;
+    }
+    if platform_selected(selected_platforms, ViewPlatform::Android) {
+        sync_android_icons(root, &source, icons.android)?;
+    }
+    Ok(())
+}
+
+fn platform_selected(
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+    platform: ViewPlatform,
+) -> bool {
+    selected_platforms
+        .map(|platforms| platforms.contains(&platform))
+        .unwrap_or(true)
 }
 
 fn sync_ios_icons(root: &Path, source: &Path, enabled: bool) -> DoweResult<()> {

@@ -189,6 +189,12 @@ async fn execute_store_transaction(
     project: &CompiledProject,
     transaction: &StoreTransactionEndpoint,
 ) -> dowe_database::StoreResult<Value> {
+    if transaction.rollback {
+        return Ok(Value::Null);
+    }
+    if transaction.operations.is_empty() {
+        return Ok(Value::Array(Vec::new()));
+    }
     if let Some(client) = remote_client_for_connection(project, &transaction.connection)? {
         return match client {
             StoreEndpointClient::Dowe(client) => {
@@ -197,11 +203,18 @@ async fn execute_store_transaction(
                     .await?;
                 transaction_result(value, transaction)
             }
-            StoreEndpointClient::D1(_) | StoreEndpointClient::Postgres(_) => Err(
-                dowe_database::StoreError::InvalidQuery(
-                    "Database transactions require provider `dowe`".to_string(),
-                ),
-            ),
+            StoreEndpointClient::D1(client) => {
+                let value = client
+                    .transaction(&transaction_insert_requests(&transaction.operations))
+                    .await?;
+                transaction_result(value, transaction)
+            }
+            StoreEndpointClient::Postgres(client) => {
+                let value = client
+                    .transaction(&transaction_insert_requests(&transaction.operations))
+                    .await?;
+                transaction_result(value, transaction)
+            }
         };
     }
     init_database(&project.root, &transaction.connection.database)?;
@@ -213,6 +226,9 @@ fn execute_local_store_transaction(
     database: &Database,
     transaction: &StoreTransactionEndpoint,
 ) -> dowe_database::StoreResult<Value> {
+    if transaction.rollback {
+        return Ok(Value::Null);
+    }
     let mut tx = database.transaction();
 
     for operation in &transaction.operations {
@@ -281,6 +297,7 @@ fn transaction_result(
 #[cfg(test)]
 mod runtime_svg_catalog_tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[test]
     fn reads_numeric_array_segments_from_query_results() {
@@ -295,6 +312,42 @@ mod runtime_svg_catalog_tests {
             Some(67)
         );
         assert!(read_json_path(&value, "totals.first.total").is_none());
+    }
+
+    #[test]
+    fn rollback_discards_staged_local_database_inserts() {
+        let root = tempdir().expect("root");
+        init_database(root.path(), "app").expect("database");
+        let database = open_database(root.path(), "app").expect("open");
+        let transaction = StoreTransactionEndpoint {
+            connection: StoreConnection {
+                binding: "db".to_string(),
+                provider: dowe_compiler::DatabaseProvider::Dowe,
+                database: "app".to_string(),
+                host: None,
+                port: None,
+                account: None,
+                secret: None,
+                entities: Vec::new(),
+                seeders: Vec::new(),
+            },
+            operations: vec![StoreTransactionOperation::Insert {
+                binding: "user".to_string(),
+                table: "users".to_string(),
+                value: StoreLiteral::Object(vec![(
+                    "name".to_string(),
+                    StoreLiteral::String("Ana".to_string()),
+                )]),
+            }],
+            return_binding: None,
+            rollback: true,
+        };
+
+        assert_eq!(
+            execute_local_store_transaction(&database, &transaction).expect("rollback"),
+            Value::Null
+        );
+        assert!(database.records("users").expect("records").is_empty());
     }
 }
 
@@ -356,8 +409,7 @@ fn store_error_response(error: dowe_database::StoreError) -> Response {
     let status = match error {
         dowe_database::StoreError::Authentication(_) => StatusCode::UNAUTHORIZED,
         dowe_database::StoreError::Authorization(_) => StatusCode::FORBIDDEN,
-        dowe_database::StoreError::InvalidName(_)
-        | dowe_database::StoreError::InvalidQuery(_) => {
+        dowe_database::StoreError::InvalidName(_) | dowe_database::StoreError::InvalidQuery(_) => {
             StatusCode::BAD_REQUEST
         }
         dowe_database::StoreError::AlreadyExists(_)

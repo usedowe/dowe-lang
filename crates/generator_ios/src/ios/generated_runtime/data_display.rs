@@ -214,6 +214,7 @@ struct DoweChartCategory: Identifiable {
     let id: String
     let label: String
     let value: Double
+    let max: Double?
     let color: String?
 
     init?(_ source: [String: Any], index: Int) {
@@ -223,6 +224,7 @@ struct DoweChartCategory: Identifiable {
         self.id = "\(index)-\(source["label"].map { String(describing: $0) } ?? "")"
         self.label = source["label"].map { String(describing: $0) } ?? String(index + 1)
         self.value = value
+        self.max = DoweChartPoint.number(source["max"]).flatMap { $0 > 0 ? $0 : nil }
         self.color = source["color"].map { String(describing: $0) }
     }
 }
@@ -254,6 +256,23 @@ struct DoweChartView: View {
     let contentColor: Color
     let borderColor: Color?
     let radius: CGFloat
+    let donut: Bool
+    let donutWidth: Int
+    let centerLabel: String?
+    let centerValue: String?
+    let startAngle: Int
+    let padAngle: Int
+    let hideLabels: Bool
+    let hideValues: Bool
+    let hidePercentages: Bool
+    let showGlow: Bool
+    let centerText: String?
+    let thickness: Int
+    let gap: Int
+    let endAngle: Int
+    let showInlineLabels: Bool
+    let arcHideValues: Bool
+    let arcShowGlow: Bool
 
     private var rows: [[String: Any]] {
         if let dataPath {
@@ -323,7 +342,9 @@ struct DoweChartView: View {
     }
 
     var body: some View {
-        chartLayout
+        GeometryReader { geometry in
+            chartLayout(availableWidth: geometry.size.width)
+        }
             .padding(CGFloat(12))
             .frame(maxWidth: .infinity, minHeight: isCircularChart ? CGFloat(224) : CGFloat(300))
             .background(backgroundColor)
@@ -337,32 +358,34 @@ struct DoweChartView: View {
     }
 
     @ViewBuilder
-    private var chartLayout: some View {
-        if showsLegend && legendPosition == "left" {
+    private func chartLayout(availableWidth: CGFloat) -> some View {
+        let sideLegend = showsLegend && (legendPosition == "left" || legendPosition == "right") && availableWidth >= CGFloat(520)
+        if sideLegend && legendPosition == "left" {
             HStack(alignment: .center, spacing: CGFloat(12)) {
                 legendView
-                chartCanvas
+                chartCanvas(availableWidth: availableWidth)
             }
-        } else if showsLegend && legendPosition == "right" {
+        } else if sideLegend && legendPosition == "right" {
             HStack(alignment: .center, spacing: CGFloat(12)) {
-                chartCanvas
+                chartCanvas(availableWidth: availableWidth)
                 legendView
             }
         } else if showsLegend && legendPosition == "top" {
             VStack(spacing: CGFloat(10)) {
                 legendView
-                chartCanvas
+                chartCanvas(availableWidth: availableWidth)
             }
         } else {
             VStack(spacing: CGFloat(10)) {
-                chartCanvas
+                chartCanvas(availableWidth: availableWidth)
                 legendView
             }
         }
     }
 
-    private var chartCanvas: some View {
-        ZStack {
+    private func chartCanvas(availableWidth: CGFloat) -> some View {
+        let chartWidth = min(CGFloat(360), max(CGFloat(1), availableWidth))
+        return ZStack {
             Canvas { context, size in
                 var context = context
                 guard !loading, !isEmpty else {
@@ -378,6 +401,34 @@ struct DoweChartView: View {
                     drawPieChart(categories, context: &context, size: size)
                 }
             }
+            if chartType == "pie", !loading, !isEmpty, (centerLabel != nil || centerValue != nil) {
+                VStack(spacing: CGFloat(2)) {
+                    if let centerLabel {
+                        Text(centerLabel)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(contentColor.opacity(0.72))
+                    }
+                    Text(centerValue ?? String(totalValue))
+                        .font(.system(size: CGFloat(24), weight: .heavy))
+                        .foregroundStyle(contentColor)
+                }
+            }
+            if chartType == "arc", !loading, !isEmpty, (centerText != nil || centerValue != nil) {
+                VStack(spacing: CGFloat(2)) {
+                    if let centerText, !centerText.isEmpty {
+                        Text(centerText)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(contentColor.opacity(0.72))
+                    }
+                    if let centerValue, !centerValue.isEmpty {
+                        Text(centerValue)
+                            .font(.system(size: CGFloat(26), weight: .heavy))
+                            .foregroundStyle(contentColor)
+                    }
+                }
+            }
             if loading || isEmpty {
                 Text(loading ? "Loading" : emptyLabel)
                     .font(.footnote)
@@ -385,7 +436,13 @@ struct DoweChartView: View {
                     .foregroundStyle(contentColor.opacity(0.64))
             }
         }
-        .frame(maxWidth: .infinity, minHeight: isCircularChart ? CGFloat(184) : CGFloat(252))
+        .frame(maxWidth: chartType == "pie" || chartType == "arc" ? chartWidth : .infinity, minHeight: isCircularChart ? CGFloat(184) : CGFloat(252))
+        .aspectRatio(chartType == "pie" || chartType == "arc" ? CGFloat(1) : nil, contentMode: .fit)
+        .shadow(color: showGlow || arcShowGlow ? contentColor.opacity(0.22) : .clear, radius: showGlow || arcShowGlow ? CGFloat(14) : .zero)
+    }
+
+    private var totalValue: Double {
+        categories.reduce(0) { $0 + max(0, $1.value) }
     }
 
     @ViewBuilder
@@ -414,7 +471,7 @@ struct DoweChartView: View {
             RoundedRectangle(cornerRadius: CGFloat(2))
                 .fill(item.color)
                 .frame(width: CGFloat(10), height: CGFloat(10))
-            Text(item.label)
+            Text(hideLabels ? "" : item.label)
                 .font(.caption)
                 .lineLimit(1)
                 .foregroundStyle(contentColor.opacity(0.82))
@@ -521,16 +578,30 @@ struct DoweChartView: View {
         }
         let radius = max(CGFloat(1), min(size.width, size.height) / CGFloat(2) - CGFloat(12))
         let center = CGPoint(x: size.width / CGFloat(2), y: size.height / CGFloat(2))
-        var start = -90.0
+        let maxDonutWidth = max(0, Int(radius) - 4)
+        let innerRadius = donut ? max(CGFloat(0), radius - CGFloat(min(donutWidth, maxDonutWidth))) : CGFloat(0)
+        var start = Double(startAngle)
         for (index, item) in items.enumerated() {
             let sweep = 360.0 * item.value / total
+            let gap = min(Double(padAngle), sweep * 0.45)
             var wedge = Path()
-            wedge.move(to: center)
-            wedge.addArc(center: center, radius: radius, startAngle: Angle(degrees: start), endAngle: Angle(degrees: start + sweep), clockwise: false)
+            wedge.move(to: polarPoint(center: center, radius: radius, angle: start + gap / 2))
+            wedge.addArc(center: center, radius: radius, startAngle: Angle(degrees: start + gap / 2), endAngle: Angle(degrees: start + sweep - gap / 2), clockwise: false)
+            if donut {
+                wedge.addLine(to: polarPoint(center: center, radius: innerRadius, angle: start + sweep - gap / 2))
+                wedge.addArc(center: center, radius: innerRadius, startAngle: Angle(degrees: start + sweep - gap / 2), endAngle: Angle(degrees: start + gap / 2), clockwise: true)
+            } else {
+                wedge.addLine(to: center)
+            }
             wedge.closeSubpath()
             context.fill(wedge, with: .color(chartColor(index, explicit: item.color)))
             start += sweep
         }
+    }
+
+    private func polarPoint(center: CGPoint, radius: CGFloat, angle: Double) -> CGPoint {
+        let radians = (angle - 90) * Double.pi / 180
+        return CGPoint(x: center.x + radius * CGFloat(cos(radians)), y: center.y + radius * CGFloat(sin(radians)))
     }
 
     private func drawArcChart(_ items: [DoweChartCategory], context: inout GraphicsContext, size: CGSize) {
@@ -540,25 +611,57 @@ struct DoweChartView: View {
         }
         let radius = max(CGFloat(1), min(size.width, size.height) / CGFloat(2) - CGFloat(18))
         let center = CGPoint(x: size.width / CGFloat(2), y: size.height / CGFloat(2))
+        let ringCount = max(1, items.count)
+        let ringGap = min(CGFloat(max(0, gap)), max(CGFloat(1), radius / CGFloat(ringCount * 3)))
+        let stroke = max(CGFloat(6), min(CGFloat(max(6, thickness)), (radius - ringGap * CGFloat(ringCount - 1)) / CGFloat(ringCount) + CGFloat(0.5)))
+        let range = Double(endAngle - startAngle)
+        func addArc(_ path: inout Path, radius: CGFloat, start: Double, end: Double) {
+            if abs(end - start) >= 359.999 {
+                path.addArc(center: center, radius: radius, startAngle: .degrees(start), endAngle: .degrees(start + 180), clockwise: false)
+                path.addArc(center: center, radius: radius, startAngle: .degrees(start + 180), endAngle: .degrees(start + 360), clockwise: false)
+            } else {
+                path.addArc(center: center, radius: radius, startAngle: .degrees(start), endAngle: .degrees(end), clockwise: false)
+            }
+        }
         for (index, item) in items.enumerated() {
-            let stroke = max(CGFloat(8), radius * CGFloat(0.08))
-            let inset = CGFloat(index) * (stroke + CGFloat(7))
-            let currentRadius = max(CGFloat(1), radius - inset)
-            let sweep = 360.0 * item.value / total
+            let currentRadius = max(stroke / CGFloat(2) + CGFloat(2), radius - CGFloat(index) * (stroke + ringGap))
+            let maxValue = item.max ?? total
+            let progress = min(1, max(0, item.value / maxValue))
             context.stroke(
                 Path { path in
-                    path.addArc(center: center, radius: currentRadius, startAngle: .degrees(-90), endAngle: .degrees(270), clockwise: false)
+                    addArc(&path, radius: currentRadius, start: Double(startAngle), end: Double(endAngle))
                 },
                 with: .color(contentColor.opacity(0.16)),
                 style: StrokeStyle(lineWidth: stroke, lineCap: .round)
             )
+            if arcShowGlow {
+                context.stroke(
+                    Path { path in
+                        addArc(&path, radius: currentRadius, start: Double(startAngle), end: Double(startAngle) + range * progress)
+                    },
+                    with: .color(chartColor(index, explicit: item.color).opacity(0.14)),
+                    style: StrokeStyle(lineWidth: stroke + CGFloat(8), lineCap: .round)
+                )
+            }
             context.stroke(
                 Path { path in
-                    path.addArc(center: center, radius: currentRadius, startAngle: .degrees(-90), endAngle: .degrees(-90 + sweep), clockwise: false)
+                    addArc(&path, radius: currentRadius, start: Double(startAngle), end: Double(startAngle) + range * progress)
                 },
                 with: .color(chartColor(index, explicit: item.color)),
                 style: StrokeStyle(lineWidth: stroke, lineCap: .round)
             )
+            if showInlineLabels {
+                let labelPoint = polarPoint(center: center, radius: currentRadius + stroke / CGFloat(2) + CGFloat(12), angle: Double(startAngle) + range * progress)
+                let label = item.label + (arcHideValues ? "" : " \(item.value)")
+                context.draw(
+                    Text(label)
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(contentColor),
+                    at: labelPoint,
+                    anchor: labelPoint.x < center.x ? .trailing : labelPoint.x > center.x ? .leading : .center
+                )
+            }
         }
     }
 
@@ -655,7 +758,7 @@ struct DoweTableView: View {
         .clipShape(RoundedRectangle(cornerRadius: radius))
         .overlay(
             RoundedRectangle(cornerRadius: radius)
-                .stroke(borderColor ?? DoweDesign.onSurface.opacity(0.28), lineWidth: bordered || borderColor != nil ? CGFloat(1) : CGFloat(0))
+                .stroke(borderColor ?? DoweDesign.surfaceText.opacity(0.28), lineWidth: bordered || borderColor != nil ? CGFloat(1) : CGFloat(0))
         )
     }
 
@@ -686,14 +789,14 @@ struct DoweTableView: View {
                         .padding(.vertical, metrics.bodyVerticalPadding)
                         .overlay(alignment: .trailing) {
                             if bordered && columnIndex < columns.count - 1 {
-                                Rectangle().fill(DoweDesign.onSurface.opacity(0.28)).frame(width: CGFloat(1))
+                                Rectangle().fill(DoweDesign.surfaceText.opacity(0.28)).frame(width: CGFloat(1))
                             }
                         }
                 }
             }
-            .background(striped && index % 2 == 1 ? DoweDesign.onSurface.opacity(0.12) : Color.clear)
+            .background(striped && index % 2 == 1 ? DoweDesign.surfaceText.opacity(0.12) : Color.clear)
             if dividers && index < rows.count - 1 {
-                Rectangle().fill(DoweDesign.onSurface.opacity(0.28)).frame(height: CGFloat(1))
+                Rectangle().fill(DoweDesign.surfaceText.opacity(0.28)).frame(height: CGFloat(1))
             }
         }
     }

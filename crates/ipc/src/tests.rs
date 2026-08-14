@@ -182,7 +182,7 @@ fn exposes_public_agent_bridge_through_ipc() {
         .expect("mcp")
         .expect("response");
 
-    assert_eq!(skills.len(), 4);
+    assert_eq!(skills.len(), 5);
     assert_eq!(views.id, "views");
     assert_eq!(styles.path, "references/styles.md");
     assert_eq!(examples.results[0].id, "dashboard-layout");

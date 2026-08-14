@@ -1,7 +1,7 @@
 use dowe_components::{
     AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
     AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BoxPosition, Breakpoint, ButtonSize,
-    CanvasBackground, CarouselProps, CarouselSlide, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
+    ArcChartProps, CanvasBackground, CarouselProps, CarouselSlide, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
     CodeTemplateSegment, CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
     CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme,
@@ -15,7 +15,7 @@ use dowe_components::{
     SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
     SidebarProps, SideNavSize, SkeletonProps, SizeValue, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill,
     SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableSize, TabsProps, TabsVariant,
-    TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem,
+    PieChartProps, TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem,
     ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
     TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction,
     ViewActionKind, ViewAnimation, ViewConstant, ViewGesture, ViewNode, ViewRequestAction,
@@ -27,6 +27,7 @@ use dowe_components::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IosOutput {

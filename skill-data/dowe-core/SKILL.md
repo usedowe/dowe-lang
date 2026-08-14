@@ -38,6 +38,10 @@ View props continue to use bare bindings such as `bind:form.title` and `show:rea
 4. Preserve existing ownership and reuse declared bindings before adding new ones.
 5. Run the narrowest compiler, test, Harness, or CodeGraph validation required by the change.
 
+When a root theme is created or explicitly changed, delegate color authoring to `dowe-theme` and use
+grouped `colors:` families with `color`, `text`, and `title` roles. When a page is generated without
+a theme request, preserve the existing `theme.dowe` and consume its semantic tokens.
+
 ## Reference routing
 
 | Task | Read only |

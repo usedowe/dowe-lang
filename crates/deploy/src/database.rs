@@ -1,6 +1,6 @@
 use crate::files::write_file;
 use crate::{DeployResult, DeploySurface};
-use dowe_compiler::{CompiledProject, DatabaseProvider, database_migration_plan};
+use dowe_compiler::{CompiledProject, DatabaseProvider, database_migrations};
 use serde_json::json;
 use std::path::Path;
 
@@ -14,22 +14,29 @@ pub(crate) fn write_database_artifacts(
     }
     let mut entries = Vec::new();
     for binding in &project.databases {
-        let plan = database_migration_plan(&binding.connection);
-        if let Some(sql) = &plan.sql {
-            write_file(
-                &output
-                    .join("database")
-                    .join(&binding.binding)
-                    .join("00001_schema.sql"),
-                sql,
-            )?;
+        let migrations = database_migrations(project, &binding.connection)?;
+        for migration in &migrations {
+            if let Some(sql) = &migration.sql {
+                write_file(
+                    &output.join("database").join(&binding.binding).join(format!(
+                        "{:05}_{}.sql",
+                        migration.sequence,
+                        &migration.fingerprint[..12]
+                    )),
+                    sql,
+                )?;
+            }
         }
+        let fingerprint = migrations
+            .last()
+            .map(|migration| migration.fingerprint.as_str())
+            .unwrap_or("dynamic");
         entries.push(json!({
             "binding": binding.binding,
             "provider": provider_name(binding.connection.provider),
             "name": binding.connection.database,
-            "schemaMode": plan.schema_mode,
-            "fingerprint": plan.fingerprint,
+            "schemaMode": if binding.connection.provider == DatabaseProvider::Dowe { "dynamic" } else { "migrations" },
+            "fingerprint": fingerprint,
             "entities": binding
                 .connection
                 .entities

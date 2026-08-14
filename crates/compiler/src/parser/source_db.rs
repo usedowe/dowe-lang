@@ -7,6 +7,7 @@ use crate::model::{
     StoreQueryEndpoint, StoreTransactionEndpoint, StoreTransactionOperation,
 };
 use crate::parser::source_ast::{SourceNode, SourceObjectEntry, SourceValue};
+use dowe_database_query::parse_select;
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 
@@ -16,10 +17,27 @@ pub fn parse_database_statement(
     entities: &HashMap<String, DatabaseEntity>,
     seeders: &HashMap<String, DatabaseSeeder>,
 ) -> DoweResult<Option<ServerStoreStatement>> {
+    parse_database_statement_for(node, environment, entities, Some(seeders))
+}
+
+pub fn parse_database_statement_without_seeders(
+    node: &SourceNode,
+    environment: Option<&EnvironmentConfig>,
+    entities: &HashMap<String, DatabaseEntity>,
+) -> DoweResult<Option<ServerStoreStatement>> {
+    parse_database_statement_for(node, environment, entities, None)
+}
+
+fn parse_database_statement_for(
+    node: &SourceNode,
+    environment: Option<&EnvironmentConfig>,
+    entities: &HashMap<String, DatabaseEntity>,
+    seeders: Option<&HashMap<String, DatabaseSeeder>>,
+) -> DoweResult<Option<ServerStoreStatement>> {
     if node.name == "db" {
         return Err(node_error(
             node,
-            "database handles use `database <binding> provider:<provider> name:<database>`; `db` remains only the query operation prop",
+            "database handles use `database <binding> provider:<provider> name:<database>`; Database operations use `conn:<handle>.<operation>`",
         ));
     }
     if node.name == "database" {
@@ -63,15 +81,21 @@ pub fn parse_database_statement(
             })
             .collect::<DoweResult<Vec<_>>>()?;
         validate_unique_entity_tables(node, &entities)?;
-        let seeders = binding_array_prop(node, "seeders")?
-            .into_iter()
-            .map(|name| {
-                seeders
-                    .get(&name)
-                    .cloned()
-                    .ok_or_else(|| node_error(node, format!("unknown seeder binding `{name}`")))
-            })
-            .collect::<DoweResult<Vec<_>>>()?;
+        let seeders = match seeders {
+            Some(available) => binding_array_prop(node, "seeders")?
+                .into_iter()
+                .map(|name| {
+                    available
+                        .get(&name)
+                        .cloned()
+                        .ok_or_else(|| node_error(node, format!("unknown seeder binding `{name}`")))
+                })
+                .collect::<DoweResult<Vec<_>>>()?,
+            None => {
+                binding_array_prop(node, "seeders")?;
+                Vec::new()
+            }
+        };
         validate_seeder_entities(node, &entities, &seeders)?;
         return Ok(Some(ServerStoreStatement::Handle {
             connection: StoreConnection {
@@ -89,6 +113,13 @@ pub fn parse_database_statement(
     }
 
     if node.name == "query" && node.prop("db").is_some() {
+        return Err(node_error(
+            node,
+            "Database operations use `query <binding> conn:<handle>.<operation>`; `db:` is no longer supported",
+        ));
+    }
+
+    if node.name == "query" && node.prop("conn").is_some() {
         return parse_database_query_declaration(node);
     }
 
@@ -109,7 +140,7 @@ pub fn parse_database_statement(
     {
         return Err(node_error(
             node,
-            "database operations must use `query <binding> db:<handle>.<operation>`",
+            "database operations must use `query <binding> conn:<handle>.<operation>`",
         ));
     }
 
@@ -246,21 +277,21 @@ fn parse_database_query_declaration(node: &SourceNode) -> DoweResult<Option<Serv
         .as_string_like()
         .ok_or_else(|| node_error(node, "`query` binding name must be static"))?;
     let reference = node
-        .prop("db")
-        .ok_or_else(|| node_error(node, "`query` must declare `db:<handle>.<operation>`"))?
+        .prop("conn")
+        .ok_or_else(|| node_error(node, "`query` must declare `conn:<handle>.<operation>`"))?
         .value
         .as_string_like()
-        .ok_or_else(|| node_error(node, "`db` must reference a database handle operation"))?;
+        .ok_or_else(|| node_error(node, "`conn` must reference a database handle operation"))?;
     let Some((handle, operation)) = reference.rsplit_once('.') else {
         return Err(node_error(
             node,
-            "`db` must reference a database handle operation",
+            "`conn` must reference a database handle operation",
         ));
     };
     if handle.is_empty() || !is_database_query_operation(operation) {
         return Err(node_error(
             node,
-            "`db` must reference a supported database operation",
+            "`conn` must reference a supported database operation",
         ));
     }
 
@@ -331,24 +362,32 @@ fn parse_database_query_declaration(node: &SourceNode) -> DoweResult<Option<Serv
             }))
         }
         "query" => {
-            reject_unknown_props(node, &["db", "sql", "params"])?;
+            reject_unknown_props(node, &["conn", "sql", "params"])?;
             let sql = required_string_prop(node, "sql")?;
             let params = optional_query_params_prop(node)?;
+            let query = parse_select(&sql).map_err(|error| {
+                node_error(node, format!("unsupported database query: {error}"))
+            })?;
+            query
+                .validate_parameters(params.len())
+                .map_err(|error| node_error(node, error))?;
             Ok(Some(ServerStoreStatement::Query {
                 binding,
                 handle: handle.to_string(),
                 sql,
+                query,
                 params,
             }))
         }
         "tx" => {
             reject_unknown_transaction_props(node)?;
-            let (operations, return_binding) = parse_store_tx(node, handle)?;
+            let (operations, return_binding, rollback) = parse_store_tx(node, handle)?;
             Ok(Some(ServerStoreStatement::Transaction {
                 binding,
                 handle: handle.to_string(),
                 operations,
                 return_binding,
+                rollback,
             }))
         }
         _ => unreachable!(),
@@ -405,6 +444,7 @@ pub fn database_endpoint_behavior(
                 binding,
                 handle,
                 sql,
+                query,
                 params,
             } if binding == &return_binding => {
                 if !params.is_empty() {
@@ -414,6 +454,7 @@ pub fn database_endpoint_behavior(
                 return Ok(Some(EndpointBehavior::StoreQueryJson(StoreQueryEndpoint {
                     connection,
                     sql: sql.clone(),
+                    query: query.clone(),
                 })));
             }
             ServerStoreStatement::Transaction {
@@ -421,18 +462,15 @@ pub fn database_endpoint_behavior(
                 handle,
                 operations,
                 return_binding: tx_return_binding,
+                rollback,
             } if binding == &return_binding => {
                 let connection = connection_for_handle(&handles, handle)?;
-                if connection.provider != DatabaseProvider::Dowe {
-                    return Err(DoweError::new(
-                        "Database transactions require provider `dowe`",
-                    ));
-                }
                 return Ok(Some(EndpointBehavior::StoreTransactionJson(
                     StoreTransactionEndpoint {
                         connection,
                         operations: operations.clone(),
                         return_binding: tx_return_binding.clone(),
+                        rollback: *rollback,
                     },
                 )));
             }
@@ -513,14 +551,7 @@ fn validate_store_handles(action: &ServerAction) -> DoweResult<()> {
             | ServerStoreStatement::Delete { handle, .. }
             | ServerStoreStatement::Query { handle, .. }
             | ServerStoreStatement::Transaction { handle, .. } => {
-                let connection = connection_for_handle(&handles, handle)?;
-                if matches!(statement, ServerStoreStatement::Transaction { .. })
-                    && connection.provider != DatabaseProvider::Dowe
-                {
-                    return Err(DoweError::new(
-                        "Database transactions require provider `dowe`",
-                    ));
-                }
+                connection_for_handle(&handles, handle)?;
             }
         }
     }
@@ -531,11 +562,19 @@ fn validate_store_handles(action: &ServerAction) -> DoweResult<()> {
 fn parse_store_tx(
     node: &SourceNode,
     handle: &str,
-) -> DoweResult<(Vec<StoreTransactionOperation>, Option<String>)> {
+) -> DoweResult<(Vec<StoreTransactionOperation>, Option<String>, bool)> {
     let mut operations = Vec::new();
     let mut return_binding = None;
+    let mut rollback = false;
+    let mut completed = false;
 
-    for child in &node.children {
+    for (index, child) in node.children.iter().enumerate() {
+        if completed {
+            return Err(node_error(
+                child,
+                "store tx commit or rollback must be the final block",
+            ));
+        }
         match child.name.as_str() {
             "query" => {
                 let (binding, operation_handle, operation) = transaction_query_reference(child)?;
@@ -559,16 +598,43 @@ fn parse_store_tx(
                 });
             }
             "commit" => {
-                if let Some(prop) = child.prop("value") {
-                    return_binding = prop.value.as_string_like();
+                reject_unknown_props(child, &["value"])?;
+                if !child.args.is_empty() || !child.children.is_empty() {
+                    return Err(node_error(child, "store tx commit cannot have a body"));
                 }
+                if let Some(prop) = child.prop("value") {
+                    return_binding = Some(prop.value.as_string_like().ok_or_else(|| {
+                        node_error(child, "store tx commit value must be a static binding")
+                    })?);
+                }
+                completed = true;
             }
-            "rollback" => {}
+            "rollback" => {
+                reject_unknown_props(child, &[])?;
+                if !child.args.is_empty() || !child.children.is_empty() {
+                    return Err(node_error(child, "store tx rollback cannot have a body"));
+                }
+                rollback = true;
+                completed = true;
+            }
             _ => return Err(node_error(child, "unsupported store tx block")),
+        }
+        if completed && index + 1 != node.children.len() {
+            return Err(node_error(
+                child,
+                "store tx commit or rollback must be the final block",
+            ));
         }
     }
 
-    Ok((operations, return_binding))
+    if !completed {
+        return Err(node_error(
+            node,
+            "store tx must end with exactly one commit or rollback block",
+        ));
+    }
+
+    Ok((operations, return_binding, rollback))
 }
 
 fn transaction_query_reference(node: &SourceNode) -> DoweResult<(String, String, String)> {
@@ -581,22 +647,28 @@ fn transaction_query_reference(node: &SourceNode) -> DoweResult<(String, String,
     let binding = node.args[0]
         .as_string_like()
         .ok_or_else(|| node_error(node, "store tx query binding name must be static"))?;
+    if node.prop("db").is_some() {
+        return Err(node_error(
+            node,
+            "Database transaction operations use `conn:<handle>.insert`; `db:` is no longer supported",
+        ));
+    }
     let reference = node
-        .prop("db")
-        .ok_or_else(|| node_error(node, "store tx query must declare `db:<handle>.insert`"))?
+        .prop("conn")
+        .ok_or_else(|| node_error(node, "store tx query must declare `conn:<handle>.insert`"))?
         .value
         .as_string_like()
         .ok_or_else(|| node_error(node, "store tx query must reference a database operation"))?;
     let Some((handle, operation)) = reference.rsplit_once('.') else {
         return Err(node_error(
             node,
-            "store tx query must declare `db:<handle>.insert`",
+            "store tx query must declare `conn:<handle>.insert`",
         ));
     };
     if handle.is_empty() {
         return Err(node_error(
             node,
-            "store tx query must declare `db:<handle>.insert`",
+            "store tx query must declare `conn:<handle>.insert`",
         ));
     }
     Ok((binding, handle.to_string(), operation.to_string()))
@@ -1223,7 +1295,7 @@ fn reject_unknown_props(node: &SourceNode, allowed: &[&str]) -> DoweResult<()> {
 
 fn reject_unknown_transaction_props(node: &SourceNode) -> DoweResult<()> {
     for prop in &node.props {
-        if prop.name != "db" {
+        if prop.name != "conn" {
             return Err(node_error(
                 node,
                 format!("store tx does not support `{}`", prop.name),
@@ -1235,7 +1307,7 @@ fn reject_unknown_transaction_props(node: &SourceNode) -> DoweResult<()> {
 
 fn reject_unknown_transaction_insert_props(node: &SourceNode) -> DoweResult<()> {
     for prop in &node.props {
-        if !matches!(prop.name.as_str(), "db" | "table" | "value") {
+        if !matches!(prop.name.as_str(), "conn" | "table" | "value") {
             return Err(node_error(
                 node,
                 format!("store tx insert does not support `{}`", prop.name),
@@ -1279,7 +1351,7 @@ mod tests {
     route "/api/users"
       handler
         database clinicDb provider:"dowe" name:"db1" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query created db:clinicDb.insert table:"users" value:{ name:"Ana" }
+        query created conn:clinicDb.insert table:"users" value:{ name:"Ana" }
         return json:created"#
                 .to_string(),
         )
@@ -1318,7 +1390,7 @@ mod tests {
             r#"import record from "./record"
 
 fn dispatch
-  task record
+  task fn:record
   return value:null"#,
         )
         .expect("dispatch");
@@ -1329,7 +1401,7 @@ fn dispatch
     route "/events"
       handler
         database db provider:"dowe" name:"events" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query created db:db.insert table:"events" value:{ kind:"created" }
+        query created conn:db.insert table:"events" value:{ kind:"created" }
         task
           log "inline"
         return json:created"#,
@@ -1340,7 +1412,7 @@ main
     route "/events"
       handler
         database db provider:"dowe" name:"events" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query created db:db.insert table:"events" value:{ kind:"created" }
+        query created conn:db.insert table:"events" value:{ kind:"created" }
         dispatch result
         return json:created"#,
         ] {
@@ -1427,9 +1499,35 @@ main
             parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
 
         assert!(
+            error.to_string().contains(
+                "database operations must use `query <binding> conn:<handle>.<operation>`"
+            )
+        );
+    }
+
+    #[test]
+    fn rejects_legacy_database_query_namespace() {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/users"
+      handler
+        database db provider:"dowe" name:"db1" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
+        query users db:db.list table:"users"
+        return json:users"#
+                .to_string(),
+        )
+        .expect("source");
+
+        let error =
+            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
+
+        assert!(
             error
                 .to_string()
-                .contains("database operations must use `query <binding> db:<handle>.<operation>`")
+                .contains("Database operations use `query <binding> conn:<handle>.<operation>`")
         );
     }
 
@@ -1443,7 +1541,7 @@ main
     route "/api/users"
       handler req
         database db provider:"dowe" name:"db1" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query created db:db.insert table:"users" value:{ ownerId:req.context.auth.subject }
+        query created conn:db.insert table:"users" value:{ ownerId:req.context.auth.subject }
         return json:created"#
                 .to_string(),
         )
@@ -1467,7 +1565,7 @@ main
     route "/api/blogs/:id"
       handler req
         database db provider:"dowe" name:"app" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query blog db:db.read table:"blogs" where:{ id:req.params.id ownerId:req.context.auth.subject } required:true
+        query blog conn:db.read table:"blogs" where:{ id:req.params.id ownerId:req.context.auth.subject } required:true
         return json:blog"#
                 .to_string(),
         )
@@ -1495,7 +1593,7 @@ main
     route "/api/users"
       handler
         database db provider:"dowe" name:"db1" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query users db:db.query sql:"select * from users"
+        query users conn:db.query sql:"select * from users"
         return json:users"#
                 .to_string(),
         )
@@ -1520,8 +1618,8 @@ main
     route "/api/users"
       handler
         database db provider:"dowe" name:"db1" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query result db:db.tx
-          query user db:db.insert table:"users" value:{ name:"Ana" }
+        query result conn:db.tx
+          query user conn:db.insert table:"users" value:{ name:"Ana" }
           commit value:user
         return json:result"#
                 .to_string(),
@@ -1535,6 +1633,34 @@ main
             EndpointBehavior::StoreTransactionJson(transaction)
                 if transaction.connection.database == "db1" && transaction.operations.len() == 1
         ));
+    }
+
+    #[test]
+    fn parses_store_transaction_rollback_without_commit() {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/main.dowe"),
+            r#"main
+  server port:0
+    route "/api/users"
+      handler
+        database db provider:"dowe" name:"db1" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
+        query result conn:db.tx
+          query user conn:db.insert table:"users" value:{ name:"Ana" }
+          rollback
+        return json:result"#
+                .to_string(),
+        )
+        .expect("source");
+        let server =
+            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+        let EndpointBehavior::StoreTransactionJson(transaction) =
+            &server.backend.endpoints[0].behavior
+        else {
+            panic!("database transaction");
+        };
+        assert!(transaction.rollback);
+        assert!(transaction.return_binding.is_none());
     }
 
     #[test]
@@ -1558,9 +1684,9 @@ main
             parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
 
         assert!(
-            error
-                .to_string()
-                .contains("database operations must use `query <binding> db:<handle>.<operation>`")
+            error.to_string().contains(
+                "database operations must use `query <binding> conn:<handle>.<operation>`"
+            )
         );
     }
 
@@ -1574,7 +1700,7 @@ main
     route "/api/users"
       handler
         database db provider:"dowe" name:"db1" host:"127.0.0.1" port:4147 account:"api" secret:"secret"
-        query result db:db.tx
+        query result conn:db.tx
           let user = insert table:"users" value:{ name:"Ana" }
           commit value:user
         return json:result"#
@@ -1617,7 +1743,7 @@ main
     route "/api/users"
       handler
         database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api-user" secret:"secret" name:"db1"
-        query users db:db.list table:"users"
+        query users conn:db.list table:"users"
         return json:{ data:users }"#
                 .to_string(),
         )
@@ -1655,7 +1781,7 @@ main
     route "/api/blogs"
       handler
         database db provider:"d1" account:"account-id" secret:"secret" name:"database-id"
-        query blogs db:db.list table:"blogs"
+        query blogs conn:db.list table:"blogs"
         return json:blogs"#
                 .to_string(),
         )
@@ -1690,7 +1816,7 @@ main
     route "/api/blogs"
       handler
         database db provider:"postgres" host:"postgres.example" port:5432 account:"app" secret:"secret" name:"content"
-        query blogs db:db.list table:"blogs"
+        query blogs conn:db.list table:"blogs"
         return json:blogs"#
                 .to_string(),
         )
@@ -1726,7 +1852,7 @@ main
     route "/api/icons/:category/:style/:page/:search"
       handler
         database db provider:"d1" account:"account-id" secret:"secret" name:"database-id"
-        query icons db:db.query sql:"SELECT * FROM icons WHERE category = ?1 AND style = ?2 LIMIT 60" params:[req.params.category, req.params.style]
+        query icons conn:db.query sql:"SELECT * FROM icons WHERE category = ?1 AND style = ?2 LIMIT 60" params:[req.params.category, req.params.style]
         return json:{ data:icons }"#
                 .to_string(),
         )
@@ -1786,7 +1912,7 @@ main
     }
 
     #[test]
-    fn rejects_d1_store_transaction() {
+    fn parses_d1_store_transaction() {
         let file = parse_source_file(
             Path::new("/project"),
             Path::new("/project/main.dowe"),
@@ -1795,21 +1921,22 @@ main
     route "/api/blogs"
       handler
         database db provider:"d1" account:"account-id" secret:"secret" name:"database-id"
-        query result db:db.tx
-          query blog db:db.insert table:"blogs" value:{ title:"Hello" }
+        query result conn:db.tx
+          query blog conn:db.insert table:"blogs" value:{ title:"Hello" }
           commit value:blog
         return json:result"#
                 .to_string(),
         )
         .expect("source");
-        let error =
-            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
-
-        assert!(
-            error
-                .to_string()
-                .contains("Database transactions require provider `dowe`")
-        );
+        let server =
+            parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+        let EndpointBehavior::StoreTransactionJson(transaction) =
+            &server.backend.endpoints[0].behavior
+        else {
+            panic!("database transaction");
+        };
+        assert_eq!(transaction.connection.provider, DatabaseProvider::D1);
+        assert!(!transaction.rollback);
     }
 
     #[test]

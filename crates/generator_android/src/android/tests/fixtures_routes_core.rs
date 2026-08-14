@@ -32,7 +32,7 @@ fn section_route() -> ViewRoute {
                 ViewNode::Section {
                     props: StyleProps {
                         boxed: true,
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnBackground)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::BackgroundText)),
                         background: Some(ResponsiveValue::ordered(vec![
                             ResponsiveEntry {
                                 breakpoint: Breakpoint::Xs,
@@ -359,6 +359,8 @@ fn tabs_route() -> ViewRoute {
                 variant: TabsVariant::Line,
                 color: ColorFamily::Primary,
                 position: TabsPosition::Start,
+                variant_explicit: true,
+                color_explicit: true,
             },
             tabs: vec![
                 TabItem {

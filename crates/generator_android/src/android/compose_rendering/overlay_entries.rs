@@ -40,7 +40,7 @@ fn render_compose_command_entry(
             indent,
             output,
             "Color.Transparent",
-            "DoweDesign.onBackground",
+            "DoweDesign.backgroundText",
             context,
             None,
         ),
@@ -55,7 +55,7 @@ fn render_compose_command_entry(
                 render_compose_side_icon(icon, indent + 8, output);
             }
             output.push_str(&format!(
-                "{pad}        Text(text = {}, color = DoweDesign.onMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)\n",
+                "{pad}        Text(text = {}, color = DoweDesign.mutedText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)\n",
                 compose_string_literal(label)
             ));
             output.push_str(&format!("{pad}    }}\n"));
@@ -65,7 +65,7 @@ fn render_compose_command_entry(
                     indent + 4,
                     output,
                     "Color.Transparent",
-                    "DoweDesign.onBackground",
+                    "DoweDesign.backgroundText",
                     context,
                     None,
                 );

@@ -20,6 +20,7 @@ wasm-encoder = "0.244.0"
 
 [dev-dependencies]
 wasmparser = "0.244.0"
+tokio.workspace = true
 
 [lib]
 path = "src/lib.rs"

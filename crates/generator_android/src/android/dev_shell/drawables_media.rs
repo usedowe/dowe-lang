@@ -665,7 +665,7 @@ fn dev_activity_drawables_media() -> &'static str {
     }
 
     private GradientDrawable doweDeviceIconButtonBackground(boolean selected) {
-        return doweInputBackground(selected ? DOWE_SOFT_PRIMARY : DOWE_BACKGROUND, selected ? DOWE_PRIMARY : DOWE_ON_BACKGROUND, DOWE_RADIUS);
+        return doweInputBackground(selected ? DOWE_SOFT_PRIMARY : DOWE_BACKGROUND, selected ? DOWE_PRIMARY : DOWE_BACKGROUND_TEXT, DOWE_RADIUS);
     }
 
     private void doweSetDeviceProfile(FrameLayout stage, FrameLayout preview, String profile, DoweDeviceOption[] options, FrameLayout[] buttons) {
@@ -681,7 +681,7 @@ fn dev_activity_drawables_media() -> &'static str {
         for (int index = 0; index < options.length; index++) {
             buttons[index].setBackground(doweDeviceIconButtonBackground(options[index].profile.equals(profile)));
             buttons[index].setSelected(options[index].profile.equals(profile));
-            options[index].icon.setCurrentColor(options[index].profile.equals(profile) ? DOWE_PRIMARY : DOWE_ON_BACKGROUND);
+            options[index].icon.setCurrentColor(options[index].profile.equals(profile) ? DOWE_PRIMARY : DOWE_BACKGROUND_TEXT);
         }
     }
 

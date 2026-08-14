@@ -5,6 +5,7 @@ struct SolarIconSource {
     category: &'static str,
     name: &'static str,
     style: &'static str,
+    public_name: &'static str,
     svg: &'static str,
 }
 
@@ -38,8 +39,12 @@ pub fn solar_icon_names() -> Vec<&'static str> {
     names
 }
 
+fn solar_component_icon_names() -> Vec<&'static str> {
+    SOLAR_ICONS.iter().map(|icon| icon.public_name).collect()
+}
+
 pub fn all_icon_names() -> Vec<String> {
-    let mut names = solar_icon_names()
+    let mut names = solar_component_icon_names()
         .into_iter()
         .map(str::to_string)
         .collect::<Vec<_>>();
@@ -336,35 +341,27 @@ pub fn validate_svg_logo_catalog() -> ComponentResult<usize> {
     Ok(SVG_LOGOS.len())
 }
 
-fn solar_icon_svg(name: &str, style: &str) -> Option<&'static str> {
+fn solar_icon_svg(name: &str) -> Option<&'static str> {
     SOLAR_ICONS
-        .binary_search_by(|icon| icon.name.cmp(name).then(icon.style.cmp(style)))
+        .binary_search_by(|icon| icon.public_name.cmp(name))
         .ok()
         .map(|index| SOLAR_ICONS[index].svg)
 }
 
-fn solar_style_name(value: &str) -> Option<&'static str> {
-    match value {
-        "broken" => Some("Broken"),
-        "outline" => Some("Outline"),
-        "linear" => Some("Linear"),
-        "bold" => Some("Bold"),
-        "line-duotone" => Some("LineDuotone"),
-        "bold-duotone" => Some("BoldDuotone"),
-        _ => None,
-    }
-}
-
 pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut name = None;
-    let mut icon_style = "linear".to_string();
     let mut fill = None;
     let mut stroke = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
             "name" => name = Some(parse_static_string(&prop.name, &prop.value)?),
-            "style" => icon_style = parse_static_string(&prop.name, &prop.value)?,
+            "style" => {
+                return Err(ComponentError::invalid_prop(
+                    "style",
+                    "removed; include the Solar variant in name",
+                ));
+            }
             "fill" => fill = parse_icon_color(&prop.name, &prop.value)?,
             "stroke" => stroke = parse_icon_color(&prop.name, &prop.value)?,
             _ => style_props.push(prop),
@@ -374,9 +371,6 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
         ComponentError::invalid_prop("name", "non-empty quoted Dowe icon name")
     })?;
     if let Some(code) = name.strip_prefix("country-flags:") {
-        if icon_style != "linear" {
-            return Err(ComponentError::invalid_prop("style", "linear for country flags"));
-        }
         let icon = country_flag_icon(code)
             .ok_or_else(|| ComponentError::invalid_prop("name", "known country flag icon"))?;
         return Ok(ViewNode::Svg {
@@ -385,12 +379,6 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
         });
     }
     if let Some(spinner_name) = name.strip_prefix("svg-spinners:") {
-        if icon_style != "linear" {
-            return Err(ComponentError::invalid_prop(
-                "style",
-                "linear for SVG Spinners",
-            ));
-        }
         let svg = svg_spinner_svg(spinner_name)
             .ok_or_else(|| ComponentError::invalid_prop("name", "known SVG Spinner icon"))?;
         validate_svg_spinner_source(svg)?;
@@ -410,12 +398,6 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
         return Ok(ViewNode::Svg { props, paths });
     }
     if let Some(logo_name) = name.strip_prefix("svg-logos:") {
-        if icon_style != "linear" {
-            return Err(ComponentError::invalid_prop(
-                "style",
-                "linear for SVG Logos",
-            ));
-        }
         let svg = svg_logo_svg(logo_name)
             .ok_or_else(|| ComponentError::invalid_prop("name", "known SVG Logos icon"))?;
         validate_svg_logo_source(svg)?;
@@ -434,15 +416,8 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
         });
         return Ok(ViewNode::Svg { props, paths });
     }
-    let catalog_style = solar_style_name(&icon_style).ok_or_else(|| {
-        ComponentError::invalid_prop(
-            "style",
-            "broken, outline, linear, bold, line-duotone or bold-duotone",
-        )
-    })?;
-    let svg = solar_icon_svg(&name, catalog_style).ok_or_else(|| {
-        ComponentError::invalid_prop("name", "known Solar icon with the selected style")
-    })?;
+    let svg = solar_icon_svg(&name)
+        .ok_or_else(|| ComponentError::invalid_prop("name", "known Solar icon variant name"))?;
     let (view_box, paths) = parse_solar_svg(svg, fill, stroke)?;
     let mut svg_props = style_props;
     svg_props.push(ComponentProp {

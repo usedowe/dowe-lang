@@ -53,7 +53,7 @@ fn launch_ios_app(
     simulator: &IosSimulator,
     dev_origin: Option<&str>,
 ) -> RuntimeResult<()> {
-    let app_bundle = build_ios_app(&project.root, ios_root, simulator.boot_requested)?;
+    let app_bundle = build_ios_app(&project.root, ios_root)?;
     if simulator.boot_requested {
         wait_ios_simulator_boot(&simulator.udid)?;
     }
@@ -111,11 +111,7 @@ fn open_ios_simulator() -> RuntimeResult<()> {
     .map(|_| ())
 }
 
-fn build_ios_app(
-    project_root: &Path,
-    ios_root: &Path,
-    simulator_booting: bool,
-) -> RuntimeResult<PathBuf> {
+fn build_ios_app(project_root: &Path, ios_root: &Path) -> RuntimeResult<PathBuf> {
     let host_source = ensure_file(ios_root.join("dev/DoweIosDevHost.swift"), DevTarget::Ios)?;
     let plist = ensure_file(ios_root.join("Info.plist"), DevTarget::Ios)?;
     let target = ios_simulator_target();
@@ -140,7 +136,7 @@ fn build_ios_app(
     let object_files = ios_swift_object_files(&swift_files, &objects_root);
     let output_map = build_root.join("output-file-map.json");
     let output_map_content = ios_swift_output_map(&swift_files, &object_files);
-    let swift_jobs = ios_swift_job_count(simulator_booting);
+    let swift_jobs = ios_swift_job_count();
     fs::write(
         &output_map,
         serde_json::to_vec(&output_map_content)
@@ -270,13 +266,12 @@ fn compile_hot_module_once(
                 &workspace.source_files(),
                 &workspace.output_map,
                 target.to_string(),
-                ios_swift_job_count(false),
+                ios_swift_job_count(),
             ),
         )
         .with_options(quiet_command_options(None, StreamMode::Ignore)),
     );
     if let Err(error) = result {
-        workspace.discard_dependency_state();
         return Err(error);
     }
     Ok(workspace.is_complete())
@@ -313,14 +308,14 @@ where
     if !is_current() {
         return Ok(false);
     }
-    let recovery_required = match compile() {
-        Ok(true) => {
+    let recovery_required = match compile()? {
+        true => {
             if !is_current() {
                 return Ok(false);
             }
             link().is_err()
         }
-        Ok(false) | Err(_) => true,
+        false => true,
     };
     if !recovery_required {
         return Ok(true);
@@ -359,8 +354,8 @@ fn ios_hot_module_compile_args(
         "-incremental".to_string(),
         "-enable-incremental-file-hashing".to_string(),
         "-enable-batch-mode".to_string(),
-        "-driver-batch-count".to_string(),
-        jobs.to_string(),
+        "-driver-batch-size-limit".to_string(),
+        "1".to_string(),
         "-j".to_string(),
         jobs.to_string(),
         "-target".to_string(),
@@ -721,12 +716,14 @@ fn ios_toolchain_signature_commands() -> Vec<Vec<&'static str>> {
     ]
 }
 
-fn ios_swift_job_count(simulator_booting: bool) -> usize {
-    let limit = if simulator_booting { 2 } else { 8 };
+fn ios_swift_job_count() -> usize {
     std::thread::available_parallelism()
-        .map(|value| value.get().clamp(1, limit))
-        .unwrap_or(4)
-        .min(limit)
+        .map(|value| bounded_ios_swift_job_count(value.get()))
+        .unwrap_or(2)
+}
+
+fn bounded_ios_swift_job_count(parallelism: usize) -> usize {
+    parallelism.clamp(1, 2)
 }
 
 fn ios_swift_object_files(swift_files: &[String], objects_root: &Path) -> Vec<PathBuf> {
@@ -810,12 +807,12 @@ fn ios_swift_link_args(object_files: &[PathBuf], bundle: &Path, target: String) 
 #[cfg(test)]
 mod tests {
     use super::{
-        IOS_INCREMENTAL_MODULE_NAME, ios_asset_catalog_args, ios_build_root, ios_cleanup_commands,
-        ios_hot_module_compile_args, ios_hot_module_link_args, ios_install_config,
-        ios_launch_config, ios_open_simulator_config, ios_runtime_label, ios_simulator_target,
-        ios_swift_compile_args, ios_swift_job_count, ios_swift_link_args, ios_swift_object_files,
-        ios_swift_output_map, ios_toolchain_signature_commands, parse_ios_simulator_options,
-        run_ios_hot_module_pipeline,
+        IOS_INCREMENTAL_MODULE_NAME, bounded_ios_swift_job_count, ios_asset_catalog_args,
+        ios_build_root, ios_cleanup_commands, ios_hot_module_compile_args,
+        ios_hot_module_link_args, ios_install_config, ios_launch_config, ios_open_simulator_config,
+        ios_runtime_label, ios_simulator_target, ios_swift_compile_args, ios_swift_job_count,
+        ios_swift_link_args, ios_swift_object_files, ios_swift_output_map,
+        ios_toolchain_signature_commands, parse_ios_simulator_options, run_ios_hot_module_pipeline,
     };
     use crate::dev_modules::DevModuleRevision;
     use crate::error::RuntimeError;
@@ -905,8 +902,11 @@ mod tests {
     }
 
     #[test]
-    fn bounds_ios_swift_parallel_jobs_for_ready_simulator() {
-        assert!((1..=8).contains(&ios_swift_job_count(false)));
+    fn limits_ios_swift_parallel_jobs_to_leave_host_headroom() {
+        assert_eq!(bounded_ios_swift_job_count(1), 1);
+        assert_eq!(bounded_ios_swift_job_count(2), 2);
+        assert_eq!(bounded_ios_swift_job_count(10), 2);
+        assert!((1..=2).contains(&ios_swift_job_count()));
     }
 
     #[test]
@@ -920,11 +920,6 @@ mod tests {
                 ["--sdk", "iphonesimulator", "--show-sdk-version"].as_slice(),
             ]
         );
-    }
-
-    #[test]
-    fn limits_ios_swift_parallel_jobs_during_simulator_boot() {
-        assert!((1..=2).contains(&ios_swift_job_count(true)));
     }
 
     #[test]
@@ -988,8 +983,8 @@ mod tests {
         assert!(args.contains(&"-incremental".to_string()));
         assert!(args.contains(&"-enable-incremental-file-hashing".to_string()));
         assert!(args.contains(&"-enable-batch-mode".to_string()));
-        assert_eq!(arg_after(&args, "-driver-batch-count"), Some("8"));
-        assert!(!args.contains(&"-driver-batch-size-limit".to_string()));
+        assert_eq!(arg_after(&args, "-driver-batch-size-limit"), Some("1"));
+        assert!(!args.contains(&"-driver-batch-count".to_string()));
         assert_eq!(arg_after(&args, "-j"), Some("8"));
         assert!(!args.contains(&"-Xfrontend".to_string()));
         assert!(!args.contains(&"-disable-availability-checking".to_string()));
@@ -1038,7 +1033,32 @@ mod tests {
     }
 
     #[test]
-    fn retries_one_full_compile_after_incremental_cache_failure() {
+    fn reports_swift_compile_failure_without_repeating_the_full_build() {
+        let operations = RefCell::new(Vec::new());
+
+        let error = run_ios_hot_module_pipeline(
+            || true,
+            || {
+                operations.borrow_mut().push("compile");
+                Err(RuntimeError::new("generated Swift is invalid"))
+            },
+            || {
+                operations.borrow_mut().push("link");
+                Ok(())
+            },
+            || {
+                operations.borrow_mut().push("reset");
+                Ok(())
+            },
+        )
+        .expect_err("compile error");
+
+        assert!(error.to_string().contains("generated Swift is invalid"));
+        assert_eq!(operations.into_inner(), ["compile"]);
+    }
+
+    #[test]
+    fn retries_one_full_compile_after_successful_incomplete_output() {
         let operations = RefCell::new(Vec::new());
         let compile_count = Cell::new(0);
 
@@ -1048,11 +1068,7 @@ mod tests {
                 operations.borrow_mut().push("compile");
                 let attempt = compile_count.get();
                 compile_count.set(attempt + 1);
-                if attempt == 0 {
-                    Err(RuntimeError::new("corrupt dependencies"))
-                } else {
-                    Ok(true)
-                }
+                Ok(attempt > 0)
             },
             || {
                 operations.borrow_mut().push("link");
@@ -1231,7 +1247,7 @@ mod tests {
                     *latest.lock().expect("latest") = 2;
                     Ok(false)
                 } else {
-                    Err(RuntimeError::new("force recovery"))
+                    Ok(false)
                 }
             },
             || {

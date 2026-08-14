@@ -420,7 +420,7 @@ main
             r#"import recordTask from "./record"
 
 fn dispatch
-  task recordTask args:{ message:"named" }
+  task fn:recordTask args:{ message:"named" }
   return value:{ ok:true }"#,
         )
         .expect("dispatch");
@@ -531,7 +531,7 @@ fn dispatchEndpoint
             r#"import recordEndpointTask from "./record-endpoint-task"
 
 fn enqueueEndpoint
-  task recordEndpointTask args:{ message:"endpoint" }
+  task fn:recordEndpointTask args:{ message:"endpoint" }
   return value:null"#,
         )
         .expect("endpoint enqueue");
@@ -556,7 +556,7 @@ fn dispatchWebsocket
             r#"import recordWebsocketTask from "./record-websocket-task"
 
 fn enqueueWebsocket
-  task recordWebsocketTask args:{ message:"websocket" }
+  task fn:recordWebsocketTask args:{ message:"websocket" }
   return value:null"#,
         )
         .expect("websocket enqueue");

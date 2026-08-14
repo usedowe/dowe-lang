@@ -26,16 +26,16 @@ use dowe_compiler::{
     HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint, HttpRedirectPolicy,
     HttpResponseMode, HttpReverseProxyEndpoint, KvActionJsonEndpoint, OutboundHttpRequest,
     QueueActionJsonEndpoint, QueueConnection, QueueConnectionValue,
-    QueueProvider as CompilerQueueProvider, ResponseCookie, ReverseProxyStrategy, ServerConfig,
-    ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement, ServerFileStatement,
-    ServerFunctionAction, ServerJwtStatement, ServerKvStatement, ServerMiddleware,
-    ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerPasswordStatement,
-    ServerQueueStatement, ServerSecret, ServerSpawnStatement, ServerStatement,
-    ServerStoreStatement, ServerVectorStatement, StoreActionJsonEndpoint, StoreConnection,
-    StoreFilter, StoreLiteral, StoreTransactionEndpoint, StoreTransactionOperation,
-    VectorActionJsonEndpoint, VectorConnection, VectorConnectionValue, ViewPage, WebOutput,
-    WebSocketHandlers, WebSocketSendJsonStatement, WebSocketSseBridgeStatement,
-    normalize_cors_method, normalize_http_header_name,
+    QueueProvider as CompilerQueueProvider, ResponseCookie, ReverseProxyStrategy, SelectQuery,
+    ServerConfig, ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement,
+    ServerFileStatement, ServerFunctionAction, ServerJwtStatement, ServerKvStatement,
+    ServerMiddleware, ServerMiddlewareResponseBody, ServerMiddlewareStatement,
+    ServerPasswordStatement, ServerQueueStatement, ServerSecret, ServerSpawnStatement,
+    ServerStatement, ServerStoreStatement, ServerVectorStatement, StoreActionJsonEndpoint,
+    StoreConnection, StoreFilter, StoreLiteral, StoreTransactionEndpoint,
+    StoreTransactionOperation, VectorActionJsonEndpoint, VectorConnection, VectorConnectionValue,
+    ViewPage, WebOutput, WebSocketHandlers, WebSocketSendJsonStatement,
+    WebSocketSseBridgeStatement, normalize_cors_method, normalize_http_header_name,
 };
 use dowe_crypto::{
     JwtValidationOptions, aes_128_ctr, cenc_aes_128_ctr, decrypt_jwe_dir_a256gcm,
@@ -43,7 +43,7 @@ use dowe_crypto::{
 };
 use dowe_database::{
     D1Client, Database, DatabaseTransactionInsert, DoweDatabaseClient, PostgresClient, StoreRecord,
-    StoreValue, bind_query_params, init_database, open_database,
+    StoreValue, init_database, open_database,
 };
 use dowe_queue::{
     DoweQueue, QueueClient, QueueConfig, QueueError, QueueProvider as RuntimeQueueProvider,

@@ -71,7 +71,7 @@ fn generates_dowe_global_toast_presenter_for_swiftui() {
 
     assert!(generated.contains("DoweGlobalToast(toast: state.toast, close: state.closeToast)"));
     assert!(generated.contains("doweCardContainer(toast.variant, toast.scheme)"));
-    assert!(generated.contains("DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)"));
+    assert!(generated.contains("DoweOverlayCloseIcon(color: DoweDesign.softMutedText)"));
     assert!(generated.contains(".accessibilityLabel(\"Close toast\")"));
     assert!(!generated.contains("UIAlertController"));
 }
@@ -521,6 +521,7 @@ fn generates_swiftui_box_and_text() {
 
     assert!(views.contains("VStack(alignment: .leading, spacing: 0)"));
     assert!(views.contains("AnyView("));
+    assert!(!views.contains("() -> AnyView in"));
     assert!(views.contains("routeSection0()"));
     assert!(views.contains("private func routeSection0() -> some View"));
     assert!(views.contains("private let activePath = \"/login\""));
@@ -651,21 +652,31 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     let box_override = views.find("Text(verbatim: \"Box override\")").expect("Box override");
     assert!(!views[box_inherited..box_override].contains(".foregroundStyle("));
     assert!(views[box_override..].contains(
-        ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.danger) ?? DoweDesign.onBackground)"
+        ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.danger) ?? DoweDesign.backgroundText)"
     ));
     assert!(views[box_override..].contains(
-        ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.onPrimary) ?? DoweDesign.onBackground)"
+        ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.primaryText) ?? DoweDesign.backgroundText)"
     ));
 
     let card_inherited = views.find("Text(verbatim: \"Card inherited\")").expect("Card text");
+    assert!(views.contains("Text(verbatim: \"Card title inherited\")"));
+    assert!(views.contains(".modifier(DoweTitleColorModifier(explicitColor: nil))"));
+    assert!(views.contains("static let defaultValue: Color? = nil"));
+    assert!(!views.contains(
+        "static let defaultValue: Color = DoweDesign.backgroundTitle"
+    ));
+    assert!(views.contains(
+        "content.foregroundStyle(explicitColor ?? inheritedColor ?? DoweDesign.backgroundTitle)"
+    ));
+    assert!(views.contains(".environment(\\.doweTitleColor, DoweDesign.softMutedTitle)"));
     let card_override = views.find("Text(verbatim: \"Card override\")").expect("Card override");
     assert!(!views[card_inherited..card_override].contains(".foregroundStyle("));
     let card_tail = &views[card_override..];
     let override_color = card_tail
-        .find(".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.warning) ?? DoweDesign.onBackground)")
+        .find(".modifier(DoweTitleColorModifier(explicitColor: doweResponsive(viewportWidth, xs: DoweDesign.warning)))")
         .expect("Card override color");
     let inherited_color = card_tail
-        .find(".foregroundStyle(DoweDesign.onSoftMuted)")
+        .find(".foregroundStyle(DoweDesign.softMutedText)")
         .expect("Card content color");
     assert!(override_color < inherited_color);
 
@@ -678,7 +689,7 @@ fn keeps_fixed_width_box_content_leading_aligned() {
     fixed_width.page_tree = ViewNode::Box {
         props: StyleProps {
             bg: Some(ResponsiveValue::scalar(ColorToken::SoftPrimary)),
-            text: Some(ResponsiveValue::scalar(ColorToken::OnSoftPrimary)),
+            text: Some(ResponsiveValue::scalar(ColorToken::SoftPrimaryText)),
             spacing: dowe_components::SpacingProps {
                 p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(6))),
                 ..Default::default()
@@ -784,7 +795,7 @@ fn keeps_swiftui_box_background_and_foreground_across_nested_boxes() {
     nested.page_tree = ViewNode::Box {
         props: StyleProps {
             bg: Some(ResponsiveValue::scalar(ColorToken::Surface)),
-            text: Some(ResponsiveValue::scalar(ColorToken::OnSurface)),
+            text: Some(ResponsiveValue::scalar(ColorToken::SurfaceText)),
             spacing: dowe_components::SpacingProps {
                 p: Some(responsive_scale(&[
                     (Breakpoint::Xs, 5),
@@ -859,10 +870,10 @@ fn keeps_swiftui_box_background_and_foreground_across_nested_boxes() {
         .find(".background(doweResponsive(viewportWidth, xs: DoweDesign.surface) ?? Color.clear)")
         .expect("box background");
     let foreground = surface_section
-        .find(".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.onSurface) ?? DoweDesign.onBackground)")
+        .find(".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.surfaceText) ?? DoweDesign.backgroundText)")
         .expect("box foreground");
     let border = surface_section
-        .find(".overlay(RoundedRectangle(cornerRadius: doweResponsive(viewportWidth, xs: CGFloat(12)) ?? DoweDesign.radius).stroke(DoweDesign.onBackground, lineWidth: doweResponsive(viewportWidth, xs: CGFloat(1)) ?? CGFloat(0)))")
+        .find(".overlay(RoundedRectangle(cornerRadius: doweResponsive(viewportWidth, xs: CGFloat(12)) ?? DoweDesign.radius).stroke(DoweDesign.backgroundText, lineWidth: doweResponsive(viewportWidth, xs: CGFloat(1)) ?? CGFloat(0)))")
         .expect("box border");
 
     assert!(padding < background);
@@ -1141,7 +1152,7 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
     );
     assert!(!avatar_output.contains(".clipShape("));
     assert!(!chip_output.contains(".clipShape("));
-    assert!(avatar_output.contains("borderColor: (doweResponsive(viewportWidth, md: CGFloat(2))) == nil ? Optional(DoweDesign.onPrimary) : Optional(DoweDesign.warning)"));
+    assert!(avatar_output.contains("borderColor: (doweResponsive(viewportWidth, md: CGFloat(2))) == nil ? Optional(DoweDesign.primaryText) : Optional(DoweDesign.warning)"));
     assert!(
         avatar_output
             .contains("borderWidth: doweResponsive(viewportWidth, md: CGFloat(2)) ?? CGFloat(3)")

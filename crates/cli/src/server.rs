@@ -1,19 +1,26 @@
-use dowe_compiler::compile_dev;
+use dowe_compiler::{ProjectCapabilities, compile_dev_server, compile_dev_web};
 use dowe_runtime::{ProductionAccess, serve_production_with_access};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
-const SERVER_USAGE: &str = "Usage: dowe server (--root <path>|--artifact <path>) [--bind <ip:port>] [--environment stage|uat --access-hash <sha256>]";
+const SERVER_USAGE: &str = "Usage: dowe server (--root <path>|--artifact <path>) [--surface server|web] [--bind <ip:port>] [--environment stage|uat --access-hash <sha256>]";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ServerSurface {
+    Server,
+    Web,
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct ServerOptions {
     root: PathBuf,
     artifact: Option<PathBuf>,
+    surface: ServerSurface,
     bind: SocketAddr,
     access: Option<ProductionAccess>,
 }
 
-pub(crate) async fn run_embedded_ssh_server() -> Result<bool, Box<dyn std::error::Error>> {
+pub(crate) async fn run_embedded_server() -> Result<bool, Box<dyn std::error::Error>> {
     let executable = std::env::current_exe()?;
     let temporary = std::env::var_os("DOWE_SSH_APP_ROOT")
         .is_none()
@@ -39,19 +46,48 @@ pub(crate) async fn run_embedded_ssh_server() -> Result<bool, Box<dyn std::error
     if std::env::var_os("DOWE_SSH_APP_ROOT").is_some() && !root.starts_with("/var/lib/dowe") {
         return Err("DOWE_SSH_APP_ROOT resolves outside /var/lib/dowe".into());
     }
-    let Some(metadata) = dowe_deploy::materialize_embedded_ssh_executable(&executable, &root)?
-    else {
-        return Ok(false);
+    let application = dowe_deploy::materialize_embedded_application_executable(&executable, &root)?;
+    let (surface, environment, access_hash, bind) = match application {
+        Some(metadata) => (
+            metadata.surface,
+            metadata.environment,
+            metadata.access_hash,
+            metadata.bind,
+        ),
+        None => {
+            let Some(metadata) =
+                dowe_deploy::materialize_embedded_ssh_executable(&executable, &root)?
+            else {
+                return Ok(false);
+            };
+            (
+                dowe_deploy::DeploySurface::Server,
+                metadata.environment,
+                metadata.access_hash,
+                metadata.bind,
+            )
+        }
     };
-    let project = compile_dev(&root)?;
-    if !project.capabilities.server {
-        return Err("embedded SSH deploy requires `server` in main.dowe".into());
+    let project = match surface {
+        dowe_deploy::DeploySurface::Server => compile_dev_server(&root)?,
+        dowe_deploy::DeploySurface::Web => compile_dev_web(&root)?,
+        dowe_deploy::DeploySurface::Android | dowe_deploy::DeploySurface::Ios => {
+            return Err("embedded deploy surface is not supported by the server runtime".into());
+        }
+    };
+    let server_surface = match surface {
+        dowe_deploy::DeploySurface::Server => ServerSurface::Server,
+        dowe_deploy::DeploySurface::Web => ServerSurface::Web,
+        dowe_deploy::DeploySurface::Android | dowe_deploy::DeploySurface::Ios => unreachable!(),
+    };
+    if let Some(error) = production_capability_error(server_surface, project.capabilities) {
+        return Err(error.into());
     }
-    let access = match metadata.access_hash.as_deref() {
-        Some(hash) => Some(ProductionAccess::new(metadata.environment.as_str(), hash)?),
+    let access = match access_hash.as_deref() {
+        Some(hash) => Some(ProductionAccess::new(environment.as_str(), hash)?),
         None => None,
     };
-    serve_production_with_access(project, metadata.bind.parse()?, access).await?;
+    serve_production_with_access(project, bind.parse()?, access).await?;
     Ok(true)
 }
 
@@ -70,17 +106,33 @@ pub(crate) async fn run_server_command(args: &[String]) -> Result<(), Box<dyn st
         .as_ref()
         .map(|root| root.path())
         .unwrap_or(&options.root);
-    let project = compile_dev(root)?;
-    if !project.capabilities.server {
-        return Err("dowe server requires `server` in main.dowe".into());
+    let project = match options.surface {
+        ServerSurface::Server => compile_dev_server(root)?,
+        ServerSurface::Web => compile_dev_web(root)?,
+    };
+    if let Some(error) = production_capability_error(options.surface, project.capabilities) {
+        return Err(error.into());
     }
     serve_production_with_access(project, options.bind, options.access).await?;
     Ok(())
 }
 
+fn production_capability_error(
+    surface: ServerSurface,
+    capabilities: ProjectCapabilities,
+) -> Option<&'static str> {
+    match surface {
+        ServerSurface::Server => (!capabilities.server)
+            .then_some("dowe server --surface server requires `server` in main.dowe"),
+        ServerSurface::Web => (!capabilities.views)
+            .then_some("dowe server --surface web requires `views` in main.dowe"),
+    }
+}
+
 fn parse_server_options(args: &[String]) -> Result<ServerOptions, Box<dyn std::error::Error>> {
     let mut root = None;
     let mut artifact = None;
+    let mut surface = ServerSurface::Server;
     let mut bind = "0.0.0.0:8080".parse::<SocketAddr>()?;
     let mut index = 0usize;
     let mut environment = None;
@@ -93,6 +145,14 @@ fn parse_server_options(args: &[String]) -> Result<ServerOptions, Box<dyn std::e
             }
             "--artifact" => {
                 artifact = Some(PathBuf::from(required_value(args, index, "--artifact")?));
+                index += 2;
+            }
+            "--surface" => {
+                surface = match required_value(args, index, "--surface")? {
+                    "server" => ServerSurface::Server,
+                    "web" => ServerSurface::Web,
+                    _ => return Err(SERVER_USAGE.into()),
+                };
                 index += 2;
             }
             "--bind" => {
@@ -123,6 +183,7 @@ fn parse_server_options(args: &[String]) -> Result<ServerOptions, Box<dyn std::e
     Ok(ServerOptions {
         root: root.unwrap_or_default(),
         artifact,
+        surface,
         bind,
         access,
     })
@@ -140,7 +201,8 @@ fn required_value<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::parse_server_options;
+    use super::{ServerSurface, parse_server_options, production_capability_error};
+    use dowe_compiler::ProjectCapabilities;
     use std::net::SocketAddr;
     use std::path::PathBuf;
 
@@ -156,6 +218,7 @@ mod tests {
 
         assert_eq!(options.root, PathBuf::from("/app"));
         assert!(options.artifact.is_none());
+        assert_eq!(options.surface, ServerSurface::Server);
         assert_eq!(
             options.bind,
             "127.0.0.1:9090".parse::<SocketAddr>().unwrap()
@@ -198,6 +261,19 @@ mod tests {
     }
 
     #[test]
+    fn parses_web_surface_option() {
+        let options = parse_server_options(&[
+            "--root".to_string(),
+            "/app".to_string(),
+            "--surface".to_string(),
+            "web".to_string(),
+        ])
+        .expect("options");
+
+        assert_eq!(options.surface, ServerSurface::Web);
+    }
+
+    #[test]
     fn parses_protected_environment_options_atomically() {
         let options = parse_server_options(&[
             "--root".to_string(),
@@ -218,6 +294,40 @@ mod tests {
                 "stage".to_string(),
             ])
             .is_err()
+        );
+    }
+
+    #[test]
+    fn production_server_validates_the_selected_surface() {
+        assert_eq!(
+            production_capability_error(
+                ServerSurface::Web,
+                ProjectCapabilities {
+                    server: false,
+                    views: true,
+                },
+            ),
+            None
+        );
+        assert!(
+            production_capability_error(
+                ServerSurface::Server,
+                ProjectCapabilities {
+                    server: false,
+                    views: true,
+                },
+            )
+            .is_some()
+        );
+        assert!(
+            production_capability_error(
+                ServerSurface::Web,
+                ProjectCapabilities {
+                    server: true,
+                    views: false,
+                },
+            )
+            .is_some()
         );
     }
 }

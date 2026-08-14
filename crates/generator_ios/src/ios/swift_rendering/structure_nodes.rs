@@ -330,6 +330,10 @@ fn render_swift_structure_node(
             let mut modifiers = swift_modifiers_for_container_style(&card_style, flow);
             modifiers.push(format!(".background({})", card_variant_container(props)));
             modifiers.push(format!(".foregroundStyle({})", card_variant_content(props)));
+            modifiers.push(format!(
+                ".environment(\\.doweTitleColor, {})",
+                card_variant_title(props)
+            ));
             let radius = swift_card_radius(&props.style);
             modifiers.push(format!(
                 ".clipShape(RoundedRectangle(cornerRadius: {radius}))"

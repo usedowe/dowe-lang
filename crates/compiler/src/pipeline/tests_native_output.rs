@@ -7,7 +7,7 @@
   Box
     children"#,
             r#"page loginPage
-  Grid columns:{ xs:1 md:3 } rows:"100px auto" gap:"10px 20px" justify:"center" align:"end"
+  Grid columns:{ xs:1 md:3 } rows:2 gap:"10px 20px" justify:"center" align:"end"
     Box colSpan:{ md:2 } cover:{ xs:"/mobile.jpg" md:"/desktop.jpg" } overlay:true
       Text
         "Hero"
@@ -36,7 +36,7 @@
             .join(&project.web.pages[0].css_chunks[1]);
         let page_css = fs::read_to_string(page_css_path).expect("page css");
         assert!(page_css.contains("grid-template-columns:repeat(3,minmax(0,1fr));"));
-        assert!(page_css.contains("grid-template-rows:100px auto;"));
+        assert!(page_css.contains("grid-template-rows:repeat(2,minmax(0,1fr));"));
         assert!(page_css.contains("row-gap:10px;column-gap:20px;"));
         assert!(page_css.contains("background-image:url(\"/mobile.jpg\")"));
         assert!(page_css.contains("background-image:url(\"/desktop.jpg\")"));
@@ -86,7 +86,7 @@
   Box
     children"#,
             r#"page loginPage
-  Box color:"onPrimary"
+  Box color:"primaryText"
     Text
       "Box inherited"
     Text color:"danger"
@@ -100,9 +100,9 @@
 
         let project = compile_dev(temp.path()).expect("project");
         let body = &project.web.pages[0].body_html;
-        assert!(body.contains("box color-onPrimary"));
+        assert!(body.contains("box color-primaryText"));
         assert!(body.contains("text-md color-danger\">Box override"));
-        assert!(body.contains("card p-4 lg:p-5 is-soft is-muted"));
+        assert!(body.contains("card p-4 lg:p-5 rounded-md is-soft is-muted"));
         assert!(body.contains("title-md color-warning\">Card override"));
 
         let android = fs::read_to_string(
@@ -111,13 +111,13 @@
         )
         .expect("android");
         assert!(android.contains(
-            "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.onPrimary) ?: LocalContentColor.current))"
+            "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.primaryText) ?: LocalContentColor.current))"
         ));
         assert!(android.contains(
             "Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified"
         ));
         assert!(android.contains(
-            "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.onSoftMuted)"
+            "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.softMutedText)"
         ));
         assert!(android.contains(
             "Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified"
@@ -126,10 +126,10 @@
         let ios = ios_swift_output(temp.path());
         assert!(ios.contains("Text(verbatim: \"Box inherited\")"));
         assert!(ios.contains(
-            ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.onPrimary) ?? DoweDesign.onBackground)"
+            ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.primaryText) ?? DoweDesign.backgroundText)"
         ));
         assert!(ios.contains("Text(verbatim: \"Card inherited\")"));
-        assert!(ios.contains(".foregroundStyle(DoweDesign.onSoftMuted)"));
+        assert!(ios.contains(".foregroundStyle(DoweDesign.softMutedText)"));
     }
 
     #[test]
@@ -469,7 +469,7 @@
 
         assert_compile_error(
             r#"page loginPage
-  Box text:onBackground
+  Box text:backgroundText
     Text
       "Login""#,
             "unknown prop `text`",
@@ -530,7 +530,7 @@
         assert_compile_error(
             r#"page loginPage
   Box
-    Button scheme:"onPrimary"
+    Button scheme:"primaryText"
       "Login""#,
             "invalid value for prop `scheme`",
         );
@@ -635,7 +635,7 @@
         let error = validate_design_copilot_dowe(
             r#"page loginPage
   Box
-    Button scheme:"onPrimary"
+    Button scheme:"primaryText"
       "Login""#,
         )
         .expect_err("invalid copilot dowe");
@@ -1010,7 +1010,7 @@
             "doweDevice(\"laptop\", \"/examples/appbar-one\", \"Responsive preview\""
         ));
         assert!(android_dev.contains("new DoweDeviceOption(\"mobile\""));
-        assert!(android_dev.contains("doweStyledBackground(Color.TRANSPARENT, DOWE_ON_BACKGROUND,"));
+        assert!(android_dev.contains("doweStyledBackground(Color.TRANSPARENT, DOWE_BACKGROUND_TEXT,"));
         assert!(android_dev.contains(".setPadding(doweDp(1), doweDp(1), doweDp(1), doweDp(1));"));
         assert!(android_dev.contains("doweDeviceIconButtonBackground"));
         assert!(android_dev.contains("new FrameLayout.LayoutParams(doweDp(24), doweDp(24), Gravity.CENTER)"));
@@ -1038,7 +1038,7 @@
     children"#,
             r#"page loginPage
   signal input value:{ x:48 y:90 }
-  signal scene value:[{ type:"rect" x:0 y:0 width:320 height:180 fill:"surface" },{ type:"circle" x:48 y:90 radius:18 fill:"primary" bind:{ x:"input.x" y:"input.y" } },{ type:"text" x:160 y:28 text:"Canvas" fill:"onSurface" size:18 align:"center" }]
+  signal scene value:[{ type:"rect" x:0 y:0 width:320 height:180 fill:"surface" },{ type:"circle" x:48 y:90 radius:18 fill:"primary" bind:{ x:"input.x" y:"input.y" } },{ type:"text" x:160 y:28 text:"Canvas" fill:"surfaceText" size:18 align:"center" }]
   fn capture
     set input value:item
   Box

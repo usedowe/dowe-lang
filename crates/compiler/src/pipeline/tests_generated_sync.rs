@@ -27,3 +27,92 @@ fn generated_tree_preserves_unchanged_files_and_removes_obsolete_files() {
     assert_eq!(first_modified, second_modified);
     assert!(!tree.join("obsolete.js").exists());
 }
+
+#[test]
+fn selected_web_development_compile_skips_unselected_app_artifacts() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Text\n    \"Home\"",
+    );
+
+    let project = super::compile_dev_for_platforms(
+        temp.path(),
+        [crate::model::ViewPlatform::Web],
+    )
+    .expect("web compile");
+
+    assert!(project.apps.files.is_empty());
+    assert!(!project.view_routes.web.is_empty());
+    assert!(project.view_routes.desktop.is_empty());
+    assert!(project.view_routes.android.is_empty());
+    assert!(project.view_routes.ios.is_empty());
+    assert!(temp.path().join(".dowe/web/manifest.json").is_file());
+    assert!(!temp.path().join(".dowe/apps").exists());
+}
+
+#[test]
+fn selected_android_development_compile_writes_only_android_app_artifacts() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Text\n    \"Home\"",
+    );
+
+    let project = super::compile_dev_for_platforms(
+        temp.path(),
+        [crate::model::ViewPlatform::Android],
+    )
+    .expect("android compile");
+
+    assert!(project.apps.files.iter().any(|file| file.target == "android"));
+    assert!(project.view_routes.web.is_empty());
+    assert!(project.view_routes.desktop.is_empty());
+    assert!(!project.view_routes.android.is_empty());
+    assert!(project.view_routes.ios.is_empty());
+    assert!(project
+        .apps
+        .files
+        .iter()
+        .all(|file| matches!(file.target.as_str(), "android" | "apps")));
+    assert!(temp.path().join(".dowe/apps/android").is_dir());
+    assert!(!temp.path().join(".dowe/apps/desktop").exists());
+    assert!(!temp.path().join(".dowe/apps/ios").exists());
+    assert!(!temp.path().join(".dowe/web").exists());
+}
+
+#[test]
+fn selected_views_rebuild_does_not_parse_server_modules() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Text\n    \"Home\"",
+    );
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import viewRoutes from "@/routes/view"
+
+main
+  views:viewRoutes
+  server port:8080
+    unsupported"#,
+    )
+    .expect("main");
+
+    let project = super::compile_dev_views_for_platforms(
+        temp.path(),
+        [crate::model::ViewPlatform::Web],
+    )
+    .expect("views compile");
+
+    assert!(!project.view_routes.web.is_empty());
+    assert!(project.backend.endpoints.is_empty());
+    assert!(super::compile_dev_for_platforms(
+        temp.path(),
+        [crate::model::ViewPlatform::Web],
+    )
+    .is_err());
+}

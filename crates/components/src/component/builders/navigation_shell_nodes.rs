@@ -439,9 +439,7 @@ pub fn drawer_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Drawer, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Solid);
-    style.color.get_or_insert(ColorFamily::Surface);
+    let style = parse_variant_props(BuiltinComponent::Drawer, &style_props)?;
     Ok(ViewNode::Drawer {
         props: DrawerProps {
             style,

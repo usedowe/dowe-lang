@@ -46,11 +46,11 @@ fn initializes_external_agent_project_from_cli() {
         fs::read_dir(temp.path().join(".agents/skills"))
             .expect("skills")
             .count(),
-        4
+        5
     );
     assert!(stdout.contains("created AGENTS.md"));
     assert!(stdout.contains("created CLAUDE.md"));
-    assert!(stdout.contains("installed 4 Dowe skills"));
+    assert!(stdout.contains("installed 5 Dowe skills"));
     assert!(!temp.path().join(".dowe").exists());
 }
 
@@ -84,7 +84,7 @@ fn updates_an_initialized_external_agent_project() {
             .expect("updated")
             .starts_with("---\nname: dowe-core\n")
     );
-    assert!(stdout.contains("updated 4 Dowe skills"));
+    assert!(stdout.contains("updated 5 Dowe skills"));
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn searches_examples_and_builds_context_as_json() {
     let context: Value = serde_json::from_slice(&context.stdout).expect("context json");
 
     assert_eq!(examples["results"][0]["id"], "dashboard-layout");
-    assert_eq!(context["skills"].as_array().expect("skills").len(), 4);
+    assert_eq!(context["skills"].as_array().expect("skills").len(), 5);
     assert!(context.get("codegraph").is_some());
 }
 

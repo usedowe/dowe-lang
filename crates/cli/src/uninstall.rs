@@ -16,6 +16,7 @@ struct UninstallPlan {
     install_dir: PathBuf,
     assets_dir: PathBuf,
     fonts_dir: PathBuf,
+    runtimes_dir: PathBuf,
     staged_executable: PathBuf,
     path_entry: String,
     empty_parent: Option<PathBuf>,
@@ -87,6 +88,7 @@ impl UninstallPlan {
         Ok(Self {
             assets_dir: install_dir.join("assets"),
             fonts_dir: install_dir.join("assets").join("fonts"),
+            runtimes_dir: install_dir.join("assets").join("runtimes"),
             staged_executable: install_dir.join("dowe.new.exe"),
             executable,
             install_dir,
@@ -105,6 +107,7 @@ fn cleanup_artifacts(
         remove_file_if_exists(&plan.executable)?;
     }
     remove_path_if_exists(&plan.fonts_dir)?;
+    remove_path_if_exists(&plan.runtimes_dir)?;
     remove_file_if_exists(&plan.staged_executable)?;
     remove_empty_dir(&plan.assets_dir)?;
     remove_empty_dir(&plan.install_dir)?;
@@ -221,10 +224,11 @@ fn windows_cleanup_script(plan: &UninstallPlan) -> String {
         .map(|path| powershell_literal(path))
         .unwrap_or_else(|| "''".to_string());
     format!(
-        "$processId = {process_id}\n$executable = {executable}\n$fonts = {fonts}\n$staged = {staged}\n$assets = {assets}\n$installDir = {install_dir}\n$emptyParent = {empty_parent}\n$pathEntry = {path_entry}\nwhile (Get-Process -Id $processId -ErrorAction SilentlyContinue) {{ Start-Sleep -Milliseconds 100 }}\nif (Test-Path -LiteralPath $executable) {{ Remove-Item -LiteralPath $executable -Force }}\nif (Test-Path -LiteralPath $staged) {{ Remove-Item -LiteralPath $staged -Force }}\nif (Test-Path -LiteralPath $fonts) {{ Remove-Item -LiteralPath $fonts -Recurse -Force }}\n$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')\nif ($null -ne $userPath) {{ $parts = @($userPath -split ';' | Where-Object {{ $_ -and ($_.Trim().TrimEnd('\\') -ine $pathEntry.Trim().TrimEnd('\\')) }}) ; if ($parts.Count -eq 0) {{ [Environment]::SetEnvironmentVariable('Path', $null, 'User') }} else {{ [Environment]::SetEnvironmentVariable('Path', ($parts -join ';'), 'User') }} }}\nforeach ($directory in @($assets, $installDir, $emptyParent)) {{ if ($directory -and (Test-Path -LiteralPath $directory -PathType Container) -and (@(Get-ChildItem -LiteralPath $directory -Force).Count -eq 0)) {{ Remove-Item -LiteralPath $directory -Force }} }}",
+        "$processId = {process_id}\n$executable = {executable}\n$fonts = {fonts}\n$runtimes = {runtimes}\n$staged = {staged}\n$assets = {assets}\n$installDir = {install_dir}\n$emptyParent = {empty_parent}\n$pathEntry = {path_entry}\nwhile (Get-Process -Id $processId -ErrorAction SilentlyContinue) {{ Start-Sleep -Milliseconds 100 }}\nif (Test-Path -LiteralPath $executable) {{ Remove-Item -LiteralPath $executable -Force }}\nif (Test-Path -LiteralPath $staged) {{ Remove-Item -LiteralPath $staged -Force }}\nif (Test-Path -LiteralPath $fonts) {{ Remove-Item -LiteralPath $fonts -Recurse -Force }}\nif (Test-Path -LiteralPath $runtimes) {{ Remove-Item -LiteralPath $runtimes -Recurse -Force }}\n$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')\nif ($null -ne $userPath) {{ $parts = @($userPath -split ';' | Where-Object {{ $_ -and ($_.Trim().TrimEnd('\\') -ine $pathEntry.Trim().TrimEnd('\\')) }}) ; if ($parts.Count -eq 0) {{ [Environment]::SetEnvironmentVariable('Path', $null, 'User') }} else {{ [Environment]::SetEnvironmentVariable('Path', ($parts -join ';'), 'User') }} }}\nforeach ($directory in @($assets, $installDir, $emptyParent)) {{ if ($directory -and (Test-Path -LiteralPath $directory -PathType Container) -and (@(Get-ChildItem -LiteralPath $directory -Force).Count -eq 0)) {{ Remove-Item -LiteralPath $directory -Force }} }}",
         process_id = std::process::id(),
         executable = powershell_literal(&plan.executable),
         fonts = powershell_literal(&plan.fonts_dir),
+        runtimes = powershell_literal(&plan.runtimes_dir),
         staged = powershell_literal(&plan.staged_executable),
         assets = powershell_literal(&plan.assets_dir),
         install_dir = powershell_literal(&plan.install_dir),
@@ -268,15 +272,19 @@ mod tests {
         let install_dir = temp.path().join("bin");
         let assets_dir = install_dir.join("assets");
         let fonts_dir = assets_dir.join("fonts");
+        let runtimes_dir = assets_dir.join("runtimes");
         fs::create_dir_all(&fonts_dir).expect("fonts");
+        fs::create_dir_all(runtimes_dir.join("linux-amd64")).expect("runtimes");
         fs::write(install_dir.join("dowe"), "binary").expect("binary");
         fs::write(fonts_dir.join("inter.ttf"), "font").expect("font");
+        fs::write(runtimes_dir.join("linux-amd64/dowe"), "runtime").expect("runtime");
         fs::write(install_dir.join("keep.txt"), "keep").expect("unrelated");
         let plan = UninstallPlan {
             executable: install_dir.join("dowe"),
             install_dir: install_dir.clone(),
             assets_dir,
             fonts_dir,
+            runtimes_dir,
             staged_executable: install_dir.join("dowe.new.exe"),
             path_entry: install_dir.to_string_lossy().into_owned(),
             empty_parent: None,
@@ -286,6 +294,7 @@ mod tests {
 
         assert!(!plan.executable.exists());
         assert!(!plan.fonts_dir.exists());
+        assert!(!plan.runtimes_dir.exists());
         assert!(install_dir.join("keep.txt").exists());
         assert!(install_dir.exists());
     }

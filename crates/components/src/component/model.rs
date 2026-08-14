@@ -2040,6 +2040,8 @@ pub struct TabsProps {
     pub variant: TabsVariant,
     pub color: ColorFamily,
     pub position: TabsPosition,
+    pub variant_explicit: bool,
+    pub color_explicit: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

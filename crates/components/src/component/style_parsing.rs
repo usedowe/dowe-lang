@@ -250,9 +250,16 @@ fn parse_grid_props(
     for prop in props {
         match prop.name.as_str() {
             "columns" => {
-                grid.columns = Some(parse_grid_tracks_prop(&prop.name, &prop.value, false)?)
+                grid.columns = Some(parse_grid_tracks_prop(
+                    &prop.name,
+                    &prop.value,
+                    false,
+                    Some(12),
+                )?)
             }
-            "rows" => grid.rows = Some(parse_grid_tracks_prop(&prop.name, &prop.value, true)?),
+            "rows" => {
+                grid.rows = Some(parse_grid_tracks_prop(&prop.name, &prop.value, true, None)?)
+            }
             "justify" => grid.justify = Some(parse_grid_alignment_prop(&prop.name, &prop.value)?),
             "align" => grid.align = Some(parse_grid_alignment_prop(&prop.name, &prop.value)?),
             "gap" => grid.gap = Some(parse_gap_prop(&prop.name, &prop.value, true)?),
@@ -491,9 +498,7 @@ fn parse_variant_props(
             StylePropMode::Variant
         },
     )?;
-    if component == BuiltinComponent::Button {
-        normalize_button_visual_props(&mut variant_props);
-    } else if component == BuiltinComponent::Card {
+    if component == BuiltinComponent::Card {
         normalize_card_visual_props(&mut variant_props);
     }
     variant_props.element = variant_props.style.element.clone();
@@ -513,7 +518,6 @@ fn parse_variant_props(
                 "non-empty accessibility label",
             ));
         }
-        normalize_icon_button_visual_props(&mut variant_props);
     }
     Ok(variant_props)
 }
@@ -642,8 +646,6 @@ fn parse_bar_props(
     }
 
     let mut style = parse_variant_props(component, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Solid);
-    style.color.get_or_insert(ColorFamily::Surface);
     if component == BuiltinComponent::Footer {
         let horizontal_padding = ResponsiveValue::ordered(vec![
             ResponsiveEntry {
@@ -680,8 +682,10 @@ fn parse_tabs_props(
     component: BuiltinComponent,
     props: &[ComponentProp],
 ) -> ComponentResult<TabsProps> {
-    let mut variant = TabsVariant::Solid;
-    let mut color = ColorFamily::Muted;
+    let mut variant = TabsVariant::Pills;
+    let mut color = ColorFamily::Primary;
+    let mut variant_explicit = false;
+    let mut color_explicit = false;
     let mut position = TabsPosition::Top;
     let mut style_props = Vec::new();
 
@@ -689,9 +693,11 @@ fn parse_tabs_props(
         match prop.name.as_str() {
             "variant" => {
                 variant = parse_tabs_variant_prop(&prop.name, &prop.value)?;
+                variant_explicit = true;
             }
             "scheme" => {
                 color = parse_family_prop(component, &prop.name, &prop.value)?;
+                color_explicit = true;
             }
             "position" => {
                 position = parse_tabs_position_prop(&prop.name, &prop.value)?;
@@ -710,11 +716,14 @@ fn parse_tabs_props(
         variant,
         color,
         position,
+        variant_explicit,
+        color_explicit,
     })
 }
 
 fn parse_stepper_props(props: &[ComponentProp]) -> ComponentResult<TabsProps> {
     let mut color = ColorFamily::Primary;
+    let mut color_explicit = false;
     let mut position = TabsPosition::Top;
     let mut style_props = Vec::new();
 
@@ -722,6 +731,7 @@ fn parse_stepper_props(props: &[ComponentProp]) -> ComponentResult<TabsProps> {
         match prop.name.as_str() {
             "scheme" => {
                 color = parse_family_prop(BuiltinComponent::Stepper, &prop.name, &prop.value)?;
+                color_explicit = true;
             }
             "orientation" => {
                 let orientation = parse_required_string(&prop.name, &prop.value)?;
@@ -754,6 +764,8 @@ fn parse_stepper_props(props: &[ComponentProp]) -> ComponentResult<TabsProps> {
         variant: TabsVariant::Stepper,
         color,
         position,
+        variant_explicit: true,
+        color_explicit,
     })
 }
 

@@ -1,41 +1,7 @@
-use crate::{DatabaseEntityField, DatabaseFieldType, DatabaseProvider, StoreConnection};
+use crate::{DatabaseEntityField, DatabaseFieldType, StoreConnection};
 use sha2::{Digest, Sha256};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DatabaseMigrationPlan {
-    pub binding: String,
-    pub provider: DatabaseProvider,
-    pub database: String,
-    pub schema_mode: &'static str,
-    pub fingerprint: String,
-    pub sql: Option<String>,
-}
-
-pub fn database_migration_plan(connection: &StoreConnection) -> DatabaseMigrationPlan {
-    let sql = match connection.provider {
-        DatabaseProvider::Postgres => Some(schema_sql(connection, SqlDialect::Postgres)),
-        DatabaseProvider::D1 => Some(schema_sql(connection, SqlDialect::Sqlite)),
-        DatabaseProvider::Dowe => None,
-    };
-    let fingerprint = sql
-        .as_deref()
-        .map(fingerprint)
-        .unwrap_or_else(|| fingerprint("dynamic"));
-    DatabaseMigrationPlan {
-        binding: connection.binding.clone(),
-        provider: connection.provider,
-        database: connection.database.clone(),
-        schema_mode: if sql.is_some() {
-            "migrations"
-        } else {
-            "dynamic"
-        },
-        fingerprint,
-        sql,
-    }
-}
-
-fn schema_sql(connection: &StoreConnection, dialect: SqlDialect) -> String {
+pub(crate) fn schema_sql(connection: &StoreConnection, dialect: SqlDialect) -> String {
     let mut statements = vec![
         migration_table_sql("_dowe_migrations", dialect),
         migration_table_sql("_dowe_seeders", dialect),
@@ -76,7 +42,7 @@ fn migration_table_sql(table: &str, dialect: SqlDialect) -> String {
     )
 }
 
-fn field_sql(field: &DatabaseEntityField, dialect: SqlDialect) -> String {
+pub(crate) fn field_sql(field: &DatabaseEntityField, dialect: SqlDialect) -> String {
     let field_type = match (dialect, field.field_type) {
         (SqlDialect::Postgres, DatabaseFieldType::String) => "TEXT",
         (SqlDialect::Postgres, DatabaseFieldType::Bool) => "BOOLEAN",
@@ -106,11 +72,11 @@ fn field_sql(field: &DatabaseEntityField, dialect: SqlDialect) -> String {
     parts.join(" ")
 }
 
-fn identifier(value: &str) -> String {
+pub(crate) fn identifier(value: &str) -> String {
     format!("\"{value}\"")
 }
 
-fn fingerprint(value: &str) -> String {
+pub(crate) fn fingerprint(value: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(value.as_bytes());
     hasher
@@ -121,21 +87,21 @@ fn fingerprint(value: &str) -> String {
 }
 
 #[derive(Clone, Copy)]
-enum SqlDialect {
+pub(crate) enum SqlDialect {
     Postgres,
     Sqlite,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::database_migration_plan;
+    use super::{SqlDialect, schema_sql};
     use crate::{
         DatabaseEntity, DatabaseEntityField, DatabaseFieldType, DatabaseProvider, StoreConnection,
     };
 
     #[test]
     fn renders_provider_specific_schema() {
-        let mut connection = StoreConnection {
+        let connection = StoreConnection {
             binding: "appDb".to_string(),
             provider: DatabaseProvider::Postgres,
             database: "app".to_string(),
@@ -157,19 +123,10 @@ mod tests {
             }],
             seeders: Vec::new(),
         };
-        let postgres = database_migration_plan(&connection);
-        assert!(postgres.sql.as_deref().is_some_and(|sql| {
-            sql.contains("\"active\" BOOLEAN NOT NULL")
-                && sql.contains("CREATE INDEX IF NOT EXISTS")
-        }));
-        connection.provider = DatabaseProvider::D1;
-        let d1 = database_migration_plan(&connection);
-        assert!(
-            d1.sql
-                .as_deref()
-                .is_some_and(|sql| sql.contains("\"active\" INTEGER NOT NULL"))
-        );
-        connection.provider = DatabaseProvider::Dowe;
-        assert_eq!(database_migration_plan(&connection).schema_mode, "dynamic");
+        let postgres = schema_sql(&connection, SqlDialect::Postgres);
+        assert!(postgres.contains("\"active\" BOOLEAN NOT NULL"));
+        assert!(postgres.contains("CREATE INDEX IF NOT EXISTS"));
+        let d1 = schema_sql(&connection, SqlDialect::Sqlite);
+        assert!(d1.contains("\"active\" INTEGER NOT NULL"));
     }
 }

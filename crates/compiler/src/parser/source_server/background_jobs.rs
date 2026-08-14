@@ -7,7 +7,13 @@ fn parse_task(
     bindings: &HashMap<String, DoweType>,
 ) -> DoweResult<ServerBackgroundJob> {
     let timing = parse_task_timing(node, context)?;
-    if node.args.is_empty() {
+    if node.prop("fn").is_none() {
+        if !node.args.is_empty() {
+            return Err(node_error(
+                node,
+                "task does not accept positional targets; use `fn:<imported-fn>`",
+            ));
+        }
         if node.children.is_empty() {
             return Err(node_error(
                 node,
@@ -76,39 +82,44 @@ fn parse_target_background_job(
             },
         ));
     }
-    let target = node
-        .args
-        .first()
-        .and_then(SourceValue::as_string_like)
-        .ok_or_else(|| {
-            node_error(
-                node,
-                if cron {
-                    "cron must declare one imported target"
-                } else {
-                    "task must declare one imported target"
-                },
-            )
-        })?;
-    if node.args.len() != 1 {
+    if !node.args.is_empty() {
         return Err(node_error(
             node,
             if cron {
-                "cron accepts exactly one target and named props"
+                "cron does not accept positional targets; use `fn:<imported-fn>`"
             } else {
-                "task accepts exactly one target and named props"
+                "task does not accept positional targets; use `fn:<imported-fn>`"
             },
         ));
     }
+    let target_prop = node.prop("fn").ok_or_else(|| {
+        node_error(
+            node,
+            if cron {
+                "cron must declare `fn:<imported-fn>`"
+            } else {
+                "task must declare `fn:<imported-fn>`"
+            },
+        )
+    })?;
+    let target = match &target_prop.value {
+        SourceValue::Bareword(value) if !value.is_empty() => value.clone(),
+        _ => {
+            return Err(prop_error(
+                target_prop,
+                "`fn` must reference an imported server function",
+            ));
+        }
+    };
     let callable = callables
         .get(&target)
         .ok_or_else(|| node_error(node, format!("missing server function import `{target}`")))?;
     reject_unknown_props(
         node,
         if cron {
-            &["args", "schedule"]
+            &["args", "fn", "schedule"]
         } else {
-            &["args", "after"]
+            &["args", "after", "fn"]
         },
     )?;
     let args = parse_background_args(node, context, bindings, cron)?;
@@ -141,7 +152,7 @@ fn parse_task_timing(
     node: &SourceNode,
     context: ActionContext,
 ) -> DoweResult<crate::model::ServerTaskTiming> {
-    reject_unknown_props(node, &["args", "after"])?;
+    reject_unknown_props(node, &["args", "after", "fn"])?;
     let Some(prop) = node.prop("after") else {
         return Ok(crate::model::ServerTaskTiming::Immediate);
     };
@@ -358,9 +369,13 @@ fn background_job_id(node: &SourceNode, kind: &str, target: &str) -> String {
 
 fn legacy_task_error(node: &SourceNode) -> DoweError {
     let mut repair = "task".to_string();
-    for argument in &node.args {
-        repair.push(' ');
-        repair.push_str(&argument.to_source());
+    if let Some(target) = node.args.first() {
+        repair.push_str(" fn:");
+        repair.push_str(&target.to_source());
+        for argument in node.args.iter().skip(1) {
+            repair.push(' ');
+            repair.push_str(&argument.to_source());
+        }
     }
     for prop in &node.props {
         repair.push(' ');

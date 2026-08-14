@@ -139,7 +139,7 @@
         let scheme = parse_page(
             r#"page HomePage
   fn notify
-    toast value:{ type:"info" message:"Saved" visible:true } scheme:"onPrimary"
+    toast value:{ type:"info" message:"Saved" visible:true } scheme:"primaryText"
   Text
     "Home""#,
         )

@@ -116,6 +116,91 @@
         assert_ne!(unsafe { libc::kill(descendant_pid, 0) }, 0);
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[test]
+    fn group_cancellation_kills_descendant_outside_spawn_group() {
+        const ROLE: &str = "DOWE_SPAWN_TREE_TEST_ROLE";
+        const PID_PATH: &str = "DOWE_SPAWN_TREE_TEST_PID_PATH";
+        const TEST_NAME: &str = "group_cancellation_kills_descendant_outside_spawn_group";
+
+        match std::env::var(ROLE).ok().as_deref() {
+            Some("leader") => {
+                let mut descendant = std::process::Command::new(
+                    std::env::current_exe().expect("test executable"),
+                )
+                .arg(TEST_NAME)
+                .arg("--nocapture")
+                .env(ROLE, "descendant")
+                .env(PID_PATH, std::env::var(PID_PATH).expect("pid path"))
+                .spawn()
+                .expect("descendant");
+                let _ = descendant.wait();
+                return;
+            }
+            Some("descendant") => {
+                assert_eq!(unsafe { libc::setpgid(0, 0) }, 0);
+                assert_ne!(
+                    unsafe { libc::signal(libc::SIGTERM, libc::SIG_IGN) },
+                    libc::SIG_ERR
+                );
+                std::fs::write(
+                    std::env::var(PID_PATH).expect("pid path"),
+                    std::process::id().to_string(),
+                )
+                .expect("write descendant pid");
+                std::thread::sleep(Duration::from_secs(10));
+                return;
+            }
+            _ => {}
+        }
+
+        let temp = TempDir::new().expect("tempdir");
+        let pid_path = temp.path().join("descendant.pid");
+        let mut config = SpawnConfig::new(
+            std::env::current_exe()
+                .expect("test executable")
+                .to_string_lossy(),
+            [TEST_NAME, "--nocapture"],
+        );
+        config.options.kill_target = KillTarget::Group;
+        config.options.kill_grace_ms = Some(20);
+        config.options.stdout = StreamMode::Ignore;
+        config.options.stderr = StreamMode::Ignore;
+        config
+            .options
+            .env
+            .insert(ROLE.to_string(), "leader".to_string());
+        config.options.env.insert(
+            PID_PATH.to_string(),
+            pid_path.to_string_lossy().to_string(),
+        );
+        let child = spawn(config).expect("child");
+        let leader_pid = child.system_pid.expect("leader pid") as libc::pid_t;
+        for _ in 0..200 {
+            if pid_path.is_file() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let descendant_pid = std::fs::read_to_string(&pid_path)
+            .expect("descendant pid")
+            .parse::<libc::pid_t>()
+            .expect("numeric descendant pid");
+
+        assert_ne!(unsafe { libc::getpgid(descendant_pid) }, leader_pid);
+        child.cancel().expect("cancel");
+        let output = child.wait().expect("output");
+
+        assert!(output.canceled);
+        for _ in 0..100 {
+            if unsafe { libc::kill(descendant_pid, 0) } != 0 {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_ne!(unsafe { libc::kill(descendant_pid, 0) }, 0);
+    }
+
     #[test]
     fn output_capture_truncates_at_limit() {
         let mut config = shell_config("printf 123456789");

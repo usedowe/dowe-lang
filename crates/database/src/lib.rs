@@ -19,7 +19,7 @@ mod wal;
 
 pub use auth::{CreatedDatabaseAccount, create_account, verify_account};
 pub use bench::run_bench;
-pub use d1::{D1Client, D1Config};
+pub use d1::{D1Client, D1Config, D1TableSchema};
 pub use engine::{
     CompactReport, Database, DatabaseInspection, IndexInfo, QueryPlan, StoreRecord, db_root,
     init_database, list_databases, open_database,

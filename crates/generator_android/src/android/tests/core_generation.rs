@@ -60,31 +60,37 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         .expect("Compose pages");
 
     assert!(compose.content.contains(
-        "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.onPrimary) ?: LocalContentColor.current))"
+        "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.primaryText) ?: LocalContentColor.current))"
     ));
     assert!(compose
         .content
         .contains("Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified"));
     assert!(compose.content.contains(
-        "Text(\"Box override\", modifier = Modifier, color = doweResponsive(viewportWidth, xs = DoweDesign.danger) ?: DoweDesign.onBackground"
+        "Text(\"Box override\", modifier = Modifier, color = doweResponsive(viewportWidth, xs = DoweDesign.danger) ?: LocalContentColor.current"
     ));
     assert!(compose.content.contains(
-        "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.onSoftMuted)"
+        "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.softMutedText)"
     ));
     assert!(compose
         .content
         .contains("Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified"));
     assert!(compose.content.contains(
-        "Text(\"Card override\", modifier = Modifier, color = doweResponsive(viewportWidth, xs = DoweDesign.warning) ?: DoweDesign.onBackground"
+        "CompositionLocalProvider(LocalDoweTitleColor provides DoweDesign.softMutedTitle)"
+    ));
+    assert!(compose.content.contains(
+        "Text(\"Card title inherited\", modifier = Modifier, color = LocalDoweTitleColor.current"
+    ));
+    assert!(compose.content.contains(
+        "Text(\"Card override\", modifier = Modifier, color = doweResponsive(viewportWidth, xs = DoweDesign.warning) ?: LocalDoweTitleColor.current"
     ));
     for (label, token) in [
-        ("Section inherited", "onSecondary"),
-        ("Flex inherited", "onTertiary"),
-        ("Grid inherited", "onMuted"),
-        ("Brand inherited", "onSurface"),
-        ("Banner inherited", "onInfo"),
-        ("Marquee inherited", "onWarning"),
-        ("Scaffold inherited", "onDanger"),
+        ("Section inherited", "secondaryText"),
+        ("Flex inherited", "tertiaryText"),
+        ("Grid inherited", "mutedText"),
+        ("Brand inherited", "surfaceText"),
+        ("Banner inherited", "infoText"),
+        ("Marquee inherited", "warningText"),
+        ("Scaffold inherited", "dangerText"),
     ] {
         assert!(compose.content.contains(&format!(
             "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.{token}) ?: LocalContentColor.current))"
@@ -108,7 +114,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         .content
         .find("doweText(\"Box inherited\"")
         .expect("Box inherited text");
-    assert!(dev.content[box_inherited..box_inherited + 320].contains("DOWE_ON_PRIMARY"));
+    assert!(dev.content[box_inherited..box_inherited + 320].contains("DOWE_PRIMARY_TEXT"));
     let box_override = dev
         .content
         .find("doweText(\"Box override\"")
@@ -116,20 +122,23 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     assert!(dev.content[box_override..box_override + 320].contains("DOWE_DANGER"));
     assert!(dev
         .content
-        .contains("doweText(\"Card inherited\", DOWE_ON_SOFT_MUTED"));
+        .contains("doweText(\"Card inherited\", DOWE_SOFT_MUTED_TEXT"));
+    assert!(dev
+        .content
+        .contains("doweText(\"Card title inherited\", DOWE_SOFT_MUTED_TITLE"));
     let card_override = dev
         .content
         .find("doweText(\"Card override\"")
         .expect("Card override text");
     assert!(dev.content[card_override..card_override + 320].contains("DOWE_WARNING"));
     for (label, token) in [
-        ("Section inherited", "DOWE_ON_SECONDARY"),
-        ("Flex inherited", "DOWE_ON_TERTIARY"),
-        ("Grid inherited", "DOWE_ON_MUTED"),
-        ("Brand inherited", "DOWE_ON_SURFACE"),
-        ("Banner inherited", "DOWE_ON_INFO"),
-        ("Marquee inherited", "DOWE_ON_WARNING"),
-        ("Scaffold inherited", "DOWE_ON_DANGER"),
+        ("Section inherited", "DOWE_SECONDARY_TEXT"),
+        ("Flex inherited", "DOWE_TERTIARY_TEXT"),
+        ("Grid inherited", "DOWE_MUTED_TEXT"),
+        ("Brand inherited", "DOWE_SURFACE_TEXT"),
+        ("Banner inherited", "DOWE_INFO_TEXT"),
+        ("Marquee inherited", "DOWE_WARNING_TEXT"),
+        ("Scaffold inherited", "DOWE_DANGER_TEXT"),
     ] {
         let start = dev
             .content
@@ -1122,7 +1131,7 @@ fn generates_android_box_border_for_compose_and_dev_launcher() {
         .expect("views");
 
     assert!(views.content.contains(
-        ".border(doweResponsive(viewportWidth, xs = 2.dp) ?: 0.dp, DoweDesign.onBackground, RoundedCornerShape(doweResponsive(viewportWidth, xs = 12.dp) ?: DoweDesign.radius))"
+        ".border(doweResponsive(viewportWidth, xs = 2.dp) ?: 0.dp, DoweDesign.backgroundText, RoundedCornerShape(doweResponsive(viewportWidth, xs = 12.dp) ?: DoweDesign.radius))"
     ));
 
     let dev = dev_java_source(&output);
@@ -1131,7 +1140,7 @@ fn generates_android_box_border_for_compose_and_dev_launcher() {
         "private GradientDrawable doweStyledBackground(int color, Integer strokeColor, Integer strokeWidth, float radius)"
     ));
     assert!(dev.content.contains(
-        "view0.setBackground(doweStyledBackground(Color.TRANSPARENT, DOWE_ON_BACKGROUND, doweResponsiveInt(viewportWidth, 2, null, null, null, null), doweFloat(doweResponsiveFloat(viewportWidth, 12f, null, null, null, null), DOWE_RADIUS)))"
+        "view0.setBackground(doweStyledBackground(Color.TRANSPARENT, DOWE_BACKGROUND_TEXT, doweResponsiveInt(viewportWidth, 2, null, null, null, null), doweFloat(doweResponsiveFloat(viewportWidth, 12f, null, null, null, null), DOWE_RADIUS)))"
     ));
     assert!(
         dev.content

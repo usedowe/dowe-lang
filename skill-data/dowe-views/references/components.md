@@ -10,14 +10,37 @@ or function bindings. Event props reference a named view `fn`. Common visual pro
 size, visibility, semantic color, border, radius, and shadow are accepted only where the component
 contract declares them.
 
+## Minimal component props
+
+Start every component with no visual props. The compiler supplies built-in defaults, then applies
+the matching `design` slot from `theme.dowe`; generated source should not repeat either layer.
+Keep only props that change the default, bind reactively, provide required content or accessibility,
+control layout or behavior, or are needed to demonstrate a deliberate variant.
+
+```text
+Button w:"full"
+  "Log in"
+
+Input bind:email label:"Email"
+
+Card p:5
+```
+
+These declarations are equivalent to spelling out the default `Button` solid/primary/md visual
+contract, the default outlined/primary control contract, and the default surface/solid/md Card
+contract. The minimal Tabs form is `Tabs` (or `Tabs position:"top"` when documenting orientation),
+which resolves to pills/primary. A non-default decision remains explicit, for example
+`Button variant:"outlined"`, `Tabs variant:"line"`, or `Card shadow:"lg"`. Prefer one intentional
+prop over a complete restatement of the component's default style.
+
 ## Layout and text
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Box` | Neutral wrapper for exceptional background, overlay, cover, local styling, or portable relative/absolute/fixed positioning. Prefer a semantic container when one exists. |
+| `Box` | Advanced neutral layer plane when normal flow cannot express the composition: normally a relative stage with direct absolute wrappers or a fixed viewport layer. Do not use it for ordinary spacing, sizing, centering, backgrounds, borders, visibility, Grid gutters, or control wrappers; put those props on the semantic, flow, media, or control owner. |
 | `Section` | Ordered page band and page-level vertical rhythm. A page begins with one or more sibling Sections; `boxed:true` constrains and centers only its generated inner body at `96rem` web or `1536` native. |
 | `Flex` | One-axis row or column using `direction`, `gap`, `align`, `justify`, and optional wrapping. |
-| `Grid` | Explicit or responsive tracks using `columns`, optional `rows`, `gap`, and alignment. |
+| `Grid` | Equal-width numeric column counts (1–12), optional numeric or `auto` rows, `gap`, and alignment. |
 | `Card` | One related semantic unit such as a form, metric, article, or profile. Avoid nesting Card inside Card. |
 | `Title` | One direct quoted visible-text child or one complete braced string binding. |
 | `Text` | One direct quoted visible-text child or one complete braced string binding. |
@@ -29,7 +52,7 @@ contract declares them.
 
 | Component | Use and essential contract |
 | --- | --- |
-| `AppBar` | Top application bar with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; `boxed:true` centers its inner content at `96rem` web or `1536` native while preserving the full-width surface. It stays visually flat across targets unless `border`, `bordered:true`, or `floating:true` requests separation. `dockOnScroll:true` requires `position:"fixed" floating:true` and makes web, desktop, Android, and iOS dock the floating surface at the viewport top after `100` logical scroll units. |
+| `AppBar` | Top application bar with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; `boxed:true` centers its inner content at `96rem` web or `1536` native while preserving the full-width surface. It stays visually flat across targets unless `border`, `bordered:true`, or `floating:true` requests separation. A direct `Scaffold appBar` with `position:"sticky" floating:true` overlays the web and desktop body so `main` remains visible beneath the floating surface. `dockOnScroll:true` requires `position:"fixed" floating:true` and makes web, desktop, Android, and iOS dock the floating surface at the viewport top after `100` logical scroll units. |
 | `Footer` | Page or shell footer with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; it includes horizontal padding `4` from `xs` and `6` from `md`, top padding `10` from `xs` and `16` from `md`, and bottom padding `4` from `xs` and `6` from `md`, overridable with `p`, `px`, `py`, `pl`, `pr`, `pt`, or `pb`. `boxed:true` centers one shared inner container holding `top`, the central row, and `bottom` at `96rem` web or `1536` native while the surface remains full width. Put responsive `show` on children inside a region, not on the structural region block. |
 | `BottomBar` | Bottom navigation containing one or more direct `tab` entries; each entry owns one Icon and navigation metadata; `boxed:true` centers the tab row at `96rem` web or `1536` native. |
 | `NavMenu` | Horizontal navigation composed from direct `item`, `submenu`, or `megamenu` entries. Submenu and megamenu content opens in a Dowe-owned floating overlay on web, Android, and iOS, uses the structural background surface, preserves `scheme` for trigger and active states, dispatches fragment or route navigation before closing, and uses the same anchored overlay strategy as `Dropdown` on iOS. |
@@ -47,6 +70,46 @@ contract declares them.
 `Scaffold boxed:true` centers and limits only the `start`, `main`, and `end` body while leaving the outer shell, bars, and overlays full width.
 
 Section, Scaffold, AppBar, Footer, and BottomBar use the wide boxed content cap of `96rem` on web and `1536` logical units on Android and iOS. Their outer bands, shells, and bar surfaces remain full width.
+
+### AppBar composition rules
+
+`AppBar` owns the shell surface and its explicit regions. Use one AppBar directly under
+`Scaffold appBar`, then place the brand in `start`, the primary `NavMenu` directly in `center`,
+and actions directly in `end`. `center` is the flexible region; `start` and `end` size to their
+content. Put responsive `show` on the built-in node that changes visibility:
+
+```text
+layout SiteLayout
+  signal openNavigation value:false
+  Scaffold
+    appBar
+      AppBar position:"fixed" floating:true boxed:true
+        start
+          Brand href:"/" label:"Site home"
+            Text weight:"black"
+              "SITE"
+        center
+          NavMenu show:{ xs:false md:true }
+            item label:"Overview" href:"/"
+            item label:"Contact" href:"/#contact"
+        end
+          Button show:{ xs:false md:true } href:"/#contact"
+            "Get started"
+          IconButton show:{ xs:true md:false } icon:"menu-dots" label:"Open navigation" onClick:{ set:openNavigation value:!openNavigation }
+    main
+      children
+    overlays
+      Drawer open:openNavigation show:{ xs:true md:false }
+        body
+          SiteNavigation
+```
+
+Do not use `center > Box show:{ ... } > NavMenu` as a visibility or alignment shim, and do not
+place a second desktop or mobile AppBar inside `overlays`. A `Box` is appropriate in `top` or
+`bottom` only when that full-width region is itself a styled band, or inside a slot when it is a
+real positioned visual layer. Imported reusable components do not accept props; if a shared
+navigation tree needs different visibility at its AppBar and Drawer mounts, use the direct
+built-in `NavMenu` in the AppBar and keep the prop-free navigation component in the Drawer.
 
 ## Controls and theme selection
 
@@ -108,15 +171,15 @@ rows-driven, but its text follows the same typography scale.
 | `Canvas` | Custom drawing or pointer surface for visuals that semantic components cannot express; keep its commands and data target-neutral. |
 | `Audio` | Portable audio playback for a supported static source with Dowe-owned playback behavior. |
 | `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
-| `Icon` | Bundled vector selected by quoted `name`: Solar names, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or brand-colored `svg-logos:<name>`. Solar supports six styles; namespaced catalogs use `linear`. |
+| `Icon` | Bundled vector selected by quoted `name`: Solar variant names, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or brand-colored `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. |
 | `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. |
 | `Path` | Context-only Svg path with quoted `d`, paint, optional `fillRule:"nonzero|evenodd"`, and optional matrix transform. Use `evenodd` to preserve holes in compound paths. |
 
 `Icon name` is always a static quoted value; it cannot bind an `each` item or Signal path, so a
 collection with distinct icons uses explicit sibling declarations. Names must exist in the bundled
-Solar catalog for the selected style and diagnostics reject unknown names: for example
-`magnifier` is valid but `search` is not. Standalone icons accept `fill:<color token>`, `w`, `h`,
-and optional `style`.
+catalog and diagnostics reject unknown names: for example `magnifier` and
+`magnifier-bold-duotone` are valid but `search` is not. Standalone icons accept
+`fill:<color token>`, `stroke:<color token>`, `w`, and `h`; `style` is not an Icon prop.
 
 Iframe and remote media do not bypass server embedding, authentication, cookie, transport, or
 platform security policy. They never authorize user-authored JavaScript or native host bridges.
@@ -141,6 +204,18 @@ Every chart accepts `variant`, `scheme`, `size` (`sm` to `xl`), `palette` (`defa
 `ocean`, `sunset`, `forest`, `neon`), `legendPosition` (`top`, `right`, `bottom`, `left`, `none`),
 `emptyLabel`, `loading`, and `hideLegend`. Diagnostics reject missing, incompatible, or invalid
 negative data where the chart contract requires non-negative values.
+
+`ArcChart` optionally reads a positive `max` per category for independent progress arcs. It keeps
+the plot centered in a square responsive viewport on web, Android, and iOS; `right` and `left`
+legends stack below the plot when space is narrow. Its portable options are `centerText`,
+`centerValue`, `thickness`, `gap`, `startAngle`, `endAngle`, `showInlineLabels`, `hideValues`,
+and `showGlow`, and the same Signal update refreshes arcs, labels, center content, and legend.
+
+`PieChart` keeps its plot centered in a square responsive viewport. A `right` or `left` legend
+stacks below the plot when the available width is narrow, and web, Android, and iOS observe the
+same `data` Signal so slice geometry, totals, donut center content, and legend entries update
+together. Its portable options include `donut`, `donutWidth`, `centerLabel`, `centerValue`,
+`startAngle`, `padAngle`, `hideLabels`, `hideValues`, `hidePercentages`, and `showGlow`.
 
 Each `Candlestick` item provides `time` plus numeric `open`, `high`, `low`, and `close`. Optional
 props include `stream` for an SSE feed upserted by `time`, `upColor` and `downColor` tokens, and

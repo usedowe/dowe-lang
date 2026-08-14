@@ -213,14 +213,6 @@ impl IosIncrementalWorkspace {
         Ok(())
     }
 
-    pub fn discard_dependency_state(&self) {
-        let _ = fs::remove_file(&self.master_dependencies);
-        let _ = fs::remove_file(&self.dependency_graph);
-        for source in &self.sources {
-            let _ = fs::remove_file(&source.swift_dependencies);
-        }
-    }
-
     pub fn remove_linked_module(&self) {
         let _ = fs::remove_file(&self.linked_module);
     }

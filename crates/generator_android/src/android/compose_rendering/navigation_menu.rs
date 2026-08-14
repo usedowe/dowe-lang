@@ -19,7 +19,7 @@ fn render_compose_nav_menu(
             "null"
         };
     output.push_str(&format!(
-        "{pad}DoweNavMenu(modifier = {}, gap = {gap}.dp, popoverBackgroundColor = DoweDesign.background, popoverContentColor = DoweDesign.onBackground, content = {{ openIndex, toggle ->\n",
+        "{pad}DoweNavMenu(modifier = {}, gap = {gap}.dp, popoverBackgroundColor = DoweDesign.background, popoverContentColor = DoweDesign.backgroundText, content = {{ openIndex, toggle ->\n",
         modifier_for_container_style(&props.style.style, flow)
     ));
     for (index, item) in items.iter().enumerate() {

@@ -316,8 +316,57 @@ fn formatter_accepts_nested_property_suite_children() {
 }
 
 #[test]
+fn formatter_preserves_grouped_theme_color_families() {
+    let source = "theme\n  design defaultTheme:\"light\"\n    theme name:\"light\"\n      colors:\n        primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"\n        softPrimary:\n          color:\"#CCFBF3\"\n          text:\"#073B35\"\n          title:\"#073B35\"\n";
+    let formatted = format_document(
+        Path::new("/project"),
+        Path::new("/project/theme.dowe"),
+        source,
+    )
+    .expect("formatted theme");
+
+    assert_eq!(
+        formatted,
+        "theme\n  design defaultTheme:\"light\"\n    theme name:\"light\"\n      colors:\n        primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"\n        softPrimary color:\"#CCFBF3\" text:\"#073B35\" title:\"#073B35\"\n"
+    );
+    assert_eq!(
+        format_document(
+            Path::new("/project"),
+            Path::new("/project/theme.dowe"),
+            &formatted,
+        )
+        .expect("formatted theme again"),
+        formatted
+    );
+}
+
+#[test]
+fn completes_project_defined_color_families_as_component_schemes() {
+    let root = tempdir().expect("root");
+    fs::write(
+        root.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        happy color:"#176c75" text:"#fffffe" title:"#fffffe"
+        softHappy color:"#d9f3f1" text:"#124d53" title:"#124d53""##,
+    )
+    .expect("theme");
+    let document = LanguageDocument {
+        path: root.path().join("views/pages/status.dowe"),
+        source: "page statusPage\n  Card scheme:\n".to_string(),
+    };
+
+    let completions = complete_document(root.path(), &document, 2, 15);
+
+    assert!(completions.iter().any(|item| item.label == "\"happy\""));
+    assert!(!completions.iter().any(|item| item.label == "\"softHappy\""));
+}
+
+#[test]
 fn formatter_expands_nested_multiline_values() {
-    let source = "page canvasPage\n  signal gameScene value:[{ type:\"rect\" x:0 y:0 width:640 height:360 fill:\"background\" },{ type:\"circle\" x:40 y:50 radius:2 fill:\"onBackground\" opacity:0.5 motion:{ vx:-18 wrap:true } }]\n";
+    let source = "page canvasPage\n  signal gameScene value:[{ type:\"rect\" x:0 y:0 width:640 height:360 fill:\"background\" },{ type:\"circle\" x:40 y:50 radius:2 fill:\"backgroundText\" opacity:0.5 motion:{ vx:-18 wrap:true } }]\n";
     let formatted = format_document(
         Path::new("/project"),
         Path::new("/project/pages/canvas.dowe"),
@@ -327,7 +376,7 @@ fn formatter_expands_nested_multiline_values() {
 
     assert_eq!(
         formatted,
-        "page canvasPage\n  signal gameScene:\n    value:[\n      {\n        type:\"rect\"\n        x:0\n        y:0\n        width:640\n        height:360\n        fill:\"background\"\n      },\n      {\n        type:\"circle\"\n        x:40\n        y:50\n        radius:2\n        fill:\"onBackground\"\n        opacity:0.5\n        motion:{ vx:-18 wrap:true }\n      },\n    ]\n"
+        "page canvasPage\n  signal gameScene:\n    value:[\n      {\n        type:\"rect\"\n        x:0\n        y:0\n        width:640\n        height:360\n        fill:\"background\"\n      },\n      {\n        type:\"circle\"\n        x:40\n        y:50\n        radius:2\n        fill:\"backgroundText\"\n        opacity:0.5\n        motion:{ vx:-18 wrap:true }\n      },\n    ]\n"
     );
     assert_eq!(
         format_document(
@@ -463,7 +512,7 @@ fn diagnostics_and_definition_support_server_config_module_imports() {
         source: concat!(
             "import db from \"./storage\"\n\n",
             "fn listAccountsRepository\n",
-            "  query rows db:db.list table:\"directvAccounts\"\n",
+            "  query rows conn:db.list table:\"directvAccounts\"\n",
             "  return value:{ rows:rows }\n"
         )
         .to_string(),
@@ -605,7 +654,7 @@ fn diagnostics_reject_unknown_inferred_handler_fields() {
     fs::create_dir_all(root.path().join("handlers")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("handlers/blogs.dowe"),
-        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created db:db.insert table:\"blogs\" value:{ title:\"\" }\n  log created.content\n  return json:created\n"
+        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created conn:db.insert table:\"blogs\" value:{ title:\"\" }\n  log created.content\n  return json:created\n"
             .to_string(),
     };
 
@@ -619,7 +668,7 @@ fn diagnostics_reject_unknown_inferred_handler_fields() {
 
     let response_document = LanguageDocument {
         path: root.path().join("handlers/blogs.dowe"),
-        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created db:db.insert table:\"blogs\" value:{ title:\"\" }\n  return json:{ data:created.content }\n"
+        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created conn:db.insert table:\"blogs\" value:{ title:\"\" }\n  return json:{ data:created.content }\n"
             .to_string(),
     };
     let response_diagnostics = analyze_document(root.path(), &response_document);
@@ -640,7 +689,7 @@ fn diagnostics_accept_remote_store_env_in_handler_files() {
         source: concat!(
             "handler listAppointments req\n",
             "  database db provider:\"dowe\" host:env.DB_HOST port:4147 account:\"clinic-api\" secret:env.DB_TOKEN name:\"clinic\"\n",
-            "  query appointments db:db.list table:\"appointments\"\n",
+            "  query appointments conn:db.list table:\"appointments\"\n",
             "  return json:{ ok:true data:appointments }\n"
         )
         .to_string(),
@@ -694,7 +743,7 @@ fn diagnostics_accept_text_typography_props() {
     fs::create_dir_all(root.path().join("pages")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("pages/login.dowe"),
-        source: "page loginPage\n  Text size:\"md\" color:\"onPrimary\" i18n:\"auth.login.title\"\n    \"Login\"\n".to_string(),
+        source: "page loginPage\n  Text size:\"md\" color:\"primaryText\" i18n:\"auth.login.title\"\n    \"Login\"\n".to_string(),
     };
 
     let diagnostics = analyze_document(root.path(), &document);
@@ -703,6 +752,23 @@ fn diagnostics_accept_text_typography_props() {
         diagnostics.is_empty(),
         "unexpected diagnostics: {diagnostics:?}"
     );
+
+    let completion_document = LanguageDocument {
+        path: root.path().join("pages/colors.dowe"),
+        source: "page colorsPage\n  Text color:\n    \"Color\"\n".to_string(),
+    };
+    let completions = complete_document(root.path(), &completion_document, 2, 14);
+    assert!(
+        completions
+            .iter()
+            .any(|item| item.label == "\"primaryTitle\"")
+    );
+    assert!(
+        completions
+            .iter()
+            .any(|item| item.label == "\"softPrimaryTitle\"")
+    );
+    assert!(!completions.iter().any(|item| item.label == "\"onPrimary\""));
 }
 
 #[test]
@@ -751,6 +817,43 @@ fn completes_namespaced_svg_spinner_icon_names() {
         completions
             .iter()
             .any(|completion| completion.label == "\"svg-spinners:3-dots-bounce\"")
+    );
+}
+
+#[test]
+fn completes_solar_variant_names_without_icon_style_prop() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("views/pages")).expect("pages");
+    let names_document = LanguageDocument {
+        path: root.path().join("views/pages/icons.dowe"),
+        source: "page IconPage\n  Icon name:\n".to_string(),
+    };
+    let names = complete_document(root.path(), &names_document, 2, "  Icon name:".len() + 1);
+    assert!(
+        names
+            .iter()
+            .any(|completion| completion.label == "\"alt-arrow-right-bold-duotone\"")
+    );
+
+    let props_document = LanguageDocument {
+        path: root.path().join("views/pages/icons.dowe"),
+        source: "page IconPage\n  Icon \n".to_string(),
+    };
+    let props = complete_document(root.path(), &props_document, 2, "  Icon ".len() + 1);
+    assert!(props.iter().any(|completion| completion.label == "name"));
+    assert!(props.iter().any(|completion| completion.label == "fill"));
+    assert!(!props.iter().any(|completion| completion.label == "style"));
+
+    let removed = LanguageDocument {
+        path: root.path().join("views/pages/icons.dowe"),
+        source: "page IconPage\n  Icon name:\"alt-arrow-right\" style:\"bold\"\n".to_string(),
+    };
+    let diagnostics = analyze_document(root.path(), &removed);
+    assert!(
+        diagnostics.iter().any(|diagnostic| diagnostic
+            .message
+            .contains("include the Solar variant in name")),
+        "expected removed Icon style diagnostic: {diagnostics:?}"
     );
 }
 
@@ -1106,7 +1209,7 @@ fn queue_publication_completions_and_documentation_are_available() {
 fn completions_and_hover_include_server_tasks_and_cron() {
     let document = LanguageDocument {
         path: Path::new("/project/main.dowe").to_path_buf(),
-        source: "main\n  server port:8080\n    init\n      task cleanup args:{ event:{ source:\"startup\" } } after:\"headers\"\n      task\n        log args.source\n      cron cleanup schedule:\"0 * * * *\"\n"
+        source: "main\n  server port:8080\n    init\n      task fn:cleanup args:{ event:{ source:\"startup\" } } after:\"headers\"\n      task\n        log args.source\n      cron fn:cleanup schedule:\"0 * * * *\"\n"
             .to_string(),
     };
     let completions = complete_document(Path::new("/project"), &document, 4, 7);
@@ -1116,11 +1219,19 @@ fn completions_and_hover_include_server_tasks_and_cron() {
         4,
         document.source.lines().nth(3).expect("task line").len() + 1,
     );
+    let cron_props = complete_document(
+        Path::new("/project"),
+        &document,
+        7,
+        document.source.lines().nth(6).expect("cron line").len() + 1,
+    );
 
     assert!(completions.iter().any(|item| item.label == "task"));
     assert!(!completions.iter().any(|item| item.label == "go"));
     assert!(completions.iter().any(|item| item.label == "cron"));
+    assert!(task_props.iter().any(|item| item.label == "fn"));
     assert!(task_props.iter().any(|item| item.label == "after"));
+    assert!(cron_props.iter().any(|item| item.label == "fn"));
     assert!(
         hover_at(Path::new("/project"), &document, 4, 7)
             .expect("task hover")
@@ -1155,7 +1266,7 @@ fn completions_and_hover_include_server_tasks_and_cron() {
 fn hover_documents_theme_and_fonts_configuration() {
     let document = LanguageDocument {
         path: Path::new("/project/theme.dowe").to_path_buf(),
-        source: "theme\n  fonts default:\"manrope\" install:[\"manrope\",\"inter\"]\n  design defaultTheme:\"light\"\n    Card variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n    Button variant:\"solid\" scheme:\"secondary\" size:\"md\"\n    Avatar radius:\"full\" size:\"md\"\n    Chip variant:\"soft\" scheme:\"secondary\" radius:\"full\" size:\"sm\"\n    Text font:\"manrope\"\n    Title font:\"syne\"\n    theme name:\"light\"\n"
+        source: "theme\n  fonts default:\"manrope\" install:[\"manrope\",\"inter\"]\n  design defaultTheme:\"light\"\n    Card variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n    Button variant:\"solid\" scheme:\"secondary\" size:\"md\"\n    Avatar radius:\"full\" size:\"md\"\n    Chip variant:\"soft\" scheme:\"secondary\" radius:\"full\" size:\"sm\"\n    Text font:\"manrope\"\n    Title font:\"syne\"\n    theme name:\"light\"\n      colors:\n        primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"\n        happy color:\"#176C75\" text:\"#FFFFFE\" title:\"#FFFFFE\"\n"
             .to_string(),
     };
 
@@ -1167,7 +1278,7 @@ fn hover_documents_theme_and_fonts_configuration() {
     let design = hover_at(Path::new("/project"), &document, 3, 4).expect("design hover");
     assert!(design.contains("`Card`"));
     assert!(design.contains("`Button`"));
-    assert!(design.contains("Explicit props"));
+    assert!(design.contains("explicit usage prop"));
 
     let card = hover_at(Path::new("/project"), &document, 4, 6).expect("Card hover");
     assert!(card.contains("theme defaults"));
@@ -1207,7 +1318,38 @@ fn hover_documents_theme_and_fonts_configuration() {
     assert!(named_theme.contains("named color theme"));
     assert!(named_theme.contains("`extends`"));
     assert!(named_theme.contains("`colors`"));
+    assert!(named_theme.contains("`color`, `text`, and `title`"));
     assert!(named_theme.contains("Component defaults belong"));
+
+    let family = hover_at(Path::new("/project"), &document, 12, 10).expect("family hover");
+    assert!(family.contains("grouped semantic color family"));
+    assert!(family.contains("normalized"));
+
+    let happy = hover_at(Path::new("/project"), &document, 13, 10).expect("happy hover");
+    assert!(happy.contains("grouped semantic color family"));
+
+    let role = hover_at(Path::new("/project"), &document, 12, 36).expect("role hover");
+    assert!(role.contains("ordinary content"));
+
+    let family_document = LanguageDocument {
+        path: Path::new("/project/theme.dowe").to_path_buf(),
+        source: "theme\n  design defaultTheme:\"light\"\n    theme name:\"light\"\n      colors:\n        \n"
+            .to_string(),
+    };
+    let families = complete_document(Path::new("/project"), &family_document, 5, 9);
+    assert!(families.iter().any(|item| item.label == "primary"));
+    assert!(families.iter().any(|item| item.label == "softPrimary"));
+    assert!(!families.iter().any(|item| item.label == "primaryText"));
+
+    let role_document = LanguageDocument {
+        path: Path::new("/project/theme.dowe").to_path_buf(),
+        source: "theme\n  design defaultTheme:\"light\"\n    theme name:\"light\"\n      colors:\n        primary \n"
+            .to_string(),
+    };
+    let roles = complete_document(Path::new("/project"), &role_document, 5, 17);
+    assert!(roles.iter().any(|item| item.label == "color"));
+    assert!(roles.iter().any(|item| item.label == "text"));
+    assert!(roles.iter().any(|item| item.label == "title"));
 }
 
 #[test]
@@ -1323,7 +1465,7 @@ fn completions_and_hover_include_inferred_handler_fields() {
     fs::create_dir_all(root.path().join("handlers")).expect("src");
     let completion_document = LanguageDocument {
         path: root.path().join("handlers/blogs.dowe"),
-        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created db:db.insert table:\"blogs\" value:{ title:\"\" content:\"\" }\n  log created.\n  return json:created\n"
+        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created conn:db.insert table:\"blogs\" value:{ title:\"\" content:\"\" }\n  log created.\n  return json:created\n"
             .to_string(),
     };
     let completions = complete_document(
@@ -1339,7 +1481,7 @@ fn completions_and_hover_include_inferred_handler_fields() {
 
     let hover_document = LanguageDocument {
         path: root.path().join("handlers/blogs.dowe"),
-        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created db:db.insert table:\"blogs\" value:{ title:\"\" }\n  log created.title\n  return json:created\n"
+        source: "handler createBlog\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created conn:db.insert table:\"blogs\" value:{ title:\"\" }\n  log created.title\n  return json:created\n"
             .to_string(),
     };
     assert_eq!(
@@ -1375,7 +1517,7 @@ fn completions_and_diagnostics_include_declared_types() {
     fs::create_dir_all(root.path().join("pages")).expect("pages");
     let handler_document = LanguageDocument {
         path: root.path().join("handlers/users.dowe"),
-        source: "type User\n  name:string\n  age:number\n\nhandler createUser\n  const body:User value:req.json\n  log body.\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created db:db.insert table:\"users\" value:{ name:body.email }\n  return json:created\n".to_string(),
+        source: "type User\n  name:string\n  age:number\n\nhandler createUser\n  const body:User value:req.json\n  log body.\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created conn:db.insert table:\"users\" value:{ name:body.email }\n  return json:created\n".to_string(),
     };
 
     let completions = complete_document(root.path(), &handler_document, 7, "  log body.".len() + 1);
@@ -1384,7 +1526,7 @@ fn completions_and_diagnostics_include_declared_types() {
 
     let diagnostic_document = LanguageDocument {
         path: root.path().join("handlers/users.dowe"),
-        source: "type User\n  name:string\n  age:number\n\nhandler createUser\n  const body:User value:req.json\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created db:db.insert table:\"users\" value:{ name:body.email }\n  return json:created\n".to_string(),
+        source: "type User\n  name:string\n  age:number\n\nhandler createUser\n  const body:User value:req.json\n  database db provider:\"dowe\" host:\"127.0.0.1\" port:4147 account:\"api\" secret:\"secret\" name:\"app\"\n  query created conn:db.insert table:\"users\" value:{ name:body.email }\n  return json:created\n".to_string(),
     };
     let diagnostics = analyze_document(root.path(), &diagnostic_document);
     assert!(

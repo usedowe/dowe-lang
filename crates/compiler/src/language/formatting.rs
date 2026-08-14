@@ -3,6 +3,7 @@ use crate::language::analysis::document_workspace_root;
 use crate::parser::{
     SourceFile, SourceNode, SourceObjectEntry, SourceProp, SourceValue, parse_source_file,
 };
+use dowe_components::ColorFamily;
 use std::path::Path;
 
 const MAX_LINE_WIDTH: usize = 100;
@@ -61,7 +62,19 @@ fn format_node(node: &SourceNode, lines: &mut Vec<String>) {
         .props
         .iter()
         .any(|prop| matches!(&prop.value, SourceValue::String(value) if value.contains('\n')));
-    if !node.props.is_empty() && (inline.chars().count() > MAX_LINE_WIDTH || has_multiline_string) {
+    let grouped_colors = node.name == "colors"
+        && node.args.is_empty()
+        && node.props.is_empty()
+        && !node.children.is_empty()
+        && node
+            .children
+            .iter()
+            .all(|child| ColorFamily::from_theme_name(&child.name).is_some());
+    if grouped_colors {
+        lines.push(format!("{indent}colors:"));
+    } else if !node.props.is_empty()
+        && (inline.chars().count() > MAX_LINE_WIDTH || has_multiline_string)
+    {
         lines.push(format!("{indent}{}:", header.join(" ")));
         for prop in &node.props {
             format_multiline_prop(prop, node.location.indent + 1, lines);

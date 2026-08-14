@@ -155,6 +155,15 @@ impl DeployTarget {
         }
     }
 
+    pub fn supports_surface(self, surface: DeploySurface) -> bool {
+        match self {
+            Self::Dowe | Self::Docker => {
+                matches!(surface, DeploySurface::Server | DeploySurface::Web)
+            }
+            _ => self.surface() == surface,
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Self::Static => "Static files",
@@ -222,7 +231,11 @@ pub fn deploy_targets_for_surface(surface: DeploySurface) -> &'static [DeployTar
             DeployTarget::Ssh,
             DeployTarget::Cloudflare,
         ],
-        DeploySurface::Web => &[DeployTarget::Dowe, DeployTarget::CloudflarePages],
+        DeploySurface::Web => &[
+            DeployTarget::Dowe,
+            DeployTarget::Docker,
+            DeployTarget::CloudflarePages,
+        ],
         DeploySurface::Android => &[DeployTarget::Android],
         DeploySurface::Ios => &[DeployTarget::Ios],
     }

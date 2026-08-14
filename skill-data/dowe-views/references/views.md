@@ -132,13 +132,14 @@ page BlogsPage
 | `Grid` | Exact tracks, responsive columns, repeated cards, dashboards, catalogs, and structural stacks |
 | `Flex` | One-axis rows or columns, alignment, navigation bars, toolbars, and compact groups |
 | `Card` | One related semantic unit such as a form, metric, article, or profile |
-| `Box` | Exceptional neutral styling, background, overlay, cover, or wrapper behavior that has no stronger semantic component |
+| `Box` | Advanced relative/absolute or fixed layer geometry that Section, Grid, Flex, Card, media, controls, and content cannot express in normal flow |
 | `RailNav` | Narrow vertical navigation with required Solar icons, accessible tooltips, and optional labels below icons |
 | `Tabs` | Related content panels selected from a compact intrinsic-width control list |
 | `Svg` | Portable vector paths; use direct `Path` children for static geometry or `data:<reference>` for one normalized runtime record |
 
-Avoid Card inside Card. Use `Grid` or `Flex` inside a Card. Do not use Box as the default page,
-section, form, or catalog container. When choosing between Section, Grid, Flex, Card, and Box, or
+Avoid Card inside Card. Use `Grid` or `Flex` inside a Card. Begin with no Box nodes; never use Box
+for ordinary styling, spacing, sizing, Grid gutters, or control wrappers. When choosing between
+Section, Grid, Flex, Card, and Box, or
 when decomposing a reference design into a layout and pages, follow the ordered decision tree and
 anti-pattern table in `references/composition.md`.
 
@@ -226,7 +227,7 @@ View functions contain ordered, target-neutral statements.
 | `request result` | Function-local result with `ok` and `data` | `method`, exactly one of `route` or `path`; optional `base`, `body`, `headers` |
 | `set target` | none | `value`, or `source:<standard-library function>` with its props |
 | `reset target` | none | Restores a Signal or View Store to its initial value |
-| `toast` | none | `value:{ type title message visible duration? }`; optional `duration`, Card-equivalent `variant` (`solid`, `soft`, `outlined`, `ghost`), design `scheme`, and corner `position` |
+| `toast` | none | `value:{ type title message visible duration? }`; optional `duration`, Card-equivalent `variant` (`solid`, `soft`, `outlined`, `ghost`), design `scheme`, and corner `position`; `variant` also resolves from `design Toast` |
 | `redirect` | none | Required static absolute `path` to a declared internal route; replaces history and terminates the function |
 
 ```text

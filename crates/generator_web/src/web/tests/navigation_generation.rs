@@ -187,7 +187,7 @@ fn renders_side_nav_markup_active_runtime_and_css() {
         css.contains(".sidenav-submenu.is-unbordered>.sidenav-submenu-content{border-left:0;}")
     );
     assert!(css.contains(".sidenav-chevron svg{display:block;width:1em;height:1em;}"));
-    assert!(css.contains(".sidenav-status{flex:0 0 auto;border-radius:999px;padding:0.125rem 0.5rem;background:var(--dowe-softMuted);color:var(--dowe-onSoftMuted);"));
+    assert!(css.contains(".sidenav-status{flex:0 0 auto;border-radius:999px;padding:0.125rem 0.5rem;background:var(--dowe-softMuted);color:var(--dowe-softMutedText);"));
     assert!(css.contains(
         ".sidenav-submenu.is-open>.sidenav-submenu-content{grid-template-rows:1fr;opacity:1;"
     ));
@@ -197,10 +197,10 @@ fn renders_side_nav_markup_active_runtime_and_css() {
             .contains(".sidenav.is-ghost.is-muted .sidenav-entry:hover{background-color:transparent;color:var(--dowe-muted);}")
     );
     assert!(page.css_content.contains(".sidenav.is-soft.is-primary .sidenav-entry:hover{background-color:color-mix(in srgb,var(--dowe-softPrimary) 50%,transparent);color:var(--dowe-primary);}"));
-    assert!(page.css_content.contains(".sidenav.is-soft.is-muted .sidenav-entry.is-active{background-color:var(--dowe-softMuted);color:var(--dowe-onSoftMuted);border-color:transparent;font-weight:600;}"));
-    assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-entry.is-active{background-color:var(--dowe-primary);color:var(--dowe-onPrimary);border-color:var(--dowe-primary);font-weight:600;}"));
+    assert!(page.css_content.contains(".sidenav.is-soft.is-muted .sidenav-entry.is-active{background-color:var(--dowe-softMuted);color:var(--dowe-softMutedText);border-color:transparent;font-weight:600;}"));
+    assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-entry.is-active{background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:var(--dowe-primary);font-weight:600;}"));
     assert!(page.css_content.contains(".sidenav.is-outlined.is-primary .sidenav-entry.is-active{background-color:transparent;color:var(--dowe-primary);border-color:var(--dowe-primary);font-weight:600;}"));
-    assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-header:hover,.sidenav.is-solid.is-primary .sidenav-header.is-active{background-color:transparent;color:var(--dowe-primary);}"));
+    assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-header,.sidenav.is-solid.is-primary .sidenav-header:hover,.sidenav.is-solid.is-primary .sidenav-header.is-active{background-color:transparent;color:var(--dowe-primary);}"));
     assert!(
         super::router_js(&super::WebOutput {
             chunks: Vec::new(),
@@ -387,6 +387,47 @@ fn renders_navigation_shell_markup_runtime_and_css() {
     assert!(router.contains("hydrateScaffoldInsets(view.root)"));
     assert!(!router.contains("data-dowe-sidebar-href"));
     assert!(router.contains("data-dowe-navmenu-href"));
+}
+
+#[test]
+fn overlays_main_under_sticky_floating_appbar() {
+    let tree = ViewNode::Scaffold {
+        props: ScaffoldProps::default(),
+        app_bar: vec![ViewNode::AppBar {
+            props: BarProps {
+                position: BarPosition::Sticky,
+                floating: true,
+                ..Default::default()
+            },
+            top: Vec::new(),
+            start: vec![text("Navigation")],
+            center: Vec::new(),
+            end: Vec::new(),
+            bottom: Vec::new(),
+        }],
+        start: Vec::new(),
+        main: vec![text("Main content")],
+        end: Vec::new(),
+        bottom_bar: Vec::new(),
+        overlays: Vec::new(),
+    };
+    let html = render_page_body(&ViewNode::Children, &tree);
+    let css = super::design_css();
+
+    assert!(
+        html.contains(r#"<header class="appbar is-solid is-primary position-sticky is-floating">"#)
+    );
+    assert!(html.contains(r#"<main class="scaffold-main">"#));
+    assert!(html.contains("Main content"));
+    assert!(css.contains(
+        ".scaffold:has(>.appbar.position-sticky.is-floating){--dowe-component-display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(min-content,1fr) auto;}"
+    ));
+    assert!(css.contains(
+        ".scaffold:has(>.appbar.position-sticky.is-floating)>.appbar{grid-column:1;grid-row:1;align-self:start;}"
+    ));
+    assert!(css.contains(
+        ".scaffold:has(>.appbar.position-sticky.is-floating)>.scaffold-body{grid-column:1;grid-row:1;}"
+    ));
 }
 
 #[test]

@@ -7,24 +7,51 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
                 apply_design_defaults_to_tree(child, defaults);
             }
         }
-        ViewNode::Scope { children, .. }
-        | ViewNode::Each { children, .. }
+        ViewNode::Scope {
+            actions, children, ..
+        } => {
+            apply_design_defaults_to_actions(actions, defaults);
+            for child in children {
+                apply_design_defaults_to_tree(child, defaults);
+            }
+        }
+        ViewNode::Each { children, .. }
         | ViewNode::Box { children, .. }
-        | ViewNode::Section { children, .. }
         | ViewNode::Flex { children, .. }
         | ViewNode::Grid { children, .. }
         | ViewNode::Brand { children, .. }
         | ViewNode::Banner { children, .. }
         | ViewNode::Marquee { children, .. }
         | ViewNode::Collapsible { children, .. }
-        | ViewNode::Badge { children, .. }
-        | ViewNode::Tooltip { children, .. } => {
+        | ViewNode::Badge { children, .. } => {
+            for child in children {
+                apply_design_defaults_to_tree(child, defaults);
+            }
+        }
+        ViewNode::Section { props, children } => {
+            apply_section_defaults(props, defaults);
+            for child in children {
+                apply_design_defaults_to_tree(child, defaults);
+            }
+        }
+        ViewNode::Tooltip { props, children } => {
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Tooltip);
             for child in children {
                 apply_design_defaults_to_tree(child, defaults);
             }
         }
         ViewNode::Button { props, children } => {
-            apply_variant_defaults(props, defaults, DesignComponentSlot::Button);
+            let slot = if props.icon_only {
+                DesignComponentSlot::IconButton
+            } else {
+                DesignComponentSlot::Button
+            };
+            apply_variant_defaults(props, defaults, slot);
+            if props.icon_only {
+                normalize_icon_button_visual_props(props);
+            } else {
+                normalize_button_visual_props(props);
+            }
             for child in children {
                 apply_design_defaults_to_tree(child, defaults);
             }
@@ -44,8 +71,11 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         ViewNode::AvatarGroup { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Avatar);
         }
-        ViewNode::Input { props } | ViewNode::Select { props, .. } => {
-            apply_variant_defaults(props, defaults, DesignComponentSlot::Ui);
+        ViewNode::Input { props } => {
+            apply_variant_defaults(props, defaults, DesignComponentSlot::Input);
+        }
+        ViewNode::Select { props, .. } => {
+            apply_variant_defaults(props, defaults, DesignComponentSlot::Select);
         }
         ViewNode::Drawer {
             props,
@@ -53,7 +83,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             body,
             footer,
         } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Drawer);
             for child in header.iter_mut().chain(body).chain(footer) {
                 apply_design_defaults_to_tree(child, defaults);
             }
@@ -64,7 +94,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             body,
             footer,
         } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Modal);
             for child in header.iter_mut().chain(body).chain(footer) {
                 apply_design_defaults_to_tree(child, defaults);
             }
@@ -76,7 +106,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             footer,
             ..
         } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Dropdown);
             for child in trigger.iter_mut().chain(header).chain(footer) {
                 apply_design_defaults_to_tree(child, defaults);
             }
@@ -89,7 +119,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             end,
             bottom,
         } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::AppBar);
             for child in top
                 .iter_mut()
                 .chain(start)
@@ -108,7 +138,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             end,
             bottom,
         } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Footer);
             for child in top
                 .iter_mut()
                 .chain(start)
@@ -153,7 +183,10 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
                 apply_design_defaults_to_tree(child, defaults);
             }
         }
-        ViewNode::Tabs { tabs, .. } => {
+        ViewNode::Tabs { props, tabs } => {
+            if props.variant != TabsVariant::Stepper {
+                apply_tabs_defaults(props, defaults);
+            }
             for tab in tabs {
                 for child in &mut tab.children {
                     apply_design_defaults_to_tree(child, defaults);
@@ -161,7 +194,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             }
         }
         ViewNode::Accordion { props, items } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Accordion);
             for item in items {
                 for child in &mut item.children {
                     apply_design_defaults_to_tree(child, defaults);
@@ -183,7 +216,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
         }
         ViewNode::Date { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Date)
         }
         ViewNode::DateRange { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
@@ -207,7 +240,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
         }
         ViewNode::Checkbox { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Checkbox)
         }
         ViewNode::Fab { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Button);
@@ -216,7 +249,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
         ViewNode::Toast { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Toast);
         }
         ViewNode::Command { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
@@ -252,13 +285,13 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
         ViewNode::Password { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Password);
         }
         ViewNode::Phone { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
         ViewNode::Pin { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Pin);
         }
         ViewNode::Textarea { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
@@ -320,6 +353,53 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         | ViewNode::Skeleton { .. }
         | ViewNode::Children => {}
     }
+}
+
+fn apply_design_defaults_to_actions(actions: &mut [ViewAction], defaults: &DesignDefaults) {
+    for action in actions {
+        if let ViewActionKind::Sequence(statements) = &mut action.kind {
+            apply_design_defaults_to_statements(statements, defaults);
+        }
+    }
+}
+
+fn apply_design_defaults_to_statements(
+    statements: &mut [ViewFunctionStatement],
+    defaults: &DesignDefaults,
+) {
+    for statement in statements {
+        match statement {
+            ViewFunctionStatement::Toast(toast) => {
+                if toast.variant.is_none() {
+                    toast.variant = defaults
+                        .variant
+                        .get(&DesignComponentSlot::Toast)
+                        .or_else(|| defaults.variant.get(&DesignComponentSlot::Ui))
+                        .map(|variant| variant.as_str().to_string());
+                }
+            }
+            ViewFunctionStatement::If { success, error, .. } => {
+                apply_design_defaults_to_statements(success, defaults);
+                apply_design_defaults_to_statements(error, defaults);
+            }
+            ViewFunctionStatement::Request { .. }
+            | ViewFunctionStatement::Assign(_)
+            | ViewFunctionStatement::Reset(_)
+            | ViewFunctionStatement::Redirect { .. } => {}
+        }
+    }
+}
+
+fn apply_section_defaults(props: &mut StyleProps, defaults: &DesignDefaults) {
+    if props.bg.is_none()
+        && let Some(family) = defaults
+            .scheme
+            .get(&DesignComponentSlot::Section)
+            .or_else(|| defaults.scheme.get(&DesignComponentSlot::Ui))
+    {
+        props.bg = Some(ResponsiveValue::scalar(family.color_token()));
+    }
+    apply_style_defaults(props, defaults, DesignComponentSlot::Section);
 }
 
 fn apply_text_defaults(
@@ -518,6 +598,26 @@ fn apply_variant_defaults(
             .copied();
     }
     apply_style_defaults(&mut props.style, defaults, slot);
+}
+
+fn apply_tabs_defaults(props: &mut TabsProps, defaults: &DesignDefaults) {
+    if !props.variant_explicit {
+        props.variant = defaults
+            .tabs_variant
+            .get(&DesignComponentSlot::Tabs)
+            .or_else(|| defaults.tabs_variant.get(&DesignComponentSlot::Ui))
+            .copied()
+            .unwrap_or(TabsVariant::Pills);
+    }
+    if !props.color_explicit {
+        props.color = defaults
+            .scheme
+            .get(&DesignComponentSlot::Tabs)
+            .or_else(|| defaults.scheme.get(&DesignComponentSlot::Ui))
+            .copied()
+            .unwrap_or(ColorFamily::Primary);
+    }
+    apply_style_defaults(&mut props.style, defaults, DesignComponentSlot::Tabs);
 }
 
 fn apply_style_defaults(

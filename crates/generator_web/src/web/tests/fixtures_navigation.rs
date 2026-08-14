@@ -165,6 +165,8 @@ fn tabs_tree() -> ViewNode {
             variant: TabsVariant::Line,
             color: ColorFamily::Primary,
             position: TabsPosition::Start,
+            variant_explicit: true,
+            color_explicit: true,
         },
         tabs: vec![
             TabItem {

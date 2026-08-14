@@ -1,15 +1,16 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
     AppConfig, CompileEnvironment, DatabaseBinding, EnvironmentConfig, ProjectCapabilities,
-    ServerConfig, ViewTargetRoutes, WebOutput,
+    ServerConfig, ViewPlatform, ViewTargetRoutes, WebOutput,
 };
 use crate::parser::source_config::parse_app;
 use crate::parser::source_config::parse_project_config_for;
 use crate::parser::source_i18n::parse_translation_catalog;
 use crate::parser::source_parser::parse_source_file;
-use crate::parser::source_server::parse_server_source;
+use crate::parser::source_server::{parse_server_source, parse_server_source_without_seeders};
 use crate::parser::source_views::{client_environment_names, parse_views_entry};
 use dowe_components::{DesignConfig, FontConfig, TranslationCatalog};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
@@ -31,9 +32,11 @@ pub struct ParsedProject {
 pub(crate) fn parse_project_for(
     root: &Path,
     environment: CompileEnvironment,
+    include_seeders: bool,
+    compile_server: bool,
+    compile_views: bool,
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
 ) -> DoweResult<ParsedProject> {
-    let config = parse_project_config_for(root, environment)?;
-    let mut environment_config = config.environment_config;
     let legacy_main_path = root.join("src/main.dowe");
     if legacy_main_path.exists() {
         return Err(DoweError::at_path(
@@ -42,7 +45,7 @@ pub(crate) fn parse_project_for(
         ));
     }
     let legacy_server_path = root.join("src/server.dowe");
-    if legacy_server_path.exists() {
+    if compile_server && legacy_server_path.exists() {
         return Err(DoweError::at_path(
             &legacy_server_path,
             "`src/server.dowe` has been replaced by project-root `main.dowe`",
@@ -50,18 +53,26 @@ pub(crate) fn parse_project_for(
     }
     let server_path = root.join("main.dowe");
     let views_path = root.join("src/views.dowe");
-    if views_path.exists() {
+    if compile_views && views_path.exists() {
         return Err(DoweError::at_path(
             &views_path,
             "`src/views.dowe` has been replaced by root `main.dowe` with `views:<name>`",
         ));
     }
     let server = parse_required_file(root, &server_path)?;
-    let translations = parse_translation_catalog(root)?;
-    let app_config = parse_main_app_config(&server)?.unwrap_or(config.app_config);
     let capabilities = capabilities_from_main(&server)?;
-    let views = capabilities
-        .views
+    let config = parse_project_config_for(root, environment, compile_views)?;
+    let mut environment_config = config.environment_config;
+    let translations = if compile_views {
+        parse_translation_catalog(root)?
+    } else {
+        TranslationCatalog::default()
+    };
+    let app_config = parse_main_app_config(&server)?.unwrap_or(config.app_config);
+    let view_platforms = selected_platforms
+        .map(|platforms| platforms.iter().copied().collect::<Vec<_>>())
+        .unwrap_or_else(|| ViewPlatform::all().to_vec());
+    let views = (compile_views && capabilities.views && !view_platforms.is_empty())
         .then(|| {
             parse_views_entry(
                 root,
@@ -69,6 +80,7 @@ pub(crate) fn parse_project_for(
                 &environment_config,
                 &translations,
                 &config.design_config,
+                &view_platforms,
             )
         })
         .transpose()?;
@@ -77,8 +89,14 @@ pub(crate) fn parse_project_for(
             environment_config.expose_to_client(&name);
         }
     }
-    let server_root = has_server_configuration(&server)
-        .then(|| parse_server_source(root, &server, &environment_config))
+    let server_root = (compile_server && has_server_configuration(&server))
+        .then(|| {
+            if include_seeders {
+                parse_server_source(root, &server, &environment_config)
+            } else {
+                parse_server_source_without_seeders(root, &server, &environment_config)
+            }
+        })
         .transpose()?;
 
     let databases = server_root

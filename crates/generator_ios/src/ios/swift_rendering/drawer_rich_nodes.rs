@@ -305,7 +305,7 @@ fn render_swift_type_writer(
         props.after_typed,
         props.after_deleted,
         props.repeat,
-        color_ref(ColorToken::OnBackground),
+        color_ref(ColorToken::BackgroundText),
     ));
     append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
 }
@@ -325,7 +325,7 @@ fn render_swift_rich_text(
         .map(|value| value.entries[0].value)
         .unwrap_or(TextSize::Md);
     let font_size = swift_text_size_expr(props.title, size);
-    let content_color = text_color(props).unwrap_or_else(|| "DoweDesign.onBackground".to_string());
+    let content_color = text_color(props).unwrap_or_else(|| "DoweDesign.backgroundText".to_string());
     output.push_str(&format!(
         "{pad}DoweRichText(marks: {}, font: {}, fontSize: {font_size}, contentColor: {content_color})\n",
         swift_rich_text_marks(marks),

@@ -101,7 +101,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
 
     private void doweRichTextMark(TextView view, String style, String scheme) {
         int accent = doweButtonFamily(scheme);
-        int onAccent = doweButtonOnFamily(scheme);
+        int onAccent = doweButtonTextFamily(scheme);
         view.setGravity(Gravity.CENTER);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             view.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_SIMPLE);
@@ -341,7 +341,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         content.setScaleY(0.98f);
         content.setTranslationY(-doweDp(4));
         content.setPadding(0, doweDp(4), 0, doweDp(4));
-        content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_ON_SURFACE, 0.08f), DOWE_RADIUS));
+        content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_SURFACE_TEXT, 0.08f), DOWE_RADIUS));
         int popupWidth = Math.max(anchor.getWidth(), doweDp(220));
         ScrollView optionsScroll = new ScrollView(this);
         optionsScroll.setFillViewport(false);
@@ -357,10 +357,10 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
             if (values[index].equals(selected[0])) {
                 option.setBackgroundColor(doweAlpha(color, 0.08f));
             }
-            TextView labelView = doweText(labels[index], DOWE_ON_SURFACE, 16f, 700, 0f, 1.2f, font);
+            TextView labelView = doweText(labels[index], DOWE_SURFACE_TEXT, 16f, 700, 0f, 1.2f, font);
             doweAdd(option, labelView);
             if (!descriptions[index].isEmpty()) {
-                TextView descriptionView = doweText(descriptions[index], doweAlpha(DOWE_ON_SURFACE, 0.68f), 12f, 400, 0f, 1.2f, font);
+                TextView descriptionView = doweText(descriptions[index], doweAlpha(DOWE_SURFACE_TEXT, 0.68f), 12f, 400, 0f, 1.2f, font);
                 doweAdd(option, descriptionView, 4, false);
             }
             option.setOnClickListener(view -> {
@@ -393,7 +393,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         int popupWidth = Math.min(doweDp(320), getResources().getDisplayMetrics().widthPixels - doweDp(16));
         LinearLayout content = doweContainer(false);
         content.setPadding(doweDp(16), doweDp(16), doweDp(16), doweDp(16));
-        content.setBackground(doweInputBackground(DOWE_BACKGROUND, doweAlpha(DOWE_ON_BACKGROUND, 0.08f), DOWE_RADIUS));
+        content.setBackground(doweInputBackground(DOWE_BACKGROUND, doweAlpha(DOWE_BACKGROUND_TEXT, 0.08f), DOWE_RADIUS));
         int[] rgb = doweColorRgb(selected[0]);
         float[] hsv = new float[3];
         Color.RGBToHSV(rgb[0], rgb[1], rgb[2], hsv);
@@ -424,8 +424,8 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         previewSwatch.setLayoutParams(new LinearLayout.LayoutParams(doweDp(48), doweDp(48)));
         doweAdd(preview, previewSwatch);
         LinearLayout previewInfo = doweContainer(false);
-        TextView previewHex = doweText(selected[0], DOWE_ON_BACKGROUND, 16f, 700, 0f, 1.2f, "monospace");
-        TextView foreground = doweText(" ", doweAlpha(DOWE_ON_BACKGROUND, 0.72f), 12f, 400, 0f, 1.2f, font);
+        TextView previewHex = doweText(selected[0], DOWE_BACKGROUND_TEXT, 16f, 700, 0f, 1.2f, "monospace");
+        TextView foreground = doweText(" ", doweAlpha(DOWE_BACKGROUND_TEXT, 0.72f), 12f, 400, 0f, 1.2f, font);
         doweAdd(previewInfo, previewHex);
         doweAdd(previewInfo, foreground, 2, false);
         doweAdd(preview, previewInfo, 12, true);
@@ -484,7 +484,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
     }
 
     private TextView doweColorFormatView(String font) {
-        TextView view = doweText(" ", DOWE_ON_SOFT_MUTED, 12f, 400, 0f, 1.2f, "monospace");
+        TextView view = doweText(" ", DOWE_SOFT_MUTED_TEXT, 12f, 400, 0f, 1.2f, "monospace");
         view.setSingleLine(true);
         view.setPadding(doweDp(8), doweDp(4), doweDp(8), doweDp(4));
         view.setBackground(doweBackground(DOWE_SOFT_MUTED, DOWE_RADIUS));
@@ -622,12 +622,12 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         String[] mode = new String[]{range && !selected[0].isEmpty() && selected[1].isEmpty() ? "end" : "start"};
         LinearLayout content = doweContainer(false);
         content.setPadding(doweDp(10), doweDp(8), doweDp(10), doweDp(8));
-        content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_ON_SURFACE, 0.08f), DOWE_RADIUS));
-        TextView title = doweText(placeholder, DOWE_ON_SURFACE, 15f, 700, 0f, 1.2f, font);
+        content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_SURFACE_TEXT, 0.08f), DOWE_RADIUS));
+        TextView title = doweText(placeholder, DOWE_SURFACE_TEXT, 15f, 700, 0f, 1.2f, font);
         LinearLayout header = doweContainer(true);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        TextView previous = doweText("‹", DOWE_ON_SURFACE, 24f, 400, 0f, 1f, font);
-        TextView next = doweText("›", DOWE_ON_SURFACE, 24f, 400, 0f, 1f, font);
+        TextView previous = doweText("‹", DOWE_SURFACE_TEXT, 24f, 400, 0f, 1f, font);
+        TextView next = doweText("›", DOWE_SURFACE_TEXT, 24f, 400, 0f, 1f, font);
         previous.setGravity(Gravity.CENTER);
         next.setGravity(Gravity.CENTER);
         previous.setLayoutParams(new LinearLayout.LayoutParams(doweDp(36), doweDp(36)));
@@ -639,7 +639,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         doweAdd(content, header);
         android.widget.LinearLayout weekdays = doweContainer(true);
         for (String day : new String[]{"M", "T", "W", "T", "F", "S", "S"}) {
-            TextView weekday = doweText(day, doweAlpha(DOWE_ON_SURFACE, 0.68f), 11f, 700, 0f, 1.2f, font);
+            TextView weekday = doweText(day, doweAlpha(DOWE_SURFACE_TEXT, 0.68f), 11f, 700, 0f, 1.2f, font);
             weekday.setGravity(Gravity.CENTER);
             weekdays.addView(weekday, new LinearLayout.LayoutParams(0, doweDp(28), 1f));
         }
@@ -664,7 +664,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
                 java.util.Calendar day = (java.util.Calendar) first.clone();
                 day.set(java.util.Calendar.DAY_OF_MONTH, dayNumber);
                 String key = doweDateKey(day);
-                TextView cell = doweText(String.valueOf(dayNumber), DOWE_ON_SURFACE, 12f, 400, 0f, 1.2f, font);
+                TextView cell = doweText(String.valueOf(dayNumber), DOWE_SURFACE_TEXT, 12f, 400, 0f, 1.2f, font);
                 boolean start = range && key.equals(selected[0]);
                 boolean end = range && key.equals(selected[1]);
                 boolean chosen = (!range && key.equals(selected[0])) || start || end;
@@ -673,7 +673,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
                 cell.setGravity(Gravity.CENTER);
                 cell.setMinHeight(doweDp(34));
                 cell.setBackgroundColor(chosen ? color : inRange ? doweAlpha(color, 0.16f) : Color.TRANSPARENT);
-                cell.setTextColor(chosen ? Color.WHITE : enabled ? DOWE_ON_SURFACE : doweAlpha(DOWE_ON_SURFACE, 0.35f));
+                cell.setTextColor(chosen ? Color.WHITE : enabled ? DOWE_SURFACE_TEXT : doweAlpha(DOWE_SURFACE_TEXT, 0.35f));
                 cell.setEnabled(enabled);
                 if (enabled) cell.setOnClickListener(view -> {
                     if (!range) {
@@ -728,15 +728,15 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         content.setScaleY(0.98f);
         content.setTranslationY(-doweDp(4));
         content.setPadding(0, 0, 0, doweDp(4));
-        content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_ON_SURFACE, 0.08f), DOWE_RADIUS));
+        content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_SURFACE_TEXT, 0.08f), DOWE_RADIUS));
         EditText search = new EditText(this);
         search.setSingleLine(true);
         search.setHint(searchPlaceholder);
         search.setTextSize(14f);
-        search.setTextColor(DOWE_ON_SURFACE);
-        search.setHintTextColor(doweAlpha(DOWE_ON_SURFACE, 0.55f));
+        search.setTextColor(DOWE_SURFACE_TEXT);
+        search.setHintTextColor(doweAlpha(DOWE_SURFACE_TEXT, 0.55f));
         search.setPadding(doweDp(12), 0, doweDp(12), 0);
-        search.setBackground(doweInputBackground(doweAlpha(DOWE_ON_SURFACE, 0.07f), Color.TRANSPARENT, 10));
+        search.setBackground(doweInputBackground(doweAlpha(DOWE_SURFACE_TEXT, 0.07f), Color.TRANSPARENT, 10));
         LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(44));
         searchParams.setMargins(doweDp(6), doweDp(6), doweDp(6), doweDp(2));
         content.addView(search, searchParams);
@@ -758,15 +758,15 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
                 LinearLayout row = doweContainer(true);
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));
-                row.setBackground(doweInputBackground(codes[i].equals(selected[0]) ? doweAlpha(DOWE_ON_SURFACE, 0.07f) : Color.TRANSPARENT, Color.TRANSPARENT, 10));
+                row.setBackground(doweInputBackground(codes[i].equals(selected[0]) ? doweAlpha(DOWE_SURFACE_TEXT, 0.07f) : Color.TRANSPARENT, Color.TRANSPARENT, 10));
                 DoweSvgView optionFlag = dowePhoneFlag(codes[i], color);
                 row.addView(optionFlag, new LinearLayout.LayoutParams(doweDp(28), doweDp(28)));
-                TextView name = doweText(names[i], DOWE_ON_SURFACE, 15f, 700, 0f, 1.2f, font);
+                TextView name = doweText(names[i], DOWE_SURFACE_TEXT, 15f, 700, 0f, 1.2f, font);
                 LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
                 nameParams.leftMargin = doweDp(10);
                 nameParams.rightMargin = doweDp(10);
                 row.addView(name, nameParams);
-                TextView dial = doweText("+" + dials[i], DOWE_ON_SURFACE, 15f, 700, 0f, 1.2f, font);
+                TextView dial = doweText("+" + dials[i], DOWE_SURFACE_TEXT, 15f, 700, 0f, 1.2f, font);
                 row.addView(dial, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 row.setOnClickListener(view -> {
                     selected[0] = codes[index];
@@ -777,7 +777,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
                 options.addView(row);
             }
             if (options.getChildCount() == 0) {
-                options.addView(doweText(names.length == 0 ? loadingText : emptyText, doweAlpha(DOWE_ON_SURFACE, 0.68f), 14f, 400, 0f, 1.2f, font));
+                options.addView(doweText(names.length == 0 ? loadingText : emptyText, doweAlpha(DOWE_SURFACE_TEXT, 0.68f), 14f, 400, 0f, 1.2f, font));
             }
         };
         search.addTextChangedListener(new TextWatcher() {

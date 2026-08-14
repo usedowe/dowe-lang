@@ -231,8 +231,8 @@ fn swift_svg_color(props: &StyleProps) -> String {
         .text
         .as_ref()
         .map(swift_color_value)
-        .map(|value| format!("{value} ?? DoweDesign.onBackground"))
-        .unwrap_or_else(|| "DoweDesign.onBackground".to_string())
+        .map(|value| format!("{value} ?? DoweDesign.backgroundText"))
+        .unwrap_or_else(|| "DoweDesign.backgroundText".to_string())
 }
 
 fn swift_svg_paths(paths: &[SvgPath]) -> String {
@@ -420,7 +420,17 @@ fn swift_modifiers_for_text(
         ));
     }
 
-    if let Some(color) = text_color(props) {
+    if title {
+        let color = props
+            .style
+            .text
+            .as_ref()
+            .map(swift_color_value)
+            .unwrap_or_else(|| "nil".to_string());
+        modifiers.push(format!(
+            ".modifier(DoweTitleColorModifier(explicitColor: {color}))"
+        ));
+    } else if let Some(color) = text_color(props) {
         modifiers.push(format!(".foregroundStyle({color})"));
     }
     modifiers.extend(swift_modifiers_for_style(&props.style));
@@ -433,7 +443,7 @@ fn text_color(props: &TextProps) -> Option<String> {
         .text
         .as_ref()
         .map(swift_color_value)
-        .map(|value| format!("{value} ?? DoweDesign.onBackground"))
+        .map(|value| format!("{value} ?? DoweDesign.backgroundText"))
 }
 
 fn text_size(title: bool, props: &TextProps) -> String {

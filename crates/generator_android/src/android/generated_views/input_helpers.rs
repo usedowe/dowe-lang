@@ -123,7 +123,7 @@ private fun DoweSelectPopover(visible: Boolean, options: List<DoweSelectOption>,
         offset = offset,
         shape = shape,
         backgroundColor = DoweDesign.surface,
-        contentColor = DoweDesign.onSurface,
+        contentColor = DoweDesign.surfaceText,
         contentPadding = PaddingValues(vertical = 4.dp),
         onDismiss = onDismiss
     ) {
@@ -135,9 +135,9 @@ private fun DoweSelectPopover(visible: Boolean, options: List<DoweSelectOption>,
                     .clickable { onSelect(option) }
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
-                Text(text = option.label, fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.SemiBold, color = DoweDesign.onSurface, fontFamily = fontFamily)
+                Text(text = option.label, fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.SemiBold, color = DoweDesign.surfaceText, fontFamily = fontFamily)
                 if (option.description != null) {
-                    Text(text = option.description, fontSize = 12.sp, color = DoweDesign.onSurface.copy(alpha = 0.68f), fontFamily = fontFamily)
+                    Text(text = option.description, fontSize = 12.sp, color = DoweDesign.surfaceText.copy(alpha = 0.68f), fontFamily = fontFamily)
                 }
             }
         }
@@ -294,15 +294,15 @@ private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: Str
                     BasicTextField(value = localValue, onValueChange = { next -> if (!disabled) { val filtered = next.filter { char -> char.isDigit() }; localValue = filtered; onValueChange(filtered) } }, modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).padding(top = if (label != null && floating) 10.dp else 0.dp), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = TextStyle(color = contentColor, fontSize = fontSize, lineHeight = lineHeight), enabled = !disabled)
                 }
             }
-            if (triggerHeight > 0 && (expanded || popupMounted)) DoweAnchoredPopover(visible = expanded, offset = popupOffset, shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, contentPadding = PaddingValues(0.dp), minWidth = 280.dp, maxWidth = 384.dp, maxHeight = 380.dp, onDismiss = { expanded = false; query = "" }) {
-                BasicTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(6.dp).clip(RoundedCornerShape(10.dp)).background(DoweDesign.onSurface.copy(alpha = 0.07f)).padding(horizontal = 12.dp, vertical = 9.dp), singleLine = true, textStyle = TextStyle(color = DoweDesign.onSurface), decorationBox = { inner -> Box { if (query.isEmpty()) Text(searchPlaceholder, color = DoweDesign.onSurface.copy(alpha = 0.55f)); inner() } })
-                if (countries.isEmpty()) Text(loadingText, modifier = Modifier.padding(16.dp), color = DoweDesign.onSurface.copy(alpha = 0.68f))
-                else if (filtered.isEmpty()) Text(emptyText, modifier = Modifier.padding(16.dp), color = DoweDesign.onSurface.copy(alpha = 0.68f))
+            if (triggerHeight > 0 && (expanded || popupMounted)) DoweAnchoredPopover(visible = expanded, offset = popupOffset, shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(0.dp), minWidth = 280.dp, maxWidth = 384.dp, maxHeight = 380.dp, onDismiss = { expanded = false; query = "" }) {
+                BasicTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(6.dp).clip(RoundedCornerShape(10.dp)).background(DoweDesign.surfaceText.copy(alpha = 0.07f)).padding(horizontal = 12.dp, vertical = 9.dp), singleLine = true, textStyle = TextStyle(color = DoweDesign.surfaceText), decorationBox = { inner -> Box { if (query.isEmpty()) Text(searchPlaceholder, color = DoweDesign.surfaceText.copy(alpha = 0.55f)); inner() } })
+                if (countries.isEmpty()) Text(loadingText, modifier = Modifier.padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f))
+                else if (filtered.isEmpty()) Text(emptyText, modifier = Modifier.padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f))
                 else filtered.forEach { item ->
-                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { selectedCode = item.code; expanded = false; query = "" }.background(if (item.code == selectedCode) DoweDesign.onSurface.copy(alpha = 0.07f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DoweSvg(viewBox = item.viewBox, modifier = Modifier.size(28.dp).clip(RoundedCornerShape(999.dp)), color = DoweDesign.onSurface, paths = item.paths)
-                        Text(item.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, color = DoweDesign.onSurface, maxLines = 1)
-                        Text("+${item.dialCode}", fontWeight = FontWeight.Bold, color = DoweDesign.onSurface)
+                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { selectedCode = item.code; expanded = false; query = "" }.background(if (item.code == selectedCode) DoweDesign.surfaceText.copy(alpha = 0.07f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        DoweSvg(viewBox = item.viewBox, modifier = Modifier.size(28.dp).clip(RoundedCornerShape(999.dp)), color = DoweDesign.surfaceText, paths = item.paths)
+                        Text(item.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, color = DoweDesign.surfaceText, maxLines = 1)
+                        Text("+${item.dialCode}", fontWeight = FontWeight.Bold, color = DoweDesign.surfaceText)
                     }
                 }
             }
@@ -468,7 +468,7 @@ private fun Modifier.doweRounded(radius: Dp?): Modifier =
     if (radius == null) this else clip(RoundedCornerShape(radius))
 
 private fun Modifier.doweBorder(width: Dp?, radius: Dp?): Modifier =
-    if (width == null) this else border(width, DoweDesign.onBackground, RoundedCornerShape(radius ?: DoweDesign.radius))
+    if (width == null) this else border(width, DoweDesign.backgroundText, RoundedCornerShape(radius ?: DoweDesign.radius))
 
 private fun doweHorizontalAlignment(value: DoweAlign?): Alignment.Horizontal =
     when (value) {

@@ -83,6 +83,23 @@ fn every_project_template_enables_dowe_format_on_save() {
 }
 
 #[test]
+fn every_project_template_generates_grouped_theme_colors() {
+    for options in materialized_options() {
+        let temp = TempDir::new().expect("tempdir");
+        init_project(temp.path(), options).expect("init");
+        let theme = fs::read_to_string(temp.path().join("theme.dowe")).expect("theme");
+
+        assert!(theme.contains("colors:\n"), "{theme}");
+        assert!(theme.contains("primary color:\""), "{theme}");
+        assert!(theme.contains("text:\""), "{theme}");
+        assert!(theme.contains("title:\""), "{theme}");
+        assert!(!theme.contains("primaryText:"), "{theme}");
+        assert!(!theme.contains("primaryTitle:"), "{theme}");
+        compile_template(temp.path());
+    }
+}
+
+#[test]
 fn blank_template_writes_hello_page_and_endpoint() {
     let temp = TempDir::new().expect("tempdir");
     let report =
@@ -111,6 +128,18 @@ fn blank_template_writes_hello_page_and_endpoint() {
     assert!(!temp.path().join("views/layouts/app.dowe").exists());
     assert!(!temp.path().join("server/migrations").exists());
     assert!(!temp.path().join("migrations").exists());
+    assert!(
+        fs::read_to_string(temp.path().join("theme.dowe"))
+            .expect("theme")
+            .contains(concat!(
+                "      colors:\n",
+                "        primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"\n",
+                "        secondary color:\"#6BC670\" text:\"#102A15\" title:\"#102A15\"\n",
+                "        background color:\"#FFFFFF\" text:\"#17263A\" title:\"#17263E\"\n",
+                "        surface color:\"#F7F9FC\" text:\"#17263A\" title:\"#17263E\"\n",
+                "        softPrimary color:\"#CCFBF3\" text:\"#073B35\" title:\"#073B35\"\n",
+            ))
+    );
     assert!(
         fs::read_to_string(temp.path().join("views/pages/home.dowe"))
             .expect("home")
@@ -202,7 +231,7 @@ fn crud_writes_auth_owned_blogs_and_layered_server_modules() {
     assert!(!blogs.contains("let result = createBlogService"));
     assert!(!blogs.contains("handler createBlog async"));
     assert!(!blogs.contains("handler getSession"));
-    assert!(!blogs.contains("db:appDb."));
+    assert!(!blogs.contains("conn:appDb."));
     assert!(!blogs.contains("query "));
     assert!(blogs_service.contains("updateBlogRepository updated args:"));
     assert!(!blogs_service.contains("let updated = updateBlogRepository"));
@@ -210,10 +239,10 @@ fn crud_writes_auth_owned_blogs_and_layered_server_modules() {
     assert!(users.contains("registerUserService result args:"));
     assert!(!users.contains("handler registerUser async"));
     assert!(users.contains("handler getSession\n"));
-    assert!(!users.contains("db:appDb."));
+    assert!(!users.contains("conn:appDb."));
     assert!(!users.contains("query "));
     assert!(!users.contains("jwt "));
-    assert!(users_repository.contains("db:appDb.insert table:\"users\""));
+    assert!(users_repository.contains("conn:appDb.insert table:\"users\""));
     assert!(users_repository.contains("id session source:\"ulid\""));
     assert!(
         users_repository.contains("str sessionKey source:\"join\" values:[\"session\", args.id]")
@@ -242,6 +271,9 @@ fn crud_generates_a_modal_editorial_dashboard() {
         fs::read_to_string(temp.path().join("views/layouts/app.dowe")).expect("app layout");
     let page = fs::read_to_string(temp.path().join("views/pages/home.dowe")).expect("home page");
     let theme = fs::read_to_string(temp.path().join("theme.dowe")).expect("theme");
+
+    assert!(theme.contains("primary color:\"#315f4f\" text:\"#ffffff\" title:\"#ffffff\""));
+    assert!(theme.contains("softPrimary color:\"#dfeae4\" text:\"#17342b\" title:\"#17342b\""));
 
     assert!(layout.contains("Scaffold boxed:true"));
     assert!(layout.contains("AppBar boxed:true"));
@@ -305,16 +337,16 @@ fn crud_generates_a_modal_editorial_dashboard() {
     assert!(theme.contains("Avatar variant:\"soft\" scheme:\"primary\""));
     assert!(theme.contains("Chip variant:\"soft\" scheme:\"primary\""));
     for role in [
-        "primary:",
-        "secondary:",
-        "tertiary:",
-        "muted:",
-        "background:",
-        "surface:",
-        "success:",
-        "info:",
-        "warning:",
-        "danger:",
+        "primary color:",
+        "secondary color:",
+        "tertiary color:",
+        "muted color:",
+        "background color:",
+        "surface color:",
+        "success color:",
+        "info color:",
+        "warning color:",
+        "danger color:",
     ] {
         assert!(theme.contains(role), "theme missing {role}");
     }

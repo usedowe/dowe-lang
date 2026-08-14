@@ -3,8 +3,14 @@ fn parse_config_binding_node(
     environment: &EnvironmentConfig,
     entities: &HashMap<String, DatabaseEntity>,
     seeders: &HashMap<String, DatabaseSeeder>,
+    include_seeders: bool,
 ) -> DoweResult<ServerConfigBinding> {
-    if let Some(statement) = parse_database_statement(node, Some(environment), entities, seeders)? {
+    let database_statement = if include_seeders {
+        parse_database_statement(node, Some(environment), entities, seeders)?
+    } else {
+        parse_database_statement_without_seeders(node, Some(environment), entities)?
+    };
+    if let Some(statement) = database_statement {
         if !matches!(statement, crate::model::ServerStoreStatement::Handle { .. }) {
             return Err(node_error(
                 node,

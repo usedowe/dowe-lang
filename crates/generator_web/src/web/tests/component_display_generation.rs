@@ -47,7 +47,7 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(!page.css_content.contains(".badge.is-solid.is-danger"));
     assert!(page.css_content.contains(".modal.is-solid.is-surface"));
     assert!(page.css_content.contains(
-        ".toast.is-outlined.is-warning{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-warning);}"
+        ".toast.is-outlined.is-warning{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid var(--dowe-warning);}"
     ));
     assert!(
         page.css_content
@@ -97,7 +97,7 @@ fn resolves_modal_and_alert_dialog_panels_like_card_surfaces() {
         &modal,
     );
     assert!(modal_page.css_content.contains(
-        ".modal.is-outlined.is-warning{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-warning);}"
+        ".modal.is-outlined.is-warning{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid var(--dowe-warning);}"
     ));
 
     let alert = ViewNode::AlertDialog {
@@ -161,7 +161,7 @@ fn emits_global_toast_action_surface_rules() {
     );
 
     assert!(page.css_content.contains(
-        ".toast.is-outlined.is-warning{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-warning);}"
+        ".toast.is-outlined.is-warning{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid var(--dowe-warning);}"
     ));
 }
 
@@ -448,7 +448,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
             .contains(".accordion.is-outlined.is-surface")
     );
     assert!(page.css_content.contains(
-        ".accordion.is-outlined.is-surface{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid var(--dowe-surface);}"
+        ".accordion.is-outlined.is-surface{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid var(--dowe-surface);}"
     ));
     assert!(page.css_content.contains(".carousel.is-solid.is-info"));
     assert!(css.contains(".checkbox-input{position:relative;"));
@@ -720,10 +720,10 @@ fn emits_readable_outlined_surface_controls() {
     );
 
     assert!(page.css_content.contains(
-        ".control.is-outlined.is-surface{background-color:var(--dowe-surface);color:var(--dowe-onSurface);border:1px solid rgba(127,127,127,0.36);}"
+        ".control.is-outlined.is-surface{background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid rgba(127,127,127,0.36);}"
     ));
     assert!(page.css_content.contains(
-        ".control.is-outlined.is-surface:focus-within{border-color:var(--dowe-onSurface);"
+        ".control.is-outlined.is-surface:focus-within{border-color:var(--dowe-surfaceText);"
     ));
 }
 

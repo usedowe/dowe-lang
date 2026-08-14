@@ -81,11 +81,24 @@ fn dev_inherited_color(props: &StyleProps, inherited_color: Option<&str>) -> Opt
         .text
         .as_ref()
         .map(dev_color_value)
+        .map(|color| dev_content_colors(&color, &color))
         .or_else(|| inherited_color.map(str::to_string))
 }
 
+fn dev_content_colors(text: &str, title: &str) -> String {
+    format!("{text}\u{1f}{title}")
+}
+
+fn dev_inherited_text_color(value: Option<&str>) -> Option<&str> {
+    value.map(|value| value.split_once('\u{1f}').map_or(value, |colors| colors.0))
+}
+
+fn dev_inherited_title_color(value: Option<&str>) -> Option<&str> {
+    value.map(|value| value.split_once('\u{1f}').map_or(value, |colors| colors.1))
+}
+
 fn dev_svg_color(props: &StyleProps, inherited_color: Option<&str>) -> String {
-    let fallback = inherited_color.unwrap_or("DOWE_ON_BACKGROUND");
+    let fallback = dev_inherited_text_color(inherited_color).unwrap_or("DOWE_BACKGROUND_TEXT");
     props
         .text
         .as_ref()
@@ -290,7 +303,7 @@ fn apply_dev_android_style(
             .map(dev_border_value)
             .unwrap_or_else(|| "null".to_string());
         output.push_str(&format!(
-            "        {view}.setBackground(doweStyledBackground({background}, DOWE_ON_BACKGROUND, {border}, {}));\n",
+            "        {view}.setBackground(doweStyledBackground({background}, DOWE_BACKGROUND_TEXT, {border}, {}));\n",
             dev_style_radius(props)
         ));
     }

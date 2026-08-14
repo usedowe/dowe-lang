@@ -244,7 +244,7 @@ fn dev_activity_layout_widgets() -> &'static str {
         LinearLayout view = doweContainer(false);
         view.setBackground(borderColor == null
             ? bordered
-                ? doweInputBackground(backgroundColor, doweAlpha(DOWE_ON_SURFACE, 0.28f), DOWE_RADIUS)
+                ? doweInputBackground(backgroundColor, doweAlpha(DOWE_SURFACE_TEXT, 0.28f), DOWE_RADIUS)
                 : doweBackground(backgroundColor, DOWE_RADIUS)
             : doweInputBackground(backgroundColor, borderColor, DOWE_RADIUS));
         HorizontalScrollView scroll = new HorizontalScrollView(this);
@@ -277,7 +277,7 @@ fn dev_activity_layout_widgets() -> &'static str {
             for (int rowIndex = 0; rowIndex < rows.size(); rowIndex += 1) {
                 LinearLayout row = doweTableRow();
                 if (striped && rowIndex % 2 == 1) {
-                    row.setBackgroundColor(doweAlpha(DOWE_ON_SURFACE, 0.12f));
+                    row.setBackgroundColor(doweAlpha(DOWE_SURFACE_TEXT, 0.12f));
                 }
                 for (int columnIndex = 0; columnIndex < fields.length; columnIndex += 1) {
                     boolean separated = bordered && columnIndex < fields.length - 1;
@@ -290,7 +290,7 @@ fn dev_activity_layout_widgets() -> &'static str {
                 doweAdd(table, row);
                 if (dividers && rowIndex < rows.size() - 1) {
                     View divider = new View(this);
-                    divider.setBackgroundColor(doweAlpha(DOWE_ON_SURFACE, 0.28f));
+                    divider.setBackgroundColor(doweAlpha(DOWE_SURFACE_TEXT, 0.28f));
                     divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1)));
                     doweAdd(table, divider);
                 }
@@ -322,7 +322,7 @@ fn dev_activity_layout_widgets() -> &'static str {
 
     private View doweTableSeparator() {
         View separator = new View(this);
-        separator.setBackgroundColor(doweAlpha(DOWE_ON_SURFACE, 0.28f));
+        separator.setBackgroundColor(doweAlpha(DOWE_SURFACE_TEXT, 0.28f));
         separator.setLayoutParams(new LinearLayout.LayoutParams(doweDp(1), ViewGroup.LayoutParams.MATCH_PARENT));
         return separator;
     }
@@ -519,7 +519,7 @@ fn dev_activity_layout_widgets() -> &'static str {
         }
     }
 
-    private void doweRenderSideNav(LinearLayout parent, ArrayList<DoweSideNavEntry> entries, String stateKey, boolean wide, int paddingHorizontal, int paddingVertical, int gap, int labelSize, int descriptionSize, int backgroundColor, int activeContentColor, String font) {
+    private void doweRenderSideNav(LinearLayout parent, ArrayList<DoweSideNavEntry> entries, String stateKey, boolean wide, int paddingHorizontal, int paddingVertical, int gap, int labelSize, int descriptionSize, int backgroundColor, int activeContentColor, int titleColor, String font) {
         if (wide) parent.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         for (DoweSideNavEntry entry : entries) {
             if ("divider".equals(entry.kind)) {
@@ -530,7 +530,7 @@ fn dev_activity_layout_widgets() -> &'static str {
             } else if ("submenu".equals(entry.kind)) {
                 String submenuKey = stateKey + ":" + entry.id;
                 boolean expanded = doweSideNavExpanded(submenuKey, entry.open);
-                LinearLayout trigger = doweSideNavRow(entry, true, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font, null, expanded);
+                LinearLayout trigger = doweSideNavRow(entry, false, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, titleColor, font, null, expanded);
                 doweAdd(parent, trigger);
                 LinearLayout submenu = doweContainer(entry.bordered);
                 submenu.setPadding(doweDp(16), 0, 0, 0);
@@ -539,9 +539,9 @@ fn dev_activity_layout_widgets() -> &'static str {
                 LinearLayout submenuContent = doweSideNavSubmenuContent(submenu, entry.bordered);
                 View arrow = (View) trigger.getTag();
                 trigger.setOnClickListener(v -> doweToggleSideNavSubmenu(submenu, arrow, submenuKey));
-                doweRenderSideNav(submenuContent, entry.children, stateKey, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font);
+                doweRenderSideNav(submenuContent, entry.children, stateKey, wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, titleColor, font);
             } else {
-                LinearLayout row = doweSideNavRow(entry, "header".equals(entry.kind), wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, font, doweSideNavAction(entry), null);
+                LinearLayout row = doweSideNavRow(entry, "header".equals(entry.kind), wide, paddingHorizontal, paddingVertical, gap, labelSize, descriptionSize, backgroundColor, activeContentColor, titleColor, font, doweSideNavAction(entry), null);
                 doweAdd(parent, row);
             }
         }
@@ -561,7 +561,7 @@ fn dev_activity_layout_widgets() -> &'static str {
         return content;
     }
 
-    private LinearLayout doweSideNavRow(DoweSideNavEntry entry, boolean header, boolean wide, int paddingHorizontal, int paddingVertical, int gap, int labelSize, int descriptionSize, int backgroundColor, int activeContentColor, String font, Runnable action, Boolean submenuOpen) {
+    private LinearLayout doweSideNavRow(DoweSideNavEntry entry, boolean header, boolean wide, int paddingHorizontal, int paddingVertical, int gap, int labelSize, int descriptionSize, int backgroundColor, int activeContentColor, int titleColor, String font, Runnable action, Boolean submenuOpen) {
         LinearLayout view = doweContainer(true);
         view.setLayoutParams(new LinearLayout.LayoutParams(wide ? ViewGroup.LayoutParams.MATCH_PARENT : ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         view.setGravity(Gravity.CENTER_VERTICAL);
@@ -570,11 +570,11 @@ fn dev_activity_layout_widgets() -> &'static str {
         if (active) {
             view.setBackground(doweBackground(backgroundColor, DOWE_RADIUS));
         }
-        int rowContentColor = active ? activeContentColor : DOWE_ON_BACKGROUND;
+        int rowContentColor = active ? activeContentColor : DOWE_BACKGROUND_TEXT;
         LinearLayout copy = doweContainer(false);
         copy.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         doweAdd(view, copy);
-        TextView label = doweText(entry.label, rowContentColor, labelSize, header ? 600 : 400, 0f, labelSize, font);
+        TextView label = doweText(entry.label, header ? titleColor : rowContentColor, labelSize, header ? 600 : 400, 0f, labelSize, font);
         doweAdd(copy, label);
         if (entry.description != null) {
             TextView description = doweText(entry.description, rowContentColor, descriptionSize, 400, 0f, descriptionSize, font);
@@ -598,7 +598,7 @@ fn dev_activity_layout_widgets() -> &'static str {
     }
 
     private TextView doweSideNavStatus(String text, float descriptionSize, String font) {
-        TextView status = doweText(text, DOWE_ON_SOFT_MUTED, descriptionSize, 600, 0f, descriptionSize, font);
+        TextView status = doweText(text, DOWE_SOFT_MUTED_TEXT, descriptionSize, 600, 0f, descriptionSize, font);
         status.setPadding(doweDp(8), doweDp(2), doweDp(8), doweDp(2));
         status.setBackground(doweBackground(DOWE_SOFT_MUTED, 999f));
         return status;

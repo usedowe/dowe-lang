@@ -284,6 +284,14 @@ fn generates_android_charts_with_canvas_runtime() {
     assert!(views.content.contains("private fun DoweChart("));
     assert!(views.content.contains("doweDrawPointChart"));
     assert!(views.content.contains("doweDrawPieChart"));
+    assert!(views.content.contains("donutWidth: Int = 60"));
+    assert!(views.content.contains("aspectRatio(1f)"));
+    assert!(views.content.contains("DoweChartLegend"));
+    assert!(views.content.contains("doweDrawArcChart(categories, palette, contentColor, backgroundColor, thickness, gap, startAngle, endAngle.toFloat()"));
+    assert!(views.content.contains("backgroundColor.copy(alpha = 0.94f), RoundedCornerShape(999.dp)"));
+    assert!(views.content.contains("drawRoundRect(clampedLeft - horizontalPadding"));
+    assert!(views.content.contains("centerText = \"Share\""));
+    assert!(views.content.contains("showInlineLabels = true"));
     assert!(views.content.contains(
         "DoweChart(state = state, chartType = \"arc\", dataPath = \"segments\""
     ));
@@ -298,4 +306,11 @@ fn generates_android_charts_with_canvas_runtime() {
     );
     assert!(dev.content.contains("DoweChartView"));
     assert!(dev.content.contains("doweDrawPieChart"));
+    assert!(dev.content.contains("int donutWidth"));
+    assert!(dev.content.contains("float ringWidth"));
+    assert!(dev.content.contains("doweDrawArcChart(canvas, categories"));
+    assert!(dev.content.contains("doweDrawChartCenterBadge"));
+    assert!(dev.content.contains("doweAlpha(backgroundColor, 0.94f)"));
+    assert!(dev.content.contains("int thickness"));
+    assert!(dev.content.contains("Float max"));
 }

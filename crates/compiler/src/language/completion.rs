@@ -33,6 +33,11 @@ pub fn complete_document(
     let root = root.as_path();
     let prefix = line_prefix(&document.source, line, column);
     let suite_owner = multiline_suite_owner(&document.source, line, &prefix);
+    if document.path.ends_with("theme.dowe")
+        && let Some(completions) = theme_color_completions(&prefix, suite_owner)
+    {
+        return completions;
+    }
     if import_context(&prefix) {
         return import_completions(root, &document.path);
     }
@@ -148,7 +153,7 @@ pub fn complete_document(
         }
     }
     if let Some((component, prop)) = component_prop_value_context(&prefix)
-        && let Some(completions) = component_value_completions(component, prop)
+        && let Some(completions) = project_component_value_completions(root, component, prop)
     {
         return completions;
     }
@@ -157,7 +162,7 @@ pub fn complete_document(
             .split_whitespace()
             .last()
             .and_then(|token| token.split_once(':').map(|(prop, _)| prop))
-        && let Some(completions) = component_value_completions(component, prop)
+        && let Some(completions) = project_component_value_completions(root, component, prop)
     {
         return completions;
     }
@@ -188,6 +193,39 @@ pub fn complete_document(
         return prop_completions(component.as_str());
     }
     base_completions()
+}
+
+fn theme_color_completions(
+    prefix: &str,
+    suite_owner: Option<&str>,
+) -> Option<Vec<LanguageCompletion>> {
+    let inline_owner = prefix.trim_start().split_whitespace().next();
+    let family_owner = inline_owner
+        .filter(|owner| ColorFamily::from_theme_name(owner).is_some())
+        .or_else(|| suite_owner.filter(|owner| ColorFamily::from_theme_name(owner).is_some()));
+    if family_owner.is_none() && suite_owner == Some("colors") {
+        return Some(
+            ColorFamily::theme_names()
+                .iter()
+                .map(|name| completion(name, LanguageCompletionKind::Keyword, "theme color family"))
+                .collect(),
+        );
+    }
+
+    family_owner?;
+    if prefix
+        .split_whitespace()
+        .last()
+        .is_some_and(|token| token.contains(':'))
+    {
+        return Some(Vec::new());
+    }
+    Some(
+        ["color", "text", "title"]
+            .into_iter()
+            .map(|role| completion(role, LanguageCompletionKind::Property, "theme color role"))
+            .collect(),
+    )
 }
 
 fn line_prefix(source: &str, line: usize, column: usize) -> String {
@@ -753,14 +791,6 @@ pub(super) fn component_value_completions(
         | (BuiltinComponent::Button | BuiltinComponent::Input, "iconStart" | "iconEnd") => {
             Some(quoted_values(dowe_components::solar_icon_names()))
         }
-        (BuiltinComponent::Icon, "style") => Some(quoted_values([
-            "broken",
-            "outline",
-            "linear",
-            "bold",
-            "line-duotone",
-            "bold-duotone",
-        ])),
         (BuiltinComponent::Icon, "fill" | "stroke") => Some(quoted_values(
             ["currentColor"]
                 .into_iter()
@@ -906,7 +936,9 @@ pub(super) fn component_value_completions(
         ) => Some(quoted_values(
             ColorFamily::all()
                 .iter()
-                .filter(|value| !matches!(value, ColorFamily::Background | ColorFamily::Surface))
+                .filter(|value| {
+                    **value != ColorFamily::Background && **value != ColorFamily::Surface
+                })
                 .map(|value| value.as_str()),
         )),
         (
@@ -926,7 +958,9 @@ pub(super) fn component_value_completions(
         ) => Some(quoted_values(
             ColorFamily::all()
                 .iter()
-                .filter(|value| !matches!(value, ColorFamily::Background | ColorFamily::Surface))
+                .filter(|value| {
+                    **value != ColorFamily::Background && **value != ColorFamily::Surface
+                })
                 .map(|value| value.as_str()),
         )),
         (
@@ -1232,6 +1266,48 @@ pub(super) fn component_value_completions(
             ToastKind::all().iter().map(|value| value.as_str()),
         )),
         _ => None,
+    }
+}
+
+fn project_component_value_completions(
+    root: &Path,
+    component: BuiltinComponent,
+    prop: &str,
+) -> Option<Vec<LanguageCompletion>> {
+    let mut completions = component_value_completions(component, prop)?;
+    if prop == "scheme" {
+        completions.extend(custom_color_family_completions(root));
+    }
+    Some(completions)
+}
+
+fn custom_color_family_completions(root: &Path) -> Vec<LanguageCompletion> {
+    let path = root.join("theme.dowe");
+    let Ok(source) = fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    let Ok(file) = parse_source_file(root, &path, source) else {
+        return Vec::new();
+    };
+    let mut families = BTreeSet::new();
+    for node in &file.nodes {
+        collect_custom_color_families(node, &mut families);
+    }
+    quoted_values(families)
+}
+
+fn collect_custom_color_families(node: &SourceNode, families: &mut BTreeSet<String>) {
+    if node.name == "colors" {
+        for child in &node.children {
+            if let Some((family, false)) = ColorFamily::from_theme_name(&child.name)
+                && !family.is_builtin()
+            {
+                families.insert(family.as_str().to_string());
+            }
+        }
+    }
+    for child in &node.children {
+        collect_custom_color_families(child, families);
     }
 }
 
@@ -3464,5 +3540,5 @@ const RICH_TEXT_PROPS: &[&str] = &[
     "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
 ];
 const SVG_PROPS: &[&str] = &["viewBox", "data", "color", "w", "h", "id", "show"];
-const ICON_PROPS: &[&str] = &["name", "style", "fill", "stroke", "w", "h", "id", "show"];
+const ICON_PROPS: &[&str] = &["name", "fill", "stroke", "w", "h", "id", "show"];
 const PATH_PROPS: &[&str] = &["d", "fill", "fillRule", "transform"];

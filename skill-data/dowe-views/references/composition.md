@@ -8,6 +8,8 @@ reference design or screenshot into source.
 
 - Layout/page ownership and reusable static components
 - Repeated collection ownership and container decisions
+- Auth and form composition without generic wrappers
+- Visual direction, section richness, and layered scenes
 - Hero, landing-page, equal-height, and anti-pattern guidance
 - Composition validation checklist
 
@@ -82,6 +84,38 @@ layout AppLayout
 
 Use a layout `Splash` for whole-application gates such as session validation, and a page `Splash`
 for that page's own loading state. Both bind a boolean set explicitly in every `init` branch.
+
+## AppBar composition
+
+The AppBar is a semantic shell bar, not a generic flex or card wrapper. Supported AppBar patterns
+keep the bar directly under `Scaffold appBar` and use its regions as the composition map:
+
+| Region | Owns | Responsive guidance |
+| --- | --- | --- |
+| `top` / `bottom` | Full-width announcement or secondary band | Use only when the band belongs inside the bar surface. |
+| `start` | Brand and leading identity | Keep the brand intrinsic; group multiple leading controls with `Flex`. |
+| `center` | Flexible primary navigation or title | Put `NavMenu` or the title directly in the region; use its own `show` prop. |
+| `end` | Primary action, utilities, and mobile menu trigger | Put `Button` and `IconButton` directly in the region; group several with `Flex`. |
+
+For a floating or pill AppBar, express the surface with `floating:true`, `boxed:true`,
+`bordered:true` or an intentional border, radius, blur, and shadow on `AppBar`. Do not reconstruct
+that surface with nested Boxes in `overlays`. `overlays` is for the mobile `Drawer`, announcements
+that intentionally sit outside the bar, or other shell-level surfaces. A Box in `start`, `center`,
+or `end` is justified only by an actual positioned/decorative layer; it is not the default way to
+apply `show`, center content, or make a slot fill width.
+
+Keep the AppBar tree untransformed. Do not put `translateX` or `translateY` on `AppBar`, `Brand`,
+`NavMenu`, its action Buttons, `Drawer`, or wrappers around those nodes to nudge the bar toward
+reference coordinates. Use `boxed:true`, AppBar regions, intrinsic slot sizing, `gap`, padding, and
+responsive `show` to reproduce the shell rail. `NavMenu` owns anchored submenu and megamenu
+surfaces, so its semantic root must not be visually displaced from the geometry used by those
+surfaces.
+
+When the same navigation is needed by desktop and mobile, remember that reusable `component`
+exports accept no props. A direct built-in `NavMenu show:{ xs:false md:true }` may therefore be
+needed in `AppBar center`, while the prop-free reusable navigation tree is mounted in the Drawer.
+This keeps responsive behavior attached to the semantic navigation owner instead of producing a
+block wrapper that changes the AppBar's intrinsic row geometry.
 
 ## Reusable components
 
@@ -168,25 +202,161 @@ the same; transport changes the data owner, not the visual structure.
 
 ## Container decision tree
 
-Decide top-down for every region, in this order:
+Start with zero `Box` nodes and decide top-down for every region, in this order:
 
 1. Is it a major horizontal band of the page (hero, features, catalog, form area, pricing,
    testimonials, call to action)? Use a sibling `Section`.
-2. Do sibling children align to shared tracks — repeated same-shape units, a dashboard, a catalog,
+2. Is the group one related semantic unit the user reads as a surface — a form, metric, article,
+   product, profile, or setting group? Use `Card` and let `theme.dowe` style it.
+3. Do sibling children align to shared tracks — repeated same-shape units, a dashboard, a catalog,
    responsive columns, or a stack with one uniform rhythm? Use `Grid` with `columns`, `gap`, and
    responsive values such as `columns:{ xs:1 md:3 }`.
-3. Do children flow on one axis with individual intrinsic sizes — an icon beside text, a label
+4. Do children flow on one axis with individual intrinsic sizes — an icon beside text, a label
    with a trailing action, a toolbar, a chip row, centered content? Use `Flex` with `direction`,
    `align`, `justify`, `gap`, and `wrap:true` for rows that may overflow.
-4. Is the group one related semantic unit the user reads as a surface — a form, metric, article,
-   product, profile, setting group? Wrap it in `Card` and let `theme.dowe` style it.
-5. Only when no semantic component fits — a plain background band, cover or overlay holder, or a
-   neutral absolute wrapper — use `Box`.
+5. Does the region require children to leave normal flow? Use `Box position:"relative"` as the
+   layer plane with direct `Box position:"absolute"` children, or `Box position:"fixed"` for a
+   route-viewport layer. Keep the actual content inside semantic Dowe components.
 
-`Grid` and `Flex` arrange; `Card` groups and styles; `Box` is the documented exception, not a
-default. `Grid columns:1 gap:<n>` and `Flex direction:"column" gap:<n>` are both valid vertical
-stacks: prefer Grid when the stack is structural rhythm between blocks, and Flex when the column
-also needs `align` or `justify` behavior, such as centering Splash content.
+`Grid` and `Flex` arrange; `Card` groups and styles; `Box` owns exceptional layer geometry. A style
+prop alone never justifies a Box. Put `p`, `bg`, `rounded`, `border`, `w`, `h`, `maxW`, `show`, and
+`animation` on the Section, Grid, Flex, Card, control, media, or content node that already owns the
+region. Do not wrap `Input`, `Password`, `Phone`, `Pin`, `Button`, `Image`, or `Svg` only to restyle
+or resize it. Do not use empty Boxes as Grid gutters or offset columns; center and constrain the
+real Grid, Flex, Card, or control with `align`, `justify`, `w`, and `maxW` instead.
+
+Do not use `translateX` or `translateY` as a second layout system. Screenshot measurements describe
+the target relationships; they do not authorize one transform per node. Express normal geometry
+through the decision tree above. Try `Flex` first for rows, columns, centering, distribution, and
+intrinsic-size groups through `direction`, `justify`, `align`, `gap`, and `wrap`. Try `Grid` for
+shared tracks, repeated units, responsive columns, and structural stacks through `columns`, `rows`,
+`justify`, `align`, and `gap`. A translation is justified only inside an advanced relative Box scene
+when a decorative or floating layer intentionally overlaps another layer and Flex, Grid, normal
+flow, plus absolute offsets cannot express the final effect. Record that responsibility in the
+composition blueprint. If the same result can be produced with those structural props, padding,
+width, maximum width, responsive direction, AppBar regions, or Box offsets, remove the translation.
+
+`Grid columns:1 gap:<n>` and `Flex direction:"column" gap:<n>` are both valid vertical stacks:
+prefer Grid when the stack is structural rhythm between blocks, and Flex when the column also needs
+`align` or `justify` behavior, such as centering Splash content. When the same content changes
+between breakpoints, keep one tree and use responsive `columns`, `direction`, `gap`, padding,
+sizing, and visibility on the real owners. Never duplicate the complete compact and wide forms just
+to tune offsets.
+
+A Box should normally declare `position:"relative"`, `position:"absolute"`, or
+`position:"fixed"`. A rare non-positioned Box is acceptable only when a neutral media or drawing
+stage has no semantic owner; record that reason in the composition blueprint. `cover`, `overlay`,
+padding, background, border, or sizing by themselves are not sufficient because ordinary bands and
+surfaces already belong to Section, Card, Grid, Flex, media, or controls.
+
+## Auth and form composition
+
+Auth screens use the same container rules as other views. Keep reusable background geometry in the
+layout and the form content in the page. A positioned `Box` is appropriate in the layout only when
+it creates a real background layer plane; the page should normally need none.
+
+```text
+layout AuthLayout
+  Scaffold
+    main
+      Box position:"relative" minH:"vh-0" bg:"background"
+        Box position:"absolute" top:0 left:0 w:"full" h:"full"
+          Svg viewBox:"0 0 1440 1024" w:"full" h:"full"
+            Path d:"M0 0H1440V1024H0Z" fill:"#131031"
+        children
+```
+
+Use one responsive page tree. Let the form Grid own width, maximum width, padding, and field rhythm;
+let each control and Button own its surface and size. Add a Card only when the reference visibly
+groups the form on a raised, filled, or outlined panel.
+
+```text
+Section p:0 minH:"vh-0"
+  Flex direction:"column" align:"center" justify:"center" gap:{ xs:8 md:12 } minH:"vh-0"
+    Image src:"/assets/images/brand.svg" alt:"Brand" w:{ xs:72 md:96 }
+    Grid columns:1 gap:6 w:"full" maxW:96 px:{ xs:4 md:0 }
+      Input bind:email label:"Email" placeholder:"name@example.com"
+      Pin bind:pin label:"PIN" length:4
+      Button w:"full" onClick:submitLogin
+        "Log in"
+```
+
+## Visual direction and section richness
+
+Semantic correctness is the floor, not the finish. Before composing a product or marketing page,
+write one visual-direction sentence that combines product character, spatial behavior, and surface
+treatment. For example: “precise financial interface with luminous orbital geometry, deep navy
+fields, and compact proof surfaces.” Choose at most three recurring motifs and reuse them with
+variation so the page feels authored rather than decorated component by component.
+
+Give each substantial band four layers of intent:
+
+| Layer | Question | Dowe expression |
+| --- | --- | --- |
+| Foundation | What makes this band distinct from its neighbors? | `Section bg`, `background`, `cover` plus `overlay`, or a deliberate flat token field |
+| Composition | Where is the visual center and how does the eye move? | Asymmetric `Grid`, editorial `Flex`, or a relative `Box` stage |
+| Payload | What can the user see besides copy? | Original `Image`, chart, product UI, icon composition, logo field, testimonial, process, or metric surface |
+| Detail | What makes the composition specific to this product? | Number labels, Chips, dividers, floating proof Cards, transforms, shadows, borders, foreground media, or restrained motion |
+
+Compact proof bars, legal copy, and FAQ bands may intentionally use fewer layers. A hero,
+capability, product, tokenomics, evidence, or final-action band normally needs all four. If the user
+asks to omit sections from a rich reference, preserve this richness floor in every retained band.
+
+Avoid repeating one composition recipe. Consecutive sections should change at least two of these:
+alignment, track ratio, surface tone, payload type, density, or foreground silhouette. A centered
+heading over three equal Cards can be one band; it must not become the page's universal grammar.
+
+## Layered visual scenes
+
+Use `Box position:"relative"` when the reference's identity comes from overlap, floating proof, or
+an illustration that behaves as a stage instead of a simple rectangular image. Keep meaningful UI
+inside semantic components and place only their wrappers on the layer plane.
+
+```text
+Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
+  Flex direction:"column" align:"center" justify:"center" gap:4 minH:{ xs:64 md:80 }
+    Card variant:"soft" scheme:"surface" p:8 rounded:"xl" rotate:-3 animation:"scaleIn"
+      Grid columns:1 gap:3
+        Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:14 h:14
+        Title size:"2xl" weight:"black"
+          "Core product"
+        Text size:"sm" color:"muted"
+          "One focal surface anchors the scene."
+  Box position:"absolute" top:4 right:4
+    Chip variant:"solid" scheme:"primary" shadow:"md" shadowColor:"primary"
+      "LIVE"
+  Box position:"absolute" left:4 bottom:4
+    Card variant:"solid" scheme:"background" p:4 shadow:"lg"
+      Flex align:"center" gap:3
+        Title size:"2xl" weight:"black" color:"primary"
+          "+32%"
+        Text size:"xs" color:"muted"
+          "Verified activity"
+```
+
+The stage needs one dominant object and only a few supporting layers. Do not distribute ten equal
+floating elements, stack Cards inside Cards, or use overlap when a normal Grid communicates the
+relationship more clearly. On `xs`, keep floating proof inside the bounds, reduce transforms, and
+preserve the content reading order even when the visual order changes.
+
+## Modern band patterns
+
+Choose a pattern because it expresses the band's job, not because it is familiar.
+
+| Band | Rich composition options |
+| --- | --- |
+| Hero | Full-bleed cover or preset, asymmetric promise/media Grid, relative product stage, floating proof, compact metric rail |
+| Immediate proof | Logo Marquee, rating-and-avatar row, ticker-like metrics, or one highlighted outcome Card |
+| Ecosystem | Central brand or product visual with surrounding nodes, asymmetric feature mosaic, or media-led split with a compact capability list |
+| Tokenomics or allocation | Split facts Card plus `ArcChart` or `PieChart`, map/texture field, large values, legends, and public-rule labels |
+| Product capabilities | One dominant feature surface plus smaller supporting Cards; vary spans or track ratios instead of six identical tiles when evidence permits |
+| Process | Numbered connected rhythm, alternating split steps, Stepper, or icon-led sequence with one visible artifact per step |
+| Security or trust | Technical illustration, audit metrics, status Chips, compact controls, and explicit evidence instead of three abstract promises |
+| Final action | Immersive cover or high-contrast Card with one outcome, one action, and one small proof or reassurance row |
+
+Use authentic product screenshots or supplied illustrations when they exist. If an original asset
+is not available, author its final path and placeholder contract; do not compensate with a wall of
+generic Cards.
 
 ## Hero sections
 
@@ -209,10 +379,17 @@ containers and content components used elsewhere, but make its hierarchy unambig
 | Immersive campaign | `Section cover:` plus `overlay`, then centered or split content above the generated visual stack |
 | Product or analytics story | Relative media `Box` containing direct absolute `Box` wrappers around small Cards, Chips, Icons, or portable Svg data visuals |
 
+When the reference hero is layered, a split Grid with one plain rectangular Image is incomplete
+even if the image and copy are correct. Rebuild the visible stage, floating proof, foreground edge,
+and tonal transition as separate layers. Keep only one dominant focal asset so the details support
+the promise rather than compete with it.
+
 Use `Section boxed:true` when the background or cover is full bleed but the hero content aligns to
 the page rails. Give the Section a stable `id` when navigation links target it. Use responsive
-column templates and gaps to preserve the design's real proportions; equal `1fr 1fr` columns are
-not a default when the reference clearly gives copy, media, or a form more space.
+numeric column counts and gaps to preserve a portable structure. Grid columns are equal-width
+tracks from `1` through `12`; track templates such as `fr` and `px` are not portable Grid values.
+When a composition needs different visual weight, use nested containers or explicit Dowe scale
+widths on the relevant content instead of a target-specific track template.
 
 Prefer one responsive `Title size:{ xs:"4xl" md:"6xl" }` when natural wrapping is acceptable.
 When specific line breaks are part of the composition, author separate compact and wide headline
@@ -229,15 +406,13 @@ For a lead form, the form is one Card rather than a generic Box. Stack its field
 legal or privacy copy inside the same Card. Collapse the outer split Grid to one column on `xs` so
 the promise remains before the form.
 
-Use `gap`, Section padding, or explicit `pt` and `pb` for ordinary rhythm. A size-only responsive
-`Box` is an exception for an intentional track in a wider asymmetric Grid, or for editorial
-spacing that must differ by breakpoint around fixed headline groups, forms, or proof rows. Give
-the spacer an explicit size and complementary `show` values where compact and wide layouts need
-different heights; do not scatter empty Boxes through ordinary stacks.
+Use `gap`, Section padding, explicit `pt` and `pb`, responsive direction, and `w` or `maxW` on the
+real owner for ordinary rhythm and measure. Do not insert size-only Box spacers, empty Grid cells,
+or breakpoint-specific wrapper trees to reproduce offsets from one screenshot.
 
 ```text
 Section id:"hero" background:"aurora" boxed:true py:{ xs:8 md:12 }
-  Grid columns:{ xs:1 md:"5fr 6fr" } gap:{ xs:8 md:16 } align:"center"
+  Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:16 } align:"center"
     Flex direction:"column" align:"start" gap:6
       Title size:{ xs:"4xl" md:"6xl" } weight:"black"
         "Turn useful ideas into durable growth"
@@ -249,7 +424,7 @@ Section id:"hero" background:"aurora" boxed:true py:{ xs:8 md:12 }
         Button variant:"outlined" scheme:"muted" size:"lg"
           "See how it works"
       Flex align:"center" gap:2
-        Icon name:"check-circle" style:"bold" fill:"success"
+        Icon name:"check-circle-bold" fill:"success"
         Text size:"sm" color:"muted"
           "14-day trial · no credit card"
     Box position:"relative" cover:"/assets/images/hero-team.jpg" rounded:"xl" minH:"vh-48"
@@ -287,6 +462,12 @@ Keep the landing page coherent:
   hero or final CTA, instead of inventing unrelated values for every band.
 - Alternate flat token backgrounds, Section presets, and media covers only to clarify the argument;
   do not decorate every Section independently.
+- Preserve design density when reducing content from a reference. Fewer bands should produce a
+  shorter but equally intentional page, not larger empty areas and simpler retained bands.
+- Vary focal alignment and payload type across consecutive bands. Repetition should come from the
+  theme, rail, spacing ladder, and motifs—not from copying the same section skeleton.
+- Use a small number of high-quality details repeatedly: one glow family, one line/border language,
+  one numbering style, and one motion character are usually enough.
 - Keep repeated cards in Grid tracks, compact proof and action rows in Flex, and each standalone
   form, testimonial, metric, or pricing offer in one Card.
 - Give navigable bands stable, unique Section ids and point shell navigation to those anchors.
@@ -323,6 +504,11 @@ before considering a band finished.
 | `Flex wrap:true` simulating a catalog of equal cards | `Grid columns:{ xs:1 md:3 }` | Repeated same-shape units are tracks |
 | `Card` inside `Card` | One Card containing `Grid` or `Flex` | Nested surfaces double borders and padding |
 | `Box` as the default page or section container | `Section`, then Grid or Flex | Pages start at Section; Box is the exception |
+| Empty `Box` children used as 12-column offsets | One centered Grid or Flex with `w:"full"` and `maxW` | Empty grid cells encode viewport guesses instead of content structure |
+| `translateX` or `translateY` used to align normal content | AppBar regions, Grid/Flex alignment, `gap`, padding, `w`, or `maxW` on the real owner | Transforms change visual placement without defining the surrounding flow geometry |
+| A translated `NavMenu`, AppBar action, or Drawer root | Keep the compound root untransformed and align it through its semantic owner | Anchored menus and overlays need stable component geometry |
+| `Box` around each Input, Pin, Phone, or Button | Style the real control and group fields in Grid or Flex | Controls already own their surface, metrics, and responsive props |
+| Separate mobile and desktop form trees | One tree with responsive Grid, Flex, spacing, sizing, and visibility | Duplicate bindings and workflows drift and encourage spacer wrappers |
 | Visual props repeated on every Card or Button | Defaults in `theme.dowe` `design` | Local props are for one intentional exception |
 | A page declaring `Scaffold`, `AppBar`, or `Footer` | Move shell to the layout | Shell chrome is layout-owned |
 | The same nav tree copy-pasted into Sidebar and Drawer | One `component` mounted in both | Duplicated fragments drift apart |
@@ -331,19 +517,33 @@ before considering a band finished.
 | A data-bound Card extracted with invented component props | Keep the `each` template in its page or layout | Reusable components do not accept dynamic caller inputs |
 | A photo redrawn with `Svg` paths or `Canvas` commands | `Image` with its intended `src` path | Photographs are assets, not vector source |
 | A `Box` with an icon standing in for a photo | `Image` with the named asset path and `scheme` | The unresolved frame is already the placeholder, and the path stays swappable |
+| Every band is eyebrow + centered title + equal Cards | Alternate split, mosaic, visual-stage, proof-row, and text-led bands according to their jobs | Repeating one skeleton makes a long page look generated and flat |
+| A rich reference scene reduced to one framed Image | Relative stage with the focal asset, floating proof, visible ornament, and foreground treatment | The missing layers carry the reference's depth and identity |
+| Every Card uses the same border and soft fill | Establish primary, supporting, and quiet surface roles | Surface hierarchy directs attention and prevents component-library sameness |
+| Decoration added without a product concept | Choose two or three motifs from the product and reuse them deliberately | Specific visual language feels natural; arbitrary effects feel synthetic |
+| Empty space used where the reference has visual evidence | Add the original payload, chart, logo field, process artifact, or declared asset placeholder | Whitespace cannot substitute for missing information or media |
 
 ## Composition checklist
 
 - One Scaffold per layout; Sections only in pages; Splash bound and resolved in every branch.
-- Every container choice justified by the decision tree; any `Box` must be explainable as the
-  neutral exception.
+- Every container choice is justified by the decision tree. Each `Box` owns a relative, absolute,
+  fixed, or explicitly documented neutral media/drawing layer that Section, Grid, Flex, Card, or
+  the real child cannot express.
+- No empty Box grid gutters, control wrappers, or duplicated compact/wide form trees.
 - Repetition uses one `const`, typed `signal`, or shared Store and one `each` inside Grid tracks,
   never copy-pasted siblings.
-- Spacing normally comes from `gap`, Section padding, and explicit padding props. A size-only Box
-  is limited to an intentional responsive Grid rail or breakpoint-specific editorial spacer.
+- Spacing comes from `gap`, Section padding, explicit padding, responsive flow, and sizing on the
+  real owner, never from empty or size-only Box spacers.
+- `translateX` and `translateY` appear only on documented advanced visual layers, never on AppBar,
+  Brand, NavMenu, Drawer, ordinary content, or normal-flow alignment corrections.
 - No stretched card ends in trailing dead space; paired cards match visual weight, distributing
   content with `justify:"between"` or scaling their media blocks to the row height.
 - Section vertical padding follows one consistent ladder across the page instead of per-band
   improvisation.
 - Visual identity lives in `theme.dowe`; page props are structural or intentional exceptions.
 - Semantic color tokens and component variants replace literal colors and rebuilt chrome.
+- One visual-direction sentence and at most three recurring motifs guide the page.
+- Every substantial marketing band has a foundation, composition, payload, and product-specific
+  detail; compact utility bands are intentionally simpler.
+- Consecutive bands do not repeat the same alignment, track ratio, payload, and surface treatment.
+- Layered reference scenes remain layered Dowe source instead of becoming one Image or Card.

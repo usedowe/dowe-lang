@@ -196,11 +196,7 @@ pub fn device_node(
                 let node = icon_component_node(vec![
                     ComponentProp {
                         name: "name".to_string(),
-                        value: PropValue::String(name.to_string()),
-                    },
-                    ComponentProp {
-                        name: "style".to_string(),
-                        value: PropValue::String("outline".to_string()),
+                        value: PropValue::String(format!("{name}-outline")),
                     },
                 ])?;
                 let ViewNode::Svg { props, paths } = node else {
@@ -309,9 +305,7 @@ pub fn accordion_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Accordion, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Solid);
-    style.color.get_or_insert(ColorFamily::Background);
+    let style = parse_variant_props(BuiltinComponent::Accordion, &style_props)?;
     if !multiple {
         let mut found_open = false;
         for item in &mut items {

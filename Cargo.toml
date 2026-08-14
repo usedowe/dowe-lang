@@ -23,13 +23,14 @@ members = [
   "crates/spawn",
   "crates/stdlib",
   "crates/database",
+  "crates/database_query",
   "crates/vector",
 ]
 resolver = "3"
 
 [workspace.package]
 edition = "2024"
-version = "1.0.15"
+version = "1.0.16"
 license = "MIT"
 
 [workspace.dependencies]

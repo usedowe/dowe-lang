@@ -26,49 +26,24 @@ fn text_spacing_css(value: TextSpacing) -> String {
     format!("{}em", text_spacing_em(value))
 }
 
-fn on_token(family: ColorFamily) -> &'static str {
-    match family {
-        ColorFamily::Primary => "onPrimary",
-        ColorFamily::Secondary => "onSecondary",
-        ColorFamily::Tertiary => "onTertiary",
-        ColorFamily::Muted => "onMuted",
-        ColorFamily::Background => "onBackground",
-        ColorFamily::Surface => "onSurface",
-        ColorFamily::Success => "onSuccess",
-        ColorFamily::Info => "onInfo",
-        ColorFamily::Warning => "onWarning",
-        ColorFamily::Danger => "onDanger",
-    }
+fn text_token(family: ColorFamily) -> &'static str {
+    family.text_token().as_str()
+}
+
+fn title_token(family: ColorFamily) -> &'static str {
+    family.title_token().as_str()
 }
 
 fn soft_token(family: ColorFamily) -> &'static str {
-    match family {
-        ColorFamily::Primary => "softPrimary",
-        ColorFamily::Secondary => "softSecondary",
-        ColorFamily::Tertiary => "softTertiary",
-        ColorFamily::Muted => "softMuted",
-        ColorFamily::Background => "background",
-        ColorFamily::Surface => "surface",
-        ColorFamily::Success => "softSuccess",
-        ColorFamily::Info => "softInfo",
-        ColorFamily::Warning => "softWarning",
-        ColorFamily::Danger => "softDanger",
-    }
+    family.soft_color_token().as_str()
 }
 
-fn on_soft_token(family: ColorFamily) -> &'static str {
-    match family {
-        ColorFamily::Primary => "onSoftPrimary",
-        ColorFamily::Secondary => "onSoftSecondary",
-        ColorFamily::Tertiary => "onSoftTertiary",
-        ColorFamily::Muted => "onSoftMuted",
-        ColorFamily::Background => "onBackground",
-        ColorFamily::Surface => "onSurface",
-        ColorFamily::Success => "onSoftSuccess",
-        ColorFamily::Info => "onSoftInfo",
-        ColorFamily::Warning => "onSoftWarning",
-        ColorFamily::Danger => "onSoftDanger",
-    }
+fn soft_text_token(family: ColorFamily) -> &'static str {
+    family.soft_text_token().as_str()
+}
+
+fn soft_title_token(family: ColorFamily) -> &'static str {
+    family.soft_title_token().as_str()
 }
 
 fn append_responsive_rule(css: &mut String, breakpoint: Breakpoint, class_name: &str, body: &str) {

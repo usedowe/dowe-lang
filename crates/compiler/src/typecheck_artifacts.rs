@@ -16,5 +16,6 @@ mod tests {
         assert!(server.content.contains("msg sent conn:appQueue.publish"));
         assert!(server.content.contains("msg.publish ok"));
         assert!(server.content.contains("msg.publish id"));
+        assert!(server.content.contains("cron fn:functionName schedule"));
     }
 }

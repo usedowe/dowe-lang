@@ -337,7 +337,7 @@ fn render_dev_android_display_media_data_node(
                     ));
                 }
                 output.push_str(&format!(
-                    "        DoweSvgView {icon_name} = new DoweSvgView(this, {}f, {}f, {}f, {}f, DOWE_ON_BACKGROUND, {paths_name});\n",
+                    "        DoweSvgView {icon_name} = new DoweSvgView(this, {}f, {}f, {}f, {}f, DOWE_BACKGROUND_TEXT, {paths_name});\n",
                     option.icon.props.view_box.min_x,
                     option.icon.props.view_box.min_y,
                     option.icon.props.view_box.width,
@@ -383,7 +383,7 @@ fn render_dev_android_display_media_data_node(
                 .border_color
                 .map(family_color)
                 .map(java_color)
-                .unwrap_or("DOWE_ON_BACKGROUND");
+                .unwrap_or("DOWE_BACKGROUND_TEXT");
             output.push_str(&format!(
                 "        DoweCanvasView {view} = doweCanvas(\"{}\", {}f, {}f, \"{}\", {}, {}, {}, {}, \"{}\", {on_pointer}, {on_key}, {on_motion}, {}, {border_width}, {border_color}, {});\n",
                 escape_java(&context.signal_path(&props.scene)),
@@ -426,6 +426,8 @@ fn render_dev_android_display_media_data_node(
             render_dev_android_chart(
                 "arc",
                 &props.common,
+                None,
+                Some(props),
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -438,6 +440,8 @@ fn render_dev_android_display_media_data_node(
             render_dev_android_chart(
                 "area",
                 &props.common,
+                None,
+                None,
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -450,6 +454,8 @@ fn render_dev_android_display_media_data_node(
             render_dev_android_chart(
                 "bar",
                 &props.common,
+                None,
+                None,
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -462,6 +468,8 @@ fn render_dev_android_display_media_data_node(
             render_dev_android_chart(
                 "line",
                 &props.common,
+                None,
+                None,
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -474,6 +482,8 @@ fn render_dev_android_display_media_data_node(
             render_dev_android_chart(
                 "pie",
                 &props.common,
+                Some(props),
+                None,
                 parent,
                 parent_gap,
                 parent_horizontal,
@@ -495,6 +505,8 @@ fn render_dev_android_display_media_data_node(
 fn render_dev_android_chart(
     chart_type: &str,
     props: &ChartCommonProps,
+    pie_props: Option<&PieChartProps>,
+    arc_props: Option<&ArcChartProps>,
     parent: &str,
     parent_gap: Option<&str>,
     parent_horizontal: bool,
@@ -513,8 +525,53 @@ fn render_dev_android_chart(
         .as_deref()
         .map(|value| format!("\"{}\"", escape_java(&context.signal_path(value))))
         .unwrap_or_else(|| "null".to_string());
+    let pie_args = pie_props
+        .map(|pie| {
+            format!(
+                ", {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
+                pie.donut,
+                pie.donut_width,
+                pie.center_label
+                    .as_deref()
+                    .map(|value| format!("\"{}\"", escape_java(value)))
+                    .unwrap_or_else(|| "null".to_string()),
+                pie.center_value
+                    .as_deref()
+                    .map(|value| format!("\"{}\"", escape_java(value)))
+                    .unwrap_or_else(|| "null".to_string()),
+                pie.start_angle,
+                pie.pad_angle,
+                pie.hide_labels,
+                pie.hide_values,
+                pie.hide_percentages,
+                pie.show_glow,
+            )
+        })
+        .or_else(|| {
+            arc_props.map(|arc| {
+                format!(", false, 60, null, null, {}, 0, false, false, false, false", arc.start_angle)
+            })
+        })
+        .unwrap_or_else(|| ", false, 60, null, null, -90, 0, false, false, false, false".to_string());
+    let arc_args = arc_props
+        .map(|arc| {
+            format!(
+                ", {}, {}, {}, {}, {}, {}, {}",
+                arc.center_text
+                    .as_deref()
+                    .map(|value| format!("\"{}\"", escape_java(value)))
+                    .unwrap_or_else(|| "null".to_string()),
+                arc.thickness,
+                arc.gap,
+                arc.end_angle,
+                arc.show_inline_labels,
+                arc.hide_values,
+                arc.show_glow,
+            )
+        })
+        .unwrap_or_else(|| ", null, 16, 8, 270, false, false, false".to_string());
     output.push_str(&format!(
-        "        DoweChartView {view} = doweChart(\"{}\", {data_path}, {series_path}, \"{}\", \"{}\", \"{}\", {}, {}, {}, {}, {});\n",
+        "        DoweChartView {view} = doweChart(\"{}\", {data_path}, {series_path}, \"{}\", \"{}\", \"{}\", {}, {}, {}, {}, {}{pie_args}{arc_args});\n",
         escape_java(chart_type),
         props.palette.as_str(),
         props.legend_position.as_str(),

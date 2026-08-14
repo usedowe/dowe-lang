@@ -212,6 +212,52 @@ fn skill_records() -> &'static [SkillRecord] {
             ],
         },
         SkillRecord {
+            id: "domain-modeling",
+            name: "dowe-domain-modeling",
+            description: "Turn business descriptions into Dowe modules, entities, workflows, permissions, APIs, seeders, and views.",
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../skill-data/dowe-domain-modeling/SKILL.md"
+            )),
+            resources: &[
+                SkillResource {
+                    path: "references/workflow.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-domain-modeling/references/workflow.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/pos.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-domain-modeling/references/pos.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/crm.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-domain-modeling/references/crm.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/ecommerce.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-domain-modeling/references/ecommerce.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/reservations.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-domain-modeling/references/reservations.md"
+                    )),
+                },
+            ],
+        },
+        SkillRecord {
             id: "theme",
             name: "dowe-theme",
             description: "Author semantic Dowe themes and cross-platform visual tokens.",
@@ -248,6 +294,13 @@ fn skill_records() -> &'static [SkillRecord] {
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/../../skill-data/dowe-views/references/composition.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/index.json",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-views/references/blocks/index.json"
                     )),
                 },
                 SkillResource {

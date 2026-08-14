@@ -71,6 +71,7 @@ struct RouteBuildContext<'a> {
     outputs: PlatformRouteOutputs,
     environment: &'a EnvironmentConfig,
     design_config: &'a DesignConfig,
+    selected_platforms: &'a [ViewPlatform],
 }
 
 #[derive(Default)]

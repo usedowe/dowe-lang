@@ -100,7 +100,7 @@ struct DowePagination<PreviousIcon: View, NextIcon: View>: View {
                     }
                     .accessibilityAddTraits(page == current ? .isSelected : [])
                 } else {
-                    Text("…").foregroundStyle(DoweDesign.onBackground.opacity(0.6)).frame(width: dimension, height: dimension)
+                    Text("…").foregroundStyle(DoweDesign.backgroundText.opacity(0.6)).frame(width: dimension, height: dimension)
                 }
             }
             control(selected: true, enabled: !disabled && current < pageCount, label: "Next page", action: { select(current + 1) }) { nextIcon() }
@@ -121,7 +121,7 @@ struct DowePagination<PreviousIcon: View, NextIcon: View>: View {
             content()
                 .frame(width: dimension, height: dimension)
                 .background(selected ? backgroundColor : Color.clear)
-                .foregroundStyle(selected ? contentColor : DoweDesign.onBackground)
+                .foregroundStyle(selected ? contentColor : DoweDesign.backgroundText)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? borderColor ?? .clear : .clear, lineWidth: 1))
         }

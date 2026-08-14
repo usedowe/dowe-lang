@@ -353,7 +353,7 @@ private struct DoweRichTextRun: View {
     @State private var neonPulse = false
 
     private var accent: Color { doweButtonFamily(mark.scheme) }
-    private var onAccent: Color { doweButtonOnFamily(mark.scheme) }
+    private var onAccent: Color { doweButtonTextFamily(mark.scheme) }
     private var resolvedText: String {
         mark.style == "mark" || mark.style == "neon" ? mark.text.uppercased() : mark.text
     }

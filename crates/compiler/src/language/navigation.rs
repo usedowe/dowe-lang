@@ -138,8 +138,11 @@ pub fn hover_at(
                 .to_string(),
         );
     }
-    if token == "db" {
-        return Some("Dowe Database operation namespace used by `query`".to_string());
+    if token == "conn" {
+        return Some(
+            "Dowe server connection operation namespace used by `query`, `kv`, `emb`, and `msg`"
+                .to_string(),
+        );
     }
     if token == "const" {
         return Some(

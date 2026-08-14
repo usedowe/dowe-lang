@@ -145,19 +145,24 @@ fn parse_grid_tracks_prop(
     name: &str,
     value: &PropValue,
     auto_allowed: bool,
+    max_count: Option<u16>,
 ) -> ComponentResult<ResponsiveValue<GridTracks>> {
     parse_responsive(
         name,
         value,
-        "positive integer, auto or portable grid template",
+        if max_count.is_some() {
+            "positive integer from 1 to 12"
+        } else {
+            "positive integer or auto"
+        },
         |scalar| match scalar {
             PropScalar::Number(value) => value
                 .parse::<u16>()
                 .ok()
-                .filter(|value| *value > 0)
+                .filter(|value| *value > 0 && max_count.is_none_or(|max| *value <= max))
                 .map(GridTracks::Count),
             PropScalar::String(value) if auto_allowed && value == "auto" => Some(GridTracks::Auto),
-            PropScalar::String(value) => parse_grid_template(value),
+            PropScalar::String(_) => None,
             PropScalar::Boolean(_) => None,
         },
     )
@@ -624,42 +629,6 @@ fn parse_gap_size(value: &str) -> Option<GapSize> {
         return px.parse::<u16>().ok().map(GapSize::Px);
     }
     scale_value(value).map(GapSize::Scale)
-}
-
-fn parse_grid_template(value: &str) -> Option<GridTracks> {
-    if value.trim().is_empty() {
-        return None;
-    }
-    for track in value.split_whitespace() {
-        if !is_valid_grid_track(track) {
-            return None;
-        }
-    }
-    Some(GridTracks::Template(value.to_string()))
-}
-
-fn is_valid_grid_track(value: &str) -> bool {
-    if value == "auto" {
-        return true;
-    }
-    if let Some(number) = value
-        .strip_suffix("px")
-        .or_else(|| value.strip_suffix("fr"))
-    {
-        return number
-            .parse::<u16>()
-            .ok()
-            .filter(|value| *value > 0)
-            .is_some();
-    }
-    if let Some(number) = value.strip_suffix('%') {
-        return number
-            .parse::<u16>()
-            .ok()
-            .filter(|value| (1..=100).contains(value))
-            .is_some();
-    }
-    false
 }
 
 fn is_valid_rgba(value: &str) -> bool {

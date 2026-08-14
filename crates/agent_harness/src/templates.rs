@@ -10,7 +10,8 @@ Rust compiler and runtime contracts.
 
 1. Read `main.dowe` and the imported files that own the requested surface.
 2. Select one installed skill under `.agents/skills`: `dowe-core` for root structure,
-   `dowe-server` for server modules, `dowe-views` for view modules, or `dowe-theme` for `theme.dowe`.
+   `dowe-domain-modeling` for business-domain architecture, `dowe-server` for server modules,
+   `dowe-views` for view modules, or `dowe-theme` for `theme.dowe`.
 3. Open its `SKILL.md`, then only the reference named for the current task.
 4. Add a second skill or reference only when the request crosses that ownership boundary.
 5. Treat compiler diagnostics as the final syntax and prop authority.

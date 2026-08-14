@@ -12,8 +12,7 @@ pub fn checkbox_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Checkbox, &style_props)?;
-    style.color.get_or_insert(ColorFamily::Primary);
+    let style = parse_variant_props(BuiltinComponent::Checkbox, &style_props)?;
     Ok(ViewNode::Checkbox {
         props: CheckboxProps {
             style,
@@ -96,8 +95,6 @@ pub fn date_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
     }
     validate_date_bounds(min.as_deref(), max.as_deref())?;
     let mut style = parse_variant_props(BuiltinComponent::Date, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Outlined);
-    style.color.get_or_insert(ColorFamily::Primary);
     style
         .placeholder
         .get_or_insert_with(|| "Select date".to_string());
@@ -975,8 +972,6 @@ pub fn password_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Password, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Outlined);
-    style.color.get_or_insert(ColorFamily::Primary);
     style.size = Some(size);
     Ok(ViewNode::Password {
         props: PasswordProps {
@@ -1079,8 +1074,6 @@ pub fn pin_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Pin, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Outlined);
-    style.color.get_or_insert(ColorFamily::Primary);
     style.size = Some(size);
     Ok(ViewNode::Pin {
         props: PinProps {

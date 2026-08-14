@@ -15,8 +15,25 @@ pub fn parse_server_source(
     file: &SourceFile,
     environment: &EnvironmentConfig,
 ) -> DoweResult<ServerRoot> {
+    parse_server_source_for(root, file, environment, true)
+}
+
+pub fn parse_server_source_without_seeders(
+    root: &Path,
+    file: &SourceFile,
+    environment: &EnvironmentConfig,
+) -> DoweResult<ServerRoot> {
+    parse_server_source_for(root, file, environment, false)
+}
+
+fn parse_server_source_for(
+    root: &Path,
+    file: &SourceFile,
+    environment: &EnvironmentConfig,
+    include_seeders: bool,
+) -> DoweResult<ServerRoot> {
     let types = TypeRegistry::parse_file(root, file)?;
-    let imports = server_imports(root, file, environment)?;
+    let imports = server_imports(root, file, environment, include_seeders)?;
     parse_server_nodes(&file.path, &file.nodes, &imports, &types, environment)
 }
 
@@ -25,7 +42,7 @@ pub(crate) fn validate_server_module_source(
     file: &SourceFile,
     environment: &EnvironmentConfig,
 ) -> DoweResult<()> {
-    parse_server_module(root, file, environment, &mut Vec::new()).map(|_| ())
+    parse_server_module(root, file, environment, &mut Vec::new(), true).map(|_| ())
 }
 
 fn parse_server_nodes(
@@ -108,4 +125,3 @@ struct EndpointGroup {
     endpoints: Vec<Endpoint>,
     websockets: Vec<WebSocketRoute>,
 }
-

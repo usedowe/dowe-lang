@@ -53,7 +53,7 @@ private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, 
                             .height(28.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweOverlayClosePaths)
+                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.softMutedText, paths = doweOverlayClosePaths)
                     }
                 }
             }
@@ -144,7 +144,7 @@ private fun DoweToast(visible: Boolean, title: String, description: String, posi
                     .height(28.dp),
                 contentAlignment = Alignment.Center
             ) {
-                DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweOverlayClosePaths)
+                DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.softMutedText, paths = doweOverlayClosePaths)
             }
         }
     }

@@ -276,6 +276,10 @@ fn render_compose_flow_node(
                         compose_card_border(props),
                         "CardDefaults.cardElevation(defaultElevation = 0.dp)"
                     ));
+            output.push_str(&format!(
+                "{pad}    CompositionLocalProvider(LocalDoweTitleColor provides {}) {{\n",
+                card_variant_title(props)
+            ));
             if props.style.cover.is_some() {
                 output.push_str(&format!(
                             "{pad}    DoweCoverBox(modifier = Modifier.fillMaxWidth(), source = {}, overlay = {}) {{\n",
@@ -309,7 +313,7 @@ fn render_compose_flow_node(
                     );
                 }
             }
-            output.push_str(&format!("{pad}}}\n"));
+            output.push_str(&format!("{pad}    }}\n{pad}}}\n"));
         }
         ViewNode::Brand { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);

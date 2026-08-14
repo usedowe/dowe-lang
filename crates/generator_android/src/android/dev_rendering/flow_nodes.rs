@@ -262,7 +262,10 @@ fn render_dev_android_flow_node(
         }
         ViewNode::Card { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);
-            let current_color = Some(dev_card_variant_content(props).to_string());
+            let current_color = Some(dev_content_colors(
+                dev_card_variant_content(props),
+                dev_card_variant_title(props),
+            ));
             let view = next_dev_view(counter);
             output.push_str(&format!(
                 "        LinearLayout {view} = doweCard({}, {});\n",

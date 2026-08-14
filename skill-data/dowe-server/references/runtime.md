@@ -288,13 +288,13 @@ main
 
 ## Tasks and cron
 
-`task <function> [args:{...}]` starts an imported server function fire-and-forget and discards its
+`task fn:<function> [args:{...}]` starts an imported server function fire-and-forget and discards its
 result. Tasks are immediate by default. In HTTP handlers and server functions, named task arguments
 may contain typed local bindings; Dowe resolves and serializes those values before launching the
 isolated worker.
 
 ```text
-task writeAudit args:{ orderId:order.id event:"order.created" }
+task fn:writeAudit args:{ orderId:order.id event:"order.created" }
 ```
 
 `task [args:{...}]` with an indented body starts small local work in an isolated worker scope.
@@ -309,21 +309,22 @@ task args:{ orderId:order.id }
 
 `init`, named task registrations under `init`, and `cron` arguments stay static JSON. Runtime
 handles such as Database, Cache, KV, and environment values do not cross the process boundary.
-`cron <function> schedule:"0 3 * * *" args:{...}` registers a UTC five-field schedule and is valid
-only directly under `server.init` or `desktop.server.init`. `server init` runs once after the
+`cron fn:<function> schedule:"0 3 * * *" args:{...}` registers a UTC five-field schedule and is valid
+only directly under `server.init` or `desktop.server.init`. Cron accepts no positional target and
+creates no result binding. `server init` runs once after the
 listener is prepared and before traffic is accepted. Tasks and cron registrations never create a
 result binding. `cron` does not accept task-only `after:"headers"` timing.
 
 ### Reverse-proxy response-header telemetry
 
 Only a direct HTTP handler whose final response is `return reverse:...` may use
-`task <function> args:{ event:{ ... } } after:"headers"`. The `event` object is authored at the
+`task fn:<function> args:{ event:{ ... } } after:"headers"`. The `event` object is authored at the
 launch site and lets Dowe add measured reverse-proxy data:
 
 ```text
 request host source:"header" name:"Host"
 kv route conn:RouteCache.get key:host required:true
-task emitTelemetry args:{ event:{ projectId:route.projectId status:0 method:"" path:"" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
+task fn:emitTelemetry args:{ event:{ projectId:route.projectId status:0 method:"" path:"" latencyMs:0 bytesIn:0 bytesOut:0 } } after:"headers"
 return reverse:route.url
 ```
 

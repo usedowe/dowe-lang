@@ -181,12 +181,12 @@ fn render_compose_bottom_bar(
             variant_container(&props.style)
         };
         let content = if featured {
-            "DoweDesign.onPrimary"
+            "DoweDesign.primaryText"
         } else {
             variant_content(&props.style)
         };
         let icon_color = if featured {
-            "DoweDesign.onPrimary".to_string()
+            "DoweDesign.primaryText".to_string()
         } else {
             compose_svg_color(&tab.icon.props.style)
         };

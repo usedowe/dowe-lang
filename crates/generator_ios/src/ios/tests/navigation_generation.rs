@@ -27,7 +27,7 @@ fn generates_swiftui_layout_bars() {
     assert!(directory < copyright);
     assert!(copyright < footer_boxed);
     assert!(views.contains(".background(DoweDesign.surface)"));
-    assert!(views.contains(".foregroundStyle(DoweDesign.onSurface)"));
+    assert!(views.contains(".foregroundStyle(DoweDesign.surfaceText)"));
     assert!(views.contains(".zIndex(1)"));
     assert!(views.contains(".clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))"));
     assert!(views.contains(
@@ -128,6 +128,11 @@ fn generates_swiftui_side_nav() {
     assert!(views.contains("struct DoweSideNavIcon"));
     assert!(views.contains("let color: Color?"));
     assert!(views.contains("DoweSideNav(items: ["));
+    assert!(views.contains("titleColor: DoweDesign.surface"));
+    assert!(views.contains(
+        ".foregroundStyle(header ? titleColor : (item.path == activePath ? contentColor : DoweDesign.backgroundText))"
+    ));
+    assert!(views.contains("row(item, header: false, action: nil, expanded: expanded)"));
     assert!(views.contains("kind: \"submenu\""));
     assert!(
         views.contains("DoweSideNavSubmenu(stateKey: stateKey + \":\" + item.id, open: item.open, bordered: item.bordered, wide: wide)")
@@ -162,14 +167,35 @@ fn generates_swiftui_side_nav() {
     assert!(views.contains("DoweSideNavStatus(text: status"));
     assert!(views.contains(".padding(.horizontal, CGFloat(8))"));
     assert!(views.contains(".background(DoweDesign.softMuted)"));
-    assert!(views.contains(".foregroundStyle(DoweDesign.onSoftMuted)"));
+    assert!(views.contains(".foregroundStyle(DoweDesign.softMutedText)"));
     assert!(views.contains("icon: DoweSideNavIcon(viewBox: DoweSvgViewBox"));
     assert!(views.contains("color: nil"));
-    assert!(views.contains("color: icon.color ?? (item.path == activePath ? activeContentColor : DoweDesign.onBackground)"));
+    assert!(views.contains("color: icon.color ?? (header ? titleColor : (item.path == activePath ? activeContentColor : DoweDesign.backgroundText))"));
     assert!(views.contains(
         "DoweSvgView(viewBox: icon.viewBox, color: icon.color, paths: icon.paths, animated: icon.animated)"
     ));
     assert!(views.contains("wide: state.bool(\"wideEnabled\", fallback: false)"));
+}
+
+#[test]
+fn generates_reactive_swiftui_side_nav_header_color_from_scheme() {
+    let mut route = side_nav_route();
+    let ViewNode::SideNav { props, .. } = &mut route.page_tree else {
+        panic!("expected side nav route");
+    };
+    props.style.reactive.scheme = Some("schemeChoice".to_string());
+
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains(
+        "titleColor: doweSideNavHeaderColor(state.text(\"schemeChoice\", fallback: \"muted\"))"
+    ));
 }
 
 #[test]
@@ -196,7 +222,13 @@ fn keeps_explicit_swiftui_side_nav_for_complex_icon_styles() {
     assert!(views.contains("DoweSideNavRow(active: activePath == \"/bars\""));
     assert!(views.contains("DoweSvgView(viewBox: DoweSvgViewBox"));
     assert!(views.contains(
-        "color: activePath == \"/bars\" ? DoweDesign.onSurface : DoweDesign.onBackground"
+        "color: activePath == \"/bars\" ? DoweDesign.surfaceText : DoweDesign.backgroundText"
+    ));
+    assert!(views.contains(
+        ".foregroundStyle(activePath == \"/bars\" ? DoweDesign.surfaceText : DoweDesign.backgroundText)"
+    ));
+    assert!(views.contains(
+        ".foregroundStyle(false ? DoweDesign.surfaceText : DoweDesign.backgroundText)"
     ));
     assert!(!views.contains("DoweSideNav(items: ["));
 }

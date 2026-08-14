@@ -104,6 +104,17 @@ fn generates_swiftui_charts_with_canvas_runtime() {
     assert!(views.contains("struct DoweChartView: View"));
     assert!(views.contains("drawPointChart(series, context: &context, size: size)"));
     assert!(views.contains("drawPieChart(categories, context: &context, size: size)"));
+    assert!(views.contains("chartLayout(availableWidth: geometry.size.width)"));
+    assert!(views.contains(
+        "private func chartCanvas(availableWidth: CGFloat) -> some View {\n        let chartWidth = min(CGFloat(360), max(CGFloat(1), availableWidth))\n        return ZStack {"
+    ));
+    assert!(views.contains("let donutWidth: Int"));
+    assert!(views.contains("centerText: nil, thickness: 16, gap: 8, endAngle: 270"));
+    assert!(views.contains(".aspectRatio(chartType == \"pie\" || chartType == \"arc\""));
+    assert!(views.contains("thickness: 18"));
+    assert!(views.contains("showInlineLabels: true"));
+    assert!(views.contains("drawArcChart(categories, context: &context, size: size)"));
+    assert!(views.contains("let max: Double?"));
     assert!(views.contains(
         "return DoweChartLegendItem(id: item.id, label: item.label, color: chartColor(index, explicit: item.color))"
     ));
@@ -137,8 +148,8 @@ fn generates_swiftui_table_with_columns_and_scheme() {
     assert!(views.contains("contentColor: DoweDesign.primary"));
     assert!(views.contains("borderColor: Optional(DoweDesign.primary)"));
     assert!(views.contains(".background(DoweDesign.softMuted)"));
-    assert!(views.contains("DoweDesign.onSurface.opacity(0.12)"));
-    assert!(views.contains("DoweDesign.onSurface.opacity(0.28)"));
+    assert!(views.contains("DoweDesign.surfaceText.opacity(0.12)"));
+    assert!(views.contains("DoweDesign.surfaceText.opacity(0.28)"));
     assert!(views.contains("state.rows(dataPath)"));
 }
 

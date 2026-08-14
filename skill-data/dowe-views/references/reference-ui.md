@@ -7,6 +7,8 @@ application source.
 ## Contents
 
 - Evidence, fidelity, and the required blueprint
+- Exact reconstruction versus directed adaptation
+- Visual-detail fidelity and anti-genericization
 - Semantic component, ownership, collection, and media decisions
 - Responsive inference, interaction states, accessibility, and theme extraction
 - Static reuse and future dynamic-component candidates
@@ -26,6 +28,54 @@ viewport or hero.
 
 The reference and every crop derived from it remain outside project assets. Use pixels only for
 measurement and comparison.
+
+## Exact reconstruction versus directed adaptation
+
+Classify the request before implementation.
+
+| Mode | Content contract | Visual contract | Validation |
+| --- | --- | --- | --- |
+| Exact reconstruction | Preserve every visible band, label, item, action, and asset role | Match measured geometry, density, layering, typography, surfaces, and detail | Treat every band mismatch as a defect unless an original asset is unavailable |
+| Directed adaptation | Change copy, brand, or band count only where the user requests it | Preserve the reference's design grammar, focal hierarchy, depth, visual density, characteristic motifs, and quality in every retained band | Inspect retained bands against the reference and record intentional structural deviations; never claim pixel parity |
+
+“Inspired by,” “same UI/UX,” “use only the necessary sections,” and “adapt this template” normally
+mean directed adaptation. Content reduction does not authorize design reduction. If three of eight
+bands remain, those three still need the reference's compositional depth and level of finish.
+
+## Visual-detail fidelity
+
+Inventory the complete visual stack, not only semantic content. A sophisticated reference often
+contains five concurrent layers:
+
+1. A full-bleed foundation: color field, gradient-like preset, texture, photograph, or space.
+2. A focal composition: product media, dashboard, illustration, chart, device, or dimensional mark.
+3. Supporting proof: metrics, badges, prices, ratings, customer marks, or a compact data card.
+4. Structural detail: dividers, outlined frames, numbered labels, connecting lines, orbit nodes,
+   maps, grids, or a foreground edge.
+5. Controlled motion or interaction: entrance, hover lift, carousel, marquee, accordion, or active
+   navigation when supported by the evidence.
+
+Record each visible layer as its own blueprint region when it has independent geometry or meaning.
+Do not flatten a layered hero to one rectangular Image, turn a product constellation into six plain
+text rows, or replace chart-and-map evidence with a paragraph because the semantic content is
+technically present.
+
+For every retained marketing band, identify one primary visual payload beyond the heading and body
+copy. Valid payloads include original media, product UI, a chart, metric composition, icon system,
+logo field, testimonial, process visual, or a deliberate layered scene. Compact legal, navigation,
+and FAQ bands may remain text-led when the reference does.
+
+Reject these generic substitutions during review:
+
+- Repeating the same centered eyebrow, large title, sentence, and equal Card grid for consecutive
+  sections.
+- Giving every Card the same border, background, padding, icon position, and height regardless of
+  its role.
+- Using whitespace as the only separation between bands that visibly use tonal fields, covers,
+  maps, patterns, or media.
+- Treating decorative geometry as optional when it creates the reference's silhouette or depth.
+- Omitting small proof, labels, dividers, counts, or visual anchors that make the interface feel
+  credible and intentional.
 
 ## Required blueprint
 
@@ -56,6 +106,27 @@ Complete the blueprint before implementation. Record every visible region and ba
 | `theme` | Colors, typography, spacing, radii, and shadows to centralize |
 | `assets` | Final path, availability, and independent provenance |
 | `candidateComponents` | Static extraction or unsupported dynamic reuse decision |
+
+Add separate `regions` for meaningful decorative layers, floating proof, charts, logo fields, and
+foreground media. Use the `container` and `component` fields to describe the actual Dowe layer
+plane, such as `Box position:relative > Box position:absolute > Card`, instead of hiding the
+composition inside a broad “hero media” region.
+
+Begin the composition map with no Box regions. Add one only when the reference proves that a child
+must leave normal flow, such as an absolute ornament or proof surface on a relative stage, or a
+fixed route-viewport layer. A need for padding, background, border, width, centering, visibility,
+or an empty Grid offset is not evidence for Box; assign those props to the Section, Grid, Flex,
+Card, media, control, or content owner. Record the layer responsibility in `regions[].container`.
+
+Begin with no `translateX` or `translateY` props as well. Measured `x` and `y` bounds are QA
+evidence, not instructions to nudge every node into place. Reproduce ordinary bounds with AppBar
+regions and Section rails; use Flex `direction`, `justify`, `align`, `gap`, and `wrap` for one-axis
+flow, and Grid `columns`, `rows`, `justify`, `align`, and `gap` for shared tracks. Add padding,
+responsive direction, and `w` or `maxW` on those real owners. Add translation only when the
+blueprint identifies an advanced decorative or floating layer whose intentional overlap cannot be
+expressed by Flex, Grid, normal flow, and absolute Box offsets.
+Never translate `AppBar`, `Brand`, `NavMenu`, `Drawer`, or another compound overlay-owning root;
+keep those semantic anchors stable and translate only a purely visual layer when justified.
 
 A completed blueprint has this shape:
 
@@ -127,6 +198,7 @@ Annotated labels are hints, not component names. Resolve visible behavior agains
 | Major routed content band | Page `Section` |
 | Split hero or repeated tracks | `Grid` |
 | One-axis copy, metric, or action group | `Flex` |
+| Relative stage with overlapping children or a fixed viewport layer | Positioned `Box` wrappers around the real semantic components |
 | Compact label or status | `Chip` or `Badge` according to its behavior |
 | Related bordered, raised, or tinted unit | `Card` |
 
@@ -209,9 +281,14 @@ Inventory the reference's repeated visual decisions before adding local props:
 | Section rhythm and track gaps | Small consistent Dowe spacing ladder |
 | Repeated radii and shadows | Theme/component defaults where supported |
 
-Use `dowe-theme` when authoring these defaults. Keep local visual props only for intentional
+Use `dowe-theme` when authoring these defaults. A reference-driven task may create or change the
+palette only when the user asks for that visual-system work. If `theme.dowe` already exists and the
+request is to build a page, treat its palette as fixed: use its semantic tokens and do not replace
+it with colors re-sampled while writing the page. Keep local visual props only for intentional
 exceptions. Do not reproduce the reference with unrelated literal colors or one-off styling on
-every instance.
+every instance. Before finishing, reread the theme and verify that page-only work did not alter it;
+when a theme change was requested, verify every declared family has grouped `color`, `text`, and
+`title` roles.
 
 ## Media provenance
 
@@ -236,14 +313,16 @@ share only genuine cross-route state through a Store. Never invent component inp
 ## Implementation order
 
 1. Complete and validate the blueprint.
-2. Create or reuse the route graph and one layout Scaffold for shared chrome.
-3. Author ordered page Sections and choose Grid/Flex/Card/Box through
+2. Classify exact reconstruction or directed adaptation and write the visual-direction sentence.
+3. Create or reuse the route graph and one layout Scaffold for shared chrome.
+4. Author ordered page Sections and choose Grid/Flex/Card/Box through
    `references/composition.md`.
-4. Declare collections and state before the visual tree.
-5. Apply theme defaults, then intentional local exceptions.
-6. Compile and repair from Dowe diagnostics.
-7. Render the exact reference viewport, compare, and fix the largest band mismatch first.
-8. Validate `xs`, `md`, interaction states, accessibility, and missing assets.
+5. Build the major focal compositions and media stages before filling repeated details.
+6. Declare collections and state before their repeated visual trees.
+7. Apply theme defaults, then intentional local exceptions and the restrained detail pass.
+8. Compile and repair from Dowe diagnostics.
+9. Render the exact reference viewport, compare, and fix the largest retained-band mismatch first.
+10. Validate `xs`, `md`, interaction states, accessibility, asset quality, and missing assets.
 
 ## Deterministic visual QA
 
@@ -285,8 +364,11 @@ hide a visible mismatch.
 ## Completion checklist
 
 - Blueprint covers every visible region and the complete capture height.
+- The work is explicitly classified as exact reconstruction or directed adaptation.
 - Exact built-in components are used; no annotated or guessed component name becomes source.
 - Shared chrome is layout-owned; page content is Section-owned.
+- Normal layout uses no `translateX` or `translateY`; any exception is a documented advanced visual
+  layer, never a compound navigation or overlay root.
 - Repeated records use one collection and one `each` template.
 - Responsive behavior distinguishes observed evidence from conservative inference.
 - Loading, empty, error, disabled, overlay, and feedback states are handled where real behavior
@@ -294,6 +376,8 @@ hide a visible mismatch.
 - Labels, alternative text, source order, contrast, keyboard/touch controls, and reduced motion are
   reviewed.
 - Repeated visual identity is centralized in `theme.dowe`.
+- Every substantial retained band has a primary visual payload and preserves the reference's depth.
+- Consecutive bands do not collapse into the same generic heading-plus-Card-grid composition.
 - Static fragments are extracted; unsupported dynamic reuse is recorded without invented syntax.
 - Reference pixels never enter project assets; missing originals remain explicit.
 - The reference viewport passes band-by-band QA or the remaining evidence-backed blocker is

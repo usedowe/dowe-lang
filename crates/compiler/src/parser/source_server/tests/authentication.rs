@@ -423,7 +423,7 @@ fn listTicketsService params:{ status:string }
             root.join("server/repositories/tickets.dowe"),
             r#"fn listTicketsRepository params:{ status:string }
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"support"
-  query rows db:db.list table:"tickets"
+  query rows conn:db.list table:"tickets"
   cache appCache provider:"dowe" host:"127.0.0.1" port:4148 account:"app" secret:"secret" name:"support-cache"
   kv saved conn:appCache.set key:"tickets:last-list" value:{ status:args.status }
   return value:{ rows:rows cache:saved }"#,

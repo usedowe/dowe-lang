@@ -187,19 +187,19 @@ fn render_compose_display_node(
                     ));
         }
         ViewNode::ArcChart { props } => {
-            render_compose_chart("arc", &props.common, indent, output, context);
+            render_compose_chart("arc", &props.common, None, Some(props), indent, output, context);
         }
         ViewNode::AreaChart { props } => {
-            render_compose_chart("area", &props.common, indent, output, context);
+            render_compose_chart("area", &props.common, None, None, indent, output, context);
         }
         ViewNode::BarChart { props } => {
-            render_compose_chart("bar", &props.common, indent, output, context);
+            render_compose_chart("bar", &props.common, None, None, indent, output, context);
         }
         ViewNode::LineChart { props } => {
-            render_compose_chart("line", &props.common, indent, output, context);
+            render_compose_chart("line", &props.common, None, None, indent, output, context);
         }
         ViewNode::PieChart { props } => {
-            render_compose_chart("pie", &props.common, indent, output, context);
+            render_compose_chart("pie", &props.common, Some(props), None, indent, output, context);
         }
         ViewNode::Table { props } => {
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
@@ -421,6 +421,8 @@ fn compose_video_icons() -> String {
 fn render_compose_chart(
     chart_type: &str,
     props: &ChartCommonProps,
+    pie_props: Option<&PieChartProps>,
+    arc_props: Option<&ArcChartProps>,
     indent: usize,
     output: &mut String,
     context: &ComposeReactiveContext,
@@ -443,8 +445,45 @@ fn render_compose_chart(
         .as_deref()
         .map(|value| compose_string_literal(&context.signal_path(value)))
         .unwrap_or_else(|| "null".to_string());
+    let pie_args = pie_props
+        .map(|pie| {
+            format!(
+                ", donut = {}, donutWidth = {}, centerLabel = {}, centerValue = {}, startAngle = {}, padAngle = {}, hideLabels = {}, hideValues = {}, hidePercentages = {}, showGlow = {}",
+                pie.donut,
+                pie.donut_width,
+                compose_optional_string(pie.center_label.as_deref()),
+                compose_optional_string(pie.center_value.as_deref()),
+                pie.start_angle,
+                pie.pad_angle,
+                pie.hide_labels,
+                pie.hide_values,
+                pie.hide_percentages,
+                pie.show_glow,
+            )
+        })
+        .or_else(|| {
+            arc_props.map(|arc| {
+                format!(", startAngle = {}f", arc.start_angle)
+            })
+        })
+        .unwrap_or_default();
+    let arc_args = arc_props
+        .map(|arc| {
+            format!(
+                ", centerText = {}, centerValue = {}, thickness = {}, gap = {}, endAngle = {}, showInlineLabels = {}, arcHideValues = {}, arcShowGlow = {}",
+                compose_optional_string(arc.center_text.as_deref()),
+                compose_optional_string(arc.center_value.as_deref()),
+                arc.thickness,
+                arc.gap,
+                arc.end_angle,
+                arc.show_inline_labels,
+                arc.hide_values,
+                arc.show_glow,
+            )
+        })
+        .unwrap_or_default();
     output.push_str(&format!(
-        "{pad}DoweChart(state = state, chartType = {}, dataPath = {}, seriesPath = {}, palette = {}, legendPosition = {}, emptyLabel = {}, loading = {}, hideLegend = {}, modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+        "{pad}DoweChart(state = state, chartType = {}, dataPath = {}, seriesPath = {}, palette = {}, legendPosition = {}, emptyLabel = {}, loading = {}, hideLegend = {}, modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border}{pie_args}{arc_args})\n",
         compose_string_literal(chart_type),
         data_path,
         series_path,

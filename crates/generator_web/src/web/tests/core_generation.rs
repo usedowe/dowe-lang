@@ -44,17 +44,18 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     let html = render_page_body(&ViewNode::Children, &tree);
 
     assert!(html.contains(
-        "<div class=\"box color-onPrimary\"><p class=\"text-md\">Box inherited</p><p class=\"text-md color-danger\">Box override</p></div>"
+        "<div class=\"box color-primaryText\"><p class=\"dowe-text text-md\">Box inherited</p><p class=\"dowe-text text-md color-danger\">Box override</p></div>"
     ));
     assert!(html.contains("<article class=\"card"));
     assert!(html.contains("is-soft is-muted"));
-    assert!(html.contains("<p class=\"text-md\">Card inherited</p>"));
-    assert!(html.contains("<p class=\"title-md color-warning\">Card override</p>"));
+    assert!(html.contains("<p class=\"dowe-text text-md\">Card inherited</p>"));
+    assert!(html.contains("<p class=\"dowe-title title-md\">Card title inherited</p>"));
+    assert!(html.contains("<p class=\"dowe-title title-md color-warning\">Card override</p>"));
     assert!(page
         .css_content
-        .contains(".color-onPrimary{color:var(--dowe-onPrimary);}"));
+        .contains(".color-primaryText{color:var(--dowe-primaryText);}"));
     assert!(page.css_content.contains(
-        ".card.is-soft.is-muted{background-color:var(--dowe-softMuted);color:var(--dowe-onSoftMuted);border-color:var(--dowe-softMuted);}"
+        ".card.is-soft.is-muted{--dowe-content-text:var(--dowe-softMutedText);--dowe-content-title:var(--dowe-softMutedTitle);background-color:var(--dowe-softMuted);color:var(--dowe-softMutedText);border-color:var(--dowe-softMuted);}"
     ));
 }
 
@@ -483,7 +484,7 @@ fn separates_layout_and_page_chunks() {
 fn renders_box_and_text_as_div_and_paragraph() {
     assert_eq!(
         render_page_body(&layout_tree(), &page_tree()),
-        r#"<div class="box"><p class="text-md">Layout</p><div class="box"><p class="text-md">Login</p></div></div>"#
+        r#"<div class="box"><p class="dowe-text text-md">Layout</p><div class="box"><p class="dowe-text text-md">Login</p></div></div>"#
     );
 }
 
@@ -493,7 +494,7 @@ fn renders_section_markup_and_background_css() {
     let page_tree = ViewNode::Section {
         props: StyleProps {
             boxed: true,
-            text: Some(ResponsiveValue::scalar(ColorToken::OnBackground)),
+            text: Some(ResponsiveValue::scalar(ColorToken::BackgroundText)),
             background: Some(ResponsiveValue::ordered(vec![
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Xs,
@@ -519,11 +520,11 @@ fn renders_section_markup_and_background_css() {
 
     assert!(html.contains("<section"));
     assert!(html.contains(
-        "<div class=\"section-body is-boxed px-4 md:px-6 py-10 md:py-16\"><p class=\"text-md\">Hero</p></div>"
+        "<div class=\"section-body is-boxed px-4 md:px-6 py-10 md:py-16\"><p class=\"dowe-text text-md\">Hero</p></div>"
     ));
     assert!(!html.contains("<section class=\"section is-boxed"));
     assert!(html.contains(
-        "section color-onBackground has-background background-soft md:background-aurora"
+        "section color-backgroundText has-background background-soft md:background-aurora"
     ));
     assert!(page.css_content.contains(
         "background-image:linear-gradient(135deg,var(--dowe-surface),var(--dowe-background));"
@@ -857,9 +858,7 @@ fn emits_container_refactor_css() {
     let page_tree = ViewNode::Grid {
         props: GridProps {
             columns: Some(ResponsiveValue::scalar(GridTracks::Count(3))),
-            rows: Some(ResponsiveValue::scalar(GridTracks::Template(
-                "100px auto".to_string(),
-            ))),
+            rows: Some(ResponsiveValue::scalar(GridTracks::Count(2))),
             justify: Some(ResponsiveValue::scalar(GridAlignment::Center)),
             gap: Some(ResponsiveValue::scalar(GapValue::Pair(
                 GapSize::Px(10),
@@ -919,7 +918,9 @@ fn emits_container_refactor_css() {
     assert!(page
         .css_content
         .contains("grid-template-columns:repeat(3,minmax(0,1fr));"));
-    assert!(page.css_content.contains("grid-template-rows:100px auto;"));
+    assert!(page
+        .css_content
+        .contains("grid-template-rows:repeat(2,minmax(0,1fr));"));
     assert!(page.css_content.contains("row-gap:10px;column-gap:20px;"));
     assert!(page
         .css_content
@@ -958,23 +959,23 @@ fn emits_responsive_css_in_ascending_breakpoint_blocks() {
             rows: Some(ResponsiveValue::ordered(vec![
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Xs,
-                    value: GridTracks::Template("auto".to_string()),
+                    value: GridTracks::Count(1),
                 },
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Sm,
-                    value: GridTracks::Template("auto 1fr".to_string()),
+                    value: GridTracks::Count(2),
                 },
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Md,
-                    value: GridTracks::Template("auto 1fr auto".to_string()),
+                    value: GridTracks::Count(3),
                 },
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Lg,
-                    value: GridTracks::Template("repeat(4,auto)".to_string()),
+                    value: GridTracks::Count(4),
                 },
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Xl,
-                    value: GridTracks::Template("repeat(5,auto)".to_string()),
+                    value: GridTracks::Count(5),
                 },
             ])),
             ..Default::default()
@@ -1101,10 +1102,24 @@ fn emits_portable_box_positioning_css() {
 fn emits_reset_and_font_css() {
     let css = super::design_css();
 
-    assert!(css.contains("body{margin:0;"));
+    assert!(css.contains("body{--dowe-content-text:var(--dowe-backgroundText);--dowe-content-title:var(--dowe-backgroundTitle);margin:0;"));
+    assert!(css.contains(".dowe-text{color:var(--dowe-content-text,var(--dowe-backgroundText));}"));
+    assert!(css.contains(".dowe-title{color:var(--dowe-content-title,var(--dowe-backgroundTitle));}"));
     assert!(css.contains("p,h1,h2,h3,h4,h5,h6{margin:0;"));
     assert!(css.contains("a{color:inherit;text-decoration:inherit;}"));
     assert!(css.contains("button,input,textarea,select{font:inherit;color:inherit;margin:0;}"));
+    assert!(css.contains(
+        ".input::-webkit-outer-spin-button,.input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}"
+    ));
+    assert!(css.contains(
+        ".input[type='number']{appearance:textfield;-moz-appearance:textfield;}"
+    ));
+    assert!(css.contains(
+        ".input:-webkit-autofill,.input:-webkit-autofill:hover,.input:-webkit-autofill:focus,.input:-webkit-autofill:active{-webkit-box-shadow:0 0 0 30px transparent inset!important;-webkit-text-fill-color:inherit!important;background-color:transparent!important;background-image:none!important;color:inherit!important;transition:background-color 5000000s ease-in-out 0s!important;}"
+    ));
+    assert!(css.contains(
+        ".input:-moz-autofill{background-color:transparent!important;color:inherit!important;}"
+    ));
     assert!(css.contains("--dowe-font-inter"));
     assert!(css.contains("@font-face{font-family:\"Dowe Inter\""));
     assert!(css.contains("src:url(\"/fonts/inter/inter-regular.ttf\") format(\"truetype\")"));

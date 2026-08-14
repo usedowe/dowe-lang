@@ -1,8 +1,8 @@
 use crate::access::DeployAccess;
+use crate::application::{EXECUTABLE_NAME, generate_embedded_application};
 use crate::error::{DeployError, DeployResult};
 use crate::files::write_file;
-use crate::model::{DeployEnvironment, DeployTarget};
-use crate::package::copy_app;
+use crate::model::{DeployEnvironment, DeploySurface, DeployTarget};
 use serde_json::json;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -86,31 +86,64 @@ pub fn generate_docker(
     image: &DockerImage,
     environment: DeployEnvironment,
     access: Option<&DeployAccess>,
+    surface: DeploySurface,
     server_port: u16,
     http_port: Option<u16>,
+    client_environment: &[(String, String)],
+    linux_runtime: Option<&[u8]>,
 ) -> DeployResult<()> {
-    copy_app(root, &output.join("app"))?;
-    write_file(
-        &output.join("Dockerfile"),
-        release_dockerfile(access, server_port, http_port),
-    )?;
     let mut ports = vec![server_port];
     if let Some(port) = http_port {
         ports.push(port);
         ports.sort_unstable();
     }
-    let mut manifest = serde_json::to_string_pretty(&json!({
+    let mut manifest = json!({
         "version": 1,
+        "surface": surface,
         "target": DeployTarget::Docker,
         "platform": DOCKER_PLATFORM,
         "registry": image.registry,
         "image": image.image,
         "imageRef": image.reference,
-        "runtime": "release",
         "environment": environment,
         "accessProtected": access.is_some(),
         "ports": ports
-    }))?;
+    });
+    match surface {
+        DeploySurface::Server | DeploySurface::Web => {
+            let runtime =
+                linux_runtime.ok_or_else(|| DeployError::new("Docker Linux runtime is missing"))?;
+            let bind = format!("0.0.0.0:{server_port}");
+            let package = generate_embedded_application(
+                root,
+                output,
+                surface,
+                environment,
+                access,
+                client_environment,
+                &bind,
+                runtime,
+            )?;
+            write_file(
+                &output.join("Dockerfile"),
+                embedded_dockerfile(server_port, http_port),
+            )?;
+            manifest["runtime"] = json!("embedded");
+            manifest["runtimeVersion"] = json!(env!("CARGO_PKG_VERSION"));
+            manifest["executable"] = json!(EXECUTABLE_NAME);
+            manifest["sha256"] = json!(package.sha256);
+            manifest["size"] = json!(package.size);
+            if package.executable != output.join(EXECUTABLE_NAME) {
+                return Err(DeployError::new("Docker executable path is invalid"));
+            }
+        }
+        DeploySurface::Android | DeploySurface::Ios => {
+            return Err(DeployError::new(
+                "docker deploy only supports Server and Web",
+            ));
+        }
+    }
+    let mut manifest = serde_json::to_string_pretty(&manifest)?;
     manifest.push('\n');
     write_file(&output.join("deploy.json"), manifest)
 }
@@ -216,21 +249,7 @@ fn image_has_tag(value: &str) -> bool {
         .is_some_and(|part| part.contains(':'))
 }
 
-fn release_dockerfile(
-    access: Option<&DeployAccess>,
-    server_port: u16,
-    http_port: Option<u16>,
-) -> String {
-    let version = env!("CARGO_PKG_VERSION");
-    let archive_url = format!("https://get.dowe.dev/v{version}/linux-amd64.tar.gz");
-    let access_arguments = access
-        .map(|access| {
-            format!(
-                ",\"--environment\",\"{}\",\"--access-hash\",\"{}\"",
-                access.environment, access.password_hash
-            )
-        })
-        .unwrap_or_default();
+fn embedded_dockerfile(server_port: u16, http_port: Option<u16>) -> String {
     let mut ports = vec![server_port];
     if let Some(port) = http_port {
         ports.push(port);
@@ -242,6 +261,6 @@ fn release_dockerfile(
         .collect::<Vec<_>>()
         .join(" ");
     format!(
-        "FROM debian:bookworm-slim AS dowe-runtime\nARG DOWE_ARCHIVE_URL={archive_url}\nRUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tar && curl -fsSL \"$DOWE_ARCHIVE_URL\" -o /dowe.tar.gz && tar -xzf /dowe.tar.gz -C /tmp && mv /tmp/dowe /dowe && chmod 0755 /dowe && rm -rf /var/lib/apt/lists/* /dowe.tar.gz /tmp/assets\nFROM {DISTROLESS_IMAGE}\nWORKDIR /app\nCOPY --from=dowe-runtime /dowe /usr/local/bin/dowe\nCOPY --chown=nonroot:nonroot app /app\nEXPOSE {exposed_ports}\nUSER nonroot:nonroot\nENTRYPOINT [\"/usr/local/bin/dowe\",\"server\",\"--root\",\"/app\",\"--bind\",\"0.0.0.0:{server_port}\"{access_arguments}]\n"
+        "FROM {DISTROLESS_IMAGE}\nWORKDIR /app\nCOPY --chmod=0755 --chown=nonroot:nonroot {EXECUTABLE_NAME} /usr/local/bin/{EXECUTABLE_NAME}\nEXPOSE {exposed_ports}\nUSER nonroot:nonroot\nENTRYPOINT [\"/usr/local/bin/{EXECUTABLE_NAME}\"]\n"
     )
 }

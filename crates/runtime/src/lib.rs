@@ -29,6 +29,7 @@ mod watch;
 
 pub use background_jobs::run_worker_from_env as run_background_worker_from_env;
 pub use d1_migrations::{D1IconCatalogMigrationReport, generate_solar_icon_catalog_d1_migrations};
+pub use database_bootstrap::seed_local_databases;
 pub use desktop_app::run_development_host_from_env as run_development_desktop_host_from_env;
 pub use desktop_app::run_embedded as run_embedded_desktop_app;
 pub use dev::{

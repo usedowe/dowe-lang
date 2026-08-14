@@ -1,5 +1,5 @@
 use crate::language::completion::{component_value_completions, props_for_component};
-use dowe_components::BuiltinComponent;
+use dowe_components::{BuiltinComponent, ColorFamily};
 use dowe_stdlib::{StdlibReturnKind, StdlibSignature};
 
 #[rustfmt::skip]
@@ -115,7 +115,7 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "query",
-        signature: "query <binding> db:<handle>.<operation> ...",
+        signature: "query <binding> conn:<handle>.<operation> ...",
         description: "Runs a Database operation and declares its result binding.",
     },
     ServerDocumentation {
@@ -285,13 +285,13 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "task",
-        signature: "task <fn> [args:{ ... }] [after:\"headers\"] | task [args:{ ... }] [after:\"headers\"] <server statements...>",
+        signature: "task fn:<fn> [args:{ ... }] [after:\"headers\"] | task [args:{ ... }] [after:\"headers\"] <server statements...>",
         description: "Starts an imported server function or inline server-function body in an isolated process and discards its result. Tasks are immediate and source-ordered by default; `after:\"headers\"` is valid only directly in a reverse-proxy HTTP handler, requires `args.event` to be an object, and launches once after real upstream response headers arrive.",
     },
     ServerDocumentation {
         name: "cron",
-        signature: "cron <fn> schedule:\"<cron>\" [args...]",
-        description: "Schedules isolated UTC executions from server init.",
+        signature: "cron fn:<fn> schedule:\"<cron>\" [args...]",
+        description: "Schedules isolated UTC executions from server init without creating a result binding.",
     },
     ServerDocumentation {
         name: "send",
@@ -419,14 +419,39 @@ pub(super) fn theme_documentation(owner: &str, token: &str, root_theme: bool) ->
                 .to_string(),
         ),
         ("theme", "theme", false) => Some(
-            "## `theme`\n\n```dowe\ntheme name:\"brand\" extends:\"light\"\n  colors primary:\"#2563eb\"\n```\n\nDeclares a named color theme inside `design`. It may inherit from another named or built-in theme and override semantic color tokens. Component defaults belong in `Card`, `Button`, `Avatar`, `Chip`, `Ui`, `Text`, or `Title` entries under `design`.\n\n**Accepted props**\n\n- `name`: stable lowercase theme name\n- `extends`: optional theme name to inherit\n\n**Accepted children**\n\n- `colors` with one or more semantic color tokens"
+            "## `theme`\n\n```dowe\ntheme name:\"brand\" extends:\"light\"\n  colors:\n    primary color:\"#2563eb\" text:\"#ffffff\" title:\"#fffffe\"\n```\n\nDeclares a named color theme inside `design`. Each grouped semantic family declares `color`, `text`, and `title`: the base value, ordinary content and controls, and titles and semantic headers respectively. Soft action and status families expose the same three roles. A named theme may inherit from another named or built-in theme and override any role within a family. Component defaults belong in the component entries under `design`; explicit usage props take precedence over those defaults.\n\n**Accepted props**\n\n- `name`: stable lowercase theme name\n- `extends`: optional theme name to inherit\n\n**Accepted children**\n\n- `colors` with grouped semantic color families"
+                .to_string(),
+        ),
+        (owner, token, _)
+            if !matches!(owner, "design" | "fonts")
+                && ColorFamily::from_theme_name(owner).is_some()
+                && owner == token =>
+        {
+            Some(format!(
+                "## `{owner}` color family\n\nDeclares one grouped semantic color family. Its `color`, `text`, and `title` props are normalized into the shared target-neutral color tokens. In an inherited theme, any omitted role comes from the parent theme."
+            ))
+        }
+        (owner, "color", _) if ColorFamily::from_theme_name(owner).is_some() => Some(
+            "### `color`\n\nBase semantic color used as the filled surface or family accent."
+                .to_string(),
+        ),
+        (owner, "text", _) if ColorFamily::from_theme_name(owner).is_some() => Some(
+            "### `text`\n\nSemantic color for ordinary content, control labels, and authored `Text` inside the family surface."
+                .to_string(),
+        ),
+        (owner, "title", _) if ColorFamily::from_theme_name(owner).is_some() => Some(
+            "### `title`\n\nSemantic color for authored `Title` and integrated semantic headers inside the family surface."
                 .to_string(),
         ),
         ("design", "design", _) => Some(
-            "## `design`\n\n```dowe\ndesign defaultTheme:\"light\"\n  Card variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n  Button variant:\"solid\" scheme:\"secondary\" size:\"md\"\n  Avatar radius:\"full\" size:\"md\"\n  Chip variant:\"soft\" scheme:\"secondary\" radius:\"full\" size:\"sm\"\n  Text font:\"manrope\"\n  Title font:\"syne\"\n  theme name:\"light\"\n```\n\nConfigures the default named color theme and static visual defaults that Dowe injects into the shared view model. Explicit props in pages, layouts, and components take precedence.\n\n**Accepted props**\n\n- `defaultTheme`: declared theme name used initially\n\n**Accepted children**\n\n- `Card`\n- `Button`\n- `Chip`\n- `Avatar`\n- `Ui` for shared control defaults\n- `Text` for the default text font\n- `Title` for the default title font\n- `theme` for named color tokens"
+            "## `design`\n\n```dowe\ndesign defaultTheme:\"light\"\n  Button variant:\"outlined\"\n  Input variant:\"outlined\" scheme:\"primary\"\n  Text font:\"manrope\"\n  Title font:\"syne\"\n  theme name:\"light\"\n```\n\nConfigures the default named color theme and static visual defaults that Dowe injects into the shared view model. The precedence is explicit usage prop, then the matching `design` entry, then the built-in component default. Built-in defaults intentionally add no border or shadow unless the project configures those props. The normalized defaults are shared by web, desktop, Android, and iOS output.\n\n**Accepted props**\n\n- `defaultTheme`: declared theme name used initially\n\n**Accepted children**\n\n- `Button`, `IconButton`, `Card`, `Drawer`, `Toast`, `Section`, `Accordion`, `Checkbox`, `Input`, `Date`, `Password`, `Select`, `Pin`, `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip`, `Tabs`\n- `Chip`, `Avatar`, and `Ui` for existing shared visual defaults\n- `Text` for the default text font\n- `Title` for the default title font\n- `theme` for named color tokens"
                 .to_string(),
         ),
-        (component @ ("Card" | "Button" | "Chip" | "Avatar" | "Ui"), token, _)
+        ("Tabs", "Tabs", _) => Some(
+            "## `Tabs` theme defaults\n\n```dowe\nTabs variant:\"pills\" scheme:\"primary\"\n```\n\nDeclares optional static defaults for `Tabs` inside `design`. Its `variant` accepts `solid`, `outlined`, `line`, `ghost`, or `pills`; the built-in default is `pills` with the `primary` scheme. An explicit prop on a component usage always wins; omitted props retain Dowe's built-in component defaults."
+                .to_string(),
+        ),
+        (component @ ("Card" | "Button" | "IconButton" | "Drawer" | "Toast" | "Section" | "Accordion" | "Checkbox" | "Input" | "Date" | "Password" | "Select" | "Pin" | "AppBar" | "Footer" | "Modal" | "Dropdown" | "Tooltip" | "Chip" | "Avatar" | "Ui"), token, _)
             if component == token => Some(
             format!(
                 "## `{component}` theme defaults\n\n```dowe\n{component} variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n```\n\nDeclares optional static defaults for `{component}` inside `design`. An explicit prop on a component usage always wins; omitted props retain Dowe's built-in component defaults.\n\n**Accepted props**\n\n- `variant`: `solid`, `soft`, `outline`, `outlined`, `line`, or `ghost`\n- `scheme`: semantic color family\n- `radius` or `rounded`: `xs`, `sm`, `md`, `lg`, `xl`, or `full`\n- `shadow`: `xs`, `sm`, `md`, `lg`, or `xl`\n- `shadowColor`: semantic color family\n- `border`: integer from `1` to `4`\n- `borderColor`: semantic color family\n- `size`: `xs`, `sm`, `md`, `lg`, or `xl`"

@@ -26,7 +26,7 @@ fn section_route() -> ViewRoute {
                 ViewNode::Section {
                     props: StyleProps {
                         boxed: true,
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnBackground)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::BackgroundText)),
                         background: Some(ResponsiveValue::ordered(vec![
                             ResponsiveEntry {
                                 breakpoint: Breakpoint::Xs,

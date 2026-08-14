@@ -8,7 +8,7 @@ use super::{
     DeviceProfile, DividerOrientation, FabProps, FlexDirection, FontFamily, GapValue,
     GridAlignment, GridTracks, IframeLoading, NativeExternalMode, NavigationAction,
     OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation, ResponsivePropEntry,
-    SVG_LOGOS, SVG_SPINNERS, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap,
+    RoundedSize, SVG_LOGOS, SVG_SPINNERS, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap,
     SvgLineJoin, SvgPathFill, SvgTransform, TableColumnAlign, TableSize, TabsPosition, TabsVariant,
     TextSize, TextSpacing, TextWeight, VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewNode,
     ViewRotation, ViewScale, ViewTransition, ViewTranslation, VisibilityCondition, WebTarget,
@@ -16,7 +16,8 @@ use super::{
     bar_component_node, box_node, candlestick_node, canvas_component_node, carousel_component_node,
     carousel_slide_component, children_node, code_node, compose_tree, container_component_node,
     country_flag_icon, device_node, divider_node, first_text, fixed_box_nodes, fixed_fab_nodes,
-    font_catalog, form_control_min_height, form_control_text_size, icon_component_node, iframe_node, input_node,
+    font_catalog, form_control_min_height, form_control_text_size, icon_component_node, iframe_node,
+    input_node, integrated_design_theme,
     line_chart_component_node,
     phone_countries, pie_chart_component_node, radio_group_component_node, radio_option_component,
     section_content_spacing, select_node, select_option_component, stepper_component_node,
@@ -811,7 +812,7 @@ fn rejects_invalid_candlestick_props() {
     assert_eq!(
         candlestick_node(vec![
             string_prop("data", "candles"),
-            string_prop("upColor", "brand")
+            string_prop("upColor", "brand-color")
         ])
         .expect_err("upColor"),
         ComponentError::invalid_prop("upColor", "color token")
@@ -1024,12 +1025,72 @@ fn validates_tabs_props_entries_and_defaults() {
     .expect("default tabs");
     match default_node {
         ViewNode::Tabs { props, .. } => {
-            assert_eq!(props.variant, TabsVariant::Solid);
-            assert_eq!(props.color, ColorFamily::Muted);
+            assert_eq!(props.variant, TabsVariant::Pills);
+            assert_eq!(props.color, ColorFamily::Primary);
             assert_eq!(props.position, TabsPosition::Top);
+            assert!(!props.variant_explicit);
+            assert!(!props.color_explicit);
         }
         _ => panic!("tabs"),
     }
+}
+
+#[test]
+fn resolves_tabs_defaults_with_theme_and_usage_precedence() {
+    let make_tabs = |props| {
+        tabs_component_node(
+            props,
+            vec![
+                tabs_tab_component(
+                    vec![string_prop("id", "one"), string_prop("label", "One")],
+                    vec![text_node("One").expect("text")],
+                )
+                .expect("tab"),
+            ],
+        )
+        .expect("tabs")
+    };
+
+    let mut built_in = make_tabs(Vec::new());
+    super::apply_design_defaults_to_tree(
+        &mut built_in,
+        &super::DesignDefaults::with_builtin_defaults(),
+    );
+    let ViewNode::Tabs { props, .. } = built_in else {
+        panic!("tabs");
+    };
+    assert_eq!(props.variant, TabsVariant::Pills);
+    assert_eq!(props.color, ColorFamily::Primary);
+    assert!(props.style.border.is_none());
+    assert!(props.style.shadow.is_none());
+
+    let mut theme_defaults = super::DesignDefaults::with_builtin_defaults();
+    theme_defaults.tabs_variant.insert(
+        super::DesignComponentSlot::Tabs,
+        TabsVariant::Line,
+    );
+    theme_defaults
+        .scheme
+        .insert(super::DesignComponentSlot::Tabs, ColorFamily::Muted);
+
+    let mut themed = make_tabs(Vec::new());
+    super::apply_design_defaults_to_tree(&mut themed, &theme_defaults);
+    let ViewNode::Tabs { props, .. } = themed else {
+        panic!("tabs");
+    };
+    assert_eq!(props.variant, TabsVariant::Line);
+    assert_eq!(props.color, ColorFamily::Muted);
+
+    let mut explicit = make_tabs(vec![
+        string_prop("variant", "ghost"),
+        string_prop("scheme", "success"),
+    ]);
+    super::apply_design_defaults_to_tree(&mut explicit, &theme_defaults);
+    let ViewNode::Tabs { props, .. } = explicit else {
+        panic!("tabs");
+    };
+    assert_eq!(props.variant, TabsVariant::Ghost);
+    assert_eq!(props.color, ColorFamily::Success);
 }
 
 #[test]
@@ -1419,7 +1480,7 @@ fn validates_container_refactor_props() {
         BuiltinComponent::Grid,
         vec![
             number_prop("columns", 3),
-            string_prop("rows", "100px auto"),
+            number_prop("rows", 2),
             string_prop("justify", "center"),
             string_prop("gap", "10px 20px"),
         ],
@@ -1464,6 +1525,39 @@ fn validates_container_refactor_props() {
         }
         _ => panic!("grid"),
     }
+
+    assert_eq!(
+        container_component_node(
+            BuiltinComponent::Grid,
+            vec![string_prop("columns", "5fr 7fr")],
+            Vec::new(),
+            false,
+        )
+        .expect_err("fractional grid columns"),
+        ComponentError::invalid_prop("columns", "positive integer from 1 to 12")
+    );
+
+    assert_eq!(
+        container_component_node(
+            BuiltinComponent::Grid,
+            vec![string_prop("rows", "100px auto")],
+            Vec::new(),
+            false,
+        )
+        .expect_err("grid row template"),
+        ComponentError::invalid_prop("rows", "positive integer or auto")
+    );
+
+    assert_eq!(
+        container_component_node(
+            BuiltinComponent::Grid,
+            vec![number_prop("columns", 13)],
+            Vec::new(),
+            false,
+        )
+        .expect_err("too many grid columns"),
+        ComponentError::invalid_prop("columns", "positive integer from 1 to 12")
+    );
 }
 
 #[test]
@@ -1619,7 +1713,7 @@ fn validates_section_background_props() {
         BuiltinComponent::Section,
         vec![
             string_prop("background", "aurora"),
-            string_prop("color", "onBackground"),
+            string_prop("color", "backgroundText"),
             string_prop("animation", "fadeIn"),
             boolean_prop("boxed", true),
         ],
@@ -2189,7 +2283,7 @@ fn validates_button_events_and_alert_props() {
 
 #[test]
 fn resolves_icon_button_and_control_icon_regions() {
-    let icon_button = container_component_node(
+    let mut icon_button = container_component_node(
         BuiltinComponent::IconButton,
         vec![
             string_prop("icon", "settings"),
@@ -2199,6 +2293,10 @@ fn resolves_icon_button_and_control_icon_regions() {
         false,
     )
     .expect("icon button");
+    super::apply_design_defaults_to_tree(
+        &mut icon_button,
+        &super::DesignDefaults::with_builtin_defaults(),
+    );
     match icon_button {
         ViewNode::Button { props, children } => {
             assert!(props.icon_only);
@@ -2252,18 +2350,26 @@ fn resolves_icon_button_and_control_icon_regions() {
 
 #[test]
 fn normalizes_button_visual_props() {
-    let node = container_component_node(
+    let mut node = container_component_node(
         BuiltinComponent::Button,
         vec![string_prop("size", "lg"), number_prop("pl", 1)],
         vec![text_node("Save").expect("text")],
         false,
     )
     .expect("button");
+    super::apply_design_defaults_to_tree(
+        &mut node,
+        &super::DesignDefaults::with_builtin_defaults(),
+    );
 
     match node {
         ViewNode::Button { props, .. } => {
-            assert_eq!(props.variant, None);
-            assert_eq!(props.color, None);
+            assert_eq!(props.variant, Some(ComponentVariant::Solid));
+            assert_eq!(props.color, Some(ColorFamily::Primary));
+            assert_eq!(
+                props.style.rounded.expect("rounded").entries[0].value,
+                RoundedSize::Md
+            );
             assert_eq!(props.size, Some(ButtonSize::Lg));
             assert_eq!(
                 props.style.spacing.pl.expect("pl").entries[0].value,
@@ -2308,6 +2414,18 @@ fn validates_country_flag_catalog_and_icon_names() {
 }
 
 #[test]
+fn exposes_solar_variant_names_in_the_icon_catalog() {
+    let names = all_icon_names();
+    assert!(names.contains(&"alt-arrow-right".to_string()));
+    assert!(names.contains(&"alt-arrow-right-broken".to_string()));
+    assert!(names.contains(&"alt-arrow-right-outline".to_string()));
+    assert!(names.contains(&"alt-arrow-right-bold".to_string()));
+    assert!(names.contains(&"alt-arrow-right-line-duotone".to_string()));
+    assert!(names.contains(&"alt-arrow-right-bold-duotone".to_string()));
+    assert!(!names.contains(&"alt-arrow-right-linear".to_string()));
+}
+
+#[test]
 fn validates_svg_spinner_catalog_and_icon_names() {
     assert_eq!(SVG_SPINNERS.len(), 46);
     assert_eq!(validate_svg_spinner_catalog().expect("catalog"), 46);
@@ -2322,4 +2440,83 @@ fn validates_svg_logo_catalog_and_icon_names() {
     assert!(all_icon_names().contains(&"svg-logos:github-icon".to_string()));
     assert!(all_icon_names().contains(&"svg-logos:daisyui-icon".to_string()));
     assert!(all_icon_names().contains(&"svg-logos:macos".to_string()));
+}
+
+#[test]
+fn exposes_text_and_title_roles_for_every_theme_color_family() {
+    assert_eq!(ColorToken::all().len(), 54);
+    assert_eq!(ColorToken::from_name("primaryText"), Some(ColorToken::PrimaryText));
+    assert_eq!(ColorToken::from_name("primaryTitle"), Some(ColorToken::PrimaryTitle));
+    assert_eq!(ColorToken::from_name("softPrimaryText"), Some(ColorToken::SoftPrimaryText));
+    assert_eq!(ColorToken::from_name("softPrimaryTitle"), Some(ColorToken::SoftPrimaryTitle));
+    assert_eq!(ColorToken::from_name("onPrimary"), None);
+    assert_eq!(ColorToken::from_name("onSuccess"), None);
+    assert_eq!(ColorToken::from_name("onSoftPrimary"), None);
+    assert_eq!(ColorFamily::Primary.text_token(), ColorToken::PrimaryText);
+    assert_eq!(ColorFamily::Primary.title_token(), ColorToken::PrimaryTitle);
+    assert_eq!(ColorFamily::Primary.soft_text_token(), ColorToken::SoftPrimaryText);
+    assert_eq!(ColorFamily::Primary.soft_title_token(), ColorToken::SoftPrimaryTitle);
+    assert_eq!(ColorFamily::Background.soft_title_token(), ColorToken::BackgroundTitle);
+    assert_eq!(
+        ColorFamily::from_theme_name("primary"),
+        Some((ColorFamily::Primary, false))
+    );
+    assert_eq!(
+        ColorFamily::from_theme_name("softPrimary"),
+        Some((ColorFamily::Primary, true))
+    );
+    assert_eq!(ColorFamily::from_theme_name("softBackground"), None);
+    assert_eq!(
+        ColorFamily::Primary.theme_tokens(false),
+        Some([
+            ColorToken::Primary,
+            ColorToken::PrimaryText,
+            ColorToken::PrimaryTitle,
+        ])
+    );
+    assert_eq!(
+        ColorFamily::Primary.theme_tokens(true),
+        Some([
+            ColorToken::SoftPrimary,
+            ColorToken::SoftPrimaryText,
+            ColorToken::SoftPrimaryTitle,
+        ])
+    );
+    assert_eq!(ColorFamily::Background.theme_tokens(true), None);
+
+    for name in ["light", "dark"] {
+        let theme = integrated_design_theme(name).expect("integrated theme");
+        assert_eq!(theme.colors.len(), ColorToken::all().len());
+    }
+}
+
+#[test]
+fn represents_custom_theme_color_families_and_soft_roles() {
+    let happy = ColorFamily::from_name("happy").expect("custom family");
+    let brand_accent = ColorFamily::from_name("brandAccent").expect("custom camel family");
+
+    assert!(std::mem::size_of::<ColorFamily>() <= 2);
+    assert!(std::mem::size_of::<ColorToken>() <= 2);
+    assert_eq!(happy.as_str(), "happy");
+    assert_eq!(happy.color_token().as_str(), "happy");
+    assert_eq!(happy.text_token().as_str(), "happyText");
+    assert_eq!(happy.title_token().as_str(), "happyTitle");
+    assert_eq!(happy.soft_color_token().as_str(), "softHappy");
+    assert_eq!(happy.soft_text_token().as_str(), "softHappyText");
+    assert_eq!(happy.soft_title_token().as_str(), "softHappyTitle");
+    assert_eq!(brand_accent.as_str(), "brandAccent");
+    assert_eq!(
+        ColorFamily::from_theme_name("softHappy"),
+        Some((happy, true))
+    );
+    assert_eq!(ColorFamily::from_name("softHappy"), None);
+    assert_eq!(ColorFamily::from_name("happyText"), None);
+    assert_eq!(ColorFamily::from_name("onHappy"), None);
+    assert_eq!(ColorFamily::from_name("colors"), None);
+    assert_eq!(ColorFamily::from_name("text"), None);
+    assert_eq!(ColorFamily::from_name("Happy"), None);
+    assert_eq!(ColorFamily::from_name("happy-day"), None);
+    assert_eq!(ColorToken::from_name("happy"), Some(happy.color_token()));
+    assert_eq!(ColorToken::from_name("happyText"), Some(happy.text_token()));
+    assert_eq!(ColorToken::from_name("happyTitle"), Some(happy.title_token()));
 }

@@ -1,0 +1,1390 @@
+{
+  "schemaVersion": 1,
+  "description": "Compact, self-contained catalog of Dowe documentation block patterns for progressive UI retrieval.",
+  "corpus": {
+    "documentationPages": 94,
+    "blockEntries": 75,
+    "families": 17,
+    "note": "The catalog stores selection metadata, not complete documentation pages or embedded screenshots."
+  },
+  "retrieval": {
+    "maxCandidates": 5,
+    "recommendedSelection": "Choose one primary block and at most one supporting block; combine family defaults with variant tags.",
+    "uiFilter": "For UI generation, ignore entries whose kind is server.",
+    "sourcePolicy": "Generate Dowe source from the selected pattern and current compiler contracts; do not copy documentation gallery wrappers."
+  },
+  "families": {
+    "accordion": {
+      "kind": "view",
+      "purpose": "Progressive disclosure for FAQs, policies, explanations, and grouped details.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Accordion",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "single-column list",
+        "split introduction and list",
+        "numbered or outlined panels"
+      ],
+      "responsive": "Keep the reading order linear at xs; preserve the list as the primary content.",
+      "tags": [
+        "disclosure",
+        "faq",
+        "panels"
+      ]
+    },
+    "app-bar": {
+      "kind": "view",
+      "purpose": "Persistent navigation and product identity for marketing or application shells.",
+      "components": [
+        "Scaffold",
+        "AppBar",
+        "Brand",
+        "NavMenu",
+        "Button",
+        "Drawer"
+      ],
+      "compositions": [
+        "classic navigation",
+        "centered navigation",
+        "pill or floating navigation",
+        "dashboard navigation"
+      ],
+      "authoringRules": [
+        "Use one AppBar directly under Scaffold.appBar with Brand in start, NavMenu directly in center, and actions directly in end.",
+        "Put responsive show on NavMenu, Button, or IconButton instead of wrapping a slot child in Box.",
+        "Use top and bottom only for full-width bands that belong inside the AppBar surface; use Drawer in overlays for mobile navigation.",
+        "Do not duplicate the desktop or mobile AppBar with Box surfaces in overlays.",
+        "Do not use translateX or translateY on AppBar, Brand, NavMenu, its actions, Drawer, or wrappers around them; align the shell through boxed content, AppBar regions, Flex justify and align, gap, padding, intrinsic sizing, and responsive show."
+      ],
+      "responsive": "Keep primary destinations available; move secondary navigation into Drawer at xs.",
+      "tags": [
+        "navigation",
+        "shell",
+        "header"
+      ]
+    },
+    "auth": {
+      "kind": "view",
+      "purpose": "Sign-in, sign-up, and password-recovery entry points.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Input",
+        "Button",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "centered card",
+        "split form and media",
+        "reversed split form and media"
+      ],
+      "authoringRules": [
+        "Use one responsive Grid or Flex tree; do not duplicate the complete form for compact and wide breakpoints.",
+        "Let one Grid columns:1 gap stack own field rhythm, and let Input, Password, Phone, Pin, and Button own their surfaces without individual Box wrappers.",
+        "Use Card only when the reference visibly groups the form as a raised, filled, or outlined surface.",
+        "Reserve Box for an advanced auth-layout layer plane with direct absolute background or ornament children, or for a fixed viewport layer."
+      ],
+      "responsive": "Collapse split layouts to one readable form column at xs; keep actions and labels visible.",
+      "tags": [
+        "form",
+        "authentication",
+        "conversion"
+      ]
+    },
+    "cards": {
+      "kind": "view",
+      "purpose": "Grouped feature, product, action, media, and bento content.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Icon",
+        "Image",
+        "Button",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "equal card grid",
+        "media grid",
+        "bento layout",
+        "numbered cards",
+        "action cards"
+      ],
+      "responsive": "Collapse tracks at xs while preserving card order and the primary action.",
+      "tags": [
+        "features",
+        "catalog",
+        "bento",
+        "media"
+      ]
+    },
+    "contact": {
+      "kind": "view",
+      "purpose": "Contact, inquiry, lead-capture, and location-information surfaces.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Input",
+        "Textarea",
+        "Button",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "details and form",
+        "split panel",
+        "media and form",
+        "footer form"
+      ],
+      "responsive": "Stack details and form at xs; keep the form labels, feedback, and submit action reachable.",
+      "tags": [
+        "form",
+        "lead-capture",
+        "contact"
+      ]
+    },
+    "cta": {
+      "kind": "view",
+      "purpose": "Conversion bands with one primary message and explicit actions.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Button",
+        "Image",
+        "Icon",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "centered actions",
+        "split actions",
+        "media panel",
+        "inset panel",
+        "benefit list"
+      ],
+      "responsive": "Stack action groups and split media at xs without removing the primary action.",
+      "tags": [
+        "conversion",
+        "actions",
+        "marketing"
+      ]
+    },
+    "dashboard": {
+      "kind": "view",
+      "purpose": "Authenticated application surfaces for overview, reports, tasks, teams, and settings.",
+      "components": [
+        "Scaffold",
+        "AppBar",
+        "Sidebar",
+        "SideNav",
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Table",
+        "Input"
+      ],
+      "compositions": [
+        "sidebar shell",
+        "metric overview",
+        "task board",
+        "directory table",
+        "settings form"
+      ],
+      "responsive": "Use supported sidebar or drawer behavior at xs; preserve task, table, and settings semantics.",
+      "tags": [
+        "application",
+        "admin",
+        "data-dense"
+      ]
+    },
+    "features": {
+      "kind": "view",
+      "purpose": "Marketing feature explanations and benefit-led product narratives.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Icon",
+        "Image",
+        "Button",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "feature grid",
+        "service list",
+        "media-backed benefits",
+        "brand transformation"
+      ],
+      "responsive": "Collapse feature tracks at xs and preserve the visual payload for each retained feature.",
+      "tags": [
+        "benefits",
+        "marketing",
+        "feature-grid"
+      ]
+    },
+    "footer": {
+      "kind": "view",
+      "purpose": "Persistent closing navigation, legal links, brand, and newsletter actions.",
+      "components": [
+        "Footer",
+        "Brand",
+        "Grid",
+        "Flex",
+        "Button",
+        "Input",
+        "Text"
+      ],
+      "compositions": [
+        "navigation columns",
+        "social footer",
+        "legal footer",
+        "brand footer",
+        "newsletter footer"
+      ],
+      "responsive": "Stack navigation groups at xs and keep legal and contact destinations discoverable.",
+      "tags": [
+        "navigation",
+        "legal",
+        "closing-band"
+      ]
+    },
+    "hero": {
+      "kind": "view",
+      "purpose": "Opening promise, proof, primary action, and visual focal point for a route.",
+      "components": [
+        "Scaffold",
+        "AppBar",
+        "Section",
+        "Grid",
+        "Flex",
+        "Title",
+        "Text",
+        "Button",
+        "Image",
+        "Video",
+        "Card"
+      ],
+      "compositions": [
+        "centered media",
+        "split media",
+        "full bleed",
+        "media card",
+        "lead form",
+        "search",
+        "carousel"
+      ],
+      "responsive": "Preserve the promise, proof, and primary action at xs; stack split compositions in source order.",
+      "tags": [
+        "marketing",
+        "conversion",
+        "focal-point"
+      ]
+    },
+    "pricing": {
+      "kind": "view",
+      "purpose": "Plan comparison, billing choices, feature matrices, and purchase actions.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Button",
+        "Badge",
+        "Table",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "plan cards",
+        "split plans",
+        "minimal columns",
+        "comparison table",
+        "billing toggle"
+      ],
+      "responsive": "Stack plans at xs; keep price, included features, billing state, and purchase action visible.",
+      "tags": [
+        "plans",
+        "comparison",
+        "conversion"
+      ]
+    },
+    "scaffold": {
+      "kind": "view",
+      "purpose": "Application shell patterns combining navigation, main content, and persistent bars.",
+      "components": [
+        "Scaffold",
+        "AppBar",
+        "Sidebar",
+        "SideNav",
+        "Footer",
+        "Drawer",
+        "Section"
+      ],
+      "compositions": [
+        "app footer",
+        "inset sidebar",
+        "full-height sidebar",
+        "rail and bottom bar"
+      ],
+      "responsive": "Use the supported Drawer, rail, or bottom-bar pattern while keeping the main route content intact.",
+      "tags": [
+        "shell",
+        "layout",
+        "navigation"
+      ]
+    },
+    "sections": {
+      "kind": "view",
+      "purpose": "Reusable landing-page bands that explain, demonstrate, or prove a product promise.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Image",
+        "Video",
+        "Button",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "media split",
+        "media benefits",
+        "device showcase",
+        "feature media",
+        "centered media CTA",
+        "video features"
+      ],
+      "responsive": "Retain the band job and visual payload at xs; collapse grids in source reading order.",
+      "tags": [
+        "landing-page",
+        "media",
+        "proof"
+      ]
+    },
+    "server": {
+      "kind": "server",
+      "purpose": "Server capability examples included in the documentation block corpus; do not select for UI-only work.",
+      "components": [
+        "Database",
+        "Cache",
+        "Queue",
+        "Handler"
+      ],
+      "compositions": [
+        "CRUD",
+        "authentication",
+        "queue",
+        "runtime utilities"
+      ],
+      "responsive": "Not applicable.",
+      "tags": [
+        "server",
+        "runtime",
+        "non-ui"
+      ]
+    },
+    "store": {
+      "kind": "view",
+      "purpose": "Commerce surfaces for product catalogs, product details, and carts.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Image",
+        "Button",
+        "Input",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "product catalog",
+        "product detail",
+        "shopping cart"
+      ],
+      "responsive": "Collapse product tracks at xs and keep purchase, quantity, and cart actions reachable.",
+      "tags": [
+        "commerce",
+        "products",
+        "purchase"
+      ]
+    },
+    "table": {
+      "kind": "view",
+      "purpose": "Dense directory and data-table surfaces with filtering or row actions.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Table",
+        "Input",
+        "Button",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "team directory",
+        "filterable table"
+      ],
+      "responsive": "Preserve row semantics and provide the supported compact table behavior at xs.",
+      "tags": [
+        "data",
+        "directory",
+        "filtering"
+      ]
+    },
+    "testimonial": {
+      "kind": "view",
+      "purpose": "Customer proof through quotes, ratings, avatars, logos, and supporting media.",
+      "components": [
+        "Section",
+        "Grid",
+        "Flex",
+        "Card",
+        "Image",
+        "Icon",
+        "Button",
+        "Title",
+        "Text"
+      ],
+      "compositions": [
+        "avatar cards",
+        "rating carousel",
+        "logo quote",
+        "split media",
+        "soft cards"
+      ],
+      "responsive": "Stack proof units at xs while keeping attribution and rating context together.",
+      "tags": [
+        "social-proof",
+        "quotes",
+        "trust"
+      ]
+    }
+  },
+  "catalogs": [
+    {
+      "id": "app-bar",
+      "title": "App Bar gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "footer",
+      "title": "Footer gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "scaffold",
+      "title": "Scaffold gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "hero",
+      "title": "Hero gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "accordion",
+      "title": "Accordion gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "cards",
+      "title": "Cards gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "contact",
+      "title": "Contact gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "auth",
+      "title": "Auth gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "features",
+      "title": "Features gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "sections",
+      "title": "Sections gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "cta",
+      "title": "Cta gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "pricing",
+      "title": "Pricing gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "testimonial",
+      "title": "Testimonial gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "store",
+      "title": "Store gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "dashboard",
+      "title": "Dashboard gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "table",
+      "title": "Table gallery",
+      "role": "documentation-gallery"
+    },
+    {
+      "id": "server",
+      "title": "Server gallery",
+      "role": "documentation-gallery"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "accordion/minimal-lines",
+      "family": "accordion",
+      "title": "Minimal Lines",
+      "variant": "minimal-lines",
+      "tags": [
+        "accordion",
+        "lines",
+        "minimal"
+      ]
+    },
+    {
+      "id": "accordion/numbered-list",
+      "family": "accordion",
+      "title": "Numbered List",
+      "variant": "numbered-list",
+      "tags": [
+        "accordion",
+        "list",
+        "numbered"
+      ]
+    },
+    {
+      "id": "accordion/outlined-cards",
+      "family": "accordion",
+      "title": "Outlined Cards",
+      "variant": "outlined-cards",
+      "tags": [
+        "accordion",
+        "cards",
+        "outlined"
+      ]
+    },
+    {
+      "id": "accordion/soft-panels",
+      "family": "accordion",
+      "title": "Soft Panels",
+      "variant": "soft-panels",
+      "tags": [
+        "accordion",
+        "panels",
+        "soft"
+      ]
+    },
+    {
+      "id": "accordion/split-grid",
+      "family": "accordion",
+      "title": "Split Grid",
+      "variant": "split-grid",
+      "tags": [
+        "accordion",
+        "grid",
+        "split"
+      ]
+    },
+    {
+      "id": "auth/forgot-password",
+      "family": "auth",
+      "title": "Forgot Password",
+      "variant": "forgot-password",
+      "tags": [
+        "auth",
+        "forgot",
+        "password"
+      ]
+    },
+    {
+      "id": "auth/login-card",
+      "family": "auth",
+      "title": "Login Card",
+      "variant": "login-card",
+      "tags": [
+        "auth",
+        "card",
+        "login"
+      ]
+    },
+    {
+      "id": "auth/login-reverse",
+      "family": "auth",
+      "title": "Login Reverse",
+      "variant": "login-reverse",
+      "tags": [
+        "auth",
+        "login",
+        "reverse"
+      ]
+    },
+    {
+      "id": "auth/login-split",
+      "family": "auth",
+      "title": "Login Split",
+      "variant": "login-split",
+      "tags": [
+        "auth",
+        "login",
+        "split"
+      ]
+    },
+    {
+      "id": "auth/signup-card",
+      "family": "auth",
+      "title": "Signup Card",
+      "variant": "signup-card",
+      "tags": [
+        "auth",
+        "card",
+        "signup"
+      ]
+    },
+    {
+      "id": "auth/signup-reverse",
+      "family": "auth",
+      "title": "Signup Reverse",
+      "variant": "signup-reverse",
+      "tags": [
+        "auth",
+        "reverse",
+        "signup"
+      ]
+    },
+    {
+      "id": "auth/signup-split",
+      "family": "auth",
+      "title": "Signup Split",
+      "variant": "signup-split",
+      "tags": [
+        "auth",
+        "signup",
+        "split"
+      ]
+    },
+    {
+      "id": "cards/action-cards",
+      "family": "cards",
+      "title": "Action Cards",
+      "variant": "action-cards",
+      "tags": [
+        "action",
+        "cards"
+      ]
+    },
+    {
+      "id": "cards/bento",
+      "family": "cards",
+      "title": "Bento",
+      "variant": "bento",
+      "tags": [
+        "bento",
+        "cards"
+      ]
+    },
+    {
+      "id": "cards/centered-features",
+      "family": "cards",
+      "title": "Centered Features",
+      "variant": "centered-features",
+      "tags": [
+        "cards",
+        "centered",
+        "features"
+      ]
+    },
+    {
+      "id": "cards/media-grid",
+      "family": "cards",
+      "title": "Media Grid",
+      "variant": "media-grid",
+      "tags": [
+        "cards",
+        "grid",
+        "media"
+      ]
+    },
+    {
+      "id": "cards/numbered",
+      "family": "cards",
+      "title": "Numbered",
+      "variant": "numbered",
+      "tags": [
+        "cards",
+        "numbered"
+      ]
+    },
+    {
+      "id": "cards/product-carousel",
+      "family": "cards",
+      "title": "Product Carousel",
+      "variant": "product-carousel",
+      "tags": [
+        "cards",
+        "carousel",
+        "product"
+      ]
+    },
+    {
+      "id": "cards/spotlight",
+      "family": "cards",
+      "title": "Spotlight",
+      "variant": "spotlight",
+      "tags": [
+        "cards",
+        "spotlight"
+      ]
+    },
+    {
+      "id": "contact/details-form",
+      "family": "contact",
+      "title": "Details Form",
+      "variant": "details-form",
+      "tags": [
+        "contact",
+        "details",
+        "form"
+      ]
+    },
+    {
+      "id": "contact/footer-form",
+      "family": "contact",
+      "title": "Footer Form",
+      "variant": "footer-form",
+      "tags": [
+        "contact",
+        "footer",
+        "form"
+      ]
+    },
+    {
+      "id": "contact/info-media",
+      "family": "contact",
+      "title": "Info Media",
+      "variant": "info-media",
+      "tags": [
+        "contact",
+        "info",
+        "media"
+      ]
+    },
+    {
+      "id": "contact/social-media",
+      "family": "contact",
+      "title": "Social Media",
+      "variant": "social-media",
+      "tags": [
+        "contact",
+        "media",
+        "social"
+      ]
+    },
+    {
+      "id": "contact/split-panel-duplicate",
+      "family": "contact",
+      "title": "Split Panel Duplicate",
+      "variant": "split-panel-duplicate",
+      "tags": [
+        "contact",
+        "duplicate",
+        "panel",
+        "split"
+      ]
+    },
+    {
+      "id": "contact/split-panel",
+      "family": "contact",
+      "title": "Split Panel",
+      "variant": "split-panel",
+      "tags": [
+        "contact",
+        "panel",
+        "split"
+      ]
+    },
+    {
+      "id": "cta/app-download",
+      "family": "cta",
+      "title": "App Download",
+      "variant": "app-download",
+      "tags": [
+        "app",
+        "cta",
+        "download"
+      ]
+    },
+    {
+      "id": "cta/benefit-list",
+      "family": "cta",
+      "title": "Benefit List",
+      "variant": "benefit-list",
+      "tags": [
+        "benefit",
+        "cta",
+        "list"
+      ]
+    },
+    {
+      "id": "cta/centered-actions",
+      "family": "cta",
+      "title": "Centered Actions",
+      "variant": "centered-actions",
+      "tags": [
+        "actions",
+        "centered",
+        "cta"
+      ]
+    },
+    {
+      "id": "cta/inset-panel",
+      "family": "cta",
+      "title": "Inset Panel",
+      "variant": "inset-panel",
+      "tags": [
+        "cta",
+        "inset",
+        "panel"
+      ]
+    },
+    {
+      "id": "cta/media-left",
+      "family": "cta",
+      "title": "Media Left",
+      "variant": "media-left",
+      "tags": [
+        "cta",
+        "left",
+        "media"
+      ]
+    },
+    {
+      "id": "cta/media-panel",
+      "family": "cta",
+      "title": "Media Panel",
+      "variant": "media-panel",
+      "tags": [
+        "cta",
+        "media",
+        "panel"
+      ]
+    },
+    {
+      "id": "cta/split-actions",
+      "family": "cta",
+      "title": "Split Actions",
+      "variant": "split-actions",
+      "tags": [
+        "actions",
+        "cta",
+        "split"
+      ]
+    },
+    {
+      "id": "dashboard/complete-profile",
+      "family": "dashboard",
+      "title": "Complete Profile",
+      "variant": "complete-profile",
+      "tags": [
+        "complete",
+        "dashboard",
+        "profile"
+      ]
+    },
+    {
+      "id": "dashboard/overview",
+      "family": "dashboard",
+      "title": "Overview",
+      "variant": "overview",
+      "tags": [
+        "dashboard",
+        "overview"
+      ]
+    },
+    {
+      "id": "dashboard/reports",
+      "family": "dashboard",
+      "title": "Reports",
+      "variant": "reports",
+      "tags": [
+        "dashboard",
+        "reports"
+      ]
+    },
+    {
+      "id": "dashboard/settings",
+      "family": "dashboard",
+      "title": "Settings",
+      "variant": "settings",
+      "tags": [
+        "dashboard",
+        "settings"
+      ]
+    },
+    {
+      "id": "dashboard/task-board",
+      "family": "dashboard",
+      "title": "Task Board",
+      "variant": "task-board",
+      "tags": [
+        "board",
+        "dashboard",
+        "task"
+      ]
+    },
+    {
+      "id": "dashboard/team-directory",
+      "family": "dashboard",
+      "title": "Team Directory",
+      "variant": "team-directory",
+      "tags": [
+        "dashboard",
+        "directory",
+        "team"
+      ]
+    },
+    {
+      "id": "features/brand-transformation",
+      "family": "features",
+      "title": "Brand Transformation",
+      "variant": "brand-transformation",
+      "tags": [
+        "brand",
+        "features",
+        "transformation"
+      ]
+    },
+    {
+      "id": "features/complete-solutions",
+      "family": "features",
+      "title": "Complete Solutions",
+      "variant": "complete-solutions",
+      "tags": [
+        "complete",
+        "features",
+        "solutions"
+      ]
+    },
+    {
+      "id": "features/customer-centric",
+      "family": "features",
+      "title": "Customer Centric",
+      "variant": "customer-centric",
+      "tags": [
+        "centric",
+        "customer",
+        "features"
+      ]
+    },
+    {
+      "id": "features/marketing-services",
+      "family": "features",
+      "title": "Marketing Services",
+      "variant": "marketing-services",
+      "tags": [
+        "features",
+        "marketing",
+        "services"
+      ]
+    },
+    {
+      "id": "features/online-solutions",
+      "family": "features",
+      "title": "Online Solutions",
+      "variant": "online-solutions",
+      "tags": [
+        "features",
+        "online",
+        "solutions"
+      ]
+    },
+    {
+      "id": "hero/carousel",
+      "family": "hero",
+      "title": "Carousel",
+      "variant": "carousel",
+      "tags": [
+        "carousel",
+        "hero"
+      ]
+    },
+    {
+      "id": "hero/centered-media",
+      "family": "hero",
+      "title": "Centered Media",
+      "variant": "centered-media",
+      "tags": [
+        "centered",
+        "hero",
+        "media"
+      ]
+    },
+    {
+      "id": "hero/full-bleed",
+      "family": "hero",
+      "title": "Full Bleed",
+      "variant": "full-bleed",
+      "tags": [
+        "bleed",
+        "full",
+        "hero"
+      ]
+    },
+    {
+      "id": "hero/lead-form",
+      "family": "hero",
+      "title": "Lead Form",
+      "variant": "lead-form",
+      "tags": [
+        "form",
+        "hero",
+        "lead"
+      ]
+    },
+    {
+      "id": "hero/media-card",
+      "family": "hero",
+      "title": "Media Card",
+      "variant": "media-card",
+      "tags": [
+        "card",
+        "hero",
+        "media"
+      ]
+    },
+    {
+      "id": "hero/search",
+      "family": "hero",
+      "title": "Search",
+      "variant": "search",
+      "tags": [
+        "hero",
+        "search"
+      ]
+    },
+    {
+      "id": "hero/video-split",
+      "family": "hero",
+      "title": "Video Split",
+      "variant": "video-split",
+      "tags": [
+        "hero",
+        "split",
+        "video"
+      ]
+    },
+    {
+      "id": "pricing/billing-toggle",
+      "family": "pricing",
+      "title": "Billing Toggle",
+      "variant": "billing-toggle",
+      "tags": [
+        "billing",
+        "pricing",
+        "toggle"
+      ]
+    },
+    {
+      "id": "pricing/comparison-table",
+      "family": "pricing",
+      "title": "Comparison Table",
+      "variant": "comparison-table",
+      "tags": [
+        "comparison",
+        "pricing",
+        "table"
+      ]
+    },
+    {
+      "id": "pricing/feature-cards",
+      "family": "pricing",
+      "title": "Feature Cards",
+      "variant": "feature-cards",
+      "tags": [
+        "cards",
+        "feature",
+        "pricing"
+      ]
+    },
+    {
+      "id": "pricing/media-cards",
+      "family": "pricing",
+      "title": "Media Cards",
+      "variant": "media-cards",
+      "tags": [
+        "cards",
+        "media",
+        "pricing"
+      ]
+    },
+    {
+      "id": "pricing/minimal-columns",
+      "family": "pricing",
+      "title": "Minimal Columns",
+      "variant": "minimal-columns",
+      "tags": [
+        "columns",
+        "minimal",
+        "pricing"
+      ]
+    },
+    {
+      "id": "pricing/split-plans",
+      "family": "pricing",
+      "title": "Split Plans",
+      "variant": "split-plans",
+      "tags": [
+        "plans",
+        "pricing",
+        "split"
+      ]
+    },
+    {
+      "id": "sections/centered-media-cta",
+      "family": "sections",
+      "title": "Centered Media Cta",
+      "variant": "centered-media-cta",
+      "tags": [
+        "centered",
+        "cta",
+        "media",
+        "sections"
+      ]
+    },
+    {
+      "id": "sections/device-showcase",
+      "family": "sections",
+      "title": "Device Showcase",
+      "variant": "device-showcase",
+      "tags": [
+        "device",
+        "sections",
+        "showcase"
+      ]
+    },
+    {
+      "id": "sections/feature-media",
+      "family": "sections",
+      "title": "Feature Media",
+      "variant": "feature-media",
+      "tags": [
+        "feature",
+        "media",
+        "sections"
+      ]
+    },
+    {
+      "id": "sections/media-benefits",
+      "family": "sections",
+      "title": "Media Benefits",
+      "variant": "media-benefits",
+      "tags": [
+        "benefits",
+        "media",
+        "sections"
+      ]
+    },
+    {
+      "id": "sections/media-split",
+      "family": "sections",
+      "title": "Media Split",
+      "variant": "media-split",
+      "tags": [
+        "media",
+        "sections",
+        "split"
+      ]
+    },
+    {
+      "id": "sections/video-features",
+      "family": "sections",
+      "title": "Video Features",
+      "variant": "video-features",
+      "tags": [
+        "features",
+        "sections",
+        "video"
+      ]
+    },
+    {
+      "id": "server/auth",
+      "family": "server",
+      "title": "Auth",
+      "variant": "auth",
+      "tags": [
+        "auth",
+        "server"
+      ],
+      "kind": "server"
+    },
+    {
+      "id": "server/crud",
+      "family": "server",
+      "title": "Crud",
+      "variant": "crud",
+      "tags": [
+        "crud",
+        "server"
+      ],
+      "kind": "server"
+    },
+    {
+      "id": "server/queue",
+      "family": "server",
+      "title": "Queue",
+      "variant": "queue",
+      "tags": [
+        "queue",
+        "server"
+      ],
+      "kind": "server"
+    },
+    {
+      "id": "server/utilities",
+      "family": "server",
+      "title": "Utilities",
+      "variant": "utilities",
+      "tags": [
+        "server",
+        "utilities"
+      ],
+      "kind": "server"
+    },
+    {
+      "id": "store/product-catalog",
+      "family": "store",
+      "title": "Product Catalog",
+      "variant": "product-catalog",
+      "tags": [
+        "catalog",
+        "product",
+        "store"
+      ]
+    },
+    {
+      "id": "store/product-detail",
+      "family": "store",
+      "title": "Product Detail",
+      "variant": "product-detail",
+      "tags": [
+        "detail",
+        "product",
+        "store"
+      ]
+    },
+    {
+      "id": "store/shopping-cart",
+      "family": "store",
+      "title": "Shopping Cart",
+      "variant": "shopping-cart",
+      "tags": [
+        "cart",
+        "shopping",
+        "store"
+      ]
+    },
+    {
+      "id": "table/team-directory",
+      "family": "table",
+      "title": "Team Directory",
+      "variant": "team-directory",
+      "tags": [
+        "directory",
+        "table",
+        "team"
+      ]
+    },
+    {
+      "id": "testimonial/avatar-cards",
+      "family": "testimonial",
+      "title": "Avatar Cards",
+      "variant": "avatar-cards",
+      "tags": [
+        "avatar",
+        "cards",
+        "testimonial"
+      ]
+    },
+    {
+      "id": "testimonial/logo-quote",
+      "family": "testimonial",
+      "title": "Logo Quote",
+      "variant": "logo-quote",
+      "tags": [
+        "logo",
+        "quote",
+        "testimonial"
+      ]
+    },
+    {
+      "id": "testimonial/rating-carousel",
+      "family": "testimonial",
+      "title": "Rating Carousel",
+      "variant": "rating-carousel",
+      "tags": [
+        "carousel",
+        "rating",
+        "testimonial"
+      ]
+    },
+    {
+      "id": "testimonial/soft-cards",
+      "family": "testimonial",
+      "title": "Soft Cards",
+      "variant": "soft-cards",
+      "tags": [
+        "cards",
+        "soft",
+        "testimonial"
+      ]
+    },
+    {
+      "id": "testimonial/split-media",
+      "family": "testimonial",
+      "title": "Split Media",
+      "variant": "split-media",
+      "tags": [
+        "media",
+        "split",
+        "testimonial"
+      ]
+    }
+  ]
+}

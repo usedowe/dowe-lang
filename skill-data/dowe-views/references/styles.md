@@ -10,9 +10,9 @@ keep project or built-in defaults.
 
 | Family | Base tokens | Soft tokens |
 | --- | --- | --- |
-| Action families `primary`, `secondary`, `tertiary`, `muted`, `success`, `info`, `warning`, `danger` | `<family>`, `on<Family>` | `soft<Family>`, `onSoft<Family>` |
-| Structural `background` | `background`, `onBackground` | none |
-| Structural `surface` | `surface`, `onSurface` | none |
+| Action families `primary`, `secondary`, `tertiary`, `muted`, `success`, `info`, `warning`, `danger` | `<family>`, `<family>Text`, `<family>Title` | `soft<Family>`, `soft<Family>Text`, `soft<Family>Title` |
+| Structural `background` | `background`, `backgroundText`, `backgroundTitle` | none |
+| Structural `surface` | `surface`, `surfaceText`, `surfaceTitle` | none |
 
 `bg` and `color` accept color tokens. On a child-bearing container, `color:<token>` sets the
 inherited foreground for descendant text and current-color paint until a descendant declares its
@@ -22,7 +22,8 @@ border.
 
 `scheme` on `Button`, `ToggleTheme`, `Fab`, `fabAction`, `Slider`, `Input`, `Select`, `SideNav`,
 and `RailNav` accepts action families only. `scheme` on `SelectTheme`, `Card`, `Video`, the chart
-components, `Table`, `Dropzone`, `NavMenu`, `Sidebar`, `Tabs`, and `Drawer` also accepts
+components, `Table`, `Dropzone`, `NavMenu`, `Sidebar`, `Tabs`, `Drawer`, `AppBar`, `Footer`,
+`Modal`, `Dropdown`, and `Tooltip` also accepts
 `background` and `surface`. Structural schemes have no soft pair; soft variants degrade to the
 structural tokens.
 
@@ -30,18 +31,122 @@ structural tokens.
 
 `Card`, `Video`, `Candlestick`, `ArcChart`, `AreaChart`, `BarChart`, `LineChart`, `PieChart`,
 `Table`, `Button`, `ToggleTheme`, `SelectTheme`, `Dropzone`, `Input`, `Select`, `NavMenu`,
-`SideNav`, `RailNav`, `Sidebar`, and `Drawer` support `solid`, `soft`, `outlined`, and `ghost`.
+`SideNav`, `RailNav`, `Sidebar`, `Drawer`, `Toast`, `Modal`, `Dropdown`, and `Tooltip` support
+`solid`, `soft`, `outlined`, and `ghost`.
 `Fab` supports `solid` and `soft`. `Tabs` supports `solid`, `outlined`, `line`, `ghost`, and
 `pills`. Defaults are `variant:"solid"` and `scheme:"primary"` unless a component declares
 otherwise: `SelectTheme` defaults to `outlined` plus `surface`, and `RailNav` defaults to `ghost`
 plus `muted`. The normalized variant name is `outlined`.
 
-`solid` maps the scheme family to its base and `on*` tokens, `soft` maps to `soft*` and `onSoft*`,
+`solid` maps the scheme family to its base, text, and title roles; `soft` maps to the matching
+`soft*`, `soft*Text`, and `soft*Title` roles;
 `outlined` uses a structural surface with a family-colored border, and `ghost` is transparent with
 family-colored content. Child-bearing variant surfaces pass their resolved foreground token to all
 of their content regions unless the descendant declares `color`; for example, a soft muted Card
-supplies `onSoftMuted`, and AppBar or Footer supplies its content color to `top`, `start`, `center`,
-`end`, and `bottom`.
+supplies `softMutedText` to ordinary content and `softMutedTitle` to `Title`. AppBar or Footer
+supplies its content roles to `top`, `start`, `center`, `end`, and `bottom`. Button labels use the
+text role. Transparent `SideNav` headers use the visible base color of their `scheme`; an explicit
+icon color remains a local override.
+Native iOS rows explicitly restore the background foreground for inactive labels and descriptions
+so a muted scheme cannot make them disappear against the page background.
+
+### Built-in component defaults
+
+If `theme.dowe` omits a component entry, Dowe resolves the following values before web, desktop,
+Android, or iOS generation:
+
+| Component | Defaults |
+| --- | --- |
+| `Button`, `IconButton` | `scheme:"primary" variant:"solid" rounded:"md"` |
+| `Card` | `scheme:"surface" variant:"solid" rounded:"md"` |
+| `Drawer` | `scheme:"surface" variant:"solid"` |
+| `Toast` | `scheme:"info" variant:"solid" rounded:"md"` |
+| `Section` | `scheme:"background" variant:"solid"` |
+| `Accordion` | `variant:"ghost"` |
+| `Checkbox` | `scheme:"primary"` |
+| `Input`, `Date`, `Password`, `Select`, `Pin` | `variant:"outlined" scheme:"primary"` |
+| `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip` | `scheme:"surface" variant:"solid"` |
+| `Tabs` | `variant:"pills" scheme:"primary"` |
+
+These built-ins set no `border` or `shadow`. Resolution is per prop: an explicit component prop
+wins, then the matching `design` slot, then this built-in value. A partial override such as
+`Button scheme:"secondary"` therefore preserves the configured or built-in variant and radius.
+See `/specs/features/00149-normalize-view-component-defaults`.
+
+### Minimal source rule
+
+Generated and hand-authored Views should omit resolved defaults. Prefer `Button "Log in"`,
+`Button w:"full" "Log in"`, `Input bind:email label:"Email"`, `Tabs position:"top"`, and `Card p:5` over declarations
+that repeat `variant`, `scheme`, `size`, or `rounded` with their default values. Keep a visual prop
+when it changes the default, is reactive, controls layout or behavior, supplies required content or
+accessibility, or is the specific decision being demonstrated. Do not remove props such as
+`w`, `p`, `href`, `onClick`, `label`, `bind`, `icon`, `loading`, `show`, or non-default `variant`,
+`scheme`, `size`, `rounded`, `border`, or `shadow` values.
+
+## Surface hierarchy and modern depth
+
+Do not style a marketing page as a catalog of equal components. Establish three surface roles and
+apply them consistently:
+
+| Role | Purpose | Typical treatment |
+| --- | --- | --- |
+| Focal | Primary offer, product stage, important metric, or conversion action | High-contrast `solid` or `soft`, largest radius, one strong shadow or glow, optional cover |
+| Supporting | Feature, proof, process step, or secondary panel | Quiet `soft` or selective `outlined`, medium radius, restrained border or shadow |
+| Ambient | Shell, background field, logo rail, technical texture, or separator | Structural token, `ghost`, Section preset, cover plus overlay, Divider, or no Card at all |
+
+Use borders to describe structure and shadows to establish elevation. Applying both at maximum
+strength to every surface destroys hierarchy. Reserve colored `shadowColor` for one or two focal
+objects per viewport; use quiet structural contrast elsewhere. In dark themes, distinguish
+`background`, `surface`, and at least one soft family so Cards do not disappear into the canvas or
+form a wall of identical navy rectangles.
+
+Create depth with supported relationships, not random effects:
+
+- Put a full-bleed `Section cover` or background preset behind a boxed content rail.
+- Place a focal Card, Image, chart, or product visual inside a relative Box and add one to three
+  absolute proof or status wrappers.
+- Use a nearby soft token for broad surfaces and a saturated family for small accents, values,
+  active controls, and visual anchors.
+- Combine one strong foreground silhouette with quiet background ornament; do not make every layer
+  equally bright.
+- Keep `translateX` and `translateY` out of ordinary layout. They do not replace AppBar regions,
+  Flex `direction`/`justify`/`align`/`gap`, Grid `columns`/`rows`/`justify`/`align`/`gap`, padding,
+  responsive direction, `w`, or `maxW`, and must not be used as measured-coordinate corrections
+  after visual comparison.
+- Never translate `AppBar`, `Brand`, `NavMenu`, `Drawer`, or another compound overlay trigger or
+  root. Keep semantic navigation geometry untransformed so its menus and floating surfaces stay
+  anchored to the component that owns them.
+- Use responsive translation only as an advanced effect on a decorative or floating layer inside
+  a documented relative Box scene when deliberate overlap cannot be expressed by normal flow and
+  absolute offsets after trying Flex and Grid composition. Keep the effect inside compact bounds
+  and preserve source reading order.
+
+Natural visual detail comes from relationships: a label aligned to a divider, an oversized value
+paired with small supporting copy, a Card that overlaps a media field, a repeated number system,
+or a logo rail that changes the section rhythm. More borders and more Cards are not substitutes.
+
+## Typography and editorial rhythm
+
+Use typography to create composition before adding containers.
+
+- Give the hero one dominant Title and constrain its measure through the containing Grid track or
+  `maxW`; do not let every section title use the hero scale.
+- Build a clear ladder: compact uppercase or wide-spaced eyebrow, display promise, readable body,
+  and small proof or legal copy. Reuse the ladder rather than choosing unrelated sizes per band.
+- Mix alignment intentionally across sections. Centering can suit a constellation or CTA; product,
+  trust, and process sections often feel more natural with left-aligned editorial tracks.
+- Use `RichText` marks only when the reference has a meaningful highlighted phrase. One marked
+  phrase is a focal device; many marks become decoration noise.
+- Keep body copy short enough to preserve the visual silhouette. Do not solve weak composition by
+  adding explanatory paragraphs.
+
+## Motion discipline
+
+Motion is a finishing layer, not the source of visual quality. Use one entrance character per band
+and gestures only on interactive or clearly actionable surfaces. A common restrained system is
+`fadeIn` for text, `scaleIn` for one focal visual, and `lift` for clickable Cards. Do not animate
+every child separately, mix all entrance presets on one screen, or use gesture props on static legal
+and informational copy. Reduced-motion behavior remains owned by Dowe.
 
 ## Style props and responsive values
 
@@ -49,12 +154,17 @@ Style props accept a scalar or a responsive object keyed by `xs`, `sm`, `md`, `l
 as `p:{ xs:4 md:8 }`. A responsive object without `xs` does not apply below its first declared
 breakpoint.
 
+Prop availability does not determine container choice. Apply style props to the real Section,
+Grid, Flex, Card, media, control, or content owner. Do not introduce Box only to gain padding,
+sizing, background, border, visibility, animation, or responsive values; reserve Box for an
+exceptional layer plane that normal flow cannot express.
+
 | Group | Props | Values |
 | --- | --- | --- |
 | Padding | `p`, `px`, `py`, `pl`, `pr`, `pt`, `pb` | Dowe numeric scale |
 | Size | `w`, `h`, `minW`, `minH`, `maxW`, `maxH` | Scale values, `full`; `h`, `minH`, and `maxH` also accept `vh-<scale>` |
 | Border | `rounded`, `border` | `xs`, `sm`, `md`, `lg`, `xl`, `full`; integers `1` to `4` |
-| Layout | `justify`, `align`, `gap`, `columns`, `rows` | Layout keywords, grid tracks, scale values, validated pixel gaps |
+| Layout | `justify`, `align`, `gap`, `columns`, `rows` | Layout keywords, numeric grid counts, scale values, validated pixel gaps |
 | Grid item | `colSpan`, `rowSpan` | Positive integers on direct `Box`, `Section`, or `Card` children of `Grid` |
 | Box position | `position`, `top`, `right`, `bottom`, `left` | Static position mode; responsive Dowe-scale offsets on absolute or fixed Box |
 | Media background | `cover`, `overlay` | Static asset path or `https://` URL; boolean, opacity number, RGBA, or linear gradient |
@@ -130,13 +240,15 @@ entries. `javascript:`, `data:`, and `file:` schemes are rejected.
 
 ## Containers
 
-`Box` has no default padding, border, radius, background, shadow, or flex behavior. `Section` owns
+`Box` has no default padding, border, radius, background, shadow, or flex behavior. This makes it an
+advanced neutral layer primitive, not the default styling wrapper. A Box should normally be a
+relative plane with direct absolute children or a fixed viewport layer. `Section` owns
 the outer band (background, cover, overlay, sizing, radius, border, anchor) and generates an inner
 content body with responsive defaults `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }`; the larger
 vertical inset separates ordinary page bands without repeated props. `boxed:true` caps and centers
 only that body at `96rem` web or `1536` native. `Section background:<preset>` cannot combine with
-`cover` because both are base layers. `Card` defaults to `variant:"solid"`, `scheme:"primary"`,
-theme radius, and inner padding `p:{ xs:4 lg:5 }`.
+`cover` because both are base layers. `Card` defaults to `variant:"solid"`, `scheme:"surface"`,
+`rounded:"md"`, and inner padding `p:{ xs:4 lg:5 }`.
 
 Padding overrides follow scope: `p` replaces all sides, `px`/`py` replace one axis, and
 `pl`/`pr`/`pt`/`pb` replace one side while unspecified sides keep the default.
@@ -151,10 +263,12 @@ width unless `w` declares another dimension.
 `direction:{ xs:"column" md:"row" }`. `wrap:true` lets a resolved row continue on additional
 lines.
 
-`Grid` accepts `columns:3`, validated templates such as `columns:"200px 1fr 200px"` and
-`rows:"100px auto"`, `gap:"10px 20px"` as row gap then column gap, plus `justify` and `align` for
-cell alignment. `colSpan` and `rowSpan` are valid only on direct `Box`, `Section`, or `Card` grid
-children, and a span wider than a statically known column count fails compilation.
+`Grid` accepts an integer `columns` value from `1` through `12`, `rows:auto` or a positive integer,
+responsive count objects such as `columns:{ xs:1 md:3 }`, and `gap:"10px 20px"` as row gap then
+column gap. Track templates such as `fr`, `px`, percentages, or `auto` strings are rejected for
+`columns` and `rows` so the generated structure stays identical across web, iOS, and Android.
+`colSpan` and `rowSpan` are valid only on direct `Box`, `Section`, or `Card` grid children, and a
+span wider than a statically known column count fails compilation.
 
 ## Box positioning
 
@@ -202,7 +316,7 @@ begins below the bar. Empty, dynamic, duplicated, or non-portable ids fail compi
 
 `NavMenu scheme` styles trigger, open, and active-entry states consistently across web, Android,
 and iOS. Its submenu and megamenu popovers remain visible structural surfaces using `background`
-and `onBackground`, even for `ghost` or `outlined` menus. Popovers float without changing layout
+and `backgroundText`, even for `ghost` or `outlined` menus. Popovers float without changing layout
 and close after their content is activated. iOS uses the same Dowe-owned anchored overlay strategy
 as `Dropdown` instead of a system popover. Navigation dispatches before dismissal so fragment links
 can animate to their validated `Section` destination.
@@ -235,6 +349,15 @@ All styled view components accept portable transforms, entrance animation, trans
 props. This includes layout and shell roots, navigation roots, content components, charts, controls,
 forms, and overlays. Context-only entries such as `Option`, `fabAction`, `comboOption`, `csvColumn`,
 `dragGroup`, `dragItem`, `tab`, `step`, region entries, `Svg`, and `Path` do not.
+
+Availability is not a layout recommendation. The default authored value for every transform is its
+identity, and most screens should author no translation props. Use `Title size` for typography,
+container `w` or `maxW` for measure, AppBar regions for shell distribution, and Grid/Flex props for
+geometry. Do not add `translateX` or `translateY` to close a gap, center content, compensate for a
+parent width, reproduce a screenshot coordinate, or align one breakpoint. Translation belongs only
+to an intentional advanced layer scene documented in the composition blueprint. Compound
+navigation and overlay-owning roots remain untransformed even in those scenes; translate a purely
+visual wrapper or ornament instead.
 
 | Prop | Values | Default | Responsive |
 | --- | --- | --- | --- |

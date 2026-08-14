@@ -341,14 +341,14 @@ struct DoweDevicePreview: View {
             HStack(spacing: 4) {
                 ForEach(icons, id: \.profile) { option in
                     Button { profile = option.profile } label: {
-                        DoweSvgView(viewBox: option.viewBox, color: profile == option.profile ? DoweDesign.primary : DoweDesign.onBackground, paths: option.paths)
+                        DoweSvgView(viewBox: option.viewBox, color: profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText, paths: option.paths)
                             .frame(width: CGFloat(24), height: CGFloat(24))
                     }
                     .frame(width: CGFloat(40), height: CGFloat(40))
-                    .foregroundStyle(profile == option.profile ? DoweDesign.primary : DoweDesign.onBackground)
+                    .foregroundStyle(profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText)
                     .background(profile == option.profile ? DoweDesign.softPrimary : Color.clear)
                     .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
-                    .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(profile == option.profile ? DoweDesign.primary : DoweDesign.onBackground, lineWidth: CGFloat(1)))
+                    .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText, lineWidth: CGFloat(1)))
                     .buttonStyle(.plain)
                     .accessibilityLabel(option.profile)
                     .accessibilityAddTraits(profile == option.profile ? .isSelected : [])

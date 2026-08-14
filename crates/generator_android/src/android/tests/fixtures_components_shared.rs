@@ -13,7 +13,7 @@ fn container_foreground_tree() -> ViewNode {
         children: vec![
             ViewNode::Box {
                 props: StyleProps {
-                    text: Some(ResponsiveValue::scalar(ColorToken::OnPrimary)),
+                    text: Some(ResponsiveValue::scalar(ColorToken::PrimaryText)),
                     ..Default::default()
                 },
                 children: vec![
@@ -39,6 +39,10 @@ fn container_foreground_tree() -> ViewNode {
                 children: vec![
                     text("Card inherited"),
                     ViewNode::Title {
+                        props: Default::default(),
+                        value: "Card title inherited".to_string(),
+                    },
+                    ViewNode::Title {
                         props: TextProps {
                             style: StyleProps {
                                 text: Some(ResponsiveValue::scalar(ColorToken::Warning)),
@@ -52,7 +56,7 @@ fn container_foreground_tree() -> ViewNode {
             },
             ViewNode::Section {
                 props: StyleProps {
-                    text: Some(ResponsiveValue::scalar(ColorToken::OnSecondary)),
+                    text: Some(ResponsiveValue::scalar(ColorToken::SecondaryText)),
                     ..Default::default()
                 },
                 children: vec![text("Section inherited")],
@@ -60,7 +64,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Flex {
                 props: LayoutProps {
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnTertiary)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::TertiaryText)),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -70,7 +74,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Grid {
                 props: GridProps {
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnMuted)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::MutedText)),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -80,7 +84,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Brand {
                 props: BrandProps {
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnSurface)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::SurfaceText)),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -90,7 +94,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Banner {
                 props: BannerProps {
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnInfo)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::InfoText)),
                         ..Default::default()
                     },
                     navigation: NavigationAction::External {
@@ -105,7 +109,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Marquee {
                 props: MarqueeProps {
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnWarning)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::WarningText)),
                         ..Default::default()
                     },
                     speed: MarqueeSpeed::Normal,
@@ -121,7 +125,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Scaffold {
                 props: ScaffoldProps {
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::OnDanger)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::DangerText)),
                         ..Default::default()
                     },
                     boxed: false,

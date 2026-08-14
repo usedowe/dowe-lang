@@ -1,5 +1,7 @@
 mod cron;
 mod database_artifacts;
+mod database_migrations;
+mod dev_changes;
 mod error;
 mod language;
 mod model;
@@ -9,7 +11,11 @@ mod test_runner;
 mod typecheck_artifacts;
 
 pub use cron::CronSchedule;
-pub use database_artifacts::{DatabaseMigrationPlan, database_migration_plan};
+pub use database_migrations::{
+    DatabaseMigration, DatabaseMigrationReport, database_migrations, generate_database_migrations,
+};
+pub use dev_changes::{DevChangeScope, classify_dev_changes};
+pub use dowe_database_query::SelectQuery;
 pub use error::{DoweError, DoweResult};
 pub use language::{
     LanguageCodeAction, LanguageCompletion, LanguageCompletionKind, LanguageDiagnostic,
@@ -47,5 +53,9 @@ pub use model::{
     normalize_cors_origin, normalize_http_header_name,
 };
 pub use parser::{inspect_project_capabilities, validate_design_copilot_dowe};
-pub use pipeline::{compile_dev, compile_for_environment};
+pub use pipeline::{
+    compile_dev, compile_dev_for_platforms, compile_dev_server, compile_dev_views_for_platforms,
+    compile_dev_web, compile_dev_with_seeders, compile_for_environment,
+    compile_for_server_environment, compile_for_web_environment,
+};
 pub use test_runner::{TestCaseResult, TestReport, TestStatus, run_project_tests};

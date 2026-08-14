@@ -101,7 +101,7 @@ fn render_dev_android_display_rich_controls_node(
                 output.push_str(&format!(
                     "        TextView {mark_view} = doweRichTextView(\"{}\", {}, {}, {}, {}, {}, {});\n        doweRichTextMark({mark_view}, \"{}\", \"{}\");\n        doweAdd({view}, {mark_view});\n",
                     escape_java(&mark.text),
-                    dev_text_color(props, inherited_color.as_deref()),
+                    dev_text_color(props.title, props, inherited_color.as_deref()),
                     dev_text_size(props.title, props),
                     dev_text_weight(props.title, props),
                     dev_text_spacing(props.title, props),
@@ -382,13 +382,13 @@ fn render_dev_android_pagination(
         if rendered_pages > 7 && page == 2 {
             let ellipsis = next_dev_view(counter);
             output.push_str(&format!(
-                "        TextView {ellipsis} = doweText(\"…\", doweAlpha(DOWE_ON_BACKGROUND, 0.6f), 14f, 400, 0f, 1.2f, null);\n        {ellipsis}.setGravity(Gravity.CENTER);\n        {ellipsis}.setVisibility({view}Selected > 3 ? View.VISIBLE : View.GONE);\n        doweAdd({view}, {ellipsis}, doweDp(4), true);\n"
+                "        TextView {ellipsis} = doweText(\"…\", doweAlpha(DOWE_BACKGROUND_TEXT, 0.6f), 14f, 400, 0f, 1.2f, null);\n        {ellipsis}.setGravity(Gravity.CENTER);\n        {ellipsis}.setVisibility({view}Selected > 3 ? View.VISIBLE : View.GONE);\n        doweAdd({view}, {ellipsis}, doweDp(4), true);\n"
             ));
         }
         if rendered_pages > 7 && page == rendered_pages {
             let ellipsis = next_dev_view(counter);
             output.push_str(&format!(
-                "        TextView {ellipsis} = doweText(\"…\", doweAlpha(DOWE_ON_BACKGROUND, 0.6f), 14f, 400, 0f, 1.2f, null);\n        {ellipsis}.setGravity(Gravity.CENTER);\n        {ellipsis}.setVisibility({view}Selected < {view}Pages - 2 ? View.VISIBLE : View.GONE);\n        doweAdd({view}, {ellipsis}, doweDp(4), true);\n"
+                "        TextView {ellipsis} = doweText(\"…\", doweAlpha(DOWE_BACKGROUND_TEXT, 0.6f), 14f, 400, 0f, 1.2f, null);\n        {ellipsis}.setGravity(Gravity.CENTER);\n        {ellipsis}.setVisibility({view}Selected < {view}Pages - 2 ? View.VISIBLE : View.GONE);\n        doweAdd({view}, {ellipsis}, doweDp(4), true);\n"
             ));
         }
         let button = next_dev_view(counter);
@@ -396,7 +396,7 @@ fn render_dev_android_pagination(
             "{page} <= {view}Pages && ({view}Pages <= 7 || {page} == 1 || {page} == {view}Pages || Math.abs({page} - {view}Selected) <= 1)"
         );
         output.push_str(&format!(
-            "        TextView {button} = doweText(\"{page}\", ({view}Selected == {page}) ? {} : DOWE_ON_BACKGROUND, 14f, 500, 0f, 1.2f, null);\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setContentDescription(\"Page {page}\");\n        {button}.setBackground(doweBackground(({view}Selected == {page}) ? {} : Color.TRANSPARENT, DOWE_RADIUS));\n        {button}.setVisibility({visible} ? View.VISIBLE : View.GONE);\n        {button}.setEnabled({});\n        {button}.setOnClickListener(v -> {{ if ({view}Selected != {page}) {{ doweWrite(\"{path}\", \"{page}\"); {action}renderCurrentRoute(false); }} }});\n        LinearLayout.LayoutParams {button}Params = new LinearLayout.LayoutParams(doweDp({dimension}), doweDp({dimension}));\n        {view}.addView({button}, {button}Params);\n",
+            "        TextView {button} = doweText(\"{page}\", ({view}Selected == {page}) ? {} : DOWE_BACKGROUND_TEXT, 14f, 500, 0f, 1.2f, null);\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setContentDescription(\"Page {page}\");\n        {button}.setBackground(doweBackground(({view}Selected == {page}) ? {} : Color.TRANSPARENT, DOWE_RADIUS));\n        {button}.setVisibility({visible} ? View.VISIBLE : View.GONE);\n        {button}.setEnabled({});\n        {button}.setOnClickListener(v -> {{ if ({view}Selected != {page}) {{ doweWrite(\"{path}\", \"{page}\"); {action}renderCurrentRoute(false); }} }});\n        LinearLayout.LayoutParams {button}Params = new LinearLayout.LayoutParams(doweDp({dimension}), doweDp({dimension}));\n        {view}.addView({button}, {button}Params);\n",
             dev_variant_content(&props.style),
             dev_variant_container(&props.style),
             !props.disabled,

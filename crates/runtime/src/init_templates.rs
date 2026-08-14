@@ -21,9 +21,17 @@ const ZED_SETTINGS: &str = r#"{
 }
 "#;
 
-const BLANK_THEME: &str = r#"theme
+const BLANK_THEME: &str = r##"theme
   fonts default:"inter" install:["inter"]
-"#;
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        primary color:"#1F3A5F" text:"#FFFFFF" title:"#FFFFFE"
+        secondary color:"#6BC670" text:"#102A15" title:"#102A15"
+        background color:"#FFFFFF" text:"#17263A" title:"#17263E"
+        surface color:"#F7F9FC" text:"#17263A" title:"#17263E"
+        softPrimary color:"#CCFBF3" text:"#073B35" title:"#073B35"
+"##;
 
 const CRUD_THEME: &str = r##"theme
   fonts default:"manrope" install:["manrope"]
@@ -35,15 +43,25 @@ const CRUD_THEME: &str = r##"theme
     Text font:"manrope"
     Title font:"manrope"
     theme name:"editorial"
-      colors primary:"#315f4f" onPrimary:"#ffffff" softPrimary:"#dfeae4" onSoftPrimary:"#17342b"
-      colors secondary:"#171a18" onSecondary:"#ffffff" softSecondary:"#e4e6e2" onSoftSecondary:"#202420"
-      colors tertiary:"#8a7046" onTertiary:"#ffffff" softTertiary:"#f1e8d8" onSoftTertiary:"#49391f"
-      colors muted:"#6c706a" onMuted:"#ffffff" softMuted:"#dedfd9" onSoftMuted:"#343832"
-      colors background:"#ecebe6" onBackground:"#171a18" surface:"#ffffff" onSurface:"#171a18"
-      colors success:"#2f6b4f" onSuccess:"#ffffff" softSuccess:"#dceee4" onSoftSuccess:"#173d2c"
-      colors info:"#476579" onInfo:"#ffffff" softInfo:"#e1ebf0" onSoftInfo:"#243d4c"
-      colors warning:"#8a682c" onWarning:"#ffffff" softWarning:"#f4ead2" onSoftWarning:"#4d3917"
-      colors danger:"#98504b" onDanger:"#ffffff" softDanger:"#f3dfdc" onSoftDanger:"#542a27"
+      colors:
+        primary color:"#315f4f" text:"#ffffff" title:"#ffffff"
+        softPrimary color:"#dfeae4" text:"#17342b" title:"#17342b"
+        secondary color:"#171a18" text:"#ffffff" title:"#ffffff"
+        softSecondary color:"#e4e6e2" text:"#202420" title:"#202420"
+        tertiary color:"#8a7046" text:"#ffffff" title:"#ffffff"
+        softTertiary color:"#f1e8d8" text:"#49391f" title:"#49391f"
+        muted color:"#6c706a" text:"#ffffff" title:"#ffffff"
+        softMuted color:"#dedfd9" text:"#343832" title:"#343832"
+        background color:"#ecebe6" text:"#171a18" title:"#171a18"
+        surface color:"#ffffff" text:"#171a18" title:"#171a18"
+        success color:"#2f6b4f" text:"#ffffff" title:"#ffffff"
+        softSuccess color:"#dceee4" text:"#173d2c" title:"#173d2c"
+        info color:"#476579" text:"#ffffff" title:"#ffffff"
+        softInfo color:"#e1ebf0" text:"#243d4c" title:"#243d4c"
+        warning color:"#8a682c" text:"#ffffff" title:"#ffffff"
+        softWarning color:"#f4ead2" text:"#4d3917" title:"#4d3917"
+        danger color:"#98504b" text:"#ffffff" title:"#ffffff"
+        softDanger color:"#f3dfdc" text:"#542a27" title:"#542a27"
 "##;
 
 const BLANK_ENV_EXAMPLE: &str = "BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n";
@@ -77,7 +95,7 @@ endpoints apiRoutes
 "#;
 
 const BLANK_HOME_PAGE: &str = r#"page homePage
-  Box bg:"background" color:"onBackground" p:{ xs:6 md:10 }
+  Box bg:"background" color:"backgroundText" p:{ xs:6 md:10 }
     Grid columns:1 gap:5
       Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
         "DOWE"
@@ -390,7 +408,7 @@ layout AppLayout
     main
       children
   Splash bind:sessionLoading
-    Section minH:"vh-0" bg:"background" color:"onBackground"
+    Section minH:"vh-0" bg:"background" color:"backgroundText"
       Flex direction:"column" align:"center" justify:"center" gap:3 h:"full"
         Icon name:"svg-spinners:ring-resize" stroke:"primary" w:10 h:10
         Text size:"sm" color:"muted"
@@ -509,7 +527,7 @@ page homePage
       toast value:{ type:"error" title:"Error" message:"Only the owner can edit that blog." visible:true }
   Section boxed:true px:{ xs:4 md:8 } py:{ xs:6 md:10 }
     Grid columns:1 gap:8
-      Grid columns:{ xs:1 md:"1fr auto" } gap:6 align:"end"
+      Grid columns:{ xs:1 md:2 } gap:6 align:"end"
         Grid columns:1 gap:4
           Flex align:"center" gap:3 wrap:true
             Chip variant:"soft" scheme:"primary" size:"sm"
@@ -544,7 +562,7 @@ page homePage
             Chip show:session.authenticated variant:"soft" scheme:"success" size:"sm"
               "OWNER VERIFIED"
   Section boxed:true px:{ xs:4 md:8 } pb:{ xs:8 md:12 }
-    Grid columns:{ xs:1 md:"2fr 1fr" } gap:5 align:"start"
+    Grid columns:{ xs:1 md:2 } gap:5 align:"start"
       Card p:{ xs:4 md:6 } rounded:"xl"
         Grid columns:1 gap:5
           Flex justify:"between" align:"center" gap:4 wrap:true
@@ -664,7 +682,7 @@ page homePage
         Button onClick:updateBlog iconStart:"check-circle"
           "Save changes"
   Splash bind:blogsLoading
-    Section minH:"vh-0" bg:"background" color:"onBackground"
+    Section minH:"vh-0" bg:"background" color:"backgroundText"
       Flex direction:"column" align:"center" justify:"center" gap:3 h:"full"
         Icon name:"svg-spinners:3-dots-bounce" fill:"primary" w:10 h:10
         Text size:"sm" color:"muted"

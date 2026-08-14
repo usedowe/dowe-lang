@@ -136,7 +136,7 @@ struct DoweCanvasView: View {
             var path = Path()
             path.move(to: CGPoint(x: number(command["x1"]), y: number(command["y1"])))
             path.addLine(to: CGPoint(x: number(command["x2"]), y: number(command["y2"])))
-            drawing.stroke(path, with: .color(stroke ?? DoweDesign.onBackground), lineWidth: strokeWidth)
+            drawing.stroke(path, with: .color(stroke ?? DoweDesign.backgroundText), lineWidth: strokeWidth)
         case "polyline":
             let points = command["points"] as? [[String: Any]] ?? []
             guard let first = points.first else { return }
@@ -148,7 +148,7 @@ struct DoweCanvasView: View {
             if let stroke { drawing.stroke(path, with: .color(stroke), lineWidth: strokeWidth) }
         case "text":
             let alignment: UnitPoint = command["align"] as? String == "center" ? .center : command["align"] as? String == "end" ? .trailing : .leading
-            let text = Text(String(describing: command["text"] ?? "")).font(.system(size: max(1, number(command["size"], fallback: 16)))).foregroundColor(fill ?? DoweDesign.onBackground)
+            let text = Text(String(describing: command["text"] ?? "")).font(.system(size: max(1, number(command["size"], fallback: 16)))).foregroundColor(fill ?? DoweDesign.backgroundText)
             drawing.draw(text, at: CGPoint(x: x, y: y), anchor: alignment)
         case "image":
             if let source = command["src"] as? String, let image = imageStore.images[source] {
@@ -179,43 +179,43 @@ struct DoweCanvasView: View {
         guard let name = value as? String else { return nil }
         switch name {
         case "primary": return DoweDesign.primary
-        case "onPrimary": return DoweDesign.onPrimary
+        case "primaryText": return DoweDesign.primaryText
         case "secondary": return DoweDesign.secondary
-        case "onSecondary": return DoweDesign.onSecondary
+        case "secondaryText": return DoweDesign.secondaryText
         case "tertiary": return DoweDesign.tertiary
-        case "onTertiary": return DoweDesign.onTertiary
+        case "tertiaryText": return DoweDesign.tertiaryText
         case "muted": return DoweDesign.muted
-        case "onMuted": return DoweDesign.onMuted
+        case "mutedText": return DoweDesign.mutedText
         case "background": return DoweDesign.background
-        case "foreground", "currentColor", "onBackground": return DoweDesign.onBackground
+        case "foreground", "currentColor", "backgroundText": return DoweDesign.backgroundText
         case "surface": return DoweDesign.surface
-        case "onSurface": return DoweDesign.onSurface
+        case "surfaceText": return DoweDesign.surfaceText
         case "success": return DoweDesign.success
-        case "onSuccess": return DoweDesign.onSuccess
+        case "successText": return DoweDesign.successText
         case "info": return DoweDesign.info
-        case "onInfo": return DoweDesign.onInfo
+        case "infoText": return DoweDesign.infoText
         case "warning": return DoweDesign.warning
-        case "onWarning": return DoweDesign.onWarning
+        case "warningText": return DoweDesign.warningText
         case "danger": return DoweDesign.danger
-        case "onDanger": return DoweDesign.onDanger
+        case "dangerText": return DoweDesign.dangerText
         case "softPrimary": return DoweDesign.softPrimary
-        case "onSoftPrimary": return DoweDesign.onSoftPrimary
+        case "softPrimaryText": return DoweDesign.softPrimaryText
         case "softSecondary": return DoweDesign.softSecondary
-        case "onSoftSecondary": return DoweDesign.onSoftSecondary
+        case "softSecondaryText": return DoweDesign.softSecondaryText
         case "softTertiary": return DoweDesign.softTertiary
-        case "onSoftTertiary": return DoweDesign.onSoftTertiary
+        case "softTertiaryText": return DoweDesign.softTertiaryText
         case "softMuted": return DoweDesign.softMuted
-        case "onSoftMuted": return DoweDesign.onSoftMuted
+        case "softMutedText": return DoweDesign.softMutedText
         case "softSuccess": return DoweDesign.softSuccess
-        case "onSoftSuccess": return DoweDesign.onSoftSuccess
+        case "softSuccessText": return DoweDesign.softSuccessText
         case "softInfo": return DoweDesign.softInfo
-        case "onSoftInfo": return DoweDesign.onSoftInfo
+        case "softInfoText": return DoweDesign.softInfoText
         case "softWarning": return DoweDesign.softWarning
-        case "onSoftWarning": return DoweDesign.onSoftWarning
+        case "softWarningText": return DoweDesign.softWarningText
         case "softDanger": return DoweDesign.softDanger
-        case "onSoftDanger": return DoweDesign.onSoftDanger
+        case "softDangerText": return DoweDesign.softDangerText
         case "transparent": return Color.clear
-        default: return doweColorFromHex(name, fallback: DoweDesign.onBackground)
+        default: return doweColorFromHex(name, fallback: DoweDesign.backgroundText)
         }
     }
 }

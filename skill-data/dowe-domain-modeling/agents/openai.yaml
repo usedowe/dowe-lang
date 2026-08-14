@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dowe Domain Modeling"
+  short_description: "Turn business ideas into Dowe domain architecture"
+  default_prompt: "Use $dowe-domain-modeling to turn this business description into a validated Dowe domain plan."

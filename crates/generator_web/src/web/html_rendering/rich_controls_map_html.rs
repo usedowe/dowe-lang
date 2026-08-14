@@ -110,7 +110,8 @@ fn render_toggle_group_html(
         .map(|item| {
             let active = item.id == props.selected;
             let variant = props.style.variant.unwrap_or(ComponentVariant::Solid).as_str();
-            let color = props.style.color.unwrap_or(ColorFamily::Muted).as_str();
+            let family = props.style.color.unwrap_or(ColorFamily::Muted);
+            let color = family.as_str();
             let icon = item
                 .icon
                 .map(|icon| view_icon_svg(icon, "toggle-group-icon"))
@@ -158,7 +159,8 @@ fn render_pagination_html(
         })
         .unwrap_or(rendered_pages);
     let variant = props.style.variant.unwrap_or(ComponentVariant::Outlined).as_str();
-    let color = props.style.color.unwrap_or(ColorFamily::Primary).as_str();
+    let family = props.style.color.unwrap_or(ColorFamily::Primary);
+    let color = family.as_str();
     let previous = solar_control_icon("arrow-left").expect("bundled Pagination previous icon");
     let next = solar_control_icon("arrow-right").expect("bundled Pagination next icon");
     let previous_icon = render_svg_html(&previous.props, &previous.paths, context);
@@ -312,7 +314,8 @@ fn render_countdown_html(props: &CountdownProps, context: &ReactiveRenderContext
         .enumerate()
         .map(|(index, (unit, label))| {
             let variant = props.style.variant.unwrap_or(ComponentVariant::Solid).as_str();
-            let color = props.style.color.unwrap_or(ColorFamily::Primary).as_str();
+            let family = props.style.color.unwrap_or(ColorFamily::Primary);
+            let color = family.as_str();
             let separator = (index + 1 < units.len())
                 .then_some(r#"<span class="countdown-separator" aria-hidden="true">:</span>"#)
                 .unwrap_or_default();

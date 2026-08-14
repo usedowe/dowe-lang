@@ -214,8 +214,9 @@ impl<'a> StoreActionContext<'a> {
             ServerStoreStatement::Query {
                 binding,
                 handle,
-                sql,
+                query,
                 params,
+                ..
             } => {
                 let params = self
                     .evaluate(&StoreLiteral::Array(params.clone()))?
@@ -224,21 +225,18 @@ impl<'a> StoreActionContext<'a> {
                     .ok_or_else(StoreActionError::store)?;
                 let value = match self.handle(handle)? {
                     StoreHandle::Local(database) => database
-                        .query_json(
-                            &bind_query_params(sql, &params)
-                                .map_err(StoreActionError::from_store)?,
-                        )
+                        .query_portable_json(query, &params)
                         .map_err(StoreActionError::from_store)?,
                     StoreHandle::Dowe(client) => client
-                        .query_with_params(sql, &params)
+                        .query_select(query, &params)
                         .await
                         .map_err(StoreActionError::from_store)?,
                     StoreHandle::D1(client) => client
-                        .query_with_params(sql, &params)
+                        .query_select(query, &params)
                         .await
                         .map_err(StoreActionError::from_store)?,
                     StoreHandle::Postgres(client) => client
-                        .query_with_params(sql, &params)
+                        .query_select(query, &params)
                         .await
                         .map_err(StoreActionError::from_store)?,
                 };
@@ -249,6 +247,7 @@ impl<'a> StoreActionContext<'a> {
                 handle,
                 operations,
                 return_binding,
+                rollback,
             } => {
                 let transaction = StoreTransactionEndpoint {
                     connection: self
@@ -260,7 +259,17 @@ impl<'a> StoreActionContext<'a> {
                         .ok_or_else(StoreActionError::store)?,
                     operations: operations.clone(),
                     return_binding: return_binding.clone(),
+                    rollback: *rollback,
                 };
+                if *rollback {
+                    self.bindings.insert(binding.clone(), Value::Null);
+                    return Ok(());
+                }
+                if operations.is_empty() {
+                    self.bindings
+                        .insert(binding.clone(), Value::Array(Vec::new()));
+                    return Ok(());
+                }
                 let value = match self.handle(handle)? {
                     StoreHandle::Local(database) => {
                         execute_local_store_transaction(database, &transaction)
@@ -274,8 +283,21 @@ impl<'a> StoreActionContext<'a> {
                         transaction_result(committed, &transaction)
                             .map_err(StoreActionError::from_store)?
                     }
-                    StoreHandle::D1(_) | StoreHandle::Postgres(_) => {
-                        return Err(StoreActionError::store());
+                    StoreHandle::D1(client) => {
+                        let committed = client
+                            .transaction(&transaction_insert_requests(operations))
+                            .await
+                            .map_err(StoreActionError::from_store)?;
+                        transaction_result(committed, &transaction)
+                            .map_err(StoreActionError::from_store)?
+                    }
+                    StoreHandle::Postgres(client) => {
+                        let committed = client
+                            .transaction(&transaction_insert_requests(operations))
+                            .await
+                            .map_err(StoreActionError::from_store)?;
+                        transaction_result(committed, &transaction)
+                            .map_err(StoreActionError::from_store)?
                     }
                 };
                 self.bindings.insert(binding.clone(), value);

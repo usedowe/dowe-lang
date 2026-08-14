@@ -1,10 +1,11 @@
 use super::{
     BuildOptions, BuildTarget, DeployEnvironment, DeployOptions, DeploySurface, DeployTarget,
-    available_build_targets, available_deploy_surfaces, build, deploy,
+    available_build_targets, available_deploy_surfaces, build, deploy, deploy_with_linux_runtime,
 };
 use crate::docker::{docker_build_command, resolve_docker_image};
 use crate::package::cloudflare_pages_redirects;
 use crate::publish::{cloudflare_command, cloudflare_pages_command, configure_npm_cache};
+use dowe_compiler::{compile_dev, generate_database_migrations};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
@@ -101,38 +102,26 @@ fn generates_distroless_docker_context_without_local_dotenv() {
     options.image = Some("example-app:stable".to_string());
     options.dry_run = true;
 
-    let docker = deploy(options).expect("docker");
+    let docker = deploy_with_linux_runtime(options, &linux_application_runtime()).expect("docker");
     let dockerfile = fs::read_to_string(docker.output_dir.join("Dockerfile")).expect("dockerfile");
     let manifest = fs::read_to_string(docker.output_dir.join("deploy.json")).expect("manifest");
 
     assert!(docker.output_dir.join("Dockerfile").is_file());
-    assert!(docker.output_dir.join("app/main.dowe").is_file());
-    assert!(docker.output_dir.join("app/theme.dowe").is_file());
-    assert!(docker.output_dir.join("app/routes/view.dowe").is_file());
-    assert!(docker.output_dir.join("app/.env.example").is_file());
-    assert!(
-        docker
-            .output_dir
-            .join("app/icons/desktop/icon.icns")
-            .is_file()
-    );
-    assert!(!docker.output_dir.join("app/env.dowe").exists());
-    assert!(!docker.output_dir.join("app/.env").exists());
-    assert!(!docker.output_dir.join("app/.env.live").exists());
+    assert!(docker.output_dir.join("dowe-app").is_file());
+    assert!(!docker.output_dir.join("app").exists());
     assert!(dockerfile.contains("gcr.io/distroless/cc-debian12:nonroot"));
-    assert!(dockerfile.contains(&format!(
-        "v{}/linux-amd64.tar.gz",
-        env!("CARGO_PKG_VERSION")
-    )));
-    assert!(dockerfile.contains("tar -xzf /dowe.tar.gz"));
-    assert!(dockerfile.contains("COPY --from=dowe-runtime /dowe /usr/local/bin/dowe"));
-    assert!(dockerfile.contains(
-        r#"ENTRYPOINT ["/usr/local/bin/dowe","server","--root","/app","--bind","0.0.0.0:8080"]"#
-    ));
-    assert!(!dockerfile.contains("dowe-server"));
-    assert!(!docker.output_dir.join("dowe-server").exists());
-    assert!(!docker.output_dir.join("dowe").exists());
-    assert!(manifest.contains(r#""runtime": "release""#));
+    assert!(
+        dockerfile
+            .contains("COPY --chmod=0755 --chown=nonroot:nonroot dowe-app /usr/local/bin/dowe-app")
+    );
+    assert!(dockerfile.contains(r#"ENTRYPOINT ["/usr/local/bin/dowe-app"]"#));
+    assert!(!dockerfile.contains("https://"));
+    assert!(!dockerfile.contains("curl"));
+    assert!(!dockerfile.contains("dowe server"));
+    assert!(manifest.contains(r#""runtime": "embedded""#));
+    assert!(manifest.contains(r#""executable": "dowe-app""#));
+    assert!(manifest.contains(r#""sha256":"#));
+    assert!(manifest.contains(r#""surface": "server""#));
     assert!(dockerfile.contains("USER nonroot:nonroot"));
     assert!(manifest.contains(r#""imageRef": "ghcr.io/dowe/example-app:stable""#));
     assert_eq!(
@@ -147,6 +136,92 @@ fn generates_distroless_docker_context_without_local_dotenv() {
             "ghcr.io/dowe/example-app:stable"
         ))
     );
+}
+
+#[test]
+fn generates_web_docker_context_for_view_only_projects() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join("main.dowe"),
+        "import viewRoutes from \"@/routes/view\"\n\nmain\n  views:viewRoutes\n",
+    )
+    .expect("view-only main");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
+    options.surface = Some(DeploySurface::Web);
+    options.dry_run = true;
+
+    let report =
+        deploy_with_linux_runtime(options, &linux_application_runtime()).expect("web docker");
+    let dockerfile = fs::read_to_string(report.output_dir.join("Dockerfile")).expect("dockerfile");
+    let manifest = fs::read_to_string(report.output_dir.join("deploy.json")).expect("manifest");
+
+    assert!(report.output_dir.ends_with(".dowe/dist/web/docker"));
+    assert!(report.output_dir.join("dowe-app").is_file());
+    assert!(!report.output_dir.join("app").exists());
+    assert!(dockerfile.contains(r#"ENTRYPOINT ["/usr/local/bin/dowe-app"]"#));
+    assert!(!dockerfile.contains("DOWE_ARCHIVE_URL"));
+    assert!(!dockerfile.contains("--surface"));
+    assert!(manifest.contains(r#""surface": "web""#));
+    assert!(manifest.contains(r#""target": "docker""#));
+    assert!(manifest.contains(r#""runtime": "embedded""#));
+    assert!(manifest.contains(r#""executable": "dowe-app""#));
+}
+
+#[test]
+fn docker_surface_compilation_does_not_cross_validate_server_and_web() {
+    let server = TempDir::new().expect("server tempdir");
+    write_fixture(server.path(), "");
+    fs::write(
+        server.path().join("theme.dowe"),
+        "theme\n  design defaultTheme:\"light\"\n    theme name:\"light\"\n      colors:\n        primary:\"#000000\"\n",
+    )
+    .expect("invalid theme");
+    let mut server_options = DeployOptions::new(server.path(), DeployTarget::Docker);
+    server_options.surface = Some(DeploySurface::Server);
+    server_options.dry_run = true;
+    deploy_with_linux_runtime(server_options, &linux_application_runtime()).expect("server docker");
+
+    let web = TempDir::new().expect("web tempdir");
+    write_fixture(web.path(), "");
+    let main = fs::read_to_string(web.path().join("main.dowe")).expect("main");
+    fs::write(
+        web.path().join("main.dowe"),
+        main.replace("server port:8080", "server port:\"invalid\""),
+    )
+    .expect("invalid server");
+    let mut web_options = DeployOptions::new(web.path(), DeployTarget::Docker);
+    web_options.surface = Some(DeploySurface::Web);
+    web_options.dry_run = true;
+    deploy_with_linux_runtime(web_options, &linux_application_runtime()).expect("web docker");
+}
+
+#[test]
+fn web_docker_uses_environment_specific_output_dirs() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join("main.dowe"),
+        "import viewRoutes from \"@/routes/view\"\n\nmain\n  views:viewRoutes\n",
+    )
+    .expect("view-only main");
+
+    for (environment, output_dir) in [
+        (DeployEnvironment::Stage, ".dowe/dist/stage/web/docker"),
+        (DeployEnvironment::Uat, ".dowe/dist/uat/web/docker"),
+    ] {
+        write_environment(temp.path(), environment, "deploy-password-123");
+        let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
+        options.environment = environment;
+        options.surface = Some(DeploySurface::Web);
+        options.dry_run = true;
+
+        let report =
+            deploy_with_linux_runtime(options, &linux_application_runtime()).expect("web docker");
+
+        assert!(report.output_dir.ends_with(output_dir));
+        assert!(report.access_protected);
+    }
 }
 
 #[test]
@@ -167,12 +242,12 @@ fn docker_uses_declared_https_and_redirect_ports() {
     let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
     options.dry_run = true;
 
-    let report = deploy(options).expect("docker");
+    let report = deploy_with_linux_runtime(options, &linux_application_runtime()).expect("docker");
     let dockerfile = fs::read_to_string(report.output_dir.join("Dockerfile")).expect("dockerfile");
     let manifest = fs::read_to_string(report.output_dir.join("deploy.json")).expect("manifest");
 
     assert!(dockerfile.contains("EXPOSE 80 443"));
-    assert!(dockerfile.contains("\"--bind\",\"0.0.0.0:443\""));
+    assert!(dockerfile.contains(r#"ENTRYPOINT ["/usr/local/bin/dowe-app"]"#));
     assert!(manifest.contains("\"ports\": [\n    80,\n    443\n  ]"));
 }
 
@@ -204,14 +279,21 @@ main
 "#,
     )
     .expect("main");
+    let project = compile_dev(temp.path()).expect("compile migrations");
+    generate_database_migrations(&project).expect("generate migrations");
     let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
     options.dry_run = true;
 
-    let report = deploy(options).expect("deploy");
+    let report = deploy_with_linux_runtime(options, &linux_application_runtime()).expect("deploy");
     let manifest =
         fs::read_to_string(report.output_dir.join("database/manifest.json")).expect("manifest");
-    let schema = fs::read_to_string(report.output_dir.join("database/appDb/00001_schema.sql"))
-        .expect("schema");
+    let schema_path = fs::read_dir(report.output_dir.join("database/appDb"))
+        .expect("database migrations")
+        .next()
+        .expect("migration")
+        .expect("migration entry")
+        .path();
+    let schema = fs::read_to_string(schema_path).expect("schema");
 
     assert!(manifest.contains(r#""provider": "postgres""#));
     assert!(manifest.contains(r#""schemaMode": "migrations""#));
@@ -622,11 +704,15 @@ fn stage_docker_packages_only_the_access_hash() {
     options.image = Some("app".to_string());
     options.dry_run = true;
 
-    let report = deploy(options).expect("stage docker");
+    let report =
+        deploy_with_linux_runtime(options, &linux_application_runtime()).expect("stage docker");
     let dockerfile = fs::read_to_string(report.output_dir.join("Dockerfile")).expect("dockerfile");
+    let manifest = fs::read_to_string(report.output_dir.join("deploy.json")).expect("manifest");
 
     assert_eq!(report.image_ref.as_deref(), Some("docker.io/app:stage"));
-    assert!(dockerfile.contains(r#""--environment","stage","--access-hash""#));
+    assert!(!dockerfile.contains("--environment"));
+    assert!(!dockerfile.contains("--access-hash"));
+    assert!(manifest.contains(r#""accessProtected": true"#));
     assert!(!dockerfile.contains("stage-password-123"));
     assert!(report.access_protected);
 }
@@ -940,4 +1026,14 @@ fn write_environment(root: &Path, environment: DeployEnvironment, password: &str
         format!("BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD={password}\n"),
     )
     .expect("deploy environment");
+}
+
+fn linux_application_runtime() -> Vec<u8> {
+    let mut runtime = vec![0u8; 96];
+    runtime[..4].copy_from_slice(b"\x7fELF");
+    runtime[4] = 2;
+    runtime[5] = 1;
+    runtime[18..20].copy_from_slice(&62u16.to_le_bytes());
+    runtime[64..72].copy_from_slice(b"DOWESRV1");
+    runtime
 }

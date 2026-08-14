@@ -1,4 +1,7 @@
-use super::{compile_dev, compile_for_environment};
+use super::{
+    compile_dev, compile_for_environment, compile_for_server_environment,
+    compile_for_web_environment,
+};
 use crate::model::{
     CompileEnvironment, EndpointBehavior, EnvironmentValueSource, EnvironmentVisibility,
     HttpMethod, ServerLogLevel, ServerLogValue, ServerStatement,
@@ -71,12 +74,12 @@ fn compiles_example_project_and_writes_chunks() {
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="text-md">Layout</p>"#)
+            .contains(r#"<p class="dowe-text text-md">Layout</p>"#)
     );
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="text-md">Login</p>"#)
+            .contains(r#"<p class="dowe-text text-md">Login</p>"#)
     );
     assert!(
         project.web.pages[0]
@@ -115,6 +118,48 @@ main
     assert!(project.capabilities.views);
     assert_eq!(project.web.pages.len(), 1);
     assert!(temp.path().join(".dowe/web/index.html").is_file());
+}
+
+#[test]
+fn server_compilation_ignores_view_configuration() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path());
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        primary:"#000000""##,
+    )
+    .expect("invalid theme");
+
+    let project = compile_for_server_environment(temp.path(), CompileEnvironment::Live)
+        .expect("server project");
+
+    assert!(project.capabilities.server);
+    assert!(project.web.pages.is_empty());
+    assert!(!temp.path().join(".dowe/web/index.html").exists());
+    assert!(compile_for_environment(temp.path(), CompileEnvironment::Live).is_err());
+}
+
+#[test]
+fn web_compilation_ignores_server_configuration() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path());
+    let main = fs::read_to_string(temp.path().join("main.dowe")).expect("main");
+    fs::write(
+        temp.path().join("main.dowe"),
+        main.replace("server port:8080", "server port:\"invalid\""),
+    )
+    .expect("invalid server");
+
+    let project = compile_for_web_environment(temp.path(), CompileEnvironment::Live)
+        .expect("web project");
+
+    assert!(project.capabilities.views);
+    assert_eq!(project.web.pages.len(), 1);
+    assert!(compile_for_environment(temp.path(), CompileEnvironment::Live).is_err());
 }
 
 #[test]
@@ -641,6 +686,11 @@ fn writes_source_language_artifacts() {
         r#""obsoleteConfig": ["dowe.json", "env.dowe", "src/config.dowe", "src/main.dowe", "src/theme.dowe", "src/env.dowe"]"#
     ));
     assert!(config.contains(r#""defaultTheme": "light""#));
+    assert!(config.contains(
+        r##""declaration": "colors: -> primary color:\"#2563eb\" text:\"#ffffff\" title:\"#ffffff\"""##
+    ));
+    assert!(config.contains(r#""roles": ["color", "text", "title"]"#));
+    assert!(config.contains(r#""flatRoleAuthoring": "rejected""#));
     assert!(config.contains(r#""fontSlots": ["text", "title"]"#));
     assert!(config.contains(r#""cors""#));
     assert!(config.contains(r#""devOrigins""#));
@@ -726,7 +776,8 @@ fn rejects_invalid_theme_dowe_theme() {
   fonts default:"inter" install:["inter"]
   design defaultTheme:"dark"
     theme name:"light"
-      colors primary:"#000000""##,
+      colors:
+        primary color:"#000000""##,
     )
     .expect("config");
 
@@ -737,6 +788,211 @@ fn rejects_invalid_theme_dowe_theme() {
             .to_string()
             .contains("default theme `dark` is not declared")
     );
+}
+
+#[test]
+fn accepts_grouped_theme_color_families_and_rejects_flat_roles() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path());
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        primary color:"#1F3A5F" text:"#FFFFFF" title:"#FFFFFE"
+        background color:"#FFFFFF" text:"#17263A" title:"#17263E"
+        surface color:"#F7F9FC" text:"#17263A" title:"#17263E"
+        softPrimary color:"#CCFBF3" text:"#073B35" title:"#073B35"
+    theme name:"brand" extends:"light"
+      colors:
+        primary title:"#FFFEEE""##,
+    )
+    .expect("theme");
+
+    compile_dev(temp.path()).expect("grouped theme color families");
+
+    for flat in [
+        "primary:\"#1F3A5F\"",
+        "primaryText:\"#FFFFFF\"",
+        "primaryTitle:\"#FFFFFE\"",
+        "onPrimary:\"#FFFFFF\"",
+        "onSuccess:\"#FFFFFF\"",
+        "onSoftPrimary:\"#073B35\"",
+    ] {
+        fs::write(
+            temp.path().join("theme.dowe"),
+            format!(
+                r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        {flat}"##
+            ),
+        )
+        .expect("flat theme");
+
+        let message = compile_dev(temp.path())
+            .expect_err("flat theme role")
+            .to_string();
+        assert!(message.contains("grouped color families"), "{message}");
+    }
+
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        softBackground color:"#FFFFFF" text:"#17263A" title:"#17263E""##,
+    )
+    .expect("unknown family");
+    let message = compile_dev(temp.path())
+        .expect_err("unknown color family")
+        .to_string();
+    assert!(message.contains("unknown color family `softBackground`"), "{message}");
+}
+
+#[test]
+fn compiles_custom_theme_color_families_for_all_view_targets() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        r#"page loginPage
+  Card scheme:"happy"
+    Title
+      "Saved"
+    Text
+      "Your changes are ready."
+  Card variant:"soft" scheme:"happy"
+    Title
+      "Gentle success""#,
+    );
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        happy color:"#176c75" text:"#fffffe" title:"#fffefe"
+        softHappy color:"#d9f3f1" text:"#124d53" title:"#124d53"
+    theme name:"dark"
+      colors:
+        happy color:"#55c2cc" text:"#071e20" title:"#071e20""##,
+    )
+    .expect("theme");
+
+    let project = compile_dev(temp.path()).expect("custom theme family");
+    let happy = dowe_components::ColorFamily::from_name("happy").expect("happy family");
+    let light = project.design_config.theme("light").expect("light theme");
+    let dark = project.design_config.theme("dark").expect("dark theme");
+
+    assert_eq!(light.color_value(happy.color_token()), "#176c75");
+    assert_eq!(light.color_value(happy.text_token()), "#fffffe");
+    assert_eq!(light.color_value(happy.title_token()), "#fffefe");
+    assert_eq!(light.color_value(happy.soft_color_token()), "#d9f3f1");
+    assert_eq!(dark.color_value(happy.color_token()), "#55c2cc");
+    assert_eq!(dark.color_value(happy.soft_color_token()), "#d9f3f1");
+
+    let body = &project.web.pages[0].body_html;
+    assert!(body.contains("is-solid is-happy"), "{body}");
+    assert!(body.contains("is-soft is-happy"), "{body}");
+
+    let design_css =
+        fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("design css");
+    assert!(design_css.contains("--dowe-happy:#176c75;"), "{design_css}");
+    assert!(design_css.contains("--dowe-happyText:#fffffe;"), "{design_css}");
+    assert!(design_css.contains("--dowe-happyTitle:#fffefe;"), "{design_css}");
+    assert!(design_css.contains("--dowe-softHappy:#d9f3f1;"), "{design_css}");
+    assert!(
+        design_css.contains("[data-dowe-theme=\"dark\"]{")
+            && design_css.contains("--dowe-happy:#55c2cc;"),
+        "{design_css}"
+    );
+    let page_css = fs::read_to_string(
+        temp.path()
+            .join(".dowe/web")
+            .join(&project.web.pages[0].css_chunks[1]),
+    )
+    .expect("page css");
+    assert!(
+        page_css.contains(".card.is-solid.is-happy")
+            && page_css.contains("var(--dowe-happyText)")
+            && page_css.contains("var(--dowe-happyTitle)"),
+        "{page_css}"
+    );
+    assert!(
+        page_css.contains(".card.is-soft.is-happy")
+            && page_css.contains("var(--dowe-softHappyText)")
+            && page_css.contains("var(--dowe-softHappyTitle)"),
+        "{page_css}"
+    );
+
+    let android_theme = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DoweTheme.kt"),
+    )
+    .expect("android theme");
+    assert!(android_theme.contains("\"happy\" to Color(0xFF176C75)"));
+    assert!(android_theme.contains("\"softHappy\" to Color(0xFFD9F3F1)"));
+    let android_pages = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android pages");
+    assert!(android_pages.contains("DoweDesign.happy"), "{android_pages}");
+    assert!(android_pages.contains("DoweDesign.happyText"), "{android_pages}");
+    assert!(android_pages.contains("DoweDesign.happyTitle"), "{android_pages}");
+    assert!(android_pages.contains("DoweDesign.softHappy"), "{android_pages}");
+    let android_dev = android_dev_output(temp.path());
+    assert!(android_dev.contains("DOWE_HAPPY"), "{android_dev}");
+    assert!(android_dev.contains("DOWE_SOFT_HAPPY"), "{android_dev}");
+
+    let ios_theme =
+        fs::read_to_string(temp.path().join(".dowe/apps/ios/DoweTheme.swift")).expect("ios theme");
+    assert!(ios_theme.contains("\"happy\": Color("), "{ios_theme}");
+    assert!(ios_theme.contains("\"softHappy\": Color("), "{ios_theme}");
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("DoweDesign.happy"), "{ios}");
+    assert!(ios.contains("DoweDesign.happyText"), "{ios}");
+    assert!(ios.contains("DoweDesign.happyTitle"), "{ios}");
+    assert!(ios.contains("DoweDesign.softHappy"), "{ios}");
+}
+
+#[test]
+fn rejects_undeclared_custom_scheme_and_missing_custom_soft_family() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Card scheme:\"happy\"\n    Text\n      \"Missing\"",
+    );
+    let undeclared = match compile_dev(temp.path()) {
+        Err(error) => error.to_string(),
+        Ok(_) => panic!("expected undeclared custom scheme to fail"),
+    };
+    assert!(undeclared.contains("happy"), "{undeclared}");
+
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        happy color:"#176c75" text:"#fffffe" title:"#fffffe""##,
+    )
+    .expect("theme");
+    fs::write(
+        temp.path().join("pages/login.dowe"),
+        "page loginPage\n  Card variant:\"soft\" scheme:\"happy\"\n    Text\n      \"Missing soft\"",
+    )
+    .expect("page");
+    let missing_soft = match compile_dev(temp.path()) {
+        Err(error) => error.to_string(),
+        Ok(_) => panic!("expected missing custom soft family to fail"),
+    };
+    assert!(missing_soft.contains("softHappy"), "{missing_soft}");
 }
 
 #[test]
@@ -1250,17 +1506,17 @@ fn preserves_nested_box_order_and_children_position() {
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="text-md">Before</p>"#)
+            .contains(r#"<p class="dowe-text text-md">Before</p>"#)
     );
     assert!(
         project.web.pages[0].body_html.contains(
-            r#"<div class="box"><div class="box"><p class="text-md">Login</p></div></div>"#
+            r#"<div class="box"><div class="box"><p class="dowe-text text-md">Login</p></div></div>"#
         )
     );
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="text-md">After</p>"#)
+            .contains(r#"<p class="dowe-text text-md">After</p>"#)
     );
 }
 
@@ -1746,32 +2002,32 @@ main
             root.join("handlers/blogs.dowe"),
         r#"handler listBlogs req
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query blogs db:db.list table:"blogs"
+  query blogs conn:db.list table:"blogs"
   return json:{ ok:true data:blogs }
 
 handler createBlog
   const body value:req.json
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query created db:db.insert table:"blogs" value:{ title:body.title content:body.content createdAt:now updatedAt:now } required:["title","content"]
-  query blogs db:db.list table:"blogs"
+  query created conn:db.insert table:"blogs" value:{ title:body.title content:body.content createdAt:now updatedAt:now } required:["title","content"]
+  query blogs conn:db.list table:"blogs"
   return status:201 json:{ ok:true data:blogs }
 
 handler readBlog req
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query blog db:db.read table:"blogs" where:{ id:req.params.id } required:true
+  query blog conn:db.read table:"blogs" where:{ id:req.params.id } required:true
   return json:{ ok:true data:blog }
 
 handler updateBlog
   const body value:req.json
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query updated db:db.update table:"blogs" where:{ id:req.params.id } value:{ title:body.title content:body.content updatedAt:now } required:true match:{ id:req.params.id }
-  query blogs db:db.list table:"blogs"
+  query updated conn:db.update table:"blogs" where:{ id:req.params.id } value:{ title:body.title content:body.content updatedAt:now } required:true match:{ id:req.params.id }
+  query blogs conn:db.list table:"blogs"
   return json:{ ok:true data:blogs }
 
 handler deleteBlog req
   database db provider:"dowe" host:"127.0.0.1" port:4147 account:"api" secret:"secret" name:"app"
-  query deleted db:db.delete table:"blogs" where:{ id:req.params.id } required:true
-  query blogs db:db.list table:"blogs"
+  query deleted conn:db.delete table:"blogs" where:{ id:req.params.id } required:true
+  query blogs conn:db.list table:"blogs"
   return json:{ ok:true data:blogs }"#,
         )
         .expect("handlers");

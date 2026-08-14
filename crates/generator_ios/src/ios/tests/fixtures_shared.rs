@@ -13,7 +13,7 @@ fn container_foreground_tree() -> ViewNode {
         children: vec![
             ViewNode::Box {
                 props: StyleProps {
-                    text: Some(ResponsiveValue::scalar(ColorToken::OnPrimary)),
+                    text: Some(ResponsiveValue::scalar(ColorToken::PrimaryText)),
                     ..Default::default()
                 },
                 children: vec![
@@ -38,6 +38,10 @@ fn container_foreground_tree() -> ViewNode {
                 },
                 children: vec![
                     text("Card inherited"),
+                    ViewNode::Title {
+                        props: Default::default(),
+                        value: "Card title inherited".to_string(),
+                    },
                     ViewNode::Title {
                         props: TextProps {
                             style: StyleProps {

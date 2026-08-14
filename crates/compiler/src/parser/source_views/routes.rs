@@ -7,9 +7,17 @@ impl RouteBuildContext<'_> {
         parent_platforms: Vec<ViewPlatform>,
     ) -> DoweResult<()> {
         let platforms = effective_platforms(declaration, parent_platforms, self.views_path)?;
+        let selected_platforms = platforms
+            .iter()
+            .copied()
+            .filter(|platform| self.selected_platforms.contains(platform))
+            .collect::<Vec<_>>();
+        if selected_platforms.is_empty() {
+            return Ok(());
+        }
         let route_path = normalize_route_path(parent_path, &declaration.path);
         if declaration.children.is_empty() {
-            self.add_page_route(declaration, route_path, layouts, platforms)
+            self.add_page_route(declaration, route_path, layouts, selected_platforms)
         } else {
             let layout = self.layout_for(&declaration.component)?;
             layouts.push(layout);
@@ -165,6 +173,7 @@ impl RouteBuildContext<'_> {
             }
         };
         let expanded_root = self.expand_export_node(root_node, &module_imports)?;
+        validate_view_theme_references(&expanded_root, self.design_config)?;
         if kind != expected {
             return Err(DoweError::at_path(
                 self.views_path,

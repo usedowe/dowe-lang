@@ -157,7 +157,7 @@ fn generates_compose_and_dev_display_overlay_components() {
         .content
         .contains("DoweAlertDialog(open = state.bool(\"modal01\")"));
     assert!(views.content.contains(
-        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, borderColor = null, confirmBackgroundColor = DoweDesign.danger, confirmContentColor = DoweDesign.onDanger"
+        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, borderColor = null, confirmBackgroundColor = DoweDesign.danger, confirmContentColor = DoweDesign.dangerText"
     ));
     assert!(views
         .content
@@ -168,7 +168,7 @@ fn generates_compose_and_dev_display_overlay_components() {
         .content
         .contains("DoweToast(visible = true, title = \"Saved\""));
     assert!(views.content.contains(
-        "position = \"top-right\", backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, borderColor = DoweDesign.warning"
+        "position = \"top-right\", backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, borderColor = DoweDesign.warning"
     ));
     assert!(views.content.contains("paths = doweOverlayClosePaths"));
     assert!(views
@@ -244,7 +244,7 @@ fn generates_compose_and_dev_display_overlay_components() {
         .content
         .contains("doweNavigate(\"push\", \"/docs\", null);"));
     assert!(dev.content.contains("setText(\"Menu\");"));
-    assert!(dev.content.contains("setTextColor(DOWE_ON_SOFT_PRIMARY);"));
+    assert!(dev.content.contains("setTextColor(DOWE_SOFT_PRIMARY_TEXT);"));
     assert!(dev
         .content
         .contains("setBackground(doweInputBackground(DOWE_SOFT_PRIMARY, null, DOWE_RADIUS));"));
@@ -265,19 +265,19 @@ fn generates_android_overlay_surface_action_and_close_parity() {
         .find(|file| file.relative_path.ends_with("DowePages.kt"))
         .expect("views");
     assert!(views.content.contains(
-        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, borderColor = DoweDesign.warning"
+        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, borderColor = DoweDesign.warning"
     ));
     assert!(views.content.contains(
-        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.onSurface, borderColor = null"
+        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, borderColor = null"
     ));
     assert!(views.content.contains(
-        "confirmBackgroundColor = DoweDesign.warning, confirmContentColor = DoweDesign.onWarning"
+        "confirmBackgroundColor = DoweDesign.warning, confirmContentColor = DoweDesign.warningText"
     ));
     assert!(views
         .content
         .contains("private val doweOverlayClosePaths = listOf("));
     assert!(views.content.contains(
-        "DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.onSoftMuted, paths = doweOverlayClosePaths)"
+        "DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.softMutedText, paths = doweOverlayClosePaths)"
     ));
     assert!(views.content.contains(
         "BoxWithConstraints(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center)"
@@ -306,7 +306,7 @@ fn generates_android_overlay_surface_action_and_close_parity() {
     assert!(dev
         .content
         .contains(".setBackground(doweInputBackground(DOWE_SURFACE, null, DOWE_RADIUS));"));
-    assert!(dev.content.contains("DOWE_ON_WARNING"));
+    assert!(dev.content.contains("DOWE_WARNING_TEXT"));
     assert!(dev
         .content
         .contains("setContentDescription(\"Close modal\")"));
@@ -515,10 +515,10 @@ fn generates_compose_and_dev_rich_control_map_components() {
     assert!(views
         .content
         .contains("background(accent).padding(horizontal = 8.dp, vertical = 2.dp)"));
-    assert!(views.content.contains("doweButtonOnFamily(mark.scheme)"));
+    assert!(views.content.contains("doweButtonTextFamily(mark.scheme)"));
     assert!(views.content.contains("doweButtonSoftFamily(mark.scheme)"));
     assert!(views.content.contains(
-        "if (contentColor == Color.Unspecified) DoweDesign.onBackground else contentColor"
+        "if (contentColor == Color.Unspecified) DoweDesign.backgroundText else contentColor"
     ));
     assert!(
         views
@@ -649,9 +649,9 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(views.content.contains("borderColor = DoweDesign.muted"));
     assert!(views
         .content
-        .contains("contentColor = DoweDesign.onSoftMuted"));
+        .contains("contentColor = DoweDesign.softMutedText"));
     assert!(views.content.contains(
-            "CardDefaults.cardColors(containerColor = DoweDesign.surface, contentColor = DoweDesign.onSurface), border = BorderStroke(1.dp, DoweDesign.surface)"
+            "CardDefaults.cardColors(containerColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText), border = BorderStroke(1.dp, DoweDesign.surface)"
         ));
     assert!(
         views
@@ -684,7 +684,7 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(dev.content.contains("setBackgroundTintList(null)"));
     assert!(dev
         .content
-        .contains("doweText(\"Surface\", DOWE_ON_SURFACE"));
+        .contains("doweText(\"Surface\", DOWE_SURFACE_TEXT"));
 }
 
 #[test]
@@ -966,7 +966,7 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(!views.content.contains("Text(if (open) \"^\" else \"v\")"));
     assert!(dev
         .content
-        .contains("doweAccordion(true, DOWE_SURFACE, DOWE_ON_SURFACE"));
+        .contains("doweAccordion(true, DOWE_SURFACE, DOWE_SURFACE_TEXT"));
     assert!(dev.content.contains("doweAccordionItem("));
     assert!(dev.content.contains("\"Intro\", false, true"));
     assert!(dev.content.contains("private LinearLayout doweAccordion("));
@@ -1574,7 +1574,7 @@ fn generates_svg_compose_and_dev_views() {
         "Integer fill = entry.currentColor ? Integer.valueOf(currentColor) : entry.color;"
     ));
     assert!(!dev.content.contains("import android.graphics.PathParser;"));
-    assert!(dev.content.contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, doweColor(doweResponsiveInt(viewportWidth, DOWE_TERTIARY, null, null, null, null), DOWE_ON_BACKGROUND)"));
+    assert!(dev.content.contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, doweColor(doweResponsiveInt(viewportWidth, DOWE_TERTIARY, null, null, null, null), DOWE_BACKGROUND_TEXT)"));
 }
 
 #[test]

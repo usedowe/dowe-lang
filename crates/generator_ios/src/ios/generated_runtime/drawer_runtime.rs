@@ -169,10 +169,10 @@ struct DoweDrawerSurface<Content: View>: View {
                     .overlay(alignment: .topTrailing) {
                         if !hideCloseButton {
                             Button(action: close) {
-                                DoweOverlayCloseIcon(color: DoweDesign.onSoftMuted)
+                                DoweOverlayCloseIcon(color: DoweDesign.softMutedText)
                                     .frame(width: CGFloat(28), height: CGFloat(28))
                                     .background(DoweDesign.softMuted)
-                                    .foregroundStyle(DoweDesign.onSoftMuted)
+                                    .foregroundStyle(DoweDesign.softMutedText)
                                     .clipShape(Circle())
                                     .frame(width: CGFloat(44), height: CGFloat(44))
                                     .contentShape(Rectangle())

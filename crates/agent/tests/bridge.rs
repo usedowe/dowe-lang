@@ -15,6 +15,11 @@ const VIEW_COMPONENT_REFERENCE: &str = include_str!(concat!(
     "/../../skill-data/dowe-views/references/components.md"
 ));
 
+const VIEW_BLOCK_INDEX: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../skill-data/dowe-views/references/blocks/index.json"
+));
+
 #[test]
 fn initializes_template_and_agent_bundle_as_one_project() {
     let temp = TempDir::new().expect("tempdir");
@@ -31,7 +36,7 @@ fn initializes_template_and_agent_bundle_as_one_project() {
         fs::read_dir(temp.path().join(".agents/skills"))
             .expect("skills")
             .count(),
-        4
+        5
     );
     dowe_compiler::compile_dev(temp.path()).expect("compile");
 }
@@ -53,7 +58,7 @@ fn every_dowe_project_template_includes_the_managed_agent_bundle() {
             fs::read_dir(temp.path().join(".agents/skills"))
                 .expect("skills")
                 .count(),
-            4
+            5
         );
     }
 }
@@ -138,7 +143,7 @@ fn lists_public_authoring_skills_without_workspace_skills() {
         .collect::<Vec<_>>();
     let encoded = serde_json::to_string(&skills).expect("skills");
 
-    assert_eq!(ids, ["core", "server", "theme", "views"]);
+    assert_eq!(ids, ["core", "server", "domain-modeling", "theme", "views"]);
     assert!(skills.iter().all(|skill| skill.name.starts_with("dowe-")));
     assert!(skills.iter().all(|skill| skill.scope == "dowe-authoring"));
     assert!(skills.iter().all(|skill| {
@@ -156,6 +161,7 @@ fn lists_public_authoring_skills_without_workspace_skills() {
         [
             "references/views.md",
             "references/composition.md",
+            "references/blocks/index.json",
             "references/reference-ui.md",
             "references/components.md",
             "references/styles.md",
@@ -168,6 +174,36 @@ fn lists_public_authoring_skills_without_workspace_skills() {
     assert!(views.description.contains("reference-driven UI"));
     assert!(views.description.contains("visual fidelity"));
     assert!(views.description.contains("without screenshot crops"));
+    let domain = skills
+        .iter()
+        .find(|skill| skill.id == "domain-modeling")
+        .expect("domain-modeling skill");
+    assert_eq!(
+        domain.resources,
+        [
+            "references/workflow.md",
+            "references/pos.md",
+            "references/crm.md",
+            "references/ecommerce.md",
+            "references/reservations.md"
+        ]
+    );
+    assert!(domain.description.contains("business descriptions"));
+    let domain_document = get_public_skill("domain-modeling", true)
+        .expect("full domain-modeling skill")
+        .content;
+    for marker in [
+        "description -> modules -> entities -> relations -> invariants -> permissions -> workflows -> endpoints -> seeders -> views",
+        "# Point-of-sale blueprint",
+        "# Customer relationship management blueprint",
+        "# Ecommerce blueprint",
+        "# Reservations and resource scheduling blueprint",
+    ] {
+        assert!(
+            domain_document.contains(marker),
+            "missing domain marker {marker}"
+        );
+    }
     assert!(!encoded.contains("/agents/skills"));
     assert!(!encoded.contains("dowe-dev-artifacts"));
     for skill in &skills {
@@ -186,7 +222,8 @@ fn every_resource_named_by_a_public_skill_is_embedded() {
             .content
             .split('`')
             .filter(|fragment| {
-                (fragment.starts_with("references/") && fragment.ends_with(".md"))
+                (fragment.starts_with("references/")
+                    && (fragment.ends_with(".md") || fragment.ends_with(".json")))
                     || (fragment.starts_with("scripts/") && fragment.ends_with(".py"))
             })
             .collect::<std::collections::BTreeSet<_>>();
@@ -274,6 +311,7 @@ fn installs_and_updates_compiled_public_skills() {
     for resource in [
         "references/views.md",
         "references/composition.md",
+        "references/blocks/index.json",
         "references/reference-ui.md",
         "references/components.md",
         "references/styles.md",
@@ -288,7 +326,7 @@ fn installs_and_updates_compiled_public_skills() {
         fs::read_dir(temp.path().join(".agents/skills"))
             .expect("skills")
             .count(),
-        4
+        5
     );
     let manifest: Value = serde_json::from_str(
         &fs::read_to_string(temp.path().join(".agents/manifest.json")).expect("manifest"),
@@ -297,7 +335,13 @@ fn installs_and_updates_compiled_public_skills() {
     assert_eq!(manifest["doweVersion"], env!("CARGO_PKG_VERSION"));
     assert_eq!(
         manifest["managedSkills"],
-        serde_json::json!(["dowe-core", "dowe-server", "dowe-theme", "dowe-views"])
+        serde_json::json!([
+            "dowe-core",
+            "dowe-domain-modeling",
+            "dowe-server",
+            "dowe-theme",
+            "dowe-views"
+        ])
     );
 
     fs::create_dir_all(temp.path().join(".agents/skills/project-domain")).expect("project skill");
@@ -352,6 +396,10 @@ fn gets_compact_and_full_view_skill_documents() {
     );
     assert!(
         full.content
+            .contains("## Resource: references/blocks/index.json")
+    );
+    assert!(
+        full.content
             .contains("## Resource: references/reference-ui.md")
     );
     assert!(
@@ -379,6 +427,33 @@ fn gets_compact_and_full_view_skill_documents() {
     assert!(full.content.contains("`96rem` on web"));
     assert!(full.content.contains("`1536` logical units"));
     assert_eq!(full.content.matches("`96rem` on web").count(), 2);
+}
+
+#[test]
+fn block_index_is_valid_compact_and_self_contained() {
+    let index: Value = serde_json::from_str(VIEW_BLOCK_INDEX).expect("block index json");
+
+    assert_eq!(index["schemaVersion"], 1);
+    assert_eq!(index["corpus"]["documentationPages"], 94);
+    assert_eq!(index["corpus"]["blockEntries"], 75);
+    assert_eq!(index["blocks"].as_array().expect("blocks").len(), 75);
+    assert!(
+        index["blocks"]
+            .as_array()
+            .expect("blocks")
+            .iter()
+            .any(|block| block["id"] == "hero/centered-media")
+    );
+    assert!(
+        index["blocks"]
+            .as_array()
+            .expect("blocks")
+            .iter()
+            .any(|block| block["kind"] == "server")
+    );
+    assert!(!VIEW_BLOCK_INDEX.contains("dowe-docs/"));
+    assert!(!VIEW_BLOCK_INDEX.contains("/Users/"));
+    assert!(!VIEW_BLOCK_INDEX.contains("data:image/"));
 }
 
 #[test]
@@ -485,6 +560,84 @@ fn view_skill_requires_semantic_ownership_and_collection_modeling() {
         full.content
             .contains("Reusable components do not accept dynamic caller inputs")
     );
+    assert!(full.content.contains("page-only"));
+    assert!(full.content.contains("theme unchanged"));
+    assert!(full.content.contains("grouped `colors:` form"));
+}
+
+#[test]
+fn view_skill_reserves_box_for_advanced_layer_planes() {
+    let compact = get_public_skill("views", false).expect("compact views skill");
+    let full = get_public_skill("views", true).expect("full views skill");
+    let index: Value = serde_json::from_str(VIEW_BLOCK_INDEX).expect("block index json");
+    let auth_rules = index["families"]["auth"]["authoringRules"]
+        .as_array()
+        .expect("auth authoring rules")
+        .iter()
+        .map(|rule| rule.as_str().expect("auth rule"))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    assert!(compact.content.contains("Begin with no `Box` nodes"));
+    assert!(compact.content.contains("fixed viewport layer"));
+    assert!(compact.content.contains("one responsive source tree"));
+    assert!(
+        full.content
+            .contains("Do not use empty Boxes as Grid gutters")
+    );
+    assert!(
+        full.content.contains(
+            "Do not wrap `Input`, `Password`, `Phone`, `Pin`, `Button`, `Image`, or `Svg`"
+        )
+    );
+    assert!(
+        full.content
+            .contains("Separate mobile and desktop form trees")
+    );
+    assert!(auth_rules.contains("without individual Box wrappers"));
+    assert!(auth_rules.contains("advanced auth-layout layer plane"));
+}
+
+#[test]
+fn view_skill_reserves_translation_for_advanced_visual_layers() {
+    let compact = get_public_skill("views", false).expect("compact views skill");
+    let full = get_public_skill("views", true).expect("full views skill");
+    let index: Value = serde_json::from_str(VIEW_BLOCK_INDEX).expect("block index json");
+    let app_bar_rules = index["families"]["app-bar"]["authoringRules"]
+        .as_array()
+        .expect("app bar authoring rules")
+        .iter()
+        .map(|rule| rule.as_str().expect("app bar rule"))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    assert!(
+        compact
+            .content
+            .contains("Zero authored translations is the default")
+    );
+    assert!(
+        compact
+            .content
+            .contains("Never translate `AppBar`, `Brand`, `NavMenu`, `Drawer`")
+    );
+    assert!(
+        compact
+            .content
+            .contains("First solve one-axis placement with `Flex`")
+    );
+    assert!(
+        compact
+            .content
+            .contains("solve shared tracks and responsive")
+    );
+    assert!(
+        full.content
+            .contains("Availability is not a layout recommendation")
+    );
+    assert!(full.content.contains("Screenshot measurements describe"));
+    assert!(full.content.contains("Measured `x` and `y` bounds are QA"));
+    assert!(app_bar_rules.contains("Do not use translateX or translateY on AppBar"));
 }
 
 #[test]
@@ -533,9 +686,24 @@ fn theme_skill_requires_semantic_reference_system_extraction() {
     );
     assert!(compact.content.contains("anti-aliased shade"));
     assert!(full.content.contains("## Reference-system extraction"));
-    assert!(full.content.contains("background` and `onBackground` pair"));
+    assert!(full.content.contains("background color:"));
     assert!(full.content.contains("smallest semantic palette"));
     assert!(full.content.contains("does not authorize an"));
+}
+
+#[test]
+fn theme_skill_documents_grouped_color_families() {
+    let full = get_public_skill("theme", true).expect("full theme skill");
+
+    assert!(full.content.contains("colors:\n"));
+    assert!(full.content.contains("primary color:"));
+    assert!(full.content.contains("softPrimary color:"));
+    assert!(full.content.contains("`color`, `text`, and `title` props"));
+    assert!(!full.content.contains("colors primary:"));
+    assert!(full.content.contains("## Theme/page contract"));
+    assert!(full.content.contains("page-only"));
+    assert!(!full.content.contains("Migrating a legacy theme"));
+    assert!(!full.content.contains("onPrimary"));
 }
 
 #[test]
@@ -718,7 +886,7 @@ fn builds_compact_project_context_without_private_skill_content() {
             .markers
             .contains(&".agents/manifest.json".to_string())
     );
-    assert_eq!(context.skills.len(), 4);
+    assert_eq!(context.skills.len(), 5);
     assert!(!encoded.contains("PRIVATE_WORKSPACE_SKILL"));
     assert!(!encoded.contains("agents/skills/private"));
     assert!(!encoded.contains("\"Home\""));

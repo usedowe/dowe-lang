@@ -1,11 +1,12 @@
 use crate::menus;
 use crate::usage::USAGE;
 use dowe_deploy::{
-    DeployEnvironment, DeployOptions, DeploySurface, DeployTarget, default_docker_image_name,
-    deploy,
+    DEFAULT_DOCKER_REGISTRY, DeployEnvironment, DeployOptions, DeploySurface, DeployTarget,
+    DockerDeployPreferences, default_docker_image_name, deploy, load_docker_deploy_preferences,
+    save_docker_deploy_preferences,
 };
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn run_deploy_command(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
     let root = env::current_dir()?;
@@ -33,12 +34,18 @@ pub(crate) fn run_deploy_command(args: &[String]) -> Result<(), Box<dyn std::err
         let mut options = DeployOptions::new(root, target);
         options.environment = environment;
         options.surface = Some(surface);
+        if announce_dowe_cloud_coming_soon(options.target) {
+            return Ok(());
+        }
         configure_interactive_target(&mut options)?;
         options.publish = should_auto_publish(surface, target);
         let report = deploy(options)?;
         print_report(&report);
         return Ok(());
     };
+    if announce_dowe_cloud_coming_soon(options.target) {
+        return Ok(());
+    }
     let report = deploy(options)?;
     print_report(&report);
     Ok(())
@@ -78,12 +85,15 @@ fn run_surface_deploy(
     if let Some(environment) = interactive_environment {
         options.environment = environment;
     }
-    if options.target != DeployTarget::Dowe && options.target.surface() != surface {
+    if !options.target.supports_surface(surface) {
         return Err(format!(
             "deploy target `{}` does not belong to the `{surface}` deploy surface",
             options.target
         )
         .into());
+    }
+    if announce_dowe_cloud_coming_soon(options.target) {
+        return Ok(());
     }
     if interactive {
         configure_interactive_target(&mut options)?;
@@ -94,14 +104,22 @@ fn run_surface_deploy(
     Ok(())
 }
 
+const DOWE_CLOUD_COMING_SOON_MESSAGE: &str = "Dowe Cloud deployment is coming soon. This option is not fully implemented yet and will be improved in a future release.";
+
+fn announce_dowe_cloud_coming_soon(target: DeployTarget) -> bool {
+    if target != DeployTarget::Dowe {
+        return false;
+    }
+    println!("{DOWE_CLOUD_COMING_SOON_MESSAGE}");
+    true
+}
+
 fn should_auto_publish(surface: DeploySurface, target: DeployTarget) -> bool {
     matches!(
         (surface, target),
         (DeploySurface::Web, DeployTarget::CloudflarePages)
             | (DeploySurface::Server, DeployTarget::Cloudflare)
-            | (DeploySurface::Server, DeployTarget::Dowe)
             | (DeploySurface::Server, DeployTarget::Ssh)
-            | (DeploySurface::Web, DeployTarget::Dowe)
             | (DeploySurface::Android, DeployTarget::Android)
             | (DeploySurface::Ios, DeployTarget::Ios)
     )
@@ -214,9 +232,23 @@ fn configure_interactive_target(
 ) -> Result<(), Box<dyn std::error::Error>> {
     match options.target {
         DeployTarget::Docker => {
-            let default_image = default_docker_image_name(&options.root);
-            options.registry = Some(menus::prompt_docker_registry()?);
+            let saved = load_docker_deploy_preferences(&options.root, options.surface())?;
+            let (default_registry, default_image) = docker_prompt_defaults(
+                &options.root,
+                options.registry.as_deref(),
+                options.image.as_deref(),
+                saved.as_ref(),
+            );
+            options.registry = Some(menus::prompt_docker_registry(&default_registry)?);
             options.image = Some(menus::prompt_docker_image(&default_image)?);
+            save_docker_deploy_preferences(
+                &options.root,
+                options.surface(),
+                &DockerDeployPreferences::new(
+                    options.registry.as_deref().unwrap_or_default(),
+                    options.image.as_deref().unwrap_or_default(),
+                ),
+            )?;
         }
         DeployTarget::Ssh => {
             options.ssh_host = Some(menus::prompt_ssh_host()?);
@@ -226,6 +258,23 @@ fn configure_interactive_target(
         _ => {}
     }
     Ok(())
+}
+
+fn docker_prompt_defaults(
+    root: &Path,
+    explicit_registry: Option<&str>,
+    explicit_image: Option<&str>,
+    saved: Option<&DockerDeployPreferences>,
+) -> (String, String) {
+    let registry = explicit_registry
+        .or_else(|| saved.map(|preferences| preferences.registry.as_str()))
+        .unwrap_or(DEFAULT_DOCKER_REGISTRY)
+        .to_string();
+    let image = explicit_image
+        .or_else(|| saved.map(|preferences| preferences.image.as_str()))
+        .map(str::to_string)
+        .unwrap_or_else(|| default_docker_image_name(root));
+    (registry, image)
 }
 
 fn required_value<'a>(
@@ -277,11 +326,13 @@ fn print_report(report: &dowe_deploy::DeployReport) {
 
 #[cfg(test)]
 mod tests {
+    use super::docker_prompt_defaults;
     use super::parse_deploy_options;
     use super::should_auto_publish;
     use dowe_deploy::DeployEnvironment;
     use dowe_deploy::DeploySurface;
     use dowe_deploy::DeployTarget;
+    use dowe_deploy::DockerDeployPreferences;
     use std::path::PathBuf;
 
     #[test]
@@ -367,6 +418,38 @@ mod tests {
     }
 
     #[test]
+    fn docker_menu_defaults_to_saved_project_preferences() {
+        let saved = DockerDeployPreferences::new("ghcr.io/acme", "clinic-web:stage");
+        let defaults = docker_prompt_defaults(
+            PathBuf::from("/project").as_path(),
+            None,
+            None,
+            Some(&saved),
+        );
+
+        assert_eq!(
+            defaults,
+            ("ghcr.io/acme".to_string(), "clinic-web:stage".to_string())
+        );
+    }
+
+    #[test]
+    fn explicit_docker_flags_override_saved_project_preferences() {
+        let saved = DockerDeployPreferences::new("ghcr.io/acme", "clinic-web:stage");
+        let defaults = docker_prompt_defaults(
+            PathBuf::from("/project").as_path(),
+            Some("docker.io"),
+            Some("clinic-web"),
+            Some(&saved),
+        );
+
+        assert_eq!(
+            defaults,
+            ("docker.io".to_string(), "clinic-web".to_string())
+        );
+    }
+
+    #[test]
     fn parses_android_store_track() {
         let args = vec![
             "--target".to_string(),
@@ -420,6 +503,10 @@ mod tests {
             DeploySurface::Server,
             DeployTarget::Docker
         ));
+        assert!(!should_auto_publish(
+            DeploySurface::Web,
+            DeployTarget::Docker
+        ));
         assert!(should_auto_publish(
             DeploySurface::Android,
             DeployTarget::Android
@@ -427,12 +514,27 @@ mod tests {
         assert!(should_auto_publish(DeploySurface::Ios, DeployTarget::Ios));
         assert!(should_auto_publish(
             DeploySurface::Server,
-            DeployTarget::Dowe
-        ));
-        assert!(should_auto_publish(
-            DeploySurface::Server,
             DeployTarget::Ssh
         ));
-        assert!(should_auto_publish(DeploySurface::Web, DeployTarget::Dowe));
+        assert!(!should_auto_publish(DeploySurface::Web, DeployTarget::Dowe));
+    }
+
+    #[test]
+    fn docker_supports_server_and_web_surfaces() {
+        assert!(DeployTarget::Docker.supports_surface(DeploySurface::Server));
+        assert!(DeployTarget::Docker.supports_surface(DeploySurface::Web));
+        assert!(!DeployTarget::Docker.supports_surface(DeploySurface::Android));
+    }
+
+    #[test]
+    fn dowe_cloud_selection_reports_coming_soon() {
+        assert!(super::announce_dowe_cloud_coming_soon(DeployTarget::Dowe));
+        assert!(!super::announce_dowe_cloud_coming_soon(
+            DeployTarget::Docker
+        ));
+        assert_eq!(
+            super::DOWE_CLOUD_COMING_SOON_MESSAGE,
+            "Dowe Cloud deployment is coming soon. This option is not fully implemented yet and will be improved in a future release."
+        );
     }
 }

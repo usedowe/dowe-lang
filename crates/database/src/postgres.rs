@@ -1,6 +1,8 @@
 use crate::error::{StoreError, StoreResult};
 use crate::names::{validate_field_name, validate_table_name};
+use crate::remote::DatabaseTransactionInsert;
 use bytes::BytesMut;
+use dowe_database_query::{QueryDialect, SelectQuery, render_select};
 use serde_json::{Map, Value, json};
 use std::error::Error;
 use tokio_postgres::config::SslMode;
@@ -117,7 +119,7 @@ impl PostgresClient {
                 "Postgres insert value must be an object".to_string(),
             ));
         };
-        if !record.contains_key("id") {
+        if !record.contains_key("id") && generates_record_id(table) {
             record.insert("id".to_string(), Value::String(dowe_id::generate_ulid()));
         }
         let mut entries = record.into_iter().collect::<Vec<_>>();
@@ -247,9 +249,68 @@ impl PostgresClient {
         }
     }
 
+    pub async fn query_select(&self, query: &SelectQuery, values: &[Value]) -> StoreResult<Value> {
+        self.query_with_params(&render_select(query, QueryDialect::Postgres), values)
+            .await
+    }
+
     pub async fn execute_batch(&self, sql: &str) -> StoreResult<()> {
         let client = self.connect().await?;
         client.batch_execute(sql).await.map_err(postgres_error)
+    }
+
+    pub async fn transaction(
+        &self,
+        operations: &[DatabaseTransactionInsert],
+    ) -> StoreResult<Value> {
+        if operations.is_empty() {
+            return Err(StoreError::InvalidQuery(
+                "Postgres transaction requires at least one operation".to_string(),
+            ));
+        }
+        let mut client = self.connect().await?;
+        let transaction = client.transaction().await.map_err(postgres_error)?;
+        let mut values = Vec::with_capacity(operations.len());
+        for operation in operations {
+            validate_table_name(&operation.table)?;
+            let Value::Object(mut record) = operation.value.clone() else {
+                return Err(StoreError::InvalidQuery(
+                    "Postgres transaction insert value must be an object".to_string(),
+                ));
+            };
+            if !record.contains_key("id") && generates_record_id(&operation.table) {
+                record.insert("id".to_string(), Value::String(dowe_id::generate_ulid()));
+            }
+            let mut entries = record.into_iter().collect::<Vec<_>>();
+            entries.sort_by(|left, right| left.0.cmp(&right.0));
+            for (field, _) in &entries {
+                validate_field_name(field)?;
+            }
+            let fields = entries
+                .iter()
+                .map(|(field, _)| identifier(field))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let placeholders = (1..=entries.len())
+                .map(|index| format!("${index}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let params = postgres_params(entries.into_iter().map(|(_, value)| value).collect());
+            let refs = param_refs(&params);
+            let row = transaction
+                .query_one(
+                    &format!(
+                        "INSERT INTO {} ({fields}) VALUES ({placeholders}) RETURNING *",
+                        identifier(&operation.table)
+                    ),
+                    &refs,
+                )
+                .await
+                .map_err(postgres_error)?;
+            values.push(row_json(&row)?);
+        }
+        transaction.commit().await.map_err(postgres_error)?;
+        Ok(Value::Array(values))
     }
 
     async fn connect(&self) -> StoreResult<Client> {
@@ -393,12 +454,23 @@ fn identifier(value: &str) -> String {
     format!("\"{value}\"")
 }
 
+fn generates_record_id(table: &str) -> bool {
+    !table.starts_with("_dowe_")
+}
+
 fn postgres_error(error: tokio_postgres::Error) -> StoreError {
-    if error
-        .as_db_error()
-        .is_some_and(|error| error.code() == &tokio_postgres::error::SqlState::UNIQUE_VIOLATION)
-    {
-        return StoreError::AlreadyExists("Postgres record already exists".to_string());
+    if let Some(database_error) = error.as_db_error() {
+        if database_error.code() == &tokio_postgres::error::SqlState::UNIQUE_VIOLATION {
+            return StoreError::AlreadyExists("Postgres record already exists".to_string());
+        }
+        if matches!(
+            database_error.code(),
+            &tokio_postgres::error::SqlState::UNDEFINED_TABLE
+                | &tokio_postgres::error::SqlState::UNDEFINED_COLUMN
+                | &tokio_postgres::error::SqlState::SYNTAX_ERROR
+        ) {
+            return StoreError::InvalidQuery(error.to_string());
+        }
     }
     StoreError::Remote(error.to_string())
 }

@@ -233,7 +233,7 @@ fn render_swift_nav_menu(
         .collect::<Vec<_>>()
         .join(", ");
     output.push_str(&format!(
-        "{pad}DoweNavMenu(gap: CGFloat({gap}), wideIndices: [{wide_indices}], popoverBackgroundColor: DoweDesign.background, popoverContentColor: DoweDesign.onBackground) {{ openIndex, toggle in\n"
+        "{pad}DoweNavMenu(gap: CGFloat({gap}), wideIndices: [{wide_indices}], popoverBackgroundColor: DoweDesign.background, popoverContentColor: DoweDesign.backgroundText) {{ openIndex, toggle in\n"
     ));
     for (index, item) in items.iter().enumerate() {
         render_swift_nav_menu_trigger(
@@ -484,7 +484,7 @@ fn render_swift_nav_menu_button(
     if arrow {
         let icon = solar_control_icon("alt-arrow-down").expect("bundled NavMenu arrow icon");
         output.push_str(&format!(
-            "{pad}    DoweSvgView(viewBox: {}, color: {active} ? {} : DoweDesign.onBackground, paths: {})\n{pad}        .frame(width: CGFloat({label_size}), height: CGFloat({label_size}))\n{pad}        .rotationEffect({active} ? .degrees(180) : .degrees(0))\n",
+            "{pad}    DoweSvgView(viewBox: {}, color: {active} ? {} : DoweDesign.backgroundText, paths: {})\n{pad}        .frame(width: CGFloat({label_size}), height: CGFloat({label_size}))\n{pad}        .rotationEffect({active} ? .degrees(180) : .degrees(0))\n",
             swift_svg_view_box(&icon.props.view_box),
             nav_active_content(&nav.style),
             swift_svg_paths(&icon.paths)
