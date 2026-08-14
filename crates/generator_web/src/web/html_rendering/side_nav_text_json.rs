@@ -400,7 +400,7 @@ fn page_definition_json(tree: &ViewNode) -> String {
                 actions.as_slice(),
             );
             format!(
-                r#"{{"constants":[{}],"signals":[{}],"actions":[{}]}}"#,
+                r#"{{"constants":[{}],"signals":[{}],"actions":[{}],"forms":[{}]}}"#,
                 constants
                     .iter()
                     .map(constant_json)
@@ -415,11 +415,61 @@ fn page_definition_json(tree: &ViewNode) -> String {
                     .iter()
                     .map(|action| action_json(action, &context))
                     .collect::<Vec<_>>()
+                    .join(","),
+                collect_view_forms(tree)
+                    .iter()
+                    .map(|form| form_json(form, &context))
+                    .collect::<Vec<_>>()
                     .join(",")
             )
         }
-        _ => r#"{"signals":[],"actions":[]}"#.to_string(),
+        _ => r#"{"signals":[],"actions":[],"forms":[]}"#.to_string(),
     }
+}
+
+fn form_json(form: &ViewForm, context: &ReactiveRenderContext) -> String {
+    format!(
+        r#"{{"signal":"{}","fields":[{}]}}"#,
+        escape_json(&context.signal_path(&form.signal)),
+        form.fields
+            .iter()
+            .map(|field| {
+                let rules = field
+                    .rules
+                    .iter()
+                    .map(|rule| {
+                        let argument = match &rule.kind {
+                            FormValidationRuleKind::Matches(path) => {
+                                Some(context.signal_path(path))
+                            }
+                            _ => rule.kind.argument(),
+                        };
+                        format!(
+                            r#"{{"path":"{}","kind":"{}","argument":{},"message":"{}"}}"#,
+                            escape_json(&field.path),
+                            rule.kind.name(),
+                            argument
+                                .as_deref()
+                                .map(|value| format!(r#""{}""#, escape_json(value)))
+                                .unwrap_or_else(|| "null".to_string()),
+                            escape_json(&rule.message)
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(",");
+                format!(
+                    r#"{{"path":"{}","kind":"{}","rules":[{}]}}"#,
+                    escape_json(&field.path),
+                    match field.kind {
+                        ViewFormFieldKind::Boolean => "boolean",
+                        ViewFormFieldKind::String => "string",
+                    },
+                    rules
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+    )
 }
 
 fn constant_json(constant: &ViewConstant) -> String {
@@ -492,6 +542,10 @@ fn action_json(action: &ViewAction, context: &ReactiveRenderContext) -> String {
 
 fn statement_json(statement: &dowe_components::ViewFunctionStatement, context: &ReactiveRenderContext) -> String {
     match statement {
+        dowe_components::ViewFunctionStatement::Validate { target } => format!(
+            r#"{{"kind":"validate","target":"{}"}}"#,
+            escape_json(&context.signal_path(target))
+        ),
         dowe_components::ViewFunctionStatement::Request { result, action } => format!(
             r#"{{"kind":"request","result":"{}","method":"{}","path":"{}","baseEnv":{},"headers":{},"body":{}}}"#,
             escape_json(result), action.method.as_str(), escape_json(&action.path), json_optional_string(action.base_env.as_deref()), request_headers_json(action, context), json_optional_path(action.body.as_deref(), context)

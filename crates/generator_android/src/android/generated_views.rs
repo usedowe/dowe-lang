@@ -151,12 +151,13 @@ fn generated_views(
         let fixed_fabs = fixed_fab_nodes(&tree);
         let reactive = compose_reactive_route(&tree);
         output.push_str(&format!(
-            "    val activePath = \"{}\"\n    val doweContext = LocalContext.current\n    val state = remember {{ DoweReactiveState(context = doweContext, constants = {}, initial = {}, signals = {}, actions = {}) }}\n    val actionScope = rememberCoroutineScope()\n",
+            "    val activePath = \"{}\"\n    val doweContext = LocalContext.current\n    val state = remember {{ DoweReactiveState(context = doweContext, constants = {}, initial = {}, signals = {}, actions = {}, forms = {}) }}\n    val actionScope = rememberCoroutineScope()\n",
             escape_kotlin(&route.route_path),
             reactive.constants,
             reactive.initial,
             reactive.signals,
-            reactive.actions
+            reactive.actions,
+            reactive.forms
         ));
         output.push_str("    LaunchedEffect(state.redirectPath) { state.redirectPath?.let { path -> state.consumeRedirect(); navigate(\"replace\", path, null) } }\n");
         let startup = reactive

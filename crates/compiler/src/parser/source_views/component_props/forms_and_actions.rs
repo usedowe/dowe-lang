@@ -205,6 +205,7 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "scheme"
                     | "size"
                     | "loading"
+                    | "disabled"
                     | "href"
                     | "navigate"
                     | "history"

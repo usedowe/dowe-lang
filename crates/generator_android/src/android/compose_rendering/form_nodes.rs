@@ -46,7 +46,7 @@ fn render_compose_form_node(
                 modifier_for_style(&props.style)
             };
             output.push_str(&format!(
-                        "{pad}DoweInput(value = {value}, onValueChange = {change}, modifier = {}, label = {}, placeholder = {}, floating = {}, fontFamily = {}, fontSize = {size}, lineHeight = doweTextLineHeight({size}, {}f), minHeight = {}.dp, horizontalPadding = {}.dp, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border}, startIcon = {}, endIcon = {})\n",
+                        "{pad}DoweInput(value = {value}, onValueChange = {change}, modifier = {}, label = {}, placeholder = {}, floating = {}, fontFamily = {}, fontSize = {size}, lineHeight = doweTextLineHeight({size}, {}f), minHeight = {}.dp, horizontalPadding = {}.dp, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border}, startIcon = {}, endIcon = {}, helpText = {}, errorText = {}, validationRules = {})\n",
                         modifier,
                         compose_optional_string(props.label.as_deref()),
                         compose_string_literal(props.placeholder.as_deref().unwrap_or_default()),
@@ -60,7 +60,10 @@ fn render_compose_form_node(
                         variant_container(props),
                         variant_content(props),
                         compose_control_icon(props.icon_start.as_ref()),
-                        compose_control_icon(props.icon_end.as_ref())
+                        compose_control_icon(props.icon_end.as_ref()),
+                        compose_validation_help(&props.element),
+                        compose_validation_error(&props.element),
+                        compose_validation_rules(&props.element, context)
                     ));
         }
         ViewNode::Slider { props } => {
@@ -102,7 +105,7 @@ fn render_compose_form_node(
                 modifier_for_style(&props.style)
             };
             output.push_str(&format!(
-                        "{pad}DoweSelect(value = {value}, onValueChange = {change}, bound = {bound}, modifier = {}, label = {}, placeholder = {}, floating = {}, options = {}, fontFamily = {}, fontSize = {size}, lineHeight = doweTextLineHeight({size}, {}f), minHeight = {}.dp, horizontalPadding = {}.dp, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+                        "{pad}DoweSelect(value = {value}, onValueChange = {change}, bound = {bound}, modifier = {}, label = {}, placeholder = {}, floating = {}, options = {}, fontFamily = {}, fontSize = {size}, lineHeight = doweTextLineHeight({size}, {}f), minHeight = {}.dp, horizontalPadding = {}.dp, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border}, helpText = {}, errorText = {}, validationRules = {})\n",
                         modifier,
                         compose_optional_string(props.label.as_deref()),
                         compose_string_literal(props.placeholder.as_deref().unwrap_or("Select an option")),
@@ -115,7 +118,10 @@ fn render_compose_form_node(
                         INPUT_HORIZONTAL_PADDING.native_units(),
                         compose_control_radius(&props.style),
                         variant_container(props),
-                        variant_content(props)
+                        variant_content(props),
+                        compose_validation_help(&props.element),
+                        compose_validation_error(&props.element),
+                        compose_validation_rules(&props.element, context)
                     ));
         }
         ViewNode::ComboBox { props, options } => {
@@ -236,7 +242,7 @@ fn render_compose_form_node(
             let text_size = form_control_text_size(control_size);
             let font_size = compose_text_size_expr(false, text_size);
             output.push_str(&format!(
-                "{pad}DowePhone(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, country = {}, countries = {}, priorityCountries = {}, searchPlaceholder = {}, emptyText = {}, loadingText = {}, floating = {}, minHeight = {}.dp, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), disabled = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                "{pad}DowePhone(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, country = {}, countries = {}, priorityCountries = {}, searchPlaceholder = {}, emptyText = {}, loadingText = {}, floating = {}, minHeight = {}.dp, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), disabled = {}, modifier = {}, backgroundColor = {}, contentColor = {}, helpText = {}, errorText = {}, validationRules = {})\n",
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Enter phone number")),
                 compose_string_literal(props.country.as_deref().unwrap_or("US")),
@@ -252,7 +258,10 @@ fn render_compose_form_node(
                 props.disabled,
                 modifier_for_style(&props.style.style),
                 variant_container(&props.style),
-                variant_content(&props.style)
+                variant_content(&props.style),
+                compose_optional_string(props.help_text.as_deref()),
+                compose_optional_string(props.error_text.as_deref()),
+                compose_validation_rules(&props.style.element, context)
             ));
         }
         ViewNode::Pin { props } => {
@@ -272,7 +281,7 @@ fn render_compose_form_node(
                 "null"
             };
             output.push_str(&format!(
-                "{pad}DowePin(value = {value}, onValueChange = {change}, label = {}, length = {}, kind = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {}, helpText = {}, errorText = {})\n",
+                "{pad}DowePin(value = {value}, onValueChange = {change}, label = {}, length = {}, kind = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {}, helpText = {}, errorText = {}, validationRules = {})\n",
                 compose_optional_string(props.style.label.as_deref()),
                 props.length,
                 compose_string_literal(props.kind.as_str()),
@@ -284,7 +293,8 @@ fn render_compose_form_node(
                 variant_content(&props.style),
                 border,
                 compose_optional_string(props.help_text.as_deref()),
-                compose_optional_string(props.error_text.as_deref())
+                compose_optional_string(props.error_text.as_deref()),
+                compose_validation_rules(&props.style.element, context)
             ));
         }
         ViewNode::Textarea { props } => {
@@ -391,6 +401,90 @@ fn compose_string_list(values: &[String]) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     )
+}
+
+fn compose_validation_help(element: &ElementProps) -> String {
+    compose_optional_string(
+        element
+            .form_validation()
+            .and_then(|validation| validation.help_text.as_deref()),
+    )
+}
+
+fn compose_validation_error(element: &ElementProps) -> String {
+    compose_optional_string(
+        element
+            .form_validation()
+            .and_then(|validation| validation.error_text.as_deref()),
+    )
+}
+
+fn compose_validation_rules(
+    element: &ElementProps,
+    context: &ComposeReactiveContext,
+) -> String {
+    let Some(validation) = element.form_validation() else {
+        return "emptyList()".to_string();
+    };
+    let values = validation
+        .rules
+        .iter()
+        .map(|rule| {
+            let argument = match &rule.kind {
+                dowe_components::FormValidationRuleKind::Matches(path) => format!(
+                    "state.text(\"{}\")",
+                    escape_kotlin(&context.signal_path(path))
+                ),
+                _ => rule
+                    .kind
+                    .argument()
+                    .as_deref()
+                    .map(compose_string_literal)
+                    .unwrap_or_else(|| "null".to_string()),
+            };
+            format!(
+                "DoweValidationRule(kind = {}, argument = {argument}, message = {})",
+                compose_string_literal(rule.kind.name()),
+                compose_string_literal(&rule.message)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("listOf({values})")
+}
+
+fn compose_boolean_validation_rules(
+    element: &ElementProps,
+    context: &ComposeReactiveContext,
+) -> String {
+    let Some(validation) = element.form_validation() else {
+        return "emptyList()".to_string();
+    };
+    let values = validation
+        .rules
+        .iter()
+        .map(|rule| {
+            let argument = match &rule.kind {
+                dowe_components::FormValidationRuleKind::Matches(path) => format!(
+                    "state.bool(\"{}\").toString()",
+                    escape_kotlin(&context.signal_path(path))
+                ),
+                _ => rule
+                    .kind
+                    .argument()
+                    .as_deref()
+                    .map(compose_string_literal)
+                    .unwrap_or_else(|| "null".to_string()),
+            };
+            format!(
+                "DoweValidationRule(kind = {}, argument = {argument}, message = {})",
+                compose_string_literal(rule.kind.name()),
+                compose_string_literal(&rule.message)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("listOf({values})")
 }
 
 fn render_compose_combo_box(

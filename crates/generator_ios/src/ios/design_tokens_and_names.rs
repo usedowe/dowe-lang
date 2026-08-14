@@ -237,6 +237,18 @@ fn swift_theme_module(design_config: &DesignConfig) -> String {
         .map(swift_theme_record)
         .collect::<Vec<_>>()
         .join("\n");
+    let select_options = design_config
+        .themes
+        .iter()
+        .map(|theme| {
+            format!(
+                "        DoweSelectOption(value: {}, label: {}, description: nil),",
+                swift_string_literal(&theme.name),
+                swift_string_literal(&theme_display_label(&theme.name))
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
     format!(
         r#"import SwiftUI
 
@@ -252,6 +264,9 @@ enum DoweThemeModule {{
     static let names = [
 {}
     ]
+    static let selectOptions: [DoweSelectOption] = [
+{}
+    ]
     static let themes = [
 {}
     ]
@@ -259,8 +274,24 @@ enum DoweThemeModule {{
 "#,
         escape_swift(&design_config.default_theme),
         names,
+        select_options,
         themes
     )
+}
+
+fn theme_display_label(value: &str) -> String {
+    value
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn swift_theme_record(theme: &DesignTheme) -> String {

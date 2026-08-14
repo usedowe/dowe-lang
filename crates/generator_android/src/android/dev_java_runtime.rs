@@ -320,11 +320,24 @@ fn dev_java_reactive_runtime() -> &'static str {
         }
 
         private static DoweStep request(String result, DoweAction action) { return new DoweStep("request", result, action, null, null, null, null, null, false, null, null, null, null, null, null, null); }
+        private static DoweStep validate(String target) { return new DoweStep("validate", null, null, null, null, target, null, null, false, null, null, null, null, null, null, null); }
         private static DoweStep branch(String result, DoweStep[] success, DoweStep[] error) { return new DoweStep("branch", result, null, success, error, null, null, null, false, null, null, null, null, null, null, null); }
         private static DoweStep assign(String target, String source, Object literal, boolean hasLiteral, DoweAction call) { return new DoweStep("assign", null, null, null, null, target, source, literal, hasLiteral, call, null, null, null, null, null, null); }
         private static DoweStep reset(String target) { return new DoweStep("reset", null, null, null, null, target, null, null, false, null, null, null, null, null, null, null); }
         private static DoweStep toast(String kind, String title, String message, Integer duration, String scheme, String variant, String position) { return new DoweStep(kind, null, null, null, null, null, null, null, false, null, title, message, duration, scheme, variant, position); }
         private static DoweStep redirect(String path) { return new DoweStep("redirect", null, null, null, null, path, null, null, false, null, null, null, null, null, null, null); }
+    }
+
+    private static final class DoweFormFieldMetadata {
+        private final String path;
+        private final boolean booleanValue;
+        private final String[][] rules;
+
+        private DoweFormFieldMetadata(String path, boolean booleanValue, String[][] rules) {
+            this.path = path;
+            this.booleanValue = booleanValue;
+            this.rules = rules == null ? new String[0][0] : rules;
+        }
     }
 
     private HashMap<String, Object> doweObject(Object... values) {
@@ -348,6 +361,10 @@ fn dev_java_reactive_runtime() -> &'static str {
         if ("global".equals(scope)) {
             doweGlobalStorage.put(name, storage);
         }
+    }
+
+    private void dowePutForm(String signal, DoweFormFieldMetadata[] fields) {
+        doweForms.put(signal, fields == null ? new DoweFormFieldMetadata[0] : fields);
     }
 
     private void dowePutInitial(String path, Object value) {
@@ -416,6 +433,10 @@ fn dev_java_reactive_runtime() -> &'static str {
     }
 
     private Object doweRead(String path, Map<String, Object> item) {
+        Object derived = doweFormValue(path, item);
+        if (derived != null) {
+            return derived;
+        }
         if ("item".equals(path)) {
             return item;
         }
@@ -423,6 +444,62 @@ fn dev_java_reactive_runtime() -> &'static str {
             return doweReadMap(path.substring(5), item);
         }
         return doweReadMap(path, doweState);
+    }
+
+    private String doweFormError(String form, DoweFormFieldMetadata field, Map<String, Object> item) {
+        Object value = doweReadMap(form + "." + field.path, doweState);
+        String[][] rules = new String[field.rules.length][3];
+        for (int index = 0; index < field.rules.length; index++) {
+            String[] rule = field.rules[index];
+            rules[index][0] = rule.length > 0 ? rule[0] : "";
+            rules[index][1] = rule.length > 1 && rule[1] != null ? doweTextValue(rule[1], item) : null;
+            rules[index][2] = rule.length > 2 ? rule[2] : "";
+        }
+        return doweValidationError(value == null ? "" : String.valueOf(value), rules, field.booleanValue);
+    }
+
+    private Object doweFormValue(String path, Map<String, Object> item) {
+        String[] parts = path == null ? new String[0] : path.split("\\.");
+        if (parts.length < 2) {
+            return null;
+        }
+        DoweFormFieldMetadata[] fields = doweForms.get(parts[0]);
+        if (fields == null) {
+            return null;
+        }
+        String form = parts[0];
+        if ("isValid".equals(parts[1]) && parts.length == 2) {
+            for (DoweFormFieldMetadata field : fields) if (doweFormError(form, field, item) != null) return false;
+            return true;
+        }
+        if ("isInvalid".equals(parts[1]) && parts.length == 2) {
+            for (DoweFormFieldMetadata field : fields) if (doweFormError(form, field, item) != null) return true;
+            return false;
+        }
+        if ("errors".equals(parts[1])) {
+            HashMap<String, Object> errors = new HashMap<>();
+            for (DoweFormFieldMetadata field : fields) {
+                String error = doweFormError(form, field, item);
+                if (error != null && !error.isEmpty()) errors.put(field.path, error);
+            }
+            return parts.length == 2 ? errors : errors.get(String.join(".", java.util.Arrays.copyOfRange(parts, 2, parts.length)));
+        }
+        if ("touched".equals(parts[1])) {
+            HashMap<String, Object> touched = new HashMap<>();
+            for (DoweFormFieldMetadata field : fields) touched.put(field.path, doweTouchedForms.contains(form + "." + field.path));
+            return parts.length == 2 ? touched : doweTouchedForms.contains(form + "." + String.join(".", java.util.Arrays.copyOfRange(parts, 2, parts.length)));
+        }
+        return null;
+    }
+
+    private boolean doweValidateForm(String form) {
+        DoweFormFieldMetadata[] fields = doweForms.get(form);
+        if (fields == null) return true;
+        for (DoweFormFieldMetadata field : fields) {
+            doweTouchedForms.add(form + "." + field.path);
+        }
+        for (DoweValidationBinding binding : doweControlValidations.values()) binding.touch();
+        return Boolean.TRUE.equals(doweFormValue(form + ".isValid", null));
     }
 
     private Object doweReadMap(String path, Map<String, Object> values) {
@@ -863,6 +940,14 @@ fn dev_java_reactive_runtime() -> &'static str {
             return;
         }
         DoweStep step = steps[index];
+        if ("validate".equals(step.kind)) {
+            if (!doweValidateForm(step.target)) {
+                renderCurrentRoute(false);
+                return;
+            }
+            doweRunSteps(steps, index + 1, item, results, completion);
+            return;
+        }
         if ("request".equals(step.kind)) {
             doweRequest(step.request, item, (ok, data) -> {
                 results.put(step.result, doweObject("ok", ok, "data", data));

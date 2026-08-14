@@ -1,5 +1,7 @@
 fn dev_activity_layout_widgets() -> &'static str {
-    r#"    private static class DoweLinearLayout extends LinearLayout {
+    r#"    private static final Map<View, android.animation.StateListAnimator> DOWE_GESTURE_ANIMATORS = new WeakHashMap<>();
+
+    private static class DoweLinearLayout extends LinearLayout {
         DoweLinearLayout(Context context) {
             super(context);
             setClipChildren(false);
@@ -439,23 +441,31 @@ fn dev_activity_layout_widgets() -> &'static str {
         float baseScaleY = view.getScaleY();
         float baseRotation = view.getRotation();
         long duration = "none".equals(transition) ? 0L : "quick".equals(transition) ? 120L : "spring".equals(transition) ? 320L : 220L;
-        view.setOnTouchListener((target, event) -> {
-            boolean active = event.getActionMasked() == android.view.MotionEvent.ACTION_DOWN;
-            boolean finish = event.getActionMasked() == android.view.MotionEvent.ACTION_UP || event.getActionMasked() == android.view.MotionEvent.ACTION_CANCEL;
-            if (!active && !finish) return false;
-            android.view.ViewPropertyAnimator animation = target.animate().setDuration(duration);
-            if ("lift".equals(preset)) {
-                animation.translationY(active ? baseTranslationY - doweDp(4) : baseTranslationY).scaleX(active ? baseScaleX * 0.98f : baseScaleX).scaleY(active ? baseScaleY * 0.98f : baseScaleY);
-            } else if ("press".equals(preset)) {
-                animation.scaleX(active ? baseScaleX * 0.96f : baseScaleX).scaleY(active ? baseScaleY * 0.96f : baseScaleY);
-            } else if ("grow".equals(preset)) {
-                animation.scaleX(active ? baseScaleX * 1.04f : baseScaleX).scaleY(active ? baseScaleY * 1.04f : baseScaleY);
-            } else if ("tilt".equals(preset)) {
-                animation.rotation(active ? baseRotation + 3f : baseRotation);
-            }
-            animation.start();
-            return false;
-        });
+        float pressedTranslationY = "lift".equals(preset) ? baseTranslationY - doweDp(4) : baseTranslationY;
+        float pressedScaleX = "press".equals(preset) ? baseScaleX * 0.94f : "lift".equals(preset) ? baseScaleX * 0.98f : "grow".equals(preset) ? baseScaleX * 1.04f : baseScaleX;
+        float pressedScaleY = "press".equals(preset) ? baseScaleY * 0.94f : "lift".equals(preset) ? baseScaleY * 0.98f : "grow".equals(preset) ? baseScaleY * 1.04f : baseScaleY;
+        float pressedRotation = "tilt".equals(preset) ? baseRotation + 3f : baseRotation;
+        android.animation.AnimatorSet pressedAnimator = new android.animation.AnimatorSet();
+        pressedAnimator.playTogether(
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.TRANSLATION_Y, pressedTranslationY),
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.SCALE_X, pressedScaleX),
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.SCALE_Y, pressedScaleY),
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.ROTATION, pressedRotation)
+        );
+        pressedAnimator.setDuration(duration);
+        android.animation.AnimatorSet releasedAnimator = new android.animation.AnimatorSet();
+        releasedAnimator.playTogether(
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.TRANSLATION_Y, baseTranslationY),
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.SCALE_X, baseScaleX),
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.SCALE_Y, baseScaleY),
+            android.animation.ObjectAnimator.ofFloat(view, android.view.View.ROTATION, baseRotation)
+        );
+        releasedAnimator.setDuration(duration);
+        android.animation.StateListAnimator stateAnimator = new android.animation.StateListAnimator();
+        stateAnimator.addState(new int[]{android.R.attr.state_pressed}, pressedAnimator);
+        stateAnimator.addState(new int[]{}, releasedAnimator);
+        DOWE_GESTURE_ANIMATORS.put(view, stateAnimator);
+        view.setStateListAnimator(stateAnimator);
     }
 
     private boolean doweSideNavExpanded(String key, boolean initial) {

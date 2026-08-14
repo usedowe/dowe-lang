@@ -1,5 +1,67 @@
 fn swift_runtime_input_select_runtime() -> &'static str {
-    r#"struct DoweControlIcon {
+    r#"struct DoweValidationRule {
+    let kind: String
+    let argument: String?
+    let message: String
+}
+
+private func doweValidationMatches(_ value: String, _ pattern: String) -> Bool {
+    value.range(of: pattern, options: .regularExpression) != nil
+}
+
+private func doweValidationError(_ value: String, rules: [DoweValidationRule]) -> String? {
+    let present = !value.isEmpty
+    for rule in rules {
+        let count = Int(rule.argument ?? "")
+        let invalid: Bool
+        switch rule.kind {
+        case "required": invalid = value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case "email": invalid = present && !doweValidationMatches(value, "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
+        case "min": invalid = present && value.utf16.count < (count ?? 0)
+        case "max": invalid = present && value.utf16.count > (count ?? Int.max)
+        case "url": invalid = present && !doweValidationMatches(value, "^https?://(www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$")
+        case "phone": invalid = present && !doweValidationMatches(value, "^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,9}$")
+        case "pattern": invalid = present && !doweValidationMatches(value, rule.argument ?? "")
+        case "alphanumeric": invalid = present && !doweValidationMatches(value, "^[a-zA-Z0-9]+$")
+        case "numeric": invalid = present && !doweValidationMatches(value, "^[0-9]+$")
+        case "alpha": invalid = present && !doweValidationMatches(value, "^[a-zA-Z]+$")
+        case "matches": invalid = present && value != (rule.argument ?? "")
+        case "strongPassword": invalid = present && (value.utf16.count < 8 || !doweValidationMatches(value, "[a-z]") || !doweValidationMatches(value, "[A-Z]") || !doweValidationMatches(value, "[0-9]") || !doweValidationMatches(value, "[^a-zA-Z0-9]"))
+        case "creditCard": invalid = present && !doweValidationMatches(value.replacingOccurrences(of: "\\s", with: "", options: .regularExpression), "^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\\d{3})\\d{11})$")
+        case "date": invalid = present && !doweValidationMatches(value, "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")
+        case "minWords": invalid = present && value.split(whereSeparator: { $0.isWhitespace }).count < (count ?? 0)
+        case "maxWords": invalid = present && value.split(whereSeparator: { $0.isWhitespace }).count > (count ?? Int.max)
+        default: invalid = false
+        }
+        if invalid { return rule.message }
+    }
+    return nil
+}
+
+private func doweBooleanValidationError(_ value: Bool, rules: [DoweValidationRule]) -> String? {
+    for rule in rules {
+        let invalid = rule.kind == "required" ? !value : (rule.kind == "matches" ? value && String(value) != (rule.argument ?? "") : value && doweValidationError(String(value), rules: [rule]) != nil)
+        if invalid { return rule.message }
+    }
+    return nil
+}
+
+private struct DoweValidationFeedback: View {
+    let helpText: String?
+    let error: String?
+    let contentColor: Color
+
+    var body: some View {
+        if let message = error ?? helpText {
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(error == nil ? contentColor.opacity(0.7) : DoweDesign.danger)
+                .accessibilityLabel(Text(message))
+        }
+    }
+}
+
+struct DoweControlIcon {
     let viewBox: DoweSvgViewBox
     let paths: [DoweSvgPathData]
 }
@@ -22,7 +84,12 @@ struct DoweInputField: View {
     let shadow: DoweShadowSpec?
     let startIcon: DoweControlIcon?
     let endIcon: DoweControlIcon?
+    let helpText: String?
+    let errorText: String?
+    let validationRules: [DoweValidationRule]
     @State private var localText = ""
+    @State private var hadFocus = false
+    @State private var touched = false
     @FocusState private var focused: Bool
 
     private var currentText: String {
@@ -48,6 +115,10 @@ struct DoweInputField: View {
 
     private var iconsVisible: Bool {
         !floating || active
+    }
+
+    private var validationError: String? {
+        errorText ?? (touched ? doweValidationError(currentText, rules: validationRules) : nil)
     }
 
     private var visiblePlaceholder: String {
@@ -99,12 +170,22 @@ struct DoweInputField: View {
                 RoundedRectangle(cornerRadius: radius)
                     .stroke(borderColor ?? Color.clear, lineWidth: borderWidth)
             )
+            .overlay {
+                if validationError != nil {
+                    RoundedRectangle(cornerRadius: radius).stroke(DoweDesign.danger, lineWidth: CGFloat(1))
+                }
+            }
             .background {
                 if let shadow {
                     DoweShadowSurface(shadow: shadow, cornerRadius: radius)
                 }
             }
+            DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)
         }
+        .onChange(of: focused) { _, next in
+            if next { hadFocus = true } else if hadFocus { touched = true }
+        }
+        .accessibilityValue(validationError ?? "")
     }
 }
 
@@ -173,8 +254,12 @@ struct DoweSelectField: View {
     let contentColor: Color
     let borderColor: Color?
     let radius: CGFloat
+    let helpText: String?
+    let errorText: String?
+    let validationRules: [DoweValidationRule]
     @State private var localValue = ""
     @State private var expanded = false
+    @State private var touched = false
 
     private var selectedValue: String {
         value?.wrappedValue ?? localValue
@@ -182,6 +267,10 @@ struct DoweSelectField: View {
 
     private var selectedOption: DoweSelectOption? {
         options.first { $0.value == selectedValue }
+    }
+
+    private var validationError: String? {
+        errorText ?? (touched ? doweValidationError(selectedValue, rules: validationRules) : nil)
     }
 
     var body: some View {
@@ -218,7 +307,7 @@ struct DoweSelectField: View {
                 .clipShape(RoundedRectangle(cornerRadius: radius))
                 .overlay(
                     RoundedRectangle(cornerRadius: radius)
-                        .stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1))
+                        .stroke(validationError == nil ? (borderColor ?? Color.clear) : DoweDesign.danger, lineWidth: validationError == nil && borderColor == nil ? CGFloat(0) : CGFloat(1))
                 )
                 .contentShape(Rectangle())
             }
@@ -236,12 +325,15 @@ struct DoweSelectField: View {
                     onSelect: { option in
                         setValue(option.value)
                         expanded = false
+                        touched = true
                     },
                     onDismiss: {
                         expanded = false
+                        touched = true
                     }
                 )
             )
+            DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)
         }
         .zIndex(expanded ? 1000 : 0)
         .onDisappear {
@@ -262,6 +354,7 @@ struct DoweSelectField: View {
     private func togglePopover() {
         if expanded {
             expanded = false
+            touched = true
         } else {
             expanded = true
         }
@@ -1119,10 +1212,15 @@ struct DowePhone: View {
     let disabled: Bool
     let backgroundColor: Color
     let contentColor: Color
+    let helpText: String?
+    let errorText: String?
+    let validationRules: [DoweValidationRule]
     @State private var localValue: String?
     @State private var selectedCode = ""
     @State private var showCountries = false
     @State private var query = ""
+    @State private var hadFocus = false
+    @State private var touched = false
     @FocusState private var focused: Bool
 
     private var currentText: String {
@@ -1132,6 +1230,10 @@ struct DowePhone: View {
     private var selectedCountry: DowePhoneCountry? {
         countries.first { $0.code.caseInsensitiveCompare(selectedCode.isEmpty ? country : selectedCode) == .orderedSame }
             ?? countries.first
+    }
+
+    private var validationError: String? {
+        errorText ?? (touched ? doweValidationError(currentText, rules: validationRules) : nil)
     }
 
     private var orderedCountries: [DowePhoneCountry] {
@@ -1198,7 +1300,7 @@ struct DowePhone: View {
             .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
-            .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(contentColor.opacity(0.22), lineWidth: CGFloat(1)))
+            .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(validationError == nil ? contentColor.opacity(0.22) : DoweDesign.danger, lineWidth: CGFloat(1)))
             .background(
                 DowePhoneCountryAnchorPresenter(
                     isPresented: showCountries,
@@ -1212,17 +1314,23 @@ struct DowePhone: View {
                         selectedCode = item.code
                         query = ""
                         showCountries = false
+                        touched = true
                     },
                     onDismiss: {
                         query = ""
                         showCountries = false
+                        touched = true
                     }
                 )
             )
+            DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)
         }
         .zIndex(showCountries ? CGFloat(1000) : CGFloat(0))
         .onAppear { if selectedCode.isEmpty { selectedCode = country } }
         .onDisappear { showCountries = false }
+        .onChange(of: focused) { _, next in
+            if next { hadFocus = true } else if hadFocus { touched = true }
+        }
     }
 }
 
@@ -1243,7 +1351,10 @@ struct DowePin: View {
     let borderColor: Color?
     let borderWidth: CGFloat
     let radius: CGFloat
+    let validationRules: [DoweValidationRule]
     @State private var localValue: String?
+    @State private var touched = false
+    @State private var hadFocus = false
     @FocusState private var focusedCell: Int?
 
     private var currentValue: String {
@@ -1255,6 +1366,10 @@ struct DowePin: View {
         return (0..<length).map { index in
             index < characters.count ? characters[index] : ""
         }
+    }
+
+    private var validationError: String? {
+        errorText ?? (touched ? doweValidationError(currentValue, rules: validationRules) : nil)
     }
 
     var body: some View {
@@ -1290,6 +1405,10 @@ struct DowePin: View {
                                     .fill(contentColor)
                                     .frame(height: CGFloat(1))
                                     .frame(maxHeight: .infinity, alignment: .bottom)
+                            } else if let validationError {
+                                RoundedRectangle(cornerRadius: radius)
+                                    .stroke(DoweDesign.danger, lineWidth: CGFloat(1))
+                                    .accessibilityLabel(Text(validationError))
                             } else if let borderColor {
                                 RoundedRectangle(cornerRadius: radius)
                                     .stroke(borderColor, lineWidth: borderWidth)
@@ -1299,15 +1418,10 @@ struct DowePin: View {
                 }
                 }
             }
-            if let errorText {
-                Text(errorText)
-                    .font(.caption)
-                    .foregroundStyle(DoweDesign.danger)
-            } else if let helpText {
-                Text(helpText)
-                    .font(.caption)
-                    .foregroundStyle(contentColor.opacity(0.7))
-            }
+            DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)
+        }
+        .onChange(of: focusedCell) { _, next in
+            if next != nil { hadFocus = true } else if hadFocus { touched = true }
         }
     }
 

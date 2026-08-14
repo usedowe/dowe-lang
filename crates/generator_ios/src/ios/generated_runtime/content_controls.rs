@@ -280,13 +280,22 @@ struct DoweCheckboxView: View {
     let label: String?
     let name: String?
     let accentColor: Color
+    let helpText: String?
+    let errorText: String?
+    let validationRules: [DoweValidationRule]
+    @State private var touched = false
+
+    private var validationError: String? {
+        errorText ?? (touched ? doweBooleanValidationError(checked.wrappedValue, rules: validationRules) : nil)
+    }
 
     var body: some View {
-        Button(action: { if enabled { checked.wrappedValue.toggle() } }) {
+        VStack(alignment: .leading, spacing: CGFloat(6)) {
+        Button(action: { if enabled { touched = true; checked.wrappedValue.toggle() } }) {
             HStack(spacing: CGFloat(8)) {
                 ZStack {
                     RoundedRectangle(cornerRadius: CGFloat(5))
-                        .stroke(checked.wrappedValue ? accentColor : accentColor.opacity(0.7), lineWidth: CGFloat(2))
+                        .stroke(validationError == nil ? (checked.wrappedValue ? accentColor : accentColor.opacity(0.7)) : DoweDesign.danger, lineWidth: CGFloat(2))
                         .background(
                             RoundedRectangle(cornerRadius: CGFloat(5))
                                 .fill(checked.wrappedValue ? accentColor : Color.clear)
@@ -306,6 +315,8 @@ struct DoweCheckboxView: View {
         }
         .buttonStyle(.plain)
         .opacity(enabled ? 1 : 0.5)
+        DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: accentColor)
+        }
     }
 }
 
@@ -770,10 +781,12 @@ struct DoweDateField: View {
     let backgroundColor: Color
     let contentColor: Color
     let borderColor: Color?
+    let validationRules: [DoweValidationRule]
     @State private var expanded = false
+    @State private var touched = false
     @State private var month: Date
 
-    init(value: Binding<String>, label: String?, placeholder: String, floating: Bool, size: String, fontSize: CGFloat, lineHeight: CGFloat, name: String?, helpText: String?, errorText: String?, min: String?, max: String?, backgroundColor: Color, contentColor: Color, borderColor: Color?) {
+    init(value: Binding<String>, label: String?, placeholder: String, floating: Bool, size: String, fontSize: CGFloat, lineHeight: CGFloat, name: String?, helpText: String?, errorText: String?, min: String?, max: String?, backgroundColor: Color, contentColor: Color, borderColor: Color?, validationRules: [DoweValidationRule]) {
         self.value = value
         self.label = label
         self.placeholder = placeholder
@@ -789,13 +802,15 @@ struct DoweDateField: View {
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
         self.borderColor = borderColor
+        self.validationRules = validationRules
         _month = State(initialValue: doweDateMonth(doweParseDate(value.wrappedValue) ?? Date()))
     }
 
     var body: some View {
+        let validationError = errorText ?? (touched ? doweValidationError(value.wrappedValue, rules: validationRules) : nil)
         VStack(alignment: .leading, spacing: CGFloat(6)) {
             if let label, !floating { Text(label).font(.footnote).fontWeight(.semibold) }
-            Button(action: { expanded.toggle() }) {
+            Button(action: { if expanded { touched = true }; expanded.toggle() }) {
                 ZStack(alignment: .leading) {
                     if let label, floating {
                         Text(label)
@@ -817,13 +832,13 @@ struct DoweDateField: View {
                 .frame(maxWidth: .infinity, minHeight: doweControlHeight(size) + (floating ? CGFloat(8) : CGFloat(0)), alignment: .leading)
                 .background(backgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
-                .overlay(RoundedRectangle(cornerRadius: CGFloat(10)).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
+                .overlay(RoundedRectangle(cornerRadius: CGFloat(10)).stroke(validationError == nil ? (borderColor ?? Color.clear) : DoweDesign.danger, lineWidth: validationError == nil && borderColor == nil ? CGFloat(0) : CGFloat(1)))
             }
             .buttonStyle(.plain)
-            .background(DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(286), maxWidth: CGFloat(340), maxHeight: CGFloat(420), preferredHeight: CGFloat(370), onDismiss: { expanded = false }) {
-                DoweDateCalendar(month: month, selected: value.wrappedValue, start: "", end: "", min: min, max: max, contentColor: contentColor, accentColor: contentColor, showPrevious: true, showNext: true, onPrevious: { month = doweDateStep(month, amount: -1) }, onNext: { month = doweDateStep(month, amount: 1) }, onSelect: { next in value.wrappedValue = next; month = doweDateMonth(doweParseDate(next) ?? month); expanded = false })
+            .background(DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(286), maxWidth: CGFloat(340), maxHeight: CGFloat(420), preferredHeight: CGFloat(370), onDismiss: { expanded = false; touched = true }) {
+                DoweDateCalendar(month: month, selected: value.wrappedValue, start: "", end: "", min: min, max: max, contentColor: contentColor, accentColor: contentColor, showPrevious: true, showNext: true, onPrevious: { month = doweDateStep(month, amount: -1) }, onNext: { month = doweDateStep(month, amount: 1) }, onSelect: { next in value.wrappedValue = next; month = doweDateMonth(doweParseDate(next) ?? month); expanded = false; touched = true })
             })
-            if let message = errorText ?? helpText { Text(message).font(.caption).foregroundStyle(contentColor.opacity(0.7)) }
+            DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)
         }
     }
 }

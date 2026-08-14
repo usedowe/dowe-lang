@@ -263,6 +263,18 @@ width unless `w` declares another dimension.
 `direction:{ xs:"column" md:"row" }`. `wrap:true` lets a resolved row continue on additional
 lines.
 
+Resolve the direction before choosing centering props:
+
+| Direction | Main axis controlled by `justify` | Cross axis controlled by `align` |
+| --- | --- | --- |
+| `row` or omitted | Horizontal | Vertical |
+| `column` | Vertical | Horizontal |
+
+A default row Flex therefore needs `justify:"center"` to center a bounded child horizontally;
+`align:"center"` only centers it vertically. A column Flex uses `align:"center"` for horizontal
+centering and `justify:"center"` for vertical centering. A child with `w:"full" maxW:96` fills only
+up to its maximum measure and does not center itself; the parent still owns its placement.
+
 `Grid` accepts an integer `columns` value from `1` through `12`, `rows:auto` or a positive integer,
 responsive count objects such as `columns:{ xs:1 md:3 }`, and `gap:"10px 20px"` as row gap then
 column gap. Track templates such as `fr`, `px`, percentages, or `auto` strings are rejected for
@@ -292,6 +304,11 @@ portable. A fixed Box anchors to the safe route viewport and cannot appear insid
 `Splash`. Later positioned siblings render above earlier siblings.
 
 ## Cover and overlay
+
+Use `cover` for media that belongs to a container's background and crops with that container. Use
+`Image` for foreground media with independent bounds, aspect behavior, and alternative text. A
+split media panel may use a neutral `Box cover:...` when it is genuinely a media stage; use Card
+only when the region has grouped-surface semantics, not merely to obtain a background image.
 
 | Prop | Behavior |
 | --- | --- |
@@ -366,7 +383,7 @@ visual wrapper or ornament instead.
 | `translateX`, `translateY` | signed Dowe scale `-96` through `96` in half steps | `0` | Yes |
 | `animation` | `none`, `fadeIn`, `slideUp`, `slideDown`, `slideLeft`, `slideRight`, `scaleIn` | `none` | No |
 | `transition` | `none`, `quick`, `smooth`, `spring` | target feedback timing | No |
-| `gesture` | `none`, `lift`, `press`, `grow`, `tilt` | `none` | No |
+| `gesture` | `none`, `lift`, `press`, `grow`, `tilt` | `none`; `press` for `Button`, `IconButton`, and `Fab` | No |
 
 `animation` accepts:
 
@@ -379,8 +396,11 @@ visual wrapper or ornament instead.
 
 Animations run once when the component appears. Transforms compose with entrance and gesture
 motion instead of replacing it. Web and desktop use hover plus active feedback; touch targets use
-press feedback. Every target disables non-essential motion when the operating system requests
-reduced motion.
+press feedback. `Button`, `IconButton`, and the primary `Fab` trigger default to `press`, scaling
+the complete surface to `0.94` during every press and restoring it afterward, including on Android
+controls with a Dowe shadow. Android observes consecutive pointer sequences independently, so every
+tap restarts the visual cycle; `gesture:"none"` opts out and an explicit preset replaces the default.
+Every target disables non-essential motion when the operating system requests reduced motion.
 
 Use an internal Button that replaces its current route when a page needs an explicit portable
 replay control. Same-route replacement remounts the page without adding a history entry:

@@ -72,6 +72,7 @@ fn collect_statement_environment(
                 collect_statement_environment(error, names);
             }
             ViewFunctionStatement::Assign(_)
+            | ViewFunctionStatement::Validate { .. }
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Toast(_)
             | ViewFunctionStatement::Redirect { .. } => {}

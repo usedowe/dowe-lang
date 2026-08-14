@@ -42,6 +42,9 @@ Keep every new frontend module under `views/`; only root `main.dowe` and `theme.
 7. Rebuild every UI-shaped region with Dowe components. Never use the reference image or crops
    derived from it as assets. Use `Image` only for independently obtained photographs,
    illustrations, textures, or authentic screenshots explicitly supplied or requested by the user.
+   When media is a cropped background that fills a panel or band, put `cover` on the owning
+   `Section`, `Card`, or neutral media-stage `Box` instead of rendering a child `Image`; reserve
+   `Image` for foreground media with its own content and accessibility role.
 8. Create or reuse a layout whenever the reference has shared chrome. AppBar and Footer never
    belong in a page, and a one-page site still uses a layout-backed route group.
    Treat `AppBar` as the shell's semantic navigation bar: keep exactly one `AppBar` directly under
@@ -65,8 +68,19 @@ Keep every new frontend module under `views/`; only root `main.dowe` and `theme.
     `Box` only when normal flow cannot express the composition, normally as a relative layer plane
     with direct absolute children or as a fixed viewport layer. Padding, sizing, backgrounds,
     borders, visibility, grid gutters, and control wrappers do not justify `Box`; put those props on
-    the real owner. Keep one responsive source tree instead of duplicating mobile and desktop
-    forms. Follow the decision tree and dedicated patterns in `references/composition.md`.
+    the real owner. Never generate a `Grid` as a direct child of another `Grid` or a `Flex` as a
+    direct child of another `Flex`; flatten the children into one layout owner. A different `gap`,
+    direction, alignment, padding, size, or visibility value does not justify same-kind nesting.
+    Do not alternate Grid and Flex merely to evade this rule: every container must own a distinct
+    track, axis, centering, wrapping, or responsive responsibility. Keep one responsive source tree
+    instead of duplicating mobile and desktop forms. Follow the decision tree and dedicated patterns
+    in `references/composition.md`.
+    For a split auth screen, let the outer Grid own the two panels, let the form-side column Flex
+    center one bounded `Grid w:"full" maxW:<scale>`, and never create empty Grid tracks or Boxes as
+    offsets. Remember that `justify` controls the resolved main axis and `align` the cross axis: a
+    column Flex centers horizontally with `align:"center"`, while a default row Flex centers
+    horizontally with `justify:"center"`. Prefer the direct bounded form child over an extra
+    wrapper whose axis can silently anchor the form to the panel edge.
 12. Keep normal-flow geometry free of `translateX` and `translateY`. Do not use translation to
     center, align, space, size, or nudge AppBar regions, navigation, controls, content, Sections,
     Grids, or Flex stacks toward screenshot coordinates. First solve one-axis placement with `Flex`
@@ -119,7 +133,9 @@ Keep every new frontend module under `views/`; only root `main.dowe` and `theme.
     diagnostics.
 24. Review the rendered page at `xs`, `md`, and the reference viewport. Audit focal hierarchy,
     section-to-section rhythm, visible layering, Card variety, text measure, asset quality, and
-    interaction states before accepting a technically valid layout.
+    interaction states before accepting a technically valid layout. For split layouts, compare the
+    form centerline with the centerline of its owning panel, not the whole viewport, and verify that
+    nested action columns fit the available panel width at every active breakpoint.
 25. For reference-driven work, run the installed `scripts/visual_qa.py` entrypoint at the exact
     viewport. Inspect its band report and diff, then iterate on geometry, line wrapping, spacing,
     density, states, layers, and assets before finishing. For directed adaptations, use the report

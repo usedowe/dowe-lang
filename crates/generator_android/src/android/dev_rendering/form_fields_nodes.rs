@@ -13,6 +13,14 @@ fn render_dev_android_form_fields_node(
     match node {
         ViewNode::Input { props } => {
             let view = next_dev_view(counter);
+            let has_validation = dev_has_validation(&props.element);
+            let validation_wrapper = if has_validation
+                && !props.label.as_deref().is_some_and(|_| !props.label_floating)
+            {
+                Some(next_dev_view(counter))
+            } else {
+                None
+            };
             let control_size = props.size.unwrap_or(ButtonSize::Md);
             let control_height =
                 form_control_min_height(control_size, props.label_floating).native_units();
@@ -149,11 +157,26 @@ fn render_dev_android_form_fields_node(
                     view.as_str()
                 }
             });
+            if let Some(wrapper) = validation_wrapper.as_deref() {
+                output.push_str(&format!(
+                    "        LinearLayout {wrapper} = doweContainer(false);\n        doweAdd({wrapper}, {view});\n"
+                ));
+            }
+            let outer_view = validation_wrapper.as_deref().unwrap_or(&view);
+            if has_validation {
+                let validation_container = validation_wrapper.as_deref().unwrap_or(&view);
+                output.push_str(&format!(
+                    "        DoweValidationBinding {field}Validation = doweValidation(\"{field}\", {validation_container}, {shadow_target}, {field}, {}, {}, {}, () -> {field}.getText().toString(), false, {content}, {font});\n        {field}Validation.watchText();\n",
+                    dev_validation_help(&props.element),
+                    dev_validation_error(&props.element),
+                    dev_validation_rules(&props.element, context)
+                ));
+            }
             let mut outer_style = props.style.clone();
             outer_style.shadow = None;
             outer_style.shadow_color = None;
             outer_style.rounded = None;
-            apply_dev_android_style(&outer_style, &view, false, output);
+            apply_dev_android_style(&outer_style, outer_view, false, output);
             if let Some(rounded) = props.style.rounded.as_ref() {
                 output.push_str(&format!(
                     "        doweRound({shadow_target}, {});\n",
@@ -168,10 +191,10 @@ fn render_dev_android_form_fields_node(
             );
             if parent_horizontal && props.style.sizing.w.is_none() {
                 output.push_str(&format!(
-                                            "        {view}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n"
+                                            "        {outer_view}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n"
                                         ));
             }
-            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+            output.push_str(&dev_add(parent, outer_view, parent_gap, parent_horizontal));
         }
         ViewNode::Select {
             props,
@@ -180,6 +203,14 @@ fn render_dev_android_form_fields_node(
         } => {
             let view = next_dev_view(counter);
             let field = next_dev_view(counter);
+            let has_validation = dev_has_validation(&props.element);
+            let validation_wrapper = if has_validation
+                && !props.label.as_deref().is_some_and(|_| !props.label_floating)
+            {
+                Some(next_dev_view(counter))
+            } else {
+                None
+            };
             let control_size = props.size.unwrap_or(ButtonSize::Md);
             let control_height =
                 form_control_min_height(control_size, props.label_floating).native_units();
@@ -300,18 +331,35 @@ fn render_dev_android_form_fields_node(
             } else {
                 "null".to_string()
             };
+            if let Some(wrapper) = validation_wrapper.as_deref() {
+                output.push_str(&format!(
+                    "        LinearLayout {wrapper} = doweContainer(false);\n        doweAdd({wrapper}, {view});\n"
+                ));
+            }
+            let outer_view = validation_wrapper.as_deref().unwrap_or(&view);
+            if has_validation {
+                let validation_container = validation_wrapper.as_deref().unwrap_or(&view);
+                let validation_surface = frame.as_deref().unwrap_or(&view);
+                output.push_str(&format!(
+                    "        DoweValidationBinding {field}Validation = doweValidation(\"{field}\", {validation_container}, {validation_surface}, {field}, {}, {}, {}, () -> {field}Selected[0], false, {content}, {font});\n",
+                    dev_validation_help(&props.element),
+                    dev_validation_error(&props.element),
+                    dev_validation_rules(&props.element, context)
+                ));
+            }
             output.push_str(&format!(
-                                        "        doweBindSelect({field}, {floating_label}, {field}Labels, {field}Values, {field}Descriptions, {field}Selected, \"{}\", {content}, {font}, {bind_path}, {}, {on_select});\n",
+                                        "        doweBindSelect({field}, {floating_label}, {field}Labels, {field}Values, {field}Descriptions, {field}Selected, \"{}\", {content}, {font}, {bind_path}, {}, {on_select}, {});\n",
                                         escape_java(placeholder),
-                                        props.label_floating
+                                        props.label_floating,
+                                        if has_validation { format!("{field}Validation::touch") } else { "null".to_string() }
                                     ));
-            apply_dev_android_style(&props.style, &view, false, output);
+            apply_dev_android_style(&props.style, outer_view, false, output);
             if parent_horizontal && props.style.sizing.w.is_none() {
                 output.push_str(&format!(
-                                            "        {view}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n"
+                                            "        {outer_view}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n"
                                         ));
             }
-            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+            output.push_str(&dev_add(parent, outer_view, parent_gap, parent_horizontal));
         }
         _ => {}
     }
@@ -464,6 +512,9 @@ fn render_dev_android_phone(
     let trigger_arrow = next_dev_view(counter);
     let trigger_flag = next_dev_view(counter);
     let input = next_dev_view(counter);
+    let has_validation = dev_has_validation(&props.style.element)
+        || props.help_text.is_some()
+        || props.error_text.is_some();
     let control_height = form_control_min_height(
         props.style.size.unwrap_or(ButtonSize::Md),
         props.style.label_floating,
@@ -536,16 +587,28 @@ fn render_dev_android_phone(
     }
     let selected_holder = next_dev_view(counter);
     output.push_str(&format!(
-        "        String[] {selected_holder} = new String[] {{\"{}\"}};\n        {trigger}.setOnClickListener(target -> dowePhonePopup({trigger}, {dial}, {trigger_flag}, dowePhoneCodes(), dowePhoneNames(), dowePhoneDials(), {selected_holder}, \"{}\", \"{}\", \"{}\", {content}, {font}));\n",
+        "        String[] {selected_holder} = new String[] {{\"{}\"}};\n",
         escape_java(selected_country.code),
-        escape_java(&props.search_placeholder),
-        escape_java(&props.empty_text),
-        escape_java(&props.loading_text)
     ));
     if props.disabled {
         output.push_str(&format!("        {input}.setEnabled(false);\n        {trigger}.setEnabled(false);\n"));
     }
     output.push_str(&format!("        doweAdd({view}, {field}, 4, false);\n"));
+    if has_validation {
+        output.push_str(&format!(
+            "        DoweValidationBinding {input}Validation = doweValidation(\"{input}\", {view}, {field}, {input}, {}, {}, {}, () -> {input}.getText().toString(), false, {content}, {font});\n        {input}Validation.watchText();\n",
+            dev_nullable_string(props.help_text.as_deref()),
+            dev_nullable_string(props.error_text.as_deref()),
+            dev_validation_rules(&props.style.element, context)
+        ));
+    }
+    output.push_str(&format!(
+        "        {trigger}.setOnClickListener(target -> dowePhonePopup({trigger}, {dial}, {trigger_flag}, dowePhoneCodes(), dowePhoneNames(), dowePhoneDials(), {selected_holder}, \"{}\", \"{}\", \"{}\", {content}, {font}, {}));\n",
+        escape_java(&props.search_placeholder),
+        escape_java(&props.empty_text),
+        escape_java(&props.loading_text),
+        if has_validation { format!("{input}Validation::touch") } else { "null".to_string() }
+    ));
     apply_dev_android_style(&props.style.style, &view, false, output);
     if parent_horizontal && props.style.style.sizing.w.is_none() {
         output.push_str(&format!("        {view}.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));\n"));
@@ -567,6 +630,9 @@ fn render_dev_android_pin(
     let row = next_dev_view(counter);
     let pin_cells = format!("{view}PinCells");
     let pin_updating = format!("{view}PinUpdating");
+    let has_validation = dev_has_validation(&props.style.element)
+        || props.help_text.is_some()
+        || props.error_text.is_some();
     let size = props.style.size.unwrap_or(ButtonSize::Md);
     let text_size = dev_text_size_expr(false, form_control_text_size(size));
     let (width, height) = match size {
@@ -658,7 +724,17 @@ fn render_dev_android_pin(
         "        {row}.addOnLayoutChangeListener((target, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {{ int availableCellWidth = Math.max(doweDp(1), ((right - left) - doweDp(8) * Math.max(0, {pin_cells}.length - 1)) / Math.max(1, {pin_cells}.length)); int responsiveCellWidth = Math.min(doweDp({width}), availableCellWidth); for (EditText pinCell : {pin_cells}) {{ ViewGroup.LayoutParams params = pinCell.getLayoutParams(); if (params.width != responsiveCellWidth) {{ params.width = responsiveCellWidth; pinCell.setLayoutParams(params); }} }} }});\n"
     ));
     output.push_str(&format!("        doweAdd({view}, {row});\n"));
-    if let Some(text) = props.error_text.as_deref().or(props.help_text.as_deref()) {
+    if has_validation {
+        output.push_str(&format!(
+            "        DoweValidationBinding {view}Validation = doweValidation(\"{view}\", {view}, {pin_cells}[0], {pin_cells}[0], {}, {}, {}, () -> {{ StringBuilder validationValue = new StringBuilder(); for (EditText pinCell : {pin_cells}) validationValue.append(pinCell.getText().toString()); return validationValue.toString(); }}, false, {content}, {font});\n        for (int validationIndex = 0; validationIndex < {pin_cells}.length; validationIndex++) {{ if (validationIndex > 0) {view}Validation.addSurface({pin_cells}[validationIndex]); {view}Validation.watchText({pin_cells}[validationIndex]); }}\n",
+            dev_nullable_string(props.help_text.as_deref()),
+            dev_nullable_string(props.error_text.as_deref()),
+            dev_validation_rules(&props.style.element, context)
+        ));
+    }
+    if !has_validation
+        && let Some(text) = props.error_text.as_deref().or(props.help_text.as_deref())
+    {
         let color = if props.error_text.is_some() {
             java_color(ColorToken::Danger).to_string()
         } else {

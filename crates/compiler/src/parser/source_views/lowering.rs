@@ -87,6 +87,12 @@ fn parse_each_header(node: &SourceNode) -> DoweResult<(String, String, String)> 
 }
 
 fn lower_view_node(node: &SourceNode, allow_children: bool) -> DoweResult<Box<ViewNode>> {
+    if node.name == "validate" {
+        return Err(node_error(
+            node,
+            "`validate` can only be used inside Input, Date, Pin, Phone, Select or Checkbox",
+        ));
+    }
     if node.name == "children" {
         return children_node(allow_children)
             .map(Box::new)
@@ -135,8 +141,8 @@ fn lower_remaining_view_node(
 ) -> DoweResult<Box<ViewNode>> {
     let lowered = match component {
         BuiltinComponent::Input => {
-            reject_children(node)?;
-            input_node(props).map_err(|error| component_error(node, error))
+            let control = input_node(props).map_err(|error| component_error(node, error))?;
+            lower_validated_form_control(node, control)
         }
         BuiltinComponent::Select => lower_select_node(node),
         BuiltinComponent::ComboBox => lower_combo_box_node(node),
@@ -305,16 +311,18 @@ fn lower_remaining_view_node(
         BuiltinComponent::Accordion => lower_accordion_node(node, allow_children),
         BuiltinComponent::Carousel => lower_carousel_node(node, allow_children),
         BuiltinComponent::Checkbox => {
-            reject_children(node)?;
-            checkbox_component_node(props).map_err(|error| component_error(node, error))
+            let control =
+                checkbox_component_node(props).map_err(|error| component_error(node, error))?;
+            lower_validated_form_control(node, control)
         }
         BuiltinComponent::Color => {
             reject_children(node)?;
             color_component_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Date => {
-            reject_children(node)?;
-            date_component_node(props).map_err(|error| component_error(node, error))
+            let control =
+                date_component_node(props).map_err(|error| component_error(node, error))?;
+            lower_validated_form_control(node, control)
         }
         BuiltinComponent::DateRange => {
             reject_children(node)?;
@@ -388,12 +396,13 @@ fn lower_remaining_view_node(
             password_component_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Phone => {
-            reject_children(node)?;
-            phone_component_node(props).map_err(|error| component_error(node, error))
+            let control =
+                phone_component_node(props).map_err(|error| component_error(node, error))?;
+            lower_validated_form_control(node, control)
         }
         BuiltinComponent::Pin => {
-            reject_children(node)?;
-            pin_component_node(props).map_err(|error| component_error(node, error))
+            let control = pin_component_node(props).map_err(|error| component_error(node, error))?;
+            lower_validated_form_control(node, control)
         }
         BuiltinComponent::Textarea => {
             reject_children(node)?;

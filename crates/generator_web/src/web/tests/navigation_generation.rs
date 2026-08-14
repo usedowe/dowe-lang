@@ -379,6 +379,7 @@ fn renders_navigation_shell_markup_runtime_and_css() {
             .contains(".sidenav.is-ghost.is-muted .sidenav-entry.is-active")
     );
     assert!(router.contains("openNavMenu"));
+    assert!(router.contains("if(open){closeNavMenus();return true;}closeNavMenus(root);"));
     assert!(router.contains("if(target.closest(\"[data-dowe-navmenu-popover]\"))closeNavMenus();"));
     assert!(router.contains("hydrateNavTreeSubmenus(root,\"sidenav\")"));
     assert!(router.contains("function hydrateScaffoldInsets(root)"));

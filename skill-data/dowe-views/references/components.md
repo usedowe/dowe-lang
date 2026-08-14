@@ -55,7 +55,7 @@ prop over a complete restatement of the component's default style.
 | `AppBar` | Top application bar with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; `boxed:true` centers its inner content at `96rem` web or `1536` native while preserving the full-width surface. It stays visually flat across targets unless `border`, `bordered:true`, or `floating:true` requests separation. A direct `Scaffold appBar` with `position:"sticky" floating:true` overlays the web and desktop body so `main` remains visible beneath the floating surface. `dockOnScroll:true` requires `position:"fixed" floating:true` and makes web, desktop, Android, and iOS dock the floating surface at the viewport top after `100` logical scroll units. |
 | `Footer` | Page or shell footer with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; it includes horizontal padding `4` from `xs` and `6` from `md`, top padding `10` from `xs` and `16` from `md`, and bottom padding `4` from `xs` and `6` from `md`, overridable with `p`, `px`, `py`, `pl`, `pr`, `pt`, or `pb`. `boxed:true` centers one shared inner container holding `top`, the central row, and `bottom` at `96rem` web or `1536` native while the surface remains full width. Put responsive `show` on children inside a region, not on the structural region block. |
 | `BottomBar` | Bottom navigation containing one or more direct `tab` entries; each entry owns one Icon and navigation metadata; `boxed:true` centers the tab row at `96rem` web or `1536` native. |
-| `NavMenu` | Horizontal navigation composed from direct `item`, `submenu`, or `megamenu` entries. Submenu and megamenu content opens in a Dowe-owned floating overlay on web, Android, and iOS, uses the structural background surface, preserves `scheme` for trigger and active states, dispatches fragment or route navigation before closing, and uses the same anchored overlay strategy as `Dropdown` on iOS. |
+| `NavMenu` | Horizontal navigation composed from direct `item`, `submenu`, or `megamenu` entries. Submenu and megamenu content opens in a Dowe-owned floating overlay on web, Android, and iOS; activating the same trigger again closes it. The overlay uses the structural background surface, preserves `scheme` for trigger and active states, dispatches fragment or route navigation before closing, and uses the same anchored overlay strategy as `Dropdown` on iOS. |
 | `SideNav` | Detailed vertical navigation with optional `header`, direct `item`, `divider`, and `submenu` entries. `submenu open` is initial state; the runtime retains later toggles in session memory across unmount and remount. Use distinct `id` values for structurally identical SideNav instances that need independent memory. |
 | `RailNav` | Narrow icon navigation with direct `item` and `divider` entries; each item requires quoted `label` and Solar `icon`. |
 | `Sidebar` | Shell side surface with optional `header`, required `body`, and optional `footer` regions. |
@@ -115,11 +115,11 @@ built-in `NavMenu` in the AppBar and keep the prop-free navigation component in 
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Button` | Text action or navigation control. Use one direct quoted or complete braced text child, reference a view function with `onClick`, and bind `loading` to a boolean Signal or View Store path when the action is pending. Loading reuses the bundled `svg-spinners:3-dots-move` Icon and blocks duplicate actions. |
-| `IconButton` | Accessible icon-only action. Supply quoted `label` and Solar `icon`; use `onClick` or supported navigation props. |
+| `Button` | Text action or navigation control. Use one direct quoted or complete braced text child, reference a view function with `onClick`, and bind `loading` or `disabled` to boolean Signal paths when the action is pending or invalid. Loading reuses the bundled `svg-spinners:3-dots-move` Icon and both states block duplicate actions. The full control defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
+| `IconButton` | Accessible icon-only action. Supply quoted `label` and Solar `icon`; use `onClick` or supported navigation props. Its full square surface defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
 | `ToggleTheme` | Control that switches between configured themes without duplicating theme state in page source. |
 | `SelectTheme` | Theme selector for the configured named theme catalog. |
-| `Fab` | Primary floating action with optional direct `fabAction` secondary actions. Place shell-level floating behavior in Scaffold overlays. |
+| `Fab` | Primary floating action with optional direct `fabAction` secondary actions. Place shell-level floating behavior in Scaffold overlays. Its primary trigger defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
 | `fabAction` | Context-only secondary action inside Fab with an icon, label, and function or navigation target. |
 | `Record` | Recording control driven by named start, pause, resume, cancel, and confirm functions where supported. |
 | `ToggleGroup` | One-of-many or multi-choice control with direct `item` entries, a state value, and a named change function. |
@@ -129,9 +129,10 @@ built-in `NavMenu` in the AppBar and keep the prop-free navigation component in 
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Input` | Single-line value bound through `bind`; add a quoted label and the input type accepted by diagnostics. `size` accepts `sm`, `md`, or `lg`. |
-| `Select` | Bound choice control containing one or more direct `Option` entries. `size` accepts `sm`, `md`, or `lg`. |
+| `Input` | Single-line value bound through `bind`; add a quoted label and the input type accepted by diagnostics. It accepts `helpText`, `errorText`, and direct `validate` children. `size` accepts `sm`, `md`, or `lg`. |
+| `Select` | Bound choice control containing direct `Option` and `validate` entries. It accepts `helpText` and `errorText`; `size` accepts `sm`, `md`, or `lg`. |
 | `Option` | Context-only Select entry with quoted `value`, `label`, and optional description. |
+| `validate` | Context-only validation rule for `Input`, `Date`, `Pin`, `Phone`, `Select`, or `Checkbox`. Supply quoted, non-empty `rule` and `message` props and no children. |
 | `Slider` | Bound numeric value constrained by its minimum, maximum, and step. |
 | `Dropzone` | File-drop and picker surface with accepted file and size limits; web uses drag-and-drop, while iOS and Android open their native document selectors and show selected file summaries. |
 | `ComboBox` | Searchable bound choice control containing one or more direct `comboOption` entries. |
@@ -144,21 +145,81 @@ built-in `NavMenu` in the AppBar and keep the prop-free navigation component in 
 | `Editor` | Bound rich text or source editor using the supported language, limits, and named change workflow. |
 | `ImageCropper` | Bound image-selection and crop result with portable aspect and file limits. |
 | `Password` | Bound password input with Dowe-owned strength and validation behavior plus a shared `Icon` reveal action using `eye` and `eye-closed`; visible Show/Hide text is not rendered. |
-| `Phone` | Bound digit-only local phone input with separate dial-code storage and the same Dowe-owned anchored searchable country popover, 12-unit trigger inset, compact search, horizontal flag/name/dial rows, selected state, and ordering on web, Android Compose, the Android launcher, and iOS. |
-| `Pin` | Bound fixed-length PIN or verification-code input with Input-scaled `sm`, `md`, and `lg` cells, automatic focus movement after accepted characters, distributed paste, and text, password, or numeric modes. Android reduces cell widths evenly when a narrow parent cannot fit their nominal widths. `PinField` is rejected. |
+| `Phone` | Bound digit-only local phone input with separate dial-code storage and direct `validate` children. It uses the same Dowe-owned anchored searchable country popover, 12-unit trigger inset, compact search, horizontal flag/name/dial rows, selected state, and ordering on web, Android Compose, the Android launcher, and iOS. |
+| `Pin` | Bound fixed-length PIN or verification-code input with direct `validate` children, Input-scaled `sm`, `md`, and `lg` cells, automatic focus movement after accepted characters, distributed paste, and text, password, or numeric modes. Android reduces cell widths evenly when a narrow parent cannot fit their nominal widths. `PinField` is rejected. |
 | `Textarea` | Bound multiline text with row and length limits. |
-| `Checkbox` | Bound boolean choice with a quoted accessible label. |
+| `Checkbox` | Bound boolean choice with a quoted accessible label. It accepts `helpText`, `errorText`, and direct `validate` children; `required` means the value must be true. |
 | `Color` | Bound canonical `#RRGGBB` value using the portable saturation/brightness plane, hue slider, preview, contrast foreground, and optional Hex, RGB, CMYK, and OKLCH rows. |
-| `Date` | Input-like bound date with a Dowe-owned calendar dropdown, month navigation, selected/today states, and optional minimum and maximum values. |
+| `Date` | Input-like bound date with direct `validate` children, a Dowe-owned calendar dropdown, month navigation, selected/today states, and optional minimum and maximum values. |
 | `DateRange` | Input-like bound start/end range with a Dowe-owned calendar dropdown, range highlighting, automatic ordering, and optional limits. |
 | `RadioGroup` | Bound single choice composed from one or more direct `item` entries. |
 | `Toggle` | Bound boolean control with a quoted accessible label. |
+
+For authentication pages, keep `hideStrength` disabled on login forms by using
+`hideStrength:false` or omitting the prop. Enable `hideStrength:true` only on registration forms.
 
 `Input`, `Select`, `ComboBox`, `Password`, `Phone`, `Color`, `Date`, and `DateRange`
 share one single-line height contract. `sm`, `md`, and `lg` are 32, 40, and 48 logical units;
 `labelFloating:true` adds 8 units, producing 40, 48, and 56. Their value and placeholder use the
 matching body `sm`, `md`, or `lg` typography on web, Android, and iOS. `Textarea` remains
 rows-driven, but its text follows the same typography scale.
+
+### Portable form validation
+
+Declare validation as direct structural children of the control. Keep rules ordered because Dowe
+shows the first failing message. Validation becomes visible after blur, selection/close, or checkbox
+activation, then updates on every value change. An explicit `errorText` takes priority over rule
+errors, and rule errors take priority over `helpText`.
+
+```text
+signal form value:{ email:"" role:"" accepted:false }
+
+Input bind:form.email label:"Email" helpText:"Use your work address."
+  validate rule:"required" message:"Email is required."
+  validate rule:"email" message:"Enter a valid email address."
+
+Select bind:form.role label:"Role"
+  validate rule:"required" message:"Choose a role."
+  Option value:"admin" label:"Administrator"
+
+Checkbox bind:form.accepted label:"Accept the terms"
+  validate rule:"required" message:"You must accept the terms."
+```
+
+The portable rule set is `required`, `email`, `min:N`, `max:N`, `url`, `phone`,
+`pattern:EXPRESSION`, `alphanumeric`, `numeric`, `alpha`, `matches:PATH`, `strongPassword`,
+`creditCard`, `date`, `minWords:N`, and `maxWords:N`. `N` must be a positive integer.
+`min`, `max`, and the minimum length in `strongPassword` count UTF-16 units to preserve exact
+reference behavior. `date` accepts `YYYY-MM-DD` with month `01` through `12` and day `01` through
+`31`.
+`matches:PATH` must identify a compatible Signal or View Store value in the current reactive scope.
+`pattern` accepts only the compiler-validated portable regular-expression subset. Do not implement
+validation with target-specific JavaScript, Swift, or Kotlin.
+
+### Derived Signal form state
+
+Controls with `validate` children are grouped by the root of their `bind` path. The root Signal
+exposes read-only `isValid`, `isInvalid`, `errors.<field>`, and `touched.<field>` paths. These virtual
+properties never change the stored Signal value or a request body. Use `Button disabled:<path>` to
+disable an action, and call `validate <signal>` as the first statement in a submit function to mark
+all registered fields touched and stop the sequence before its request when invalid.
+
+```text
+signal formLogin value:{ email:"" accepted:false }
+
+Input bind:formLogin.email label:"Email"
+  validate rule:"required" message:"Email is required."
+
+Checkbox bind:formLogin.accepted label:"Accept terms"
+  validate rule:"required" message:"Accept the terms."
+
+Button disabled:formLogin.isInvalid onClick:submit
+  "Log in"
+
+fn submit
+  validate formLogin
+  request result method:"POST" route:"/api/auth/login" body:formLogin
+```
 
 ## Media, code, icons, and custom drawing
 
@@ -170,7 +231,7 @@ rows-driven, but its text follows the same typography scale.
 | `Device` | Responsive preview frame that contains exactly one Iframe and selects a supported device profile. |
 | `Canvas` | Custom drawing or pointer surface for visuals that semantic components cannot express; keep its commands and data target-neutral. |
 | `Audio` | Portable audio playback for a supported static source with Dowe-owned playback behavior. |
-| `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
+| `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. Web download and fullscreen actions are hidden by default; set `hideControls:false` to enable both. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
 | `Icon` | Bundled vector selected by quoted `name`: Solar variant names, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or brand-colored `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. |
 | `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. |
 | `Path` | Context-only Svg path with quoted `d`, paint, optional `fillRule:"nonzero|evenodd"`, and optional matrix transform. Use `evenodd` to preserve holes in compound paths. |

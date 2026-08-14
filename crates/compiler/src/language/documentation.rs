@@ -382,6 +382,12 @@ pub(super) fn server_props(name: &str) -> Vec<&'static str> {
 }
 
 pub(super) fn component_documentation(name: &str) -> Option<String> {
+    if name == "validate" {
+        return Some(
+            "## `validate`\n\nDeclares one ordered client-side validation rule inside `Input`, `Date`, `Pin`, `Phone`, `Select` or `Checkbox`, or validates a Signal globally inside a view function with `validate signalName`. The first failing rule supplies the visible error after the control is touched.\n\n**Accepted props**\n\n- `rule`: quoted rule identifier\n- `message`: quoted non-empty error message"
+                .to_string(),
+        );
+    }
     BuiltinComponent::from_name(name)?;
     let props = props_for_component(name);
     let mut output = format!(
@@ -585,7 +591,13 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
             ("\"text\"", "(one direct static string)"),
             ("end", "(optional Svg icon region)"),
         ],
-        "Select" => &[("Option", "(one or more option entries)")],
+        "Select" => &[
+            ("Option", "(one or more option entries)"),
+            ("validate", "(zero or more ordered validation rules)"),
+        ],
+        "Input" | "Date" | "Pin" | "Phone" | "Checkbox" => {
+            &[("validate", "(zero or more ordered validation rules)")]
+        }
         "ComboBox" => &[("comboOption", "(one or more option entries)")],
         "CsvField" => &[("csvColumn", "(one or more column entries)")],
         "DragDrop" => &[
@@ -680,7 +692,7 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
 }
 
 fn prop_type(component: &str, prop: &str) -> String {
-    if component == "Button" && prop == "loading" {
+    if component == "Button" && matches!(prop, "loading" | "disabled") {
         return "boolean Signal or View Store path".to_string();
     }
     if let Some(values) = BuiltinComponent::from_name(component)

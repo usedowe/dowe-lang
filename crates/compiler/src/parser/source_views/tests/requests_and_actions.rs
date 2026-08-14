@@ -40,6 +40,41 @@
     }
 
     #[test]
+    fn parses_signal_validation_statement_and_derived_form_metadata() {
+        let tree = parse_page(
+            r#"page loginPage
+  signal formLogin value:{ email:"" accepted:false }
+  fn submit
+    validate formLogin
+    request result method:"POST" route:"/api/login" body:formLogin
+  Input bind:formLogin.email
+    validate rule:"required" message:"Email is required."
+  Checkbox bind:formLogin.accepted
+    validate rule:"required" message:"Accept terms."
+  Button disabled:formLogin.isInvalid onClick:submit
+    "Submit""#,
+        )
+        .expect("tree");
+        let ViewNode::Scope { actions, .. } = &tree else { panic!("scope"); };
+        let ViewActionKind::Sequence(statements) = &actions[0].kind else { panic!("sequence"); };
+        assert!(matches!(&statements[0], ViewFunctionStatement::Validate { target } if target == "formLogin"));
+        let forms = dowe_components::collect_view_forms(&tree);
+        assert_eq!(forms.len(), 1);
+        assert_eq!(forms[0].signal, "formLogin");
+        assert_eq!(forms[0].fields.iter().map(|field| field.path.as_str()).collect::<Vec<_>>(), ["email", "accepted"]);
+
+        assert!(parse_page(
+            r#"page invalidForm
+  signal plain value:""
+  fn submit
+    validate plain
+  Button disabled:plain.isInvalid
+    "Submit""#,
+        )
+        .is_err());
+    }
+
+    #[test]
     fn parses_request_headers() {
         let tree = parse_page(
             r#"page blogsPage

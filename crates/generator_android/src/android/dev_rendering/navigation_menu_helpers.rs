@@ -190,7 +190,7 @@ fn begin_dev_android_nav_menu_popover(
     output: &mut String,
 ) {
     output.push_str(&format!(
-        "        {trigger}.setOnClickListener(anchor -> {{\n        final PopupWindow[] {popup_ref} = new PopupWindow[1];\n        DoweDismissOnTouchLayout {panel} = new DoweDismissOnTouchLayout(this);\n        {panel}.setOrientation(LinearLayout.VERTICAL);\n        {panel}.setAlpha(0f);\n        {panel}.setScaleX(0.98f);\n        {panel}.setScaleY(0.98f);\n        {panel}.setTranslationY(-doweDp(4));\n        {panel}.setPadding(doweDp(8), doweDp(8), doweDp(8), doweDp(8));\n        {panel}.setBackground(doweInputBackground(DOWE_BACKGROUND, null, DOWE_RADIUS));\n"
+        "        final PopupWindow[] {popup_ref} = new PopupWindow[1];\n        {trigger}.setOnClickListener(anchor -> {{\n        if ({popup_ref}[0] != null && {popup_ref}[0].isShowing()) {{ {popup_ref}[0].dismiss(); return; }}\n        DoweDismissOnTouchLayout {panel} = new DoweDismissOnTouchLayout(this);\n        {panel}.setOrientation(LinearLayout.VERTICAL);\n        {panel}.setAlpha(0f);\n        {panel}.setScaleX(0.98f);\n        {panel}.setScaleY(0.98f);\n        {panel}.setTranslationY(-doweDp(4));\n        {panel}.setPadding(doweDp(8), doweDp(8), doweDp(8), doweDp(8));\n        {panel}.setBackground(doweInputBackground(DOWE_BACKGROUND, null, DOWE_RADIUS));\n"
     ));
 }
 

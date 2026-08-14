@@ -1,6 +1,6 @@
 fn render_checkbox_html(props: &CheckboxProps, context: &ReactiveRenderContext) -> String {
     let mut input = format!(
-        r#"<input type="checkbox" class="checkbox-input is-{}"{}{}{}{}>"#,
+        r#"<input type="checkbox" class="checkbox-input is-{}" data-dowe-validation-control{}{}{}{}>"#,
         props.style.color.unwrap_or(ColorFamily::Primary).as_str(),
         props
             .name
@@ -19,7 +19,7 @@ fn render_checkbox_html(props: &CheckboxProps, context: &ReactiveRenderContext) 
             .map(|label| format!(r#"<span class="label-md">{}</span>"#, escape_html(label)))
             .unwrap_or_default(),
     );
-    format!(
+    let body = format!(
         "<label{}>{}</label>",
         attrs(
             vec!["checkbox".to_string()],
@@ -28,6 +28,14 @@ fn render_checkbox_html(props: &CheckboxProps, context: &ReactiveRenderContext) 
             context
         ),
         input
+    );
+    render_field_block_kind(
+        &props.style,
+        None,
+        None,
+        &body,
+        "boolean",
+        context,
     )
 }
 

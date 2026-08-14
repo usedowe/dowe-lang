@@ -3,6 +3,7 @@ struct ComposeReactiveRoute {
     initial: String,
     signals: String,
     actions: String,
+    forms: String,
     init: Vec<String>,
     autoload: Vec<String>,
 }
@@ -158,14 +159,55 @@ fn compose_reactive_route(tree: &ViewNode) -> ComposeReactiveRoute {
         &mut init,
         &mut autoload,
     );
+    let form_ids = compose_form_signal_ids(tree);
+    let forms = collect_view_forms(tree)
+        .iter()
+        .map(|form| compose_form_value(form, &form_ids))
+        .collect::<Vec<_>>();
     ComposeReactiveRoute {
         constants: format!("mapOf<String, Any?>({})", constants.join(", ")),
         initial: format!("mapOf<String, Any?>({})", signals.join(", ")),
         signals: format!("mapOf({})", metadata.join(", ")),
         actions: format!("mapOf({})", actions.join(", ")),
+        forms: format!("mapOf({})", forms.join(", ")),
         init,
         autoload,
     }
+}
+
+fn compose_form_signal_ids(tree: &ViewNode) -> BTreeMap<String, String> {
+    fn collect(node: &ViewNode, output: &mut BTreeMap<String, String>) {
+        match node {
+            ViewNode::Scope { signals, children, .. } => {
+                output.extend(signals.iter().map(|signal| (signal.name.clone(), signal.id.clone())));
+                for child in children { collect(child, output); }
+            }
+            _ => for child in node_child_groups(node).into_iter().flat_map(|group| group.iter()) { collect(child, output); },
+        }
+    }
+    let mut output = BTreeMap::new();
+    collect(tree, &mut output);
+    output
+}
+
+fn compose_form_value(form: &ViewForm, signal_ids: &BTreeMap<String, String>) -> String {
+    let signal = signal_ids.get(&form.signal).cloned().unwrap_or_else(|| form.signal.clone());
+    let fields = form.fields.iter().map(|field| {
+        let rules = field.rules.iter().map(|rule| {
+            let argument = match &rule.kind {
+                FormValidationRuleKind::Matches(path) => {
+                    let (root, suffix) = path.split_once('.').unwrap_or((path.as_str(), ""));
+                    let resolved = signal_ids.get(root).cloned().unwrap_or_else(|| root.to_string());
+                    let resolved = if suffix.is_empty() { resolved } else { format!("{resolved}.{suffix}") };
+                    compose_optional_string(Some(resolved.as_str()))
+                }
+                _ => compose_optional_string(rule.kind.argument().as_deref()),
+            };
+            format!("DoweValidationRule(\"{}\", {}, \"{}\")", escape_kotlin(rule.kind.name()), argument, escape_kotlin(&rule.message))
+        }).collect::<Vec<_>>().join(", ");
+        format!("DoweFormFieldMetadata(\"{}\", \"{}\", listOf({}))", escape_kotlin(&field.path), match field.kind { ViewFormFieldKind::Boolean => "boolean", ViewFormFieldKind::String => "string" }, rules)
+    }).collect::<Vec<_>>().join(", ");
+    format!("\"{}\" to listOf({})", escape_kotlin(&signal), fields)
 }
 
 fn collect_compose_reactive(
@@ -480,6 +522,10 @@ fn compose_function_statement(
     context: &ComposeReactiveContext,
 ) -> String {
     match statement {
+        dowe_components::ViewFunctionStatement::Validate { target } => format!(
+            "DoweStep.Validate(\"{}\")",
+            escape_kotlin(&context.signal_path(target))
+        ),
         dowe_components::ViewFunctionStatement::Request { result, action } => format!(
             "DoweStep.Request(\"{}\", {})",
             escape_kotlin(result),

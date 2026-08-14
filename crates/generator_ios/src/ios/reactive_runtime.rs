@@ -32,6 +32,7 @@ enum DoweAction {
 }
 
 enum DoweStep {
+    case validate(String)
     case request(String, DoweRequestAction)
     case branch(String, [DoweStep], [DoweStep])
     case assign(String, String, Any?, Bool, DoweStdlibCall?)
@@ -71,6 +72,12 @@ struct DoweSignalMetadata {
     let name: String
     let scope: String
     let storage: String
+}
+
+struct DoweFormFieldMetadata {
+    let path: String
+    let kind: String
+    let rules: [DoweValidationRule]
 }
 
 private struct DoweSvgImportMatrix {
@@ -355,13 +362,16 @@ final class DoweReactiveState: ObservableObject {
     private let initial: [String: Any]
     private let signals: [String: DoweSignalMetadata]
     private let actions: [String: DoweAction]
+    private let forms: [String: [DoweFormFieldMetadata]]
+    private var formTouched: [String: Bool] = [:]
     private var loaded = Set<String>()
 
-    init(constants: [String: Any], initial: [String: Any], signals: [String: DoweSignalMetadata], actions: [String: DoweAction]) {
+    init(constants: [String: Any], initial: [String: Any], signals: [String: DoweSignalMetadata], actions: [String: DoweAction], forms: [String: [DoweFormFieldMetadata]] = [:]) {
         self.constants = constants
         self.initial = initial
         self.signals = signals
         self.actions = actions
+        self.forms = forms
         var hydrated = initial
         for (id, metadata) in signals where metadata.scope == "global" {
             Self.globalStorage[metadata.name] = metadata.storage
@@ -593,6 +603,8 @@ final class DoweReactiveState: ObservableObject {
         var results = results
         for step in steps {
             switch step {
+            case .validate(let target):
+                if !validateForm(target, item: item) { return true }
             case .request(let result, let action):
                 let response = await execute(action, item: item)
                 results[result] = ["ok": response.0, "data": response.1 ?? NSNull()]
@@ -665,7 +677,44 @@ final class DoweReactiveState: ObservableObject {
         value(path) as? Bool ?? fallback
     }
 
+    private func formError(_ form: String, _ field: DoweFormFieldMetadata, item: [String: Any]?) -> String? {
+        let current = value(form + "." + field.path, item: item)
+        let rules = field.rules.map { rule in
+            guard rule.kind == "matches", let argument = rule.argument else { return rule }
+            return DoweValidationRule(kind: rule.kind, argument: text(argument, item: item), message: rule.message)
+        }
+        if field.kind == "boolean" {
+            return doweBooleanValidationError((current as? Bool) ?? false, rules: rules)
+        }
+        return doweValidationError(String(describing: current ?? ""), rules: rules)
+    }
+
+    private func formValue(_ path: String, item: [String: Any]?) -> Any? {
+        let parts = path.split(separator: ".").map(String.init)
+        guard parts.count >= 2, let fields = forms[parts[0]] else { return nil }
+        let form = parts[0]
+        if parts[1] == "isValid" && parts.count == 2 { return fields.allSatisfy { formError(form, $0, item: item) == nil } }
+        if parts[1] == "isInvalid" && parts.count == 2 { return fields.contains { formError(form, $0, item: item) != nil } }
+        if parts[1] == "errors" {
+            var errors: [String: Any] = [:]
+            for field in fields { if let error = formError(form, field, item: item) { errors[field.path] = error } }
+            return parts.count == 2 ? errors : errors[parts.dropFirst(2).joined(separator: ".")]
+        }
+        if parts[1] == "touched" {
+            if parts.count == 2 { return Dictionary(uniqueKeysWithValues: fields.map { ($0.path, formTouched[form + "." + $0.path] ?? false) }) }
+            return formTouched[form + "." + parts.dropFirst(2).joined(separator: ".")] ?? false
+        }
+        return nil
+    }
+
+    private func validateForm(_ target: String, item: [String: Any]?) -> Bool {
+        guard let fields = forms[target] else { return true }
+        for field in fields { formTouched[target + "." + field.path] = true }
+        return (formValue(target + ".isValid", item: item) as? Bool) ?? true
+    }
+
     private func value(_ path: String, item: [String: Any]? = nil) -> Any? {
+        if let derived = formValue(path, item: item) { return derived }
         if path == "item", let item {
             return item
         }
@@ -702,7 +751,17 @@ final class DoweReactiveState: ObservableObject {
         var object = values[root] as? [String: Any] ?? [:]
         object[parts[1]] = value
         values[root] = object
+        touchFormField(path)
         persistRoot(root)
+    }
+
+    private func touchFormField(_ path: String) {
+        for (form, fields) in forms {
+            if path.hasPrefix(form + ".") {
+                let field = String(path.dropFirst(form.count + 1))
+                if fields.contains(where: { $0.path == field }) { formTouched[path] = true }
+            }
+        }
     }
 
     private func stdlib(_ call: DoweStdlibCall, item: [String: Any]?) -> Any? {

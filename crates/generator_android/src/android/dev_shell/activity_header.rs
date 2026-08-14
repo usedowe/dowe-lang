@@ -82,6 +82,7 @@ import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.json.JSONArray;
 import org.json.JSONObject;
 

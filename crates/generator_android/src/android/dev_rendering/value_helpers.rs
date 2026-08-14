@@ -64,6 +64,101 @@ fn dev_bound_bool(
         .unwrap_or_else(|| fallback.to_string())
 }
 
+fn dev_validation_help(element: &ElementProps) -> String {
+    element
+        .form_validation()
+        .and_then(|validation| validation.help_text.as_deref())
+        .map(|value| format!("\"{}\"", escape_java(value)))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn dev_nullable_string(value: Option<&str>) -> String {
+    value
+        .map(|value| format!("\"{}\"", escape_java(value)))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn dev_has_validation(element: &ElementProps) -> bool {
+    element.form_validation().is_some_and(|validation| {
+        validation.help_text.is_some()
+            || validation.error_text.is_some()
+            || !validation.rules.is_empty()
+    })
+}
+
+fn dev_validation_error(element: &ElementProps) -> String {
+    element
+        .form_validation()
+        .and_then(|validation| validation.error_text.as_deref())
+        .map(|value| format!("\"{}\"", escape_java(value)))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+fn dev_validation_rules(element: &ElementProps, context: &ComposeReactiveContext) -> String {
+    let Some(validation) = element.form_validation() else {
+        return "new String[0][0]".to_string();
+    };
+    let rules = validation
+        .rules
+        .iter()
+        .map(|rule| {
+            let argument = match &rule.kind {
+                dowe_components::FormValidationRuleKind::Matches(path) => format!(
+                    "doweTextValue(\"{}\", null)",
+                    escape_java(&context.signal_path(path))
+                ),
+                _ => rule
+                    .kind
+                    .argument()
+                    .as_deref()
+                    .map(|value| format!("\"{}\"", escape_java(value)))
+                    .unwrap_or_else(|| "null".to_string()),
+            };
+            format!(
+                "new String[]{{\"{}\", {argument}, \"{}\"}}",
+                rule.kind.name(),
+                escape_java(&rule.message)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("new String[][]{{{rules}}}")
+}
+
+fn dev_boolean_validation_rules(
+    element: &ElementProps,
+    context: &ComposeReactiveContext,
+) -> String {
+    let Some(validation) = element.form_validation() else {
+        return "new String[0][0]".to_string();
+    };
+    let rules = validation
+        .rules
+        .iter()
+        .map(|rule| {
+            let argument = match &rule.kind {
+                dowe_components::FormValidationRuleKind::Matches(path) => format!(
+                    "String.valueOf(doweBool(\"{}\"))",
+                    escape_java(&context.signal_path(path))
+                ),
+                _ => rule
+                    .kind
+                    .argument()
+                    .as_deref()
+                    .map(|value| format!("\"{}\"", escape_java(value)))
+                    .unwrap_or_else(|| "null".to_string()),
+            };
+            format!(
+                "new String[]{{\"{}\", {argument}, \"{}\"}}",
+                rule.kind.name(),
+                escape_java(&rule.message)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("new String[][]{{{rules}}}")
+}
+
 fn render_dev_android_variant_label(
     value: &str,
     props: &VariantProps,

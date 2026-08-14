@@ -225,10 +225,17 @@ View functions contain ordered, target-neutral statements.
 | Utility | Binding | Props |
 | --- | --- | --- |
 | `request result` | Function-local result with `ok` and `data` | `method`, exactly one of `route` or `path`; optional `base`, `body`, `headers` |
+| `validate signal` | Marks all registered fields touched and stops the sequence when invalid | Signal root with validated controls |
 | `set target` | none | `value`, or `source:<standard-library function>` with its props |
 | `reset target` | none | Restores a Signal or View Store to its initial value |
 | `toast` | none | `value:{ type title message visible duration? }`; optional `duration`, Card-equivalent `variant` (`solid`, `soft`, `outlined`, `ghost`), design `scheme`, and corner `position`; `variant` also resolves from `design Toast` |
 | `redirect` | none | Required static absolute `path` to a declared internal route; replaces history and terminates the function |
+
+When controls with `validate` children bind to fields of the same Signal, Dowe derives read-only
+`<signal>.isValid`, `<signal>.isInvalid`, `<signal>.errors.<field>`, and `<signal>.touched.<field>`
+paths. Use those paths for reactive `Button disabled:` state; they never become part of the Signal
+value or a request body. Put `validate <signal>` before `request` in a submit function to touch all
+registered fields and stop the sequence while any rule fails.
 
 ```text
 fn createBlog

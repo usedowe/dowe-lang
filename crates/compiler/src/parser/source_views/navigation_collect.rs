@@ -122,6 +122,7 @@ fn collect_redirect_navigation_actions(
                 collect_redirect_navigation_actions(error, route_id, actions);
             }
             ViewFunctionStatement::Request { .. }
+            | ViewFunctionStatement::Validate { .. }
             | ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Toast(_) => {}

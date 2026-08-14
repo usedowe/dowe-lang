@@ -1,17 +1,68 @@
 fn android_runtime_input_helpers() -> &'static str {
-    r#"private data class DoweSelectOption(val value: String, val label: String, val description: String?)
+    r#"private data class DoweValidationRule(val kind: String, val argument: String?, val message: String)
+
+private fun doweValidationError(value: String, rules: List<DoweValidationRule>): String? {
+    for (rule in rules) {
+        val present = value.isNotEmpty()
+        val invalid = when (rule.kind) {
+            "required" -> value.trim().isEmpty()
+            "email" -> present && !Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(value)
+            "min" -> present && value.length < (rule.argument?.toIntOrNull() ?: 0)
+            "max" -> present && value.length > (rule.argument?.toIntOrNull() ?: Int.MAX_VALUE)
+            "url" -> present && !Regex("^https?://(www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$").matches(value)
+            "phone" -> present && !Regex("^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,9}$").matches(value)
+            "pattern" -> present && runCatching { !Regex(rule.argument.orEmpty()).containsMatchIn(value) }.getOrDefault(true)
+            "alphanumeric" -> present && !Regex("^[a-zA-Z0-9]+$").matches(value)
+            "numeric" -> present && !Regex("^[0-9]+$").matches(value)
+            "alpha" -> present && !Regex("^[a-zA-Z]+$").matches(value)
+            "matches" -> present && value != rule.argument.orEmpty()
+            "strongPassword" -> present && (value.length < 8 || !Regex("[a-z]").containsMatchIn(value) || !Regex("[A-Z]").containsMatchIn(value) || !Regex("[0-9]").containsMatchIn(value) || !Regex("[^a-zA-Z0-9]").containsMatchIn(value))
+            "creditCard" -> present && !Regex("^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\\d{3})\\d{11})$").matches(value.replace(Regex("\\s"), ""))
+            "date" -> present && !Regex("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$").matches(value)
+            "minWords" -> present && value.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.size < (rule.argument?.toIntOrNull() ?: 0)
+            "maxWords" -> present && value.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.size > (rule.argument?.toIntOrNull() ?: Int.MAX_VALUE)
+            else -> false
+        }
+        if (invalid) return rule.message
+    }
+    return null
+}
+
+private fun doweBooleanValidationError(value: Boolean, rules: List<DoweValidationRule>): String? {
+    for (rule in rules) {
+        val invalid = when (rule.kind) {
+            "required" -> !value
+            "matches" -> value && value.toString() != rule.argument.orEmpty()
+            else -> value && doweValidationError(value.toString(), listOf(rule)) != null
+        }
+        if (invalid) return rule.message
+    }
+    return null
+}
 
 @Composable
-private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: Modifier, label: String?, placeholder: String, floating: Boolean, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, startIcon: (@Composable () -> Unit)? = null, endIcon: (@Composable () -> Unit)? = null, visualTransformation: VisualTransformation = VisualTransformation.None, keyboardOptions: KeyboardOptions = KeyboardOptions.Default) {
+private fun DoweValidationFeedback(helpText: String?, error: String?, contentColor: Color) {
+    val message = error ?: helpText
+    if (message != null) Text(message, fontSize = 12.sp, color = if (error != null) DoweDesign.danger else contentColor.copy(alpha = 0.7f))
+}
+
+private data class DoweSelectOption(val value: String, val label: String, val description: String?)
+
+@Composable
+private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: Modifier, label: String?, placeholder: String, floating: Boolean, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, startIcon: (@Composable () -> Unit)? = null, endIcon: (@Composable () -> Unit)? = null, visualTransformation: VisualTransformation = VisualTransformation.None, keyboardOptions: KeyboardOptions = KeyboardOptions.Default, helpText: String? = null, errorText: String? = null, validationRules: List<DoweValidationRule> = emptyList()) {
     var focused by remember { mutableStateOf(false) }
+    var hadFocus by remember { mutableStateOf(false) }
+    var touched by remember { mutableStateOf(false) }
     val active = focused || value.isNotEmpty()
+    val validationError = errorText ?: if (touched) doweValidationError(value, validationRules) else null
+    val resolvedBorderColor = if (validationError != null) DoweDesign.danger else borderColor
     val surface = modifier
         .heightIn(min = minHeight)
         .clip(shape)
         .background(backgroundColor)
-        .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
+        .then(if (resolvedBorderColor == null) Modifier else Modifier.border(1.dp, resolvedBorderColor, shape))
         .padding(horizontal = horizontalPadding)
-        .onFocusChanged { focused = it.isFocused }
+        .onFocusChanged { state -> focused = state.isFocused; if (state.isFocused) hadFocus = true else if (hadFocus) touched = true }
     Column {
         if (label != null && !floating) {
             Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = contentColor)
@@ -46,17 +97,21 @@ private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: 
                 }
             }
         )
+        DoweValidationFeedback(helpText, validationError, contentColor)
     }
 }
 
 @Composable
-private fun DoweSelect(value: String, onValueChange: (String) -> Unit, bound: Boolean, modifier: Modifier, label: String?, placeholder: String, floating: Boolean, options: List<DoweSelectOption>, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?) {
+private fun DoweSelect(value: String, onValueChange: (String) -> Unit, bound: Boolean, modifier: Modifier, label: String?, placeholder: String, floating: Boolean, options: List<DoweSelectOption>, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, helpText: String? = null, errorText: String? = null, validationRules: List<DoweValidationRule> = emptyList()) {
     var expanded by remember { mutableStateOf(false) }
     var popupMounted by remember { mutableStateOf(false) }
     var localValue by remember { mutableStateOf("") }
+    var touched by remember { mutableStateOf(false) }
     val selectedValue = if (bound) value else localValue
     val selected = options.firstOrNull { it.value == selectedValue }
     val active = expanded || selected != null
+    val validationError = errorText ?: if (touched) doweValidationError(selectedValue, validationRules) else null
+    val resolvedBorderColor = if (validationError != null) DoweDesign.danger else borderColor
     val popupOffset = with(LocalDensity.current) { IntOffset(0, (minHeight + 4.dp).roundToPx()) }
     LaunchedEffect(expanded) {
         if (expanded) {
@@ -77,7 +132,7 @@ private fun DoweSelect(value: String, onValueChange: (String) -> Unit, bound: Bo
                     .heightIn(min = minHeight)
                     .clip(shape)
                     .background(backgroundColor)
-                    .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
+                    .then(if (resolvedBorderColor == null) Modifier else Modifier.border(1.dp, resolvedBorderColor, shape))
                     .clickable { expanded = true }
                     .padding(horizontal = horizontalPadding),
                 verticalAlignment = Alignment.CenterVertically,
@@ -104,15 +159,17 @@ private fun DoweSelect(value: String, onValueChange: (String) -> Unit, bound: Bo
                     fontFamily = fontFamily,
                     fontSize = fontSize,
                     lineHeight = lineHeight,
-                    onDismiss = { expanded = false },
+                    onDismiss = { expanded = false; touched = true },
                     onSelect = { option ->
                         localValue = option.value
                         onValueChange(option.value)
                         expanded = false
+                        touched = true
                     }
                 )
             }
         }
+        DoweValidationFeedback(helpText, validationError, contentColor)
     }
 }
 
@@ -252,13 +309,16 @@ private data class DowePhoneCountry(val code: String, val name: String, val dial
 __DOWE_PHONE_COUNTRIES__
 
 @Composable
-private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, country: String, countries: List<DowePhoneCountry>, priorityCountries: List<String>, searchPlaceholder: String, emptyText: String, loadingText: String, floating: Boolean, minHeight: Dp, fontSize: TextUnit, lineHeight: TextUnit, disabled: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, country: String, countries: List<DowePhoneCountry>, priorityCountries: List<String>, searchPlaceholder: String, emptyText: String, loadingText: String, floating: Boolean, minHeight: Dp, fontSize: TextUnit, lineHeight: TextUnit, disabled: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color, helpText: String? = null, errorText: String? = null, validationRules: List<DoweValidationRule> = emptyList()) {
     var expanded by remember { mutableStateOf(false) }
     var popupMounted by remember { mutableStateOf(false) }
     var triggerHeight by remember { mutableStateOf(0) }
     var selectedCode by remember(country) { mutableStateOf(country) }
     var query by remember { mutableStateOf("") }
     var localValue by remember(value) { mutableStateOf(value.filter { it.isDigit() }) }
+    var hadFocus by remember { mutableStateOf(false) }
+    var touched by remember { mutableStateOf(false) }
+    val validationError = errorText ?: if (touched) doweValidationError(localValue, validationRules) else null
     val selected = countries.firstOrNull { it.code.equals(selectedCode, ignoreCase = true) } ?: countries.firstOrNull()
     val ordered = remember(selectedCode, countries, priorityCountries) {
         buildList {
@@ -281,7 +341,7 @@ private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: Str
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null && !floating) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
         Box {
-            Row(modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).onGloballyPositioned { triggerHeight = it.size.height }.clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).onGloballyPositioned { triggerHeight = it.size.height }.clip(RoundedCornerShape(12.dp)).background(backgroundColor).border(1.dp, if (validationError != null) DoweDesign.danger else contentColor.copy(alpha = 0.22f), RoundedCornerShape(12.dp)).padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(modifier = Modifier.clickable(enabled = !disabled && countries.isNotEmpty()) { expanded = true }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (selected != null) DoweSvg(viewBox = selected.viewBox, modifier = Modifier.size(24.dp).align(Alignment.CenterVertically).clip(RoundedCornerShape(999.dp)), color = contentColor, paths = selected.paths)
                     Text(if (selected == null) "+$country" else "+${selected.dialCode}", modifier = Modifier.align(Alignment.CenterVertically), fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.Bold, color = contentColor)
@@ -291,15 +351,15 @@ private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: Str
                 Box(modifier = Modifier.weight(1f).heightIn(min = minHeight), contentAlignment = Alignment.CenterStart) {
                     if (label != null && floating) Text(label, modifier = Modifier.align(Alignment.TopStart), fontSize = if (localValue.isEmpty()) fontSize else 12.sp, color = contentColor, fontWeight = FontWeight.SemiBold)
                     if (localValue.isEmpty() && (!floating || expanded)) Text(placeholder, modifier = Modifier.padding(top = if (label != null && floating) 10.dp else 0.dp), color = contentColor.copy(alpha = 0.55f), fontSize = fontSize, lineHeight = lineHeight)
-                    BasicTextField(value = localValue, onValueChange = { next -> if (!disabled) { val filtered = next.filter { char -> char.isDigit() }; localValue = filtered; onValueChange(filtered) } }, modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).padding(top = if (label != null && floating) 10.dp else 0.dp), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = TextStyle(color = contentColor, fontSize = fontSize, lineHeight = lineHeight), enabled = !disabled)
+                    BasicTextField(value = localValue, onValueChange = { next -> if (!disabled) { val filtered = next.filter { char -> char.isDigit() }; localValue = filtered; onValueChange(filtered) } }, modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).padding(top = if (label != null && floating) 10.dp else 0.dp).onFocusChanged { state -> if (state.isFocused) hadFocus = true else if (hadFocus) touched = true }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = TextStyle(color = contentColor, fontSize = fontSize, lineHeight = lineHeight), enabled = !disabled)
                 }
             }
-            if (triggerHeight > 0 && (expanded || popupMounted)) DoweAnchoredPopover(visible = expanded, offset = popupOffset, shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(0.dp), minWidth = 280.dp, maxWidth = 384.dp, maxHeight = 380.dp, onDismiss = { expanded = false; query = "" }) {
+            if (triggerHeight > 0 && (expanded || popupMounted)) DoweAnchoredPopover(visible = expanded, offset = popupOffset, shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(0.dp), minWidth = 280.dp, maxWidth = 384.dp, maxHeight = 380.dp, onDismiss = { expanded = false; query = ""; touched = true }) {
                 BasicTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(6.dp).clip(RoundedCornerShape(10.dp)).background(DoweDesign.surfaceText.copy(alpha = 0.07f)).padding(horizontal = 12.dp, vertical = 9.dp), singleLine = true, textStyle = TextStyle(color = DoweDesign.surfaceText), decorationBox = { inner -> Box { if (query.isEmpty()) Text(searchPlaceholder, color = DoweDesign.surfaceText.copy(alpha = 0.55f)); inner() } })
                 if (countries.isEmpty()) Text(loadingText, modifier = Modifier.padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f))
                 else if (filtered.isEmpty()) Text(emptyText, modifier = Modifier.padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f))
                 else filtered.forEach { item ->
-                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { selectedCode = item.code; expanded = false; query = "" }.background(if (item.code == selectedCode) DoweDesign.surfaceText.copy(alpha = 0.07f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { selectedCode = item.code; expanded = false; query = ""; touched = true }.background(if (item.code == selectedCode) DoweDesign.surfaceText.copy(alpha = 0.07f) else Color.Transparent).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         DoweSvg(viewBox = item.viewBox, modifier = Modifier.size(28.dp).clip(RoundedCornerShape(999.dp)), color = DoweDesign.surfaceText, paths = item.paths)
                         Text(item.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold, color = DoweDesign.surfaceText, maxLines = 1)
                         Text("+${item.dialCode}", fontWeight = FontWeight.Bold, color = DoweDesign.surfaceText)
@@ -307,12 +367,17 @@ private fun DowePhone(value: String, onValueChange: (String) -> Unit, label: Str
                 }
             }
         }
+        DoweValidationFeedback(helpText, validationError, contentColor)
     }
 }
 
 @Composable
-private fun DowePin(value: String, onValueChange: (String) -> Unit, label: String?, length: Int, kind: String, size: String, fontSize: TextUnit, lineHeight: TextUnit, modifier: Modifier, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, helpText: String?, errorText: String?) {
+private fun DowePin(value: String, onValueChange: (String) -> Unit, label: String?, length: Int, kind: String, size: String, fontSize: TextUnit, lineHeight: TextUnit, modifier: Modifier, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, helpText: String?, errorText: String?, validationRules: List<DoweValidationRule> = emptyList()) {
     var cells by remember(value, length) { mutableStateOf(value.padEnd(length).take(length).map { if (it == ' ') "" else it.toString() }) }
+    var hadFocus by remember { mutableStateOf(false) }
+    var touched by remember { mutableStateOf(false) }
+    val currentValue = cells.joinToString("")
+    val validationError = errorText ?: if (touched) doweValidationError(currentValue, validationRules) else null
     val focusRequesters = remember(length) { List(length) { FocusRequester() } }
     val cellWidth = when (size) {
         "sm" -> 40.dp
@@ -332,9 +397,10 @@ private fun DowePin(value: String, onValueChange: (String) -> Unit, label: Strin
                         .height(doweControlHeight(size))
                         .clip(shape)
                         .background(backgroundColor)
-                        .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
+                        .then(if (borderColor == null && validationError == null) Modifier else Modifier.border(1.dp, if (validationError != null) DoweDesign.danger else borderColor!!, shape))
                         .padding(horizontal = if (size == "sm") 8.dp else 12.dp)
                         .focusRequester(focusRequesters[index])
+                        .onFocusChanged { state -> if (state.isFocused) hadFocus = true else if (hadFocus) touched = true }
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown && event.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DEL && cell.isEmpty() && index > 0) {
                                 focusRequesters[index - 1].requestFocus()
@@ -361,9 +427,7 @@ private fun DowePin(value: String, onValueChange: (String) -> Unit, label: Strin
                 }
             }
         }
-        if (errorText != null || helpText != null) {
-            Text(errorText ?: helpText.orEmpty(), fontSize = 12.sp, color = if (errorText != null) DoweDesign.danger else contentColor.copy(alpha = 0.7f))
-        }
+        DoweValidationFeedback(helpText, validationError, contentColor)
     }
 }
 

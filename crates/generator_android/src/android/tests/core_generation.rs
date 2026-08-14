@@ -170,6 +170,9 @@ fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
         "verticalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.Bottom)"
     ));
     assert!(generated.contains(".rotate(if (doweFixedFabOpen0) 45f else 0f)"));
+    assert!(generated.contains(
+        ".doweGesture(DoweGesturePreset.Press, DoweTransitionPreset.Smooth)"
+    ));
     assert!(generated.contains("DoweSvg(viewBox ="));
     assert!(generated.contains("setTag(\"dowe-fixed-fab\")"));
     assert!(generated.contains("Gravity.BOTTOM | Gravity.END"));
@@ -195,6 +198,9 @@ fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
         .split('.')
         .next()
         .expect("top Fab trigger variable");
+    assert!(top_generated.contains(&format!(
+        "doweGesture({trigger}, \"press\", \"smooth\");"
+    )));
     let first_child_addition = top_lines
         .find(|line| line.contains("doweAdd("))
         .expect("top Fab first child addition");
@@ -298,6 +304,13 @@ fn fixed_fab_page() -> ViewNode {
 }
 
 fn fixed_fab_page_at(position: OverlayCornerPosition) -> ViewNode {
+    let mut style = VariantProps {
+        color: Some(ColorFamily::Primary),
+        variant: Some(ComponentVariant::Solid),
+        size: Some(ButtonSize::Lg),
+        ..Default::default()
+    };
+    style.style.motion_mut().gesture = Some(ViewGesture::Press);
     ViewNode::Scope {
         constants: Vec::new(),
         signals: Vec::new(),
@@ -306,12 +319,7 @@ fn fixed_fab_page_at(position: OverlayCornerPosition) -> ViewNode {
             text("Scrollable content"),
             ViewNode::Fab {
                 props: FabProps {
-                    style: VariantProps {
-                        color: Some(ColorFamily::Primary),
-                        variant: Some(ComponentVariant::Solid),
-                        size: Some(ButtonSize::Lg),
-                        ..Default::default()
-                    },
+                    style,
                     position,
                     fixed: true,
                     offset_x: ScaleValue::from_half_steps(8),
@@ -955,12 +963,48 @@ fn generates_compose_box_and_text() {
     );
     assert!(hot_host.content.contains("getString(HMR_VERSION, \"\")"));
     assert!(hot_host.content.contains("putString(HMR_VERSION, version)"));
-    assert!(hot_host.content.contains("persistCurrentPath()"));
     assert!(dev.content.contains("extends ContextThemeWrapper"));
     assert!(
         dev.content
             .contains("public void mount(String preferredPath, Intent launchIntent)")
     );
+}
+
+#[test]
+fn resets_android_dev_route_after_process_relaunch() {
+    let output = generate_android(
+        &[route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let hot_host = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweDevHostActivity.java"))
+        .expect("hot host");
+    let dev = dev_java_source(&output);
+
+    assert!(!hot_host.content.contains("HMR_ROUTE"));
+    assert!(!hot_host.content.contains("persistCurrentPath()"));
+    assert!(hot_host.content.contains(
+        "boolean initialMount = activeModule == null;\n            String path = initialMount ? null : activeModulePath();"
+    ));
+    assert!(hot_host
+        .content
+        .contains("mount.invoke(module, path, initialMount ? getIntent() : null)"));
+    assert!(hot_host.content.contains(
+        "private String activeModulePath() {\n        if (activeModule != null && activePath != null)"
+    ));
+    assert!(hot_host
+        .content
+        .contains("return null;\n    }\n\n    private void poll()"));
+    assert!(dev.content.contains(
+        "if (doweCanRoute(preferredPath)) {\n            currentPath = preferredPath;\n        }\n        doweApplyIntentRoute();"
+    ));
+    assert!(dev.content.contains(
+        "if (data == null) {\n            return;\n        }\n        String path = data.getPath();"
+    ));
 }
 
 #[test]

@@ -995,6 +995,7 @@ fn reactive_button_attrs(props: &VariantProps, context: &ReactiveRenderContext) 
         ("size", props.reactive.size.as_deref()),
         ("rounded", props.reactive.rounded.as_deref()),
         ("loading", props.reactive.loading.as_deref()),
+        ("disabled", props.reactive.disabled.as_deref()),
         ("icon-start-when", props.reactive.icon_start_when.as_deref()),
         ("icon-end-when", props.reactive.icon_end_when.as_deref()),
     ] {
@@ -1033,15 +1034,26 @@ fn internal_href(path: &str, fragment: Option<&str>) -> String {
 
 fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> String {
     let mut input = String::new();
+    let has_validation = has_form_validation_contract(&props.element);
     if let Some(icon) = props.icon_start.as_ref() {
         input.push_str(r#"<span class="control-icon icon-start">"#);
         input.push_str(&render_svg_html(&icon.props, &icon.paths, context));
         input.push_str("</span>");
     }
     input.push_str(&format!(
-        r#"<input class="input"{}{}>"#,
+        r#"<input class="input"{}{}{}{}>"#,
+        if has_validation {
+            " data-dowe-validation-control"
+        } else {
+            ""
+        },
         input_placeholder_attr(props),
-        bind_attr(props.element.bind.as_deref(), context)
+        bind_attr(props.element.bind.as_deref(), context),
+        props
+            .label
+            .as_deref()
+            .map(|label| format!(r#" aria-label="{}""#, escape_attr(label)))
+            .unwrap_or_default()
     ));
     if let Some(icon) = props.icon_end.as_ref() {
         input.push_str(r#"<span class="control-icon icon-end">"#);
@@ -1059,6 +1071,9 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
             ),
             input
         );
+        if has_validation {
+            return render_field_block(props, None, None, &control, context);
+        }
         return format!(
             r#"<label class="field"><span class="field-label">{}</span>{}</label>"#,
             escape_html(props.label.as_deref().unwrap_or_default()),
@@ -1068,14 +1083,19 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
     if props.label_floating {
         let mut classes = input_control_classes(props);
         classes.push("is-floating".to_string());
-        return format!(
+        let body = format!(
             "<label{}>{}{}</label>",
             attrs(classes, Some(&props.element), None, context),
             floating_label_html(props),
             input
         );
+        return if has_validation {
+            render_field_block(props, None, None, &body, context)
+        } else {
+            body
+        };
     }
-    format!(
+    let body = format!(
         r#"<div{}>{}</div>"#,
         attrs(
             input_control_classes(props),
@@ -1084,7 +1104,20 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
             context
         ),
         input
-    )
+    );
+    if has_validation {
+        render_field_block(props, None, None, &body, context)
+    } else {
+        body
+    }
+}
+
+fn has_form_validation_contract(element: &ElementProps) -> bool {
+    element.form_validation().is_some_and(|validation| {
+        validation.help_text.is_some()
+            || validation.error_text.is_some()
+            || !validation.rules.is_empty()
+    })
 }
 
 fn input_control_classes(props: &VariantProps) -> Vec<String> {
@@ -1095,6 +1128,14 @@ fn input_control_classes(props: &VariantProps) -> Vec<String> {
     );
     if props.icon_start.is_some() {
         classes.push("has-start-adornment".to_string());
+    }
+    if props
+        .element
+        .form_validation()
+        .and_then(|validation| validation.error_text.as_ref())
+        .is_some()
+    {
+        classes.push("is-error".to_string());
     }
     classes
 }
@@ -1115,6 +1156,7 @@ fn render_select_html_with_attrs(
     context: &ReactiveRenderContext,
     extra_attrs: &str,
 ) -> String {
+    let has_validation = has_form_validation_contract(&props.element);
     let mut classes = variant_classes("control", props);
     classes.insert(
         1,
@@ -1126,10 +1168,20 @@ fn render_select_html_with_attrs(
     }
     let placeholder = props.placeholder.as_deref().unwrap_or("Select an option");
     let extra = format!(
-        r#" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-dowe-select data-dowe-placeholder="{}"{}{}"#,
+        r#" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-dowe-select{} data-dowe-placeholder="{}"{}{}{}"#,
+        if has_validation {
+            " data-dowe-validation-control"
+        } else {
+            ""
+        },
         escape_attr(placeholder),
         bind_attr(props.element.bind.as_deref(), context),
-        extra_attrs
+        extra_attrs,
+        props
+            .label
+            .as_deref()
+            .map(|label| format!(r#" aria-label="{}""#, escape_attr(label)))
+            .unwrap_or_default()
     );
     let mut options_html = options
         .iter()
@@ -1158,6 +1210,14 @@ fn render_select_html_with_attrs(
             description
         ));
     }
+    if props
+        .element
+        .form_validation()
+        .and_then(|validation| validation.error_text.as_ref())
+        .is_some()
+    {
+        classes.push("is-error".to_string());
+    }
     let control = format!(
         r#"<div class="select"><button{}>{}<span class="select-value">{}</span>{}</button><div class="select-popover" data-dowe-select-popover role="listbox">{}</div></div>"#,
         attrs(classes, Some(&props.element), Some(&extra), context),
@@ -1166,7 +1226,9 @@ fn render_select_html_with_attrs(
         select_arrow_svg(),
         options_html
     );
-    if props.label.is_some() && !props.label_floating {
+    if has_validation {
+        render_field_block(props, None, None, &control, context)
+    } else if props.label.is_some() && !props.label_floating {
         format!(
             r#"<div class="field"><span class="field-label">{}</span>{}</div>"#,
             escape_html(props.label.as_deref().unwrap_or_default()),

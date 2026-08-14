@@ -158,7 +158,12 @@ fn lower_select_node(node: &SourceNode) -> DoweResult<ViewNode> {
     let props = component_props(node, BuiltinComponent::Select)?;
     let mut options = Vec::new();
     let mut option_each = None;
+    let mut validation_rules = Vec::new();
     for child in &node.children {
+        if child.name == "validate" {
+            validation_rules.push(lower_form_validation_rule(child)?);
+            continue;
+        }
         if child.name == "each" {
             if option_each.is_some() {
                 return Err(node_error(child, "Select accepts one `each` option block"));
@@ -192,7 +197,10 @@ fn lower_select_node(node: &SourceNode) -> DoweResult<ViewNode> {
             )
         })?;
         if component != BuiltinComponent::Option {
-            return Err(node_error(child, "Select can only contain Option children"));
+            return Err(node_error(
+                child,
+                "Select can only contain Option, each or validate children",
+            ));
         }
         reject_children(child)?;
         options.push(
@@ -200,7 +208,59 @@ fn lower_select_node(node: &SourceNode) -> DoweResult<ViewNode> {
                 .map_err(|error| component_error(child, error))?,
         );
     }
-    select_node_with_each(props, options, option_each).map_err(|error| component_error(node, error))
+    let control = select_node_with_each(props, options, option_each)
+        .map_err(|error| component_error(node, error))?;
+    attach_form_validation(control, validation_rules).map_err(|error| component_error(node, error))
+}
+
+fn lower_validated_form_control(node: &SourceNode, control: ViewNode) -> DoweResult<ViewNode> {
+    let validation_rules = node
+        .children
+        .iter()
+        .map(|child| {
+            if child.name != "validate" {
+                return Err(node_error(
+                    child,
+                    format!("{} only accepts validate children", node.name),
+                ));
+            }
+            lower_form_validation_rule(child)
+        })
+        .collect::<DoweResult<Vec<_>>>()?;
+    attach_form_validation(control, validation_rules).map_err(|error| component_error(node, error))
+}
+
+fn lower_form_validation_rule(node: &SourceNode) -> DoweResult<dowe_components::FormValidationRule> {
+    if !node.args.is_empty() || !node.children.is_empty() {
+        return Err(node_error(
+            node,
+            "validate requires only quoted rule and message props",
+        ));
+    }
+    for prop in &node.props {
+        if !matches!(prop.name.as_str(), "rule" | "message") {
+            return Err(prop_error(
+                prop,
+                format!("unknown prop `{}` on `validate`", prop.name),
+            ));
+        }
+    }
+    let rule = required_quoted_validation_prop(node, "rule")?;
+    let message = required_quoted_validation_prop(node, "message")?;
+    form_validation_rule(rule, message).map_err(|error| component_error(node, error))
+}
+
+fn required_quoted_validation_prop(node: &SourceNode, name: &str) -> DoweResult<String> {
+    let prop = node
+        .prop(name)
+        .ok_or_else(|| node_error(node, format!("missing `{name}` on `validate`")))?;
+    match &prop.value {
+        SourceValue::String(value) if !value.trim().is_empty() => Ok(value.clone()),
+        _ => Err(prop_error(
+            prop,
+            format!("`{name}` on `validate` must be a non-empty quoted string"),
+        )),
+    }
 }
 
 fn lower_combo_box_node(node: &SourceNode) -> DoweResult<ViewNode> {

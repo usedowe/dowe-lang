@@ -448,6 +448,7 @@ fn collect_statement_toast_variant_rules(
                 collect_statement_toast_variant_rules(error, variants);
             }
             ViewFunctionStatement::Request { .. }
+            | ViewFunctionStatement::Validate { .. }
             | ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Redirect { .. } => {}

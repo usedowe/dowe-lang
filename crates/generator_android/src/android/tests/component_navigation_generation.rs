@@ -499,6 +499,9 @@ fn generates_compose_and_dev_navigation_shell_components() {
         .expect("views");
 
     assert!(views.content.contains("DoweNavMenu("));
+    assert!(views
+        .content
+        .contains("openIndex = if (openIndex == index) null else index"));
     assert!(
         views
             .content
@@ -576,6 +579,7 @@ fn generates_compose_and_dev_navigation_shell_components() {
     );
     assert!(dev.content.contains("doweNavMenuArrow(DOWE_BACKGROUND_TEXT)"));
     assert!(dev.content.contains("setOnDismissListener"));
+    assert!(dev.content.contains(".isShowing()) {"));
     assert!(
         dev.content
             .contains("doweNavigate(\"push\", \"/docs\", null); if (")

@@ -420,6 +420,23 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-audio"#));
     assert!(html.contains(r#"class="image is-solid is-secondary square fit-contain""#));
     assert!(html.contains(r#"data-dowe-image"#));
+    assert!(html.contains(r#"data-dowe-image-download"#));
+    assert!(html.contains(r#"data-dowe-image-fullscreen"#));
+
+    let hidden_image = ViewNode::Image {
+        props: ImageProps {
+            style: VariantProps::default(),
+            src: "https://example.com/photo.jpg".to_string(),
+            alt: "Photo".to_string(),
+            aspect: ImageAspect::Auto,
+            object_fit: ImageObjectFit::Cover,
+            loading: ImageLoading::Lazy,
+            hide_controls: true,
+        },
+    };
+    let hidden_image_html = render_page_body(&ViewNode::Children, &hidden_image);
+    assert!(!hidden_image_html.contains(r#"data-dowe-image-download"#));
+    assert!(!hidden_image_html.contains(r#"data-dowe-image-fullscreen"#));
     assert!(html.contains(r#"data-dowe-accordion data-dowe-accordion-multiple="true""#));
     assert!(html.contains(r#"class="accordion-arrow" aria-hidden="true"><svg"#));
     assert!(html.contains(r#"d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z""#));
@@ -694,6 +711,50 @@ fn emits_portable_input_metrics_and_outlined_colors() {
     assert!(page.css_content.contains(
         ".control.is-outlined.is-secondary:focus-within{border-color:var(--dowe-secondary);"
     ));
+}
+
+#[test]
+fn emits_form_validation_metadata_runtime_and_accessibility_hooks() {
+    let mut props = VariantProps {
+        label: Some("Email".to_string()),
+        variant: Some(ComponentVariant::Outlined),
+        ..Default::default()
+    };
+    let validation = props.element.form_validation_mut();
+    validation.help_text = Some("Use your work email".to_string());
+    validation.rules = vec![
+        dowe_components::form_validation_rule("required", "Email is required").expect("rule"),
+        dowe_components::form_validation_rule("email", "Enter a valid email").expect("rule"),
+    ];
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &ViewNode::Input { props },
+    );
+    let web = super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    };
+    let router = super::router_js(&web);
+
+    assert!(page
+        .content
+        .contains("data-dowe-validation-kind=\\\"string\\\""));
+    assert!(page.content.contains("Email is required"));
+    assert!(page.content.contains("data-dowe-validation-feedback"));
+    assert!(page.content.contains("data-dowe-validation-control"));
+    assert!(router.contains("function formValidationInvalid"));
+    assert!(router.contains(r#"#?&\/=]*)$/.test(text);if(rule.kind==="phone")"#));
+    assert!(router.contains("aria-invalid"));
+    assert!(router.contains("touchFormValidation"));
+    assert_eq!(router.matches("function formDefinition").count(), 1);
+    assert_eq!(router.matches("async function runSteps").count(), 1);
+    assert_eq!(router.matches("function renderReactiveButtons").count(), 1);
+    assert!(!router.contains("DoweDesign"));
 }
 
 #[test]

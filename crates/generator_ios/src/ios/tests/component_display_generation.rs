@@ -798,6 +798,103 @@ fn generates_labeled_input_and_select_fields() {
 }
 
 #[test]
+fn emits_large_theme_catalog_once_outside_route_view_expressions() {
+    let mut design = DesignConfig::default();
+    let base_theme = design.themes[0].clone();
+    design.themes = (1..=18)
+        .map(|index| {
+            let mut theme = base_theme.clone();
+            theme.name = if index == 1 {
+                "light".to_string()
+            } else {
+                format!("palette-{index}")
+            };
+            theme
+        })
+        .collect();
+    let themes = design
+        .themes
+        .iter()
+        .map(|theme| theme.name.clone())
+        .collect::<Vec<_>>();
+    let select = ViewNode::SelectTheme {
+        props: ThemeSelectProps {
+            style: Default::default(),
+            label: "Theme".to_string(),
+            placeholder: "Choose a theme".to_string(),
+            themes,
+            default_theme: "light".to_string(),
+        },
+    };
+    let mut themed_route = route();
+    themed_route.page_tree = ViewNode::Box {
+        props: Default::default(),
+        children: vec![ViewNode::Flex {
+            props: Default::default(),
+            children: vec![select.clone(), select],
+        }],
+    };
+
+    let output = generate_ios(&[themed_route], &FontConfig::default(), &design, &[]);
+    let page = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageLoginView.swift"))
+        .expect("generated route page");
+    let theme = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweTheme.swift"))
+        .expect("generated theme module");
+
+    assert_eq!(
+        page.content
+            .matches("DoweThemeModule.selectOptions")
+            .count(),
+        2
+    );
+    assert!(!page.content.contains("DoweSelectOption(value:"));
+    assert_eq!(page.content.matches("helpText: nil, errorText: nil, validationRules: []").count(), 2);
+    assert!(page.content.contains("private func routeBranch0() -> some View"));
+    assert!(page.content.contains("private func routeBranch2() -> some View"));
+    assert!(
+        theme
+            .content
+            .contains("static let selectOptions: [DoweSelectOption] = [")
+    );
+    assert!(theme.content.contains(
+        "DoweSelectOption(value: \"palette-18\", label: \"Palette 18\", description: nil)"
+    ));
+}
+
+#[test]
+fn keeps_inherited_font_children_inside_their_swiftui_expression() {
+    let mut inherited_route = route();
+    inherited_route.page_tree = ViewNode::Box {
+        props: StyleProps {
+            font: Some(ResponsiveValue::scalar(dowe_components::FontFamily::Inter)),
+            ..Default::default()
+        },
+        children: vec![text("One"), text("Two"), text("Three"), text("Four")],
+    };
+
+    let output = generate_ios(
+        &[inherited_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let page = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageLoginView.swift"))
+        .expect("generated route page");
+
+    assert!(!page.content.contains("private func routeBranch"));
+    assert!(page.content.contains("xs: .inter"));
+}
+
+#[test]
 fn generates_floating_input_icons_with_active_visibility() {
     let output = generate_ios(
         &[form_route()],
@@ -1670,4 +1767,49 @@ fn generates_swiftui_view_motion() {
     assert!(views.contains(".modifier(DoweAnimationModifier(preset: .fadeIn))"));
     assert!(views.contains(".modifier(DoweAnimationModifier(preset: .slideUp))"));
     assert!(views.contains(".animation(.easeOut(duration: 0.22), value: active)"));
+}
+
+#[test]
+fn generates_swiftui_form_validation_contract() {
+    let mut props = VariantProps {
+        label: Some("Email".to_string()),
+        variant: Some(ComponentVariant::Outlined),
+        ..Default::default()
+    };
+    let validation = props.element.form_validation_mut();
+    validation.help_text = Some("Use your work email".to_string());
+    validation.rules = vec![
+        dowe_components::form_validation_rule("required", "Email is required").expect("rule"),
+        dowe_components::form_validation_rule("email", "Enter a valid email").expect("rule"),
+    ];
+    let route = ViewRoute {
+        id: "validation".to_string(),
+        route_path: "/validation".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Input { props },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let source = swift_content(&output);
+
+    assert!(source.contains("struct DoweValidationRule"));
+    assert!(source.contains("private func doweValidationError"));
+    assert!(source.contains("message: \"Email is required\""));
+    assert!(source.contains("helpText: \"Use your work email\""));
+    assert!(source.contains("touched ? doweValidationError"));
+    assert!(source.contains("DoweDesign.danger"));
+    let date_start = source.find("struct DoweDateField: View").expect("date field");
+    let date_end = source[date_start..]
+        .find("struct DoweDateRangeField: View")
+        .map(|offset| date_start + offset)
+        .expect("date range field");
+    let date_source = &source[date_start..date_end];
+    assert!(date_source.contains("let validationRules: [DoweValidationRule]"));
+    assert!(date_source.contains("@State private var touched = false"));
 }

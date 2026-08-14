@@ -101,7 +101,9 @@ fn dev_activity_drawables_media() -> &'static str {
         float alpha = semanticAlpha == null ? radius <= 2 ? 0.12f : radius <= 12 ? 0.14f : radius <= 24 ? 0.16f : radius <= 44 ? 0.18f : 0.22f : semanticAlpha;
         float offset = radius <= 2 ? 1f : radius <= 12 ? 4f : radius <= 24 ? 10f : radius <= 44 ? 18f : 28f;
         DOWE_SHADOWS.put(view, new DoweShadowSpec(doweDp(radius), doweDp(offset), doweDp(cornerRadius), doweAlpha(color, alpha)));
-        view.setStateListAnimator(null);
+        if (!DOWE_GESTURE_ANIMATORS.containsKey(view)) {
+            view.setStateListAnimator(null);
+        }
         view.setElevation(0f);
         view.setTranslationZ(0f);
         view.invalidate();

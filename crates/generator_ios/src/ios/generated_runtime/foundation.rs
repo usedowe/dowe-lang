@@ -434,7 +434,7 @@ struct DoweGestureModifier: ViewModifier {
 
     private var scale: CGFloat {
         if activePress && preset == .press {
-            return CGFloat(0.96)
+            return CGFloat(0.94)
         }
         if activePress && preset == .lift {
             return CGFloat(0.98)

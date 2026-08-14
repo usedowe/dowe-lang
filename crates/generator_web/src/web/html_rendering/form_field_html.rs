@@ -62,7 +62,7 @@ fn render_date_html(props: &DateProps, context: &ReactiveRenderContext) -> Strin
             .unwrap_or_default()
     );
     let input = format!(
-        r#"<div class="date-control-shell" data-dowe-date-field data-dowe-date-value="{}" data-dowe-date-placeholder="{}"{}{}{}><button class="date-control-trigger" data-dowe-date-trigger type="button" aria-haspopup="dialog" aria-expanded="false"><span class="date-control-value"></span>{}</button>{}<div class="date-popover" data-dowe-date-popover role="dialog" aria-label="Date picker"><div class="date-picker-header"><button class="date-picker-nav" type="button" data-dowe-date-prev aria-label="Previous month">‹</button><span class="date-picker-month"></span><button class="date-picker-nav" type="button" data-dowe-date-next aria-label="Next month">›</button></div><div class="date-picker-weekdays"></div><div class="date-picker-days"></div></div></div>"#,
+        r#"<div class="date-control-shell" data-dowe-date-field data-dowe-date-value="{}" data-dowe-date-placeholder="{}"{}{}{}><button class="date-control-trigger" data-dowe-date-trigger data-dowe-validation-control type="button" aria-haspopup="dialog" aria-expanded="false"><span class="date-control-value"></span>{}</button>{}<div class="date-popover" data-dowe-date-popover role="dialog" aria-label="Date picker"><div class="date-picker-header"><button class="date-picker-nav" type="button" data-dowe-date-prev aria-label="Previous month">‹</button><span class="date-picker-month"></span><button class="date-picker-nav" type="button" data-dowe-date-next aria-label="Next month">›</button></div><div class="date-picker-weekdays"></div><div class="date-picker-days"></div></div></div>"#,
         escape_attr(value),
         escape_attr(
             props
@@ -798,7 +798,7 @@ fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> Str
         .collect::<String>();
     let priority = props.priority_countries.join(",");
     let input = format!(
-        r#"<input type="hidden" name="{}" value="{}" data-dowe-phone-dial><button class="phone-country-trigger" type="button" data-dowe-phone-country aria-expanded="false" aria-haspopup="listbox"><span class="phone-flag">{}</span><span class="phone-dial">+{}</span>{}</button><input class="phone-input input" type="tel" inputmode="numeric" pattern="[0-9]*"{}{}{}{}{} data-dowe-phone-input><div class="phone-popover" data-dowe-phone-popover hidden><div class="phone-search-wrap">{}<input class="phone-search" type="search" placeholder="{}" data-dowe-phone-search></div><div class="phone-countries" data-dowe-phone-countries role="listbox">{options}</div><div class="phone-empty" hidden>{}</div><div class="phone-loading" hidden>{}</div></div>"#,
+        r#"<input type="hidden" name="{}" value="{}" data-dowe-phone-dial><button class="phone-country-trigger" type="button" data-dowe-phone-country aria-expanded="false" aria-haspopup="listbox"><span class="phone-flag">{}</span><span class="phone-dial">+{}</span>{}</button><input class="phone-input input" type="tel" inputmode="numeric" pattern="[0-9]*"{}{}{}{}{} data-dowe-phone-input data-dowe-validation-control><div class="phone-popover" data-dowe-phone-popover hidden><div class="phone-search-wrap">{}<input class="phone-search" type="search" placeholder="{}" data-dowe-phone-search></div><div class="phone-countries" data-dowe-phone-countries role="listbox">{options}</div><div class="phone-empty" hidden>{}</div><div class="phone-loading" hidden>{}</div></div>"#,
         escape_attr(&props.dial_code_name),
         escape_attr(country.dial),
         country_flag_html(country.code, context),
@@ -835,6 +835,16 @@ fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> Str
     ));
     if props.style.label_floating {
         control_classes.push("is-floating".to_string());
+    }
+    if props.error_text.is_some()
+        || props
+            .style
+            .element
+            .form_validation()
+            .and_then(|validation| validation.error_text.as_ref())
+            .is_some()
+    {
+        control_classes.push("is-error".to_string());
     }
     let control = format!(
         "<span{}>{}{}</span>",
@@ -884,8 +894,18 @@ fn render_pin_html(props: &PinProps, context: &ReactiveRenderContext) -> String 
             let mut cell_classes = variant_classes("control", &props.style);
             cell_classes.push("pin-cell".to_string());
             cell_classes.push(format!("is-{}", size.as_str()));
+            if props.error_text.is_some()
+                || props
+                    .style
+                    .element
+                    .form_validation()
+                    .and_then(|validation| validation.error_text.as_ref())
+                    .is_some()
+            {
+                cell_classes.push("is-error".to_string());
+            }
             format!(
-                r#"<label{}><input class="pin-input" inputmode="{}" type="{}" maxlength="1" value="{}" autocomplete="one-time-code" data-dowe-pin-cell></label>"#,
+                r#"<label{}><input class="pin-input" inputmode="{}" type="{}" maxlength="1" value="{}" autocomplete="one-time-code" data-dowe-pin-cell data-dowe-validation-control></label>"#,
                 attrs(cell_classes, None, None, context),
                 input_mode,
                 input_type,
@@ -990,6 +1010,13 @@ fn render_field_control(
     has_value: bool,
     context: &ReactiveRenderContext,
 ) -> String {
+    let validation = props.element.form_validation();
+    let help_text = validation
+        .and_then(|validation| validation.help_text.as_deref())
+        .or(help_text);
+    let error_text = validation
+        .and_then(|validation| validation.error_text.as_deref())
+        .or(error_text);
     let mut classes = variant_classes("control", props);
     classes.push(base.to_string());
     classes.push(format!("is-{}", size.as_str()));
@@ -1021,6 +1048,24 @@ fn render_field_block(
     body_html: &str,
     context: &ReactiveRenderContext,
 ) -> String {
+    render_field_block_kind(props, help_text, error_text, body_html, "string", context)
+}
+
+fn render_field_block_kind(
+    props: &VariantProps,
+    help_text: Option<&str>,
+    error_text: Option<&str>,
+    body_html: &str,
+    value_kind: &str,
+    context: &ReactiveRenderContext,
+) -> String {
+    let validation = props.element.form_validation();
+    let help_text = validation
+        .and_then(|validation| validation.help_text.as_deref())
+        .or(help_text);
+    let error_text = validation
+        .and_then(|validation| validation.error_text.as_deref())
+        .or(error_text);
     let label = if props.label.is_some() && !props.label_floating {
         format!(
             r#"<span class="field-label">{}</span>"#,
@@ -1029,25 +1074,101 @@ fn render_field_block(
     } else {
         String::new()
     };
-    let help = error_text
-        .or(help_text)
-        .map(|value| {
-            format!(
-                r#"<span class="field-help{}">{}</span>"#,
-                if error_text.is_some() {
-                    " is-error"
-                } else {
-                    ""
-                },
-                escape_html(value)
-            )
-        })
-        .unwrap_or_default();
+    let message = error_text.or(help_text);
+    let has_rules = validation.is_some_and(|validation| !validation.rules.is_empty());
+    let help = if message.is_some() || has_rules {
+        format!(
+            r#"<span class="field-help{}" data-dowe-validation-feedback{}>{}</span>"#,
+            if error_text.is_some() { " is-error" } else { "" },
+            if message.is_none() { " hidden" } else { "" },
+            escape_html(message.unwrap_or_default())
+        )
+    } else {
+        String::new()
+    };
+    let validation_attrs = render_form_validation_attrs(
+        &props.element,
+        help_text,
+        error_text,
+        value_kind,
+        context,
+    );
     format!(
         r#"<div{}>{}{body_html}{}</div>"#,
-        attrs(vec!["field".to_string()], None, None, context),
+        attrs(
+            vec!["field".to_string()],
+            None,
+            Some(&validation_attrs),
+            context
+        ),
         label,
         help
+    )
+}
+
+fn render_form_validation_attrs(
+    element: &ElementProps,
+    help_text: Option<&str>,
+    error_text: Option<&str>,
+    value_kind: &str,
+    context: &ReactiveRenderContext,
+) -> String {
+    let Some(validation) = element.form_validation() else {
+        if help_text.is_none() && error_text.is_none() {
+            return String::new();
+        }
+        return format!(
+            r#" data-dowe-validation-kind="{}"{}{}"#,
+            escape_attr(value_kind),
+            help_text
+                .map(|value| format!(r#" data-dowe-validation-help="{}""#, escape_attr(value)))
+                .unwrap_or_default(),
+            error_text
+                .map(|value| format!(r#" data-dowe-validation-error="{}""#, escape_attr(value)))
+                .unwrap_or_default()
+        );
+    };
+    let rules = validation
+        .rules
+        .iter()
+        .map(|rule| {
+            let argument = match &rule.kind {
+                dowe_components::FormValidationRuleKind::Matches(path) => {
+                    Some(context.signal_path(path))
+                }
+                _ => rule.kind.argument(),
+            };
+            format!(
+                r#"{{"kind":"{}","argument":{},"message":"{}"}}"#,
+                escape_json(rule.kind.name()),
+                argument
+                    .as_deref()
+                    .map(|value| format!(r#""{}""#, escape_json(value)))
+                    .unwrap_or_else(|| "null".to_string()),
+                escape_json(&rule.message)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    let form_attrs = element.bind.as_deref().and_then(|bind| {
+        let (signal, field) = bind.split_once('.')?;
+        Some(format!(
+            r#" data-dowe-validation-form="{}" data-dowe-validation-field="{}""#,
+            escape_attr(&context.signal_path(signal)),
+            escape_attr(field)
+        ))
+    }).unwrap_or_default();
+    format!(
+        r#" data-dowe-validation-kind="{}" data-dowe-validation="{}"{}{}{}"#,
+        escape_attr(value_kind),
+        escape_attr(&format!("[{rules}]")),
+        form_attrs,
+        help_text
+            .map(|value| format!(r#" data-dowe-validation-help="{}""#, escape_attr(value)))
+            .unwrap_or_default(),
+        error_text
+            .map(|value| format!(r#" data-dowe-validation-error="{}""#, escape_attr(value)))
+            .unwrap_or_default()
     )
 }
 

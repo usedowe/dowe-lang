@@ -20,6 +20,7 @@ use dowe_components::{
     TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction,
     ViewActionKind, ViewAnimation, ViewConstant, ViewGesture, ViewNode, ViewRequestAction,
     ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
+    ViewForm, ViewFormFieldKind, FormValidationRuleKind, collect_view_forms,
     collect_route_font_families, compose_tree, fixed_box_nodes, fixed_fab_nodes,
     form_control_min_height, form_control_text_size, phone_countries, phone_country_flag_icon,
     side_nav_memory_key,

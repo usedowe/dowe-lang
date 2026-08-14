@@ -7,7 +7,7 @@
 **AI can generate code. Dowe generates the system.**
 
 [![Status](https://img.shields.io/badge/status-early_access-6BC670?style=flat-square)](https://dowe.dev)
-![Version](https://img.shields.io/badge/version-1.0.16-1F3A5F?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.17-1F3A5F?style=flat-square)
 ![Toolchain](https://img.shields.io/badge/toolchain-Rust-B7410E?style=flat-square&logo=rust&logoColor=white)
 ![Source](https://img.shields.io/badge/source-.dowe-6C5CE7?style=flat-square)
 

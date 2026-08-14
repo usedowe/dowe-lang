@@ -371,15 +371,8 @@ fn swift_modifiers_for_style_with_width_alignment(
     if motion.translate_x.is_some() || motion.translate_y.is_some() {
         modifiers.push(format!(".offset(x: {translate_x}, y: {translate_y})"));
     }
-    if let Some(gesture) = motion.gesture
-        && gesture != ViewGesture::None
-    {
-        let transition = motion.transition.unwrap_or(ViewTransition::Smooth);
-        modifiers.push(format!(
-            ".modifier(DoweGestureModifier(preset: .{}, transition: .{}))",
-            gesture.as_str(),
-            transition.as_str()
-        ));
+    if let Some(modifier) = swift_gesture_modifier(props) {
+        modifiers.push(modifier);
     }
     if let Some(animation) = props.animation() {
         modifiers.push(format!(
@@ -388,6 +381,28 @@ fn swift_modifiers_for_style_with_width_alignment(
         ));
     }
     modifiers
+}
+
+fn swift_gesture_modifier(props: &StyleProps) -> Option<String> {
+    let motion = props.motion();
+    let gesture = motion.gesture?;
+    if gesture == ViewGesture::None {
+        return None;
+    }
+    let transition = motion.transition.unwrap_or(ViewTransition::Smooth);
+    Some(format!(
+        ".modifier(DoweGestureModifier(preset: .{}, transition: .{}))",
+        gesture.as_str(),
+        transition.as_str()
+    ))
+}
+
+fn swift_style_without_gesture(props: &StyleProps) -> StyleProps {
+    let mut style = props.clone();
+    if style.motion().gesture.is_some() {
+        style.motion_mut().gesture = None;
+    }
+    style
 }
 
 fn swift_shadow_modifier(props: &StyleProps) -> Option<String> {

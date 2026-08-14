@@ -1,6 +1,7 @@
 struct DevReactiveRoute {
     initial: Vec<String>,
     metadata: Vec<String>,
+    forms: Vec<String>,
     actions: Vec<String>,
     init: Vec<String>,
     autoload: Vec<String>,
@@ -9,6 +10,10 @@ struct DevReactiveRoute {
 fn dev_reactive_route(tree: &ViewNode) -> DevReactiveRoute {
     let mut initial = Vec::new();
     let mut metadata = Vec::new();
+    let forms = collect_view_forms(tree)
+        .iter()
+        .map(|form| java_form_value(form, &dev_reactive_context(tree)))
+        .collect();
     let mut actions = Vec::new();
     let mut init = Vec::new();
     let mut autoload = Vec::new();
@@ -24,10 +29,60 @@ fn dev_reactive_route(tree: &ViewNode) -> DevReactiveRoute {
     DevReactiveRoute {
         initial,
         metadata,
+        forms,
         actions,
         init,
         autoload,
     }
+}
+
+fn dev_reactive_context(tree: &ViewNode) -> ComposeReactiveContext {
+    match tree {
+        ViewNode::Scope {
+            constants,
+            signals,
+            actions,
+            ..
+        } => ComposeReactiveContext::default().with_scope(constants, signals, actions),
+        _ => ComposeReactiveContext::default(),
+    }
+}
+
+fn java_form_value(form: &ViewForm, context: &ComposeReactiveContext) -> String {
+    let signal = escape_java(&context.signal_path(&form.signal));
+    let fields = form
+        .fields
+        .iter()
+        .map(|field| {
+            let rules = field
+                .rules
+                .iter()
+                .map(|rule| {
+                    format!(
+                        "{{\"{}\", {}, \"{}\"}}",
+                        escape_java(rule.kind.name()),
+                        rule.kind
+                            .argument()
+                            .map(|value| format!("\"{}\"", escape_java(&value)))
+                            .unwrap_or_else(|| "null".to_string()),
+                        escape_java(&rule.message)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(
+                "new DoweFormFieldMetadata(\"{}\", {}, new String[][] {{ {} }})",
+                escape_java(&field.path),
+                matches!(field.kind, ViewFormFieldKind::Boolean),
+                rules
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "dowePutForm(\"{}\", new DoweFormFieldMetadata[] {{ {} }});",
+        signal, fields
+    )
 }
 
 fn collect_dev_reactive(
@@ -328,6 +383,10 @@ fn java_function_statement(
     context: &ComposeReactiveContext,
 ) -> String {
     match statement {
+        dowe_components::ViewFunctionStatement::Validate { target } => format!(
+            "DoweStep.validate(\"{}\")",
+            escape_java(&context.signal_path(target))
+        ),
         dowe_components::ViewFunctionStatement::Request { result, action } => format!(
             "DoweStep.request(\"{}\", {})",
             escape_java(result),

@@ -62,6 +62,7 @@ fn validate_reactive_view_tree(
                     &readable_types,
                     environment,
                 )?;
+                validate_form_validate_targets(path, action, &dowe_components::collect_view_forms(tree))?;
             }
             let locals = HashMap::new();
             for child in children {
@@ -74,10 +75,78 @@ fn validate_reactive_view_tree(
                     &locals,
                 )?;
             }
+            validate_derived_button_paths(path, tree)?;
             Ok(())
         }
         _ => Ok(()),
     }
+}
+
+fn validate_form_validate_targets(
+    path: &Path,
+    action: &ViewAction,
+    forms: &[dowe_components::ViewForm],
+) -> DoweResult<()> {
+    let form_names = forms
+        .iter()
+        .map(|form| form.signal.as_str())
+        .collect::<HashSet<_>>();
+    fn visit(
+        path: &Path,
+        statements: &[ViewFunctionStatement],
+        forms: &HashSet<&str>,
+    ) -> DoweResult<()> {
+        for statement in statements {
+            match statement {
+                ViewFunctionStatement::Validate { target } if !forms.contains(target.as_str()) => {
+                    return Err(DoweError::at_path(
+                        path,
+                        format!("`validate {target}` requires a Signal with registered validate fields"),
+                    ));
+                }
+                ViewFunctionStatement::If { success, error, .. } => {
+                    visit(path, success, forms)?;
+                    visit(path, error, forms)?;
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+    if let ViewActionKind::Sequence(statements) = &action.kind {
+        visit(path, statements, &form_names)?;
+    }
+    Ok(())
+}
+
+fn validate_derived_button_paths(path: &Path, tree: &ViewNode) -> DoweResult<()> {
+    let forms = dowe_components::collect_view_forms(tree)
+        .into_iter()
+        .map(|form| form.signal)
+        .collect::<HashSet<_>>();
+    fn visit(path: &Path, node: &ViewNode, forms: &HashSet<String>) -> DoweResult<()> {
+        if let ViewNode::Button { props, .. } = node
+            && let Some(binding) = props.reactive.disabled.as_deref()
+        {
+            let root = path_root(binding).to_string();
+            if (binding == format!("{root}.isValid")
+                || binding == format!("{root}.isInvalid")
+                || binding.starts_with(&format!("{root}.errors."))
+                || binding.starts_with(&format!("{root}.touched.")))
+                && !forms.contains(&root)
+            {
+                return Err(DoweError::at_path(
+                    path,
+                    format!("unknown derived form state `{binding}` in `disabled`"),
+                ));
+            }
+        }
+        for child in dowe_components::node_children(node) {
+            visit(path, child, forms)?;
+        }
+        Ok(())
+    }
+    visit(path, tree, &forms)
 }
 
 fn unique_names<'a>(
@@ -226,6 +295,9 @@ fn validate_function_statements(
 ) -> DoweResult<()> {
     for statement in statements {
         match statement {
+            ViewFunctionStatement::Validate { target } => {
+                validate_signal_name(path, signals, target, "validate")?;
+            }
             ViewFunctionStatement::Request { result, action } => {
                 if !results.insert(result.clone()) {
                     return Err(DoweError::at_path(

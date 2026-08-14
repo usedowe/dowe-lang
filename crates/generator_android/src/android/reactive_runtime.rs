@@ -29,6 +29,7 @@ private sealed class DoweAction {
 }
 
 private sealed class DoweStep {
+    data class Validate(val target: String) : DoweStep()
     data class Request(val result: String, val action: DoweRequestAction) : DoweStep()
     data class Branch(val result: String, val success: List<DoweStep>, val error: List<DoweStep>) : DoweStep()
     data class Assign(val target: String, val source: String, val literal: Any?, val hasLiteral: Boolean, val call: DoweStdlibCall?) : DoweStep()
@@ -43,6 +44,7 @@ private data class DoweStdlibCall(val namespace: String, val function: String, v
 private data class DoweStdlibArg(val name: String, val value: DoweStdlibValue)
 private data class DoweStdlibValue(val kind: String, val value: Any?)
 private data class DoweSignalMetadata(val name: String, val scope: String, val storage: String)
+private data class DoweFormFieldMetadata(val path: String, val kind: String, val rules: List<DoweValidationRule>)
 
 private data class DoweSvgImportMatrix(val a: Double, val b: Double, val c: Double, val d: Double, val e: Double, val f: Double) {
     fun multiply(next: DoweSvgImportMatrix) = DoweSvgImportMatrix(
@@ -220,7 +222,8 @@ private class DoweReactiveState(
     private val constants: Map<String, Any?>,
     private val initial: Map<String, Any?>,
     private val signals: Map<String, DoweSignalMetadata>,
-    private val actions: Map<String, DoweAction>
+    private val actions: Map<String, DoweAction>,
+    private val forms: Map<String, List<DoweFormFieldMetadata>> = emptyMap()
 ) {
     companion object {
         private val globalValues = mutableMapOf<String, Any?>()
@@ -233,6 +236,7 @@ private class DoweReactiveState(
     var redirectPath by mutableStateOf<String?>(null)
         private set
     private var toastSequence = 0L
+    private val formTouched = mutableMapOf<String, Boolean>()
     private val values = mutableStateMapOf<String, Any?>().also { state ->
         state.putAll(initial)
         for ((id, metadata) in signals) {
@@ -343,8 +347,17 @@ private class DoweReactiveState(
             val objectValue = (values[root] as? Map<String, Any?>)?.toMutableMap() ?: mutableMapOf()
             objectValue[parts[1]] = value
             values[root] = objectValue
+            touchFormField(path)
         }
         persistRoot(root)
+    }
+
+    private fun touchFormField(path: String) {
+        forms.forEach { (form, fields) ->
+            if (path.startsWith(form + ".") && fields.any { path.removePrefix(form + ".") == it.path }) {
+                formTouched[path] = true
+            }
+        }
     }
 
     suspend fun run(id: String, item: Map<String, Any?>? = null) {
@@ -371,6 +384,7 @@ private class DoweReactiveState(
     private suspend fun runSteps(steps: List<DoweStep>, item: Map<String, Any?>?, results: MutableMap<String, Any?>): Boolean {
         for (step in steps) {
             when (step) {
+                is DoweStep.Validate -> if (!validateForm(step.target, item)) return true
                 is DoweStep.Request -> {
                     val result = request(step.action, item)
                     results[step.result] = mapOf("ok" to result.first, "data" to result.second)
@@ -428,6 +442,7 @@ private class DoweReactiveState(
     }
 
     private fun read(path: String, item: Map<String, Any?>? = null): Any? {
+        formValue(path, item)?.let { return it }
         if (path == "item" && item != null) {
             return item
         }
@@ -435,6 +450,37 @@ private class DoweReactiveState(
             return readMap(path.removePrefix("item."), item)
         }
         return readMap(path, values) ?: readMap(path, constants)
+    }
+
+    private fun formError(form: String, field: DoweFormFieldMetadata, item: Map<String, Any?>?): String? {
+        val value = readMap(form + "." + field.path, values)
+        val rules = field.rules.map { rule ->
+            if (rule.kind == "matches" && rule.argument != null) rule.copy(argument = read(rule.argument, item)?.toString() ?: "") else rule
+        }
+        return if (field.kind == "boolean") doweBooleanValidationError(value as? Boolean ?: false, rules) else doweValidationError(value?.toString() ?: "", rules)
+    }
+
+    private fun formValue(path: String, item: Map<String, Any?>?): Any? {
+        val parts = path.split(".")
+        val fields = forms[parts.firstOrNull() ?: return null] ?: return null
+        val form = parts.first()
+        if (parts.getOrNull(1) == "isValid" && parts.size == 2) return fields.all { formError(form, it, item) == null }
+        if (parts.getOrNull(1) == "isInvalid" && parts.size == 2) return fields.any { formError(form, it, item) != null }
+        if (parts.getOrNull(1) == "errors") {
+            val errors = fields.mapNotNull { field -> formError(form, field, item)?.let { field.path to it } }.toMap()
+            return if (parts.size == 2) errors else errors[parts.drop(2).joinToString(".")]
+        }
+        if (parts.getOrNull(1) == "touched") {
+            val touched = fields.associate { it.path to (formTouched[form + "." + it.path] ?: false) }
+            return if (parts.size == 2) touched else touched[parts.drop(2).joinToString(".")] ?: false
+        }
+        return null
+    }
+
+    private fun validateForm(target: String, item: Map<String, Any?>?): Boolean {
+        val fields = forms[target] ?: return true
+        fields.forEach { formTouched[target + "." + it.path] = true }
+        return formValue(target + ".isValid", item) as? Boolean ?: true
     }
 
     private fun readMap(path: String, source: Map<String, Any?>): Any? {

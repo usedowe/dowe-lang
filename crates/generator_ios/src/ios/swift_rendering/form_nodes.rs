@@ -70,6 +70,7 @@ fn render_swift_form_node(
                 })
                 .unwrap_or_else(|| swift_navigation_action(props.navigation.as_ref()));
             let loading = props.reactive.loading.as_ref().map(|path| reactive_bool(path));
+            let disabled = props.reactive.disabled.as_ref().map(|path| reactive_bool(path));
             let variant = props.reactive.variant.as_ref().map(|path| reactive_text(path, "solid"));
             let scheme = props.reactive.scheme.as_ref().map(|path| reactive_text(path, "primary"));
             let variant_value = variant.clone().unwrap_or_else(|| {
@@ -148,7 +149,8 @@ fn render_swift_form_node(
                 render_contents(indent + 4, None, output);
             }
             output.push_str(&format!("{pad}}}\n"));
-            let mut button_style = props.style.clone();
+            let gesture_modifier = swift_gesture_modifier(&props.style);
+            let mut button_style = swift_style_without_gesture(&props.style);
             button_style.shadow = None;
             button_style.shadow_color = None;
             button_style.set_animation(None);
@@ -189,10 +191,19 @@ fn render_swift_form_node(
                     escape_swift(props.label.as_deref().unwrap_or_default())
                 ));
             }
-            if let Some(loading) = loading.as_ref() {
+            if loading.is_some() && disabled.is_some() {
+                let loading_value = loading.as_deref().unwrap_or("false");
+                let disabled_value = disabled.as_deref().unwrap_or("false");
+                modifiers.push(format!(".disabled(({loading_value}) || ({disabled_value}))"));
+            } else if let Some(loading) = loading.as_deref() {
                 modifiers.push(format!(".disabled({loading})"));
+            } else if let Some(disabled) = disabled.as_deref() {
+                modifiers.push(format!(".disabled({disabled})"));
             }
             if let Some(modifier) = swift_shadow_modifier_with_radius(&props.style, &radius) {
+                modifiers.push(modifier);
+            }
+            if let Some(modifier) = gesture_modifier {
                 modifiers.push(modifier);
             }
             if let Some(animation) = props.style.animation() {
@@ -244,7 +255,7 @@ fn render_swift_form_node(
                 .map(|value| format!("Optional({value})"))
                 .unwrap_or_else(|| "nil".to_string());
             output.push_str(&format!(
-                "{pad}DoweInputField(value: {binding}, label: {}, placeholder: {}, floating: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, borderWidth: {border_width}, radius: {}, shadow: {shadow}, startIcon: {}, endIcon: {})\n",
+                "{pad}DoweInputField(value: {binding}, label: {}, placeholder: {}, floating: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, borderWidth: {border_width}, radius: {}, shadow: {shadow}, startIcon: {}, endIcon: {}, helpText: {}, errorText: {}, validationRules: {})\n",
                 swift_optional_literal(props.label.as_deref()),
                 swift_string_literal(props.placeholder.as_deref().unwrap_or_default()),
                 props.label_floating,
@@ -261,7 +272,10 @@ fn render_swift_form_node(
                 variant_content(props),
                 swift_control_radius(&props.style),
                 swift_control_icon(props.icon_start.as_ref()),
-                swift_control_icon(props.icon_end.as_ref())
+                swift_control_icon(props.icon_end.as_ref()),
+                swift_validation_help(&props.element),
+                swift_validation_error(&props.element),
+                swift_validation_rules(&props.element, context, false)
             ));
             let mut input_style = props.style.clone();
             input_style.shadow = None;
@@ -299,7 +313,7 @@ fn render_swift_form_node(
                     "nil".to_string()
                 };
             output.push_str(&format!(
-                "{pad}DoweSelectField(value: {binding}, label: {}, placeholder: {}, floating: {}, options: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {})\n",
+                "{pad}DoweSelectField(value: {binding}, label: {}, placeholder: {}, floating: {}, options: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {}, helpText: {}, errorText: {}, validationRules: {})\n",
                 swift_optional_literal(props.label.as_deref()),
                 swift_string_literal(props.placeholder.as_deref().unwrap_or("Select an option")),
                 props.label_floating,
@@ -311,7 +325,10 @@ fn render_swift_form_node(
                 INPUT_HORIZONTAL_PADDING.native_units(),
                 variant_container(props),
                 variant_content(props),
-                swift_control_radius(&props.style)
+                swift_control_radius(&props.style),
+                swift_validation_help(&props.element),
+                swift_validation_error(&props.element),
+                swift_validation_rules(&props.element, context, false)
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }
@@ -409,7 +426,7 @@ fn render_swift_form_node(
             let control_size = props.style.size.unwrap_or(ButtonSize::Md);
             let text_size = form_control_text_size(control_size);
             output.push_str(&format!(
-                "{pad}DowePhone(value: {}, initialValue: {}, label: {}, placeholder: {}, country: {}, countries: {}, priorityCountries: {}, dialCodeName: {}, searchPlaceholder: {}, emptyText: {}, loadingText: {}, floating: {}, minHeight: CGFloat({}), fontSize: {}, lineHeight: CGFloat({}), disabled: {}, backgroundColor: {}, contentColor: {})\n",
+                "{pad}DowePhone(value: {}, initialValue: {}, label: {}, placeholder: {}, country: {}, countries: {}, priorityCountries: {}, dialCodeName: {}, searchPlaceholder: {}, emptyText: {}, loadingText: {}, floating: {}, minHeight: CGFloat({}), fontSize: {}, lineHeight: CGFloat({}), disabled: {}, backgroundColor: {}, contentColor: {}, helpText: {}, errorText: {}, validationRules: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.value.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
@@ -428,7 +445,10 @@ fn render_swift_form_node(
                 text_typography(false, text_size).line_height,
                 props.disabled,
                 variant_container(&props.style),
-                variant_content(&props.style)
+                variant_content(&props.style),
+                swift_optional_literal(props.help_text.as_deref()),
+                swift_optional_literal(props.error_text.as_deref()),
+                swift_validation_rules(&props.style.element, context, false)
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
         }
@@ -448,7 +468,7 @@ fn render_swift_form_node(
             let (border, border_width) =
                 swift_style_border(&props.style.style, &base_border.0, &base_border.1);
             output.push_str(&format!(
-                "{pad}DowePin(value: {}, initialValue: {}, label: {}, length: {}, kind: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), variant: {}, helpText: {}, errorText: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, borderWidth: {}, radius: {})\n",
+                "{pad}DowePin(value: {}, initialValue: {}, label: {}, length: {}, kind: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), variant: {}, helpText: {}, errorText: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, borderWidth: {}, radius: {}, validationRules: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.value.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
@@ -464,7 +484,8 @@ fn render_swift_form_node(
                 variant_content(&props.style),
                 border,
                 border_width,
-                swift_control_radius(&props.style.style)
+                swift_control_radius(&props.style.style),
+                swift_validation_rules(&props.style.element, context, false)
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
         }
@@ -519,6 +540,61 @@ fn swift_string_array(values: &[String]) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     )
+}
+
+fn swift_validation_help(element: &ElementProps) -> String {
+    swift_optional_literal(
+        element
+            .form_validation()
+            .and_then(|validation| validation.help_text.as_deref()),
+    )
+}
+
+fn swift_validation_error(element: &ElementProps) -> String {
+    swift_optional_literal(
+        element
+            .form_validation()
+            .and_then(|validation| validation.error_text.as_deref()),
+    )
+}
+
+fn swift_validation_rules(
+    element: &ElementProps,
+    context: &SwiftReactiveContext,
+    boolean: bool,
+) -> String {
+    let Some(validation) = element.form_validation() else {
+        return "[]".to_string();
+    };
+    let rules = validation
+        .rules
+        .iter()
+        .map(|rule| {
+            let argument = match &rule.kind {
+                dowe_components::FormValidationRuleKind::Matches(path) => {
+                    let path = escape_swift(&context.signal_path(path));
+                    if boolean {
+                        format!("String(state.bool(\"{path}\"))")
+                    } else {
+                        format!("state.text(\"{path}\")")
+                    }
+                }
+                _ => rule
+                    .kind
+                    .argument()
+                    .as_deref()
+                    .map(swift_string_literal)
+                    .unwrap_or_else(|| "nil".to_string()),
+            };
+            format!(
+                "DoweValidationRule(kind: {}, argument: {argument}, message: {})",
+                swift_string_literal(rule.kind.name()),
+                swift_string_literal(&rule.message)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{rules}]")
 }
 
 fn render_swift_combo_box(

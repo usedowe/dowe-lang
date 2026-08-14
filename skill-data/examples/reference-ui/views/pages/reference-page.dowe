@@ -41,7 +41,7 @@ page ReferencePage
     set loadingMetrics value:false
 
   Section id:"hero" background:"ocean" boxed:true py:{ xs:12 md:20 }
-    Grid columns:1 gap:{ xs:10 md:14 }
+    Flex direction:"column" gap:{ xs:10 md:14 }
       Grid columns:{ xs:1 lg:2 } gap:{ xs:10 lg:16 } align:"center"
         Flex direction:"column" align:"start" gap:5
           Chip variant:"soft" scheme:"primary"
@@ -50,15 +50,13 @@ page ReferencePage
             "Build interfaces with a point of view"
           Text size:{ xs:"md" md:"lg" } color:"muted"
             "Translate evidence into layered, natural product design without sacrificing Dowe portability."
-          Flex direction:{ xs:"column" sm:"row" } align:{ xs:"stretch" sm:"center" } gap:3
+          Grid columns:{ xs:1 sm:2 } align:{ xs:"stretch" sm:"center" } gap:3
             Button href:"/#product" size:"lg"
               "Explore the system"
             Button href:"/#workflow" variant:"outlined" scheme:"muted" size:"lg"
               "See the workflow"
-          Flex align:"center" gap:3 wrap:true
-            Icon name:"check-circle-bold-duotone" fill:"success" w:6 h:6
-            Text size:"sm" color:"muted"
-              "Semantic components · authored composition · deterministic review"
+          Text size:"sm" color:"muted"
+            "✓ Semantic components · authored composition · deterministic review"
         Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
           Flex direction:"column" align:"center" justify:"center" minH:{ xs:64 md:80 }
             Card variant:"soft" scheme:"surface" p:{ xs:6 md:8 } rounded:"xl" shadow:"lg" shadowColor:"tertiary"
@@ -71,10 +69,10 @@ page ReferencePage
                   "Portable visual stage"
                 Text size:"sm" color:"muted"
                   "One focal object anchors proof, status, and spatial detail."
-                Grid columns:3 gap:2
-                  Divider scheme:"primary"
-                  Divider scheme:"secondary"
-                  Divider scheme:"tertiary"
+                Flex gap:2
+                  Divider scheme:"primary" w:"full"
+                  Divider scheme:"secondary" w:"full"
+                  Divider scheme:"tertiary" w:"full"
           Box position:"absolute" top:4 right:4
             Chip variant:"solid" scheme:"primary" shadow:"md" shadowColor:"primary"
               "COMPILED"
@@ -96,27 +94,26 @@ page ReferencePage
 
   Section bg:"softMuted" boxed:true py:6
     Marquee
-      Flex align:"center" gap:{ xs:8 md:16 }
-        Flex align:"center" gap:2
-          Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:6 h:6
-          Text size:"sm" weight:"bold"
-            "SEMANTIC LAYOUT"
-        Flex align:"center" gap:2
-          Icon name:"gallery-bold-duotone" fill:"secondary" w:6 h:6
-          Text size:"sm" weight:"bold"
-            "ORIGINAL MEDIA"
-        Flex align:"center" gap:2
-          Icon name:"check-circle-bold-duotone" fill:"success" w:6 h:6
-          Text size:"sm" weight:"bold"
-            "RESPONSIVE PROOF"
-        Flex align:"center" gap:2
-          Icon name:"layers-minimalistic-bold-duotone" fill:"tertiary" w:6 h:6
-          Text size:"sm" weight:"bold"
-            "VISUAL QA"
+      Flex align:"center" gap:2
+        Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:6 h:6
+        Text size:"sm" weight:"bold"
+          "SEMANTIC LAYOUT"
+      Flex align:"center" gap:2
+        Icon name:"gallery-bold-duotone" fill:"secondary" w:6 h:6
+        Text size:"sm" weight:"bold"
+          "ORIGINAL MEDIA"
+      Flex align:"center" gap:2
+        Icon name:"check-circle-bold-duotone" fill:"success" w:6 h:6
+        Text size:"sm" weight:"bold"
+          "RESPONSIVE PROOF"
+      Flex align:"center" gap:2
+        Icon name:"layers-minimalistic-bold-duotone" fill:"tertiary" w:6 h:6
+        Text size:"sm" weight:"bold"
+          "VISUAL QA"
 
   Section id:"product" boxed:true bg:"surface" py:{ xs:12 md:20 }
-    Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:14 } align:"start"
-      Flex direction:"column" align:"start" gap:4
+    Flex direction:{ xs:"column" md:"row" } gap:{ xs:8 md:14 } align:"start"
+      Grid columns:1 align:"start" gap:4 w:"full"
         Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
           "DESIGN GRAMMAR"
         Title size:{ xs:"4xl" md:"5xl" } weight:"black"
@@ -125,7 +122,7 @@ page ReferencePage
           "The system keeps semantic ownership while giving every important band a visual payload and a distinct composition."
         Card variant:"solid" scheme:"primary" p:6 shadow:"xl" shadowColor:"primary"
           Flex direction:"column" gap:5
-            Flex align:"center" justify:"between" gap:4
+            Grid columns:2 align:"center" gap:4
               Icon name:"gallery-bold-duotone" fill:"primaryText" w:10 h:10
               Chip variant:"soft" scheme:"muted"
                 "QUALITY FLOOR"
@@ -133,11 +130,11 @@ page ReferencePage
               "Foundation + payload + detail"
             Text size:"sm"
               "A shorter page may use fewer bands. It should not use flatter bands."
-      Grid columns:{ xs:1 sm:2 } gap:4 align:"stretch"
+      Grid columns:{ xs:1 sm:2 } gap:4 align:"stretch" w:"full"
         each in:features as:feature key:feature.id
           Card variant:"soft" scheme:"background" p:{ xs:5 md:6 } h:"full" border:1 borderColor:"muted"
             Flex direction:"column" justify:"between" gap:8 h:"full"
-              Flex direction:"column" gap:3
+              Grid columns:1 gap:3
                 Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
                   "{feature.index}"
                 Title size:"2xl" weight:"black"
@@ -147,7 +144,7 @@ page ReferencePage
               Divider scheme:"primary"
 
   Section id:"services" background:"aurora" boxed:true py:{ xs:12 md:20 }
-    Grid columns:1 gap:{ xs:8 md:12 }
+    Flex direction:"column" gap:{ xs:8 md:12 }
       Grid columns:{ xs:1 md:2 } gap:5 align:"end"
         Flex direction:"column" align:"start" gap:3
           Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
@@ -192,7 +189,7 @@ page ReferencePage
             Flex align:"start" gap:{ xs:4 md:6 }
               Chip variant:"solid" scheme:"primary"
                 "{step.number}"
-              Flex direction:"column" gap:2
+              Grid columns:1 gap:2
                 Title size:"2xl" weight:"black"
                   "{step.title}"
                 Text size:"sm" color:"muted"

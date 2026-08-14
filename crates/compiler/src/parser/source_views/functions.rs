@@ -86,6 +86,7 @@ fn parse_function_statements(nodes: &[SourceNode]) -> DoweResult<Vec<ViewFunctio
     while index < nodes.len() {
         let node = &nodes[index];
         match node.name.as_str() {
+            "validate" => statements.push(parse_validate_statement(node)?),
             "request" => statements.push(parse_request_statement(node)?),
             "set" => statements.push(ViewFunctionStatement::Assign(parse_set_action(node)?)),
             "reset" => statements.push(ViewFunctionStatement::Reset(parse_reset_action(node)?)),
@@ -117,13 +118,26 @@ fn parse_function_statements(nodes: &[SourceNode]) -> DoweResult<Vec<ViewFunctio
             _ => {
                 return Err(node_error(
                     node,
-                    "view function statements must be `request`, `if`, `set`, `reset`, `toast`, or `redirect`",
+                    "view function statements must be `validate`, `request`, `if`, `set`, `reset`, `toast`, or `redirect`",
                 ));
             }
         }
         index += 1;
     }
     Ok(statements)
+}
+
+fn parse_validate_statement(node: &SourceNode) -> DoweResult<ViewFunctionStatement> {
+    if node.args.len() != 1 || !node.props.is_empty() || !node.children.is_empty() {
+        return Err(node_error(node, "`validate` must use `validate signalName`"));
+    }
+    let target = node.args[0]
+        .as_required_string()
+        .ok_or_else(|| node_error(node, "`validate` target must be a Signal name"))?;
+    if target.contains('.') || target.is_empty() {
+        return Err(node_error(node, "`validate` target must be a Signal name"));
+    }
+    Ok(ViewFunctionStatement::Validate { target })
 }
 
 fn parse_redirect_statement(node: &SourceNode) -> DoweResult<ViewFunctionStatement> {

@@ -120,6 +120,13 @@ fn generates_fixed_fab_as_route_overlay_with_dowe_icons() {
         ".frame(maxWidth: .infinity, maxHeight: .infinity)\n                .contentShape(Circle())"
     ));
     assert!(generated.contains(".rotationEffect(.degrees(doweFixedFabOpen0 ? 45 : 0))"));
+    let rotation = generated
+        .find(".rotationEffect(.degrees(doweFixedFabOpen0 ? 45 : 0))")
+        .expect("Fab rotation");
+    let gesture = generated
+        .find(".modifier(DoweGestureModifier(preset: .press, transition: .smooth))")
+        .expect("Fab press gesture");
+    assert!(rotation < gesture);
     assert!(generated.contains("DoweSvgView(viewBox:"));
     assert!(generated.contains("maxHeight: .infinity, alignment: .bottomTrailing"));
     assert!(!generated.contains("Image(systemName: \"plus\")"));
@@ -199,6 +206,13 @@ fn positioned_box_page() -> ViewNode {
 }
 
 fn fixed_fab_page() -> ViewNode {
+    let mut style = VariantProps {
+        color: Some(ColorFamily::Primary),
+        variant: Some(ComponentVariant::Solid),
+        size: Some(ButtonSize::Lg),
+        ..Default::default()
+    };
+    style.style.motion_mut().gesture = Some(ViewGesture::Press);
     ViewNode::Scope {
         constants: Vec::new(),
         signals: Vec::new(),
@@ -207,12 +221,7 @@ fn fixed_fab_page() -> ViewNode {
             text("Scrollable content"),
             ViewNode::Fab {
                 props: FabProps {
-                    style: VariantProps {
-                        color: Some(ColorFamily::Primary),
-                        variant: Some(ComponentVariant::Solid),
-                        size: Some(ButtonSize::Lg),
-                        ..Default::default()
-                    },
+                    style,
                     position: OverlayCornerPosition::BottomRight,
                     fixed: true,
                     offset_x: ScaleValue::from_half_steps(8),
@@ -958,7 +967,49 @@ fn generates_touch_driven_swiftui_gestures() {
     assert!(views.contains(".simultaneousGesture(pressGesture)"));
     assert!(views.contains("preset == .grow && (activeHover || activePress)"));
     assert!(views.contains("preset == .tilt && (activeHover || activePress)"));
+    assert!(views.contains("return CGFloat(0.94)"));
     assert!(!views.contains(".onLongPressGesture(minimumDuration: 0"));
+}
+
+#[test]
+fn applies_button_press_feedback_after_the_complete_swiftui_surface() {
+    let mut button = VariantProps::default();
+    button.style.motion_mut().gesture = Some(ViewGesture::Press);
+    let mut button_route = route();
+    button_route.layout_tree = ViewNode::Children;
+    button_route.page_tree = ViewNode::Button {
+        props: button,
+        children: vec![text("Press")],
+    };
+    let output = generate_ios(
+        &[button_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let page = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageLoginView.swift"))
+        .expect("button page");
+    let background = page.content.find(".background(").expect("button background");
+    let button_style = page
+        .content
+        .find(".buttonStyle(.plain)")
+        .expect("plain button style");
+    let gesture = page
+        .content
+        .find(".modifier(DoweGestureModifier(preset: .press, transition: .smooth))")
+        .expect("press gesture");
+
+    assert!(background < button_style);
+    assert!(button_style < gesture);
+    assert_eq!(
+        page.content
+            .matches(".modifier(DoweGestureModifier(preset: .press, transition: .smooth))")
+            .count(),
+        1
+    );
 }
 
 #[test]

@@ -2366,6 +2366,7 @@ fn normalizes_button_visual_props() {
         ViewNode::Button { props, .. } => {
             assert_eq!(props.variant, Some(ComponentVariant::Solid));
             assert_eq!(props.color, Some(ColorFamily::Primary));
+            assert_eq!(props.style.motion().gesture, Some(ViewGesture::Press));
             assert_eq!(
                 props.style.rounded.expect("rounded").entries[0].value,
                 RoundedSize::Md
@@ -2390,6 +2391,47 @@ fn normalizes_button_visual_props() {
         }
         _ => panic!("button"),
     }
+}
+
+#[test]
+fn defaults_press_feedback_for_action_controls_and_respects_opt_out() {
+    let defaults = super::DesignDefaults::with_builtin_defaults();
+    let mut icon_button = container_component_node(
+        BuiltinComponent::IconButton,
+        vec![
+            string_prop("icon", "settings"),
+            string_prop("label", "Open settings"),
+        ],
+        Vec::new(),
+        false,
+    )
+    .expect("icon button");
+    let mut fab = container_component_node(BuiltinComponent::Fab, Vec::new(), Vec::new(), false)
+        .expect("fab");
+    let mut opted_out = container_component_node(
+        BuiltinComponent::Button,
+        vec![string_prop("gesture", "none")],
+        vec![text_node("No motion").expect("text")],
+        false,
+    )
+    .expect("button");
+
+    super::apply_design_defaults_to_tree(&mut icon_button, &defaults);
+    super::apply_design_defaults_to_tree(&mut fab, &defaults);
+    super::apply_design_defaults_to_tree(&mut opted_out, &defaults);
+
+    assert!(matches!(
+        icon_button,
+        ViewNode::Button { ref props, .. } if props.style.motion().gesture == Some(ViewGesture::Press)
+    ));
+    assert!(matches!(
+        fab,
+        ViewNode::Fab { ref props, .. } if props.style.style.motion().gesture == Some(ViewGesture::Press)
+    ));
+    assert!(matches!(
+        opted_out,
+        ViewNode::Button { ref props, .. } if props.style.motion().gesture == Some(ViewGesture::None)
+    ));
 }
 
 #[test]

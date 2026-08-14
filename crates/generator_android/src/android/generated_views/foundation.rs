@@ -162,7 +162,6 @@ import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
@@ -542,10 +541,20 @@ private fun Modifier.doweGesture(
     val progress by animateFloatAsState(targetValue = target, animationSpec = spec)
     return this
         .pointerInput(preset, motionEnabled) {
-            awaitEachGesture {
-                awaitFirstDown(requireUnconsumed = false)
-                pressed = true
-                waitForUpOrCancellation()
+            try {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        pressed = event.changes.any { change ->
+                            change.pressed &&
+                                change.position.x >= 0f &&
+                                change.position.y >= 0f &&
+                                change.position.x <= size.width.toFloat() &&
+                                change.position.y <= size.height.toFloat()
+                        }
+                    }
+                }
+            } finally {
                 pressed = false
             }
         }
@@ -557,7 +566,7 @@ private fun Modifier.doweGesture(
                     scaleY = scaleX
                 }
                 DoweGesturePreset.Press -> {
-                    scaleX = 1f - 0.04f * progress
+                    scaleX = 1f - 0.06f * progress
                     scaleY = scaleX
                 }
                 DoweGesturePreset.Grow -> {

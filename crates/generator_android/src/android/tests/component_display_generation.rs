@@ -1972,6 +1972,25 @@ fn generates_android_view_motion() {
     assert!(views
         .content
         .contains("ValueAnimator.areAnimatorsEnabled()"));
+    assert!(views.content.contains("scaleX = 1f - 0.06f * progress"));
+    assert!(views
+        .content
+        .contains("awaitPointerEvent(PointerEventPass.Initial)"));
+    assert!(views
+        .content
+        .contains("awaitPointerEventScope {\n                while (true)"));
+    assert!(views
+        .content
+        .contains("pressed = event.changes.any { change ->"));
+    assert!(views
+        .content
+        .contains("change.position.x <= size.width.toFloat()"));
+    assert!(views
+        .content
+        .contains("change.position.y <= size.height.toFloat()"));
+    assert!(views
+        .content
+        .contains("finally {\n                pressed = false"));
     assert!(views
         .content
         .contains("var routeRevision by remember { mutableIntStateOf(0) }"));
@@ -1983,6 +2002,19 @@ fn generates_android_view_motion() {
         .contains("key(currentEntry.path, routeRevision)"));
 
     let dev = dev_java_source(&output);
+    assert!(dev.content.contains("baseScaleX * 0.94f"));
+    assert!(dev
+        .content
+        .contains("stateAnimator.addState(new int[]{android.R.attr.state_pressed}"));
+    assert!(dev
+        .content
+        .contains("view.setStateListAnimator(stateAnimator);"));
+    assert!(dev
+        .content
+        .contains("DOWE_GESTURE_ANIMATORS.put(view, stateAnimator);"));
+    assert!(dev
+        .content
+        .contains("if (!DOWE_GESTURE_ANIMATORS.containsKey(view))"));
     assert!(dev.content.contains(r#"doweAnimate(view0, "fadeIn");"#));
     assert!(dev.content.contains(r#"doweAnimate(view1, "slideUp");"#));
     assert!(dev
@@ -1992,4 +2024,50 @@ fn generates_android_view_motion() {
         .content
         .contains(r#"doweGesture(view1, "lift", "spring");"#));
     assert!(dev.content.contains("renderCurrentRoute();"));
+}
+
+#[test]
+fn generates_compose_form_validation_contract() {
+    let mut props = VariantProps {
+        label: Some("Email".to_string()),
+        variant: Some(ComponentVariant::Outlined),
+        ..Default::default()
+    };
+    let validation = props.element.form_validation_mut();
+    validation.help_text = Some("Use your work email".to_string());
+    validation.rules = vec![
+        dowe_components::form_validation_rule("required", "Email is required").expect("rule"),
+        dowe_components::form_validation_rule("email", "Enter a valid email").expect("rule"),
+    ];
+    let route = ViewRoute {
+        id: "validation".to_string(),
+        route_path: "/validation".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Input { props },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let source = all_android_source(&output);
+
+    assert!(source.contains("private data class DoweValidationRule"));
+    assert!(source.contains("private fun doweValidationError"));
+    assert!(source.contains("message = \"Email is required\""));
+    assert!(source.contains("helpText = \"Use your work email\""));
+    assert!(source.contains("if (touched) doweValidationError"));
+    assert!(source.contains("DoweDesign.danger"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("private final class DoweValidationBinding"));
+    assert!(dev.content.contains("doweTouchedValidations"));
+    assert!(dev
+        .content
+        .contains("new String[]{\"required\", null, \"Email is required\"}"));
+    assert!(dev.content.contains("Validation.watchText();"));
+    assert!(dev.content.contains("DOWE_DANGER"));
 }

@@ -343,6 +343,7 @@ fn generates_swiftui_navigation_shell_components() {
     let views = swift_content(&output);
 
     assert!(views.contains("DoweNavMenu(gap:"));
+    assert!(views.contains("openIndex = openIndex == index ? nil : index"));
     assert!(
         views.contains(
             "DoweAnchoredPopoverPresenter(\n                isPresented: openIndex != nil"

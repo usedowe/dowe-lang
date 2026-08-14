@@ -268,6 +268,26 @@ fn emits_view_motion_markup_and_css() {
 }
 
 #[test]
+fn emits_press_feedback_scale_for_web_controls() {
+    let mut style = VariantProps::default();
+    style.style.motion_mut().gesture = Some(ViewGesture::Press);
+    let tree = ViewNode::Button {
+        props: style,
+        children: vec![text("Save")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/press.dowe"),
+        "press",
+        &tree,
+    );
+
+    assert!(page.content.contains("has-transform"));
+    assert!(page.content.contains("gesture-press"));
+    assert!(super::design_css().contains(".gesture-press:active{--dowe-gesture-scale:.94;}"));
+}
+
+#[test]
 fn emits_button_size_and_variant_css() {
     let root = Path::new("/project");
     let page_tree = ViewNode::Button {

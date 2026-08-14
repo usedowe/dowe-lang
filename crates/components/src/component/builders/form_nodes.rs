@@ -2,17 +2,26 @@ pub fn checkbox_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
     let mut checked = false;
     let mut disabled = false;
     let mut name = None;
+    let mut help_text = None;
+    let mut error_text = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
             "checked" => checked = parse_static_bool(&prop.name, &prop.value)?,
             "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
+            "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "color" => return Err(scheme_prop_error(BuiltinComponent::Checkbox)),
             _ => style_props.push(prop),
         }
     }
-    let style = parse_variant_props(BuiltinComponent::Checkbox, &style_props)?;
+    let mut style = parse_variant_props(BuiltinComponent::Checkbox, &style_props)?;
+    if help_text.is_some() || error_text.is_some() {
+        let validation = style.element.form_validation_mut();
+        validation.help_text = help_text;
+        validation.error_text = error_text;
+    }
     Ok(ViewNode::Checkbox {
         props: CheckboxProps {
             style,

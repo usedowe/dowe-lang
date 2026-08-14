@@ -4,6 +4,7 @@ include!("ios/reactive_runtime.rs");
 include!("ios/reactive_lowering.rs");
 include!("ios/layout_partitioning.rs");
 include!("ios/layout_sections.rs");
+include!("ios/route_sections.rs");
 include!("ios/swift_rendering.rs");
 include!("ios/swift_modifiers.rs");
 include!("ios/swift_values_and_text.rs");

@@ -31,15 +31,6 @@ fn render_swift_theme_select(
     default_family: FontFamily,
 ) {
     let pad = " ".repeat(indent);
-    let options = props
-        .themes
-        .iter()
-        .map(|theme| SelectOption {
-            value: theme.clone(),
-            label: theme_display_label(theme),
-            description: None,
-        })
-        .collect::<Vec<_>>();
     let size = swift_text_size_expr(false, INPUT_TEXT_SIZE);
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
@@ -49,10 +40,10 @@ fn render_swift_theme_select(
         "nil".to_string()
     };
     output.push_str(&format!(
-        "{pad}DoweSelectField(value: Optional(Binding(get: {{ DoweDesign.shared.name }}, set: {{ DoweDesign.applyTheme($0) }})), label: Optional({}), placeholder: {}, floating: false, options: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {})\n",
+        "{pad}DoweSelectField(value: Optional(Binding(get: {{ DoweDesign.shared.name }}, set: {{ DoweDesign.applyTheme($0) }})), label: Optional({}), placeholder: {}, floating: false, options: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {}, helpText: nil, errorText: nil, validationRules: [])\n",
         swift_string_literal(&props.label),
         swift_string_literal(&props.placeholder),
-        swift_select_options(&options, None, &SwiftReactiveContext::default()),
+        "DoweThemeModule.selectOptions",
         swift_font_value(
             props.style.style.font.as_ref().or(inherited_font),
             &size,
@@ -70,21 +61,6 @@ fn render_swift_theme_select(
         indent,
         &swift_modifiers_for_style(&props.style.style),
     );
-}
-
-fn theme_display_label(value: &str) -> String {
-    value
-        .split('-')
-        .filter(|part| !part.is_empty())
-        .map(|part| {
-            let mut chars = part.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-                None => String::new(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 fn render_swift_fab(
@@ -162,7 +138,9 @@ fn render_swift_fab(
     output.push_str(&format!(
         "{pad}        }}\n{pad}        .frame(maxWidth: .infinity, maxHeight: .infinity)\n{pad}        .contentShape(Circle())\n{pad}    }}\n"
     ));
-    let mut trigger_modifiers = swift_modifiers_for_style(&props.style.style);
+    let trigger_gesture = swift_gesture_modifier(&props.style.style);
+    let trigger_style = swift_style_without_gesture(&props.style.style);
+    let mut trigger_modifiers = swift_modifiers_for_style(&trigger_style);
     trigger_modifiers.push(format!(".background({})", variant_container(&props.style)));
     trigger_modifiers.push(format!(
         ".foregroundStyle({})",
@@ -174,6 +152,9 @@ fn render_swift_fab(
         trigger_modifiers.push(format!(
             ".rotationEffect(.degrees({open_state} ? 45 : 0))"
         ));
+    }
+    if let Some(modifier) = trigger_gesture {
+        trigger_modifiers.push(modifier);
     }
     append_swift_modifiers(output, indent + 4, &trigger_modifiers);
     output.push_str(&format!("{pad}}}\n"));
@@ -193,10 +174,11 @@ fn render_swift_fab(
         ];
         append_swift_modifiers(output, indent, &modifiers);
     } else {
+        let container_style = swift_style_without_gesture(&props.style.style);
         append_swift_modifiers(
             output,
             indent,
-            &swift_modifiers_for_style(&props.style.style),
+            &swift_modifiers_for_style(&container_style),
         );
     }
 }

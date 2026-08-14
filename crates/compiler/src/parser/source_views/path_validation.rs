@@ -144,6 +144,26 @@ fn validate_typed_path(
     expectation: ViewPathExpectation,
 ) -> DoweResult<()> {
     let root = path_root(value);
+    if signals.contains_key(root)
+        && (value == format!("{root}.isValid")
+            || value == format!("{root}.isInvalid"))
+    {
+        return if matches!(expectation, ViewPathExpectation::Bool | ViewPathExpectation::Any) {
+            Ok(())
+        } else {
+            Err(DoweError::at_path(
+                path,
+                format!("invalid signal path `{value}` in `{label}`: expected bool"),
+            ))
+        };
+    }
+    if signals.contains_key(root)
+        && (value.starts_with(&format!("{root}.errors."))
+            || value.starts_with(&format!("{root}.touched.")))
+        && matches!(expectation, ViewPathExpectation::Any | ViewPathExpectation::String | ViewPathExpectation::Bool)
+    {
+        return Ok(());
+    }
     let mut resolved = if let Some(value) = signals.get(root) {
         Some(value.clone())
     } else if let Some(value) = locals.get(root) {
@@ -245,4 +265,3 @@ fn stable_reactive_id(namespace: &str, source: &str) -> String {
     }
     id
 }
-

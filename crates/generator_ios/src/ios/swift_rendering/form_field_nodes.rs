@@ -7,11 +7,14 @@ fn render_swift_checkbox(
     let pad = " ".repeat(indent);
     let binding = swift_bool_binding(&props.style, props.checked, context);
     output.push_str(&format!(
-        "{pad}DoweCheckboxView(checked: {binding}, enabled: {}, label: {}, name: {}, accentColor: {})\n",
+        "{pad}DoweCheckboxView(checked: {binding}, enabled: {}, label: {}, name: {}, accentColor: {}, helpText: {}, errorText: {}, validationRules: {})\n",
         !props.disabled,
         swift_optional_literal(props.style.label.as_deref()),
         swift_optional_literal(props.name.as_deref()),
-        swift_scheme_color(&props.style)
+        swift_scheme_color(&props.style),
+        swift_validation_help(&props.style.element),
+        swift_validation_error(&props.style.element),
+        swift_validation_rules(&props.style.element, context, true)
     ));
     append_swift_modifiers(
         output,
@@ -82,7 +85,7 @@ fn render_swift_date(
         "nil".to_string()
     };
     output.push_str(&format!(
-        "{pad}DoweDateField(value: {binding}, label: {}, placeholder: {}, floating: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), name: {}, helpText: {}, errorText: {}, min: {}, max: {}, backgroundColor: {}, contentColor: {}, borderColor: {border})\n",
+        "{pad}DoweDateField(value: {binding}, label: {}, placeholder: {}, floating: {}, size: {}, fontSize: {}, lineHeight: CGFloat({}), name: {}, helpText: {}, errorText: {}, min: {}, max: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, validationRules: {})\n",
         swift_optional_literal(props.style.label.as_deref()),
         swift_string_literal(props.style.placeholder.as_deref().unwrap_or("Select date")),
         props.style.label_floating,
@@ -96,6 +99,7 @@ fn render_swift_date(
         swift_optional_literal(props.max.as_deref()),
         variant_container(&props.style),
         variant_content(&props.style),
+        swift_validation_rules(&props.style.element, context, false),
     ));
     append_swift_modifiers(
         output,

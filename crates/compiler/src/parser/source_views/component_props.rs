@@ -19,6 +19,9 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
         (BuiltinComponent::Button, "loading", SourceValue::Bareword(path)) => {
             PropValue::String(format!("@signal:{path}"))
         }
+        (BuiltinComponent::Button, "disabled", SourceValue::Bareword(path)) => {
+            PropValue::String(format!("@signal:{path}"))
+        }
         (
             BuiltinComponent::SideNav,
             "variant" | "scheme" | "size" | "wide",
@@ -210,12 +213,12 @@ fn validate_component_prop_source(
         ));
     }
     if component == BuiltinComponent::Button
-        && prop.name == "loading"
+        && matches!(prop.name.as_str(), "loading" | "disabled")
         && !matches!(&prop.value, SourceValue::Bareword(_))
     {
         return Err(prop_error(
             prop,
-            ComponentError::invalid_prop("loading", "signal bool path").to_string(),
+            ComponentError::invalid_prop(&prop.name, "signal bool path").to_string(),
         ));
     }
     if component == BuiltinComponent::DateRange
@@ -261,7 +264,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             "variant" | "scheme" | "size" | "rounded",
             SourceValue::Bareword(_),
         ) => true,
-        (BuiltinComponent::Button, "loading", SourceValue::Bareword(_)) => true,
+        (BuiltinComponent::Button, "loading" | "disabled", SourceValue::Bareword(_)) => true,
         (
             BuiltinComponent::SideNav,
             "variant" | "scheme" | "size" | "wide",

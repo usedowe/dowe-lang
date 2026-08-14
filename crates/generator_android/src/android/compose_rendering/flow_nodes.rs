@@ -460,6 +460,7 @@ fn render_compose_flow_node(
                 })
                 .unwrap_or_else(|| compose_navigation_action(props.navigation.as_ref()));
             let loading = props.reactive.loading.as_ref().map(|path| reactive_bool(path));
+            let disabled = props.reactive.disabled.as_ref().map(|path| reactive_bool(path));
             let variant = props.reactive.variant.as_ref().map(|path| reactive_text(path, "solid"));
             let scheme = props.reactive.scheme.as_ref().map(|path| reactive_text(path, "primary"));
             let size = props.reactive.size.as_ref().map(|path| reactive_text(path, "md"));
@@ -513,10 +514,17 @@ fn render_compose_flow_node(
                 .map(|size| format!("PaddingValues(horizontal = doweButtonHorizontalPadding({size}), vertical = doweButtonVerticalPadding({size}))"))
                 .unwrap_or_else(|| compose_content_padding(&props.style.spacing));
             let min_height = size.as_ref().map(|size| format!("doweButtonMinHeight({size})")).unwrap_or_else(|| "0.dp".to_string());
-            let enabled = loading
-                .as_ref()
-                .map(|value| format!("!({value})"))
-                .unwrap_or_else(|| "true".to_string());
+            let enabled = if loading.is_some() && disabled.is_some() {
+                let loading_value = loading.as_deref().unwrap_or("false");
+                let disabled_value = disabled.as_deref().unwrap_or("false");
+                format!("!(({loading_value}) || ({disabled_value}))")
+            } else if let Some(loading) = loading.as_deref() {
+                format!("!({loading})")
+            } else if let Some(disabled) = disabled.as_deref() {
+                format!("!({disabled})")
+            } else {
+                "true".to_string()
+            };
             output.push_str(&format!(
                         "{pad}Button(modifier = {}.defaultMinSize(minWidth = 0.dp, minHeight = {min_height}), shape = RoundedCornerShape({}), colors = ButtonDefaults.buttonColors(containerColor = {}, contentColor = {}), border = {}, contentPadding = {content_padding}, enabled = {enabled}, onClick = {}) {{\n",
                         modifier,

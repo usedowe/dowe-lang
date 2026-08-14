@@ -1,5 +1,7 @@
 fn dev_activity_code_and_forms() -> &'static str {
-    r##"    private LinearLayout doweCode(String source, String language, String[] tokenTexts, int[] tokenColors, String copyLabel, String copiedLabel, int backgroundColor, int contentColor, Integer borderColor) {
+    r##"    private final WeakHashMap<TextView, DoweValidationBinding> doweControlValidations = new WeakHashMap<>();
+
+    private LinearLayout doweCode(String source, String language, String[] tokenTexts, int[] tokenColors, String copyLabel, String copiedLabel, int backgroundColor, int contentColor, Integer borderColor) {
         LinearLayout view = doweContainer(false);
         view.setBackground(borderColor == null ? doweBackground(backgroundColor, DOWE_RADIUS) : doweInputBackground(backgroundColor, borderColor, DOWE_RADIUS));
         view.setClipChildren(true);
@@ -71,6 +73,131 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         view.setLineSpacing(0f, lineHeight);
         view.setIncludeFontPadding(false);
         return view;
+    }
+
+    private final class DoweValidationBinding {
+        private final ArrayList<View> surfaces = new ArrayList<>();
+        private final TextView control;
+        private final String helpText;
+        private final String errorText;
+        private final String[][] rules;
+        private final Supplier<String> value;
+        private final boolean booleanValue;
+        private final String touchKey;
+        private final TextView feedback;
+        private final android.graphics.drawable.Drawable restingForeground;
+        private boolean touched;
+
+        DoweValidationBinding(String key, LinearLayout container, View surface, TextView control, String helpText, String errorText, String[][] rules, Supplier<String> value, boolean booleanValue, int contentColor, String font) {
+            this.surfaces.add(surface);
+            this.control = control;
+            this.helpText = helpText;
+            this.errorText = errorText;
+            this.rules = rules;
+            this.value = value;
+            this.booleanValue = booleanValue;
+            this.touchKey = currentPath + "|" + key;
+            this.touched = doweTouchedValidations.contains(this.touchKey);
+            this.restingForeground = surface.getForeground();
+            this.feedback = doweText(helpText == null ? " " : helpText, doweAlpha(contentColor, 0.72f), 12f, 400, 0f, 1.2f, font);
+            this.feedback.setVisibility(View.GONE);
+            doweAdd(container, this.feedback, 4, false);
+            doweControlValidations.put(control, this);
+            update();
+        }
+
+        void watchText() {
+            watchText(control);
+        }
+
+        void watchText(TextView target) {
+            if (target instanceof EditText) {
+                ((EditText) target).addTextChangedListener(new TextWatcher() {
+                    public void beforeTextChanged(CharSequence next, int start, int count, int after) {}
+                    public void onTextChanged(CharSequence next, int start, int before, int count) {}
+                    public void afterTextChanged(Editable next) { update(); }
+                });
+            }
+            watchFocus(target);
+        }
+
+        void watchFocus(View target) {
+            target.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+                if (oldFocus == target) touch();
+            });
+        }
+
+        void addSurface(View target) {
+            surfaces.add(target);
+        }
+
+        void touch() {
+            touched = true;
+            doweTouchedValidations.add(touchKey);
+            update();
+        }
+
+        void update() {
+            String dynamicError = touched ? doweValidationError(value.get(), rules, booleanValue) : null;
+            String resolvedError = errorText != null && !errorText.isEmpty() ? errorText : dynamicError;
+            String message = resolvedError != null && !resolvedError.isEmpty() ? resolvedError : helpText;
+            feedback.setText(message == null ? "" : message);
+            feedback.setTextColor(resolvedError == null ? doweAlpha(control.getCurrentTextColor(), 0.72f) : DOWE_DANGER);
+            feedback.setVisibility(message == null || message.isEmpty() ? View.GONE : View.VISIBLE);
+            for (View target : surfaces) target.setForeground(resolvedError == null ? restingForeground : doweInputBackground(Color.TRANSPARENT, DOWE_DANGER, DOWE_RADIUS));
+            control.setError(resolvedError);
+        }
+    }
+
+    private DoweValidationBinding doweValidation(String key, LinearLayout container, View surface, TextView control, String helpText, String errorText, String[][] rules, Supplier<String> value, boolean booleanValue, int contentColor, String font) {
+        return new DoweValidationBinding(key, container, surface, control, helpText, errorText, rules, value, booleanValue, contentColor, font);
+    }
+
+    private void doweTouchValidation(TextView control) {
+        DoweValidationBinding validation = doweControlValidations.get(control);
+        if (validation != null) validation.touch();
+    }
+
+    private String doweValidationError(String value, String[][] rules, boolean booleanValue) {
+        String text = value == null ? "" : value;
+        boolean present = booleanValue ? Boolean.parseBoolean(text) : !text.isEmpty();
+        for (String[] rule : rules) {
+            String kind = rule[0];
+            String argument = rule[1] == null ? "" : rule[1];
+            boolean invalid = false;
+            if ("required".equals(kind)) invalid = booleanValue ? !present : text.trim().isEmpty();
+            else if (!present) invalid = false;
+            else if ("email".equals(kind)) invalid = !text.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+            else if ("min".equals(kind)) invalid = text.length() < doweValidationNumber(argument, 0);
+            else if ("max".equals(kind)) invalid = text.length() > doweValidationNumber(argument, Integer.MAX_VALUE);
+            else if ("url".equals(kind)) invalid = !text.matches("^https?://(www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$");
+            else if ("phone".equals(kind)) invalid = !text.matches("^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,9}$");
+            else if ("pattern".equals(kind)) {
+                try { invalid = !java.util.regex.Pattern.compile(argument).matcher(text).find(); }
+                catch (RuntimeException exception) { invalid = true; }
+            }
+            else if ("alphanumeric".equals(kind)) invalid = !text.matches("^[a-zA-Z0-9]+$");
+            else if ("numeric".equals(kind)) invalid = !text.matches("^[0-9]+$");
+            else if ("alpha".equals(kind)) invalid = !text.matches("^[a-zA-Z]+$");
+            else if ("matches".equals(kind)) invalid = !text.equals(argument);
+            else if ("strongPassword".equals(kind)) invalid = text.length() < 8 || !java.util.regex.Pattern.compile("[a-z]").matcher(text).find() || !java.util.regex.Pattern.compile("[A-Z]").matcher(text).find() || !java.util.regex.Pattern.compile("[0-9]").matcher(text).find() || !java.util.regex.Pattern.compile("[^a-zA-Z0-9]").matcher(text).find();
+            else if ("creditCard".equals(kind)) invalid = !text.replaceAll("\\s", "").matches("^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\\d{3})\\d{11})$");
+            else if ("date".equals(kind)) invalid = !text.matches("^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+            else if ("minWords".equals(kind)) invalid = doweValidationWordCount(text) < doweValidationNumber(argument, 0);
+            else if ("maxWords".equals(kind)) invalid = doweValidationWordCount(text) > doweValidationNumber(argument, Integer.MAX_VALUE);
+            if (invalid) return rule[2];
+        }
+        return null;
+    }
+
+    private int doweValidationNumber(String value, int fallback) {
+        try { return Integer.parseInt(value); }
+        catch (NumberFormatException exception) { return fallback; }
+    }
+
+    private int doweValidationWordCount(String value) {
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? 0 : trimmed.split("\\s+").length;
     }
 
     private static final class DoweRichTextView extends TextView {
@@ -310,8 +437,12 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
     }
 
     private void doweBindSelect(TextView input, TextView floatingLabel, String[] labels, String[] values, String[] descriptions, String[] selected, String placeholder, int color, String font, String bindPath, boolean floating, Consumer<String> onSelect) {
+        doweBindSelect(input, floatingLabel, labels, values, descriptions, selected, placeholder, color, font, bindPath, floating, onSelect, null);
+    }
+
+    private void doweBindSelect(TextView input, TextView floatingLabel, String[] labels, String[] values, String[] descriptions, String[] selected, String placeholder, int color, String font, String bindPath, boolean floating, Consumer<String> onSelect, Runnable onTouched) {
         doweUpdateSelectTrigger(input, floatingLabel, labels, values, selected[0], placeholder, floating, false);
-        input.setOnClickListener(view -> doweSelectPopup(input, floatingLabel, labels, values, descriptions, selected, placeholder, color, font, bindPath, floating, onSelect));
+        input.setOnClickListener(view -> doweSelectPopup(input, floatingLabel, labels, values, descriptions, selected, placeholder, color, font, bindPath, floating, onSelect, onTouched));
     }
 
     private void doweUpdateSelectTrigger(TextView input, TextView floatingLabel, String[] labels, String[] values, String selected, String placeholder, boolean floating, boolean expanded) {
@@ -333,7 +464,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         doweUpdateFloatingSelectLabel(input, floatingLabel, floating, expanded || hasSelection);
     }
 
-    private void doweSelectPopup(TextView anchor, TextView floatingLabel, String[] labels, String[] values, String[] descriptions, String[] selected, String placeholder, int color, String font, String bindPath, boolean floating, Consumer<String> onSelect) {
+    private void doweSelectPopup(TextView anchor, TextView floatingLabel, String[] labels, String[] values, String[] descriptions, String[] selected, String placeholder, int color, String font, String bindPath, boolean floating, Consumer<String> onSelect, Runnable onTouched) {
         doweUpdateSelectTrigger(anchor, floatingLabel, labels, values, selected[0], placeholder, floating, true);
         LinearLayout content = doweContainer(false);
         content.setAlpha(0f);
@@ -349,7 +480,11 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         PopupWindow popup = new PopupWindow(optionsScroll, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setOutsideTouchable(true);
         popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-        popup.setOnDismissListener(() -> doweUpdateSelectTrigger(anchor, floatingLabel, labels, values, selected[0], placeholder, floating, false));
+        popup.setOnDismissListener(() -> {
+            doweUpdateSelectTrigger(anchor, floatingLabel, labels, values, selected[0], placeholder, floating, false);
+            doweTouchValidation(anchor);
+            if (onTouched != null) onTouched.run();
+        });
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
             LinearLayout option = doweContainer(false);
@@ -366,6 +501,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
             option.setOnClickListener(view -> {
                 selected[0] = values[index];
                 doweUpdateSelectTrigger(anchor, floatingLabel, labels, values, selected[0], placeholder, floating, false);
+                doweTouchValidation(anchor);
                 if (bindPath != null) {
                     doweWrite(bindPath, selected[0]);
                 }
@@ -714,14 +850,17 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         popup[0] = new PopupWindow(content, Math.max(anchor.getWidth(), doweDp(range ? 320 : 280)), ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup[0].setOutsideTouchable(true);
         popup[0].setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-        popup[0].setOnDismissListener(() -> doweUpdateDateTrigger(anchor, selected, placeholder, range));
+        popup[0].setOnDismissListener(() -> {
+            doweUpdateDateTrigger(anchor, selected, placeholder, range);
+            doweTouchValidation(anchor);
+        });
         render[0].run();
         content.measure(View.MeasureSpec.makeMeasureSpec(Math.max(anchor.getWidth(), doweDp(range ? 320 : 280)), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         popup[0].setHeight(Math.min(content.getMeasuredHeight(), doweDp(440)));
         popup[0].showAsDropDown(anchor, 0, doweDp(4));
     }
 
-    private void dowePhonePopup(View anchor, TextView dialView, DoweSvgView flagView, String[] codes, String[] names, String[] dials, String[] selected, String searchPlaceholder, String emptyText, String loadingText, int color, String font) {
+    private void dowePhonePopup(View anchor, TextView dialView, DoweSvgView flagView, String[] codes, String[] names, String[] dials, String[] selected, String searchPlaceholder, String emptyText, String loadingText, int color, String font, Runnable onTouched) {
         LinearLayout content = doweContainer(false);
         content.setAlpha(0f);
         content.setScaleX(0.98f);
@@ -748,6 +887,7 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         PopupWindow popup = new PopupWindow(content, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setOutsideTouchable(true);
         popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        popup.setOnDismissListener(() -> { if (onTouched != null) onTouched.run(); });
         Runnable render = () -> {
             String query = search.getText().toString().trim().toLowerCase();
             options.removeAllViews();

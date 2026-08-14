@@ -103,6 +103,93 @@
     }
 
     #[test]
+    fn lowers_validation_rules_for_all_supported_form_controls() {
+        let tree = parse_page(
+            r#"page validationPage
+  signal form value:{ email:"" birthday:"" code:"" phone:"" role:"" accepted:false password:"" }
+  Box
+    Input bind:form.email label:"Email" helpText:"Use your work email"
+      validate rule:"required" message:"Email is required"
+      validate rule:"email" message:"Enter a valid email"
+    Date bind:form.birthday label:"Birthday"
+      validate rule:"date" message:"Enter a valid date"
+    Pin bind:form.code label:"Code"
+      validate rule:"min:6" message:"Enter all six digits"
+    Phone bind:form.phone label:"Phone"
+      validate rule:"phone" message:"Enter a valid phone"
+    Select bind:form.role label:"Role" errorText:"Role is unavailable"
+      Option value:"admin" label:"Admin"
+      validate rule:"required" message:"Choose a role"
+    Checkbox bind:form.accepted label:"Accept" helpText:"Required to continue"
+      validate rule:"required" message:"Accept the terms""#,
+        )
+        .expect("validated controls");
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Box { children, .. } = &children[0] else {
+            panic!("box");
+        };
+
+        let rules = children
+            .iter()
+            .map(|node| {
+                super::node_element_props(node)
+                    .and_then(|props| props.form_validation())
+                    .expect("validation")
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(rules[0].rules.len(), 2);
+        assert_eq!(rules[0].help_text.as_deref(), Some("Use your work email"));
+        assert_eq!(rules[1].rules[0].kind.name(), "date");
+        assert_eq!(rules[2].rules[0].kind.argument(), Some("6".to_string()));
+        assert_eq!(rules[3].rules[0].kind.name(), "phone");
+        assert_eq!(rules[4].error_text.as_deref(), Some("Role is unavailable"));
+        assert_eq!(rules[5].help_text.as_deref(), Some("Required to continue"));
+    }
+
+    #[test]
+    fn rejects_invalid_validation_structure_rules_and_matches_types() {
+        let outside = parse_page(
+            r#"page validationPage
+  validate rule:"required" message:"Required""#,
+        )
+        .expect_err("contextual validation");
+        assert!(outside.to_string().contains("can only be used inside"));
+
+        let invalid_rule = parse_page(
+            r#"page validationPage
+  Input
+    validate rule:"custom" message:"Invalid""#,
+        )
+        .expect_err("closed rule set");
+        assert!(invalid_rule.to_string().contains("known validation rule"));
+
+        let invalid_child = parse_page(
+            r#"page validationPage
+  Phone
+    Text
+      "No""#,
+        )
+        .expect_err("validate-only children");
+        assert!(invalid_child.to_string().contains("only accepts validate children"));
+
+        let invalid_match = parse_page(
+            r#"page validationPage
+  signal form value:{ accepted:false count:1 }
+  Checkbox bind:form.accepted
+    validate rule:"matches:form.count" message:"Must match""#,
+        )
+        .expect_err("typed matches path");
+        assert!(
+            invalid_match
+                .to_string()
+                .contains("in `validate matches`: expected bool"),
+            "{invalid_match}"
+        );
+    }
+
+    #[test]
     fn rejects_duplicate_request_path_forms() {
         let error = parse_page(
             r#"page blogsPage

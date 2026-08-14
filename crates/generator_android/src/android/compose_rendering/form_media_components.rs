@@ -386,12 +386,15 @@ fn render_compose_checkbox(
     let pad = " ".repeat(indent);
     let (checked, change) = compose_bool_value_and_change(&props.style, props.checked, context);
     output.push_str(&format!(
-        "{pad}DoweCheckbox(checked = {checked}, onCheckedChange = {change}, enabled = {}, label = {}, name = {}, modifier = {}, accentColor = {})\n",
+        "{pad}DoweCheckbox(checked = {checked}, onCheckedChange = {change}, enabled = {}, label = {}, name = {}, modifier = {}, accentColor = {}, helpText = {}, errorText = {}, validationRules = {})\n",
         !props.disabled,
         compose_optional_string(props.style.label.as_deref()),
         compose_optional_string(props.name.as_deref()),
         modifier_for_style(&props.style.style),
-        compose_scheme_color(&props.style)
+        compose_scheme_color(&props.style),
+        compose_validation_help(&props.style.element),
+        compose_validation_error(&props.style.element),
+        compose_boolean_validation_rules(&props.style.element, context)
     ));
 }
 
@@ -454,7 +457,7 @@ fn render_compose_date(
         "null"
     };
     output.push_str(&format!(
-        "{pad}DoweDateField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), name = {}, helpText = {}, errorText = {}, min = {}, max = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+        "{pad}DoweDateField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, size = {}, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), name = {}, helpText = {}, errorText = {}, min = {}, max = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border}, validationRules = {})\n",
         compose_optional_string(props.style.label.as_deref()),
         compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Select date")),
         props.style.label_floating,
@@ -468,6 +471,7 @@ fn render_compose_date(
         modifier_for_style(&props.style.style),
         variant_container(&props.style),
         variant_content(&props.style),
+        compose_validation_rules(&props.style.element, context),
     ));
 }
 

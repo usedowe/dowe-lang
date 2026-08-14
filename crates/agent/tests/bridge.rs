@@ -599,6 +599,46 @@ fn view_skill_reserves_box_for_advanced_layer_planes() {
 }
 
 #[test]
+fn view_skill_rejects_direct_same_kind_layout_nesting() {
+    let compact = get_public_skill("views", false).expect("compact views skill");
+    let composition = get_public_skill_resource("views", "references/composition.md")
+        .expect("composition resource");
+    let reference_ui = get_public_skill_resource("views", "references/reference-ui.md")
+        .expect("reference UI resource");
+
+    assert!(
+        compact
+            .content
+            .contains("Never generate a `Grid` as a direct child of another `Grid`")
+    );
+    assert!(
+        compact
+            .content
+            .contains("direct child of another `Flex`; flatten")
+    );
+    assert!(
+        composition
+            .content
+            .contains("Direct same-kind layout nesting is a forbidden generated pattern")
+    );
+    assert!(
+        composition
+            .content
+            .contains("| `Grid` directly inside `Grid` |")
+    );
+    assert!(
+        composition
+            .content
+            .contains("| `Flex` directly inside `Flex` |")
+    );
+    assert!(
+        reference_ui
+            .content
+            .contains("No direct `Grid`-in-`Grid` or `Flex`-in-`Flex` wrapper remains")
+    );
+}
+
+#[test]
 fn view_skill_reserves_translation_for_advanced_visual_layers() {
     let compact = get_public_skill("views", false).expect("compact views skill");
     let full = get_public_skill("views", true).expect("full views skill");

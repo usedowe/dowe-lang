@@ -394,6 +394,7 @@ fn render_dev_android_flow_node(
             };
             let variant = props.reactive.variant.as_ref().map(|path| reactive_text(path));
             let scheme = props.reactive.scheme.as_ref().map(|path| reactive_text(path));
+            let disabled = props.reactive.disabled.as_ref().map(|path| reactive_bool(path));
             let variant_value = variant.clone().unwrap_or_else(|| {
                 format!(
                     "\"{}\"",
@@ -470,6 +471,9 @@ fn render_dev_android_flow_node(
                 if let Some(action) = action {
                     output.push_str(&format!("        {view}.setOnClickListener(v -> {action});\n"));
                 }
+                if let Some(disabled) = disabled.as_ref() {
+                    output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n"));
+                }
                 let mut button_style = props.style.clone();
                 button_style.shadow = None;
                 button_style.shadow_color = None;
@@ -499,6 +503,9 @@ fn render_dev_android_flow_node(
                 output.push_str(&format!(
                     "        {view}.setOnClickListener(v -> {action});\n"
                 ));
+            }
+            if let Some(disabled) = disabled.as_ref() {
+                output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n"));
             }
             let mut button_style = props.style.clone();
             button_style.shadow = None;

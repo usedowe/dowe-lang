@@ -89,6 +89,7 @@
       "authoringRules": [
         "Use one responsive Grid or Flex tree; do not duplicate the complete form for compact and wide breakpoints.",
         "Let one Grid columns:1 gap stack own field rhythm, and let Input, Password, Phone, Pin, and Button own their surfaces without individual Box wrappers.",
+        "Keep Password hideStrength disabled on login forms with hideStrength:false or by omitting the prop; enable hideStrength:true only on registration forms.",
         "Use Card only when the reference visibly groups the form as a raised, filled, or outlined surface.",
         "Reserve Box for an advanced auth-layout layer plane with direct absolute background or ornament children, or for a fixed viewport layer."
       ],

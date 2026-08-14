@@ -136,6 +136,26 @@ pub fn complete_document(
     if prop_value_context(&prefix, "i18n") {
         return i18n_completions(root);
     }
+    if prefix.trim_start().starts_with("validate ") && prop_value_context(&prefix, "rule") {
+        return quoted_values([
+            "required",
+            "email",
+            "min:1",
+            "max:100",
+            "url",
+            "phone",
+            "pattern:^[A-Za-z]+$",
+            "alphanumeric",
+            "numeric",
+            "alpha",
+            "matches:form.confirmation",
+            "strongPassword",
+            "creditCard",
+            "date",
+            "minWords:1",
+            "maxWords:100",
+        ]);
+    }
     if let Some(reference_root) = reference_completion_root(&prefix) {
         let mut fields = reference_fields(root, document, reference_root);
         if fields.is_empty() {
@@ -471,6 +491,7 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "overlays",
         "tab",
         "column",
+        "validate",
     ];
     let keywords = keywords
         .into_iter()
@@ -1483,7 +1504,11 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
             ],
             VARIANT_PROPS,
         ),
-        "Checkbox" => combined_props(&["checked", "disabled", "name"], VARIANT_PROPS),
+        "Checkbox" => combined_props(
+            &["checked", "disabled", "name", "helpText", "errorText"],
+            VARIANT_PROPS,
+        ),
+        "validate" => vec!["rule", "message"],
         "Color" => combined_props(
             &[
                 "value",
@@ -2049,6 +2074,7 @@ const ALERT_DIALOG_PROPS: &[&str] = &[
     "variant",
     "scheme",
     "loading",
+    "disabled",
     "id",
     "show",
     "font",
@@ -2980,6 +3006,8 @@ const INPUT_PROPS: &[&str] = &[
     "label",
     "placeholder",
     "labelFloating",
+    "helpText",
+    "errorText",
     "id",
     "show",
     "font",
@@ -3011,6 +3039,8 @@ const SELECT_PROPS: &[&str] = &[
     "label",
     "placeholder",
     "labelFloating",
+    "helpText",
+    "errorText",
     "id",
     "show",
     "font",
@@ -3406,6 +3436,7 @@ const BUTTON_PROPS: &[&str] = &[
     "iconEnd",
     "i18n",
     "loading",
+    "disabled",
     "variant",
     "scheme",
     "size",

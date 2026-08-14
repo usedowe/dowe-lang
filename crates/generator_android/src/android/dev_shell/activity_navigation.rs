@@ -76,7 +76,10 @@ fn dev_activity_navigation(first_path: &str) -> String {
 
     private void doweApplyIntentRoute() {{
         Uri data = getIntent() == null ? null : getIntent().getData();
-        String path = data == null ? null : data.getPath();
+        if (data == null) {{
+            return;
+        }}
+        String path = data.getPath();
         if (path == null || path.isEmpty()) {{
             path = "/";
         }}

@@ -44,6 +44,24 @@ fn validate_node_references(
             };
             validate_typed_path(path, signals, locals, binding, "bind", expectation)?;
         }
+        if let Some(validation) = props.form_validation() {
+            for rule in &validation.rules {
+                if let dowe_components::FormValidationRuleKind::Matches(reference) = &rule.kind {
+                    validate_typed_path(
+                        path,
+                        signals,
+                        locals,
+                        reference,
+                        "validate matches",
+                        if matches!(node, ViewNode::Checkbox { .. }) {
+                            ViewPathExpectation::Bool
+                        } else {
+                            ViewPathExpectation::String
+                        },
+                    )?;
+                }
+            }
+        }
         if let Some(action) = props.on_click.as_ref()
             && !actions.contains(action)
         {
@@ -59,6 +77,16 @@ fn validate_node_references(
                 locals,
                 binding,
                 "loading",
+                ViewPathExpectation::Bool,
+            )?;
+        }
+        if let Some(binding) = props.reactive.disabled.as_deref() {
+            validate_typed_path(
+                path,
+                signals,
+                locals,
+                binding,
+                "disabled",
                 ViewPathExpectation::Bool,
             )?;
         }

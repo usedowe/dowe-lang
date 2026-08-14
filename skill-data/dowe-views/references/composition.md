@@ -225,6 +225,15 @@ region. Do not wrap `Input`, `Password`, `Phone`, `Pin`, `Button`, `Image`, or `
 or resize it. Do not use empty Boxes as Grid gutters or offset columns; center and constrain the
 real Grid, Flex, Card, or control with `align`, `justify`, `w`, and `maxW` instead.
 
+Direct same-kind layout nesting is a forbidden generated pattern: never place a `Grid` directly
+inside another `Grid`, or a `Flex` directly inside another `Flex`. Flatten the grandchildren into
+the owning container. Changing only `columns`, `direction`, `gap`, `align`, `justify`, padding,
+sizing, or visibility does not create a second layout responsibility. When a real subgroup needs
+its own container, choose its primitive from the decision tree and give it an independently
+verifiable track, axis, centering, wrapping, or responsive job. Do not alternate Grid and Flex just
+to make the tree pass this rule, and do not keep a layout wrapper whose only child can own the same
+props directly.
+
 Do not use `translateX` or `translateY` as a second layout system. Screenshot measurements describe
 the target relationships; they do not authorize one transform per node. Express normal geometry
 through the decision tree above. Try `Flex` first for rows, columns, centering, distribution, and
@@ -280,6 +289,64 @@ Section p:0 minH:"vh-0"
       Button w:"full" onClick:submitLogin
         "Log in"
 ```
+
+### Split-panel auth layout
+
+Let the outer Grid own the media and form halves. Let the form-side Flex own centering, and make one
+bounded form Grid its direct child. Do not center a form with empty Grid columns, empty Boxes, or a
+translation: those techniques encode one viewport guess and shrink the usable form width when the
+outer split is already only half of the viewport.
+
+```text
+Section p:0 minH:"vh-0"
+  Grid columns:{ xs:1 md:2 } gap:0 minH:"vh-0"
+    Box cover:"/assets/images/auth-login.webp" minH:{ xs:40 md:"vh-0" }
+    Flex:
+      direction:"column"
+      align:"center"
+      justify:"center"
+      p:{ xs:6 md:12 }
+      minH:{ xs:"vh-40" md:"vh-0" }
+      Grid columns:1 gap:5 w:"full" maxW:96
+        Flex direction:"column" gap:2
+          Title size:"3xl" weight:"black"
+            "Log in"
+          Text size:"sm" color:"muted"
+            "Use your account to continue securely."
+        Flex direction:"column" gap:4
+          Input bind:email label:"Email address" placeholder:"you@example.com" w:"full"
+          Password bind:password label:"Password" placeholder:"Enter your password" w:"full"
+          Button w:"full" onClick:submitLogin
+            "Log in"
+        Flex direction:{ xs:"column" lg:"row" } gap:2
+          Button variant:"outlined" w:"full"
+            "Continue with Google"
+          Button variant:"outlined" w:"full"
+            "Continue with Apple"
+```
+
+Choose centering props from the resolved Flex direction:
+
+| Flex direction | Horizontal center | Vertical center |
+| --- | --- | --- |
+| `row` or omitted | `justify:"center"` | `align:"center"` |
+| `column` | `align:"center"` | `justify:"center"` |
+
+`w:"full" maxW:96` bounds the form but does not center it by itself; the parent must center the
+bounded child on the correct axis. Prefer the direct child pattern above. If another row Flex is
+structurally necessary, give that row `justify:"center"`; `align:"center"` alone only centers its
+child vertically.
+
+Responsive breakpoints resolve from the viewport, not from a nested Grid track. At `md`, a split
+panel may be roughly half the viewport before its own padding, even though `sm` and `md` rules are
+already active. Keep long social or secondary actions stacked until their measured panel width can
+hold every label; using `lg` for two action columns is often safer than promoting them at `sm`.
+Validate the form and its action groups at `xs`, exactly `md`, and the reference viewport.
+
+Use `cover` when artwork fills and crops with the panel as background geometry. Use `Image` when
+the media is an independent foreground object with its own aspect, bounds, and `alt` role. A neutral
+split-media track may be a `Box cover:...`; do not use `Card` unless the reference actually shows a
+grouped surface with Card semantics.
 
 ## Visual direction and section richness
 
@@ -418,15 +485,13 @@ Section id:"hero" background:"aurora" boxed:true py:{ xs:8 md:12 }
         "Turn useful ideas into durable growth"
       Text size:"lg" color:"muted"
         "Plan, publish, and learn from one focused workspace."
-      Flex direction:{ xs:"column" sm:"row" } gap:3
+      Grid columns:{ xs:1 sm:2 } gap:3
         Button size:"lg"
           "Start free"
         Button variant:"outlined" scheme:"muted" size:"lg"
           "See how it works"
-      Flex align:"center" gap:2
-        Icon name:"check-circle-bold" fill:"success"
-        Text size:"sm" color:"muted"
-          "14-day trial · no credit card"
+      Text size:"sm" color:"muted"
+        "✓ 14-day trial · no credit card"
     Box position:"relative" cover:"/assets/images/hero-team.jpg" rounded:"xl" minH:"vh-48"
       Box position:"absolute" right:6 bottom:6
         Card variant:"solid" scheme:"surface" shadow:"xl" shadowColor:"success"
@@ -502,9 +567,15 @@ before considering a band finished.
 | `Grid columns:2` for one icon beside text | `Flex align:"center" gap:2` | Tracks force equal columns; the row needs intrinsic sizes |
 | `Grid` for a toolbar, chip row, or actions row | `Flex gap:<n> wrap:true` | One-axis flow with alignment is Flex behavior |
 | `Flex wrap:true` simulating a catalog of equal cards | `Grid columns:{ xs:1 md:3 }` | Repeated same-shape units are tracks |
+| `Grid` directly inside `Grid` | Flatten the grandchildren into one owning Grid | Another column count or gap does not justify duplicate track ownership |
+| `Flex` directly inside `Flex` | Flatten the grandchildren into one owning Flex | Another direction, alignment, or gap does not justify duplicate axis ownership |
 | `Card` inside `Card` | One Card containing `Grid` or `Flex` | Nested surfaces double borders and padding |
 | `Box` as the default page or section container | `Section`, then Grid or Flex | Pages start at Section; Box is the exception |
 | Empty `Box` children used as 12-column offsets | One centered Grid or Flex with `w:"full"` and `maxW` | Empty grid cells encode viewport guesses instead of content structure |
+| A bounded form starts at the edge of its split panel | Form-side column Flex with `align:"center"`; use `justify:"center"` too for vertical centering | `maxW` limits measure but does not choose the child's position |
+| `Flex align:"center"` expected to center horizontally while direction is `row` or omitted | Add `justify:"center"`, or use a column Flex whose cross axis is horizontal | Flex alignment follows the resolved axis, not the visual intent implied by the word “center” |
+| Two long action labels switch to columns at `sm` inside a half-width panel | Keep one column until the labels fit, often `columns:{ xs:1 lg:2 }` | Breakpoints use viewport width while the nested panel may have less than half that usable width |
+| A child `Image` is stretched to imitate a panel background | Put `cover` on the owning Section, Card, or neutral media-stage Box | Background media owns the panel crop; foreground Image owns independent content and `alt` semantics |
 | `translateX` or `translateY` used to align normal content | AppBar regions, Grid/Flex alignment, `gap`, padding, `w`, or `maxW` on the real owner | Transforms change visual placement without defining the surrounding flow geometry |
 | A translated `NavMenu`, AppBar action, or Drawer root | Keep the compound root untransformed and align it through its semantic owner | Anchored menus and overlays need stable component geometry |
 | `Box` around each Input, Pin, Phone, or Button | Style the real control and group fields in Grid or Flex | Controls already own their surface, metrics, and responsive props |
@@ -529,7 +600,16 @@ before considering a band finished.
 - Every container choice is justified by the decision tree. Each `Box` owns a relative, absolute,
   fixed, or explicitly documented neutral media/drawing layer that Section, Grid, Flex, Card, or
   the real child cannot express.
+- No Grid has a direct Grid child and no Flex has a direct Flex child. A layout wrapper never exists
+  only to change `gap`, direction, alignment, padding, sizing, or visibility.
 - No empty Box grid gutters, control wrappers, or duplicated compact/wide form trees.
+- Split forms are centered against their owning panel at the reference viewport and at `md`; a
+  bounded form Grid is never assumed centered merely because it declares `maxW`.
+- Flex centering uses `justify` on the main axis and `align` on the cross axis after resolving
+  direction; nested row wrappers do not rely on `align` for horizontal placement.
+- Background-filling media uses `cover` on its semantic owner or neutral media stage; foreground
+  `Image` remains reserved for independently meaningful media.
+- Nested action columns switch only where their complete labels fit the panel's usable width.
 - Repetition uses one `const`, typed `signal`, or shared Store and one `each` inside Grid tracks,
   never copy-pasted siblings.
 - Spacing comes from `gap`, Section padding, explicit padding, responsive flow, and sizing on the

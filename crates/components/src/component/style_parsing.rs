@@ -282,6 +282,8 @@ fn parse_variant_props(
     let mut history = None;
     let mut target = None;
     let mut external_mode = None;
+    let mut form_help_text = None;
+    let mut form_error_text = None;
 
     for prop in props {
         match prop.name.as_str() {
@@ -303,6 +305,12 @@ fn parse_variant_props(
                 })?;
                 variant_props.reactive.loading = Some(loading);
                 variant_props.loading_icon = Some(svg_spinner_control_icon("3-dots-move")?);
+            }
+            "disabled" if component == BuiltinComponent::Button => {
+                let disabled = reactive_reference(&prop.value).ok_or_else(|| {
+                    ComponentError::invalid_prop(&prop.name, "boolean Signal or View Store path")
+                })?;
+                variant_props.reactive.disabled = Some(disabled);
             }
             "i18n" if component == BuiltinComponent::Button => {
                 variant_props.i18n = Some(parse_i18n_key_prop(&prop.name, &prop.value)?);
@@ -430,6 +438,16 @@ fn parse_variant_props(
             {
                 variant_props.label_floating = parse_static_bool(&prop.name, &prop.value)?
             }
+            "helpText"
+                if matches!(component, BuiltinComponent::Input | BuiltinComponent::Select) =>
+            {
+                form_help_text = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
+            "errorText"
+                if matches!(component, BuiltinComponent::Input | BuiltinComponent::Select) =>
+            {
+                form_error_text = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
             "href"
                 if matches!(
                     component,
@@ -500,6 +518,11 @@ fn parse_variant_props(
     )?;
     if component == BuiltinComponent::Card {
         normalize_card_visual_props(&mut variant_props);
+    }
+    if form_help_text.is_some() || form_error_text.is_some() {
+        let validation = variant_props.style.element.form_validation_mut();
+        validation.help_text = form_help_text;
+        validation.error_text = form_error_text;
     }
     variant_props.element = variant_props.style.element.clone();
     variant_props.navigation =

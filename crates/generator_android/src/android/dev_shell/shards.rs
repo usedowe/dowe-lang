@@ -86,6 +86,9 @@ fn dev_route_shard(
     for metadata in reactive.metadata {
         output.push_str(&qualify_dev_shard_fragment(&format!("        {metadata}\n")));
     }
+    for form in reactive.forms {
+        output.push_str(&qualify_dev_shard_fragment(&format!("        {form}\n")));
+    }
     for initial in reactive.initial {
         output.push_str(&qualify_dev_shard_fragment(&format!("        {initial}\n")));
     }
@@ -216,6 +219,9 @@ fn dev_layout_shard(layout: &ViewNode, index: usize, app_bundle: &str) -> String
         output.push_str(&qualify_dev_shard_fragment(&format!(
             "        {metadata}\n"
         )));
+    }
+    for form in reactive.forms {
+        output.push_str(&qualify_dev_shard_fragment(&format!("        {form}\n")));
     }
     for initial in reactive.initial {
         output.push_str(&qualify_dev_shard_fragment(&format!("        {initial}\n")));

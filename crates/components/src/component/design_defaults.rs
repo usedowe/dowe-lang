@@ -52,6 +52,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             } else {
                 normalize_button_visual_props(props);
             }
+            apply_action_control_press_feedback(props);
             for child in children {
                 apply_design_defaults_to_tree(child, defaults);
             }
@@ -244,6 +245,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         }
         ViewNode::Fab { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Button);
+            apply_action_control_press_feedback(&mut props.style);
         }
         ViewNode::AlertDialog { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
@@ -355,6 +357,14 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
     }
 }
 
+fn apply_action_control_press_feedback(props: &mut VariantProps) {
+    props
+        .style
+        .motion_mut()
+        .gesture
+        .get_or_insert(ViewGesture::Press);
+}
+
 fn apply_design_defaults_to_actions(actions: &mut [ViewAction], defaults: &DesignDefaults) {
     for action in actions {
         if let ViewActionKind::Sequence(statements) = &mut action.kind {
@@ -383,6 +393,7 @@ fn apply_design_defaults_to_statements(
                 apply_design_defaults_to_statements(error, defaults);
             }
             ViewFunctionStatement::Request { .. }
+            | ViewFunctionStatement::Validate { .. }
             | ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Redirect { .. } => {}

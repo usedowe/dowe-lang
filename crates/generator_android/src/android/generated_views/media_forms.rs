@@ -629,15 +629,18 @@ private fun DoweCarouselSlide(variant: String, index: Int, slideWidth: Dp, slide
 }
 
 @Composable
-private fun DoweCheckbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean, label: String?, name: String?, modifier: Modifier, accentColor: Color) {
-    Row(modifier = modifier.clickable(enabled = enabled) { onCheckedChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun DoweCheckbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean, label: String?, name: String?, modifier: Modifier, accentColor: Color, helpText: String? = null, errorText: String? = null, validationRules: List<DoweValidationRule> = emptyList()) {
+    var touched by remember { mutableStateOf(false) }
+    val validationError = errorText ?: if (touched) doweBooleanValidationError(checked, validationRules) else null
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(modifier = Modifier.clickable(enabled = enabled) { touched = true; onCheckedChange(!checked) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(
             modifier = Modifier
                 .width(20.dp)
                 .height(20.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(if (checked) accentColor else Color.Transparent)
-                .border(2.dp, if (checked) accentColor else accentColor.copy(alpha = 0.72f), RoundedCornerShape(4.dp))
+                .border(2.dp, if (validationError != null) DoweDesign.danger else if (checked) accentColor else accentColor.copy(alpha = 0.72f), RoundedCornerShape(4.dp))
         ) {
             if (checked) {
                 Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
@@ -649,6 +652,8 @@ private fun DoweCheckbox(checked: Boolean, onCheckedChange: (Boolean) -> Unit, e
         if (label != null) {
             Text(label, color = accentColor)
         }
+    }
+    DoweValidationFeedback(helpText, validationError, accentColor)
     }
 }
 
@@ -832,10 +837,12 @@ private fun doweColorOklchText(rgb: DoweColorRgb): String {
 private fun doweColorForeground(rgb: DoweColorRgb): String = if ((0.299 * rgb.red + 0.587 * rgb.green + 0.114 * rgb.blue) / 255 > 0.5) "#000000" else "#FFFFFF"
 
 @Composable
-private fun DoweDateField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, size: String, fontSize: TextUnit, lineHeight: TextUnit, name: String?, helpText: String?, errorText: String?, min: String?, max: String?, modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?) {
+private fun DoweDateField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, size: String, fontSize: TextUnit, lineHeight: TextUnit, name: String?, helpText: String?, errorText: String?, min: String?, max: String?, modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?, validationRules: List<DoweValidationRule> = emptyList()) {
     var expanded by remember { mutableStateOf(false) }
+    var touched by remember { mutableStateOf(false) }
     var month by remember(value) { mutableStateOf(runCatching { YearMonth.from(LocalDate.parse(value)) }.getOrDefault(YearMonth.now())) }
     val active = expanded || value.isNotEmpty()
+    val validationError = errorText ?: if (touched) doweValidationError(value, validationRules) else null
     val popupOffset = with(LocalDensity.current) { (doweControlHeight(size) + if (floating) 12.dp else 4.dp).roundToPx() }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null && !floating) Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = contentColor)
@@ -846,8 +853,8 @@ private fun DoweDateField(value: String, onValueChange: (String) -> Unit, label:
                     .heightIn(min = doweControlHeight(size) + if (floating) 8.dp else 0.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(backgroundColor)
-                    .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(10.dp)))
-                    .clickable { expanded = !expanded }
+                    .then(if (borderColor == null && validationError == null) Modifier else Modifier.border(1.dp, if (validationError != null) DoweDesign.danger else borderColor!!, RoundedCornerShape(10.dp)))
+                    .clickable { if (expanded) touched = true; expanded = !expanded }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -858,13 +865,11 @@ private fun DoweDateField(value: String, onValueChange: (String) -> Unit, label:
                 }
                 Text("⌄", fontSize = 20.sp, color = contentColor)
             }
-            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false }) {
-                DoweDateCalendar(month = month, selected = value, start = "", end = "", min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = true, showNext = true, onPrevious = { month = month.minusMonths(1) }, onNext = { month = month.plusMonths(1) }, onSelect = { next -> onValueChange(next); month = YearMonth.from(LocalDate.parse(next)); expanded = false })
+            DoweAnchoredPopover(visible = expanded, offset = IntOffset(0, popupOffset), shape = RoundedCornerShape(12.dp), backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(8.dp), onDismiss = { expanded = false; touched = true }) {
+                DoweDateCalendar(month = month, selected = value, start = "", end = "", min = min, max = max, contentColor = contentColor, accentColor = contentColor, showPrevious = true, showNext = true, onPrevious = { month = month.minusMonths(1) }, onNext = { month = month.plusMonths(1) }, onSelect = { next -> onValueChange(next); month = YearMonth.from(LocalDate.parse(next)); expanded = false; touched = true })
             }
         }
-        if (errorText != null || helpText != null) {
-            Text(errorText ?: helpText.orEmpty(), fontSize = 12.sp, color = contentColor.copy(alpha = 0.7f))
-        }
+        DoweValidationFeedback(helpText, validationError, contentColor)
     }
 }
 

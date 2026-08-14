@@ -231,6 +231,11 @@ every unshown breakpoint decision as `inferred`.
 
 - Match the reference viewport exactly before optimizing other sizes.
 - Validate `xs`, `md`, and the reference viewport.
+- For a split layout, record the bounds of each panel and its bounded content separately. Compare a
+  form or focal stack to the centerline of its owning panel, not to the centerline of the viewport.
+- Remember that responsive breakpoints use viewport width, not the width of a nested Grid track. A
+  two-column action group may therefore activate while its split panel is still too narrow; keep it
+  stacked until every complete label fits at the measured panel width.
 - Preserve source reading order when Grid tracks collapse or Flex changes direction.
 - Convert wide navigation to a supported Drawer, SideNav, or BottomBar pattern when space requires
   it; keep the same destinations and labels.
@@ -295,6 +300,12 @@ when a theme change was requested, verify every declared family has grouped `col
 Use `Image` only for an independently obtained original photograph, illustration, texture, or an
 authentic screenshot explicitly supplied or requested by the user. Never use the reference, a
 crop, slice, rasterization, or recomposition derived from it as a project asset.
+
+Classify the media role before choosing the component. When an original asset fills and crops with
+a Section, Card, or neutral media panel as background geometry, use that owner's `cover` prop; do
+not stretch a child `Image` to simulate the same background. Use `Image` when the original is a
+foreground object with independent bounds, aspect behavior, and an `alt` contract. Record the
+choice in the blueprint's `container`, `component`, and `assets` fields.
 
 When an original is unavailable, author its final stable asset path, `alt`, aspect, object fit, and
 visual weight. Record it as `missing` in the blueprint and report that exact parity remains blocked;
@@ -367,10 +378,14 @@ hide a visible mismatch.
 - The work is explicitly classified as exact reconstruction or directed adaptation.
 - Exact built-in components are used; no annotated or guessed component name becomes source.
 - Shared chrome is layout-owned; page content is Section-owned.
+- No direct `Grid`-in-`Grid` or `Flex`-in-`Flex` wrapper remains; each container owns a distinct
+  layout responsibility rather than only another gap, direction, alignment, or size.
 - Normal layout uses no `translateX` or `translateY`; any exception is a documented advanced visual
   layer, never a compound navigation or overlay root.
 - Repeated records use one collection and one `each` template.
 - Responsive behavior distinguishes observed evidence from conservative inference.
+- Split-panel content is centered against its owning panel, and nested action tracks are checked at
+  their actual usable width rather than inferred from the viewport breakpoint alone.
 - Loading, empty, error, disabled, overlay, and feedback states are handled where real behavior
   requires them.
 - Labels, alternative text, source order, contrast, keyboard/touch controls, and reduced motion are
@@ -380,5 +395,6 @@ hide a visible mismatch.
 - Consecutive bands do not collapse into the same generic heading-plus-Card-grid composition.
 - Static fragments are extracted; unsupported dynamic reuse is recorded without invented syntax.
 - Reference pixels never enter project assets; missing originals remain explicit.
+- Background media uses `cover` on its owner; foreground `Image` keeps an independent media role.
 - The reference viewport passes band-by-band QA or the remaining evidence-backed blocker is
   reported precisely.

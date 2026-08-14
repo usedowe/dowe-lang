@@ -37,7 +37,7 @@ page BlogsPage
           Textarea bind:form.content label:"Content"
           Button onClick:createBlog
             "Publish"
-      Grid columns:1 gap:3
+      Flex direction:"column" gap:3
         each in:blogs as:blog key:blog.id
           Card
             Grid columns:1 gap:2

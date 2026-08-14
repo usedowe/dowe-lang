@@ -219,8 +219,8 @@ fn generated_route_view(
         ));
     }
     output.push_str(&format!(
-        "    @StateObject private var state = DoweReactiveState(constants: {}, initial: {}, signals: {}, actions: {})\n",
-        reactive.constants, reactive.initial, reactive.signals, reactive.actions
+        "    @StateObject private var state = DoweReactiveState(constants: {}, initial: {}, signals: {}, actions: {}, forms: {})\n",
+        reactive.constants, reactive.initial, reactive.signals, reactive.actions, reactive.forms
     ));
     let route_tree = if layout_index.is_some() {
         &route.page_tree
@@ -228,6 +228,18 @@ fn generated_route_view(
         &tree
     };
     let (route_nodes, route_context) = swift_route_body_nodes(route_tree);
+    let route_branches = ios_route_branches(route_nodes);
+    let route_expressions = route_branches
+        .iter()
+        .enumerate()
+        .map(|(index, branch)| {
+            (
+                swift_node_key(branch.node),
+                format!("routeBranch{index}()"),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    let route_context = route_context.with_node_expressions(route_expressions.clone());
     let persistent_app_bar = swift_tree_has_persistent_scaffold_app_bar(&tree);
     output.push_str("    var body: some View {\n        ZStack(alignment: .topLeading) {\n        ScrollViewReader { proxy in\n");
     if !persistent_app_bar {
@@ -301,6 +313,25 @@ fn generated_route_view(
             None,
             font_config.default_family,
             &route_context,
+        );
+        output.push_str("    }\n\n");
+    }
+    for (index, branch) in route_branches.iter().enumerate() {
+        output.push_str(&format!(
+            "    @ViewBuilder\n    private func routeBranch{index}() -> some View {{\n"
+        ));
+        let branch_context = swift_reactive_context_for_node(route_tree, branch.node)
+            .unwrap_or_else(|| route_context.clone())
+            .with_node_expressions(route_expressions.clone())
+            .without_node_expression(branch.node);
+        render_swift_node_in_flow(
+            branch.node,
+            8,
+            &mut output,
+            branch.flow,
+            None,
+            font_config.default_family,
+            &branch_context,
         );
         output.push_str("    }\n\n");
     }

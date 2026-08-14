@@ -248,7 +248,7 @@ pub fn image_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
     let mut aspect = ImageAspect::Auto;
     let mut object_fit = ImageObjectFit::Cover;
     let mut loading = ImageLoading::Lazy;
-    let mut hide_controls = false;
+    let mut hide_controls = true;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {

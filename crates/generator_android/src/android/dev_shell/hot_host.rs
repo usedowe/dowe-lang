@@ -25,7 +25,6 @@ public final class DoweDevHostActivity extends Activity {
     private static final String HMR_PREFERENCES = "dowe-hmr";
     private static final String HMR_ENDPOINT = "endpoint";
     private static final String HMR_VERSION = "version";
-    private static final String HMR_ROUTE = "route";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String endpoint = "";
     private String activeVersion = "";
@@ -63,7 +62,6 @@ public final class DoweDevHostActivity extends Activity {
         if (activeModule != null && intent != null) {
             try {
                 intent.invoke(activeModule, nextIntent);
-                persistCurrentPath();
             } catch (Exception error) {
                 Log.e("DoweHmr", "intent update failed", error);
             }
@@ -99,7 +97,6 @@ public final class DoweDevHostActivity extends Activity {
         if (activeModule != null && back != null) {
             try {
                 back.invoke(activeModule);
-                persistCurrentPath();
                 return;
             } catch (Exception error) {
                 Log.e("DoweHmr", "back dispatch failed", error);
@@ -109,14 +106,7 @@ public final class DoweDevHostActivity extends Activity {
     }
 
     @Override
-    protected void onPause() {
-        persistCurrentPath();
-        super.onPause();
-    }
-
-    @Override
     protected void onDestroy() {
-        persistCurrentPath();
         running = false;
         handler.removeCallbacksAndMessages(null);
         super.onDestroy();
@@ -167,38 +157,21 @@ public final class DoweDevHostActivity extends Activity {
         }
     }
 
-    private String storedRoute() {
-        String path = getSharedPreferences(HMR_PREFERENCES, MODE_PRIVATE)
-            .getString(HMR_ROUTE, "/");
-        return path == null || path.isEmpty() ? "/" : path;
-    }
-
-    private String currentModulePath() {
-        String path = storedRoute();
+    private String activeModulePath() {
         if (activeModule != null && activePath != null) {
             try {
                 Object value = activePath.invoke(activeModule);
                 if (value instanceof String && !((String) value).isEmpty()) {
-                    path = (String) value;
+                    return (String) value;
                 }
             } catch (Exception error) {
                 Log.e("DoweHmr", "route read failed", error);
             }
         }
-        return path;
-    }
-
-    private void persistCurrentPath() {
-        if (activeModule == null) {
-            return;
-        }
-        getSharedPreferences(HMR_PREFERENCES, MODE_PRIVATE)
-            .edit()
-            .putString(HMR_ROUTE, currentModulePath()).apply();
+        return null;
     }
 
     private void poll() {
-        persistCurrentPath();
         if (!running || endpoint == null || endpoint.isEmpty()) {
             return;
         }
@@ -275,7 +248,8 @@ public final class DoweDevHostActivity extends Activity {
     private void apply(File file, String version) {
         attemptedVersion = version;
         try {
-            String path = currentModulePath();
+            boolean initialMount = activeModule == null;
+            String path = initialMount ? null : activeModulePath();
             DexClassLoader loader = new DexClassLoader(file.getAbsolutePath(), getCodeCacheDir().getAbsolutePath(), null, getClassLoader());
             Class<?> type = loader.loadClass("dev.dowe.generated.DoweDevActivity");
             Object module = type.getConstructor(Activity.class).newInstance(this);
@@ -285,7 +259,7 @@ public final class DoweDevHostActivity extends Activity {
             Method nextIntent = type.getMethod("handleIntent", Intent.class);
             Method nextPictureInPicture = type.getMethod("handlePictureInPictureMode", boolean.class);
             Method nextActivityResult = type.getMethod("handleActivityResult", int.class, int.class, Intent.class);
-            mount.invoke(module, path, getIntent());
+            mount.invoke(module, path, initialMount ? getIntent() : null);
             activeModule = module;
             activePath = nextPath;
             back = nextBack;
@@ -295,8 +269,7 @@ public final class DoweDevHostActivity extends Activity {
             activeVersion = version;
             getSharedPreferences(HMR_PREFERENCES, MODE_PRIVATE)
                 .edit()
-                .putString(HMR_VERSION, version)
-                .putString(HMR_ROUTE, path).apply();
+                .putString(HMR_VERSION, version).apply();
         } catch (Exception error) {
             Log.e("DoweHmr", "module apply failed", error);
         }

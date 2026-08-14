@@ -132,6 +132,21 @@ fn render_dev_android_form_actions_node(
                 trigger_size / 2,
                 trigger_size / 2
             ));
+            if let Some(gesture) = props.style.style.motion().gesture
+                && gesture != ViewGesture::None
+            {
+                output.push_str(&format!(
+                    "        doweGesture({trigger}, \"{}\", \"{}\");\n",
+                    gesture.as_str(),
+                    props
+                        .style
+                        .style
+                        .motion()
+                        .transition
+                        .unwrap_or(ViewTransition::Smooth)
+                        .as_str()
+                ));
+            }
             if action_views.is_empty() {
                 if let Some(click) = props
                     .style
@@ -188,7 +203,11 @@ fn render_dev_android_form_actions_node(
                     if matches!(props.position, OverlayCornerPosition::BottomLeft | OverlayCornerPosition::BottomRight) { props.offset_y.native_units() } else { 0 }
                 ));
             } else {
-                apply_dev_android_style(&props.style.style, &view, false, output);
+                let mut container_style = props.style.style.clone();
+                if container_style.motion().gesture.is_some() {
+                    container_style.motion_mut().gesture = None;
+                }
+                apply_dev_android_style(&container_style, &view, false, output);
                 output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             }
         }
@@ -301,6 +320,8 @@ fn render_dev_android_form_actions_node(
         }
         ViewNode::Checkbox { props } => {
             let view = next_dev_view(counter);
+            let has_validation = dev_has_validation(&props.style.element);
+            let wrapper = has_validation.then(|| next_dev_view(counter));
             let checked = dev_bound_bool(&props.style, props.checked, context);
             output.push_str(&format!(
                                         "        android.widget.CheckBox {view} = new android.widget.CheckBox(this);\n        {view}.setText(\"{}\");\n        {view}.setTextColor({});\n        {view}.setButtonTintList(ColorStateList.valueOf({}));\n        {view}.setChecked({checked});\n        {view}.setEnabled({});\n",
@@ -309,14 +330,32 @@ fn render_dev_android_form_actions_node(
                                         dev_scheme_color(&props.style),
                                         !props.disabled
                                     ));
-            if let Some(path) = props.style.element.bind.as_ref() {
+            if let Some(wrapper) = wrapper.as_deref() {
                 output.push_str(&format!(
-                    "        {view}.setOnCheckedChangeListener((button, value) -> {{ doweWrite(\"{}\", value); renderCurrentRoute(false); }});\n",
-                    escape_java(&context.signal_path(path))
+                    "        LinearLayout {wrapper} = doweContainer(false);\n        doweAdd({wrapper}, {view});\n        DoweValidationBinding {view}Validation = doweValidation(\"{view}\", {wrapper}, {view}, {view}, {}, {}, {}, () -> String.valueOf({view}.isChecked()), true, {}, {});\n",
+                    dev_validation_help(&props.style.element),
+                    dev_validation_error(&props.style.element),
+                    dev_boolean_validation_rules(&props.style.element, context),
+                    dev_scheme_color(&props.style),
+                    dev_font_value(props.style.style.font.as_ref().or(inherited_font))
                 ));
             }
-            apply_dev_android_style(&props.style.style, &view, false, output);
-            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+            let touch = has_validation
+                .then(|| format!("{view}Validation.touch(); "))
+                .unwrap_or_default();
+            if let Some(path) = props.style.element.bind.as_ref() {
+                output.push_str(&format!(
+                    "        {view}.setOnCheckedChangeListener((button, value) -> {{ {touch}doweWrite(\"{}\", value); renderCurrentRoute(false); }});\n",
+                    escape_java(&context.signal_path(path))
+                ));
+            } else if has_validation {
+                output.push_str(&format!(
+                    "        {view}.setOnCheckedChangeListener((button, value) -> {view}Validation.touch());\n"
+                ));
+            }
+            let outer_view = wrapper.as_deref().unwrap_or(&view);
+            apply_dev_android_style(&props.style.style, outer_view, false, output);
+            output.push_str(&dev_add(parent, outer_view, parent_gap, parent_horizontal));
         }
         ViewNode::Color { props } => {
             let view = next_dev_view(counter);
@@ -374,6 +413,9 @@ fn render_dev_android_form_actions_node(
         ViewNode::Date { props } => {
             let view = next_dev_view(counter);
             let field = next_dev_view(counter);
+            let has_validation = dev_has_validation(&props.style.element)
+                || props.help_text.is_some()
+                || props.error_text.is_some();
             let control_height = form_control_min_height(props.size, props.style.label_floating)
                 .native_units();
             let text_size = dev_text_size_expr(false, form_control_text_size(props.size));
@@ -428,6 +470,16 @@ fn render_dev_android_form_actions_node(
                                         min,
                                         max
                                     ));
+            if has_validation {
+                output.push_str(&format!(
+                    "        DoweValidationBinding {field}Validation = doweValidation(\"{field}\", {view}, {field}, {field}, {}, {}, {}, () -> {field}Selected[0], false, {}, {});\n",
+                    dev_nullable_string(props.help_text.as_deref()),
+                    dev_nullable_string(props.error_text.as_deref()),
+                    dev_validation_rules(&props.style.element, context),
+                    dev_variant_content(&props.style),
+                    dev_font_value(props.style.style.font.as_ref().or(inherited_font))
+                ));
+            }
             apply_dev_android_style(&props.style.style, &view, true, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }

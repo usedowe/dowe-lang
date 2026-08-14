@@ -10,6 +10,8 @@ include!("builders/interactive_data_nodes.rs");
 include!("builders/overlay_entry_nodes.rs");
 include!("builders/media_parse_helpers.rs");
 include!("builders/form_parse_helpers.rs");
+include!("builders/form_validation.rs");
+include!("builders/form_state.rs");
 include!("builders/overlay_parse_helpers.rs");
 include!("builders/navigation_entry_nodes.rs");
 include!("builders/container_dispatch.rs");
