@@ -42,8 +42,11 @@ ownership, money, time, lifecycle, authorization, or concurrency.
 4. Define modules with one owner each. Keep catalog, identity, transactions, inventory, scheduling,
    communication, and reporting separate when their invariants differ.
 5. Define entities and fields. Choose supported Dowe field types, primary identifiers, required
-   fields, indexes, and uniqueness checks. Put entities under `server/entities` and register them
-   through the server Database config.
+   fields, indexes, and uniqueness checks. Group related declarations into one bounded
+   `server/entities/<domain>-entities.dowe` module and import its named bindings together into the
+   Database config. Do not generate one file per entity by default. Keep an entity in its own file
+   only when it is genuinely isolated, and split a module when ownership, lifecycle, authorization,
+   or file size makes the boundary clearer.
 6. Define relations as scalar identifier fields and write the parent-existence, tenant, duplicate,
    and authorization checks that repositories or services must perform.
 7. Register invariants and lifecycle transitions. For each rule, name its enforcing service,
@@ -97,6 +100,8 @@ written:
 - Keep secrets, provider credentials, payment data, and persistence handles server-only.
 - Do not infer CRUD from entity names or route names. Declare every table, operation, filter, and
   authorization path explicitly.
+- Group by cohesive domain ownership, not by a target file count. Keep join entities beside the
+  domain they connect, and never create an unrelated catch-all entity module merely to reduce files.
 - If a blueprint requires compiler or runtime behavior that is not currently supported, record it
   as an unresolved decision or implementation prerequisite instead of generating fictional source.
 

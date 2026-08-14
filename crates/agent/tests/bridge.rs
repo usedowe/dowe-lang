@@ -267,6 +267,29 @@ fn public_skills_teach_canonical_view_and_server_directories() {
 }
 
 #[test]
+fn public_skills_group_related_entities_into_bounded_modules() {
+    let domain = get_public_skill("domain-modeling", true).expect("domain modeling");
+    let server = get_public_skill("server", true).expect("server");
+
+    assert!(
+        domain
+            .content
+            .contains("Default to one source file per cohesive bounded module")
+    );
+    assert!(
+        domain
+            .content
+            .contains("Do not generate one file per entity by default")
+    );
+    assert!(server.content.contains("user-entities.dowe"));
+    assert!(
+        server
+            .content
+            .contains("import Users, UserRoles from \"@/server/entities/user-entities\"")
+    );
+}
+
+#[test]
 fn fullstack_skill_example_separates_frontend_and_backend_source() {
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../skill-data/examples/fullstack");

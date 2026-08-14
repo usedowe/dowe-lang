@@ -56,6 +56,19 @@ Use lower-snake-case table names generated from entity names. Keep derived total
 and permission results server-owned. Use snapshots on historical transaction lines when a later
 catalog change must not rewrite history.
 
+### Entity module boundaries
+
+Default to one source file per cohesive bounded module, not one source file per table. Put related
+entities, their line or event records, and their join entities together under a plural file such as
+`server/entities/user-entities.dowe`, `server/entities/kitchen-entities.dowe`, or
+`server/entities/inventory-entities.dowe`. Import every named binding from that module in one
+statement and register those bindings explicitly in the Database `entities` list.
+
+Keep a dedicated file when an entity is genuinely isolated. Split a grouped module when declarations
+have different owners, authorization or lifecycle rules, when they belong to different bounded
+domains, or when the file would stop being focused. Do not make a single application-wide catch-all
+file, and do not split every declaration automatically just because each entity maps to one table.
+
 ## Relation matrix
 
 Represent each relation with a scalar identifier and an index when it is filtered or joined.
@@ -109,7 +122,7 @@ claiming atomic behavior.
 
 | Model artifact | Dowe location or surface |
 | --- | --- |
-| Entity schema | `server/entities/*.dowe` and `database ... entities:[...]` |
+| Entity schema | Cohesive `server/entities/*-entities.dowe` modules and `database ... entities:[...]` |
 | Database connection | `server/config/*.dowe` |
 | Static reference data | `server/seeders/*.dowe` and `database ... seeders:[...]` |
 | Reusable data access | `server/repositories/*.dowe` |

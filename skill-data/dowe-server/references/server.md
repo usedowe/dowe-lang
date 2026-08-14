@@ -27,8 +27,10 @@ HTTP responses, `server/services` coordinates the use case, `server/repositories
 Database operations, `server/entities` exports entity declarations, and `server/config` imports
 those entities into the Database handle. A handler should not open a Database handle or contain a
 `query` statement. For editor-friendly tabs, name generated modules with the responsibility suffix:
-`blogs-handler.dowe`, `blogs-service.dowe`, `blogs-repository.dowe`, `blogs-entity.dowe`, and
-`blogs-types.dowe`.
+`blogs-handler.dowe`, `blogs-service.dowe`, `blogs-repository.dowe`, and `blogs-types.dowe`. Entity
+files use a plural bounded-domain name such as `blog-entities.dowe` and keep the related entity,
+revision, membership, or event declarations together. Use a dedicated singular entity file only
+when that schema is genuinely isolated.
 
 Read `references/data.md` for Database, Cache, and Vector handles, entities, seeders, and their
 operation utilities. Read `references/runtime.md` for TLS, outbound HTTP, responses, crypto,

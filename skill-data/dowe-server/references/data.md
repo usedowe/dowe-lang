@@ -45,12 +45,30 @@ seeder Bootstrap
   insert entity:Users value:{ id:"01ARZ3NDEKTSV4RRFFQ69G5FAV" name:"Admin" email:"admin@example.com" active:true createdAt:"2026-01-01T00:00:00Z" }
 ```
 
-Entity declarations can live in separate modules and be imported by the config module:
+Group related declarations into a focused bounded-domain module and import its bindings together.
+Do not generate a separate file for every entity by default, and do not create an unrelated
+application-wide catch-all. Keep an isolated entity in its own file or split a module when ownership,
+lifecycle, authorization, or module size requires a clearer boundary:
 
 ```text
-import Blog from "@/server/entities/blog-entity"
+entity Users
+  id:string primary:true
+  name:string required:true
+  email:string required:true unique:true
 
-database appDb provider:"dowe" host:env.DATABASE_HOST port:env.DATABASE_PORT account:env.DATABASE_ACCOUNT secret:env.DATABASE_SECRET name:env.DATABASE_NAME entities:[Blog] seeders:[]
+entity UserRoles
+  id:string primary:true
+  userId:string required:true index:true
+  roleId:string required:true index:true
+```
+
+The declarations above belong together in `server/entities/user-entities.dowe`. Register both
+named bindings through one module import:
+
+```text
+import Users, UserRoles from "@/server/entities/user-entities"
+
+database appDb provider:"dowe" host:env.DATABASE_HOST port:env.DATABASE_PORT account:env.DATABASE_ACCOUNT secret:env.DATABASE_SECRET name:env.DATABASE_NAME entities:[Users, UserRoles] seeders:[]
 ```
 
 ## Relations
