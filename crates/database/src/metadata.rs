@@ -2,10 +2,13 @@ use crate::codec::{Reader, Writer};
 use crate::error::{StoreError, StoreResult};
 use crate::security::{create_private_directory, secure_file};
 use dowe_id::generate_ulid;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[cfg(unix)]
+use std::fs::File;
 
 const METADATA_MAGIC: &[u8] = b"DOWE_DB_METADATA_V1\n";
 const FORMAT_VERSION: u32 = 1;

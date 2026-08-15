@@ -40,7 +40,9 @@ View props continue to use bare bindings such as `bind:form.title` and `show:rea
 
 When a root theme is created or explicitly changed, delegate color authoring to `dowe-theme` and use
 grouped `colors:` families with `color`, `text`, and `title` roles. When a page is generated without
-a theme request, preserve the existing `theme.dowe` and consume its semantic tokens.
+a theme request, preserve the existing `theme.dowe` and consume its semantic tokens. A reference
+image supplied for a layout, page, reusable component, or `Section` is not a theme request: do not
+create `theme.dowe` or change its colors unless the user explicitly asks for theme or color changes.
 
 ## Reference routing
 

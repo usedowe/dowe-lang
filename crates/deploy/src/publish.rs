@@ -36,6 +36,44 @@ pub fn publish_cloudflare_pages(
     Ok(command)
 }
 
+pub fn publish_vercel(
+    output: &Path,
+    project_name: &str,
+    environment: DeployEnvironment,
+    dry_run: bool,
+) -> DeployResult<Vec<String>> {
+    let command = vercel_command(project_name, environment);
+    if !dry_run {
+        let npm_cache = tempfile::tempdir()?;
+        let mut process = Command::new(&command[0]);
+        process.args(&command[1..]);
+        process.current_dir(output);
+        configure_npm_cache(&mut process, npm_cache.path());
+        run_vercel(&mut process)?;
+    }
+    Ok(command)
+}
+
+pub(crate) fn vercel_command(project_name: &str, environment: DeployEnvironment) -> Vec<String> {
+    let mut command = vec![
+        "npx".to_string(),
+        "--yes".to_string(),
+        "vercel".to_string(),
+        "deploy".to_string(),
+        "--prebuilt".to_string(),
+        "--yes".to_string(),
+        "--name".to_string(),
+        project_name.to_string(),
+    ];
+    if environment == DeployEnvironment::Live {
+        command.push("--prod".to_string());
+    } else {
+        command.push("--target".to_string());
+        command.push(environment.as_str().to_string());
+    }
+    command
+}
+
 pub(crate) fn cloudflare_pages_command(
     output: &Path,
     project_name: &str,
@@ -105,6 +143,19 @@ fn run_cloudflare_worker(command: &mut Command) -> DeployResult<()> {
         ))),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Err(DeployError::new(
             "cloudflare worker deploy requires `npx wrangler`; install Node.js/npm or provide an npx-compatible runtime. Dowe itself does not require Node.js or Rust",
+        )),
+        Err(error) => Err(DeployError::new(error.to_string())),
+    }
+}
+
+fn run_vercel(command: &mut Command) -> DeployResult<()> {
+    match command.status() {
+        Ok(status) if status.success() => Ok(()),
+        Ok(status) => Err(DeployError::new(format!(
+            "vercel deploy failed with status {status}"
+        ))),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Err(DeployError::new(
+            "vercel deploy requires `npx vercel`; install Node.js/npm or provide an npx-compatible runtime. Dowe itself does not require Node.js",
         )),
         Err(error) => Err(DeployError::new(error.to_string())),
     }

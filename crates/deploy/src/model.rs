@@ -128,6 +128,7 @@ pub enum DeployTarget {
     Cloudflare,
     #[serde(rename = "cloudflare-pages")]
     CloudflarePages,
+    Vercel,
     Android,
     Ios,
 }
@@ -141,6 +142,7 @@ impl DeployTarget {
             Self::Ssh => "ssh",
             Self::Cloudflare => "cloudflare",
             Self::CloudflarePages => "cloudflare-pages",
+            Self::Vercel => "vercel",
             Self::Android => "android",
             Self::Ios => "ios",
         }
@@ -149,7 +151,9 @@ impl DeployTarget {
     pub fn surface(self) -> DeploySurface {
         match self {
             Self::Static | Self::CloudflarePages => DeploySurface::Web,
-            Self::Dowe | Self::Docker | Self::Ssh | Self::Cloudflare => DeploySurface::Server,
+            Self::Dowe | Self::Docker | Self::Ssh | Self::Cloudflare | Self::Vercel => {
+                DeploySurface::Server
+            }
             Self::Android => DeploySurface::Android,
             Self::Ios => DeploySurface::Ios,
         }
@@ -157,7 +161,7 @@ impl DeployTarget {
 
     pub fn supports_surface(self, surface: DeploySurface) -> bool {
         match self {
-            Self::Dowe | Self::Docker => {
+            Self::Dowe | Self::Docker | Self::Vercel => {
                 matches!(surface, DeploySurface::Server | DeploySurface::Web)
             }
             _ => self.surface() == surface,
@@ -172,6 +176,7 @@ impl DeployTarget {
             Self::Ssh => "SSH",
             Self::Cloudflare => "Cloudflare Worker",
             Self::CloudflarePages => "Cloudflare Pages",
+            Self::Vercel => "Vercel",
             Self::Android => "Google Play",
             Self::Ios => "App Store Connect",
         }
@@ -195,6 +200,7 @@ impl FromStr for DeployTarget {
             "ssh" => Ok(Self::Ssh),
             "cloudflare" => Ok(Self::Cloudflare),
             "cloudflare-pages" => Ok(Self::CloudflarePages),
+            "vercel" => Ok(Self::Vercel),
             "android" => Ok(Self::Android),
             "ios" => Ok(Self::Ios),
             _ => Err(DeployError::new(format!("unknown deploy target `{value}`"))),
@@ -230,11 +236,13 @@ pub fn deploy_targets_for_surface(surface: DeploySurface) -> &'static [DeployTar
             DeployTarget::Docker,
             DeployTarget::Ssh,
             DeployTarget::Cloudflare,
+            DeployTarget::Vercel,
         ],
         DeploySurface::Web => &[
             DeployTarget::Dowe,
             DeployTarget::Docker,
             DeployTarget::CloudflarePages,
+            DeployTarget::Vercel,
         ],
         DeploySurface::Android => &[DeployTarget::Android],
         DeploySurface::Ios => &[DeployTarget::Ios],

@@ -16,6 +16,7 @@ mod package;
 mod preferences;
 mod publish;
 mod ssh;
+mod vercel;
 
 pub use application::{EmbeddedApplicationMetadata, materialize_embedded_application_executable};
 pub use cloud::authenticate_cloud_session;
@@ -111,6 +112,9 @@ fn deploy_with_runtime(
         deploy_output_dir_for_surface(&root, options.target, options.environment, surface)?;
     let cloudflare_pages_name = (options.target == DeployTarget::CloudflarePages)
         .then(|| cloudflare::pages_project_name(&project, options.name.as_deref()))
+        .transpose()?;
+    let vercel_project_name = (options.target == DeployTarget::Vercel)
+        .then(|| vercel::project_name(&project, options.name.as_deref()))
         .transpose()?;
     let docker_image = (options.target == DeployTarget::Docker)
         .then(|| {
@@ -220,6 +224,19 @@ fn deploy_with_runtime(
                 access.as_ref(),
             )?;
         }
+        DeployTarget::Vercel => {
+            let project_name = vercel_project_name
+                .as_deref()
+                .ok_or_else(|| DeployError::new("vercel project name is missing"))?;
+            vercel::generate_vercel(
+                &project,
+                &output,
+                project_name,
+                options.environment,
+                access.as_ref(),
+                surface,
+            )?;
+        }
         DeployTarget::Android => {
             artifact =
                 Some(native::android_store_bundle(&project, &output, options.dry_run)?.artifact);
@@ -248,6 +265,17 @@ fn deploy_with_runtime(
                     .as_deref()
                     .ok_or_else(|| DeployError::new("cloudflare pages project name is missing"))?;
                 command = Some(publish::publish_cloudflare_pages(
+                    &output,
+                    project_name,
+                    options.environment,
+                    options.dry_run,
+                )?);
+            }
+            DeployTarget::Vercel => {
+                let project_name = vercel_project_name
+                    .as_deref()
+                    .ok_or_else(|| DeployError::new("vercel project name is missing"))?;
+                command = Some(publish::publish_vercel(
                     &output,
                     project_name,
                     options.environment,
@@ -333,7 +361,10 @@ fn deploy_output_dir_for_surface(
     }
     match surface {
         DeploySurface::Web => {
-            if matches!(target, DeployTarget::CloudflarePages | DeployTarget::Docker) {
+            if matches!(
+                target,
+                DeployTarget::CloudflarePages | DeployTarget::Docker | DeployTarget::Vercel
+            ) {
                 web_target_dir(root, target.as_str())
             } else {
                 target_dir(root, target.as_str())

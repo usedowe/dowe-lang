@@ -27,8 +27,12 @@ theme
 ## Theme/page contract
 
 - Extract or change the palette only when the user asks for a theme or visual-system change.
+- A reference image supplied for a layout, page, reusable component, or `Section` does not by
+  itself authorize creating `theme.dowe` or changing its colors. Use the image for structural and
+  visual evidence while preserving the existing theme; generate or recolor the theme only after an
+  explicit user request for theme or color changes.
 - When `theme.dowe` already exists, treat its colors as the source of truth for page generation.
-  Do not replace, flatten, or re-sample that palette while authoring a page from an image.
+  Do not replace, flatten, or re-sample that palette while authoring a view from an image.
 - A page consumes semantic family tokens from the existing theme. It does not recreate the theme
   from local component props or literal color values.
 - When a theme must be created or explicitly changed, write one complete grouped `colors:` block

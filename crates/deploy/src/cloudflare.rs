@@ -18,7 +18,7 @@ pub fn generate_cloudflare(
     environment: DeployEnvironment,
     access: Option<&DeployAccess>,
 ) -> DeployResult<()> {
-    validate_cloudflare(project)?;
+    validate_wasm_edge(project, "cloudflare")?;
     let name = worker_name(project, requested_name, environment)?;
     let assets = output.join("assets");
     fs::create_dir_all(&assets)?;
@@ -84,16 +84,16 @@ pub fn pages_project_name(
     Ok(name)
 }
 
-fn validate_cloudflare(project: &CompiledProject) -> DeployResult<()> {
+pub(crate) fn validate_wasm_edge(project: &CompiledProject, provider: &str) -> DeployResult<()> {
     let server = &project.backend;
     if !server.init_action.statements.is_empty() {
-        return Err(unsupported("server init"));
+        return Err(unsupported(provider, "server init"));
     }
     if !server.websockets.is_empty() {
-        return Err(unsupported("WebSockets"));
+        return Err(unsupported(provider, "WebSockets"));
     }
     if server.cors.enabled {
-        return Err(unsupported("Dowe CORS"));
+        return Err(unsupported(provider, "Dowe CORS"));
     }
     for endpoint in &server.endpoints {
         if endpoint
@@ -101,15 +101,15 @@ fn validate_cloudflare(project: &CompiledProject) -> DeployResult<()> {
             .split('/')
             .any(|segment| segment.starts_with('*'))
         {
-            return Err(unsupported("wildcard routes"));
+            return Err(unsupported(provider, "wildcard routes"));
         }
         if !endpoint.middlewares.is_empty() {
-            return Err(unsupported("route middlewares"));
+            return Err(unsupported(provider, "route middlewares"));
         }
         if !endpoint.action.statements.is_empty()
             && !matches!(endpoint.behavior, EndpointBehavior::CreatePostJson)
         {
-            return Err(unsupported("server action statements"));
+            return Err(unsupported(provider, "server action statements"));
         }
         if matches!(
             endpoint.behavior,
@@ -126,15 +126,15 @@ fn validate_cloudflare(project: &CompiledProject) -> DeployResult<()> {
                 | EndpointBehavior::QueueActionJson(_)
                 | EndpointBehavior::VectorActionJson(_)
         ) {
-            return Err(unsupported("server runtime actions"));
+            return Err(unsupported(provider, "server runtime actions"));
         }
     }
     Ok(())
 }
 
-fn unsupported(capability: &str) -> DeployError {
+fn unsupported(provider: &str, capability: &str) -> DeployError {
     DeployError::new(format!(
-        "cloudflare deploy does not support {capability} until Dowe Wasm lowering is defined"
+        "{provider} deploy does not support {capability} until Dowe Wasm lowering is defined"
     ))
 }
 

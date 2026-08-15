@@ -1,7 +1,7 @@
 use super::{
     AgentPrepareOptions, AgentRequestType, BuildOptions, BuildTarget, CodeGraphBuildOptions,
-    DeployOptions, DeployTarget, DevTarget, DevTargetSelection, GenerateIconOptions, HostOs,
-    IconRounded, IconTarget, InitOptions, InitProjectOptions, ProjectTemplate, SpawnConfig,
+    DeployOptions, DeploySurface, DeployTarget, DevTarget, DevTargetSelection, GenerateIconOptions,
+    HostOs, IconRounded, IconTarget, InitOptions, InitProjectOptions, ProjectTemplate, SpawnConfig,
     SpawnEvent, build_codegraph, build_project, deploy_project, generate_project_icons,
     get_agent_public_skill, get_agent_public_skill_resource, handle_agent_mcp_message,
     init_agent_harness, init_dowe_project, init_external_agent_project, list_agent_public_skills,
@@ -236,6 +236,25 @@ fn deploys_cloudflare_pages_package_through_ipc_wrapper() {
 
     assert_eq!(report.target, DeployTarget::CloudflarePages);
     assert!(report.output_dir.join("assets/index.html").is_file());
+}
+
+#[test]
+fn deploys_vercel_package_through_ipc_wrapper() {
+    let temp = TempDir::new().expect("tempdir");
+    write_deploy_fixture(temp.path());
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Vercel);
+    options.surface = Some(DeploySurface::Web);
+    options.name = Some("ipc-vercel".to_string());
+
+    let report = deploy_project(options).expect("deploy");
+
+    assert_eq!(report.target, DeployTarget::Vercel);
+    assert!(
+        report
+            .output_dir
+            .join(".vercel/output/static/index.html")
+            .is_file()
+    );
 }
 
 #[test]

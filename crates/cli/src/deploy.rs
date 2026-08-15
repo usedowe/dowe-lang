@@ -119,6 +119,7 @@ fn should_auto_publish(surface: DeploySurface, target: DeployTarget) -> bool {
         (surface, target),
         (DeploySurface::Web, DeployTarget::CloudflarePages)
             | (DeploySurface::Server, DeployTarget::Cloudflare)
+            | (_, DeployTarget::Vercel)
             | (DeploySurface::Server, DeployTarget::Ssh)
             | (DeploySurface::Android, DeployTarget::Android)
             | (DeploySurface::Ios, DeployTarget::Ios)
@@ -498,6 +499,14 @@ mod tests {
         assert!(should_auto_publish(
             DeploySurface::Server,
             DeployTarget::Cloudflare
+        ));
+        assert!(should_auto_publish(
+            DeploySurface::Server,
+            DeployTarget::Vercel
+        ));
+        assert!(should_auto_publish(
+            DeploySurface::Web,
+            DeployTarget::Vercel
         ));
         assert!(!should_auto_publish(
             DeploySurface::Server,

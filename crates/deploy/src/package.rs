@@ -20,7 +20,7 @@ pub fn generate_cloudflare_pages(
 ) -> DeployResult<()> {
     let assets = output.join("assets");
     copy_static_assets(root, &assets)?;
-    normalize_cloudflare_pages_assets(&assets)?;
+    normalize_web_assets(&assets)?;
     write_cloudflare_pages_redirects(&assets)?;
     if let Some(access) = access {
         write_file(&assets.join("_worker.js"), access.pages_worker())?;
@@ -37,14 +37,14 @@ pub fn generate_cloudflare_pages(
     write_file(&output.join("deploy.json"), content)
 }
 
-fn normalize_cloudflare_pages_assets(root: &Path) -> DeployResult<()> {
+pub(crate) fn normalize_web_assets(root: &Path) -> DeployResult<()> {
     for relative_path in collect_files(root)? {
         if relative_path.extension().and_then(|value| value.to_str()) != Some("html") {
             continue;
         }
         let path = root.join(relative_path);
         let document = fs::read_to_string(&path)?;
-        let document = normalize_cloudflare_pages_html(&document);
+        let document = normalize_web_html(&document);
         write_file(&path, document)?;
     }
     Ok(())
@@ -60,10 +60,21 @@ fn write_cloudflare_pages_redirects(root: &Path) -> DeployResult<()> {
 }
 
 pub(crate) fn cloudflare_pages_redirects(manifest: &str) -> DeployResult<String> {
-    let manifest: serde_json::Value = serde_json::from_str(manifest)?;
     let mut redirects = String::new();
+    for (path, destination) in web_route_mappings(manifest)? {
+        redirects.push_str(&format!("{path} {destination} 200\n"));
+        if !path.ends_with('/') {
+            redirects.push_str(&format!("{path}/ {destination} 200\n"));
+        }
+    }
+    Ok(redirects)
+}
+
+pub(crate) fn web_route_mappings(manifest: &str) -> DeployResult<Vec<(String, String)>> {
+    let manifest: serde_json::Value = serde_json::from_str(manifest)?;
+    let mut mappings = Vec::new();
     let Some(routes) = manifest.get("routes").and_then(serde_json::Value::as_array) else {
-        return Ok(redirects);
+        return Ok(mappings);
     };
 
     for route in routes {
@@ -78,16 +89,13 @@ pub(crate) fn cloudflare_pages_redirects(manifest: &str) -> DeployResult<String>
         };
         let static_file = static_file.strip_prefix("web/").unwrap_or(static_file);
         let destination = format!("/{static_file}");
-        redirects.push_str(&format!("{path} {destination} 200\n"));
-        if !path.ends_with('/') {
-            redirects.push_str(&format!("{path}/ {destination} 200\n"));
-        }
+        mappings.push((path.to_string(), destination));
     }
 
-    Ok(redirects)
+    Ok(mappings)
 }
 
-fn normalize_cloudflare_pages_html(document: &str) -> String {
+fn normalize_web_html(document: &str) -> String {
     ["../../", "../", ""]
         .into_iter()
         .fold(document.to_string(), |document, prefix| {

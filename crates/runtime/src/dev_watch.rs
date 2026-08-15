@@ -2,7 +2,7 @@ use crate::dev::{DevTarget, DevTargetSelection, selected_view_platforms};
 use crate::dev_modules::web_module_version;
 use crate::dev_native_builds::NativeBuildCoordinator;
 use crate::error::RuntimeResult;
-use crate::logging::log_error;
+use crate::logging::{log_error, log_info};
 use crate::server_actions::execute_server_action;
 use crate::watch::SourceWatcher;
 use crate::{DevEventType, DevRuntimeState};
@@ -16,6 +16,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::oneshot;
 use tokio::time::{MissedTickBehavior, interval, sleep};
+
+const HOT_RELOAD_COMPLETED_MESSAGE: &str = "Hot reload completed (0 errors)";
+const HOT_RELOAD_FAILED_MESSAGE: &str = "Hot reload failed";
 
 pub(crate) async fn run_watch_loop(
     root: PathBuf,
@@ -99,7 +102,7 @@ async fn handle_watch_changes(
                 Arc::make_mut(&mut project).local_databases = true;
                 if let Err(error) = crate::database_bootstrap::prepare_databases(&project).await {
                     let error = error.to_string();
-                    log_error(&error);
+                    report_hot_reload_failure(&error);
                     state.events.emit(
                         DevEventType::RebuildFailed,
                         None::<String>,
@@ -127,9 +130,10 @@ async fn handle_watch_changes(
             state.events.emit(
                 DevEventType::RebuildSucceeded,
                 None::<String>,
-                None::<String>,
+                Some(HOT_RELOAD_COMPLETED_MESSAGE),
                 paths.clone(),
             );
+            log_info(HOT_RELOAD_COMPLETED_MESSAGE);
 
             if selection.contains(DevTarget::Web) {
                 state.events.emit_module_update(
@@ -171,7 +175,7 @@ async fn handle_watch_changes(
             }
         }
         Err(error) => {
-            log_error(&error);
+            report_hot_reload_failure(&error);
             state.events.emit(
                 DevEventType::RebuildFailed,
                 None::<String>,
@@ -180,6 +184,11 @@ async fn handle_watch_changes(
             );
         }
     }
+}
+
+fn report_hot_reload_failure(error: &str) {
+    log_error(HOT_RELOAD_FAILED_MESSAGE);
+    log_error(error);
 }
 
 async fn compile_watch_project(
@@ -226,7 +235,7 @@ async fn debounce_changes(watcher: &mut SourceWatcher, paths: Vec<String>) -> Ve
 
 #[cfg(test)]
 mod tests {
-    use super::run_watch_loop;
+    use super::{HOT_RELOAD_COMPLETED_MESSAGE, run_watch_loop};
     use crate::{
         DevEvent, DevEventBus, DevEventType, DevRuntimeState, DevTarget, DevTargetSelection, HostOs,
     };
@@ -263,6 +272,11 @@ mod tests {
 
         wait_for_event(&mut receiver, DevEventType::WatchReady).await;
         write_page_fixture(temp.path(), "Changed");
+        let rebuild = wait_for_event(&mut receiver, DevEventType::RebuildSucceeded).await;
+        assert_eq!(
+            rebuild.message.as_deref(),
+            Some(HOT_RELOAD_COMPLETED_MESSAGE)
+        );
         wait_for_event(&mut receiver, DevEventType::ModuleUpdate).await;
 
         let current = state.project.read().await;
@@ -314,17 +328,20 @@ mod tests {
         handle.await.expect("watch task").expect("watch result");
     }
 
-    async fn wait_for_event(receiver: &mut broadcast::Receiver<DevEvent>, expected: DevEventType) {
+    async fn wait_for_event(
+        receiver: &mut broadcast::Receiver<DevEvent>,
+        expected: DevEventType,
+    ) -> DevEvent {
         timeout(Duration::from_secs(4), async {
             loop {
                 let event = receiver.recv().await.expect("event");
                 if event.event_type == expected {
-                    break;
+                    break event;
                 }
             }
         })
         .await
-        .expect("event timeout");
+        .expect("event timeout")
     }
 
     fn write_fixture(root: &Path, page_text: &str) {

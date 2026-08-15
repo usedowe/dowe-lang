@@ -148,6 +148,17 @@ and `icon`. Icon-only mode is the default and reveals the label on web and deskt
 focus tooltip behavior; set `showLabels:true` to place labels below icons on every target. Use
 `SideNav` for headers, descriptions, status text, submenus, or custom SVG icons.
 
+For shell navigation, keep the component orientations explicit. `NavMenu` is horizontal and belongs
+directly in AppBar `center` or `end`; it is not the navigation child of `Drawer`, `Sidebar`, or
+`Scaffold start/end`. `SideNav` is vertical and is the navigation child for `Sidebar body` and
+`Drawer body`. On responsive shells, hide the AppBar `NavMenu`, show an `IconButton` that opens the
+Drawer, and reuse one static `SideNav` component in the desktop Sidebar and mobile Drawer.
+
+AppBar regions are already horizontal flex containers. Keep `Brand`/Logo, `NavMenu`, `Button`, and
+`IconButton` as direct region children; never add a wrapper `Flex` just for `align`, `gap`, or
+sibling placement. For a mobile Drawer trigger, put `IconButton` before Brand in `start` or directly
+in `end`. Treat an imported Logo component as one semantic Brand child.
+
 `Tabs` accepts direct `tab` children with unique quoted `id` and `label` props plus panel content.
 Its control list wraps its labels instead of filling the panel width. Horizontal lists scroll only
 when their intrinsic width exceeds the available space; use `position:"start"` or
@@ -167,6 +178,11 @@ and `Button` is one direct quoted child. Dynamic visible text uses one complete 
 required bare references; `in` names the array, `as` introduces the scoped item, and `key`
 identifies the item across updates.
 
+This is mandatory for two or more same-shape sibling units, including rows composed from `Flex`,
+`Icon`, and text. Put the collection declaration before the visual tree and make the `each` wrap the
+complete repeated unit. Copying the unit and changing only its content is invalid authoring even when
+the rendered screenshot is correct.
+
 ```text
 each in:blogs as:blog key:blog.id
   Card
@@ -179,6 +195,10 @@ each in:blogs as:blog key:blog.id
 Inside the loop, item paths stay scoped for visible text and reactive props such as
 `scheme:blog.scheme`. `Select` also accepts a structural `each` over an immutable `const` catalog
 producing `Option value:option.value label:option.label` entries.
+
+Static-only props do not become dynamic because they are inside `each`. `Icon.name` remains a quoted,
+compiler-validated name; do not use `name:<item.icon>`. Use the supported runtime `Svg data:<reference>`
+contract for a genuinely runtime vector catalog, or keep the component's static contract intact.
 
 `"blog.title"` is literal text. A braced binding must resolve to a string. Mixed text such as
 `"By {blog.author}"` is not interpolated and remains literal. Braces apply to direct visible-text
@@ -311,6 +331,29 @@ illustrations, textures, and authentic screenshots explicitly supplied or reques
 `Image` assets and must never be redrawn as `Svg` paths or `Canvas` commands. A design reference or
 any crop derived from it is not an application asset; rebuild the UI it depicts with Dowe
 components and use named missing paths for unavailable original media.
+
+### Public image paths
+
+Project media belongs in the root `assets/` tree. It is not imported through `@/` and it is not
+addressed with a machine filesystem path. Dowe maps the path relative to `assets/` to the same
+root-relative URL under `/assets/` in the development web server and web packages:
+
+| Source file | View URL |
+| --- | --- |
+| `assets/img/hero.webp` | `/assets/img/hero.webp` |
+| `assets/social/home.png` | `/assets/social/home.png` |
+
+Use the view URL in `Image src` and in `cover` props. `assets/img/hero.webp`,
+`/img/hero.webp`, and `/Users/name/project/assets/img/hero.webp` are not equivalents and must not be
+substituted for `/assets/img/hero.webp`. The built-in runtime only resolves project media under
+`/assets/**`; a 404 at `/img/**` means the public prefix was dropped. Check the file's spelling and
+case on disk, then request the exact URL from the running `dowe dev` server before debugging layout,
+`show`, `objectFit`, or responsive props.
+
+The same source URL is kept in target-neutral Dowe source. Web and desktop serve `/assets/**`, while
+native target packaging copies the local project file into the platform bundle and resolves it from
+the packaged asset store.
+
 Static `Svg` requires a quoted `viewBox` and one or more direct `Path` children. Runtime `Svg`
 instead uses `data:<reference>` and cannot declare `viewBox` or `Path`. The runtime reference resolves
 to one normalized Dowe vector record or JSON string; it does not accept SVG markup. `Path` accepts

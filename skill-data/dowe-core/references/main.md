@@ -178,8 +178,12 @@ source control and treat copies under `.dowe` as disposable generated output. We
 only the synchronized `icons/web` set under `/icons/**`; native icon targets are not public assets.
 
 Web exports preserve the complete public `assets/**` tree under `/assets/**`, including files used
-only by document metadata. A source file such as `assets/social/home.png` is therefore available as
-`/assets/social/home.png` after static, Cloudflare Worker, or Cloudflare Pages deployment.
+only by document metadata. The URL is formed by taking the path relative to the project `assets/`
+directory and prefixing it with `/assets/`: `assets/social/home.png` is therefore available as
+`/assets/social/home.png` after `dowe dev`, static, Cloudflare Worker, or Cloudflare Pages deployment.
+The filesystem path, the source-relative path `assets/social/home.png`, and the stripped URL
+`/social/home.png` are not public URLs. Do not import files from `assets/` through `@/`; keep them in
+the project asset tree and reference their root-relative `/assets/**` URL from views.
 
 The responsibility names `services`, `repositories`, `providers`, `tasks`, and `utils` are optional
 folders, not declaration keywords. Their files declare `fn <binding>` because `fn` is the only

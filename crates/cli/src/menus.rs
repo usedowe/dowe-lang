@@ -522,7 +522,8 @@ mod tests {
             [
                 DeployTarget::Dowe,
                 DeployTarget::Docker,
-                DeployTarget::CloudflarePages
+                DeployTarget::CloudflarePages,
+                DeployTarget::Vercel
             ]
         );
         assert_eq!(
@@ -531,7 +532,8 @@ mod tests {
                 DeployTarget::Dowe,
                 DeployTarget::Docker,
                 DeployTarget::Ssh,
-                DeployTarget::Cloudflare
+                DeployTarget::Cloudflare,
+                DeployTarget::Vercel
             ]
         );
         assert_eq!(

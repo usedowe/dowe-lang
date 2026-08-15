@@ -8,6 +8,40 @@ description: Use for Dowe view modules, routes, layouts, pages, UI composition, 
 Dowe views are target-neutral source compiled to web, desktop, Android, and iOS outputs. Reuse one route graph and one source behavior model across targets.
 Keep every new frontend module under `views/`; only root `main.dowe` and `theme.dowe` sit outside it.
 
+## Non-duplication gate
+
+Repetition is a structural contract, not a style preference. Treat two or more sibling units with the
+same semantic or layout shape as a collection, even when the reference contains only two items or the
+only differences are text, icons, links, or status values. This includes feature rows such as
+`Flex` + icon + title/description, not only `Card` grids.
+
+Before authoring the repeated view:
+
+- Declare immutable reference content in a page or layout `const`, or use a typed `signal`/Store when
+  the collection is reactive. Give every record a stable string `id`.
+- Render one complete repeated unit with exactly one `each in:<collection> as:<item> key:<item.id>`.
+  The `each` must wrap the whole unit, including its icon, copy, actions, and state—not just one text
+  node inside a set of copied siblings.
+- Bind every varying supported field from the current item and keep the `Grid`/`Flex` structure
+  outside or inside that single template according to the reference's actual track ownership.
+- Reject the result if the source contains copied sibling rows, Cards, list units, or feature groups
+  that could be represented by one collection and one template. Fix the data boundary before doing
+  visual polish.
+
+Keep static-only props static. In particular, `Icon.name` is a quoted, compiler-validated name and
+must not be invented as `name:<item.icon>`. For varying runtime vector data, use the supported
+`Svg data:<reference>` contract; otherwise preserve the component's static contract and report a
+missing language capability instead of duplicating the complete repeated unit or inventing syntax.
+
+## Reference-image theme boundary
+
+When a reference image is supplied to build or adapt a layout, page, reusable component, or
+`Section`, use it as evidence for structure, geometry, typography, spacing, assets, layering, and
+visual hierarchy. Do not sample its colors, create a new `theme.dowe`, change existing theme colors,
+or add literal color overrides just to imitate the image. Preserve the project's existing theme and
+semantic color tokens. Generate a theme or modify its colors only when the user explicitly requests
+theme or color changes.
+
 ## Workflow
 
 1. Find the imported `views` binding connected by `main.dowe`, inspect the route graph, and read
@@ -45,18 +79,36 @@ Keep every new frontend module under `views/`; only root `main.dowe` and `theme.
    When media is a cropped background that fills a panel or band, put `cover` on the owning
    `Section`, `Card`, or neutral media-stage `Box` instead of rendering a child `Image`; reserve
    `Image` for foreground media with its own content and accessibility role.
+   Public project media follows a fixed URL mapping: a source file at
+   `assets/<relative-path>` is referenced from a view as `/assets/<relative-path>`. For example,
+   `assets/img/hero.webp` becomes `Image src:"/assets/img/hero.webp"` or
+   `cover:"/assets/img/hero.webp"`. Do not use an absolute filesystem path such as
+   `/Users/name/project/assets/img/hero.webp`, a source-relative path such as `assets/img/hero.webp`,
+   or a stripped path such as `/img/hero.webp`; Dowe's built-in web runtime serves the project
+   `assets/**` tree under `/assets/**`. Verify the file exists with the exact case before authoring
+   the URL. Keep the same root-relative URL in the shared source for web, desktop, Android, and iOS;
+   target packaging resolves the local file separately.
 8. Create or reuse a layout whenever the reference has shared chrome. AppBar and Footer never
    belong in a page, and a one-page site still uses a layout-backed route group.
    Treat `AppBar` as the shell's semantic navigation bar: keep exactly one `AppBar` directly under
    `Scaffold appBar`, map full-width announcements or secondary bands to `top` and `bottom`, and
-   put the main row in `start`, `center`, and `end`. Put `show` on the actual `NavMenu`, `Button`,
-   or `IconButton`; do not wrap those slot children in `Box` only to provide responsive visibility,
-   alignment, or width. A `Box` inside an AppBar slot is reserved for a meaningful positioned or
-   decorative layer, not as a generic slot adapter. Do not rebuild the same AppBar with `Box` nodes
-   in `overlays`; use `Drawer` there only for the mobile navigation surface. Reusable components
-   accept no props, so a navigation component that needs a different breakpoint at each mount must
-   be replaced by the direct built-in `NavMenu` in the AppBar while the static navigation component
-   remains reusable in the Drawer.
+   put the main row in `start`, `center`, and `end`. `NavMenu` is horizontal shell navigation: place
+   it only as a direct child of AppBar `center` (primary navigation) or `end` (compact/secondary
+   navigation). Never put `NavMenu` inside `Drawer`, `Sidebar`, `Scaffold start/end`, or a generic
+   content region. AppBar `start`, `center`, and `end` already lay out their direct children as
+   horizontal flex rows with centered cross-axis alignment and component-owned spacing. Put
+   `Brand`/logo, `NavMenu`, `Button`, and `IconButton` directly in their region; do not add a
+   `Flex` only to align, gap, or place those siblings. Use a nested `Flex` only when it owns a
+   distinct layout responsibility such as a column, wrap, or independently structured control
+   cluster. Put `show` on the actual `NavMenu`, `Button`, or `IconButton`; do not wrap those slot
+   children in `Box` only to provide responsive visibility, alignment, or width. A `Box` inside an
+   AppBar slot is reserved for a meaningful positioned or decorative layer, not as a generic slot
+   adapter. For mobile navigation, put the Drawer trigger before the `Brand`/logo when both are in
+   `start`, or put it directly in `end`; do not place it after the brand inside a wrapper `Flex` as
+   the default. Do not rebuild the same AppBar with `Box` nodes in `overlays`; use `Drawer` there
+   only for the mobile navigation surface, and put a vertical `SideNav` in its `body`. Reusable
+   components accept no props, so keep the static `SideNav` navigation component reusable in both
+   the desktop `Sidebar` and mobile `Drawer`, while the AppBar owns its direct `NavMenu` instance.
 9. Put exactly one normal `Scaffold` root in every layout; add one direct `Splash` sibling only when
    startup replacement content is required.
 10. Start every page with `Section` and use ordered sibling Sections for major page bands. Give
@@ -97,22 +149,27 @@ Keep every new frontend module under `views/`; only root `main.dowe` and `theme.
     or layered proof surface. Add a restrained detail pass with supported covers, overlays,
     positioning, transforms, shadows, borders, motion, and tonal contrast from
     `references/styles.md`; decoration must reinforce the concept rather than fill empty space.
-14. Model repeated same-shape UI once: use a `const` for immutable reference-defined content, a
-    typed `signal` for a page collection refreshed or replaced by requests or local workflows, and
-    an imported View Store only for state shared across routes. Render one unit with
-    `each in:<collection> as:<item> key:<item-path>`; never copy sibling Cards or list units.
-15. Extract a static fragment reused in two or more places, such as a logo or a navigation tree
-    mounted in both Sidebar and Drawer, into a `component` under `views/components`; keep signals,
+14. Apply the non-duplication gate to every repeated same-shape unit: use a `const` for immutable
+    reference-defined content, a typed `signal` for a page collection refreshed or replaced by
+    requests or local workflows, and an imported View Store only for state shared across routes.
+    Render the complete unit with one `each in:<collection> as:<item> key:<item-path>`; never copy
+    sibling Cards, feature rows, icon/text groups, or list units. A result with repeated siblings is
+    incomplete even when it looks visually correct.
+15. Extract a static fragment reused in two or more places, such as a logo or a vertical `SideNav`
+    tree mounted in both Sidebar and Drawer, into a `component` under `views/components`; keep signals,
     functions, caller bindings, and data-bound `each` templates in the owning layout or page because
     reusable components are static and accept no invented props or slots.
 16. Prefer component defaults from `theme.dowe`; add local visual props only for intentional
-    exceptions. A page task must consume the existing theme instead of rewriting it. Only when the
-    user explicitly requests a theme change, delegate palette extraction to `dowe-theme` and use
-    grouped `colors:` families with `color`, `text`, and `title` roles. Use normalized family-role
-    tokens only in view props.
-17. Before finalizing a page, reread `theme.dowe` and compare it with the version inspected before
-    authoring. A page-only task must leave the theme unchanged; an explicit theme task must leave
-    every declared family in grouped `colors:` form with all three roles.
+    exceptions. A reference image for a layout, page, reusable component, or `Section` is not
+    permission to create or recolor the theme. Consume the existing theme instead of rewriting it.
+    Only when the user explicitly requests a theme or color change, delegate palette extraction to
+    `dowe-theme` and use grouped `colors:` families with `color`, `text`, and `title` roles. Use
+    normalized family-role tokens only in view props.
+17. Before finalizing reference-driven work, reread `theme.dowe` and compare it with the version
+    inspected before authoring. A layout, page, component, or `Section` task based on an image must
+    leave the theme unchanged unless the user explicitly requested theme or color changes; an
+    explicit theme task must leave every declared family in grouped `colors:` form with all three
+    roles.
 18. Generate the smallest valid component declaration. Omit built-in and theme-resolved visual
     defaults instead of serializing them: `Button "Log in"` is preferred to
     `Button variant:"solid" scheme:"primary" size:"md"`, and `Input bind:email label:"Email"`
@@ -131,12 +188,15 @@ Keep every new frontend module under `views/`; only root `main.dowe` and `theme.
 22. Use `store name:` with one indented prop per line when Store props would make one long line.
 23. Validate bindings, component props, text children, routes, and target support with Dowe
     diagnostics.
-24. Review the rendered page at `xs`, `md`, and the reference viewport. Audit focal hierarchy,
+24. Before visual QA, audit every repeated region: name its collection and owner, verify stable ids,
+    confirm one `each` wraps the complete repeated subtree, and check that no copied sibling has
+    survived. Verify static-only props such as `Icon.name` remain compiler-valid.
+25. Review the rendered page at `xs`, `md`, and the reference viewport. Audit focal hierarchy,
     section-to-section rhythm, visible layering, Card variety, text measure, asset quality, and
     interaction states before accepting a technically valid layout. For split layouts, compare the
     form centerline with the centerline of its owning panel, not the whole viewport, and verify that
     nested action columns fit the available panel width at every active breakpoint.
-25. For reference-driven work, run the installed `scripts/visual_qa.py` entrypoint at the exact
+26. For reference-driven work, run the installed `scripts/visual_qa.py` entrypoint at the exact
     viewport. Inspect its band report and diff, then iterate on geometry, line wrapping, spacing,
     density, states, layers, and assets before finishing. For directed adaptations, use the report
     to inspect retained bands and document intentional structural deviations instead of weakening

@@ -82,6 +82,13 @@ impl DeployAccess {
         )
     }
 
+    pub fn vercel_middleware(&self) -> String {
+        format!(
+            "{}\n\nexport default async function middleware(request) {{\n  const denied = await doweDeployAccess(request);\n  if (denied) return denied;\n  const response = new Response();\n  response.headers.set(\"x-middleware-next\", \"1\");\n  return doweDeployNoIndex(response);\n}}\n",
+            self.javascript_helpers()
+        )
+    }
+
     fn javascript_helpers(&self) -> String {
         format!(
             r#"const doweDeployEnvironment = "{}";

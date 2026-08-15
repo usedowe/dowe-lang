@@ -55,13 +55,13 @@ prop over a complete restatement of the component's default style.
 | `AppBar` | Top application bar with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; `boxed:true` centers its inner content at `96rem` web or `1536` native while preserving the full-width surface. It stays visually flat across targets unless `border`, `bordered:true`, or `floating:true` requests separation. A direct `Scaffold appBar` with `position:"sticky" floating:true` overlays the web and desktop body so `main` remains visible beneath the floating surface. `dockOnScroll:true` requires `position:"fixed" floating:true` and makes web, desktop, Android, and iOS dock the floating surface at the viewport top after `100` logical scroll units. |
 | `Footer` | Page or shell footer with optional full-width `top` and `bottom` regions around `start`, `center`, and `end`; it includes horizontal padding `4` from `xs` and `6` from `md`, top padding `10` from `xs` and `16` from `md`, and bottom padding `4` from `xs` and `6` from `md`, overridable with `p`, `px`, `py`, `pl`, `pr`, `pt`, or `pb`. `boxed:true` centers one shared inner container holding `top`, the central row, and `bottom` at `96rem` web or `1536` native while the surface remains full width. Put responsive `show` on children inside a region, not on the structural region block. |
 | `BottomBar` | Bottom navigation containing one or more direct `tab` entries; each entry owns one Icon and navigation metadata; `boxed:true` centers the tab row at `96rem` web or `1536` native. |
-| `NavMenu` | Horizontal navigation composed from direct `item`, `submenu`, or `megamenu` entries. Submenu and megamenu content opens in a Dowe-owned floating overlay on web, Android, and iOS; activating the same trigger again closes it. The overlay uses the structural background surface, preserves `scheme` for trigger and active states, dispatches fragment or route navigation before closing, and uses the same anchored overlay strategy as `Dropdown` on iOS. |
-| `SideNav` | Detailed vertical navigation with optional `header`, direct `item`, `divider`, and `submenu` entries. `submenu open` is initial state; the runtime retains later toggles in session memory across unmount and remount. Use distinct `id` values for structurally identical SideNav instances that need independent memory. |
+| `NavMenu` | Horizontal navigation composed from direct `item`, `submenu`, or `megamenu` entries. For shell navigation, place it only as a direct child of AppBar `center` or `end`; never use it as the body of a `Drawer`, `Sidebar`, or other vertical surface. Submenu and megamenu content opens in a Dowe-owned floating overlay on web, Android, and iOS; activating the same trigger again closes it. The overlay uses the structural background surface, preserves `scheme` for trigger and active states, dispatches fragment or route navigation before closing, and uses the same anchored overlay strategy as `Dropdown` on iOS. |
+| `SideNav` | Detailed vertical navigation with optional `header`, direct `item`, `divider`, and `submenu` entries. Use it directly or through a static reusable component in `Sidebar body` and `Drawer body`. `submenu open` is initial state; the runtime retains later toggles in session memory across unmount and remount. Use distinct `id` values for structurally identical SideNav instances that need independent memory. |
 | `RailNav` | Narrow icon navigation with direct `item` and `divider` entries; each item requires quoted `label` and Solar `icon`. |
 | `Sidebar` | Shell side surface with optional `header`, required `body`, and optional `footer` regions. |
 | `Scaffold` | The single normal layout root. It accepts optional `appBar`, `start`, `end`, `bottomBar`, and `overlays` regions plus required `main`; `boxed:true` centers only the `start`/`main`/`end` body at `96rem` web or `1536` native. |
 | `Splash` | Direct layout or page boundary with required `bind` to a boolean Signal or View Store. Its children replace every normal root while the binding is true; it has no default spinner or style. |
-| `Drawer` | Openable side surface with optional `header`, required `body`, and optional `footer`; direct view children also form body content. |
+| `Drawer` | Openable side surface with optional `header`, required `body`, and optional `footer`; direct view children also form body content. When the surface contains navigation, use `SideNav` in `body`; `NavMenu` remains the horizontal AppBar navigation component. |
 | `Tabs` | Related panels selected through one or more direct `tab` entries with unique quoted `id` and `label`. |
 | `tab` | Context-only child of Tabs or BottomBar. A Tabs entry owns panel children; a BottomBar entry owns navigation metadata and one Icon. |
 | `Stepper` | Ordered numbered workflow selected through direct `step` entries; use `scheme` and `horizontal` or `vertical` orientation. |
@@ -74,9 +74,16 @@ Section, Scaffold, AppBar, Footer, and BottomBar use the wide boxed content cap 
 ### AppBar composition rules
 
 `AppBar` owns the shell surface and its explicit regions. Use one AppBar directly under
-`Scaffold appBar`, then place the brand in `start`, the primary `NavMenu` directly in `center`,
-and actions directly in `end`. `center` is the flexible region; `start` and `end` size to their
-content. Put responsive `show` on the built-in node that changes visibility:
+`Scaffold appBar`, then place the brand in `start`, the primary horizontal `NavMenu` directly in
+`center` (or a compact/secondary `NavMenu` directly in `end`), and actions directly in `end`.
+`center` is the flexible region; `start` and `end` size to their content. Put responsive `show` on
+the built-in node that changes visibility:
+
+AppBar regions already provide a horizontal flex row, vertical centering, and component-owned gap.
+Keep direct children flat: place `Brand`/logo and controls directly in `start`, and place the mobile
+Drawer trigger either before the brand in `start` or directly in `end`. Do not use `Flex` just to
+align or space those siblings; reserve it for a real nested axis, wrapping, or independently
+structured group.
 
 ```text
 layout SiteLayout
@@ -107,9 +114,9 @@ layout SiteLayout
 Do not use `center > Box show:{ ... } > NavMenu` as a visibility or alignment shim, and do not
 place a second desktop or mobile AppBar inside `overlays`. A `Box` is appropriate in `top` or
 `bottom` only when that full-width region is itself a styled band, or inside a slot when it is a
-real positioned visual layer. Imported reusable components do not accept props; if a shared
-navigation tree needs different visibility at its AppBar and Drawer mounts, use the direct
-built-in `NavMenu` in the AppBar and keep the prop-free navigation component in the Drawer.
+real positioned visual layer. Imported reusable components do not accept props; use the direct
+built-in `NavMenu` only in the AppBar and keep the prop-free vertical `SideNav` component in both
+the `Sidebar body` and `Drawer body`.
 
 ## Controls and theme selection
 
@@ -298,7 +305,7 @@ are outside the Table contract.
 | `Avatar` | Person or entity image, initials, or optional `icon` region with supported action and navigation behavior. |
 | `AvatarGroup` | Static `item` children or bound `items`, with visible-count and overflow behavior. |
 | `Badge` | Compact status or count surface containing one or more view children. |
-| `Brand` | Logo or identity container with one or more arbitrary view children, optional quoted `href` navigation, optional accessible `label`, and Box-compatible `w` and `h`; it adds no Button chrome. |
+| `Brand` | Logo or identity container with one or more arbitrary view children, optional quoted `href` navigation, optional accessible `label`, and Box-compatible `w` and `h`; it adds no Button chrome. When used as an AppBar child, mount `Brand` or an imported Logo component directly in a region; do not wrap it with `Flex` just to place it beside sibling controls. |
 | `Banner` | Full-width external surface with one or more arbitrary view children, required quoted HTTPS `href`, optional accessible `label`, and common background, cover, spacing, sizing, border, radius, shadow, and visibility props; web opens a protected new tab and native targets use the system browser. |
 | `Chip` | Compact labeled token with optional `start` and `end` icon regions, supported close behavior, portable motion props, and an optional whole-chip `onClick` action. |
 | `Skeleton` | Loading placeholder sized to the content surface it represents. |

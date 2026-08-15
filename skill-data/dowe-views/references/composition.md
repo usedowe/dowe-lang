@@ -93,9 +93,16 @@ keep the bar directly under `Scaffold appBar` and use its regions as the composi
 | Region | Owns | Responsive guidance |
 | --- | --- | --- |
 | `top` / `bottom` | Full-width announcement or secondary band | Use only when the band belongs inside the bar surface. |
-| `start` | Brand and leading identity | Keep the brand intrinsic; group multiple leading controls with `Flex`. |
-| `center` | Flexible primary navigation or title | Put `NavMenu` or the title directly in the region; use its own `show` prop. |
-| `end` | Primary action, utilities, and mobile menu trigger | Put `Button` and `IconButton` directly in the region; group several with `Flex`. |
+| `start` | Brand and leading identity | Put `IconButton` before `Brand`/logo when the mobile Drawer trigger belongs to the leading group; keep both as direct siblings. Use a nested `Flex` only for an independently oriented or wrapped group. |
+| `center` | Flexible primary navigation or title | Put the horizontal `NavMenu` or the title directly in the region; use its own `show` prop. |
+| `end` | Compact/secondary horizontal navigation, primary action, utilities, and mobile menu trigger | Put `NavMenu`, `Button`, or `IconButton` directly in the region. Prefer direct siblings; use a nested `Flex` only for a distinct axis, wrapping, or grouped behavior. |
+
+AppBar regions already provide the horizontal flex row, vertical centering, and standard spacing
+for direct children. Do not write `start > Flex` merely to place `Logo` beside `IconButton`; `Logo`
+is already one semantic `Brand` child. For a mobile Drawer trigger, use either:
+
+- `start > IconButton` followed by `Brand`/`Logo`; or
+- `end > IconButton`.
 
 For a floating or pill AppBar, express the surface with `floating:true`, `boxed:true`,
 `bordered:true` or an intentional border, radius, blur, and shadow on `AppBar`. Do not reconstruct
@@ -111,11 +118,12 @@ responsive `show` to reproduce the shell rail. `NavMenu` owns anchored submenu a
 surfaces, so its semantic root must not be visually displaced from the geometry used by those
 surfaces.
 
-When the same navigation is needed by desktop and mobile, remember that reusable `component`
-exports accept no props. A direct built-in `NavMenu show:{ xs:false md:true }` may therefore be
-needed in `AppBar center`, while the prop-free reusable navigation tree is mounted in the Drawer.
-This keeps responsive behavior attached to the semantic navigation owner instead of producing a
-block wrapper that changes the AppBar's intrinsic row geometry.
+When the same destinations are needed by desktop and mobile, keep the orientations separate:
+render a direct built-in `NavMenu show:{ xs:false md:true }` in `AppBar center` (or `end` for a
+compact menu), and mount a prop-free reusable `SideNav` in the `Sidebar body` and `Drawer body`.
+This keeps responsive behavior attached to the semantic navigation owner instead of placing a
+horizontal menu inside a vertical surface or producing a block wrapper that changes the AppBar's
+intrinsic row geometry.
 
 ## Reusable components
 
@@ -124,10 +132,10 @@ component owns no signals, functions, stores, or bindings to caller state; it is
 and visual props, and theme defaults apply inside it normally.
 
 Extract a component when the same static fragment appears in two or more places — a brand or logo
-(`Brand` plus `Svg`), a navigation tree, a social link block, a footer column — or when a deep
-static fragment makes a layout or page hard to read. The canonical responsive navigation pattern
-declares the menu once and mounts it in both shell surfaces, so desktop and mobile navigation can
-never drift apart:
+(`Brand` plus `Svg`), a vertical `SideNav` tree, a social link block, a footer column — or when a
+deep static fragment makes a layout or page hard to read. The canonical responsive navigation
+pattern keeps the horizontal AppBar menu and the vertical side-surface tree explicit, while
+reusing the same `SideNav` component in both shell surfaces:
 
 ```text
 import ViewsNavigation from "@/views/components/views-navigation"
@@ -141,6 +149,11 @@ layout DocsLayout
         start
           IconButton show:{ xs:true md:false } label:"menu" variant:"ghost" icon:"menu-dots" onClick:{ set:openDrawer value:!openDrawer }
           Logo
+        center
+          NavMenu show:{ xs:false md:true }
+            item label:"Overview" href:"/"
+            item label:"Reports" href:"/reports"
+            item label:"Settings" href:"/settings"
     start
       Sidebar show:{ xs:false md:true } variant:"ghost" scheme:"muted" w:72
         body
@@ -153,7 +166,7 @@ layout DocsLayout
           ViewsNavigation
 ```
 
-The `openDrawer` signal and its inline toggle stay in the layout; the component stays stateless.
+The `openDrawer` signal and its inline toggle stay in the layout; the `SideNav` component stays stateless.
 If a fragment needs bindings to page state, an `each`, or event functions, keep it in the owning
 page or layout instead of extracting it. Do not rebuild built-in components as custom components,
 and do not extract a fragment used in only one place.
@@ -167,7 +180,8 @@ cross-route state through a Store.
 ## Repeated collection ownership
 
 Two or more visible same-shape units are a collection even when the reference contains only two or
-three items. Choose the data owner before writing the Grid:
+three items. This rule covers any repeated semantic tree—not only Cards—including a feature row made
+of `Flex`, an `Icon`, and a title/description `Grid`. Choose the data owner before writing the Grid:
 
 | Collection behavior | Declaration |
 | --- | --- |
@@ -175,9 +189,24 @@ three items. Choose the data owner before writing the Grid:
 | Data loaded, filtered, paged, appended, or replaced by that page's request or workflow | Typed page or layout `signal` initialized to a valid value, commonly `[]`, then updated with `set` |
 | Reactive state genuinely consumed by multiple routes | Imported View Store; add `persistent:true` only when it must survive restart |
 
-Render the collection with one `each in:<collection> as:<item> key:<item.id>` inside the owning
-`Grid`. Give every record an explicit stable string `id`, preserve the reference item count and
-copy in a `const`, and never author one sibling Card per record.
+Render the collection with one `each in:<collection> as:<item> key:<item.id>` as the direct repeated
+unit inside the owning `Grid`. Give every record an explicit stable string `id`, preserve the
+reference item count and copy in a `const`, and never author one sibling Card, Flex row, icon/text
+group, or list unit per record. The loop boundary must contain the complete repeated subtree; do not
+place a small `each` around only the title while copying the surrounding row.
+
+Use this review gate before polishing the layout:
+
+1. Name the collection and its page/layout owner.
+2. Declare one record per visible unit before the visual tree.
+3. Confirm that one `each` owns every repeated child, including icons, copy, actions, and state.
+4. Confirm that all varying supported values resolve from the current item and that the key is stable.
+5. Reject any source that still contains copied sibling units with the same shape.
+
+Static-only props remain static inside a loop. `Icon.name` requires a quoted compiler-validated name;
+do not write `name:<item.icon>`. Use the supported runtime `Svg data:<reference>` contract only when
+the icon source is genuinely runtime data. A limitation in a static component contract is not a reason
+to duplicate the complete repeated unit or invent a new binding form.
 
 ```text
 page ServicesPage
@@ -583,6 +612,9 @@ before considering a band finished.
 | Visual props repeated on every Card or Button | Defaults in `theme.dowe` `design` | Local props are for one intentional exception |
 | A page declaring `Scaffold`, `AppBar`, or `Footer` | Move shell to the layout | Shell chrome is layout-owned |
 | The same nav tree copy-pasted into Sidebar and Drawer | One `component` mounted in both | Duplicated fragments drift apart |
+| `NavMenu` used as the body of a Drawer or Sidebar | `SideNav` in the surface `body`; keep `NavMenu` in AppBar `center` or `end` | `NavMenu` is horizontal and does not express a vertical side navigation surface |
+| One reusable navigation component with a `NavMenu` root mounted in Drawer and AppBar | A reusable `SideNav` root for Sidebar/Drawer plus a direct AppBar `NavMenu` | A component cannot receive mount-specific responsive props, and the two components own different orientations |
+| `Flex` directly inside AppBar `start`, `center`, or `end` only to place siblings | Put `Brand`/`Logo`, `NavMenu`, `Button`, and `IconButton` directly in the AppBar region; use `IconButton` before Brand in `start` or directly in `end` | AppBar regions already own horizontal flex, vertical alignment, and spacing; the wrapper obscures semantic order |
 | A `component` holding signals, functions, or bindings | Keep state in the owning layout or page | Components are static reusable trees |
 | One Card declaration copied for every visible record | One collection, one `each`, and one Card template | Repeated content needs one data owner and one visual contract |
 | A data-bound Card extracted with invented component props | Keep the `each` template in its page or layout | Reusable components do not accept dynamic caller inputs |
@@ -610,14 +642,20 @@ before considering a band finished.
 - Background-filling media uses `cover` on its semantic owner or neutral media stage; foreground
   `Image` remains reserved for independently meaningful media.
 - Nested action columns switch only where their complete labels fit the panel's usable width.
-- Repetition uses one `const`, typed `signal`, or shared Store and one `each` inside Grid tracks,
-  never copy-pasted siblings.
+- Every repeated same-shape region, including non-Card feature rows, uses one `const`, typed `signal`,
+  or shared Store and one `each` that wraps the complete unit inside the Grid tracks; no copy-pasted
+  sibling survives visual QA.
+- Static-only props remain valid inside repeated templates; `Icon.name` is never bound to an item path.
 - Spacing comes from `gap`, Section padding, explicit padding, responsive flow, and sizing on the
   real owner, never from empty or size-only Box spacers.
 - `translateX` and `translateY` appear only on documented advanced visual layers, never on AppBar,
   Brand, NavMenu, Drawer, ordinary content, or normal-flow alignment corrections.
 - No stretched card ends in trailing dead space; paired cards match visual weight, distributing
   content with `justify:"between"` or scaling their media blocks to the row height.
+- `NavMenu` appears only directly in AppBar `center` or `end`; every vertical navigation inside a
+  Sidebar or Drawer is a `SideNav`, including the reusable component mounted in both surfaces.
+- AppBar regions contain direct semantic children; no wrapper `Flex` exists solely for AppBar
+  alignment or gap. A mobile Drawer trigger is before Brand in `start` or directly in `end`.
 - Section vertical padding follows one consistent ladder across the page instead of per-band
   improvisation.
 - Visual identity lives in `theme.dowe`; page props are structural or intentional exceptions.

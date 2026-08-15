@@ -98,9 +98,11 @@ Pair at most two families per project: one for `Title` and one for `Text`, confi
 ## Reference-system extraction
 
 Treat a screenshot or mockup as evidence of relationships, not as a bag of unrelated pixel values.
-Inventory repeated choices before editing `theme.dowe`. If the file already exists and the request is
-page-only, consume its semantic tokens without changing its palette. Re-extract colors only when the
-user explicitly asks for a theme or visual-system change.
+Inventory repeated choices before editing `theme.dowe`. An image supplied for a layout, page,
+reusable component, or `Section` is not by itself a request to create or change a theme. If the file
+already exists, consume its semantic tokens without changing its palette; if it does not exist, do
+not create one solely from the image. Re-extract or generate colors only when the user explicitly
+asks for a theme or visual-system change.
 
 | Reference evidence | Theme decision |
 | --- | --- |

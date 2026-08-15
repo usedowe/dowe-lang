@@ -194,6 +194,9 @@ Annotated labels are hints, not component names. Resolve visible behavior agains
 | Persistent top chrome | `Scaffold appBar` containing `AppBar` |
 | Product identity or logo group | `Brand` with `Text`, `Image`, or `Svg` children |
 | Horizontal navigation | `NavMenu`; never invent `MenuBar` |
+| Vertical navigation in a `Sidebar` or `Drawer` | `SideNav`; never place horizontal `NavMenu` in the side surface |
+| Open mobile navigation surface | `Drawer` containing a vertical `SideNav` in `body` |
+| Mobile Drawer trigger next to the brand | Direct `IconButton` before `Brand` in AppBar `start`, or direct `IconButton` in `end`; do not wrap both in `Flex` |
 | Primary or secondary action | `Button`, or `IconButton` for an icon-only action |
 | Major routed content band | Page `Section` |
 | Split hero or repeated tracks | `Grid` |
@@ -212,7 +215,8 @@ Anything visible across every route in a group belongs to the layout. Routed con
 page Sections. Use `views/components` only for a caller-independent static tree reused in multiple
 places.
 
-Two or more same-shape units use one collection and one `each` template:
+Two or more same-shape units use one collection and one `each` template. Count any repeated semantic
+tree, including icon-plus-copy feature rows, even when the visible reference contains only two items:
 
 | Collection behavior | Data owner |
 | --- | --- |
@@ -220,8 +224,9 @@ Two or more same-shape units use one collection and one `each` template:
 | Records loaded, filtered, paged, appended, or replaced by one screen workflow | Typed page or layout `signal` |
 | Reactive state consumed by multiple routes | Imported View Store |
 
-Give every record a stable string `id`. Never copy one Card per visible record. Read
-`references/composition.md` for the complete layout, component-reuse, collection, and container
+Give every record a stable string `id`. The `each` boundary owns the entire repeated unit, not only
+its text or one child. Never copy one Card, Flex row, icon/text group, or list unit per visible record.
+Read `references/composition.md` for the complete layout, component-reuse, collection, and container
 contracts.
 
 ## Responsive inference
@@ -237,8 +242,12 @@ every unshown breakpoint decision as `inferred`.
   two-column action group may therefore activate while its split panel is still too narrow; keep it
   stacked until every complete label fits at the measured panel width.
 - Preserve source reading order when Grid tracks collapse or Flex changes direction.
-- Convert wide navigation to a supported Drawer, SideNav, or BottomBar pattern when space requires
-  it; keep the same destinations and labels.
+- Keep wide shell navigation as a horizontal `NavMenu` in AppBar `center` or `end`. When space
+  requires a mobile surface, open a `Drawer` whose `body` contains a vertical `SideNav`; keep the
+  same destinations and labels.
+- Keep AppBar sibling controls as direct children of their region; use `Flex` only for a real
+  nested axis, wrapping, or independently structured group, never just to align `Logo` and the
+  Drawer trigger. Place the mobile trigger before the brand in `start` or directly in `end`.
 - Keep the primary promise, content, and action available at every breakpoint.
 - Hide only secondary chrome. Never use responsive visibility to discard the only copy or action.
 - Infer conservative behavior from Dowe container semantics; do not invent unseen mobile content.
@@ -276,6 +285,12 @@ loading, or overlay mechanics with Box and local styling when a built-in compone
 
 ## Theme extraction
 
+An image supplied to build or adapt a layout, page, reusable component, or `Section` does not by
+itself authorize theme work. Use the image to infer composition, hierarchy, typography, spacing,
+assets, and layering, but keep the existing theme colors unchanged. Do not create `theme.dowe`,
+re-sample its palette, or add literal color overrides unless the user explicitly asks to generate or
+change theme colors.
+
 Inventory the reference's repeated visual decisions before adding local props:
 
 | Visual system | Destination |
@@ -286,14 +301,14 @@ Inventory the reference's repeated visual decisions before adding local props:
 | Section rhythm and track gaps | Small consistent Dowe spacing ladder |
 | Repeated radii and shadows | Theme/component defaults where supported |
 
-Use `dowe-theme` when authoring these defaults. A reference-driven task may create or change the
-palette only when the user asks for that visual-system work. If `theme.dowe` already exists and the
-request is to build a page, treat its palette as fixed: use its semantic tokens and do not replace
-it with colors re-sampled while writing the page. Keep local visual props only for intentional
-exceptions. Do not reproduce the reference with unrelated literal colors or one-off styling on
-every instance. Before finishing, reread the theme and verify that page-only work did not alter it;
-when a theme change was requested, verify every declared family has grouped `color`, `text`, and
-`title` roles.
+Use `dowe-theme` when authoring these defaults only after an explicit theme or color request. If
+`theme.dowe` already exists, treat its palette as fixed for reference-driven layout, page,
+component, and `Section` work: use its semantic tokens and do not replace it with colors re-sampled
+from the image. If no theme exists, do not create one solely because the image has a visible palette.
+Keep local visual props only for intentional non-color exceptions. Do not reproduce the reference
+with unrelated literal colors or one-off styling on every instance. Before finishing, reread the
+theme and verify that reference-driven view work did not alter it; when a theme change was
+requested, verify every declared family has grouped `color`, `text`, and `title` roles.
 
 ## Media provenance
 
@@ -382,7 +397,10 @@ hide a visible mismatch.
   layout responsibility rather than only another gap, direction, alignment, or size.
 - Normal layout uses no `translateX` or `translateY`; any exception is a documented advanced visual
   layer, never a compound navigation or overlay root.
-- Repeated records use one collection and one `each` template.
+- Every repeated same-shape region, including icon-plus-copy rows, uses one collection and one `each`
+  template around the complete unit; copied siblings are a structural defect.
+- Static-only component props remain compiler-valid inside the loop; do not invent dynamic bindings
+  such as `Icon name:<item.icon>`.
 - Responsive behavior distinguishes observed evidence from conservative inference.
 - Split-panel content is centered against its owning panel, and nested action tracks are checked at
   their actual usable width rather than inferred from the viewport breakpoint alone.

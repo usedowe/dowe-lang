@@ -1,5 +1,5 @@
 component SiteNavigation
-  NavMenu variant:"ghost" scheme:"primary" size:"sm"
+  SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
     item label:"Overview" href:"/"
     item label:"Product" href:"/#product"
     item label:"Services" href:"/#services"
