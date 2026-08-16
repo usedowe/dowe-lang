@@ -154,6 +154,8 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .clone()
             .or_else(|| (!props.description.is_empty()).then(|| props.description.clone())),
         ViewNode::Audio { props } => props.subtitle.clone(),
+        ViewNode::Camera { props } => Some(props.label.clone()),
+        ViewNode::Microphone { props } => Some(props.label.clone()),
         ViewNode::Image { props } => (!props.alt.is_empty()).then(|| props.alt.clone()),
         ViewNode::Checkbox { props } => props.style.label.clone(),
         ViewNode::Color { props } => props.style.label.clone(),
@@ -260,6 +262,10 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         ViewNode::Command { props, .. } => Some(&props.style.element),
         ViewNode::Audio { props } => Some(&props.style.element),
         ViewNode::Image { props } => Some(&props.style.element),
+        ViewNode::Camera { props } => Some(&props.style.element),
+        ViewNode::Microphone { props } => {
+            Some(&props.style.element)
+        }
         ViewNode::Accordion { props, .. } => Some(&props.style.element),
         ViewNode::Carousel { props, .. } => Some(&props.style.element),
         ViewNode::Checkbox { props } => Some(&props.style.element),
@@ -378,6 +384,8 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Alert { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Avatar { .. }
         | ViewNode::AvatarGroup { .. }
         | ViewNode::ChatBox { .. }

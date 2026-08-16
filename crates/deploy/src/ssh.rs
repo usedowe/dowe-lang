@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::{Cursor, Read};
+use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -26,10 +26,12 @@ case "$action" in
   preflight) ;;
   install)
     upload=$3
-    service=$4
-    binary=$5
+    env_upload=$4
+    service=$5
+    binary=$6
     cleanup() {
       rm -f "$upload"
+      rm -f "$env_upload"
     }
     trap cleanup EXIT HUP INT TERM
     ;;
@@ -96,6 +98,7 @@ printf '%s\n' \
   '[Install]' \
   'WantedBy=multi-user.target' > "$unit_file"
 as_root install -d -m 0755 /etc/dowe
+as_root install -m 0600 -o root -g root "$env_upload" "/etc/dowe/$service.env"
 as_root install -d -m 0755 -o root -g root /var/lib/dowe "/var/lib/dowe/$service"
 as_root install -d -m 0755 -o "$run_user" -g "$group" "/var/lib/dowe/$service/app"
 as_root install -m 0644 -o root -g root "$unit_file" "$unit"
@@ -107,6 +110,7 @@ as_root systemctl --no-pager --full status "$service.service"
 #[derive(Clone, Debug)]
 pub(crate) struct SshPackage {
     pub executable: PathBuf,
+    server_environment: Vec<(String, String)>,
     service_name: String,
     binary_name: String,
 }
@@ -201,6 +205,7 @@ pub(crate) fn generate_ssh(
     environment: DeployEnvironment,
     access: Option<&DeployAccess>,
     client_environment: &[(String, String)],
+    server_environment: &[(String, String)],
     runtime: &[u8],
 ) -> DeployResult<SshPackage> {
     generate_ssh_with_runtime(
@@ -209,6 +214,7 @@ pub(crate) fn generate_ssh(
         environment,
         access,
         client_environment,
+        server_environment,
         runtime,
     )
 }
@@ -219,6 +225,7 @@ fn generate_ssh_with_runtime(
     environment: DeployEnvironment,
     access: Option<&DeployAccess>,
     client_environment: &[(String, String)],
+    server_environment: &[(String, String)],
     runtime: &[u8],
 ) -> DeployResult<SshPackage> {
     let binary_name = project_slug(root)?;
@@ -252,6 +259,7 @@ fn generate_ssh_with_runtime(
     write_file(&output.join("deploy.json"), manifest)?;
     Ok(SshPackage {
         executable: executable_path,
+        server_environment: server_environment.to_vec(),
         service_name,
         binary_name,
     })
@@ -263,6 +271,7 @@ pub(crate) fn publish_ssh(
     dry_run: bool,
 ) -> DeployResult<Vec<String>> {
     let remote_upload = format!("/tmp/{}.upload", package.service_name);
+    let remote_env_upload = format!("/tmp/{}.env.upload", package.service_name);
     let mut ssh_args = destination.auth_args();
     let mut scp_args = destination.auth_args();
     let control = tempfile::tempdir()?;
@@ -283,9 +292,10 @@ pub(crate) fn publish_ssh(
         None
     };
     let install_args = format!(
-        "sh -s -- install {} {} {} {}",
+        "sh -s -- install {} {} {} {} {}",
         shell_word(&destination.user),
         shell_word(&remote_upload),
+        shell_word(&remote_env_upload),
         shell_word(&package.service_name),
         shell_word(&package.binary_name),
     );
@@ -295,10 +305,11 @@ pub(crate) fn publish_ssh(
         shell_word(&destination.user),
     );
     let install_command = format!(
-        "sh -c {} -- install {} {} {} {}",
+        "sh -c {} -- install {} {} {} {} {}",
         shell_word(REMOTE_SCRIPT),
         shell_word(&destination.user),
         shell_word(&remote_upload),
+        shell_word(&remote_env_upload),
         shell_word(&package.service_name),
         shell_word(&package.binary_name),
     );
@@ -319,6 +330,27 @@ pub(crate) fn publish_ssh(
         format!("{}:{remote_upload}", destination.target()),
     ]);
     if let Err(error) = run_inherited("scp", &scp_args) {
+        close_control(control_path.as_deref(), destination);
+        return Err(error);
+    }
+    let mut environment_file = tempfile::NamedTempFile::new()?;
+    write_environment_file(environment_file.as_file_mut(), &package.server_environment)?;
+    let mut environment_scp_args = destination.auth_args();
+    if let Some(path) = control_path.as_ref() {
+        environment_scp_args.extend([
+            "-o".into(),
+            "ControlMaster=auto".into(),
+            "-o".into(),
+            "ControlPersist=60".into(),
+            "-o".into(),
+            format!("ControlPath={path}"),
+        ]);
+    }
+    environment_scp_args.extend([
+        environment_file.path().display().to_string(),
+        format!("{}:{remote_env_upload}", destination.target()),
+    ]);
+    if let Err(error) = run_inherited("scp", &environment_scp_args) {
         close_control(control_path.as_deref(), destination);
         return Err(error);
     }
@@ -372,6 +404,7 @@ pub fn materialize_embedded_ssh_executable(
         output,
         &payload.application,
         &metadata.client_environment,
+        metadata.environment,
         "SSH",
     )?;
     Ok(Some(metadata))
@@ -563,6 +596,19 @@ fn shell_word(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
+fn write_environment_file(file: &mut impl Write, values: &[(String, String)]) -> DeployResult<()> {
+    for (name, value) in values {
+        let escaped = value
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n")
+            .replace('\r', "\\r")
+            .replace('\t', "\\t");
+        writeln!(file, "{name}=\"{escaped}\"")?;
+    }
+    Ok(())
+}
+
 fn run_inherited(program: &str, args: &[String]) -> DeployResult<()> {
     let status = Command::new(program)
         .args(args)
@@ -584,7 +630,7 @@ mod tests {
     use super::{
         EmbeddedSshMetadata, REMOTE_SCRIPT, SshDestination, download_linux_runtime_on_worker,
         generate_ssh_with_runtime, materialize_embedded_ssh_executable, publish_ssh,
-        validate_linux_amd64_runtime,
+        validate_linux_amd64_runtime, write_environment_file,
     };
     use crate::embedded::{
         SSH_TRAILER_MAGIC, decode_embedded_payload, encode_embedded_payload, reset_runtime_root,
@@ -686,6 +732,10 @@ mod tests {
                 "PUBLIC_URL".into(),
                 "https://example.com/path?x=1&y=2".into(),
             )],
+            &[(
+                "DATABASE_URL".into(),
+                "postgres://private.example/app".into(),
+            )],
             &linux_runtime(),
         )
         .expect("package");
@@ -706,11 +756,40 @@ mod tests {
             std::fs::read_to_string(materialized.path().join(".env")).expect("client environment"),
             "PUBLIC_URL=\"https://example.com/path?x=1&y=2\"\n"
         );
+        assert_eq!(
+            std::fs::read_to_string(materialized.path().join(".env.live"))
+                .expect("selected client environment"),
+            "PUBLIC_URL=\"https://example.com/path?x=1&y=2\"\n"
+        );
         assert!(output.path().join("deploy.json").is_file());
         assert!(
             !std::fs::read_to_string(output.path().join("deploy.json"))
                 .expect("manifest")
                 .contains("password")
+        );
+        assert!(
+            !std::fs::read(&package.executable)
+                .expect("executable")
+                .windows(b"postgres://private.example/app".len())
+                .any(|window| window == b"postgres://private.example/app")
+        );
+    }
+
+    #[test]
+    fn writes_server_environment_as_escaped_dotenv() {
+        let mut output = Vec::new();
+        write_environment_file(
+            &mut output,
+            &[(
+                "DATABASE_URL".into(),
+                "postgres://db.example/app\"line\nnext".into(),
+            )],
+        )
+        .expect("environment file");
+
+        assert_eq!(
+            String::from_utf8(output).expect("utf8"),
+            "DATABASE_URL=\"postgres://db.example/app\\\"line\\nnext\"\n"
         );
     }
 
@@ -721,6 +800,7 @@ mod tests {
         std::fs::write(&executable, linux_runtime()).expect("executable");
         let package = super::SshPackage {
             executable,
+            server_environment: Vec::new(),
             service_name: "dowe-app-live".into(),
             binary_name: "app".into(),
         };

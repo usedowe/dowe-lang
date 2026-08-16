@@ -44,6 +44,27 @@
     }
 
     #[test]
+    fn rejects_invalid_capture_component_props() {
+        let facing = parse_page(
+            r#"page capturePage
+  Camera facing:"sideways""#,
+        )
+        .expect_err("camera facing");
+        assert!(facing
+            .to_string()
+            .contains("invalid value for prop `facing`: expected user or environment"));
+
+        let duration = parse_page(
+            r#"page capturePage
+  Microphone maxDuration:0"#,
+        )
+        .expect_err("microphone duration");
+        assert!(duration
+            .to_string()
+            .contains("invalid value for prop `maxDuration`: expected positive integer"));
+    }
+
+    #[test]
     fn rejects_quoted_rich_text_title_mode() {
         let error = parse_page(
             r#"page componentsPage

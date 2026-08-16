@@ -9,7 +9,7 @@ use crate::language::model::{LanguageCompletion, LanguageCompletionKind, Languag
 use crate::parser::{SourceNode, SourceValue, parse_source_file};
 use dowe_components::{
     AlertKind, Align, AvatarStatus, BarPosition, BoxPosition, BuiltinComponent, ButtonSize,
-    CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition,
+    CameraFacing, CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition,
     ChartPalette, ChartSize, ChatBoxMode, CodeLanguage, ColorFamily, ColorToken, ComponentVariant,
     CountdownSize, DividerOrientation, DrawerPosition, EmptyKind, FlexDirection, FontFamily,
     GridAlignment, ImageAspect, ImageLoading, ImageObjectFit, Justify, MarqueeOrientation,
@@ -1093,6 +1093,9 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Video, "aspect") => Some(quoted_values(
             VideoAspect::all().iter().map(|value| value.as_str()),
         )),
+        (BuiltinComponent::Camera, "facing") => Some(quoted_values(
+            CameraFacing::all().iter().map(|value| value.as_str()),
+        )),
         (BuiltinComponent::Iframe, "loading") => Some(quoted_values(["lazy", "eager"])),
         (BuiltinComponent::Iframe, "allow") => Some(quoted_values([
             "fullscreen",
@@ -1472,6 +1475,8 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Path" => PATH_PROPS.to_vec(),
         "Title" | "Text" => TEXT_PROPS.to_vec(),
         "Audio" => combined_props(&["src", "subtitle", "avatarSrc"], VARIANT_PROPS),
+        "Camera" => CAMERA_PROPS.to_vec(),
+        "Microphone" => MICROPHONE_PROPS.to_vec(),
         "Image" => combined_props(
             &[
                 "src",
@@ -2338,6 +2343,16 @@ const RECORD_PROPS: &[&str] = &[
     "maxH",
     "rounded",
     "border",
+];
+const CAMERA_PROPS: &[&str] = &[
+    "facing", "label", "disabled", "onStart", "onCapture", "onError", "variant", "scheme",
+    "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
+    "minH", "maxW", "maxH", "rounded", "border",
+];
+const MICROPHONE_PROPS: &[&str] = &[
+    "label", "maxDuration", "disabled", "onStart", "onStop", "onError", "variant", "scheme",
+    "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
+    "minH", "maxW", "maxH", "rounded", "border",
 ];
 const TOGGLE_GROUP_PROPS: &[&str] = &[
     "value",

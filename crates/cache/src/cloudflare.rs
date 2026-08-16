@@ -166,7 +166,7 @@ impl CloudflareKvClient {
         for chunk in keys.chunks(10_000) {
             let response = self
                 .client
-                .delete(self.namespace_url(&["bulk"])?)
+                .post(self.namespace_url(&["bulk", "delete"])?)
                 .bearer_auth(&self.config.secret)
                 .json(chunk)
                 .send()
@@ -298,6 +298,13 @@ fn clear_json(cleared: usize) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{CloudflareKvConfig, cloudflare_base};
+    use axum::Router;
+    use axum::extract::{Request, State};
+    use axum::http::{Method, StatusCode};
+    use axum::response::IntoResponse;
+    use axum::routing::any;
+    use serde_json::json;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn cloudflare_base_requires_secure_remote_transport() {
@@ -309,5 +316,75 @@ mod tests {
             namespace: "namespace".to_string(),
         };
         assert!(cloudflare_base(&config).is_err());
+    }
+
+    #[tokio::test]
+    async fn clear_uses_cloudflare_bulk_delete_endpoint() {
+        let requests = Arc::new(Mutex::new(Vec::<(Method, String)>::new()));
+        let app = Router::new()
+            .fallback(any(record_request))
+            .with_state(requests.clone());
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("listener");
+        let address = listener.local_addr().expect("address");
+        let server = tokio::spawn(async move {
+            axum::serve(listener, app).await.expect("server");
+        });
+        let client = super::CloudflareKvClient::new(CloudflareKvConfig {
+            host: "http://127.0.0.1".to_string(),
+            port: address.port(),
+            account: "account".to_string(),
+            secret: "secret".to_string(),
+            namespace: "namespace".to_string(),
+        })
+        .expect("client");
+
+        assert_eq!(
+            client.clear().await.expect("clear"),
+            json!({ "cleared": 1 })
+        );
+        let requests = requests.lock().expect("requests").clone();
+        assert_eq!(
+            requests,
+            vec![
+                (
+                    Method::GET,
+                    "/client/v4/accounts/account/storage/kv/namespaces/namespace/keys".to_string(),
+                ),
+                (
+                    Method::POST,
+                    "/client/v4/accounts/account/storage/kv/namespaces/namespace/bulk/delete"
+                        .to_string(),
+                ),
+            ]
+        );
+        server.abort();
+    }
+
+    async fn record_request(
+        State(requests): State<Arc<Mutex<Vec<(Method, String)>>>>,
+        request: Request,
+    ) -> impl IntoResponse {
+        let method = request.method().clone();
+        let path = request.uri().path().to_string();
+        requests
+            .lock()
+            .expect("requests")
+            .push((method, path.clone()));
+        if path.ends_with("/keys") {
+            return (
+                StatusCode::OK,
+                axum::Json(json!({
+                    "success": true,
+                    "result": [{ "name": "appointment:1" }],
+                    "result_info": { "cursor": "" }
+                })),
+            );
+        }
+        (
+            StatusCode::OK,
+            axum::Json(json!({ "success": true, "result": null })),
+        )
     }
 }

@@ -283,6 +283,12 @@ fn collect_js_segments(
         ViewNode::Audio { props } => {
             push_literal(segments, &render_audio_html(props, context));
         }
+        ViewNode::Camera { props } => {
+            push_literal(segments, &render_camera_html(props, context));
+        }
+        ViewNode::Microphone { props } => {
+            push_literal(segments, &render_microphone_html(props, context));
+        }
         ViewNode::Image { props } => {
             push_literal(segments, &render_image_html(props, context));
         }

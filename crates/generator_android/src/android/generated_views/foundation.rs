@@ -31,6 +31,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -63,15 +64,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import android.app.Activity
+import android.Manifest
 import android.animation.ValueAnimator
 import android.app.PictureInPictureParams
 import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.provider.MediaStore
 import android.util.Rational
 import android.widget.ImageView
 import android.widget.FrameLayout
@@ -82,6 +89,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import java.time.LocalDate
 import java.time.YearMonth
+import java.io.File
+import java.io.FileOutputStream
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.atan2
@@ -90,6 +99,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
@@ -153,6 +163,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerType
@@ -160,6 +171,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.input.pointer.awaitPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.platform.LocalContext
@@ -198,6 +210,7 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import android.graphics.BitmapFactory
+import android.util.Base64
 import android.graphics.Paint
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -209,6 +222,7 @@ import android.view.Surface
 import android.view.WindowManager
 import java.io.File
 import java.io.FileOutputStream
+import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.net.HttpURLConnection
 import java.net.URL

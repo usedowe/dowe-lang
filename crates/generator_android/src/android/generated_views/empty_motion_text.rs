@@ -1,12 +1,12 @@
 fn android_runtime_empty_motion_text() -> &'static str {
     r#"@Composable
-private fun DoweEmpty(kind: String, title: String?, description: String?, actionLabel: String, action: (() -> Unit)?, backgroundColor: Color, contentColor: Color, accentColor: Color, modifier: Modifier) {
+private fun DoweEmpty(kind: String, title: String?, description: String?, actionLabel: String, action: (() -> Unit)?, iconViewBox: DoweSvgViewBox, iconPaths: List<DoweSvgPath>, backgroundColor: Color, contentColor: Color, accentColor: Color, modifier: Modifier) {
     Column(
         modifier = modifier.fillMaxWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        DoweEmptyIcon(kind = kind, color = accentColor)
+        DoweSvg(viewBox = iconViewBox, modifier = Modifier.width(112.dp).height(112.dp), color = accentColor, paths = iconPaths)
         Text(text = title ?: doweEmptyTitle(kind), color = contentColor, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Text(text = description ?: doweEmptyDescription(kind), color = contentColor.copy(alpha = 0.64f), fontSize = 14.sp, lineHeight = 20.sp)
         if (action != null) {
@@ -21,46 +21,6 @@ private fun DoweEmpty(kind: String, title: String?, description: String?, action
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
-        }
-    }
-}
-
-@Composable
-private fun DoweEmptyIcon(kind: String, color: Color) {
-    Canvas(modifier = Modifier.width(160.dp).height(120.dp)) {
-        val sx = size.width / 120f
-        val sy = size.height / 100f
-        withTransform({ scale(scaleX = sx, scaleY = sy) }) {
-            val soft = color.copy(alpha = 0.12f)
-            val strong = color.copy(alpha = 0.78f)
-            when (kind) {
-                "playlist" -> {
-                    drawRoundRect(soft, topLeft = Offset(28f, 18f), size = Size(54f, 64f), cornerRadius = CornerRadius(10f, 10f))
-                    drawRoundRect(strong, topLeft = Offset(71f, 29f), size = Size(5f, 36f), cornerRadius = CornerRadius(2.5f, 2.5f))
-                    drawRoundRect(strong, topLeft = Offset(44f, 29f), size = Size(5f, 36f), cornerRadius = CornerRadius(2.5f, 2.5f))
-                    drawRoundRect(strong, topLeft = Offset(49f, 29f), size = Size(27f, 6f), cornerRadius = CornerRadius(3f, 3f))
-                    drawCircle(strong, radius = 10f, center = Offset(41f, 63f))
-                    drawCircle(strong, radius = 10f, center = Offset(68f, 63f))
-                }
-                "result" -> {
-                    drawCircle(soft, radius = 24f, center = Offset(54f, 45f))
-                    drawRoundRect(strong, topLeft = Offset(68f, 61f), size = Size(27f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                    drawRoundRect(strong, topLeft = Offset(45f, 35f), size = Size(18f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                    drawRoundRect(strong, topLeft = Offset(45f, 47f), size = Size(13f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                }
-                "template" -> {
-                    drawRoundRect(soft, topLeft = Offset(30f, 20f), size = Size(62f, 60f), cornerRadius = CornerRadius(6f, 6f))
-                    drawRoundRect(strong, topLeft = Offset(72f, 20f), size = Size(20f, 20f), cornerRadius = CornerRadius(3f, 3f))
-                    drawRoundRect(strong, topLeft = Offset(43f, 47f), size = Size(34f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                    drawRoundRect(strong, topLeft = Offset(43f, 61f), size = Size(26f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                }
-                else -> {
-                    drawRoundRect(soft, topLeft = Offset(24f, 22f), size = Size(72f, 56f), cornerRadius = CornerRadius(10f, 10f))
-                    drawRoundRect(strong, topLeft = Offset(38f, 35f), size = Size(44f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                    drawRoundRect(strong, topLeft = Offset(38f, 49f), size = Size(34f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                    drawRoundRect(strong, topLeft = Offset(38f, 63f), size = Size(22f, 7f), cornerRadius = CornerRadius(3.5f, 3.5f))
-                }
-            }
         }
     }
 }

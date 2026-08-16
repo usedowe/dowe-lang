@@ -10,6 +10,40 @@ fn render_swift_media_data_node(
     let pad = " ".repeat(indent);
     match node {
         ViewNode::Audio { props } => render_swift_audio(props, indent, output),
+        ViewNode::Camera { props } => {
+            output.push_str(&format!(
+                "{pad}DoweCameraView(state: state, facing: {}, label: {}, disabled: {}, onStart: {}, onCapture: {}, onError: {}, backgroundColor: {}, contentColor: {}, radius: {})\n",
+                swift_string_literal(props.facing.as_str()),
+                swift_string_literal(&props.label),
+                props.disabled,
+                swift_optional_literal(props.on_start.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_capture.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_error.as_deref().and_then(|value| context.action_id(value))),
+                card_variant_container(&props.style),
+                card_variant_content(&props.style),
+                swift_card_radius(&props.style.style)
+            ));
+            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+        }
+        ViewNode::Microphone { props } => {
+            let max_duration = props
+                .max_duration
+                .map(|value| format!("Optional(Double({value}))"))
+                .unwrap_or_else(|| "nil".to_string());
+            output.push_str(&format!(
+                "{pad}DoweMicrophoneView(state: state, label: {}, maxDuration: {}, disabled: {}, onStart: {}, onStop: {}, onError: {}, backgroundColor: {}, contentColor: {}, radius: {})\n",
+                swift_string_literal(&props.label),
+                max_duration,
+                props.disabled,
+                swift_optional_literal(props.on_start.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_stop.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_error.as_deref().and_then(|value| context.action_id(value))),
+                card_variant_container(&props.style),
+                card_variant_content(&props.style),
+                swift_card_radius(&props.style.style)
+            ));
+            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+        }
         ViewNode::Image { props } => render_swift_image(props, indent, output),
         ViewNode::Accordion { props, items } => render_swift_accordion(
             props,

@@ -1,25 +1,33 @@
 fn swift_runtime_content_controls() -> &'static str {
     r##"struct DoweAccordionView<Content: View>: View {
     let multiple: Bool
+    let variant: String
     let backgroundColor: Color
     let contentColor: Color
     let borderColor: Color?
+    let itemBackgroundColor: Color
+    let itemBorderColor: Color
+    let itemBorderOpacity: Double
     let radius: CGFloat
     @ViewBuilder let content: (Set<String>, @escaping (String) -> Void) -> Content
     @State private var openIds: Set<String>
 
-    init(multiple: Bool, defaultOpenIds: Set<String>, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: CGFloat, @ViewBuilder content: @escaping (Set<String>, @escaping (String) -> Void) -> Content) {
+    init(multiple: Bool, variant: String, defaultOpenIds: Set<String>, backgroundColor: Color, contentColor: Color, borderColor: Color?, itemBackgroundColor: Color, itemBorderColor: Color, itemBorderOpacity: Double, radius: CGFloat, @ViewBuilder content: @escaping (Set<String>, @escaping (String) -> Void) -> Content) {
         self.multiple = multiple
+        self.variant = variant
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
         self.borderColor = borderColor
+        self.itemBackgroundColor = itemBackgroundColor
+        self.itemBorderColor = itemBorderColor
+        self.itemBorderOpacity = itemBorderOpacity
         self.radius = radius
         self.content = content
         _openIds = State(initialValue: defaultOpenIds)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: CGFloat(8)) {
+        VStack(alignment: .leading, spacing: variant == "ghost" || variant == "line" ? CGFloat(0) : CGFloat(8)) {
             content(openIds) { id in
                 if openIds.contains(id) {
                     openIds.remove(id)
@@ -30,7 +38,8 @@ fn swift_runtime_content_controls() -> &'static str {
                 }
             }
         }
-        .padding(CGFloat(4))
+        .padding(variant == "ghost" || variant == "line" ? CGFloat(0) : CGFloat(4))
+        .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(contentColor)
         .background(backgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: radius))
@@ -45,16 +54,24 @@ struct DoweAccordionItemView<Arrow: View, Content: View>: View {
     let label: String
     let disabled: Bool
     let open: Bool
+    let backgroundColor: Color
+    let borderColor: Color
+    let borderOpacity: Double
+    let borderStyle: String
     let contentColor: Color
     let radius: CGFloat
     let action: () -> Void
     @ViewBuilder let arrowIcon: () -> Arrow
     @ViewBuilder let content: () -> Content
 
-    init(label: String, disabled: Bool, open: Bool, contentColor: Color, radius: CGFloat, action: @escaping () -> Void, @ViewBuilder arrowIcon: @escaping () -> Arrow, @ViewBuilder content: @escaping () -> Content) {
+    init(label: String, disabled: Bool, open: Bool, backgroundColor: Color, borderColor: Color, borderOpacity: Double, borderStyle: String, contentColor: Color, radius: CGFloat, action: @escaping () -> Void, @ViewBuilder arrowIcon: @escaping () -> Arrow, @ViewBuilder content: @escaping () -> Content) {
         self.label = label
         self.disabled = disabled
         self.open = open
+        self.backgroundColor = backgroundColor
+        self.borderColor = borderColor
+        self.borderOpacity = borderOpacity
+        self.borderStyle = borderStyle
         self.contentColor = contentColor
         self.radius = radius
         self.action = action
@@ -67,7 +84,7 @@ struct DoweAccordionItemView<Arrow: View, Content: View>: View {
             Button(action: action) {
                 HStack {
                     Text(label)
-                        .font(.system(size: CGFloat(14), weight: .semibold))
+                        .font(.system(size: CGFloat(15), weight: .bold))
                         .foregroundStyle(contentColor)
                     Spacer()
                     arrowIcon()
@@ -76,6 +93,7 @@ struct DoweAccordionItemView<Arrow: View, Content: View>: View {
                 }
                 .padding(.horizontal, CGFloat(16))
                 .padding(.vertical, CGFloat(12))
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
             .disabled(disabled)
@@ -85,15 +103,27 @@ struct DoweAccordionItemView<Arrow: View, Content: View>: View {
                 }
                 .padding(.horizontal, CGFloat(16))
                 .padding(.vertical, CGFloat(12))
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .transition(.opacity.combined(with: .scale(scale: CGFloat(0.98), anchor: .top)))
             }
         }
         .animation(.easeInOut(duration: 0.16), value: open)
-        .clipShape(RoundedRectangle(cornerRadius: radius * CGFloat(0.85)))
-        .overlay(
-            RoundedRectangle(cornerRadius: radius * CGFloat(0.85))
-                .stroke(contentColor.opacity(0.12), lineWidth: CGFloat(1))
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(backgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: radius))
+        .overlay {
+            if borderStyle == "separator" {
+                if borderOpacity > 0 {
+                    Rectangle()
+                        .fill(borderColor.opacity(borderOpacity))
+                        .frame(height: CGFloat(1))
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                }
+            } else if borderStyle == "full" && borderOpacity > 0 {
+                RoundedRectangle(cornerRadius: radius)
+                    .stroke(borderColor.opacity(borderOpacity), lineWidth: CGFloat(1))
+            }
+        }
         .opacity(disabled ? 0.5 : 1)
     }
 }
@@ -148,28 +178,42 @@ struct DoweCarouselView<Content: View>: View {
             if let title {
                 Text(title).font(.title2).fontWeight(.bold).foregroundStyle(accentColor)
             }
-            if orientation == "vertical" {
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(spacing: CGFloat(gap)) { content }
-                        .scrollTargetLayout()
+            ZStack(alignment: .center) {
+                if orientation == "vertical" {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: CGFloat(gap)) { content }
+                            .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.viewAligned)
+                    .scrollPosition(id: $scrollId)
+                    .frame(maxHeight: CGFloat(560))
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: CGFloat(gap)) { content }
+                            .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.viewAligned)
+                    .scrollPosition(id: $scrollId)
+                    .environment(\.layoutDirection, variant == "rtl" ? .rightToLeft : .leftToRight)
                 }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollPosition(id: $scrollId)
-                .frame(maxHeight: CGFloat(560))
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: CGFloat(gap)) { content }
-                        .scrollTargetLayout()
+                if showNavigation {
+                    HStack {
+                        Button("‹") { move(-1) }
+                            .disabled(disableLoop && currentIndex == 0)
+                        Spacer()
+                        Button("›") { move(1) }
+                            .disabled(disableLoop && currentIndex == slideIds.count - 1)
+                    }
+                    .padding(.horizontal, CGFloat(8))
                 }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollPosition(id: $scrollId)
-                .environment(\.layoutDirection, variant == "rtl" ? .rightToLeft : .leftToRight)
             }
-            if !hideControls || showNavigation || variant == "controls" {
+            if !hideControls || variant == "controls" {
                 HStack {
                     Button("Previous") { move(-1) }
+                        .disabled(disableLoop && currentIndex == 0)
                     Spacer()
                     Button("Next") { move(1) }
+                        .disabled(disableLoop && currentIndex == slideIds.count - 1)
                 }
             }
             if !hideIndicators || variant == "dots" || variant == "thumbnails" {
@@ -218,32 +262,58 @@ struct DoweCarouselSlideView<Content: View>: View {
     let id: String
     let variant: String
     let index: Int
+    let orientation: String
     let slideWidth: Int?
     let slideHeight: Int?
+    let slidesPerView: Int
+    let gap: Int
     @ViewBuilder var content: Content
 
-    init(id: String, variant: String, index: Int, slideWidth: Int?, slideHeight: Int?, @ViewBuilder content: () -> Content) {
+    init(id: String, variant: String, index: Int, orientation: String, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, @ViewBuilder content: () -> Content) {
         self.id = id
         self.variant = variant
         self.index = index
+        self.orientation = orientation
         self.slideWidth = slideWidth
         self.slideHeight = slideHeight
+        self.slidesPerView = slidesPerView
+        self.gap = gap
         self.content = content()
     }
 
     var body: some View {
-        content
-            .frame(minWidth: CGFloat(slideWidth ?? (variant == "masonry" ? 180 : 300)))
-            .frame(height: slideHeight.map { CGFloat($0) })
+        sizedContent
             .scrollTransition(.interactive, axis: .horizontal) { view, phase in
                 view
                     .scaleEffect(carouselScale(phase.value))
                     .rotationEffect(.degrees(carouselTilt(phase.value)))
                     .rotation3DEffect(.degrees(carouselRotation(phase.value)), axis: (x: 0, y: 1, z: 0), perspective: 0.72)
-                    .offset(y: carouselOffset(phase.value))
+                    .offset(x: orientation == "vertical" ? CGFloat(0) : carouselHorizontalOffset(phase.value))
+                    .offset(y: orientation == "vertical" && variant == "slideshow" ? CGFloat(phase.value * 24) : carouselOffset(phase.value))
                     .opacity(carouselOpacity(phase.value))
             }
             .id(id)
+    }
+
+    @ViewBuilder
+    private var sizedContent: some View {
+        if orientation == "vertical" {
+            content
+                .frame(maxWidth: .infinity)
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else if let slideWidth {
+            content
+                .frame(width: CGFloat(slideWidth))
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else if variant == "masonry" {
+            content
+                .frame(minWidth: CGFloat(180))
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else {
+            content
+                .containerRelativeFrame(.horizontal, count: max(1, slidesPerView), span: 1, spacing: CGFloat(gap))
+                .frame(height: slideHeight.map { CGFloat($0) })
+        }
     }
 
     nonisolated private func carouselRotation(_ phase: Double) -> Double {
@@ -266,6 +336,10 @@ struct DoweCarouselSlideView<Content: View>: View {
 
     nonisolated private func carouselOffset(_ phase: Double) -> CGFloat {
         variant == "smartStack" || variant == "cardStack" ? CGFloat(abs(phase) * 8) : 0
+    }
+
+    nonisolated private func carouselHorizontalOffset(_ phase: Double) -> CGFloat {
+        variant == "slideshow" ? CGFloat(phase * 24) : 0
     }
 
     nonisolated private func carouselOpacity(_ phase: Double) -> Double {

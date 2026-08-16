@@ -591,9 +591,11 @@ fn view_skill_requires_semantic_ownership_and_collection_modeling() {
             .content
             .contains("layout, page, reusable component, or")
     );
-    assert!(compact.content.contains(
-        "Generate a theme or modify its colors only when the user explicitly requests"
-    ));
+    assert!(
+        compact.content.contains(
+            "Generate a theme or modify its colors only when the user explicitly requests"
+        )
+    );
 }
 
 #[test]
@@ -676,8 +678,7 @@ fn view_skill_keeps_horizontal_and_vertical_shell_navigation_separate() {
         .expect("components resource");
     let composition = get_public_skill_resource("views", "references/composition.md")
         .expect("composition resource");
-    let views = get_public_skill_resource("views", "references/views.md")
-        .expect("views resource");
+    let views = get_public_skill_resource("views", "references/views.md").expect("views resource");
     let reference_ui = get_public_skill_resource("views", "references/reference-ui.md")
         .expect("reference UI resource");
     let example = include_str!(concat!(
@@ -685,29 +686,61 @@ fn view_skill_keeps_horizontal_and_vertical_shell_navigation_separate() {
         "/../../skill-data/examples/reference-ui/views/components/site-navigation.dowe"
     ));
 
-    assert!(compact.content.contains("`NavMenu` is horizontal shell navigation"));
-    assert!(compact.content.contains("put a vertical `SideNav` in its `body`"));
-    assert!(compact
-        .content
-        .contains("AppBar `start`, `center`, and `end` already lay out their direct children"));
-    assert!(components.content.contains("never use it as the body of a `Drawer`, `Sidebar`"));
-    assert!(components
-        .content
-        .contains("AppBar regions already provide a horizontal flex row"));
-    assert!(composition.content.contains("mount a prop-free reusable `SideNav`"));
-    assert!(composition
-        .content
-        .contains("Do not write `start > Flex` merely to place `Logo` beside `IconButton`"));
-    assert!(views.content.contains("`SideNav` is vertical and is the navigation child"));
-    assert!(views
-        .content
-        .contains("`IconButton` as direct region children; never add a wrapper `Flex`"));
-    assert!(reference_ui
-        .content
-        .contains("`Drawer` containing a vertical `SideNav` in `body`"));
-    assert!(reference_ui
-        .content
-        .contains("Direct `IconButton` before `Brand` in AppBar `start`"));
+    assert!(
+        compact
+            .content
+            .contains("`NavMenu` is horizontal shell navigation")
+    );
+    assert!(
+        compact
+            .content
+            .contains("put a vertical `SideNav` in its `body`")
+    );
+    assert!(
+        compact
+            .content
+            .contains("AppBar `start`, `center`, and `end` already lay out their direct children")
+    );
+    assert!(
+        components
+            .content
+            .contains("never use it as the body of a `Drawer`, `Sidebar`")
+    );
+    assert!(
+        components
+            .content
+            .contains("AppBar regions already provide a horizontal flex row")
+    );
+    assert!(
+        composition
+            .content
+            .contains("mount a prop-free reusable `SideNav`")
+    );
+    assert!(
+        composition
+            .content
+            .contains("Do not write `start > Flex` merely to place `Logo` beside `IconButton`")
+    );
+    assert!(
+        views
+            .content
+            .contains("`SideNav` is vertical and is the navigation child")
+    );
+    assert!(
+        views
+            .content
+            .contains("`IconButton` as direct region children; never add a wrapper `Flex`")
+    );
+    assert!(
+        reference_ui
+            .content
+            .contains("`Drawer` containing a vertical `SideNav` in `body`")
+    );
+    assert!(
+        reference_ui
+            .content
+            .contains("Direct `IconButton` before `Brand` in AppBar `start`")
+    );
     assert!(example.contains("SideNav"));
     assert!(!example.contains("NavMenu"));
 }

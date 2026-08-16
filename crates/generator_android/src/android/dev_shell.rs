@@ -11,6 +11,7 @@ include!("dev_shell/grid_layout.rs");
 include!("dev_shell/svg_parser.rs");
 include!("dev_shell/svg_view.rs");
 include!("dev_shell/drawables_media.rs");
+include!("dev_shell/image_cropper.rs");
 include!("dev_shell/candlestick_runtime.rs");
 include!("dev_shell/chart_runtime.rs");
 include!("dev_shell/canvas_runtime.rs");

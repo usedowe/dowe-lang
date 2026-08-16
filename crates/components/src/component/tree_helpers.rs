@@ -151,6 +151,8 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::Alert { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Avatar { .. }
         | ViewNode::AvatarGroup { .. }
         | ViewNode::ChatBox { .. }

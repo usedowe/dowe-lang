@@ -12,6 +12,12 @@ fn render_compose_display_node(
         ViewNode::Audio { props } => {
             render_compose_audio(props, indent, output);
         }
+        ViewNode::Camera { props } => {
+            render_compose_camera(props, indent, output, context);
+        }
+        ViewNode::Microphone { props } => {
+            render_compose_microphone(props, indent, output, context);
+        }
         ViewNode::Image { props } => {
             render_compose_image(props, indent, output);
         }

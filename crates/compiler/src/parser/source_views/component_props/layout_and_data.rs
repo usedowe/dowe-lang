@@ -113,6 +113,14 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                     "src" | "subtitle" | "avatarSrc" | "variant" | "scheme" | "color"
                 )
             }
+            BuiltinComponent::Camera => matches!(
+                name,
+                "facing" | "label" | "disabled" | "onStart" | "onCapture" | "onError" | "variant" | "scheme" | "color"
+            ),
+            BuiltinComponent::Microphone => matches!(
+                name,
+                "label" | "maxDuration" | "disabled" | "onStart" | "onStop" | "onError" | "variant" | "scheme" | "color"
+            ),
             BuiltinComponent::Image => matches!(
                 name,
                 "src"

@@ -451,6 +451,9 @@ fn generates_swiftui_drawer() {
     assert!(views.contains("radius: CGFloat(0)"));
     assert!(views.contains("disableOverlayClose: true, hideCloseButton: false"));
     assert!(views.contains("let doweDrawerNavigate = navigate"));
+    assert!(views.contains("let _ = navigate"));
+    assert!(views.contains("let _ = goBack"));
+    assert!(views.contains("let _ = openExternal"));
     assert!(views.contains("state.write(\"drawer01\", value: false)"));
     assert!(views.contains("doweDrawerNavigate(operation, target, fragment)"));
     assert!(views.contains("ScrollView {"));

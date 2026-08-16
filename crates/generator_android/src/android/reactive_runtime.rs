@@ -506,7 +506,7 @@ private class DoweReactiveState(
             "str.startsWith" -> text("value").startsWith(text("prefix"))
             "str.endsWith" -> text("value").endsWith(text("suffix"))
             "str.replace" -> text("value").replace(text("from"), text("to"))
-            "str.split" -> text("value").split(text("delimiter"))
+            "str.split" -> text("value").split(text("delimiter")).let { values -> args["limit"]?.let { values.take(maxOf(0, stdlibNumber(it)?.toInt() ?: 0)) } ?: values }
             "str.join" -> list("values").joinToString(text("delimiter")) { stdlibText(it) }
             "math.add" -> finite(number("left"), number("right")) { left, right -> left + right }
             "math.sub" -> finite(number("left"), number("right")) { left, right -> left - right }
@@ -525,12 +525,19 @@ private class DoweReactiveState(
             "parse.bool" -> stdlibBool(args["value"]) ?: args["fallback"]
             "parse.string" -> stdlibText(args["value"])
             "parse.svg" -> DoweSvgImporter.convert(text("value"), text("colors").ifEmpty { "tokens" }, text("format").ifEmpty { "source" }) ?: args["fallback"]
-            "parse.json", "json.parse" -> runCatching { doweNativeValue(JSONObject(text("value"))) }.getOrDefault(args["fallback"])
-            "sort.asc" -> list("values").sortedBy { stdlibText(it) }
-            "sort.desc" -> list("values").sortedByDescending { stdlibText(it) }
-            "sort.by" -> list("values").sortedBy { stdlibText(stdlibRead(it, text("field"))) }
-            "list.take" -> list("values").take(number("count")?.toInt() ?: 0)
-            "list.skip" -> list("values").drop(number("count")?.toInt() ?: 0)
+            "parse.json", "json.parse" -> runCatching { doweNativeValue(org.json.JSONTokener(text("value")).nextValue()) }.getOrDefault(args["fallback"])
+            "url.encode" -> java.net.URLEncoder.encode(text("value"), Charsets.UTF_8.name()).replace("+", "%20")
+            "url.decode" -> runCatching { java.net.URLDecoder.decode(text("value"), Charsets.UTF_8.name()) }.getOrDefault(args["fallback"])
+            "url.parse" -> stdlibUrlParse(text("value"))
+            "url.queryGet" -> android.net.Uri.parse(text("value")).getQueryParameter(text("name"))
+            "url.querySet" -> stdlibUrlQuerySet(text("value"), text("name"), args["param"])
+            "csv.parse" -> stdlibCsvParse(text("value"), text("delimiter").ifEmpty { "," }, args["header"] as? Boolean ?: false, number("maxRows")?.toInt() ?: 1000, number("maxColumns")?.toInt() ?: 100)
+            "csv.stringify" -> stdlibCsvStringify(list("rows"), text("delimiter").ifEmpty { "," })
+            "sort.asc" -> stdlibSort(list("values"), null, false, text("nulls"))
+            "sort.desc" -> stdlibSort(list("values"), null, true, text("nulls"))
+            "sort.by" -> stdlibSort(list("values"), text("field"), text("direction") == "desc", text("nulls"))
+            "list.take" -> list("values").take(maxOf(0, number("count")?.toInt() ?: 0))
+            "list.skip" -> list("values").drop(maxOf(0, number("count")?.toInt() ?: 0))
             "list.first" -> list("values").firstOrNull()
             "list.last" -> list("values").lastOrNull()
             "list.count" -> list("values").size
@@ -540,13 +547,147 @@ private class DoweReactiveState(
             "list.sumBy" -> list("values").mapNotNull { stdlibNumber(stdlibRead(it, text("field"))) }.sum()
             "list.averageBy" -> list("values").mapNotNull { stdlibNumber(stdlibRead(it, text("field"))) }.takeIf { it.isNotEmpty() }?.average()
             "json.get" -> stdlibRead(args["value"], text("path")) ?: args["fallback"]
-            "json.stringify" -> doweJsonValue(args["value"]).toString()
-            "json.merge" -> (args["left"] as? Map<String, Any?>).orEmpty() + (args["right"] as? Map<String, Any?>).orEmpty()
+            "json.set" -> stdlibJsonSet(args["value"], text("path"), args["next"])
+            "json.pick" -> stdlibJsonPick(args["value"], list("fields").map(::stdlibText))
+            "json.omit" -> stdlibJsonOmit(args["value"], list("fields").map(::stdlibText))
+            "json.merge" -> (args["left"] as? Map<*, *>).orEmpty().entries.associate { it.key.toString() to it.value }.toMutableMap().apply { putAll((args["right"] as? Map<*, *>).orEmpty().entries.associate { it.key.toString() to it.value }) }
+            "json.stringify" -> stdlibJsonStringify(args["value"], args["pretty"] as? Boolean ?: false)
             "date.now" -> java.time.Instant.now().toString()
             "date.formatIso" -> runCatching { java.time.Instant.parse(text("value")).toString() }.getOrDefault(text("value"))
             "date.addDays" -> runCatching { java.time.Instant.parse(text("value")).plus(java.time.Duration.ofDays(number("days")?.toLong() ?: 0)).toString() }.getOrNull()
             "date.diffDays" -> runCatching { java.time.Duration.between(java.time.Instant.parse(text("start")), java.time.Instant.parse(text("end"))).toDays() }.getOrDefault(0L)
             else -> null
+        }
+    }
+
+    private fun stdlibUrlParse(value: String): Map<String, Any?> = runCatching {
+        val uri = android.net.Uri.parse(value)
+        val query = uri.queryParameterNames.associateWith { uri.getQueryParameter(it).orEmpty() }
+        mapOf(
+            "ok" to true,
+            "scheme" to uri.scheme,
+            "host" to uri.host,
+            "path" to (uri.path ?: ""),
+            "query" to query,
+            "fragment" to uri.fragment,
+            "origin" to if (uri.scheme != null && uri.host != null) "${uri.scheme}://${uri.host}" else null,
+            "isRelative" to (uri.scheme == null),
+            "error" to null
+        )
+    }.getOrElse {
+        mapOf("ok" to false, "scheme" to null, "host" to null, "path" to null, "query" to emptyMap<String, String>(), "fragment" to null, "origin" to null, "isRelative" to false, "error" to "invalid_url")
+    }
+
+    private fun stdlibUrlQuerySet(value: String, name: String, param: Any?): String = runCatching {
+        val uri = android.net.Uri.parse(value)
+        val builder = uri.buildUpon().clearQuery()
+        uri.queryParameterNames.filter { it != name }.forEach { key ->
+            uri.getQueryParameters(key).forEach { item -> builder.appendQueryParameter(key, item) }
+        }
+        param?.let { builder.appendQueryParameter(name, stdlibText(it)) }
+        builder.build().toString()
+    }.getOrDefault(value)
+
+    private fun stdlibCsvParse(value: String, delimiter: String, header: Boolean, maxRows: Int, maxColumns: Int): Map<String, Any?> {
+        val separator = delimiter.firstOrNull() ?: ','
+        val parsed = mutableListOf<List<String>>()
+        var row = mutableListOf<String>()
+        var cell = StringBuilder()
+        var quoted = false
+        var index = 0
+        var truncated = false
+        fun finishCell() {
+            row.add(cell.toString())
+            cell = StringBuilder()
+        }
+        fun finishRow() {
+            finishCell()
+            if (parsed.size < maxOf(0, maxRows)) parsed.add(row.take(maxOf(0, maxColumns))) else truncated = true
+            row = mutableListOf()
+        }
+        while (index < value.length) {
+            val character = value[index]
+            when {
+                character == '"' && quoted && index + 1 < value.length && value[index + 1] == '"' -> {
+                    cell.append('"')
+                    index += 1
+                }
+                character == '"' -> quoted = !quoted
+                !quoted && character == separator -> finishCell()
+                !quoted && (character == '\n' || character == '\r') -> {
+                    finishRow()
+                    if (character == '\r' && index + 1 < value.length && value[index + 1] == '\n') index += 1
+                }
+                else -> cell.append(character)
+            }
+            index += 1
+        }
+        if (cell.isNotEmpty() || row.isNotEmpty()) finishRow()
+        val columns = if (header && parsed.isNotEmpty()) parsed.first() else (0 until (parsed.maxOfOrNull { it.size } ?: 0)).map { "column${it + 1}" }
+        val rows = if (header && parsed.isNotEmpty()) {
+            parsed.drop(1).map { values -> columns.mapIndexed { position, key -> key to values.getOrNull(position).orEmpty() }.toMap() }
+        } else parsed.map { it }
+        return mapOf("rows" to rows, "columns" to columns, "errors" to emptyList<Any>(), "truncated" to truncated, "rowCount" to rows.size)
+    }
+
+    private fun stdlibCsvStringify(rows: List<Any?>, delimiter: String): String {
+        val separator = delimiter.firstOrNull() ?: ','
+        val columns = rows.firstOrNull()?.let { (it as? Map<*, *>)?.keys?.map { key -> key.toString() }?.sorted() } ?: emptyList()
+        fun escape(value: Any?): String {
+            val text = stdlibText(value)
+            return if (text.any { it == separator || it == '"' || it == '\n' || it == '\r' }) "\"${text.replace("\"", "\"\"")}\"" else text
+        }
+        return rows.joinToString("\n") { row ->
+            when (row) {
+                is Map<*, *> -> columns.joinToString(separator.toString()) { key -> escape(row[key]) }
+                is List<*> -> row.joinToString(separator.toString(), transform = ::escape)
+                else -> escape(row)
+            }
+        }
+    }
+
+    private fun stdlibSort(values: List<Any?>, field: String?, descending: Boolean, nulls: String): List<Any?> = values.withIndex().sortedWith(Comparator { left, right ->
+        val leftValue = field?.let { stdlibRead(left.value, it) } ?: left.value
+        val rightValue = field?.let { stdlibRead(right.value, it) } ?: right.value
+        val leftNull = leftValue == null
+        val rightNull = rightValue == null
+        if (leftNull || rightNull) {
+            if (leftNull && rightNull) left.index - right.index else if (leftNull == (nulls != "first")) 1 else -1
+        } else {
+            val order = stdlibText(leftValue).compareTo(stdlibText(rightValue))
+            if (order == 0) left.index - right.index else if (descending) -order else order
+        }
+    }).map { it.value }
+
+    private fun stdlibJsonSet(value: Any?, path: String, next: Any?): Any? {
+        val result = (value as? Map<*, *>).orEmpty().entries.associate { it.key.toString() to it.value }.toMutableMap()
+        val parts = path.split('.').filter { it.isNotEmpty() }
+        if (parts.isEmpty()) return next
+        var current = result
+        for (part in parts.dropLast(1)) {
+            val child = (current[part] as? Map<*, *>).orEmpty().entries.associate { it.key.toString() to it.value }.toMutableMap()
+            current[part] = child
+            current = child
+        }
+        current[parts.last()] = next
+        return result
+    }
+
+    private fun stdlibJsonPick(value: Any?, fields: List<String>): Map<String, Any?> = fields.mapNotNull { field -> ((value as? Map<*, *>)?.get(field))?.let { field to it } }.toMap()
+
+    private fun stdlibJsonOmit(value: Any?, fields: List<String>): Map<String, Any?> = (value as? Map<*, *>).orEmpty().entries.filterNot { it.key.toString() in fields }.associate { it.key.toString() to it.value }
+
+    private fun stdlibJsonStringify(value: Any?, pretty: Boolean): String = when (value) {
+        null -> "null"
+        is String -> JSONObject.quote(value)
+        is Number, is Boolean -> value.toString()
+        else -> {
+            val json = doweJsonValue(value)
+            when {
+                pretty && json is JSONObject -> json.toString(2)
+                pretty && json is JSONArray -> json.toString(2)
+                else -> json.toString()
+            }
         }
     }
 

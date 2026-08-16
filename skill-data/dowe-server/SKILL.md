@@ -20,7 +20,7 @@ Keep every new backend module under `server/`; only root `main.dowe` connects it
 4. Group related `entity` declarations in one focused plural module under `server/entities`, such as
    `user-entities.dowe` or `kitchen-entities.dowe`, and import its bindings together into Database
    config. Do not generate one file per entity by default or mix unrelated domains into a catch-all.
-5. Put Database, Cache, and Vector work in repository functions and reuse imported config connection declarations.
+5. Put Database, Cache, Vector, and Queue work in repository functions and reuse imported config connection declarations. Queue connections are server-only; `msg ... publish` targets an already-provisioned queue and returns `{ ok, id }`.
 6. Keep external providers, secrets, process handles, and persistence server-only.
 7. Use portable standard-library capabilities as `<namespace> <binding> source:"<function>" <props>`;
    read `references/runtime.md` for the implemented catalog and runtime rules.
@@ -36,6 +36,8 @@ Keep every new backend module under `server/`; only root `main.dowe` connects it
 11. Keep endpoint groups one level; put middleware on the group, HTTP method, or WebSocket instead
    of nesting a group.
 12. Validate the complete import chain with the compiler.
+
+Queue providers are `dowe`, `rabbitmq`, `cloudflare`, and `vercel`. `dowe dev` always uses the local Dowe provider, regardless of the authored provider. Deploys resolve the selected environment values; Cloudflare uses a Worker Queue binding and Vercel uses its regional Queue API.
 
 ## Reference routing
 

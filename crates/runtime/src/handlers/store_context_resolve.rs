@@ -76,11 +76,11 @@ impl<'a> StoreActionContext<'a> {
         &self,
         connection: &CacheConnection,
     ) -> Result<RemoteCacheClient, StoreActionError> {
-        let provider = match connection.provider {
-            CacheProvider::CloudflareKv => CacheProviderKind::CloudflareKv,
-            CacheProvider::Redis => CacheProviderKind::Redis,
-            CacheProvider::Dowe => CacheProviderKind::Dowe,
-        };
+        let provider = resolve_cache_provider(
+            &connection.provider,
+            &self.project.environment_config,
+        )
+        .ok_or_else(StoreActionError::kv)?;
         let port = self
             .cache_connection_value(&connection.port)?
             .parse::<u16>()
@@ -302,5 +302,75 @@ impl<'a> StoreActionContext<'a> {
                 .unwrap_or(ResolvedValue::Missing);
         }
         ResolvedValue::Json(Value::String(reference.to_string()))
+    }
+}
+
+fn resolve_cache_provider(
+    provider: &CacheProvider,
+    environment: &dowe_compiler::EnvironmentConfig,
+) -> Option<CacheProviderKind> {
+    match provider {
+        CacheProvider::CloudflareKv => Some(CacheProviderKind::CloudflareKv),
+        CacheProvider::Redis => Some(CacheProviderKind::Redis),
+        CacheProvider::Dowe => Some(CacheProviderKind::Dowe),
+        CacheProvider::Environment(name) => match environment
+            .variable(name)
+            .and_then(|variable| variable.resolved_value.as_deref())
+        {
+            Some("kv") => Some(CacheProviderKind::CloudflareKv),
+            Some("redis") => Some(CacheProviderKind::Redis),
+            Some("dowe") => Some(CacheProviderKind::Dowe),
+            _ => None,
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_cache_provider;
+    use dowe_cache::CacheProviderKind;
+    use dowe_compiler::{
+        CacheProvider, EnvironmentConfig, EnvironmentValueSource, EnvironmentVariable,
+        EnvironmentVisibility,
+    };
+
+    #[test]
+    fn resolves_environment_provider_values() {
+        let environment = EnvironmentConfig {
+            variables: vec![EnvironmentVariable {
+                name: "CACHE_PROVIDER".to_string(),
+                visibility: EnvironmentVisibility::Server,
+                resolved_source: EnvironmentValueSource::DotEnv,
+                resolved_value: Some("redis".to_string()),
+            }],
+        };
+
+        assert_eq!(
+            resolve_cache_provider(
+                &CacheProvider::Environment("CACHE_PROVIDER".to_string()),
+                &environment,
+            ),
+            Some(CacheProviderKind::Redis)
+        );
+    }
+
+    #[test]
+    fn rejects_unknown_environment_provider_values() {
+        let environment = EnvironmentConfig {
+            variables: vec![EnvironmentVariable {
+                name: "CACHE_PROVIDER".to_string(),
+                visibility: EnvironmentVisibility::Server,
+                resolved_source: EnvironmentValueSource::DotEnv,
+                resolved_value: Some("unknown".to_string()),
+            }],
+        };
+
+        assert_eq!(
+            resolve_cache_provider(
+                &CacheProvider::Environment("CACHE_PROVIDER".to_string()),
+                &environment,
+            ),
+            None
+        );
     }
 }

@@ -114,6 +114,8 @@ fn render_dev_android_node_body(
         ),
         ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Accordion { .. }
         | ViewNode::Carousel { .. }
         | ViewNode::Code { .. }

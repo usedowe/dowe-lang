@@ -211,6 +211,10 @@ pub(super) fn emit_response(
                 .end();
             encode_response_from_length(instructions, OUTPUT_BUFFER, RENDER_LENGTH_LOCAL);
         }
+        ResponsePlan::Queue(blob) => {
+            set_response(instructions, 200, BodyKind::Queue);
+            encode_response(instructions, blob.pointer, blob.length);
+        }
     }
 }
 

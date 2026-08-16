@@ -316,42 +316,176 @@ private fun doweVideoAspect(value: String): Float {
     }
 }
 
+private val doweAudioWaveform = listOf(
+    0.48f, 0.62f, 0.38f, 0.54f, 0.76f, 0.44f, 0.30f, 0.52f, 0.68f, 0.84f,
+    0.58f, 0.42f, 0.65f, 0.92f, 0.72f, 0.49f, 0.35f, 0.61f, 0.80f, 0.55f,
+    0.41f, 0.71f, 0.96f, 0.64f, 0.46f, 0.32f, 0.57f, 0.75f, 0.88f, 0.60f,
+    0.37f, 0.51f, 0.69f, 0.83f, 0.47f, 0.29f, 0.55f, 0.73f, 0.63f, 0.40f,
+    0.67f, 0.89f, 0.58f, 0.34f, 0.50f, 0.77f, 0.68f, 0.43f, 0.60f, 0.82f
+)
+
 @Composable
-private fun DoweAudio(source: String, subtitle: String?, avatarSource: String?, modifier: Modifier, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?) {
+private fun DoweAudio(source: String, subtitle: String?, avatarSource: String?, playIconViewBox: DoweSvgViewBox, playIconPaths: List<DoweSvgPath>, pauseIconViewBox: DoweSvgViewBox, pauseIconPaths: List<DoweSvgPath>, modifier: Modifier, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, buttonBackgroundColor: Color, buttonContentColor: Color, borderColor: Color?) {
+    val context = LocalContext.current
+    var player by remember(source) { mutableStateOf<MediaPlayer?>(null) }
     var playing by remember(source) { mutableStateOf(false) }
+    var currentTime by remember(source) { mutableStateOf(0f) }
+    var duration by remember(source) { mutableStateOf(0f) }
+    var prepared by remember(source) { mutableStateOf(false) }
+    LaunchedEffect(source) {
+        val created = MediaPlayer()
+        player = created
+        runCatching {
+            created.setDataSource(context, doweAudioUri(context, source))
+            created.setOnPreparedListener { mediaPlayer ->
+                duration = mediaPlayer.duration.coerceAtLeast(0) / 1000f
+                prepared = true
+            }
+            created.setOnCompletionListener {
+                playing = false
+                currentTime = duration
+            }
+            created.setOnErrorListener { _, _, _ ->
+                playing = false
+                prepared = false
+                true
+            }
+            created.prepareAsync()
+        }.onFailure {
+            prepared = false
+            player = null
+            created.release()
+        }
+    }
+    DisposableEffect(source) {
+        onDispose {
+            player?.release()
+            player = null
+            prepared = false
+            playing = false
+        }
+    }
+    LaunchedEffect(playing, player) {
+        while (playing) {
+            val active = player
+            if (active == null || !prepared) {
+                playing = false
+                break
+            }
+            currentTime = (active.currentPosition.coerceAtLeast(0) / 1000f).coerceAtMost(duration)
+            delay(250)
+        }
+    }
+    fun seek(value: Float) {
+        val next = value.coerceIn(0f, duration.coerceAtLeast(0f))
+        currentTime = next
+        player?.seekTo((next * 1000f).toInt())
+    }
+    val waveformModifier = Modifier
+        .fillMaxWidth()
+        .height(32.dp)
+        .padding(top = 12.dp)
+        .pointerInput(duration) {
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                fun seekAt(x: Float) {
+                    if (size.width > 0) seek((x / size.width.toFloat()).coerceIn(0f, 1f) * duration)
+                }
+                seekAt(down.position.x)
+                while (true) {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull() ?: break
+                    seekAt(change.position.x)
+                    if (change.changedToUpIgnoreConsumed()) break
+                }
+            }
+        }
+        .focusable()
+        .semantics { contentDescription = "Audio progress" }
+        .onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown || duration <= 0f) return@onPreviewKeyEvent false
+            val step = minOf(5f, duration / 20f)
+            val next = when (event.key) {
+                Key.DirectionLeft -> currentTime - step
+                Key.DirectionRight -> currentTime + step
+                Key.MoveHome -> 0f
+                Key.MoveEnd -> duration
+                else -> return@onPreviewKeyEvent false
+            }
+            seek(next)
+            true
+        }
     Row(
         modifier = modifier
             .clip(shape)
             .background(backgroundColor)
             .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Button(
-            onClick = { playing = !playing },
-            colors = ButtonDefaults.buttonColors(containerColor = contentColor.copy(alpha = 0.12f), contentColor = contentColor),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            onClick = {
+                if (prepared) {
+                    if (playing) {
+                        player?.pause()
+                        playing = false
+                    } else {
+                        player?.start()
+                        playing = true
+                    }
+                }
+            },
+            modifier = Modifier.size(40.dp).semantics { contentDescription = if (playing) "Pause audio" else "Play audio" },
+            shape = RoundedCornerShape(999.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = buttonBackgroundColor, contentColor = buttonContentColor),
+            contentPadding = PaddingValues(0.dp)
         ) {
-            Text(if (playing) "Pause" else "Play")
+            DoweSvg(
+                viewBox = if (playing) pauseIconViewBox else playIconViewBox,
+                modifier = Modifier.size(20.dp),
+                color = buttonContentColor,
+                paths = if (playing) pauseIconPaths else playIconPaths
+            )
         }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = subtitle ?: source, color = contentColor, maxLines = 1)
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                repeat(24) { index ->
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(modifier = waveformModifier, horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+                val progress = if (duration > 0f) currentTime / duration else 0f
+                repeat(50) { index ->
+                    val active = (index + 0.5f) / 50f <= progress
+                    val opacity by animateFloatAsState(
+                        targetValue = if (active) 1f else 0.3f,
+                        animationSpec = tween(durationMillis = 300),
+                        label = "dowe-audio-bar-$index"
+                    )
                     Box(
                         modifier = Modifier
-                            .width(3.dp)
-                            .height(((index % 7) + 4).dp)
-                            .background(contentColor.copy(alpha = if (playing) 0.9f else 0.35f), RoundedCornerShape(2.dp))
+                            .weight(1f)
+                            .height((doweAudioWaveform[index] * 20f).dp)
+                            .background(contentColor.copy(alpha = opacity), RoundedCornerShape(2.dp))
                     )
                 }
             }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(text = doweAudioTime((duration - currentTime).coerceAtLeast(0f)), color = contentColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                subtitle?.let { Text(text = it, color = contentColor.copy(alpha = 0.72f), fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f).padding(start = 12.dp)) }
+            }
         }
         if (avatarSource != null) {
-            DoweCoverBox(modifier = Modifier.width(36.dp).height(36.dp).clip(RoundedCornerShape(999.dp)), source = avatarSource, overlay = null) {}
+            DoweCoverBox(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(999.dp)), source = avatarSource, overlay = null) {}
         }
     }
+}
+
+private fun doweAudioUri(context: android.content.Context, source: String): Uri {
+    if (source.startsWith("https://") || source.startsWith("http://") || source.startsWith("content:") || source.startsWith("file:")) return Uri.parse(source)
+    val path = source.trimStart('/').removePrefix("assets/")
+    return Uri.parse("file:///android_asset/$path")
+}
+
+private fun doweAudioTime(value: Float): String {
+    val seconds = value.coerceAtLeast(0f).toInt()
+    return "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
 }
 
 @Composable
@@ -484,7 +618,7 @@ private fun doweImageAspect(value: String): Float {
 }
 
 @Composable
-private fun DoweAccordion(multiple: Boolean, defaultOpenIds: Set<String>, modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: Dp, content: @Composable (Set<String>, (String) -> Unit) -> Unit) {
+private fun DoweAccordion(multiple: Boolean, variant: String, defaultOpenIds: Set<String>, modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?, itemBackgroundColor: Color, itemBorderColor: Color, itemBorderAlpha: Float, radius: Dp, content: @Composable (Set<String>, (String) -> Unit) -> Unit) {
     var openIds by remember(multiple, defaultOpenIds) { mutableStateOf(defaultOpenIds) }
     val toggleItem: (String) -> Unit = { id ->
         openIds = if (id in openIds) {
@@ -500,8 +634,8 @@ private fun DoweAccordion(multiple: Boolean, defaultOpenIds: Set<String>, modifi
             .clip(RoundedCornerShape(radius))
             .background(backgroundColor)
             .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(radius)))
-            .padding(4.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(if (variant == "ghost" || variant == "line") 0.dp else 4.dp),
+        verticalArrangement = Arrangement.spacedBy(if (variant == "ghost" || variant == "line") 0.dp else 8.dp)
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             content(openIds, toggleItem)
@@ -510,15 +644,15 @@ private fun DoweAccordion(multiple: Boolean, defaultOpenIds: Set<String>, modifi
 }
 
 @Composable
-private fun DoweAccordionItem(label: String, disabled: Boolean, open: Boolean, radius: Dp, onToggle: () -> Unit, arrowIcon: @Composable () -> Unit, content: @Composable () -> Unit) {
-    val itemShape = RoundedCornerShape(radius * 0.85f)
-    Column(modifier = Modifier.fillMaxWidth().clip(itemShape).border(1.dp, LocalContentColor.current.copy(alpha = 0.12f), itemShape).alpha(if (disabled) 0.5f else 1f)) {
+private fun DoweAccordionItem(label: String, disabled: Boolean, open: Boolean, backgroundColor: Color, borderColor: Color, borderAlpha: Float, radius: Dp, onToggle: () -> Unit, arrowIcon: @Composable () -> Unit, content: @Composable () -> Unit) {
+    val itemShape = RoundedCornerShape(radius)
+    Column(modifier = Modifier.fillMaxWidth().clip(itemShape).background(backgroundColor).then(if (borderAlpha == 0f) Modifier else if (radius == 0.dp) Modifier.drawBehind { drawLine(borderColor.copy(alpha = borderAlpha), Offset(0f, size.height - 0.5.dp.toPx()), Offset(size.width, size.height - 0.5.dp.toPx()), strokeWidth = 1.dp.toPx()) } else Modifier.border(1.dp, borderColor.copy(alpha = borderAlpha), itemShape)).alpha(if (disabled) 0.5f else 1f)) {
         Row(
             modifier = Modifier.fillMaxWidth().clickable(enabled = !disabled, onClick = onToggle).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(label, fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(label, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Box(modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = if (open) 90f else 0f }, contentAlignment = Alignment.Center) {
                 arrowIcon()
             }
@@ -544,6 +678,13 @@ private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, a
             val center = (layout.viewportStartOffset + layout.viewportEndOffset) / 2
             layout.visibleItemsInfo.minByOrNull { item -> kotlin.math.abs(item.offset + item.size / 2 - center) }?.index ?: 0
         }
+    }
+    val layoutInfo = listState.layoutInfo
+    val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+    val viewportSize = max(1, layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset)
+    fun slidePhase(index: Int): Float {
+        val item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index } ?: return 1f
+        return ((item.offset + item.size / 2 - viewportCenter).toFloat() / viewportSize.toFloat()).coerceIn(-1f, 1f)
     }
     val moveTo: (Int) -> Unit = { requested ->
         val target = when {
@@ -572,41 +713,49 @@ private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, a
             val shouldSnap = variant !in listOf("simple", "masonry", "rtl", "sticky")
             val snapBehavior = rememberSnapFlingBehavior(lazyListState = listState)
             val freeBehavior = ScrollableDefaults.flingBehavior()
-            if (orientation == "vertical") {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(gap.dp),
-                    flingBehavior = if (shouldSnap) snapBehavior else freeBehavior
-                ) {
-                    itemsIndexed(slides, key = { _, slide -> slide.id }) { index, slide ->
-                        DoweCarouselSlide(variant = variant, index = index, slideWidth = viewportWidth, slideHeight = slideHeight) { slide.content() }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                if (orientation == "vertical") {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp),
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(gap.dp),
+                        flingBehavior = if (shouldSnap) snapBehavior else freeBehavior
+                    ) {
+                        itemsIndexed(slides, key = { _, slide -> slide.id }) { index, slide ->
+                            DoweCarouselSlide(variant = variant, index = index, phase = slidePhase(index), orientation = orientation, slideWidth = viewportWidth, slideHeight = slideHeight) { slide.content() }
+                        }
+                    }
+                } else {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        state = listState,
+                        reverseLayout = variant == "rtl",
+                        horizontalArrangement = Arrangement.spacedBy(gap.dp),
+                        flingBehavior = if (shouldSnap) snapBehavior else freeBehavior
+                    ) {
+                        itemsIndexed(slides, key = { _, slide -> slide.id }) { index, slide ->
+                            DoweCarouselSlide(variant = variant, index = index, phase = slidePhase(index), orientation = orientation, slideWidth = resolvedWidth, slideHeight = slideHeight) { slide.content() }
+                        }
                     }
                 }
-            } else {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    state = listState,
-                    reverseLayout = variant == "rtl",
-                    horizontalArrangement = Arrangement.spacedBy(gap.dp),
-                    flingBehavior = if (shouldSnap) snapBehavior else freeBehavior
-                ) {
-                    itemsIndexed(slides, key = { _, slide -> slide.id }) { index, slide ->
-                        DoweCarouselSlide(variant = variant, index = index, slideWidth = resolvedWidth, slideHeight = slideHeight) { slide.content() }
+                if (showNavigation) {
+                    Row(modifier = Modifier.fillMaxWidth().align(Alignment.Center), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(modifier = Modifier.size(36.dp), enabled = !disableLoop || currentIndex > 0, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(0.dp), onClick = { moveTo(currentIndex - 1) }) { Text("‹", fontSize = 22.sp) }
+                        TextButton(modifier = Modifier.size(36.dp), enabled = !disableLoop || currentIndex < slideCount - 1, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(0.dp), onClick = { moveTo(currentIndex + 1) }) { Text("›", fontSize = 22.sp) }
                     }
                 }
             }
         }
-        if (!hideControls || showNavigation || variant == "controls") {
+        if (!hideControls || variant == "controls") {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Button(onClick = { moveTo(currentIndex - 1) }) { Text("Previous") }
-                Button(onClick = { moveTo(currentIndex + 1) }) { Text("Next") }
+                TextButton(modifier = Modifier.height(32.dp), enabled = !disableLoop || currentIndex > 0, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp), onClick = { moveTo(currentIndex - 1) }) { Text("Previous", fontSize = 14.sp) }
+                TextButton(modifier = Modifier.height(32.dp), enabled = !disableLoop || currentIndex < slideCount - 1, colors = ButtonDefaults.textButtonColors(contentColor = accentColor), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp), onClick = { moveTo(currentIndex + 1) }) { Text("Next", fontSize = 14.sp) }
             }
         }
         if (!hideIndicators || variant == "dots" || variant == "thumbnails") {
             Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 repeat(slideCount) { index ->
-                    Button(onClick = { moveTo(index) }) { Text(if (variant == "thumbnails") "Slide ${index + 1}" else if (indicatorType == "dot" || variant == "dots") "•" else "${index + 1}") }
+                    TextButton(modifier = Modifier.heightIn(min = 28.dp), colors = ButtonDefaults.textButtonColors(contentColor = if (index == currentIndex) accentColor else accentColor.copy(alpha = 0.45f)), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp), onClick = { moveTo(index) }) { Text(if (variant == "thumbnails") "Slide ${index + 1}" else if (indicatorType == "dot" || variant == "dots") "•" else "${index + 1}", fontSize = if (variant == "thumbnails") 12.sp else 16.sp) }
                 }
             }
         }
@@ -615,17 +764,19 @@ private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, a
 }
 
 @Composable
-private fun DoweCarouselSlide(variant: String, index: Int, slideWidth: Dp, slideHeight: Int?, content: @Composable () -> Unit) {
+private fun DoweCarouselSlide(variant: String, index: Int, phase: Float, orientation: String, slideWidth: Dp, slideHeight: Int?, content: @Composable () -> Unit) {
+    val distance = kotlin.math.abs(phase).coerceIn(0f, 1f)
     val effect = when (variant) {
-        "coverFlow" -> Modifier.graphicsLayer { rotationY = if (index % 2 == 0) -8f else 8f; scaleX = 0.96f; scaleY = 0.96f }
-        "stories" -> Modifier.graphicsLayer { rotationY = if (index % 2 == 0) -14f else 14f; cameraDistance = 24f * density }
-        "smartStack" -> Modifier.graphicsLayer { rotationZ = (index % 3 - 1) * 0.8f; translationY = (index % 3) * 4f }
-        "cardStack" -> Modifier.graphicsLayer { scaleX = 1f - (index % 3) * 0.012f; scaleY = scaleX; translationY = (index % 3) * 4f }
-        "flipbook" -> Modifier.graphicsLayer { rotationY = if (index % 2 == 0) -18f else 18f; cameraDistance = 24f * density }
-        "slideshow" -> Modifier.graphicsLayer { translationX = if (index % 2 == 0) -6f else 6f }
+        "coverFlow" -> Modifier.graphicsLayer { rotationY = phase * 24f; scaleX = 1f - distance * 0.1f; scaleY = scaleX; alpha = 1f - distance * 0.22f; cameraDistance = 24f * density }
+        "stories" -> Modifier.graphicsLayer { rotationY = phase * 30f; scaleX = 1f - distance * 0.1f; scaleY = scaleX; alpha = 1f - distance * 0.22f; cameraDistance = 24f * density }
+        "smartStack" -> Modifier.graphicsLayer { rotationZ = phase * 1.5f; scaleX = 1f - distance * 0.055f; scaleY = scaleX; translationY = distance * 8f }
+        "cardStack" -> Modifier.graphicsLayer { scaleX = 1f - distance * 0.055f; scaleY = scaleX; translationY = distance * 8f }
+        "flipbook" -> Modifier.graphicsLayer { rotationY = phase * 52f; scaleX = 1f - distance * 0.1f; scaleY = scaleX; alpha = 1f - distance * 0.22f; cameraDistance = 24f * density }
+        "slideshow" -> Modifier.graphicsLayer { translationX = if (orientation == "vertical") 0f else phase * 24f; translationY = if (orientation == "vertical") phase * 24f else 0f; alpha = 1f - distance * 0.12f }
         else -> Modifier
     }
-    Box(modifier = Modifier.width(slideWidth).then(if (slideHeight == null) Modifier else Modifier.height(slideHeight.dp)).then(effect)) { content() }
+    val size = if (orientation == "vertical") Modifier.fillMaxWidth() else Modifier.width(slideWidth)
+    Box(modifier = size.then(if (slideHeight == null) Modifier else Modifier.height(slideHeight.dp)).then(effect)) { content() }
 }
 
 @Composable

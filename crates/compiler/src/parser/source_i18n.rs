@@ -502,6 +502,8 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Checkbox { .. }
         | ViewNode::Color { .. }
         | ViewNode::Date { .. }

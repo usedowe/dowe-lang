@@ -1,5 +1,6 @@
 include!("generated_views/foundation.rs");
 include!("generated_views/media_forms.rs");
+include!("generated_views/capture.rs");
 include!("generated_views/data_code_svg.rs");
 include!("generated_views/canvas.rs");
 include!("generated_views/avatar_chat.rs");
@@ -20,6 +21,7 @@ fn generated_views(
     let mut output = [
         android_runtime_foundation(),
         android_runtime_media_forms(),
+        android_runtime_capture(),
         android_runtime_data_code_svg(),
         android_runtime_canvas(),
         android_runtime_avatar_chat(),

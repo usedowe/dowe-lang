@@ -33,6 +33,13 @@ which resolves to pills/primary. A non-default decision remains explicit, for ex
 `Button variant:"outlined"`, `Tabs variant:"line"`, or `Card shadow:"lg"`. Prefer one intentional
 prop over a complete restatement of the component's default style.
 
+Apply the same minimal-prop rule to container spacing. `Section` and `Card` already own responsive
+insets, while `Grid` and `Flex` should use `gap` for child rhythm. Do not add `px`, `py`, `pt`, `pb`,
+or `p` to every container, and do not invent unsupported margin aliases such as `mt`. Add a local
+padding override only when the real owner has a documented exception that the defaults cannot
+express. A `Card variant:"ghost" p:0` that only wraps another layout is not a meaningful Card;
+remove the wrapper and let the owning layout component carry the tree.
+
 ## Layout and text
 
 | Component | Use and essential contract |
@@ -122,7 +129,7 @@ the `Sidebar body` and `Drawer body`.
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Button` | Text action or navigation control. Use one direct quoted or complete braced text child, reference a view function with `onClick`, and bind `loading` or `disabled` to boolean Signal paths when the action is pending or invalid. Loading reuses the bundled `svg-spinners:3-dots-move` Icon and both states block duplicate actions. The full control defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
+| `Button` | Text action or navigation control. Use one direct quoted or complete braced text child, reference a view function with `onClick`, and bind `loading` or `disabled` to boolean Signal paths when the action is pending or invalid. Loading reuses the bundled `svg-spinners:3-dots-move` Icon; both states block duplicate actions, and `disabled:true` preserves the authored scheme and variant at `0.5` opacity across web, desktop, Android, and iOS. Labels and icons are not selectable. The full control defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
 | `IconButton` | Accessible icon-only action. Supply quoted `label` and Solar `icon`; use `onClick` or supported navigation props. Its full square surface defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
 | `ToggleTheme` | Control that switches between configured themes without duplicating theme state in page source. |
 | `SelectTheme` | Theme selector for the configured named theme catalog. |
@@ -150,9 +157,9 @@ the `Sidebar body` and `Drawer body`.
 | `dragGroup` | Context-only DragDrop group containing one or more `dragItem` entries. |
 | `dragItem` | Context-only draggable entry with stable identity and display data. |
 | `Editor` | Bound rich text or source editor using the supported language, limits, and named change workflow. |
-| `ImageCropper` | Bound image-selection and crop result with portable aspect and file limits. |
+| `ImageCropper` | Bound local image selection and crop editor with shared preview, Reset/Cancel/Apply/Remove transitions, portable aspect and file limits, and a `data:image/*;base64,...` result. |
 | `Password` | Bound password input with Dowe-owned strength and validation behavior plus a shared `Icon` reveal action using `eye` and `eye-closed`; visible Show/Hide text is not rendered. |
-| `Phone` | Bound digit-only local phone input with separate dial-code storage and direct `validate` children. It uses the same Dowe-owned anchored searchable country popover, 12-unit trigger inset, compact search, horizontal flag/name/dial rows, selected state, and ordering on web, Android Compose, the Android launcher, and iOS. |
+| `Phone` | Bound digit-only local phone input with separate dial-code storage and direct `validate` children. A floating label stays over the local-number input after the country selector. It uses the same Dowe-owned anchored searchable country popover, 12-unit trigger inset, compact search, horizontal flag/name/dial rows, selected state, and ordering on web, Android Compose, the Android launcher, and iOS. |
 | `Pin` | Bound fixed-length PIN or verification-code input with direct `validate` children, Input-scaled `sm`, `md`, and `lg` cells, automatic focus movement after accepted characters, distributed paste, and text, password, or numeric modes. Android reduces cell widths evenly when a narrow parent cannot fit their nominal widths. `PinField` is rejected. |
 | `Textarea` | Bound multiline text with row and length limits. |
 | `Checkbox` | Bound boolean choice with a quoted accessible label. It accepts `helpText`, `errorText`, and direct `validate` children; `required` means the value must be true. |
@@ -237,7 +244,9 @@ fn submit
 | `Iframe` | Embeds one quoted HTTPS URL or root-relative internal route. Quoted `src` and accessible `title` are required. During native `dowe dev`, an internal route uses the active Views origin instead of the API `BACKEND_URL`. |
 | `Device` | Responsive preview frame that contains exactly one Iframe and selects a supported device profile. |
 | `Canvas` | Custom drawing or pointer surface for visuals that semantic components cannot express; keep its commands and data target-neutral. |
-| `Audio` | Portable audio playback for a supported static source with Dowe-owned playback behavior. |
+| `Audio` | Portable audio playback for a supported static source. Use `src`, optional `subtitle` and `avatarSrc`, and `variant`/`scheme`; Dowe owns the play/pause control, 50-bar seekable waveform, remaining-time footer, and web/Android/iOS interaction parity. |
+| `Camera` | Portable still-photo capture. Use `facing`, `label`, `disabled`, and named lifecycle functions; capture results include a target-local `url`, `mimeType`, dimensions, and `facing`. |
+| `Microphone` | Portable audio recording. Use `label`, optional positive `maxDuration`, `disabled`, and named lifecycle functions; stop results include a target-local `url`, `mimeType`, and `durationMs`. |
 | `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. Web download and fullscreen actions are hidden by default; set `hideControls:false` to enable both. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
 | `Icon` | Bundled vector selected by quoted `name`: Solar variant names, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or brand-colored `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. |
 | `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. |
@@ -262,7 +271,7 @@ platform security policy. They never authorize user-authored JavaScript or nativ
 | `BarChart` | Categorical values rendered as bars from compatible `data` and optional series metadata. |
 | `LineChart` | Series data rendered as lines from compatible `data` and series metadata. |
 | `PieChart` | Non-negative categorical values rendered as slices from compatible `data`. |
-| `Table` | Tabular Signal data with one or more direct `column` definitions using field and label metadata. |
+| `Table` | Semantic portable table for a Signal or compatible immutable array of scalar rows. Use one or more direct `column` definitions with quoted field and label metadata; use `references/table.md` for advanced table composition. |
 
 Charts consume portable Signal data rather than a target-specific chart library. Category charts
 (`ArcChart`, `BarChart`, `PieChart`) read items with `label` and `value`. Point charts
@@ -289,13 +298,16 @@ Each `Candlestick` item provides `time` plus numeric `open`, `high`, `low`, and 
 props include `stream` for an SSE feed upserted by `time`, `upColor` and `downColor` tokens, and
 `maxPoints`. Validation rejects OHLC values where `high` or `low` contradicts the body.
 
-`Table data:<signal>` requires at least one direct `column` with quoted `field` and `label`;
+`Table data:<array-path>` requires at least one direct `column` with quoted `field` and `label`;
 `field` is a relative row path such as `profile.email`, optional `align` accepts `start`,
-`center`, or `end`, and optional `width` accepts static portable hints such as `160px`, `25%`, or
-`1fr`. Table props include `size` (`sm`, `md`, `lg`), `striped`, `bordered`, `dividers`,
-`emptyTitle`, and `emptyDescription`. Cells render strings, numbers, and booleans; objects,
-arrays, and missing fields render empty. Sorting, pagination, selection, and custom cell renderers
-are outside the Table contract.
+`center`, or `end`, and optional `width` accepts static portable hints such as `160px`, `25%`,
+`1fr`, `auto`, `min-content`, or `max-content`. Table props include `size` (`sm`, `md`, `lg`),
+`striped`, `bordered`, `dividers`, `emptyTitle`, and `emptyDescription`, plus applicable common
+style props. Cells render strings, numbers, and booleans; objects, arrays, null, and missing fields
+render empty. Web and desktop use a real table inside horizontal overflow; Android Compose and iOS
+use native readable rows with the same headers and empty copy. Sorting, pagination, selection,
+search, toolbars, and custom cell renderers are outside the Table contract; compose them around the
+component or use the responsive Grid pattern in `references/table.md` when cells need rich content.
 
 ## Display, feedback, and rich content
 
@@ -310,7 +322,7 @@ are outside the Table contract.
 | `Chip` | Compact labeled token with optional `start` and `end` icon regions, supported close behavior, portable motion props, and an optional whole-chip `onClick` action. |
 | `Skeleton` | Loading placeholder sized to the content surface it represents. |
 | `ChatBox` | Bound message list with named send and pagination functions plus loading, sending, and streaming state. |
-| `Empty` | Empty-state icon, title, description, and optional action or navigation target. |
+| `Empty` | Empty-state title, description, and optional action or navigation target. `type` selects the shared Solar `bold-duotone` icon: `playlist`, `result`, `data`, or `template`; do not add a custom icon prop. |
 | `Marquee` | Repeating overflow presentation for one or more view children. |
 | `TypeWriter` | Sequential text presentation composed from one or more direct `item` entries. |
 | `RichText` | Portable wrapping styled text composed from one or more direct `mark` runs. Use `title:true` for the Title scale or leave it false for the Text scale. Across web, Android, and iOS, mark backgrounds remain content-sized and oversized marks wrap on whole-word boundaries with centered lines inside the available container. |
@@ -320,8 +332,8 @@ are outside the Table contract.
 | `Map` | Portable map with direct `marker` and optional route `waypoint` entries plus named location or route functions. |
 | `marker` | Context-only Map marker with stable id, latitude, longitude, and optional named click function. |
 | `waypoint` | Context-only Map route point with latitude and longitude. |
-| `Accordion` | Expandable collection composed from one or more direct `item` entries. |
-| `Carousel` | Slide collection composed from one or more direct `slide` entries and portable navigation behavior. |
+| `Accordion` | Expandable collection composed from one or more direct `item` entries. Each item requires a quoted `id` and `label`, accepts optional `disabled` and `defaultOpen`, and owns normal view children as its body. `multiple:false` keeps at most one item open; `multiple:true` permits independent items. It accepts `variant` (`solid`, `soft`, `outlined`, `ghost`), `scheme` (action or structural family), and common style props. The built-in treatment is `ghost`; `variant` controls surface geometry while `scheme` supplies the semantic color roles. Web, Android Compose, the Android development launcher, and iOS share the same state, SideNav disclosure arrow, metrics, and motion contract. |
+| `Carousel` | Slide collection composed from one or more direct `slide` entries. `variant` selects the scroll/effect preset; effect variants derive their transform from the current slide distance on web, Android, and iOS. `showNavigation`, `hideControls`, `hideIndicators`, `showCounter`, `indicatorType`, `disableLoop`, `slideWidth`, `slideHeight`, `slidesPerView`, and `gap` share one active-index and native-scroll contract across targets. Hide flags control generic rows while `controls`, `dots`, and `thumbnails` retain their required affordance. Use several slides when validating responsive behavior; omit `slideWidth` for a viewport-filling track. |
 
 ## Overlays and transient surfaces
 

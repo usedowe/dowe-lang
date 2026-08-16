@@ -43,19 +43,19 @@ fn render_swift_form_node(
                         )
                     })
             };
-            let icon_condition = |path: &str,
-                                  comparison: Option<&dowe_components::ReactiveNumberComparison>| {
-                comparison
-                    .map(|comparison| {
-                        format!(
-                            "(Double({}) ?? 0) {} {}",
-                            reactive_text(path, "0"),
-                            comparison.operator.as_str(),
-                            comparison.value
-                        )
-                    })
-                    .unwrap_or_else(|| reactive_bool(path))
-            };
+            let icon_condition =
+                |path: &str, comparison: Option<&dowe_components::ReactiveNumberComparison>| {
+                    comparison
+                        .map(|comparison| {
+                            format!(
+                                "(Double({}) ?? 0) {} {}",
+                                reactive_text(path, "0"),
+                                comparison.operator.as_str(),
+                                comparison.value
+                            )
+                        })
+                        .unwrap_or_else(|| reactive_bool(path))
+                };
             let action = props
                 .element
                 .on_click
@@ -69,10 +69,26 @@ fn render_swift_form_node(
                     format!("{{ state.run(\"{}\"{item}) }}", escape_swift(id))
                 })
                 .unwrap_or_else(|| swift_navigation_action(props.navigation.as_ref()));
-            let loading = props.reactive.loading.as_ref().map(|path| reactive_bool(path));
-            let disabled = props.reactive.disabled.as_ref().map(|path| reactive_bool(path));
-            let variant = props.reactive.variant.as_ref().map(|path| reactive_text(path, "solid"));
-            let scheme = props.reactive.scheme.as_ref().map(|path| reactive_text(path, "primary"));
+            let loading = props
+                .reactive
+                .loading
+                .as_ref()
+                .map(|path| reactive_bool(path));
+            let disabled = props
+                .reactive
+                .disabled
+                .as_ref()
+                .map(|path| reactive_bool(path));
+            let variant = props
+                .reactive
+                .variant
+                .as_ref()
+                .map(|path| reactive_text(path, "solid"));
+            let scheme = props
+                .reactive
+                .scheme
+                .as_ref()
+                .map(|path| reactive_text(path, "primary"));
             let variant_value = variant.clone().unwrap_or_else(|| {
                 format!(
                     "\"{}\"",
@@ -92,49 +108,55 @@ fn render_swift_form_node(
                 variant_content(props).to_string()
             };
             output.push_str(&format!("{pad}Button(action: {action}) {{\n"));
-            let render_contents = |content_indent: usize,
-                                   opacity: Option<&str>,
-                                   output: &mut String| {
-                let content_pad = " ".repeat(content_indent);
-                output.push_str(&format!("{content_pad}HStack(spacing: 8) {{\n"));
-                if let Some(icon) = props.icon_start.as_ref() {
-                    if let Some(path) = props.reactive.icon_start_when.as_ref() {
-                        output.push_str(&format!("{content_pad}    if {} {{\n", icon_condition(path, props.reactive.icon_start_comparison.as_ref())));
-                        render_swift_button_icon(icon, &content, content_indent + 8, output);
-                        output.push_str(&format!("{content_pad}    }}\n"));
-                    } else {
-                        render_swift_button_icon(icon, &content, content_indent + 4, output);
+            let render_contents =
+                |content_indent: usize, opacity: Option<&str>, output: &mut String| {
+                    let content_pad = " ".repeat(content_indent);
+                    output.push_str(&format!("{content_pad}HStack(spacing: 8) {{\n"));
+                    if let Some(icon) = props.icon_start.as_ref() {
+                        if let Some(path) = props.reactive.icon_start_when.as_ref() {
+                            output.push_str(&format!(
+                                "{content_pad}    if {} {{\n",
+                                icon_condition(path, props.reactive.icon_start_comparison.as_ref())
+                            ));
+                            render_swift_button_icon(icon, &content, content_indent + 8, output);
+                            output.push_str(&format!("{content_pad}    }}\n"));
+                        } else {
+                            render_swift_button_icon(icon, &content, content_indent + 4, output);
+                        }
                     }
-                }
-                for child in children {
-                    render_swift_node_in_flow(
-                        child,
-                        content_indent + 4,
-                        output,
-                        NativeFlow::Inline,
-                        current_font,
-                        default_family,
-                        context,
-                    );
-                }
-                if let Some(icon) = props.icon_end.as_ref() {
-                    if let Some(path) = props.reactive.icon_end_when.as_ref() {
-                        output.push_str(&format!("{content_pad}    if {} {{\n", icon_condition(path, props.reactive.icon_end_comparison.as_ref())));
-                        render_swift_button_icon(icon, &content, content_indent + 8, output);
-                        output.push_str(&format!("{content_pad}    }}\n"));
-                    } else {
-                        render_swift_button_icon(icon, &content, content_indent + 4, output);
+                    for child in children {
+                        render_swift_node_in_flow(
+                            child,
+                            content_indent + 4,
+                            output,
+                            NativeFlow::Inline,
+                            current_font,
+                            default_family,
+                            context,
+                        );
                     }
-                }
-                output.push_str(&format!("{content_pad}}}\n"));
-                output.push_str(&format!("{content_pad}    .lineLimit(1)\n"));
-                output.push_str(&format!(
-                    "{content_pad}    .fixedSize(horizontal: true, vertical: false)\n"
-                ));
-                if let Some(value) = opacity {
-                    output.push_str(&format!("{content_pad}    .opacity({value})\n"));
-                }
-            };
+                    if let Some(icon) = props.icon_end.as_ref() {
+                        if let Some(path) = props.reactive.icon_end_when.as_ref() {
+                            output.push_str(&format!(
+                                "{content_pad}    if {} {{\n",
+                                icon_condition(path, props.reactive.icon_end_comparison.as_ref())
+                            ));
+                            render_swift_button_icon(icon, &content, content_indent + 8, output);
+                            output.push_str(&format!("{content_pad}    }}\n"));
+                        } else {
+                            render_swift_button_icon(icon, &content, content_indent + 4, output);
+                        }
+                    }
+                    output.push_str(&format!("{content_pad}}}\n"));
+                    output.push_str(&format!("{content_pad}    .lineLimit(1)\n"));
+                    output.push_str(&format!(
+                        "{content_pad}    .fixedSize(horizontal: true, vertical: false)\n"
+                    ));
+                    output.push_str(&format!("{content_pad}    .textSelection(.disabled)\n"));
+                    if let Some(value) = opacity {
+                        output.push_str(&format!("{content_pad}    .opacity({value})\n"));
+                    }
+                };
             if let Some(loading) = loading.as_ref() {
                 output.push_str(&format!("{pad}    ZStack {{\n"));
                 let opacity = format!("{loading} ? 0 : 1");
@@ -155,9 +177,18 @@ fn render_swift_form_node(
             button_style.shadow_color = None;
             button_style.set_animation(None);
             let mut modifiers = swift_modifiers_for_style(&button_style);
-            if let Some(size) = props.reactive.size.as_ref().map(|path| reactive_text(path, "md")) {
-                modifiers.push(format!(".padding(.horizontal, doweButtonHorizontalPadding({size}))"));
-                modifiers.push(format!(".padding(.vertical, doweButtonVerticalPadding({size}))"));
+            if let Some(size) = props
+                .reactive
+                .size
+                .as_ref()
+                .map(|path| reactive_text(path, "md"))
+            {
+                modifiers.push(format!(
+                    ".padding(.horizontal, doweButtonHorizontalPadding({size}))"
+                ));
+                modifiers.push(format!(
+                    ".padding(.vertical, doweButtonVerticalPadding({size}))"
+                ));
                 modifiers.push(format!(".frame(minHeight: doweButtonMinHeight({size}))"));
             }
             if flow.is_grid_item() && props.style.sizing.w.is_none() {
@@ -171,13 +202,19 @@ fn render_swift_form_node(
             };
             modifiers.push(format!(".background({container})"));
             modifiers.push(format!(".foregroundStyle({content})"));
-            let radius = props.reactive.rounded.as_ref().map(|path| format!("doweButtonRadius({})", reactive_text(path, "md"))).unwrap_or_else(|| swift_control_radius(&props.style));
+            let radius = props
+                .reactive
+                .rounded
+                .as_ref()
+                .map(|path| format!("doweButtonRadius({})", reactive_text(path, "md")))
+                .unwrap_or_else(|| swift_control_radius(&props.style));
             modifiers.push(format!(
                 ".clipShape(RoundedRectangle(cornerRadius: {radius}))"
             ));
             if reactive_visual {
                 modifiers.push(format!(".overlay(RoundedRectangle(cornerRadius: {radius}).stroke({content}, lineWidth: {variant_value} == \"outlined\" ? CGFloat(1) : CGFloat(0)))"));
-            } else if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+            } else if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined
+            {
                 modifiers.push(format!(
                     ".overlay(RoundedRectangle(cornerRadius: {radius}).stroke({}, lineWidth: CGFloat(1)))",
                     variant_content(props)
@@ -194,7 +231,9 @@ fn render_swift_form_node(
             if loading.is_some() && disabled.is_some() {
                 let loading_value = loading.as_deref().unwrap_or("false");
                 let disabled_value = disabled.as_deref().unwrap_or("false");
-                modifiers.push(format!(".disabled(({loading_value}) || ({disabled_value}))"));
+                modifiers.push(format!(
+                    ".disabled(({loading_value}) || ({disabled_value}))"
+                ));
             } else if let Some(loading) = loading.as_deref() {
                 modifiers.push(format!(".disabled({loading})"));
             } else if let Some(disabled) = disabled.as_deref() {
@@ -212,16 +251,15 @@ fn render_swift_form_node(
                     swift_animation_preset(animation)
                 ));
             }
+            if let Some(disabled) = disabled.as_deref() {
+                modifiers.push(format!(".opacity({disabled} ? 0.5 : 1)"));
+            }
             append_swift_modifiers(output, indent, &modifiers);
         }
         ViewNode::ToggleTheme { props } => render_swift_theme_toggle(props, indent, output),
-        ViewNode::SelectTheme { props } => render_swift_theme_select(
-            props,
-            indent,
-            output,
-            inherited_font,
-            default_family,
-        ),
+        ViewNode::SelectTheme { props } => {
+            render_swift_theme_select(props, indent, output, inherited_font, default_family)
+        }
         ViewNode::Fab { props, actions } => {
             render_swift_fab(props, actions, indent, output, context, None)
         }
@@ -333,7 +371,15 @@ fn render_swift_form_node(
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }
         ViewNode::ComboBox { props, options } => {
-            render_swift_combo_box(props, options, indent, output, inherited_font, default_family, context);
+            render_swift_combo_box(
+                props,
+                options,
+                indent,
+                output,
+                inherited_font,
+                default_family,
+                context,
+            );
         }
         ViewNode::CsvField { props, columns } => {
             output.push_str(&format!(
@@ -346,7 +392,11 @@ fn render_swift_form_node(
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::DragDrop {
             props,
@@ -363,7 +413,11 @@ fn render_swift_form_node(
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::Editor { props } => {
             output.push_str(&format!(
@@ -378,20 +432,39 @@ fn render_swift_form_node(
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::ImageCropper { props } => {
             output.push_str(&format!(
-                "{pad}DoweImageCropper(value: {}, initialValue: {}, label: {}, placeholder: {}, shape: {}, backgroundColor: {}, contentColor: {})\n",
+                "{pad}DoweImageCropper(value: {}, initialValue: {}, label: {}, placeholder: {}, alt: {}, accept: {}, aspectRatio: {}, minWidth: {}, minHeight: {}, maxWidth: {}, maxHeight: {}, shape: {}, size: {}, disabled: {}, helpText: {}, errorText: {}, backgroundColor: {}, contentColor: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.src.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
                 swift_string_literal(props.style.placeholder.as_deref().unwrap_or("Upload")),
+                swift_string_literal(&props.alt),
+                swift_string_literal(&props.accept),
+                swift_optional_literal(props.aspect_ratio.as_deref()),
+                props.min_width,
+                props.min_height,
+                swift_optional_u16(props.max_width),
+                swift_optional_u16(props.max_height),
                 swift_string_literal(props.shape.as_str()),
+                swift_string_literal(props.style.size.unwrap_or(ButtonSize::Md).as_str()),
+                props.disabled,
+                swift_optional_literal(props.help_text.as_deref()),
+                swift_optional_literal(props.error_text.as_deref()),
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::Password { props } => {
             let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
@@ -420,7 +493,11 @@ fn render_swift_form_node(
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::Phone { props } => {
             let control_size = props.style.size.unwrap_or(ButtonSize::Md);
@@ -450,7 +527,11 @@ fn render_swift_form_node(
                 swift_optional_literal(props.error_text.as_deref()),
                 swift_validation_rules(&props.style.element, context, false)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::Pin { props } => {
             let size = props.style.size.unwrap_or(ButtonSize::Md);
@@ -487,7 +568,11 @@ fn render_swift_form_node(
                 swift_control_radius(&props.style.style),
                 swift_validation_rules(&props.style.element, context, false)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::Textarea { props } => {
             let text_size = form_control_text_size(props.style.size.unwrap_or(ButtonSize::Md));
@@ -508,7 +593,11 @@ fn render_swift_form_node(
                 variant_container(&props.style),
                 variant_content(&props.style)
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
         }
         ViewNode::Checkbox { props } => render_swift_checkbox(props, indent, output, context),
         ViewNode::Color { props } => render_swift_color(props, indent, output, context),
@@ -523,11 +612,13 @@ fn render_swift_form_node(
 }
 
 fn swift_control_icon(icon: Option<&SideNavIcon>) -> String {
-    icon.map(|icon| format!(
-        "DoweControlIcon(viewBox: {}, paths: {})",
-        swift_svg_view_box(&icon.props.view_box),
-        swift_svg_paths(&icon.paths)
-    ))
+    icon.map(|icon| {
+        format!(
+            "DoweControlIcon(viewBox: {}, paths: {})",
+            swift_svg_view_box(&icon.props.view_box),
+            swift_svg_paths(&icon.paths)
+        )
+    })
     .unwrap_or_else(|| "nil".to_string())
 }
 
@@ -610,13 +701,14 @@ fn render_swift_combo_box(
     let control_size = props.style.size.unwrap_or(ButtonSize::Md);
     let text_size = form_control_text_size(control_size);
     let size = swift_text_size_expr(false, text_size);
-    let border = if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-        format!("Optional({})", color_ref(ColorToken::Muted))
-    } else {
-        "nil".to_string()
-    };
+    let border =
+        if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+            format!("Optional({})", color_ref(ColorToken::Muted))
+        } else {
+            "nil".to_string()
+        };
     output.push_str(&format!(
-        "{pad}DoweComboBox(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, searchPlaceholder: {}, emptyText: {}, clearable: {}, options: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {})\n",
+        "{pad}DoweComboBox(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, searchPlaceholder: {}, emptyText: {}, loadingText: {}, clearable: {}, disabled: {}, options: {}, font: {}, fontSize: {size}, lineHeight: CGFloat({}), minHeight: CGFloat({}), horizontalPadding: CGFloat({}), backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {}, helpText: {}, errorText: {}, validationRules: {})\n",
         swift_text_binding(props.style.element.bind.as_deref(), context),
         swift_string_literal(props.value.as_deref().unwrap_or_default()),
         swift_optional_literal(props.style.label.as_deref()),
@@ -624,7 +716,9 @@ fn render_swift_combo_box(
         props.style.label_floating,
         swift_string_literal(&props.search_placeholder),
         swift_string_literal(&props.empty_text),
+        swift_string_literal(&props.loading_text),
         props.clearable,
+        props.disabled,
         swift_combo_options(options),
         swift_font_value(props.style.style.font.as_ref().or(inherited_font), &size, default_family),
         text_typography(false, text_size).line_height,
@@ -633,9 +727,16 @@ fn render_swift_combo_box(
         INPUT_HORIZONTAL_PADDING.native_units(),
         variant_container(&props.style),
         variant_content(&props.style),
-        swift_control_radius(&props.style.style)
+        swift_control_radius(&props.style.style),
+        swift_optional_literal(props.help_text.as_deref()),
+        swift_optional_literal(props.error_text.as_deref()),
+        swift_validation_rules(&props.style.element, context, false)
     ));
-    append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_style(&props.style.style),
+    );
 }
 
 fn swift_text_binding(bind: Option<&str>, context: &SwiftReactiveContext) -> String {
@@ -654,10 +755,12 @@ fn swift_combo_options(options: &[ComboOption]) -> String {
         options
             .iter()
             .map(|option| format!(
-                "DoweSelectOption(value: {}, label: {}, description: {})",
+                "DoweComboOption(value: {}, label: {}, description: {}, icon: {}, disabled: {})",
                 swift_string_literal(&option.value),
                 swift_string_literal(&option.label),
-                swift_optional_literal(option.description.as_deref())
+                swift_optional_literal(option.description.as_deref()),
+                swift_control_icon(option.icon.map(view_icon).as_ref()),
+                option.disabled
             ))
             .collect::<Vec<_>>()
             .join(", ")

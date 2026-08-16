@@ -1,6 +1,7 @@
 use crate::access::DeployAccess;
 use crate::cloudflare::validate_wasm_edge;
 use crate::cloudflare_wasm;
+use crate::edge_queue::EdgeQueueProvider;
 use crate::error::{DeployError, DeployResult};
 use crate::files::write_file;
 use crate::model::{DeployEnvironment, DeploySurface};
@@ -46,11 +47,17 @@ pub fn generate_vercel(
     environment: DeployEnvironment,
     access: Option<&DeployAccess>,
     surface: DeploySurface,
+    server_environment_names: &[String],
 ) -> DeployResult<()> {
     match surface {
-        DeploySurface::Server => {
-            generate_server(project, output, project_name, environment, access)
-        }
+        DeploySurface::Server => generate_server(
+            project,
+            output,
+            project_name,
+            environment,
+            access,
+            server_environment_names,
+        ),
         DeploySurface::Web => generate_web(project, output, project_name, environment, access),
         DeploySurface::Android | DeploySurface::Ios => Err(DeployError::new(
             "vercel deploy supports only Server and Web surfaces",
@@ -64,12 +71,13 @@ fn generate_server(
     project_name: &str,
     environment: DeployEnvironment,
     access: Option<&DeployAccess>,
+    server_environment_names: &[String],
 ) -> DeployResult<()> {
-    validate_wasm_edge(project, "vercel")?;
+    validate_wasm_edge(project, "vercel", EdgeQueueProvider::Vercel)?;
     let function = output.join(".vercel/output/functions/index.func");
     write_file(
         &function.join("dowe-server.wasm"),
-        cloudflare_wasm::generate(&project.backend.endpoints),
+        cloudflare_wasm::generate(&project.backend.endpoints, EdgeQueueProvider::Vercel)?,
     )?;
     write_file(&function.join("index.js"), server_adapter())?;
     write_file(
@@ -83,6 +91,7 @@ fn generate_server(
         environment,
         DeploySurface::Server,
         access.is_some(),
+        server_environment_names,
     )
 }
 
@@ -112,6 +121,7 @@ fn generate_web(
         environment,
         DeploySurface::Web,
         access.is_some(),
+        &[],
     )
 }
 
@@ -181,6 +191,7 @@ fn write_manifest(
     environment: DeployEnvironment,
     surface: DeploySurface,
     access_protected: bool,
+    server_environment_names: &[String],
 ) -> DeployResult<()> {
     let mut content = serde_json::to_string_pretty(&json!({
         "version": 1,
@@ -188,11 +199,21 @@ fn write_manifest(
         "provider": "vercel",
         "projectName": project_name,
         "environment": environment,
+        "environmentTarget": vercel_environment_target(environment),
         "accessProtected": access_protected,
+        "serverEnvironment": server_environment_names,
         "buildOutputApi": 3,
     }))?;
     content.push('\n');
     write_file(&output.join("deploy.json"), content)
+}
+
+fn vercel_environment_target(environment: DeployEnvironment) -> &'static str {
+    match environment {
+        DeployEnvironment::Live => "production",
+        DeployEnvironment::Stage => "stage",
+        DeployEnvironment::Uat => "uat",
+    }
 }
 
 fn server_adapter() -> &'static str {
@@ -232,6 +253,83 @@ function tooLarge() {
   });
 }
 
+function resolveQueueValue(value, result) {
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveQueueValue(item, result));
+  }
+  if (value && typeof value === "object") {
+    if (typeof value.__doweQueueRef === "string") {
+      const parts = value.__doweQueueRef.split(".");
+      return parts.length === 1 ? result : result[parts[1]];
+    }
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, resolveQueueValue(item, result)])
+    );
+  }
+  return value;
+}
+
+function queueError(status) {
+  return new Response(JSON.stringify({ ok: false, error: "queue_provider_error" }), {
+    status,
+    headers: { "content-type": "application/json" }
+  });
+}
+
+function environmentValue(value) {
+  return value.env ? process.env[value.env] : value.literal;
+}
+
+async function enqueueVercel(descriptor) {
+  try {
+    const connection = descriptor.connection;
+    const host = String(environmentValue(connection.host));
+    const url = new URL(host.includes("://") ? host : `https://${host}`);
+    url.port = String(environmentValue(connection.port));
+    url.pathname = `/api/v3/topic/${encodeURIComponent(descriptor.queue)}`;
+    const request = {
+      method: "POST",
+      headers: {
+        "authorization": `Bearer ${environmentValue(connection.secret)}`,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(descriptor.payload)
+    };
+    const deploymentId = environmentValue(connection.vhost);
+    if (deploymentId) {
+      request.headers["Vqs-Deployment-Id"] = deploymentId;
+    }
+    const response = await fetch(url, request);
+    if (response.status === 401) {
+      return queueError(401);
+    }
+    if (response.status === 429) {
+      return queueError(429);
+    }
+    if (response.status === 202) {
+      const result = { ok: true, id: crypto.randomUUID() };
+      return new Response(JSON.stringify(resolveQueueValue(descriptor.response, result)), {
+        status: descriptor.status,
+        headers: { "content-type": "application/json" }
+      });
+    }
+    if (response.status !== 201) {
+      return queueError(502);
+    }
+    const body = await response.json();
+    if (!body.messageId) {
+      return queueError(502);
+    }
+    const result = { ok: true, id: body.messageId };
+    return new Response(JSON.stringify(resolveQueueValue(descriptor.response, result)), {
+      status: descriptor.status,
+      headers: { "content-type": "application/json" }
+    });
+  } catch (_) {
+    return queueError(502);
+  }
+}
+
 export default async function handler(request) {
   const method = encoder.encode(request.method);
   const rawPath = new URL(request.url).pathname;
@@ -269,6 +367,10 @@ export default async function handler(request) {
   ).slice();
   const status = instance.exports.response_status.value;
   const kind = instance.exports.response_kind.value;
+  if (kind === 2) {
+    const descriptor = JSON.parse(new TextDecoder().decode(responseBody)).__doweQueue;
+    return enqueueVercel(descriptor);
+  }
   const contentType = kind === 1
     ? "application/json"
     : "text/plain; charset=utf-8";

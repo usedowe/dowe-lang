@@ -1,6 +1,6 @@
 ---
 name: dowe-views
-description: Use for Dowe view modules, routes, layouts, pages, UI composition, components, state, requests, responsive styles, Canvas, view targets, modern product or marketing visual direction, layered scenes, or exact and adapted reconstruction from an attached screenshot, mockup, template, or UI reference, including semantic component selection, shell/page ownership, reusable static fragments, and repeated collections rendered with each; skip for server-only work.
+description: Use for Dowe view modules, routes, layouts, pages, UI composition, components, state, requests, responsive styles, Canvas, portable and advanced data tables, loading/empty/error states, search and pagination compositions, view targets, modern product or marketing visual direction, layered scenes, or exact and adapted reconstruction from an attached screenshot, mockup, template, or UI reference, including semantic component selection, shell/page ownership, reusable static fragments, and repeated collections rendered with each; skip for server-only work.
 ---
 
 # Dowe views authoring
@@ -179,29 +179,67 @@ theme or color changes.
     generated source, documentation examples, and reusable view fragments; use `theme.dowe` for
     repeated visual policy rather than copying the same values into every instance. See
     `references/styles.md` for the current default matrix and minimal-prop examples.
-19. Use Signals and View Stores for state, `fn` for event workflows, and one `init` for ordered
+19. Enforce spacing economy before adding container padding. Dowe Views has no margin contract:
+    never invent or emit `m`, `mx`, `my`, `mt`, `mr`, `mb`, or `ml`; express separation with the
+    parent's `gap`, responsive flow, alignment, sizing, or the real Section owner's padding. Start
+    with component defaults: an ordinary `Section` already provides responsive `px`/`py`, and a
+    `Card` already provides responsive inner padding. Use `Grid` and `Flex` `gap` for child rhythm,
+    not padding on every layout node. Add `p`, `px`, `py`, `pt`, or `pb` only when a specific user
+    requirement or composition blueprint proves that the default is insufficient, and put the
+    smallest override on one real owner instead of stacking equivalent padding on `Section`,
+    `Grid`, and `Card`. Treat `Card variant:"ghost" p:0` as invalid wrapper noise when it only
+    groups a layout tree; remove it unless the Card owns a real semantic or behavioral boundary.
+20. Use Signals and View Stores for state, `fn` for event workflows, and one `init` for ordered
     mount-time work.
-20. Write static visible text as `"Blog title"` and dynamic visible text as one complete braced
+21. Write static visible text as `"Blog title"` and dynamic visible text as one complete braced
    binding such as `"{blog.title}"`.
-21. Keep route groups one level: every `group` contains direct `route` declarations, never another
+22. Keep route groups one level: every `group` contains direct `route` declarations, never another
    `group`.
-22. Use `store name:` with one indented prop per line when Store props would make one long line.
-23. Validate bindings, component props, text children, routes, and target support with Dowe
-    diagnostics.
-24. Before visual QA, audit every repeated region: name its collection and owner, verify stable ids,
-    confirm one `each` wraps the complete repeated subtree, and check that no copied sibling has
-    survived. Verify static-only props such as `Icon.name` remain compiler-valid.
-25. Review the rendered page at `xs`, `md`, and the reference viewport. Audit focal hierarchy,
-    section-to-section rhythm, visible layering, Card variety, text measure, asset quality, and
-    interaction states before accepting a technically valid layout. For split layouts, compare the
-    form centerline with the centerline of its owning panel, not the whole viewport, and verify that
-    nested action columns fit the available panel width at every active breakpoint.
-26. For reference-driven work, run the installed `scripts/visual_qa.py` entrypoint at the exact
-    viewport. Inspect its band report and diff, then iterate on geometry, line wrapping, spacing,
+23. Use `store name:` with one indented prop per line when Store props would make one long line.
+24. Validate bindings, component props, text children, routes, and target support with Dowe
+   diagnostics.
+25. Before visual QA, audit every repeated region: name its collection and owner, verify stable ids,
+   confirm one `each` wraps the complete repeated subtree, and check that no copied sibling has
+   survived. Verify static-only props such as `Icon.name` remain compiler-valid.
+26. Review the rendered page at `xs`, `md`, and the reference viewport. Audit focal hierarchy,
+   section-to-section rhythm, visible layering, Card variety, text measure, asset quality, and
+   interaction states before accepting a technically valid layout. For split layouts, compare the
+   form centerline with the centerline of its owning panel, not the whole viewport, and verify that
+   nested action columns fit the available panel width at every active breakpoint.
+27. For reference-driven work, run the installed `scripts/visual_qa.py` entrypoint at the exact
+   viewport. Inspect its band report and diff, then iterate on geometry, line wrapping, spacing,
     density, states, layers, and assets before finishing. For directed adaptations, use the report
     to inspect retained bands and document intentional structural deviations instead of weakening
     thresholds or claiming pixel parity. It imports `scripts/visual_qa_blueprint.py` and
     `scripts/visual_qa_png.py`; do not run the helpers directly.
+
+## Table authoring
+
+When a view needs a data-heavy surface, read `references/table.md` before writing the source. Treat
+`Table` as a semantic, portable scalar-data component and compose advanced product behavior around
+it. Do not invent sorting, pagination, selection, search, toolbar, or custom-cell props on `Table`.
+
+- Use `Table` for typed rows whose cells resolve to strings, numbers, booleans, or scalar relative
+  field paths. Give it one or more direct `column` entries with quoted `field` and `label` props.
+- Use a typed page `signal` for data loaded, filtered, paged, or replaced by a request. Use a
+  `const` only for immutable table data when the compiler accepts the array path.
+- Build the enhanced table experience with surrounding `Flex`/`Grid` composition: `Input` and a
+  labeled `IconButton` for search, `Skeleton` for loading, `Alert` for errors, `Pagination` for
+  server-backed pages, and an explicit empty state on the Table or adjacent action.
+- Keep table copy, status values, dates, and amounts concise and directly readable. Align numeric,
+  date, and amount columns with `align:"end"`; use intentional `width` hints when columns need
+  stable proportions. Let narrow viewports scroll horizontally instead of clipping or duplicating
+  the table.
+- If a row needs avatars, chips, nested controls, per-row actions, or breakpoint-specific field
+  visibility, follow the enhanced directory pattern in `references/table.md`: render one keyed
+  responsive `Grid` row with explicit headers instead of forcing rich cells into `Table`.
+- Always handle loading, loaded rows, errors, and a genuinely empty result as separate visual
+  states. Do not let a temporary empty array flash the empty copy while the first request is in
+  flight, and keep the next action visible when no records exist.
+- Prefer the documented neutral `soft`/`surface` recipe for dashboards, `outlined` for dense
+  ledgers, `sm` for many columns, and `md` for normal reading density. Add `striped`, `dividers`,
+  `bordered`, and `rounded` only when they improve scanning or boundary clarity; use `scheme`, not
+  `color`, for the Table family.
 
 ## Resource routing
 
@@ -214,6 +252,7 @@ Open the primary resource first. Load another only when the task crosses its con
 | Dowe documentation block patterns and variant selection | `references/blocks/index.json` |
 | New screen, shell ownership, reusable fragments, container choice, hero, or landing composition | `references/composition.md` |
 | Built-in component selection, children, bindings, interaction, or portability | `references/components.md` |
+| Tables, data grids, loading/empty/error states, toolbars, search, pagination, and responsive table UX | `references/table.md` |
 | Colors, variants, responsive props, typography, sizing, visibility, overlay, or motion | `references/styles.md` |
 | Canvas drawing, input, animation, dynamic scenes, or limits | `references/canvas.md` |
 | Deterministic reference capture and comparison | `scripts/visual_qa.py`, `scripts/visual_qa_blueprint.py`, `scripts/visual_qa_png.py` |

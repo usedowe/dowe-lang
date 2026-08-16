@@ -297,6 +297,8 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
                 output.push(subtitle);
             }
         }
+        ViewNode::Camera { props } => output.push(&props.label),
+        ViewNode::Microphone { props } => output.push(&props.label),
         ViewNode::Chip { value, .. } => output.push(value),
         ViewNode::AlertDialog { props } => {
             output.push(&props.title);

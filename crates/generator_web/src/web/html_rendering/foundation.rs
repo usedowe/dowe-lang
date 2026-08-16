@@ -334,6 +334,8 @@ fn render_html_with_context(
         ViewNode::Pin { props } => render_pin_html(props, context),
         ViewNode::Textarea { props } => render_textarea_html(props, context),
         ViewNode::Audio { props } => render_audio_html(props, context),
+        ViewNode::Camera { props } => render_camera_html(props, context),
+        ViewNode::Microphone { props } => render_microphone_html(props, context),
         ViewNode::Image { props } => render_image_html(props, context),
         ViewNode::Code { props } => render_code_html(props, context),
         ViewNode::Video { props } => render_video_html(props, context),

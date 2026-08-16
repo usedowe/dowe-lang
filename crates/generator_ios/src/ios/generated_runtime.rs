@@ -1,5 +1,6 @@
 include!("generated_runtime/foundation.rs");
 include!("generated_runtime/media.rs");
+include!("generated_runtime/capture.rs");
 include!("generated_runtime/content_controls.rs");
 include!("generated_runtime/data_display.rs");
 include!("generated_runtime/canvas_runtime.rs");
@@ -27,6 +28,7 @@ fn generated_views(
     let mut output = [
         swift_runtime_foundation(),
         swift_runtime_media(),
+        swift_runtime_capture(),
         swift_runtime_content_controls(),
         swift_runtime_data_display(),
         swift_runtime_canvas(),

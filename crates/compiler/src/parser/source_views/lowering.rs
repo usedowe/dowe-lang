@@ -198,6 +198,14 @@ fn lower_remaining_view_node(
             reject_children(node)?;
             audio_component_node(props).map_err(|error| component_error(node, error))
         }
+        BuiltinComponent::Camera => {
+            reject_children(node)?;
+            camera_component_node(props).map_err(|error| component_error(node, error))
+        }
+        BuiltinComponent::Microphone => {
+            reject_children(node)?;
+            microphone_component_node(props).map_err(|error| component_error(node, error))
+        }
         BuiltinComponent::Image => {
             reject_children(node)?;
             image_component_node(props).map_err(|error| component_error(node, error))

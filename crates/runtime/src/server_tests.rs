@@ -2988,6 +2988,16 @@ async fn serves_queue_handlers_with_local_durable_direct_publish() {
         queue appQueue provider:"dowe" host:"unresolved.example" port:4150 account:"unused" secret:"unused" vhost:"jobs"
         msg sent conn:appQueue.publish queue:"notifications" payload:{ userId:"123" event:"user_created" }
         return json:{ ok:sent.ok messageId:sent.id }
+    route "/api/cloudflare"
+      handler
+        queue appQueue provider:"cloudflare" host:"unresolved.example" port:4150 account:"unused" secret:"unused" vhost:"jobs"
+        msg sent conn:appQueue.publish queue:"notifications" payload:{ userId:"123" event:"cloudflare" }
+        return json:{ ok:sent.ok messageId:sent.id }
+    route "/api/vercel"
+      handler
+        queue appQueue provider:"vercel" host:"unresolved.example" port:443 account:"unused" secret:"unused" vhost:"jobs"
+        msg sent conn:appQueue.publish queue:"notifications" payload:{ userId:"123" event:"vercel" }
+        return json:{ ok:sent.ok messageId:sent.id }
     route "/api/missing"
       handler
         queue appQueue provider:"dowe" host:"unresolved.example" port:4150 account:"unused" secret:"unused" vhost:"jobs"
@@ -3023,6 +3033,18 @@ async fn serves_queue_handlers_with_local_durable_direct_publish() {
             .as_str()
             .is_some_and(|value| !value.is_empty())
     );
+    for path in ["cloudflare", "vercel"] {
+        let response = client
+            .get(format!("{backend}/api/{path}"))
+            .send()
+            .await
+            .expect("managed provider message")
+            .json::<serde_json::Value>()
+            .await
+            .expect("managed provider json");
+        assert_eq!(response["ok"], true, "unexpected {path} response: {response}");
+        assert!(response["messageId"].as_str().is_some_and(|value| !value.is_empty()));
+    }
     let missing = client
         .get(format!("{backend}/api/missing"))
         .send()
@@ -3039,10 +3061,12 @@ async fn serves_queue_handlers_with_local_durable_direct_publish() {
     let mut subscription = queue
         .subscribe("notifications", "runtime")
         .expect("subscription");
-    let mut delivery = subscription.next().await.expect("next").expect("delivery");
-    assert_eq!(delivery.message.value["userId"], "123");
-    assert_eq!(delivery.message.value["event"], "user_created");
-    delivery.ack().await.expect("ack");
+    for event in ["user_created", "cloudflare", "vercel"] {
+        let mut delivery = subscription.next().await.expect("next").expect("delivery");
+        assert_eq!(delivery.message.value["userId"], "123");
+        assert_eq!(delivery.message.value["event"], event);
+        delivery.ack().await.expect("ack");
+    }
     assert!(temp.path().join(".dowe/queue/jobs").exists());
     servers.shutdown().await.expect("shutdown");
 }

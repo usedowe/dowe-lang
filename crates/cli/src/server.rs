@@ -1,7 +1,10 @@
-use dowe_compiler::{ProjectCapabilities, compile_dev_server, compile_dev_web};
+use dowe_compiler::{
+    ProjectCapabilities, compile_dev_server, compile_dev_web, compile_for_server_environment,
+    compile_for_web_environment,
+};
 use dowe_runtime::{ProductionAccess, serve_production_with_access};
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const SERVER_USAGE: &str = "Usage: dowe server (--root <path>|--artifact <path>) [--surface server|web] [--bind <ip:port>] [--environment stage|uat --access-hash <sha256>]";
 
@@ -68,13 +71,7 @@ pub(crate) async fn run_embedded_server() -> Result<bool, Box<dyn std::error::Er
             )
         }
     };
-    let project = match surface {
-        dowe_deploy::DeploySurface::Server => compile_dev_server(&root)?,
-        dowe_deploy::DeploySurface::Web => compile_dev_web(&root)?,
-        dowe_deploy::DeploySurface::Android | dowe_deploy::DeploySurface::Ios => {
-            return Err("embedded deploy surface is not supported by the server runtime".into());
-        }
-    };
+    let project = compile_embedded_project(&root, surface, environment)?;
     let server_surface = match surface {
         dowe_deploy::DeploySurface::Server => ServerSurface::Server,
         dowe_deploy::DeploySurface::Web => ServerSurface::Web,
@@ -89,6 +86,24 @@ pub(crate) async fn run_embedded_server() -> Result<bool, Box<dyn std::error::Er
     };
     serve_production_with_access(project, bind.parse()?, access).await?;
     Ok(true)
+}
+
+fn compile_embedded_project(
+    root: &Path,
+    surface: dowe_deploy::DeploySurface,
+    environment: dowe_deploy::DeployEnvironment,
+) -> Result<dowe_compiler::CompiledProject, Box<dyn std::error::Error>> {
+    Ok(match surface {
+        dowe_deploy::DeploySurface::Server => {
+            compile_for_server_environment(&root, environment.compile_environment())?
+        }
+        dowe_deploy::DeploySurface::Web => {
+            compile_for_web_environment(&root, environment.compile_environment())?
+        }
+        dowe_deploy::DeploySurface::Android | dowe_deploy::DeploySurface::Ios => {
+            return Err("embedded deploy surface is not supported by the server runtime".into());
+        }
+    })
 }
 
 pub(crate) async fn run_server_command(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
@@ -201,10 +216,52 @@ fn required_value<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::{ServerSurface, parse_server_options, production_capability_error};
+    use super::{
+        ServerSurface, compile_embedded_project, parse_server_options, production_capability_error,
+    };
     use dowe_compiler::ProjectCapabilities;
+    use dowe_deploy::{DeployEnvironment, DeploySurface};
+    use std::fs;
     use std::net::SocketAddr;
     use std::path::PathBuf;
+    use tempfile::TempDir;
+
+    #[test]
+    fn embedded_compilation_uses_the_selected_deploy_profile() {
+        let temp = TempDir::new().expect("tempdir");
+        fs::write(
+            temp.path().join("main.dowe"),
+            "main\n  server port:8080\n    route \"/status\"\n      response text:\"OK\"\n",
+        )
+        .expect("main");
+        fs::write(
+            temp.path().join(".env.example"),
+            "DOWE_TEST_EMBEDDED_URL=\n",
+        )
+        .expect("env example");
+        fs::write(
+            temp.path().join(".env.live"),
+            "DOWE_TEST_EMBEDDED_URL=https://live.example.com\n",
+        )
+        .expect("live environment");
+        fs::write(
+            temp.path().join(".env.stage"),
+            "DOWE_TEST_EMBEDDED_URL=https://stage.example.com\n",
+        )
+        .expect("stage environment");
+
+        let project =
+            compile_embedded_project(temp.path(), DeploySurface::Server, DeployEnvironment::Stage)
+                .expect("embedded project");
+
+        assert_eq!(
+            project
+                .environment_config
+                .variable("DOWE_TEST_EMBEDDED_URL")
+                .and_then(|variable| variable.resolved_value.as_deref()),
+            Some("https://stage.example.com")
+        );
+    }
 
     #[test]
     fn parses_native_server_options() {

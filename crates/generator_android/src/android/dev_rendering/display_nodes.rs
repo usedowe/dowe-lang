@@ -13,6 +13,8 @@ fn render_dev_android_display_node(
     match node {
         ViewNode::Accordion { .. }
         | ViewNode::Audio { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

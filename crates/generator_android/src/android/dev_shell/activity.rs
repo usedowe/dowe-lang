@@ -27,6 +27,8 @@ fn dev_activity_sources(
     let mut output = String::from(dev_activity_header());
     insert_dev_app_r_import(&mut output, app_bundle);
     output.push_str(&dev_design_constants(design_config));
+    output.push_str("    private static final int DOWE_IMAGE_CROPPER_REQUEST = 5108;\n    private static final int DOWE_CAMERA_REQUEST = 5109;\n    private static final int DOWE_MICROPHONE_PERMISSION_REQUEST = 5110;\n    private static final int DOWE_CAMERA_PERMISSION_REQUEST = 5111;\n    private String doweImageCropperKey;\n    private String doweImageCropperAspect;\n    private int doweImageCropperMinWidth;\n    private int doweImageCropperMinHeight;\n    private int doweImageCropperMaxWidth;\n    private int doweImageCropperMaxHeight;\n    private String doweCameraOnCapture;\n    private String doweCameraOnError;\n    private String doweCameraFacing;\n    private String doweCameraPendingOnStart;\n    private String doweCameraPendingOnCapture;\n    private String doweCameraPendingOnError;\n    private String doweCameraPendingFacing;\n    private MediaRecorder doweMicrophoneRecorder;\n    private File doweMicrophoneFile;\n    private long doweMicrophoneStarted;\n    private String doweMicrophoneOnStop;\n    private String doweMicrophoneOnError;\n    private String doweMicrophonePendingOnStart;\n    private String doweMicrophonePendingOnStop;\n    private String doweMicrophonePendingOnError;\n    private int doweMicrophonePendingMaxDuration;\n");
+    output.push_str("    private String doweImageCropperShapeName;\n");
     output.push_str("    private DoweVideoLayout dowePictureInPictureVideo;\n    private boolean dowePictureInPictureRestoreFullscreen;\n    private static final int DOWE_DROPZONE_REQUEST = 5107;\n    private String doweDropzoneKey;\n    private long doweDropzoneMaxSize = -1L;\n    private boolean doweDropzoneMultiple;\n    private boolean dowePinnedAppBarDockOnScroll;\n    private int dowePinnedAppBarColor;\n    private int dowePinnedAppBarHeight;\n    private float dowePinnedAppBarDockProgress;\n    private View dowePinnedAppBarPlaceholder;\n    private View dowePinnedAppBarDivider;\n    private ValueAnimator dowePinnedAppBarAnimator;\n");
     output.push_str(&format!(
         "    private final Activity doweActivity;\n    private Intent doweIntent;\n    private LinearLayout root;\n    private ScrollView scrollView;\n    private int viewportWidth;\n    private String currentPath = \"{}\";\n    private String currentFragment = null;\n    private String doweMountedPath = null;\n    private String doweMountedLayout = null;\n    private boolean externalOpen = false;\n    private Runnable doweDrawerNavigationClose = null;\n    private final ArrayList<DoweRouteEntry> backStack = new ArrayList<>();\n    private final HashMap<String, Object> doweState = new HashMap<>();\n    private final HashMap<String, Object> doweInitial = new HashMap<>();\n    private final HashMap<String, Boolean> doweSideNavMemory = new HashMap<>();\n    private final HashMap<String, String[]> doweSignalMetadata = new HashMap<>();\n    private final HashMap<String, Object> doweGlobalState = new HashMap<>();\n    private final HashMap<String, String> doweGlobalStorage = new HashMap<>();\n    private final HashMap<String, DoweAction> doweActions = new HashMap<>();\n    private final HashMap<String, DoweFormFieldMetadata[]> doweForms = new HashMap<>();\n    private final HashMap<String, View> sectionViews = new HashMap<>();\n    private final HashSet<String> doweLoaded = new HashSet<>();\n    private final HashSet<String> doweTouchedValidations = new HashSet<>();\n    private final HashSet<String> doweTouchedForms = new HashSet<>();\n\n",
@@ -120,6 +122,33 @@ fn dev_activity_sources(
     }
 
     public void handleActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == DOWE_CAMERA_REQUEST) {
+            if (resultCode == Activity.RESULT_OK && data != null && data.getExtras() != null && data.getExtras().get("data") instanceof Bitmap) {
+                Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+                try {
+                    File file = File.createTempFile("dowe-camera-", ".jpg", getCacheDir());
+                    try (FileOutputStream stream = new FileOutputStream(file)) { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, stream); }
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("source", "camera"); item.put("kind", "capture"); item.put("facing", doweCameraFacing); item.put("mimeType", "image/jpeg"); item.put("url", Uri.fromFile(file).toString()); item.put("width", bitmap.getWidth()); item.put("height", bitmap.getHeight());
+                    if (doweCameraOnCapture != null) doweRunAction(doweCameraOnCapture, item);
+                } catch (Exception error) {
+                    if (doweCameraOnError != null) { Map<String, Object> item = new HashMap<>(); item.put("source", "camera"); item.put("kind", "error"); item.put("error", "write_failed"); doweRunAction(doweCameraOnError, item); }
+                }
+            } else if (doweCameraOnError != null) {
+                Map<String, Object> item = new HashMap<>(); item.put("source", "camera"); item.put("kind", "error"); item.put("error", "cancelled"); doweRunAction(doweCameraOnError, item);
+            }
+            return;
+        }
+        if (requestCode == DOWE_IMAGE_CROPPER_REQUEST && resultCode == Activity.RESULT_OK && data != null && data.getData() != null && doweImageCropperKey != null) {
+            Uri uri = data.getData();
+            new Thread(() -> {
+                try (InputStream input = getContentResolver().openInputStream(uri)) {
+                    Bitmap bitmap = BitmapFactory.decodeStream(input);
+                    if (bitmap != null) runOnUiThread(() -> doweShowImageCropperEditor(bitmap, doweImageCropperKey, doweImageCropperAspect, doweImageCropperShapeName, doweImageCropperMinWidth, doweImageCropperMinHeight, doweImageCropperMaxWidth, doweImageCropperMaxHeight));
+                } catch (Exception ignored) {}
+            }).start();
+            return;
+        }
         if (requestCode != DOWE_DROPZONE_REQUEST || resultCode != Activity.RESULT_OK || data == null || doweDropzoneKey == null) {
             return;
         }
@@ -157,6 +186,112 @@ fn dev_activity_sources(
         runOnUiThread(() -> renderCurrentRoute(false));
     }
 
+    public void handlePermissionResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == DOWE_CAMERA_PERMISSION_REQUEST) {
+            String onStart = doweCameraPendingOnStart;
+            String onCapture = doweCameraPendingOnCapture;
+            String onError = doweCameraPendingOnError;
+            String facing = doweCameraPendingFacing;
+            doweCameraPendingOnStart = null;
+            doweCameraPendingOnCapture = null;
+            doweCameraPendingOnError = null;
+            doweCameraPendingFacing = null;
+            if (grantResults != null && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                doweOpenCameraIntent(facing, onStart, onCapture, onError);
+            } else if (onError != null) {
+                Map<String, Object> item = new HashMap<>(); item.put("source", "camera"); item.put("kind", "error"); item.put("error", "permission_denied"); doweRunAction(onError, item);
+            }
+            return;
+        }
+        if (requestCode != DOWE_MICROPHONE_PERMISSION_REQUEST) return;
+        String onStart = doweMicrophonePendingOnStart;
+        String onStop = doweMicrophonePendingOnStop;
+        String onError = doweMicrophonePendingOnError;
+        int maxDuration = doweMicrophonePendingMaxDuration;
+        doweMicrophonePendingOnStart = null;
+        doweMicrophonePendingOnStop = null;
+        doweMicrophonePendingOnError = null;
+        doweMicrophonePendingMaxDuration = 0;
+        if (grantResults != null && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            doweStartMicrophoneRecording(onStart, onStop, onError, maxDuration);
+        } else if (onError != null) {
+            Map<String, Object> item = new HashMap<>(); item.put("source", "microphone"); item.put("kind", "error"); item.put("error", "permission_denied"); doweRunAction(onError, item);
+        }
+    }
+
+    private void doweOpenCamera(String facing, String onStart, String onCapture, String onError) {
+        doweCameraFacing = facing;
+        doweCameraOnCapture = onCapture;
+        doweCameraOnError = onError;
+        if (Build.VERSION.SDK_INT >= 23 && doweActivity.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            doweCameraPendingOnStart = onStart;
+            doweCameraPendingOnCapture = onCapture;
+            doweCameraPendingOnError = onError;
+            doweCameraPendingFacing = facing;
+            doweActivity.requestPermissions(new String[]{Manifest.permission.CAMERA}, DOWE_CAMERA_PERMISSION_REQUEST);
+            return;
+        }
+        doweOpenCameraIntent(facing, onStart, onCapture, onError);
+    }
+
+    private void doweOpenCameraIntent(String facing, String onStart, String onCapture, String onError) {
+        doweCameraFacing = facing;
+        doweCameraOnCapture = onCapture;
+        doweCameraOnError = onError;
+        Intent camera = new Intent("android.media.action.IMAGE_CAPTURE");
+        camera.putExtra("android.intent.extras.CAMERA_FACING", "user".equals(facing) ? 1 : 0);
+        if (camera.resolveActivity(getPackageManager()) == null) {
+            if (onError != null) { Map<String, Object> item = new HashMap<>(); item.put("source", "camera"); item.put("kind", "error"); item.put("error", "unavailable"); doweRunAction(onError, item); }
+            return;
+        }
+        if (onStart != null) { Map<String, Object> item = new HashMap<>(); item.put("source", "camera"); item.put("kind", "start"); item.put("facing", facing); doweRunAction(onStart, item, () -> {}); }
+        doweActivity.startActivityForResult(camera, DOWE_CAMERA_REQUEST);
+    }
+
+    private void doweStartMicrophone(String onStart, String onStop, String onError, int maxDuration) {
+        if (doweMicrophoneRecorder != null) return;
+        if (Build.VERSION.SDK_INT >= 23 && doweActivity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            doweMicrophonePendingOnStart = onStart;
+            doweMicrophonePendingOnStop = onStop;
+            doweMicrophonePendingOnError = onError;
+            doweMicrophonePendingMaxDuration = maxDuration;
+            doweActivity.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, DOWE_MICROPHONE_PERMISSION_REQUEST);
+            return;
+        }
+        doweStartMicrophoneRecording(onStart, onStop, onError, maxDuration);
+    }
+
+    private void doweStartMicrophoneRecording(String onStart, String onStop, String onError, int maxDuration) {
+        if (doweMicrophoneRecorder != null) return;
+        try {
+            doweMicrophoneFile = File.createTempFile("dowe-microphone-", ".m4a", getCacheDir());
+            doweMicrophoneRecorder = new MediaRecorder();
+            doweMicrophoneRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            doweMicrophoneRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            doweMicrophoneRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            doweMicrophoneRecorder.setOutputFile(doweMicrophoneFile.getAbsolutePath());
+            doweMicrophoneRecorder.prepare();
+            doweMicrophoneRecorder.start();
+            doweMicrophoneStarted = System.currentTimeMillis();
+            doweMicrophoneOnStop = onStop;
+            doweMicrophoneOnError = onError;
+            if (onStart != null) { Map<String, Object> item = new HashMap<>(); item.put("source", "microphone"); item.put("kind", "start"); doweRunAction(onStart, item, () -> {}); }
+            if (maxDuration > 0) new Handler(Looper.getMainLooper()).postDelayed(() -> doweStopMicrophone(), maxDuration * 1000L);
+        } catch (Exception error) {
+            doweMicrophoneRecorder = null;
+            if (onError != null) { Map<String, Object> item = new HashMap<>(); item.put("source", "microphone"); item.put("kind", "error"); item.put("error", "unavailable"); doweRunAction(onError, item); }
+        }
+    }
+
+    private void doweStopMicrophone() {
+        if (doweMicrophoneRecorder == null) return;
+        long duration = Math.max(0L, System.currentTimeMillis() - doweMicrophoneStarted);
+        try { doweMicrophoneRecorder.stop(); } catch (Exception ignored) {}
+        doweMicrophoneRecorder.release();
+        doweMicrophoneRecorder = null;
+        if (doweMicrophoneOnStop != null && doweMicrophoneFile != null) { Map<String, Object> item = new HashMap<>(); item.put("source", "microphone"); item.put("kind", "stop"); item.put("mimeType", "audio/mp4"); item.put("url", Uri.fromFile(doweMicrophoneFile).toString()); item.put("durationMs", duration); doweRunAction(doweMicrophoneOnStop, item); }
+    }
+
     private void doweOpenDropzonePicker(String key, String accept, boolean multiple, long maxSize) {
         doweDropzoneKey = key;
         doweDropzoneMaxSize = maxSize;
@@ -168,6 +303,22 @@ fn dev_activity_sources(
         picker.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
         picker.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple);
         doweActivity.startActivityForResult(picker, DOWE_DROPZONE_REQUEST);
+    }
+
+    private void doweOpenImageCropperPicker(String key, String accept, String aspect, String shape, int minWidth, int minHeight, int maxWidth, int maxHeight) {
+        doweImageCropperKey = key;
+        doweImageCropperAspect = aspect;
+        doweImageCropperShapeName = shape;
+        doweImageCropperMinWidth = minWidth;
+        doweImageCropperMinHeight = minHeight;
+        doweImageCropperMaxWidth = maxWidth;
+        doweImageCropperMaxHeight = maxHeight;
+        Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        picker.addCategory(Intent.CATEGORY_OPENABLE);
+        String[] mimeTypes = doweDropzoneMimeTypes(accept);
+        picker.setType(mimeTypes.length == 1 ? mimeTypes[0] : "*/*");
+        picker.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+        doweActivity.startActivityForResult(picker, DOWE_IMAGE_CROPPER_REQUEST);
     }
 
     private String[] doweDropzoneMimeTypes(String accept) {
@@ -404,6 +555,7 @@ fn dev_activity_sources(
     output.push_str(dev_activity_svg_parser());
     output.push_str(dev_activity_svg_view());
     output.push_str(dev_activity_drawables_media());
+    output.push_str(dev_activity_image_cropper());
     output.push_str(dev_activity_candlestick_runtime());
     output.push_str(dev_activity_chart_runtime());
     output.push_str(dev_activity_canvas_runtime());

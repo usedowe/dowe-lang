@@ -129,6 +129,59 @@
     }
 
     #[test]
+    fn parses_camera_and_microphone_components_with_capture_actions() {
+        let tree = parse_page(
+            r##"page capturePage
+  fn cameraStart
+    set capture value:item
+  fn cameraCapture
+    set capture value:item
+  fn cameraError
+    set capture value:item
+  fn microphoneStart
+    set capture value:item
+  fn microphoneStop
+    set capture value:item
+  fn microphoneError
+    set capture value:item
+  signal capture value:""
+  Box
+    Camera facing:"user" label:"Take photo" disabled:false onStart:cameraStart onCapture:cameraCapture onError:cameraError variant:"soft" scheme:"primary"
+    Microphone label:"Record audio" maxDuration:30 disabled:false onStart:microphoneStart onStop:microphoneStop onError:microphoneError variant:"outlined" scheme:"secondary""##,
+        )
+        .expect("tree");
+
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Box { children, .. } = &children[0] else {
+            panic!("box");
+        };
+        assert_eq!(children.len(), 2);
+
+        let ViewNode::Camera { props } = &children[0] else {
+            panic!("camera");
+        };
+        assert_eq!(props.facing, CameraFacing::User);
+        assert_eq!(props.label, "Take photo");
+        assert_eq!(props.on_start.as_deref(), Some("cameraStart"));
+        assert_eq!(props.on_capture.as_deref(), Some("cameraCapture"));
+        assert_eq!(props.on_error.as_deref(), Some("cameraError"));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+
+        let ViewNode::Microphone { props } = &children[1] else {
+            panic!("microphone");
+        };
+        assert_eq!(props.label, "Record audio");
+        assert_eq!(props.max_duration, Some(30));
+        assert_eq!(props.on_start.as_deref(), Some("microphoneStart"));
+        assert_eq!(props.on_stop.as_deref(), Some("microphoneStop"));
+        assert_eq!(props.on_error.as_deref(), Some("microphoneError"));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Outlined));
+        assert_eq!(props.style.color, Some(ColorFamily::Secondary));
+    }
+
+    #[test]
     fn parses_theme_fab_slider_and_dropzone_components() {
         let tree = parse_page(
             r##"page controlsPage
@@ -220,4 +273,3 @@
         assert_eq!(props.style.color, Some(ColorFamily::Surface));
         assert_eq!(props.size, ButtonSize::Sm);
     }
-

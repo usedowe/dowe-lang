@@ -271,6 +271,58 @@
     }
 
     #[test]
+    fn parses_portable_standard_library_view_syntax() {
+        let tree = parse_page(
+            r#"page standardLibraryPage
+  signal text value:"  value  "
+  signal values value:[]
+  signal result value:""
+  fn run
+    set result source:str.trim value:text
+    set result source:math.sum values:values
+    set result source:parse.int value:text fallback:0
+    set result source:url.querySet value:text name:"page" param:text
+    set result source:csv.parse value:text header:true
+    set result source:sort.by values:values field:"score" direction:"desc"
+    set result source:list.filterContains values:values field:"name" value:text
+    set result source:json.get value:text path:"name" fallback:""
+    set result source:date.now"#,
+        )
+        .expect("tree");
+        let ViewNode::Scope { actions, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewActionKind::Sequence(statements) = &actions[0].kind else {
+            panic!("sequence");
+        };
+        let names = statements
+            .iter()
+            .filter_map(|statement| match statement {
+                ViewFunctionStatement::Assign(assign) => assign
+                    .call
+                    .as_ref()
+                    .map(|call| call.name()),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let names = names.iter().map(String::as_str).collect::<Vec<_>>();
+        assert_eq!(
+            names,
+            [
+                "str.trim",
+                "math.sum",
+                "parse.int",
+                "url.querySet",
+                "csv.parse",
+                "sort.by",
+                "list.filterContains",
+                "json.get",
+                "date.now",
+            ]
+        );
+    }
+
+    #[test]
     fn parses_every_fill_emitted_by_svg_conversion() {
         let svg = r##"<svg viewBox="0 0 16 8">
 <path d="M0 0L1 1Z" fill="#000001"/>

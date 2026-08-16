@@ -1,4 +1,5 @@
 use crate::access::DeployAccess;
+use crate::edge_queue::{EdgeQueueProvider, QueueEdgePlan, queue_edge_plans};
 use crate::cloudflare_wasm;
 use crate::error::{DeployError, DeployResult};
 use crate::files::write_file;
@@ -17,15 +18,17 @@ pub fn generate_cloudflare(
     requested_name: Option<&str>,
     environment: DeployEnvironment,
     access: Option<&DeployAccess>,
+    client_environment: &[(String, String)],
+    server_environment_names: &[String],
 ) -> DeployResult<()> {
-    validate_wasm_edge(project, "cloudflare")?;
+    validate_wasm_edge(project, "cloudflare", EdgeQueueProvider::Cloudflare)?;
     let name = worker_name(project, requested_name, environment)?;
     let assets = output.join("assets");
     fs::create_dir_all(&assets)?;
     copy_static_assets(&project.root, &assets)?;
     write_file(
         &output.join("worker/dowe-worker.wasm"),
-        cloudflare_wasm::generate(&project.backend.endpoints),
+        cloudflare_wasm::generate(&project.backend.endpoints, EdgeQueueProvider::Cloudflare)?,
     )?;
     let adapter = access
         .map(|access| access.protect_worker_adapter(worker_adapter()))
@@ -39,13 +42,13 @@ pub fn generate_cloudflare(
     if access.is_some() {
         assets_config["run_worker_first"] = json!(true);
     }
-    let mut config = serde_json::to_string_pretty(&json!({
-        "name": name,
-        "main": "index.js",
-        "compatibility_date": COMPATIBILITY_DATE,
-        "assets": assets_config
-    }))?;
-    config.push('\n');
+    let config = wrangler_config(
+        &name,
+        assets_config,
+        client_environment,
+        server_environment_names,
+        &queue_edge_plans(&project.backend.endpoints, EdgeQueueProvider::Cloudflare)?,
+    )?;
     write_file(&output.join("worker/wrangler.jsonc"), config)?;
     write_manifest(
         output,
@@ -53,6 +56,35 @@ pub fn generate_cloudflare(
         environment,
         access.is_some(),
     )
+}
+
+fn wrangler_config(
+    name: &str,
+    assets: serde_json::Value,
+    client_environment: &[(String, String)],
+    server_environment_names: &[String],
+    queue_plans: &[QueueEdgePlan],
+) -> DeployResult<String> {
+    let vars = client_environment
+        .iter()
+        .map(|(name, value)| (name.clone(), json!(value)))
+        .collect::<serde_json::Map<_, _>>();
+    let mut config = serde_json::to_string_pretty(&json!({
+        "name": name,
+        "main": "index.js",
+        "compatibility_date": COMPATIBILITY_DATE,
+        "assets": assets,
+        "vars": vars,
+        "secrets": { "required": server_environment_names },
+        "queues": {
+            "producers": queue_plans
+                .iter()
+                .map(|plan| json!({ "queue": plan.queue, "binding": plan.binding }))
+                .collect::<Vec<_>>()
+        }
+    }))?;
+    config.push('\n');
+    Ok(config)
 }
 
 pub fn pages_project_name(
@@ -84,7 +116,11 @@ pub fn pages_project_name(
     Ok(name)
 }
 
-pub(crate) fn validate_wasm_edge(project: &CompiledProject, provider: &str) -> DeployResult<()> {
+pub(crate) fn validate_wasm_edge(
+    project: &CompiledProject,
+    provider: &str,
+    edge_provider: EdgeQueueProvider,
+) -> DeployResult<()> {
     let server = &project.backend;
     if !server.init_action.statements.is_empty() {
         return Err(unsupported(provider, "server init"));
@@ -107,9 +143,15 @@ pub(crate) fn validate_wasm_edge(project: &CompiledProject, provider: &str) -> D
             return Err(unsupported(provider, "route middlewares"));
         }
         if !endpoint.action.statements.is_empty()
-            && !matches!(endpoint.behavior, EndpointBehavior::CreatePostJson)
+            && !matches!(
+                endpoint.behavior,
+                EndpointBehavior::CreatePostJson | EndpointBehavior::QueueActionJson(_)
+            )
         {
             return Err(unsupported(provider, "server action statements"));
+        }
+        if matches!(endpoint.behavior, EndpointBehavior::QueueActionJson(_)) {
+            queue_edge_plans(std::slice::from_ref(endpoint), edge_provider)?;
         }
         if matches!(
             endpoint.behavior,
@@ -123,7 +165,6 @@ pub(crate) fn validate_wasm_edge(project: &CompiledProject, provider: &str) -> D
                 | EndpointBehavior::StoreTransactionJson(_)
                 | EndpointBehavior::StoreActionJson(_)
                 | EndpointBehavior::KvActionJson(_)
-                | EndpointBehavior::QueueActionJson(_)
                 | EndpointBehavior::VectorActionJson(_)
         ) {
             return Err(unsupported(provider, "server runtime actions"));
@@ -210,6 +251,46 @@ function tooLarge() {
   });
 }
 
+function resolveQueueValue(value, result) {
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveQueueValue(item, result));
+  }
+  if (value && typeof value === "object") {
+    if (typeof value.__doweQueueRef === "string") {
+      const parts = value.__doweQueueRef.split(".");
+      return parts.length === 1 ? result : result[parts[1]];
+    }
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, resolveQueueValue(item, result)])
+    );
+  }
+  return value;
+}
+
+function queueError(status) {
+  return new Response(JSON.stringify({ ok: false, error: "queue_provider_error" }), {
+    status,
+    headers: { "content-type": "application/json" }
+  });
+}
+
+async function enqueueCloudflare(descriptor, env) {
+  const queue = env[descriptor.binding];
+  if (!queue) {
+    return queueError(500);
+  }
+  try {
+    await queue.send(descriptor.payload, { contentType: "json" });
+    const result = { ok: true, id: crypto.randomUUID() };
+    return new Response(JSON.stringify(resolveQueueValue(descriptor.response, result)), {
+      status: descriptor.status,
+      headers: { "content-type": "application/json" }
+    });
+  } catch (_) {
+    return queueError(502);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const method = encoder.encode(request.method);
@@ -251,6 +332,10 @@ export default {
     if (status === 404 && env.ASSETS) {
       return env.ASSETS.fetch(request);
     }
+    if (kind === 2) {
+      const descriptor = JSON.parse(new TextDecoder().decode(responseBody)).__doweQueue;
+      return enqueueCloudflare(descriptor, env);
+    }
     const contentType = kind === 1
       ? "application/json"
       : "text/plain; charset=utf-8";
@@ -261,4 +346,26 @@ export default {
   }
 };
 "#
+}
+
+#[cfg(test)]
+mod tests {
+    use super::wrangler_config;
+    use serde_json::json;
+
+    #[test]
+    fn wrangler_config_separates_public_values_and_secret_names() {
+        let config = wrangler_config(
+            "example-app",
+            json!({ "directory": "../assets" }),
+            &[("PUBLIC_URL".into(), "https://example.com".into())],
+            &["DATABASE_URL".into()],
+            &[],
+        )
+        .expect("config");
+        let config: serde_json::Value = serde_json::from_str(&config).expect("json");
+
+        assert_eq!(config["vars"]["PUBLIC_URL"], json!("https://example.com"));
+        assert_eq!(config["secrets"]["required"], json!(["DATABASE_URL"]));
+    }
 }

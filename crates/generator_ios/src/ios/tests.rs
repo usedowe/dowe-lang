@@ -7,7 +7,7 @@ use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, AudioProps, AvatarGroupItem, AvatarGroupProps,
     AvatarProps, AvatarStatus, BadgeProps, BarPosition, BarProps, BorderWidth, BottomBarTab,
     BannerProps, BoxPosition, BrandProps,
-    Breakpoint, ButtonSize, CarouselIndicatorType, CarouselOrientation, CarouselProps,
+    Breakpoint, ButtonSize, CameraFacing, CameraProps, CarouselIndicatorType, CarouselOrientation, CarouselProps,
     CarouselSlide, CarouselVariant, ChatBoxMode, ChatBoxProps, CheckboxProps, ChipProps,
     CollapsibleProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, ComponentProp, ComponentVariant, CountdownProps, CountdownSize,
@@ -17,7 +17,7 @@ use dowe_components::{
     EmptyKind, EmptyProps, FabAction, FabProps, FontConfig, GapSize, GapValue, GridProps,
     GridTracks, ImageAspect, ImageCropperProps, ImageCropperShape, ImageLoading, ImageObjectFit,
     ImageProps, MapMarker, MapMarkerIcon, MapProps, MapWaypoint, MarqueeOrientation, MarqueeProps,
-    MarqueeSpeed, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, NavigationAction,
+    MarqueeSpeed, MicrophoneProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, NavigationAction,
     NavigationOperation, OverlayCornerPosition, OverlayEntry, OverlayItemProps, OverlayPaint,
     OverlayPosition, PasswordProps, PhoneProps, PinKind, PinProps, PropValue,
     RadioGroupOrientation, RadioGroupProps, RadioOption, RailNavItem, RailNavItemProps,
@@ -49,3 +49,4 @@ include!("tests/fixtures_routes_media.rs");
 include!("tests/fixtures_components_overlay.rs");
 include!("tests/fixtures_components_rich.rs");
 include!("tests/fixtures_shared.rs");
+include!("tests/stdlib_generation.rs");

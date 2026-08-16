@@ -11,6 +11,7 @@ mod service;
 mod storage;
 mod topic;
 mod transport;
+mod vercel;
 
 pub use auth::{CreatedQueueAccount, create_account, verify_account};
 pub use client::{QueueClient, QueueSubscription};

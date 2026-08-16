@@ -14,6 +14,7 @@ pub enum QueueError {
     DurabilityError(String),
     Corruption(String),
     Remote(String),
+    Unsupported(String),
     Io(String),
 }
 
@@ -30,6 +31,7 @@ impl QueueError {
             Self::DurabilityError(_) => "DurabilityError",
             Self::Corruption(_) => "Corruption",
             Self::Remote(_) => "Remote",
+            Self::Unsupported(_) => "Unsupported",
             Self::Io(_) => "Io",
         }
     }
@@ -46,6 +48,7 @@ impl QueueError {
             | Self::DurabilityError(message)
             | Self::Corruption(message)
             | Self::Remote(message)
+            | Self::Unsupported(message)
             | Self::Io(message) => message,
         }
     }

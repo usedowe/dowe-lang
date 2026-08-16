@@ -192,6 +192,8 @@ fn required_provider(node: &SourceNode) -> DoweResult<QueueProvider> {
     match &prop.value {
         SourceValue::String(value) if value == "dowe" => Ok(QueueProvider::Dowe),
         SourceValue::String(value) if value == "rabbitmq" => Ok(QueueProvider::RabbitMq),
+        SourceValue::String(value) if value == "cloudflare" => Ok(QueueProvider::Cloudflare),
+        SourceValue::String(value) if value == "vercel" => Ok(QueueProvider::Vercel),
         SourceValue::String(value) => Err(node_error(
             node,
             format!("unsupported Queue provider `{value}`"),
@@ -258,6 +260,11 @@ fn validate_connection_static(
         && value.chars().any(char::is_control)
     {
         return Err(node_error(node, "RabbitMQ Queue `vhost` is invalid"));
+    }
+    if matches!(provider, QueueProvider::Cloudflare | QueueProvider::Vercel)
+        && value.chars().any(char::is_control)
+    {
+        return Err(node_error(node, "managed Queue connection value is invalid"));
     }
     Ok(())
 }

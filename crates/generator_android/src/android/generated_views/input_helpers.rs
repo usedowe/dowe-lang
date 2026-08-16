@@ -47,6 +47,7 @@ private fun DoweValidationFeedback(helpText: String?, error: String?, contentCol
 }
 
 private data class DoweSelectOption(val value: String, val label: String, val description: String?)
+private data class DoweComboOption(val value: String, val label: String, val description: String?, val icon: (@Composable () -> Unit)?, val disabled: Boolean)
 
 @Composable
 private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: Modifier, label: String?, placeholder: String, floating: Boolean, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, startIcon: (@Composable () -> Unit)? = null, endIcon: (@Composable () -> Unit)? = null, visualTransformation: VisualTransformation = VisualTransformation.None, keyboardOptions: KeyboardOptions = KeyboardOptions.Default, helpText: String? = null, errorText: String? = null, validationRules: List<DoweValidationRule> = emptyList()) {
@@ -206,8 +207,63 @@ private data class DoweDragItem(val id: String, val label: String?, val descript
 private data class DoweDragGroup(val id: String, val title: String?, val items: List<DoweDragItem>)
 
 @Composable
-private fun DoweComboBox(value: String, onValueChange: (String) -> Unit, bound: Boolean, label: String?, placeholder: String, floating: Boolean, searchPlaceholder: String, emptyText: String, clearable: Boolean, options: List<DoweSelectOption>, modifier: Modifier, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?) {
-    DoweSelect(value = value, onValueChange = onValueChange, bound = bound, modifier = modifier, label = label, placeholder = placeholder, floating = floating, options = options, fontFamily = fontFamily, fontSize = fontSize, lineHeight = lineHeight, minHeight = minHeight, horizontalPadding = horizontalPadding, shape = shape, backgroundColor = backgroundColor, contentColor = contentColor, borderColor = borderColor)
+private fun DoweComboBox(value: String, onValueChange: (String) -> Unit, bound: Boolean, label: String?, placeholder: String, floating: Boolean, searchPlaceholder: String, emptyText: String, loadingText: String, clearable: Boolean, disabled: Boolean, options: List<DoweComboOption>, modifier: Modifier, fontFamily: FontFamily, fontSize: TextUnit, lineHeight: TextUnit, minHeight: Dp, horizontalPadding: Dp, shape: RoundedCornerShape, backgroundColor: Color, contentColor: Color, borderColor: Color?, helpText: String? = null, errorText: String? = null, validationRules: List<DoweValidationRule> = emptyList()) {
+    var expanded by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var localValue by remember(value) { mutableStateOf(value) }
+    var touched by remember { mutableStateOf(false) }
+    val selectedValue = if (bound) value else localValue
+    val selected = options.firstOrNull { it.value == selectedValue }
+    val filtered = options.filter { option ->
+        query.isBlank() || listOf(option.label, option.value, option.description.orEmpty()).any { it.contains(query, ignoreCase = true) }
+    }
+    val active = expanded || selected != null
+    val validationError = errorText ?: if (touched) doweValidationError(selectedValue, validationRules) else null
+    val resolvedBorderColor = if (validationError != null) DoweDesign.danger else borderColor
+    val popupOffset = with(LocalDensity.current) { IntOffset(0, (minHeight + 4.dp).roundToPx()) }
+    Column {
+        if (label != null && !floating) Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = contentColor)
+        Box(modifier = modifier) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = minHeight)
+                    .clip(shape)
+                    .background(backgroundColor)
+                    .then(if (resolvedBorderColor == null) Modifier else Modifier.border(1.dp, resolvedBorderColor, shape))
+                    .clickable(enabled = !disabled) { expanded = true }
+                    .padding(horizontal = horizontalPadding),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    if (label != null && floating) Text(text = label, modifier = Modifier.align(if (active) Alignment.TopStart else Alignment.CenterStart), fontSize = if (active) 12.sp else fontSize, color = contentColor, fontFamily = fontFamily)
+                    if (selected != null || !floating || expanded) Text(text = selected?.label ?: placeholder, modifier = Modifier.align(Alignment.CenterStart).padding(top = if (label != null && floating && active) 10.dp else 0.dp), fontSize = fontSize, lineHeight = lineHeight, color = contentColor.copy(alpha = if (selected != null) 1f else 0.55f), fontFamily = fontFamily, maxLines = 1)
+                }
+                if (clearable && selected != null) {
+                    Text(text = "×", modifier = Modifier.clickable(enabled = !disabled) { localValue = ""; onValueChange(""); touched = true }.padding(horizontal = 4.dp), color = contentColor.copy(alpha = 0.7f), fontSize = 18.sp)
+                }
+                DoweSvg(viewBox = doweSelectArrowViewBox, modifier = Modifier.width(16.dp).height(16.dp), color = contentColor, paths = doweSelectArrowPaths)
+            }
+            if (expanded) {
+                DoweAnchoredPopover(visible = true, offset = popupOffset, shape = shape, backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, contentPadding = PaddingValues(vertical = 4.dp), minWidth = 280.dp, maxWidth = 384.dp, maxHeight = 380.dp, onDismiss = { expanded = false; query = ""; touched = true }) {
+                    BasicTextField(value = query, onValueChange = { query = it }, modifier = Modifier.fillMaxWidth().padding(6.dp).clip(RoundedCornerShape(10.dp)).background(DoweDesign.surfaceText.copy(alpha = 0.07f)).padding(horizontal = 12.dp, vertical = 9.dp), singleLine = true, textStyle = TextStyle(color = DoweDesign.surfaceText), decorationBox = { inner -> Box { if (query.isEmpty()) Text(searchPlaceholder, color = DoweDesign.surfaceText.copy(alpha = 0.55f)); inner() } })
+                    if (options.isEmpty()) Text(loadingText, modifier = Modifier.fillMaxWidth().padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f), textAlign = TextAlign.Center)
+                    else if (filtered.isEmpty()) Text(emptyText, modifier = Modifier.fillMaxWidth().padding(16.dp), color = DoweDesign.surfaceText.copy(alpha = 0.68f), textAlign = TextAlign.Center)
+                    else filtered.forEach { option ->
+                        Row(modifier = Modifier.fillMaxWidth().background(if (option.value == selectedValue) contentColor.copy(alpha = 0.1f) else Color.Transparent).clickable(enabled = !option.disabled) { localValue = option.value; onValueChange(option.value); expanded = false; query = ""; touched = true }.padding(horizontal = 12.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            option.icon?.invoke()
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = option.label, fontSize = fontSize, lineHeight = lineHeight, fontWeight = FontWeight.SemiBold, color = DoweDesign.surfaceText.copy(alpha = if (option.disabled) 0.45f else 1f), fontFamily = fontFamily)
+                                if (option.description != null) Text(text = option.description, fontSize = 12.sp, color = DoweDesign.surfaceText.copy(alpha = if (option.disabled) 0.35f else 0.68f), fontFamily = fontFamily)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        DoweValidationFeedback(helpText, validationError, contentColor)
+    }
 }
 
 @Composable
@@ -277,15 +333,156 @@ private fun DoweEditorField(value: String, onValueChange: (String) -> Unit, labe
 }
 
 @Composable
-private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, shape: String, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+private fun doweImageCropperSize(size: String): Dp {
+    return when (size) {
+        "xs" -> 96.dp
+        "sm" -> 112.dp
+        "lg" -> 160.dp
+        "xl" -> 192.dp
+        else -> 128.dp
+    }
+}
+
+private fun doweDataUrlBitmap(value: String): android.graphics.Bitmap? {
+    if (!value.startsWith("data:image/")) return null
+    val encoded = value.substringAfter(",", "")
+    return runCatching {
+        val bytes = Base64.decode(encoded, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }.getOrNull()
+}
+
+private fun doweBitmapDataUrl(bitmap: android.graphics.Bitmap, mime: String): String {
+    val jpeg = mime.contains("jpeg") || mime.contains("jpg")
+    val output = ByteArrayOutputStream()
+    bitmap.compress(if (jpeg) android.graphics.Bitmap.CompressFormat.JPEG else android.graphics.Bitmap.CompressFormat.PNG, 92, output)
+    val outputMime = if (jpeg) "image/jpeg" else "image/png"
+    return "data:$outputMime;base64," + Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+}
+
+private fun doweCropBitmap(bitmap: android.graphics.Bitmap, aspect: Float, zoom: Float, offset: Offset, minWidth: Int, minHeight: Int, maxWidth: Int?, maxHeight: Int?): android.graphics.Bitmap? {
+    val frameWidth = 1000f
+    val frameHeight = frameWidth / aspect.coerceAtLeast(0.01f)
+    val scale = maxOf(frameWidth / bitmap.width, frameHeight / bitmap.height) * zoom
+    val imageWidth = bitmap.width * scale
+    val imageHeight = bitmap.height * scale
+    val left = (frameWidth - imageWidth) / 2f + offset.x
+    val top = (frameHeight - imageHeight) / 2f + offset.y
+    val sourceX = ((0f - left) / scale).coerceIn(0f, bitmap.width.toFloat())
+    val sourceY = ((0f - top) / scale).coerceIn(0f, bitmap.height.toFloat())
+    val sourceWidth = (frameWidth / scale).coerceAtMost(bitmap.width - sourceX)
+    val sourceHeight = (frameHeight / scale).coerceAtMost(bitmap.height - sourceY)
+    if (sourceWidth < minWidth || sourceHeight < minHeight) return null
+    var outputWidth = sourceWidth.roundToInt().coerceAtLeast(1)
+    var outputHeight = sourceHeight.roundToInt().coerceAtLeast(1)
+    val limit = minOf(maxWidth?.toFloat()?.div(outputWidth) ?: 1f, maxHeight?.toFloat()?.div(outputHeight) ?: 1f)
+    if (limit < 1f) {
+        outputWidth = (outputWidth * limit).roundToInt().coerceAtLeast(1)
+        outputHeight = (outputHeight * limit).roundToInt().coerceAtLeast(1)
+    }
+    return android.graphics.Bitmap.createBitmap(bitmap, sourceX.roundToInt(), sourceY.roundToInt(), sourceWidth.roundToInt().coerceAtLeast(1), sourceHeight.roundToInt().coerceAtLeast(1), null, true).let {
+        if (it.width == outputWidth && it.height == outputHeight) it else android.graphics.Bitmap.createScaledBitmap(it, outputWidth, outputHeight, true)
+    }
+}
+
+@Composable
+private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, bound: Boolean, initialValue: String, label: String?, placeholder: String, alt: String, accept: String, aspectRatio: String?, minWidth: Int, minHeight: Int, maxWidth: Int?, maxHeight: Int?, shape: String, size: String, disabled: Boolean, helpText: String?, errorText: String?, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    val context = LocalContext.current
+    var localValue by remember { mutableStateOf(initialValue) }
+    val appliedValue = if (bound && value.isNotEmpty()) value else if (bound && value.isEmpty() && localValue == initialValue && initialValue.isNotEmpty()) initialValue else if (bound) value else localValue
+    var appliedBitmap by remember(appliedValue) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var draftBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var draftMime by remember { mutableStateOf("image/png") }
+    var pendingUri by remember { mutableStateOf<Uri?>(null) }
+    var cropDialog by remember { mutableStateOf(false) }
+    var zoom by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var cropError by remember { mutableStateOf<String?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> pendingUri = uri }
+    LaunchedEffect(appliedValue) {
+        appliedBitmap = withContext(Dispatchers.IO) {
+            doweDataUrlBitmap(appliedValue) ?: doweLoadImageBitmap(context, appliedValue)
+        }
+    }
+    LaunchedEffect(pendingUri) {
+        val uri = pendingUri ?: return@LaunchedEffect
+        val bitmap = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream) }
+        if (bitmap != null) {
+            draftBitmap = bitmap
+            draftMime = context.contentResolver.getType(uri) ?: "image/png"
+            zoom = 1f
+            offset = Offset.Zero
+            cropError = null
+            cropDialog = true
+        } else {
+            cropError = "The selected image could not be decoded."
+        }
+        pendingUri = null
+    }
+    fun openExisting() {
+        if (disabled) return
+        draftBitmap = appliedBitmap
+        draftMime = appliedValue.substringAfter("data:", "image/png").substringBefore(";")
+        zoom = 1f
+        offset = Offset.Zero
+        cropError = null
+        if (draftBitmap != null) cropDialog = true
+    }
+    fun remove() {
+        localValue = ""
+        onValueChange("")
+        appliedBitmap = null
+    }
+    val frameShape = if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(18.dp)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (label != null) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
-        Box(modifier = Modifier.width(128.dp).height(128.dp).clip(if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(18.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.2f), if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-            Text(if (value.isEmpty()) placeholder else "Image", color = contentColor, fontWeight = FontWeight.Bold)
+        Box(modifier = Modifier.size(doweImageCropperSize(size)).clip(frameShape).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.2f), frameShape).clickable(enabled = !disabled) { if (appliedBitmap == null) picker.launch(doweDropzoneMimeTypes(accept)) else openExisting() }, contentAlignment = Alignment.Center) {
+            if (appliedBitmap != null) Image(bitmap = appliedBitmap!!.asImageBitmap(), contentDescription = alt, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Text(placeholder, color = contentColor, fontWeight = FontWeight.Bold)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Edit", color = contentColor, fontWeight = FontWeight.SemiBold)
-            Text("Remove", color = contentColor.copy(alpha = 0.72f), fontWeight = FontWeight.SemiBold)
+            TextButton(enabled = !disabled, onClick = { picker.launch(doweDropzoneMimeTypes(accept)) }) { Text(if (appliedBitmap == null) "Upload" else "Change", color = contentColor) }
+            if (appliedBitmap != null) TextButton(enabled = !disabled, onClick = ::remove) { Text("Remove", color = contentColor.copy(alpha = 0.72f)) }
+        }
+        DoweValidationFeedback(helpText, cropError ?: errorText, contentColor)
+    }
+    if (cropDialog && draftBitmap != null) {
+        Dialog(onDismissRequest = { cropDialog = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            BackHandler { cropDialog = false }
+            val aspect = aspectRatio?.toFloatOrNull()?.coerceAtLeast(0.01f) ?: 1f
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(20.dp)).background(backgroundColor).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Adjust image", fontWeight = FontWeight.Bold, color = contentColor)
+                    TextButton(onClick = { cropDialog = false }) { Text("Cancel", color = contentColor) }
+                }
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp).clip(RoundedCornerShape(12.dp)).background(Color.Black), contentAlignment = Alignment.Center) {
+                    val frameWidth = maxWidth
+                    val frameHeight = minOf(maxHeight, maxWidth / aspect)
+                    Box(modifier = Modifier.width(frameWidth).height(frameHeight).clip(if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(0.dp)).pointerInput(Unit) { detectTransformGestures { _, pan, zoomChange, _ -> offset += pan; zoom = (zoom * zoomChange).coerceIn(1f, 3f) } }) {
+                        Image(bitmap = draftBitmap!!.asImageBitmap(), contentDescription = alt, modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = zoom; scaleY = zoom; translationX = offset.x; translationY = offset.y }, contentScale = ContentScale.Crop)
+                        Canvas(modifier = Modifier.fillMaxSize()) { drawLine(Color.White.copy(alpha = 0.65f), Offset(size.width / 3f, 0f), Offset(size.width / 3f, size.height)); drawLine(Color.White.copy(alpha = 0.65f), Offset(size.width * 2f / 3f, 0f), Offset(size.width * 2f / 3f, size.height)); drawLine(Color.White.copy(alpha = 0.65f), Offset(0f, size.height / 3f), Offset(size.width, size.height / 3f)); drawLine(Color.White.copy(alpha = 0.65f), Offset(0f, size.height * 2f / 3f), Offset(size.width, size.height * 2f / 3f)) }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Zoom", color = contentColor, fontSize = 12.sp)
+                    androidx.compose.material3.Slider(value = zoom, onValueChange = { zoom = it }, valueRange = 1f..3f, modifier = Modifier.weight(1f))
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { zoom = 1f; offset = Offset.Zero }) { Text("Reset", color = contentColor) }
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextButton(onClick = { cropDialog = false }) { Text("Cancel", color = contentColor) }
+                    Button(onClick = {
+                        val result = doweCropBitmap(draftBitmap!!, aspect, zoom, offset, minWidth, minHeight, maxWidth, maxHeight)
+                        if (result == null) cropError = "Image must be at least $minWidth × $minHeight pixels." else {
+                            val next = doweBitmapDataUrl(result, draftMime)
+                            localValue = next
+                            onValueChange(next)
+                            appliedBitmap = result
+                            cropDialog = false
+                        }
+                    }) { Text("Apply") }
+                }
+                cropError?.let { Text(it, color = DoweDesign.danger, fontSize = 12.sp) }
+            }
         }
     }
 }

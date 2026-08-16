@@ -1,4 +1,6 @@
+use crate::error::DeployResult;
 use dowe_compiler::{Endpoint, EndpointBehavior, HttpMethod};
+use crate::edge_queue::{EdgeQueueProvider, queue_edge_marker};
 mod codegen;
 
 const DATA_BASE: u32 = 1024;
@@ -68,6 +70,7 @@ enum ResponsePlan {
         parameter_index: Option<usize>,
     },
     CreatedJson,
+    Queue(Blob),
 }
 
 enum TemplatePart {
@@ -79,33 +82,41 @@ enum TemplatePart {
 enum BodyKind {
     Text = 0,
     Json = 1,
+    Queue = 2,
 }
 
-pub fn generate(endpoints: &[Endpoint]) -> Vec<u8> {
+pub fn generate(
+    endpoints: &[Endpoint],
+    provider: EdgeQueueProvider,
+) -> DeployResult<Vec<u8>> {
     let mut data = DataStore::new();
     let not_found = data.add_text("Not Found");
     let invalid_json = data.add_text("Expected JSON object");
     let created_prefix = data.add_text("{\"created\":true");
     let plans = endpoints
         .iter()
-        .map(|endpoint| endpoint_plan(endpoint, &mut data))
-        .collect::<Vec<_>>();
+        .map(|endpoint| endpoint_plan(endpoint, &mut data, provider))
+        .collect::<DeployResult<Vec<_>>>()?;
     let max_dynamic_params = plans
         .iter()
         .map(|plan| plan.dynamic_params)
         .max()
         .unwrap_or_default();
-    codegen::encode(
+    Ok(codegen::encode(
         &data,
         &plans,
         not_found,
         invalid_json,
         created_prefix,
         max_dynamic_params,
-    )
+    ))
 }
 
-fn endpoint_plan(endpoint: &Endpoint, data: &mut DataStore) -> EndpointPlan {
+fn endpoint_plan(
+    endpoint: &Endpoint,
+    data: &mut DataStore,
+    provider: EdgeQueueProvider,
+) -> DeployResult<EndpointPlan> {
     let segments = endpoint
         .path
         .trim_matches('/')
@@ -158,18 +169,20 @@ fn endpoint_plan(endpoint: &Endpoint, data: &mut DataStore) -> EndpointPlan {
         | EndpointBehavior::StoreTransactionJson(_)
         | EndpointBehavior::StoreActionJson(_)
         | EndpointBehavior::KvActionJson(_)
-        | EndpointBehavior::QueueActionJson(_)
         | EndpointBehavior::VectorActionJson(_) => ResponsePlan::Static(
             data.add_text("Unsupported Cloudflare route"),
             BodyKind::Text,
         ),
+        EndpointBehavior::QueueActionJson(response) => {
+            ResponsePlan::Queue(data.add_text(&queue_edge_marker(endpoint, response, provider)?))
+        }
     };
-    EndpointPlan {
+    Ok(EndpointPlan {
         method: data.add_text(http_method(endpoint.method)),
         segments,
         response,
         dynamic_params,
-    }
+    })
 }
 
 fn template_parts(

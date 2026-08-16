@@ -257,6 +257,36 @@ fn renders_reactive_button_loading_spinner_and_runtime_binding() {
 }
 
 #[test]
+fn renders_reactive_button_disabled_visual_state() {
+    let button = ViewNode::Button {
+        props: VariantProps {
+            variant: Some(ComponentVariant::Soft),
+            color: Some(ColorFamily::Secondary),
+            reactive: ReactiveVariantProps {
+                disabled: Some("formInvalid".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![text("Submit")],
+    };
+    let html = render_page_body(&ViewNode::Children, &button);
+    let css = super::design_css();
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+
+    assert!(html.contains(r#"data-dowe-button-disabled="formInvalid""#));
+    assert!(css.contains("user-select:none;-webkit-user-select:none"));
+    assert!(css.contains(r#".button.is-disabled,.button[aria-disabled="true"]{opacity:.5}"#));
+    assert!(router.contains("button.classList.toggle(\"is-disabled\",disabled)"));
+}
+
+#[test]
 fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
     let root = Path::new("/project");
     let page_tree = display_chat_motion_tree();
@@ -288,6 +318,9 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-chatbox-messages="messages""#));
     assert!(html.contains(r#"class="empty"#));
     assert!(html.contains("is-result"));
+    assert!(html.contains(r#"class="empty-icon"><svg class="svg"#));
+    assert!(html.contains(r#"viewBox="0 0 24 24"#));
+    assert!(!html.contains(r#"viewBox="0 0 120 100"#));
     assert!(html.contains(r#"class="marquee"#));
     assert!(html.contains("is-horizontal"));
     assert!(html.contains("is-fast"));
@@ -350,6 +383,9 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-map"#));
     assert!(html.contains(r#"data-dowe-map-marker="office""#));
     assert!(page.css_content.contains(".media.is-soft.is-primary"));
+    assert!(page
+        .css_content
+        .contains(".media.is-soft.is-primary .media-button{background-color:var(--dowe-primary);color:var(--dowe-primaryText);}"));
     assert!(
         page.css_content
             .contains(".toggle-group.is-soft.is-secondary")
@@ -418,6 +454,11 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
 
     assert!(html.contains(r#"class="media is-soft is-primary""#));
     assert!(html.contains(r#"data-dowe-audio"#));
+    assert!(html.contains(r#"data-dowe-audio-play-icon"#));
+    assert!(html.contains(r#"data-dowe-audio-pause-icon"#));
+    assert!(html.contains(r#"data-dowe-audio-waveform"#));
+    assert!(html.contains(r#"class="media-bars loaded"#));
+    assert_eq!(html.matches(r#"class="media-bar" style="height:"#).count(), 50);
     assert!(html.contains(r#"class="image is-solid is-secondary square fit-contain""#));
     assert!(html.contains(r#"data-dowe-image"#));
     assert!(html.contains(r#"data-dowe-image-download"#));
@@ -465,7 +506,10 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
             .contains(".accordion.is-outlined.is-surface")
     );
     assert!(page.css_content.contains(
-        ".accordion.is-outlined.is-surface{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid var(--dowe-surface);}"
+        ".accordion.is-outlined.is-surface{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid var(--dowe-surface);padding:.25rem;gap:.75rem;}"
+    ));
+    assert!(page.css_content.contains(
+        ".accordion.is-outlined.is-surface .accordion-item{background-color:var(--dowe-surface);border:1px solid color-mix(in srgb,var(--dowe-surface) 24%,transparent);"
     ));
     assert!(page.css_content.contains(".carousel.is-solid.is-info"));
     assert!(css.contains(".checkbox-input{position:relative;"));
@@ -480,10 +524,23 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(css.contains(".date-control-trigger{display:flex;"));
     assert!(css.contains(".date-range-calendars{display:flex;"));
     assert!(css.contains(".accordion-arrow>svg{width:100%;height:100%;}"));
+    assert!(!css.contains(".accordion-arrow{background-color:"));
+    assert!(css.contains(".accordion-label{font-size:.9375rem;font-weight:700;line-height:1.35;}"));
     assert!(css.contains(".accordion-header.is-open .accordion-arrow{transform:rotate(90deg);}"));
+    assert!(css.contains(".media-icon>svg{width:100%;height:100%;}"));
+    assert!(css.contains("@keyframes dowe-media-wave-appear"));
+    assert!(css.contains(".media-bars.loaded .media-bar.active"));
     assert!(router.contains("function hydrateAudios(root)"));
+    assert!(router.contains("function startAudioFrame(root)"));
+    assert!(router.contains("aria-pressed"));
+    assert!(router.contains("function seekAudio(root,clientX)"));
+    assert!(router.contains("pointerdown"));
+    assert!(router.contains("aria-valuetext"));
     assert!(router.contains("function toggleAccordion(trigger)"));
     assert!(router.contains("function renderCarousel(root)"));
+    assert!(router.contains("function renderCarouselEffects"));
+    assert!(router.contains("case\"coverFlow\""));
+    assert!(router.contains("touchmove"));
     assert!(router.contains("function renderDateField(root,state,scope)"));
     assert!(router.contains("function renderDoweColor(root,state,scope)"));
     assert!(router.contains("function doweColorOklch(rgb)"));
@@ -495,10 +552,13 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(router.contains("maximum-position<=edge"));
     assert!(router.contains("function scrollCarouselSlide(root,slide"));
     assert!(router.contains("viewport.scrollTo({left,behavior})"));
+    assert!(router.contains("button.disabled=disabled"));
     assert!(!router.contains("slides[index].scrollIntoView"));
     assert!(router.contains("pointerdown"));
     assert!(css.contains(".carousel-viewport::-webkit-scrollbar"));
     assert!(css.contains("scrollbar-width:none"));
+    assert!(css.contains(".carousel.is-vertical{flex-direction:column"));
+    assert!(css.contains(".carousel-nav:disabled,.carousel-control:disabled"));
     assert!(css.contains("-webkit-overflow-scrolling:touch"));
     assert!(css.contains("border:0;border-radius:1.25rem;background:transparent;box-shadow:none"));
     for variant in [
@@ -546,6 +606,8 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-combo-box"#));
     assert!(html.contains(r#"data-dowe-bind="profile.role""#));
     assert!(html.contains(r#"data-dowe-combo-value="admin""#));
+    assert!(html.contains(r#"data-dowe-combo-search"#));
+    assert!(html.contains(r#"data-dowe-combo-clear"#));
     assert!(html.contains(r#"class="csv-field"#));
     assert!(html.contains(r#"data-dowe-csv"#));
     assert!(html.contains("Email"));
@@ -557,6 +619,15 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(html.contains("image-cropper"));
     assert!(html.contains("is-circle"));
     assert!(html.contains(r#"data-dowe-image-cropper"#));
+    assert!(html.contains(r#"data-dowe-cropper-stage"#));
+    assert!(html.contains(r#"data-dowe-cropper-zoom"#));
+    assert!(html.contains("Apply"));
+    assert!(router.contains("cropperApply"));
+    assert!(router.contains("toDataURL"));
+    assert!(router.contains(r#"value.match(/^data:(image\/[^;]+)/)"#));
+    assert!(!router.contains(r#"value.match(/^data:(image\\/[^;]+)/)"#));
+    assert!(router.contains("closeCanvasFrames(previous);closeCameraFrames(previous);closeMicrophoneFrames(previous);"));
+    assert!(!router.contains("closeCameraFrames(view);closeMicrophoneFrames(view);"));
     assert!(html.contains(r#"class="password"#));
     assert!(html.contains(r#"data-dowe-password-input"#));
     assert!(html.contains(r#"data-dowe-password-toggle"#));
@@ -599,6 +670,8 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(page.css_content.contains(".button.is-outlined.is-primary"));
     assert!(page.css_content.contains(".drag-drop.is-soft.is-primary"));
     assert!(css.contains(".combo-box-options"));
+    assert!(css.contains(".combo-box-popover{position:fixed;"));
+    assert!(css.contains(".combo-box-option:disabled"));
     assert!(css.contains(".password-toggle .svg{width:1.25rem;height:1.25rem;}"));
     assert!(css.contains(".csv-field-modal"));
     assert!(css.contains(".drag-drop-item"));
@@ -616,6 +689,10 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     ));
     assert!(router.contains("function hydrateAdvancedForms(root)"));
     assert!(router.contains("function filterCombo(root)"));
+    assert!(router.contains("function openCombo(control)"));
+    assert!(router.contains("function positionCombo(control)"));
+    assert!(router.contains("function hydrateCombo(control)"));
+    assert!(router.contains("data-dowe-combo-popover"));
     assert!(router.contains("function handleCsvFile(input)"));
     assert!(router.contains("function renderPasswordStrength(input)"));
     assert!(router.contains("clipboardData"));
@@ -1050,6 +1127,45 @@ fn renders_labeled_input_and_select_markup() {
 }
 
 #[test]
+fn renders_phone_floating_label_inside_number_input_shell() {
+    let tree = ViewNode::Phone {
+        props: PhoneProps {
+            style: bound_style("profile.phone", "Phone number", "Enter phone number"),
+            value: None,
+            country: Some("US".to_string()),
+            dial_code_name: "dialCode".to_string(),
+            search_placeholder: "Search countries".to_string(),
+            empty_text: "No countries".to_string(),
+            loading_text: "Loading".to_string(),
+            priority_countries: vec!["US".to_string()],
+            disabled: false,
+            name: None,
+            help_text: None,
+            error_text: None,
+        },
+    };
+    let html = render_page_body(&ViewNode::Children, &tree);
+    let trigger = html
+        .find(r#"class="phone-country-trigger""#)
+        .expect("country trigger");
+    let shell = html
+        .find(r#"class="phone-input-shell""#)
+        .expect("phone input shell");
+    let label = html
+        .find(r#"class="control-label">Phone number</span>"#)
+        .expect("floating phone label");
+    let input = html
+        .find(r#"class="phone-input input""#)
+        .expect("phone input");
+
+    assert!(trigger < shell);
+    assert!(shell < label);
+    assert!(label < input);
+    assert!(super::design_css()
+        .contains(".phone-input-shell>.control-label{left:.75rem;max-width:calc(100% - 1.5rem);}"));
+}
+
+#[test]
 fn renders_svg_markup_and_color_classes() {
     let root = Path::new("/project");
     let page = build_page_chunk(
@@ -1157,4 +1273,63 @@ fn renders_viewport_minus_height_classes() {
         page.css_content
             .contains(".max-h-vh-24{max-height:calc(100vh - 6rem);}")
     );
+}
+
+#[test]
+fn renders_camera_and_microphone_capture_contract() {
+    let page_tree = ViewNode::Box {
+        props: StyleProps::default(),
+        children: vec![
+            ViewNode::Camera {
+                props: CameraProps {
+                    style: VariantProps::default(),
+                    facing: CameraFacing::User,
+                    label: "Take photo".to_string(),
+                    disabled: false,
+                    on_start: Some("cameraStart".to_string()),
+                    on_capture: Some("cameraCapture".to_string()),
+                    on_error: Some("cameraError".to_string()),
+                },
+            },
+            ViewNode::Microphone {
+                props: MicrophoneProps {
+                    style: VariantProps::default(),
+                    label: "Record audio".to_string(),
+                    max_duration: Some(30),
+                    disabled: false,
+                    on_start: Some("microphoneStart".to_string()),
+                    on_stop: Some("microphoneStop".to_string()),
+                    on_error: Some("microphoneError".to_string()),
+                },
+            },
+        ],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/capture.dowe"),
+        "capture",
+        &page_tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: Vec::new(),
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+
+    assert!(html.contains("data-dowe-camera"));
+    assert!(html.contains("data-dowe-camera-facing=\"user\""));
+    assert!(html.contains("data-dowe-camera-on-capture=\"cameraCapture\""));
+    assert!(html.contains("data-dowe-microphone"));
+    assert!(html.contains("data-dowe-microphone-max-duration=\"30\""));
+    assert!(page.css_content.contains(".camera"));
+    assert!(page.css_content.contains(".microphone"));
+    assert!(router.contains("function hydrateCameras(root)"));
+    assert!(router.contains("navigator.mediaDevices.getUserMedia"));
+    assert!(router.contains("function hydrateMicrophones(root)"));
+    assert!(router.contains("new MediaRecorder(microphone.__doweMicrophoneStream)"));
+    assert!(router.contains("function closeCameraFrames(view)"));
+    assert!(router.contains("function closeMicrophoneFrames(view)"));
 }

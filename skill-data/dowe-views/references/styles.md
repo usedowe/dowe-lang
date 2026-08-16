@@ -21,7 +21,8 @@ own `color`. This includes `Box`, `Section`, `Flex`, `Grid`, `Brand`, `Banner`, 
 border.
 
 `scheme` on `Button`, `ToggleTheme`, `Fab`, `fabAction`, `Slider`, `Input`, `Select`, `SideNav`,
-and `RailNav` accepts action families only. `scheme` on `SelectTheme`, `Card`, `Video`, the chart
+and `RailNav` accepts action families only. `scheme` on `Accordion` accepts action families plus
+`background` and `surface`. `scheme` on `SelectTheme`, `Card`, `Video`, the chart
 components, `Table`, `Dropzone`, `NavMenu`, `Sidebar`, `Tabs`, `Drawer`, `AppBar`, `Footer`,
 `Modal`, `Dropdown`, and `Tooltip` also accepts
 `background` and `surface`. Structural schemes have no soft pair; soft variants degrade to the
@@ -31,7 +32,8 @@ structural tokens.
 
 `Card`, `Video`, `Candlestick`, `ArcChart`, `AreaChart`, `BarChart`, `LineChart`, `PieChart`,
 `Table`, `Button`, `ToggleTheme`, `SelectTheme`, `Dropzone`, `Input`, `Select`, `NavMenu`,
-`SideNav`, `RailNav`, `Sidebar`, `Drawer`, `Toast`, `Modal`, `Dropdown`, and `Tooltip` support
+`SideNav`, `RailNav`, `Sidebar`, `Drawer`, `Toast`, `Modal`, `Dropdown`, `Tooltip`, and
+`Accordion` support
 `solid`, `soft`, `outlined`, and `ghost`.
 `Fab` supports `solid` and `soft`. `Tabs` supports `solid`, `outlined`, `line`, `ghost`, and
 `pills`. Defaults are `variant:"solid"` and `scheme:"primary"` unless a component declares
@@ -49,6 +51,15 @@ text role. Transparent `SideNav` headers use the visible base color of their `sc
 icon color remains a local override.
 Native iOS rows explicitly restore the background foreground for inactive labels and descriptions
 so a muted scheme cannot make them disappear against the page background.
+
+`Accordion` keeps `variant` and `scheme` orthogonal across targets: `ghost` is a flat row treatment
+with a 22% bottom separator, `soft` uses a quiet family surface with neutral item panels and a 16%
+item border, `outlined` uses a structural panel with a family-colored outer and item border, and
+`solid` uses the family base with a 24% paired-text item border. Structural schemes remain readable
+in every treatment; `soft` falls back to structural roles when no soft token exists. The default
+`Accordion` variant is `ghost`, and its item state plus bundled `SideNav` disclosure arrow are
+generated from the same normalized model for web, Android Compose, the Android development launcher,
+and iOS.
 
 ### Built-in component defaults
 
@@ -82,6 +93,27 @@ when it changes the default, is reactive, controls layout or behavior, supplies 
 accessibility, or is the specific decision being demonstrated. Do not remove props such as
 `w`, `p`, `href`, `onClick`, `label`, `bind`, `icon`, `loading`, `show`, or non-default `variant`,
 `scheme`, `size`, `rounded`, `border`, or `shadow` values.
+
+### Spacing economy
+
+Dowe Views has no margin contract. Do not emit or invent `m`, `mx`, `my`, `mt`, `mr`, `mb`, or `ml`.
+Translate a request for margin into the owning parent's `gap`, responsive flow, alignment, sizing,
+or one intentional padding override on the real owner.
+
+Resolve container spacing in this order:
+
+1. Keep the component and theme defaults. An ordinary `Section` already provides
+   `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }`; a `Card` already provides `p:{ xs:4 lg:5 }`.
+2. Use `gap` on the owning `Grid` or `Flex` for rhythm between children. Do not add padding to a
+   `Grid` or `Flex` merely to separate its children.
+3. Add one local `p`, `px`, `py`, `pt`, or `pb` override only when a user requirement or reference
+   blueprint proves that the default is insufficient. Prefer one axis and the smallest scope;
+   do not repeat the same inset on `Section`, `Grid`, and `Card`.
+4. Use `Box` only for its documented layer responsibility, never as a padding or margin workaround.
+
+An explicit responsive padding object is an exception, not the normal way to author every band. A
+transparent `Card variant:"ghost" p:0` used only as a layout wrapper is also unnecessary; remove it
+unless the Card owns a meaningful semantic or behavioral boundary.
 
 ## Surface hierarchy and modern depth
 

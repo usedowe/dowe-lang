@@ -4,6 +4,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             classes.extend(variant_classes("media", &props.style));
             classes.extend([
                 "media-button".to_string(),
+                "media-icon".to_string(),
                 "media-content".to_string(),
                 "media-waveform".to_string(),
                 "media-bars".to_string(),
@@ -12,6 +13,27 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
                 "media-time".to_string(),
                 "media-subtitle".to_string(),
                 "media-avatar".to_string(),
+            ]);
+        }
+        ViewNode::Camera { props } => {
+            classes.extend(variant_classes("camera", &props.style));
+            classes.extend([
+                "camera-preview".to_string(),
+                "camera-placeholder".to_string(),
+                "camera-controls".to_string(),
+                "camera-button".to_string(),
+                "camera-status".to_string(),
+            ]);
+        }
+        ViewNode::Microphone { props } => {
+            classes.extend(variant_classes("microphone", &props.style));
+            classes.extend([
+                "microphone-panel".to_string(),
+                "microphone-label".to_string(),
+                "microphone-status".to_string(),
+                "microphone-time".to_string(),
+                "microphone-controls".to_string(),
+                "microphone-button".to_string(),
             ]);
         }
         ViewNode::Image { props } => {
@@ -347,16 +369,22 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
                 "field-label".to_string(),
                 "field-help".to_string(),
                 "image-cropper-trigger".to_string(),
+                "image-cropper-dialog-header".to_string(),
+                "image-cropper-dialog-close".to_string(),
                 "image-cropper-image".to_string(),
                 "image-cropper-empty-icon".to_string(),
                 "image-cropper-label".to_string(),
                 "image-cropper-actions".to_string(),
                 "image-cropper-action".to_string(),
+                "image-cropper-action-spacer".to_string(),
                 "image-cropper-modal".to_string(),
                 "image-cropper-dialog".to_string(),
                 "image-cropper-stage".to_string(),
                 "image-cropper-canvas".to_string(),
+                "image-cropper-grid".to_string(),
                 "image-cropper-box".to_string(),
+                "image-cropper-zoom".to_string(),
+                "image-cropper-runtime-error".to_string(),
                 "image-cropper-modal-actions".to_string(),
                 format!("is-{}", props.shape.as_str()),
                 "is-primary".to_string(),
@@ -387,6 +415,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
                 "phone-country-trigger".to_string(),
                 "phone-flag".to_string(),
                 "phone-dial".to_string(),
+                "phone-input-shell".to_string(),
                 "phone-input".to_string(),
                 "phone-popover".to_string(),
                 "phone-search-wrap".to_string(),

@@ -224,6 +224,16 @@ fn validate_node_variant_references(
             validate_optional_action(path, actions, props.on_key.as_deref())?;
             validate_optional_action(path, actions, props.on_motion.as_deref())?;
         }
+        ViewNode::Camera { props } => {
+            validate_optional_action(path, actions, props.on_start.as_deref())?;
+            validate_optional_action(path, actions, props.on_capture.as_deref())?;
+            validate_optional_action(path, actions, props.on_error.as_deref())?;
+        }
+        ViewNode::Microphone { props } => {
+            validate_optional_action(path, actions, props.on_start.as_deref())?;
+            validate_optional_action(path, actions, props.on_stop.as_deref())?;
+            validate_optional_action(path, actions, props.on_error.as_deref())?;
+        }
         ViewNode::ArcChart { props } => {
             validate_category_chart_common(path, signals, &props.common, "ArcChart")?;
         }

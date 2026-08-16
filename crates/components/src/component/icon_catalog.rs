@@ -1015,6 +1015,16 @@ pub fn solar_control_icon(name: &str) -> ComponentResult<SideNavIcon> {
     }
 }
 
+pub fn empty_icon(kind: EmptyKind) -> ComponentResult<SideNavIcon> {
+    let name = match kind {
+        EmptyKind::Playlist => "playlist-bold-duotone",
+        EmptyKind::Result => "magnifier-bold-duotone",
+        EmptyKind::Data => "database-bold-duotone",
+        EmptyKind::Template => "widget-add-bold-duotone",
+    };
+    solar_control_icon(name)
+}
+
 pub const SIDE_NAV_SUBMENU_ARROW_PATH: &str = "m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z";
 
 pub fn side_nav_submenu_arrow_icon() -> SideNavIcon {

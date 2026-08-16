@@ -220,6 +220,8 @@ fn dev_collect_scope_bindings(node: &ViewNode, bindings: &mut DevLayoutBindings)
         | ViewNode::Textarea { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Iframe { .. }
@@ -333,6 +335,8 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
         }
         ViewNode::Audio { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Image { props } => dev_variant_references_layout_bindings(&props.style, bindings),
+        ViewNode::Camera { props } => dev_variant_references_layout_bindings(&props.style, bindings),
+        ViewNode::Microphone { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Code { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Video { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Iframe { props } => dev_style_references_layout_bindings(&props.style, bindings),
@@ -1165,6 +1169,8 @@ fn dev_children_boundary(
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Iframe { .. }

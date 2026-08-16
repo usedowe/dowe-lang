@@ -110,6 +110,12 @@ pub enum ViewNode {
     Audio {
         props: AudioProps,
     },
+    Camera {
+        props: CameraProps,
+    },
+    Microphone {
+        props: MicrophoneProps,
+    },
     Image {
         props: ImageProps,
     },

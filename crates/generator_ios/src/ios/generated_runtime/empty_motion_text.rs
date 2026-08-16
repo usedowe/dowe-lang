@@ -5,13 +5,16 @@ fn swift_runtime_empty_motion_text() -> &'static str {
     let description: String?
     let actionLabel: String
     let action: (() -> Void)?
+    let iconViewBox: DoweSvgViewBox
+    let iconPaths: [DoweSvgPathData]
     let backgroundColor: Color
     let contentColor: Color
     let accentColor: Color
 
     var body: some View {
         VStack(spacing: CGFloat(12)) {
-            DoweEmptyIcon(kind: kind, color: accentColor)
+            DoweSvgView(viewBox: iconViewBox, color: accentColor, paths: iconPaths)
+                .frame(width: CGFloat(112), height: CGFloat(112))
             Text(title ?? defaultTitle)
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(contentColor)
@@ -50,55 +53,6 @@ fn swift_runtime_empty_motion_text() -> &'static str {
         case "template": return "Create a template to reuse this workflow."
         default: return "There is nothing to show yet."
         }
-    }
-}
-
-struct DoweEmptyIcon: View {
-    let kind: String
-    let color: Color
-
-    var body: some View {
-        Canvas { context, size in
-            let sx = size.width / CGFloat(120)
-            let sy = size.height / CGFloat(100)
-            let scale = min(sx, sy)
-            let soft = color.opacity(0.12)
-            let strong = color.opacity(0.78)
-            func rect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> CGRect {
-                CGRect(x: x * sx, y: y * sy, width: width * sx, height: height * sy)
-            }
-            func rounded(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat, _ radius: CGFloat, _ fill: Color) {
-                context.fill(Path(roundedRect: rect(x, y, width, height), cornerRadius: radius * scale), with: .color(fill))
-            }
-            func circle(_ x: CGFloat, _ y: CGFloat, _ radius: CGFloat, _ fill: Color) {
-                context.fill(Path(ellipseIn: rect(x - radius, y - radius, radius * 2, radius * 2)), with: .color(fill))
-            }
-            switch kind {
-            case "playlist":
-                rounded(28, 18, 54, 64, 10, soft)
-                rounded(71, 29, 5, 36, 2.5, strong)
-                rounded(44, 29, 5, 36, 2.5, strong)
-                rounded(49, 29, 27, 6, 3, strong)
-                circle(41, 63, 10, strong)
-                circle(68, 63, 10, strong)
-            case "result":
-                circle(54, 45, 24, soft)
-                rounded(68, 61, 27, 7, 3.5, strong)
-                rounded(45, 35, 18, 7, 3.5, strong)
-                rounded(45, 47, 13, 7, 3.5, strong)
-            case "template":
-                rounded(30, 20, 62, 60, 6, soft)
-                rounded(72, 20, 20, 20, 3, strong)
-                rounded(43, 47, 34, 7, 3.5, strong)
-                rounded(43, 61, 26, 7, 3.5, strong)
-            default:
-                rounded(24, 22, 72, 56, 10, soft)
-                rounded(38, 35, 44, 7, 3.5, strong)
-                rounded(38, 49, 34, 7, 3.5, strong)
-                rounded(38, 63, 22, 7, 3.5, strong)
-            }
-        }
-        .frame(width: CGFloat(160), height: CGFloat(120))
     }
 }
 

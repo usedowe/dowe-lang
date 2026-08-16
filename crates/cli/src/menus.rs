@@ -191,6 +191,7 @@ pub(crate) fn prompt_build_target() -> Result<Option<BuildTarget>, Box<dyn std::
 
 pub(crate) fn prompt_deploy_target(
     surface: DeploySurface,
+    default_target: Option<DeployTarget>,
 ) -> Result<Option<DeployTarget>, Box<dyn std::error::Error>> {
     let targets = deploy_targets_for_surface(surface);
     let items = targets
@@ -200,10 +201,19 @@ pub(crate) fn prompt_deploy_target(
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt(format!("Select {surface} deploy target"))
         .items(&items)
-        .default(0)
+        .default(deploy_target_default_index(targets, default_target))
         .interact_opt()?;
 
     Ok(selection.map(|index| targets[index]))
+}
+
+pub(crate) fn deploy_target_default_index(
+    targets: &[DeployTarget],
+    default_target: Option<DeployTarget>,
+) -> usize {
+    default_target
+        .and_then(|target| targets.iter().position(|candidate| *candidate == target))
+        .unwrap_or(0)
 }
 
 pub(crate) fn prompt_docker_registry(default: &str) -> Result<String, Box<dyn std::error::Error>> {
@@ -483,8 +493,8 @@ pub(crate) fn database_commands() -> [&'static str; 11] {
 #[cfg(test)]
 mod tests {
     use super::{
-        agent_commands, codegraph_commands, database_commands, dev_target_default_states,
-        harness_commands, root_commands, should_prompt_simulator_quit,
+        agent_commands, codegraph_commands, database_commands, deploy_target_default_index,
+        dev_target_default_states, harness_commands, root_commands, should_prompt_simulator_quit,
     };
     use dowe_deploy::{DeploySurface, DeployTarget, deploy_targets_for_surface};
     use dowe_runtime::{DevTarget, DevTargetSelection, HostOs};
@@ -547,6 +557,25 @@ mod tests {
     }
 
     #[test]
+    fn deploy_target_menu_restores_saved_target_or_uses_first_available() {
+        let targets = [
+            DeployTarget::Dowe,
+            DeployTarget::Docker,
+            DeployTarget::Cloudflare,
+        ];
+
+        assert_eq!(
+            deploy_target_default_index(&targets, Some(DeployTarget::Docker)),
+            1
+        );
+        assert_eq!(
+            deploy_target_default_index(&targets, Some(DeployTarget::Vercel)),
+            0
+        );
+        assert_eq!(deploy_target_default_index(&targets, None), 0);
+    }
+
+    #[test]
     fn agent_menu_contains_recommended_external_agent_workflows() {
         assert_eq!(agent_commands(), ["init", "update"]);
     }
@@ -599,6 +628,19 @@ mod tests {
         assert_eq!(
             dev_target_default_states(&targets, &defaults),
             [false, false, true, true]
+        );
+    }
+
+    #[test]
+    fn dev_target_menu_restores_persisted_server_selection() {
+        let targets = [DevTarget::Server, DevTarget::Web, DevTarget::Desktop];
+        let defaults =
+            DevTargetSelection::new([DevTarget::Server, DevTarget::Desktop], HostOs::Linux)
+                .expect("defaults");
+
+        assert_eq!(
+            dev_target_default_states(&targets, &defaults),
+            [true, false, true]
         );
     }
 

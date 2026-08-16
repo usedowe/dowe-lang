@@ -115,6 +115,7 @@ pub(crate) fn materialize_application(
     output: &Path,
     application: &[u8],
     client_environment: &[(String, String)],
+    environment: DeployEnvironment,
     kind: &str,
 ) -> DeployResult<()> {
     reset_runtime_root(output)?;
@@ -122,7 +123,7 @@ pub(crate) fn materialize_application(
     write_file(&artifact, application)?;
     cloud::materialize_cloud_artifact(&artifact, output)?;
     fs::remove_file(artifact)?;
-    write_client_environment(output, client_environment, kind)
+    write_client_environment(output, client_environment, environment, kind)
 }
 
 pub(crate) fn validate_access_metadata(
@@ -177,6 +178,7 @@ pub(crate) fn set_executable(path: &Path) -> DeployResult<()> {
 fn write_client_environment(
     output: &Path,
     values: &[(String, String)],
+    environment: DeployEnvironment,
     kind: &str,
 ) -> DeployResult<()> {
     validate_client_environment(values, kind)?;
@@ -194,7 +196,11 @@ fn write_client_environment(
         content.push_str("\"\n");
     }
     if !content.is_empty() {
-        write_file(&output.join(".env"), content)?;
+        write_file(&output.join(".env"), &content)?;
+        write_file(
+            &output.join(environment.compile_environment().file_name()),
+            content,
+        )?;
     }
     Ok(())
 }

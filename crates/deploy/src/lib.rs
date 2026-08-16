@@ -6,7 +6,9 @@ mod cloudflare_wasm;
 mod database;
 mod desktop_runtime;
 mod docker;
+mod edge_queue;
 mod embedded;
+mod environment;
 mod error;
 mod files;
 mod gradle;
@@ -30,13 +32,15 @@ pub use model::{
 };
 pub use native::build;
 pub use preferences::{
-    DockerDeployPreferences, docker_deploy_preferences_path, load_docker_deploy_preferences,
+    DockerDeployPreferences, deploy_target_selection_path, docker_deploy_preferences_path,
+    load_deploy_target_preference, load_docker_deploy_preferences, save_deploy_target_preference,
     save_docker_deploy_preferences,
 };
 pub use ssh::{EmbeddedSshMetadata, materialize_embedded_ssh_executable};
 
 use access::DeployAccess;
 use dowe_compiler::{compile_for_server_environment, compile_for_web_environment};
+use environment::DeployEnvironmentValues;
 use files::{collect_files, reset_dir, target_dir, web_target_dir};
 use std::path::Path;
 
@@ -87,6 +91,7 @@ fn deploy_with_runtime(
         }
     };
     let access = DeployAccess::resolve(&project, options.environment)?;
+    let environment_values = DeployEnvironmentValues::from_project(&project);
     if matches!(
         surface,
         DeploySurface::Web | DeploySurface::Android | DeploySurface::Ios
@@ -187,7 +192,8 @@ fn deploy_with_runtime(
             surface,
             project.backend.port,
             project.backend.tls.as_ref().and_then(|tls| tls.http_port),
-            &project.environment_config.client_values(),
+            &environment_values.client,
+            &environment_values.server_names,
             linux_runtime.as_deref(),
         )?,
         DeployTarget::Ssh => {
@@ -199,7 +205,8 @@ fn deploy_with_runtime(
                 &output,
                 options.environment,
                 access.as_ref(),
-                &project.environment_config.client_values(),
+                &environment_values.client,
+                &environment_values.server,
                 runtime,
             )?;
             artifact = Some(package.executable.clone());
@@ -211,6 +218,8 @@ fn deploy_with_runtime(
             options.name.as_deref(),
             options.environment,
             access.as_ref(),
+            &environment_values.client,
+            &environment_values.server_names,
         )?,
         DeployTarget::CloudflarePages => {
             let project_name = cloudflare_pages_name
@@ -235,6 +244,7 @@ fn deploy_with_runtime(
                 options.environment,
                 access.as_ref(),
                 surface,
+                &environment_values.server_names,
             )?;
         }
         DeployTarget::Android => {

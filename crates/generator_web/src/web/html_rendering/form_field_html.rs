@@ -93,7 +93,10 @@ fn render_date_html(props: &DateProps, context: &ReactiveRenderContext) -> Strin
         props.error_text.as_deref(),
         &input,
         false,
-        props.value.as_deref().is_some_and(|value| !value.is_empty()),
+        props
+            .value
+            .as_deref()
+            .is_some_and(|value| !value.is_empty()),
         context,
     )
 }
@@ -300,8 +303,10 @@ fn render_combo_box_html(
         .map(|option| option.value.as_str())
         .unwrap_or_default();
     let clear = if props.clearable {
-        r#"<button class="combo-box-clear" type="button" aria-label="Clear selection" data-dowe-combo-clear>&times;</button>"#
-            .to_string()
+        format!(
+            r#"<button class="combo-box-clear" type="button" aria-label="Clear selection" data-dowe-combo-clear{}>&times;</button>"#,
+            if props.disabled { " disabled" } else { "" }
+        )
     } else {
         String::new()
     };
@@ -337,7 +342,7 @@ fn render_combo_box_html(
         .map(render_combo_option_html)
         .collect::<String>();
     let control = format!(
-        r#"<div class="combo-box">{hidden}<button{}>{}<span class="combo-box-value">{}</span>{clear}{}</button><div class="combo-box-popover" role="listbox" data-dowe-combo-popover><div class="combo-box-search-wrap">{}<input class="combo-box-search" type="search" placeholder="{}" data-dowe-combo-search></div><div class="combo-box-options">{options_html}</div><div class="combo-box-empty" hidden>{}</div><div class="combo-box-loading" hidden>{}</div></div></div>"#,
+        r#"<div class="combo-box">{hidden}<button{}>{}<span class="combo-box-value">{}</span>{}</button>{clear}<div class="combo-box-popover" role="listbox" data-dowe-combo-popover hidden><div class="combo-box-search-wrap">{}<input class="combo-box-search" type="search" placeholder="{}" data-dowe-combo-search></div><div class="combo-box-options">{options_html}</div><div class="combo-box-empty" hidden>{}</div><div class="combo-box-loading" hidden>{}</div></div></div>"#,
         attrs(classes, Some(&props.style.element), Some(&extra), context),
         floating_label_html(&props.style),
         escape_html(label),
@@ -641,17 +646,17 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
         .or(props.src.as_deref())
         .unwrap_or(&props.alt);
     let uid = short_id("cropper", source);
-    let image = props
-        .src
-        .as_deref()
-        .map(|src| {
-            format!(
-                r#"<img class="image-cropper-image" src="{}" alt="{}">"#,
-                escape_attr(src),
-                escape_attr(&props.alt)
-            )
-        })
-        .unwrap_or_else(|| view_icon_svg(ViewIcon::Upload, "image-cropper-empty-icon"));
+    let value = props.src.as_deref().unwrap_or_default();
+    let size = props.style.size.unwrap_or(ButtonSize::Md).as_str();
+    let image = if value.is_empty() {
+        view_icon_svg(ViewIcon::Upload, "image-cropper-empty-icon")
+    } else {
+        format!(
+            r#"<img class="image-cropper-image" src="{}" alt="{}">"#,
+            escape_attr(value),
+            escape_attr(&props.alt)
+        )
+    };
     let hidden = props
         .name
         .as_deref()
@@ -659,15 +664,24 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
             format!(
                 r#"<input type="hidden" name="{}" value="{}" data-dowe-cropper-hidden>"#,
                 escape_attr(name),
-                escape_attr(props.src.as_deref().unwrap_or_default())
+                escape_attr(value)
             )
         })
         .unwrap_or_default();
     let extra = format!(
-        r#" data-dowe-image-cropper data-dowe-shape="{}" data-dowe-min-width="{}" data-dowe-min-height="{}"{}{}{}"#,
+        r#" data-dowe-image-cropper data-dowe-cropper-value="{}" data-dowe-shape="{}" data-dowe-size="{}" data-dowe-alt="{}" data-dowe-disabled="{}" data-dowe-min-width="{}" data-dowe-min-height="{}"{}{}{}{}"#,
+        escape_attr(value),
         props.shape.as_str(),
+        size,
+        escape_attr(&props.alt),
+        props.disabled,
         props.min_width,
         props.min_height,
+        props
+            .aspect_ratio
+            .as_deref()
+            .map(|value| format!(r#" data-dowe-aspect-ratio="{}""#, escape_attr(value)))
+            .unwrap_or_default(),
         props
             .max_width
             .map(|value| format!(r#" data-dowe-max-width="{value}""#))
@@ -679,7 +693,7 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
         bind_attr(props.style.element.bind.as_deref(), context)
     );
     let body = format!(
-        r#"<div{}>{hidden}<input id="{uid}" class="image-cropper-input" type="file" accept="{}" hidden{}><button class="image-cropper-trigger is-{}" type="button" data-dowe-cropper-trigger{}>{image}<span class="image-cropper-label">{}</span></button><div class="image-cropper-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-edit>{}</button><button type="button" class="image-cropper-action" data-dowe-cropper-remove>{}</button></div><div class="image-cropper-modal" data-dowe-cropper-modal hidden><div class="image-cropper-dialog"><div class="image-cropper-stage"><canvas class="image-cropper-canvas" data-dowe-cropper-canvas></canvas><div class="image-cropper-box is-{}"><span></span><span></span><span></span><span></span></div></div><div class="image-cropper-modal-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-cancel>Cancel</button><button type="button" class="image-cropper-action is-primary" data-dowe-cropper-apply>Crop</button></div></div></div></div>"#,
+        r#"<div{}>{hidden}<input id="{uid}" class="image-cropper-input" type="file" accept="{}" hidden{}><button class="image-cropper-trigger is-{} is-{}" type="button" aria-label="{}" data-dowe-cropper-trigger{}>{image}<span class="image-cropper-label">{}</span></button><div class="image-cropper-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-change{}>{}</button><button type="button" class="image-cropper-action" data-dowe-cropper-remove{}{}>{}</button></div><span class="image-cropper-runtime-error" data-dowe-cropper-runtime-error hidden></span><div class="image-cropper-modal" data-dowe-cropper-modal hidden><div class="image-cropper-dialog" role="dialog" aria-modal="true" aria-label="Adjust image"><div class="image-cropper-dialog-header"><strong>Adjust image</strong><button type="button" class="image-cropper-dialog-close" aria-label="Cancel" data-dowe-cropper-cancel>×</button></div><div class="image-cropper-stage" data-dowe-cropper-stage><canvas class="image-cropper-canvas" data-dowe-cropper-canvas></canvas><div class="image-cropper-grid is-{}" aria-hidden="true"><span></span><span></span></div><div class="image-cropper-box is-{}" data-dowe-cropper-box aria-label="Crop frame"></div></div><div class="image-cropper-zoom"><span>Zoom</span><input type="range" min="1" max="3" step="0.01" value="1" aria-label="Zoom" data-dowe-cropper-zoom></div><div class="image-cropper-modal-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-reset>Reset</button><span class="image-cropper-action-spacer"></span><button type="button" class="image-cropper-action" data-dowe-cropper-cancel>Cancel</button><button type="button" class="image-cropper-action is-primary" data-dowe-cropper-apply>Apply</button></div></div></div></div>"#,
         attrs(
             variant_classes("image-cropper", &props.style),
             Some(&props.style.element),
@@ -689,10 +703,16 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
         escape_attr(&props.accept),
         if props.disabled { " disabled" } else { "" },
         props.shape.as_str(),
+        size,
+        escape_attr(&props.alt),
         if props.disabled { " disabled" } else { "" },
         escape_html(props.style.placeholder.as_deref().unwrap_or("Upload")),
-        escape_html("Edit"),
+        if props.disabled { " disabled" } else { "" },
+        escape_html("Change"),
+        if value.is_empty() { " hidden" } else { "" },
+        if props.disabled { " disabled" } else { "" },
         escape_html("Remove"),
+        props.shape.as_str(),
         props.shape.as_str()
     );
     render_field_block(
@@ -704,10 +724,7 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
     )
 }
 
-fn render_password_html(
-    props: &PasswordProps,
-    context: &ReactiveRenderContext,
-) -> String {
+fn render_password_html(props: &PasswordProps, context: &ReactiveRenderContext) -> String {
     let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
     let hide_icon = solar_control_icon("eye-closed").expect("bundled Password conceal icon");
     let toggle = format!(
@@ -797,13 +814,15 @@ fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> Str
         })
         .collect::<String>();
     let priority = props.priority_countries.join(",");
-    let input = format!(
-        r#"<input type="hidden" name="{}" value="{}" data-dowe-phone-dial><button class="phone-country-trigger" type="button" data-dowe-phone-country aria-expanded="false" aria-haspopup="listbox"><span class="phone-flag">{}</span><span class="phone-dial">+{}</span>{}</button><input class="phone-input input" type="tel" inputmode="numeric" pattern="[0-9]*"{}{}{}{}{} data-dowe-phone-input data-dowe-validation-control><div class="phone-popover" data-dowe-phone-popover hidden><div class="phone-search-wrap">{}<input class="phone-search" type="search" placeholder="{}" data-dowe-phone-search></div><div class="phone-countries" data-dowe-phone-countries role="listbox">{options}</div><div class="phone-empty" hidden>{}</div><div class="phone-loading" hidden>{}</div></div>"#,
-        escape_attr(&props.dial_code_name),
-        escape_attr(country.dial),
+    let country_trigger = format!(
+        r#"<button class="phone-country-trigger" type="button" data-dowe-phone-country aria-expanded="false" aria-haspopup="listbox"><span class="phone-flag">{}</span><span class="phone-dial">+{}</span>{}</button>"#,
         country_flag_html(country.code, context),
         escape_html(country.dial),
-        select_arrow_svg(),
+        select_arrow_svg()
+    );
+    let number_input = format!(
+        r#"<span class="phone-input-shell">{}<input class="phone-input input" type="tel" inputmode="numeric" pattern="[0-9]*"{}{}{}{}{} data-dowe-phone-input data-dowe-validation-control></span>"#,
+        floating_label_html(&props.style),
         input_placeholder_attr(&props.style),
         props
             .value
@@ -816,7 +835,14 @@ fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> Str
             .map(|name| format!(r#" name="{}""#, escape_attr(name)))
             .unwrap_or_default(),
         bind_attr(props.style.element.bind.as_deref(), context),
-        if props.disabled { " disabled" } else { "" },
+        if props.disabled { " disabled" } else { "" }
+    );
+    let input = format!(
+        r#"<input type="hidden" name="{}" value="{}" data-dowe-phone-dial>{}{}<div class="phone-popover" data-dowe-phone-popover hidden><div class="phone-search-wrap">{}<input class="phone-search" type="search" placeholder="{}" data-dowe-phone-search></div><div class="phone-countries" data-dowe-phone-countries role="listbox">{options}</div><div class="phone-empty" hidden>{}</div><div class="phone-loading" hidden>{}</div></div>"#,
+        escape_attr(&props.dial_code_name),
+        escape_attr(country.dial),
+        country_trigger,
+        number_input,
         view_icon_svg(ViewIcon::Search, "phone-search-icon"),
         escape_attr(&props.search_placeholder),
         escape_html(&props.empty_text),
@@ -847,14 +873,13 @@ fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> Str
         control_classes.push("is-error".to_string());
     }
     let control = format!(
-        "<span{}>{}{}</span>",
+        "<span{}>{}</span>",
         attrs(
             control_classes,
             Some(&props.style.element),
             Some(&extra),
             context
         ),
-        floating_label_html(&props.style),
         input
     );
     render_field_block(
@@ -1079,20 +1104,19 @@ fn render_field_block_kind(
     let help = if message.is_some() || has_rules {
         format!(
             r#"<span class="field-help{}" data-dowe-validation-feedback{}>{}</span>"#,
-            if error_text.is_some() { " is-error" } else { "" },
+            if error_text.is_some() {
+                " is-error"
+            } else {
+                ""
+            },
             if message.is_none() { " hidden" } else { "" },
             escape_html(message.unwrap_or_default())
         )
     } else {
         String::new()
     };
-    let validation_attrs = render_form_validation_attrs(
-        &props.element,
-        help_text,
-        error_text,
-        value_kind,
-        context,
-    );
+    let validation_attrs =
+        render_form_validation_attrs(&props.element, help_text, error_text, value_kind, context);
     format!(
         r#"<div{}>{}{body_html}{}</div>"#,
         attrs(
@@ -1150,14 +1174,18 @@ fn render_form_validation_attrs(
         })
         .collect::<Vec<_>>()
         .join(",");
-    let form_attrs = element.bind.as_deref().and_then(|bind| {
-        let (signal, field) = bind.split_once('.')?;
-        Some(format!(
-            r#" data-dowe-validation-form="{}" data-dowe-validation-field="{}""#,
-            escape_attr(&context.signal_path(signal)),
-            escape_attr(field)
-        ))
-    }).unwrap_or_default();
+    let form_attrs = element
+        .bind
+        .as_deref()
+        .and_then(|bind| {
+            let (signal, field) = bind.split_once('.')?;
+            Some(format!(
+                r#" data-dowe-validation-form="{}" data-dowe-validation-field="{}""#,
+                escape_attr(&context.signal_path(signal)),
+                escape_attr(field)
+            ))
+        })
+        .unwrap_or_default();
     format!(
         r#" data-dowe-validation-kind="{}" data-dowe-validation="{}"{}{}{}"#,
         escape_attr(value_kind),
@@ -1178,16 +1206,24 @@ fn render_color_values(props: &ColorProps) -> String {
     }
     let mut html = String::from("<span class=\"color-picker-values\">");
     if props.show_hex {
-        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="hex"></code>"#);
+        html.push_str(
+            r#"<code class="color-picker-value-code" data-dowe-color-format="hex"></code>"#,
+        );
     }
     if props.show_rgb {
-        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="rgb"></code>"#);
+        html.push_str(
+            r#"<code class="color-picker-value-code" data-dowe-color-format="rgb"></code>"#,
+        );
     }
     if props.show_cmyk {
-        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="cmyk"></code>"#);
+        html.push_str(
+            r#"<code class="color-picker-value-code" data-dowe-color-format="cmyk"></code>"#,
+        );
     }
     if props.show_oklch {
-        html.push_str(r#"<code class="color-picker-value-code" data-dowe-color-format="oklch"></code>"#);
+        html.push_str(
+            r#"<code class="color-picker-value-code" data-dowe-color-format="oklch"></code>"#,
+        );
     }
     html.push_str("</span>");
     html

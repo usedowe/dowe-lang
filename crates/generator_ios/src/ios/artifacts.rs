@@ -8,7 +8,7 @@ use dowe_components::{
     DividerOrientation, DividerProps, DragGroup, DragItem, DrawerProps, DropzoneProps, DropdownProps, ElementProps, EmptyProps,
     FabAction, FabProps, FlexDirection, FontConfig, FontFamily, GapSize, GapValue, GridAlignment, GridProps,
     GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify,
-    LayoutProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, SIDE_NAV_SUBMENU_ARROW_PATH, side_nav_submenu_arrow_icon, solar_control_icon, view_icon,
+    LayoutProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, SIDE_NAV_SUBMENU_ARROW_PATH, empty_icon, side_nav_submenu_arrow_icon, solar_control_icon, view_icon,
     NavigationAction, OverlayEntry, OverlayCornerPosition, OverlayItemProps, OverlayPaint, PositionProps,
     RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark, RoundedSize, ScaleValue, ScaffoldProps,
     RailNavItem, RailNavProps,
@@ -186,6 +186,13 @@ pub fn generate_ios_with_app_translations_and_icons(
                 }),
                 routes.iter().any(|route| {
                     ios_video_playback(&route.layout_tree) || ios_video_playback(&route.page_tree)
+                }),
+                routes.iter().any(|route| {
+                    ios_tree_has_camera(&route.layout_tree) || ios_tree_has_camera(&route.page_tree)
+                }),
+                routes.iter().any(|route| {
+                    ios_tree_has_microphone(&route.layout_tree)
+                        || ios_tree_has_microphone(&route.page_tree)
                 }),
                 has_app_icon,
             ),
@@ -757,6 +764,8 @@ fn info_plist(
     app_bundle: &str,
     uses_motion: bool,
     uses_video: bool,
+    uses_camera: bool,
+    uses_microphone: bool,
     has_app_icon: bool,
 ) -> String {
     let fonts = font_families
@@ -780,6 +789,16 @@ fn info_plist(
     };
     let background_playback = if uses_video {
         "    <key>UIBackgroundModes</key>\n    <array>\n        <string>audio</string>\n    </array>\n"
+    } else {
+        ""
+    };
+    let camera_usage = if uses_camera {
+        "    <key>NSCameraUsageDescription</key>\n    <string>Use the camera to capture a photo.</string>\n"
+    } else {
+        ""
+    };
+    let microphone_usage = if uses_microphone {
+        "    <key>NSMicrophoneUsageDescription</key>\n    <string>Use the microphone to record audio.</string>\n"
     } else {
         ""
     };
@@ -840,7 +859,7 @@ fn info_plist(
         <key>NSAllowsLocalNetworking</key>
         <true/>
     </dict>
-{motion}{background_playback}    <key>UILaunchScreen</key>
+{motion}{background_playback}{camera_usage}{microphone_usage}    <key>UILaunchScreen</key>
     <dict/>
     <key>UIAppFonts</key>
     <array>
@@ -886,6 +905,26 @@ fn ios_video_playback(node: &ViewNode) -> bool {
         .into_iter()
         .flatten()
         .any(ios_video_playback)
+}
+
+fn ios_tree_has_camera(node: &ViewNode) -> bool {
+    if matches!(node, ViewNode::Camera { .. }) {
+        return true;
+    }
+    node_child_groups(node)
+        .into_iter()
+        .flatten()
+        .any(ios_tree_has_camera)
+}
+
+fn ios_tree_has_microphone(node: &ViewNode) -> bool {
+    if matches!(node, ViewNode::Microphone { .. }) {
+        return true;
+    }
+    node_child_groups(node)
+        .into_iter()
+        .flatten()
+        .any(ios_tree_has_microphone)
 }
 
 fn ios_tree_has_phone(node: &ViewNode) -> bool {

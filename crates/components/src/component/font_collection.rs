@@ -135,6 +135,12 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         }
         ViewNode::Command { props, .. } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Audio { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Camera { props } => {
+            collect_style_font_families(&props.style.style, fonts)
+        }
+        ViewNode::Microphone { props } => {
+            collect_style_font_families(&props.style.style, fonts)
+        }
         ViewNode::Image { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Accordion { props, items } => {
             collect_style_font_families(&props.style.style, fonts);

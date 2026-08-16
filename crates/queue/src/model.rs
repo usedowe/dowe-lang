@@ -10,6 +10,8 @@ use std::pin::Pin;
 pub enum QueueProvider {
     RabbitMq,
     Dowe,
+    Cloudflare,
+    Vercel,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -46,6 +48,14 @@ impl QueueConfig {
             QueueProvider::RabbitMq => {
                 validate_rabbitmq_value(&self.name, "virtual host")?;
                 validate_rabbitmq_value(&self.account, "account")?;
+            }
+            QueueProvider::Cloudflare => {}
+            QueueProvider::Vercel => {
+                if !self.name.is_empty() && self.name.chars().any(char::is_control) {
+                    return Err(QueueError::InvalidRequest(
+                        "Vercel Queue deployment ID is invalid".to_string(),
+                    ));
+                }
             }
         }
         if self.host.trim().is_empty() {

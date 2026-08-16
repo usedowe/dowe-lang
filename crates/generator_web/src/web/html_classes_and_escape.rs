@@ -34,9 +34,14 @@ fn variant_classes(base: &str, props: &VariantProps) -> Vec<String> {
     if base == "card" {
         append_container_visual_classes(&mut classes, &props.style);
     }
+    let default_variant = if base == "accordion" {
+        ComponentVariant::Ghost
+    } else {
+        ComponentVariant::Solid
+    };
     classes.push(format!(
         "is-{}",
-        props.variant.unwrap_or(ComponentVariant::Solid).as_str()
+        props.variant.unwrap_or(default_variant).as_str()
     ));
     classes.push(format!(
         "is-{}",

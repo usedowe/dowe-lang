@@ -90,6 +90,7 @@ pub fn generate_docker(
     server_port: u16,
     http_port: Option<u16>,
     client_environment: &[(String, String)],
+    server_environment_names: &[String],
     linux_runtime: Option<&[u8]>,
 ) -> DeployResult<()> {
     let mut ports = vec![server_port];
@@ -107,7 +108,8 @@ pub fn generate_docker(
         "imageRef": image.reference,
         "environment": environment,
         "accessProtected": access.is_some(),
-        "ports": ports
+        "ports": ports,
+        "serverEnvironment": server_environment_names
     });
     match surface {
         DeploySurface::Server | DeploySurface::Web => {
@@ -126,7 +128,7 @@ pub fn generate_docker(
             )?;
             write_file(
                 &output.join("Dockerfile"),
-                embedded_dockerfile(server_port, http_port),
+                embedded_dockerfile(server_port, http_port, server_environment_names),
             )?;
             manifest["runtime"] = json!("embedded");
             manifest["runtimeVersion"] = json!(env!("CARGO_PKG_VERSION"));
@@ -249,7 +251,11 @@ fn image_has_tag(value: &str) -> bool {
         .is_some_and(|part| part.contains(':'))
 }
 
-fn embedded_dockerfile(server_port: u16, http_port: Option<u16>) -> String {
+fn embedded_dockerfile(
+    server_port: u16,
+    http_port: Option<u16>,
+    server_environment_names: &[String],
+) -> String {
     let mut ports = vec![server_port];
     if let Some(port) = http_port {
         ports.push(port);
@@ -260,7 +266,11 @@ fn embedded_dockerfile(server_port: u16, http_port: Option<u16>) -> String {
         .map(u16::to_string)
         .collect::<Vec<_>>()
         .join(" ");
+    let environment = server_environment_names
+        .iter()
+        .map(|name| format!("ENV {name}=\"\"\n"))
+        .collect::<String>();
     format!(
-        "FROM {DISTROLESS_IMAGE}\nWORKDIR /app\nCOPY --chmod=0755 --chown=nonroot:nonroot {EXECUTABLE_NAME} /usr/local/bin/{EXECUTABLE_NAME}\nEXPOSE {exposed_ports}\nUSER nonroot:nonroot\nENTRYPOINT [\"/usr/local/bin/{EXECUTABLE_NAME}\"]\n"
+        "FROM {DISTROLESS_IMAGE}\nWORKDIR /app\nCOPY --chmod=0755 --chown=nonroot:nonroot {EXECUTABLE_NAME} /usr/local/bin/{EXECUTABLE_NAME}\nEXPOSE {exposed_ports}\n{environment}USER nonroot:nonroot\nENTRYPOINT [\"/usr/local/bin/{EXECUTABLE_NAME}\"]\n"
     )
 }

@@ -933,6 +933,79 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
         ((android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
     }
 
+    private DoweSvgView doweComboIcon(DoweSvgView source, int color) {
+        if (source == null) return null;
+        return new DoweSvgView(this, source.minX, source.minY, source.viewBoxWidth, source.viewBoxHeight, color, source.paths);
+    }
+
+    private void doweComboPopup(TextView anchor, TextView floatingLabel, String[] labels, String[] values, String[] descriptions, boolean[] disabled, DoweSvgView[] icons, String[] selected, String placeholder, String searchPlaceholder, String emptyText, String loadingText, int color, String font, boolean floating, String bindPath, Runnable onTouched) {
+        doweUpdateSelectTrigger(anchor, floatingLabel, labels, values, selected[0], placeholder, floating, true);
+        LinearLayout content = doweContainer(false);
+        content.setAlpha(0f);
+        content.setScaleX(0.98f);
+        content.setScaleY(0.98f);
+        content.setTranslationY(-doweDp(4));
+        content.setPadding(0, doweDp(4), 0, doweDp(4));
+        content.setBackground(doweInputBackground(DOWE_SURFACE, doweAlpha(DOWE_SURFACE_TEXT, 0.08f), DOWE_RADIUS));
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setHint(searchPlaceholder);
+        search.setTextSize(14f);
+        search.setTextColor(DOWE_SURFACE_TEXT);
+        search.setHintTextColor(doweAlpha(DOWE_SURFACE_TEXT, 0.55f));
+        search.setPadding(doweDp(12), 0, doweDp(12), 0);
+        search.setBackground(doweInputBackground(doweAlpha(DOWE_SURFACE_TEXT, 0.07f), Color.TRANSPARENT, 10));
+        LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(44));
+        searchParams.setMargins(doweDp(6), doweDp(6), doweDp(6), doweDp(2));
+        content.addView(search, searchParams);
+        LinearLayout options = doweContainer(false);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(options, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        content.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        int popupWidth = Math.min(Math.max(anchor.getWidth(), doweDp(280)), Math.min(doweDp(384), getResources().getDisplayMetrics().widthPixels - doweDp(16)));
+        PopupWindow popup = new PopupWindow(content, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popup.setOutsideTouchable(true);
+        popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        popup.setOnDismissListener(() -> { doweUpdateSelectTrigger(anchor, floatingLabel, labels, values, selected[0], placeholder, floating, false); if (onTouched != null) onTouched.run(); });
+        Runnable render = () -> {
+            String query = search.getText().toString().trim().toLowerCase();
+            options.removeAllViews();
+            int visible = 0;
+            for (int i = 0; i < labels.length; i++) {
+                String haystack = (labels[i] + " " + values[i] + " " + descriptions[i]).toLowerCase();
+                if (!query.isEmpty() && !haystack.contains(query)) continue;
+                visible++;
+                final int index = i;
+                LinearLayout option = doweContainer(false);
+                option.setPadding(doweDp(12), doweDp(10), doweDp(12), doweDp(10));
+                option.setBackground(doweInputBackground(values[i].equals(selected[0]) ? doweAlpha(DOWE_SURFACE_TEXT, 0.1f) : Color.TRANSPARENT, Color.TRANSPARENT, 10));
+                if (icons != null && icons[i] != null) {
+                    DoweSvgView optionIcon = doweComboIcon(icons[i], DOWE_SURFACE_TEXT);
+                    option.addView(optionIcon, new LinearLayout.LayoutParams(doweDp(24), doweDp(24)));
+                }
+                TextView labelView = doweText(labels[i], DOWE_SURFACE_TEXT, 15f, 700, 0f, 1.2f, font);
+                labelView.setEnabled(!disabled[i]);
+                option.addView(labelView);
+                if (!descriptions[i].isEmpty()) {
+                    TextView descriptionView = doweText(descriptions[i], doweAlpha(DOWE_SURFACE_TEXT, 0.68f), 12f, 400, 0f, 1.2f, font);
+                    doweAdd(option, descriptionView, 4, false);
+                }
+                option.setEnabled(!disabled[i]);
+                option.setAlpha(disabled[i] ? 0.48f : 1f);
+                if (!disabled[i]) option.setOnClickListener(view -> { selected[0] = values[index]; doweUpdateSelectTrigger(anchor, floatingLabel, labels, values, selected[0], placeholder, floating, false); if (bindPath != null) doweWrite(bindPath, selected[0]); popup.dismiss(); });
+                doweAdd(options, option);
+            }
+            if (visible == 0) options.addView(doweText(labels.length == 0 ? loadingText : emptyText, doweAlpha(DOWE_SURFACE_TEXT, 0.68f), 14f, 400, 0f, 1.2f, font));
+        };
+        search.addTextChangedListener(new TextWatcher() { public void beforeTextChanged(CharSequence value, int start, int count, int after) {} public void onTextChanged(CharSequence value, int start, int before, int count) { render.run(); } public void afterTextChanged(Editable value) {} });
+        render.run();
+        popup.setHeight(doweDp(380));
+        popup.showAsDropDown(anchor, 0, doweDp(4));
+        content.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f).setDuration(160).start();
+        search.requestFocus();
+        ((android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+    }
+
     private FrameLayout doweFloatingSelect(TextView input, TextView labelView, int color, GradientDrawable background) {
         FrameLayout view = doweSelectFrame(input, color, background);
         view.addView(labelView);

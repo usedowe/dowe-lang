@@ -146,6 +146,8 @@ fn render_swift_node_body(
         ),
         ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Accordion { .. }
         | ViewNode::Carousel { .. }
         | ViewNode::Code { .. }

@@ -330,6 +330,11 @@ impl StoreActionError {
                 code: "queue_remote",
                 message: "Queue provider request failed",
             },
+            QueueError::Unsupported(_) => Self {
+                status: StatusCode::BAD_GATEWAY,
+                code: "queue_provider_unsupported",
+                message: "Queue provider is not supported by this runtime",
+            },
             QueueError::InvalidReceipt(_)
             | QueueError::DurabilityError(_)
             | QueueError::Corruption(_)

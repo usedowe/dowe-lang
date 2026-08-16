@@ -144,6 +144,10 @@ fn collect_variant_rules<'a>(
         ViewNode::Command { props, .. } => push_variant_rule(variants, "command", &props.style),
         ViewNode::Audio { props } => push_variant_rule(variants, "media", &props.style),
         ViewNode::Image { props } => push_variant_rule(variants, "image", &props.style),
+        ViewNode::Camera { props } => push_variant_rule(variants, "camera", &props.style),
+        ViewNode::Microphone { props } => {
+            push_variant_rule(variants, "microphone", &props.style)
+        }
         ViewNode::Accordion { props, items } => {
             push_variant_rule(variants, "accordion", &props.style);
             for item in items {
@@ -619,6 +623,8 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Iframe { .. }

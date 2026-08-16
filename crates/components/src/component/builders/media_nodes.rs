@@ -113,6 +113,81 @@ pub fn video_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     })
 }
 
+pub fn camera_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut facing = CameraFacing::Environment;
+    let mut label = "Camera".to_string();
+    let mut disabled = false;
+    let mut on_start = None;
+    let mut on_capture = None;
+    let mut on_error = None;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "facing" => {
+                let value = parse_required_string(&prop.name, &prop.value)?;
+                facing = CameraFacing::from_name(&value).ok_or_else(|| {
+                    ComponentError::invalid_prop("facing", "user or environment")
+                })?;
+            }
+            "label" => label = parse_required_string(&prop.name, &prop.value)?,
+            "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            "onStart" => on_start = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onCapture" => on_capture = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onError" => on_error = Some(parse_required_string(&prop.name, &prop.value)?),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Camera, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::Camera {
+        props: CameraProps {
+            style,
+            facing,
+            label,
+            disabled,
+            on_start,
+            on_capture,
+            on_error,
+        },
+    })
+}
+
+pub fn microphone_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut label = "Microphone".to_string();
+    let mut max_duration = None;
+    let mut disabled = false;
+    let mut on_start = None;
+    let mut on_stop = None;
+    let mut on_error = None;
+    let mut style_props = Vec::new();
+    for prop in props {
+        match prop.name.as_str() {
+            "label" => label = parse_required_string(&prop.name, &prop.value)?,
+            "maxDuration" => max_duration = Some(parse_positive_u16(&prop.name, &prop.value)?),
+            "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            "onStart" => on_start = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onStop" => on_stop = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onError" => on_error = Some(parse_required_string(&prop.name, &prop.value)?),
+            _ => style_props.push(prop),
+        }
+    }
+    let mut style = parse_variant_props(BuiltinComponent::Microphone, &style_props)?;
+    style.variant.get_or_insert(ComponentVariant::Solid);
+    style.color.get_or_insert(ColorFamily::Primary);
+    Ok(ViewNode::Microphone {
+        props: MicrophoneProps {
+            style,
+            label,
+            max_duration,
+            disabled,
+            on_start,
+            on_stop,
+            on_error,
+        },
+    })
+}
+
 pub fn iframe_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut src = None;
     let mut title = None;

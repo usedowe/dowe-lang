@@ -63,7 +63,7 @@ fn parse_cache_handle(
         node,
         &["provider", "host", "port", "account", "secret", "name"],
     )?;
-    let provider = required_provider(node)?;
+    let provider = required_provider(node, environment)?;
     let host = required_connection_prop(node, "host", environment)?;
     let port = required_connection_prop(node, "port", environment)?;
     let account = required_connection_prop(node, "account", environment)?;
@@ -289,7 +289,10 @@ fn connection_for_handle(handles: &[CacheConnection], handle: &str) -> DoweResul
         .ok_or_else(|| DoweError::new(format!("Cache connection `{handle}` is not defined")))
 }
 
-fn required_provider(node: &SourceNode) -> DoweResult<CacheProvider> {
+fn required_provider(
+    node: &SourceNode,
+    environment: Option<&EnvironmentConfig>,
+) -> DoweResult<CacheProvider> {
     let prop = node
         .prop("provider")
         .ok_or_else(|| node_error(node, "Cache connection must declare `provider`"))?;
@@ -301,9 +304,29 @@ fn required_provider(node: &SourceNode) -> DoweResult<CacheProvider> {
             node,
             format!("unsupported Cache provider `{value}`"),
         )),
+        SourceValue::Bareword(value) => {
+            let Some(env_name) = value.strip_prefix("env.") else {
+                return Err(node_error(
+                    node,
+                    "`provider` must be `kv`, `redis`, `dowe`, or a server env reference",
+                ));
+            };
+            if let Some(environment) = environment {
+                let variable = environment.variable(env_name).ok_or_else(|| {
+                    node_error(node, format!("unknown environment variable `{env_name}`"))
+                })?;
+                if variable.visibility != EnvironmentVisibility::Server {
+                    return Err(node_error(
+                        node,
+                        format!("environment variable `{env_name}` must be server-only"),
+                    ));
+                }
+            }
+            Ok(CacheProvider::Environment(env_name.to_string()))
+        }
         _ => Err(node_error(
             node,
-            "`provider` must be a quoted static string",
+            "`provider` must be a quoted provider or a server env reference",
         )),
     }
 }

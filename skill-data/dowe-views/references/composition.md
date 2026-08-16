@@ -304,9 +304,10 @@ layout AuthLayout
         children
 ```
 
-Use one responsive page tree. Let the form Grid own width, maximum width, padding, and field rhythm;
-let each control and Button own its surface and size. Add a Card only when the reference visibly
-groups the form on a raised, filled, or outlined panel.
+Use one responsive page tree. Let the form Grid own width, maximum width, and field rhythm; let each
+control and Button own its surface and size. Add a Card only when the reference visibly groups the
+form on a raised, filled, or outlined panel. `Section p:0` and a form-side `px` override are
+exceptional full-viewport or rail decisions; do not copy them to ordinary page bands.
 
 ```text
 Section p:0 minH:"vh-0"
@@ -502,12 +503,16 @@ For a lead form, the form is one Card rather than a generic Box. Stack its field
 legal or privacy copy inside the same Card. Collapse the outer split Grid to one column on `xs` so
 the promise remains before the form.
 
-Use `gap`, Section padding, explicit `pt` and `pb`, responsive direction, and `w` or `maxW` on the
-real owner for ordinary rhythm and measure. Do not insert size-only Box spacers, empty Grid cells,
-or breakpoint-specific wrapper trees to reproduce offsets from one screenshot.
+Use component-owned defaults first. Use `gap`, responsive direction, and `w` or `maxW` on the real
+owner for ordinary rhythm and measure. The default Section body already provides responsive
+horizontal and vertical insets, so omit Section `p*` props for ordinary bands. Add `pt`, `pb`, `px`,
+or another padding override only when a user requirement or blueprint proves a meaningful exception;
+keep it on one owner instead of repeating it through Section, Grid, and Card. Never use unsupported
+margin props or insert size-only Box spacers, empty Grid cells, or breakpoint-specific wrapper trees
+to reproduce offsets from one screenshot.
 
 ```text
-Section id:"hero" background:"aurora" boxed:true py:{ xs:8 md:12 }
+Section id:"hero" background:"aurora" boxed:true
   Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:16 } align:"center"
     Flex direction:"column" align:"start" gap:6
       Title size:{ xs:"4xl" md:"6xl" } weight:"black"
@@ -552,8 +557,9 @@ content for it, and preserve the exact order when reproducing a reference.
 Keep the landing page coherent:
 
 - Reuse one boxed content rail across Sections unless a band intentionally changes width.
-- Establish a small vertical-padding ladder, such as compact proof, standard content, and spacious
-  hero or final CTA, instead of inventing unrelated values for every band.
+- Establish a small vertical-padding ladder, using the default Section rhythm first and adding a
+  local override only for a band that materially needs to be compact or spacious; do not invent
+  unrelated values for every band.
 - Alternate flat token backgrounds, Section presets, and media covers only to clarify the argument;
   do not decorate every Section independently.
 - Preserve design density when reducing content from a reference. Fewer bands should produce a
@@ -646,8 +652,9 @@ before considering a band finished.
   or shared Store and one `each` that wraps the complete unit inside the Grid tracks; no copy-pasted
   sibling survives visual QA.
 - Static-only props remain valid inside repeated templates; `Icon.name` is never bound to an item path.
-- Spacing comes from `gap`, Section padding, explicit padding, responsive flow, and sizing on the
-  real owner, never from empty or size-only Box spacers.
+- Spacing starts with component defaults and `gap`, then uses one intentional padding override on the
+  real owner when required, never stacked `p*` props across Section, Grid, and Card or empty/size-only
+  Box spacers. No margin aliases such as `mt` are valid.
 - `translateX` and `translateY` appear only on documented advanced visual layers, never on AppBar,
   Brand, NavMenu, Drawer, ordinary content, or normal-flow alignment corrections.
 - No stretched card ends in trailing dead space; paired cards match visual weight, distributing

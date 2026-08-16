@@ -191,10 +191,27 @@ fn render_compose_form_node(
                 context,
             );
             output.push_str(&format!(
-                "{pad}DoweImageCropper(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, shape = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                "{pad}DoweImageCropper(value = {value}, onValueChange = {change}, bound = {}, initialValue = {}, label = {}, placeholder = {}, alt = {}, accept = {}, aspectRatio = {}, minWidth = {}, minHeight = {}, maxWidth = {}, maxHeight = {}, shape = {}, size = {}, disabled = {}, helpText = {}, errorText = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                props.style.element.bind.is_some(),
+                compose_string_literal(props.src.as_deref().unwrap_or_default()),
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Upload")),
+                compose_string_literal(&props.alt),
+                compose_string_literal(&props.accept),
+                props
+                    .aspect_ratio
+                    .as_deref()
+                    .map(compose_string_literal)
+                    .unwrap_or_else(|| "null".to_string()),
+                props.min_width,
+                props.min_height,
+                compose_optional_u16(props.max_width),
+                compose_optional_u16(props.max_height),
                 compose_string_literal(props.shape.as_str()),
+                compose_string_literal(props.style.size.unwrap_or(ButtonSize::Md).as_str()),
+                props.disabled,
+                compose_optional_string(props.help_text.as_deref()),
+                compose_optional_string(props.error_text.as_deref()),
                 modifier_for_style(&props.style.style),
                 variant_container(&props.style),
                 variant_content(&props.style)
@@ -419,10 +436,7 @@ fn compose_validation_error(element: &ElementProps) -> String {
     )
 }
 
-fn compose_validation_rules(
-    element: &ElementProps,
-    context: &ComposeReactiveContext,
-) -> String {
+fn compose_validation_rules(element: &ElementProps, context: &ComposeReactiveContext) -> String {
     let Some(validation) = element.form_validation() else {
         return "emptyList()".to_string();
     };
@@ -533,13 +547,15 @@ fn render_compose_combo_box(
         modifier_for_style(&props.style.style)
     };
     output.push_str(&format!(
-        "{pad}DoweComboBox(value = {value}, onValueChange = {change}, bound = {bound}, label = {}, placeholder = {}, floating = {}, searchPlaceholder = {}, emptyText = {}, clearable = {}, options = {}, modifier = {}, fontFamily = {}, fontSize = {size}, lineHeight = doweTextLineHeight({size}, {}f), minHeight = {}.dp, horizontalPadding = {}.dp, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border})\n",
+        "{pad}DoweComboBox(value = {value}, onValueChange = {change}, bound = {bound}, label = {}, placeholder = {}, floating = {}, searchPlaceholder = {}, emptyText = {}, loadingText = {}, clearable = {}, disabled = {}, options = {}, modifier = {}, fontFamily = {}, fontSize = {size}, lineHeight = doweTextLineHeight({size}, {}f), minHeight = {}.dp, horizontalPadding = {}.dp, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, borderColor = {border}, helpText = {}, errorText = {}, validationRules = {})\n",
         compose_optional_string(props.style.label.as_deref()),
         compose_string_literal(props.style.placeholder.as_deref().unwrap_or("Select an option")),
         props.style.label_floating,
         compose_string_literal(&props.search_placeholder),
         compose_string_literal(&props.empty_text),
+        compose_string_literal(&props.loading_text),
         props.clearable,
+        props.disabled,
         compose_combo_options(options),
         modifier,
         compose_font_value(props.style.style.font.as_ref().or(inherited_font), default_family),
@@ -549,7 +565,10 @@ fn render_compose_combo_box(
         INPUT_HORIZONTAL_PADDING.native_units(),
         compose_control_radius(&props.style.style),
         variant_container(&props.style),
-        variant_content(&props.style)
+        variant_content(&props.style),
+        compose_validation_help(&props.style.element),
+        compose_validation_error(&props.style.element),
+        compose_validation_rules(&props.style.element, context)
     ));
 }
 
@@ -574,10 +593,12 @@ fn compose_combo_options(options: &[ComboOption]) -> String {
         options
             .iter()
             .map(|option| format!(
-                "DoweSelectOption({}, {}, {})",
+                "DoweComboOption({}, {}, {}, {}, {})",
                 compose_string_literal(&option.value),
                 compose_string_literal(&option.label),
-                compose_optional_string(option.description.as_deref())
+                compose_optional_string(option.description.as_deref()),
+                compose_control_icon(option.icon.as_ref().map(|icon| view_icon(*icon)).as_ref()),
+                option.disabled
             ))
             .collect::<Vec<_>>()
             .join(", ")

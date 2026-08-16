@@ -358,6 +358,8 @@ fn validate_view_tree_with_parent(
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Iframe { .. }
@@ -432,6 +434,10 @@ fn node_style_props(node: &ViewNode) -> Option<&StyleProps> {
         ViewNode::Command { props, .. } => Some(&props.style.style),
         ViewNode::Audio { props } => Some(&props.style.style),
         ViewNode::Image { props } => Some(&props.style.style),
+        ViewNode::Camera { props } => Some(&props.style.style),
+        ViewNode::Microphone { props } => {
+            Some(&props.style.style)
+        }
         ViewNode::Accordion { props, .. } => Some(&props.style.style),
         ViewNode::Carousel { props, .. } => Some(&props.style.style),
         ViewNode::Checkbox { props } => Some(&props.style.style),

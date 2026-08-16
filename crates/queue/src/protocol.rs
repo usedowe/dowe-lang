@@ -104,6 +104,7 @@ fn remote_error(category: &str, message: String) -> QueueError {
         "InvalidReceipt" => QueueError::InvalidReceipt(message),
         "DurabilityError" => QueueError::DurabilityError(message),
         "Corruption" => QueueError::Corruption(message),
+        "Unsupported" => QueueError::Unsupported(message),
         "Io" => QueueError::Io(message),
         _ => QueueError::Remote(message),
     }

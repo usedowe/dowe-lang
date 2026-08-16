@@ -13,7 +13,9 @@ Database providers are `postgres`, `d1`, and `dowe`. Postgres and Dowe require `
 be static or server environment references; `provider` must be static and `name` must resolve
 during compilation. `entities` and `seeders` contain imported or local bindings.
 
-Cache providers are `kv` for Cloudflare KV, `redis` for Redis, and `dowe` for Dowe Cache. Vector
+Cache providers are `kv` for Cloudflare KV, `redis` for Redis, and `dowe` for Dowe Cache. `provider`
+may be a static provider or a server-only environment reference such as `env.CACHE_PROVIDER`.
+Vector
 initially supports only `dowe`. Config modules may export `database`, `cache`, and `vector`
 bindings; import those bindings into repository functions instead of opening the same handle
 repeatedly.
@@ -221,8 +223,8 @@ fn createSessionRepository params:{ userId:string }
 ```
 
 During `dowe dev`, every provider uses persistent local data under `.dowe/kv/<name>`. Only `name`
-is resolved; Dowe does not validate the effective remote credentials, start Wrangler, or connect to
-the authored provider. Production resolves the full connection.
+is resolved; the effective provider and remote credentials are ignored, and Dowe does not start
+Wrangler or connect to the authored provider. Production resolves the provider and full connection.
 
 ## Vector embedding operations
 

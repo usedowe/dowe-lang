@@ -142,6 +142,53 @@ fn parses_direct_queue_publication_with_dowe_and_rabbitmq_connections() {
 }
 
 #[test]
+fn parses_managed_queue_providers() {
+    let environment = EnvironmentConfig {
+        variables: [
+            "QUEUE_HOST",
+            "QUEUE_PORT",
+            "QUEUE_USER",
+            "QUEUE_PASSWORD",
+            "QUEUE_VHOST",
+        ]
+        .into_iter()
+        .map(|name| EnvironmentVariable {
+            name: name.to_string(),
+            visibility: EnvironmentVisibility::Server,
+            resolved_source: EnvironmentValueSource::Missing,
+            resolved_value: None,
+        })
+        .collect(),
+    };
+
+    for (provider, expected) in [
+        ("cloudflare", QueueProvider::Cloudflare),
+        ("vercel", QueueProvider::Vercel),
+    ] {
+        let source = format!(
+            "main\n  server port:0\n    route \"/messages\"\n      handler\n        queue appQueue provider:\"{provider}\" host:env.QUEUE_HOST port:env.QUEUE_PORT account:env.QUEUE_USER secret:env.QUEUE_PASSWORD vhost:env.QUEUE_VHOST\n        msg sent conn:appQueue.publish queue:\"notifications\" payload:{{ userId:\"123\" }}\n        return json:{{ ok:sent.ok messageId:sent.id }}"
+        );
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new("/project/main.dowe"),
+            source,
+        )
+        .expect("source");
+        let server = parse_server_source(Path::new("/project"), &file, &environment)
+            .expect("managed queue server");
+        let endpoint = server
+            .backend
+            .find_endpoint(&HttpMethod::Get, "/messages")
+            .expect("endpoint");
+        assert!(matches!(
+            &endpoint.endpoint.action.statements[0],
+            ServerStatement::Queue(ServerQueueStatement::Handle { connection })
+                if connection.provider == expected
+        ));
+    }
+}
+
+#[test]
 fn rejects_invalid_queue_connection_and_publication_contracts() {
     for (statement, expected) in [
         (

@@ -101,8 +101,9 @@ fn render_compose_empty(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let icon = empty_icon(props.kind).expect("bundled Empty icon");
     output.push_str(&format!(
-        "{pad}DoweEmpty(kind = {}, title = {}, description = {}, actionLabel = {}, action = {}, backgroundColor = {}, contentColor = {}, accentColor = {}, modifier = {})\n",
+        "{pad}DoweEmpty(kind = {}, title = {}, description = {}, actionLabel = {}, action = {}, iconViewBox = {}, iconPaths = {}, backgroundColor = {}, contentColor = {}, accentColor = {}, modifier = {})\n",
         compose_string_literal(props.kind.as_str()),
         compose_optional_string(props.title.as_deref()),
         compose_optional_string(props.description.as_deref()),
@@ -112,6 +113,8 @@ fn render_compose_empty(
             props.style.navigation.as_ref(),
             context,
         ),
+        compose_svg_view_box(&icon.props.view_box),
+        compose_svg_paths(&icon.paths),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Primary))),

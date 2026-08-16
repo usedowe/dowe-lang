@@ -161,6 +161,20 @@ pub fn container_component_node(
                 Err(ComponentError::children_not_allowed(component))
             }
         }
+        BuiltinComponent::Camera => {
+            if children.is_empty() {
+                camera_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Microphone => {
+            if children.is_empty() {
+                microphone_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
         BuiltinComponent::Image => {
             if children.is_empty() {
                 image_component_node(props)

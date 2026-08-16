@@ -8,6 +8,55 @@ pub struct VideoProps {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CameraProps {
+    pub style: VariantProps,
+    pub facing: CameraFacing,
+    pub label: String,
+    pub disabled: bool,
+    pub on_start: Option<String>,
+    pub on_capture: Option<String>,
+    pub on_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CameraFacing {
+    User,
+    Environment,
+}
+
+impl CameraFacing {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "user" => Some(Self::User),
+            "environment" => Some(Self::Environment),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Environment => "environment",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::User, Self::Environment]
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MicrophoneProps {
+    pub style: VariantProps,
+    pub label: String,
+    pub max_duration: Option<u16>,
+    pub disabled: bool,
+    pub on_start: Option<String>,
+    pub on_stop: Option<String>,
+    pub on_error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IframeProps {
     pub style: StyleProps,
     pub src: String,
@@ -145,4 +194,3 @@ pub enum CanvasBackground {
     Transparent,
     Color(ColorToken),
 }
-

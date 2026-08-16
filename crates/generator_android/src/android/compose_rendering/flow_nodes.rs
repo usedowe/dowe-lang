@@ -525,12 +525,25 @@ fn render_compose_flow_node(
             } else {
                 "true".to_string()
             };
+            let has_disabled_state = loading.is_some() || disabled.is_some();
+            if has_disabled_state {
+                modifier.push_str(&format!(
+                    ".graphicsLayer {{ alpha = if ({enabled}) 1f else 0.5f }}"
+                ));
+            }
+            let colors = if has_disabled_state {
+                format!(
+                    "ButtonDefaults.buttonColors(containerColor = {container}, contentColor = {content}, disabledContainerColor = {container}, disabledContentColor = {content})"
+                )
+            } else {
+                format!(
+                    "ButtonDefaults.buttonColors(containerColor = {container}, contentColor = {content})"
+                )
+            };
             output.push_str(&format!(
-                        "{pad}Button(modifier = {}.defaultMinSize(minWidth = 0.dp, minHeight = {min_height}), shape = RoundedCornerShape({}), colors = ButtonDefaults.buttonColors(containerColor = {}, contentColor = {}), border = {}, contentPadding = {content_padding}, enabled = {enabled}, onClick = {}) {{\n",
+                        "{pad}Button(modifier = {}.defaultMinSize(minWidth = 0.dp, minHeight = {min_height}), shape = RoundedCornerShape({}), colors = {colors}, border = {}, contentPadding = {content_padding}, enabled = {enabled}, onClick = {}) {{\n",
                         modifier,
                         radius,
-                        container,
-                        content,
                         border,
                         action
                     ));

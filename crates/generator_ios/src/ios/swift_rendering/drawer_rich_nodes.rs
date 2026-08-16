@@ -27,7 +27,7 @@ fn render_swift_drawer(
         props.hide_close_button
     ));
     output.push_str(&format!(
-        "{pad}    let doweDrawerNavigate = navigate\n{pad}    let navigate: (String, String, String?) -> Void = {{ operation, target, fragment in\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerNavigate(operation, target, fragment)\n{pad}    }}\n{pad}    let doweDrawerGoBack = goBack\n{pad}    let goBack: () -> Void = {{\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerGoBack()\n{pad}    }}\n{pad}    let doweDrawerOpenExternal = openExternal\n{pad}    let openExternal: (String, String) -> Void = {{ mode, target in\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerOpenExternal(mode, target)\n{pad}    }}\n"
+        "{pad}    let doweDrawerNavigate = navigate\n{pad}    let navigate: (String, String, String?) -> Void = {{ operation, target, fragment in\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerNavigate(operation, target, fragment)\n{pad}    }}\n{pad}    let _ = navigate\n{pad}    let doweDrawerGoBack = goBack\n{pad}    let goBack: () -> Void = {{\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerGoBack()\n{pad}    }}\n{pad}    let _ = goBack\n{pad}    let doweDrawerOpenExternal = openExternal\n{pad}    let openExternal: (String, String) -> Void = {{ mode, target in\n{pad}        state.write(\"{path}\", value: false)\n{pad}        doweDrawerOpenExternal(mode, target)\n{pad}    }}\n{pad}    let _ = openExternal\n"
     ));
     output.push_str(&format!(
         "{pad}    VStack(alignment: .leading, spacing: 0) {{\n"
@@ -232,8 +232,9 @@ fn render_swift_empty(
     context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let icon = empty_icon(props.kind).expect("bundled Empty icon");
     output.push_str(&format!(
-        "{pad}DoweEmpty(kind: {}, title: {}, description: {}, actionLabel: {}, action: {}, backgroundColor: {}, contentColor: {}, accentColor: {})\n",
+        "{pad}DoweEmpty(kind: {}, title: {}, description: {}, actionLabel: {}, action: {}, iconViewBox: {}, iconPaths: {}, backgroundColor: {}, contentColor: {}, accentColor: {})\n",
         swift_string_literal(props.kind.as_str()),
         swift_optional_literal(props.title.as_deref()),
         swift_optional_literal(props.description.as_deref()),
@@ -243,6 +244,8 @@ fn render_swift_empty(
             props.style.navigation.as_ref(),
             context,
         ),
+        swift_svg_view_box(&icon.props.view_box),
+        swift_svg_paths(&icon.paths),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
         color_ref(family_color(props.style.color.unwrap_or(ColorFamily::Primary))),

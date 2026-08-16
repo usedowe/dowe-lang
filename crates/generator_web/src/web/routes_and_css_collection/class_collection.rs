@@ -82,6 +82,8 @@ fn collect_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
         | ViewNode::Command { .. } => collect_overlay_node_classes(node, classes),
         ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Accordion { .. }
         | ViewNode::Carousel { .. }
         | ViewNode::Checkbox { .. }

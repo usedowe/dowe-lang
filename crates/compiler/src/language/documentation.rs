@@ -12,7 +12,7 @@ pub(super) const VIEW_COMPONENTS: &[&str] = &[
     "BottomBar", "NavMenu", "SideNav", "RailNav", "Sidebar", "Scaffold", "Splash", "Drawer", "Avatar", "Badge", "Chip",
     "Skeleton", "Modal", "AlertDialog", "Tooltip", "Toast", "Dropdown", "Command", "AvatarGroup", "ChatBox",
     "Empty", "Marquee", "TypeWriter", "RichText", "Record", "ToggleGroup", "Collapsible", "Countdown", "Map",
-    "Audio", "Image", "Accordion", "Carousel", "Checkbox", "Color", "Date", "DateRange", "RadioGroup", "Toggle",
+    "Audio", "Camera", "Microphone", "Image", "Accordion", "Carousel", "Checkbox", "Color", "Date", "DateRange", "RadioGroup", "Toggle",
     "Card", "Tabs", "tab", "Stepper", "step", "Title", "Text",
 ];
 
@@ -120,7 +120,7 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "cache",
-        signature: "cache <binding> provider:\"kv|redis|dowe\" host:<value> port:<value> account:<value> secret:<value> name:<value>",
+        signature: "cache <binding> provider:\"kv|redis|dowe\"|env.NAME host:<value> port:<value> account:<value> secret:<value> name:<value>",
         description: "Declares a server-only Cache connection that uses local Dowe persistence during development.",
     },
     ServerDocumentation {
@@ -135,8 +135,8 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "queue",
-        signature: "queue service | queue <binding> provider:\"dowe|rabbitmq\" host:<value> port:<value> account:<value> secret:<value> vhost:<value>",
-        description: "Hosts the authenticated Dowe Queue WebSocket service at `/v1/queues/:name` or declares a server-only Queue connection.",
+        signature: "queue service | queue <binding> provider:\"dowe|rabbitmq|cloudflare|vercel\" host:<value> port:<value> account:<value> secret:<value> vhost:<value>",
+        description: "Hosts the authenticated Dowe Queue WebSocket service or declares a server-only Queue connection for Dowe, RabbitMQ, Cloudflare, or Vercel.",
     },
     ServerDocumentation {
         name: "msg",
@@ -571,7 +571,7 @@ fn component_description(name: &str) -> &'static str {
         | "Date" | "DateRange" | "RadioGroup" | "Toggle" | "ToggleGroup" => {
             "Built-in cross-platform form and interaction component."
         }
-        "Code" | "Video" | "Iframe" | "Device" | "Audio" | "Image" | "Canvas" | "Icon" | "Svg"
+        "Code" | "Video" | "Iframe" | "Device" | "Audio" | "Camera" | "Microphone" | "Image" | "Canvas" | "Icon" | "Svg"
         | "Path" | "Candlestick" | "ArcChart" | "AreaChart" | "BarChart" | "LineChart"
         | "PieChart" | "Table" => "Built-in cross-platform media or data-display component.",
         _ => "Built-in Dowe Views component lowered to web, desktop, Android, and iOS targets.",

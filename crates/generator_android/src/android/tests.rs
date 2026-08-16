@@ -5,7 +5,7 @@ use super::{
     generate_android_with_translations, AndroidOutput,
 };
 use dowe_components::{
-    AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
+    AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, CameraFacing, CameraProps, AvatarGroupItem,
     AvatarGroupProps, AvatarProps, AvatarStatus, BadgeProps, BannerProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BrandProps,
     BoxPosition, Breakpoint, ButtonSize,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,
@@ -18,7 +18,7 @@ use dowe_components::{
     ElementProps, EmptyKind, EmptyProps, FabAction, FabProps, FontConfig, GapSize, GapValue, GridProps, GridTracks,
     ImageAspect, ImageCropperProps, ImageCropperShape, ImageLoading, ImageObjectFit, ImageProps,
     Justify, LayoutProps, MapMarker, MapMarkerIcon, MapProps, MapWaypoint, MarqueeOrientation,
-    MarqueeProps, MarqueeSpeed, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps,
+    MarqueeProps, MarqueeSpeed, MicrophoneProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps,
     NavigationAction, NavigationOperation, OverlayCornerPosition, OverlayEntry, OverlayItemProps,
     OverlayPaint, OverlayPosition, PasswordProps, PhoneProps, PinKind,
     PinProps, PropValue, RadioGroupOrientation, RadioGroupProps, RadioOption, RecordProps,
@@ -114,3 +114,4 @@ include!("tests/fixtures_components_media.rs");
 include!("tests/fixtures_components_rich.rs");
 include!("tests/fixtures_components_shared.rs");
 include!("tests/fixtures_display.rs");
+include!("tests/stdlib_generation.rs");

@@ -221,6 +221,8 @@ fn ios_collect_scope_bindings(node: &ViewNode, bindings: &mut IosLayoutBindings)
         | ViewNode::Textarea { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Iframe { .. }
@@ -334,6 +336,8 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
         }
         ViewNode::Audio { props } => ios_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Image { props } => ios_variant_references_layout_bindings(&props.style, bindings),
+        ViewNode::Camera { props } => ios_variant_references_layout_bindings(&props.style, bindings),
+        ViewNode::Microphone { props } => ios_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Code { props } => ios_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Video { props } => ios_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Iframe { props } => ios_style_references_layout_bindings(&props.style, bindings),
@@ -1170,6 +1174,8 @@ fn ios_children_boundary(
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Code { .. }
         | ViewNode::Video { .. }
         | ViewNode::Iframe { .. }

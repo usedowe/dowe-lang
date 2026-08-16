@@ -460,11 +460,7 @@ pub fn save_dev_target_preferences(
 
     let stored = StoredDevTargetSelection {
         version: DEV_TARGET_SELECTION_VERSION,
-        targets: selection
-            .targets()
-            .iter()
-            .map(|target| target.as_str().to_string())
-            .collect(),
+        targets: persisted_dev_targets(selection),
         quit_simulators_on_exit,
     };
     let mut contents = serde_json::to_string_pretty(&stored)
@@ -473,6 +469,14 @@ pub fn save_dev_target_preferences(
     fs::write(&path, contents)?;
 
     Ok(path)
+}
+
+fn persisted_dev_targets(selection: &DevTargetSelection) -> Vec<String> {
+    DevTarget::canonical()
+        .iter()
+        .filter(|target| selection.contains(**target))
+        .map(|target| target.as_str().to_string())
+        .collect()
 }
 
 fn parse_stored_dev_target_preferences(
@@ -1136,6 +1140,28 @@ mod tests {
             .expect("stored selection");
 
         assert_eq!(loaded.targets(), &[DevTarget::Server, DevTarget::Android]);
+    }
+
+    #[test]
+    fn persists_and_restores_server_for_a_server_only_project() {
+        let temp = TempDir::new().expect("tempdir");
+        write_main(temp.path(), "main\n  server port:8080\n");
+        let selection =
+            DevTargetSelection::new([DevTarget::Server], HostOs::Linux).expect("selection");
+
+        save_dev_target_preferences(temp.path(), &selection, true).expect("save");
+
+        let contents =
+            fs::read_to_string(dev_target_selection_path(temp.path())).expect("contents");
+        assert_eq!(
+            contents,
+            "{\n  \"version\": 1,\n  \"targets\": [\n    \"server\"\n  ],\n  \"quit_simulators_on_exit\": true\n}\n"
+        );
+        let loaded = load_dev_target_preferences_for_project(temp.path(), HostOs::Linux)
+            .expect("load")
+            .expect("stored preferences");
+
+        assert_eq!(loaded.selection.targets(), &[DevTarget::Server]);
     }
 
     #[test]

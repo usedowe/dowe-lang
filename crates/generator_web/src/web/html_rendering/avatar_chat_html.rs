@@ -299,7 +299,7 @@ fn render_empty_html(props: &EmptyProps, context: &ReactiveRenderContext) -> Str
     format!(
         r#"<div{}>{}<div class="empty-content"><h3 class="empty-title">{}</h3><p class="empty-description">{}</p></div>{}</div>"#,
         attrs(empty_classes(props), Some(&root_element), None, context),
-        empty_icon_html(props.kind),
+        empty_icon_html(props.kind, context),
         escape_html(title),
         escape_html(description),
         action

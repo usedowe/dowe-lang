@@ -1,9 +1,14 @@
 fn render_audio_html(props: &AudioProps, context: &ReactiveRenderContext) -> String {
-    let bars = (0..50)
-        .map(|index| {
-            let height = 28 + ((index * 17) % 58);
+    const AUDIO_WAVEFORM_HEIGHTS: [u8; 50] = [
+        48, 62, 38, 54, 76, 44, 30, 52, 68, 84, 58, 42, 65, 92, 72, 49, 35, 61, 80, 55,
+        41, 71, 96, 64, 46, 32, 57, 75, 88, 60, 37, 51, 69, 83, 47, 29, 55, 73, 63, 40,
+        67, 89, 58, 34, 50, 77, 68, 43, 60, 82,
+    ];
+    let bars = AUDIO_WAVEFORM_HEIGHTS
+        .into_iter()
+        .map(|height| {
             format!(
-                r#"<span class="media-bar" style="height:{}%"></span>"#,
+                r#"<span class="media-bar" style="height:{}%" aria-hidden="true"></span>"#,
                 height
             )
         })
@@ -29,7 +34,7 @@ fn render_audio_html(props: &AudioProps, context: &ReactiveRenderContext) -> Str
         })
         .unwrap_or_default();
     format!(
-        r#"<div{} data-dowe-audio><audio src="{}" preload="metadata" data-dowe-audio-el></audio><button class="media-button" type="button" aria-label="Play audio" data-dowe-audio-toggle><span data-dowe-audio-icon>▶</span></button><div class="media-content"><div class="media-waveform" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-dowe-audio-waveform><div class="media-bars">{}</div></div><div class="media-footer"><span class="media-time" data-dowe-audio-time>0:00</span>{}</div></div>{}</div>"#,
+        r#"<div{} data-dowe-audio><audio src="{}" preload="metadata" data-dowe-audio-el></audio><button class="media-button" type="button" aria-label="Play audio" data-dowe-audio-toggle><span class="media-icon" data-dowe-audio-play-icon><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 5.274c0-1.707 1.826-2.792 3.325-1.977l12.362 6.727c1.566.852 1.566 3.1 0 3.952L8.325 20.702C6.826 21.518 5 20.432 5 18.726z"/></svg></span><span class="media-icon" data-dowe-audio-pause-icon hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5.746 3a1.75 1.75 0 0 0-1.75 1.75v14.5c0 .966.784 1.75 1.75 1.75h3.5a1.75 1.75 0 0 0 1.75-1.75V4.75A1.75 1.75 0 0 0 9.246 3zm9 0a1.75 1.75 0 0 0-1.75 1.75v14.5c0 .966.784 1.75 1.75 1.75h3.5a1.75 1.75 0 0 0 1.75-1.75V4.75A1.75 1.75 0 0 0 18.246 3z"/></svg></span></button><div class="media-content"><div class="media-waveform" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00 remaining" aria-label="Audio progress" data-dowe-audio-waveform><div class="media-bars loaded">{}</div></div><div class="media-footer"><span class="media-time" data-dowe-audio-time>0:00</span>{}</div></div>{}</div>"#,
         attrs(
             variant_classes("media", &props.style),
             Some(&props.style.element),
@@ -40,6 +45,78 @@ fn render_audio_html(props: &AudioProps, context: &ReactiveRenderContext) -> Str
         bars,
         subtitle,
         avatar
+    )
+}
+
+fn render_camera_html(props: &CameraProps, context: &ReactiveRenderContext) -> String {
+    let mut extra = format!(
+        r#" data-dowe-camera data-dowe-camera-facing="{}" data-dowe-camera-label="{}""#,
+        props.facing.as_str(),
+        escape_attr(&props.label)
+    );
+    for (name, action) in [
+        ("start", props.on_start.as_deref()),
+        ("capture", props.on_capture.as_deref()),
+        ("error", props.on_error.as_deref()),
+    ] {
+        if let Some(action) = action {
+            extra.push_str(&format!(
+                r#" data-dowe-camera-on-{}="{}""#,
+                name,
+                escape_attr(&context.action_id(action))
+            ));
+        }
+    }
+    let disabled = if props.disabled { " disabled" } else { "" };
+    format!(
+        r#"<section{}><div class="camera-preview"><video autoplay muted playsinline data-dowe-camera-video hidden></video><canvas data-dowe-camera-canvas hidden></canvas><div class="camera-placeholder" data-dowe-camera-placeholder>{}</div></div><div class="camera-controls"><button class="camera-button" type="button" data-dowe-camera-start{}>{}</button><button class="camera-button" type="button" data-dowe-camera-capture{} disabled>Capture</button></div><span class="camera-status" data-dowe-camera-status role="status"></span></section>"#,
+        attrs(
+            variant_classes("camera", &props.style),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        escape_html(&props.label),
+        disabled,
+        escape_html(&props.label),
+        disabled
+    )
+}
+
+fn render_microphone_html(props: &MicrophoneProps, context: &ReactiveRenderContext) -> String {
+    let mut extra = format!(
+        r#" data-dowe-microphone data-dowe-microphone-label="{}""#,
+        escape_attr(&props.label)
+    );
+    if let Some(max_duration) = props.max_duration {
+        extra.push_str(&format!(r#" data-dowe-microphone-max-duration="{}""#, max_duration));
+    }
+    for (name, action) in [
+        ("start", props.on_start.as_deref()),
+        ("stop", props.on_stop.as_deref()),
+        ("error", props.on_error.as_deref()),
+    ] {
+        if let Some(action) = action {
+            extra.push_str(&format!(
+                r#" data-dowe-microphone-on-{}="{}""#,
+                name,
+                escape_attr(&context.action_id(action))
+            ));
+        }
+    }
+    let disabled = if props.disabled { " disabled" } else { "" };
+    format!(
+        r#"<section{}><div class="microphone-panel"><span class="microphone-label">{}</span><span class="microphone-status" data-dowe-microphone-status role="status">Ready</span><span class="microphone-time" data-dowe-microphone-time>0:00</span></div><div class="microphone-controls"><button class="microphone-button" type="button" data-dowe-microphone-start{}>{}</button><button class="microphone-button" type="button" data-dowe-microphone-stop{} disabled>Stop</button></div></section>"#,
+        attrs(
+            variant_classes("microphone", &props.style),
+            Some(&props.style.element),
+            Some(&extra),
+            context
+        ),
+        escape_html(&props.label),
+        disabled,
+        escape_html(&props.label),
+        disabled
     )
 }
 
@@ -180,15 +257,30 @@ fn render_carousel_html(
     }
     html.push_str("</div>");
     if props.show_navigation {
-        html.push_str(r#"<button class="carousel-nav is-prev" type="button" aria-label="Previous slide" data-dowe-carousel-prev>‹</button><button class="carousel-nav is-next" type="button" aria-label="Next slide" data-dowe-carousel-next>›</button>"#);
+        html.push_str(&format!(
+            r#"<button class="carousel-nav is-prev" type="button" aria-label="Previous slide"{} data-dowe-carousel-prev>‹</button><button class="carousel-nav is-next" type="button" aria-label="Next slide"{} data-dowe-carousel-next>›</button>"#,
+            if props.disable_loop { " disabled" } else { "" },
+            if props.disable_loop && slides.len() <= 1 {
+                " disabled"
+            } else {
+                ""
+            }
+        ));
     }
     html.push_str("</div>");
-    if !props.hide_controls || !props.hide_indicators || props.show_counter {
+    if props.shows_controls()
+        || props.shows_indicators()
+        || props.has_variant_indicators()
+        || props.show_counter
+    {
         html.push_str("<div class=\"carousel-controls\">");
-        if !props.hide_controls {
-            html.push_str(r#"<button class="carousel-control" type="button" aria-label="Previous slide" data-dowe-carousel-prev>‹</button>"#);
+        if props.shows_controls() {
+            html.push_str(&format!(
+                r#"<button class="carousel-control" type="button" aria-label="Previous slide"{} data-dowe-carousel-prev>‹</button>"#,
+                if props.disable_loop { " disabled" } else { "" }
+            ));
         }
-        if !props.hide_indicators {
+        if props.shows_indicators() || props.has_variant_indicators() {
             html.push_str("<div class=\"carousel-indicators\">");
             for (index, _slide) in slides.iter().enumerate() {
                 let mut classes = vec![
@@ -222,8 +314,15 @@ fn render_carousel_html(
                 slides.len()
             ));
         }
-        if !props.hide_controls {
-            html.push_str(r#"<button class="carousel-control" type="button" aria-label="Next slide" data-dowe-carousel-next>›</button>"#);
+        if props.shows_controls() {
+            html.push_str(&format!(
+                r#"<button class="carousel-control" type="button" aria-label="Next slide"{} data-dowe-carousel-next>›</button>"#,
+                if props.disable_loop && slides.len() <= 1 {
+                    " disabled"
+                } else {
+                    ""
+                }
+            ));
         }
         html.push_str("</div>");
     }

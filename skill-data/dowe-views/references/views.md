@@ -326,6 +326,14 @@ XML text with `set output source:parse.svg value:input fallback:""`. Add
 second assignment with `colors:"original" format:"data"` when a normalized JSON result must feed
 `Svg data:<reference>` for a safe preview. `parse.svg` does not mount or execute the XML.
 
+The portable view catalog also includes `str`, `math`, `parse`, `url`, `csv`, `sort`, `list`,
+`json`, and `date`. Use their namespaced functions for text and numeric values, bounded CSV and
+JSON transforms, stable collection operations, URL query construction, and ISO date arithmetic.
+The catalog is lowered once and implemented by web, Android, and iOS generators; `id.ulid` and
+server capabilities remain unavailable in views. Invalid parsing returns the declared fallback or
+`null`, and collection operations return new values rather than mutating their inputs. See the
+portable standard-library documentation for the complete function and argument catalog.
+
 `Svg` is for portable vector marks such as logos and simple geometry. Original photographs,
 illustrations, textures, and authentic screenshots explicitly supplied or requested by the user are
 `Image` assets and must never be redrawn as `Svg` paths or `Canvas` commands. A design reference or

@@ -290,6 +290,8 @@ fn collect_dev_reactive(
         | ViewNode::Select { .. }
         | ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Checkbox { .. }
         | ViewNode::Color { .. }
         | ViewNode::Date { .. }

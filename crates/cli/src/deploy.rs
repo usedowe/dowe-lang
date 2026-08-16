@@ -2,8 +2,8 @@ use crate::menus;
 use crate::usage::USAGE;
 use dowe_deploy::{
     DEFAULT_DOCKER_REGISTRY, DeployEnvironment, DeployOptions, DeploySurface, DeployTarget,
-    DockerDeployPreferences, default_docker_image_name, deploy, load_docker_deploy_preferences,
-    save_docker_deploy_preferences,
+    DockerDeployPreferences, default_docker_image_name, deploy, load_deploy_target_preference,
+    load_docker_deploy_preferences, save_deploy_target_preference, save_docker_deploy_preferences,
 };
 use std::env;
 use std::path::{Path, PathBuf};
@@ -28,7 +28,7 @@ pub(crate) fn run_deploy_command(args: &[String]) -> Result<(), Box<dyn std::err
         let Some(surface) = menus::prompt_deploy_surface(&root, environment)? else {
             return Ok(());
         };
-        let Some(target) = menus::prompt_deploy_target(surface)? else {
+        let Some(target) = prompt_and_remember_deploy_target(&root, environment, surface)? else {
             return Ok(());
         };
         let mut options = DeployOptions::new(root, target);
@@ -66,7 +66,10 @@ fn run_surface_deploy(
         return Ok(());
     }
     let interactive_target = if interactive {
-        menus::prompt_deploy_target(surface)?
+        let Some(environment) = interactive_environment else {
+            return Ok(());
+        };
+        prompt_and_remember_deploy_target(&root, environment, surface)?
     } else {
         None
     };
@@ -124,6 +127,21 @@ fn should_auto_publish(surface: DeploySurface, target: DeployTarget) -> bool {
             | (DeploySurface::Android, DeployTarget::Android)
             | (DeploySurface::Ios, DeployTarget::Ios)
     )
+}
+
+fn prompt_and_remember_deploy_target(
+    root: &Path,
+    environment: DeployEnvironment,
+    surface: DeploySurface,
+) -> Result<Option<DeployTarget>, Box<dyn std::error::Error>> {
+    let saved = load_deploy_target_preference(root, environment, surface)?;
+    let target = menus::prompt_deploy_target(surface, saved)?;
+    if let Some(target) = target {
+        save_deploy_target_preference(root, environment, surface, target)?;
+        Ok(Some(target))
+    } else {
+        Ok(None)
+    }
 }
 
 fn parse_deploy_options(

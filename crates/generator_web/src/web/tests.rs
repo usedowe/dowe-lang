@@ -3,7 +3,7 @@ use super::{
     svg_path_attributes, web_artifacts,
 };
 use dowe_components::{
-    AccordionItem, AccordionProps, AlertDialogProps, AudioProps, AvatarGroupItem,
+    AccordionItem, AccordionProps, AlertDialogProps, AudioProps, CameraFacing, CameraProps, AvatarGroupItem,
     AvatarGroupProps, AvatarProps, AvatarStatus, BadgeProps, BarPosition, BarProps, BottomBarTab, Breakpoint,
     BannerProps, BoxPosition, BrandProps, ButtonSize,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,
@@ -16,7 +16,7 @@ use dowe_components::{
     ElementProps, EmptyKind, EmptyProps, FabAction, FabProps, FontConfig, GapSize, GapValue, GridAlignment, GridProps,
     GridSpan, GridTracks, ImageAspect, ImageCropperProps, ImageCropperShape, ImageLoading,
     ImageObjectFit, ImageProps, MapMarker, MapMarkerIcon, MapProps,
-    MapWaypoint, MarqueeOrientation, MarqueeProps, MarqueeSpeed, ModalProps, NavMenuItem,
+    MapWaypoint, MarqueeOrientation, MarqueeProps, MarqueeSpeed, MicrophoneProps, ModalProps, NavMenuItem,
     NavMenuItemProps, NavMenuProps, NavigationAction, NavigationOperation, OverlayCornerPosition,
     OverlayEntry, OverlayItemProps, OverlayPaint, OverlayPosition, PasswordProps,
     PhoneProps, PinKind, PinProps, PropValue, RadioGroupOrientation,
@@ -47,3 +47,4 @@ include!("tests/fixtures_data.rs");
 include!("tests/fixtures_display_overlay.rs");
 include!("tests/fixtures_display_chat.rs");
 include!("tests/fixtures_rich_controls.rs");
+include!("tests/stdlib_generation.rs");

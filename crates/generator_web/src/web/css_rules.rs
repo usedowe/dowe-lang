@@ -82,10 +82,15 @@ fn push_variant_rule(
     base: &'static str,
     props: &VariantProps,
 ) {
+    let default_variant = if base == "accordion" {
+        ComponentVariant::Ghost
+    } else {
+        ComponentVariant::Solid
+    };
     let rule = (
         base,
         props.color.unwrap_or(ColorFamily::Primary),
-        props.variant.unwrap_or(ComponentVariant::Solid),
+        props.variant.unwrap_or(default_variant),
     );
     if !variants.contains(&rule) {
         variants.push(rule);
@@ -212,16 +217,22 @@ fn class_body(class_name: &str) -> Option<String> {
             | "editor-content"
             | "image-cropper"
             | "image-cropper-trigger"
+            | "image-cropper-dialog-header"
+            | "image-cropper-dialog-close"
             | "image-cropper-image"
             | "image-cropper-empty-icon"
             | "image-cropper-label"
             | "image-cropper-actions"
             | "image-cropper-action"
+            | "image-cropper-action-spacer"
             | "image-cropper-modal"
             | "image-cropper-dialog"
             | "image-cropper-stage"
             | "image-cropper-canvas"
+            | "image-cropper-grid"
             | "image-cropper-box"
+            | "image-cropper-zoom"
+            | "image-cropper-runtime-error"
             | "image-cropper-modal-actions"
             | "password"
             | "password-input"
@@ -253,6 +264,7 @@ fn class_body(class_name: &str) -> Option<String> {
             | "video"
             | "media"
             | "media-button"
+            | "media-icon"
             | "media-content"
             | "media-waveform"
             | "media-bars"
@@ -261,6 +273,19 @@ fn class_body(class_name: &str) -> Option<String> {
             | "media-time"
             | "media-subtitle"
             | "media-avatar"
+            | "camera"
+            | "camera-preview"
+            | "camera-placeholder"
+            | "camera-controls"
+            | "camera-button"
+            | "camera-status"
+            | "microphone"
+            | "microphone-panel"
+            | "microphone-label"
+            | "microphone-status"
+            | "microphone-time"
+            | "microphone-controls"
+            | "microphone-button"
             | "image"
             | "image-element"
             | "image-controls"
@@ -745,7 +770,76 @@ fn append_single_variant_css(
         ));
         return;
     }
-    if matches!(base, "accordion" | "collapsible") && variant == ComponentVariant::Outlined {
+    if base == "accordion" {
+        let (surface, content, content_title) = if family == ColorFamily::Background {
+            ("background", "backgroundText", "backgroundTitle")
+        } else {
+            ("surface", "surfaceText", "surfaceTitle")
+        };
+        let (background, content, border, item_background, item_border, item_radius, padding, gap) =
+            match variant {
+                ComponentVariant::Solid => (
+                    format!("var(--dowe-{color})"),
+                    text,
+                    "transparent".to_string(),
+                    "transparent".to_string(),
+                    format!("1px solid color-mix(in srgb,var(--dowe-{text}) 24%,transparent)"),
+                    "calc(var(--dowe-radius) * .85)".to_string(),
+                    ".25rem",
+                    ".75rem",
+                ),
+                ComponentVariant::Soft => (
+                    format!("var(--dowe-{soft})"),
+                    soft_text,
+                    "transparent".to_string(),
+                    "var(--dowe-surface)".to_string(),
+                    format!("1px solid color-mix(in srgb,var(--dowe-{soft_text}) 16%,transparent)"),
+                    "calc(var(--dowe-radius) * .85)".to_string(),
+                    ".25rem",
+                    ".75rem",
+                ),
+                ComponentVariant::Outlined => (
+                    format!("var(--dowe-{surface})"),
+                    content,
+                    format!("var(--dowe-{color})"),
+                    format!("var(--dowe-{surface})"),
+                    format!("1px solid color-mix(in srgb,var(--dowe-{color}) 24%,transparent)"),
+                    "calc(var(--dowe-radius) * .85)".to_string(),
+                    ".25rem",
+                    ".75rem",
+                ),
+                ComponentVariant::Line => (
+                    "transparent".to_string(),
+                    color,
+                    "transparent".to_string(),
+                    "transparent".to_string(),
+                    format!("0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{color}) 24%,transparent)"),
+                    "0".to_string(),
+                    "0",
+                    "0",
+                ),
+                ComponentVariant::Ghost => (
+                    "transparent".to_string(),
+                    if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
+                        text
+                    } else {
+                        color
+                    },
+                    "transparent".to_string(),
+                    "transparent".to_string(),
+                    format!("0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{content}) 22%,transparent)"),
+                    "0".to_string(),
+                    "0",
+                    "0",
+                ),
+            };
+        css.push_str(&format!(
+            ".accordion.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content_title});background-color:{background};color:var(--dowe-{content});border:1px solid {border};padding:{padding};gap:{gap};}}.accordion.is-{variant}.is-{name} .accordion-item{{background-color:{item_background};border:{item_border};border-radius:{item_radius};}}.accordion.is-{variant}.is-{name} .accordion-header:hover,.accordion.is-{variant}.is-{name} .accordion-header:focus-visible{{background-color:color-mix(in srgb,currentColor 8%,transparent);}}",
+            variant = variant.as_str()
+        ));
+        return;
+    }
+    if base == "collapsible" && variant == ComponentVariant::Outlined {
         let (surface, content, content_title) = if family == ColorFamily::Background {
             ("background", "backgroundText", "backgroundTitle")
         } else {
@@ -884,6 +978,21 @@ fn append_single_variant_css(
             variant = variant.as_str()
         ));
         return;
+    }
+    if base == "media" {
+        let (button_background, button_content) = match variant {
+            ComponentVariant::Solid => (
+                format!("var(--dowe-{soft})"),
+                color,
+            ),
+            ComponentVariant::Soft => (format!("var(--dowe-{color})"), text),
+            ComponentVariant::Outlined => ("transparent".to_string(), color),
+            ComponentVariant::Line | ComponentVariant::Ghost => ("transparent".to_string(), color),
+        };
+        css.push_str(&format!(
+            ".media.is-{variant}.is-{name} .media-button{{background-color:{button_background};color:var(--dowe-{button_content});}}",
+            variant = variant.as_str()
+        ));
     }
     match variant {
         ComponentVariant::Solid => css.push_str(&format!(

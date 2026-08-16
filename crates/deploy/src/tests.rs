@@ -90,6 +90,70 @@ fn deploy_and_build_use_live_environment() {
 }
 
 #[test]
+fn deploy_profiles_feed_public_values_and_platform_server_contracts() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join(".env.example"),
+        "PUBLIC_URL=\nDATABASE_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n",
+    )
+    .expect("env example");
+    fs::write(
+        temp.path().join("pages/home.dowe"),
+        "page homePage\n  fn load\n    request status method:\"GET\" route:\"/status\" base:env.PUBLIC_URL\n  Text\n    \"Home\"\n",
+    )
+    .expect("page");
+    for (environment, label, password) in [
+        (DeployEnvironment::Live, "live", ""),
+        (DeployEnvironment::Stage, "stage", "stage-password-123"),
+        (DeployEnvironment::Uat, "uat", "uat-password-12345"),
+    ] {
+        fs::write(
+            temp.path().join(format!(".env.{}", environment.as_str())),
+            format!(
+                "PUBLIC_URL=https://{label}.example.com\nDATABASE_URL=postgres://{label}.internal/app\nDOWE_DEPLOY_ACCESS_PASSWORD={password}\n"
+            ),
+        )
+        .expect("environment profile");
+        let mut options = DeployOptions::new(temp.path(), DeployTarget::Docker);
+        options.environment = environment;
+        options.surface = Some(DeploySurface::Web);
+        options.dry_run = true;
+
+        let report = deploy_with_linux_runtime(options, &linux_application_runtime())
+            .expect("web docker deploy");
+        let dockerfile =
+            fs::read_to_string(report.output_dir.join("Dockerfile")).expect("dockerfile");
+        let manifest = fs::read_to_string(report.output_dir.join("deploy.json")).expect("manifest");
+        assert!(dockerfile.contains("ENV DATABASE_URL=\"\""));
+        assert!(!dockerfile.contains("postgres://"));
+        assert!(manifest.contains("DATABASE_URL"));
+        assert!(!manifest.contains("DOWE_DEPLOY_ACCESS_PASSWORD"));
+        assert!(!manifest.contains("postgres://"));
+
+        let materialized = TempDir::new().expect("materialized");
+        let metadata = crate::materialize_embedded_application_executable(
+            &report.output_dir.join("dowe-app"),
+            materialized.path(),
+        )
+        .expect("materialize")
+        .expect("embedded metadata");
+        assert_eq!(metadata.environment, environment);
+        let client_environment =
+            fs::read_to_string(materialized.path().join(".env")).expect("client environment");
+        assert!(client_environment.contains(&format!("https://{label}.example.com")));
+        assert!(!client_environment.contains("postgres://"));
+        let selected_environment = fs::read_to_string(
+            materialized
+                .path()
+                .join(format!(".env.{}", environment.as_str())),
+        )
+        .expect("selected client environment");
+        assert_eq!(selected_environment, client_environment);
+    }
+}
+
+#[test]
 fn generates_distroless_docker_context_without_local_dotenv() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), "");
@@ -332,6 +396,43 @@ fn generates_cloudflare_worker_without_node_project() {
 }
 
 #[test]
+fn cloudflare_maps_public_values_to_vars_and_private_names_to_required_secrets() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join(".env.example"),
+        "PUBLIC_URL=\nDATABASE_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n",
+    )
+    .expect("env example");
+    fs::write(
+        temp.path().join("pages/home.dowe"),
+        "page homePage\n  fn load\n    request status method:\"GET\" route:\"/status\" base:env.PUBLIC_URL\n  Text\n    \"Home\"\n",
+    )
+    .expect("page");
+    fs::write(
+        temp.path().join(".env.live"),
+        "PUBLIC_URL=https://live.example.com\nDATABASE_URL=postgres://live.internal/app\n",
+    )
+    .expect("live environment");
+
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Cloudflare);
+    options.name = Some("example-app".to_string());
+    let report = deploy(options).expect("cloudflare");
+    let config =
+        fs::read_to_string(report.output_dir.join("worker/wrangler.jsonc")).expect("config");
+
+    let config: serde_json::Value = serde_json::from_str(&config).expect("wrangler json");
+    assert_eq!(config["vars"], serde_json::json!({}));
+    assert_eq!(
+        config["secrets"]["required"],
+        serde_json::json!(["DATABASE_URL", "PUBLIC_URL"])
+    );
+    let config_text = config.to_string();
+    assert!(!config_text.contains("postgres://live.internal/app"));
+    assert!(!config_text.contains("DOWE_DEPLOY_ACCESS_PASSWORD"));
+}
+
+#[test]
 fn generates_valid_wasm_for_dynamic_and_json_routes() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), "");
@@ -480,8 +581,177 @@ fn generates_vercel_server_function_without_node_project() {
     assert!(output_config.contains(r#""dest": "/index""#));
     assert!(manifest.contains(r#""provider": "vercel""#));
     assert!(manifest.contains(r#""surface": "server""#));
+    assert!(manifest.contains(r#""environmentTarget": "production""#));
+    assert!(manifest.contains(
+        r#""serverEnvironment": [
+    "BACKEND_URL"
+  ]"#
+    ));
     assert!(!report.output_dir.join("package.json").exists());
     assert!(!report.output_dir.join("node_modules").exists());
+}
+
+#[test]
+fn generates_cloudflare_queue_binding_for_static_publication() {
+    let temp = TempDir::new().expect("project");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"main
+  server port:8080
+    route "/enqueue"
+      handler
+        queue appQueue provider:"cloudflare" host:env.QUEUE_HOST port:env.QUEUE_PORT account:env.QUEUE_USER secret:env.QUEUE_PASSWORD vhost:env.QUEUE_VHOST
+        msg sent conn:appQueue.publish queue:"notifications" payload:{ userId:"123" event:"user_created" }
+        return json:{ ok:sent.ok messageId:sent.id }
+"#,
+    )
+    .expect("source");
+    fs::write(
+        temp.path().join(".env.example"),
+        "QUEUE_HOST=\nQUEUE_PORT=\nQUEUE_USER=\nQUEUE_PASSWORD=\nQUEUE_VHOST=\n",
+    )
+    .expect("environment example");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Cloudflare);
+    options.name = Some("queue-worker".to_string());
+
+    let report = deploy(options).expect("cloudflare queue deploy");
+    let config: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(report.output_dir.join("worker/wrangler.jsonc"))
+            .expect("wrangler config"),
+    )
+    .expect("wrangler json");
+    let adapter = fs::read_to_string(report.output_dir.join("worker/index.js"))
+        .expect("worker adapter");
+
+    assert_eq!(config["queues"]["producers"][0]["queue"], "notifications");
+    assert_eq!(
+        config["queues"]["producers"][0]["binding"],
+        "DOWE_QUEUE_NOTIFICATIONS"
+    );
+    assert!(adapter.contains("queue.send"));
+    assert!(!adapter.contains("QUEUE_PASSWORD"));
+}
+
+#[test]
+fn generates_vercel_queue_adapter_without_embedding_credentials() {
+    let temp = TempDir::new().expect("project");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"main
+  server port:8080
+    route "/enqueue"
+      handler
+        queue appQueue provider:"vercel" host:env.QUEUE_HOST port:env.QUEUE_PORT account:env.QUEUE_USER secret:env.QUEUE_PASSWORD vhost:env.QUEUE_VHOST
+        msg sent conn:appQueue.publish queue:"notifications" payload:{ userId:"123" event:"user_created" }
+        return json:{ ok:sent.ok messageId:sent.id }
+"#,
+    )
+    .expect("source");
+    fs::write(
+        temp.path().join(".env.example"),
+        "QUEUE_HOST=\nQUEUE_PORT=\nQUEUE_USER=\nQUEUE_PASSWORD=\nQUEUE_VHOST=\n",
+    )
+    .expect("environment example");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Vercel);
+    options.name = Some("queue-vercel".to_string());
+
+    let report = deploy(options).expect("vercel queue deploy");
+    let function = report
+        .output_dir
+        .join(".vercel/output/functions/index.func");
+    let adapter = fs::read_to_string(function.join("index.js")).expect("vercel adapter");
+    let wasm = fs::read(function.join("dowe-server.wasm")).expect("wasm");
+
+    wasmparser::Validator::new()
+        .validate_all(&wasm)
+        .expect("valid wasm");
+    assert!(adapter.contains("enqueueVercel"));
+    assert!(adapter.contains("process.env"));
+    assert!(!adapter.contains("QUEUE_PASSWORD"));
+    assert!(!adapter.contains("user_created"));
+}
+
+#[test]
+fn rejects_queue_edge_provider_mismatch_and_dynamic_payload() {
+    let mismatch = TempDir::new().expect("mismatch project");
+    fs::write(
+        mismatch.path().join("main.dowe"),
+        r#"main
+  server port:8080
+    route "/enqueue"
+      handler
+        queue appQueue provider:"vercel" host:env.QUEUE_HOST port:env.QUEUE_PORT account:env.QUEUE_USER secret:env.QUEUE_PASSWORD vhost:env.QUEUE_VHOST
+        msg sent conn:appQueue.publish queue:"notifications" payload:{ ok:true }
+        return json:{ ok:sent.ok messageId:sent.id }
+"#,
+    )
+    .expect("source");
+    fs::write(
+        mismatch.path().join(".env.example"),
+        "QUEUE_HOST=\nQUEUE_PORT=\nQUEUE_USER=\nQUEUE_PASSWORD=\nQUEUE_VHOST=\n",
+    )
+    .expect("environment example");
+    let error = deploy(DeployOptions::new(mismatch.path(), DeployTarget::Cloudflare))
+        .expect_err("mismatched provider");
+    assert!(error
+        .to_string()
+        .contains("Queue connection provider does not match the deploy target"));
+
+    let dynamic = TempDir::new().expect("dynamic project");
+    fs::write(
+        dynamic.path().join("main.dowe"),
+        r#"main
+  server port:8080
+    route "/enqueue"
+      handler
+        queue appQueue provider:"cloudflare" host:env.QUEUE_HOST port:env.QUEUE_PORT account:env.QUEUE_USER secret:env.QUEUE_PASSWORD vhost:env.QUEUE_VHOST
+        msg sent conn:appQueue.publish queue:"notifications" payload:{ event:req.body.event }
+        return json:{ ok:sent.ok messageId:sent.id }
+"#,
+    )
+    .expect("source");
+    fs::write(
+        dynamic.path().join(".env.example"),
+        "QUEUE_HOST=\nQUEUE_PORT=\nQUEUE_USER=\nQUEUE_PASSWORD=\nQUEUE_VHOST=\n",
+    )
+    .expect("environment example");
+    let error = deploy(DeployOptions::new(dynamic.path(), DeployTarget::Cloudflare))
+        .expect_err("dynamic payload");
+    assert!(error
+        .to_string()
+        .contains("Queue Edge payload cannot use dynamic references"));
+}
+
+#[test]
+fn vercel_stage_manifest_declares_custom_environment_and_server_names() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join(".env.example"),
+        "DATABASE_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n",
+    )
+    .expect("env example");
+    write_environment(temp.path(), DeployEnvironment::Stage, "stage-password-123");
+    fs::write(
+        temp.path().join(".env.stage"),
+        "DATABASE_URL=postgres://stage.internal/app\nDOWE_DEPLOY_ACCESS_PASSWORD=stage-password-123\n",
+    )
+    .expect("stage environment");
+    let mut options = DeployOptions::new(temp.path(), DeployTarget::Vercel);
+    options.environment = DeployEnvironment::Stage;
+    options.name = Some("example-server".to_string());
+
+    let report = deploy(options).expect("vercel stage server");
+    let manifest = fs::read_to_string(report.output_dir.join("deploy.json")).expect("manifest");
+
+    assert!(manifest.contains(r#""environmentTarget": "stage""#));
+    assert!(manifest.contains(
+        r#""serverEnvironment": [
+    "DATABASE_URL"
+  ]"#
+    ));
+    assert!(!manifest.contains("postgres://stage.internal/app"));
+    assert!(!manifest.contains("stage-password-123"));
 }
 
 #[test]

@@ -684,11 +684,12 @@ pub struct CacheConnection {
     pub name: CacheConnectionValue,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CacheProvider {
     CloudflareKv,
     Redis,
     Dowe,
+    Environment(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -734,6 +735,8 @@ pub struct QueueConnection {
 pub enum QueueProvider {
     Dowe,
     RabbitMq,
+    Cloudflare,
+    Vercel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

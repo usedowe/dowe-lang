@@ -1,7 +1,7 @@
 use dowe_components::{
     AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
     AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BoxPosition, Breakpoint, ButtonSize,
-    ArcChartProps, CanvasBackground, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
+    ArcChartProps, CameraProps, CanvasBackground, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
     CodeTemplateSegment, CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
     CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation,
@@ -11,7 +11,7 @@ use dowe_components::{
     GridProps, GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE,
     ImageProps, Justify, LayoutProps, MapMarker, MapProps, MapWaypoint,
     MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, SIDE_NAV_SUBMENU_ARROW_PATH,
-    side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon, view_icon,
+    empty_icon, side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon, view_icon,
     NavMenuProps, NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayItemProps,
     OverlayPaint, PositionProps, RadioGroupOrientation, RadioGroupProps,
     RadioOption, RecordProps, ResponsiveValue, RichTextMark,
@@ -21,7 +21,7 @@ use dowe_components::{
     SideNavProps, SidebarProps, SideNavSize, SkeletonProps, SizeValue, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath,
     SvgPathFill, SvgTransform, SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableProps, TableSize,
     PieChartProps, TabsProps, TabsVariant, TextProps, TextSize, TextSpacing, TextWeight, ThemeSelectProps, ThemeToggleProps,
-    ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem, TypeWriterProps,
+    ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem, TypeWriterProps, MicrophoneProps,
     VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewGesture, ViewNode, ViewTransition,
     PhoneProps, phone_country, phone_countries, phone_country_flag_icon,
     ViewConstant, ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, VisibilityCondition,
@@ -129,6 +129,13 @@ pub fn generate_android_with_app_translations_and_icons(
     has_app_icon: bool,
 ) -> AndroidOutput {
     let font_families = font_config.effective_families(&collect_route_font_families(routes));
+    let uses_camera = routes.iter().any(|route| {
+        android_tree_has_camera(&route.layout_tree) || android_tree_has_camera(&route.page_tree)
+    });
+    let uses_microphone = routes.iter().any(|route| {
+        android_tree_has_microphone(&route.layout_tree)
+            || android_tree_has_microphone(&route.page_tree)
+    });
     let dev_sources = dev_activity_sources(
         routes,
         font_config,
@@ -164,7 +171,7 @@ pub fn generate_android_with_app_translations_and_icons(
         },
         AndroidArtifact {
             relative_path: PathBuf::from("apps/android/app/src/main/AndroidManifest.xml"),
-            content: android_manifest(app_name, has_app_icon),
+            content: android_manifest(app_name, has_app_icon, uses_camera, uses_microphone),
             kind: AndroidArtifactKind::Manifest,
             target: "android",
         },
@@ -240,7 +247,13 @@ pub fn generate_android_with_app_translations_and_icons(
         },
         AndroidArtifact {
             relative_path: PathBuf::from("apps/android/dev/AndroidManifest.xml"),
-            content: dev_manifest(app_name, app_bundle, has_app_icon),
+            content: dev_manifest(
+                app_name,
+                app_bundle,
+                has_app_icon,
+                uses_camera,
+                uses_microphone,
+            ),
             kind: AndroidArtifactKind::Manifest,
             target: "android",
         },
@@ -518,11 +531,18 @@ dependencies {{
     )
 }
 
-fn android_manifest(app_name: &str, has_app_icon: bool) -> String {
+fn android_manifest(
+    app_name: &str,
+    has_app_icon: bool,
+    uses_camera: bool,
+    uses_microphone: bool,
+) -> String {
     let icon_attributes = android_icon_attributes(has_app_icon);
+    let capture_permissions = android_capture_permissions(uses_camera, uses_microphone);
     format!(
         r#"<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+{capture_permissions}
     <application android:theme="@style/AppTheme" android:label="{}" android:usesCleartextTraffic="true"{icon_attributes}>
         <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize" android:supportsPictureInPicture="true" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
             <intent-filter>
@@ -544,12 +564,20 @@ fn android_manifest(app_name: &str, has_app_icon: bool) -> String {
     )
 }
 
-fn dev_manifest(app_name: &str, app_bundle: &str, has_app_icon: bool) -> String {
+fn dev_manifest(
+    app_name: &str,
+    app_bundle: &str,
+    has_app_icon: bool,
+    uses_camera: bool,
+    uses_microphone: bool,
+) -> String {
     let icon_attributes = android_icon_attributes(has_app_icon);
+    let capture_permissions = android_capture_permissions(uses_camera, uses_microphone);
     format!(
         r#"<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{}">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="36" />
     <uses-permission android:name="android.permission.INTERNET" />
+{capture_permissions}
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="{}" android:usesCleartextTraffic="true"{icon_attributes}>
         <activity android:name="dev.dowe.generated.DoweDevHostActivity" android:exported="true" android:windowSoftInputMode="adjustResize" android:supportsPictureInPicture="true" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
             <intent-filter>
@@ -570,6 +598,39 @@ fn dev_manifest(app_name: &str, app_bundle: &str, has_app_icon: bool) -> String 
         app_bundle,
         escape_android_xml(app_name)
     )
+}
+
+fn android_capture_permissions(uses_camera: bool, uses_microphone: bool) -> String {
+    [
+        uses_camera.then_some("    <uses-permission android:name=\"android.permission.CAMERA\" />"),
+        uses_microphone.then_some(
+            "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />",
+        ),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join("\n")
+}
+
+fn android_tree_has_camera(node: &ViewNode) -> bool {
+    if matches!(node, ViewNode::Camera { .. }) {
+        return true;
+    }
+    node_child_groups(node)
+        .into_iter()
+        .flatten()
+        .any(android_tree_has_camera)
+}
+
+fn android_tree_has_microphone(node: &ViewNode) -> bool {
+    if matches!(node, ViewNode::Microphone { .. }) {
+        return true;
+    }
+    node_child_groups(node)
+        .into_iter()
+        .flatten()
+        .any(android_tree_has_microphone)
 }
 
 fn android_icon_attributes(has_app_icon: bool) -> &'static str {

@@ -414,6 +414,9 @@ fn generates_swiftui_display_chat_and_motion_components() {
     assert!(views.contains("DoweAvatarGroup(items: doweAvatarGroupItems(state.rows(\"people\")"));
     assert!(views.contains("DoweChatBox(state: state, messagesPath: \"messages\""));
     assert!(views.contains("DoweEmpty(kind: \"result\""));
+    assert!(views.contains("iconViewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24))"));
+    assert!(views.contains("iconPaths: [DoweSvgPathData("));
+    assert!(!views.contains("struct DoweEmptyIcon"));
     assert!(views.contains("DoweMarquee(speed: \"fast\""));
     assert!(views.contains(
         "withAnimation(.linear(duration: marqueeDuration).repeatForever(autoreverses: false))"
@@ -775,7 +778,7 @@ fn generates_labeled_input_and_select_fields() {
     assert!(views.contains("ZStack(alignment: floating ? .topLeading : .leading)"));
     assert!(views.contains(".padding(.top, floating ? CGFloat(18) : CGFloat(0))"));
     assert!(!views.contains("Menu {"));
-    assert!(!views.contains("Picker("));
+    assert!(!views.contains("Picker(selection:"));
     assert!(!views.contains("DoweSelectPortalOverlay"));
     assert!(views.contains(
         r#"DoweSelectField(value: nil, label: "Role", placeholder: "Choose role", floating: true"#
@@ -936,6 +939,14 @@ fn generates_swiftui_media_display_form_components() {
 
     assert!(views.contains("struct DoweAudioView: View"));
     assert!(views.contains("DoweAudioView(source:"));
+    assert!(views.contains("@State private var player: AVPlayer"));
+    assert!(views.contains("ForEach(0..<50"));
+    assert!(views.contains("DragGesture(minimumDistance: 0)"));
+    assert!(views.contains("private func doweAudioTime"));
+    assert!(views.contains("playIcon: DoweVideoIcon"));
+    assert!(views.contains("private let doweAudioWaveform: [CGFloat]"));
+    assert!(views.contains("private struct DoweAudioControlButton: View"));
+    assert!(views.contains(".animation(.easeInOut(duration: 0.3), value: currentTime)"));
     assert!(views.contains("struct DoweImageView: View"));
     let image_runtime = views
         .split("struct DoweImageView: View")
@@ -967,11 +978,23 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.matches("m19.704 12l-8.491-8.727a.75.75").count() >= 2);
     assert!(!views.contains("__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__"));
     assert!(views.contains(".rotationEffect(open ? .degrees(90) : .degrees(0))"));
-    assert!(views.contains("Text(label)\n                        .font(.system(size: CGFloat(14), weight: .semibold))\n                        .foregroundStyle(contentColor)"));
+    assert!(views.contains("Text(label)\n                        .font(.system(size: CGFloat(15), weight: .bold))\n                        .foregroundStyle(contentColor)"));
+    assert!(views.contains("variant == \"ghost\" || variant == \"line\" ? CGFloat(0) : CGFloat(8)"));
+    assert!(views.contains("variant == \"ghost\" || variant == \"line\" ? CGFloat(0) : CGFloat(4)"));
+    assert!(views.contains(".frame(maxWidth: .infinity, alignment: .leading)"));
+    assert!(views.contains("borderStyle: \"separator\""));
+    assert!(views.contains("if borderStyle == \"separator\""));
+    assert!(views.contains("radius: CGFloat(0), action: { toggleItem(\"intro\") }"));
+    assert!(!views.contains("radius: if variant == \"ghost\""));
+    assert!(!views.contains("Button(playing ? \"Pause\" : \"Play\")"));
     assert!(!views.contains("Text(open ? \"^\" : \"v\")"));
     assert!(views.contains("DoweCarouselView(variant: \"snapping\""));
     assert!(views.contains("ScrollView(.horizontal"));
     assert!(views.contains("showsIndicators: false"));
+    assert!(views.contains("if showNavigation"));
+    assert!(views.contains(".disabled(disableLoop && currentIndex == 0)"));
+    assert!(views.contains("containerRelativeFrame(.horizontal"));
+    assert!(views.contains("carouselHorizontalOffset"));
     assert!(views.contains(".scrollPosition(id: $scrollId)"));
     assert!(views.contains(".onChange(of: scrollId) { _, value in"));
     assert!(!views.contains(".onChange(of: scrollId) { value in"));
@@ -1076,7 +1099,11 @@ fn generates_swiftui_advanced_form_components() {
         .expect("combo box call");
     assert!(combo_box.contains("minHeight: CGFloat(40)"), "{combo_box}");
     assert!(combo_box.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(12), preferredBase: CGFloat(11.2), preferredViewport: CGFloat(0.2), max: CGFloat(14))"), "{combo_box}");
-    assert!(views.contains("DoweSelectOption(value: \"admin\", label: \"Admin\""));
+    assert!(views.contains("DoweComboOption(value: \"admin\", label: \"Admin\""));
+    assert!(views.contains("DoweComboAnchorPresenter"));
+    assert!(views.contains("DoweAnchoredPopoverPresenter(isPresented: isPresented, minWidth: CGFloat(280)"));
+    assert!(views.contains("loadingText: \"Loading\""));
+    assert!(views.contains("disabled: false"));
     assert!(views.contains("struct DoweCsvColumn: Identifiable"));
     assert!(views.contains("DoweCsvField(label: \"Import\""));
     assert!(views.contains("DoweCsvColumn(name: \"email\", label: \"Email\")"));
@@ -1085,6 +1112,12 @@ fn generates_swiftui_advanced_form_components() {
     assert!(views.contains("DoweDragItem(id: \"draft\", label: \"Draft\""));
     assert!(views.contains("DoweEditorField(value: state.binding(\"profile.notes\")"));
     assert!(views.contains("DoweImageCropper(value: state.binding(\"profile.avatar\")"));
+    assert!(views.contains("fileImporter(isPresented: $pickerPresented"));
+    assert!(views.contains("doweCropImage("));
+    assert!(views.contains("return \"data:\\(jpeg ? \"image/jpeg\" : \"image/png\")"));
+    assert!(views.contains("Button(\"Apply\")"));
+    assert!(views.contains("context.stroke(path, with: .color(.white.opacity(0.65)), lineWidth: CGFloat(1))"));
+    assert!(!views.contains("context.stroke(Path { path in"));
     assert!(views.contains("DowePassword(value: state.binding(\"profile.password\")"));
     let password_call = views
         .lines()
@@ -1594,6 +1627,40 @@ fn generates_loading_button_with_animated_spinner_and_disabled_state() {
 }
 
 #[test]
+fn generates_disabled_button_opacity_for_swiftui() {
+    let route = ViewRoute {
+        id: "disabled-button".to_string(),
+        route_path: "/disabled-button".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Button {
+            props: VariantProps {
+                variant: Some(ComponentVariant::Soft),
+                color: Some(ColorFamily::Secondary),
+                reactive: ReactiveVariantProps {
+                    disabled: Some("formInvalid".to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![text("Submit")],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains(".textSelection(.disabled)"));
+    assert!(views.contains(".disabled(state.bool(\"formInvalid\", fallback: true))"));
+    assert!(views.contains(".opacity(state.bool(\"formInvalid\", fallback: true) ? 0.5 : 1)"));
+}
+
+#[test]
 fn generates_full_hit_targets_for_icon_and_text_buttons() {
     let route = ViewRoute {
         id: "button-hit-targets".to_string(),
@@ -1797,7 +1864,6 @@ fn generates_swiftui_form_validation_contract() {
         &[],
     );
     let source = swift_content(&output);
-
     assert!(source.contains("struct DoweValidationRule"));
     assert!(source.contains("private func doweValidationError"));
     assert!(source.contains("message: \"Email is required\""));
@@ -1812,4 +1878,69 @@ fn generates_swiftui_form_validation_contract() {
     let date_source = &source[date_start..date_end];
     assert!(date_source.contains("let validationRules: [DoweValidationRule]"));
     assert!(date_source.contains("@State private var touched = false"));
+}
+
+#[test]
+fn generates_swiftui_camera_and_microphone_capture_contract() {
+    let route = ViewRoute {
+        id: "capture".to_string(),
+        route_path: "/capture".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Box {
+            props: StyleProps::default(),
+            children: vec![
+                ViewNode::Camera {
+                    props: CameraProps {
+                        style: VariantProps::default(),
+                        facing: CameraFacing::User,
+                        label: "Take photo".to_string(),
+                        disabled: false,
+                        on_start: Some("cameraStart".to_string()),
+                        on_capture: Some("cameraCapture".to_string()),
+                        on_error: Some("cameraError".to_string()),
+                    },
+                },
+                ViewNode::Microphone {
+                    props: MicrophoneProps {
+                        style: VariantProps::default(),
+                        label: "Record audio".to_string(),
+                        max_duration: Some(30),
+                        disabled: false,
+                        on_start: Some("microphoneStart".to_string()),
+                        on_stop: Some("microphoneStop".to_string()),
+                        on_error: Some("microphoneError".to_string()),
+                    },
+                },
+            ],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let source = swift_content(&output);
+    let plist = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("Info.plist"))
+        .expect("Info.plist")
+        .content
+        .clone();
+
+    assert!(source.contains("DoweCameraView(state: state, facing: \"user\""));
+    assert!(source.contains("DoweMicrophoneView(state: state, label: \"Record audio\""));
+    assert!(source.contains("struct DoweCameraPicker: UIViewControllerRepresentable"));
+    assert!(source.contains("let sourceType: UIImagePickerController.SourceType"));
+    assert!(source.contains("if sourceType == .camera"));
+    assert!(source.contains("AVAudioRecorderDelegate"));
+    assert!(source.contains("AVAudioApplication.requestRecordPermission(completionHandler: handlePermission)"));
+    assert!(source.contains("let handlePermission: @Sendable (Bool) -> Void"));
+    assert!(source.contains("nonisolated func audioRecorderDidFinishRecording"));
+    assert!(source.contains("Task { @MainActor [weak self] in"));
+    assert!(plist.contains("NSCameraUsageDescription"));
+    assert!(plist.contains("NSMicrophoneUsageDescription"));
 }

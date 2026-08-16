@@ -457,7 +457,7 @@ fn render_dev_android_flow_node(
                 }
                 if !props.icon_only {
                     let label = next_dev_view(counter);
-                    output.push_str(&format!("        TextView {label} = doweText({text}, {content}, {}, 400, 0f, 1.2f, {});\n        doweAdd({view}, {label}, 8, true);\n", dev_text_size_expr(false, INPUT_TEXT_SIZE), dev_font_value(props.style.font.as_ref().or(inherited_font))));
+                    output.push_str(&format!("        TextView {label} = doweText({text}, {content}, {}, 400, 0f, 1.2f, {});\n        {label}.setTextIsSelectable(false);\n        doweAdd({view}, {label}, 8, true);\n", dev_text_size_expr(false, INPUT_TEXT_SIZE), dev_font_value(props.style.font.as_ref().or(inherited_font))));
                     if let Some(icon) = props.icon_end.as_ref() {
                         if let Some(path) = props.reactive.icon_end_when.as_ref() {
                             output.push_str(&format!("        if ({}) {{\n", icon_condition(path, props.reactive.icon_end_comparison.as_ref())));
@@ -472,7 +472,7 @@ fn render_dev_android_flow_node(
                     output.push_str(&format!("        {view}.setOnClickListener(v -> {action});\n"));
                 }
                 if let Some(disabled) = disabled.as_ref() {
-                    output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n"));
+                    output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n        {view}.setAlpha({disabled} ? 0.5f : 1f);\n"));
                 }
                 let mut button_style = props.style.clone();
                 button_style.shadow = None;
@@ -487,7 +487,7 @@ fn render_dev_android_flow_node(
                 return;
             }
             output.push_str(&format!(
-                            "        Button {view} = new Button(this);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setText({});\n        {view}.setAllCaps(false);\n        {view}.setTypeface(Typeface.create({}, android.graphics.Typeface.NORMAL));\n        {view}.setTextSize({});\n        {view}.setIncludeFontPadding(false);\n        {view}.setGravity(Gravity.CENTER);\n        {view}.setMinWidth(0);\n        {view}.setMinimumWidth(0);\n        {view}.setMinHeight(0);\n        {view}.setMinimumHeight(0);\n        {view}.setTextColor({});\n        {view}.setBackgroundTintList(null);\n        {view}.setBackground(doweInputBackground({}, {}, {}));\n",
+                            "        Button {view} = new Button(this);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setText({});\n        {view}.setTextIsSelectable(false);\n        {view}.setAllCaps(false);\n        {view}.setTypeface(Typeface.create({}, android.graphics.Typeface.NORMAL));\n        {view}.setTextSize({});\n        {view}.setIncludeFontPadding(false);\n        {view}.setGravity(Gravity.CENTER);\n        {view}.setMinWidth(0);\n        {view}.setMinimumWidth(0);\n        {view}.setMinHeight(0);\n        {view}.setMinimumHeight(0);\n        {view}.setTextColor({});\n        {view}.setBackgroundTintList(null);\n        {view}.setBackground(doweInputBackground({}, {}, {}));\n",
                             text,
                             dev_font_value(props.style.font.as_ref().or(inherited_font)),
                             dev_text_size_expr(false, INPUT_TEXT_SIZE),
@@ -505,7 +505,7 @@ fn render_dev_android_flow_node(
                 ));
             }
             if let Some(disabled) = disabled.as_ref() {
-                output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n"));
+                output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n        {view}.setAlpha({disabled} ? 0.5f : 1f);\n"));
             }
             let mut button_style = props.style.clone();
             button_style.shadow = None;

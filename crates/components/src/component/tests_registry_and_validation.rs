@@ -5,7 +5,7 @@ use super::{
     ButtonSize, COMPONENT_REGISTRY, COUNTRY_FLAGS, CanvasBackground, CanvasFit, CarouselVariant,
     ChartCurve, ChartLegendPosition, ChartPalette, ChartSize, CodeLanguage, CodeTemplateSegment,
     CodeTokenKind, ColorFamily, ColorToken, ComponentError, ComponentProp, ComponentVariant,
-    DeviceProfile, DividerOrientation, FabProps, FlexDirection, FontFamily, GapValue,
+    DeviceProfile, DividerOrientation, EmptyKind, FabProps, FlexDirection, FontFamily, GapValue,
     GridAlignment, GridTracks, IframeLoading, NativeExternalMode, NavigationAction,
     OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation, ResponsivePropEntry,
     RoundedSize, SVG_LOGOS, SVG_SPINNERS, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap,
@@ -15,7 +15,7 @@ use super::{
     all_icon_names, arc_chart_component_node, area_chart_component_node, bar_chart_component_node,
     bar_component_node, box_node, candlestick_node, canvas_component_node, carousel_component_node,
     carousel_slide_component, children_node, code_node, compose_tree, container_component_node,
-    country_flag_icon, device_node, divider_node, first_text, fixed_box_nodes, fixed_fab_nodes,
+    country_flag_icon, device_node, divider_node, empty_icon, first_text, fixed_box_nodes, fixed_fab_nodes,
     font_catalog, form_control_min_height, form_control_text_size, icon_component_node, iframe_node,
     input_node, integrated_design_theme,
     line_chart_component_node,
@@ -2465,6 +2465,21 @@ fn exposes_solar_variant_names_in_the_icon_catalog() {
     assert!(names.contains(&"alt-arrow-right-line-duotone".to_string()));
     assert!(names.contains(&"alt-arrow-right-bold-duotone".to_string()));
     assert!(!names.contains(&"alt-arrow-right-linear".to_string()));
+}
+
+#[test]
+fn maps_empty_kinds_to_bold_duotone_icons() {
+    let mappings = [
+        (EmptyKind::Playlist, "playlist-bold-duotone"),
+        (EmptyKind::Result, "magnifier-bold-duotone"),
+        (EmptyKind::Data, "database-bold-duotone"),
+        (EmptyKind::Template, "widget-add-bold-duotone"),
+    ];
+    let names = all_icon_names();
+    for (kind, name) in mappings {
+        assert!(names.contains(&name.to_string()));
+        assert!(!empty_icon(kind).expect("Empty icon").paths.is_empty());
+    }
 }
 
 #[test]

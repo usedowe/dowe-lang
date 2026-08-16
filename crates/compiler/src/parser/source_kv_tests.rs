@@ -1,8 +1,10 @@
 use crate::model::{
-    CacheConnectionValue, CacheProvider, EndpointBehavior, ServerKvStatement, ServerStatement,
+    CacheConnectionValue, CacheProvider, EndpointBehavior, EnvironmentConfig,
+    EnvironmentValueSource, EnvironmentVariable, EnvironmentVisibility, ServerKvStatement,
+    ServerStatement,
 };
 use crate::parser::source_parser::parse_source_file;
-use crate::parser::source_server::{ServerRoot, parse_server_file};
+use crate::parser::source_server::{ServerRoot, parse_server_file, parse_server_source};
 use std::path::Path;
 
 #[test]
@@ -48,6 +50,76 @@ fn parses_every_cache_provider() {
                 if connection.provider == expected
         ));
     }
+}
+
+#[test]
+fn parses_environment_selected_cache_provider() {
+    let source = r#"main
+  server port:0
+    route "/api/cache"
+      handler
+        cache appCache provider:env.CACHE_PROVIDER host:env.CACHE_HOST port:env.CACHE_PORT account:env.CACHE_USER secret:env.CACHE_PASSWORD name:env.CACHE_DATABASE
+        kv value conn:appCache.get key:"appointment:1"
+        return json:{ data:value }"#;
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        source.to_string(),
+    )
+    .expect("source");
+    let environment = EnvironmentConfig {
+        variables: [
+            "CACHE_PROVIDER",
+            "CACHE_HOST",
+            "CACHE_PORT",
+            "CACHE_USER",
+            "CACHE_PASSWORD",
+            "CACHE_DATABASE",
+        ]
+        .into_iter()
+        .map(|name| EnvironmentVariable {
+            name: name.to_string(),
+            visibility: EnvironmentVisibility::Server,
+            resolved_source: EnvironmentValueSource::Missing,
+            resolved_value: None,
+        })
+        .collect(),
+    };
+    let server = parse_server_source(Path::new("/project"), &file, &environment).expect("server");
+
+    assert!(matches!(
+        &server.backend.endpoints[0].action.statements[0],
+        ServerStatement::Kv(ServerKvStatement::Handle { connection })
+            if connection.provider == CacheProvider::Environment("CACHE_PROVIDER".to_string())
+    ));
+}
+
+#[test]
+fn rejects_client_environment_selected_cache_provider() {
+    let source = r#"main
+  server port:0
+    route "/api/cache"
+      handler
+        cache appCache provider:env.CACHE_PROVIDER host:"127.0.0.1" port:4148 account:"app" secret:"secret" name:"clinic"
+        return json:{ ok:true }"#;
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        source.to_string(),
+    )
+    .expect("source");
+    let environment = EnvironmentConfig {
+        variables: vec![EnvironmentVariable {
+            name: "CACHE_PROVIDER".to_string(),
+            visibility: EnvironmentVisibility::Client,
+            resolved_source: EnvironmentValueSource::Missing,
+            resolved_value: None,
+        }],
+    };
+
+    let error = parse_server_source(Path::new("/project"), &file, &environment)
+        .expect_err("client provider");
+    assert!(error.to_string().contains("must be server-only"));
 }
 
 #[test]

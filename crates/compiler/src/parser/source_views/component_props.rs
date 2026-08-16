@@ -332,6 +332,16 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             SourceValue::Bareword(_),
         )
         | (
+            BuiltinComponent::Camera,
+            "onStart" | "onCapture" | "onError",
+            SourceValue::Bareword(_),
+        )
+        | (
+            BuiltinComponent::Microphone,
+            "onStart" | "onStop" | "onError",
+            SourceValue::Bareword(_),
+        )
+        | (
             BuiltinComponent::Record,
             "onStart" | "onPause" | "onResume" | "onStop" | "onDiscard" | "onConfirm",
             SourceValue::Bareword(_),

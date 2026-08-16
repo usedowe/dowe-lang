@@ -493,19 +493,10 @@ fn empty_default_description(kind: EmptyKind) -> &'static str {
     }
 }
 
-fn empty_icon_html(kind: EmptyKind) -> &'static str {
-    match kind {
-        EmptyKind::Playlist => {
-            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><rect x="28" y="18" width="54" height="64" rx="10" fill="currentColor" opacity=".12"></rect><path d="M76 29v33.5a10 10 0 1 1-5-8.66V35H49v27.5a10 10 0 1 1-5-8.66V29z" fill="currentColor" opacity=".78"></path></svg>"#
-        }
-        EmptyKind::Result => {
-            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><circle cx="54" cy="45" r="24" fill="currentColor" opacity=".12"></circle><path d="M70 62l18 18M45 38h18M45 50h13" stroke="currentColor" stroke-width="7" stroke-linecap="round" opacity=".78"></path></svg>"#
-        }
-        EmptyKind::Data => {
-            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><rect x="24" y="22" width="72" height="56" rx="10" fill="currentColor" opacity=".12"></rect><path d="M38 38h44M38 52h34M38 66h22" stroke="currentColor" stroke-width="7" stroke-linecap="round" opacity=".78"></path></svg>"#
-        }
-        EmptyKind::Template => {
-            r#"<svg class="empty-icon" viewBox="0 0 120 100" aria-hidden="true"><path d="M30 20h42l18 18v42H30z" fill="currentColor" opacity=".12"></path><path d="M72 20v20h20M43 50h34M43 64h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".78"></path></svg>"#
-        }
-    }
+fn empty_icon_html(kind: EmptyKind, context: &ReactiveRenderContext) -> String {
+    let icon = empty_icon(kind).expect("bundled Empty icon");
+    format!(
+        r#"<span class="empty-icon">{}</span>"#,
+        render_svg_html(&icon.props, &icon.paths, context)
+    )
 }

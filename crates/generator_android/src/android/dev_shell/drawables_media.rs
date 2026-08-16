@@ -1,6 +1,13 @@
 fn dev_activity_drawables_media() -> &'static str {
     r#"    private static final int DOWE_IMAGE_MEMORY_CACHE_BYTES = 24 * 1024 * 1024;
     private static final long DOWE_IMAGE_DISK_CACHE_BYTES = 64L * 1024L * 1024L;
+    private static final float[] DOWE_AUDIO_WAVEFORM = new float[] {
+        0.48f, 0.62f, 0.38f, 0.54f, 0.76f, 0.44f, 0.30f, 0.52f, 0.68f, 0.84f,
+        0.58f, 0.42f, 0.65f, 0.92f, 0.72f, 0.49f, 0.35f, 0.61f, 0.80f, 0.55f,
+        0.41f, 0.71f, 0.96f, 0.64f, 0.46f, 0.32f, 0.57f, 0.75f, 0.88f, 0.60f,
+        0.37f, 0.51f, 0.69f, 0.83f, 0.47f, 0.29f, 0.55f, 0.73f, 0.63f, 0.40f,
+        0.67f, 0.89f, 0.58f, 0.34f, 0.50f, 0.77f, 0.68f, 0.43f, 0.60f, 0.82f
+    };
     private final LruCache<String, Bitmap> doweImageMemoryCache = new LruCache<String, Bitmap>(DOWE_IMAGE_MEMORY_CACHE_BYTES) {
         @Override
         protected int sizeOf(String source, Bitmap bitmap) {
@@ -216,6 +223,148 @@ fn dev_activity_drawables_media() -> &'static str {
         }
         doweVideoControls(view, video, posterView, autoplay, playIcon, pauseIcon, volumeIcon, mutedIcon, pictureInPictureIcon, fullscreenIcon);
         video.setVideoURI(Uri.parse(source));
+        return view;
+    }
+
+    private final class DoweAudioWaveView extends View {
+        private final MediaPlayer player;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final int color;
+        private float progress;
+
+        DoweAudioWaveView(MediaPlayer player, int color) {
+            super(DoweDevActivity.this);
+            this.player = player;
+            this.color = color;
+            setFocusable(true);
+            setContentDescription("Audio progress");
+        }
+
+        void sync() {
+            int duration = Math.max(0, player.getDuration());
+            progress = duration == 0 ? 0f : Math.max(0f, Math.min(1f, (float) player.getCurrentPosition() / (float) duration));
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float gap = doweDp(2);
+            float width = Math.max(1f, (getWidth() - gap * 49f) / 50f);
+            float center = getHeight() / 2f;
+            paint.setColor(color);
+            for (int index = 0; index < 50; index++) {
+                float height = doweDp(DOWE_AUDIO_WAVEFORM[index] * 20f);
+                paint.setAlpha((index + 0.5f) / 50f <= progress ? 255 : 77);
+                float left = index * (width + gap);
+                canvas.drawRoundRect(left, center - height / 2f, left + width, center + height / 2f, doweDp(2), doweDp(2), paint);
+            }
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            if (event.getAction() != MotionEvent.ACTION_DOWN && event.getAction() != MotionEvent.ACTION_MOVE && event.getAction() != MotionEvent.ACTION_UP) return true;
+            int duration = Math.max(0, player.getDuration());
+            if (duration > 0 && getWidth() > 0) {
+                player.seekTo((int) (Math.max(0f, Math.min(1f, event.getX() / (float) getWidth())) * duration));
+                sync();
+            }
+            return true;
+        }
+    }
+
+    private FrameLayout doweAudioIconButton(DoweSvgView icon, String label, int buttonBackgroundColor) {
+        FrameLayout button = new FrameLayout(this);
+        button.setContentDescription(label);
+        button.setBackground(doweBackground(buttonBackgroundColor, 999f));
+        button.addView(icon, doweVideoIconLayout());
+        return button;
+    }
+
+    private void doweSetAudioSource(MediaPlayer player, String source) throws Exception {
+        if (source.startsWith("/") && !source.startsWith("//")) {
+            String assetPath = source.substring(1).replaceFirst("^assets/", "");
+            android.content.res.AssetFileDescriptor descriptor = getAssets().openFd(assetPath);
+            try {
+                player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength());
+            } finally {
+                descriptor.close();
+            }
+            return;
+        }
+        player.setDataSource(source);
+    }
+
+    private LinearLayout doweAudio(String source, String subtitle, String avatarSource, int backgroundColor, int contentColor, int buttonBackgroundColor, int buttonContentColor, Integer borderColor, DoweSvgView playIcon, DoweSvgView pauseIcon) {
+        LinearLayout view = doweContainer(true);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        view.setPadding(doweDp(12), doweDp(6), doweDp(12), doweDp(6));
+        view.setBackground(borderColor == null ? doweBackground(backgroundColor, DOWE_RADIUS) : doweInputBackground(backgroundColor, borderColor, DOWE_RADIUS));
+        playIcon.setCurrentColor(buttonContentColor);
+        pauseIcon.setCurrentColor(buttonContentColor);
+        MediaPlayer player = new MediaPlayer();
+        FrameLayout toggle = doweAudioIconButton(playIcon, "Play audio", buttonBackgroundColor);
+        pauseIcon.setVisibility(View.GONE);
+        toggle.addView(pauseIcon, doweVideoIconLayout());
+        LinearLayout.LayoutParams toggleParams = new LinearLayout.LayoutParams(doweDp(40), doweDp(40));
+        toggleParams.setMargins(0, 0, doweDp(12), 0);
+        view.addView(toggle, toggleParams);
+        LinearLayout content = doweContainer(false);
+        content.setPadding(0, 0, 0, 0);
+        LinearLayout.LayoutParams contentParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        DoweAudioWaveView waveform = new DoweAudioWaveView(player, contentColor);
+        content.addView(waveform, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(32)));
+        LinearLayout footer = doweContainer(true);
+        footer.setGravity(Gravity.CENTER_VERTICAL);
+        TextView time = doweText("0:00", contentColor, 12f, 600, 0f, 1.2f, "sans");
+        footer.addView(time, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (subtitle != null) {
+            TextView subtitleView = doweText(subtitle, doweAlpha(contentColor, 0.72f), 12f, 400, 0f, 1.2f, "sans");
+            subtitleView.setSingleLine(true);
+            subtitleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams subtitleParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            subtitleParams.setMargins(doweDp(12), 0, 0, 0);
+            footer.addView(subtitleView, subtitleParams);
+        }
+        content.addView(footer, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        view.addView(content, contentParams);
+        if (avatarSource != null) {
+            FrameLayout avatar = doweImage(avatarSource, "", "square", "cover", backgroundColor, null);
+            doweRound(avatar, 999f);
+            LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(doweDp(48), doweDp(48));
+            avatarParams.setMargins(doweDp(12), 0, 0, 0);
+            view.addView(avatar, avatarParams);
+        }
+        Handler handler = new Handler(Looper.getMainLooper());
+        boolean[] ready = { false };
+        Runnable[] sync = new Runnable[1];
+        sync[0] = () -> {
+            int duration = Math.max(0, player.getDuration());
+            int current = Math.max(0, player.getCurrentPosition());
+            time.setText(doweVideoTime(Math.max(0, duration - current)));
+            waveform.sync();
+            boolean isPlaying = player.isPlaying();
+            playIcon.setVisibility(isPlaying ? View.GONE : View.VISIBLE);
+            pauseIcon.setVisibility(isPlaying ? View.VISIBLE : View.GONE);
+            toggle.setContentDescription(isPlaying ? "Pause audio" : "Play audio");
+            if (isPlaying) handler.postDelayed(sync[0], 250);
+        };
+        toggle.setOnClickListener(target -> {
+            if (!ready[0]) return;
+            if (player.isPlaying()) player.pause(); else player.start();
+            sync[0].run();
+        });
+        player.setOnPreparedListener(value -> {
+            ready[0] = true;
+            sync[0].run();
+        });
+        player.setOnCompletionListener(value -> sync[0].run());
+        try {
+            doweSetAudioSource(player, source);
+            player.prepareAsync();
+        } catch (Exception ignored) {
+            player.release();
+        }
         return view;
     }
 
@@ -531,7 +680,12 @@ fn dev_activity_drawables_media() -> &'static str {
     private Bitmap doweReadImageBitmap(String source) {
         try {
             Bitmap bitmap;
-            if (source.startsWith("https://") || source.startsWith("http://")) {
+            if (source.startsWith("data:image/")) {
+                int separator = source.indexOf(',');
+                if (separator < 0) return null;
+                byte[] bytes = Base64.decode(source.substring(separator + 1), Base64.DEFAULT);
+                bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            } else if (source.startsWith("https://") || source.startsWith("http://")) {
                 File directory = new File(getCacheDir(), "dowe-images");
                 directory.mkdirs();
                 File file = new File(directory, doweImageCacheKey(source));
@@ -748,6 +902,9 @@ fn dev_activity_drawables_media() -> &'static str {
     }
 
     private float doweImageAspect(String value) {
+        if (value != null) {
+            try { return Math.max(0.01f, Float.parseFloat(value)); } catch (NumberFormatException ignored) {}
+        }
         if ("vertical".equals(value)) {
             return 9f / 16f;
         }

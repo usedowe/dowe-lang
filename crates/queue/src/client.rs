@@ -7,6 +7,7 @@ use crate::protocol::{QueueRequest, QueueWireFrame};
 use crate::rabbitmq::{RabbitClient, RabbitSubscription};
 use crate::remote_subscription::DoweRemoteSubscription;
 use crate::transport::{connect, dowe_endpoint, next_id, receive_frame, send_request};
+use crate::vercel::VercelClient;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
@@ -22,6 +23,7 @@ pub enum QueueSubscription {
 enum ClientKind {
     Dowe(DoweRemoteClient),
     RabbitMq(RabbitClient),
+    Vercel(VercelClient),
 }
 
 #[derive(Clone)]
@@ -41,6 +43,12 @@ impl QueueClient {
                 crate::rabbitmq::rabbitmq_endpoint(&config)?;
                 ClientKind::RabbitMq(RabbitClient::new(config))
             }
+            QueueProvider::Cloudflare => {
+                return Err(QueueError::Unsupported(
+                    "Cloudflare Queue requires a Worker producer binding".to_string(),
+                ));
+            }
+            QueueProvider::Vercel => ClientKind::Vercel(VercelClient::new(config)),
         };
         Ok(Self { inner })
     }
@@ -49,6 +57,7 @@ impl QueueClient {
         match &self.inner {
             ClientKind::Dowe(client) => client.declare(queue).await,
             ClientKind::RabbitMq(client) => client.declare(queue).await,
+            ClientKind::Vercel(client) => client.declare(queue).await,
         }
     }
 
@@ -56,6 +65,7 @@ impl QueueClient {
         match &self.inner {
             ClientKind::Dowe(client) => client.bind(queue, pattern).await,
             ClientKind::RabbitMq(client) => client.bind(queue, pattern).await,
+            ClientKind::Vercel(client) => client.bind(queue, pattern).await,
         }
     }
 
@@ -63,6 +73,7 @@ impl QueueClient {
         match &self.inner {
             ClientKind::Dowe(client) => client.publish(topic, value).await,
             ClientKind::RabbitMq(client) => client.publish(topic, value).await,
+            ClientKind::Vercel(client) => client.publish(topic, value).await,
         }
     }
 
@@ -74,6 +85,7 @@ impl QueueClient {
         match &self.inner {
             ClientKind::Dowe(client) => client.publish_direct(queue, value).await,
             ClientKind::RabbitMq(client) => client.publish_direct(queue, value).await,
+            ClientKind::Vercel(client) => client.publish_direct(queue, value).await,
         }
     }
 
@@ -81,6 +93,7 @@ impl QueueClient {
         match &self.inner {
             ClientKind::Dowe(client) => client.inspect().await,
             ClientKind::RabbitMq(client) => client.inspect().await,
+            ClientKind::Vercel(client) => client.inspect().await,
         }
     }
 
@@ -88,6 +101,7 @@ impl QueueClient {
         match &self.inner {
             ClientKind::Dowe(client) => client.purge(queue).await,
             ClientKind::RabbitMq(client) => client.purge(queue).await,
+            ClientKind::Vercel(client) => client.purge(queue).await,
         }
     }
 
@@ -101,6 +115,9 @@ impl QueueClient {
                 .subscribe(queue, consumer)
                 .await
                 .map(QueueSubscription::RabbitMq),
+            ClientKind::Vercel(_) => Err(QueueError::Unsupported(
+                "Vercel Queue does not support subscriptions through this client".to_string(),
+            )),
         }
     }
 }

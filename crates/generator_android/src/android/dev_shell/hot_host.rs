@@ -35,6 +35,7 @@ public final class DoweDevHostActivity extends Activity {
     private Method intent;
     private Method pictureInPicture;
     private Method activityResult;
+    private Method permissionResult;
     private boolean running = true;
 
     @Override
@@ -88,6 +89,18 @@ public final class DoweDevHostActivity extends Activity {
                 activityResult.invoke(activeModule, requestCode, resultCode, data);
             } catch (Exception error) {
                 Log.e("DoweHmr", "activity result dispatch failed", error);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (activeModule != null && permissionResult != null) {
+            try {
+                permissionResult.invoke(activeModule, requestCode, permissions, grantResults);
+            } catch (Exception error) {
+                Log.e("DoweHmr", "permission result dispatch failed", error);
             }
         }
     }
@@ -259,6 +272,12 @@ public final class DoweDevHostActivity extends Activity {
             Method nextIntent = type.getMethod("handleIntent", Intent.class);
             Method nextPictureInPicture = type.getMethod("handlePictureInPictureMode", boolean.class);
             Method nextActivityResult = type.getMethod("handleActivityResult", int.class, int.class, Intent.class);
+            Method nextPermissionResult;
+            try {
+                nextPermissionResult = type.getMethod("handlePermissionResult", int.class, String[].class, int[].class);
+            } catch (NoSuchMethodException ignored) {
+                nextPermissionResult = null;
+            }
             mount.invoke(module, path, initialMount ? getIntent() : null);
             activeModule = module;
             activePath = nextPath;
@@ -266,6 +285,7 @@ public final class DoweDevHostActivity extends Activity {
             intent = nextIntent;
             pictureInPicture = nextPictureInPicture;
             activityResult = nextActivityResult;
+            permissionResult = nextPermissionResult;
             activeVersion = version;
             getSharedPreferences(HMR_PREFERENCES, MODE_PRIVATE)
                 .edit()

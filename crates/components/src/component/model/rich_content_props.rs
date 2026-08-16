@@ -346,9 +346,22 @@ pub struct CarouselProps {
     pub gap: u16,
 }
 
+impl CarouselProps {
+    pub fn shows_controls(&self) -> bool {
+        !self.hide_controls || self.variant == CarouselVariant::Controls
+    }
+
+    pub fn shows_indicators(&self) -> bool {
+        !self.hide_indicators
+    }
+
+    pub fn has_variant_indicators(&self) -> bool {
+        matches!(self.variant, CarouselVariant::Dots | CarouselVariant::Thumbnails)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CarouselSlide {
     pub id: String,
     pub children: Vec<ViewNode>,
 }
-

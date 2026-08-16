@@ -93,6 +93,14 @@ fn is_known_display_prop(component: BuiltinComponent, name: &str) -> bool {
                     | "scheme"
                     | "color"
             ),
+            BuiltinComponent::Camera => matches!(
+                name,
+                "facing" | "label" | "disabled" | "onStart" | "onCapture" | "onError" | "variant" | "scheme" | "color"
+            ),
+            BuiltinComponent::Microphone => matches!(
+                name,
+                "label" | "maxDuration" | "disabled" | "onStart" | "onStop" | "onError" | "variant" | "scheme" | "color"
+            ),
             BuiltinComponent::ToggleGroup => matches!(
                 name,
                 "value"

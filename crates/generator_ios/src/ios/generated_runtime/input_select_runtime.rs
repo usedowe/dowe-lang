@@ -199,6 +199,18 @@ struct DoweSelectOption: Identifiable {
     }
 }
 
+struct DoweComboOption: Identifiable {
+    let value: String
+    let label: String
+    let description: String?
+    let icon: DoweControlIcon?
+    let disabled: Bool
+
+    var id: String {
+        value
+    }
+}
+
 struct DoweSelectAnchorPresenter: View {
     let isPresented: Bool
     let options: [DoweSelectOption]
@@ -257,12 +269,12 @@ struct DoweSelectField: View {
     let helpText: String?
     let errorText: String?
     let validationRules: [DoweValidationRule]
-    @State private var localValue = ""
+    @State private var localValue: String?
     @State private var expanded = false
     @State private var touched = false
 
     private var selectedValue: String {
-        value?.wrappedValue ?? localValue
+        value?.wrappedValue ?? localValue ?? ""
     }
 
     private var selectedOption: DoweSelectOption? {
@@ -440,6 +452,95 @@ struct DoweDragGroup: Identifiable {
     let items: [DoweDragItem]
 }
 
+struct DoweComboAnchorPresenter: View {
+    let isPresented: Bool
+    let options: [DoweComboOption]
+    let selectedValue: String
+    let searchPlaceholder: String
+    let emptyText: String
+    let loadingText: String
+    let query: Binding<String>
+    let font: Font
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
+    let contentColor: Color
+    let radius: CGFloat
+    let onSelect: (DoweComboOption) -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        DoweAnchoredPopoverPresenter(isPresented: isPresented, minWidth: CGFloat(280), maxWidth: CGFloat(384), maxHeight: CGFloat(380), preferredHeight: CGFloat(360), onDismiss: onDismiss) {
+            DoweComboPopover(options: options, selectedValue: selectedValue, searchPlaceholder: searchPlaceholder, emptyText: emptyText, loadingText: loadingText, query: query, font: font, fontSize: fontSize, lineHeight: lineHeight, contentColor: contentColor, radius: radius, onSelect: onSelect)
+        }
+    }
+}
+
+struct DoweComboPopover: View {
+    let options: [DoweComboOption]
+    let selectedValue: String
+    let searchPlaceholder: String
+    let emptyText: String
+    let loadingText: String
+    let query: Binding<String>
+    let font: Font
+    let fontSize: CGFloat
+    let lineHeight: CGFloat
+    let contentColor: Color
+    let radius: CGFloat
+    let onSelect: (DoweComboOption) -> Void
+
+    private var filteredOptions: [DoweComboOption] {
+        let normalized = query.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return options }
+        return options.filter { option in
+            option.label.lowercased().contains(normalized) || option.value.lowercased().contains(normalized) || option.description?.lowercased().contains(normalized) == true
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: CGFloat(4)) {
+            TextField(searchPlaceholder, text: query)
+                .textFieldStyle(.plain)
+                .font(font)
+                .padding(.horizontal, CGFloat(12))
+                .padding(.vertical, CGFloat(9))
+                .background(contentColor.opacity(0.07))
+                .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
+            if options.isEmpty {
+                Text(loadingText).font(.footnote).foregroundStyle(contentColor.opacity(0.65)).frame(maxWidth: .infinity).padding(CGFloat(12))
+            } else if filteredOptions.isEmpty {
+                Text(emptyText).font(.footnote).foregroundStyle(contentColor.opacity(0.65)).frame(maxWidth: .infinity).padding(CGFloat(12))
+            } else {
+                ForEach(filteredOptions) { option in
+                    Button(action: { onSelect(option) }) {
+                        HStack(spacing: CGFloat(10)) {
+                            if let icon = option.icon {
+                                DoweSvgView(viewBox: icon.viewBox, color: contentColor, paths: icon.paths).frame(width: CGFloat(24), height: CGFloat(24))
+                            }
+                            VStack(alignment: .leading, spacing: CGFloat(3)) {
+                                Text(option.label).fontWeight(.semibold)
+                                if let description = option.description { Text(description).font(.caption).foregroundStyle(contentColor.opacity(option.disabled ? 0.35 : 0.68)) }
+                            }
+                            .font(font)
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(contentColor.opacity(option.disabled ? 0.45 : 1))
+                        .padding(.horizontal, CGFloat(12))
+                        .padding(.vertical, CGFloat(9))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(option.value == selectedValue ? contentColor.opacity(0.1) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(option.disabled)
+                }
+            }
+        }
+        .padding(CGFloat(6))
+        .font(font)
+    }
+}
+
 struct DoweComboBox: View {
     let value: Binding<String>?
     let initialValue: String
@@ -448,8 +549,10 @@ struct DoweComboBox: View {
     let floating: Bool
     let searchPlaceholder: String
     let emptyText: String
+    let loadingText: String
     let clearable: Bool
-    let options: [DoweSelectOption]
+    let disabled: Bool
+    let options: [DoweComboOption]
     let font: Font
     let fontSize: CGFloat
     let lineHeight: CGFloat
@@ -459,150 +562,50 @@ struct DoweComboBox: View {
     let contentColor: Color
     let borderColor: Color?
     let radius: CGFloat
+    let helpText: String?
+    let errorText: String?
+    let validationRules: [DoweValidationRule]
     @State private var localValue: String?
     @State private var expanded = false
     @State private var query = ""
+    @State private var touched = false
 
-    private var selectedValue: String {
-        value?.wrappedValue ?? localValue ?? initialValue
-    }
-
-    private var selectedOption: DoweSelectOption? {
-        options.first { $0.value == selectedValue }
-    }
-
-    private var filteredOptions: [DoweSelectOption] {
-        let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !normalized.isEmpty else {
-            return options
-        }
-        return options.filter { option in
-            option.label.lowercased().contains(normalized)
-                || option.value.lowercased().contains(normalized)
-                || option.description?.lowercased().contains(normalized) == true
-        }
-    }
-
-    private var active: Bool {
-        expanded || selectedOption != nil || !selectedValue.isEmpty
-    }
+    private var selectedValue: String { value?.wrappedValue ?? localValue ?? initialValue }
+    private var selectedOption: DoweComboOption? { options.first { $0.value == selectedValue } }
+    private var active: Bool { expanded || selectedOption != nil || !selectedValue.isEmpty }
+    private var validationError: String? { errorText ?? (touched ? doweValidationError(selectedValue, rules: validationRules) : nil) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(8)) {
-            if let label, !floating {
-                Text(label)
-                    .font(.footnote)
-                    .fontWeight(.semibold)
+            if let label, !floating { Text(label).font(.footnote).fontWeight(.semibold) }
+            HStack(spacing: CGFloat(8)) {
+                ZStack(alignment: .leading) {
+                    if let label, floating { Text(label).font(.caption).offset(y: active ? CGFloat(-12) : CGFloat(0)).scaleEffect(active ? CGFloat(0.9) : CGFloat(1), anchor: .leading) }
+                    Text(selectedOption?.label ?? (selectedValue.isEmpty ? placeholder : selectedValue)).lineLimit(1).foregroundStyle(selectedOption == nil && selectedValue.isEmpty ? contentColor.opacity(0.55) : contentColor).padding(.top, floating ? CGFloat(10) : CGFloat(0))
+                }
+                Spacer()
+                if clearable && !selectedValue.isEmpty { Button(action: clearSelection) { Text("×").fontWeight(.bold).foregroundStyle(contentColor.opacity(0.7)) }.buttonStyle(.plain).disabled(disabled) }
+                DoweSelectArrow(color: contentColor)
             }
-            VStack(alignment: .leading, spacing: CGFloat(6)) {
-                HStack(spacing: CGFloat(8)) {
-                    ZStack(alignment: .leading) {
-                        if let label, floating {
-                            Text(label)
-                                .font(.caption)
-                                .offset(y: active ? CGFloat(-12) : CGFloat(0))
-                                .scaleEffect(active ? CGFloat(0.9) : CGFloat(1), anchor: .leading)
-                        }
-                        Text(selectedOption?.label ?? (selectedValue.isEmpty ? placeholder : selectedValue))
-                            .lineLimit(1)
-                            .foregroundStyle(selectedOption == nil && selectedValue.isEmpty ? contentColor.opacity(0.55) : contentColor)
-                            .padding(.top, floating ? CGFloat(10) : CGFloat(0))
-                    }
-                    Spacer()
-                    if clearable && !selectedValue.isEmpty {
-                        Button(action: clearSelection) {
-                            Text("x")
-                                .fontWeight(.bold)
-                                .foregroundStyle(contentColor.opacity(0.7))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    DoweSelectArrow(color: contentColor)
-                }
-                .font(font)
-                .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
-                .padding(.horizontal, horizontalPadding)
-                .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
-                .background(backgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: radius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius)
-                        .stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1))
-                )
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    expanded.toggle()
-                }
-
-                if expanded {
-                    VStack(alignment: .leading, spacing: CGFloat(4)) {
-                        TextField(searchPlaceholder, text: $query)
-                            .textFieldStyle(.plain)
-                            .font(font)
-                            .padding(.horizontal, CGFloat(12))
-                            .padding(.vertical, CGFloat(9))
-                            .background(contentColor.opacity(0.07))
-                            .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
-                        if filteredOptions.isEmpty {
-                            Text(emptyText)
-                                .font(.footnote)
-                                .foregroundStyle(contentColor.opacity(0.65))
-                                .padding(.horizontal, CGFloat(12))
-                                .padding(.vertical, CGFloat(10))
-                        } else {
-                            ForEach(filteredOptions) { option in
-                                Button(action: { select(option) }) {
-                                    VStack(alignment: .leading, spacing: CGFloat(3)) {
-                                        Text(option.label)
-                                            .fontWeight(.semibold)
-                                        if let description = option.description {
-                                            Text(description)
-                                                .font(.caption)
-                                                .foregroundStyle(contentColor.opacity(0.68))
-                                        }
-                                    }
-                                    .font(font)
-                                    .foregroundStyle(contentColor)
-                                    .padding(.horizontal, CGFloat(12))
-                                    .padding(.vertical, CGFloat(9))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(option.value == selectedValue ? contentColor.opacity(0.08) : Color.clear)
-                                    .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    .padding(CGFloat(6))
-                    .background(DoweDesign.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: radius))
-                    .overlay(RoundedRectangle(cornerRadius: radius).stroke(contentColor.opacity(0.12), lineWidth: CGFloat(1)))
-                    .shadow(color: Color.black.opacity(0.1), radius: CGFloat(14), x: CGFloat(0), y: CGFloat(8))
-                    .zIndex(1000)
-                }
-            }
+            .font(font)
+            .lineSpacing(doweTextLineSpacing(fontSize: fontSize, lineHeight: lineHeight))
+            .padding(.horizontal, horizontalPadding)
+            .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: radius))
+            .overlay(RoundedRectangle(cornerRadius: radius).stroke(validationError == nil ? (borderColor ?? Color.clear) : DoweDesign.danger, lineWidth: validationError == nil && borderColor == nil ? CGFloat(0) : CGFloat(1)))
+            .contentShape(Rectangle())
+            .opacity(disabled ? 0.56 : 1)
+            .onTapGesture { if !disabled { expanded.toggle() } }
+            .background(DoweComboAnchorPresenter(isPresented: expanded, options: options, selectedValue: selectedValue, searchPlaceholder: searchPlaceholder, emptyText: emptyText, loadingText: loadingText, query: $query, font: font, fontSize: fontSize, lineHeight: lineHeight, contentColor: contentColor, radius: radius, onSelect: { option in setValue(option.value); expanded = false; query = ""; touched = true }, onDismiss: { expanded = false; query = ""; touched = true }))
+            DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)
         }
+        .zIndex(expanded ? 1000 : 0)
+        .onDisappear { if expanded { expanded = false } }
     }
 
-    private func setValue(_ next: String) {
-        if let value {
-            value.wrappedValue = next
-        } else {
-            localValue = next
-        }
-    }
-
-    private func select(_ option: DoweSelectOption) {
-        setValue(option.value)
-        query = ""
-        expanded = false
-    }
-
-    private func clearSelection() {
-        setValue("")
-        query = ""
-        expanded = false
-    }
+    private func setValue(_ next: String) { if let value { value.wrappedValue = next } else { localValue = next } }
+    private func clearSelection() { setValue(""); query = ""; expanded = false; touched = true }
 }
 
 struct DoweCsvField: View {
@@ -850,18 +853,113 @@ struct DoweEditorField: View {
     }
 }
 
+private func doweImageCropperSize(_ size: String) -> CGFloat {
+    switch size {
+    case "xs": return CGFloat(96)
+    case "sm": return CGFloat(112)
+    case "lg": return CGFloat(160)
+    case "xl": return CGFloat(192)
+    default: return CGFloat(128)
+    }
+}
+
+private func doweImageFromDataURL(_ source: String) -> UIImage? {
+    guard source.hasPrefix("data:image/"), let comma = source.firstIndex(of: ",") else { return nil }
+    let encoded = String(source[source.index(after: comma)...])
+    guard let data = Data(base64Encoded: encoded, options: .ignoreUnknownCharacters) else { return nil }
+    return UIImage(data: data)
+}
+
+private func doweImageDataURL(_ image: UIImage, mime: String) -> String? {
+    let jpeg = mime.contains("jpeg") || mime.contains("jpg")
+    let data = jpeg ? image.jpegData(compressionQuality: CGFloat(0.92)) : image.pngData()
+    guard let data else { return nil }
+    return "data:\(jpeg ? "image/jpeg" : "image/png");base64,\(data.base64EncodedString())"
+}
+
+private func doweCropImage(_ image: UIImage, aspect: CGFloat, zoom: CGFloat, offset: CGSize, frame: CGSize, minWidth: Int, minHeight: Int, maxWidth: Int?, maxHeight: Int?) -> UIImage? {
+    guard let cgImage = image.cgImage else { return nil }
+    let width = CGFloat(1000)
+    let height = width / max(aspect, CGFloat(0.01))
+    let scale = max(width / CGFloat(cgImage.width), height / CGFloat(cgImage.height)) * zoom
+    let imageWidth = CGFloat(cgImage.width) * scale
+    let imageHeight = CGFloat(cgImage.height) * scale
+    let normalizedOffset = CGSize(width: offset.width * width / max(frame.width, CGFloat(1)), height: offset.height * width / max(frame.width, CGFloat(1)))
+    let left = (width - imageWidth) / CGFloat(2) + normalizedOffset.width
+    let top = (height - imageHeight) / CGFloat(2) + normalizedOffset.height
+    let sourceX = max(CGFloat(0), min(CGFloat(cgImage.width), -left / scale))
+    let sourceY = max(CGFloat(0), min(CGFloat(cgImage.height), -top / scale))
+    let sourceWidth = min(CGFloat(cgImage.width) - sourceX, width / scale)
+    let sourceHeight = min(CGFloat(cgImage.height) - sourceY, height / scale)
+    guard sourceWidth >= CGFloat(minWidth), sourceHeight >= CGFloat(minHeight) else { return nil }
+    var outputWidth = max(1, Int(sourceWidth.rounded()))
+    var outputHeight = max(1, Int(sourceHeight.rounded()))
+    let limit = min(maxWidth.map { CGFloat($0) / CGFloat(outputWidth) } ?? CGFloat(1), maxHeight.map { CGFloat($0) / CGFloat(outputHeight) } ?? CGFloat(1))
+    if limit < 1 {
+        outputWidth = max(1, Int((CGFloat(outputWidth) * limit).rounded()))
+        outputHeight = max(1, Int((CGFloat(outputHeight) * limit).rounded()))
+    }
+    let cropRect = CGRect(x: sourceX, y: sourceY, width: sourceWidth, height: sourceHeight).integral
+    guard let cropped = cgImage.cropping(to: cropRect) else { return nil }
+    let renderer = UIGraphicsImageRenderer(size: CGSize(width: outputWidth, height: outputHeight))
+    return renderer.image { _ in UIImage(cgImage: cropped).draw(in: CGRect(x: 0, y: 0, width: CGFloat(outputWidth), height: CGFloat(outputHeight))) }
+}
+
+private func doweImageCropperTypes(_ accept: String) -> [UTType] {
+    let values = accept.split(separator: ",").compactMap { value -> UTType? in
+        let item = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if item == "image/*" { return .image }
+        return UTType(mimeType: item) ?? UTType(filenameExtension: item)
+    }
+    return values.isEmpty ? [.image] : values
+}
+
+private func doweLoadCropperImage(_ source: String) async -> UIImage? {
+    if let image = doweImageFromDataURL(source) { return image }
+    guard let url = URL(string: source) else { return nil }
+    if url.isFileURL { return UIImage(contentsOfFile: url.path) }
+    guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+    return UIImage(data: data)
+}
+
 struct DoweImageCropper: View {
     let value: Binding<String>?
     let initialValue: String
     let label: String?
     let placeholder: String
+    let alt: String
+    let accept: String
+    let aspectRatio: String?
+    let minWidth: Int
+    let minHeight: Int
+    let maxWidth: Int?
+    let maxHeight: Int?
     let shape: String
+    let size: String
+    let disabled: Bool
+    let helpText: String?
+    let errorText: String?
     let backgroundColor: Color
     let contentColor: Color
-    @State private var localValue: String?
+    @State private var localValue = ""
+    @State private var cleared = false
+    @State private var appliedImage: UIImage?
+    @State private var draftImage: UIImage?
+    @State private var draftMime = "image/png"
+    @State private var pickerPresented = false
+    @State private var editorPresented = false
+    @State private var zoom: CGFloat = 1
+    @State private var offset = CGSize.zero
+    @State private var cropError: String?
 
     private var currentValue: String {
-        value?.wrappedValue ?? localValue ?? initialValue
+        if let value, !value.wrappedValue.isEmpty { return value.wrappedValue }
+        if cleared { return "" }
+        return localValue.isEmpty ? initialValue : localValue
+    }
+
+    private var aspect: CGFloat {
+        max(CGFloat(0.01), CGFloat(Double(aspectRatio ?? "1") ?? 1))
     }
 
     private var radius: CGFloat {
@@ -870,59 +968,120 @@ struct DoweImageCropper: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(8)) {
-            if let label {
-                Text(label)
-                    .fontWeight(.semibold)
-            }
-            ZStack {
-                if let url = URL(string: currentValue), !currentValue.isEmpty {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } else {
-                            placeholderView
-                        }
-                    }
-                } else {
-                    placeholderView
-                }
-            }
-            .frame(width: CGFloat(128), height: CGFloat(128))
-            .background(backgroundColor)
-            .clipShape(RoundedRectangle(cornerRadius: radius))
-            .overlay(RoundedRectangle(cornerRadius: radius).stroke(contentColor.opacity(0.2), lineWidth: CGFloat(1)))
+            if let label { Text(label).fontWeight(.semibold) }
+            preview
             HStack(spacing: CGFloat(8)) {
-                Button(action: {}) {
-                    Text("Edit")
-                        .fontWeight(.semibold)
-                }
-                .buttonStyle(.plain)
-                Button(action: clearValue) {
-                    Text("Remove")
-                        .fontWeight(.semibold)
-                        .foregroundStyle(contentColor.opacity(0.72))
-                }
-                .buttonStyle(.plain)
+                Button(action: { pickerPresented = true }) { Text(currentValue.isEmpty ? "Upload" : "Change") }.buttonStyle(.plain).disabled(disabled)
+                if !currentValue.isEmpty { Button(action: clearValue) { Text("Remove").foregroundStyle(contentColor.opacity(0.72)) }.buttonStyle(.plain).disabled(disabled) }
             }
+            if let text = cropError ?? errorText ?? helpText { Text(text).font(.system(size: CGFloat(13))).foregroundStyle(cropError != nil || errorText != nil ? DoweDesign.danger : contentColor.opacity(0.7)) }
         }
         .foregroundStyle(contentColor)
+        .task(id: currentValue) { appliedImage = await doweLoadCropperImage(currentValue) }
+        .fileImporter(isPresented: $pickerPresented, allowedContentTypes: doweImageCropperTypes(accept), allowsMultipleSelection: false) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            let secured = url.startAccessingSecurityScopedResource()
+            defer { if secured { url.stopAccessingSecurityScopedResource() } }
+            guard let data = try? Data(contentsOf: url), let image = UIImage(data: data) else { cropError = "The selected image could not be decoded."; return }
+            draftImage = image
+            draftMime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "image/png"
+            zoom = 1
+            offset = .zero
+            cropError = nil
+            editorPresented = true
+        }
+        .overlay { if editorPresented { editor } }
+    }
+
+    private var preview: some View {
+        ZStack {
+            if let appliedImage { Image(uiImage: appliedImage).resizable().scaledToFill().accessibilityLabel(Text(alt)) } else if let url = URL(string: currentValue), !currentValue.isEmpty { AsyncImage(url: url) { phase in switch phase { case .success(let image): image.resizable().scaledToFill(); default: placeholderView } } } else { placeholderView }
+        }
+        .frame(width: doweImageCropperSize(size), height: doweImageCropperSize(size))
+        .background(backgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: radius))
+        .overlay(RoundedRectangle(cornerRadius: radius).stroke(contentColor.opacity(0.2), lineWidth: CGFloat(1)))
+        .contentShape(RoundedRectangle(cornerRadius: radius))
+        .onTapGesture { if !currentValue.isEmpty && !disabled { draftImage = appliedImage; editorPresented = draftImage != nil; zoom = 1; offset = .zero } }
+        .accessibilityLabel(Text(alt))
     }
 
     private var placeholderView: some View {
-        Text(currentValue.isEmpty ? placeholder : "Image")
-            .fontWeight(.bold)
+        VStack(spacing: CGFloat(6)) { Image(systemName: "photo").font(.system(size: CGFloat(24))).opacity(0.5); Text(placeholder).fontWeight(.bold) }.foregroundStyle(contentColor).frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var editor: some View {
+        ZStack {
+            Color.black.opacity(0.5).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: CGFloat(12)) {
+                HStack { Text("Adjust image").fontWeight(.bold); Spacer(); Button("Cancel") { editorPresented = false }.buttonStyle(.plain) }
+                GeometryReader { geometry in
+                    let frame = cropFrame(geometry.size)
+                    ZStack {
+                        Color.black
+                        if let draftImage { Image(uiImage: draftImage).resizable().scaledToFill().frame(width: frame.width, height: frame.height).scaleEffect(zoom).offset(offset).gesture(DragGesture().onChanged { offset = CGSize(width: $0.translation.width, height: $0.translation.height) }).simultaneousGesture(MagnificationGesture().onChanged { zoom = min(CGFloat(3), max(CGFloat(1), $0)) }) }
+                        Canvas { context, _ in
+                            for fraction in [CGFloat(1) / CGFloat(3), CGFloat(2) / CGFloat(3)] {
+                                var path = Path()
+                                path.move(to: CGPoint(x: frame.minX + frame.width * fraction, y: frame.minY))
+                                path.addLine(to: CGPoint(x: frame.minX + frame.width * fraction, y: frame.maxY))
+                                path.move(to: CGPoint(x: frame.minX, y: frame.minY + frame.height * fraction))
+                                path.addLine(to: CGPoint(x: frame.maxX, y: frame.minY + frame.height * fraction))
+                                context.stroke(path, with: .color(.white.opacity(0.65)), lineWidth: CGFloat(1))
+                            }
+                        }
+                    }
+                    .frame(width: frame.width, height: frame.height)
+                    .clipShape(shape == "circle" ? AnyShape(Circle()) : AnyShape(Rectangle()))
+                    .overlay {
+                        if shape == "circle" {
+                            Circle().stroke(.white, lineWidth: CGFloat(2))
+                        } else {
+                            Rectangle().stroke(.white, lineWidth: CGFloat(2))
+                        }
+                    }
+                    .position(x: geometry.size.width / CGFloat(2), y: geometry.size.height / CGFloat(2))
+                }
+                .frame(height: CGFloat(320))
+                HStack { Text("Zoom").font(.system(size: CGFloat(12))); Slider(value: $zoom, in: CGFloat(1)...CGFloat(3)); }
+                HStack { Button("Reset") { zoom = 1; offset = .zero }.buttonStyle(.plain); Spacer(); Button("Cancel") { editorPresented = false }.buttonStyle(.plain); Button("Apply") { applyCrop() }.buttonStyle(.borderedProminent) }
+                if let cropError { Text(cropError).font(.system(size: CGFloat(13))).foregroundStyle(DoweDesign.danger) }
+            }
+            .padding(CGFloat(16))
+            .background(backgroundColor)
             .foregroundStyle(contentColor)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: CGFloat(20)))
+            .padding(CGFloat(16))
+        }
+    }
+
+    private func cropFrame(_ size: CGSize) -> CGRect {
+        let inset = CGFloat(24)
+        let maxWidth = max(CGFloat(1), size.width - inset * CGFloat(2))
+        let maxHeight = max(CGFloat(1), size.height - inset * CGFloat(2))
+        var width = maxWidth
+        var height = width / aspect
+        if height > maxHeight { height = maxHeight; width = height * aspect }
+        return CGRect(x: (size.width - width) / CGFloat(2), y: (size.height - height) / CGFloat(2), width: width, height: height)
+    }
+
+    private func applyCrop() {
+        guard let draftImage else { return }
+        let frame = CGSize(width: CGFloat(1000), height: CGFloat(1000) / aspect)
+        guard let cropped = doweCropImage(draftImage, aspect: aspect, zoom: zoom, offset: offset, frame: frame, minWidth: minWidth, minHeight: minHeight, maxWidth: maxWidth, maxHeight: maxHeight), let next = doweImageDataURL(cropped, mime: draftMime) else { cropError = "Image must be at least \(minWidth) × \(minHeight) pixels."; return }
+        localValue = next
+        cleared = false
+        value?.wrappedValue = next
+        appliedImage = cropped
+        editorPresented = false
     }
 
     private func clearValue() {
-        if let value {
-            value.wrappedValue = ""
-        } else {
-            localValue = ""
-        }
+        cleared = true
+        localValue = ""
+        value?.wrappedValue = ""
+        appliedImage = nil
     }
 }
 

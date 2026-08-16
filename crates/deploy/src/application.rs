@@ -95,6 +95,7 @@ pub fn materialize_embedded_application_executable(
         output,
         &payload.application,
         &metadata.client_environment,
+        metadata.environment,
         "application",
     )?;
     Ok(Some(metadata))

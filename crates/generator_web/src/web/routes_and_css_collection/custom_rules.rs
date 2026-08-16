@@ -124,6 +124,8 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         ViewNode::Command { props, .. } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Audio { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Image { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Camera { props } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Microphone { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Accordion { props, items } => {
             collect_style_custom_rules(&props.style.style, rules);
             for item in items {

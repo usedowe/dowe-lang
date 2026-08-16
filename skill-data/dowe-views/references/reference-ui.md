@@ -298,7 +298,7 @@ Inventory the reference's repeated visual decisions before adding local props:
 | Color families and contrast pairs | Named semantic colors in root `theme.dowe` |
 | Typographic character | Closest supported Dowe font token and Text/Title defaults |
 | Repeated Card, Button, Avatar, Chip, or control treatment | `design` component defaults |
-| Section rhythm and track gaps | Small consistent Dowe spacing ladder |
+| Section rhythm and track gaps | Section defaults first, then a small consistent Dowe spacing ladder |
 | Repeated radii and shadows | Theme/component defaults where supported |
 
 Use `dowe-theme` when authoring these defaults only after an explicit theme or color request. If
@@ -309,6 +309,12 @@ Keep local visual props only for intentional non-color exceptions. Do not reprod
 with unrelated literal colors or one-off styling on every instance. Before finishing, reread the
 theme and verify that reference-driven view work did not alter it; when a theme change was
 requested, verify every declared family has grouped `color`, `text`, and `title` roles.
+
+Treat measured whitespace as evidence, not as permission to serialize padding on every container.
+Start with Section and Card defaults, use `gap` for child rhythm, and add the smallest local padding
+override only when the blueprint or user request proves that a default is insufficient. Dowe Views
+does not support margin props; reject aliases such as `mt` instead of fabricating them. A ghost Card
+with `p:0` is not a layout primitive when it only wraps Grid/Flex content.
 
 ## Media provenance
 
@@ -413,6 +419,8 @@ hide a visible mismatch.
 - Consecutive bands do not collapse into the same generic heading-plus-Card-grid composition.
 - Static fragments are extracted; unsupported dynamic reuse is recorded without invented syntax.
 - Reference pixels never enter project assets; missing originals remain explicit.
+- Component defaults are used before local `p*` props; no stacked Section/Grid/Card padding or
+  unsupported margin aliases such as `mt` remain.
 - Background media uses `cover` on its owner; foreground `Image` keeps an independent media role.
 - The reference viewport passes band-by-band QA or the remaining evidence-backed blocker is
   reported precisely.

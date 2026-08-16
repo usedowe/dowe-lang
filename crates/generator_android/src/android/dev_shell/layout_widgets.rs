@@ -144,14 +144,22 @@ fn dev_activity_layout_widgets() -> &'static str {
 
     private static final class DoweAccordionState {
         final boolean multiple;
+        final String variant;
         final int contentColor;
         final float radius;
+        final int itemBackgroundColor;
+        final Integer itemBorderColor;
+        final boolean elevated;
         final ArrayList<DoweAccordionItemState> items = new ArrayList<>();
 
-        DoweAccordionState(boolean multiple, int contentColor, float radius) {
+        DoweAccordionState(boolean multiple, String variant, int contentColor, float radius, int itemBackgroundColor, Integer itemBorderColor, boolean elevated) {
             this.multiple = multiple;
+            this.variant = variant;
             this.contentColor = contentColor;
             this.radius = radius;
+            this.itemBackgroundColor = itemBackgroundColor;
+            this.itemBorderColor = itemBorderColor;
+            this.elevated = elevated;
         }
     }
 
@@ -166,23 +174,29 @@ fn dev_activity_layout_widgets() -> &'static str {
         }
     }
 
-    private LinearLayout doweAccordion(boolean multiple, int backgroundColor, int contentColor, Integer borderColor, float radius) {
+    private LinearLayout doweAccordion(boolean multiple, String variant, int backgroundColor, int contentColor, Integer borderColor, int itemBackgroundColor, Integer itemBorderColor, boolean elevated, float radius) {
         LinearLayout view = doweContainer(false);
-        view.setPadding(doweDp(4), doweDp(4), doweDp(4), doweDp(4));
+        int inset = "ghost".equals(variant) ? 0 : 4;
+        view.setPadding(doweDp(inset), doweDp(inset), doweDp(inset), doweDp(inset));
         view.setBackground(borderColor == null
             ? doweBackground(backgroundColor, radius)
             : doweInputBackground(backgroundColor, borderColor, radius));
         doweRound(view, radius);
-        view.setTag(new DoweAccordionState(multiple, contentColor, radius));
+        view.setTag(new DoweAccordionState(multiple, variant, contentColor, radius, itemBackgroundColor, itemBorderColor, elevated));
         return view;
     }
 
     private LinearLayout doweAccordionItem(LinearLayout accordion, String label, boolean disabled, boolean defaultOpen, String font, DoweSvgView arrow) {
         DoweAccordionState accordionState = (DoweAccordionState) accordion.getTag();
-        float itemRadius = accordionState.radius * 0.85f;
+        float itemRadius = "ghost".equals(accordionState.variant) ? 0f : accordionState.radius * 0.85f;
         LinearLayout item = doweContainer(false);
-        item.setBackground(doweInputBackground(Color.TRANSPARENT, doweAlpha(accordionState.contentColor, 0.12f), itemRadius));
+        item.setBackground("ghost".equals(accordionState.variant)
+            ? doweBackground(accordionState.itemBackgroundColor, itemRadius)
+            : accordionState.itemBorderColor == null
+                ? doweBackground(accordionState.itemBackgroundColor, itemRadius)
+                : doweInputBackground(accordionState.itemBackgroundColor, accordionState.itemBorderColor, itemRadius));
         doweRound(item, itemRadius);
+        item.setElevation(accordionState.elevated ? doweDp(4) : 0f);
         item.setAlpha(disabled ? 0.5f : 1f);
         LinearLayout header = doweContainer(true);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -190,7 +204,7 @@ fn dev_activity_layout_widgets() -> &'static str {
         header.setContentDescription(label);
         header.setFocusable(!disabled);
         header.setEnabled(!disabled);
-        TextView labelView = doweText(label, accordionState.contentColor, 14f, 600, 0f, 20f, font);
+        TextView labelView = doweText(label, accordionState.contentColor, 15f, 700, 0f, 1.2f, font);
         labelView.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         doweAdd(header, labelView);
         arrow.setLayoutParams(new LinearLayout.LayoutParams(doweDp(20), doweDp(20)));
@@ -200,6 +214,12 @@ fn dev_activity_layout_widgets() -> &'static str {
         body.setPadding(doweDp(16), doweDp(12), doweDp(16), doweDp(12));
         doweAdd(item, header);
         doweAdd(item, body);
+        if ("ghost".equals(accordionState.variant)) {
+            View divider = new View(this);
+            divider.setBackgroundColor(accordionState.itemBorderColor == null ? Color.TRANSPARENT : accordionState.itemBorderColor);
+            divider.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1)));
+            doweAdd(item, divider);
+        }
         DoweAccordionItemState itemState = new DoweAccordionItemState(body, arrow);
         accordionState.items.add(itemState);
         if (!disabled) {
@@ -215,7 +235,7 @@ fn dev_activity_layout_widgets() -> &'static str {
             });
         }
         doweSetAccordionOpen(itemState, defaultOpen, false);
-        doweAdd(accordion, item, 8, false);
+        doweAdd(accordion, item, "ghost".equals(accordionState.variant) ? 0 : 8, false);
         return body;
     }
 

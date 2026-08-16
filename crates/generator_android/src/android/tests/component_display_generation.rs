@@ -445,6 +445,9 @@ fn generates_compose_and_dev_display_chat_and_motion_components() {
         .content
         .contains("DoweChatBox(state = state, messagesPath = \"messages\""));
     assert!(views.content.contains("DoweEmpty(kind = \"result\""));
+    assert!(views.content.contains("iconViewBox = DoweSvgViewBox(0f, 0f, 24f, 24f)"));
+    assert!(views.content.contains("iconPaths = DoweSvgPathShard"));
+    assert!(!views.content.contains("private fun DoweEmptyIcon("));
     assert!(views.content.contains("DoweMarquee(speed = \"fast\""));
     assert!(views
         .content
@@ -895,6 +898,15 @@ fn generates_compose_and_dev_media_display_form_components() {
 
     assert!(views.content.contains("private fun DoweAudio("));
     assert!(views.content.contains("DoweAudio(source ="));
+    assert!(views.content.contains("MediaPlayer()"));
+    assert!(views.content.contains("repeat(50)"));
+    assert!(views.content.contains("doweAudioTime"));
+    assert!(views.content.contains("awaitEachGesture"));
+    assert!(views.content.contains("animateFloatAsState"));
+    assert!(views.content.contains("private val doweAudioWaveform"));
+    assert!(dev.content.contains("doweAudio(\""));
+    assert!(dev.content.contains("class DoweAudioWaveView"));
+    assert!(dev.content.contains("DOWE_AUDIO_WAVEFORM"));
     assert!(views.content.contains("private fun DoweImage("));
     assert!(views
         .content
@@ -963,10 +975,22 @@ fn generates_compose_and_dev_media_display_form_components() {
         .content
         .contains("__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__"));
     assert!(views.content.contains("rotationZ = if (open) 90f else 0f"));
+    assert!(views.content.contains("variant = \"ghost\""));
+    assert!(views.content.contains("padding(if (variant == \"ghost\" || variant == \"line\") 0.dp else 4.dp)"));
+    assert!(views.content.contains("radius = 0.dp, onToggle = { toggleItem(\"intro\") }"));
+    assert!(!views.content.contains("radius = if (variant == \"ghost\")"));
+    assert!(views.content.contains("fontWeight = FontWeight.Bold"));
+    assert!(!views
+        .content
+        .contains("background(LocalContentColor.current.copy(alpha = 0.12f))"));
     assert!(!views.content.contains("Text(if (open) \"^\" else \"v\")"));
     assert!(dev
         .content
-        .contains("doweAccordion(true, DOWE_SURFACE, DOWE_SURFACE_TEXT"));
+        .contains("doweAccordion(true, \"ghost\", Color.TRANSPARENT, DOWE_SURFACE_TEXT, null"));
+    assert!(dev.content.contains("doweAlpha(DOWE_SURFACE_TEXT, 0.22f)"));
+    assert!(!dev.content.contains("arrow.setBackgroundColor"));
+    assert!(dev.content.contains("doweText(label, accordionState.contentColor, 15f, 700, 0f, 1.2f, font)"));
+    assert!(!dev.content.contains("doweText(label, accordionState.contentColor, 15f, 700, 0f, 20f, font)"));
     assert!(dev.content.contains("doweAccordionItem("));
     assert!(dev.content.contains("\"Intro\", false, true"));
     assert!(dev.content.contains("private LinearLayout doweAccordion("));
@@ -990,7 +1014,29 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(views.content.contains("DoweCarouselSlideSpec(id ="));
     assert!(views.content.contains("LazyRow("));
     assert!(views.content.contains("rememberSnapFlingBehavior"));
+    assert!(views.content.contains("if (showNavigation)"));
+    assert!(views
+        .content
+        .contains("enabled = !disableLoop || currentIndex > 0"));
+    assert!(views.content.contains("orientation = orientation"));
+    assert!(views.content.contains("phase = slidePhase(index)"));
+    assert!(views.content.contains("rotationY = phase * 24f"));
+    assert!(views.content.contains("ButtonDefaults.buttonColors"));
+    assert!(views.content.contains("TextButton(modifier = Modifier.size(36.dp)"));
+    assert!(views.content.contains("ButtonDefaults.textButtonColors(contentColor = accentColor)"));
     assert!(dev.content.contains("android.widget.HorizontalScrollView"));
+    assert!(dev.content.contains("setBackgroundColor(Color.TRANSPARENT)"));
+    assert!(dev.content.contains("setMinimumHeight(doweDp(32))"));
+    assert!(dev.content.contains("setContentDescription(\"Previous slide\")"));
+    assert!(dev.content.contains("setContentDescription(\"Next slide\")"));
+    assert!(dev.content.contains("ArrayList<Button>"));
+    assert!(dev.content.contains("setOnScrollChangeListener"));
+    assert!(dev.content.contains("setRotationY(phase * 24f)"));
+    assert!(dev.content.contains("setRotation(phase * 1.5f)"));
+    assert!(!dev.content.contains("setRotationZ("));
+    assert!(dev.content.contains("final int selectedIndex = targetIndex"));
+    assert!(dev.content.contains("final int selectedNextIndex = targetIndex"));
+    assert!(dev.content.contains("smoothScrollTo(slide.getLeft(), 0)"));
     assert!(dev
         .content
         .contains("doweImage(\"https://example.com/photo.jpg\", \"Photo\", \"square\", \"cover\""));
@@ -1172,7 +1218,12 @@ fn generates_compose_advanced_form_components() {
     assert!(combo_box.contains("fontSize = doweTextSize(viewportWidth, min = 12f, preferredBase = 11.2f, preferredViewport = 0.2f, max = 14f)"), "{combo_box}");
     assert!(views
         .content
-        .contains("DoweSelectOption(\"admin\", \"Admin\", \"Full access\")"));
+        .contains("DoweComboOption(\"admin\", \"Admin\", \"Full access\""));
+    assert!(views.content.contains("searchPlaceholder = \"Search roles\""));
+    assert!(views.content.contains("DoweAnchoredPopover("));
+    assert!(views.content.contains("clearable = true"));
+    assert!(dev.content.contains("doweComboPopup("));
+    assert!(dev.content.contains("doweWrite(\"profile.role\", \"\");"));
     assert!(views.content.contains("private data class DoweCsvColumn"));
     assert!(views.content.contains("DoweCsvField(label = \"Import\""));
     assert!(views
@@ -1189,6 +1240,17 @@ fn generates_compose_advanced_form_components() {
     assert!(views
         .content
         .contains("DoweImageCropper(value = state.text(\"profile.avatar\")"));
+    assert!(views.content.contains("rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument())"));
+    assert!(views.content.contains("doweCropBitmap("));
+    assert!(views.content.contains("TextButton(onClick = { cropDialog = false })"));
+    assert!(dev.content.contains("doweOpenImageCropperPicker("));
+    assert!(dev.content.contains("doweOpenImageCropperPicker(String key, String accept, String aspect, String shape"));
+    assert!(dev.content.contains("doweShowImageCropperEditor("));
+    assert!(dev.content.contains("doweShowImageCropperEditor(Bitmap source, String key, String aspect, String shape"));
+    assert!(dev.content.contains("doweCropImage("));
+    assert!(dev.content.contains("int resizedHeight"));
+    assert!(dev.content.contains("int resizedWidth"));
+    assert!(dev.content.contains("doweBitmapDataUrl("));
     assert!(views
         .content
         .contains("DowePassword(value = state.text(\"profile.password\")"));
@@ -1653,6 +1715,51 @@ fn generates_loading_button_with_animated_spinner_and_disabled_state() {
 }
 
 #[test]
+fn generates_disabled_button_alpha_for_compose_and_launcher() {
+    let route = ViewRoute {
+        id: "disabled-button".to_string(),
+        route_path: "/disabled-button".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Button {
+            props: VariantProps {
+                variant: Some(ComponentVariant::Soft),
+                color: Some(ColorFamily::Secondary),
+                reactive: ReactiveVariantProps {
+                    disabled: Some("formInvalid".to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![text("Submit")],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    let dev = dev_java_source(&output);
+
+    assert!(views.content.contains("disabledContainerColor ="));
+    assert!(!views.content.contains("SelectionContainer"));
+    assert!(views
+        .content
+        .contains("graphicsLayer { alpha = if (!(state.bool(\"formInvalid\", true))) 1f else 0.5f }"));
+    assert!(dev
+        .content
+        .contains("setAlpha(doweBool(\"formInvalid\", null) ? 0.5f : 1f)"));
+    assert!(dev.content.contains("setTextIsSelectable(false)"));
+}
+
+#[test]
 fn generates_android_viewport_minus_height() {
     let route = ViewRoute {
         id: "viewport".to_string(),
@@ -2070,4 +2177,59 @@ fn generates_compose_form_validation_contract() {
         .contains("new String[]{\"required\", null, \"Email is required\"}"));
     assert!(dev.content.contains("Validation.watchText();"));
     assert!(dev.content.contains("DOWE_DANGER"));
+}
+
+#[test]
+fn generates_compose_and_dev_camera_microphone_capture_contract() {
+    let route = ViewRoute {
+        id: "capture".to_string(),
+        route_path: "/capture".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Box {
+            props: StyleProps::default(),
+            children: vec![
+                ViewNode::Camera {
+                    props: CameraProps {
+                        style: VariantProps::default(),
+                        facing: CameraFacing::User,
+                        label: "Take photo".to_string(),
+                        disabled: false,
+                        on_start: Some("cameraStart".to_string()),
+                        on_capture: Some("cameraCapture".to_string()),
+                        on_error: Some("cameraError".to_string()),
+                    },
+                },
+                ViewNode::Microphone {
+                    props: MicrophoneProps {
+                        style: VariantProps::default(),
+                        label: "Record audio".to_string(),
+                        max_duration: Some(30),
+                        disabled: false,
+                        on_start: Some("microphoneStart".to_string()),
+                        on_stop: Some("microphoneStop".to_string()),
+                        on_error: Some("microphoneError".to_string()),
+                    },
+                },
+            ],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let source = all_android_source(&output);
+
+    assert!(source.contains("DoweCamera(state = state, facing = \"user\""));
+    assert!(source.contains("DoweMicrophone(state = state, label = \"Record audio\""));
+    assert!(source.contains("MediaStore.ACTION_IMAGE_CAPTURE"));
+    assert!(source.contains("MediaRecorder()"));
+    assert!(source.contains("android.permission.CAMERA"));
+    assert!(source.contains("android.permission.RECORD_AUDIO"));
+    assert!(source.contains("requestPermissions(new String[]{Manifest.permission.CAMERA}"));
+    assert!(source.contains("requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}"));
+    assert!(source.contains("handlePermissionResult(int requestCode"));
 }

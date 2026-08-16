@@ -131,6 +131,8 @@ fn render_compose_node_body(
         }
         ViewNode::Audio { .. }
         | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
         | ViewNode::Accordion { .. }
         | ViewNode::Carousel { .. }
         | ViewNode::Code { .. }

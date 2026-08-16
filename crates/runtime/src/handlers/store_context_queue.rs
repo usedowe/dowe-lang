@@ -73,6 +73,8 @@ impl<'a> StoreActionContext<'a> {
         let provider = match connection.provider {
             CompilerQueueProvider::Dowe => RuntimeQueueProvider::Dowe,
             CompilerQueueProvider::RabbitMq => RuntimeQueueProvider::RabbitMq,
+            CompilerQueueProvider::Cloudflare => RuntimeQueueProvider::Cloudflare,
+            CompilerQueueProvider::Vercel => RuntimeQueueProvider::Vercel,
         };
         let port = self
             .queue_connection_value(&connection.port)?
