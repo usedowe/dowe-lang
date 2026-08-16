@@ -809,7 +809,8 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Icon, "name") => Some(quoted_values(dowe_components::all_icon_names())),
         (BuiltinComponent::IconButton, "icon")
         | (BuiltinComponent::SideNav | BuiltinComponent::RailNav, "icon")
-        | (BuiltinComponent::Button | BuiltinComponent::Input, "iconStart" | "iconEnd") => {
+        | (BuiltinComponent::Button | BuiltinComponent::Input, "iconStart" | "iconEnd")
+        | (BuiltinComponent::Chip, "startIcon" | "endIcon") => {
             Some(quoted_values(dowe_components::solar_icon_names()))
         }
         (BuiltinComponent::Icon, "fill" | "stroke") => Some(quoted_values(
@@ -1999,7 +2000,18 @@ const BADGE_PROPS: &[&str] = &[
     "maxW", "maxH", "rounded",
 ];
 const CHIP_PROPS: &[&str] = &[
-    "variant", "scheme", "size", "onClose", "onClick", "id", "show", "font", "bg", "cover",
+    "startIcon",
+    "endIcon",
+    "variant",
+    "scheme",
+    "size",
+    "onClose",
+    "onClick",
+    "id",
+    "show",
+    "font",
+    "bg",
+    "cover",
     "overlay", "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
     "minH", "maxW", "maxH", "rounded",
 ];

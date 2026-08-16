@@ -2178,6 +2178,8 @@ fn completions_include_display_overlay_component_props_and_values() {
         "  Avatar scheme:",
         "  Badge position:",
         "  Chip variant:",
+        "  Chip startIcon:",
+        "  Chip endIcon:",
         "  Skeleton variant:",
         "  Skeleton animation:",
         "  Modal scheme:",
@@ -2239,7 +2241,13 @@ fn completions_include_display_overlay_component_props_and_values() {
     assert!(chip_variant.iter().any(|item| item.label == "\"outlined\""));
     assert!(chip_variant.iter().any(|item| item.label == "\"ghost\""));
 
-    let skeleton_variant = complete_document(root, &document, 7, "  Skeleton variant:".len() + 1);
+    let chip_start_icon = complete_document(root, &document, 7, "  Chip startIcon:".len() + 1);
+    assert!(chip_start_icon.iter().any(|item| item.label == "\"settings\""));
+
+    let chip_end_icon = complete_document(root, &document, 8, "  Chip endIcon:".len() + 1);
+    assert!(chip_end_icon.iter().any(|item| item.label == "\"magnifier\""));
+
+    let skeleton_variant = complete_document(root, &document, 9, "  Skeleton variant:".len() + 1);
     assert!(
         skeleton_variant
             .iter()
@@ -2247,26 +2255,26 @@ fn completions_include_display_overlay_component_props_and_values() {
     );
 
     let skeleton_animation =
-        complete_document(root, &document, 8, "  Skeleton animation:".len() + 1);
+        complete_document(root, &document, 10, "  Skeleton animation:".len() + 1);
     assert!(
         skeleton_animation
             .iter()
             .any(|item| item.label == "\"none\"")
     );
 
-    let modal_scheme = complete_document(root, &document, 9, "  Modal scheme:".len() + 1);
+    let modal_scheme = complete_document(root, &document, 11, "  Modal scheme:".len() + 1);
     assert!(modal_scheme.iter().any(|item| item.label == "\"surface\""));
 
-    let dialog_variant = complete_document(root, &document, 10, "  AlertDialog variant:".len() + 1);
+    let dialog_variant = complete_document(root, &document, 12, "  AlertDialog variant:".len() + 1);
     assert!(dialog_variant.iter().any(|item| item.label == "\"ghost\""));
 
-    let tooltip_position = complete_document(root, &document, 11, "  Tooltip position:".len() + 1);
+    let tooltip_position = complete_document(root, &document, 13, "  Tooltip position:".len() + 1);
     assert!(tooltip_position.iter().any(|item| item.label == "\"end\""));
 
-    let toast_type = complete_document(root, &document, 12, "  Toast type:".len() + 1);
+    let toast_type = complete_document(root, &document, 14, "  Toast type:".len() + 1);
     assert!(toast_type.iter().any(|item| item.label == "\"success\""));
     assert!(toast_type.iter().any(|item| item.label == "\"error\""));
-    let toast_variant = complete_document(root, &document, 13, "  Toast variant:".len() + 1);
+    let toast_variant = complete_document(root, &document, 15, "  Toast variant:".len() + 1);
     assert!(
         toast_variant
             .iter()
@@ -2274,22 +2282,22 @@ fn completions_include_display_overlay_component_props_and_values() {
     );
     assert!(toast_variant.iter().any(|item| item.label == "\"ghost\""));
 
-    let dropdown_props = complete_document(root, &document, 14, "  Dropdown ".len() + 1);
+    let dropdown_props = complete_document(root, &document, 16, "  Dropdown ".len() + 1);
     assert!(dropdown_props.iter().any(|item| item.label == "scheme"));
     assert!(!dropdown_props.iter().any(|item| item.label == "variant"));
 
-    let command_props = complete_document(root, &document, 15, "  Command ".len() + 1);
+    let command_props = complete_document(root, &document, 17, "  Command ".len() + 1);
     assert!(command_props.iter().any(|item| item.label == "shortcut"));
     assert!(command_props.iter().any(|item| item.label == "scheme"));
 
-    let command_variant = complete_document(root, &document, 16, "  Command variant:".len() + 1);
+    let command_variant = complete_document(root, &document, 18, "  Command variant:".len() + 1);
     assert!(command_variant.iter().any(|item| item.label == "\"ghost\""));
 
-    let item_props = complete_document(root, &document, 17, "  item ".len() + 1);
+    let item_props = complete_document(root, &document, 19, "  item ".len() + 1);
     assert!(item_props.iter().any(|item| item.label == "history"));
     assert!(item_props.iter().any(|item| item.label == "onClick"));
 
-    let group_props = complete_document(root, &document, 18, "  group ".len() + 1);
+    let group_props = complete_document(root, &document, 20, "  group ".len() + 1);
     assert!(group_props.iter().any(|item| item.label == "label"));
 }
 

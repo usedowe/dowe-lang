@@ -135,19 +135,24 @@ fn render_dev_android_overlay_node(
             ));
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
-        ViewNode::Chip { props, value, .. } => {
-            render_dev_android_variant_label(
-                value,
-                &props.style,
-                parent,
-                parent_gap,
-                parent_horizontal,
-                counter,
-                output,
-                inherited_font,
-                context,
-            );
-        }
+        ViewNode::Chip {
+            props,
+            value,
+            start,
+            end,
+        } => render_dev_android_chip(
+            props,
+            value,
+            start.as_ref(),
+            end.as_ref(),
+            parent,
+            parent_gap,
+            parent_horizontal,
+            counter,
+            output,
+            inherited_font,
+            context,
+        ),
         ViewNode::Skeleton { props } => {
             let view = next_dev_view(counter);
             output.push_str(&format!(
@@ -232,4 +237,65 @@ fn render_dev_android_overlay_node(
         }
         _ => {}
     }
+}
+
+fn render_dev_android_chip(
+    props: &ChipProps,
+    value: &str,
+    start: Option<&SideNavIcon>,
+    end: Option<&SideNavIcon>,
+    parent: &str,
+    parent_gap: Option<&str>,
+    parent_horizontal: bool,
+    counter: &mut usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    context: &ComposeReactiveContext,
+) {
+    let size = props.style.size.unwrap_or(ButtonSize::Md);
+    let (height, horizontal_padding, text_size) = match size {
+        ButtonSize::Xs => (20, 12, 12),
+        ButtonSize::Sm => (24, 12, 12),
+        ButtonSize::Md => (32, 16, 14),
+        ButtonSize::Lg => (40, 20, 18),
+        ButtonSize::Xl => (48, 24, 24),
+    };
+    let icon_size = size.chip_icon_size().native_units();
+    let view = next_dev_view(counter);
+    let content = dev_variant_content(&props.style);
+    output.push_str(&format!(
+        "        LinearLayout {view} = doweContainer(true);\n        {view}.setGravity(Gravity.CENTER_VERTICAL);\n        {view}.setPadding(doweDp({horizontal_padding}), 0, doweDp({horizontal_padding}), 0);\n        {view}.setMinimumHeight(doweDp({height}));\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS));\n        doweWrapContentWidth({view});\n",
+        dev_variant_container(&props.style)
+    ));
+    if let Some(icon) = start {
+        let icon_view = render_dev_android_icon_view(icon, counter, output, Some(&content));
+        output.push_str(&format!(
+            "        {icon_view}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({icon_size}), doweDp({icon_size})));\n        doweAdd({view}, {icon_view});\n"
+        ));
+    }
+    let label = next_dev_view(counter);
+    output.push_str(&format!(
+        "        TextView {label} = doweText({}, {}, {text_size}f, 500, 0f, 1.2f, {});\n        {label}.setSingleLine(true);\n        doweAdd({view}, {label}, 8, true);\n",
+        dev_text_expression(value, None, context),
+        content,
+        dev_font_value(props.style.style.font.as_ref().or(inherited_font))
+    ));
+    if let Some(icon) = end {
+        let icon_view = render_dev_android_icon_view(icon, counter, output, Some(&content));
+        output.push_str(&format!(
+            "        {icon_view}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({icon_size}), doweDp({icon_size})));\n        doweAdd({view}, {icon_view}, 8, true);\n"
+        ));
+    }
+    if let Some(action) = props.on_close.as_deref().and_then(|name| context.action_id(name)) {
+        let close = next_dev_view(counter);
+        output.push_str(&format!(
+            "        TextView {close} = doweText(\"x\", {}, {text_size}f, 700, 0f, 1.2f, {});\n        {close}.setGravity(Gravity.CENTER);\n        {close}.setContentDescription(\"Close\");\n        {close}.setOnClickListener(v -> doweRunAction(\"{}\", null));\n        doweAdd({view}, {close}, 8, true);\n",
+            content,
+            dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
+            escape_java(action)
+        ));
+    }
+    apply_dev_android_style(&props.style.style, &view, false, output);
+    apply_dev_android_click(&props.style.style, &view, context, output);
+    output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
 }

@@ -1,0 +1,220 @@
+.date-control-shell {
+  display:block;
+  position:relative;
+  width:100%;
+  min-width:0;
+}
+.date-control-trigger {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  min-height:2.5rem;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  text-align:start;
+  cursor:pointer;
+  font:inherit;
+  outline:0;
+}
+.date-control-value {
+  min-width:0;
+  flex:1;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.date-control-trigger .select-arrow {
+  flex:0 0 auto;
+}
+.date-popover,.date-range-popover {
+  position:fixed;
+  z-index:9999;
+  display:block;
+  max-width:calc(100vw - 1rem);
+  padding:.75rem;
+  background:var(--dowe-background);
+  color:var(--dowe-backgroundText);
+  border-radius:var(--dowe-radius);
+  box-shadow:0 12px 32px rgba(15,23,42,.18);
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translateY(-.25rem) scale(.98);
+  transform-origin:top center;
+  transition:opacity 160ms ease,transform 160ms ease,visibility 160ms ease;
+}
+.date-popover {
+  width:18rem;
+}
+.date-range-popover {
+  width:38rem;
+}
+.date-popover.is-above,.date-range-popover.is-above {
+  transform:translateY(.25rem) scale(.98);
+  transform-origin:bottom center;
+}
+.date-popover.is-active,.date-range-popover.is-active {
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:translateY(0) scale(1);
+}
+.date-picker-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.5rem;
+  min-height:2rem;
+}
+.date-picker-month {
+  font-size:.9375rem;
+  font-weight:700;
+  text-align:center;
+}
+.date-picker-nav {
+  display:inline-flex;
+  width:2rem;
+  height:2rem;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:var(--dowe-radius);
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+  font-size:1.5rem;
+  line-height:1;
+}
+.date-picker-nav:hover {
+  background:var(--dowe-softMuted);
+  color:var(--dowe-softMutedText);
+}
+.date-picker-nav:disabled {
+  cursor:not-allowed;
+  opacity:.35;
+}
+.date-picker-weekdays {
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:.25rem;
+  margin:.5rem 0 .25rem;
+  padding:.25rem 0;
+  border-radius:var(--dowe-radius);
+  background:var(--dowe-softMuted);
+  color:var(--dowe-softMutedText);
+}
+.date-picker-weekdays .weekday {
+  font-size:.6875rem;
+  font-weight:700;
+  line-height:1.5rem;
+  text-align:center;
+  text-transform:uppercase;
+  opacity:.76;
+}
+.date-picker-days {
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:.25rem;
+}
+.date-picker-day-button {
+  display:flex;
+  width:100%;
+  height:2rem;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:var(--dowe-radius);
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+  font-size:.8125rem;
+}
+.date-picker-day-button:hover {
+  background:var(--dowe-softMuted);
+  color:var(--dowe-softMutedText);
+}
+.date-picker-day-button.today {
+  font-weight:800;
+  box-shadow:inset 0 0 0 1px currentColor;
+}
+.date-picker-day-button.selected,.date-picker-day-button.is-start,.date-picker-day-button.is-end {
+  background:var(--dowe-primary);
+  color:var(--dowe-primaryText);
+}
+.date-picker-day-button.is-in-range {
+  border-radius:0;
+  background:var(--dowe-softPrimary);
+  color:var(--dowe-softPrimaryText);
+}
+.date-picker-day-button.is-start {
+  border-start-end-radius:0;
+  border-end-end-radius:0;
+}
+.date-picker-day-button.is-end {
+  border-start-start-radius:0;
+  border-end-start-radius:0;
+}
+.date-picker-day-button.is-start.is-end {
+  border-radius:var(--dowe-radius);
+}
+.date-picker-day-button.is-disabled {
+  cursor:not-allowed;
+  opacity:.35;
+}
+.date-picker-empty-day {
+  height:2rem;
+}
+.date-range-calendars {
+  display:flex;
+  gap:1rem;
+}
+.date-range-calendar {
+  display:flex;
+  min-width:0;
+  flex:1;
+  flex-direction:column;
+  gap:.25rem;
+}
+.date-range-spacer {
+  width:2rem;
+  height:2rem;
+  flex:0 0 2rem;
+}
+.date-range-footer {
+  display:flex;
+  justify-content:center;
+  margin-top:.75rem;
+  padding-top:.625rem;
+  border-top:1px solid rgba(127,127,127,.2);
+  font-size:.8125rem;
+  opacity:.72;
+}
+@media(max-width:640px) {
+  .date-range-popover {
+    width:calc(100vw - 1rem);
+  }
+  .date-range-calendars {
+    flex-direction:column;
+    max-height:70vh;
+    overflow-y:auto;
+  }
+  .date-range-calendar:nth-child(2) {
+    padding-top:.75rem;
+    border-top:1px solid rgba(127,127,127,.2);
+  }
+}
+.color-field,.date-field,.date-range-field {
+  min-height:var(--dowe-control-min-height);
+}
+.date-control-trigger {
+  min-height:var(--dowe-control-min-height);
+}
+.color-field-value {
+  font-size:var(--dowe-control-font-size);
+  line-height:var(--dowe-control-line-height);
+}

@@ -797,6 +797,9 @@ fn prop_description(prop: &str) -> &'static str {
         "maxH" => "Limits the component height without adding implicit overflow behavior.",
         "fillRule" => "Selects the portable fill rule used to resolve compound Path regions.",
         "size" => "Selects the component's canonical Dowe size.",
+        "startIcon" | "endIcon" => {
+            "Selects a quoted Solar icon resolved through the shared Icon catalog and sized from the Chip size."
+        }
         "i18n" => {
             "References a translation key for the component's primary visible text while preserving the authored text as fallback."
         }

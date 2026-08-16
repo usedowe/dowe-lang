@@ -33,7 +33,10 @@
         let page_css_path = temp
             .path()
             .join(".dowe/web")
-            .join(&project.web.pages[0].css_chunks[1]);
+            .join(generated_css_chunk(
+                &project.web.pages[0].css_chunks,
+                "chunks/pages/",
+            ));
         let page_css = fs::read_to_string(page_css_path).expect("page css");
         assert!(page_css.contains("grid-template-columns:repeat(3,minmax(0,1fr));"));
         assert!(page_css.contains("grid-template-rows:repeat(2,minmax(0,1fr));"));
@@ -54,15 +57,9 @@
         assert!(android.contains("DoweOverlay.Solid(Color.Black.copy(alpha = 0.6f))"));
         assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
         assert!(android.contains("DoweGrid(modifier ="));
-        assert!(
-            android.contains("columns = doweResponsive(viewportWidth, xs = 1, md = 3) ?: 1")
-        );
-        assert!(android.contains(
-            "horizontalGap = doweResponsive(viewportWidth, xs = 20.dp) ?: 0.dp"
-        ));
-        assert!(
-            android.contains("verticalGap = doweResponsive(viewportWidth, xs = 10.dp) ?: 0.dp")
-        );
+        assert!(android.contains("columns = doweResponsive(viewportWidth, xs = 1, md = 3) ?: 1"));
+        assert!(android.contains("horizontalGap = doweResponsive(viewportWidth, xs = 20.dp) ?: 0.dp"));
+        assert!(android.contains("verticalGap = doweResponsive(viewportWidth, xs = 10.dp) ?: 0.dp"));
 
         let ios = ios_swift_output(temp.path());
         assert!(ios.contains("DoweCoverImage"));
@@ -113,15 +110,15 @@
         assert!(android.contains(
             "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.primaryText) ?: LocalContentColor.current))"
         ));
-        assert!(android.contains(
-            "Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified"
-        ));
+        assert!(
+            android.contains("Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified")
+        );
         assert!(android.contains(
             "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.softMutedText)"
         ));
-        assert!(android.contains(
-            "Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified"
-        ));
+        assert!(
+            android.contains("Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified")
+        );
 
         let ios = ios_swift_output(temp.path());
         assert!(ios.contains("Text(verbatim: \"Box inherited\")"));
@@ -170,12 +167,12 @@
         assert!(ios.contains(
             "leading: doweResponsive(viewportWidth, xs: CGFloat(16), md: CGFloat(24)) ?? CGFloat(0)"
         ));
-        assert!(!ios.contains(
-            ".overlay(Rectangle().fill(DoweDesign.muted).frame(height: CGFloat(1))"
-        ));
+        assert!(!ios.contains(".overlay(Rectangle().fill(DoweDesign.muted).frame(height: CGFloat(1))"));
         let android = fs::read_to_string(
-            temp.path().join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        ).expect("android");
+            temp.path()
+                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+        )
+        .expect("android");
         assert!(android.contains(".zIndex(1f)"));
         assert!(android.contains("horizontal = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp)"));
         let android_dev = android_dev_output(temp.path());
@@ -281,7 +278,12 @@
             .expect("login");
         let manifest =
             fs::read_to_string(temp.path().join(".dowe/web/manifest.json")).expect("manifest");
-        let router = fs::read_to_string(temp.path().join(".dowe/web/router.js")).expect("router");
+        let router = fs::read_to_string(
+            temp.path()
+                .join(".dowe/web")
+                .join(project.web.router_file_name()),
+        )
+        .expect("router");
         let android_routing = fs::read_to_string(
             temp.path()
                 .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DoweRouting.kt"),
@@ -326,9 +328,10 @@
         assert!(android_pages.contains("private data class DoweRouteEntry"));
         assert!(android_pages.contains(r#"{ navigate("replace", "", "hero") }"#));
         assert!(android_pages.contains(r#"{ navigate("push", "/signup", "join") }"#));
-        assert!(android_dev.contains(
-            "setOnClickListener(v -> doweNavigate(\"replace\", currentPath, \"hero\"))"
-        ));
+        assert!(
+            android_dev
+                .contains("setOnClickListener(v -> doweNavigate(\"replace\", currentPath, \"hero\"))")
+        );
         assert!(ios_routing.contains("dowe-dev://generated/signup"));
         assert!(ios_pages.contains("struct DoweRouteEntry: Hashable"));
         assert!(ios_pages.contains("@State private var navigationPath: [DoweRouteEntry] = []"));
@@ -371,15 +374,13 @@
         assert!(android.contains(
             ".clickable(onClick = { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
         ));
-        assert!(android.contains(
-            ".semantics { contentDescription = \"Explore Dowe Cloud\" }"
-        ));
+        assert!(android.contains(".semantics { contentDescription = \"Explore Dowe Cloud\" }"));
         assert!(android_dev.contains(
             "setOnClickListener(v -> doweOpenExternal(\"system\", \"https://dowe.dev/cloud\"))"
         ));
-        assert!(ios.contains(
-            "Button(action: { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
-        ));
+        assert!(
+            ios.contains("Button(action: { openExternal(\"system\", \"https://dowe.dev/cloud\") })")
+        );
         assert!(ios.contains(".accessibilityLabel(Text(\"Explore Dowe Cloud\"))"));
     }
 
@@ -641,7 +642,11 @@
         .expect_err("invalid copilot dowe");
 
         assert!(error.to_string().contains("dowe-copilot.dowe"));
-        assert!(error.to_string().contains("invalid value for prop `scheme`"));
+        assert!(
+            error
+                .to_string()
+                .contains("invalid value for prop `scheme`")
+        );
     }
 
     #[test]
@@ -829,8 +834,18 @@
         assert!(!body.contains("controls playsinline"));
         assert!(body.contains(r#"poster="/images/video.jpg""#));
         assert!(body.contains("video vertical is-outlined is-surface"));
-        assert!(project.web.router_js.contains("application/vnd.apple.mpegurl"));
-        assert!(project.web.router_js.contains("https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"));
+        let media = project
+            .web
+            .runtime_chunks()
+            .into_iter()
+            .find(|chunk| chunk.name == "media")
+            .expect("media runtime");
+        assert!(media.content.contains("application/vnd.apple.mpegurl"));
+        assert!(
+            media
+                .content
+                .contains("https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js")
+        );
 
         let android = fs::read_to_string(
             temp.path()
@@ -897,8 +912,10 @@
         assert!(body.contains(" allowfullscreen"));
 
         let android = fs::read_to_string(
-            temp.path().join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        ).expect("android");
+            temp.path()
+                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+        )
+        .expect("android");
         assert!(android.contains("private fun DoweIframe("));
         assert!(android.contains("WebView(context)"));
         assert!(android.contains("settings.allowFileAccess = false"));
@@ -928,13 +945,17 @@
         );
 
         let project = compile_dev(temp.path()).expect("project");
-        assert!(project.web.pages[0].body_html.contains(
-            r#"src="/examples/appbar-one" title="Local example""#
-        ));
+        assert!(
+            project.web.pages[0]
+                .body_html
+                .contains(r#"src="/examples/appbar-one" title="Local example""#)
+        );
 
         let android = fs::read_to_string(
-            temp.path().join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        ).expect("android");
+            temp.path()
+                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+        )
+        .expect("android");
         assert!(android.contains("doweIframeSource(context, source)"));
         assert!(android.contains("DoweEnvironment.BACKEND_URL"));
         assert!(android.contains("getSharedPreferences(\"dowe-hmr\""));
@@ -946,9 +967,10 @@
         assert!(android_dev.contains("DoweEnvironment.BACKEND_URL"));
         assert!(android_dev.contains("getSharedPreferences(\"dowe-hmr\""));
         assert!(android_dev.contains("doweIframeUrlAllowed"));
-        assert!(android_dev.contains(
-            "doweIframeUrlAllowed(Uri.parse(development)) ? development : configured"
-        ));
+        assert!(
+            android_dev
+                .contains("doweIframeUrlAllowed(Uri.parse(development)) ? development : configured")
+        );
 
         let ios = ios_swift_output(temp.path());
         assert!(ios.contains("doweIframeURL(source)"));
@@ -982,15 +1004,24 @@
         assert!(body.contains("border-1"));
         assert!(body.contains("button icon-button button-md device-toggle"));
         assert!(body.contains("data-dowe-button-icon-start"));
-        assert!(project.web.chunks.iter().any(|chunk| chunk
+        assert!(project.web.chunks.iter().any(|chunk| {
+            chunk
             .css_content
-            .contains(".border-1{border-width:1px;border-style:solid;}")));
+                .contains(".border-1{border-width:1px;border-style:solid;}")
+        }));
         assert!(project.web.router_js.contains("ResizeObserver"));
-        assert!(project.web.router_js.contains("Math.min(1,width/dimensions[0])"));
+        assert!(
+            project
+                .web
+                .router_js
+                .contains("Math.min(1,width/dimensions[0])")
+        );
 
         let android = fs::read_to_string(
-            temp.path().join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
-        ).expect("android");
+            temp.path()
+                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+        )
+        .expect("android");
         assert!(android.contains("private fun DoweDevicePreview("));
         assert!(android.contains("1440f to 900f"));
         assert!(android.contains("DoweDeviceIcon(profile = \"mobile\""));
@@ -1006,14 +1037,18 @@
         assert!(android_dev.contains("private FrameLayout doweDevice("));
         assert!(android_dev.contains("DoweDeviceOption[] options"));
         assert!(android_dev.contains("new DoweSvgView(this, 0f, 0f, 24f, 24f"));
-        assert!(android_dev.contains(
-            "doweDevice(\"laptop\", \"/examples/appbar-one\", \"Responsive preview\""
-        ));
+        assert!(
+            android_dev
+                .contains("doweDevice(\"laptop\", \"/examples/appbar-one\", \"Responsive preview\"")
+        );
         assert!(android_dev.contains("new DoweDeviceOption(\"mobile\""));
         assert!(android_dev.contains("doweStyledBackground(Color.TRANSPARENT, DOWE_BACKGROUND_TEXT,"));
         assert!(android_dev.contains(".setPadding(doweDp(1), doweDp(1), doweDp(1), doweDp(1));"));
         assert!(android_dev.contains("doweDeviceIconButtonBackground"));
-        assert!(android_dev.contains("new FrameLayout.LayoutParams(doweDp(24), doweDp(24), Gravity.CENTER)"));
+        assert!(
+            android_dev
+                .contains("new FrameLayout.LayoutParams(doweDp(24), doweDp(24), Gravity.CENTER)")
+        );
         assert!(android_dev.contains("setMargins(doweDp(2), doweDp(4), doweDp(2), doweDp(4))"));
         assert!(!android_dev.contains("button.setText(option[1])"));
 
@@ -1049,20 +1084,42 @@
 
         let project = compile_dev(temp.path()).expect("project");
         let body = &project.web.pages[0].body_html;
+        let runtime_path = project.web.pages[0]
+            .runtime_chunks
+            .iter()
+            .find(|path| path.contains("visualization-"))
+            .expect("visualization route dependency");
         assert!(body.contains("data-dowe-canvas"));
         assert!(body.contains("data-dowe-canvas-scene="));
         assert!(body.contains("aria-label=\"Animated Canvas\""));
-        assert!(project.web.router_js.contains("drawCanvasCommand"));
-        assert!(project.web.router_js.contains("devicePixelRatio"));
-        assert!(project.web.router_js.contains("closeCanvasFrames"));
+        let visualization = project
+            .web
+            .runtime_chunks()
+            .into_iter()
+            .find(|chunk| chunk.name == "visualization")
+            .expect("visualization runtime");
+        assert!(visualization.content.contains("drawCanvasCommand"));
+        assert!(visualization.content.contains("devicePixelRatio"));
+        assert!(visualization.content.contains("closeCanvasFrames"));
+        assert!(
+            project.web.pages[0]
+                .html_document
+                .contains(&format!(r#"rel="modulepreload" href="/{runtime_path}""#))
+        );
+        assert!(
+            dowe_generator_web::manifest(&project.web)
+                .contains(&format!(r#""runtimeChunks":["{runtime_path}"]"#))
+        );
+        assert!(temp.path().join(".dowe/web").join(runtime_path).is_file());
         assert!(body.contains("data-dowe-canvas-on-pointer="));
         assert!(body.contains("data-dowe-canvas-on-key="));
         assert!(body.contains("data-dowe-canvas-on-motion="));
-        assert!(project.web.router_js.contains("boundCanvasCommand"));
-        assert!(project.web.router_js.contains("canvasLogicalPoint"));
+        assert!(visualization.content.contains("boundCanvasCommand"));
+        assert!(visualization.content.contains("canvasLogicalPoint"));
 
         let android = fs::read_to_string(
-            temp.path().join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+            temp.path()
+                .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
         )
         .expect("android");
         assert!(android.contains("private fun DoweCanvas("));
@@ -1088,8 +1145,8 @@
         assert!(ios.contains("DoweCanvasInputBridge"));
         assert!(ios.contains("CMMotionManager"));
         assert!(ios.contains("boundCommand"));
-        let ios_info = fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist"))
-            .expect("ios info");
+        let ios_info =
+            fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist")).expect("ios info");
         assert!(ios_info.contains("NSMotionUsageDescription"));
     }
 
@@ -1113,9 +1170,11 @@
         let body = &project.web.pages[0].body_html;
         assert!(body.contains("divider divider-horizontal is-primary"));
         assert!(body.contains("divider divider-vertical is-secondary"));
-        assert!(project.web.chunks.iter().any(|chunk| chunk
+        assert!(project.web.chunks.iter().any(|chunk| {
+            chunk
             .css_content
-            .contains(".divider.is-primary{background-color:var(--dowe-primary);")));
+                .contains(".divider.is-primary{background-color:var(--dowe-primary);")
+        }));
 
         let android = fs::read_to_string(
             temp.path()

@@ -1,0 +1,242 @@
+.arc-chart-container,.area-chart-container,.bar-chart-container,.line-chart-container,.pie-chart-container {
+  --dowe-component-display:flex;
+  position:relative;
+  display:var(--dowe-show,var(--dowe-component-display));
+  width:100%;
+  align-items:center;
+  justify-content:center;
+  gap:1rem;
+  margin:0;
+  overflow:hidden;
+  border-radius:var(--dowe-radius);
+}
+.arc-chart-container.legend-top,.area-chart-container.legend-top,.bar-chart-container.legend-top,.line-chart-container.legend-top,.pie-chart-container.legend-top {
+  flex-direction:column-reverse;
+}
+.arc-chart-container.legend-bottom,.area-chart-container.legend-bottom,.bar-chart-container.legend-bottom,.line-chart-container.legend-bottom,.pie-chart-container.legend-bottom {
+  flex-direction:column;
+}
+.arc-chart-container.legend-left,.area-chart-container.legend-left,.bar-chart-container.legend-left,.line-chart-container.legend-left,.pie-chart-container.legend-left {
+  flex-direction:column-reverse;
+}
+.arc-chart-container.legend-right,.area-chart-container.legend-right,.bar-chart-container.legend-right,.line-chart-container.legend-right,.pie-chart-container.legend-right {
+  flex-direction:column;
+}
+.dowe-chart-viewport {
+  position:relative;
+  min-width:0;
+  width:100%;
+  height:100%;
+  min-height:inherit;
+  flex:1;
+}
+.dowe-chart-svg {
+  display:block;
+  width:100%;
+  height:100%;
+  min-height:inherit;
+  overflow:visible;
+}
+.arc-chart-container.is-sm,.pie-chart-container.is-sm {
+  min-height:9.375rem;
+}
+.arc-chart-container.is-md,.pie-chart-container.is-md {
+  min-height:14rem;
+}
+.arc-chart-container.is-lg,.pie-chart-container.is-lg {
+  min-height:18.75rem;
+}
+.arc-chart-container.is-xl,.pie-chart-container.is-xl {
+  min-height:25rem;
+}
+.area-chart-container.is-sm,.bar-chart-container.is-sm,.line-chart-container.is-sm {
+  min-height:12.5rem;
+}
+.area-chart-container.is-md,.bar-chart-container.is-md,.line-chart-container.is-md {
+  min-height:18.75rem;
+}
+.area-chart-container.is-lg,.bar-chart-container.is-lg,.line-chart-container.is-lg {
+  min-height:25rem;
+}
+.area-chart-container.is-xl,.bar-chart-container.is-xl,.line-chart-container.is-xl {
+  min-height:31.25rem;
+}
+.dowe-chart-grid-line {
+  stroke:currentColor;
+  stroke-opacity:.22;
+  stroke-width:1;
+  stroke-dasharray:2 2;
+}
+.dowe-chart-axis-line {
+  stroke:currentColor;
+  stroke-opacity:.5;
+  stroke-width:1;
+}
+.dowe-chart-axis-label {
+  fill:currentColor;
+  opacity:.72;
+  font-size:12px;
+}
+.dowe-chart-line {
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  transition:opacity 160ms ease;
+}
+.dowe-chart-area {
+  opacity:.3;
+}
+.dowe-chart-point {
+  stroke:currentColor;
+  stroke-width:2;
+}
+.dowe-chart-bar,.dowe-chart-slice,.dowe-chart-arc {
+  transition:opacity 160ms ease,filter 160ms ease;
+}
+.dowe-chart-bar:hover,.dowe-chart-slice:hover,.dowe-chart-arc:hover {
+  opacity:.84;
+  filter:brightness(1.08);
+}
+.dowe-chart-center-value {
+  fill:currentColor;
+  font-weight:800;
+  text-anchor:middle;
+  dominant-baseline:middle;
+}
+.dowe-chart-center-label {
+  fill:currentColor;
+  opacity:.72;
+  text-anchor:middle;
+  dominant-baseline:middle;
+}
+.dowe-chart-empty,.dowe-chart-loading {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:1rem;
+  text-align:center;
+  font-size:.875rem;
+  font-weight:600;
+  opacity:.64;
+}
+.dowe-chart-loading {
+  display:none;
+}
+.is-loading .dowe-chart-loading {
+  display:flex;
+}
+.is-loading .dowe-chart-empty,.has-data .dowe-chart-empty {
+  display:none;
+}
+.dowe-chart-legend {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  gap:.5rem 1rem;
+  font-size:.875rem;
+  line-height:1.25rem;
+}
+.legend-left .dowe-chart-legend,.legend-right .dowe-chart-legend {
+  align-content:center;
+}
+.legend-none .dowe-chart-legend,.hide-legend .dowe-chart-legend {
+  display:none;
+}
+.dowe-chart-legend-item {
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  white-space:nowrap;
+}
+.dowe-chart-legend-color {
+  width:.75rem;
+  height:.75rem;
+  border-radius:.2rem;
+  flex:0 0 auto;
+}
+.pie-chart-container .dowe-chart-viewport {
+  flex:0 1 20rem;
+  width:min(100%,20rem);
+  height:auto;
+  min-height:0;
+  aspect-ratio:1;
+  margin-inline:auto;
+}
+.pie-chart-container .dowe-chart-svg {
+  min-height:0;
+  aspect-ratio:1;
+}
+.pie-chart-container .dowe-chart-legend {
+  max-width:100%;
+}
+.pie-chart-container .dowe-chart-legend-item {
+  min-width:0;
+  max-width:100%;
+}
+.pie-chart-container .dowe-chart-legend-item>span:last-child {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media (max-width:767px) {
+  .pie-chart-container.legend-left,.pie-chart-container.legend-right {
+    flex-direction:column;
+  }
+  .pie-chart-container .dowe-chart-viewport {
+    width:min(100%,20rem);
+    max-width:100%;
+  }
+  .pie-chart-container .dowe-chart-legend {
+    width:100%;
+  }
+  .pie-chart-container .dowe-chart-legend-item {
+    max-width:calc(50% - .5rem);
+  }
+}
+@media(min-width:48rem) {
+  .pie-chart-container.legend-left .dowe-chart-viewport,.pie-chart-container.legend-right .dowe-chart-viewport {
+    flex:0 1 20rem;
+    max-width:20rem;
+  }
+}
+.arc-chart-container {
+  min-width:0;
+}
+.arc-chart-container .dowe-chart-arc-viewport {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:visible;
+}
+.arc-chart-container .dowe-chart-arc-viewport .dowe-chart-svg {
+  max-width:100%;
+  max-height:100%;
+  margin:auto;
+}
+.arc-chart-container.has-glow .dowe-chart-arc,.pie-chart-container.has-glow .dowe-chart-slice {
+  filter:drop-shadow(0 0 .35rem currentColor);
+}
+.dowe-chart-inline-label {
+  fill:currentColor;
+  font-size:clamp(.625rem,1.8vw,.8125rem);
+  font-weight:700;
+  pointer-events:none;
+}
+.arc-chart-container.legend-left .dowe-chart-arc-viewport,.arc-chart-container.legend-right .dowe-chart-arc-viewport {
+  min-width:0;
+}
+.arc-chart-container.legend-left .dowe-chart-legend,.arc-chart-container.legend-right .dowe-chart-legend {
+  max-width:35%;
+}
+.arc-chart-container.legend-top .dowe-chart-legend,.arc-chart-container.legend-bottom .dowe-chart-legend {
+  width:100%;
+}
+@media(max-width:767px) {
+  .arc-chart-container.legend-left .dowe-chart-legend,.arc-chart-container.legend-right .dowe-chart-legend {
+    width:100%;
+    max-width:100%;
+  }
+}

@@ -40,8 +40,8 @@ fn display_overlay_tree() -> ViewNode {
                     on_close: Some("close".to_string()),
                 },
                 value: "Filter".to_string(),
-                start: None,
-                end: None,
+                start: Some(sized_chip_icon("settings")),
+                end: Some(sized_chip_icon("magnifier")),
             },
             ViewNode::Skeleton {
                 props: SkeletonProps {
@@ -187,4 +187,12 @@ fn display_overlay_tree() -> ViewNode {
             },
         ],
     }
+}
+
+fn sized_chip_icon(name: &str) -> SideNavIcon {
+    let mut icon = solar_control_icon(name).expect("chip icon");
+    let size = ResponsiveValue::scalar(SizeValue::Scale(ScaleValue::from_half_steps(8)));
+    icon.props.style.sizing.w = Some(size.clone());
+    icon.props.style.sizing.h = Some(size);
+    icon
 }

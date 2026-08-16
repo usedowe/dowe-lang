@@ -20,6 +20,7 @@ use tokio::net::{TcpListener, UdpSocket};
 use tokio::sync::RwLock;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
+use tower_http::compression::CompressionLayer;
 
 const VIEWS_DEV_PORT: u16 = 7654;
 
@@ -906,6 +907,7 @@ fn production_router(
     } else {
         router
     };
+    let router = router.layer(CompressionLayer::new().br(true).gzip(true));
     if let Some(access) = access {
         router.layer(middleware::from_fn_with_state(
             access,

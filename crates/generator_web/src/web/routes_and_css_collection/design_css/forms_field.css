@@ -1,0 +1,14 @@
+.field {
+  display:flex;
+  flex-direction:column;
+  gap:0.5rem;
+  width:100%;
+}
+.field-label {
+  font-size:0.875rem;
+  line-height:1.25rem;
+  font-weight:600;
+}
+.field>.control,.field>.select {
+  width:100%;
+}

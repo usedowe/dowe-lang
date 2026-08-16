@@ -136,8 +136,17 @@ impl ReactiveRenderContext {
     }
 }
 
-fn render_html(node: &ViewNode, children_html: Option<&str>) -> String {
-    render_html_with_context(node, children_html, &ReactiveRenderContext::default())
+fn render_html_with_inspector(
+    node: &ViewNode,
+    children_html: Option<&str>,
+    inspector: Option<&ViewInspectorMap>,
+) -> String {
+    if inspector.is_none() {
+        return render_html_with_context(node, children_html, &ReactiveRenderContext::default());
+    }
+    with_view_inspector(inspector, || {
+        render_html_with_context(node, children_html, &ReactiveRenderContext::default())
+    })
 }
 
 fn render_html_with_context(

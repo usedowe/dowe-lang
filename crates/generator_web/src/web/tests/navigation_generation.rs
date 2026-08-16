@@ -442,13 +442,7 @@ fn renders_tabs_markup_runtime_and_css() {
         &page_tree,
     );
     let html = render_page_body(&ViewNode::Children, &page_tree);
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
+    let router = full_runtime_for_test();
 
     assert!(html.contains(r#"<div class="tabs is-start" data-dowe-tabs>"#));
     assert!(html.contains(r#"<div class="tabs-list is-line is-primary" role="tablist">"#));
@@ -527,13 +521,7 @@ fn renders_drawer_markup_runtime_and_css() {
     );
     let html = render_page_body(&ViewNode::Children, &page_tree);
     let css = super::design_css();
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
+    let router = full_runtime_for_test();
 
     assert!(html.contains(r#"class="drawer-panel" data-dowe-drawer data-dowe-drawer-open="drawerOpen" data-dowe-drawer-disable-overlay-close="true" hidden"#));
     assert!(

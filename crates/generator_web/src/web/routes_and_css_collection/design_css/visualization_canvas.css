@@ -1,0 +1,40 @@
+.candlestick {
+  --dowe-component-display:block;
+  position:relative;
+  display:var(--dowe-show,var(--dowe-component-display));
+  width:100%;
+  min-height:16rem;
+  margin:0;
+  overflow:hidden;
+  border-radius:var(--dowe-radius);
+}
+.candlestick-canvas {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+.candlestick-empty {
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:1rem;
+  text-align:center;
+  font-size:0.875rem;
+  opacity:0.72;
+}
+.candlestick.has-data .candlestick-empty {
+  display:none;
+}
+.canvas {
+  --dowe-component-display:block;
+  display:var(--dowe-show,var(--dowe-component-display));
+  max-width:100%;
+  overflow:hidden;
+  touch-action:none;
+}
+.canvas.is-pixelated {
+  image-rendering:pixelated;
+}

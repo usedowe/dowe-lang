@@ -319,7 +319,7 @@ component or use the responsive Grid pattern in `references/table.md` when cells
 | `Badge` | Compact status or count surface containing one or more view children. |
 | `Brand` | Logo or identity container with one or more arbitrary view children, optional quoted `href` navigation, optional accessible `label`, and Box-compatible `w` and `h`; it adds no Button chrome. When used as an AppBar child, mount `Brand` or an imported Logo component directly in a region; do not wrap it with `Flex` just to place it beside sibling controls. |
 | `Banner` | Full-width external surface with one or more arbitrary view children, required quoted HTTPS `href`, optional accessible `label`, and common background, cover, spacing, sizing, border, radius, shadow, and visibility props; web opens a protected new tab and native targets use the system browser. |
-| `Chip` | Compact labeled token with optional `start` and `end` icon regions, supported close behavior, portable motion props, and an optional whole-chip `onClick` action. |
+| `Chip` | Compact labeled token with optional static Solar `startIcon` and `endIcon` props or custom `start` and `end` icon regions, supported close behavior, portable motion props, and an optional whole-chip `onClick` action. Icon props scale with the Chip `size` across web, Android, and iOS. |
 | `Skeleton` | Loading placeholder sized to the content surface it represents. |
 | `ChatBox` | Bound message list with named send and pagination functions plus loading, sending, and streaming state. |
 | `Empty` | Empty-state title, description, and optional action or navigation target. `type` selects the shared Solar `bold-duotone` icon: `playlist`, `result`, `data`, or `template`; do not add a custom icon prop. |

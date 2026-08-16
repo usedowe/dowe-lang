@@ -24,12 +24,14 @@ fn emits_persistent_view_store_metadata() {
         &tree,
     );
 
-    assert!(page
-        .content
-        .contains(r#""storageKey":"views/store/session:session""#));
-    assert!(page
-        .content
-        .contains(r#""scope":"global","storage":"local""#));
+    assert!(
+        page.content
+            .contains(r#""storageKey":"views/store/session:session""#)
+    );
+    assert!(
+        page.content
+            .contains(r#""scope":"global","storage":"local""#)
+    );
 }
 
 #[test]
@@ -51,9 +53,10 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     assert!(html.contains("<p class=\"dowe-text text-md\">Card inherited</p>"));
     assert!(html.contains("<p class=\"dowe-title title-md\">Card title inherited</p>"));
     assert!(html.contains("<p class=\"dowe-title title-md color-warning\">Card override</p>"));
-    assert!(page
-        .css_content
-        .contains(".color-primaryText{color:var(--dowe-primaryText);}"));
+    assert!(
+        page.css_content
+            .contains(".color-primaryText{color:var(--dowe-primaryText);}")
+    );
     assert!(page.css_content.contains(
         ".card.is-soft.is-muted{--dowe-content-text:var(--dowe-softMutedText);--dowe-content-title:var(--dowe-softMutedTitle);background-color:var(--dowe-softMuted);color:var(--dowe-softMutedText);border-color:var(--dowe-softMuted);}"
     ));
@@ -143,9 +146,10 @@ fn emits_select_options_from_constant_each() {
         &tree,
     );
     assert!(page.content.contains("data-dowe-each=\\\"options01\\\""));
-    assert!(page
-        .content
-        .contains("data-dowe-option-value-path=\\\"option.value\\\""));
+    assert!(
+        page.content
+            .contains("data-dowe-option-value-path=\\\"option.value\\\"")
+    );
 }
 
 #[test]
@@ -227,9 +231,10 @@ fn emits_terminal_replace_redirect_steps() {
         router_js: String::new(),
     });
 
-    assert!(page
-        .content
-        .contains(r#"{"kind":"redirect","path":"/login"}"#));
+    assert!(
+        page.content
+            .contains(r#"{"kind":"redirect","path":"/login"}"#)
+    );
     assert!(router.contains(
         r#"if(step.kind==="redirect"){await navigate(step.path,{replace:true});return true;}"#
     ));
@@ -268,8 +273,11 @@ fn emits_fab_actions_as_intrinsic_colored_capsules() {
     let body = render_page_body(&ViewNode::Children, &tree);
     let css = show_design_css();
 
-    assert!(body
-        .contains("data-dowe-fab-action><span class=\"fab-action-label\">View Button</span><svg"));
+    assert!(
+        body.contains(
+            "data-dowe-fab-action><span class=\"fab-action-label\">View Button</span><svg"
+        )
+    );
     assert!(!body.contains("</span><a"));
     assert!(css.contains(
         ".fab-action-button{width:auto;min-width:0;height:auto;padding:.5rem .75rem;gap:.75rem"
@@ -379,10 +387,12 @@ fn creates_stable_chunk_ids() {
 
     assert_eq!(first.id, second.id);
     assert_eq!(first.id.len(), 8);
-    assert!(first
-        .id
-        .chars()
-        .all(|value| value.is_ascii_lowercase() || value.is_ascii_digit()));
+    assert!(
+        first
+            .id
+            .chars()
+            .all(|value| value.is_ascii_lowercase() || value.is_ascii_digit())
+    );
 }
 
 #[test]
@@ -393,9 +403,11 @@ fn creates_locale_chunks_and_browser_translation_runtime() {
     assert_eq!(first, second);
     assert_eq!(first.len(), 2);
     assert!(first[0].relative_path.starts_with("web/chunks/i18n"));
-    assert!(first
-        .iter()
-        .any(|chunk| chunk.content.contains("Dowe construye sistemas.")));
+    assert!(
+        first
+            .iter()
+            .any(|chunk| chunk.content.contains("Dowe construye sistemas."))
+    );
 
     let tree = ViewNode::Title {
         props: TextProps {
@@ -404,8 +416,10 @@ fn creates_locale_chunks_and_browser_translation_runtime() {
         },
         value: "Dowe builds systems.".to_string(),
     };
-    assert!(render_page_body(&ViewNode::Children, &tree)
-        .contains(r#"data-dowe-i18n="home.hero.title""#));
+    assert!(
+        render_page_body(&ViewNode::Children, &tree)
+            .contains(r#"data-dowe-i18n="home.hero.title""#)
+    );
 
     let router = super::router_js(&super::WebOutput {
         chunks: Vec::new(),
@@ -685,7 +699,7 @@ fn emits_interactive_motion_classes_rules_and_chip_event() {
 fn emits_web_manifest_and_html_artifacts() {
     let root = Path::new("/project");
     let layout_tree = layout_tree();
-    let page_tree = page_tree();
+    let page_tree = media_display_form_tree();
     let layout = build_layout_chunk(
         root,
         Path::new("/project/src/layouts/auth.dowe"),
@@ -719,6 +733,9 @@ fn emits_web_manifest_and_html_artifacts() {
         layout_chunk_ids: vec![layout.id.clone()],
         js_chunks: vec![layout_js, page_js],
         css_chunks: vec![layout_css, page_css],
+        runtime_chunks: Vec::new(),
+        design_file_name: "design.css".to_string(),
+        router_file_name: "router-test.js".to_string(),
         boundaries: vec![format!("layout:{}", layout.id), format!("page:{}", page.id)],
         sections: Vec::new(),
         navigation_actions: Vec::new(),
@@ -730,9 +747,11 @@ fn emits_web_manifest_and_html_artifacts() {
             .html_document
             .contains(r#"<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover, interactive-widget=resizes-content">"#)
     );
-    assert!(view_page
-        .html_document
-        .contains(r#"<link rel="icon" href="data:image/svg+xml,"#));
+    assert!(
+        view_page
+            .html_document
+            .contains(r#"<link rel="icon" href="data:image/svg+xml,"#)
+    );
     let mut web = super::WebOutput {
         chunks: vec![layout, page],
         pages: vec![view_page],
@@ -741,115 +760,223 @@ fn emits_web_manifest_and_html_artifacts() {
         router_js: String::new(),
     };
     web.router_js = super::router_js(&web);
+    let router_file_name = web.router_file_name();
+    web.pages[0].router_file_name.clone_from(&router_file_name);
+    super::prepare_design_asset(&mut web, &FontConfig::default(), &DesignConfig::default());
+    let router_file_name = web.router_file_name();
+    let design_file_name = web.design_file_name().to_string();
     let artifacts = web_artifacts(&web, &FontConfig::default(), &DesignConfig::default());
+    let style_chunks = web.pages[0]
+        .css_chunks
+        .iter()
+        .filter(|path| path.starts_with("chunks/design/"))
+        .cloned()
+        .collect::<Vec<_>>();
 
-    assert!(artifacts
-        .iter()
-        .any(|artifact| artifact.relative_path == Path::new("web/manifest.json")));
-    assert!(artifacts
-        .iter()
-        .any(|artifact| artifact.relative_path == Path::new("web/pages/login.html")));
+    assert!(!style_chunks.is_empty());
+    assert!(
+        web.pages[0]
+            .css_chunks
+            .iter()
+            .position(|path| path.starts_with("chunks/design/"))
+            < web.pages[0]
+                .css_chunks
+                .iter()
+                .position(|path| path.starts_with("chunks/layouts/"))
+    );
+    for path in &style_chunks {
+        assert!(web.pages[0].html_document.contains(&format!(
+            r#"data-dowe-css="{path}" rel="stylesheet" href="/{path}""#
+        )));
+        assert!(
+            artifacts
+                .iter()
+                .any(|artifact| artifact.relative_path == Path::new("web").join(path))
+        );
+    }
+
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.relative_path == Path::new("web/manifest.json"))
+    );
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| artifact.relative_path == Path::new("web/pages/login.html"))
+    );
     let index = artifacts
         .iter()
         .find(|artifact| artifact.relative_path == Path::new("web/index.html"))
         .expect("index");
-    assert!(index.content.contains(r#"href="design.css""#));
+    assert!(
+        index
+            .content
+            .contains(&format!(r#"href="{design_file_name}""#))
+    );
+    assert!(index.content.contains("data-dowe-router"));
+    assert!(
+        index
+            .content
+            .contains(&format!(r#"src="{router_file_name}""#))
+    );
     assert!(index.content.contains(r#"src="chunks/layouts/"#));
-    assert!(index
-        .content
-        .contains(r#"document.documentElement.classList.add("dowe-entrance-pending")"#));
+    assert!(
+        index
+            .content
+            .contains(r#"document.documentElement.classList.add("dowe-entrance-pending")"#)
+    );
     let page = artifacts
         .iter()
         .find(|artifact| artifact.relative_path == Path::new("web/pages/login.html"))
         .expect("page");
-    assert!(page.content.contains(r#"href="../design.css""#));
+    assert!(
+        page.content
+            .contains(&format!(r#"href="../{design_file_name}""#))
+    );
     assert!(page.content.contains(r#"src="../chunks/layouts/"#));
-    assert!(web.pages[0].html_document.contains(r#"href="/design.css""#));
+    assert!(
+        web.pages[0]
+            .html_document
+            .contains(&format!(r#"href="/{design_file_name}""#))
+    );
+    assert!(
+        web.pages[0]
+            .html_document
+            .contains(&format!(r#"src="/{router_file_name}""#))
+    );
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| { artifact.relative_path == Path::new("web").join(&router_file_name) })
+    );
+    assert!(
+        artifacts
+            .iter()
+            .any(|artifact| { artifact.relative_path == Path::new("web").join(&design_file_name) })
+    );
+    assert!(
+        !artifacts
+            .iter()
+            .any(|artifact| artifact.relative_path == Path::new("web/router.js"))
+    );
     assert!(super::manifest(&web).contains(r#""staticFile":"web/pages/login.html""#));
+    assert!(super::manifest(&web).contains("chunks/design/"));
+    let controls = super::controls_runtime_chunk().content;
     assert!(web.router_js.contains("staticMode"));
     assert!(web.router_js.contains("doweHref"));
-    assert!(web.router_js.contains("function positionSelect(control)"));
-    assert!(web
-        .router_js
-        .contains("function mountSelectPopover(control)"));
-    assert!(web.router_js.contains("document.body.appendChild(popover)"));
-    assert!(web.router_js.contains("popover.__doweControl"));
-    assert!(web
-        .router_js
-        .contains("const above=bottom<Math.min(height,224)&&top>bottom"));
-    assert!(web
-        .router_js
-        .contains("scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\"})"));
-    assert!(web
-        .router_js
-        .contains("if(\"scrollRestoration\"in history)history.scrollRestoration=\"manual\""));
+    assert!(controls.contains("function positionSelect(control)"));
+    assert!(controls.contains("function mountSelectPopover(control)"));
+    assert!(controls.contains("document.body.appendChild(popover)"));
+    assert!(controls.contains("popover.__doweControl"));
+    assert!(controls.contains("const above=bottom<Math.min(height,224)&&top>bottom"));
+    assert!(
+        web.router_js
+            .contains("scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\"})")
+    );
+    assert!(
+        web.router_js
+            .contains("if(\"scrollRestoration\"in history)history.scrollRestoration=\"manual\"")
+    );
     assert!(web.router_js.contains("function pageScrollViewport()"));
-    assert!(web
-        .router_js
-        .contains("viewport.scrollTop=0;viewport.scrollLeft=0"));
-    assert!(web
-        .router_js
-        .contains("viewport.style.scrollBehavior=\"auto\""));
-    assert!(web
-        .router_js
-        .contains("viewport.style.scrollBehavior=behavior"));
-    assert!(web
-        .router_js
-        .contains("scrollToPageDestination(currentFragment)"));
-    assert!(web
-        .router_js
-        .contains("new RegExp(\"^https?:/{2}\",\"i\").test(source)"));
-    assert!(web
-        .router_js
-        .contains("const boundary=document.querySelector('[data-dowe-boundary^=\"page:\"]')"));
-    assert!(web
-        .router_js
-        .contains("boundary.outerHTML=wrapPage(route,page.render())"));
+    assert!(
+        web.router_js
+            .contains("viewport.scrollTop=0;viewport.scrollLeft=0")
+    );
+    assert!(
+        web.router_js
+            .contains("viewport.style.scrollBehavior=\"auto\"")
+    );
+    assert!(
+        web.router_js
+            .contains("viewport.style.scrollBehavior=behavior")
+    );
+    assert!(
+        web.router_js
+            .contains("scrollToPageDestination(currentFragment)")
+    );
+    assert!(
+        web.router_js
+            .contains("new RegExp(\"^https?:/{2}\",\"i\").test(source)")
+    );
+    assert!(
+        web.router_js
+            .contains("const boundary=document.querySelector('[data-dowe-boundary^=\"page:\"]')")
+    );
+    assert!(
+        web.router_js
+            .contains("boundary.outerHTML=wrapPage(route,page.render())")
+    );
     assert!(web.router_js.contains("window.__doweHotUpdate=hotUpdate"));
-    assert!(web
-        .router_js
-        .contains("fetch(versionedAsset(\"manifest.json\",version)"));
-    assert!(web
-        .router_js
-        .contains("hydrate(route,modules,preserveLayouts,true)"));
+    assert!(
+        web.router_js
+            .contains("fetch(versionedAsset(\"manifest.json\",version)")
+    );
+    assert!(
+        web.router_js
+            .contains("hydrate(route,modules,preserveLayouts,true)")
+    );
     assert!(web.router_js.contains("previous.state[signal.id]"));
-    assert!(web
-        .router_js
-        .contains("const boundState=captureBoundState(app)"));
+    assert!(
+        web.router_js
+            .contains("const boundState=captureBoundState(app)")
+    );
     assert!(web.router_js.contains("restoreBoundState(boundState)"));
-    assert!(web
-        .router_js
-        .contains("function prepareEntranceAnimations()"));
-    assert!(web
-        .router_js
-        .contains("function releaseEntranceAnimations()"));
+    assert!(
+        web.router_js
+            .contains("function prepareEntranceAnimations()")
+    );
+    assert!(
+        web.router_js
+            .contains("function releaseEntranceAnimations()")
+    );
     assert!(web.router_js.contains(
         "requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove(entranceMotionClass)))"
     ));
-    assert!(web
-        .router_js
-        .contains("compatibleSignalValue(previous.state[signal.id]"));
-    assert!(web
-        .router_js
-        .contains("if(current&&!version){document.head.appendChild(current)"));
-    assert!(web
-        .router_js
-        .contains("return Promise.all(route.cssChunks.map(path=>loadCss(path"));
-    assert!(web
-        .router_js
-        .contains("if(!document.querySelector('script[src=\"/_dowe/dev/client.js\"]'))return"));
-    assert!(web
-        .router_js
-        .contains("await syncDevRoutes();const route=routes[destination.path]"));
+    assert!(
+        web.router_js
+            .contains("compatibleSignalValue(previous.state[signal.id]")
+    );
+    assert!(
+        web.router_js
+            .contains("if(current&&!version)return waitForCss(current)")
+    );
+    assert!(!web.router_js.contains("document.head.appendChild(current)"));
+    assert!(
+        web.router_js
+            .contains("document.head.insertBefore(link,next||null)")
+    );
+    assert!(
+        web.router_js
+            .contains("return Promise.all(route.cssChunks.map(path=>loadCss(route,path")
+    );
+    assert!(
+        web.router_js
+            .contains("if(!document.querySelector('script[src=\"/_dowe/dev/client.js\"]'))return")
+    );
+    assert!(
+        web.router_js
+            .contains("await syncDevRoutes();const route=routes[destination.path]")
+    );
     assert_eq!(web.router_js.matches("await loadRouteCss(route").count(), 2);
-    assert!(web
-        .router_js
-        .contains("reject(new Error(\"Dowe CSS chunk failed: \"+link.href))"));
+    assert_eq!(web.router_js.matches("pruneCss(route)").count(), 3);
+    assert!(web.router_js.contains("function pruneCss(route)"));
+    assert!(
+        web.router_js
+            .contains("reject(new Error(\"Dowe CSS chunk failed: \"+link.href))")
+    );
     assert!(web.router_js.contains(
         "if(options.writeHistory===false||options.replace)location.replace(destination.href)"
     ));
     assert!(web.router_js.contains("if(current)current.remove()"));
     assert!(web.router_js.contains("history.pushState"));
+    assert!(web.router_js.len() < 228_495);
+    assert!(
+        !web.router_js
+            .contains("navigator.mediaDevices.getUserMedia")
+    );
+    assert!(!web.router_js.contains("function renderCharts"));
+    assert!(super::runtime_chunks_for_trees(&ViewNode::Children, &text("Basic")).is_empty());
 }
 
 #[test]
@@ -915,16 +1042,19 @@ fn emits_container_refactor_css() {
     assert!(page.content.contains("col-span-2"));
     assert!(page.content.contains("has-cover"));
     assert!(page.content.contains("has-overlay"));
-    assert!(page
-        .css_content
-        .contains("grid-template-columns:repeat(3,minmax(0,1fr));"));
-    assert!(page
-        .css_content
-        .contains("grid-template-rows:repeat(2,minmax(0,1fr));"));
+    assert!(
+        page.css_content
+            .contains("grid-template-columns:repeat(3,minmax(0,1fr));")
+    );
+    assert!(
+        page.css_content
+            .contains("grid-template-rows:repeat(2,minmax(0,1fr));")
+    );
     assert!(page.css_content.contains("row-gap:10px;column-gap:20px;"));
-    assert!(page
-        .css_content
-        .contains("background-image:url(\"/mobile.jpg\")"));
+    assert!(
+        page.css_content
+            .contains("background-image:url(\"/mobile.jpg\")")
+    );
     assert!(page.css_content.contains("@media (min-width:768px)"));
     assert!(page.css_content.contains("rgba(0,0,0,0.6)"));
     assert!(page.css_content.contains(".card.is-soft.is-surface"));
@@ -1080,22 +1210,26 @@ fn emits_portable_box_positioning_css() {
     assert!(page.content.contains("position-fixed top-0 left-0"));
     assert!(page.content.contains("top-4"));
     assert!(page.content.contains("right-4 md:right-6"));
-    assert!(page
-        .css_content
-        .contains(".position-relative{position:relative;}"));
-    assert!(page
-        .css_content
-        .contains(".position-absolute{position:absolute;}"));
-    assert!(page
-        .css_content
-        .contains(".position-fixed{position:fixed;}"));
+    assert!(
+        page.css_content
+            .contains(".position-relative{position:relative;}")
+    );
+    assert!(
+        page.css_content
+            .contains(".position-absolute{position:absolute;}")
+    );
+    assert!(
+        page.css_content
+            .contains(".position-fixed{position:fixed;}")
+    );
     assert!(page.css_content.contains(".top-4{top:1rem;}"));
     assert!(page.css_content.contains(".top-0{top:0rem;}"));
     assert!(page.css_content.contains(".left-0{left:0rem;}"));
     assert!(page.css_content.contains(".right-4{right:1rem;}"));
-    assert!(page
-        .css_content
-        .contains("@media (min-width:768px){.md\\:right-6{right:1.5rem;}}"));
+    assert!(
+        page.css_content
+            .contains("@media (min-width:768px){.md\\:right-6{right:1.5rem;}}")
+    );
 }
 
 #[test]
@@ -1104,16 +1238,16 @@ fn emits_reset_and_font_css() {
 
     assert!(css.contains("body{--dowe-content-text:var(--dowe-backgroundText);--dowe-content-title:var(--dowe-backgroundTitle);margin:0;"));
     assert!(css.contains(".dowe-text{color:var(--dowe-content-text,var(--dowe-backgroundText));}"));
-    assert!(css.contains(".dowe-title{color:var(--dowe-content-title,var(--dowe-backgroundTitle));}"));
+    assert!(
+        css.contains(".dowe-title{color:var(--dowe-content-title,var(--dowe-backgroundTitle));}")
+    );
     assert!(css.contains("p,h1,h2,h3,h4,h5,h6{margin:0;"));
     assert!(css.contains("a{color:inherit;text-decoration:inherit;}"));
     assert!(css.contains("button,input,textarea,select{font:inherit;color:inherit;margin:0;}"));
     assert!(css.contains(
         ".input::-webkit-outer-spin-button,.input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}"
     ));
-    assert!(css.contains(
-        ".input[type='number']{appearance:textfield;-moz-appearance:textfield;}"
-    ));
+    assert!(css.contains(".input[type='number']{appearance:textfield;-moz-appearance:textfield;}"));
     assert!(css.contains(
         ".input:-webkit-autofill,.input:-webkit-autofill:hover,.input:-webkit-autofill:focus,.input:-webkit-autofill:active{-webkit-box-shadow:0 0 0 30px transparent inset!important;-webkit-text-fill-color:inherit!important;background-color:transparent!important;background-image:none!important;color:inherit!important;transition:background-color 5000000s ease-in-out 0s!important;}"
     ));
@@ -1127,7 +1261,7 @@ fn emits_reset_and_font_css() {
 
 #[test]
 fn rewrites_static_route_hrefs_for_desktop_fallback() {
-    let document = r##"<a class="button" href="/signup#join" data-dowe-nav="push" data-dowe-href="/signup#join">Signup</a><a class="button" href="/" data-dowe-nav="push" data-dowe-href="/">Home</a><link rel="stylesheet" href="/design.css">"##;
+    let document = r##"<a class="button" href="/signup#join" data-dowe-nav="push" data-dowe-href="/signup#join">Signup</a><a class="button" href="/" data-dowe-nav="push" data-dowe-href="/">Home</a><link rel="stylesheet" href="/design-test.css">"##;
     let index = super::static_html_document(document, "");
     let page = super::static_html_document(document, "../");
 
@@ -1135,10 +1269,10 @@ fn rewrites_static_route_hrefs_for_desktop_fallback() {
         r##"href="pages/signup.html#join" data-dowe-nav="push" data-dowe-href="/signup#join""##
     ));
     assert!(index.contains(r##"href="index.html" data-dowe-nav="push" data-dowe-href="/""##));
-    assert!(index.contains(r#"href="design.css""#));
+    assert!(index.contains(r#"href="design-test.css""#));
     assert!(page.contains(
         r##"href="signup.html#join" data-dowe-nav="push" data-dowe-href="/signup#join""##
     ));
     assert!(page.contains(r##"href="../index.html" data-dowe-nav="push" data-dowe-href="/""##));
-    assert!(page.contains(r#"href="../design.css""#));
+    assert!(page.contains(r#"href="../design-test.css""#));
 }

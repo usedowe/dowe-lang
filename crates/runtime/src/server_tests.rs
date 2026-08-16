@@ -156,6 +156,7 @@ async fn serves_backend_views_and_websocket() {
     )
     .expect("spanish");
     let project = compile_dev(temp.path()).expect("project");
+    let design_path = format!("/{}", project.web.design_file_name());
     let translation_path = project
         .web
         .translation_chunks
@@ -221,9 +222,11 @@ async fn serves_backend_views_and_websocket() {
     assert!(html.contains("Login"));
     assert!(html.contains(r#"<p class="text-md">Layout</p>"#));
     assert!(html.contains(r#"<p class="text-md">Login</p>"#));
-    assert!(html.contains(r#"<link rel="stylesheet" href="/design.css">"#));
+    assert!(html.contains(&format!(
+        r#"<link data-dowe-design rel="stylesheet" href="{design_path}">"#
+    )));
     assert!(html.contains(r#"/chunks/pages/"#));
-    assert!(html.contains(r#"/router.js"#));
+    assert!(html.contains(r#"data-dowe-router type="module" src="/router-"#));
     assert!(html.contains(r#"/_dowe/dev/client.js"#));
 
     let css = client
@@ -1660,7 +1663,26 @@ async fn starts_only_selected_views_server() {
 async fn production_server_serves_backend_and_web_without_dev_endpoints() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
+    fs::write(
+        temp.path().join("pages/login.dowe"),
+        r#"page loginPage
+  Box
+    Text
+      "Login"
+    Input label:"Email""#,
+    )
+    .expect("page");
     let project = compile_dev(temp.path()).expect("project");
+    let router_path = format!("/{}", project.web.router_file_name());
+    let design_path = format!("/{}", project.web.design_file_name());
+    let style_path = format!(
+        "/{}",
+        project.web.pages[0]
+            .css_chunks
+            .iter()
+            .find(|path| path.starts_with("chunks/design/"))
+            .expect("style capability")
+    );
     let server = start_production(project, "127.0.0.1:0".parse().expect("addr"))
         .await
         .expect("server");
@@ -1677,17 +1699,106 @@ async fn production_server_serves_backend_and_web_without_dev_endpoints() {
         .expect("status text");
     assert_eq!(status, "OK");
 
-    let html = client
-        .get(format!("{origin}/"))
-        .send()
-        .await
-        .expect("html")
-        .text()
-        .await
-        .expect("html text");
+    let html_response = client.get(format!("{origin}/")).send().await.expect("html");
+    assert_eq!(
+        html_response.headers()[reqwest::header::CACHE_CONTROL],
+        "no-cache"
+    );
+    let html = html_response.text().await.expect("html text");
     assert!(html.contains("Layout"));
     assert!(html.contains("Login"));
     assert!(!html.contains("/_dowe/dev/client.js"));
+    assert!(html.contains(&format!(r#"href="{design_path}""#)));
+
+    let identity = client
+        .get(format!("{origin}{router_path}"))
+        .header(reqwest::header::ACCEPT_ENCODING, "identity")
+        .send()
+        .await
+        .expect("identity router");
+    assert_eq!(identity.status(), reqwest::StatusCode::OK);
+    assert_eq!(
+        identity.headers()[reqwest::header::CACHE_CONTROL],
+        "public, max-age=31536000, immutable"
+    );
+    assert!(
+        !identity
+            .headers()
+            .contains_key(reqwest::header::CONTENT_ENCODING)
+    );
+    let etag = identity.headers()[reqwest::header::ETAG]
+        .to_str()
+        .expect("etag")
+        .to_string();
+
+    let not_modified = client
+        .get(format!("{origin}{router_path}"))
+        .header(reqwest::header::IF_NONE_MATCH, &etag)
+        .send()
+        .await
+        .expect("conditional router");
+    assert_eq!(not_modified.status(), reqwest::StatusCode::NOT_MODIFIED);
+
+    let brotli = client
+        .get(format!("{origin}{router_path}"))
+        .header(reqwest::header::ACCEPT_ENCODING, "gzip, br")
+        .send()
+        .await
+        .expect("brotli router");
+    assert_eq!(brotli.headers()[reqwest::header::CONTENT_ENCODING], "br");
+    assert!(
+        brotli.headers()[reqwest::header::VARY]
+            .to_str()
+            .expect("vary")
+            .to_ascii_lowercase()
+            .contains("accept-encoding")
+    );
+
+    let gzip = client
+        .get(format!("{origin}{router_path}"))
+        .header(reqwest::header::ACCEPT_ENCODING, "gzip")
+        .send()
+        .await
+        .expect("gzip router");
+    assert_eq!(gzip.headers()[reqwest::header::CONTENT_ENCODING], "gzip");
+
+    let design = client
+        .get(format!("{origin}{design_path}"))
+        .header(reqwest::header::ACCEPT_ENCODING, "gzip")
+        .send()
+        .await
+        .expect("design css");
+    assert_eq!(design.status(), reqwest::StatusCode::OK);
+    assert_eq!(
+        design.headers()[reqwest::header::CACHE_CONTROL],
+        "public, max-age=31536000, immutable"
+    );
+    assert_eq!(design.headers()[reqwest::header::CONTENT_ENCODING], "gzip");
+    assert!(design.headers().contains_key(reqwest::header::ETAG));
+
+    let style = client
+        .get(format!("{origin}{style_path}"))
+        .header(reqwest::header::ACCEPT_ENCODING, "gzip")
+        .send()
+        .await
+        .expect("style capability");
+    assert_eq!(style.status(), reqwest::StatusCode::OK);
+    assert_eq!(
+        style.headers()[reqwest::header::CACHE_CONTROL],
+        "public, max-age=31536000, immutable"
+    );
+    assert_eq!(style.headers()[reqwest::header::CONTENT_ENCODING], "gzip");
+    assert!(style.headers().contains_key(reqwest::header::ETAG));
+
+    let environment = client
+        .get(format!("{origin}/env.json"))
+        .send()
+        .await
+        .expect("environment");
+    assert_eq!(
+        environment.headers()[reqwest::header::CACHE_CONTROL],
+        "no-store"
+    );
 
     let dev_client = client
         .get(format!("{origin}/_dowe/dev/client.js"))
@@ -1695,6 +1806,15 @@ async fn production_server_serves_backend_and_web_without_dev_endpoints() {
         .await
         .expect("dev client");
     assert_eq!(dev_client.status(), reqwest::StatusCode::NOT_FOUND);
+
+    for path in ["/_dowe/dev/inspector.json", "/_dowe/dev/inspector-selection"] {
+        let inspector = client
+            .get(format!("{origin}{path}"))
+            .send()
+            .await
+            .expect("production inspector");
+        assert_eq!(inspector.status(), reqwest::StatusCode::NOT_FOUND);
+    }
 
     server.shutdown().await.expect("shutdown");
 }
@@ -1795,6 +1915,7 @@ main
     )
     .expect("server");
     let project = compile_dev(temp.path()).expect("project");
+    let design_path = format!("/{}", project.web.design_file_name());
     let servers = start_dev_servers(
         project,
         DevServerTargets {
@@ -1819,7 +1940,7 @@ main
         .await
         .expect("desktop html");
     assert!(html.contains("Layout"));
-    assert!(html.contains(r#"src="/router.js""#));
+    assert!(html.contains(r#"data-dowe-router type="module" src="/router-"#));
     assert!(html.contains(r#"src="/_dowe/dev/client.js""#));
 
     let nested_html = client
@@ -1830,11 +1951,11 @@ main
         .text()
         .await
         .expect("desktop nested html");
-    assert!(nested_html.contains(r#"href="/design.css""#));
-    assert!(nested_html.contains(r#"src="/router.js""#));
+    assert!(nested_html.contains(&format!(r#"href="{design_path}""#)));
+    assert!(nested_html.contains(r#"data-dowe-router type="module" src="/router-"#));
     assert!(nested_html.contains("/chunks/layouts/"));
     assert!(nested_html.contains("/chunks/pages/"));
-    assert!(!nested_html.contains(r#"src="../router.js""#));
+    assert!(!nested_html.contains(r#"src="../router-"#));
 
     let status = client
         .get(format!("{desktop}/api/status"))
@@ -1884,7 +2005,7 @@ async fn desktop_without_a_local_server_reuses_only_the_views_listener() {
 
     assert!(html.contains("Layout"));
     assert!(html.contains("Login"));
-    assert!(html.contains(r#"src="/router.js""#));
+    assert!(html.contains(r#"data-dowe-router type="module" src="/router-"#));
     assert!(html.contains(r#"src="/_dowe/dev/client.js""#));
 
     servers.shutdown().await.expect("shutdown");
@@ -3042,8 +3163,15 @@ async fn serves_queue_handlers_with_local_durable_direct_publish() {
             .json::<serde_json::Value>()
             .await
             .expect("managed provider json");
-        assert_eq!(response["ok"], true, "unexpected {path} response: {response}");
-        assert!(response["messageId"].as_str().is_some_and(|value| !value.is_empty()));
+        assert_eq!(
+            response["ok"], true,
+            "unexpected {path} response: {response}"
+        );
+        assert!(
+            response["messageId"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        );
     }
     let missing = client
         .get(format!("{backend}/api/missing"))

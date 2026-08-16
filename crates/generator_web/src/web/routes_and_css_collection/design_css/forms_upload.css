@@ -1,0 +1,289 @@
+.dropzone {
+  position:relative;
+  width:100%;
+}
+.dropzone-input {
+  display:flex;
+  width:100%;
+  height:12rem;
+  align-items:center;
+  justify-content:center;
+  border:2px dashed var(--dowe-muted);
+  border-radius:var(--dowe-radius);
+  padding:1.5rem;
+  cursor:pointer;
+  transition:background-color 180ms ease,border-color 180ms ease,color 180ms ease,opacity 180ms ease;
+}
+.dropzone-input.is-sm {
+  height:8rem;
+  font-size:.875rem;
+}
+.dropzone-input.is-md {
+  height:12rem;
+  font-size:1rem;
+}
+.dropzone-input.is-lg {
+  height:16rem;
+  font-size:1.125rem;
+}
+.dropzone-input.is-disabled {
+  opacity:.5;
+  cursor:not-allowed;
+}
+.dropzone-input.is-error {
+  border-color:var(--dowe-danger);
+}
+.dropzone-input.is-active.is-primary {
+  border-color:var(--dowe-primary);
+  background:color-mix(in srgb,var(--dowe-primary) 10%,transparent);
+}
+.dropzone-input.is-active.is-secondary {
+  border-color:var(--dowe-secondary);
+  background:color-mix(in srgb,var(--dowe-secondary) 10%,transparent);
+}
+.dropzone-input.is-active.is-tertiary {
+  border-color:var(--dowe-tertiary);
+  background:color-mix(in srgb,var(--dowe-tertiary) 10%,transparent);
+}
+.dropzone-input.is-active.is-muted {
+  border-color:var(--dowe-mutedText);
+  background:color-mix(in srgb,var(--dowe-muted) 10%,transparent);
+}
+.dropzone-input.is-active.is-success {
+  border-color:var(--dowe-success);
+  background:color-mix(in srgb,var(--dowe-success) 10%,transparent);
+}
+.dropzone-input.is-active.is-info {
+  border-color:var(--dowe-info);
+  background:color-mix(in srgb,var(--dowe-info) 10%,transparent);
+}
+.dropzone-input.is-active.is-warning {
+  border-color:var(--dowe-warning);
+  background:color-mix(in srgb,var(--dowe-warning) 10%,transparent);
+}
+.dropzone-input.is-active.is-danger {
+  border-color:var(--dowe-danger);
+  background:color-mix(in srgb,var(--dowe-danger) 10%,transparent);
+}
+.dropzone-input.is-active.is-background,.dropzone-input.is-active.is-surface {
+  border-color:var(--dowe-primary);
+  background:color-mix(in srgb,var(--dowe-primary) 5%,transparent);
+}
+.dropzone-input.is-ghost {
+  background:transparent;
+  border-color:transparent;
+}
+.dropzone-input.is-ghost:hover,.dropzone-input.is-ghost.is-active {
+  background:color-mix(in srgb,var(--dowe-muted) 20%,transparent);
+}
+.dropzone-content {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:.5rem;
+}
+.dropzone-icon {
+  width:2rem;
+  height:2rem;
+  opacity:.5;
+}
+.dropzone-placeholder {
+  text-align:center;
+  font-size:.875rem;
+  opacity:.7;
+}
+.dropzone-files {
+  display:flex;
+  flex-direction:column;
+  gap:.5rem;
+  margin-top:1rem;
+}
+.dropzone-file {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.75rem;
+  padding:.75rem;
+  border:1px solid var(--dowe-muted);
+  border-radius:var(--dowe-radius);
+  background:color-mix(in srgb,var(--dowe-muted) 30%,transparent);
+}
+.dropzone-file-preview {
+  position:relative;
+  width:2.5rem;
+  height:2.5rem;
+  flex:0 0 auto;
+  overflow:hidden;
+  border-radius:calc(var(--dowe-radius) * .75);
+}
+.dropzone-file-image {
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transform:translate(-50%,-50%);
+}
+.dropzone-file-icon {
+  display:flex;
+  width:100%;
+  height:100%;
+  align-items:center;
+  justify-content:center;
+  background:var(--dowe-muted);
+}
+.dropzone-file-icon svg {
+  width:1.25rem;
+  height:1.25rem;
+  opacity:.5;
+}
+.dropzone-file-info {
+  display:flex;
+  min-width:0;
+  flex:1;
+  flex-direction:column;
+}
+.dropzone-file-name {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:.875rem;
+  font-weight:600;
+}
+.dropzone-file-size {
+  font-size:.75rem;
+  opacity:.7;
+}
+.dropzone-file-remove {
+  flex:0 0 auto;
+  border:0;
+  border-radius:var(--dowe-radius);
+  padding:.375rem;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  transition:background-color 160ms ease;
+}
+.dropzone-file-remove:hover {
+  background:color-mix(in srgb,var(--dowe-muted) 50%,transparent);
+}
+.dropzone-file-remove svg {
+  width:1rem;
+  height:1rem;
+}
+.field-help.is-danger {
+  color:var(--dowe-danger);
+}
+.csv-field {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  gap:.75rem;
+  width:100%;
+}
+.csv-field-button {
+  gap:.5rem;
+  cursor:pointer;
+}
+.csv-field-icon {
+  width:1rem;
+  height:1rem;
+}
+.csv-field-summary {
+  display:flex;
+  flex-wrap:wrap;
+  gap:.5rem;
+  font-size:.875rem;
+}
+.csv-field-preview {
+  overflow:auto;
+  border:1px solid rgba(127,127,127,.2);
+  border-radius:var(--dowe-radius);
+}
+.csv-field-preview-title {
+  padding:.75rem 1rem;
+  border-bottom:1px solid rgba(127,127,127,.16);
+  font-weight:700;
+}
+.csv-field-preview-table {
+  min-height:3rem;
+  padding:1rem;
+  font-size:.875rem;
+}
+.csv-field-modal,.image-cropper-modal {
+  position:fixed;
+  inset:0;
+  z-index:70;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(15,23,42,.48);
+  padding:1rem;
+}
+.csv-field-dialog,.image-cropper-dialog {
+  width:min(42rem,100%);
+  max-height:min(42rem,100vh - 2rem);
+  overflow:auto;
+  border-radius:var(--dowe-radius);
+  background:var(--dowe-surface);
+  color:var(--dowe-surfaceText);
+  box-shadow:0 24px 60px rgba(15,23,42,.24);
+}
+.csv-field-dialog {
+  padding:1.25rem;
+}
+.csv-field-title {
+  font-size:1.125rem;
+  font-weight:800;
+}
+.csv-field-instructions {
+  margin-top:.25rem;
+  font-size:.875rem;
+  opacity:.72;
+}
+.csv-field-columns {
+  display:grid;
+  gap:.75rem;
+  margin-top:1rem;
+}
+.csv-field-column {
+  display:grid;
+  grid-template-columns:minmax(8rem,1fr) minmax(10rem,2fr);
+  gap:.75rem;
+  align-items:center;
+}
+.csv-field-select {
+  min-height:2.5rem;
+  border:1px solid rgba(127,127,127,.28);
+  border-radius:var(--dowe-radius);
+  background:var(--dowe-background);
+  padding:0 .75rem;
+}
+.csv-field-error {
+  margin-top:.75rem;
+  color:var(--dowe-danger);
+  font-size:.875rem;
+}
+.csv-field-actions,.image-cropper-modal-actions {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:.5rem;
+  margin-top:1rem;
+}
+.csv-field-action,.image-cropper-action {
+  border:1px solid rgba(127,127,127,.24);
+  border-radius:var(--dowe-radius);
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+  font-weight:700;
+  padding:.5rem .875rem;
+}
+.csv-field-action.is-primary,.image-cropper-action.is-primary {
+  border-color:var(--dowe-primary);
+  background:var(--dowe-primary);
+  color:var(--dowe-primaryText);
+}

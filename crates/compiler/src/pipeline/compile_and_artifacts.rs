@@ -11,7 +11,9 @@ use dowe_components::{
 use dowe_generator_android::generate_android_with_app_translations_and_icons;
 use dowe_generator_desktop::generate_desktop_with_app;
 use dowe_generator_ios::generate_ios_with_app_translations_and_icons;
-use dowe_generator_web::{WebOutput, web_artifacts, web_artifacts_for_target};
+use dowe_generator_web::{
+    WebOutput, inspector_manifest, prepare_design_asset, web_artifacts, web_artifacts_for_target,
+};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -133,6 +135,16 @@ fn compile_project(
         icon_artifacts::ProjectIconTargets::default()
     };
     if compile_views {
+        prepare_design_asset(
+            &mut parsed.web,
+            &parsed.font_config,
+            &parsed.design_config,
+        );
+        prepare_design_asset(
+            &mut parsed.desktop_web,
+            &parsed.font_config,
+            &parsed.design_config,
+        );
         icon_artifacts::apply_web_icon_documents(&mut parsed.web, &icon_targets);
         icon_artifacts::apply_web_icon_documents(&mut parsed.desktop_web, &icon_targets);
     }
@@ -183,6 +195,9 @@ fn compile_project(
     if compile_views && project.capabilities.views {
         if platform_selected(selected_platforms.as_ref(), ViewPlatform::Web) {
             write_web_artifacts(&project)?;
+            if environment == CompileEnvironment::Development {
+                write_web_inspector_artifact(&project)?;
+            }
         } else {
             remove_output_directory(&project.root.join(".dowe/web"))?;
         }
@@ -302,6 +317,17 @@ fn write_web_artifacts(project: &CompiledProject) -> DoweResult<()> {
             target: "web".to_string(),
         });
     sync_generated_tree(&project.root, &web_root, &artifacts)
+}
+
+fn write_web_inspector_artifact(project: &CompiledProject) -> DoweResult<()> {
+    let relative_path = PathBuf::from("web/inspector.json");
+    let file = GeneratedFile {
+        relative_path: relative_path.clone(),
+        content: inspector_manifest(&project.web),
+        kind: "Manifest".to_string(),
+        target: "web".to_string(),
+    };
+    write_generated_file(&project.root, &file)
 }
 
 fn write_app_artifacts(project: &CompiledProject) -> DoweResult<()> {

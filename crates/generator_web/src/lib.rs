@@ -1,3 +1,4 @@
+include!("web/inspector.rs");
 include!("web/artifacts.rs");
 include!("web/routes_and_css_collection.rs");
 include!("web/css_rules.rs");

@@ -109,6 +109,8 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains(".alignmentGuide(.bottom) { dimensions in"));
     assert!(views.contains("dimensions[VerticalAlignment.center]"));
     assert!(views.contains("DoweChip(text: \"Filter\", size: \"sm\""));
+    assert!(views.contains("hasStart: true, hasEnd: true"));
+    assert!(views.contains("DoweSvgView(viewBox:"));
     assert!(views.contains("DoweSkeleton(variant: \"rounded\", animation: \"pulse\")"));
     assert!(views.contains("private let pathBuilder: @Sendable (CGRect) -> Path"));
     assert!(views.contains("struct DoweWindowOverlayPresenter: UIViewRepresentable"));

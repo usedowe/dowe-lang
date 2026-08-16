@@ -100,7 +100,14 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
         BuiltinComponent::Chip => {
             matches!(
                 name,
-                "onClose" | "onClick" | "variant" | "scheme" | "size" | "color"
+                "onClose"
+                    | "onClick"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "color"
+                    | "startIcon"
+                    | "endIcon"
             )
         }
         BuiltinComponent::Skeleton => matches!(name, "variant" | "animation"),

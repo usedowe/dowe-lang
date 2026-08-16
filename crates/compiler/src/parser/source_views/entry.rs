@@ -19,6 +19,7 @@ pub fn parse_views_file(
         environment,
         design_config,
         ViewPlatform::all(),
+        false,
     )?;
     finalize_built_views(root, &file.path, built, translations)
 }
@@ -30,6 +31,7 @@ fn build_views_declarations(
     environment: &EnvironmentConfig,
     design_config: &DesignConfig,
     selected_platforms: &[ViewPlatform],
+    dev_inspector: bool,
 ) -> DoweResult<BuiltViews> {
     let imports = view_imports(root, file)?;
     let used = declarations
@@ -51,6 +53,7 @@ fn build_views_declarations(
         imports,
         modules: HashMap::new(),
         components: HashMap::new(),
+        inspector_usages: HashMap::new(),
         component_stack: Vec::new(),
         chunks: Vec::new(),
         chunk_indexes: HashMap::new(),
@@ -58,6 +61,7 @@ fn build_views_declarations(
         environment,
         design_config,
         selected_platforms,
+        dev_inspector,
     };
 
     for declaration in declarations {
@@ -111,6 +115,7 @@ pub fn parse_views_entry(
     translations: &TranslationCatalog,
     design_config: &DesignConfig,
     selected_platforms: &[ViewPlatform],
+    dev_inspector: bool,
 ) -> DoweResult<ParsedViews> {
     let main = single_main(file)?;
     let views_child = main.children.iter().find(|child| child.name == "views");
@@ -140,6 +145,7 @@ pub fn parse_views_entry(
                 environment,
                 design_config,
                 selected_platforms,
+                dev_inspector,
             )?;
             merge_built_views(&mut combined, built, &module_file.path)?;
         }
@@ -157,6 +163,7 @@ pub fn parse_views_entry(
         environment,
         design_config,
         selected_platforms,
+        dev_inspector,
     )?;
     finalize_built_views(root, &file.path, built, translations)
 }
@@ -251,6 +258,7 @@ pub(crate) fn validate_view_source(
         imports: HashMap::new(),
         modules: HashMap::new(),
         components: HashMap::new(),
+        inspector_usages: HashMap::new(),
         component_stack: Vec::new(),
         chunks: Vec::new(),
         chunk_indexes: HashMap::new(),
@@ -258,6 +266,7 @@ pub(crate) fn validate_view_source(
         environment,
         design_config: &design_config,
         selected_platforms: ViewPlatform::all(),
+        dev_inspector: false,
     };
     let root_node = context.expand_export_node(root_node, &imports)?;
     match root_node.name.as_str() {

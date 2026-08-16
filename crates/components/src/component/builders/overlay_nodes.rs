@@ -83,10 +83,24 @@ pub fn chip_component_node(
 ) -> ComponentResult<ViewNode> {
     let value = static_text(value, BuiltinComponent::Chip)?;
     let mut on_close = None;
+    let mut start_icon = None;
+    let mut end_icon = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
             "onClose" => on_close = Some(parse_required_string(&prop.name, &prop.value)?),
+            "startIcon" => {
+                start_icon = Some(solar_control_icon(&parse_static_string(
+                    &prop.name,
+                    &prop.value,
+                )?)?)
+            }
+            "endIcon" => {
+                end_icon = Some(solar_control_icon(&parse_static_string(
+                    &prop.name,
+                    &prop.value,
+                )?)?)
+            }
             "size" => style_props.push(prop),
             "color" => return Err(scheme_prop_error(BuiltinComponent::Chip)),
             _ => style_props.push(prop),
@@ -95,11 +109,31 @@ pub fn chip_component_node(
     let mut style = parse_variant_props(BuiltinComponent::Chip, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Soft);
     style.color.get_or_insert(ColorFamily::Muted);
+    if start.is_some() && start_icon.is_some() {
+        return Err(ComponentError::invalid_prop_combination(
+            "Chip cannot combine `startIcon` with the `start` region",
+        ));
+    }
+    if end.is_some() && end_icon.is_some() {
+        return Err(ComponentError::invalid_prop_combination(
+            "Chip cannot combine `endIcon` with the `end` region",
+        ));
+    }
+    let size = style.size.unwrap_or(ButtonSize::Md);
+    let icon_size = ResponsiveValue::scalar(SizeValue::Scale(size.chip_icon_size()));
+    if let Some(icon) = start_icon.as_mut() {
+        icon.props.style.sizing.w = Some(icon_size.clone());
+        icon.props.style.sizing.h = Some(icon_size.clone());
+    }
+    if let Some(icon) = end_icon.as_mut() {
+        icon.props.style.sizing.w = Some(icon_size.clone());
+        icon.props.style.sizing.h = Some(icon_size);
+    }
     Ok(ViewNode::Chip {
         props: ChipProps { style, on_close },
         value,
-        start,
-        end,
+        start: start_icon.or(start),
+        end: end_icon.or(end),
     })
 }
 

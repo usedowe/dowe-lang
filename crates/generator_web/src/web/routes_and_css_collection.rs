@@ -1,7 +1,9 @@
+include!("routes_and_css_collection/design_css_sources.rs");
+include!("routes_and_css_collection/design_css_features.rs");
+include!("routes_and_css_collection/design_css_chunks.rs");
 include!("routes_and_css_collection/design_css.rs");
-include!("routes_and_css_collection/rich_text_css.rs");
-include!("routes_and_css_collection/color_picker_css.rs");
-include!("routes_and_css_collection/color_picker_runtime.rs");
+include!("routes_and_css_collection/manifest_json.rs");
+include!("routes_and_css_collection/runtime_capabilities.rs");
 include!("routes_and_css_collection/router_js.rs");
 include!("routes_and_css_collection/class_collection.rs");
 include!("routes_and_css_collection/class_collection_layout.rs");

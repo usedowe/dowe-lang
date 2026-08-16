@@ -1524,6 +1524,11 @@ fn attrs(
     if let Some(id) = element.and_then(|element| element.id.as_ref()) {
         output.push_str(&format!(r#" id="{}""#, escape_attr(id)));
     }
+    if element.is_some()
+        && let Some(id) = next_view_inspector_id()
+    {
+        output.push_str(&format!(r#" data-dowe-node="{}""#, escape_attr(&id)));
+    }
     if let Some(action) = element.and_then(|element| element.on_click.as_ref()) {
         output.push_str(&format!(
             r#" data-dowe-click="{}""#,

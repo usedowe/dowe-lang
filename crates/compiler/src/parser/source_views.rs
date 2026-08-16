@@ -59,13 +59,13 @@ use dowe_components::{
     type_writer_item_component, validate_view_tree, video_node,
 };
 use dowe_generator_web::{
-    build_layout_chunk, build_page_chunk, build_translation_chunks, render_page_document,
-    render_routed_page_body, router_js,
+    build_translation_chunks, render_page_document, router_js,
 };
 use dowe_stdlib::StdlibSurface;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 include!("source_views/environment.rs");
 include!("source_views/entry.rs");
@@ -101,6 +101,7 @@ include!("source_views/action_validation.rs");
 include!("source_views/data_validation.rs");
 include!("source_views/path_validation.rs");
 include!("source_views/final_helpers.rs");
+include!("source_views/inspector.rs");
 
 #[cfg(test)]
 mod tests;

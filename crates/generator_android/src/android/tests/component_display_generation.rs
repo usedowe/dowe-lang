@@ -147,6 +147,8 @@ fn generates_compose_and_dev_display_overlay_components() {
     assert!(views
         .content
         .contains("DoweChip(text = \"Filter\", size = \"sm\""));
+    assert!(views.content.contains("start = {"));
+    assert!(views.content.contains("end = {"));
     assert!(views
         .content
         .contains("DoweSkeleton(variant = \"rounded\", animation = \"pulse\""));
@@ -223,6 +225,7 @@ fn generates_compose_and_dev_display_overlay_components() {
     assert!(dev.content.contains("setTranslationY(v.getHeight() / 2f)"));
     assert!(dev.content.contains("doweText(\"Search\""));
     assert!(dev.content.contains("doweText(\"Docs\""));
+    assert!(dev.content.contains("doweDp(14)"));
     assert!(dev.content.contains("if (doweBool(\"modal01\"))"));
     assert!(dev.content.contains("PopupWindow"));
     assert!(dev.content.contains("ScrollView view"));

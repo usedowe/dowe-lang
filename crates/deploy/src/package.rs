@@ -104,12 +104,14 @@ fn normalize_web_html(document: &str) -> String {
                     &format!(r#"href="{prefix}design.css""#),
                     r#"href="/design.css""#,
                 )
+                .replace(&format!(r#"href="{prefix}design-"#), r#"href="/design-"#)
                 .replace(&format!(r#"href="{prefix}chunks/"#), r#"href="/chunks/"#)
                 .replace(&format!(r#"href="{prefix}icons/"#), r#"href="/icons/"#)
                 .replace(
                     &format!(r#"src="{prefix}router.js""#),
                     r#"src="/router.js""#,
                 )
+                .replace(&format!(r#"src="{prefix}router-"#), r#"src="/router-"#)
                 .replace(&format!(r#"src="{prefix}chunks/"#), r#"src="/chunks/"#)
         })
 }

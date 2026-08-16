@@ -1,0 +1,160 @@
+.camera,.microphone {
+  --dowe-component-display:block;
+  display:var(--dowe-show,var(--dowe-component-display));
+  width:100%;
+  padding:1rem;
+  border-radius:var(--dowe-radius);
+}
+.camera-preview {
+  position:relative;
+  display:flex;
+  min-height:12rem;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  border-radius:calc(var(--dowe-radius) * .8);
+  background:rgba(0,0,0,.16);
+}
+.camera-preview video {
+  width:100%;
+  height:100%;
+  min-height:12rem;
+  object-fit:cover;
+}
+.camera-placeholder {
+  padding:2rem;
+  text-align:center;
+  opacity:.72;
+}
+.camera-controls,.microphone-controls {
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  margin-top:.75rem;
+}
+.camera-button,.microphone-button {
+  border:0;
+  border-radius:var(--dowe-radius);
+  background:var(--dowe-soft);
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+  font-weight:700;
+  padding:.5rem .75rem;
+}
+.camera-button:disabled,.microphone-button:disabled {
+  cursor:not-allowed;
+  opacity:.45;
+}
+.camera-status,.microphone-status,.microphone-time {
+  display:block;
+  margin-top:.5rem;
+  font-size:.8125rem;
+  opacity:.75;
+}
+.microphone-panel {
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+}
+.microphone-label {
+  font-weight:700;
+}
+.microphone-time {
+  margin-top:0;
+  margin-inline-start:auto;
+  font-variant-numeric:tabular-nums;
+}
+.microphone.is-recording .microphone-status {
+  color:var(--dowe-danger);
+  opacity:1;
+}
+.record {
+  min-height:3.75rem;
+}
+.record.is-disabled {
+  opacity:.5;
+  pointer-events:none;
+}
+.record-main {
+  display:flex;
+  min-width:0;
+  flex:1;
+  flex-direction:column;
+  gap:.125rem;
+  padding-top:.25rem;
+}
+.record-wave {
+  display:flex;
+  height:2rem;
+  align-items:end;
+  gap:.125rem;
+}
+.record-bar {
+  min-height:.25rem;
+  height:calc(var(--record-bar) * .125rem);
+  flex:1;
+  border-radius:.125rem;
+  background:currentColor;
+  opacity:.34;
+  transform-origin:bottom;
+}
+.record.is-recording .record-bar {
+  animation:dowe-record-pulse .8s ease-in-out infinite alternate;
+}
+.record.is-paused .record-bar {
+  opacity:.55;
+}
+.record-meta {
+  display:flex;
+  justify-content:space-between;
+  gap:.75rem;
+  font-size:.75rem;
+  opacity:.72;
+}
+.record-time {
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.record-status {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.record-actions {
+  display:flex;
+  align-items:center;
+  gap:.375rem;
+}
+.record-btn {
+  border:0;
+  border-radius:9999px;
+  background:rgba(255,255,255,.16);
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+  font-size:.75rem;
+  font-weight:700;
+  line-height:1;
+  padding:.5rem .7rem;
+}
+.record-file {
+  display:none;
+}
+@keyframes dowe-record-pulse {
+  from {
+    transform:scaleY(.45);
+    opacity:.34;
+  }
+  to {
+    transform:scaleY(1);
+    opacity:1;
+  }
+}
+.record-main {
+  padding-top:0;
+}
+.record-wave {
+  padding-top:.25rem;
+}

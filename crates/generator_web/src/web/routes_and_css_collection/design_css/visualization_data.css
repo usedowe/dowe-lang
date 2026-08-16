@@ -1,0 +1,274 @@
+.countdown {
+  --dowe-component-display:flex;
+  display:var(--dowe-show,var(--dowe-component-display));
+  width:100%;
+  max-width:100%;
+  overflow-x:auto;
+  align-items:flex-start;
+  justify-content:safe center;
+  gap:.5rem;
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+  scrollbar-width:none;
+}
+.countdown::-webkit-scrollbar {
+  display:none;
+}
+.countdown-unit {
+  display:flex;
+  flex:0 0 auto;
+  flex-direction:column;
+  align-items:center;
+  gap:.25rem;
+}
+.countdown-box {
+  box-sizing:border-box;
+  display:flex;
+  width:max-content;
+  align-items:center;
+  justify-content:center;
+  border-radius:var(--dowe-radius);
+}
+.countdown-digit {
+  line-height:1;
+  white-space:nowrap;
+}
+.countdown-label {
+  font-size:.75rem;
+  line-height:1rem;
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  opacity:.72;
+  white-space:nowrap;
+}
+.countdown-separator {
+  flex:0 0 auto;
+  font-weight:800;
+  line-height:1;
+}
+.countdown-sm .countdown-box {
+  min-width:2.5rem;
+  height:3rem;
+  padding-inline:.375rem;
+}
+.countdown-sm .countdown-digit {
+  font-size:1.25rem;
+}
+.countdown-sm .countdown-separator {
+  margin-top:.5rem;
+  font-size:1.25rem;
+}
+.countdown-sm .countdown-label {
+  font-size:.625rem;
+}
+.countdown-md .countdown-box {
+  min-width:3.5rem;
+  height:4rem;
+  padding-inline:.5rem;
+}
+.countdown-md .countdown-digit {
+  font-size:1.875rem;
+}
+.countdown-md .countdown-separator {
+  margin-top:.75rem;
+  font-size:1.875rem;
+}
+.countdown-lg .countdown-box {
+  min-width:5rem;
+  height:6rem;
+  padding-inline:.75rem;
+}
+.countdown-lg .countdown-digit {
+  font-size:3rem;
+}
+.countdown-lg .countdown-separator {
+  margin-top:1.25rem;
+  font-size:3rem;
+}
+.countdown-lg .countdown-label {
+  font-size:.875rem;
+}
+.countdown-xl .countdown-box {
+  min-width:7rem;
+  height:8rem;
+  padding-inline:1rem;
+}
+.countdown-xl .countdown-digit {
+  font-size:4.5rem;
+}
+.countdown-xl .countdown-separator {
+  margin-top:1.75rem;
+  font-size:4.5rem;
+}
+.countdown-xl .countdown-label {
+  font-size:1rem;
+}
+.map {
+  --dowe-component-display:block;
+  position:relative;
+  display:var(--dowe-show,var(--dowe-component-display));
+  width:var(--map-width,100%);
+  height:var(--map-height,400px);
+  min-height:12rem;
+  overflow:hidden;
+  border-radius:var(--dowe-radius);
+}
+.map-container {
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:linear-gradient(135deg,color-mix(in srgb,currentColor 10%,transparent),transparent 42%),var(--dowe-softMuted);
+}
+.map-grid {
+  position:absolute;
+  inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.22) 1px,transparent 1px);
+  background-size:2rem 2rem;
+  opacity:.65;
+}
+.map-route {
+  position:absolute;
+  left:14%;
+  right:14%;
+  top:54%;
+  height:.25rem;
+  border-radius:9999px;
+  background:currentColor;
+  opacity:.75;
+  transform:rotate(-10deg);
+  transform-origin:center;
+}
+.map-marker,.map-waypoint {
+  position:absolute;
+  z-index:2;
+  transform:translate(-50%,-100%);
+}
+.map-marker {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:.25rem;
+  border:0;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+}
+.map-marker-pin {
+  width:1.35rem;
+  height:1.35rem;
+  border-radius:9999px 9999px 9999px 0;
+  background:currentColor;
+  box-shadow:0 .25rem .75rem rgba(15,23,42,.22);
+  transform:rotate(-45deg);
+}
+.map-marker.is-start .map-marker-pin {
+  color:var(--dowe-success);
+}
+.map-marker.is-end .map-marker-pin {
+  color:var(--dowe-danger);
+}
+.map-marker.is-waypoint .map-marker-pin {
+  color:var(--dowe-info);
+}
+.map-marker-label {
+  border-radius:9999px;
+  background:rgba(255,255,255,.88);
+  color:var(--dowe-backgroundText);
+  padding:.125rem .5rem;
+  font-size:.75rem;
+  font-weight:700;
+  box-shadow:0 .25rem .75rem rgba(15,23,42,.18);
+  white-space:nowrap;
+}
+.map-waypoint {
+  width:.65rem;
+  height:.65rem;
+  border-radius:9999px;
+  background:currentColor;
+  opacity:.75;
+}
+.map-controls {
+  position:absolute;
+  right:.75rem;
+  top:.75rem;
+  z-index:3;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:var(--dowe-radius);
+  background:rgba(255,255,255,.9);
+  color:var(--dowe-backgroundText);
+  box-shadow:0 .25rem 1rem rgba(15,23,42,.16);
+}
+.map-controls span {
+  display:flex;
+  width:2rem;
+  height:2rem;
+  align-items:center;
+  justify-content:center;
+  font-weight:800;
+}
+.map-controls span+span {
+  border-top:1px solid rgba(15,23,42,.12);
+}
+.map-scale {
+  position:absolute;
+  left:.75rem;
+  bottom:.75rem;
+  z-index:3;
+  display:flex;
+  align-items:center;
+  gap:.375rem;
+  border-radius:var(--dowe-radius);
+  background:rgba(255,255,255,.9);
+  color:var(--dowe-backgroundText);
+  padding:.25rem .5rem;
+  font-size:.75rem;
+  font-weight:700;
+}
+.map-scale span {
+  width:3rem;
+  height:.25rem;
+  background:currentColor;
+}
+.map-location-btn {
+  position:absolute;
+  right:.75rem;
+  bottom:.75rem;
+  z-index:3;
+  display:flex;
+  width:2.5rem;
+  height:2.5rem;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:9999px;
+  background:rgba(255,255,255,.92);
+  color:var(--dowe-backgroundText);
+  box-shadow:0 .25rem 1rem rgba(15,23,42,.18);
+  cursor:pointer;
+  font:inherit;
+  font-weight:800;
+}
+.countdown {
+  container-type:inline-size;
+}
+@container(max-width:30rem) {
+  .countdown-lg .countdown-box,.countdown-xl .countdown-box {
+    min-width:2.5rem;
+    height:3rem;
+    padding-inline:.375rem;
+  }
+  .countdown-lg .countdown-digit,.countdown-xl .countdown-digit {
+    font-size:1.25rem;
+  }
+  .countdown-lg .countdown-separator,.countdown-xl .countdown-separator {
+    margin-top:.5rem;
+    font-size:1.25rem;
+  }
+  .countdown-lg .countdown-label,.countdown-xl .countdown-label {
+    font-size:.625rem;
+  }
+}

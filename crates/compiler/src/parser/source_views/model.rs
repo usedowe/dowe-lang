@@ -35,6 +35,7 @@ struct ViewDeclaration {
 #[derive(Clone)]
 struct ParsedViewModule {
     tree: ViewNode,
+    inspector: Option<dowe_generator_web::ViewInspectorMap>,
     metadata: Vec<ViewMetadata>,
     source: String,
     path: PathBuf,
@@ -44,6 +45,7 @@ struct ParsedViewModule {
 #[derive(Clone)]
 struct RouteLayout {
     tree: ViewNode,
+    inspector: Option<dowe_generator_web::ViewInspectorMap>,
     metadata: Vec<ViewMetadata>,
     chunk_id: String,
     js_path: String,
@@ -52,6 +54,7 @@ struct RouteLayout {
 
 struct RoutePage {
     tree: ViewNode,
+    inspector: Option<dowe_generator_web::ViewInspectorMap>,
     metadata: Vec<ViewMetadata>,
     path: PathBuf,
     chunk_id: String,
@@ -63,8 +66,9 @@ struct RouteBuildContext<'a> {
     root: &'a Path,
     views_path: &'a Path,
     imports: HashMap<String, ViewImport>,
-    modules: HashMap<String, ParsedViewModule>,
+    modules: HashMap<String, Rc<ParsedViewModule>>,
     components: HashMap<PathBuf, ParsedComponentModule>,
+    inspector_usages: HashMap<PathBuf, Vec<dowe_generator_web::ViewInspectorLocation>>,
     component_stack: Vec<PathBuf>,
     chunks: Vec<dowe_generator_web::GeneratedChunk>,
     chunk_indexes: HashMap<String, usize>,
@@ -72,6 +76,7 @@ struct RouteBuildContext<'a> {
     environment: &'a EnvironmentConfig,
     design_config: &'a DesignConfig,
     selected_platforms: &'a [ViewPlatform],
+    dev_inspector: bool,
 }
 
 #[derive(Default)]
@@ -96,7 +101,10 @@ fn web_output_for(
     translations: &TranslationCatalog,
 ) -> WebOutput {
     for page in &mut pages {
-        page.html_document = render_page_document(page);
+        page.runtime_chunks = dowe_generator_web::runtime_chunks_for_page(page)
+            .iter()
+            .map(dowe_generator_web::GeneratedRuntimeChunk::browser_path)
+            .collect();
     }
     let needed_chunks = pages
         .iter()
@@ -120,6 +128,11 @@ fn web_output_for(
         router_js: String::new(),
     };
     web.router_js = router_js(&web);
+    let router_file_name = web.router_file_name();
+    for page in &mut web.pages {
+        page.router_file_name.clone_from(&router_file_name);
+        page.html_document = render_page_document(page);
+    }
     web
 }
 

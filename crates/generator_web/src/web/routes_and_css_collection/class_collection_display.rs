@@ -171,11 +171,16 @@ fn collect_display_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
                 collect_classes(child, classes);
             }
         }
-        ViewNode::Chip { props, .. } => {
+        ViewNode::Chip {
+            props, start, end, ..
+        } => {
             classes.extend(chip_classes(props));
             classes.insert("chip-label".to_string());
             classes.insert("chip-icon".to_string());
             classes.insert("chip-close".to_string());
+            for icon in [start.as_ref(), end.as_ref()].into_iter().flatten() {
+                classes.extend(svg_classes(&icon.props.style));
+            }
         }
         ViewNode::Skeleton { props } => {
             classes.extend(skeleton_classes(props));

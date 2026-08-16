@@ -1,0 +1,68 @@
+*,::before,::after {
+  box-sizing:border-box;
+}
+html {
+  font-family:var(--dowe-font-default);
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+  tab-size:4;
+  scroll-behavior:smooth;
+}
+body {
+  --dowe-content-text:var(--dowe-backgroundText);
+  --dowe-content-title:var(--dowe-backgroundTitle);
+  margin:0;
+  min-width:100%;
+  min-height:100vh;
+  background:var(--dowe-background);
+  color:var(--dowe-content-text);
+  font-family:var(--dowe-font-default);
+}
+.dowe-text {
+  color:var(--dowe-content-text,var(--dowe-backgroundText));
+}
+.dowe-title {
+  color:var(--dowe-content-title,var(--dowe-backgroundTitle));
+}
+p,h1,h2,h3,h4,h5,h6 {
+  margin:0;
+  font-size:inherit;
+  font-weight:inherit;
+}
+a {
+  color:inherit;
+  text-decoration:inherit;
+}
+button,input,textarea,select {
+  font:inherit;
+  color:inherit;
+  margin:0;
+}
+button {
+  text-transform:none;
+}
+img,svg,video,canvas {
+  display:block;
+  max-width:100%;
+}
+::-webkit-scrollbar {
+  width:var(--dowe-scrollbar-size,6px);
+  height:var(--dowe-scrollbar-size,6px);
+}
+::-webkit-scrollbar-track {
+  background:color-mix(in oklch,currentColor 20%,transparent);
+  box-sizing:border-box;
+}
+::-webkit-scrollbar-thumb {
+  background:color-mix(in oklch,currentColor 80%,transparent);
+  border-radius:999px;
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width:thin;
+    scrollbar-color:color-mix(in oklch,currentColor 80%,transparent) color-mix(in oklch,currentColor 20%,transparent);
+  }
+  body {
+    scrollbar-color:color-mix(in oklch,currentColor 80%,transparent) color-mix(in oklch,currentColor 20%,transparent);
+  }
+}

@@ -10,7 +10,7 @@
     Avatar name:"Ada" alt:"Ada Lovelace" scheme:"success" variant:"soft" size:"lg" status:"online" bordered:true
     Badge text:"3" scheme:"danger" position:"bottom-right"
       Avatar name:"Ada" alt:"Ada"
-    Chip variant:"outlined" scheme:"info" size:"sm" onClose:close
+    Chip variant:"outlined" scheme:"info" size:"sm" startIcon:"settings" endIcon:"magnifier" onClose:close
       Filter
     Skeleton variant:"rounded" animation:"pulse"
     Modal open:modalOpen scheme:"surface" hideCloseButton:true
@@ -72,11 +72,13 @@
         assert_eq!(props.position, OverlayCornerPosition::BottomRight);
         assert_eq!(badge_children.len(), 1);
 
-        let ViewNode::Chip { props, value, .. } = &box_children[2] else {
+        let ViewNode::Chip { props, value, start, end } = &box_children[2] else {
             panic!("chip");
         };
         assert_eq!(value, "Filter");
         assert_eq!(props.on_close.as_deref(), Some("close"));
+        assert!(start.is_some());
+        assert!(end.is_some());
 
         let ViewNode::Skeleton { props } = &box_children[3] else {
             panic!("skeleton");

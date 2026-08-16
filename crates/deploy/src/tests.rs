@@ -14,10 +14,41 @@ use std::path::Path;
 use std::process::Command;
 use tempfile::TempDir;
 
+fn hashed_router_path(root: &Path) -> std::path::PathBuf {
+    fs::read_dir(root)
+        .expect("web assets")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.file_name()
+                .and_then(OsStr::to_str)
+                .is_some_and(|name| name.starts_with("router-") && name.ends_with(".js"))
+        })
+        .expect("hashed router")
+}
+
+fn hashed_design_path(root: &Path) -> std::path::PathBuf {
+    fs::read_dir(root)
+        .expect("web assets")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.file_name()
+                .and_then(OsStr::to_str)
+                .is_some_and(|name| name.starts_with("design-") && name.ends_with(".css"))
+        })
+        .expect("hashed design css")
+}
+
 #[test]
 fn generates_static_dist_with_web_assets() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), "");
+    fs::write(
+        temp.path().join("pages/home.dowe"),
+        "page homePage\n  Box\n    Text\n      \"Home\"\n    Input label:\"Email\"\n",
+    )
+    .expect("page");
     let icon = temp.path().join("icons/web/favicon-32x32.png");
     fs::create_dir_all(icon.parent().expect("icon parent")).expect("icon directory");
     fs::write(&icon, "icon").expect("icon");
@@ -34,8 +65,14 @@ fn generates_static_dist_with_web_assets() {
 
     assert_eq!(report.target, DeployTarget::Static);
     assert!(report.output_dir.join("index.html").is_file());
-    assert!(report.output_dir.join("router.js").is_file());
-    assert!(report.output_dir.join("design.css").is_file());
+    assert!(hashed_router_path(&report.output_dir).is_file());
+    assert!(hashed_design_path(&report.output_dir).is_file());
+    assert!(
+        fs::read_dir(report.output_dir.join("chunks/design"))
+            .expect("style capabilities")
+            .filter_map(Result::ok)
+            .any(|entry| entry.file_name().to_string_lossy().starts_with("forms-"))
+    );
     assert!(report.output_dir.join("env.json").is_file());
     assert!(report.output_dir.join("deploy.json").is_file());
     assert!(
@@ -505,12 +542,12 @@ fn generates_cloudflare_pages_web_distribution_without_node_project() {
             .join("assets/assets/social/share.png")
             .is_file()
     );
-    assert!(index.contains(r#"href="/design.css""#));
+    assert!(index.contains(r#"href="/design-"#));
     assert!(index.contains(r#"href="/icons/web/favicon-32x32.png""#));
-    assert!(index.contains(r#"src="/router.js""#));
-    assert!(page.contains(r#"href="/design.css""#));
+    assert!(index.contains(r#"data-dowe-router type="module" src="/router-"#));
+    assert!(page.contains(r#"href="/design-"#));
     assert!(page.contains(r#"href="/icons/web/favicon-32x32.png""#));
-    assert!(page.contains(r#"src="/router.js""#));
+    assert!(page.contains(r#"data-dowe-router type="module" src="/router-"#));
     assert!(
         report
             .output_dir
@@ -620,8 +657,8 @@ fn generates_cloudflare_queue_binding_for_static_publication() {
             .expect("wrangler config"),
     )
     .expect("wrangler json");
-    let adapter = fs::read_to_string(report.output_dir.join("worker/index.js"))
-        .expect("worker adapter");
+    let adapter =
+        fs::read_to_string(report.output_dir.join("worker/index.js")).expect("worker adapter");
 
     assert_eq!(config["queues"]["producers"][0]["queue"], "notifications");
     assert_eq!(
@@ -691,11 +728,16 @@ fn rejects_queue_edge_provider_mismatch_and_dynamic_payload() {
         "QUEUE_HOST=\nQUEUE_PORT=\nQUEUE_USER=\nQUEUE_PASSWORD=\nQUEUE_VHOST=\n",
     )
     .expect("environment example");
-    let error = deploy(DeployOptions::new(mismatch.path(), DeployTarget::Cloudflare))
-        .expect_err("mismatched provider");
-    assert!(error
-        .to_string()
-        .contains("Queue connection provider does not match the deploy target"));
+    let error = deploy(DeployOptions::new(
+        mismatch.path(),
+        DeployTarget::Cloudflare,
+    ))
+    .expect_err("mismatched provider");
+    assert!(
+        error
+            .to_string()
+            .contains("Queue connection provider does not match the deploy target")
+    );
 
     let dynamic = TempDir::new().expect("dynamic project");
     fs::write(
@@ -717,9 +759,11 @@ fn rejects_queue_edge_provider_mismatch_and_dynamic_payload() {
     .expect("environment example");
     let error = deploy(DeployOptions::new(dynamic.path(), DeployTarget::Cloudflare))
         .expect_err("dynamic payload");
-    assert!(error
-        .to_string()
-        .contains("Queue Edge payload cannot use dynamic references"));
+    assert!(
+        error
+            .to_string()
+            .contains("Queue Edge payload cannot use dynamic references")
+    );
 }
 
 #[test]
@@ -785,12 +829,12 @@ fn generates_vercel_web_build_output_without_node_project() {
             .expect("canonical root")
             .join(".dowe/dist/web/vercel",)
     );
-    assert!(static_root.join("design.css").is_file());
-    assert!(static_root.join("router.js").is_file());
+    assert!(hashed_design_path(&static_root).is_file());
+    assert!(hashed_router_path(&static_root).is_file());
     assert!(static_root.join("icons/web/favicon-32x32.png").is_file());
     assert!(static_root.join("assets/social/share.png").is_file());
-    assert!(index.contains(r#"href="/design.css""#));
-    assert!(index.contains(r#"src="/router.js""#));
+    assert!(index.contains(r#"href="/design-"#));
+    assert!(index.contains(r#"data-dowe-router type="module" src="/router-"#));
     assert!(config.contains(r#""version": 3"#));
     assert!(config.contains(r#""routes": []"#));
     assert!(manifest.contains(r#""provider": "vercel""#));

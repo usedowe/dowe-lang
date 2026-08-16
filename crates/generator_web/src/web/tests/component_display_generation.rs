@@ -10,18 +10,13 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     );
     let html = render_page_body(&ViewNode::Children, &page_tree);
     let css = super::design_css();
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
+    let router = full_runtime_for_test();
 
     assert!(html.contains(r#"class="avatar is-soft is-success avatar-lg is-bordered""#));
     assert!(html.contains(r#"class="badge is-bottom-right""#));
     assert!(html.contains(r#"class="badge-content is-solid is-danger""#));
     assert!(html.contains(r#"class="chip is-outlined is-info chip-sm has-close""#));
+    assert!(html.contains(r#"<span class="chip-icon"><svg"#));
     assert!(html.contains(r#"class="skeleton"#));
     assert!(html.contains("is-pulse"));
     assert!(html.contains("is-rounded"));
@@ -40,6 +35,8 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(html.contains(r#"class="dropdown-popover is-solid is-surface""#));
     assert!(html.contains(r#"data-dowe-command-open="modal01""#));
     assert!(page.css_content.contains(".avatar.is-soft.is-success"));
+    assert!(page.css_content.contains(".w-4{width:1rem;}"));
+    assert!(page.css_content.contains(".h-4{height:1rem;}"));
     assert!(
         page.css_content
             .contains(".badge-content.is-solid.is-danger")
@@ -347,6 +344,9 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
 fn renders_rich_control_map_components_markup_runtime_and_css() {
     let root = Path::new("/project");
     let page_tree = rich_control_map_tree();
+    assert!(
+        super::runtime_chunks_for_trees(&ViewNode::Children, &page_tree).is_empty()
+    );
     let page = build_page_chunk(
         root,
         Path::new("/project/src/pages/rich-controls.dowe"),
@@ -444,13 +444,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     );
     let html = render_page_body(&ViewNode::Children, &page_tree);
     let css = super::design_css();
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
+    let router = full_runtime_for_test();
 
     assert!(html.contains(r#"class="media is-soft is-primary""#));
     assert!(html.contains(r#"data-dowe-audio"#));
@@ -458,7 +452,10 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-audio-pause-icon"#));
     assert!(html.contains(r#"data-dowe-audio-waveform"#));
     assert!(html.contains(r#"class="media-bars loaded"#));
-    assert_eq!(html.matches(r#"class="media-bar" style="height:"#).count(), 50);
+    assert_eq!(
+        html.matches(r#"class="media-bar" style="height:"#).count(),
+        50
+    );
     assert!(html.contains(r#"class="image is-solid is-secondary square fit-contain""#));
     assert!(html.contains(r#"data-dowe-image"#));
     assert!(html.contains(r#"data-dowe-image-download"#));
@@ -478,6 +475,9 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     let hidden_image_html = render_page_body(&ViewNode::Children, &hidden_image);
     assert!(!hidden_image_html.contains(r#"data-dowe-image-download"#));
     assert!(!hidden_image_html.contains(r#"data-dowe-image-fullscreen"#));
+    assert!(
+        super::runtime_chunks_for_trees(&ViewNode::Children, &hidden_image).is_empty()
+    );
     assert!(html.contains(r#"data-dowe-accordion data-dowe-accordion-multiple="true""#));
     assert!(html.contains(r#"class="accordion-arrow" aria-hidden="true"><svg"#));
     assert!(html.contains(r#"d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z""#));
@@ -545,7 +545,8 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(router.contains("function renderDoweColor(root,state,scope)"));
     assert!(router.contains("function doweColorOklch(rgb)"));
     assert!(router.contains("function updateDoweColorPointer(target,event)"));
-    assert!(router.contains("},true);function splitDestination"));
+    assert!(router.contains("function splitDestination"));
+    assert!(router.contains("window.addEventListener(\"scroll\""));
     assert!(!router.contains(")window.addEventListener"));
     assert!(router.contains("function selectDateValue(root,value)"));
     assert!(router.contains("function syncCarousel(root)"));
@@ -586,6 +587,14 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
 fn renders_advanced_form_components_markup_runtime_and_css() {
     let root = Path::new("/project");
     let page_tree = advanced_form_tree();
+    let runtime_chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &page_tree);
+    assert_eq!(
+        runtime_chunks
+            .iter()
+            .map(|chunk| chunk.name)
+            .collect::<Vec<_>>(),
+        vec!["controls"]
+    );
     let page = build_page_chunk(
         root,
         Path::new("/project/src/pages/advanced.dowe"),
@@ -594,13 +603,7 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     );
     let html = render_page_body(&ViewNode::Children, &page_tree);
     let css = super::design_css();
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
+    let router = full_runtime_for_test();
 
     assert!(html.contains(r#"class="combo-box"#));
     assert!(html.contains(r#"data-dowe-combo-box"#));
@@ -626,7 +629,9 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(router.contains("toDataURL"));
     assert!(router.contains(r#"value.match(/^data:(image\/[^;]+)/)"#));
     assert!(!router.contains(r#"value.match(/^data:(image\\/[^;]+)/)"#));
-    assert!(router.contains("closeCanvasFrames(previous);closeCameraFrames(previous);closeMicrophoneFrames(previous);"));
+    assert!(router.contains(
+        "closeCanvasFrames(previous);closeCameraFrames(previous);closeMicrophoneFrames(previous);"
+    ));
     assert!(!router.contains("closeCameraFrames(view);closeMicrophoneFrames(view);"));
     assert!(html.contains(r#"class="password"#));
     assert!(html.contains(r#"data-dowe-password-input"#));
@@ -735,16 +740,16 @@ fn emits_portable_input_metrics_and_outlined_colors() {
     let css = super::design_css();
 
     assert!(css.contains(
-            ".control{--dowe-component-display:flex;--dowe-control-min-height:2.5rem;--dowe-control-height:var(--dowe-control-min-height);--dowe-control-font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);--dowe-control-line-height:1.6;position:relative;display:var(--dowe-show,var(--dowe-component-display));align-items:center;width:100%;height:var(--dowe-control-height);min-height:var(--dowe-control-height);"
+            ".control{--dowe-component-display:flex;--dowe-control-min-height:var(--dowe-form-control-min-md);--dowe-control-height:var(--dowe-control-min-height);--dowe-control-font-size:var(--dowe-form-control-text-md);--dowe-control-line-height:var(--dowe-form-control-line-md);position:relative;display:var(--dowe-show,var(--dowe-component-display));align-items:center;width:100%;height:var(--dowe-control-height);min-height:var(--dowe-control-height);"
         ));
-    assert!(css.contains(".control.is-sm{--dowe-control-min-height:2rem;--dowe-control-font-size:clamp(0.75rem, 0.7rem + 0.2vw, 0.875rem);--dowe-control-line-height:1.5;}"));
-    assert!(css.contains(".control.is-md{--dowe-control-min-height:2.5rem;--dowe-control-font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);--dowe-control-line-height:1.6;}"));
-    assert!(css.contains(".control.is-lg{--dowe-control-min-height:3rem;--dowe-control-font-size:clamp(1rem, 0.95rem + 0.3vw, 1.125rem);--dowe-control-line-height:1.6;}"));
+    assert!(css.contains(".control.is-sm{--dowe-control-min-height:var(--dowe-form-control-min-sm);--dowe-control-font-size:var(--dowe-form-control-text-sm);--dowe-control-line-height:var(--dowe-form-control-line-sm);}"));
+    assert!(css.contains(".control.is-md{--dowe-control-min-height:var(--dowe-form-control-min-md);--dowe-control-font-size:var(--dowe-form-control-text-md);--dowe-control-line-height:var(--dowe-form-control-line-md);}"));
+    assert!(css.contains(".control.is-lg{--dowe-control-min-height:var(--dowe-form-control-min-lg);--dowe-control-font-size:var(--dowe-form-control-text-lg);--dowe-control-line-height:var(--dowe-form-control-line-lg);}"));
     assert!(css.contains(
-        ".control.is-floating{--dowe-control-height:calc(var(--dowe-control-min-height) + 0.5rem);padding-top:0.5rem;}"
+        ".control.is-floating{--dowe-control-height:calc(var(--dowe-control-min-height) + var(--dowe-form-control-floating));padding-top:var(--dowe-form-control-floating);}"
     ));
     assert!(css.contains(".textarea-field{align-items:stretch;height:auto;"));
-    assert!(css.contains("min-height:var(--dowe-control-min-height);padding:0 0.75rem;"));
+    assert!(css.contains("min-height:var(--dowe-control-min-height);padding:0 var(--dowe-form-control-padding);"));
     assert!(css.contains(".control-icon.icon-start{margin-left:.75rem}"));
     assert!(css.contains(".control-icon.icon-end{margin-right:.75rem}"));
     assert!(css.contains(
@@ -774,7 +779,9 @@ fn emits_portable_input_metrics_and_outlined_colors() {
     assert!(css.contains(
             ".select-control.is-floating:not(.is-open):not(.has-value) .select-value{visibility:hidden;}"
         ));
-    assert!(css.contains("font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem)"));
+    assert!(css.contains(
+        "--dowe-form-control-text-md:clamp(0.875rem,0.82rem + 0.25vw,1rem);"
+    ));
     assert!(css.contains(
         "font-size:var(--dowe-control-font-size);line-height:var(--dowe-control-line-height);"
     ));
@@ -818,9 +825,10 @@ fn emits_form_validation_metadata_runtime_and_accessibility_hooks() {
     };
     let router = super::router_js(&web);
 
-    assert!(page
-        .content
-        .contains("data-dowe-validation-kind=\\\"string\\\""));
+    assert!(
+        page.content
+            .contains("data-dowe-validation-kind=\\\"string\\\"")
+    );
     assert!(page.content.contains("Email is required"));
     assert!(page.content.contains("data-dowe-validation-feedback"));
     assert!(page.content.contains("data-dowe-validation-control"));
@@ -1161,8 +1169,11 @@ fn renders_phone_floating_label_inside_number_input_shell() {
     assert!(trigger < shell);
     assert!(shell < label);
     assert!(label < input);
-    assert!(super::design_css()
-        .contains(".phone-input-shell>.control-label{left:.75rem;max-width:calc(100% - 1.5rem);}"));
+    assert!(
+        super::design_css().contains(
+            ".phone-input-shell>.control-label{left:.75rem;max-width:calc(100% - 1.5rem);}"
+        )
+    );
 }
 
 #[test]
@@ -1310,14 +1321,16 @@ fn renders_camera_and_microphone_capture_contract() {
         "capture",
         &page_tree,
     );
+    let runtime_chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &page_tree);
+    assert_eq!(
+        runtime_chunks
+            .iter()
+            .map(|chunk| chunk.name)
+            .collect::<Vec<_>>(),
+        vec!["media"]
+    );
     let html = render_page_body(&ViewNode::Children, &page_tree);
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
+    let router = full_runtime_for_test();
 
     assert!(html.contains("data-dowe-camera"));
     assert!(html.contains("data-dowe-camera-facing=\"user\""));

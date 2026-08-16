@@ -1295,6 +1295,16 @@ impl ButtonSize {
             Self::Xl => ScaleValue::from_half_steps(20),
         }
     }
+
+    pub fn chip_icon_size(self) -> ScaleValue {
+        match self {
+            Self::Xs => ScaleValue::from_half_steps(6),
+            Self::Sm => ScaleValue::from_half_steps(7),
+            Self::Md => ScaleValue::from_half_steps(8),
+            Self::Lg => ScaleValue::from_half_steps(10),
+            Self::Xl => ScaleValue::from_half_steps(12),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

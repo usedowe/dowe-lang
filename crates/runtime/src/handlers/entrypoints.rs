@@ -391,30 +391,74 @@ pub(crate) async fn server_response(
     cors_actual_response(&server.cors, dev_origins, &headers, response)
 }
 
-pub async fn views_handler(State(state): State<DevRuntimeState>, uri: Uri) -> Response {
+pub async fn views_handler(
+    State(state): State<DevRuntimeState>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
     if uri.path() == "/_dowe/dev/ws" {
         return StatusCode::BAD_REQUEST.into_response();
     }
 
+    let project = state.project.read().await;
+    let inspector_enabled = project
+        .web
+        .chunks
+        .iter()
+        .any(|chunk| chunk.inspector.is_some());
+
     if uri.path() == "/_dowe/dev/client.js" {
-        return dev_client_response();
+        return dev_client_response(inspector_enabled);
     }
 
-    let project = state.project.read().await;
+    if uri.path() == "/_dowe/dev/inspector-selection" {
+        if !inspector_enabled {
+            return StatusCode::NOT_FOUND.into_response();
+        }
+        if method != Method::POST {
+            return StatusCode::METHOD_NOT_ALLOWED.into_response();
+        }
+        return inspector_selection_response(&project, &body);
+    }
 
     if uri.path() == "/_dowe/dev/modules/manifest.json" {
         return generated_json_response(&project, "dev/modules/manifest.json");
+    }
+
+    if uri.path() == "/_dowe/dev/inspector.json" {
+        if !inspector_enabled {
+            return StatusCode::NOT_FOUND.into_response();
+        }
+        return generated_json_response(&project, "web/inspector.json");
     }
 
     if let Some(response) = dev_module_response(&project, uri.path()) {
         return response;
     }
 
-    if uri.path() == "/design.css" {
-        return design_css_response(&project, "web/design.css");
+    if uri.path() == "/design.css"
+        || uri.path() == format!("/{}", project.web.design_file_name())
+    {
+        return cacheable_design_css_response(
+            &project,
+            &format!("web/{}", project.web.design_file_name()),
+            &headers,
+            "no-store",
+        );
     }
 
-    if uri.path() == "/router.js" {
+    if let Some(relative_path) = design_css_chunk_relative_path(uri.path()) {
+        return cacheable_design_css_response(
+            &project,
+            &relative_path,
+            &headers,
+            "no-store",
+        );
+    }
+
+    if uri.path() == "/router.js" || uri.path() == format!("/{}", project.web.router_file_name()) {
         return javascript_response(project.web.router_js.clone());
     }
 
@@ -434,7 +478,7 @@ pub async fn views_handler(State(state): State<DevRuntimeState>, uri: Uri) -> Re
         return response;
     }
 
-    if let Some(response) = chunk_response(&project.web, uri.path()) {
+    if let Some(response) = chunk_response(&project.web, uri.path(), &headers, "no-store") {
         return response;
     }
 

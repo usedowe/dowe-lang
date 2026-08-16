@@ -1,0 +1,257 @@
+.carousel {
+  --dowe-carousel-accent:var(--dowe-primary);
+  gap:.75rem;
+  background:transparent!important;
+  color:var(--dowe-carousel-accent)!important;
+  isolation:isolate;
+}
+.carousel.is-primary {
+  --dowe-carousel-accent:var(--dowe-primary);
+}
+.carousel.is-secondary {
+  --dowe-carousel-accent:var(--dowe-secondary);
+}
+.carousel.is-tertiary {
+  --dowe-carousel-accent:var(--dowe-tertiary);
+}
+.carousel.is-muted {
+  --dowe-carousel-accent:var(--dowe-muted);
+}
+.carousel.is-success {
+  --dowe-carousel-accent:var(--dowe-success);
+}
+.carousel.is-info {
+  --dowe-carousel-accent:var(--dowe-info);
+}
+.carousel.is-warning {
+  --dowe-carousel-accent:var(--dowe-warning);
+}
+.carousel.is-danger {
+  --dowe-carousel-accent:var(--dowe-danger);
+}
+.carousel-viewport {
+  min-height:0;
+  padding:.75rem;
+  overflow:auto;
+  border:0;
+  border-radius:1.25rem;
+  background:transparent;
+  box-shadow:none;
+  scroll-padding-inline:.75rem;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  touch-action:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.carousel-viewport::-webkit-scrollbar,.carousel-thumbnails::-webkit-scrollbar {
+  display:none;
+  width:0;
+  height:0;
+}
+.carousel-container {
+  align-items:stretch;
+}
+.carousel-slide {
+  min-height:12.5rem;
+  overflow:hidden;
+  border-radius:.875rem;
+  transform-style:preserve-3d;
+}
+.carousel-slide>* {
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+}
+.carousel-controls {
+  min-height:2.25rem;
+  gap:.625rem;
+  color:var(--dowe-carousel-accent);
+}
+.carousel-control,.carousel-nav {
+  border-color:color-mix(in srgb,var(--dowe-carousel-accent) 24%,transparent);
+  background:var(--dowe-surface);
+  color:var(--dowe-carousel-accent);
+  box-shadow:0 .4rem 1rem rgba(15,23,42,.1);
+}
+.carousel-control:hover,.carousel-nav:hover {
+  background:color-mix(in srgb,var(--dowe-carousel-accent) 9%,var(--dowe-surface));
+}
+.carousel-indicators {
+  min-height:1.25rem;
+}
+.carousel-indicator {
+  background:color-mix(in srgb,var(--dowe-carousel-accent) 26%,transparent);
+}
+.carousel-indicator.is-active {
+  background:var(--dowe-carousel-accent);
+}
+.carousel-counter {
+  color:var(--dowe-surfaceText);
+}
+.carousel-thumbnails {
+  padding:.25rem .125rem .375rem;
+  scrollbar-width:none;
+}
+.carousel-thumbnail {
+  border-color:color-mix(in srgb,var(--dowe-carousel-accent) 12%,transparent);
+  background:color-mix(in srgb,var(--dowe-carousel-accent) 7%,var(--dowe-surface));
+  color:var(--dowe-surfaceText);
+}
+.carousel-thumbnail.is-active {
+  border-color:var(--dowe-carousel-accent);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--dowe-carousel-accent) 12%,transparent);
+}
+.carousel.is-masonry .carousel-viewport {
+  padding:.75rem;
+}
+.carousel.is-sticky .carousel-slide {
+  box-shadow:0 .5rem 1.25rem rgba(15,23,42,.08);
+}
+.carousel.is-cover-flow .carousel-slide,.carousel.is-stories .carousel-slide,.carousel.is-smart-stack .carousel-slide,.carousel.is-card-stack .carousel-slide,.carousel.is-flipbook .carousel-slide {
+  overflow:visible;
+}
+.carousel.is-cover-flow .carousel-viewport,.carousel.is-stories .carousel-viewport,.carousel.is-flipbook .carousel-viewport {
+  padding-block:1.25rem;
+}
+@keyframes dowe-carousel-cover-flow {
+  0%,100% {
+    transform:scale(.86) rotateY(30deg);
+    opacity:.68;
+  }
+  50% {
+    transform:scale(1) rotateY(0);
+    opacity:1;
+  }
+}
+@keyframes dowe-carousel-parallax {
+  0% {
+    transform:translateX(7%);
+    opacity:.76;
+  }
+  50% {
+    transform:translateX(0);
+    opacity:1;
+  }
+  100% {
+    transform:translateX(-7%);
+    opacity:.76;
+  }
+}
+@keyframes dowe-carousel-stories {
+  0% {
+    transform:rotateY(44deg) scale(.9);
+    opacity:.58;
+  }
+  50% {
+    transform:rotateY(0) scale(1);
+    opacity:1;
+  }
+  100% {
+    transform:rotateY(-44deg) scale(.9);
+    opacity:.58;
+  }
+}
+@keyframes dowe-carousel-smart-stack {
+  0% {
+    transform:translateY(1rem) scale(.94) rotate(1.5deg);
+    opacity:.7;
+  }
+  50% {
+    transform:translateY(0) scale(1) rotate(0);
+    opacity:1;
+  }
+  100% {
+    transform:translateY(-.5rem) scale(.96) rotate(-1deg);
+    opacity:.76;
+  }
+}
+@keyframes dowe-carousel-card-stack {
+  0% {
+    transform:translateY(.75rem) scale(.95);
+    opacity:.72;
+  }
+  50% {
+    transform:translateY(0) scale(1);
+    opacity:1;
+  }
+  100% {
+    transform:translateY(-.75rem) scale(.97);
+    opacity:.8;
+  }
+}
+@keyframes dowe-carousel-flipbook {
+  0% {
+    transform:rotateY(64deg) scale(.92);
+    opacity:.55;
+  }
+  50% {
+    transform:rotateY(0) scale(1);
+    opacity:1;
+  }
+  100% {
+    transform:rotateY(-64deg) scale(.92);
+    opacity:.55;
+  }
+}
+@media (max-width:640px) {
+  .carousel-viewport {
+    padding:.625rem;
+    border-radius:1rem;
+    scroll-padding-inline:.625rem;
+  }
+  .carousel-slide {
+    border-radius:.75rem;
+  }
+  .carousel-nav {
+    opacity:1;
+    pointer-events:auto;
+    width:2.25rem;
+    height:2.25rem;
+  }
+  .carousel-nav.is-prev {
+    left:.875rem;
+  }
+  .carousel-nav.is-next {
+    right:.875rem;
+  }
+}
+.carousel.is-vertical {
+  flex-direction:column;
+  align-items:stretch;
+}
+.carousel.is-vertical .carousel-viewport {
+  overscroll-behavior-block:contain;
+  scroll-padding-block:.75rem;
+}
+.carousel.is-vertical .carousel-container {
+  width:100%;
+  min-width:100%;
+}
+.carousel.is-vertical .carousel-slide {
+  width:100%;
+  min-width:100%;
+  flex-basis:auto;
+}
+.carousel.is-vertical .carousel-viewport {
+  scroll-snap-type:block mandatory;
+}
+.carousel.is-vertical .carousel-slide {
+  scroll-snap-align:center;
+}
+.carousel-nav:focus-visible,.carousel-control:focus-visible,.carousel-indicator:focus-visible,.carousel-thumbnail:focus-visible {
+  outline:2px solid currentColor;
+  outline-offset:2px;
+}
+.carousel-nav:disabled,.carousel-control:disabled {
+  cursor:not-allowed;
+  opacity:.38;
+  pointer-events:none;
+}
+.carousel:hover .carousel-nav,.carousel:focus-within .carousel-nav {
+  opacity:1;
+  pointer-events:auto;
+}
+.carousel-viewport {
+  touch-action:pan-x pan-y;
+  overscroll-behavior-inline:contain;
+}

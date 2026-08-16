@@ -81,6 +81,8 @@ pub(crate) fn parse_project_for(
                 &translations,
                 &config.design_config,
                 &view_platforms,
+                environment == CompileEnvironment::Development
+                    && view_platforms.contains(&ViewPlatform::Web),
             )
         })
         .transpose()?;

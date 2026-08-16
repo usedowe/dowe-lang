@@ -1,6 +1,8 @@
 use crate::handlers::{
-    chunk_response, design_css_response, font_response, is_preflight, javascript_response,
-    json_response_text, project_asset_response, server_response, websocket_response,
+    IMMUTABLE_CACHE_CONTROL, cacheable_design_css_response, cacheable_javascript_response,
+    chunk_response, design_css_chunk_relative_path, font_response, is_preflight,
+    json_response_text, production_json_response, project_asset_response, server_response,
+    websocket_response, with_cache_control,
 };
 use crate::server::DevRuntimeState;
 use axum::body::Bytes;
@@ -35,7 +37,7 @@ pub async fn production_handler(
     }
 
     if method == Method::GET {
-        production_static_response(&project, uri.path())
+        production_static_response(&project, uri.path(), &headers)
     } else {
         StatusCode::NOT_FOUND.into_response()
     }
@@ -72,15 +74,47 @@ pub async fn production_declared_websocket_handler(
     websocket_response(upgrade, project.clone(), route.handlers, state.cache_mode)
 }
 
-fn production_static_response(project: &CompiledProject, path: &str) -> Response {
+fn production_static_response(
+    project: &CompiledProject,
+    path: &str,
+    headers: &HeaderMap,
+) -> Response {
+    let design_path = format!("/{}", project.web.design_file_name());
+    let design_relative_path = format!("web/{}", project.web.design_file_name());
+    if path == design_path {
+        return cacheable_design_css_response(
+            project,
+            &design_relative_path,
+            headers,
+            IMMUTABLE_CACHE_CONTROL,
+        );
+    }
     if path == "/design.css" {
-        return design_css_response(project, "web/design.css");
+        return cacheable_design_css_response(project, &design_relative_path, headers, "no-cache");
+    }
+    if let Some(relative_path) = design_css_chunk_relative_path(path) {
+        return cacheable_design_css_response(
+            project,
+            &relative_path,
+            headers,
+            IMMUTABLE_CACHE_CONTROL,
+        );
+    }
+    if path == format!("/{}", project.web.router_file_name()) {
+        return cacheable_javascript_response(
+            project.web.router_js.clone(),
+            headers,
+            IMMUTABLE_CACHE_CONTROL,
+        );
     }
     if path == "/router.js" {
-        return javascript_response(project.web.router_js.clone());
+        return cacheable_javascript_response(project.web.router_js.clone(), headers, "no-cache");
     }
     if path == "/env.json" {
         return json_response_text(project.environment_config.client_json());
+    }
+    if path == "/manifest.json" {
+        return production_json_response(project, "web/manifest.json");
     }
     if let Some(response) = font_response(project, path) {
         return response;
@@ -88,7 +122,7 @@ fn production_static_response(project: &CompiledProject, path: &str) -> Response
     if let Some(response) = project_asset_response(project, path, "public, max-age=300") {
         return response;
     }
-    if let Some(response) = chunk_response(&project.web, path) {
+    if let Some(response) = chunk_response(&project.web, path, headers, IMMUTABLE_CACHE_CONTROL) {
         return response;
     }
     let Some(page) = project
@@ -99,5 +133,5 @@ fn production_static_response(project: &CompiledProject, path: &str) -> Response
     else {
         return StatusCode::NOT_FOUND.into_response();
     };
-    Html(page.html_document.clone()).into_response()
+    with_cache_control(Html(page.html_document.clone()).into_response(), "no-cache")
 }

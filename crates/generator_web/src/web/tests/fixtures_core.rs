@@ -163,18 +163,7 @@ fn container_foreground_tree() -> ViewNode {
 }
 
 fn show_design_css() -> String {
-    let web = super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    };
-    web_artifacts(&web, &FontConfig::default(), &DesignConfig::default())
-        .into_iter()
-        .find(|artifact| artifact.relative_path == Path::new("web/design.css"))
-        .expect("design css")
-        .content
+    super::design_css()
 }
 
 fn responsive_bool(entries: &[(Breakpoint, bool)]) -> ResponsiveValue<bool> {

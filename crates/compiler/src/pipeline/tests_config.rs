@@ -11,6 +11,14 @@ use std::fs;
 use std::path::Path;
 use tempfile::TempDir;
 
+fn generated_css_chunk<'a>(paths: &'a [String], prefix: &str) -> &'a str {
+    paths
+        .iter()
+        .find(|path| path.starts_with(prefix))
+        .map(String::as_str)
+        .expect("generated css chunk")
+}
+
 fn android_dev_output(root: &Path) -> String {
     let source_root = root.join(".dowe/apps/android/dev/src/dev/dowe/generated");
     let core = fs::read_to_string(source_root.join("DoweDevActivity.java"))
@@ -899,8 +907,12 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     assert!(body.contains("is-solid is-happy"), "{body}");
     assert!(body.contains("is-soft is-happy"), "{body}");
 
-    let design_css =
-        fs::read_to_string(temp.path().join(".dowe/web/design.css")).expect("design css");
+    let design_css = fs::read_to_string(
+        temp.path()
+            .join(".dowe/web")
+            .join(project.web.design_file_name()),
+    )
+    .expect("design css");
     assert!(design_css.contains("--dowe-happy:#176c75;"), "{design_css}");
     assert!(design_css.contains("--dowe-happyText:#fffffe;"), "{design_css}");
     assert!(design_css.contains("--dowe-happyTitle:#fffefe;"), "{design_css}");
@@ -913,7 +925,10 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     let page_css = fs::read_to_string(
         temp.path()
             .join(".dowe/web")
-            .join(&project.web.pages[0].css_chunks[1]),
+            .join(generated_css_chunk(
+                &project.web.pages[0].css_chunks,
+                "chunks/pages/",
+            )),
     )
     .expect("page css");
     assert!(

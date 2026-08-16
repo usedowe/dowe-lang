@@ -65,7 +65,8 @@ pub(crate) fn web_module_version(project: &CompiledProject) -> String {
         hash.update(page.route_path.as_bytes());
         hash.update(page.body_html.as_bytes());
     }
-    for relative in [".dowe/web/manifest.json", ".dowe/web/design.css"] {
+    let design_relative = format!(".dowe/web/{}", project.web.design_file_name());
+    for relative in [".dowe/web/manifest.json", design_relative.as_str()] {
         if let Ok(contents) = fs::read(project.root.join(relative)) {
             hash.update(contents);
         }

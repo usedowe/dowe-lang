@@ -1,0 +1,70 @@
+.tabs {
+  --dowe-component-display:flex;
+  display:var(--dowe-show,var(--dowe-component-display));
+  position:relative;
+  gap:0.5rem;
+}
+.tabs.is-top {
+  flex-direction:column;
+}
+.tabs.is-bottom {
+  flex-direction:column-reverse;
+}
+.tabs.is-start {
+  flex-direction:row;
+  align-items:flex-start;
+}
+.tabs.is-end {
+  flex-direction:row-reverse;
+  align-items:flex-start;
+}
+.tabs-list {
+  display:flex;
+  width:max-content;
+  max-width:100%;
+  flex:0 0 auto;
+  align-self:flex-start;
+  overflow-x:auto;
+  gap:0.5rem;
+  padding:0.25rem;
+  position:relative;
+  user-select:none;
+  scrollbar-width:none;
+}
+.tabs-list::-webkit-scrollbar {
+  display:none;
+}
+.tabs.is-start .tabs-list,.tabs.is-end .tabs-list {
+  flex-direction:column;
+  overflow-x:visible;
+  overflow-y:auto;
+  max-height:100%;
+}
+.tab {
+  display:inline-flex;
+  align-items:center;
+  white-space:nowrap;
+  cursor:pointer;
+  border:0;
+  border-color:transparent;
+  background:transparent;
+  color:inherit;
+  padding:0.25rem 1rem;
+  position:relative;
+  transition:color 160ms ease,background-color 160ms ease,border-color 160ms ease;
+  font:inherit;
+}
+.tabs-label {
+  white-space:nowrap;
+}
+.tabs-wrapper {
+  display:flex;
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  position:relative;
+}
+.tabs-content {
+  position:relative;
+  width:100%;
+}

@@ -2349,6 +2349,45 @@ fn resolves_icon_button_and_control_icon_regions() {
 }
 
 #[test]
+fn resolves_chip_icon_props_with_size_proportional_icons() {
+    let chip = super::chip_component_node(
+        vec![
+            string_prop("size", "lg"),
+            string_prop("startIcon", "settings"),
+            string_prop("endIcon", "magnifier"),
+        ],
+        "Filters",
+        None,
+        None,
+    )
+    .expect("chip icons");
+
+    let ViewNode::Chip { start, end, .. } = chip else {
+        panic!("chip");
+    };
+    for icon in [start.expect("start icon"), end.expect("end icon")] {
+        assert_eq!(
+            icon.props.style.sizing.w.expect("icon width").entries[0].value,
+            SizeValue::Scale(ScaleValue::from_half_steps(10))
+        );
+        assert_eq!(
+            icon.props.style.sizing.h.expect("icon height").entries[0].value,
+            SizeValue::Scale(ScaleValue::from_half_steps(10))
+        );
+    }
+
+    assert!(
+        super::chip_component_node(
+            vec![string_prop("startIcon", "settings")],
+            "Filters",
+            Some(super::solar_control_icon("magnifier").expect("region icon")),
+            None,
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn normalizes_button_visual_props() {
     let mut node = container_component_node(
         BuiltinComponent::Button,

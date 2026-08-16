@@ -67,6 +67,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloc-no-stdlib"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc7bb162ec39d46ab1ca8c77bf72e890535becd1751bb45f64c597edb4c8c6b3"
+
+[[package]]
+name = "alloc-stdlib"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e76a019e91224d279006ff972f1e984179a6e9feb050adba6ce8274aef23195"
+dependencies = [
+ "alloc-no-stdlib",
+]
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -264,6 +279,18 @@ dependencies = [
  "futures-core",
  "futures-io",
  "once_cell",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
+name = "async-compression"
+version = "0.4.42"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e79b3f8a79cccc2898f31920fc69f304859b3bd567490f75ebf51ae1c792a9ac"
+dependencies = [
+ "compression-codecs",
+ "compression-core",
  "pin-project-lite",
  "tokio",
 ]
@@ -601,6 +628,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "brotli"
+version = "8.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cc91aac060a7a1e25823bdccbfb6af1875b88f17c6daac97894eed8207166b3"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+ "brotli-decompressor",
+]
+
+[[package]]
+name = "brotli-decompressor"
+version = "5.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a32acac15fe1967bc3986b2a6347dffc965602354ea6f450ad07e8bfd253583"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -837,6 +885,24 @@ dependencies = [
  "serde",
  "static_assertions",
 ]
+
+[[package]]
+name = "compression-codecs"
+version = "0.4.38"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce2548391e9c1929c21bf6aa2680af86fe4c1b33e6cea9ac1cfeec0bd11218cf"
+dependencies = [
+ "brotli",
+ "compression-core",
+ "flate2",
+ "memchr",
+]
+
+[[package]]
+name = "compression-core"
+version = "0.4.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc14f565cf027a105f7a44ccf9e5b424348421a1d8952a8fc9d499d313107789"
 
 [[package]]
 name = "concurrent-queue"
@@ -1225,7 +1291,7 @@ dependencies = [
 
 [[package]]
 name = "dowe"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dialoguer",
  "dowe_agent",
@@ -1248,7 +1314,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_agent"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "base64 0.22.1",
  "dowe_agent_harness",
@@ -1264,7 +1330,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_agent_harness"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_codegraph",
  "serde",
@@ -1274,7 +1340,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_cache"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1292,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_codegraph"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "serde",
  "serde_json",
@@ -1301,7 +1367,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_compiler"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_components",
  "dowe_database_query",
@@ -1318,7 +1384,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_components"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_stdlib",
  "quick-xml",
@@ -1328,7 +1394,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_crypto"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1343,7 +1409,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_database"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "argon2",
  "axum",
@@ -1366,14 +1432,14 @@ dependencies = [
 
 [[package]]
 name = "dowe_database_query"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "dowe_deploy"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "base64 0.22.1",
  "dowe_compiler",
@@ -1393,28 +1459,28 @@ dependencies = [
 
 [[package]]
 name = "dowe_generator_android"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_components",
 ]
 
 [[package]]
 name = "dowe_generator_desktop"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_components",
 ]
 
 [[package]]
 name = "dowe_generator_ios"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_components",
 ]
 
 [[package]]
 name = "dowe_generator_web"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_components",
  "dowe_minifier",
@@ -1422,7 +1488,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_icons"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "icns",
  "ico",
@@ -1437,11 +1503,11 @@ dependencies = [
 
 [[package]]
 name = "dowe_id"
-version = "1.0.20"
+version = "1.0.21"
 
 [[package]]
 name = "dowe_inference"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "candle-core",
  "candle-onnx",
@@ -1449,7 +1515,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_ipc"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_agent",
  "dowe_agent_harness",
@@ -1466,11 +1532,11 @@ dependencies = [
 
 [[package]]
 name = "dowe_minifier"
-version = "1.0.20"
+version = "1.0.21"
 
 [[package]]
 name = "dowe_queue"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1492,7 +1558,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_runtime"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "argon2",
  "axum",
@@ -1521,13 +1587,14 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite",
+ "tower-http",
  "webview2-com",
  "windows",
 ]
 
 [[package]]
 name = "dowe_spawn"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "libc",
  "portable-pty",
@@ -1538,7 +1605,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_stdlib"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "dowe_id",
  "serde",
@@ -1547,7 +1614,7 @@ dependencies = [
 
 [[package]]
 name = "dowe_vector"
-version = "1.0.20"
+version = "1.0.21"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -5000,12 +5067,16 @@ version = "0.6.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68d6fdd9f81c2819c9a8b0e0cd91660e7746a8e6ea2ba7c6b2b057985f6bcb51"
 dependencies = [
+ "async-compression",
  "bitflags 2.11.1",
  "bytes",
+ "futures-core",
  "futures-util",
  "http",
  "http-body",
  "pin-project-lite",
+ "tokio",
+ "tokio-util",
  "tower",
  "tower-layer",
  "tower-service",

@@ -51,8 +51,8 @@ fn display_overlay_tree() -> ViewNode {
                     on_close: Some("close".to_string()),
                 },
                 value: "Filter".to_string(),
-                start: None,
-                end: None,
+                start: Some(solar_control_icon("settings").expect("chip start icon")),
+                end: Some(solar_control_icon("magnifier").expect("chip end icon")),
             },
             ViewNode::Skeleton {
                 props: SkeletonProps {

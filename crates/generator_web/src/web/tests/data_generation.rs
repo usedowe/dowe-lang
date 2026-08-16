@@ -47,19 +47,13 @@ fn renders_video_markup_theme_classes_and_hls_runtime() {
         &tree,
     );
     assert!(chunk.css_content.contains(".video.is-solid.is-surface"));
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
-    assert!(router.contains("application/vnd.apple.mpegurl"));
-    assert!(router.contains("https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"));
-    assert!(router.contains("hls.loadSource(source)"));
-    assert!(router.contains("video.controls=false"));
-    assert!(router.contains("requestPictureInPicture"));
-    assert!(router.contains("requestFullscreen"));
+    let runtime = super::media_runtime_chunk().content;
+    assert!(runtime.contains("application/vnd.apple.mpegurl"));
+    assert!(runtime.contains("https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"));
+    assert!(runtime.contains("hls.loadSource(source)"));
+    assert!(runtime.contains("video.controls=false"));
+    assert!(runtime.contains("requestPictureInPicture"));
+    assert!(runtime.contains("requestFullscreen"));
 }
 
 #[test]
@@ -98,21 +92,23 @@ fn renders_candlestick_markup_theme_classes_and_stream_runtime() {
             .css_content
             .contains(".candlestick.is-soft.is-surface")
     );
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
-    assert!(router.contains("new EventSource(stream)"));
-    assert!(router.contains("upsertCandles"));
-    assert!(router.contains("renderCandlestick"));
+    let runtime = super::visualization_runtime_chunk().content;
+    assert!(runtime.contains("new EventSource(stream)"));
+    assert!(runtime.contains("upsertCandles"));
+    assert!(runtime.contains("renderCandlestick"));
 }
 
 #[test]
 fn renders_chart_markup_css_and_runtime() {
     let tree = charts_tree();
+    let runtime_chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &tree);
+    assert_eq!(runtime_chunks.len(), 1);
+    assert_eq!(runtime_chunks[0].name, "visualization");
+    assert!(
+        runtime_chunks[0]
+            .browser_path()
+            .starts_with("chunks/runtime/visualization-")
+    );
     let html = render_page_body(&ViewNode::Children, &tree);
     for chart_type in ["arc", "area", "bar", "line", "pie"] {
         assert!(html.contains(&format!(r#"data-dowe-chart-type="{chart_type}""#)));
@@ -136,31 +132,23 @@ fn renders_chart_markup_css_and_runtime() {
     let design_css = super::design_css();
     assert!(design_css.contains(".arc-chart-container .dowe-chart-arc-viewport"));
     assert!(design_css.contains(".dowe-chart-inline-label"));
-    let router = super::router_js(&super::WebOutput {
-        chunks: Vec::new(),
-        pages: Vec::new(),
-        translation_chunks: Vec::new(),
-        default_locale: None,
-        router_js: String::new(),
-    });
-    assert!(router.contains("function renderCharts"));
-    assert!(router.contains("renderPieArcChart"));
-    assert!(router.contains("renderLineAreaChart"));
-    assert!(router.contains("chart.dataset.doweChartDonut"));
-    assert!(router.contains("chart.dataset.doweChartHideLabels"));
-    assert!(router.contains("Math.abs(sweep)>=359.999"));
-    assert!(router.contains("chart.dataset.doweChartShowInlineLabels"));
+    let runtime = super::visualization_runtime_chunk().content;
+    assert!(runtime.contains("function renderCharts"));
+    assert!(runtime.contains("renderPieArcChart"));
+    assert!(runtime.contains("renderLineAreaChart"));
+    assert!(runtime.contains("chart.dataset.doweChartDonut"));
+    assert!(runtime.contains("chart.dataset.doweChartHideLabels"));
+    assert!(runtime.contains("Math.abs(sweep)>=359.999"));
+    assert!(runtime.contains("chart.dataset.doweChartShowInlineLabels"));
 }
 
 #[test]
 fn renders_table_markup_css_and_runtime() {
     let tree = table_tree();
     let html = render_page_body(&ViewNode::Children, &tree);
-    assert!(
-        html.contains(
-            r#"class="table is-lg is-outlined is-primary is-striped is-bordered has-dividers""#
-        )
-    );
+    assert!(html.contains(
+        r#"class="table is-lg is-outlined is-primary is-striped is-bordered has-dividers""#
+    ));
     assert!(html.contains(r#"data-dowe-table-data="users""#));
     assert!(html.contains(r#"data-dowe-table-field="status""#));
     assert!(html.contains(r#"data-dowe-table-align="end""#));
@@ -375,9 +363,7 @@ fn binds_icon_and_text_button_actions_to_the_full_web_control() {
                         on_click: Some("openSettings".to_string()),
                         ..Default::default()
                     },
-                    icon_start: Some(
-                        solar_control_icon("settings").expect("settings icon"),
-                    ),
+                    icon_start: Some(solar_control_icon("settings").expect("settings icon")),
                     icon_only: true,
                     label: Some("Open settings".to_string()),
                     ..Default::default()
@@ -397,8 +383,12 @@ fn binds_icon_and_text_button_actions_to_the_full_web_control() {
         ],
     };
     let html = render_page_body(&ViewNode::Children, &tree);
-    let icon_start = html.find("aria-label=\"Open settings\"").expect("icon button");
-    let icon_open = html[..icon_start].rfind("<button").expect("icon opening tag");
+    let icon_start = html
+        .find("aria-label=\"Open settings\"")
+        .expect("icon button");
+    let icon_open = html[..icon_start]
+        .rfind("<button")
+        .expect("icon opening tag");
     let icon_close = html[icon_start..]
         .find("</button>")
         .map(|offset| icon_start + offset)
@@ -408,7 +398,9 @@ fn binds_icon_and_text_button_actions_to_the_full_web_control() {
     assert!(icon_output.contains("data-dowe-click=\"openSettings\""));
     assert!(icon_output.contains("data-dowe-button-icon-start"));
     let text_start = html.find("data-dowe-click=\"save\"").expect("text button");
-    let text_open = html[..text_start].rfind("<button").expect("text opening tag");
+    let text_open = html[..text_start]
+        .rfind("<button")
+        .expect("text opening tag");
     let text_close = html[text_start..]
         .find("</button>")
         .map(|offset| text_start + offset)
@@ -491,14 +483,17 @@ fn emits_show_visibility_markup_and_css() {
         router_js: String::new(),
     });
     assert!(router.contains("data-dowe-show"));
-    assert!(router.contains(
-        "if(!scoped&&button.closest(\"[data-dowe-each-row]\"))continue"
-    ));
+    assert!(router.contains("if(!scoped&&button.closest(\"[data-dowe-each-row]\"))continue"));
 }
 
 #[test]
 fn emits_design_responsive_css_in_ascending_breakpoint_blocks() {
-    let css = show_design_css();
+    let css = super::compose_design_base_css(
+        &Default::default(),
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        false,
+    );
     let base_end = css.find("@keyframes dowe-scale-in").unwrap();
     let sm = css.find("@media (min-width:640px)").unwrap();
     let md = css.find("@media (min-width:768px)").unwrap();
@@ -509,10 +504,12 @@ fn emits_design_responsive_css_in_ascending_breakpoint_blocks() {
     assert_eq!(css.matches("@media (min-width:").count(), 4);
     for width in [640, 768, 1024, 1280] {
         assert_eq!(
-            css.matches(&format!("@media (min-width:{width}px)")).count(),
+            css.matches(&format!("@media (min-width:{width}px)"))
+                .count(),
             1
         );
     }
+    let css = show_design_css();
     assert!(css.contains(".pie-chart-container.legend-left{flex-direction:row-reverse;}"));
     assert!(css.contains(".pie-chart-container .dowe-chart-viewport{flex:0 1 20rem;"));
     assert!(css.contains(".pie-chart-container .dowe-chart-svg{min-height:0;aspect-ratio:1;"));
@@ -552,10 +549,16 @@ fn keeps_nested_layout_visibility_rules_order_safe() {
     assert!(!parent.css_content.contains(".show-false"));
     assert!(!child.css_content.contains(".show-false"));
     assert!(design_css.contains(".show-false:not([hidden]){display:none;}"));
-    assert!(design_css
-        .contains(".md\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}"));
-    assert!(design_css
-        .contains(".lg\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}"));
+    assert!(
+        design_css.contains(
+            ".md\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}"
+        )
+    );
+    assert!(
+        design_css.contains(
+            ".lg\\:show-true:not([hidden]){display:var(--dowe-component-display,revert);}"
+        )
+    );
     assert!(
         design_css
             .find(".show-false:not([hidden]){display:none;}")
