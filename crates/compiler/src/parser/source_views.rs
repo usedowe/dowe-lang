@@ -26,23 +26,23 @@ use dowe_components::{
     apply_design_defaults_to_tree, apply_theme_catalog_to_tree, arc_chart_component_node,
     area_chart_component_node, attach_form_validation, audio_component_node, avatar_component_node,
     avatar_group_component_node, avatar_group_item_component, badge_component_node,
-    camera_component_node,
     bar_chart_component_node, bar_component_node, bottom_bar_component_node,
-    bottom_bar_tab_component, candlestick_node, canvas_component_node, carousel_component_node,
-    carousel_slide_component, chat_box_component_node, checkbox_component_node, children_node,
-    chip_component_node, code_node, collapsible_component_node, color_component_node,
-    combo_box_component_node, combo_option_component, command_component_node,
-    command_group_component, compose_tree, container_component_node, countdown_component_node,
-    csv_column_component, csv_field_component_node, date_component_node, date_range_component_node,
-    device_node, divider_node, drag_drop_component_node, drag_group_component, drag_item_component,
+    bottom_bar_tab_component, camera_component_node, candlestick_node, canvas_component_node,
+    carousel_component_node, carousel_slide_component, chat_box_component_node,
+    checkbox_component_node, children_node, chip_component_node, code_node,
+    collapsible_component_node, color_component_node, combo_box_component_node,
+    combo_option_component, command_component_node, command_group_component, compose_tree,
+    container_component_node, countdown_component_node, csv_column_component,
+    csv_field_component_node, date_component_node, date_range_component_node, device_node,
+    divider_node, drag_drop_component_node, drag_group_component, drag_item_component,
     drawer_component_node, dropdown_component_node, dropzone_component_node, editor_component_node,
     empty_component_node, fab_action_component, fab_component_node, first_text,
     form_validation_rule, icon_component_node, iframe_node, image_component_node,
     image_cropper_component_node, input_node, line_chart_component_node, map_component_node,
-    map_marker_component, map_waypoint_component, marquee_component_node, microphone_component_node,
-    modal_component_node,
-    nav_menu_component_node, nav_menu_item_component, nav_menu_megamenu_component,
-    nav_menu_submenu_component, navigation_action, node_child_groups, node_element_props,
+    map_marker_component, map_waypoint_component, marquee_component_node,
+    microphone_component_node, modal_component_node, nav_menu_component_node,
+    nav_menu_item_component, nav_menu_megamenu_component, nav_menu_submenu_component,
+    navigation_action, node_child_groups, node_child_groups_mut, node_element_props,
     overlay_icon_component, overlay_item_component, password_component_node, phone_component_node,
     pie_chart_component_node, pin_component_node, radio_group_component_node,
     radio_option_component, rail_nav_component_node, rail_nav_item_component,
@@ -58,14 +58,12 @@ use dowe_components::{
     toggle_group_item_component, tooltip_component_node, type_writer_component_node,
     type_writer_item_component, validate_view_tree, video_node,
 };
-use dowe_generator_web::{
-    build_translation_chunks, render_page_document, router_js,
-};
+use dowe_generator_web::{build_translation_chunks, render_page_document, router_js};
 use dowe_stdlib::StdlibSurface;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::sync::Arc;
 
 include!("source_views/environment.rs");
 include!("source_views/entry.rs");

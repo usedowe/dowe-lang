@@ -168,11 +168,7 @@ fn format_value(
                 let item_inline = format!("{item_prefix}{}", value.to_source());
                 let item_expand = matches!(value, SourceValue::Array(_) | SourceValue::Object(_))
                     || item_inline.chars().count() > MAX_LINE_WIDTH;
-                let first = lines.len();
                 format_value(value, indent + 1, item_prefix, item_expand, lines);
-                if lines.len() > first {
-                    lines.last_mut().expect("array item line").push(',');
-                }
             }
             lines.push(format!("{}]", "  ".repeat(indent)));
         }

@@ -37,11 +37,8 @@ fn selected_web_development_compile_skips_unselected_app_artifacts() {
         "page loginPage\n  Text\n    \"Home\"",
     );
 
-    let project = super::compile_dev_for_platforms(
-        temp.path(),
-        [crate::model::ViewPlatform::Web],
-    )
-    .expect("web compile");
+    let project = super::compile_dev_for_platforms(temp.path(), [crate::model::ViewPlatform::Web])
+        .expect("web compile");
 
     assert!(project.apps.files.is_empty());
     assert!(!project.view_routes.web.is_empty());
@@ -61,26 +58,85 @@ fn selected_android_development_compile_writes_only_android_app_artifacts() {
         "page loginPage\n  Text\n    \"Home\"",
     );
 
-    let project = super::compile_dev_for_platforms(
-        temp.path(),
-        [crate::model::ViewPlatform::Android],
-    )
-    .expect("android compile");
+    let project =
+        super::compile_dev_for_platforms(temp.path(), [crate::model::ViewPlatform::Android])
+            .expect("android compile");
 
-    assert!(project.apps.files.iter().any(|file| file.target == "android"));
+    assert!(
+        project
+            .apps
+            .files
+            .iter()
+            .any(|file| file.target == "android")
+    );
     assert!(project.view_routes.web.is_empty());
     assert!(project.view_routes.desktop.is_empty());
     assert!(!project.view_routes.android.is_empty());
     assert!(project.view_routes.ios.is_empty());
-    assert!(project
-        .apps
-        .files
-        .iter()
-        .all(|file| matches!(file.target.as_str(), "android" | "apps")));
+    assert!(
+        project
+            .apps
+            .files
+            .iter()
+            .all(|file| matches!(file.target.as_str(), "android" | "apps"))
+    );
     assert!(temp.path().join(".dowe/apps/android").is_dir());
     assert!(!temp.path().join(".dowe/apps/desktop").exists());
     assert!(!temp.path().join(".dowe/apps/ios").exists());
     assert!(!temp.path().join(".dowe/web").exists());
+}
+
+#[test]
+fn deferred_native_generation_restores_font_resources_after_app_sync() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Text\n    \"Home\"",
+    );
+    let mut compiler = crate::DevCompilerSession::new(
+        temp.path(),
+        [
+            crate::model::ViewPlatform::Android,
+            crate::model::ViewPlatform::Ios,
+        ],
+    )
+    .expect("compiler");
+    let mut project = compiler.compile_initial_web(false).expect("web phase");
+
+    assert!(project.apps.files.is_empty());
+    assert!(
+        temp.path()
+            .join(".dowe/fonts/inter/inter-regular.ttf")
+            .is_file()
+    );
+    assert!(
+        !temp
+            .path()
+            .join(".dowe/apps/android/app/src/main/res/font/inter_regular.ttf")
+            .is_file()
+    );
+    assert!(
+        !temp
+            .path()
+            .join(".dowe/apps/ios/Fonts/inter-regular.ttf")
+            .is_file()
+    );
+
+    compiler
+        .complete_dev_app_outputs(&mut project)
+        .expect("native phase");
+
+    assert!(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/res/font/inter_regular.ttf")
+            .is_file()
+    );
+    assert!(
+        temp.path()
+            .join(".dowe/apps/ios/Fonts/inter-regular.ttf")
+            .is_file()
+    );
 }
 
 #[test]
@@ -102,17 +158,13 @@ main
     )
     .expect("main");
 
-    let project = super::compile_dev_views_for_platforms(
-        temp.path(),
-        [crate::model::ViewPlatform::Web],
-    )
-    .expect("views compile");
+    let project =
+        super::compile_dev_views_for_platforms(temp.path(), [crate::model::ViewPlatform::Web])
+            .expect("views compile");
 
     assert!(!project.view_routes.web.is_empty());
     assert!(project.backend.endpoints.is_empty());
-    assert!(super::compile_dev_for_platforms(
-        temp.path(),
-        [crate::model::ViewPlatform::Web],
-    )
-    .is_err());
+    assert!(
+        super::compile_dev_for_platforms(temp.path(), [crate::model::ViewPlatform::Web],).is_err()
+    );
 }

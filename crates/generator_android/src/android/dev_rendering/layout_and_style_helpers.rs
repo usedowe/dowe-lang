@@ -70,6 +70,46 @@ fn dev_flex_align_value(value: &ResponsiveValue<Align>) -> String {
     })
 }
 
+fn dev_text_align(value: &ResponsiveValue<TextAlign>) -> String {
+    dev_responsive_value(value, |value| match value {
+        TextAlign::Start => "Gravity.TOP | Gravity.START".to_string(),
+        TextAlign::Center => "Gravity.TOP | Gravity.CENTER_HORIZONTAL".to_string(),
+        TextAlign::End => "Gravity.TOP | Gravity.END".to_string(),
+        TextAlign::Justify => "Gravity.TOP | Gravity.START".to_string(),
+    })
+}
+
+fn dev_text_justify(value: &ResponsiveValue<TextAlign>) -> String {
+    dev_responsive_value(value, |value| match value {
+        TextAlign::Justify => "1".to_string(),
+        TextAlign::Start | TextAlign::Center | TextAlign::End => "0".to_string(),
+    })
+}
+
+fn apply_dev_text_alignment(
+    props: &TextProps,
+    view: &str,
+    parent_horizontal: bool,
+    output: &mut String,
+) {
+    let Some(value) = props.align.as_ref() else {
+        return;
+    };
+    if props.style.sizing.w.is_none() && !parent_horizontal {
+        output.push_str(&format!(
+            "        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
+        ));
+    }
+    output.push_str(&format!(
+        "        {view}.setGravity({});\n",
+        dev_text_align(value)
+    ));
+    output.push_str(&format!(
+        "        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && {} == 1) {{ {view}.setJustificationMode(android.text.Layout.JUSTIFICATION_MODE_INTER_WORD); }}\n",
+        dev_text_justify(value)
+    ));
+}
+
 fn dev_grid_columns(value: Option<&ResponsiveValue<GridTracks>>) -> String {
     value
         .map(|value| dev_responsive_value(value, |value| value.count().unwrap_or(1).to_string()))
@@ -109,35 +149,94 @@ fn dev_svg_color(props: &StyleProps, inherited_color: Option<&str>) -> String {
 
 fn dev_svg_path_current_color(fill: SvgPathFill) -> &'static str {
     match fill {
-        SvgPathFill::CurrentColor | SvgPathFill::Fill { color: None, .. } | SvgPathFill::Stroke { color: None, .. } => "true",
-        SvgPathFill::None | SvgPathFill::Color(_) | SvgPathFill::RawFill { .. } | SvgPathFill::RawStroke { .. } | SvgPathFill::LiteralFill { .. } | SvgPathFill::LiteralStroke { .. } | SvgPathFill::Fill { color: Some(_), .. } | SvgPathFill::Stroke { color: Some(_), .. } => "false",
+        SvgPathFill::CurrentColor
+        | SvgPathFill::Fill { color: None, .. }
+        | SvgPathFill::Stroke { color: None, .. } => "true",
+        SvgPathFill::None
+        | SvgPathFill::Color(_)
+        | SvgPathFill::RawFill { .. }
+        | SvgPathFill::RawStroke { .. }
+        | SvgPathFill::LiteralFill { .. }
+        | SvgPathFill::LiteralStroke { .. }
+        | SvgPathFill::Fill { color: Some(_), .. }
+        | SvgPathFill::Stroke { color: Some(_), .. } => "false",
     }
 }
 
 fn dev_svg_path_color(fill: SvgPathFill) -> String {
     match fill {
         SvgPathFill::None | SvgPathFill::CurrentColor => "null".to_string(),
-        SvgPathFill::RawFill { color, .. } | SvgPathFill::RawStroke { color, .. } => android_java_color_literal(color),
-        SvgPathFill::LiteralFill { red, green, blue, .. }
-        | SvgPathFill::LiteralStroke { red, green, blue, .. } => {
+        SvgPathFill::RawFill { color, .. } | SvgPathFill::RawStroke { color, .. } => {
+            android_java_color_literal(color)
+        }
+        SvgPathFill::LiteralFill {
+            red, green, blue, ..
+        }
+        | SvgPathFill::LiteralStroke {
+            red, green, blue, ..
+        } => {
             format!("Color.rgb({red}, {green}, {blue})")
         }
-        SvgPathFill::Color(token) | SvgPathFill::Fill { color: Some(token), .. } | SvgPathFill::Stroke { color: Some(token), .. } => java_color(token).to_string(),
-        SvgPathFill::Fill { color: None, .. } | SvgPathFill::Stroke { color: None, .. } => "null".to_string(),
+        SvgPathFill::Color(token)
+        | SvgPathFill::Fill {
+            color: Some(token), ..
+        }
+        | SvgPathFill::Stroke {
+            color: Some(token), ..
+        } => java_color(token).to_string(),
+        SvgPathFill::Fill { color: None, .. } | SvgPathFill::Stroke { color: None, .. } => {
+            "null".to_string()
+        }
     }
 }
 
 fn dev_svg_path_details(fill: SvgPathFill) -> String {
     match fill {
-        SvgPathFill::RawFill { opacity, even_odd, .. } | SvgPathFill::LiteralFill { opacity, even_odd, .. } | SvgPathFill::Fill { opacity, even_odd, .. } => {
+        SvgPathFill::RawFill {
+            opacity, even_odd, ..
+        }
+        | SvgPathFill::LiteralFill {
+            opacity, even_odd, ..
+        }
+        | SvgPathFill::Fill {
+            opacity, even_odd, ..
+        } => {
             format!("false, {opacity}, 0f, {even_odd}, \"butt\", \"miter\"")
         }
-        SvgPathFill::RawStroke { opacity, width, line_cap, line_join, .. } | SvgPathFill::LiteralStroke { opacity, width, line_cap, line_join, .. } | SvgPathFill::Stroke { opacity, width, line_cap, line_join, .. } => {
+        SvgPathFill::RawStroke {
+            opacity,
+            width,
+            line_cap,
+            line_join,
+            ..
+        }
+        | SvgPathFill::LiteralStroke {
+            opacity,
+            width,
+            line_cap,
+            line_join,
+            ..
+        }
+        | SvgPathFill::Stroke {
+            opacity,
+            width,
+            line_cap,
+            line_join,
+            ..
+        } => {
             format!(
                 "true, {opacity}, {}f, false, \"{}\", \"{}\"",
                 width as f32 / 100.0,
-                match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
-                match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+                match line_cap {
+                    SvgLineCap::Butt => "butt",
+                    SvgLineCap::Round => "round",
+                    SvgLineCap::Square => "square",
+                },
+                match line_join {
+                    SvgLineJoin::Miter => "miter",
+                    SvgLineJoin::Round => "round",
+                    SvgLineJoin::Bevel => "bevel",
+                }
             )
         }
         _ => "false, 255, 0f, false, \"butt\", \"miter\"".to_string(),
@@ -250,8 +349,7 @@ fn dev_visible_text_expression(
 }
 
 fn dev_localized_literal(value: &str, i18n: Option<&str>) -> String {
-    i18n
-        .map(|key| format!("getString(R.string.{})", translation_resource_name(key)))
+    i18n.map(|key| format!("getString(R.string.{})", translation_resource_name(key)))
         .unwrap_or_else(|| format!("\"{}\"", escape_java(value)))
 }
 
@@ -277,7 +375,10 @@ fn apply_dev_android_style(
     let styled_background =
         include_background && props.background.is_none() && props.border.is_some();
 
-    if include_background && !styled_background && let Some(value) = props.bg.as_ref() {
+    if include_background
+        && !styled_background
+        && let Some(value) = props.bg.as_ref()
+    {
         output.push_str(&format!(
             "        Integer {view}Background = {};\n        if ({view}Background != null) {{\n            {view}.setBackgroundColor({view}Background);\n        }}\n",
             dev_color_value(value)

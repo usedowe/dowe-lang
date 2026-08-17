@@ -439,6 +439,10 @@ fn side_nav_item(label: &str, navigation: Option<NavigationAction>) -> SideNavIt
                     height: "24".to_string(),
                 },
                 data: None,
+                icon_name: None,
+                icon_fallback: None,
+                icon_fill: None,
+                icon_stroke: None,
                 motion: None,
             },
             paths: vec![SvgPath {

@@ -49,10 +49,18 @@ fn render_compose_display_node(
             let source = if props.template_segments.is_empty() {
                 compose_string_literal(&props.source)
             } else {
-                props.template_segments.iter().map(|segment| match segment {
-                    CodeTemplateSegment::Static { text, .. } => compose_string_literal(text),
-                    CodeTemplateSegment::Binding(path) => format!("state.text(\"{}\", \"\")", escape_kotlin(&context.signal_path(path))),
-                }).collect::<Vec<_>>().join(" + ")
+                props
+                    .template_segments
+                    .iter()
+                    .map(|segment| match segment {
+                        CodeTemplateSegment::Static { text, .. } => compose_string_literal(text),
+                        CodeTemplateSegment::Binding(path) => format!(
+                            "state.text(\"{}\", \"\")",
+                            escape_kotlin(&context.signal_path(path))
+                        ),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" + ")
             };
             let tokens = if props.template_segments.is_empty() {
                 compose_code_tokens(&props.tokens, card_variant_content(&props.style))
@@ -114,9 +122,20 @@ fn render_compose_display_node(
                     ));
         }
         ViewNode::Iframe { props } => {
-            let sandbox = props.sandbox.as_ref().map(|tokens| {
-                format!("listOf({})", tokens.iter().map(|token| compose_string_literal(token)).collect::<Vec<_>>().join(", "))
-            }).unwrap_or_else(|| "null".to_string());
+            let sandbox = props
+                .sandbox
+                .as_ref()
+                .map(|tokens| {
+                    format!(
+                        "listOf({})",
+                        tokens
+                            .iter()
+                            .map(|token| compose_string_literal(token))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                })
+                .unwrap_or_else(|| "null".to_string());
             output.push_str(&format!(
                 "{pad}DoweIframe(source = {}, title = {}, sandbox = {sandbox}, autoplay = {}, modifier = {}, shape = RoundedCornerShape({}))\n",
                 compose_string_literal(&props.src),
@@ -127,17 +146,33 @@ fn render_compose_display_node(
             ));
         }
         ViewNode::Device { props, iframe } => {
-            let sandbox = iframe.sandbox.as_ref().map(|tokens| {
-                format!("listOf({})", tokens.iter().map(|token| compose_string_literal(token)).collect::<Vec<_>>().join(", "))
-            }).unwrap_or_else(|| "null".to_string());
-            let icons = props.options.iter().map(|option| {
-                format!(
-                    "DoweDeviceIcon(profile = {}, viewBox = {}, paths = {})",
-                    compose_string_literal(option.profile.as_str()),
-                    compose_svg_view_box(&option.icon.props.view_box),
-                    compose_svg_paths(&option.icon.paths),
-                )
-            }).collect::<Vec<_>>().join(", ");
+            let sandbox = iframe
+                .sandbox
+                .as_ref()
+                .map(|tokens| {
+                    format!(
+                        "listOf({})",
+                        tokens
+                            .iter()
+                            .map(|token| compose_string_literal(token))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                })
+                .unwrap_or_else(|| "null".to_string());
+            let icons = props
+                .options
+                .iter()
+                .map(|option| {
+                    format!(
+                        "DoweDeviceIcon(profile = {}, viewBox = {}, paths = {})",
+                        compose_string_literal(option.profile.as_str()),
+                        compose_svg_view_box(&option.icon.props.view_box),
+                        compose_svg_paths(&option.icon.paths),
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
             output.push_str(&format!(
                 "{pad}DoweDevicePreview(initialProfile = {}, source = {}, title = {}, sandbox = {sandbox}, autoplay = {}, icons = listOf({icons}), modifier = {})\n",
                 compose_string_literal(props.device.as_str()),
@@ -193,7 +228,15 @@ fn render_compose_display_node(
                     ));
         }
         ViewNode::ArcChart { props } => {
-            render_compose_chart("arc", &props.common, None, Some(props), indent, output, context);
+            render_compose_chart(
+                "arc",
+                &props.common,
+                None,
+                Some(props),
+                indent,
+                output,
+                context,
+            );
         }
         ViewNode::AreaChart { props } => {
             render_compose_chart("area", &props.common, None, None, indent, output, context);
@@ -205,7 +248,15 @@ fn render_compose_display_node(
             render_compose_chart("line", &props.common, None, None, indent, output, context);
         }
         ViewNode::PieChart { props } => {
-            render_compose_chart("pie", &props.common, Some(props), None, indent, output, context);
+            render_compose_chart(
+                "pie",
+                &props.common,
+                Some(props),
+                None,
+                indent,
+                output,
+                context,
+            );
         }
         ViewNode::Table { props } => {
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
@@ -373,10 +424,7 @@ fn render_compose_display_node(
             if let Some(data) = props.data.as_deref() {
                 let payload = if let Some(item) = context.item_value(data) {
                     let path = context.item_path(data).unwrap_or_else(|| data.to_string());
-                    format!(
-                        "state.json(\"{}\", {item})",
-                        escape_kotlin(&path)
-                    )
+                    format!("state.json(\"{}\", {item})", escape_kotlin(&path))
                 } else {
                     format!(
                         "state.json(\"{}\")",
@@ -387,6 +435,32 @@ fn render_compose_display_node(
                     "{pad}DoweRuntimeSvg(payload = {payload}, modifier = {}, color = {}, animated = {})\n",
                     modifier_for_style(&props.style),
                     compose_svg_color(&props.style),
+                    props.is_animated()
+                ));
+                return;
+            }
+            if let Some(name) = props.icon_name.as_deref() {
+                let name = if let Some(item) = context.item_value(name) {
+                    let path = context.item_path(name).unwrap_or_else(|| name.to_string());
+                    format!("state.text(\"{}\", {item})", escape_kotlin(&path))
+                } else {
+                    format!(
+                        "state.text(\"{}\")",
+                        escape_kotlin(&context.signal_path(name))
+                    )
+                };
+                let fallback =
+                    compose_string_literal(props.icon_fallback.as_deref().unwrap_or_default());
+                let color = props
+                    .icon_fill
+                    .or(props.icon_stroke)
+                    .map(color_ref)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| compose_svg_color(&props.style));
+                output.push_str(&format!(
+                    "{pad}DoweDynamicIcon(name = {name}, fallback = {fallback}, modifier = {}, color = {}, animated = {})\n",
+                    modifier_for_style(&props.style),
+                    color,
                     props.is_animated()
                 ));
                 return;
@@ -434,13 +508,12 @@ fn render_compose_chart(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
-    let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
-        == ComponentVariant::Outlined
-    {
-        card_variant_content(&props.style)
-    } else {
-        "null"
-    };
+    let border =
+        if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+            card_variant_content(&props.style)
+        } else {
+            "null"
+        };
     let data_path = props
         .data
         .as_deref()

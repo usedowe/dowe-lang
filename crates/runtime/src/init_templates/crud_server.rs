@@ -60,14 +60,14 @@ pub(super) const CRUD_DATABASE: &str = r#"import Users from "@/server/entities/u
 import Blogs from "@/server/entities/blogs-entity"
 import Sessions from "@/server/entities/sessions-entity"
 
-database appDb provider:"dowe" host:env.DOWE_HOST port:env.DOWE_PORT account:env.DOWE_USER secret:env.DOWE_PASSWORD name:env.DOWE_DATABASE entities:[Users, Blogs, Sessions] seeders:[]
+database appDb provider:"dowe" host:env.DOWE_HOST port:env.DOWE_PORT account:env.DOWE_USER secret:env.DOWE_PASSWORD name:env.DOWE_DATABASE entities:[Users Blogs Sessions] seeders:[]
 cache appCache provider:"dowe" host:env.CACHE_HOST port:env.CACHE_PORT account:env.CACHE_USER secret:env.CACHE_PASSWORD name:env.CACHE_DATABASE
 "#;
 
 pub(super) const CRUD_USERS_REPOSITORY: &str = r#"import { appDb, appCache } from "@/server/config/database"
 
 fn createUserRepository params:{ name:string email:string password:string }
-  query user conn:appDb.insert table:"users" value:{ name:args.name email:args.email password:args.password createdAt:now } required:["name", "email", "password"]
+  query user conn:appDb.insert table:"users" value:{ name:args.name email:args.email password:args.password createdAt:now } required:["name" "email" "password"]
   return value:user
 
 fn findUserByCredentialsRepository params:{ email:string password:string }
@@ -80,13 +80,13 @@ fn findUserByIdRepository params:{ id:string }
 
 fn createSessionRepository params:{ userId:string }
   id session source:"ulid"
-  query created conn:appDb.insert table:"sessions" value:{ id:session userId:args.userId createdAt:now } required:["id", "userId"]
-  str sessionKey source:"join" values:["session", session] delimiter:":"
+  query created conn:appDb.insert table:"sessions" value:{ id:session userId:args.userId createdAt:now } required:["id" "userId"]
+  str sessionKey source:"join" values:["session" session] delimiter:":"
   kv cached conn:appCache.set key:sessionKey value:{ id:session userId:args.userId }
   return value:{ id:session userId:args.userId }
 
 fn deleteSessionRepository params:{ id:string }
-  str sessionKey source:"join" values:["session", args.id] delimiter:":"
+  str sessionKey source:"join" values:["session" args.id] delimiter:":"
   kv removed conn:appCache.delete key:sessionKey
   query deleted conn:appDb.delete table:"sessions" where:{ id:args.id } required:false
   return value:deleted
@@ -100,7 +100,7 @@ fn listBlogsRepository
   return value:blogs
 
 fn createBlogRepository params:{ title:string content:string ownerId:string }
-  query created conn:appDb.insert table:"blogs" value:{ title:args.title content:args.content ownerId:args.ownerId createdAt:now updatedAt:now } required:["title", "content"]
+  query created conn:appDb.insert table:"blogs" value:{ title:args.title content:args.content ownerId:args.ownerId createdAt:now updatedAt:now } required:["title" "content"]
   return value:created
 
 fn updateBlogRepository params:{ id:string ownerId:string patch:BlogPatch }
@@ -113,13 +113,13 @@ pub(super) const CRUD_USERS_SERVICE: &str = r#"import { createUserRepository, fi
 fn registerUserService params:{ name:string email:string password:string }
   createUserRepository user args:{ name:args.name email:args.email password:args.password }
   createSessionRepository session args:{ userId:user.id }
-  str authorization source:"join" values:["Bearer", session.id] delimiter:" "
+  str authorization source:"join" values:["Bearer" session.id] delimiter:" "
   return value:{ authenticated:true guest:false authorization:authorization token:session.id user:{ id:user.id name:user.name email:user.email } }
 
 fn loginUserService params:{ email:string password:string }
   findUserByCredentialsRepository user args:{ email:args.email password:args.password }
   createSessionRepository session args:{ userId:user.id }
-  str authorization source:"join" values:["Bearer", session.id] delimiter:" "
+  str authorization source:"join" values:["Bearer" session.id] delimiter:" "
   return value:{ authenticated:true guest:false authorization:authorization token:session.id user:{ id:user.id name:user.name email:user.email } }
 
 fn getSessionService params:{ subject:string authorization:string token:string session:string }

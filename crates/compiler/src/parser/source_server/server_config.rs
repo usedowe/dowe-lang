@@ -6,6 +6,8 @@ fn parse_server_config(
     target: ServerTarget,
 ) -> DoweResult<ServerConfig> {
     let port = required_port(node)?;
+    let mut databases = Vec::new();
+    let mut databases_seen = false;
     let mut endpoints = Vec::new();
     let mut websockets = Vec::new();
     let mut transports = Vec::new();
@@ -22,6 +24,19 @@ fn parse_server_config(
 
     for child in &node.children {
         match child.name.as_str() {
+            "databases" => {
+                if !matches!(target, ServerTarget::Server) {
+                    return Err(node_error(
+                        child,
+                        "`databases` registry is only supported by `main.server`",
+                    ));
+                }
+                if databases_seen {
+                    return Err(node_error(child, "duplicate `databases` registry"));
+                }
+                databases_seen = true;
+                databases = parse_server_database_registry(child, imports)?;
+            }
             "endpoints" => {
                 for name in endpoint_group_references(child)? {
                     let group = imports.endpoint_groups.get(&name).ok_or_else(|| {
@@ -190,6 +205,7 @@ fn parse_server_config(
 
     Ok(ServerConfig {
         port,
+        databases,
         tls,
         endpoints,
         websockets,
@@ -203,6 +219,42 @@ fn parse_server_config(
         vector_service,
         queue_service,
     })
+}
+
+fn parse_server_database_registry(
+    node: &SourceNode,
+    imports: &ServerImports,
+) -> DoweResult<Vec<StoreConnection>> {
+    reject_unknown_props(node, &["databases"])?;
+    if !node.args.is_empty() || !node.children.is_empty() {
+        return Err(node_error(node, "`databases` accepts a list of imported Database handles"));
+    }
+    if node.prop("databases").is_none() {
+        return Err(node_error(
+            node,
+            "`databases` must be an array of imported Database handles",
+        ));
+    }
+    binding_array_prop(node, "databases")?
+        .into_iter()
+        .map(|name| {
+            let Some(binding) = imports.config_bindings.get(&name) else {
+                return Err(node_error(
+                    node,
+                    format!("unknown Database handle import `{name}`"),
+                ));
+            };
+            match &binding.statement {
+                ServerStatement::Store(ServerStoreStatement::Handle { connection }) => {
+                    Ok(connection.clone())
+                }
+                _ => Err(node_error(
+                    node,
+                    format!("`databases` entry `{name}` must reference a Database handle"),
+                )),
+            }
+        })
+        .collect()
 }
 
 fn parse_database_service(node: &SourceNode) -> DoweResult<()> {

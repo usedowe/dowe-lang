@@ -1,30 +1,33 @@
 use dowe_components::{
-    AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
-    AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BoxPosition, Breakpoint, ButtonSize,
-    ArcChartProps, CanvasBackground, CarouselProps, CarouselSlide, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
-    CodeTemplateSegment, CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
-    CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
-    CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme,
-    DividerOrientation, DividerProps, DragGroup, DragItem, DrawerProps, DropzoneProps, DropdownProps, ElementProps, EmptyProps,
-    FabAction, FabProps, FlexDirection, FontConfig, FontFamily, GapSize, GapValue, GridAlignment, GridProps,
-    GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify,
-    LayoutProps, MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, SIDE_NAV_SUBMENU_ARROW_PATH, empty_icon, side_nav_submenu_arrow_icon, solar_control_icon, view_icon,
-    NavigationAction, OverlayEntry, OverlayCornerPosition, OverlayItemProps, OverlayPaint, PositionProps,
-    RadioGroupProps, RadioOption, RecordProps, ResponsiveValue, RichTextMark, RoundedSize, ScaleValue, ScaffoldProps,
-    RailNavItem, RailNavProps,
-    SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
-    SidebarProps, SideNavSize, SkeletonProps, SizeValue, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill,
+    AccordionItem, AccordionProps, AlertDialogProps, Align, ArcChartProps, AudioProps,
+    AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BorderWidth,
+    BottomBarTab, BoxPosition, Breakpoint, ButtonSize, CanvasBackground, CarouselProps,
+    CarouselSlide, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps, CodeTemplateSegment,
+    CodeToken, CodeTokenKind, CollapsibleProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps,
+    ComboOption, CommandEntry, CommandProps, ComponentVariant, CountdownProps, CoverSource,
+    CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation,
+    DividerProps, DragGroup, DragItem, DrawerProps, DropdownProps, DropzoneProps, ElementProps,
+    EmptyProps, FabAction, FabProps, FlexDirection, FontConfig, FontFamily, FormValidationRuleKind,
+    GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
+    INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps, MapMarker, MapProps,
+    MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps,
+    NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayItemProps, OverlayPaint,
+    PieChartProps, PositionProps, RadioGroupProps, RadioOption, RailNavItem, RailNavProps,
+    RecordProps, ResponsiveValue, RichTextMark, RoundedSize, SIDE_NAV_SUBMENU_ARROW_PATH,
+    ScaffoldProps, ScaleValue, SectionBackground, SelectOption, SelectOptionEach, ShadowSize,
+    SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps, SideNavSize, SidebarProps, SizeValue,
+    SkeletonProps, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill,
     SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableSize, TabsProps, TabsVariant,
-    PieChartProps, TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem,
-    ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
-    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction,
-    ViewActionKind, ViewAnimation, ViewConstant, ViewGesture, ViewNode, ViewRequestAction,
-    ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
-    ViewForm, ViewFormFieldKind, FormValidationRuleKind, collect_view_forms,
-    collect_route_font_families, compose_tree, fixed_box_nodes, fixed_fab_nodes,
-    form_control_min_height, form_control_text_size, phone_countries, phone_country_flag_icon,
-    side_nav_memory_key,
-    node_child_groups, node_element_props, text_binding_path, text_spacing_em, text_typography,
+    TextAlign, TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps,
+    ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
+    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction, ViewActionKind,
+    ViewAnimation, ViewConstant, ViewForm, ViewFormFieldKind, ViewGesture, ViewNode,
+    ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
+    collect_route_font_families, collect_view_forms, compose_tree, empty_icon, fixed_box_nodes,
+    fixed_fab_nodes, form_control_min_height, form_control_text_size, node_child_groups,
+    node_element_props, phone_countries, phone_country_flag_icon, side_nav_memory_key,
+    side_nav_submenu_arrow_icon, solar_control_icon, text_binding_path, text_spacing_em,
+    text_typography, view_icon,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -214,9 +217,13 @@ pub fn generate_ios_with_app_translations_and_icons(
     ];
     files.extend(ios_layout_artifacts(&layouts, font_config));
     files.extend(ios_route_artifacts(routes, font_config, &route_layouts));
-    if routes.iter().any(|route| {
-        ios_tree_has_phone(&route.layout_tree) || ios_tree_has_phone(&route.page_tree)
-    }) {
+    if ios_has_dynamic_icon(routes) {
+        files.extend(ios_dynamic_icon_catalog_artifacts());
+    }
+    if routes
+        .iter()
+        .any(|route| ios_tree_has_phone(&route.layout_tree) || ios_tree_has_phone(&route.page_tree))
+    {
         files.extend(ios_phone_catalog_artifacts());
     }
     files.extend(ios_translation_artifacts(translations));
@@ -413,10 +420,7 @@ fn ios_layouts_index() -> String {
     "import SwiftUI\n".to_string()
 }
 
-fn ios_layout_artifacts(
-    layouts: &[&ViewNode],
-    font_config: &FontConfig,
-) -> Vec<IosArtifact> {
+fn ios_layout_artifacts(layouts: &[&ViewNode], font_config: &FontConfig) -> Vec<IosArtifact> {
     layouts
         .iter()
         .enumerate()
@@ -446,7 +450,7 @@ fn ios_layout(index: usize, layout: &ViewNode, font_config: &FontConfig) -> Stri
         .with_children_expression("content")
         .with_node_expressions(expressions);
     output.push_str(&format!(
-            r#"struct DoweLayout{index}<Content: View>: View {{
+        r#"struct DoweLayout{index}<Content: View>: View {{
     let viewportWidth: CGFloat
     let viewportHeight: CGFloat
     let activePath: String
@@ -481,13 +485,13 @@ fn ios_layout(index: usize, layout: &ViewNode, font_config: &FontConfig) -> Stri
 "#
     ));
     render_swift_node_in_flow(
-            layout,
-            12,
-            &mut output,
-            NativeFlow::Block,
-            None,
-            font_config.default_family,
-            &context,
+        layout,
+        12,
+        &mut output,
+        NativeFlow::Block,
+        None,
+        font_config.default_family,
+        &context,
     );
     output.push_str("        }\n    }\n\n");
     for (section_index, section) in sections.iter().enumerate() {
@@ -495,13 +499,13 @@ fn ios_layout(index: usize, layout: &ViewNode, font_config: &FontConfig) -> Stri
             "    @ViewBuilder\n    private func layoutSection{section_index}() -> some View {{\n"
         ));
         render_swift_node_in_flow(
-                section.node,
-                8,
-                &mut output,
-                section.flow,
-                None,
-                font_config.default_family,
-                &context.without_node_expression(section.node),
+            section.node,
+            8,
+            &mut output,
+            section.flow,
+            None,
+            font_config.default_family,
+            &context.without_node_expression(section.node),
         );
         output.push_str("    }\n\n");
     }
@@ -579,11 +583,13 @@ final class DoweIosDevModuleCoordinator: NSObject {
     private var attemptedVersion = ""
     private var moduleEndpoint: String?
     private var handles: [UnsafeMutableRawPointer] = []
+    private var waitingView: UIView?
     private var timer: Timer?
     private var loading = false
 
     func start(_ controller: UIViewController) {
         container = controller
+        showWaitingState(in: controller)
         moduleEndpoint = resolveEndpoint()
         restoreCachedModule()
         poll()
@@ -602,6 +608,38 @@ final class DoweIosDevModuleCoordinator: NSObject {
             }
         }
         return UserDefaults.standard.string(forKey: endpointKey)
+    }
+
+    private func showWaitingState(in controller: UIViewController) {
+        let spinner = UIActivityIndicatorView(style: .large)
+        spinner.startAnimating()
+
+        let title = UILabel()
+        title.font = .preferredFont(forTextStyle: .headline)
+        title.text = "Preparing Dowe app"
+        title.textAlignment = .center
+        title.textColor = .label
+
+        let detail = UILabel()
+        detail.font = .preferredFont(forTextStyle: .subheadline)
+        detail.text = "The first iOS build can take a few minutes."
+        detail.textAlignment = .center
+        detail.textColor = .secondaryLabel
+        detail.numberOfLines = 0
+
+        let stack = UIStackView(arrangedSubviews: [spinner, title, detail])
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        controller.view.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.centerXAnchor.constraint(equalTo: controller.view.centerXAnchor),
+            stack.centerYAnchor.constraint(equalTo: controller.view.centerYAnchor),
+            stack.leadingAnchor.constraint(greaterThanOrEqualTo: controller.view.layoutMarginsGuide.leadingAnchor),
+            stack.trailingAnchor.constraint(lessThanOrEqualTo: controller.view.layoutMarginsGuide.trailingAnchor),
+        ])
+        waitingView = stack
     }
 
     private func moduleFile(version: String) -> URL? {
@@ -685,6 +723,8 @@ final class DoweIosDevModuleCoordinator: NSObject {
         next.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         container.view.addSubview(next.view)
         next.didMove(toParent: container)
+        waitingView?.removeFromSuperview()
+        waitingView = nil
         activeController = next
         activeVersion = version
         activeRoute = path

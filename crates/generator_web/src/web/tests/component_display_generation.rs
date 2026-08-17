@@ -1237,6 +1237,26 @@ fn renders_runtime_svg_as_safe_data_surface() {
 }
 
 #[test]
+fn renders_dynamic_icon_binding_surface() {
+    let root = Path::new("/project");
+    let tree = dowe_components::icon_component_node(vec![ComponentProp {
+        name: "name".to_string(),
+        value: PropValue::String("@icon-binding:iconName".to_string()),
+    }])
+    .expect("dynamic Icon");
+    let page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &tree,
+    );
+
+    assert!(page.content.contains("data-dowe-icon-name=\\\"iconName\\\""));
+    assert!(page.content.contains("viewBox=\\\"0 0 24 24\\\""));
+    assert!(!page.content.contains("<path"));
+}
+
+#[test]
 fn renders_viewport_minus_height_classes() {
     let root = Path::new("/project");
     let page_tree = ViewNode::Box {

@@ -15,7 +15,7 @@ use crate::dev_modules::{
     DevModuleRevision, PublishedDevModule, publish_dev_module, publish_dev_module_if_current,
 };
 use crate::error::{RuntimeError, RuntimeResult};
-use dowe_compiler::CompiledProject;
+use dowe_compiler::{CompiledProject, GeneratedFile};
 use dowe_spawn::{SpawnConfig, StreamMode};
 use std::collections::BTreeSet;
 use std::env;
@@ -406,33 +406,35 @@ fn build_android_apk(
 }
 
 pub(super) fn build_hot_module_if_current(
-    project: &CompiledProject,
+    root: &Path,
+    files: &[GeneratedFile],
     revision: &DevModuleRevision,
 ) -> RuntimeResult<Option<PublishedDevModule>> {
     let sdk = android_sdk_root()?;
     let tools = android_tools(&sdk)?;
-    build_hot_module_with_tools_and_revision(project, &tools, Some(revision))
+    build_hot_module_with_tools_and_revision(root, files, &tools, Some(revision))
 }
 
 fn build_hot_module_with_tools(
     project: &CompiledProject,
     tools: &AndroidTools,
 ) -> RuntimeResult<PublishedDevModule> {
-    build_hot_module_with_tools_and_revision(project, tools, None)?
+    build_hot_module_with_tools_and_revision(&project.root, &project.apps.files, tools, None)?
         .ok_or_else(|| RuntimeError::new("unconditional Android module publication was skipped"))
 }
 
 fn build_hot_module_with_tools_and_revision(
-    project: &CompiledProject,
+    root: &Path,
+    files: &[GeneratedFile],
     tools: &AndroidTools,
     revision: Option<&DevModuleRevision>,
 ) -> RuntimeResult<Option<PublishedDevModule>> {
     if revision.is_some_and(|revision| !revision.is_current()) {
         return Ok(None);
     }
-    let sources = android_hot_module_sources(project)?;
+    let sources = android_hot_module_sources(files)?;
     let base_classes = ensure_dir(
-        project.root.join(".dowe/dev/android/host/classes"),
+        root.join(".dowe/dev/android/host/classes"),
         DevTarget::Android,
     )?;
     let toolchain = android_toolchain_fingerprint(&tools.d8, &tools.android_jar, &base_classes)?;
@@ -440,15 +442,14 @@ fn build_hot_module_with_tools_and_revision(
         return Ok(None);
     }
     let version = android_hot_module_version(&sources, &toolchain);
-    let published = project
-        .root
+    let published = root
         .join(".dowe/dev/modules/android")
         .join(format!("{version}.dex"));
     if published.is_file() {
-        return publish_android_module(project, &version, &published, revision);
+        return publish_android_module(root, &version, &published, revision);
     }
     let module = build_android_incremental_dex(
-        &project.root,
+        root,
         &sources,
         &toolchain,
         &version,
@@ -461,16 +462,14 @@ fn build_hot_module_with_tools_and_revision(
     let Some(module) = module else {
         return Ok(None);
     };
-    publish_android_module(project, &version, &module, revision)
+    publish_android_module(root, &version, &module, revision)
 }
 
 fn android_hot_module_sources(
-    project: &CompiledProject,
+    files: &[GeneratedFile],
 ) -> RuntimeResult<Vec<AndroidHotModuleSource>> {
     let root = Path::new("apps/android/dev/src/dev/dowe/generated");
-    let mut sources = project
-        .apps
-        .files
+    let mut sources = files
         .iter()
         .filter(|file| file.target == "android")
         .filter_map(|file| {
@@ -494,21 +493,16 @@ fn android_hot_module_sources(
 }
 
 fn publish_android_module(
-    project: &CompiledProject,
+    root: &Path,
     version: &str,
     module: &Path,
     revision: Option<&DevModuleRevision>,
 ) -> RuntimeResult<Option<PublishedDevModule>> {
     match revision {
-        Some(revision) => publish_dev_module_if_current(
-            &project.root,
-            "android",
-            version,
-            "dex",
-            module,
-            revision,
-        ),
-        None => publish_dev_module(&project.root, "android", version, "dex", module).map(Some),
+        Some(revision) => {
+            publish_dev_module_if_current(root, "android", version, "dex", module, revision)
+        }
+        None => publish_dev_module(root, "android", version, "dex", module).map(Some),
     }
 }
 

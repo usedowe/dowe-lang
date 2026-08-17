@@ -80,6 +80,7 @@ main
   server port:8081
     cors target:"server" devOrigins:true methods:["GET"] headers:["Content-Type"] credentials:false maxAge:600
     endpoints:apiRoutes
+    databases:[]
 "#;
 
 const BLANK_VIEW_ROUTES: &str = r#"import homePage from "@/views/pages/home"
@@ -360,13 +361,15 @@ const CRUD_TRANSLATIONS: &[InitTranslation] = &[
 
 const CRUD_MAIN: &str = r#"import viewRoutes from "@/views/routes/view"
 import apiRoutes from "@/server/endpoints"
+import appDb from "@/server/config/database"
 
 main
   app name:"Dowe Blogs" bundle:"dev.dowe.blogs"
   views:viewRoutes
   server port:8081
-    cors target:"server" devOrigins:true methods:["GET", "POST", "PATCH"] headers:["Content-Type", "Authorization"] credentials:false maxAge:600
+    cors target:"server" devOrigins:true methods:["GET" "POST" "PATCH"] headers:["Content-Type" "Authorization"] credentials:false maxAge:600
     endpoints:apiRoutes
+    databases:[appDb]
 "#;
 
 const CRUD_VIEW_ROUTES: &str = r#"import AppLayout from "@/views/layouts/app"

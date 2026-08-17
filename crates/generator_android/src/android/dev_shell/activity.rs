@@ -19,6 +19,10 @@ fn dev_activity_sources(
     let has_phones = routes.iter().any(|route| {
         dev_tree_has_phone(&route.layout_tree) || dev_tree_has_phone(&route.page_tree)
     });
+    let has_dynamic_icons = routes.iter().any(|route| {
+        dowe_components::tree_has_dynamic_icon(&route.layout_tree)
+            || dowe_components::tree_has_dynamic_icon(&route.page_tree)
+    });
     let (layouts, route_layouts) = reusable_dev_layouts(routes);
     let route_classes = routes
         .iter()
@@ -552,6 +556,9 @@ fn dev_activity_sources(
     output.push_str(dev_activity_layout_widgets());
     output.push_str(dev_activity_flex_layout());
     output.push_str(dev_activity_grid_layout());
+    if has_dynamic_icons {
+        output.push_str(dev_activity_dynamic_icon_runtime());
+    }
     output.push_str(dev_activity_svg_parser());
     output.push_str(dev_activity_svg_view());
     output.push_str(dev_activity_drawables_media());
@@ -603,6 +610,9 @@ fn dev_activity_sources(
     );
     if has_phones {
         shards.extend(dev_phone_flag_shards(app_bundle));
+    }
+    if has_dynamic_icons {
+        shards.extend(dev_dynamic_icon_shards(app_bundle));
     }
 
     DevActivitySources {

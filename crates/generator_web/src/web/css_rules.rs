@@ -542,6 +542,17 @@ fn class_body(class_name: &str) -> Option<String> {
             });
         }
     }
+    for (prefix, css_property) in [
+        ("w", "width"),
+        ("min-w", "min-width"),
+        ("max-w", "max-width"),
+    ] {
+        if let Some(suffix) = class_name.strip_prefix(&format!("{prefix}-"))
+            && let Some(value) = ContainerSize::from_name(suffix)
+        {
+            return Some(format!("{css_property}:var(--container-{});", value.as_str()));
+        }
+    }
     if let Some(suffix) = class_name.strip_prefix("vh-")
         && let Some(rem) = scale_suffix_rem(suffix)
     {
@@ -619,6 +630,11 @@ fn class_body(class_name: &str) -> Option<String> {
         && let Some(align) = Align::from_name(value)
     {
         return Some(format!("align-items:{};", align_css(align)));
+    }
+    if let Some(value) = class_name.strip_prefix("text-align-")
+        && let Some(align) = TextAlign::from_name(value)
+    {
+        return Some(format!("text-align:{};", text_align_css(align)));
     }
     if let Some(value) = class_name.strip_prefix("grid-cols-")
         && let Ok(count) = value.parse::<u16>()
@@ -813,7 +829,9 @@ fn append_single_variant_css(
                     color,
                     "transparent".to_string(),
                     "transparent".to_string(),
-                    format!("0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{color}) 24%,transparent)"),
+                    format!(
+                        "0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{color}) 24%,transparent)"
+                    ),
                     "0".to_string(),
                     "0",
                     "0",
@@ -827,7 +845,9 @@ fn append_single_variant_css(
                     },
                     "transparent".to_string(),
                     "transparent".to_string(),
-                    format!("0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{content}) 22%,transparent)"),
+                    format!(
+                        "0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{content}) 22%,transparent)"
+                    ),
                     "0".to_string(),
                     "0",
                     "0",
@@ -981,10 +1001,7 @@ fn append_single_variant_css(
     }
     if base == "media" {
         let (button_background, button_content) = match variant {
-            ComponentVariant::Solid => (
-                format!("var(--dowe-{soft})"),
-                color,
-            ),
+            ComponentVariant::Solid => (format!("var(--dowe-{soft})"), color),
             ComponentVariant::Soft => (format!("var(--dowe-{color})"), text),
             ComponentVariant::Outlined => ("transparent".to_string(), color),
             ComponentVariant::Line | ComponentVariant::Ghost => ("transparent".to_string(), color),
@@ -1160,6 +1177,15 @@ fn align_css(value: Align) -> &'static str {
         Align::End => "flex-end",
         Align::Stretch => "stretch",
         Align::Baseline => "baseline",
+    }
+}
+
+fn text_align_css(value: TextAlign) -> &'static str {
+    match value {
+        TextAlign::Start => "start",
+        TextAlign::Center => "center",
+        TextAlign::End => "end",
+        TextAlign::Justify => "justify",
     }
 }
 

@@ -59,7 +59,6 @@ fn generated_views(
         "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__",
         SIDE_NAV_SUBMENU_ARROW_PATH,
     );
-
     if routes.first().is_some() {
         output.push_str("        GeometryReader { geometry in\n            routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))\n                .id(routeRevision)\n                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)\n            DoweSafeAreaReporter { insets in\n                if !doweInsetsEqual(safeAreaInsets, insets) {\n                    safeAreaInsets = insets\n                }\n            }\n            .frame(width: CGFloat(0), height: CGFloat(0))\n            .allowsHitTesting(false)\n        }\n        .ignoresSafeArea()\n        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background.ignoresSafeArea())\n        .foregroundStyle(DoweDesign.backgroundText)\n        .simultaneousGesture(backSwipeGesture)\n        .sheet(item: $externalUrl) { item in\n            DoweExternalWebView(url: item.url)\n        }\n        .onOpenURL { url in\n            applyDeepLink(url)\n        }\n");
         output.push_str("        .environment(\\.doweTitleColor, DoweDesign.backgroundTitle)\n");
@@ -234,12 +233,7 @@ fn generated_route_view(
     let route_expressions = route_branches
         .iter()
         .enumerate()
-        .map(|(index, branch)| {
-            (
-                swift_node_key(branch.node),
-                format!("routeBranch{index}()"),
-            )
-        })
+        .map(|(index, branch)| (swift_node_key(branch.node), format!("routeBranch{index}()")))
         .collect::<BTreeMap<_, _>>();
     let route_context = route_context.with_node_expressions(route_expressions.clone());
     let persistent_app_bar = swift_tree_has_persistent_scaffold_app_bar(&tree);

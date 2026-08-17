@@ -8,6 +8,7 @@ reference design or screenshot into source.
 
 - Layout/page ownership and reusable static components
 - Repeated collection ownership and container decisions
+- Minimal reference patterns and strict prop admission
 - Auth and form composition without generic wrappers
 - Visual direction, section richness, and layered scenes
 - Hero, landing-page, equal-height, and anti-pattern guidance
@@ -215,14 +216,13 @@ page ServicesPage
     { id:"delivery" title:"Delivery" description:"Ship one coherent system." },
   ]
   Section boxed:true
-    Grid columns:{ xs:1 md:2 } gap:4
+    Grid columns:{ xs:1 md:2 }
       each in:services as:service key:service.id
-        Card
-          Grid columns:1 gap:2
-            Title
-              "{service.title}"
-            Text color:"muted"
-              "{service.description}"
+        Flex direction:"column"
+          Title
+            "{service.title}"
+          Text
+            "{service.description}"
 ```
 
 For backend data, replace the `const` with a typed `signal`, load it from `init` or a named `fn`,
@@ -235,14 +235,15 @@ Start with zero `Box` nodes and decide top-down for every region, in this order:
 
 1. Is it a major horizontal band of the page (hero, features, catalog, form area, pricing,
    testimonials, call to action)? Use a sibling `Section`.
-2. Is the group one related semantic unit the user reads as a surface — a form, metric, article,
-   product, profile, or setting group? Use `Card` and let `theme.dowe` style it.
+2. Does the reference show the group as an independent surface through a contained fill, border,
+   radius, elevation, or inset treatment? Use `Card` and let `theme.dowe` style it. A semantic group
+   that remains visually flat is not a Card; continue to Grid or Flex.
 3. Do sibling children align to shared tracks — repeated same-shape units, a dashboard, a catalog,
-   responsive columns, or a stack with one uniform rhythm? Use `Grid` with `columns`, `gap`, and
-   responsive values such as `columns:{ xs:1 md:3 }`.
+   responsive columns, or a stack with one uniform rhythm? Use `Grid` with the minimum structural
+   props, commonly only responsive `columns:{ xs:1 md:3 }`.
 4. Do children flow on one axis with individual intrinsic sizes — an icon beside text, a label
-   with a trailing action, a toolbar, a chip row, centered content? Use `Flex` with `direction`,
-   `align`, `justify`, `gap`, and `wrap:true` for rows that may overflow.
+   with a trailing action, a toolbar, a chip row, centered content? Use `Flex`; add `direction`,
+   `align`, `justify`, `gap`, or `wrap` only for the responsibility the default row does not satisfy.
 5. Does the region require children to leave normal flow? Use `Box position:"relative"` as the
    layer plane with direct `Box position:"absolute"` children, or `Box position:"fixed"` for a
    route-viewport layer. Keep the actual content inside semantic Dowe components.
@@ -254,14 +255,13 @@ region. Do not wrap `Input`, `Password`, `Phone`, `Pin`, `Button`, `Image`, or `
 or resize it. Do not use empty Boxes as Grid gutters or offset columns; center and constrain the
 real Grid, Flex, Card, or control with `align`, `justify`, `w`, and `maxW` instead.
 
-Direct same-kind layout nesting is a forbidden generated pattern: never place a `Grid` directly
-inside another `Grid`, or a `Flex` directly inside another `Flex`. Flatten the grandchildren into
-the owning container. Changing only `columns`, `direction`, `gap`, `align`, `justify`, padding,
-sizing, or visibility does not create a second layout responsibility. When a real subgroup needs
-its own container, choose its primitive from the decision tree and give it an independently
-verifiable track, axis, centering, wrapping, or responsive job. Do not alternate Grid and Flex just
-to make the tree pass this rule, and do not keep a layout wrapper whose only child can own the same
-props directly.
+Same-kind layout nesting requires a distinct subgroup; it is not an automatic error and it is not
+an excuse for wrapper noise. A column Flex containing a row Flex for two actions is valid because
+the inner Flex owns the action group and a different axis. A feature row Flex containing a column
+Flex for its title and description is also valid. A column Flex containing another column Flex only
+to change spacing, padding, sizing, or visibility must be flattened. Apply the same test to nested
+Grids: keep both only when each owns independently verifiable tracks. Do not alternate Grid and Flex
+to disguise a wrapper whose only child can own the same props directly.
 
 Do not use `translateX` or `translateY` as a second layout system. Screenshot measurements describe
 the target relationships; they do not authorize one transform per node. Express normal geometry
@@ -274,18 +274,45 @@ flow, plus absolute offsets cannot express the final effect. Record that respons
 composition blueprint. If the same result can be produced with those structural props, padding,
 width, maximum width, responsive direction, AppBar regions, or Box offsets, remove the translation.
 
-`Grid columns:1 gap:<n>` and `Flex direction:"column" gap:<n>` are both valid vertical stacks:
-prefer Grid when the stack is structural rhythm between blocks, and Flex when the column also needs
-`align` or `justify` behavior, such as centering Splash content. When the same content changes
-between breakpoints, keep one tree and use responsive `columns`, `direction`, `gap`, padding,
-sizing, and visibility on the real owners. Never duplicate the complete compact and wide forms just
-to tune offsets.
+`Grid columns:1` and `Flex direction:"column"` are both valid vertical stacks: prefer Grid when the
+stack owns structural tracks and Flex when it owns one-axis flow or alignment. Both default to zero
+gap. Render the minimal tree before adding a nonzero gap to the one owner that needs it. When the
+same content changes between breakpoints, keep one tree and use only the responsive props required
+by that change. Never duplicate the complete compact and wide forms just to tune offsets.
 
 A Box should normally declare `position:"relative"`, `position:"absolute"`, or
 `position:"fixed"`. A rare non-positioned Box is acceptable only when a neutral media or drawing
 stage has no semantic owner; record that reason in the composition blueprint. `cover`, `overlay`,
 padding, background, border, or sizing by themselves are not sufficient because ordinary bands and
 surfaces already belong to Section, Card, Grid, Flex, media, or controls.
+
+## Minimal reference patterns
+
+Use these source-shaped composition maps as the starting point for common marketing references.
+They intentionally omit collection declarations, content props, asset metadata, and interaction
+bindings so the structural decision remains visible; the final source must still use one `const` or
+typed Signal plus one complete `each` template for every repeated unit.
+
+| Reference family | Minimal composition map |
+| --- | --- |
+| Hero with lead input | `Section boxed:true > Grid columns:{ xs:1 lg:2 } > [Flex direction:"column" > Chip + Title + Text + Input + Text, Image]` |
+| Hero with cover and actions | `Section boxed:true cover:"/assets/images/hero-cover.webp" > Grid columns:{ xs:1 lg:2 } > [Flex direction:"column" > Title + Text + (Flex > Button + Button scheme:"secondary" variant:"outlined") + Text, Image]` |
+| Media features | `Section boxed:true > Title align:"center" + Text align:"center" + Grid columns:{ xs:1 lg:3 } > each(Flex direction:"column" > Image + Title + Text)` |
+| Icon features | `Section boxed:true > Text align:"center" + Grid columns:{ xs:1 lg:2 } > each(Flex > Icon + (Flex direction:"column" > Title + Text))` |
+| FAQ split | `Section boxed:true > Grid columns:{ xs:1 lg:2 } > [Flex direction:"column" > Chip + Title + Text + Button, Accordion]` |
+| Pricing | `Section boxed:true > Title + (Flex > Toggle + Text) + Grid columns:{ xs:1 lg:3 } > each(Card > Title + (Flex > Title + Text) + Text + Divider + each(Flex > Icon + Text) + Button)` |
+
+These maps are a prop ceiling for the first pass, not a checklist to expand. Do not add padding,
+gap, width, height, maximum width, radius, border, shadow, color, weight, size, alignment, or motion
+merely because the screenshot makes that value measurable. First render the minimal semantic tree
+with component and theme defaults. Then admit one local prop only when it is required by content,
+behavior, accessibility, essential responsive structure, an explicit non-default choice, or a
+specific visual mismatch proven by that render.
+
+`Card` is evidence-driven. Pricing offers in the last pattern are Cards because the reference shows
+separate contained surfaces. The flat feature items and FAQ copy column are Flex groups because the
+reference does not show independent Card surfaces. Never turn every repeated unit into a Card just
+because it contains a title, text, icon, or image.
 
 ## Auth and form composition
 
@@ -306,7 +333,8 @@ layout AuthLayout
 
 Use one responsive page tree. Let the form Grid own width, maximum width, and field rhythm; let each
 control and Button own its surface and size. Add a Card only when the reference visibly groups the
-form on a raised, filled, or outlined panel. `Section p:0` and a form-side `px` override are
+form on a raised, filled, or outlined panel. A visually flat form remains Grid/Flex content.
+`Section p:0` and a form-side `px` override are
 exceptional full-viewport or rail decisions; do not copy them to ordinary page bands.
 
 ```text
@@ -472,7 +500,7 @@ containers and content components used elsewhere, but make its hierarchy unambig
 | Editorial or product statement | Centered `Flex direction:"column"` with constrained actions and optional customer marks |
 | Copy plus media | Responsive two-track `Grid`; one content column and one `Box cover:` or `Image` region |
 | Media plus copy | The same split Grid with media first when the image carries the initial visual weight |
-| Lead capture | Responsive split Grid with the promise and proof in one column and one form `Card` in the other |
+| Lead capture | Responsive split Grid with promise and proof in one column and a flat Input flow or visibly contained form `Card` in the other |
 | Immersive campaign | `Section cover:` plus `overlay`, then centered or split content above the generated visual stack |
 | Product or analytics story | Relative media `Box` containing direct absolute `Box` wrappers around small Cards, Chips, Icons, or portable Svg data visuals |
 
@@ -482,14 +510,16 @@ and tonal transition as separate layers. Keep only one dominant focal asset so t
 the promise rather than compete with it.
 
 Use `Section boxed:true` when the background or cover is full bleed but the hero content aligns to
-the page rails. Give the Section a stable `id` when navigation links target it. Use responsive
-numeric column counts and gaps to preserve a portable structure. Grid columns are equal-width
+the page rails. Give the Section a stable `id` only when navigation links target it. Use responsive
+numeric column counts to preserve a portable structure, and add a gap only when the rendered tracks
+need an explicit nonzero gutter. Grid columns are equal-width
 tracks from `1` through `12`; track templates such as `fr` and `px` are not portable Grid values.
 When a composition needs different visual weight, use nested containers or explicit Dowe scale
 widths on the relevant content instead of a target-specific track template.
 
-Prefer one responsive `Title size:{ xs:"4xl" md:"6xl" }` when natural wrapping is acceptable.
-When specific line breaks are part of the composition, author separate compact and wide headline
+Prefer a scalar `Title size:"6xl"`; Text and Title sizes already use the fluid responsive scale.
+Use `Title size:{ xs:"4xl" md:"6xl" }` only when the design deliberately changes the token at
+those breakpoints. When specific line breaks are part of the composition, author separate compact and wide headline
 groups with complementary `show` values. Never hide the only copy or action at a breakpoint.
 
 Treat a media-backed `Box` as a deliberate visual stage: give it a meaningful `minH`, portable
@@ -498,42 +528,37 @@ Treat a media-backed `Box` as a deliberate visual stage: give it a meaningful `m
 The Cards must remain real Dowe content, not flattened artwork. Keep contrast explicit with
 `overlay` and semantic foreground tokens when the Section or Card owns a cover.
 
-For a lead form, the form is one Card rather than a generic Box. Stack its fields with
-`Grid columns:1 gap:<n>`, make the primary submit action full width when appropriate, and keep
-legal or privacy copy inside the same Card. Collapse the outer split Grid to one column on `xs` so
-the promise remains before the form.
+For a lead form, use a Card only when the form is visibly a contained surface; otherwise place the
+Input or flat form flow directly in the content Flex/Grid. Use a one-column Grid when multiple
+fields need one structural stack, make the primary submit action full width only when the reference
+requires it, and keep legal or privacy copy with the form. Collapse the outer split Grid to one
+column on `xs` so the promise remains before the form.
 
-Use component-owned defaults first. Use `gap`, responsive direction, and `w` or `maxW` on the real
-owner for ordinary rhythm and measure. The default Section body already provides responsive
-horizontal and vertical insets, so omit Section `p*` props for ordinary bands. Add `pt`, `pb`, `px`,
-or another padding override only when a user requirement or blueprint proves a meaningful exception;
-keep it on one owner instead of repeating it through Section, Grid, and Card. Never use unsupported
-margin props or insert size-only Box spacers, empty Grid cells, or breakpoint-specific wrapper trees
-to reproduce offsets from one screenshot.
+Use component-owned defaults first. When the default-first render proves an exception, use one
+`gap`, responsive direction, or `w`/`maxW` on the real owner for the missing rhythm or measure. The
+default Section body already provides responsive horizontal and vertical insets, so omit Section
+`p*` props for ordinary bands. Add `pt`, `pb`, `px`, or another padding override only when a user
+requirement or rendered comparison proves a meaningful exception; keep it on one owner instead of
+repeating it through Section, Grid, and Card. Never use unsupported margin props or insert size-only
+Box spacers, empty Grid cells, or breakpoint-specific wrapper trees to reproduce offsets from one
+screenshot.
 
 ```text
-Section id:"hero" background:"aurora" boxed:true
-  Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:16 } align:"center"
-    Flex direction:"column" align:"start" gap:6
-      Title size:{ xs:"4xl" md:"6xl" } weight:"black"
-        "Turn useful ideas into durable growth"
-      Text size:"lg" color:"muted"
-        "Plan, publish, and learn from one focused workspace."
-      Grid columns:{ xs:1 sm:2 } gap:3
-        Button size:"lg"
-          "Start free"
-        Button variant:"outlined" scheme:"muted" size:"lg"
-          "See how it works"
-      Text size:"sm" color:"muted"
-        "✓ 14-day trial · no credit card"
-    Box position:"relative" cover:"/assets/images/hero-team.jpg" rounded:"xl" minH:"vh-48"
-      Box position:"absolute" right:6 bottom:6
-        Card variant:"solid" scheme:"surface" shadow:"xl" shadowColor:"success"
-          Grid columns:1 gap:1
-            Title size:"3xl" weight:"black"
-              "32%"
-            Text size:"sm" color:"muted"
-              "Audience growth this month"
+Section boxed:true cover:"/assets/images/hero-cover.webp"
+  Grid columns:{ xs:1 lg:2 }
+    Flex direction:"column"
+      Title
+        "Share every important idea"
+      Text
+        "Keep text, voice, photos, and video together."
+      Flex
+        Button
+          "Get started"
+        Button scheme:"secondary" variant:"outlined"
+          "How it works"
+      Text
+        "14-day trial · no credit card"
+    Image src:"/assets/images/hero-person.webp" alt:"Person using the product"
 ```
 
 ## Landing-page section sequence
@@ -546,7 +571,7 @@ information that the earlier bands did not already provide.
 | 1 | Promise and first action | Hero pattern above |
 | 2 | Immediate credibility | Customer marks, ratings, compact metrics, or one proof row |
 | 3 | Problem and outcome | Split copy/media Section or short before-and-after Grid |
-| 4 | Capabilities | Responsive Grid of same-shape Cards, preferably data-driven with `each` |
+| 4 | Capabilities | Responsive Grid of same-shape units with `each`; use Card only for visibly contained surfaces |
 | 5 | Evidence | Testimonial, case study, comparison, chart, or results band |
 | 6 | Objection handling | Process, FAQ, security, compatibility, or pricing details |
 | 7 | Final action | Focused call-to-action Section that repeats the primary outcome and action |
@@ -597,13 +622,13 @@ before considering a band finished.
 
 | Wrong | Right | Why |
 | --- | --- | --- |
-| `Box` around a form, metric, article, or profile | `Card` | The theme styles Cards once; Box has no surface semantics and no theme slot |
+| A flat form, metric, article, or profile automatically wrapped in Card | Keep it in Grid/Flex; use Card only when the reference shows a contained surface | Semantic grouping alone does not prove a Card surface |
 | `Box` with border, radius, and shadow props rebuilt inline | `Card` | That prop cluster is a Card being imitated |
-| `Grid columns:2` for one icon beside text | `Flex align:"center" gap:2` | Tracks force equal columns; the row needs intrinsic sizes |
-| `Grid` for a toolbar, chip row, or actions row | `Flex gap:<n> wrap:true` | One-axis flow with alignment is Flex behavior |
+| `Grid columns:2` for one icon beside text | `Flex` | Tracks force equal columns; the row needs intrinsic sizes |
+| `Grid` for a toolbar, chip row, or actions row | `Flex`, adding `wrap:true` only when overflow requires it | One-axis flow is Flex behavior |
 | `Flex wrap:true` simulating a catalog of equal cards | `Grid columns:{ xs:1 md:3 }` | Repeated same-shape units are tracks |
-| `Grid` directly inside `Grid` | Flatten the grandchildren into one owning Grid | Another column count or gap does not justify duplicate track ownership |
-| `Flex` directly inside `Flex` | Flatten the grandchildren into one owning Flex | Another direction, alignment, or gap does not justify duplicate axis ownership |
+| Same-kind container whose only purpose is another gap, padding, size, or visibility prop | Flatten it into the owning Grid or Flex | Same-kind nesting needs a distinct subgroup and layout responsibility |
+| Column Flex containing an action-row Flex | Keep both | The inner action group owns a distinct row axis |
 | `Card` inside `Card` | One Card containing `Grid` or `Flex` | Nested surfaces double borders and padding |
 | `Box` as the default page or section container | `Section`, then Grid or Flex | Pages start at Section; Box is the exception |
 | Empty `Box` children used as 12-column offsets | One centered Grid or Flex with `w:"full"` and `maxW` | Empty grid cells encode viewport guesses instead of content structure |
@@ -638,8 +663,9 @@ before considering a band finished.
 - Every container choice is justified by the decision tree. Each `Box` owns a relative, absolute,
   fixed, or explicitly documented neutral media/drawing layer that Section, Grid, Flex, Card, or
   the real child cannot express.
-- No Grid has a direct Grid child and no Flex has a direct Flex child. A layout wrapper never exists
-  only to change `gap`, direction, alignment, padding, sizing, or visibility.
+- Same-kind nesting survives only for a distinct subgroup and independently verifiable track or
+  axis, such as a column Flex containing one action-row Flex. No wrapper exists only to change gap,
+  padding, sizing, or visibility.
 - No empty Box grid gutters, control wrappers, or duplicated compact/wide form trees.
 - Split forms are centered against their owning panel at the reference viewport and at `md`; a
   bounded form Grid is never assumed centered merely because it declares `maxW`.
@@ -652,9 +678,11 @@ before considering a band finished.
   or shared Store and one `each` that wraps the complete unit inside the Grid tracks; no copy-pasted
   sibling survives visual QA.
 - Static-only props remain valid inside repeated templates; `Icon.name` is never bound to an item path.
-- Spacing starts with component defaults and `gap`, then uses one intentional padding override on the
-  real owner when required, never stacked `p*` props across Section, Grid, and Card or empty/size-only
-  Box spacers. No margin aliases such as `mt` are valid.
+- Spacing starts with component defaults. A nonzero `gap` or one padding override is added only after
+  the minimal render proves the real owner needs it; no stacked `p*` props, automatic gap on every
+  Grid/Flex, empty Box spacers, or margin aliases such as `mt` survive.
+- Every local prop passes the admission gate: required contract/content/accessibility, behavior,
+  essential structure, explicit non-default choice, or a specific mismatch proven after rendering.
 - `translateX` and `translateY` appear only on documented advanced visual layers, never on AppBar,
   Brand, NavMenu, Drawer, ordinary content, or normal-flow alignment corrections.
 - No stretched card ends in trailing dead space; paired cards match visual weight, distributing

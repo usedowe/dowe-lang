@@ -8,6 +8,7 @@ fn server_imports(
     for import in &file.imports {
         let path = resolve_import(root, &file.path, import)?;
         if !include_seeders && seeder_import_names(file).contains(&import.local) {
+            imports.excluded_seeder_paths.insert(path);
             continue;
         }
         if is_shared_type_path(root, &path) {
@@ -26,6 +27,9 @@ fn server_imports(
             &mut Vec::new(),
             include_seeders,
         )?;
+        imports
+            .excluded_seeder_paths
+            .extend(module.excluded_seeder_paths.iter().cloned());
         if let Some(handler) = module.handlers.get(&import.local).cloned() {
             if imports
                 .handlers
@@ -129,8 +133,19 @@ fn parse_server_module(
     stack.push(file.path.clone());
     let surface = server_module_surface(file);
     let imported = module_imports(root, file, environment, stack, surface, include_seeders)?;
-    let types = TypeRegistry::parse_file(root, file)?;
+    let types = if include_seeders {
+        TypeRegistry::parse_file(root, file)?
+    } else {
+        TypeRegistry::parse_file_with_import_filter(
+            root,
+            file,
+            &|file, import| seeder_import_names(file).contains(&import.local),
+        )?
+    };
     let mut imports = ServerImports::default();
+    imports
+        .excluded_seeder_paths
+        .extend(imported.excluded_seeder_paths.iter().cloned());
     let mut available_entities = imported.entities.clone();
     for node in file.nodes.iter().filter(|node| node.name == "entity") {
         let entity = parse_database_entity(node)?;
@@ -283,6 +298,7 @@ fn module_imports(
     for import in &file.imports {
         let path = resolve_import(root, &file.path, import)?;
         if !include_seeders && seeder_import_names(file).contains(&import.local) {
+            imports.excluded_seeder_paths.insert(path);
             continue;
         }
         if is_shared_type_path(root, &path) {
@@ -292,6 +308,9 @@ fn module_imports(
             .map_err(|error| DoweError::at_path(&path, error.to_string()))?;
         let module_file = parse_source_file(root, &path, source)?;
         let module = parse_server_module(root, &module_file, environment, stack, include_seeders)?;
+        imports
+            .excluded_seeder_paths
+            .extend(module.excluded_seeder_paths.iter().cloned());
         if let Some(handler) = module.handlers.get(&import.local).cloned() {
             if imports
                 .handlers

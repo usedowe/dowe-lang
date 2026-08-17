@@ -1,4 +1,34 @@
     #[test]
+    fn preserves_explicit_line_breaks_in_text_components() {
+        let tree = parse_page(
+            r#"page typographyPage
+  Title size:"7xl" align:"center" maxW:"6xl"
+    """
+    Full-stack development,
+    from one codebase
+    """
+  Text
+    """
+    One line,
+    then another
+    """"#,
+        )
+        .expect("multiline text tree");
+
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Title { value, .. } = &children[0] else {
+            panic!("title");
+        };
+        assert_eq!(value, "Full-stack development,\nfrom one codebase");
+        let ViewNode::Text { value, .. } = &children[1] else {
+            panic!("text");
+        };
+        assert_eq!(value, "One line,\nthen another");
+    }
+
+    #[test]
     fn parses_display_and_overlay_view_components() {
         let tree = parse_page(
             r#"page overlayPage

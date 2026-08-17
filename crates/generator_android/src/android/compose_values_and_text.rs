@@ -84,10 +84,13 @@ fn compose_svg_paths(paths: &[SvgPath]) -> String {
                 "DoweSvgPath(\"{}\", {}, {})",
                 escape_kotlin(&path.data),
                 compose_svg_fill(path.fill),
-                path.transform.as_ref().map(|value| format!(
-                    "DoweSvgTransform({}f, {}f, {}f, {}f, {}f, {}f)",
-                    value.a, value.b, value.c, value.d, value.e, value.f
-                )).unwrap_or_else(|| "null".to_string())
+                path.transform
+                    .as_ref()
+                    .map(|value| format!(
+                        "DoweSvgTransform({}f, {}f, {}f, {}f, {}f, {}f)",
+                        value.a, value.b, value.c, value.d, value.e, value.f
+                    ))
+                    .unwrap_or_else(|| "null".to_string())
             )
         })
         .collect::<Vec<_>>()
@@ -100,41 +103,109 @@ fn compose_svg_fill(fill: SvgPathFill) -> String {
         SvgPathFill::None => "DoweSvgFill.None".to_string(),
         SvgPathFill::CurrentColor => "DoweSvgFill.CurrentColor".to_string(),
         SvgPathFill::Color(token) => format!("DoweSvgFill.Solid({})", color_ref(token)),
-        SvgPathFill::RawFill { color, opacity, even_odd } => format!(
+        SvgPathFill::RawFill {
+            color,
+            opacity,
+            even_odd,
+        } => format!(
             "DoweSvgFill.Fill({}, {}f, {})",
-            android_color_literal(color), opacity as f32 / 255.0, even_odd
-        ),
-        SvgPathFill::Fill { color, opacity, even_odd } => format!(
-            "DoweSvgFill.Fill({}, {}f, {})",
-            color.map(color_ref).map(|value| format!("{value}")).unwrap_or_else(|| "null".to_string()),
+            android_color_literal(color),
             opacity as f32 / 255.0,
             even_odd
         ),
-        SvgPathFill::RawStroke { color, opacity, width, line_cap, line_join } => format!(
-            "DoweSvgFill.Stroke({}, {}f, {}f, \"{}\", \"{}\")",
-            android_color_literal(color), opacity as f32 / 255.0, width as f32 / 100.0,
-            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
-            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+        SvgPathFill::Fill {
+            color,
+            opacity,
+            even_odd,
+        } => format!(
+            "DoweSvgFill.Fill({}, {}f, {})",
+            color
+                .map(color_ref)
+                .map(|value| format!("{value}"))
+                .unwrap_or_else(|| "null".to_string()),
+            opacity as f32 / 255.0,
+            even_odd
         ),
-        SvgPathFill::LiteralFill { red, green, blue, opacity, even_odd } => format!(
+        SvgPathFill::RawStroke {
+            color,
+            opacity,
+            width,
+            line_cap,
+            line_join,
+        } => format!(
+            "DoweSvgFill.Stroke({}, {}f, {}f, \"{}\", \"{}\")",
+            android_color_literal(color),
+            opacity as f32 / 255.0,
+            width as f32 / 100.0,
+            match line_cap {
+                SvgLineCap::Butt => "butt",
+                SvgLineCap::Round => "round",
+                SvgLineCap::Square => "square",
+            },
+            match line_join {
+                SvgLineJoin::Miter => "miter",
+                SvgLineJoin::Round => "round",
+                SvgLineJoin::Bevel => "bevel",
+            }
+        ),
+        SvgPathFill::LiteralFill {
+            red,
+            green,
+            blue,
+            opacity,
+            even_odd,
+        } => format!(
             "DoweSvgFill.Fill(Color(0xFF{red:02X}{green:02X}{blue:02X}), {}f, {})",
             opacity as f32 / 255.0,
             even_odd
         ),
-        SvgPathFill::LiteralStroke { red, green, blue, opacity, width, line_cap, line_join } => format!(
+        SvgPathFill::LiteralStroke {
+            red,
+            green,
+            blue,
+            opacity,
+            width,
+            line_cap,
+            line_join,
+        } => format!(
             "DoweSvgFill.Stroke(Color(0xFF{red:02X}{green:02X}{blue:02X}), {}f, {}f, \"{}\", \"{}\")",
             opacity as f32 / 255.0,
             width as f32 / 100.0,
-            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
-            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+            match line_cap {
+                SvgLineCap::Butt => "butt",
+                SvgLineCap::Round => "round",
+                SvgLineCap::Square => "square",
+            },
+            match line_join {
+                SvgLineJoin::Miter => "miter",
+                SvgLineJoin::Round => "round",
+                SvgLineJoin::Bevel => "bevel",
+            }
         ),
-        SvgPathFill::Stroke { color, opacity, width, line_cap, line_join } => format!(
+        SvgPathFill::Stroke {
+            color,
+            opacity,
+            width,
+            line_cap,
+            line_join,
+        } => format!(
             "DoweSvgFill.Stroke({}, {}f, {}f, \"{}\", \"{}\")",
-            color.map(color_ref).map(|value| format!("{value}")).unwrap_or_else(|| "null".to_string()),
+            color
+                .map(color_ref)
+                .map(|value| format!("{value}"))
+                .unwrap_or_else(|| "null".to_string()),
             opacity as f32 / 255.0,
             width as f32 / 100.0,
-            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
-            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+            match line_cap {
+                SvgLineCap::Butt => "butt",
+                SvgLineCap::Round => "round",
+                SvgLineCap::Square => "square",
+            },
+            match line_join {
+                SvgLineJoin::Miter => "miter",
+                SvgLineJoin::Round => "round",
+                SvgLineJoin::Bevel => "bevel",
+            }
         ),
     }
 }
@@ -244,6 +315,25 @@ where
         .collect::<Vec<_>>()
         .join(", ");
     format!("doweResponsive(viewportWidth, {entries})")
+}
+
+fn compose_text_align(value: &ResponsiveValue<TextAlign>) -> String {
+    format!(
+        "{} ?: TextAlign.Start",
+        compose_responsive_value(value, |value| format!(
+            "TextAlign.{}",
+            compose_text_align_name(*value)
+        ))
+    )
+}
+
+fn compose_text_align_name(value: TextAlign) -> &'static str {
+    match value {
+        TextAlign::Start => "Start",
+        TextAlign::Center => "Center",
+        TextAlign::End => "End",
+        TextAlign::Justify => "Justify",
+    }
 }
 
 fn compose_justify_name(value: Justify) -> &'static str {

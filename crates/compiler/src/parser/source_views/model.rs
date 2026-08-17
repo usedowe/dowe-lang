@@ -34,12 +34,60 @@ struct ViewDeclaration {
 
 #[derive(Clone)]
 struct ParsedViewModule {
+    name: String,
     tree: ViewNode,
     inspector: Option<dowe_generator_web::ViewInspectorMap>,
+    inspector_usages: HashMap<PathBuf, Vec<dowe_generator_web::ViewInspectorLocation>>,
     metadata: Vec<ViewMetadata>,
     source: String,
     path: PathBuf,
     kind: ImportedViewKind,
+}
+
+#[derive(Clone)]
+struct CachedViewModule {
+    module: Arc<ParsedViewModule>,
+    chunk: Arc<dowe_generator_web::GeneratedChunk>,
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct ViewModuleCache {
+    entries: HashMap<PathBuf, CachedViewModule>,
+    hits: usize,
+    misses: usize,
+}
+
+impl ViewModuleCache {
+    pub(crate) fn clear(&mut self) {
+        self.entries.clear();
+    }
+
+    pub(crate) fn remove(&mut self, path: &Path) {
+        self.entries.remove(path);
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub(crate) fn hits(&self) -> usize {
+        self.hits
+    }
+
+    pub(crate) fn misses(&self) -> usize {
+        self.misses
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct PreviousViewOutputs<'a> {
+    pub web: &'a WebOutput,
+    pub desktop_web: &'a WebOutput,
+    pub routes: &'a ViewTargetRoutes,
 }
 
 #[derive(Clone)]
@@ -66,17 +114,20 @@ struct RouteBuildContext<'a> {
     root: &'a Path,
     views_path: &'a Path,
     imports: HashMap<String, ViewImport>,
-    modules: HashMap<String, Rc<ParsedViewModule>>,
+    modules: HashMap<String, Arc<ParsedViewModule>>,
+    module_chunks: HashMap<PathBuf, Arc<dowe_generator_web::GeneratedChunk>>,
+    module_cache: Option<&'a mut ViewModuleCache>,
     components: HashMap<PathBuf, ParsedComponentModule>,
     inspector_usages: HashMap<PathBuf, Vec<dowe_generator_web::ViewInspectorLocation>>,
     component_stack: Vec<PathBuf>,
-    chunks: Vec<dowe_generator_web::GeneratedChunk>,
+    chunks: Vec<Arc<dowe_generator_web::GeneratedChunk>>,
     chunk_indexes: HashMap<String, usize>,
     outputs: PlatformRouteOutputs,
     environment: &'a EnvironmentConfig,
     design_config: &'a DesignConfig,
     selected_platforms: &'a [ViewPlatform],
     dev_inspector: bool,
+    previous: Option<PreviousViewOutputs<'a>>,
 }
 
 #[derive(Default)]
@@ -89,22 +140,32 @@ struct PlatformRouteOutputs {
 
 #[derive(Default)]
 struct PlatformRouteOutput {
-    pages: Vec<ViewPage>,
+    pages: Vec<Arc<ViewPage>>,
     routes: Vec<ViewRoute>,
     seen_paths: HashSet<String>,
 }
 
 fn web_output_for(
-    mut pages: Vec<ViewPage>,
-    chunks: &[dowe_generator_web::GeneratedChunk],
+    mut pages: Vec<Arc<ViewPage>>,
+    chunks: &[Arc<dowe_generator_web::GeneratedChunk>],
     translation_chunks: &[dowe_generator_web::GeneratedTranslationChunk],
     translations: &TranslationCatalog,
+    previous: Option<&WebOutput>,
 ) -> WebOutput {
     for page in &mut pages {
-        page.runtime_chunks = dowe_generator_web::runtime_chunks_for_page(page)
-            .iter()
-            .map(dowe_generator_web::GeneratedRuntimeChunk::browser_path)
-            .collect();
+        let reused = previous.is_some_and(|previous| {
+            previous
+                .pages
+                .iter()
+                .any(|candidate| Arc::ptr_eq(candidate, page))
+        });
+        if !reused {
+            let page = Arc::make_mut(page);
+            page.runtime_chunks = dowe_generator_web::runtime_chunks_for_page(page)
+                .iter()
+                .map(dowe_generator_web::GeneratedRuntimeChunk::browser_path)
+                .collect();
+        }
     }
     let needed_chunks = pages
         .iter()
@@ -127,11 +188,14 @@ fn web_output_for(
         default_locale: translations.default_locale.clone(),
         router_js: String::new(),
     };
-    web.router_js = router_js(&web);
-    let router_file_name = web.router_file_name();
-    for page in &mut web.pages {
-        page.router_file_name.clone_from(&router_file_name);
-        page.html_document = render_page_document(page);
+    if previous.is_none() {
+        web.router_js = router_js(&web);
+        let router_file_name = web.router_file_name();
+        for page in &mut web.pages {
+            let page = Arc::make_mut(page);
+            page.router_file_name.clone_from(&router_file_name);
+            page.html_document = render_page_document(page);
+        }
     }
     web
 }
@@ -140,7 +204,7 @@ impl PlatformRouteOutputs {
     fn add_page(
         &mut self,
         platform: ViewPlatform,
-        page: ViewPage,
+        page: Arc<ViewPage>,
         route: ViewRoute,
         views_path: &Path,
     ) -> DoweResult<()> {

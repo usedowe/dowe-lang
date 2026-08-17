@@ -20,6 +20,7 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         }
         ViewNode::Section { props, children } => {
             collect_style_custom_rules(props, rules);
+            collect_gap_custom_rules(props.gap.as_ref(), rules);
             collect_section_spacing_custom_rules(props, rules);
             for child in children {
                 collect_custom_rules(child, rules);

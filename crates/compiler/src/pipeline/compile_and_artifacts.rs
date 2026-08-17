@@ -12,7 +12,8 @@ use dowe_generator_android::generate_android_with_app_translations_and_icons;
 use dowe_generator_desktop::generate_desktop_with_app;
 use dowe_generator_ios::generate_ios_with_app_translations_and_icons;
 use dowe_generator_web::{
-    WebOutput, inspector_manifest, prepare_design_asset, web_artifacts, web_artifacts_for_target,
+    WebOutput, inspector_manifest, prepare_design_asset, prepare_dev_design_asset,
+    prepare_incremental_dev_design_asset, web_artifact_update, web_artifacts_for_target,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -25,6 +26,9 @@ pub fn compile_dev(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
         false,
         true,
         true,
+        true,
+        None,
+        None,
         None,
     )
 }
@@ -36,6 +40,9 @@ pub fn compile_dev_server(root: impl AsRef<Path>) -> DoweResult<CompiledProject>
         false,
         true,
         false,
+        true,
+        None,
+        None,
         None,
     )
 }
@@ -47,6 +54,9 @@ pub fn compile_dev_web(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
         false,
         false,
         true,
+        true,
+        None,
+        None,
         None,
     )
 }
@@ -61,8 +71,11 @@ pub fn compile_dev_for_platforms(
         CompileEnvironment::Development,
         false,
         true,
+        true,
         !platforms.is_empty(),
         Some(platforms),
+        None,
+        None,
     )
 }
 
@@ -76,7 +89,10 @@ pub fn compile_dev_views_for_platforms(
         false,
         false,
         true,
+        true,
         Some(platforms.into_iter().collect()),
+        None,
+        None,
     )
 }
 
@@ -87,6 +103,9 @@ pub fn compile_dev_with_seeders(root: impl AsRef<Path>) -> DoweResult<CompiledPr
         true,
         true,
         true,
+        true,
+        None,
+        None,
         None,
     )
 }
@@ -95,32 +114,40 @@ pub fn compile_for_environment(
     root: impl AsRef<Path>,
     environment: CompileEnvironment,
 ) -> DoweResult<CompiledProject> {
-    compile_project(root, environment, true, true, true, None)
+    compile_project(root, environment, true, true, true, true, None, None, None)
 }
 
 pub fn compile_for_server_environment(
     root: impl AsRef<Path>,
     environment: CompileEnvironment,
 ) -> DoweResult<CompiledProject> {
-    compile_project(root, environment, true, true, false, None)
+    compile_project(root, environment, true, true, false, true, None, None, None)
 }
 
 pub fn compile_for_web_environment(
     root: impl AsRef<Path>,
     environment: CompileEnvironment,
 ) -> DoweResult<CompiledProject> {
-    compile_project(root, environment, true, false, true, None)
+    compile_project(root, environment, true, false, true, true, None, None, None)
 }
 
-fn compile_project(
+pub(crate) fn compile_project(
     root: impl AsRef<Path>,
     environment: CompileEnvironment,
     include_seeders: bool,
     compile_server: bool,
     compile_views: bool,
+    compile_apps: bool,
     selected_platforms: Option<BTreeSet<ViewPlatform>>,
+    module_cache: Option<&mut crate::parser::ViewModuleCache>,
+    previous_project: Option<&CompiledProject>,
 ) -> DoweResult<CompiledProject> {
     let root = normalize_root(root.as_ref())?;
+    let previous_views = module_cache
+        .as_ref()
+        .is_some_and(|cache| !cache.is_empty())
+        .then_some(previous_project)
+        .flatten();
     let mut parsed = parse_project_for(
         &root,
         environment,
@@ -128,25 +155,65 @@ fn compile_project(
         compile_server,
         compile_views,
         selected_platforms.as_ref(),
+        module_cache,
+        previous_views,
     )?;
     let icon_targets = if compile_views {
         icon_artifacts::ProjectIconTargets::detect(&root)?
     } else {
         icon_artifacts::ProjectIconTargets::default()
     };
+    let mut web_design_css = String::new();
     if compile_views {
-        prepare_design_asset(
+        web_design_css = if environment == CompileEnvironment::Development {
+            match previous_views {
+                Some(previous) => prepare_incremental_dev_design_asset(
+                    &mut parsed.web,
+                    &previous.web,
+                    &parsed.font_config,
+                    &parsed.design_config,
+                ),
+                None => prepare_dev_design_asset(
+                    &mut parsed.web,
+                    &parsed.font_config,
+                    &parsed.design_config,
+                ),
+            }
+        } else {
+            prepare_design_asset(&mut parsed.web, &parsed.font_config, &parsed.design_config)
+        };
+        if environment == CompileEnvironment::Development {
+            if let Some(previous) = previous_views {
+                let _ = prepare_incremental_dev_design_asset(
+                    &mut parsed.desktop_web,
+                    &previous.desktop_web,
+                    &parsed.font_config,
+                    &parsed.design_config,
+                );
+            } else {
+                let _ = prepare_dev_design_asset(
+                    &mut parsed.desktop_web,
+                    &parsed.font_config,
+                    &parsed.design_config,
+                );
+            }
+        } else {
+            let _ = prepare_design_asset(
+                &mut parsed.desktop_web,
+                &parsed.font_config,
+                &parsed.design_config,
+            );
+        }
+        icon_artifacts::apply_web_icon_documents(
             &mut parsed.web,
-            &parsed.font_config,
-            &parsed.design_config,
+            previous_views.map(|previous| &previous.web),
+            &icon_targets,
         );
-        prepare_design_asset(
+        icon_artifacts::apply_web_icon_documents(
             &mut parsed.desktop_web,
-            &parsed.font_config,
-            &parsed.design_config,
+            previous_views.map(|previous| &previous.desktop_web),
+            &icon_targets,
         );
-        icon_artifacts::apply_web_icon_documents(&mut parsed.web, &icon_targets);
-        icon_artifacts::apply_web_icon_documents(&mut parsed.desktop_web, &icon_targets);
     }
     write_typecheck_artifacts(&root)?;
     let font_families = if compile_views {
@@ -159,7 +226,7 @@ fn compile_project(
     } else {
         BTreeSet::new()
     };
-    let apps = if compile_views {
+    let apps = if compile_views && compile_apps {
         build_app_outputs(
             &parsed.view_routes,
             &parsed.desktop_web,
@@ -185,23 +252,38 @@ fn compile_project(
         backend: parsed.backend,
         desktop_server: parsed.desktop_server,
         databases: parsed.databases,
+        server_inspector: parsed.server_inspector,
         local_databases: false,
         web: parsed.web,
         desktop_web: parsed.desktop_web,
         view_routes: parsed.view_routes,
         apps,
     };
+    let font_assets_changed = previous_views.is_none_or(|previous| {
+        previous
+            .font_config
+            .effective_families(&collect_target_route_font_families(
+                &previous.view_routes,
+                selected_platforms.as_ref(),
+            ))
+            != font_families
+    });
 
     if compile_views && project.capabilities.views {
         if platform_selected(selected_platforms.as_ref(), ViewPlatform::Web) {
-            write_web_artifacts(&project)?;
+            write_web_artifacts(
+                &project,
+                previous_project.map(|previous| &previous.web),
+                web_design_css,
+                environment == CompileEnvironment::Development,
+            )?;
             if environment == CompileEnvironment::Development {
                 write_web_inspector_artifact(&project)?;
             }
         } else {
             remove_output_directory(&project.root.join(".dowe/web"))?;
         }
-        if project.apps.files.is_empty() {
+        if !compile_apps || project.apps.files.is_empty() {
             remove_output_directory(&project.root.join(".dowe/apps"))?;
         } else {
             write_app_artifacts(&project)?;
@@ -211,19 +293,23 @@ fn compile_project(
             .map(|platforms| !platforms.is_empty())
             .unwrap_or(true)
         {
-            copy_font_assets(
-                &project.root,
-                &font_families,
-                selected_platforms.as_ref(),
-            )?;
+            if font_assets_changed {
+                if compile_apps {
+                    copy_font_assets(&project.root, &font_families, selected_platforms.as_ref())?;
+                } else {
+                    copy_shared_font_assets(&project.root, &font_families)?;
+                }
+            }
             if platform_selected(selected_platforms.as_ref(), ViewPlatform::Android) {
                 copy_project_assets(&project.root)?;
             }
-            icon_artifacts::sync_project_icons(
-                &project.root,
-                &icon_targets,
-                selected_platforms.as_ref(),
-            )?;
+            if compile_apps && previous_views.is_none() {
+                icon_artifacts::sync_project_icons(
+                    &project.root,
+                    &icon_targets,
+                    selected_platforms.as_ref(),
+                )?;
+            }
         } else {
             remove_output_directory(&project.root.join(".dowe/fonts"))?;
         }
@@ -233,7 +319,73 @@ fn compile_project(
         remove_output_directory(&project.root.join(".dowe/fonts"))?;
     }
 
+    if compile_server
+        && project.capabilities.server
+        && environment == CompileEnvironment::Development
+    {
+        write_server_inspector_artifact(&project)?;
+    } else if !(environment == CompileEnvironment::Development
+        && previous_project.is_some_and(|previous| previous.server_inspector.is_some()))
+    {
+        remove_output_directory(&project.root.join(".dowe/server"))?;
+    }
+
     Ok(project)
+}
+
+pub(crate) fn complete_dev_app_outputs(
+    project: &mut CompiledProject,
+    selected_platforms: &BTreeSet<ViewPlatform>,
+) -> DoweResult<()> {
+    let icon_targets = icon_artifacts::ProjectIconTargets::detect(&project.root)?;
+    project.apps = build_app_outputs(
+        &project.view_routes,
+        &project.desktop_web,
+        &project.app_config,
+        &project.font_config,
+        &project.design_config,
+        &project.environment_config,
+        &project.translations,
+        &icon_targets,
+        Some(selected_platforms),
+    );
+    if project.apps.files.is_empty() {
+        remove_output_directory(&project.root.join(".dowe/apps"))?;
+    } else {
+        write_app_artifacts(project)?;
+        if platform_selected(Some(selected_platforms), ViewPlatform::Android) {
+            copy_project_assets(&project.root)?;
+        }
+    }
+    let font_families =
+        project
+            .font_config
+            .effective_families(&collect_target_route_font_families(
+                &project.view_routes,
+                Some(selected_platforms),
+            ));
+    copy_native_font_assets(&project.root, &font_families, Some(selected_platforms))?;
+    icon_artifacts::sync_project_icons(&project.root, &icon_targets, Some(selected_platforms))?;
+    Ok(())
+}
+
+pub fn generate_dev_app_output(
+    project: &CompiledProject,
+    platform: ViewPlatform,
+) -> DoweResult<AppOutput> {
+    let icon_targets = icon_artifacts::ProjectIconTargets::detect(&project.root)?;
+    let selected_platforms = BTreeSet::from([platform]);
+    Ok(build_app_outputs(
+        &project.view_routes,
+        &project.desktop_web,
+        &project.app_config,
+        &project.font_config,
+        &project.design_config,
+        &project.environment_config,
+        &project.translations,
+        &icon_targets,
+        Some(&selected_platforms),
+    ))
 }
 
 fn remove_output_directory(path: &Path) -> DoweResult<()> {
@@ -299,9 +451,22 @@ fn normalize_root(root: &Path) -> DoweResult<PathBuf> {
         .map_err(|error| DoweError::at_path(root, error.to_string()))
 }
 
-fn write_web_artifacts(project: &CompiledProject) -> DoweResult<()> {
+fn write_web_artifacts(
+    project: &CompiledProject,
+    previous: Option<&WebOutput>,
+    design_css: String,
+    include_inspector: bool,
+) -> DoweResult<()> {
     let web_root = project.root.join(".dowe/web");
-    let mut artifacts = web_artifacts(&project.web, &project.font_config, &project.design_config)
+    let mut update = web_artifact_update(&project.web, previous, design_css);
+    update.expected_paths.insert(PathBuf::from("web/env.json"));
+    if include_inspector {
+        update
+            .expected_paths
+            .insert(PathBuf::from("web/inspector.json"));
+    }
+    let mut artifacts = update
+        .files
         .into_iter()
         .map(|file| GeneratedFile {
             relative_path: file.relative_path,
@@ -311,12 +476,22 @@ fn write_web_artifacts(project: &CompiledProject) -> DoweResult<()> {
         })
         .collect::<Vec<_>>();
     artifacts.push(GeneratedFile {
-            relative_path: PathBuf::from("web/env.json"),
-            content: project.environment_config.client_json(),
-            kind: "Manifest".to_string(),
-            target: "web".to_string(),
-        });
-    sync_generated_tree(&project.root, &web_root, &artifacts)
+        relative_path: PathBuf::from("web/env.json"),
+        content: project.environment_config.client_json(),
+        kind: "Manifest".to_string(),
+        target: "web".to_string(),
+    });
+    fs::create_dir_all(&web_root)?;
+    for file in &artifacts {
+        write_generated_file(&project.root, file)?;
+    }
+    let expected = update
+        .expected_paths
+        .iter()
+        .map(|path| generated_output_path(&project.root, path))
+        .collect::<DoweResult<BTreeSet<_>>>()?;
+    remove_obsolete_generated_files(&web_root, &expected)?;
+    Ok(())
 }
 
 fn write_web_inspector_artifact(project: &CompiledProject) -> DoweResult<()> {
@@ -326,6 +501,20 @@ fn write_web_inspector_artifact(project: &CompiledProject) -> DoweResult<()> {
         content: inspector_manifest(&project.web),
         kind: "Manifest".to_string(),
         target: "web".to_string(),
+    };
+    write_generated_file(&project.root, &file)
+}
+
+fn write_server_inspector_artifact(project: &CompiledProject) -> DoweResult<()> {
+    let Some(manifest) = project.server_inspector.as_ref() else {
+        return Ok(());
+    };
+    let file = GeneratedFile {
+        relative_path: PathBuf::from("server/inspector.json"),
+        content: serde_json::to_string_pretty(manifest)
+            .map_err(|error| crate::error::DoweError::new(error.to_string()))?,
+        kind: "Manifest".to_string(),
+        target: "server".to_string(),
     };
     write_generated_file(&project.root, &file)
 }
@@ -374,6 +563,11 @@ fn copy_font_assets(
     fonts: &BTreeSet<FontFamily>,
     selected_platforms: Option<&BTreeSet<ViewPlatform>>,
 ) -> DoweResult<()> {
+    copy_shared_font_assets(root, fonts)?;
+    copy_native_font_assets(root, fonts, selected_platforms)
+}
+
+fn copy_shared_font_assets(root: &Path, fonts: &BTreeSet<FontFamily>) -> DoweResult<()> {
     let source_roots = font_assets_source_roots(root);
     let fonts_root = root.join(".dowe/fonts");
 
@@ -413,6 +607,36 @@ fn copy_font_assets(
                 .join(entry.token.as_str())
                 .join(format!("{}.ttf", weight.asset_stem));
             copy_font_asset(&source, &shared)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn copy_native_font_assets(
+    root: &Path,
+    fonts: &BTreeSet<FontFamily>,
+    selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+) -> DoweResult<()> {
+    let fonts_root = root.join(".dowe/fonts");
+    for entry in font_catalog()
+        .iter()
+        .filter(|entry| entry.package_assets && fonts.contains(&entry.token))
+    {
+        let mut copied_assets = BTreeSet::new();
+        for weight in entry.weights {
+            if !copied_assets.insert(weight.asset_stem) {
+                continue;
+            }
+            let shared = fonts_root
+                .join(entry.token.as_str())
+                .join(format!("{}.ttf", weight.asset_stem));
+            if !shared.is_file() {
+                return Err(DoweError::at_path(
+                    &shared,
+                    "missing shared font asset before native synchronization",
+                ));
+            }
             if platform_selected(selected_platforms, ViewPlatform::Ios) {
                 copy_font_asset(
                     &shared,
@@ -497,8 +721,8 @@ fn copy_project_assets(root: &Path) -> DoweResult<()> {
     if source.is_dir() {
         fs::create_dir_all(&destination)
             .map_err(|error| DoweError::at_path(&destination, error.to_string()))?;
-        for entry in fs::read_dir(&source)
-            .map_err(|error| DoweError::at_path(&source, error.to_string()))?
+        for entry in
+            fs::read_dir(&source).map_err(|error| DoweError::at_path(&source, error.to_string()))?
         {
             let entry = entry.map_err(|error| DoweError::at_path(&source, error.to_string()))?;
             if entry.file_name() == "icons" {
@@ -523,8 +747,8 @@ fn copy_project_assets(root: &Path) -> DoweResult<()> {
 fn copy_project_asset_tree(source: &Path, destination: &Path) -> DoweResult<()> {
     fs::create_dir_all(destination)
         .map_err(|error| DoweError::at_path(destination, error.to_string()))?;
-    for entry in fs::read_dir(source)
-        .map_err(|error| DoweError::at_path(source, error.to_string()))?
+    for entry in
+        fs::read_dir(source).map_err(|error| DoweError::at_path(source, error.to_string()))?
     {
         let entry = entry.map_err(|error| DoweError::at_path(source, error.to_string()))?;
         let source_path = entry.path();
@@ -589,50 +813,71 @@ fn build_app_outputs(
             }),
         );
     }
-    if platform_selected(selected_platforms, ViewPlatform::Android) {
-        files.extend(
-            generate_android_with_app_translations_and_icons(
-                &routes.android,
-                font_config,
-                design_config,
-                &client_environment,
-                translations,
-                &app_config.name,
-                &app_config.bundle,
-                icon_targets.android,
-            )
-            .files
-            .into_iter()
-            .map(|file| GeneratedFile {
-                relative_path: file.relative_path,
-                content: file.content,
-                kind: format!("{:?}", file.kind),
-                target: file.target.to_string(),
-            }),
-        );
-    }
-    if platform_selected(selected_platforms, ViewPlatform::Ios) {
-        files.extend(
-            generate_ios_with_app_translations_and_icons(
-                &routes.ios,
-                font_config,
-                design_config,
-                &client_environment,
-                translations,
-                &app_config.name,
-                &app_config.bundle,
-                icon_targets.ios,
-            )
-            .files
-            .into_iter()
-            .map(|file| GeneratedFile {
-                relative_path: file.relative_path,
-                content: file.content,
-                kind: format!("{:?}", file.kind),
-                target: file.target.to_string(),
-            }),
-        );
-    }
+    let (android_files, ios_files) = std::thread::scope(|scope| {
+        let android = platform_selected(selected_platforms, ViewPlatform::Android).then(|| {
+            std::thread::Builder::new()
+                .name("dowe-android-generator".to_string())
+                .stack_size(16 * 1024 * 1024)
+                .spawn_scoped(scope, || {
+                    generate_android_with_app_translations_and_icons(
+                        &routes.android,
+                        font_config,
+                        design_config,
+                        &client_environment,
+                        translations,
+                        &app_config.name,
+                        &app_config.bundle,
+                        icon_targets.android,
+                    )
+                    .files
+                    .into_iter()
+                    .map(|file| GeneratedFile {
+                        relative_path: file.relative_path,
+                        content: file.content,
+                        kind: format!("{:?}", file.kind),
+                        target: file.target.to_string(),
+                    })
+                    .collect::<Vec<_>>()
+                })
+                .expect("failed to start Android generation thread")
+        });
+        let ios = platform_selected(selected_platforms, ViewPlatform::Ios).then(|| {
+            std::thread::Builder::new()
+                .name("dowe-ios-generator".to_string())
+                .stack_size(16 * 1024 * 1024)
+                .spawn_scoped(scope, || {
+                    generate_ios_with_app_translations_and_icons(
+                        &routes.ios,
+                        font_config,
+                        design_config,
+                        &client_environment,
+                        translations,
+                        &app_config.name,
+                        &app_config.bundle,
+                        icon_targets.ios,
+                    )
+                    .files
+                    .into_iter()
+                    .map(|file| GeneratedFile {
+                        relative_path: file.relative_path,
+                        content: file.content,
+                        kind: format!("{:?}", file.kind),
+                        target: file.target.to_string(),
+                    })
+                    .collect::<Vec<_>>()
+                })
+                .expect("failed to start iOS generation thread")
+        });
+        (
+            android
+                .map(|handle| handle.join().expect("Android generation thread panicked"))
+                .unwrap_or_default(),
+            ios.map(|handle| handle.join().expect("iOS generation thread panicked"))
+                .unwrap_or_default(),
+        )
+    });
+    files.extend(android_files);
+    files.extend(ios_files);
 
     if !files.is_empty() {
         files.push(GeneratedFile {
@@ -768,9 +1013,7 @@ fn escape_json_string(value: &str) -> String {
 
 #[cfg(test)]
 mod font_asset_tests {
-    use super::{
-        font_asset_source, font_assets_source_roots_for_executable, font_family_source,
-    };
+    use super::{font_asset_source, font_assets_source_roots_for_executable, font_family_source};
     use std::fs;
     use std::path::Path;
     use tempfile::TempDir;
@@ -835,6 +1078,9 @@ mod font_asset_tests {
         let roots = font_assets_source_roots_for_executable(temp.path(), Some(&executable));
         let resolved = font_asset_source(&roots, "manrope", "manrope-regular.ttf");
 
-        assert_eq!(resolved, packaged_assets.join("manrope/manrope-regular.ttf"));
+        assert_eq!(
+            resolved,
+            packaged_assets.join("manrope/manrope-regular.ttf")
+        );
     }
 }

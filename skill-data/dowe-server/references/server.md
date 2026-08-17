@@ -36,6 +36,39 @@ Read `references/data.md` for Database, Cache, and Vector handles, entities, see
 operation utilities. Read `references/runtime.md` for TLS, outbound HTTP, responses, crypto,
 spawn, JWT, WebSockets, CORS, background jobs, protocol transports, and local models.
 
+## View request consumers
+
+A route consumed by a Dowe View has one coordinated contract even though source ownership remains
+separate. Load the companion `dowe-views` skill and inspect `references/views.md` whenever a Server
+change affects an existing View caller or the requested View behavior requires a new project route.
+Do not treat a compiling handler as proof that the fullstack behavior is complete.
+
+Build a request-to-route matrix before changing either side:
+
+| Field | Required decision |
+| --- | --- |
+| Caller | View page or layout and its `fn` or `init` |
+| Method and path | Exact request method and resolved project route |
+| Input | Body, headers, route params, validation, and client-controlled fields |
+| Output | Status and minimal serializable JSON shape consumed by the View |
+| UI behavior | Loading, success, empty, error, unauthorized, and retry states |
+| Route owner | Endpoint declaration and matching method |
+| Logic owners | Handler, middleware, service, repository, provider, and config modules |
+| Data owners | Entities, migrations, Database, Cache, Vector, Queue, files, or external provider |
+| Security | Authentication, permission, tenant/owner, invariant, and safe-error boundaries |
+
+Trace method and path from the request to the endpoint, then trace the endpoint through every
+imported Server layer. Reuse existing owners when they satisfy the capability. When they do not,
+change the smallest complete set of Server modules required by the request and update the View in
+the same task if its request or presentation states must change.
+
+Client input never becomes authority over generated ids, tenant or owner scope, roles, permissions,
+prices, totals, inventory, lifecycle state, table names, provider names, secrets, or storage paths.
+Handlers parse and return HTTP values, services enforce use cases, repositories own persistence,
+middleware enforces shared request boundaries, and entities plus migrations own schema evolution.
+Return only serializable client-safe data; never expose connections, credentials, authorization
+headers, provider URLs containing secrets, process handles, or unrelated record fields.
+
 ## Capability-first statement shape
 
 Read server statements from left to right:
@@ -57,7 +90,7 @@ binding. Server source never uses assignment syntax.
 
 Standard-library operations use
 `<namespace> <binding> source:"<function>" <props>`, such as
-`str authorization source:"join" values:["Bearer", session.id] delimiter:" "`.
+`str authorization source:"join" values:["Bearer" session.id] delimiter:" "`.
 Handlers and middleware use direct HTTP returns such as `return status:201 json:result` or
 `return text:"OK"`; reusable `fn` declarations use `return value:<value>`. Static route responses
 use `response <props>` without `return`. Never write `return response ...`, because the compiler

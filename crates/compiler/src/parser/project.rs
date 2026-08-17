@@ -1,14 +1,17 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    AppConfig, CompileEnvironment, DatabaseBinding, EnvironmentConfig, ProjectCapabilities,
-    ServerConfig, ViewPlatform, ViewTargetRoutes, WebOutput,
+    AppConfig, CompileEnvironment, CompiledProject, DatabaseBinding, EnvironmentConfig,
+    ProjectCapabilities, ServerConfig, ServerInspectorManifest, ViewPlatform, ViewTargetRoutes,
+    WebOutput,
 };
 use crate::parser::source_config::parse_app;
 use crate::parser::source_config::parse_project_config_for;
 use crate::parser::source_i18n::parse_translation_catalog;
 use crate::parser::source_parser::parse_source_file;
 use crate::parser::source_server::{parse_server_source, parse_server_source_without_seeders};
-use crate::parser::source_views::{client_environment_names, parse_views_entry};
+use crate::parser::source_views::{
+    PreviousViewOutputs, client_environment_names, parse_views_entry,
+};
 use dowe_components::{DesignConfig, FontConfig, TranslationCatalog};
 use std::collections::BTreeSet;
 use std::fs;
@@ -24,6 +27,7 @@ pub struct ParsedProject {
     pub backend: ServerConfig,
     pub desktop_server: Option<ServerConfig>,
     pub databases: Vec<DatabaseBinding>,
+    pub server_inspector: Option<ServerInspectorManifest>,
     pub web: WebOutput,
     pub desktop_web: WebOutput,
     pub view_routes: ViewTargetRoutes,
@@ -36,6 +40,8 @@ pub(crate) fn parse_project_for(
     compile_server: bool,
     compile_views: bool,
     selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+    module_cache: Option<&mut super::source_views::ViewModuleCache>,
+    previous: Option<&CompiledProject>,
 ) -> DoweResult<ParsedProject> {
     let legacy_main_path = root.join("src/main.dowe");
     if legacy_main_path.exists() {
@@ -83,6 +89,12 @@ pub(crate) fn parse_project_for(
                 &view_platforms,
                 environment == CompileEnvironment::Development
                     && view_platforms.contains(&ViewPlatform::Web),
+                module_cache,
+                previous.map(|previous| PreviousViewOutputs {
+                    web: &previous.web,
+                    desktop_web: &previous.desktop_web,
+                    routes: &previous.view_routes,
+                }),
             )
         })
         .transpose()?;
@@ -105,6 +117,9 @@ pub(crate) fn parse_project_for(
         .as_ref()
         .map(|server| server.databases.clone())
         .unwrap_or_default();
+    let server_inspector = (environment == CompileEnvironment::Development)
+        .then(|| server_root.as_ref().map(|server| server.inspector.clone()))
+        .flatten();
     Ok(ParsedProject {
         capabilities,
         app_config,
@@ -118,6 +133,7 @@ pub(crate) fn parse_project_for(
             .unwrap_or_default(),
         desktop_server: server_root.and_then(|server| server.desktop_server),
         databases,
+        server_inspector,
         web: views
             .as_ref()
             .map(|views| views.web.clone())

@@ -36,7 +36,7 @@ pub(crate) use source_server::{parse_server_source, validate_server_module_sourc
 pub(crate) use source_types::{
     TypeRegistry, reference_fields_for_type, type_from_source_value, validate_shared_type_source,
 };
-pub(crate) use source_views::parse_views_file;
+pub(crate) use source_views::{ViewModuleCache, parse_views_file};
 pub(crate) use source_views::{validate_view_source, validate_view_store_source};
 
 #[cfg(test)]

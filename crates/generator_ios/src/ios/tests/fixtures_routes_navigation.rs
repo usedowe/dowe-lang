@@ -281,6 +281,10 @@ fn side_nav_icon() -> SideNavIcon {
                     height: "24".to_string(),
                 },
                 data: None,
+                icon_name: None,
+                icon_fallback: None,
+                icon_fill: None,
+                icon_stroke: None,
                 motion: None,
             },
         paths: vec![SvgPath {

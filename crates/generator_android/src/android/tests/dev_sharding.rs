@@ -13,10 +13,36 @@ fn dev_module_files(output: &AndroidOutput) -> BTreeMap<String, String> {
         .collect()
 }
 
+#[test]
+fn escapes_large_dynamic_icon_payloads_without_splitting_escape_pairs() {
+    let payload = "\\\\\"\n".repeat(10_000);
+    let expression = dev_java_payload_expression(&payload);
+    assert!(expression.starts_with("joinPayload("));
+    assert!(
+        expression
+            .trim_start_matches("joinPayload(")
+            .trim_end_matches(')')
+            .split(", ")
+            .map(|literal| literal.trim_matches('"'))
+            .all(|literal| {
+                literal
+                    .chars()
+                    .rev()
+                    .take_while(|character| *character == '\\')
+                    .count()
+                    % 2
+                    == 0
+            })
+    );
+}
+
 fn changed_dev_modules(before: &AndroidOutput, after: &AndroidOutput) -> Vec<String> {
     let before = dev_module_files(before);
     let after = dev_module_files(after);
-    assert_eq!(before.keys().collect::<Vec<_>>(), after.keys().collect::<Vec<_>>());
+    assert_eq!(
+        before.keys().collect::<Vec<_>>(),
+        after.keys().collect::<Vec<_>>()
+    );
     before
         .iter()
         .filter_map(|(name, content)| (after.get(name) != Some(content)).then(|| name.clone()))
@@ -244,7 +270,10 @@ fn partitions_large_page_route_methods() {
         .map(|(_, content)| content)
         .expect("route module");
 
-    assert_eq!(route.matches("private static void renderPagePart").count(), 80);
+    assert_eq!(
+        route.matches("private static void renderPagePart").count(),
+        80
+    );
     assert_eq!(route.matches("renderPagePart").count(), 160);
     assert!(route.contains("renderPagePart0(runtime, root);"));
     assert!(route.contains("renderPagePart79(runtime, root);"));

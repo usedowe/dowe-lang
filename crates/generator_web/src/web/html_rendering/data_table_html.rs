@@ -14,6 +14,28 @@ fn render_svg_html(props: &SvgProps, paths: &[SvgPath], context: &ReactiveRender
             )
         );
     }
+    if let Some(name) = props.icon_name.as_deref() {
+        let mut extra = format!(
+            r#" data-dowe-icon-name="{}""#,
+            escape_attr(&context.signal_path(name))
+        );
+        if let Some(fallback) = props.icon_fallback.as_deref() {
+            extra.push_str(&format!(
+                r#" data-dowe-icon-fallback="{}""#,
+                escape_attr(fallback)
+            ));
+        }
+        return format!(
+            r#"<svg{} xmlns="http://www.w3.org/2000/svg" viewBox="{}" aria-hidden="true"></svg>"#,
+            attrs(
+                svg_classes(&props.style),
+                Some(&props.style.element),
+                Some(&extra),
+                context
+            ),
+            escape_attr(&props.view_box.as_str())
+        );
+    }
     if let Some(motion) = &props.motion {
         if motion.animated {
             return render_svg_spinner_html(props, motion, context);

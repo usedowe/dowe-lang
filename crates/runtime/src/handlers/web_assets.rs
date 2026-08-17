@@ -199,10 +199,7 @@ fn render_page(page: &ViewPage) -> Response {
     )
 }
 
-pub(crate) fn inspector_selection_response(
-    project: &CompiledProject,
-    body: &Bytes,
-) -> Response {
+pub(crate) fn inspector_selection_response(project: &CompiledProject, body: &Bytes) -> Response {
     if body.len() > 64 * 1024 {
         return StatusCode::PAYLOAD_TOO_LARGE.into_response();
     }
@@ -273,8 +270,8 @@ fn safe_inspector_source_path(path: &str) -> bool {
             .all(|component| matches!(component, Component::Normal(_)))
 }
 
-fn dev_client_response(inspector_enabled: bool) -> Response {
-    javascript_response(dev_client_script(inspector_enabled))
+fn dev_client_response(inspector_enabled: bool, server_inspector_url: Option<&str>) -> Response {
+    javascript_response(dev_client_script(inspector_enabled, server_inspector_url))
 }
 
 pub(crate) fn javascript_response(content: String) -> Response {
@@ -432,15 +429,27 @@ fn inject_dev_client(html: &str) -> String {
     }
 }
 
-fn dev_client_script(inspector_enabled: bool) -> String {
+fn dev_client_script(inspector_enabled: bool, server_inspector_url: Option<&str>) -> String {
     let refresh = if inspector_enabled {
         "window.__doweInspectorRefresh?.();"
     } else {
         ""
     };
-    let hmr = format!(r#"const protocol=location.protocol==="https:"?"wss":"ws";let active=true;function connect(){{if(!active)return;const socket=new WebSocket(`${{protocol}}://${{location.host}}/_dowe/dev/ws`);socket.onmessage=async(event)=>{{try{{const message=JSON.parse(event.data);if(message.type==="module_update"&&message.target==="web"){{if(typeof window.__doweHotUpdate==="function"){{try{{await window.__doweHotUpdate(message.version||"");{refresh}return;}}catch(error){{}}}}location.reload();}}if(message.type==="reload"&&(message.target==="web"||message.target==="desktop"))location.reload();if(message.type==="shutdown")active=false;}}catch(error){{}}}};socket.onclose=()=>{{if(active)setTimeout(connect,250);}};}}connect();"#);
+    let hmr = format!(
+        r#"const protocol=location.protocol==="https:"?"wss":"ws";let active=true;function connect(){{if(!active)return;const socket=new WebSocket(`${{protocol}}://${{location.host}}/_dowe/dev/ws`);socket.onmessage=async(event)=>{{try{{const message=JSON.parse(event.data);if(message.type==="module_update"&&message.target==="web"){{if(typeof window.__doweHotUpdate==="function"){{try{{await window.__doweHotUpdate(message.version||"");{refresh}return;}}catch(error){{}}}}location.reload();}}if(message.type==="reload"&&(message.target==="web"||message.target==="desktop"))location.reload();if(message.type==="shutdown")active=false;}}catch(error){{}}}};socket.onclose=()=>{{if(active)setTimeout(connect,250);}};}}connect();"#
+    );
     if inspector_enabled {
-        format!("{hmr}\n{}", include_str!("../dev_inspector_client.js"))
+        let icon = serde_json::to_string(include_str!("../dowe_inspector_icon.svg"))
+            .expect("Dowe inspector icon must be JSON encodable");
+        let server_inspector_url = server_inspector_url
+            .map(|url| {
+                serde_json::to_string(url).expect("Server inspector URL must be JSON encodable")
+            })
+            .unwrap_or_else(|| "null".to_string());
+        let client = include_str!("../dev_inspector_client.js")
+            .replace("\"__DOWE_INSPECTOR_ICON_SVG__\"", &icon)
+            .replace("\"__DOWE_SERVER_INSPECTOR_URL__\"", &server_inspector_url);
+        format!("{hmr}\n{client}")
     } else {
         hmr.to_string()
     }
@@ -469,14 +478,34 @@ mod project_asset_tests {
 
     #[test]
     fn inspector_client_is_only_included_for_dev_web_output() {
-        let inspector = dev_client_script(true);
+        let inspector = dev_client_script(true, Some("http://127.0.0.1:8081/_dowe/dev/server/"));
         assert!(inspector.contains("Dowe inspect"));
         assert!(inspector.contains("setPointerCapture"));
         assert!(inspector.contains("dowe-inspector-position"));
         assert!(inspector.contains("left:\"16px\""));
         assert!(inspector.contains("right:\"auto\""));
-        assert!(!dev_client_script(false).contains("Dowe inspect"));
-        assert!(!dev_client_script(false).contains("Inspector"));
+        assert!(inspector.contains("Number.isFinite(top)"));
+        assert!(inspector.contains("dowe-inspector-enabled"));
+        assert!(inspector.contains("dowe-inspector-hidden"));
+        assert!(inspector.contains("dowe-inspector-panel-open"));
+        assert!(inspector.contains("KeyD"));
+        assert!(inspector.contains("KeyR"));
+        assert!(inspector.contains("#1f3a5f"));
+        assert!(inspector.contains("#6bc670"));
+        assert!(inspector.contains("rgb(31,58,95)"));
+        assert!(!inspector.contains("__DOWE_INSPECTOR_ICON_SVG__"));
+        assert!(inspector.contains("function solarIcon"));
+        assert!(inspector.contains("Open Dowe Server Inspector"));
+        assert!(inspector.contains("http://127.0.0.1:8081/_dowe/dev/server/"));
+        assert!(inspector.contains("aria-label"));
+        assert!(inspector.contains("Routes"));
+        assert!(inspector.contains("Show details"));
+        assert!(inspector.contains("loadManifest();"));
+        assert!(!inspector.contains("inspectorPreview"));
+        assert!(!inspector.contains("<iframe"));
+        assert!(dev_client_script(true, None).contains("const SERVER_INSPECTOR_URL=null;"));
+        assert!(!dev_client_script(false, None).contains("Dowe inspect"));
+        assert!(!dev_client_script(false, None).contains("Inspector"));
         assert!(safe_inspector_source_path("views/pages/home.dowe"));
         assert!(!safe_inspector_source_path(""));
         assert!(!safe_inspector_source_path("../main.dowe"));

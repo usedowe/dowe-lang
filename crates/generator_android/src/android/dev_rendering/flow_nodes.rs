@@ -185,11 +185,18 @@ fn render_dev_android_flow_node(
             body_props.spacing = dowe_components::section_content_spacing(&props.spacing);
             apply_dev_android_style(&body_props, &body, false, output);
             output.push_str(&dev_add(&view, &body, None, false));
+            let section_gap = dev_optional_gap(props.gap.as_ref(), false);
+            if let Some(center) = props.center.as_ref() {
+                output.push_str(&format!(
+                    "        {body}.setGravity(Boolean.TRUE.equals({}) ? Gravity.TOP | Gravity.CENTER_HORIZONTAL : Gravity.TOP | Gravity.START);\n",
+                    dev_bool_value(center)
+                ));
+            }
             for child in children {
                 render_dev_android_node(
                     child,
                     &body,
-                    None,
+                    section_gap.as_deref(),
                     false,
                     counter,
                     output,

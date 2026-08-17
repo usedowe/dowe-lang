@@ -8,8 +8,19 @@ use std::path::Path;
 pub fn document_symbols(root: &Path, document: &LanguageDocument) -> Vec<LanguageDocumentSymbol> {
     let root = document_workspace_root(root, &document.path);
     parse_source_file(&root, &document.path, document.source.clone())
-        .map(|file| file.nodes.iter().filter_map(symbol_for_node).collect())
+        .map(|file| symbols_for_nodes(&file.nodes))
         .unwrap_or_default()
+}
+
+fn symbols_for_nodes(nodes: &[SourceNode]) -> Vec<LanguageDocumentSymbol> {
+    nodes
+        .iter()
+        .flat_map(|node| {
+            symbol_for_node(node)
+                .map(|symbol| vec![symbol])
+                .unwrap_or_else(|| symbols_for_nodes(&node.children))
+        })
+        .collect()
 }
 
 fn symbol_for_node(node: &SourceNode) -> Option<LanguageDocumentSymbol> {
@@ -21,7 +32,7 @@ fn symbol_for_node(node: &SourceNode) -> Option<LanguageDocumentSymbol> {
         kind,
         range,
         selection_range: range,
-        children: node.children.iter().filter_map(symbol_for_node).collect(),
+        children: symbols_for_nodes(&node.children),
     })
 }
 

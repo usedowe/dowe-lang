@@ -56,9 +56,25 @@ fn lower_export_tree_with_stores(
                         "a layout or page accepts only one root `Splash`",
                     ));
                 }
-                splash_node = Some(child.clone());
+                let mut splash = child.clone();
+                extract_nested_view_constants(
+                    &mut splash,
+                    &node.name,
+                    &scope_name,
+                    &mut constants,
+                )?;
+                splash_node = Some(splash);
             }
-            _ => visual_nodes.push(child.clone()),
+            _ => {
+                let mut visual_node = child.clone();
+                extract_nested_view_constants(
+                    &mut visual_node,
+                    &node.name,
+                    &scope_name,
+                    &mut constants,
+                )?;
+                visual_nodes.push(visual_node);
+            }
         }
     }
 
@@ -104,6 +120,26 @@ fn lower_export_tree_with_stores(
             children,
         })
     }
+}
+
+fn extract_nested_view_constants(
+    node: &mut SourceNode,
+    scope_kind: &str,
+    scope_name: &str,
+    constants: &mut Vec<ViewConstant>,
+) -> DoweResult<()> {
+    let children = std::mem::take(&mut node.children);
+    let mut retained = Vec::with_capacity(children.len());
+    for mut child in children {
+        if child.name == "const" {
+            constants.push(parse_constant(&child, scope_kind, scope_name)?);
+        } else {
+            extract_nested_view_constants(&mut child, scope_kind, scope_name, constants)?;
+            retained.push(child);
+        }
+    }
+    node.children = retained;
+    Ok(())
 }
 
 fn lower_splash_boundary(

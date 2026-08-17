@@ -20,9 +20,11 @@ body {
 }
 .dowe-text {
   color:var(--dowe-content-text,var(--dowe-backgroundText));
+  white-space:pre-line;
 }
 .dowe-title {
   color:var(--dowe-content-title,var(--dowe-backgroundTitle));
+  white-space:pre-line;
 }
 p,h1,h2,h3,h4,h5,h6 {
   margin:0;

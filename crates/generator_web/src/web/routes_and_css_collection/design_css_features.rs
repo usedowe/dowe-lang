@@ -1,6 +1,7 @@
 #[derive(Clone, Copy, Default)]
 struct DesignCssFeatures {
     content: bool,
+    section_center: bool,
     forms: bool,
     media: bool,
     visualization: bool,
@@ -14,6 +15,7 @@ impl DesignCssFeatures {
     fn all() -> Self {
         Self {
             content: true,
+            section_center: true,
             forms: true,
             media: true,
             visualization: true,
@@ -37,6 +39,9 @@ impl DesignCssFeatures {
     }
 
     fn observe(&mut self, node: &ViewNode) {
+        if let ViewNode::Section { props, .. } = node {
+            self.section_center |= props.center.is_some();
+        }
         self.content |= matches!(
             node,
             ViewNode::Code { .. }

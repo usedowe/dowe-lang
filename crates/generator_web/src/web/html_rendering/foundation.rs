@@ -154,6 +154,14 @@ fn render_html_with_context(
     children_html: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
+    with_view_inspector_node(|| render_html_node_with_context(node, children_html, context))
+}
+
+fn render_html_node_with_context(
+    node: &ViewNode,
+    children_html: Option<&str>,
+    context: &ReactiveRenderContext,
+) -> String {
     match node {
         ViewNode::Scope {
             constants,

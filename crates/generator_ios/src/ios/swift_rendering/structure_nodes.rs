@@ -104,6 +104,7 @@ fn render_swift_structure_node(
         }
         ViewNode::Section { props, children } => {
             let current_font = props.font.as_ref().or(inherited_font);
+            let section_spacing = swift_section_vertical_spacing(props.gap.as_ref());
             if props.cover.is_some() {
                 output.push_str(&format!("{pad}ZStack(alignment: .topLeading) {{\n"));
                 output.push_str(&format!(
@@ -117,7 +118,8 @@ fn render_swift_structure_node(
                     ));
                 }
                 output.push_str(&format!(
-                    "{pad}    VStack(alignment: .leading, spacing: 0) {{\n"
+                    "{pad}    VStack(alignment: {}, spacing: {section_spacing}) {{\n",
+                    swift_section_horizontal_alignment(props.center.as_ref())
                 ));
                 for child in children {
                     render_swift_node_in_flow(
@@ -140,7 +142,8 @@ fn render_swift_structure_node(
                     swift_section_background_value(background)
                 ));
                 output.push_str(&format!(
-                    "{pad}    VStack(alignment: .leading, spacing: 0) {{\n"
+                    "{pad}    VStack(alignment: {}, spacing: {section_spacing}) {{\n",
+                    swift_section_horizontal_alignment(props.center.as_ref())
                 ));
                 for child in children {
                     render_swift_node_in_flow(
@@ -158,7 +161,8 @@ fn render_swift_structure_node(
                 output.push_str(&format!("{pad}}}\n"));
             } else {
                 output.push_str(&format!(
-                    "{pad}VStack(alignment: .leading, spacing: 0) {{\n"
+                    "{pad}VStack(alignment: {}, spacing: {section_spacing}) {{\n",
+                    swift_section_horizontal_alignment(props.center.as_ref())
                 ));
                 for child in children {
                     render_swift_node_in_flow(

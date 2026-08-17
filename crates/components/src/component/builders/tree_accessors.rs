@@ -2,10 +2,7 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
     match node {
         ViewNode::Splash {
             content, children, ..
-        } => content
-            .iter()
-            .chain(children)
-            .find_map(first_text),
+        } => content.iter().chain(children).find_map(first_text),
         ViewNode::Scope { children, .. } | ViewNode::Each { children, .. } => {
             children.iter().find_map(first_text)
         }
@@ -109,20 +106,14 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .chain(bottom)
             .find_map(first_text),
         ViewNode::BottomBar { tabs, .. } => tabs.first().map(|tab| tab.label.clone()),
-        ViewNode::SideNav { items, .. } => {
-            items.iter().find_map(side_nav_first_text)
-        }
+        ViewNode::SideNav { items, .. } => items.iter().find_map(side_nav_first_text),
         ViewNode::RailNav { items, .. } => items.iter().find_map(rail_nav_first_text),
         ViewNode::Sidebar {
             header,
             body,
             footer,
             ..
-        } => header
-            .iter()
-            .chain(body)
-            .chain(footer)
-            .find_map(first_text),
+        } => header.iter().chain(body).chain(footer).find_map(first_text),
         ViewNode::Scaffold {
             app_bar,
             start,
@@ -183,7 +174,11 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .or_else(|| options.first().map(|option| option.label.clone())),
         ViewNode::CsvField { props, columns } => Some(props.button_text.clone())
             .or_else(|| columns.first().map(|column| column.name.clone())),
-        ViewNode::DragDrop { props, items, groups } => items
+        ViewNode::DragDrop {
+            props,
+            items,
+            groups,
+        } => items
             .first()
             .and_then(|item| item.label.clone().or_else(|| Some(item.id.clone())))
             .or_else(|| groups.first().and_then(|group| group.title.clone()))
@@ -263,9 +258,7 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         ViewNode::Audio { props } => Some(&props.style.element),
         ViewNode::Image { props } => Some(&props.style.element),
         ViewNode::Camera { props } => Some(&props.style.element),
-        ViewNode::Microphone { props } => {
-            Some(&props.style.element)
-        }
+        ViewNode::Microphone { props } => Some(&props.style.element),
         ViewNode::Accordion { props, .. } => Some(&props.style.element),
         ViewNode::Carousel { props, .. } => Some(&props.style.element),
         ViewNode::Checkbox { props } => Some(&props.style.element),
@@ -296,12 +289,8 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         | ViewNode::Footer { props, .. }
         | ViewNode::BottomBar { props, .. } => Some(&props.style.element),
         ViewNode::SideNav { props, .. } => Some(&props.style.element),
-        ViewNode::RailNav { props, .. } => {
-            Some(&props.style.element)
-        }
-        ViewNode::Sidebar { props, .. } => {
-            Some(&props.style.element)
-        }
+        ViewNode::RailNav { props, .. } => Some(&props.style.element),
+        ViewNode::Sidebar { props, .. } => Some(&props.style.element),
         ViewNode::Scaffold { props, .. } => Some(&props.style.element),
         ViewNode::Drawer { props, .. } => Some(&props.style.element),
         ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => Some(&props.style.element),
@@ -501,9 +490,125 @@ pub fn node_child_groups(node: &ViewNode) -> Vec<&[ViewNode]> {
     }
 }
 
+pub fn node_child_groups_mut(node: &mut ViewNode) -> Vec<&mut [ViewNode]> {
+    match node {
+        ViewNode::Splash {
+            content, children, ..
+        } => vec![content.as_mut_slice(), children.as_mut_slice()],
+        ViewNode::AppBar {
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        }
+        | ViewNode::Footer {
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        } => vec![
+            top.as_mut_slice(),
+            start.as_mut_slice(),
+            center.as_mut_slice(),
+            end.as_mut_slice(),
+            bottom.as_mut_slice(),
+        ],
+        ViewNode::Tabs { tabs, .. } => tabs
+            .iter_mut()
+            .map(|tab| tab.children.as_mut_slice())
+            .collect(),
+        ViewNode::NavMenu { items, .. } => items
+            .iter_mut()
+            .filter_map(nav_menu_child_group_mut)
+            .collect(),
+        ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        }
+        | ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        }
+        | ViewNode::Modal {
+            header,
+            body,
+            footer,
+            ..
+        } => vec![
+            header.as_mut_slice(),
+            body.as_mut_slice(),
+            footer.as_mut_slice(),
+        ],
+        ViewNode::Dropdown {
+            trigger,
+            header,
+            footer,
+            ..
+        } => vec![
+            trigger.as_mut_slice(),
+            header.as_mut_slice(),
+            footer.as_mut_slice(),
+        ],
+        ViewNode::Accordion { items, .. } => items
+            .iter_mut()
+            .map(|item| item.children.as_mut_slice())
+            .collect(),
+        ViewNode::Carousel { slides, .. } => slides
+            .iter_mut()
+            .map(|slide| slide.children.as_mut_slice())
+            .collect(),
+        ViewNode::Scaffold {
+            app_bar,
+            start,
+            main,
+            end,
+            bottom_bar,
+            overlays,
+            ..
+        } => vec![
+            app_bar.as_mut_slice(),
+            start.as_mut_slice(),
+            main.as_mut_slice(),
+            end.as_mut_slice(),
+            bottom_bar.as_mut_slice(),
+            overlays.as_mut_slice(),
+        ],
+        ViewNode::Scope { children, .. }
+        | ViewNode::Each { children, .. }
+        | ViewNode::Box { children, .. }
+        | ViewNode::Section { children, .. }
+        | ViewNode::Flex { children, .. }
+        | ViewNode::Grid { children, .. }
+        | ViewNode::Card { children, .. }
+        | ViewNode::Badge { children, .. }
+        | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
+        | ViewNode::Collapsible { children, .. }
+        | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
+        | ViewNode::Button { children, .. } => vec![children.as_mut_slice()],
+        _ => Vec::new(),
+    }
+}
+
 fn nav_menu_child_group(item: &NavMenuItem) -> Option<&[ViewNode]> {
     match item {
         NavMenuItem::Megamenu { content, .. } => Some(content.as_slice()),
+        NavMenuItem::Item(_) | NavMenuItem::Submenu { .. } => None,
+    }
+}
+
+fn nav_menu_child_group_mut(item: &mut NavMenuItem) -> Option<&mut [ViewNode]> {
+    match item {
+        NavMenuItem::Megamenu { content, .. } => Some(content.as_mut_slice()),
         NavMenuItem::Item(_) | NavMenuItem::Submenu { .. } => None,
     }
 }

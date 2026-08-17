@@ -28,6 +28,8 @@ pub struct StyleProps {
     pub cover: Option<ResponsiveValue<CoverSource>>,
     pub overlay: Option<ResponsiveValue<OverlayPaint>>,
     pub background: Option<ResponsiveValue<SectionBackground>>,
+    pub center: Option<ResponsiveValue<bool>>,
+    pub gap: Option<ResponsiveValue<GapValue>>,
     pub boxed: bool,
     pub extras: Option<Box<StyleExtras>>,
     pub spacing: SpacingProps,

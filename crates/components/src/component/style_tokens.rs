@@ -36,8 +36,101 @@ pub const TAILWIND_SCALE: &[ScaleValue] = &[
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContainerSize {
+    Sm,
+    Md,
+    Lg,
+    Xl,
+    TwoXl,
+    ThreeXl,
+    FourXl,
+    FiveXl,
+    SixXl,
+    SevenXl,
+}
+
+impl ContainerSize {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            "2xl" => Some(Self::TwoXl),
+            "3xl" => Some(Self::ThreeXl),
+            "4xl" => Some(Self::FourXl),
+            "5xl" => Some(Self::FiveXl),
+            "6xl" => Some(Self::SixXl),
+            "7xl" => Some(Self::SevenXl),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+            Self::TwoXl => "2xl",
+            Self::ThreeXl => "3xl",
+            Self::FourXl => "4xl",
+            Self::FiveXl => "5xl",
+            Self::SixXl => "6xl",
+            Self::SevenXl => "7xl",
+        }
+    }
+
+    pub fn scale_value(self) -> ScaleValue {
+        ScaleValue::from_half_steps(match self {
+            Self::Sm => 192,
+            Self::Md => 224,
+            Self::Lg => 256,
+            Self::Xl => 288,
+            Self::TwoXl => 336,
+            Self::ThreeXl => 384,
+            Self::FourXl => 448,
+            Self::FiveXl => 512,
+            Self::SixXl => 576,
+            Self::SevenXl => 640,
+        })
+    }
+
+    pub fn css_rem(self) -> &'static str {
+        match self {
+            Self::Sm => "24rem",
+            Self::Md => "28rem",
+            Self::Lg => "32rem",
+            Self::Xl => "36rem",
+            Self::TwoXl => "42rem",
+            Self::ThreeXl => "48rem",
+            Self::FourXl => "56rem",
+            Self::FiveXl => "64rem",
+            Self::SixXl => "72rem",
+            Self::SevenXl => "80rem",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Sm,
+            Self::Md,
+            Self::Lg,
+            Self::Xl,
+            Self::TwoXl,
+            Self::ThreeXl,
+            Self::FourXl,
+            Self::FiveXl,
+            Self::SixXl,
+            Self::SevenXl,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SizeValue {
     Scale(ScaleValue),
+    Container(ContainerSize),
     Full,
     ViewportMinus(ScaleValue),
 }
@@ -354,13 +447,7 @@ impl ViewGesture {
     }
 
     pub fn all() -> &'static [Self] {
-        &[
-            Self::None,
-            Self::Lift,
-            Self::Press,
-            Self::Grow,
-            Self::Tilt,
-        ]
+        &[Self::None, Self::Lift, Self::Press, Self::Grow, Self::Tilt]
     }
 }
 
@@ -603,6 +690,39 @@ impl Align {
             Self::Stretch,
             Self::Baseline,
         ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextAlign {
+    Start,
+    Center,
+    End,
+    Justify,
+}
+
+impl TextAlign {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "start" => Some(Self::Start),
+            "center" => Some(Self::Center),
+            "end" => Some(Self::End),
+            "justify" => Some(Self::Justify),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Start => "start",
+            Self::Center => "center",
+            Self::End => "end",
+            Self::Justify => "justify",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Start, Self::Center, Self::End, Self::Justify]
     }
 }
 

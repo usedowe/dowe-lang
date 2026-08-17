@@ -55,6 +55,7 @@ fn render_dev_android_display_text_svg_node(
                 dev_font_value(props.style.font.as_ref().or(inherited_font))
             ));
             apply_dev_android_style(&props.style, &view, false, output);
+            apply_dev_text_alignment(props, &view, parent_horizontal, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::Text { props, value } => {
@@ -70,6 +71,7 @@ fn render_dev_android_display_text_svg_node(
                 dev_font_value(props.style.font.as_ref().or(inherited_font))
             ));
             apply_dev_android_style(&props.style, &view, false, output);
+            apply_dev_text_alignment(props, &view, parent_horizontal, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::Alert { props } => {
@@ -134,6 +136,31 @@ fn render_dev_android_display_text_svg_node(
                 output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
                 return;
             }
+            if let Some(name) = props.icon_name.as_deref() {
+                let name_expression = if let Some(item) = context.item_value(name) {
+                    let path = context.item_path(name).unwrap_or_else(|| name.to_string());
+                    format!(
+                        "doweTextValue(\"{}\", {item})",
+                        escape_java(&path)
+                    )
+                } else {
+                    format!(
+                        "doweTextValue(\"{}\", null)",
+                        escape_java(&context.signal_path(name))
+                    )
+                };
+                let fallback = props.icon_fallback.as_deref().unwrap_or_default();
+                output.push_str(&format!(
+                    "        DoweSvgView {view} = doweRuntimeSvg(doweDynamicIconPayload({name_expression}, \"{}\"), {}, {});\n        if ({view} == null) {view} = new DoweSvgView(this, 0f, 0f, 24f, 24f, {}, new ArrayList<>(), false);\n",
+                    escape_java(fallback),
+                    dev_dynamic_icon_color(props, inherited_color.as_deref()),
+                    props.is_animated(),
+                    dev_dynamic_icon_color(props, inherited_color.as_deref())
+                ));
+                apply_dev_android_style(&props.style, &view, false, output);
+                output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+                return;
+            }
             let paths_name = format!("{view}Paths");
             output.push_str(&format!(
                 "        ArrayList<DoweSvgPathEntry> {paths_name} = new ArrayList<>();\n"
@@ -162,4 +189,13 @@ fn render_dev_android_display_text_svg_node(
         }
         _ => {}
     }
+}
+
+fn dev_dynamic_icon_color(props: &SvgProps, inherited_color: Option<&str>) -> String {
+    props
+        .icon_fill
+        .or(props.icon_stroke)
+        .map(java_color)
+        .map(str::to_string)
+        .unwrap_or_else(|| dev_svg_color(&props.style, inherited_color))
 }

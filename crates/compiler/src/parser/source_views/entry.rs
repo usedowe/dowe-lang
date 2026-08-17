@@ -1,6 +1,6 @@
 #[derive(Default)]
 struct BuiltViews {
-    chunks: Vec<dowe_generator_web::GeneratedChunk>,
+    chunks: Vec<Arc<dowe_generator_web::GeneratedChunk>>,
     outputs: PlatformRouteOutputs,
 }
 
@@ -20,8 +20,10 @@ pub fn parse_views_file(
         design_config,
         ViewPlatform::all(),
         false,
+        None,
+        None,
     )?;
-    finalize_built_views(root, &file.path, built, translations)
+    finalize_built_views(root, &file.path, built, translations, None)
 }
 
 fn build_views_declarations(
@@ -32,6 +34,8 @@ fn build_views_declarations(
     design_config: &DesignConfig,
     selected_platforms: &[ViewPlatform],
     dev_inspector: bool,
+    module_cache: Option<&mut ViewModuleCache>,
+    previous: Option<PreviousViewOutputs<'_>>,
 ) -> DoweResult<BuiltViews> {
     let imports = view_imports(root, file)?;
     let used = declarations
@@ -52,6 +56,8 @@ fn build_views_declarations(
         views_path: &file.path,
         imports,
         modules: HashMap::new(),
+        module_chunks: HashMap::new(),
+        module_cache,
         components: HashMap::new(),
         inspector_usages: HashMap::new(),
         component_stack: Vec::new(),
@@ -62,6 +68,7 @@ fn build_views_declarations(
         design_config,
         selected_platforms,
         dev_inspector,
+        previous,
     };
 
     for declaration in declarations {
@@ -79,6 +86,7 @@ fn finalize_built_views(
     diagnostic_path: &Path,
     built: BuiltViews,
     translations: &TranslationCatalog,
+    previous: Option<PreviousViewOutputs<'_>>,
 ) -> DoweResult<ParsedViews> {
     let BuiltViews { chunks, outputs } = built;
     let PlatformRouteOutputs {
@@ -99,8 +107,20 @@ fn finalize_built_views(
     };
     validate_view_i18n_keys(diagnostic_path, &routes, translations)?;
     let translation_chunks = build_translation_chunks(root, translations);
-    let web = web_output_for(web.pages, &chunks, &translation_chunks, translations);
-    let desktop_web = web_output_for(desktop.pages, &chunks, &translation_chunks, translations);
+    let web = web_output_for(
+        web.pages,
+        &chunks,
+        &translation_chunks,
+        translations,
+        previous.map(|previous| previous.web),
+    );
+    let desktop_web = web_output_for(
+        desktop.pages,
+        &chunks,
+        &translation_chunks,
+        translations,
+        previous.map(|previous| previous.desktop_web),
+    );
     Ok(ParsedViews {
         web,
         desktop_web,
@@ -116,6 +136,8 @@ pub fn parse_views_entry(
     design_config: &DesignConfig,
     selected_platforms: &[ViewPlatform],
     dev_inspector: bool,
+    mut module_cache: Option<&mut ViewModuleCache>,
+    previous: Option<PreviousViewOutputs<'_>>,
 ) -> DoweResult<ParsedViews> {
     let main = single_main(file)?;
     let views_child = main.children.iter().find(|child| child.name == "views");
@@ -146,10 +168,12 @@ pub fn parse_views_entry(
                 design_config,
                 selected_platforms,
                 dev_inspector,
+                module_cache.as_deref_mut(),
+                previous,
             )?;
             merge_built_views(&mut combined, built, &module_file.path)?;
         }
-        return finalize_built_views(root, &file.path, combined, translations);
+        return finalize_built_views(root, &file.path, combined, translations, previous);
     }
     let declarations = views_node
         .children
@@ -164,8 +188,10 @@ pub fn parse_views_entry(
         design_config,
         selected_platforms,
         dev_inspector,
+        module_cache,
+        previous,
     )?;
-    finalize_built_views(root, &file.path, built, translations)
+    finalize_built_views(root, &file.path, built, translations, previous)
 }
 
 fn merge_built_views(target: &mut BuiltViews, source: BuiltViews, path: &Path) -> DoweResult<()> {
@@ -257,6 +283,8 @@ pub(crate) fn validate_view_source(
         views_path: &file.path,
         imports: HashMap::new(),
         modules: HashMap::new(),
+        module_chunks: HashMap::new(),
+        module_cache: None,
         components: HashMap::new(),
         inspector_usages: HashMap::new(),
         component_stack: Vec::new(),
@@ -267,6 +295,7 @@ pub(crate) fn validate_view_source(
         design_config: &design_config,
         selected_platforms: ViewPlatform::all(),
         dev_inspector: false,
+        previous: None,
     };
     let root_node = context.expand_export_node(root_node, &imports)?;
     match root_node.name.as_str() {

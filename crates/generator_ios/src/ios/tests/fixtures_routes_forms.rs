@@ -123,6 +123,10 @@ fn parity_route() -> ViewRoute {
                                     height: "24".to_string(),
                                 },
                                 data: None,
+                                icon_name: None,
+                                icon_fallback: None,
+                                icon_fill: None,
+                                icon_stroke: None,
                                 motion: None,
                             },
                             paths: vec![SvgPath {
@@ -196,6 +200,10 @@ fn control_icon(data: &str) -> SideNavIcon {
                 height: "24".to_string(),
             },
             data: None,
+            icon_name: None,
+            icon_fallback: None,
+            icon_fill: None,
+            icon_stroke: None,
             motion: None,
         },
         paths: vec![SvgPath {

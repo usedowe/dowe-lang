@@ -32,6 +32,35 @@ struct DoweTitleColorModifier: ViewModifier {
     }
 }
 
+enum DoweTextAlignment {
+    case start
+    case center
+    case end
+    case justify
+}
+
+private func doweJustifiedAttributedText(_ value: String) -> AttributedString {
+    var attributed = AttributedString(value)
+    let paragraphStyle = NSMutableParagraphStyle()
+    paragraphStyle.alignment = .justified
+    attributed.paragraphStyle = paragraphStyle
+    return attributed
+}
+
+@ViewBuilder
+func doweText(_ value: String, alignment: DoweTextAlignment) -> some View {
+    switch alignment {
+    case .start:
+        Text(verbatim: value).multilineTextAlignment(.leading)
+    case .center:
+        Text(verbatim: value).multilineTextAlignment(.center)
+    case .end:
+        Text(verbatim: value).multilineTextAlignment(.trailing)
+    case .justify:
+        Text(doweJustifiedAttributedText(value))
+    }
+}
+
 struct DoweShadowSpec {
     let color: Color
     let blurRadius: CGFloat

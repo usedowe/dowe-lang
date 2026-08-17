@@ -1,11 +1,11 @@
 use crate::dev_targets::{cancel_active_external_commands, start_external_target};
 use crate::dev_watch::run_watch_loop;
 use crate::error::{RuntimeError, RuntimeResult};
-use crate::logging::LoadingStatus;
+use crate::logging::{LoadingStatus, log_info};
 use crate::server::{DevServerTargets, RunningDevServers, start_dev_servers};
 use dowe_compiler::{
-    CompiledProject, ProjectCapabilities, ViewPlatform, compile_dev_for_platforms,
-    compile_dev_views_for_platforms, inspect_project_capabilities,
+    CompiledProject, DevCompilerSession, ProjectCapabilities, ViewPlatform,
+    inspect_project_capabilities,
 };
 use dowe_spawn::{ChildProcess, ProcessControl, SpawnConfig, run};
 use futures_util::stream::{FuturesUnordered, StreamExt};
@@ -15,6 +15,7 @@ use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::time::Duration;
 
@@ -512,6 +513,7 @@ pub struct RunningDevSession {
     pub root: PathBuf,
     pub targets: DevTargetSelection,
     pub servers: RunningDevServers,
+    compiler: DevCompilerSession,
     external_processes: Vec<RunningExternalProcess>,
     external_cleanups: Vec<RunningExternalCleanup>,
 }
@@ -555,15 +557,32 @@ pub async fn run_dev_with_options(
     selection: DevTargetSelection,
     options: DevRunOptions,
 ) -> RuntimeResult<()> {
+    let root = root.as_ref();
     let platforms = selected_view_platforms(&selection);
-    let project =
-        if selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop) {
-            compile_dev_for_platforms(root, platforms)
-        } else {
-            compile_dev_views_for_platforms(root, platforms)
+    let mut compiler = DevCompilerSession::new(root, platforms).map_err(RuntimeError::from)?;
+    let defer_apps = selection.contains(DevTarget::Desktop)
+        || selection.contains(DevTarget::Android)
+        || selection.contains(DevTarget::Ios);
+    let mut project = if defer_apps {
+        compiler.compile_initial_web(
+            selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop),
+        )
+    } else {
+        compiler.compile_initial(
+            selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop),
+        )
+    }
+    .map_err(RuntimeError::from)?;
+    if !selection.contains(DevTarget::Server) {
+        project.server_inspector = None;
+        let inspector_root = project.root.join(".dowe/server");
+        if inspector_root.exists() {
+            fs::remove_dir_all(&inspector_root)
+                .map_err(|error| RuntimeError::new(error.to_string()))?;
         }
-        .map_err(RuntimeError::from)?;
-    let session = start_dev_session_with_options(project, selection, options).await?;
+    }
+    let session =
+        start_dev_session_with_compiler_options(project, selection, options, compiler).await?;
     session.wait().await
 }
 
@@ -593,15 +612,68 @@ pub async fn start_dev_session_with_options(
     selection: DevTargetSelection,
     options: DevRunOptions,
 ) -> RuntimeResult<RunningDevSession> {
+    let compiler = DevCompilerSession::new(&project.root, selected_view_platforms(&selection))
+        .map_err(RuntimeError::from)?;
+    start_dev_session_with_compiler_options(project, selection, options, compiler).await
+}
+
+async fn start_dev_session_with_compiler_options(
+    mut project: CompiledProject,
+    selection: DevTargetSelection,
+    options: DevRunOptions,
+    compiler: DevCompilerSession,
+) -> RuntimeResult<RunningDevSession> {
+    if !selection.contains(DevTarget::Server) {
+        project.server_inspector = None;
+        let inspector_root = project.root.join(".dowe/server");
+        if inspector_root.exists() {
+            fs::remove_dir_all(&inspector_root)
+                .map_err(|error| RuntimeError::new(error.to_string()))?;
+        }
+    }
     let server_targets = dev_server_targets(&selection);
     let servers = match start_dev_servers(project.clone(), server_targets).await {
         Ok(servers) => servers,
         Err(error) => return Err(error),
     };
+    if project.apps.files.is_empty()
+        && (selection.contains(DevTarget::Desktop)
+            || selection.contains(DevTarget::Android)
+            || selection.contains(DevTarget::Ios))
+    {
+        log_info("Native app artifacts generating in parallel");
+        let compiler_for_apps = compiler.clone();
+        let mut project_for_apps = project.clone();
+        let app_result = tokio::task::spawn_blocking(move || {
+            compiler_for_apps
+                .complete_dev_app_outputs(&mut project_for_apps)
+                .map(|()| project_for_apps)
+        })
+        .await;
+        match app_result {
+            Ok(Ok(completed)) => {
+                project = completed;
+                log_info("Native app artifacts ready");
+                let state = servers.runtime_state();
+                *state.project.write().await = Arc::new(project.clone());
+            }
+            Ok(Err(error)) => {
+                let _ = servers.shutdown().await;
+                return Err(RuntimeError::from(error));
+            }
+            Err(error) => {
+                let _ = servers.shutdown().await;
+                return Err(RuntimeError::new(format!(
+                    "initial native app generation failed: {error}"
+                )));
+            }
+        }
+    }
     let mut session = RunningDevSession {
         root: project.root.clone(),
         targets: selection.clone(),
         servers,
+        compiler,
         external_processes: Vec::new(),
         external_cleanups: Vec::new(),
     };
@@ -803,14 +875,20 @@ impl RunningDevSession {
             root,
             targets,
             servers,
+            compiler,
             mut external_processes,
             external_cleanups,
             ..
         } = self;
         let state = servers.runtime_state();
         let (stop_sender, stop_receiver) = oneshot::channel();
-        let watch_handle =
-            tokio::spawn(run_watch_loop(root, targets.clone(), state, stop_receiver));
+        let watch_handle = tokio::spawn(run_watch_loop(
+            root,
+            targets.clone(),
+            state,
+            compiler,
+            stop_receiver,
+        ));
 
         let mut result = if servers.has_any() {
             let server_result = servers.wait().await;

@@ -44,6 +44,10 @@ fn namespaces_persist_queues_bindings_and_publications() {
     assert_eq!(queues[0].bindings, vec!["orders.*"]);
     assert_eq!(queues[0].ready, 1);
     assert_eq!(
+        reopened.inspect_messages("workers", 10).expect("messages")[0].topic,
+        "orders.created"
+    );
+    assert_eq!(
         list_namespaces(root.path()).expect("namespaces"),
         vec!["orders"]
     );

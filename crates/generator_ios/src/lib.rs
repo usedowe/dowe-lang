@@ -1,4 +1,5 @@
 include!("ios/artifacts.rs");
+include!("ios/dynamic_icon_catalog.rs");
 include!("ios/generated_runtime.rs");
 include!("ios/reactive_runtime.rs");
 include!("ios/reactive_lowering.rs");

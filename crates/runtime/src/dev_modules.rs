@@ -55,21 +55,33 @@ struct DevModuleManifestEntry {
 
 pub(crate) fn web_module_version(project: &CompiledProject) -> String {
     let mut hash = Sha256::new();
-    hash.update(project.web.router_js.as_bytes());
+    hash.update(
+        project
+            .web
+            .pages
+            .first()
+            .map(|page| page.router_file_name.as_str())
+            .unwrap_or("router.js")
+            .as_bytes(),
+    );
+    hash.update(project.web.design_file_name().as_bytes());
     for chunk in &project.web.chunks {
         hash.update(chunk.id.as_bytes());
-        hash.update(chunk.content.as_bytes());
-        hash.update(chunk.css_content.as_bytes());
+        hash.update(chunk.css_file_name.as_bytes());
     }
     for page in &project.web.pages {
         hash.update(page.route_path.as_bytes());
-        hash.update(page.body_html.as_bytes());
-    }
-    let design_relative = format!(".dowe/web/{}", project.web.design_file_name());
-    for relative in [".dowe/web/manifest.json", design_relative.as_str()] {
-        if let Ok(contents) = fs::read(project.root.join(relative)) {
-            hash.update(contents);
+        hash.update(page.page_chunk_id.as_bytes());
+        for layout in &page.layout_chunk_ids {
+            hash.update(layout.as_bytes());
         }
+        for runtime in &page.runtime_chunks {
+            hash.update(runtime.as_bytes());
+        }
+    }
+    for chunk in &project.web.translation_chunks {
+        hash.update(chunk.id.as_bytes());
+        hash.update(chunk.locale.as_bytes());
     }
     format!("{:x}", hash.finalize())[..16].to_string()
 }

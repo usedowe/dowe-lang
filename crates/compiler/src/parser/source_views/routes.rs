@@ -57,18 +57,43 @@ impl RouteBuildContext<'_> {
             .map(|id| format!("layout:{id}"))
             .collect::<Vec<_>>();
         boundaries.push(format!("page:{}", page.chunk_id));
-        let layout_inspector = self.dev_inspector.then(|| dowe_generator_web::ViewInspectorMap {
-            nodes: layouts
-                .iter()
-                .flat_map(|layout| {
-                    layout
-                        .inspector
-                        .as_ref()
-                        .into_iter()
-                        .flat_map(|map| map.nodes.clone())
-                })
-                .collect(),
-        });
+        let reused = platforms
+            .iter()
+            .map(|platform| {
+                self.reusable_route(
+                    *platform,
+                    &route_path,
+                    &page.path,
+                    &page.chunk_id,
+                    &layout_chunk_ids,
+                    &js_chunks,
+                    &css_chunks,
+                    &metadata,
+                )
+            })
+            .collect::<Vec<_>>();
+        if reused.iter().all(Option::is_some) {
+            for (platform, reused) in platforms.into_iter().zip(reused) {
+                let (page, route) = reused.expect("reusable route");
+                self.outputs
+                    .add_page(platform, page, route, self.views_path)?;
+            }
+            return Ok(());
+        }
+        let layout_inspector = self
+            .dev_inspector
+            .then(|| dowe_generator_web::ViewInspectorMap {
+                nodes: layouts
+                    .iter()
+                    .flat_map(|layout| {
+                        layout
+                            .inspector
+                            .as_ref()
+                            .into_iter()
+                            .flat_map(|map| map.nodes.clone())
+                    })
+                    .collect(),
+            });
         let body_html = if self.dev_inspector {
             dowe_generator_web::render_routed_page_body_with_inspector(
                 &layout_tree,
@@ -132,12 +157,46 @@ impl RouteBuildContext<'_> {
             }
             self.outputs.add_page(
                 platform,
-                platform_page,
+                Arc::new(platform_page),
                 view_route.clone(),
                 self.views_path,
             )?;
         }
         Ok(())
+    }
+
+    fn reusable_route(
+        &self,
+        platform: ViewPlatform,
+        route_path: &str,
+        source_path: &Path,
+        page_chunk_id: &str,
+        layout_chunk_ids: &[String],
+        js_chunks: &[String],
+        css_chunks: &[String],
+        metadata: &[ViewMetadata],
+    ) -> Option<(Arc<ViewPage>, ViewRoute)> {
+        let previous = self.previous?;
+        let (pages, routes) = match platform {
+            ViewPlatform::Web => (&previous.web.pages, &previous.routes.web),
+            ViewPlatform::Desktop => (&previous.desktop_web.pages, &previous.routes.desktop),
+            ViewPlatform::Android | ViewPlatform::Ios => return None,
+        };
+        let page = pages.iter().find(|page| page.route_path == route_path)?;
+        let route = routes.iter().find(|route| route.route_path == route_path)?;
+        let metadata_matches = platform != ViewPlatform::Web || page.metadata == metadata;
+        let css_matches = page
+            .css_chunks
+            .iter()
+            .filter(|path| !path.starts_with("chunks/design/"))
+            .eq(css_chunks.iter());
+        (page.source_path == source_path
+            && page.page_chunk_id == page_chunk_id
+            && page.layout_chunk_ids == layout_chunk_ids
+            && page.js_chunks == js_chunks
+            && css_matches
+            && metadata_matches)
+            .then(|| (Arc::clone(page), route.clone()))
     }
 
     fn layout_for(&mut self, component: &str) -> DoweResult<RouteLayout> {
@@ -147,7 +206,7 @@ impl RouteBuildContext<'_> {
             tree: module.tree.clone(),
             inspector: module.inspector.clone(),
             metadata: module.metadata.clone(),
-            chunk_id: chunk.id,
+            chunk_id: chunk.id.clone(),
             js_path: strip_web_prefix(&chunk.relative_path),
             css_path: strip_web_prefix(&chunk.css_relative_path),
         })
@@ -161,7 +220,7 @@ impl RouteBuildContext<'_> {
             inspector: module.inspector.clone(),
             metadata: module.metadata.clone(),
             path: module.path.clone(),
-            chunk_id: chunk.id,
+            chunk_id: chunk.id.clone(),
             js_path: strip_web_prefix(&chunk.relative_path),
             css_path: strip_web_prefix(&chunk.css_relative_path),
         })
@@ -171,7 +230,7 @@ impl RouteBuildContext<'_> {
         &mut self,
         component: &str,
         expected: ImportedViewKind,
-    ) -> DoweResult<Rc<ParsedViewModule>> {
+    ) -> DoweResult<Arc<ParsedViewModule>> {
         if let Some(module) = self.modules.get(component) {
             if module.kind != expected {
                 return Err(DoweError::at_path(
@@ -187,6 +246,34 @@ impl RouteBuildContext<'_> {
                 format!("missing import for view component `{component}`"),
             )
         })?;
+        let cached = self.module_cache.as_deref_mut().and_then(|cache| {
+            let cached = cache.entries.get(&import.path).cloned();
+            if cached.is_some() {
+                cache.hits += 1;
+            }
+            cached
+        });
+        if let Some(cached) = cached {
+            if cached.module.name != component || cached.module.kind != expected {
+                return Err(DoweError::at_path(
+                    self.views_path,
+                    format!("component `{component}` is used in the wrong route position"),
+                ));
+            }
+            for (path, usages) in &cached.module.inspector_usages {
+                self.inspector_usages
+                    .entry(path.clone())
+                    .or_default()
+                    .extend(usages.clone());
+            }
+            self.module_chunks.insert(import.path.clone(), cached.chunk);
+            self.modules
+                .insert(component.to_string(), cached.module.clone());
+            return Ok(cached.module);
+        }
+        if let Some(cache) = self.module_cache.as_deref_mut() {
+            cache.misses += 1;
+        }
         let source = fs::read_to_string(&import.path)
             .map_err(|error| DoweError::at_path(&import.path, error.to_string()))?;
         let file = parse_source_file(self.root, &import.path, source)?;
@@ -204,6 +291,11 @@ impl RouteBuildContext<'_> {
                 ));
             }
         };
+        let usage_lengths = self
+            .inspector_usages
+            .iter()
+            .map(|(path, usages)| (path.clone(), usages.len()))
+            .collect::<HashMap<_, _>>();
         let expanded_root = self.expand_export_node(root_node, &module_imports)?;
         validate_view_theme_references(&expanded_root, self.design_config)?;
         if kind != expected {
@@ -238,14 +330,40 @@ impl RouteBuildContext<'_> {
         let inspector = self
             .dev_inspector
             .then(|| build_view_inspector_map(&expanded_root, &tree, &self.inspector_usages));
-        let module = Rc::new(ParsedViewModule {
+        let inspector_usages = self
+            .inspector_usages
+            .iter()
+            .filter_map(|(path, usages)| {
+                let offset = usage_lengths.get(path).copied().unwrap_or_default();
+                (offset < usages.len()).then(|| (path.clone(), usages[offset..].to_vec()))
+            })
+            .collect();
+        let module = Arc::new(ParsedViewModule {
+            name: export_name.to_string(),
             tree,
             inspector,
+            inspector_usages,
             metadata,
             source: file.source,
             path: file.path,
             kind,
         });
+        let chunk = Arc::new(generated_chunk_for_module(
+            self.root,
+            self.dev_inspector,
+            &module,
+        ));
+        self.module_chunks
+            .insert(import.path.clone(), chunk.clone());
+        if let Some(cache) = self.module_cache.as_deref_mut() {
+            cache.entries.insert(
+                import.path,
+                CachedViewModule {
+                    module: module.clone(),
+                    chunk,
+                },
+            );
+        }
         self.modules.insert(component.to_string(), module.clone());
         Ok(module)
     }
@@ -386,51 +504,57 @@ impl RouteBuildContext<'_> {
         &mut self,
         component: &str,
         module: &ParsedViewModule,
-    ) -> DoweResult<dowe_generator_web::GeneratedChunk> {
+    ) -> DoweResult<Arc<dowe_generator_web::GeneratedChunk>> {
         if let Some(index) = self.chunk_indexes.get(component) {
             return Ok(self.chunks[*index].clone());
         }
-        let chunk = match module.kind {
-            ImportedViewKind::Layout => {
-                if self.dev_inspector {
-                    dowe_generator_web::build_layout_chunk_with_inspector(
-                        self.root,
-                        &module.path,
-                        &module.source,
-                        &module.tree,
-                        module.inspector.as_ref(),
-                    )
-                } else {
-                    dowe_generator_web::build_layout_chunk(
-                        self.root,
-                        &module.path,
-                        &module.source,
-                        &module.tree,
-                    )
-                }
-            }
-            ImportedViewKind::Page => {
-                if self.dev_inspector {
-                    dowe_generator_web::build_page_chunk_with_inspector(
-                        self.root,
-                        &module.path,
-                        &module.source,
-                        &module.tree,
-                        module.inspector.as_ref(),
-                    )
-                } else {
-                    dowe_generator_web::build_page_chunk(
-                        self.root,
-                        &module.path,
-                        &module.source,
-                        &module.tree,
-                    )
-                }
-            }
-        };
+        let chunk = self
+            .module_chunks
+            .get(&module.path)
+            .cloned()
+            .unwrap_or_else(|| {
+                Arc::new(generated_chunk_for_module(
+                    self.root,
+                    self.dev_inspector,
+                    module,
+                ))
+            });
         let index = self.chunks.len();
         self.chunks.push(chunk.clone());
         self.chunk_indexes.insert(component.to_string(), index);
         Ok(chunk)
+    }
+}
+
+fn generated_chunk_for_module(
+    root: &Path,
+    dev_inspector: bool,
+    module: &ParsedViewModule,
+) -> dowe_generator_web::GeneratedChunk {
+    match module.kind {
+        ImportedViewKind::Layout if dev_inspector => {
+            dowe_generator_web::build_layout_chunk_with_inspector(
+                root,
+                &module.path,
+                &module.source,
+                &module.tree,
+                module.inspector.as_ref(),
+            )
+        }
+        ImportedViewKind::Layout => {
+            dowe_generator_web::build_layout_chunk(root, &module.path, &module.source, &module.tree)
+        }
+        ImportedViewKind::Page if dev_inspector => {
+            dowe_generator_web::build_page_chunk_with_inspector(
+                root,
+                &module.path,
+                &module.source,
+                &module.tree,
+                module.inspector.as_ref(),
+            )
+        }
+        ImportedViewKind::Page => {
+            dowe_generator_web::build_page_chunk(root, &module.path, &module.source, &module.tree)
+        }
     }
 }

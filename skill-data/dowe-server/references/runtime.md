@@ -11,7 +11,7 @@ main
   server port:443
     tls:
       mode:"acme"
-      domains:["example.com", "www.example.com"]
+      domains:["example.com" "www.example.com"]
       email:"admin@example.com"
       staging:false
 ```
@@ -273,7 +273,7 @@ preflights before handlers run; successful preflights never execute handlers or 
 ```text
 main
   server port:8080
-    cors target:"server" devOrigins:true origins:["https://app.example.com"] methods:["GET","POST","PATCH","DELETE"] headers:["Content-Type"] credentials:false maxAge:600
+    cors target:"server" devOrigins:true origins:["https://app.example.com"] methods:["GET" "POST" "PATCH" "DELETE"] headers:["Content-Type"] credentials:false maxAge:600
 ```
 
 | Prop | Behavior |
@@ -392,7 +392,7 @@ Server targets can declare local inference models; they are never available to c
 ```text
 main
   server port:8090
-    model name:"voice-vad" kind:"vad.silero" engine:"candle" format:"onnx" source:"assets/silero_vad.onnx" sampleRates:[8000,16000]
+    model name:"voice-vad" kind:"vad.silero" engine:"candle" format:"onnx" source:"assets/silero_vad.onnx" sampleRates:[8000 16000]
 ```
 
 `kind` initially supports `vad.silero`. `engine` is `candle` for ONNX inference or `energy` for

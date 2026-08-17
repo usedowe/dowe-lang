@@ -86,12 +86,8 @@ fn fills_request_path_placeholders_from_signal_names() {
     );
     let generated = swift_content(&output);
 
-    assert!(generated.contains(
-        "NSRegularExpression(pattern: \":[A-Za-z_][A-Za-z0-9_]*\")"
-    ));
-    assert!(generated.contains(
-        "signals.reversed().first(where: { $0.value.name == name })"
-    ));
+    assert!(generated.contains("NSRegularExpression(pattern: \":[A-Za-z_][A-Za-z0-9_]*\")"));
+    assert!(generated.contains("signals.reversed().first(where: { $0.value.name == name })"));
     assert!(!generated.contains("signals.last(where:"));
 }
 
@@ -146,7 +142,9 @@ fn generates_relative_absolute_and_fixed_boxes_as_swiftui_overlays() {
     assert!(generated.contains("ZStack(alignment: .topLeading)"));
     assert!(generated.contains("alignment: .topTrailing"));
     assert!(generated.contains(".padding(.top, doweResponsive(viewportWidth, xs: CGFloat(16)))"));
-    assert!(generated.contains(".padding(.trailing, doweResponsive(viewportWidth, xs: CGFloat(24)))"));
+    assert!(
+        generated.contains(".padding(.trailing, doweResponsive(viewportWidth, xs: CGFloat(24)))")
+    );
     assert!(generated.contains("alignment: .bottomTrailing"));
     assert!(generated.contains("private func fixedBox0() -> some View"));
 }
@@ -568,6 +566,13 @@ fn generates_swiftui_box_and_text() {
     assert!(host.content.contains("dlopen(file.path"));
     assert!(host.content.contains("/_dowe/dev/modules/manifest.json"));
     assert!(host.content.contains("moduleEndpoint = resolveEndpoint()"));
+    assert!(host.content.contains("showWaitingState(in: controller)"));
+    assert!(host.content.contains("Preparing Dowe app"));
+    assert!(
+        host.content
+            .contains("The first iOS build can take a few minutes.")
+    );
+    assert!(host.content.contains("waitingView?.removeFromSuperview()"));
     assert!(
         host.content
             .contains("UserDefaults.standard.set(value, forKey: endpointKey)")
@@ -591,12 +596,16 @@ fn generates_swiftui_box_and_text() {
     );
     assert!(host.content.contains("private var activeRoute = \"/\""));
     assert!(!host.content.contains("dowe.hmr.route"));
-    assert!(!host
-        .content
-        .contains("UserDefaults.standard.string(forKey: activeRouteKey)"));
-    assert!(!host
-        .content
-        .contains("UserDefaults.standard.set(path, forKey: activeRouteKey)"));
+    assert!(
+        !host
+            .content
+            .contains("UserDefaults.standard.string(forKey: activeRouteKey)")
+    );
+    assert!(
+        !host
+            .content
+            .contains("UserDefaults.standard.set(path, forKey: activeRouteKey)")
+    );
     assert!(host.content.contains("persistCurrentPath()"));
     assert!(
         module
@@ -631,6 +640,51 @@ fn generates_swiftui_box_and_text() {
 }
 
 #[test]
+fn generates_swiftui_text_alignment() {
+    let mut aligned = route();
+    aligned.page_tree = ViewNode::Title {
+        props: TextProps {
+            align: Some(ResponsiveValue::scalar(TextAlign::End)),
+            ..Default::default()
+        },
+        value: "Aligned".to_string(),
+    };
+    let output = generate_ios(
+        &[aligned],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    assert!(views.contains("doweText(\"Aligned\", alignment: doweResponsive"));
+    assert!(views.contains(".frame(maxWidth: .infinity, alignment: doweResponsive"));
+    assert!(views.contains("Alignment.trailing"));
+    assert!(views.contains("DoweTextAlignment.end"));
+}
+
+#[test]
+fn generates_swiftui_justified_text() {
+    let mut aligned = route();
+    aligned.page_tree = ViewNode::Text {
+        props: TextProps {
+            align: Some(ResponsiveValue::scalar(TextAlign::Justify)),
+            ..Default::default()
+        },
+        value: "Justified".to_string(),
+    };
+    let output = generate_ios(
+        &[aligned],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    assert!(views.contains("doweText(\"Justified\", alignment: doweResponsive"));
+    assert!(views.contains("DoweTextAlignment.justify"));
+    assert!(views.contains("doweJustifiedAttributedText"));
+}
+
+#[test]
 fn generates_static_text_as_verbatim_swiftui_content() {
     let mut literal_route = route();
     literal_route.page_tree = text("info@dowe.dev");
@@ -646,6 +700,23 @@ fn generates_static_text_as_verbatim_swiftui_content() {
 }
 
 #[test]
+fn preserves_multiline_text_in_swiftui_content() {
+    let mut multiline = route();
+    multiline.page_tree = ViewNode::Title {
+        props: TextProps::default(),
+        value: "Full-stack development,\nfrom one codebase".to_string(),
+    };
+    let views = swift_content(&generate_ios(
+        &[multiline],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(views.contains("Text(verbatim: \"Full-stack development,\\nfrom one codebase\")"));
+}
+
+#[test]
 fn inherits_container_foreground_and_preserves_text_overrides() {
     let mut color_route = route();
     color_route.layout_tree = ViewNode::Children;
@@ -657,8 +728,12 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         &[],
     ));
 
-    let box_inherited = views.find("Text(verbatim: \"Box inherited\")").expect("Box text");
-    let box_override = views.find("Text(verbatim: \"Box override\")").expect("Box override");
+    let box_inherited = views
+        .find("Text(verbatim: \"Box inherited\")")
+        .expect("Box text");
+    let box_override = views
+        .find("Text(verbatim: \"Box override\")")
+        .expect("Box override");
     assert!(!views[box_inherited..box_override].contains(".foregroundStyle("));
     assert!(views[box_override..].contains(
         ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.danger) ?? DoweDesign.backgroundText)"
@@ -667,18 +742,20 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.primaryText) ?? DoweDesign.backgroundText)"
     ));
 
-    let card_inherited = views.find("Text(verbatim: \"Card inherited\")").expect("Card text");
+    let card_inherited = views
+        .find("Text(verbatim: \"Card inherited\")")
+        .expect("Card text");
     assert!(views.contains("Text(verbatim: \"Card title inherited\")"));
     assert!(views.contains(".modifier(DoweTitleColorModifier(explicitColor: nil))"));
     assert!(views.contains("static let defaultValue: Color? = nil"));
-    assert!(!views.contains(
-        "static let defaultValue: Color = DoweDesign.backgroundTitle"
-    ));
+    assert!(!views.contains("static let defaultValue: Color = DoweDesign.backgroundTitle"));
     assert!(views.contains(
         "content.foregroundStyle(explicitColor ?? inheritedColor ?? DoweDesign.backgroundTitle)"
     ));
     assert!(views.contains(".environment(\\.doweTitleColor, DoweDesign.softMutedTitle)"));
-    let card_override = views.find("Text(verbatim: \"Card override\")").expect("Card override");
+    let card_override = views
+        .find("Text(verbatim: \"Card override\")")
+        .expect("Card override");
     assert!(!views[card_inherited..card_override].contains(".foregroundStyle("));
     let card_tail = &views[card_override..];
     let override_color = card_tail
@@ -688,7 +765,6 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         .find(".foregroundStyle(DoweDesign.softMutedText)")
         .expect("Card content color");
     assert!(override_color < inherited_color);
-
 }
 
 #[test]
@@ -945,10 +1021,16 @@ fn keeps_card_shadow_after_swiftui_card_shape() {
 
     assert!(shadow > clip);
     assert!(animation > shadow);
-    assert!(card_output.contains(".rotationEffect(.degrees(doweResponsive(viewportWidth, xs: Double(-7)) ?? Double(0)))"));
-    assert!(card_output.contains(".scaleEffect(CGFloat(doweResponsive(viewportWidth, xs: Double(1.05)) ?? Double(1)))"));
+    assert!(card_output.contains(
+        ".rotationEffect(.degrees(doweResponsive(viewportWidth, xs: Double(-7)) ?? Double(0)))"
+    ));
+    assert!(card_output.contains(
+        ".scaleEffect(CGFloat(doweResponsive(viewportWidth, xs: Double(1.05)) ?? Double(1)))"
+    ));
     assert!(card_output.contains(".offset(x: CGFloat(doweResponsive(viewportWidth, xs: Double(-6)) ?? Double(0)), y: CGFloat(0))"));
-    assert!(card_output.contains(".modifier(DoweGestureModifier(preset: .lift, transition: .spring))"));
+    assert!(
+        card_output.contains(".modifier(DoweGestureModifier(preset: .lift, transition: .spring))")
+    );
     assert!(views.contains("@Environment(\\.accessibilityReduceMotion) private var reduceMotion"));
 }
 
@@ -992,7 +1074,10 @@ fn applies_button_press_feedback_after_the_complete_swiftui_surface() {
         .iter()
         .find(|file| file.relative_path.ends_with("DowePageLoginView.swift"))
         .expect("button page");
-    let background = page.content.find(".background(").expect("button background");
+    let background = page
+        .content
+        .find(".background(")
+        .expect("button background");
     let button_style = page
         .content
         .find(".buttonStyle(.plain)")
@@ -1696,6 +1781,71 @@ fn generates_swiftui_section_backgrounds() {
 }
 
 #[test]
+fn generates_responsive_section_centering_for_swiftui() {
+    let mut route = section_route();
+    let ViewNode::Box { children, .. } = &mut route.page_tree else {
+        panic!("section route root");
+    };
+    let ViewNode::Section { props, .. } = &mut children[0] else {
+        panic!("section route child");
+    };
+    props.center = Some(ResponsiveValue::ordered(vec![
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Xs,
+            value: false,
+        },
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Md,
+            value: true,
+        },
+    ]));
+
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    assert!(views.contains(
+        "VStack(alignment: (doweResponsive(viewportWidth, xs: false, md: true) ?? false) ? .center : .leading, spacing: 0)"
+    ));
+    assert!(views.contains(".frame(maxWidth: .infinity, alignment: .leading)"));
+}
+
+#[test]
+fn generates_responsive_section_gap_for_swiftui() {
+    let mut route = section_route();
+    let ViewNode::Box { children, .. } = &mut route.page_tree else {
+        panic!("section route root");
+    };
+    let ViewNode::Section { props, .. } = &mut children[0] else {
+        panic!("section route child");
+    };
+    props.gap = Some(ResponsiveValue::ordered(vec![
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Xs,
+            value: GapValue::Single(GapSize::Scale(ScaleValue(4))),
+        },
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Md,
+            value: GapValue::Single(GapSize::Scale(ScaleValue(8))),
+        },
+    ]));
+
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    assert!(views.contains(
+        "VStack(alignment: .leading, spacing: doweResponsive(viewportWidth, xs: CGFloat(8), md: CGFloat(16)) ?? CGFloat(0))"
+    ));
+}
+
+#[test]
 fn generates_native_ios_translation_resources() {
     let mut localized_route = route();
     localized_route.page_tree = ViewNode::Title {
@@ -1910,19 +2060,13 @@ fn generates_plain_brand_navigation_with_explicit_size() {
     );
     let generated = swift_content(&output);
 
-    assert!(
-        generated
-            .contains("Button(action: { navigate(\"push\", \"/\", nil) })")
-    );
+    assert!(generated.contains("Button(action: { navigate(\"push\", \"/\", nil) })"));
     assert!(generated.contains("HStack(spacing: 0)"));
     assert!(generated.contains("DoweSize.fixed(CGFloat(128))"));
     assert!(generated.contains("DoweSize.fixed(CGFloat(32))"));
     assert!(generated.contains(".contentShape(Rectangle())"));
     assert!(generated.contains(".buttonStyle(.plain)"));
-    assert!(
-        generated
-            .contains(".accessibilityLabel(Text(\"Dowe home\"))")
-    );
+    assert!(generated.contains(".accessibilityLabel(Text(\"Dowe home\"))"));
 }
 
 #[test]
@@ -1955,13 +2099,12 @@ fn generates_external_banner_without_button_chrome() {
     );
     let generated = swift_content(&output);
 
-    assert!(generated.contains(
-        "Button(action: { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
-    ));
+    assert!(
+        generated
+            .contains("Button(action: { openExternal(\"system\", \"https://dowe.dev/cloud\") })")
+    );
     assert!(generated.contains("VStack(alignment: .leading, spacing: 0)"));
     assert!(generated.contains(".contentShape(Rectangle())"));
     assert!(generated.contains(".buttonStyle(.plain)"));
-    assert!(generated.contains(
-        ".accessibilityLabel(Text(\"Explore Dowe Cloud\"))"
-    ));
+    assert!(generated.contains(".accessibilityLabel(Text(\"Explore Dowe Cloud\"))"));
 }

@@ -46,11 +46,36 @@ fn swift_modifiers_for_section_content(props: &StyleProps) -> Vec<String> {
     let mut content = StyleProps::default();
     content.spacing = dowe_components::section_content_spacing(&props.spacing);
     let mut modifiers = swift_modifiers_for_style(&content);
+    if props.center.is_some() && !props.boxed {
+        modifiers.push(".frame(maxWidth: .infinity, alignment: .leading)".to_string());
+    }
     if props.boxed {
         modifiers.push(".frame(maxWidth: CGFloat(1536), alignment: .leading)".to_string());
         modifiers.push(".frame(maxWidth: .infinity, alignment: .center)".to_string());
     }
     modifiers
+}
+
+fn swift_section_horizontal_alignment(value: Option<&ResponsiveValue<bool>>) -> String {
+    value
+        .map(|value| {
+            format!(
+                "({} ?? false) ? .center : .leading",
+                swift_bool_value(value)
+            )
+        })
+        .unwrap_or_else(|| ".leading".to_string())
+}
+
+fn swift_section_vertical_spacing(value: Option<&ResponsiveValue<GapValue>>) -> String {
+    value
+        .map(|value| {
+            format!(
+                "{} ?? CGFloat(0)",
+                swift_responsive_value(value, swift_gap_value)
+            )
+        })
+        .unwrap_or_else(|| "0".to_string())
 }
 
 fn swift_modifiers_for_layout(props: &LayoutProps, flow: NativeFlow) -> Vec<String> {

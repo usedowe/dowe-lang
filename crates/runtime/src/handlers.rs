@@ -71,6 +71,7 @@ include!("handlers/http_actions.rs");
 include!("handlers/store_types.rs");
 include!("handlers/store_helpers.rs");
 include!("handlers/web_assets.rs");
+include!("handlers/server_inspector.rs");
 include!("handlers/store_context_execute.rs");
 include!("handlers/store_context_store.rs");
 include!("handlers/store_context_kv.rs");

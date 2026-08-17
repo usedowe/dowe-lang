@@ -87,12 +87,26 @@ See `/specs/features/00149-normalize-view-component-defaults`.
 ### Minimal source rule
 
 Generated and hand-authored Views should omit resolved defaults. Prefer `Button "Log in"`,
-`Button w:"full" "Log in"`, `Input bind:email label:"Email"`, `Tabs position:"top"`, and `Card p:5` over declarations
+`Button w:"full" "Log in"`, `Input bind:email label:"Email"`, `Tabs position:"top"`, and `Card` over declarations
 that repeat `variant`, `scheme`, `size`, or `rounded` with their default values. Keep a visual prop
 when it changes the default, is reactive, controls layout or behavior, supplies required content or
 accessibility, or is the specific decision being demonstrated. Do not remove props such as
 `w`, `p`, `href`, `onClick`, `label`, `bind`, `icon`, `loading`, `show`, or non-default `variant`,
-`scheme`, `size`, `rounded`, `border`, or `shadow` values.
+`scheme`, `size`, `rounded`, `border`, or `shadow` values when they pass the admission gate below;
+their availability alone is not a reason to keep them.
+
+Admit a local prop only when at least one condition is true:
+
+- The component contract, content, behavior, binding, or accessibility role requires it.
+- It owns essential structure that a default cannot infer, such as `boxed:true`, responsive
+  `columns`, `direction:"column"`, `cover`, a binding, or an event.
+- It expresses a deliberate non-default choice visible in the requested design.
+- A render of the default-first tree proves that this one prop fixes a specific mismatch on the
+  smallest real owner.
+
+Do not translate a screenshot's measurements into a complete prop list before rendering. Start
+from the minimal semantic tree, then add proven exceptions one at a time. If a prop's reason cannot
+be stated without saying only that the value is visible, common, or supported, omit it.
 
 ### Spacing economy
 
@@ -104,8 +118,9 @@ Resolve container spacing in this order:
 
 1. Keep the component and theme defaults. An ordinary `Section` already provides
    `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }`; a `Card` already provides `p:{ xs:4 lg:5 }`.
-2. Use `gap` on the owning `Grid` or `Flex` for rhythm between children. Do not add padding to a
-   `Grid` or `Flex` merely to separate its children.
+2. Render the minimal tree. `Grid` and `Flex` default to zero gap; add one `gap` on the owning
+   container only when the child group needs explicit nonzero rhythm. Do not add a gap automatically
+   with every Grid or Flex, and do not add padding merely to separate its children.
 3. Add one local `p`, `px`, `py`, `pt`, or `pb` override only when a user requirement or reference
    blueprint proves that the default is insufficient. Prefer one axis and the smallest scope;
    do not repeat the same inset on `Section`, `Grid`, and `Card`.
@@ -194,7 +209,7 @@ exceptional layer plane that normal flow cannot express.
 | Group | Props | Values |
 | --- | --- | --- |
 | Padding | `p`, `px`, `py`, `pl`, `pr`, `pt`, `pb` | Dowe numeric scale |
-| Size | `w`, `h`, `minW`, `minH`, `maxW`, `maxH` | Scale values, `full`; `h`, `minH`, and `maxH` also accept `vh-<scale>` |
+| Size | `w`, `h`, `minW`, `minH`, `maxW`, `maxH` | `w`, `minW`, and `maxW` accept scale values, `full`, or container `sm` through `7xl`; `h`, `minH`, and `maxH` also accept `vh-<scale>` |
 | Border | `rounded`, `border` | `xs`, `sm`, `md`, `lg`, `xl`, `full`; integers `1` to `4` |
 | Layout | `justify`, `align`, `gap`, `columns`, `rows` | Layout keywords, numeric grid counts, scale values, validated pixel gaps |
 | Grid item | `colSpan`, `rowSpan` | Positive integers on direct `Box`, `Section`, or `Card` children of `Grid` |
@@ -203,7 +218,7 @@ exceptional layer plane that normal flow cannot express.
 | Section background | `background` | `soft`, `aurora`, `sunrise`, `ocean`, `meadow`, `slate` on `Section` |
 | Boxed width | `boxed` | Static boolean on `Section`, `Scaffold`, `AppBar`, `Footer`, `BottomBar` |
 | Elevation | `shadow`, `shadowColor` | `xs` to `xl`; semantic color family |
-| Text | `size`, `color`, `bg`, `weight`, `spacing` | `xs` to `9xl`; color tokens; typography overrides |
+| Text | `size`, `align`, `color`, `bg`, `weight`, `spacing` | `xs` to `9xl`; `start`, `center`, `end`, or `justify`; color tokens; typography overrides |
 
 Breakpoints are `xs:0`, `sm:640`, `md:768`, `lg:1024`, and `xl:1280` logical units on every
 target. The numeric scale is `0` to `4` in `0.5` steps, `4` to `12` in `1` steps, then `12`, `14`,
@@ -211,6 +226,12 @@ target. The numeric scale is `0` to `4` in `0.5` steps, `4` to `12` in `1` steps
 `96`. One scale unit is `0.25rem` on web and `4` points or dp on native targets. `maxW` and `maxH`
 set upper bounds without forcing the component to occupy the limit. `h:"vh-16"`, `minH:"vh-16"`,
 and `maxH:"vh-16"` resolve against the viewport height minus the scale value.
+
+The width-only container values are `sm`, `md`, `lg`, `xl`, `2xl`, `3xl`, `4xl`, `5xl`, `6xl`, and
+`7xl`. They represent `24rem` through `80rem` on web and the equivalent `384` through `1280`
+points/dp on native targets. Use `w:"sm"`, `minW:"md"`, or `maxW:{ xs:"full" md:"lg" }`.
+They are defined by `/specs/features/00175-add-container-width-values` and are not valid for
+`h`, `minH`, or `maxH`.
 
 ### Sizing, border, radius, and shadow compatibility
 
@@ -239,6 +260,7 @@ weight `600` with tight tracking; `Text` defaults to weight `400`. Both accept:
 
 | Prop | Values |
 | --- | --- |
+| `align` | `start`, `center`, `end`, `justify`, or responsive object |
 | `size` | `xs` through `9xl` |
 | `color`, `bg` | Design color tokens |
 | `weight` | `thin`, `extralight`, `light`, `regular`, `medium`, `semibold`, `bold`, `extrabold`, `black` |
@@ -246,9 +268,12 @@ weight `600` with tight tracking; `Text` defaults to weight `400`. Both accept:
 | `font` | Dowe font token, overriding the `theme.dowe` `Text` or `Title` default |
 | Common style props | `p*`, `w`, `h`, `minW`, `minH`, `maxW`, `maxH`, `rounded`, `border` |
 
-`Text` and `Title` have no text-alignment prop; `align` is rejected. Center or align text through
-the parent container: `Flex direction:"column" align:"center"` for centered stacks, or
-`Grid justify:"center"` for centered grid content.
+`size` is fluid/responsive when written as a scalar, so `size:"lg"` is the preferred form and
+does not need a breakpoint object. Use `size:{ xs:"md" lg:"xl" }` only for an intentional
+breakpoint override. `align` is independent from `Flex.align` and `Grid.align`; it controls the
+text lines themselves and uses logical edges so `start` and `end` remain portable in RTL layouts.
+Use a multiline string child when a line boundary must be deterministic; use `maxW` when natural
+wrapping is acceptable. Both forms remain one semantic `Text` or `Title` node across targets.
 
 ## Button metrics and navigation
 

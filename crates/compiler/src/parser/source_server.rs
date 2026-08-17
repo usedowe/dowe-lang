@@ -2,30 +2,35 @@ use crate::CronSchedule;
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
     AgentChatTransform, AgentResponseEndpoint, CacheConnection, CorsConfig, DatabaseBinding,
-    DatabaseEntity, DatabaseSeeder, DoweType, DoweTypeField, Endpoint, EndpointBehavior,
-    EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint, HttpBytesEndpoint,
-    HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint, HttpRedirectPolicy,
-    HttpResponseMode, HttpReverseProxyEndpoint, OutboundHttpHeader, OutboundHttpRequest,
-    ResponseCookie, ResponseHeader, ReverseProxyStrategy, RtpConfig, ServerAction,
-    ServerBackgroundJob, ServerCallStatement, ServerConfig, ServerCryptoAesCtrStatement,
-    ServerCryptoCencAesCtrStatement, ServerFileStatement, ServerFunctionAction,
-    ServerFunctionParameter, ServerFunctionReturn, ServerJwtStatement, ServerKvStatement,
-    ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware, ServerMiddlewareAction,
-    ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerModel, ServerModelEngine,
-    ServerModelFormat, ServerModelKind, ServerPasswordStatement, ServerQueueStatement,
-    ServerSecret, ServerSpawnStatement, ServerStatement, ServerStdlibStatement, ServerTransport,
-    ServerTransportProtocol, ServerVectorStatement, StoreConnection, StoreLiteral, TlsConfig,
-    TlsDomainsSource, TlsMode, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
-    WebSocketSendJsonStatement, WebSocketSseBridgeStatement, normalize_http_header_name,
+    DatabaseEntity, DatabaseFieldType, DatabaseSeeder, DoweType, DoweTypeField, Endpoint,
+    EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint,
+    HttpBytesEndpoint, HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint,
+    HttpRedirectPolicy, HttpResponseMode, HttpReverseProxyEndpoint, OutboundHttpHeader,
+    OutboundHttpRequest, ResponseCookie, ResponseHeader, ReverseProxyStrategy, RtpConfig,
+    ServerAction, ServerBackgroundJob, ServerCallStatement, ServerConfig,
+    ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement, ServerFileStatement,
+    ServerFunctionAction, ServerFunctionParameter, ServerFunctionReturn, ServerInspectorBody,
+    ServerInspectorBodyField, ServerInspectorEdge, ServerInspectorEntity,
+    ServerInspectorEntityField, ServerInspectorHeader, ServerInspectorJob, ServerInspectorManifest,
+    ServerInspectorNode, ServerInspectorParameter, ServerInspectorResource, ServerInspectorRoute,
+    ServerInspectorService, ServerInspectorSource, ServerInspectorWebSocket, ServerJwtStatement,
+    ServerKvStatement, ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware,
+    ServerMiddlewareAction, ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerModel,
+    ServerModelEngine, ServerModelFormat, ServerModelKind, ServerPasswordStatement,
+    ServerQueueStatement, ServerSecret, ServerSpawnStatement, ServerStatement,
+    ServerStdlibStatement, ServerStoreStatement, ServerTransport, ServerTransportProtocol,
+    ServerVectorStatement, StoreConnection, StoreLiteral, TlsConfig, TlsDomainsSource, TlsMode,
+    WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute, WebSocketSendJsonStatement,
+    WebSocketSseBridgeStatement, normalize_http_header_name,
 };
 use crate::parser::source_ast::{
     SourceFile, SourceNode, SourceObjectEntry, SourceProp, SourceValue,
 };
 use crate::parser::source_config::{parse_desktop_cors_config, parse_server_cors_config};
 use crate::parser::source_db::{
-    database_action_endpoint_behavior, database_endpoint_behavior, parse_database_entity,
-    parse_database_seeder, parse_database_statement, parse_database_statement_without_seeders,
-    store_literal,
+    binding_array_prop, database_action_endpoint_behavior, database_endpoint_behavior,
+    parse_database_entity, parse_database_seeder, parse_database_statement,
+    parse_database_statement_without_seeders, store_literal,
 };
 use crate::parser::source_imports::resolve_import;
 use crate::parser::source_kv::{
@@ -76,6 +81,7 @@ include!("source_server/behavior.rs");
 include!("source_server/responses.rs");
 include!("source_server/props.rs");
 include!("source_server/diagnostics.rs");
+include!("source_server/inspector.rs");
 
 #[cfg(test)]
 mod tests;

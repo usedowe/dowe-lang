@@ -11,7 +11,7 @@ use crate::dev_modules::{
     DevModuleRevision, PublishedDevModule, publish_dev_module, publish_dev_module_if_current,
 };
 use crate::error::{RuntimeError, RuntimeResult};
-use dowe_compiler::CompiledProject;
+use dowe_compiler::{CompiledProject, GeneratedFile};
 use dowe_spawn::{SpawnConfig, StreamMode};
 use serde_json::Value;
 use std::env;
@@ -168,14 +168,16 @@ fn build_ios_app(project_root: &Path, ios_root: &Path) -> RuntimeResult<PathBuf>
 }
 
 pub(super) fn build_hot_module_if_current(
-    project: &CompiledProject,
+    root: &Path,
+    files: &[GeneratedFile],
     revision: &DevModuleRevision,
 ) -> RuntimeResult<Option<PublishedDevModule>> {
-    build_hot_module_with_revision(project, Some(revision))
+    build_hot_module_with_revision(root, files, Some(revision))
 }
 
 fn build_hot_module_with_revision(
-    project: &CompiledProject,
+    root: &Path,
+    files: &[GeneratedFile],
     revision: Option<&DevModuleRevision>,
 ) -> RuntimeResult<Option<PublishedDevModule>> {
     if HostOs::current() != HostOs::Macos {
@@ -189,16 +191,16 @@ fn build_hot_module_with_revision(
     if !ios_revision_is_current(revision) {
         return Ok(None);
     }
-    let snapshot = IosHotModuleSnapshot::from_project(project, &target, &toolchain_signature)?;
+    let snapshot =
+        IosHotModuleSnapshot::from_generated_files(files, &target, &toolchain_signature)?;
     let version = snapshot.version.clone();
-    let published = project
-        .root
+    let published = root
         .join(".dowe/dev/modules/ios")
         .join(format!("{version}.dylib"));
     if published.is_file() {
-        return publish_ios_module(project, &version, &published, revision);
+        return publish_ios_module(root, &version, &published, revision);
     }
-    let workspace = IosIncrementalWorkspace::prepare(&project.root, &snapshot)?;
+    let workspace = IosIncrementalWorkspace::prepare(root, &snapshot)?;
     let build_result = build_hot_module_artifact(&workspace, &target, revision);
     let built = match build_result {
         Ok(built) => built,
@@ -215,7 +217,7 @@ fn build_hot_module_with_revision(
         workspace.remove_linked_module();
         return Err(error);
     }
-    let result = publish_ios_module(project, &version, &workspace.linked_module, revision);
+    let result = publish_ios_module(root, &version, &workspace.linked_module, revision);
     workspace.remove_linked_module();
     result
 }
@@ -225,16 +227,16 @@ fn ios_revision_is_current(revision: Option<&DevModuleRevision>) -> bool {
 }
 
 fn publish_ios_module(
-    project: &CompiledProject,
+    root: &Path,
     version: &str,
     module: &Path,
     revision: Option<&DevModuleRevision>,
 ) -> RuntimeResult<Option<PublishedDevModule>> {
     match revision {
         Some(revision) => {
-            publish_dev_module_if_current(&project.root, "ios", version, "dylib", module, revision)
+            publish_dev_module_if_current(root, "ios", version, "dylib", module, revision)
         }
-        None => publish_dev_module(&project.root, "ios", version, "dylib", module).map(Some),
+        None => publish_dev_module(root, "ios", version, "dylib", module).map(Some),
     }
 }
 

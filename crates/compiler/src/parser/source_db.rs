@@ -1050,7 +1050,7 @@ fn validate_server_environment(
     Ok(())
 }
 
-fn binding_array_prop(node: &SourceNode, name: &str) -> DoweResult<Vec<String>> {
+pub(crate) fn binding_array_prop(node: &SourceNode, name: &str) -> DoweResult<Vec<String>> {
     let Some(prop) = node.prop(name) else {
         return Ok(Vec::new());
     };

@@ -543,6 +543,7 @@ fn dev_scale_value(value: &ResponsiveValue<ScaleValue>) -> String {
 fn dev_size_value(value: &ResponsiveValue<SizeValue>) -> String {
     dev_responsive_value(value, |value| match value {
         SizeValue::Scale(value) => value.native_units().to_string(),
+        SizeValue::Container(value) => value.scale_value().native_units().to_string(),
         SizeValue::Full => "ViewGroup.LayoutParams.MATCH_PARENT".to_string(),
         SizeValue::ViewportMinus(value) => format!(
             "Math.max(0, getResources().getConfiguration().screenHeightDp - {})",

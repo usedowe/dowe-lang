@@ -128,6 +128,13 @@ expressed by Flex, Grid, normal flow, and absolute Box offsets.
 Never translate `AppBar`, `Brand`, `NavMenu`, `Drawer`, or another compound overlay-owning root;
 keep those semantic anchors stable and translate only a purely visual layer when justified.
 
+Before source authoring, reduce every blueprint region to the smallest semantic component tree.
+Treat `bounds`, typography measurements, whitespace, radius, border, shadow, and color observations
+as comparison evidence, not as an automatic prop list. Admit a local prop only when it is required
+by the component contract, content, behavior, binding, or accessibility; defines essential structure
+that a default cannot infer; expresses an explicit non-default choice; or fixes a specific mismatch
+proven after rendering the default-first tree. If none applies, omit the prop.
+
 A completed blueprint has this shape:
 
 ```json
@@ -203,7 +210,7 @@ Annotated labels are hints, not component names. Resolve visible behavior agains
 | One-axis copy, metric, or action group | `Flex` |
 | Relative stage with overlapping children or a fixed viewport layer | Positioned `Box` wrappers around the real semantic components |
 | Compact label or status | `Chip` or `Badge` according to its behavior |
-| Related bordered, raised, or tinted unit | `Card` |
+| Related bordered, raised, tinted, or otherwise contained unit | `Card`; a visually flat semantic group remains Grid/Flex content |
 
 Rebuild navigation, headings, text, controls, cards, lists, metrics, forms, tables, charts,
 dashboards, badges, icons, logos, and decorative geometry with Dowe components. Use `Canvas` only
@@ -310,11 +317,13 @@ with unrelated literal colors or one-off styling on every instance. Before finis
 theme and verify that reference-driven view work did not alter it; when a theme change was
 requested, verify every declared family has grouped `color`, `text`, and `title` roles.
 
-Treat measured whitespace as evidence, not as permission to serialize padding on every container.
-Start with Section and Card defaults, use `gap` for child rhythm, and add the smallest local padding
-override only when the blueprint or user request proves that a default is insufficient. Dowe Views
-does not support margin props; reject aliases such as `mt` instead of fabricating them. A ghost Card
-with `p:0` is not a layout primitive when it only wraps Grid/Flex content.
+Treat measured whitespace as evidence, not as permission to serialize padding or gap on every
+container. Start with Section and Card defaults and render the minimal tree. Grid and Flex default
+to zero gap; add one nonzero gap only when the sibling group demonstrably needs it, then add the
+smallest local padding override only when the blueprint or user request proves that a default is
+insufficient. Dowe Views does not support margin props; reject aliases such as `mt` instead of
+fabricating them. A ghost Card with `p:0` is not a layout primitive when it only wraps Grid/Flex
+content, and a flat group is not a Card merely because its children belong together.
 
 ## Media provenance
 
@@ -349,12 +358,13 @@ share only genuine cross-route state through a Store. Never invent component inp
 3. Create or reuse the route graph and one layout Scaffold for shared chrome.
 4. Author ordered page Sections and choose Grid/Flex/Card/Box through
    `references/composition.md`.
-5. Build the major focal compositions and media stages before filling repeated details.
-6. Declare collections and state before their repeated visual trees.
-7. Apply theme defaults, then intentional local exceptions and the restrained detail pass.
-8. Compile and repair from Dowe diagnostics.
-9. Render the exact reference viewport, compare, and fix the largest retained-band mismatch first.
-10. Validate `xs`, `md`, interaction states, accessibility, asset quality, and missing assets.
+5. Write the minimal component tree and run the local prop-admission gate before detail work.
+6. Build the major focal compositions and media stages before filling repeated details.
+7. Declare collections and state before their repeated visual trees.
+8. Apply theme defaults, then intentional local exceptions and the restrained detail pass.
+9. Compile and repair from Dowe diagnostics.
+10. Render the exact reference viewport, compare, and fix the largest retained-band mismatch first.
+11. Validate `xs`, `md`, interaction states, accessibility, asset quality, and missing assets.
 
 ## Deterministic visual QA
 
@@ -399,8 +409,9 @@ hide a visible mismatch.
 - The work is explicitly classified as exact reconstruction or directed adaptation.
 - Exact built-in components are used; no annotated or guessed component name becomes source.
 - Shared chrome is layout-owned; page content is Section-owned.
-- No direct `Grid`-in-`Grid` or `Flex`-in-`Flex` wrapper remains; each container owns a distinct
-  layout responsibility rather than only another gap, direction, alignment, or size.
+- Same-kind nesting remains only for a distinct subgroup and layout responsibility, such as a
+  content-column Flex containing an action-row Flex; no wrapper exists only for another gap,
+  padding, alignment, visibility, or size.
 - Normal layout uses no `translateX` or `translateY`; any exception is a documented advanced visual
   layer, never a compound navigation or overlay root.
 - Every repeated same-shape region, including icon-plus-copy rows, uses one collection and one `each`
@@ -419,8 +430,10 @@ hide a visible mismatch.
 - Consecutive bands do not collapse into the same generic heading-plus-Card-grid composition.
 - Static fragments are extracted; unsupported dynamic reuse is recorded without invented syntax.
 - Reference pixels never enter project assets; missing originals remain explicit.
-- Component defaults are used before local `p*` props; no stacked Section/Grid/Card padding or
-  unsupported margin aliases such as `mt` remain.
+- Component defaults are used before local `p*` props or gaps; no automatic gap on every Grid/Flex,
+  stacked Section/Grid/Card padding, or unsupported margin aliases such as `mt` remain.
+- Every local prop has a recorded contract, behavior, accessibility, structural, non-default, or
+  rendered-mismatch reason; supported-but-unnecessary props are removed.
 - Background media uses `cover` on its owner; foreground `Image` keeps an independent media role.
 - The reference viewport passes band-by-band QA or the remaining evidence-backed blocker is
   reported precisely.

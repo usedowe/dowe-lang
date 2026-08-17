@@ -1,34 +1,36 @@
 use dowe_components::{
-    AccordionItem, AccordionProps, Align, AlertDialogProps, AudioProps, AvatarGroupItem,
-    AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BottomBarTab, BorderWidth, BoxPosition, Breakpoint, ButtonSize,
-    ArcChartProps, CameraProps, CanvasBackground, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps,
-    CodeTemplateSegment, CodeToken, CodeTokenKind, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
-    CommandEntry, CommandProps, CollapsibleProps, ComponentVariant, CountdownProps, CoverSource,
-    CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation,
-    DividerProps, DragGroup, DragItem, DrawerPosition,
-    DrawerProps, DropzoneProps, DropdownProps, ElementProps, EmptyProps, FabAction, FabProps,
-    FlexDirection, FontConfig, FontFamily, GapSize, GapValue, GridAlignment,
-    GridProps, GridTracks, INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE,
-    ImageProps, Justify, LayoutProps, MapMarker, MapProps, MapWaypoint,
-    MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, SIDE_NAV_SUBMENU_ARROW_PATH,
-    empty_icon, side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon, view_icon,
+    AccordionItem, AccordionProps, AlertDialogProps, Align, ArcChartProps, AudioProps,
+    AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BorderWidth,
+    BottomBarTab, BoxPosition, Breakpoint, ButtonSize, CameraProps, CanvasBackground,
+    CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps,
+    ChatBoxProps, CheckboxProps, ChipProps, CodeTemplateSegment, CodeToken, CodeTokenKind,
+    CollapsibleProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
+    CommandEntry, CommandProps, ComponentVariant, CountdownProps, CoverSource, CsvColumn,
+    DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation, DividerProps,
+    DragGroup, DragItem, DrawerPosition, DrawerProps, DropdownProps, DropzoneProps, ElementProps,
+    EmptyProps, FabAction, FabProps, FlexDirection, FontConfig, FontFamily, FormValidationRuleKind,
+    GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
+    INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps, MapMarker, MapProps,
+    MapWaypoint, MarqueeProps, MicrophoneProps, ModalProps, NavMenuItem, NavMenuItemProps,
     NavMenuProps, NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayItemProps,
-    OverlayPaint, PositionProps, RadioGroupOrientation, RadioGroupProps,
-    RadioOption, RecordProps, ResponsiveValue, RichTextMark,
-    RailNavItem, RailNavProps,
-    RoundedSize, ScaleValue,
-    ScaffoldProps, SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps,
-    SideNavProps, SidebarProps, SideNavSize, SkeletonProps, SizeValue, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath,
-    SvgPathFill, SvgTransform, SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableProps, TableSize,
-    PieChartProps, TabsProps, TabsVariant, TextProps, TextSize, TextSpacing, TextWeight, ThemeSelectProps, ThemeToggleProps,
-    ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem, TypeWriterProps, MicrophoneProps,
-    VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewGesture, ViewNode, ViewTransition,
-    PhoneProps, phone_country, phone_countries, phone_country_flag_icon,
-    ViewConstant, ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, VisibilityCondition,
-    ViewForm, ViewFormFieldKind, FormValidationRuleKind, collect_view_forms,
-    collect_route_font_families, compose_tree, fixed_box_nodes, fixed_fab_nodes,
-    form_control_min_height, form_control_text_size, node_child_groups, node_element_props, text_spacing_em,
-    text_binding_path, text_typography, translation_resource_name,
+    OverlayPaint, PhoneProps, PieChartProps, PositionProps, RadioGroupOrientation, RadioGroupProps,
+    RadioOption, RailNavItem, RailNavProps, RecordProps, ResponsiveValue, RichTextMark,
+    RoundedSize, SIDE_NAV_SUBMENU_ARROW_PATH, ScaffoldProps, ScaleValue, SectionBackground,
+    SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps,
+    SideNavProps, SideNavSize, SidebarProps, SizeValue, SkeletonProps, SliderProps, StyleProps,
+    SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill, SvgProps, SvgTransform, SvgViewBox, TabItem,
+    TableColumn,
+    TableColumnAlign, TableProps, TableSize, TabsProps, TabsVariant, TextAlign, TextProps,
+    TextSize, TextSpacing, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps,
+    ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
+    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction, ViewActionKind,
+    ViewAnimation, ViewConstant, ViewForm, ViewFormFieldKind, ViewGesture, ViewNode,
+    ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
+    collect_route_font_families, collect_view_forms, compose_tree, empty_icon, fixed_box_nodes,
+    fixed_fab_nodes, form_control_min_height, form_control_text_size, node_child_groups,
+    node_element_props, phone_countries, phone_country, phone_country_flag_icon,
+    side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon, text_binding_path,
+    text_spacing_em, text_typography, translation_resource_name, view_icon,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -274,13 +276,18 @@ pub fn generate_android_with_app_translations_and_icons(
             target: "android",
         },
     ];
-    files.extend(dev_sources.shards.into_iter().map(|source| AndroidArtifact {
-        relative_path: PathBuf::from("apps/android/dev/src/dev/dowe/generated")
-            .join(source.file_name),
-        content: source.content,
-        kind: AndroidArtifactKind::DevEntrypoint,
-        target: "android",
-    }));
+    files.extend(
+        dev_sources
+            .shards
+            .into_iter()
+            .map(|source| AndroidArtifact {
+                relative_path: PathBuf::from("apps/android/dev/src/dev/dowe/generated")
+                    .join(source.file_name),
+                content: source.content,
+                kind: AndroidArtifactKind::DevEntrypoint,
+                target: "android",
+            }),
+    );
     files.extend(android_translation_artifacts(translations));
     AndroidOutput { files }
 }
@@ -525,8 +532,7 @@ dependencies {{
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
 }}
-"#
-,
+"#,
         escape_kotlin(app_bundle)
     )
 }
@@ -558,8 +564,7 @@ fn android_manifest(
         </activity>
     </application>
 </manifest>
-"#
-,
+"#,
         escape_android_xml(app_name)
     )
 }
@@ -593,8 +598,7 @@ fn dev_manifest(
         </activity>
     </application>
 </manifest>
-"#
-,
+"#,
         app_bundle,
         escape_android_xml(app_name)
     )
@@ -603,9 +607,8 @@ fn dev_manifest(
 fn android_capture_permissions(uses_camera: bool, uses_microphone: bool) -> String {
     [
         uses_camera.then_some("    <uses-permission android:name=\"android.permission.CAMERA\" />"),
-        uses_microphone.then_some(
-            "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />",
-        ),
+        uses_microphone
+            .then_some("    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />"),
     ]
     .into_iter()
     .flatten()

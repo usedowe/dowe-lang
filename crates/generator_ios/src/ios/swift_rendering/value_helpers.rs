@@ -35,9 +35,28 @@ fn swift_visible_text_expression(
     }
 }
 
+fn swift_visible_text_value_expression(
+    value: &str,
+    i18n: Option<&str>,
+    context: &SwiftReactiveContext,
+) -> String {
+    if let Some(key) = i18n {
+        return format!("String(localized: \"{}\")", escape_swift(key));
+    }
+    let Some(binding) = text_binding_path(value) else {
+        return format!("\"{}\"", escape_swift(value));
+    };
+    match context.dynamic_path(binding) {
+        Some(path) => context
+            .item_value(binding)
+            .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
+            .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path))),
+        None => format!("\"{}\"", escape_swift(value)),
+    }
+}
+
 fn swift_localized_literal(value: &str, i18n: Option<&str>) -> String {
-    i18n
-        .map(|key| format!("String(localized: \"{}\")", escape_swift(key)))
+    i18n.map(|key| format!("String(localized: \"{}\")", escape_swift(key)))
         .unwrap_or_else(|| format!("\"{}\"", escape_swift(value)))
 }
 
@@ -325,13 +344,8 @@ fn swift_select_options(
         .description
         .as_ref()
         .map(|path| {
-            let path = item_context
-                .item_path(path)
-                .unwrap_or_else(|| path.clone());
-            format!(
-                "state.text(\"{}\", item: row.value)",
-                escape_swift(&path)
-            )
+            let path = item_context.item_path(path).unwrap_or_else(|| path.clone());
+            format!("state.text(\"{}\", item: row.value)", escape_swift(&path))
         })
         .unwrap_or_else(|| "nil".to_string());
     let dynamic = format!(

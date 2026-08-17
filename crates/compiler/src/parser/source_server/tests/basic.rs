@@ -24,6 +24,99 @@ fn parses_main_server_route() {
 }
 
 #[test]
+fn registers_imported_databases_for_project_operations() {
+    let root = TempDir::new().expect("root");
+    fs::write(
+        root.path().join("server-config.dowe"),
+        r#"database IconDb provider:"dowe" host:"127.0.0.1" port:4147 account:"docs" secret:"secret" name:"icons" entities:[] seeders:[]"#,
+    )
+    .expect("database config");
+    let main_path = root.path().join("main.dowe");
+    let main = parse_source_file(
+        root.path(),
+        &main_path,
+        r#"import IconDb from "@/server-config"
+
+main
+  server port:8080
+    databases:[IconDb]"#
+            .to_string(),
+    )
+    .expect("main");
+
+    let server = parse_server_source(root.path(), &main, &EnvironmentConfig::default())
+        .expect("server");
+
+    assert_eq!(server.backend.databases.len(), 1);
+    assert_eq!(server.backend.databases[0].binding, "IconDb");
+    assert_eq!(server.databases.len(), 1);
+    assert_eq!(server.databases[0].connection.database, "icons");
+}
+
+#[test]
+fn development_server_skips_seeder_modules_entirely() {
+    let root = TempDir::new().expect("root");
+    fs::create_dir_all(root.path().join("server/config")).expect("config directory");
+    fs::create_dir_all(root.path().join("server/seeders")).expect("seeders directory");
+    fs::write(
+        root.path().join("server/config/database.dowe"),
+        r#"import Bootstrap from "@/server/seeders/bootstrap"
+
+database AppDb provider:"dowe" host:"127.0.0.1" port:4147 account:"app" secret:"secret" name:"app" entities:[] seeders:[Bootstrap]"#,
+    )
+    .expect("database config");
+    fs::write(
+        root.path().join("server/seeders/bootstrap.dowe"),
+        "seeder Bootstrap\n  insert entity:Missing value:{}",
+    )
+    .expect("seeder source");
+    let main_path = root.path().join("main.dowe");
+    let main = parse_source_file(
+        root.path(),
+        &main_path,
+        r#"import AppDb from "@/server/config/database"
+
+main
+  server port:8080
+    databases:[AppDb]"#
+            .to_string(),
+    )
+    .expect("main");
+
+    let server = parse_server_source_without_seeders(
+        root.path(),
+        &main,
+        &EnvironmentConfig::default(),
+    )
+    .expect("development server");
+    assert!(server.databases[0].connection.seeders.is_empty());
+    assert!(
+        !server
+            .inspector
+            .nodes
+            .iter()
+            .any(|node| node.kind == "seeder")
+    );
+}
+
+#[test]
+fn rejects_unimported_database_registration() {
+    let root = TempDir::new().expect("root");
+    let main_path = root.path().join("main.dowe");
+    let main = parse_source_file(
+        root.path(),
+        &main_path,
+        "main\n  server port:8080\n    databases:[MissingDb]".to_string(),
+    )
+    .expect("main");
+
+    let error = parse_server_source(root.path(), &main, &EnvironmentConfig::default())
+        .expect_err("missing database import");
+
+    assert!(error.to_string().contains("unknown Database handle import `MissingDb`"));
+}
+
+#[test]
 fn parses_acme_tls_with_managed_kv_domains() {
     let file = parse_source_file(
         Path::new("/project"),

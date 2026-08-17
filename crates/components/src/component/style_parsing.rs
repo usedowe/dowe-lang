@@ -66,6 +66,12 @@ fn parse_style_props(
             "background" if style_accepts_background(mode) => {
                 style.background = Some(parse_background_prop(&prop.name, &prop.value)?)
             }
+            "center" if matches!(mode, StylePropMode::Section) => {
+                style.center = Some(parse_responsive_bool_prop(&prop.name, &prop.value)?)
+            }
+            "gap" if matches!(mode, StylePropMode::Section) => {
+                style.gap = Some(parse_gap_prop(&prop.name, &prop.value, false)?)
+            }
             "boxed" if matches!(mode, StylePropMode::Section) => {
                 style.boxed = parse_static_bool(&prop.name, &prop.value)?
             }
@@ -439,12 +445,18 @@ fn parse_variant_props(
                 variant_props.label_floating = parse_static_bool(&prop.name, &prop.value)?
             }
             "helpText"
-                if matches!(component, BuiltinComponent::Input | BuiltinComponent::Select) =>
+                if matches!(
+                    component,
+                    BuiltinComponent::Input | BuiltinComponent::Select
+                ) =>
             {
                 form_help_text = Some(parse_required_string(&prop.name, &prop.value)?)
             }
             "errorText"
-                if matches!(component, BuiltinComponent::Input | BuiltinComponent::Select) =>
+                if matches!(
+                    component,
+                    BuiltinComponent::Input | BuiltinComponent::Select
+                ) =>
             {
                 form_error_text = Some(parse_required_string(&prop.name, &prop.value)?)
             }
@@ -882,6 +894,9 @@ fn parse_text_props(
 
     for prop in props {
         match prop.name.as_str() {
+            "align" if matches!(component, BuiltinComponent::Text | BuiltinComponent::Title) => {
+                text.align = Some(parse_text_align_prop(&prop.name, &prop.value)?)
+            }
             "size" => text.size = Some(parse_text_size_prop(&prop.name, &prop.value)?),
             "weight" => text.weight = Some(parse_text_weight_prop(&prop.name, &prop.value)?),
             "spacing" => {
@@ -953,6 +968,10 @@ fn parse_svg_props(
             }
         },
         data,
+        icon_name: None,
+        icon_fallback: None,
+        icon_fill: None,
+        icon_stroke: None,
         motion: None,
     })
 }

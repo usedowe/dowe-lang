@@ -1,5 +1,5 @@
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 
 struct SolarIconSource {
     category: &'static str,
@@ -145,6 +145,66 @@ pub fn solar_runtime_svg_catalog() -> ComponentResult<Vec<RuntimeSvgCatalogEntry
         .collect()
 }
 
+static RUNTIME_ICON_CATALOG: std::sync::OnceLock<
+    Result<std::sync::Arc<Vec<(String, String)>>, ComponentError>,
+> = std::sync::OnceLock::new();
+
+pub fn runtime_icon_catalog_shared() -> ComponentResult<std::sync::Arc<Vec<(String, String)>>> {
+    RUNTIME_ICON_CATALOG
+        .get_or_init(|| {
+            all_icon_names()
+                .into_iter()
+                .map(|name| runtime_icon_catalog_entry(&name))
+                .collect::<ComponentResult<Vec<_>>>()
+                .map(std::sync::Arc::new)
+        })
+        .clone()
+}
+
+pub fn runtime_icon_catalog() -> ComponentResult<Vec<(String, String)>> {
+    runtime_icon_catalog_shared().map(|catalog| catalog.as_ref().clone())
+}
+
+pub fn runtime_icon_catalog_for_names<I, S>(names: I) -> ComponentResult<Vec<(String, String)>>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    names
+        .into_iter()
+        .map(|name| runtime_icon_catalog_entry(name.as_ref()))
+        .collect()
+}
+
+fn runtime_icon_catalog_entry(name: &str) -> ComponentResult<(String, String)> {
+    let payload = runtime_icon_svg(name)
+        .ok_or_else(|| ComponentError::invalid_prop("name", "known runtime icon catalog entry"))?;
+    Ok((name.to_string(), payload))
+}
+
+fn runtime_icon_svg(name: &str) -> Option<String> {
+    if let Some(code) = name.strip_prefix("country-flags:") {
+        let source = country_flag_svg(code)?;
+        let (view_box, paths) = parse_country_flag_svg(source).ok()?;
+        return Some(runtime_svg_json(&view_box, &paths));
+    }
+    if let Some(spinner_name) = name.strip_prefix("svg-spinners:") {
+        let source = svg_spinner_svg(spinner_name)?;
+        validate_svg_spinner_source(source).ok()?;
+        let (view_box, paths) = parse_spinner_svg(source, None, None).ok()?;
+        return Some(runtime_svg_json(&view_box, &paths));
+    }
+    if let Some(logo_name) = name.strip_prefix("svg-logos:") {
+        let source = svg_logo_svg(logo_name)?;
+        validate_svg_logo_source(source).ok()?;
+        let (view_box, paths) = parse_svg_logo(source).ok()?;
+        return Some(runtime_svg_json(&view_box, &paths));
+    }
+    let source = solar_icon_svg(name)?;
+    let (view_box, paths) = parse_solar_svg(source, None, None).ok()?;
+    Some(runtime_svg_json(&view_box, &paths))
+}
+
 fn solar_runtime_style(style: &str) -> &'static str {
     match style {
         "Broken" => "broken",
@@ -209,7 +269,10 @@ fn runtime_svg_path_json(path: &SvgPath) -> String {
             fields.push(format!("\"opacity\":{opacity}"));
             fields.push(format!("\"width\":{width}"));
             fields.push(format!("\"lineCap\":\"{}\"", svg_line_cap_name(line_cap)));
-            fields.push(format!("\"lineJoin\":\"{}\"", svg_line_join_name(line_join)));
+            fields.push(format!(
+                "\"lineJoin\":\"{}\"",
+                svg_line_join_name(line_join)
+            ));
         }
         SvgPathFill::LiteralFill {
             red,
@@ -237,7 +300,10 @@ fn runtime_svg_path_json(path: &SvgPath) -> String {
             fields.push(format!("\"opacity\":{opacity}"));
             fields.push(format!("\"width\":{width}"));
             fields.push(format!("\"lineCap\":\"{}\"", svg_line_cap_name(line_cap)));
-            fields.push(format!("\"lineJoin\":\"{}\"", svg_line_join_name(line_join)));
+            fields.push(format!(
+                "\"lineJoin\":\"{}\"",
+                svg_line_join_name(line_join)
+            ));
         }
         SvgPathFill::Stroke {
             opacity,
@@ -251,7 +317,10 @@ fn runtime_svg_path_json(path: &SvgPath) -> String {
             fields.push(format!("\"opacity\":{opacity}"));
             fields.push(format!("\"width\":{width}"));
             fields.push(format!("\"lineCap\":\"{}\"", svg_line_cap_name(line_cap)));
-            fields.push(format!("\"lineJoin\":\"{}\"", svg_line_join_name(line_join)));
+            fields.push(format!(
+                "\"lineJoin\":\"{}\"",
+                svg_line_join_name(line_join)
+            ));
         }
     }
     if let Some(transform) = path.transform.as_ref() {
@@ -350,12 +419,20 @@ fn solar_icon_svg(name: &str) -> Option<&'static str> {
 
 pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut name = None;
+    let mut dynamic_name = None;
     let mut fill = None;
     let mut stroke = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "name" => name = Some(parse_static_string(&prop.name, &prop.value)?),
+            "name" => {
+                let value = parse_static_string(&prop.name, &prop.value)?;
+                if let Some(path) = value.strip_prefix("@icon-binding:") {
+                    dynamic_name = Some(path.to_string());
+                } else {
+                    name = Some(value);
+                }
+            }
             "style" => {
                 return Err(ComponentError::invalid_prop(
                     "style",
@@ -367,9 +444,29 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
             _ => style_props.push(prop),
         }
     }
-    let name = name.filter(|value| !value.is_empty()).ok_or_else(|| {
-        ComponentError::invalid_prop("name", "non-empty quoted Dowe icon name")
-    })?;
+    if let Some(path) = dynamic_name {
+        if path.is_empty() {
+            return Err(ComponentError::invalid_prop(
+                "name",
+                "non-empty string icon path",
+            ));
+        }
+        style_props.push(ComponentProp {
+            name: "viewBox".to_string(),
+            value: PropValue::String("0 0 24 24".to_string()),
+        });
+        let mut props = parse_svg_props(BuiltinComponent::Icon, &style_props)?;
+        props.icon_name = Some(path);
+        props.icon_fill = fill;
+        props.icon_stroke = stroke;
+        return Ok(ViewNode::Svg {
+            props,
+            paths: Vec::new(),
+        });
+    }
+    let name = name
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| ComponentError::invalid_prop("name", "non-empty quoted Dowe icon name"))?;
     if let Some(code) = name.strip_prefix("country-flags:") {
         let icon = country_flag_icon(code)
             .ok_or_else(|| ComponentError::invalid_prop("name", "known country flag icon"))?;
@@ -425,10 +522,7 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
         value: PropValue::String(view_box.as_str()),
     });
     let props = parse_svg_props(BuiltinComponent::Icon, &svg_props)?;
-    Ok(ViewNode::Svg {
-        props,
-        paths,
-    })
+    Ok(ViewNode::Svg { props, paths })
 }
 
 fn validate_svg_logo_source(source: &str) -> ComponentResult<()> {
@@ -541,9 +635,8 @@ fn svg_logo_view_box(source: &str) -> ComponentResult<SvgViewBox> {
                 if element.name().as_ref() == b"svg" =>
             {
                 let attrs = xml_attrs(&element);
-                let value = attr(&attrs, "viewBox").ok_or_else(|| {
-                    ComponentError::invalid_prop("name", "SVG Logos viewBox")
-                })?;
+                let value = attr(&attrs, "viewBox")
+                    .ok_or_else(|| ComponentError::invalid_prop("name", "SVG Logos viewBox"))?;
                 return parse_svg_view_box("viewBox", &PropValue::String(value.to_string()));
             }
             Ok(Event::Eof) => break,
@@ -700,10 +793,18 @@ fn tiny_skia_path_data(path: &usvg::tiny_skia_path::Path) -> String {
         }
         match segment {
             PathSegment::MoveTo(point) => {
-                data.push_str(&format!("M{} {}", svg_logo_number(point.x), svg_logo_number(point.y)));
+                data.push_str(&format!(
+                    "M{} {}",
+                    svg_logo_number(point.x),
+                    svg_logo_number(point.y)
+                ));
             }
             PathSegment::LineTo(point) => {
-                data.push_str(&format!("L{} {}", svg_logo_number(point.x), svg_logo_number(point.y)));
+                data.push_str(&format!(
+                    "L{} {}",
+                    svg_logo_number(point.x),
+                    svg_logo_number(point.y)
+                ));
             }
             PathSegment::QuadTo(control, point) => {
                 data.push_str(&format!(
@@ -786,8 +887,7 @@ fn validate_svg_spinner_source(source: &str) -> ComponentResult<()> {
                 for (name, value) in xml_attrs(&element) {
                     if name.starts_with("on")
                         || value.to_ascii_lowercase().contains("javascript:")
-                        || ((name == "href" || name == "xlink:href")
-                            && !value.starts_with('#'))
+                        || ((name == "href" || name == "xlink:href") && !value.starts_with('#'))
                     {
                         return Err(ComponentError::invalid_prop(
                             "name",
@@ -935,16 +1035,18 @@ fn parse_country_flag_svg(source: &str) -> ComponentResult<(SvgViewBox, Vec<SvgP
                     })?;
                     paths.push(SvgPath {
                         data: parse_svg_path_data("d", &PropValue::String(data))?,
-                        fill: country_flag_paint(
-                            &attrs,
-                            *group_opacity.last().unwrap_or(&255),
-                        ),
+                        fill: country_flag_paint(&attrs, *group_opacity.last().unwrap_or(&255)),
                         transform: None,
                     });
                 }
             }
             Ok(Event::Eof) => break,
-            Err(_) => return Err(ComponentError::invalid_prop("name", "valid country flag SVG")),
+            Err(_) => {
+                return Err(ComponentError::invalid_prop(
+                    "name",
+                    "valid country flag SVG",
+                ));
+            }
             _ => {}
         }
     }
@@ -1042,6 +1144,10 @@ pub fn side_nav_submenu_arrow_icon() -> SideNavIcon {
                 height: "24".to_string(),
             },
             data: None,
+            icon_name: None,
+            icon_fallback: None,
+            icon_fill: None,
+            icon_stroke: None,
             motion: None,
         },
         paths: vec![
@@ -1071,17 +1177,39 @@ pub fn svg_spinner_control_icon(name: &str) -> ComponentResult<SideNavIcon> {
 
 pub fn view_icon(icon: ViewIcon) -> SideNavIcon {
     let svg = match icon {
-        ViewIcon::Plus => r#"<svg viewBox="0 0 24 24"><path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#,
-        ViewIcon::Link => r#"<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 5.03" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.22-1.22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#,
-        ViewIcon::Edit => r#"<svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0-3-3L5 17v3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m13.5 7.5 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#,
-        ViewIcon::Trash => r#"<svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>"#,
-        ViewIcon::Search => r#"<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#,
-        ViewIcon::Settings => r#"<svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h2m12 0h2M12 4v2m0 12v2M6.3 6.3l1.4 1.4m8.6 8.6 1.4 1.4m0-11.4-1.4 1.4m-8.6 8.6-1.4 1.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#,
-        ViewIcon::Upload => r#"<svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 5 5m-5-5-5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>"#,
-        ViewIcon::File => r#"<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6V3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>"#,
-        ViewIcon::Dismiss => r#"<svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#,
-        ViewIcon::Moon => r#"<svg viewBox="0 0 24 24"><path d="M20 15.3A8 8 0 0 1 8.7 4 8.5 8.5 0 1 0 20 15.3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>"#,
-        ViewIcon::Sun => r#"<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#,
+        ViewIcon::Plus => {
+            r#"<svg viewBox="0 0 24 24"><path d="M12 5v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#
+        }
+        ViewIcon::Link => {
+            r#"<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L10.9 5.03" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14 11a5 5 0 0 0-7.07 0L4.81 13.12a5 5 0 0 0 7.07 7.07l1.22-1.22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#
+        }
+        ViewIcon::Edit => {
+            r#"<svg viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0-3-3L5 17v3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m13.5 7.5 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#
+        }
+        ViewIcon::Trash => {
+            r#"<svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M8 7l1-3h6l1 3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>"#
+        }
+        ViewIcon::Search => {
+            r#"<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#
+        }
+        ViewIcon::Settings => {
+            r#"<svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 12h2m12 0h2M12 4v2m0 12v2M6.3 6.3l1.4 1.4m8.6 8.6 1.4 1.4m0-11.4-1.4 1.4m-8.6 8.6-1.4 1.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#
+        }
+        ViewIcon::Upload => {
+            r#"<svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 5 5m-5-5-5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>"#
+        }
+        ViewIcon::File => {
+            r#"<svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6V3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>"#
+        }
+        ViewIcon::Dismiss => {
+            r#"<svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#
+        }
+        ViewIcon::Moon => {
+            r#"<svg viewBox="0 0 24 24"><path d="M20 15.3A8 8 0 0 1 8.7 4 8.5 8.5 0 1 0 20 15.3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>"#
+        }
+        ViewIcon::Sun => {
+            r#"<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>"#
+        }
     };
     let (view_box, paths) = parse_solar_svg(svg, None, None).expect("bundled ViewIcon geometry");
     let mut props = parse_svg_props(
@@ -1196,27 +1324,62 @@ fn solar_geometry(tag: &[u8], attrs: &[(String, String)]) -> Option<String> {
     let number = |name| attr(attrs, name).and_then(|value| value.parse::<f32>().ok());
     if tag == b"circle" {
         let (cx, cy, r) = (number("cx")?, number("cy")?, number("r")?);
-        return Some(format!("M{} {}a{} {} 0 1 0 {} 0a{} {} 0 1 0 {} 0", cx - r, cy, r, r, r * 2.0, r, r, r * -2.0));
+        return Some(format!(
+            "M{} {}a{} {} 0 1 0 {} 0a{} {} 0 1 0 {} 0",
+            cx - r,
+            cy,
+            r,
+            r,
+            r * 2.0,
+            r,
+            r,
+            r * -2.0
+        ));
     }
     if tag == b"ellipse" {
         let (cx, cy, rx, ry) = (number("cx")?, number("cy")?, number("rx")?, number("ry")?);
-        return Some(format!("M{} {}a{} {} 0 1 0 {} 0a{} {} 0 1 0 {} 0", cx - rx, cy, rx, ry, rx * 2.0, rx, ry, rx * -2.0));
+        return Some(format!(
+            "M{} {}a{} {} 0 1 0 {} 0a{} {} 0 1 0 {} 0",
+            cx - rx,
+            cy,
+            rx,
+            ry,
+            rx * 2.0,
+            rx,
+            ry,
+            rx * -2.0
+        ));
     }
     if tag == b"rect" {
-        let (x, y, width, height) = (number("x").unwrap_or(0.0), number("y").unwrap_or(0.0), number("width")?, number("height")?);
+        let (x, y, width, height) = (
+            number("x").unwrap_or(0.0),
+            number("y").unwrap_or(0.0),
+            number("width")?,
+            number("height")?,
+        );
         let rx = number("rx").unwrap_or(0.0).min(width / 2.0);
         let ry = number("ry").unwrap_or(rx).min(height / 2.0);
         return if rx == 0.0 && ry == 0.0 {
             Some(format!("M{x} {y}h{width}v{height}h-{}Z", width))
         } else {
-            Some(format!("M{} {y}h{}a{rx} {ry} 0 0 1 {rx} {ry}v{}a{rx} {ry} 0 0 1 -{rx} {ry}h-{}a{rx} {ry} 0 0 1 -{rx} -{ry}v-{}a{rx} {ry} 0 0 1 {rx} -{ry}Z", x + rx, width - rx * 2.0, height - ry * 2.0, width - rx * 2.0, height - ry * 2.0))
+            Some(format!(
+                "M{} {y}h{}a{rx} {ry} 0 0 1 {rx} {ry}v{}a{rx} {ry} 0 0 1 -{rx} {ry}h-{}a{rx} {ry} 0 0 1 -{rx} -{ry}v-{}a{rx} {ry} 0 0 1 {rx} -{ry}Z",
+                x + rx,
+                width - rx * 2.0,
+                height - ry * 2.0,
+                width - rx * 2.0,
+                height - ry * 2.0
+            ))
         };
     }
     None
 }
 
 fn attr<'a>(attrs: &'a [(String, String)], name: &str) -> Option<&'a str> {
-    attrs.iter().find(|(key, _)| key == name).map(|(_, value)| value.as_str())
+    attrs
+        .iter()
+        .find(|(key, _)| key == name)
+        .map(|(_, value)| value.as_str())
 }
 
 fn solar_path_paint(

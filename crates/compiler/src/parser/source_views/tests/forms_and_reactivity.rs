@@ -535,6 +535,46 @@
     }
 
     #[test]
+    fn parses_section_center_responsive_prop() {
+        let tree = parse_page(
+            r#"page landingPage
+  Section center:{ xs:false md:true }
+    Text
+      "Hero""#,
+        )
+        .expect("tree");
+
+        let ViewNode::Section { props, .. } = tree else {
+            panic!("section");
+        };
+        let center = props.center.expect("center");
+        assert_eq!(center.entries[0].breakpoint, Breakpoint::Xs);
+        assert!(!center.entries[0].value);
+        assert_eq!(center.entries[1].breakpoint, Breakpoint::Md);
+        assert!(center.entries[1].value);
+    }
+
+    #[test]
+    fn parses_section_gap_responsive_prop() {
+        let tree = parse_page(
+            r#"page landingPage
+  Section gap:{ xs:2 md:4 }
+    Text
+      "Hero""#,
+        )
+        .expect("tree");
+
+        let ViewNode::Section { props, .. } = tree else {
+            panic!("section");
+        };
+        let gap = props.gap.expect("gap");
+        assert_eq!(gap.entries[0].breakpoint, Breakpoint::Xs);
+        assert_eq!(gap.entries[0].value, GapValue::Single(GapSize::Scale(ScaleValue(4))));
+        assert_eq!(gap.entries[1].breakpoint, Breakpoint::Md);
+        assert_eq!(gap.entries[1].value, GapValue::Single(GapSize::Scale(ScaleValue(8))));
+    }
+
+    #[test]
     fn rejects_responsive_section_boxed_prop() {
         let error = parse_page(
             r#"page landingPage

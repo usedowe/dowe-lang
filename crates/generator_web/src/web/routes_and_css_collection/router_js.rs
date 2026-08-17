@@ -100,8 +100,31 @@ fn router_config_js(web: &WebOutput) -> String {
         .as_deref()
         .map(escape_js)
         .unwrap_or_default();
+    let mut icon_names = std::collections::BTreeSet::new();
+    let mut needs_full_icon_catalog = false;
+    for page in &web.pages {
+        for tree in [&page.layout_tree, &page.page_tree] {
+            if dowe_components::tree_has_dynamic_icon(tree) {
+                if let Some(names) = dowe_components::dynamic_icon_names(tree) {
+                    icon_names.extend(names);
+                } else {
+                    needs_full_icon_catalog = true;
+                }
+            }
+        }
+    }
+    let icon_catalog = if needs_full_icon_catalog {
+        dowe_components::runtime_icon_catalog_shared()
+    } else {
+        dowe_components::runtime_icon_catalog_for_names(icon_names).map(std::sync::Arc::new)
+    }
+    .expect("validated runtime icon catalog")
+    .iter()
+    .map(|(name, payload)| format!(r#""{}":"{}""#, escape_js(&name), escape_js(&payload)))
+    .collect::<Vec<_>>()
+    .join(",");
 
     format!(
-        "let routes={{{routes}}};const initialPath=\"{initial_path}\";const localeChunks={{{locale_chunks}}};const defaultLocale=\"{default_locale}\";"
+        "let routes={{{routes}}};const initialPath=\"{initial_path}\";const localeChunks={{{locale_chunks}}};const defaultLocale=\"{default_locale}\";const doweIconCatalog={{{icon_catalog}}};"
     )
 }

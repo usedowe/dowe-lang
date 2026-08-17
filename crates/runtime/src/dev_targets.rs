@@ -11,7 +11,7 @@ use crate::dev::{
 };
 use crate::error::{RuntimeError, RuntimeResult};
 use crate::logging::log_info;
-use dowe_compiler::CompiledProject;
+use dowe_compiler::{CompiledProject, GeneratedFile};
 use dowe_spawn::{KillTarget, ProcessControl, SpawnConfig, SpawnOptions, StreamMode, run, spawn};
 use std::fs;
 use std::path::PathBuf;
@@ -43,13 +43,14 @@ pub(crate) fn start_external_target(
 }
 
 pub(crate) fn build_hot_module_if_current(
-    project: &CompiledProject,
+    root: &std::path::Path,
+    files: &[GeneratedFile],
     target: DevTarget,
     revision: &crate::dev_modules::DevModuleRevision,
 ) -> RuntimeResult<Option<crate::dev_modules::PublishedDevModule>> {
     match target {
-        DevTarget::Android => android::build_hot_module_if_current(project, revision),
-        DevTarget::Ios => ios::build_hot_module_if_current(project, revision),
+        DevTarget::Android => android::build_hot_module_if_current(root, files, revision),
+        DevTarget::Ios => ios::build_hot_module_if_current(root, files, revision),
         _ => Err(RuntimeError::new(format!(
             "{} does not use a native development module",
             target.label()

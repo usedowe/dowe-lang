@@ -4,6 +4,7 @@ use dowe_generator_web::{WebOutput, render_page_document_with_icons};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub(super) struct ProjectIconTargets {
@@ -71,12 +72,25 @@ fn regular_icon_file(root: &Path, relative: &str) -> DoweResult<bool> {
     Ok(current.is_file())
 }
 
-pub(super) fn apply_web_icon_documents(web: &mut WebOutput, icons: &ProjectIconTargets) {
+pub(super) fn apply_web_icon_documents(
+    web: &mut WebOutput,
+    previous: Option<&WebOutput>,
+    icons: &ProjectIconTargets,
+) {
     let favicon = icons.web_favicon.then_some("/icons/web/favicon-32x32.png");
     let apple_touch = icons
         .web_apple_touch
         .then_some("/icons/web/apple-touch-icon.png");
     for page in &mut web.pages {
+        if previous.is_some_and(|previous| {
+            previous
+                .pages
+                .iter()
+                .any(|candidate| Arc::ptr_eq(candidate, page))
+        }) {
+            continue;
+        }
+        let page = Arc::make_mut(page);
         page.html_document = render_page_document_with_icons(page, favicon, apple_touch);
     }
 }

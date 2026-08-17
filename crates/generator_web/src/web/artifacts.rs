@@ -6,7 +6,7 @@ use dowe_components::{
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,
     ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps, CodeProps, CodeTemplateSegment,
     CollapsibleProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
-    CommandEntry, CommandProps, ComponentVariant, CountdownProps, CoverSource, CsvColumn,
+    CommandEntry, CommandProps, ComponentVariant, ContainerSize, CountdownProps, CoverSource, CsvColumn,
     CsvFieldProps, DateProps, DateRangeProps, DesignConfig, DesignTheme, DeviceProps, DividerProps,
     DragDropProps, DragGroup, DragItem, DrawerProps, DropdownProps, DropzoneProps, EditorProps,
     ElementProps, EmptyKind, EmptyProps, FORM_CONTROL_FLOATING_HEIGHT_INCREMENT, FabAction,
@@ -21,7 +21,7 @@ use dowe_components::{
     SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps, SidebarProps, SizeValue,
     SkeletonProps, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill,
     SvgProps, TabItem, TableColumn, TableColumnAlign, TableProps, TabsProps, TabsVariant,
-    TextProps, TextSize, TextSpacing, TextWeight, TextareaProps, ThemeSelectProps,
+    TextAlign, TextProps, TextSize, TextSpacing, TextWeight, TextareaProps, ThemeSelectProps,
     ThemeToggleProps, ToastKind, ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps,
     ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps,
     VideoProps, ViewAction, ViewActionKind, ViewAnimation, ViewAssignAction, ViewConstant,
@@ -34,13 +34,14 @@ use dowe_components::{
     text_spacing_em, text_typography, text_weight_number,
 };
 use dowe_minifier::{minify_css, minify_js};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WebOutput {
-    pub chunks: Vec<GeneratedChunk>,
-    pub pages: Vec<ViewPage>,
+    pub chunks: Vec<Arc<GeneratedChunk>>,
+    pub pages: Vec<Arc<ViewPage>>,
     pub translation_chunks: Vec<GeneratedTranslationChunk>,
     pub default_locale: Option<String>,
     pub router_js: String,
@@ -48,6 +49,18 @@ pub struct WebOutput {
 
 impl WebOutput {
     pub fn router_file_name(&self) -> String {
+        if let Some(file_name) = self
+            .pages
+            .first()
+            .map(|page| page.router_file_name.as_str())
+            .filter(|file_name| !file_name.is_empty())
+        {
+            return file_name.to_string();
+        }
+        self.generated_router_file_name()
+    }
+
+    fn generated_router_file_name(&self) -> String {
         content_file_name("router", &self.router_js)
     }
 
@@ -148,7 +161,10 @@ struct GeneratedDesignCssChunk {
 
 impl GeneratedDesignCssChunk {
     fn new(name: &'static str, content: String) -> Self {
-        let file_name = format!("{name}-{}.css", short_id(&format!("design:{name}"), &content));
+        let file_name = format!(
+            "{name}-{}.css",
+            short_id(&format!("design:{name}"), &content)
+        );
         Self {
             name,
             relative_path: Path::new("web/chunks/design").join(file_name),
@@ -210,6 +226,11 @@ pub struct WebArtifact {
     pub content: String,
     pub kind: WebArtifactKind,
     pub target: &'static str,
+}
+
+pub struct WebArtifactUpdate {
+    pub files: Vec<WebArtifact>,
+    pub expected_paths: BTreeSet<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -499,10 +520,41 @@ pub fn prepare_design_asset(
     web: &mut WebOutput,
     font_config: &FontConfig,
     design_config: &DesignConfig,
-) {
+) -> String {
+    prepare_design_asset_with_router(web, None, font_config, design_config, false)
+}
+
+pub fn prepare_dev_design_asset(
+    web: &mut WebOutput,
+    font_config: &FontConfig,
+    design_config: &DesignConfig,
+) -> String {
+    prepare_design_asset_with_router(web, None, font_config, design_config, true)
+}
+
+pub fn prepare_incremental_dev_design_asset(
+    web: &mut WebOutput,
+    previous: &WebOutput,
+    font_config: &FontConfig,
+    design_config: &DesignConfig,
+) -> String {
+    prepare_design_asset_with_router(web, Some(previous), font_config, design_config, true)
+}
+
+fn prepare_design_asset_with_router(
+    web: &mut WebOutput,
+    previous: Option<&WebOutput>,
+    font_config: &FontConfig,
+    design_config: &DesignConfig,
+    stable_router: bool,
+) -> String {
     let css = design_css_for_web(web, font_config, design_config);
     let file_name = design_css_file_name(&css);
     for page in &mut web.pages {
+        if reusable_prepared_page(previous, page).is_some() {
+            continue;
+        }
+        let page = Arc::make_mut(page);
         let mut css_chunks = design_css_chunks(DesignCssFeatures::collect([
             &page.layout_tree,
             &page.page_tree,
@@ -518,13 +570,230 @@ pub fn prepare_design_asset(
         );
         page.css_chunks = css_chunks;
     }
-    web.router_js = router_js(web);
-    let router_file_name = web.router_file_name();
+    if stable_router {
+        if let Some(previous) = previous {
+            web.router_js.clone_from(&previous.router_js);
+        } else {
+            web.router_js = router_js(web);
+        }
+    } else {
+        web.router_js = router_js(web);
+    }
+    let router_file_name = if stable_router {
+        "router.js".to_string()
+    } else {
+        web.generated_router_file_name()
+    };
     for page in &mut web.pages {
+        if let Some(previous) = reusable_prepared_page(previous, page)
+            && previous.design_file_name == file_name
+            && previous.router_file_name == router_file_name
+        {
+            continue;
+        }
+        let page = Arc::make_mut(page);
         page.design_file_name.clone_from(&file_name);
         page.router_file_name.clone_from(&router_file_name);
         page.html_document = render_page_document(page);
     }
+    css
+}
+
+fn reusable_prepared_page<'a>(
+    previous: Option<&'a WebOutput>,
+    page: &ViewPage,
+) -> Option<&'a ViewPage> {
+    previous?.pages.iter().map(Arc::as_ref).find(|candidate| {
+        candidate.route_path == page.route_path
+            && candidate.source_path == page.source_path
+            && candidate.page_chunk_id == page.page_chunk_id
+            && candidate.layout_chunk_ids == page.layout_chunk_ids
+            && candidate.metadata == page.metadata
+    })
+}
+
+pub fn web_artifact_update(
+    web: &WebOutput,
+    previous: Option<&WebOutput>,
+    design_css: String,
+) -> WebArtifactUpdate {
+    let mut files = Vec::new();
+    let mut expected_paths = BTreeSet::new();
+    let previous_chunks = previous
+        .into_iter()
+        .flat_map(|output| output.chunks.iter())
+        .map(|chunk| (chunk.relative_path.clone(), chunk))
+        .collect::<BTreeMap<_, _>>();
+    for chunk in &web.chunks {
+        expected_paths.insert(chunk.relative_path.clone());
+        expected_paths.insert(chunk.css_relative_path.clone());
+        if previous_chunks
+            .get(&chunk.relative_path)
+            .is_none_or(|previous| previous.content != chunk.content)
+        {
+            files.push(WebArtifact {
+                relative_path: chunk.relative_path.clone(),
+                content: chunk.content.clone(),
+                kind: WebArtifactKind::Chunk,
+                target: "web",
+            });
+        }
+        if previous_chunks
+            .get(&chunk.relative_path)
+            .is_none_or(|previous| previous.css_content != chunk.css_content)
+        {
+            files.push(WebArtifact {
+                relative_path: chunk.css_relative_path.clone(),
+                content: chunk.css_content.clone(),
+                kind: WebArtifactKind::Css,
+                target: "web",
+            });
+        }
+    }
+
+    let previous_translations = previous
+        .into_iter()
+        .flat_map(|output| output.translation_chunks.iter())
+        .map(|chunk| (chunk.relative_path.clone(), chunk))
+        .collect::<BTreeMap<_, _>>();
+    for chunk in &web.translation_chunks {
+        expected_paths.insert(chunk.relative_path.clone());
+        if previous_translations
+            .get(&chunk.relative_path)
+            .is_none_or(|previous| previous.content != chunk.content)
+        {
+            files.push(WebArtifact {
+                relative_path: chunk.relative_path.clone(),
+                content: chunk.content.clone(),
+                kind: WebArtifactKind::Chunk,
+                target: "web",
+            });
+        }
+    }
+
+    let previous_runtime = previous
+        .map(WebOutput::runtime_chunks)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|chunk| (chunk.relative_path, chunk.content))
+        .collect::<BTreeMap<_, _>>();
+    for chunk in web.runtime_chunks() {
+        expected_paths.insert(chunk.relative_path.clone());
+        if previous_runtime
+            .get(&chunk.relative_path)
+            .is_none_or(|content| content != &chunk.content)
+        {
+            files.push(WebArtifact {
+                relative_path: chunk.relative_path,
+                content: chunk.content,
+                kind: WebArtifactKind::Chunk,
+                target: "web",
+            });
+        }
+    }
+
+    let previous_design_chunks = previous
+        .map(design_css_chunks_for_web)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|chunk| (chunk.relative_path, chunk.content))
+        .collect::<BTreeMap<_, _>>();
+    for chunk in design_css_chunks_for_web(web) {
+        expected_paths.insert(chunk.relative_path.clone());
+        if previous_design_chunks
+            .get(&chunk.relative_path)
+            .is_none_or(|content| content != &chunk.content)
+        {
+            files.push(WebArtifact {
+                relative_path: chunk.relative_path,
+                content: chunk.content,
+                kind: WebArtifactKind::Css,
+                target: "web",
+            });
+        }
+    }
+
+    let design_path = Path::new("web").join(web.design_file_name());
+    expected_paths.insert(design_path.clone());
+    if previous.is_none_or(|output| output.design_file_name() != web.design_file_name()) {
+        files.push(WebArtifact {
+            relative_path: design_path,
+            content: design_css,
+            kind: WebArtifactKind::Css,
+            target: "web",
+        });
+    }
+
+    let router_file_name = prepared_router_file_name(web);
+    let router_path = Path::new("web").join(router_file_name);
+    expected_paths.insert(router_path.clone());
+    if previous.is_none_or(|output| {
+        prepared_router_file_name(output) != router_file_name || output.router_js != web.router_js
+    }) {
+        files.push(WebArtifact {
+            relative_path: router_path,
+            content: web.router_js.clone(),
+            kind: WebArtifactKind::Chunk,
+            target: "web",
+        });
+    }
+
+    let manifest_path = PathBuf::from("web/manifest.json");
+    expected_paths.insert(manifest_path.clone());
+    files.push(WebArtifact {
+        relative_path: manifest_path,
+        content: manifest(web),
+        kind: WebArtifactKind::Manifest,
+        target: "web",
+    });
+
+    let previous_pages = previous
+        .into_iter()
+        .flat_map(|output| output.pages.iter())
+        .map(|page| (page.route_path.as_str(), page))
+        .collect::<BTreeMap<_, _>>();
+    if let Some(page) = web.pages.first() {
+        let index_path = PathBuf::from("web/index.html");
+        expected_paths.insert(index_path.clone());
+        if previous_pages
+            .get(page.route_path.as_str())
+            .is_none_or(|previous| previous.html_document != page.html_document)
+        {
+            files.push(WebArtifact {
+                relative_path: index_path,
+                content: static_html_document(&page.html_document, ""),
+                kind: WebArtifactKind::Html,
+                target: "web",
+            });
+        }
+    }
+    for page in &web.pages {
+        let path = PathBuf::from(format!("web/pages/{}.html", page_file_name(page)));
+        expected_paths.insert(path.clone());
+        if previous_pages
+            .get(page.route_path.as_str())
+            .is_none_or(|previous| previous.html_document != page.html_document)
+        {
+            files.push(WebArtifact {
+                relative_path: path,
+                content: static_html_document(&page.html_document, "../"),
+                kind: WebArtifactKind::Html,
+                target: "web",
+            });
+        }
+    }
+
+    WebArtifactUpdate {
+        files,
+        expected_paths,
+    }
+}
+
+fn prepared_router_file_name(web: &WebOutput) -> &str {
+    web.pages
+        .first()
+        .map(|page| page.router_file_name.as_str())
+        .unwrap_or("router.js")
 }
 
 pub fn web_artifacts(
@@ -596,7 +865,10 @@ pub fn web_artifacts_for_target(
     });
 
     artifacts.push(WebArtifact {
-        relative_path: prefixed_path(prefix, &Path::new("web").join(web.router_file_name())),
+        relative_path: prefixed_path(
+            prefix,
+            &Path::new("web").join(prepared_router_file_name(web)),
+        ),
         content: web.router_js.clone(),
         kind: WebArtifactKind::Chunk,
         target,
@@ -825,7 +1097,7 @@ pub fn inspector_manifest(web: &WebOutput) -> String {
         for node in &inspector.nodes {
             if seen.insert(node.id.clone()) {
                 nodes.push(format!(
-                    r#"{{"id":"{}","kind":"{}","path":"{}","startLine":{},"endLine":{},"usages":[{}]}}"#,
+                    r#"{{"id":"{}","kind":"{}","path":"{}","startLine":{},"endLine":{},"usages":[{}],"props":[{}],"signals":[{}],"actions":[{}]}}"#,
                     escape_json(&node.id),
                     escape_json(&node.kind),
                     escape_json(&node.source_path),
@@ -840,12 +1112,103 @@ pub fn inspector_manifest(web: &WebOutput) -> String {
                             usage.column
                         ))
                         .collect::<Vec<_>>()
+                        .join(","),
+                    node.props
+                        .iter()
+                        .map(|prop| {
+                            format!(
+                                r#"{{"name":"{}","value":"{}"}}"#,
+                                escape_json(&prop.name),
+                                escape_json(&prop.value)
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(","),
+                    node.signals
+                        .iter()
+                        .map(|signal| {
+                            format!(
+                                r#"{{"id":"{}","name":"{}","scope":"{}","storage":"{}","initial":{}}}"#,
+                                escape_json(&signal.id),
+                                escape_json(&signal.name),
+                                escape_json(&signal.scope),
+                                escape_json(&signal.storage),
+                                signal.initial_json
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                        .join(","),
+                    node.actions
+                        .iter()
+                        .map(|action| {
+                            format!(
+                                r#"{{"id":"{}","name":"{}","kind":"{}","detail":"{}"}}"#,
+                                escape_json(&action.id),
+                                escape_json(&action.name),
+                                escape_json(&action.kind),
+                                escape_json(&action.detail)
+                            )
+                        })
+                        .collect::<Vec<_>>()
                         .join(",")
                 ));
             }
         }
     }
-    format!(r#"{{"version":1,"nodes":[{}]}}"#, nodes.join(","))
+    let routes = web
+        .pages
+        .iter()
+        .map(|page| inspector_route_json(web, page))
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        r#"{{"version":2,"nodes":[{}],"routes":[{}],"breakpoints":[{{"name":"xs","minWidth":0}},{{"name":"sm","minWidth":640}},{{"name":"md","minWidth":768}},{{"name":"lg","minWidth":1024}},{{"name":"xl","minWidth":1280}}]}}"#,
+        nodes.join(","),
+        routes
+    )
+}
+
+fn inspector_route_json(web: &WebOutput, page: &ViewPage) -> String {
+    let page_chunk = web
+        .chunks
+        .iter()
+        .find(|chunk| chunk.id == page.page_chunk_id);
+    let page_source = page_chunk
+        .map(|chunk| chunk.source_path.to_string_lossy().to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+    let page_span = page_chunk.and_then(|chunk| inspector_line_span(chunk));
+    let layouts = page
+        .layout_chunk_ids
+        .iter()
+        .filter_map(|id| web.chunks.iter().find(|chunk| chunk.id == *id))
+        .map(|chunk| {
+            let span = inspector_line_span(chunk);
+            format!(
+                r#"{{"source":"{}","chunk":"{}","startLine":{},"endLine":{}}}"#,
+                escape_json(&chunk.source_path.to_string_lossy()),
+                escape_json(&chunk.id),
+                span.map(|span| span.0).unwrap_or(0),
+                span.map(|span| span.1).unwrap_or(0)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        r#"{{"path":"{}","page":{{"source":"{}","chunk":"{}","startLine":{},"endLine":{}}},"layouts":[{}]}}"#,
+        escape_json(&page.route_path),
+        escape_json(&page_source),
+        escape_json(&page.page_chunk_id),
+        page_span.map(|span| span.0).unwrap_or(0),
+        page_span.map(|span| span.1).unwrap_or(0),
+        layouts
+    )
+}
+
+fn inspector_line_span(chunk: &GeneratedChunk) -> Option<(usize, usize)> {
+    let nodes = chunk.inspector.as_ref()?.nodes.as_slice();
+    let start = nodes.iter().map(|node| node.start_line).min()?;
+    let end = nodes.iter().map(|node| node.end_line).max()?;
+    Some((start, end))
 }
 
 fn metadata_json(metadata: &[ViewMetadata]) -> String {

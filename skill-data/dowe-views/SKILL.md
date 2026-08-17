@@ -1,12 +1,37 @@
 ---
 name: dowe-views
-description: Use for Dowe view modules, routes, layouts, pages, UI composition, components, state, requests, responsive styles, Canvas, portable and advanced data tables, loading/empty/error states, search and pagination compositions, view targets, modern product or marketing visual direction, layered scenes, or exact and adapted reconstruction from an attached screenshot, mockup, template, or UI reference, including semantic component selection, shell/page ownership, reusable static fragments, and repeated collections rendered with each; skip for server-only work.
+description: Use for Dowe view modules, routes, layouts, pages, UI composition, components, state, requests, responsive styles, Canvas, portable and advanced data tables, loading/empty/error states, search and pagination compositions, view targets, modern product or marketing visual direction, layered scenes, or exact and adapted reconstruction from an attached screenshot, mockup, template, or UI reference, including semantic component selection, shell/page ownership, reusable static fragments, and repeated collections rendered with each. Pair with dowe-server when a View request needs a project-owned route, server logic, persistence, or security change; skip only work that is entirely server-owned.
 ---
 
 # Dowe views authoring
 
 Dowe views are target-neutral source compiled to web, desktop, Android, and iOS outputs. Reuse one route graph and one source behavior model across targets.
 Keep every new frontend module under `views/`; only root `main.dowe` and `theme.dowe` sit outside it.
+
+## Fullstack request gate
+
+A prompt is not View-only when the requested interaction reads or writes project-owned server data,
+calls an internal API route, or requires server authorization, validation, persistence, or provider
+behavior. This includes tasks that begin from a screenshot or page request when the visible form,
+table, search, pagination, authentication, upload, or action depends on an endpoint. In those cases,
+load the companion `dowe-server` skill before editing either side.
+
+Create a request-to-route matrix for every affected internal request. Record its owning page or
+layout and function or `init`; HTTP method and resolved path; body, headers, and route parameters;
+expected safe JSON response; loading, success, empty, error, and unauthorized states; endpoint,
+handler, middleware, service, and repository owners; data impact; and authorization boundary.
+
+Inspect the existing Server route and full import chain. If the route is missing or its method,
+input, response, authorization, or data behavior does not satisfy the requested View, update the
+Server in the same task. The required scope may include endpoints, handlers, middleware, services,
+repositories, entities, migrations, Database, Cache, Vector, Queue, configuration, or environment
+names. Keep the change limited to the requested capability and reuse existing owners before adding
+new modules.
+
+Views still own Signals, Stores, request dispatch, and presentation states. Server owns request
+parsing, authoritative validation, authorization, business rules, secrets, providers, persistence,
+and responses. Never import Server bindings into Views or duplicate Server rules in client state.
+A request to an independently owned external API does not justify inventing a project Server route.
 
 ## Non-duplication gate
 
@@ -51,7 +76,9 @@ theme or color changes.
    `.dowe/visual-qa/<screen>/blueprint.json`, then inventory the reference viewport and record a
    composition map with ordered bands, region ownership, exact built-ins, collection owners,
    responsive evidence, states, accessibility, theme decisions, assets, and reusable-component
-   candidates before authoring source.
+   candidates before authoring source. Reduce that map to a minimal component tree before adding
+   local visual props. Measurements are comparison evidence, not a list of padding, sizing, radius,
+   shadow, typography, alignment, or gap declarations to serialize.
    For block-driven work based on Dowe's documented UI patterns, read
    `references/blocks/index.json` first. Select at most five candidates, then combine one primary
    block with at most one supporting pattern; use the family composition rules and variant tags as
@@ -120,13 +147,14 @@ theme or color changes.
     `Box` only when normal flow cannot express the composition, normally as a relative layer plane
     with direct absolute children or as a fixed viewport layer. Padding, sizing, backgrounds,
     borders, visibility, grid gutters, and control wrappers do not justify `Box`; put those props on
-    the real owner. Never generate a `Grid` as a direct child of another `Grid` or a `Flex` as a
-    direct child of another `Flex`; flatten the children into one layout owner. A different `gap`,
-    direction, alignment, padding, size, or visibility value does not justify same-kind nesting.
-    Do not alternate Grid and Flex merely to evade this rule: every container must own a distinct
-    track, axis, centering, wrapping, or responsive responsibility. Keep one responsive source tree
-    instead of duplicating mobile and desktop forms. Follow the decision tree and dedicated patterns
-    in `references/composition.md`.
+    the real owner. Reject layout wrappers that exist only to carry another `gap`, padding, size, or
+    visibility value. Same-kind nesting is allowed only for a distinct subgroup with its own layout
+    responsibility: for example, a column `Flex` may contain one row `Flex` that owns the actions.
+    A column Flex inside another column Flex only to change spacing is wrapper noise and must be
+    flattened. Do not alternate Grid and Flex merely to hide the same redundant wrapper: every
+    container must own a distinct track, axis, centering, wrapping, or responsive responsibility.
+    Keep one responsive source tree instead of duplicating mobile and desktop forms. Follow the
+    decision tree and minimal reference patterns in `references/composition.md`.
     For a split auth screen, let the outer Grid own the two panels, let the form-side column Flex
     center one bounded `Grid w:"full" maxW:<scale>`, and never create empty Grid tracks or Boxes as
     offsets. Remember that `justify` controls the resolved main axis and `align` the cross axis: a
@@ -179,16 +207,30 @@ theme or color changes.
     generated source, documentation examples, and reusable view fragments; use `theme.dowe` for
     repeated visual policy rather than copying the same values into every instance. See
     `references/styles.md` for the current default matrix and minimal-prop examples.
+    For `Text` and `Title`, use `align:"start"`, `align:"center"`, `align:"end"`, or
+    `align:"justify"` for logical text alignment. A scalar typography size such as `size:"lg"`
+    is already fluid/responsive; write a responsive size object only when the design intentionally
+    changes at named breakpoints, not merely to make the size responsive.
+    Keep one semantic text node for intentional line boundaries by using a multiline string child;
+    use `maxW` when natural wrapping is acceptable. Do not duplicate `Text` or `Title` nodes or add
+    a `Flex` only to force a heading onto multiple lines.
+    Apply a strict prop-admission gate before writing any local prop. Keep it only when it is
+    required by the component contract or accessibility, owns data or behavior, defines essential
+    structure that no default can infer, expresses an explicit non-default choice, or fixes a
+    mismatch proven after rendering the default-first tree. Prop availability and a measured value
+    in a screenshot are not reasons by themselves. If the reason cannot be stated, omit the prop.
 19. Enforce spacing economy before adding container padding. Dowe Views has no margin contract:
     never invent or emit `m`, `mx`, `my`, `mt`, `mr`, `mb`, or `ml`; express separation with the
     parent's `gap`, responsive flow, alignment, sizing, or the real Section owner's padding. Start
     with component defaults: an ordinary `Section` already provides responsive `px`/`py`, and a
-    `Card` already provides responsive inner padding. Use `Grid` and `Flex` `gap` for child rhythm,
-    not padding on every layout node. Add `p`, `px`, `py`, `pt`, or `pb` only when a specific user
-    requirement or composition blueprint proves that the default is insufficient, and put the
+    `Card` already provides responsive inner padding. `Grid` and `Flex` default to zero gap, so add
+    one `gap` only when their siblings need an explicit nonzero rhythm after the default-first tree
+    is rendered; do not pre-encode every measured whitespace value. Never use padding on a Grid or
+    Flex merely to separate its children. Add `p`, `px`, `py`, `pt`, or `pb` only when a specific
+    user requirement or rendered comparison proves that the default is insufficient, and put the
     smallest override on one real owner instead of stacking equivalent padding on `Section`,
     `Grid`, and `Card`. Treat `Card variant:"ghost" p:0` as invalid wrapper noise when it only
-    groups a layout tree; remove it unless the Card owns a real semantic or behavioral boundary.
+    groups a layout tree; remove it unless the reference shows a real independent surface.
 20. Use Signals and View Stores for state, `fn` for event workflows, and one `init` for ordered
     mount-time work.
 21. Write static visible text as `"Blog title"` and dynamic visible text as one complete braced
@@ -197,10 +239,14 @@ theme or color changes.
    `group`.
 23. Use `store name:` with one indented prop per line when Store props would make one long line.
 24. Validate bindings, component props, text children, routes, and target support with Dowe
-   diagnostics.
+   diagnostics. For internal requests, also verify the request-to-route matrix against the actual
+   Server source and validate the complete View and Server import graph; do not assume the compiler
+   proves a response shape that the source does not declare.
 25. Before visual QA, audit every repeated region: name its collection and owner, verify stable ids,
    confirm one `each` wraps the complete repeated subtree, and check that no copied sibling has
-   survived. Verify static-only props such as `Icon.name` remain compiler-valid.
+   survived. Verify static-only props such as `Icon.name` remain compiler-valid. Audit every local
+   prop against the admission gate and remove any prop whose only rationale is that it is accepted,
+   commonly generated, or numerically measurable in the reference.
 26. Review the rendered page at `xs`, `md`, and the reference viewport. Audit focal hierarchy,
    section-to-section rhythm, visible layering, Card variety, text measure, asset quality, and
    interaction states before accepting a technically valid layout. For split layouts, compare the

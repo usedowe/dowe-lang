@@ -410,7 +410,13 @@ pub async fn views_handler(
         .any(|chunk| chunk.inspector.is_some());
 
     if uri.path() == "/_dowe/dev/client.js" {
-        return dev_client_response(inspector_enabled);
+        let server_inspector_url = project.server_inspector.as_ref().and_then(|_| {
+            state
+                .dev_origins
+                .last()
+                .map(|origin| format!("{origin}/_dowe/dev/server/"))
+        });
+        return dev_client_response(inspector_enabled, server_inspector_url.as_deref());
     }
 
     if uri.path() == "/_dowe/dev/inspector-selection" {
@@ -438,9 +444,7 @@ pub async fn views_handler(
         return response;
     }
 
-    if uri.path() == "/design.css"
-        || uri.path() == format!("/{}", project.web.design_file_name())
-    {
+    if uri.path() == "/design.css" || uri.path() == format!("/{}", project.web.design_file_name()) {
         return cacheable_design_css_response(
             &project,
             &format!("web/{}", project.web.design_file_name()),
@@ -450,12 +454,7 @@ pub async fn views_handler(
     }
 
     if let Some(relative_path) = design_css_chunk_relative_path(uri.path()) {
-        return cacheable_design_css_response(
-            &project,
-            &relative_path,
-            &headers,
-            "no-store",
-        );
+        return cacheable_design_css_response(&project, &relative_path, &headers, "no-store");
     }
 
     if uri.path() == "/router.js" || uri.path() == format!("/{}", project.web.router_file_name()) {

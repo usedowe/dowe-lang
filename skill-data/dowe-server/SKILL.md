@@ -1,12 +1,31 @@
 ---
 name: dowe-server
-description: Use for Dowe source under server or server blocks: routes, handlers, middleware, functions, persistence, tasks, protocols, security, and responses; skip for view- or theme-only edits.
+description: Use for Dowe source under server or server blocks: routes, handlers, middleware, functions, persistence, tasks, protocols, security, responses, and project-owned backend behavior required by a View request. Pair with dowe-views when a route has an affected View consumer; skip work that is entirely visual or theme-only.
 ---
 
 # Dowe server authoring
 
 Server source is compiled into Rust-owned runtime behavior. Keep routes, input validation, data access and responses explicit.
 Keep every new backend module under `server/`; only root `main.dowe` connects it to the application.
+
+## View-consumer gate
+
+When a project route is called by a View, or a Server change alters a View's method, input, output,
+authorization, loading, empty, error, or unauthorized behavior, inspect the caller before editing
+the Server. In those cases, load the companion `dowe-views` skill. A route is not complete for that
+task merely because its handler compiles.
+
+Create the same request-to-route matrix used by Views: caller page or layout and function or `init`;
+HTTP method and resolved path; body, headers, and route parameters; safe response shape and status;
+UI states; endpoint, handler, middleware, service, and repository owners; data impact; and
+authorization boundary. Reuse the current route and layers when they already own the capability.
+
+Implement the smallest complete Server change required by the request. This may include endpoints,
+handlers, middleware, services, repositories, entities, migrations, Database, Cache, Vector, Queue,
+configuration, or server-only environment names. Update the View consumer in the same task when its
+request contract or states must change. Never make client-provided ids, tenant, roles, prices,
+totals, permissions, or lifecycle state authoritative, and never return connections, secrets,
+provider credentials, or unrelated record fields.
 
 ## Workflow
 
@@ -35,7 +54,9 @@ Keep every new backend module under `server/`; only root `main.dowe` connects it
    Never write `return response ...`: `response` after `return` is rejected by the compiler.
 11. Keep endpoint groups one level; put middleware on the group, HTTP method, or WebSocket instead
    of nesting a group.
-12. Validate the complete import chain with the compiler.
+12. Validate the complete import chain with the compiler. For a View-consumed route, also reconcile
+    the request-to-route matrix with the actual caller and its loading, success, empty, error, and
+    unauthorized branches.
 
 Queue providers are `dowe`, `rabbitmq`, `cloudflare`, and `vercel`. `dowe dev` always uses the local Dowe provider, regardless of the authored provider. Deploys resolve the selected environment values; Cloudflare uses a Worker Queue binding and Vercel uses its regional Queue API.
 

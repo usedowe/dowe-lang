@@ -20,6 +20,22 @@ initially supports only `dowe`. Config modules may export `database`, `cache`, a
 bindings; import those bindings into repository functions instead of opening the same handle
 repeatedly.
 
+Database declarations can live in any imported server configuration module. Register handles that
+belong to the project-wide migration and seeder catalog from `main.dowe`:
+
+```text
+import appDb from "@/server/config/database"
+
+main
+  server port:8080
+    databases:[appDb]
+```
+
+`databases` accepts only imported Database handles. It does not copy connection props or expose
+credentials. A registered handle may be unused by a route and is still available to `dowe database
+migrate` and `dowe database seeders`; normal runtime handles remain available when discovered by
+compiled server operations.
+
 ## Entities and seeders
 
 Entity names become lower-snake-case table names by default. Field types are `string`, `bool`,
@@ -70,7 +86,7 @@ named bindings through one module import:
 ```text
 import Users, UserRoles from "@/server/entities/user-entities"
 
-database appDb provider:"dowe" host:env.DATABASE_HOST port:env.DATABASE_PORT account:env.DATABASE_ACCOUNT secret:env.DATABASE_SECRET name:env.DATABASE_NAME entities:[Users, UserRoles] seeders:[]
+database appDb provider:"dowe" host:env.DATABASE_HOST port:env.DATABASE_PORT account:env.DATABASE_ACCOUNT secret:env.DATABASE_SECRET name:env.DATABASE_NAME entities:[Users UserRoles] seeders:[]
 ```
 
 ## Relations
@@ -217,7 +233,7 @@ import appCache from "@/server/config/data"
 
 fn createSessionRepository params:{ userId:string }
   id session source:"ulid"
-  str sessionKey source:"join" values:["session", session] delimiter:":"
+  str sessionKey source:"join" values:["session" session] delimiter:":"
   kv cached conn:appCache.set key:sessionKey value:{ id:session userId:args.userId }
   return value:{ id:session userId:args.userId }
 ```

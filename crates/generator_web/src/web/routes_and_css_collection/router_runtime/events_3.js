@@ -306,13 +306,22 @@ document.addEventListener(
 );
 onViewportResize(() => hydrateDevices(document));
 requestAnimationFrame(() => hydrateDevices(document));
-if (currentFragment) scrollToFragment(currentFragment);
-if (currentRoute) {
-  applyRouteMetadata(currentRoute);
-  loadRouteModules(currentRoute)
-    .then(modules => hydrate(currentRoute, modules))
-    .catch(() => releaseEntranceAnimations());
-} else releaseEntranceAnimations();
+async function startRouter() {
+  await syncDevRoutes();
+  currentRoute =
+    routes[startupDestination.path] ||
+    routes[currentRoute?.path] ||
+    Object.values(routes)[0] ||
+    null;
+  if (currentFragment) scrollToFragment(currentFragment);
+  if (currentRoute) {
+    applyRouteMetadata(currentRoute);
+    loadRouteModules(currentRoute)
+      .then(modules => hydrate(currentRoute, modules))
+      .catch(() => releaseEntranceAnimations());
+  } else releaseEntranceAnimations();
+}
+startRouter();
 window.doweNavigate = (path, replace = false) => navigate(path, { replace });
 window.doweBack = goBack;
 window.__doweHotUpdate = hotUpdate;

@@ -299,48 +299,42 @@ function runtimeSvgPath(path) {
     transform
   };
 }
+function renderRuntimeSvgElement(svg, value) {
+  const record = runtimeSvgRecord(value);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.dataset.doweSvgValid = "false";
+  if (!record) return;
+  const paths = record.paths.map(runtimeSvgPath);
+  if (paths.some(path => !path)) return;
+  svg.setAttribute("viewBox", record.viewBox);
+  for (const path of paths) {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    node.setAttribute("d", path.data);
+    if (path.paint === "stroke") {
+      node.setAttribute("fill", "none");
+      node.setAttribute("stroke", path.color);
+      node.setAttribute("stroke-width", String(path.width / 100));
+      node.setAttribute("stroke-linecap", path.lineCap);
+      node.setAttribute("stroke-linejoin", path.lineJoin);
+    } else {
+      node.setAttribute("fill", path.paint === "none" ? "none" : path.paint === "currentColor" ? "currentColor" : path.color);
+      if (path.evenOdd) node.setAttribute("fill-rule", "evenodd");
+    }
+    if (path.opacity !== 255) node.setAttribute("opacity", String(path.opacity / 255));
+    if (path.transform) node.setAttribute("transform", path.transform);
+    svg.appendChild(node);
+  }
+  svg.dataset.doweSvgValid = "true";
+}
 function renderRuntimeSvgs(root, state, scope) {
   const scoped = !!scope;
-  for (const svg of root.querySelectorAll("[data-dowe-svg-data]")) {
+  for (const svg of root.querySelectorAll(
+    "[data-dowe-svg-data],[data-dowe-icon-name]"
+  )) {
     if (!scoped && svg.closest("[data-dowe-each-row]")) continue;
-    const record = runtimeSvgRecord(
-      readPath(state, svg.dataset.doweSvgData, scope)
-    );
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
-    svg.dataset.doweSvgValid = "false";
-    if (!record) continue;
-    const paths = record.paths.map(runtimeSvgPath);
-    if (paths.some(path => !path)) continue;
-    svg.setAttribute("viewBox", record.viewBox);
-    for (const path of paths) {
-      const node = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "path"
-      );
-      node.setAttribute("d", path.data);
-      if (path.paint === "stroke") {
-        node.setAttribute("fill", "none");
-        node.setAttribute("stroke", path.color);
-        node.setAttribute("stroke-width", String(path.width / 100));
-        node.setAttribute("stroke-linecap", path.lineCap);
-        node.setAttribute("stroke-linejoin", path.lineJoin);
-      } else {
-        node.setAttribute(
-          "fill",
-          path.paint === "none"
-            ? "none"
-            : path.paint === "currentColor"
-              ? "currentColor"
-              : path.color
-        );
-        if (path.evenOdd) node.setAttribute("fill-rule", "evenodd");
-      }
-      if (path.opacity !== 255)
-        node.setAttribute("opacity", String(path.opacity / 255));
-      if (path.transform) node.setAttribute("transform", path.transform);
-      svg.appendChild(node);
-    }
-    svg.dataset.doweSvgValid = "true";
+    const dynamic = svg.dataset.doweIconName,
+      value = dynamic ? doweIconCatalog[String(readPath(state, dynamic, scope))] || doweIconCatalog[svg.dataset.doweIconFallback || ""] : readPath(state, svg.dataset.doweSvgData, scope);
+    renderRuntimeSvgElement(svg, value);
   }
 }
 function renderSplashes(root, state, scope) {

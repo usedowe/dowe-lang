@@ -420,6 +420,57 @@ fn generates_android_svg_logo_paths_for_compose_and_dev() {
 }
 
 #[test]
+fn generates_dynamic_icon_lookup_for_android_dev_launcher() {
+    let dynamic = icon_component_node(vec![ComponentProp {
+        name: "name".to_string(),
+        value: PropValue::String("@icon-binding:platform.icon".to_string()),
+    }, ComponentProp {
+        name: "fill".to_string(),
+        value: PropValue::String("muted".to_string()),
+    }])
+    .expect("dynamic icon");
+    let output = generate_android(
+        &[ViewRoute {
+            id: "dynamic-icon".to_string(),
+            route_path: "/dynamic-icon".to_string(),
+            layout_tree: ViewNode::Children,
+            page_tree: dynamic,
+            sections: Vec::new(),
+            navigation_actions: Vec::new(),
+        }],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let dev_route = output
+        .files
+        .iter()
+        .find(|file| {
+            file.relative_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("DoweDevRoute") && name.ends_with(".java"))
+        })
+        .expect("dynamic route shard");
+    let dev_catalog = output
+        .files
+        .iter()
+        .filter(|file| {
+            file.relative_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("DoweDevDynamicIcons") && name.ends_with(".java"))
+        })
+        .map(|file| file.content.as_str())
+        .collect::<String>();
+    assert!(dev_route.content.contains("runtime.doweDynamicIconPayload"));
+    assert!(dev_route.content.contains("DOWE_MUTED"));
+    assert!(dev_catalog.contains("route-bold-duotone"));
+    assert!(dev_catalog.contains("svg-logos:android-icon"));
+    assert!(dev_catalog.contains("values.put(\"svg-logos:apache-flink\", joinPayload("));
+}
+
+#[test]
 fn generates_compose_and_dev_display_chat_and_motion_components() {
     let output = generate_android(
         &[display_chat_motion_route()],

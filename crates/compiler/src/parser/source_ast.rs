@@ -93,7 +93,7 @@ impl SourceValue {
                     .iter()
                     .map(SourceValue::to_source)
                     .collect::<Vec<_>>()
-                    .join(", ")
+                    .join(" ")
             ),
             SourceValue::Object(entries) => {
                 let values = entries

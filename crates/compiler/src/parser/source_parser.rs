@@ -510,7 +510,9 @@ fn parse_node(
     let mut seen_props = HashSet::new();
     let mut node_name = first.text.clone();
 
-    if (first.text.starts_with("views:") || first.text.starts_with("endpoints:"))
+    if (first.text.starts_with("views:")
+        || first.text.starts_with("endpoints:")
+        || first.text.starts_with("databases:"))
         && !first.text.starts_with('"')
         && !first.text.starts_with('{')
         && !first.text.starts_with('[')

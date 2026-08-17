@@ -441,6 +441,9 @@ fn text_classes(base: &str, props: &TextProps) -> Vec<String> {
         classes.push(format!("{base}-md"));
     }
     append_style_classes(&mut classes, &props.style);
+    append_responsive_classes(&mut classes, "text-align", props.align.as_ref(), |value| {
+        value.as_str().to_string()
+    });
     append_responsive_classes(&mut classes, "weight", props.weight.as_ref(), |value| {
         value.as_str().to_string()
     });
@@ -742,6 +745,7 @@ fn append_height_classes(classes: &mut Vec<String>, value: Option<&ResponsiveVal
 fn size_suffix(value: &SizeValue) -> String {
     match value {
         SizeValue::Scale(value) => value.class_suffix(),
+        SizeValue::Container(value) => value.as_str().to_string(),
         SizeValue::Full => "full".to_string(),
         SizeValue::ViewportMinus(value) => format!("vh-{}", value.class_suffix()),
     }

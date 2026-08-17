@@ -73,6 +73,137 @@ async fn views_server_advances_when_the_preferred_port_is_occupied() {
 }
 
 #[tokio::test]
+async fn server_inspector_is_available_only_on_the_development_backend() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("development backend");
+    let origin = format!("http://{}", servers.backend_addr.expect("backend"));
+    let client = reqwest::Client::new();
+    let dashboard = client
+        .get(format!("{origin}/_dowe/dev/server/"))
+        .send()
+        .await
+        .expect("dashboard");
+    assert_eq!(dashboard.status(), reqwest::StatusCode::OK);
+    let dashboard_text = dashboard.text().await.expect("dashboard text");
+    assert!(dashboard_text.contains("Dowe Server Inspector"));
+    assert!(dashboard_text.contains("Data studio"));
+    assert!(dashboard_text.contains("data-data-name-select"));
+    assert!(dashboard_text.contains("Endpoints"));
+    assert!(dashboard_text.contains("WebSockets"));
+    assert!(dashboard_text.contains("--dowe-nav-active: #56687a"));
+    assert!(dashboard_text.contains(
+        "border-color: transparent; background: transparent; color: var(--dowe-muted)"
+    ));
+    assert!(dashboard_text.contains(
+        ".nav button.active .nav-icon { background: transparent; color: inherit; }"
+    ));
+    assert!(dashboard_text.contains("data-endpoint-execute"));
+    assert!(dashboard_text.contains("data-endpoint-try"));
+    assert!(dashboard_text.contains("data-endpoint-modal-close"));
+    assert!(dashboard_text.contains("role=\"dialog\" aria-modal=\"true\""));
+    assert!(!dashboard_text.contains("Source selection</h2>"));
+    assert!(!dashboard_text.contains("Server map"));
+    assert!(!dashboard_text.contains("Copy manifest"));
+    let manifest = client
+        .get(format!("{origin}/_dowe/dev/server/manifest.json"))
+        .send()
+        .await
+        .expect("manifest");
+    assert_eq!(manifest.status(), reqwest::StatusCode::OK);
+    assert_eq!(
+        manifest.headers()[reqwest::header::CACHE_CONTROL],
+        "no-store"
+    );
+    let value: serde_json::Value = manifest.json().await.expect("manifest json");
+    let data = client
+        .get(format!("{origin}/_dowe/dev/server/data/database"))
+        .send()
+        .await
+        .expect("database data");
+    assert_eq!(data.status(), reqwest::StatusCode::OK);
+    assert_eq!(
+        data.json::<serde_json::Value>()
+            .await
+            .expect("database data json")["kind"],
+        "database"
+    );
+    let route_id = value["routes"][0]["id"].as_str().expect("route id");
+    let source = client
+        .get(format!("{origin}/_dowe/dev/server/source/{route_id}"))
+        .send()
+        .await
+        .expect("source");
+    assert_eq!(source.status(), reqwest::StatusCode::OK);
+    let selection = client
+        .post(format!("{origin}/_dowe/dev/server/selection"))
+        .json(&json!({ "id": route_id }))
+        .send()
+        .await
+        .expect("selection");
+    assert_eq!(selection.status(), reqwest::StatusCode::NO_CONTENT);
+    assert!(
+        temp.path()
+            .join(".dowe/dev/server-inspector-selection.json")
+            .is_file()
+    );
+    let status_route = value["routes"]
+        .as_array()
+        .expect("routes")
+        .iter()
+        .find(|route| route["path"] == "/api/status" && route["method"] == "GET")
+        .expect("status route");
+    let execute = client
+        .post(format!("{origin}/_dowe/dev/server/execute"))
+        .json(&json!({
+            "id": status_route["id"],
+            "method": "GET",
+            "path": "/api/status"
+        }))
+        .send()
+        .await
+        .expect("execute");
+    assert_eq!(execute.status(), reqwest::StatusCode::OK);
+    let executed: serde_json::Value = execute.json().await.expect("execute json");
+    assert_eq!(executed["status"], 200);
+    assert_eq!(executed["body"], "OK");
+    let create_route = value["routes"]
+        .as_array()
+        .expect("routes")
+        .iter()
+        .find(|route| route["path"] == "/api/posts" && route["method"] == "POST")
+        .expect("create route");
+    let create = client
+        .post(format!("{origin}/_dowe/dev/server/execute"))
+        .json(&json!({
+            "id": create_route["id"],
+            "method": "POST",
+            "path": "/api/posts",
+            "body": { "title": "Inspector" }
+        }))
+        .send()
+        .await
+        .expect("create execute");
+    assert_eq!(create.status(), reqwest::StatusCode::OK);
+    let created: serde_json::Value = create.json().await.expect("created json");
+    assert_eq!(created["status"], 200);
+    let created_body: serde_json::Value =
+        serde_json::from_str(created["body"].as_str().expect("created body")).expect("body json");
+    assert_eq!(created_body["created"], true);
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
 async fn serves_project_icons_without_cache_and_rejects_traversal() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
@@ -226,7 +357,7 @@ async fn serves_backend_views_and_websocket() {
         r#"<link data-dowe-design rel="stylesheet" href="{design_path}">"#
     )));
     assert!(html.contains(r#"/chunks/pages/"#));
-    assert!(html.contains(r#"data-dowe-router type="module" src="/router-"#));
+    assert!(html.contains(r#"data-dowe-router type="module" src="/router.js"#));
     assert!(html.contains(r#"/_dowe/dev/client.js"#));
 
     let css = client
@@ -1807,7 +1938,13 @@ async fn production_server_serves_backend_and_web_without_dev_endpoints() {
         .expect("dev client");
     assert_eq!(dev_client.status(), reqwest::StatusCode::NOT_FOUND);
 
-    for path in ["/_dowe/dev/inspector.json", "/_dowe/dev/inspector-selection"] {
+    for path in [
+        "/_dowe/dev/inspector.json",
+        "/_dowe/dev/inspector-selection",
+        "/_dowe/dev/server/",
+        "/_dowe/dev/server/manifest.json",
+        "/_dowe/dev/server/execute",
+    ] {
         let inspector = client
             .get(format!("{origin}{path}"))
             .send()
@@ -1940,7 +2077,7 @@ main
         .await
         .expect("desktop html");
     assert!(html.contains("Layout"));
-    assert!(html.contains(r#"data-dowe-router type="module" src="/router-"#));
+    assert!(html.contains(r#"data-dowe-router type="module" src="/router.js"#));
     assert!(html.contains(r#"src="/_dowe/dev/client.js""#));
 
     let nested_html = client
@@ -1952,10 +2089,10 @@ main
         .await
         .expect("desktop nested html");
     assert!(nested_html.contains(&format!(r#"href="{design_path}""#)));
-    assert!(nested_html.contains(r#"data-dowe-router type="module" src="/router-"#));
+    assert!(nested_html.contains(r#"data-dowe-router type="module" src="/router.js"#));
     assert!(nested_html.contains("/chunks/layouts/"));
     assert!(nested_html.contains("/chunks/pages/"));
-    assert!(!nested_html.contains(r#"src="../router-"#));
+    assert!(!nested_html.contains(r#"src="../router.js"#));
 
     let status = client
         .get(format!("{desktop}/api/status"))
@@ -2005,7 +2142,7 @@ async fn desktop_without_a_local_server_reuses_only_the_views_listener() {
 
     assert!(html.contains("Layout"));
     assert!(html.contains("Login"));
-    assert!(html.contains(r#"data-dowe-router type="module" src="/router-"#));
+    assert!(html.contains(r#"data-dowe-router type="module" src="/router.js"#));
     assert!(html.contains(r#"src="/_dowe/dev/client.js""#));
 
     servers.shutdown().await.expect("shutdown");

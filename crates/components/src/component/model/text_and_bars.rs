@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TextProps {
     pub style: StyleProps,
+    pub align: Option<ResponsiveValue<TextAlign>>,
     pub size: Option<ResponsiveValue<TextSize>>,
     pub weight: Option<ResponsiveValue<TextWeight>>,
     pub letter_spacing: Option<ResponsiveValue<TextSpacing>>,
@@ -22,6 +23,10 @@ pub struct SvgProps {
     pub style: StyleProps,
     pub view_box: SvgViewBox,
     pub data: Option<String>,
+    pub icon_name: Option<String>,
+    pub icon_fallback: Option<String>,
+    pub icon_fill: Option<ColorToken>,
+    pub icon_stroke: Option<ColorToken>,
     pub motion: Option<SvgMotion>,
 }
 

@@ -43,6 +43,30 @@ fn generates_persistent_view_store_for_compose_and_dev_shell() {
 }
 
 #[test]
+fn preserves_multiline_text_in_compose_and_dev_shell() {
+    let mut multiline = route();
+    multiline.page_tree = ViewNode::Title {
+        props: TextProps::default(),
+        value: "Full-stack development,\nfrom one codebase".to_string(),
+    };
+    let output = generate_android(
+        &[multiline],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let compose = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("Compose pages");
+    assert!(compose.content.contains("Full-stack development,\\nfrom one codebase"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("Full-stack development,\\nfrom one codebase"));
+}
+
+#[test]
 fn inherits_container_foreground_and_preserves_text_overrides() {
     let mut color_route = route();
     color_route.layout_tree = ViewNode::Children;
@@ -62,18 +86,22 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     assert!(compose.content.contains(
         "CompositionLocalProvider(LocalContentColor provides (doweResponsive(viewportWidth, xs = DoweDesign.primaryText) ?: LocalContentColor.current))"
     ));
-    assert!(compose
-        .content
-        .contains("Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified"));
+    assert!(
+        compose
+            .content
+            .contains("Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified")
+    );
     assert!(compose.content.contains(
         "Text(\"Box override\", modifier = Modifier, color = doweResponsive(viewportWidth, xs = DoweDesign.danger) ?: LocalContentColor.current"
     ));
     assert!(compose.content.contains(
         "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.softMutedText)"
     ));
-    assert!(compose
-        .content
-        .contains("Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified"));
+    assert!(
+        compose
+            .content
+            .contains("Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified")
+    );
     assert!(compose.content.contains(
         "CompositionLocalProvider(LocalDoweTitleColor provides DoweDesign.softMutedTitle)"
     ));
@@ -99,9 +127,11 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
             "Text(\"{label}\", modifier = Modifier, color = Color.Unspecified"
         )));
     }
-    assert!(compose
-        .content
-        .contains("CompositionLocalProvider(LocalContentColor provides contentColor)"));
+    assert!(
+        compose
+            .content
+            .contains("CompositionLocalProvider(LocalContentColor provides contentColor)")
+    );
     assert!(compose.content.contains(
         "Text(\"Collapsible inherited\", modifier = Modifier, color = Color.Unspecified"
     ));
@@ -120,12 +150,14 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         .find("doweText(\"Box override\"")
         .expect("Box override text");
     assert!(dev.content[box_override..box_override + 320].contains("DOWE_DANGER"));
-    assert!(dev
-        .content
-        .contains("doweText(\"Card inherited\", DOWE_SOFT_MUTED_TEXT"));
-    assert!(dev
-        .content
-        .contains("doweText(\"Card title inherited\", DOWE_SOFT_MUTED_TITLE"));
+    assert!(
+        dev.content
+            .contains("doweText(\"Card inherited\", DOWE_SOFT_MUTED_TEXT")
+    );
+    assert!(
+        dev.content
+            .contains("doweText(\"Card title inherited\", DOWE_SOFT_MUTED_TITLE")
+    );
     let card_override = dev
         .content
         .find("doweText(\"Card override\"")
@@ -170,9 +202,9 @@ fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
         "verticalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.Bottom)"
     ));
     assert!(generated.contains(".rotate(if (doweFixedFabOpen0) 45f else 0f)"));
-    assert!(generated.contains(
-        ".doweGesture(DoweGesturePreset.Press, DoweTransitionPreset.Smooth)"
-    ));
+    assert!(
+        generated.contains(".doweGesture(DoweGesturePreset.Press, DoweTransitionPreset.Smooth)")
+    );
     assert!(generated.contains("DoweSvg(viewBox ="));
     assert!(generated.contains("setTag(\"dowe-fixed-fab\")"));
     assert!(generated.contains("Gravity.BOTTOM | Gravity.END"));
@@ -198,9 +230,7 @@ fn generates_fixed_fab_as_native_overlay_with_dowe_icons() {
         .split('.')
         .next()
         .expect("top Fab trigger variable");
-    assert!(top_generated.contains(&format!(
-        "doweGesture({trigger}, \"press\", \"smooth\");"
-    )));
+    assert!(top_generated.contains(&format!("doweGesture({trigger}, \"press\", \"smooth\");")));
     let first_child_addition = top_lines
         .find(|line| line.contains("doweAdd("))
         .expect("top Fab first child addition");
@@ -227,7 +257,9 @@ fn generates_relative_absolute_and_fixed_boxes_as_native_overlays() {
     assert!(generated.contains("Gravity.TOP | Gravity.END"));
     assert!(generated.contains("dowe-fixed-box"));
     let dev = dev_java_source(&output).content;
-    let proof = dev.find("doweText(\"Proof\"").expect("positioned box content");
+    let proof = dev
+        .find("doweText(\"Proof\"")
+        .expect("positioned box content");
     let visibility = dev[..proof]
         .rfind("if (doweShow(doweResponsiveBool(viewportWidth, false, null, null, true, null))) {")
         .expect("positioned box visibility");
@@ -971,6 +1003,36 @@ fn generates_compose_box_and_text() {
 }
 
 #[test]
+fn generates_compose_text_alignment() {
+    let mut aligned = route();
+    aligned.page_tree = ViewNode::Text {
+        props: TextProps {
+            align: Some(ResponsiveValue::scalar(TextAlign::Center)),
+            ..Default::default()
+        },
+        value: "Aligned".to_string(),
+    };
+    let output = generate_android(
+        &[aligned],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains(
+        "Text(\"Aligned\", modifier = Modifier.fillMaxWidth(), color = Color.Unspecified,"
+    ));
+    assert!(views.content.contains("textAlign = TextAlign.Center"));
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("setGravity(doweResponsiveInt(viewportWidth"));
+    assert!(dev.content.contains("Gravity.CENTER_HORIZONTAL"));
+}
+
+#[test]
 fn resets_android_dev_route_after_process_relaunch() {
     let output = generate_android(
         &[route()],
@@ -990,15 +1052,19 @@ fn resets_android_dev_route_after_process_relaunch() {
     assert!(hot_host.content.contains(
         "boolean initialMount = activeModule == null;\n            String path = initialMount ? null : activeModulePath();"
     ));
-    assert!(hot_host
-        .content
-        .contains("mount.invoke(module, path, initialMount ? getIntent() : null)"));
+    assert!(
+        hot_host
+            .content
+            .contains("mount.invoke(module, path, initialMount ? getIntent() : null)")
+    );
     assert!(hot_host.content.contains(
         "private String activeModulePath() {\n        if (activeModule != null && activePath != null)"
     ));
-    assert!(hot_host
-        .content
-        .contains("return null;\n    }\n\n    private void poll()"));
+    assert!(
+        hot_host
+            .content
+            .contains("return null;\n    }\n\n    private void poll()")
+    );
     assert!(dev.content.contains(
         "if (doweCanRoute(preferredPath)) {\n            currentPath = preferredPath;\n        }\n        doweApplyIntentRoute();"
     ));
@@ -1356,17 +1422,21 @@ fn generates_centered_icon_button_without_empty_android_label() {
         .expect("Compose pages");
     let dev = dev_java_source(&output);
 
-    assert!(compose.content.contains(
-        ".semantics { contentDescription = \"Open settings\" }.defaultMinSize"
-    ));
+    assert!(
+        compose
+            .content
+            .contains(".semantics { contentDescription = \"Open settings\" }.defaultMinSize")
+    );
     assert!(
         compose
             .content
             .contains("onClick = { navigate(\"push\", \"/settings\", null) }")
     );
-    assert!(compose.content.contains(
-        "contentPadding = PaddingValues(start = doweResponsive(viewportWidth"
-    ));
+    assert!(
+        compose
+            .content
+            .contains("contentPadding = PaddingValues(start = doweResponsive(viewportWidth")
+    );
     assert!(
         compose
             .content
@@ -1826,8 +1896,97 @@ fn generates_compose_and_dev_section_backgrounds() {
             .contains("view1.setBackground(doweSectionBackground(view1SectionBackground));")
     );
     assert!(dev.content.contains("doweBoxedContainer(1536)"));
-    assert!(dev.content.contains("PaddingX = doweResponsiveInt(viewportWidth, 16, null, 24, null, null)"));
-    assert!(dev.content.contains("PaddingY = doweResponsiveInt(viewportWidth, 40, null, 64, null, null)"));
+    assert!(
+        dev.content
+            .contains("PaddingX = doweResponsiveInt(viewportWidth, 16, null, 24, null, null)")
+    );
+    assert!(
+        dev.content
+            .contains("PaddingY = doweResponsiveInt(viewportWidth, 40, null, 64, null, null)")
+    );
+}
+
+#[test]
+fn generates_responsive_section_centering_for_compose_and_dev_android() {
+    let mut route = section_route();
+    let ViewNode::Box { children, .. } = &mut route.page_tree else {
+        panic!("section route root");
+    };
+    let ViewNode::Section { props, .. } = &mut children[0] else {
+        panic!("section route child");
+    };
+    props.center = Some(ResponsiveValue::ordered(vec![
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Xs,
+            value: false,
+        },
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Md,
+            value: true,
+        },
+    ]));
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains(
+        "horizontalAlignment = (doweResponsive(viewportWidth, xs = false, md = true) ?: false) ? Alignment.CenterHorizontally : Alignment.Start"
+    ));
+    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth()"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains(
+        "setGravity(Boolean.TRUE.equals(doweResponsiveBool(viewportWidth, false, null, true, null, null)) ? Gravity.TOP | Gravity.CENTER_HORIZONTAL : Gravity.TOP | Gravity.START);"
+    ));
+}
+
+#[test]
+fn generates_responsive_section_gap_for_compose_and_dev_android() {
+    let mut route = section_route();
+    let ViewNode::Box { children, .. } = &mut route.page_tree else {
+        panic!("section route root");
+    };
+    let ViewNode::Section { props, .. } = &mut children[0] else {
+        panic!("section route child");
+    };
+    props.gap = Some(ResponsiveValue::ordered(vec![
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Xs,
+            value: GapValue::Single(GapSize::Scale(ScaleValue(4))),
+        },
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Md,
+            value: GapValue::Single(GapSize::Scale(ScaleValue(8))),
+        },
+    ]));
+
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains(
+        "verticalArrangement = Arrangement.spacedBy(doweResponsive(viewportWidth, xs = 8.dp, md = 16.dp) ?: 0.dp)"
+    ));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains(
+        "doweAdd(view2, view3, doweResponsiveInt(viewportWidth, 8, null, 16, null, null), false);"
+    ));
 }
 
 #[test]
@@ -2125,12 +2284,17 @@ fn generates_external_banner_without_button_chrome() {
     assert!(pages.content.contains(
         ".clickable(onClick = { openExternal(\"system\", \"https://dowe.dev/cloud\") })"
     ));
-    assert!(pages.content.contains(
-        ".semantics { contentDescription = \"Explore Dowe Cloud\" }"
-    ));
+    assert!(
+        pages
+            .content
+            .contains(".semantics { contentDescription = \"Explore Dowe Cloud\" }")
+    );
     assert!(!pages.content.contains("Button(modifier ="));
     assert!(dev.content.contains("doweContainer(false)"));
-    assert!(dev.content.contains("setContentDescription(\"Explore Dowe Cloud\")"));
+    assert!(
+        dev.content
+            .contains("setContentDescription(\"Explore Dowe Cloud\")")
+    );
     assert!(dev.content.contains(
         "setOnClickListener(v -> doweOpenExternal(\"system\", \"https://dowe.dev/cloud\"))"
     ));

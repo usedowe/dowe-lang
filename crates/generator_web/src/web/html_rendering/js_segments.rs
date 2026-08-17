@@ -42,6 +42,14 @@ fn collect_js_segments(
     segments: &mut Vec<JsSegment>,
     context: &ReactiveRenderContext,
 ) {
+    with_view_inspector_node(|| collect_js_node_segments(node, segments, context));
+}
+
+fn collect_js_node_segments(
+    node: &ViewNode,
+    segments: &mut Vec<JsSegment>,
+    context: &ReactiveRenderContext,
+) {
     match node {
         ViewNode::Scope {
             constants,

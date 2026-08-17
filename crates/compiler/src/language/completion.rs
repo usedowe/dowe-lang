@@ -9,15 +9,15 @@ use crate::language::model::{LanguageCompletion, LanguageCompletionKind, Languag
 use crate::parser::{SourceNode, SourceValue, parse_source_file};
 use dowe_components::{
     AlertKind, Align, AvatarStatus, BarPosition, BoxPosition, BuiltinComponent, ButtonSize,
-    CameraFacing, CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition,
-    ChartPalette, ChartSize, ChatBoxMode, CodeLanguage, ColorFamily, ColorToken, ComponentVariant,
-    CountdownSize, DividerOrientation, DrawerPosition, EmptyKind, FlexDirection, FontFamily,
-    GridAlignment, ImageAspect, ImageLoading, ImageObjectFit, Justify, MarqueeOrientation,
-    MarqueeSpeed, NativeExternalMode, NavigationOperation, OverlayCornerPosition, OverlayPosition,
-    RoundedSize, SectionBackground, ShadowSize, SideNavSize, SkeletonAnimation, SkeletonVariant,
-    TableColumnAlign, TableSize, TabsPosition, TabsVariant, TextSize, TextSpacing, TextWeight,
-    ToastKind, VIEW_META_NAMES, VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewTransition,
-    WebTarget,
+    CameraFacing, CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve,
+    ChartLegendPosition, ChartPalette, ChartSize, ChatBoxMode, CodeLanguage, ColorFamily,
+    ColorToken, ComponentVariant, ContainerSize, CountdownSize, DividerOrientation, DrawerPosition,
+    EmptyKind, FlexDirection, FontFamily, GridAlignment, ImageAspect, ImageLoading, ImageObjectFit,
+    Justify, MarqueeOrientation, MarqueeSpeed, NativeExternalMode, NavigationOperation,
+    OverlayCornerPosition, OverlayPosition, RoundedSize, SectionBackground, ShadowSize,
+    SideNavSize, SkeletonAnimation, SkeletonVariant, TableColumnAlign, TableSize, TabsPosition,
+    TabsVariant, TextAlign, TextSize, TextSpacing, TextWeight, ToastKind, VIEW_META_NAMES,
+    VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewTransition, WebTarget,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -1190,6 +1190,7 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Section, "background") => Some(quoted_values(
             SectionBackground::all().iter().map(|value| value.as_str()),
         )),
+        (BuiltinComponent::Section, "center") => Some(boolean_values()),
         (BuiltinComponent::Section, "boxed") => Some(boolean_values()),
         (BuiltinComponent::RichText, "title") => Some(boolean_values()),
         (BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText, "size") => {
@@ -1197,6 +1198,9 @@ pub(super) fn component_value_completions(
                 TextSize::all().iter().map(|value| value.as_str()),
             ))
         }
+        (BuiltinComponent::Title | BuiltinComponent::Text, "align") => Some(quoted_values(
+            TextAlign::all().iter().map(|value| value.as_str()),
+        )),
         (
             BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText,
             "weight",
@@ -1227,6 +1231,11 @@ pub(super) fn component_value_completions(
                 .chain(ColorToken::all().iter().map(|value| value.as_str())),
         )),
         (BuiltinComponent::Path, "fillRule") => Some(quoted_values(["nonzero", "evenodd"])),
+        (_, "w" | "minW" | "maxW") => {
+            Some(quoted_values(["full"].into_iter().chain(
+                ContainerSize::all().iter().map(|value| value.as_str()),
+            )))
+        }
         (_, "rounded") => Some(quoted_values(
             RoundedSize::all().iter().map(|value| value.as_str()),
         )),
@@ -1718,6 +1727,8 @@ const SECTION_PROPS: &[&str] = &[
     "bg",
     "color",
     "background",
+    "center",
+    "gap",
     "boxed",
     "cover",
     "overlay",
@@ -2012,8 +2023,23 @@ const CHIP_PROPS: &[&str] = &[
     "font",
     "bg",
     "cover",
-    "overlay", "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "maxW", "maxH", "rounded",
+    "overlay",
+    "colSpan",
+    "rowSpan",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
 ];
 const INTERACTIVE_STYLE_PROPS: &[&str] = &[
     "animation",
@@ -2357,14 +2383,60 @@ const RECORD_PROPS: &[&str] = &[
     "border",
 ];
 const CAMERA_PROPS: &[&str] = &[
-    "facing", "label", "disabled", "onStart", "onCapture", "onError", "variant", "scheme",
-    "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "maxW", "maxH", "rounded", "border",
+    "facing",
+    "label",
+    "disabled",
+    "onStart",
+    "onCapture",
+    "onError",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
+    "border",
 ];
 const MICROPHONE_PROPS: &[&str] = &[
-    "label", "maxDuration", "disabled", "onStart", "onStop", "onError", "variant", "scheme",
-    "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "maxW", "maxH", "rounded", "border",
+    "label",
+    "maxDuration",
+    "disabled",
+    "onStart",
+    "onStop",
+    "onError",
+    "variant",
+    "scheme",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
+    "border",
 ];
 const TOGGLE_GROUP_PROPS: &[&str] = &[
     "value",
@@ -3590,8 +3662,8 @@ const ALERT_PROPS: &[&str] = &[
     "rounded",
 ];
 const TEXT_PROPS: &[&str] = &[
-    "size", "weight", "spacing", "i18n", "font", "id", "show", "bg", "color", "p", "px", "py",
-    "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
+    "size", "align", "weight", "spacing", "i18n", "font", "id", "show", "bg", "color", "p", "px",
+    "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "rounded",
 ];
 const RICH_TEXT_PROPS: &[&str] = &[
     "title", "size", "weight", "spacing", "i18n", "font", "id", "show", "bg", "color", "p", "px",

@@ -45,6 +45,17 @@
 .section-body {
   width:100%;
 }
+.section-body {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+.section-body.section-center-true {
+  align-items:center;
+}
+.section-body.section-center-false {
+  align-items:flex-start;
+}
 .section-body.is-boxed {
   max-width:96rem;
   margin-inline:auto;

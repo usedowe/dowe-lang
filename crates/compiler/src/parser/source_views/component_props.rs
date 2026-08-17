@@ -27,6 +27,9 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
             "variant" | "scheme" | "size" | "wide",
             SourceValue::Bareword(path),
         ) => PropValue::String(format!("@signal:{path}")),
+        (BuiltinComponent::Icon, "name", SourceValue::Bareword(path)) => {
+            PropValue::String(format!("@icon-binding:{path}"))
+        }
         (BuiltinComponent::Button, "iconStart" | "iconEnd", SourceValue::Object(entries)) => {
             PropValue::String(parse_conditional_icon(prop, entries)?)
         }
@@ -264,6 +267,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             "variant" | "scheme" | "size" | "rounded",
             SourceValue::Bareword(_),
         ) => true,
+        (BuiltinComponent::Icon, "name", SourceValue::Bareword(_)) => true,
         (BuiltinComponent::Button, "loading" | "disabled", SourceValue::Bareword(_)) => true,
         (
             BuiltinComponent::SideNav,

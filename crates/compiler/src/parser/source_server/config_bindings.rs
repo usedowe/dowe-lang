@@ -132,6 +132,9 @@ fn database_bindings(
     desktop_server: Option<&ServerConfig>,
 ) -> DoweResult<Vec<DatabaseBinding>> {
     let mut connections = Vec::<StoreConnection>::new();
+    for connection in &backend.databases {
+        collect_database_connection(connection, &mut connections);
+    }
     for binding in imports.config_bindings.values() {
         collect_database_statement(&binding.statement, &mut connections)?;
     }
@@ -152,6 +155,15 @@ fn database_bindings(
             .then_with(|| left.connection.database.cmp(&right.connection.database))
     });
     Ok(databases)
+}
+
+fn collect_database_connection(
+    connection: &StoreConnection,
+    connections: &mut Vec<StoreConnection>,
+) {
+    if !connections.contains(connection) {
+        connections.push(connection.clone());
+    }
 }
 
 fn collect_server_config_databases(
@@ -196,9 +208,7 @@ fn collect_database_statement(
 ) -> DoweResult<()> {
     match statement {
         ServerStatement::Store(crate::model::ServerStoreStatement::Handle { connection }) => {
-            if !connections.contains(connection) {
-                connections.push(connection.clone());
-            }
+            collect_database_connection(connection, connections);
         }
         ServerStatement::Call(call) => {
             for statement in &call.action.statements {

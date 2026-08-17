@@ -1,6 +1,8 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{DoweType, DoweTypeField, StoreLiteral};
-use crate::parser::source_ast::{SourceFile, SourceNode, SourceObjectEntry, SourceValue};
+use crate::parser::source_ast::{
+    SourceFile, SourceImport, SourceNode, SourceObjectEntry, SourceValue,
+};
 use crate::parser::source_imports::resolve_import;
 use crate::parser::source_parser::parse_source_file;
 use std::collections::{HashMap, HashSet};
@@ -18,7 +20,15 @@ impl TypeRegistry {
     }
 
     pub fn parse_file(root: &Path, file: &SourceFile) -> DoweResult<Self> {
-        parse_file_with_imports(root, file, &mut Vec::new())
+        Self::parse_file_with_import_filter(root, file, &|_, _| false)
+    }
+
+    pub fn parse_file_with_import_filter(
+        root: &Path,
+        file: &SourceFile,
+        skip_import: &dyn Fn(&SourceFile, &SourceImport) -> bool,
+    ) -> DoweResult<Self> {
+        parse_file_with_imports(root, file, &mut Vec::new(), skip_import)
     }
 
     fn parse_nodes(
@@ -111,6 +121,7 @@ fn parse_file_with_imports(
     root: &Path,
     file: &SourceFile,
     stack: &mut Vec<PathBuf>,
+    skip_import: &dyn Fn(&SourceFile, &SourceImport) -> bool,
 ) -> DoweResult<TypeRegistry> {
     let shared_type_file = is_shared_type_file(file);
     if shared_type_file {
@@ -126,6 +137,9 @@ fn parse_file_with_imports(
 
     let mut imported = HashMap::new();
     for import in &file.imports {
+        if skip_import(file, import) {
+            continue;
+        }
         let path = resolve_import(root, &file.path, import)?;
         if !is_shared_type_path(root, &path) {
             if shared_type_file {
@@ -151,7 +165,7 @@ fn parse_file_with_imports(
         let source = fs::read_to_string(&path)
             .map_err(|error| DoweError::at_path(&path, error.to_string()))?;
         let imported_file = parse_source_file(root, &path, source)?;
-        let registry = parse_file_with_imports(root, &imported_file, stack)?;
+        let registry = parse_file_with_imports(root, &imported_file, stack, skip_import)?;
         let value = registry
             .definitions
             .get(&import.local)

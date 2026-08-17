@@ -25,18 +25,19 @@ use dowe_components::{
     SelectOptionEach, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps, SideNavSize,
     SidebarProps, SizeValue, SkeletonAnimation, SkeletonProps, SkeletonVariant, StyleExtras,
     StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill, SvgProps, SvgTransform, SvgViewBox,
-    TabItem, TabsPosition, TabsProps, TabsVariant, TextProps, TextWeight, TextareaProps, ToastKind,
-    ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
-    TranslationCatalog, TranslationLocale, TranslationValue, TypeWriterItem, TypeWriterProps,
-    VariantProps, VideoAspect, VideoProps, ViewAction, ViewActionKind, ViewAnimation,
-    ViewAssignAction, ViewFunctionStatement, ViewGesture, ViewIcon, ViewMotionStyle, ViewNode,
-    ViewResetAction, ViewRotation, ViewScale, ViewSignal, ViewSignalValue, ViewToastAction,
-    ViewTransition, ViewTranslation, VisibilityCondition, icon_component_node, solar_control_icon,
-    svg_spinner_control_icon,
+    TabItem, TabsPosition, TabsProps, TabsVariant, TextAlign, TextProps, TextWeight, TextareaProps,
+    ToastKind, ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps,
+    TooltipProps, TranslationCatalog, TranslationLocale, TranslationValue, TypeWriterItem,
+    TypeWriterProps, VariantProps, VideoAspect, VideoProps, ViewAction, ViewActionKind,
+    ViewAnimation, ViewAssignAction, ViewConstant, ViewFunctionStatement, ViewGesture, ViewIcon,
+    ViewMotionStyle, ViewNode, ViewResetAction, ViewRotation, ViewScale, ViewSignal,
+    ViewSignalValue, ViewToastAction, ViewTransition, ViewTranslation, VisibilityCondition,
+    icon_component_node, solar_control_icon, svg_spinner_control_icon,
 };
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 
 fn full_runtime_for_test() -> String {
     [
@@ -95,7 +96,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
     assert_javascript_syntax(&controls);
     assert_javascript_syntax(&media);
     assert_javascript_syntax(&visualization);
-    assert!(core.len() <= 130_000, "router core is {} bytes", core.len());
+    assert!(core.len() <= 130_500, "router core is {} bytes", core.len());
     assert!(controls.len() <= 50_000);
     assert!(media.len() <= 40_000);
     assert!(visualization.len() <= 35_000);
@@ -112,6 +113,84 @@ fn generated_runtime_javascript_has_valid_syntax() {
 }
 
 #[test]
+fn dynamic_icon_router_embeds_only_static_constant_names() {
+    let icon = icon_component_node(vec![ComponentProp {
+        name: "name".to_string(),
+        value: PropValue::String("@icon-binding:platform.icon".to_string()),
+    }])
+    .expect("dynamic icon");
+    let tree = ViewNode::Scope {
+        constants: vec![ViewConstant {
+            id: "platforms".to_string(),
+            name: "platforms".to_string(),
+            value: ViewSignalValue::Array(vec![
+                ViewSignalValue::Object(vec![(
+                    "icon".to_string(),
+                    ViewSignalValue::String("route-bold-duotone".to_string()),
+                )]),
+                ViewSignalValue::Object(vec![(
+                    "icon".to_string(),
+                    ViewSignalValue::String("svg-logos:apple".to_string()),
+                )]),
+            ]),
+        }],
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![
+            ViewNode::Each {
+                item: "platform".to_string(),
+                collection: "platforms".to_string(),
+                key: "platform.icon".to_string(),
+                children: vec![icon],
+            },
+            ViewNode::Each {
+                item: "entry".to_string(),
+                collection: "runtimeEntries".to_string(),
+                key: "entry.id".to_string(),
+                children: vec![ViewNode::Text {
+                    props: Default::default(),
+                    value: "Catalog entry".to_string(),
+                }],
+            },
+        ],
+    };
+    let page = super::ViewPage {
+        id: "platforms".to_string(),
+        route_path: "/".to_string(),
+        source_path: PathBuf::from("/project/views/pages/home.dowe"),
+        layout_tree: ViewNode::Children,
+        page_tree: tree,
+        body_html: String::new(),
+        html_document: String::new(),
+        layout_text: String::new(),
+        page_text: String::new(),
+        layout_chunk_id: String::new(),
+        page_chunk_id: String::new(),
+        layout_chunk_ids: Vec::new(),
+        js_chunks: Vec::new(),
+        css_chunks: Vec::new(),
+        runtime_chunks: Vec::new(),
+        design_file_name: "design.css".to_string(),
+        router_file_name: String::new(),
+        boundaries: Vec::new(),
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+        metadata: Vec::new(),
+    };
+    let router = super::router_js(&super::WebOutput {
+        chunks: Vec::new(),
+        pages: vec![Arc::new(page)],
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    });
+
+    assert!(router.contains("\"route-bold-duotone\""));
+    assert!(router.contains("\"svg-logos:apple\""));
+    assert!(!router.contains("\"country-flags:CO\""));
+}
+
+#[test]
 fn basic_view_css_excludes_unused_component_domains() {
     let tree = ViewNode::Box {
         props: Default::default(),
@@ -120,11 +199,8 @@ fn basic_view_css_excludes_unused_component_domains() {
             value: "Basic".to_string(),
         }],
     };
-    let css = super::design_css_for_trees(
-        [&tree],
-        &FontConfig::default(),
-        &DesignConfig::default(),
-    );
+    let css =
+        super::design_css_for_trees([&tree], &FontConfig::default(), &DesignConfig::default());
 
     assert!(css.contains(".box{"));
     assert!(!css.contains(".color-picker-popover{"));

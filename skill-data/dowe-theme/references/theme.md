@@ -9,7 +9,7 @@ only theme color form to author or emit.
 
 ```text
 theme
-  fonts default:"manrope" install:["manrope","inter"]
+  fonts default:"manrope" install:["manrope" "inter"]
   design defaultTheme:"light"
     Card variant:"outlined" scheme:"primary" radius:"xs" shadow:"xs"
     Button variant:"solid" scheme:"secondary" size:"md"

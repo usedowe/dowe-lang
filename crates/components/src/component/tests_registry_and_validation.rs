@@ -5,21 +5,23 @@ use super::{
     ButtonSize, COMPONENT_REGISTRY, COUNTRY_FLAGS, CanvasBackground, CanvasFit, CarouselVariant,
     ChartCurve, ChartLegendPosition, ChartPalette, ChartSize, CodeLanguage, CodeTemplateSegment,
     CodeTokenKind, ColorFamily, ColorToken, ComponentError, ComponentProp, ComponentVariant,
-    DeviceProfile, DividerOrientation, EmptyKind, FabProps, FlexDirection, FontFamily, GapValue,
-    GridAlignment, GridTracks, IframeLoading, NativeExternalMode, NavigationAction,
-    OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation, ResponsivePropEntry,
-    RoundedSize, SVG_LOGOS, SVG_SPINNERS, ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap,
-    SvgLineJoin, SvgPathFill, SvgTransform, TableColumnAlign, TableSize, TabsPosition, TabsVariant,
-    TextSize, TextSpacing, TextWeight, VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewNode,
+    ContainerSize, DeviceProfile, DividerOrientation, EmptyKind, FabProps, FlexDirection,
+    FontFamily, GapSize, GapValue, GridAlignment, GridTracks, IframeLoading, NativeExternalMode,
+    NavigationAction, OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation,
+    ResponsivePropEntry, RichTextMark, RichTextMarkStyle, RoundedSize, SVG_LOGOS, SVG_SPINNERS,
+    ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap, SvgLineJoin, SvgPathFill,
+    SvgTransform, TableColumnAlign, TableSize, TabsPosition, TabsVariant, TextAlign, TextSize,
+    TextSpacing, TextWeight, VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewNode,
     ViewRotation, ViewScale, ViewTransition, ViewTranslation, VisibilityCondition, WebTarget,
     all_icon_names, arc_chart_component_node, area_chart_component_node, bar_chart_component_node,
     bar_component_node, box_node, candlestick_node, canvas_component_node, carousel_component_node,
     carousel_slide_component, children_node, code_node, compose_tree, container_component_node,
-    country_flag_icon, device_node, divider_node, empty_icon, first_text, fixed_box_nodes, fixed_fab_nodes,
-    font_catalog, form_control_min_height, form_control_text_size, icon_component_node, iframe_node,
-    input_node, integrated_design_theme,
-    line_chart_component_node,
-    phone_countries, pie_chart_component_node, radio_group_component_node, radio_option_component,
+    country_flag_icon, device_node, divider_node, empty_icon, first_text, fixed_box_nodes,
+    fixed_fab_nodes, font_catalog, form_control_min_height, form_control_text_size,
+    icon_component_node, iframe_node, input_node, integrated_design_theme,
+    line_chart_component_node, phone_countries, pie_chart_component_node,
+    radio_group_component_node, radio_option_component, rich_text_component_node,
+    runtime_icon_catalog, runtime_icon_catalog_for_names, runtime_icon_catalog_shared,
     section_content_spacing, select_node, select_option_component, stepper_component_node,
     stepper_step_component, svg_component_node, svg_path_component, table_column_component,
     table_node, tabs_component_node, tabs_tab_component, text_binding_path, text_component_node,
@@ -183,7 +185,10 @@ fn registry_finds_builtin_components() {
         Some(BuiltinComponent::Password)
     );
     assert_eq!(COMPONENT_REGISTRY.get("PasswordField"), None);
-    assert_eq!(COMPONENT_REGISTRY.get("Phone"), Some(BuiltinComponent::Phone));
+    assert_eq!(
+        COMPONENT_REGISTRY.get("Phone"),
+        Some(BuiltinComponent::Phone)
+    );
     assert_eq!(COMPONENT_REGISTRY.get("PhoneField"), None);
     assert_eq!(COMPONENT_REGISTRY.get("Pin"), Some(BuiltinComponent::Pin));
     assert_eq!(COMPONENT_REGISTRY.get("PinField"), None);
@@ -1065,10 +1070,9 @@ fn resolves_tabs_defaults_with_theme_and_usage_precedence() {
     assert!(props.style.shadow.is_none());
 
     let mut theme_defaults = super::DesignDefaults::with_builtin_defaults();
-    theme_defaults.tabs_variant.insert(
-        super::DesignComponentSlot::Tabs,
-        TabsVariant::Line,
-    );
+    theme_defaults
+        .tabs_variant
+        .insert(super::DesignComponentSlot::Tabs, TabsVariant::Line);
     theme_defaults
         .scheme
         .insert(super::DesignComponentSlot::Tabs, ColorFamily::Muted);
@@ -1390,7 +1394,7 @@ fn validates_design_props() {
             false,
         )
         .expect_err("viewport height as width"),
-        ComponentError::invalid_prop("w", "Dowe scale value or full")
+        ComponentError::invalid_prop("w", "Dowe scale value, container size or full")
     );
 
     assert_eq!(
@@ -1401,8 +1405,52 @@ fn validates_design_props() {
             false,
         )
         .expect_err("viewport height as max width"),
-        ComponentError::invalid_prop("maxW", "Dowe scale value or full")
+        ComponentError::invalid_prop("maxW", "Dowe scale value, container size or full")
     );
+}
+
+#[test]
+fn validates_container_width_values_for_all_width_props() {
+    for prop in ["w", "minW", "maxW"] {
+        for value in ContainerSize::all() {
+            let node = container_component_node(
+                BuiltinComponent::Box,
+                vec![string_prop(prop, value.as_str())],
+                vec![text_node("Hello").expect("text")],
+                false,
+            )
+            .expect("container width");
+
+            let sizing = match node {
+                ViewNode::Box { props, .. } => props.sizing,
+                _ => panic!("box"),
+            };
+            let parsed = match prop {
+                "w" => sizing.w,
+                "minW" => sizing.min_w,
+                "maxW" => sizing.max_w,
+                _ => unreachable!(),
+            }
+            .expect("width prop")
+            .entries[0]
+                .value;
+            assert_eq!(parsed, SizeValue::Container(*value));
+        }
+    }
+
+    for prop in ["h", "minH", "maxH"] {
+        let error = container_component_node(
+            BuiltinComponent::Box,
+            vec![string_prop(prop, "2xl")],
+            vec![text_node("Hello").expect("text")],
+            false,
+        )
+        .expect_err("container height");
+        assert_eq!(
+            error,
+            ComponentError::invalid_prop(prop, "Dowe scale value, full or vh-<scale>")
+        );
+    }
 }
 
 #[test]
@@ -1782,6 +1830,159 @@ fn rejects_non_boolean_section_boxed_prop() {
     .expect_err("boxed");
 
     assert_eq!(error, ComponentError::invalid_prop("boxed", "boolean"));
+}
+
+#[test]
+fn parses_section_center_as_static_and_responsive_boolean() {
+    let default = container_component_node(
+        BuiltinComponent::Section,
+        Vec::new(),
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect("default section");
+    let ViewNode::Section { props, .. } = default else {
+        panic!("section");
+    };
+    assert!(props.center.is_none());
+
+    let centered = container_component_node(
+        BuiltinComponent::Section,
+        vec![boolean_prop("center", true)],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect("centered section");
+    let ViewNode::Section { props, .. } = centered else {
+        panic!("section");
+    };
+    assert_eq!(
+        props.center.as_ref().expect("center").entries[0].value,
+        true
+    );
+
+    let responsive = container_component_node(
+        BuiltinComponent::Section,
+        vec![responsive_boolean_prop(
+            "center",
+            &[("xs", false), ("md", true)],
+        )],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect("responsive section");
+    let ViewNode::Section { props, .. } = responsive else {
+        panic!("section");
+    };
+    assert_eq!(props.center.as_ref().expect("center").entries.len(), 2);
+    assert_eq!(
+        props.center.as_ref().expect("center").entries[1].value,
+        true
+    );
+}
+
+#[test]
+fn rejects_invalid_section_center_values() {
+    let string_value = container_component_node(
+        BuiltinComponent::Section,
+        vec![string_prop("center", "true")],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect_err("center string");
+    assert_eq!(
+        string_value,
+        ComponentError::invalid_prop("center", "boolean")
+    );
+
+    let invalid_breakpoint = container_component_node(
+        BuiltinComponent::Section,
+        vec![responsive_boolean_prop("center", &[("xxl", true)])],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect_err("center breakpoint");
+    assert_eq!(
+        invalid_breakpoint,
+        ComponentError::invalid_prop("center", "valid breakpoint")
+    );
+}
+
+#[test]
+fn parses_section_gap_with_zero_default_and_responsive_values() {
+    let default = container_component_node(
+        BuiltinComponent::Section,
+        Vec::new(),
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect("default section");
+    let ViewNode::Section { props, .. } = default else {
+        panic!("section");
+    };
+    assert!(props.gap.is_none());
+
+    let scalar = container_component_node(
+        BuiltinComponent::Section,
+        vec![number_prop("gap", 3)],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect("scalar gap");
+    let ViewNode::Section { props, .. } = scalar else {
+        panic!("section");
+    };
+    assert_eq!(
+        props.gap.expect("gap").entries[0].value,
+        GapValue::Single(GapSize::Scale(ScaleValue(6)))
+    );
+
+    let pixels = container_component_node(
+        BuiltinComponent::Section,
+        vec![string_prop("gap", "8px")],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect("pixel gap");
+    let ViewNode::Section { props, .. } = pixels else {
+        panic!("section");
+    };
+    assert_eq!(
+        props.gap.expect("gap").entries[0].value,
+        GapValue::Single(GapSize::Px(8))
+    );
+
+    let responsive = container_component_node(
+        BuiltinComponent::Section,
+        vec![responsive_number_prop("gap", &[("xs", 2), ("md", 4)])],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect("responsive gap");
+    let ViewNode::Section { props, .. } = responsive else {
+        panic!("section");
+    };
+    let gap = props.gap.expect("gap");
+    assert_eq!(gap.entries.len(), 2);
+    assert_eq!(
+        gap.entries[1].value,
+        GapValue::Single(GapSize::Scale(ScaleValue(8)))
+    );
+}
+
+#[test]
+fn rejects_invalid_section_gap_values() {
+    let error = container_component_node(
+        BuiltinComponent::Section,
+        vec![boolean_prop("gap", true)],
+        vec![text_node("Hero").expect("text")],
+        false,
+    )
+    .expect_err("gap boolean");
+    assert_eq!(
+        error,
+        ComponentError::invalid_prop("gap", "Dowe scale value or px value")
+    );
 }
 
 #[test]
@@ -2539,20 +2740,92 @@ fn validates_svg_logo_catalog_and_icon_names() {
 }
 
 #[test]
+fn exposes_runtime_payloads_for_every_icon_name() {
+    let names = all_icon_names();
+    let catalog = runtime_icon_catalog().expect("runtime icon catalog");
+    assert_eq!(catalog.len(), names.len());
+    assert!(catalog.iter().any(|(name, payload)| {
+        name == "route-bold-duotone" && payload.contains("\"viewBox\"")
+    }));
+    assert!(
+        catalog
+            .iter()
+            .any(|(name, payload)| { name == "country-flags:CO" && payload.contains("\"paths\"") })
+    );
+    assert!(catalog.iter().any(|(name, payload)| {
+        name == "svg-logos:github-icon" && payload.contains("\"paths\"")
+    }));
+}
+
+#[test]
+fn shares_the_runtime_icon_catalog_across_generators() {
+    let first = runtime_icon_catalog_shared().expect("runtime icon catalog");
+    let second = runtime_icon_catalog_shared().expect("runtime icon catalog");
+    assert!(std::sync::Arc::ptr_eq(&first, &second));
+    assert_eq!(first.len(), all_icon_names().len());
+}
+
+#[test]
+fn exposes_only_requested_runtime_icon_payloads() {
+    let catalog = runtime_icon_catalog_for_names([
+        "route-bold-duotone",
+        "global-bold-duotone",
+        "laptop-bold-duotone",
+        "svg-logos:android-icon",
+        "svg-logos:apple",
+    ])
+    .expect("selected runtime icon catalog");
+
+    assert_eq!(catalog.len(), 5);
+    assert!(catalog.iter().all(|(name, payload)| {
+        payload.contains("\"viewBox\"")
+            && matches!(
+                name.as_str(),
+                "route-bold-duotone"
+                    | "global-bold-duotone"
+                    | "laptop-bold-duotone"
+                    | "svg-logos:android-icon"
+                    | "svg-logos:apple"
+            )
+    }));
+}
+
+#[test]
 fn exposes_text_and_title_roles_for_every_theme_color_family() {
     assert_eq!(ColorToken::all().len(), 54);
-    assert_eq!(ColorToken::from_name("primaryText"), Some(ColorToken::PrimaryText));
-    assert_eq!(ColorToken::from_name("primaryTitle"), Some(ColorToken::PrimaryTitle));
-    assert_eq!(ColorToken::from_name("softPrimaryText"), Some(ColorToken::SoftPrimaryText));
-    assert_eq!(ColorToken::from_name("softPrimaryTitle"), Some(ColorToken::SoftPrimaryTitle));
+    assert_eq!(
+        ColorToken::from_name("primaryText"),
+        Some(ColorToken::PrimaryText)
+    );
+    assert_eq!(
+        ColorToken::from_name("primaryTitle"),
+        Some(ColorToken::PrimaryTitle)
+    );
+    assert_eq!(
+        ColorToken::from_name("softPrimaryText"),
+        Some(ColorToken::SoftPrimaryText)
+    );
+    assert_eq!(
+        ColorToken::from_name("softPrimaryTitle"),
+        Some(ColorToken::SoftPrimaryTitle)
+    );
     assert_eq!(ColorToken::from_name("onPrimary"), None);
     assert_eq!(ColorToken::from_name("onSuccess"), None);
     assert_eq!(ColorToken::from_name("onSoftPrimary"), None);
     assert_eq!(ColorFamily::Primary.text_token(), ColorToken::PrimaryText);
     assert_eq!(ColorFamily::Primary.title_token(), ColorToken::PrimaryTitle);
-    assert_eq!(ColorFamily::Primary.soft_text_token(), ColorToken::SoftPrimaryText);
-    assert_eq!(ColorFamily::Primary.soft_title_token(), ColorToken::SoftPrimaryTitle);
-    assert_eq!(ColorFamily::Background.soft_title_token(), ColorToken::BackgroundTitle);
+    assert_eq!(
+        ColorFamily::Primary.soft_text_token(),
+        ColorToken::SoftPrimaryText
+    );
+    assert_eq!(
+        ColorFamily::Primary.soft_title_token(),
+        ColorToken::SoftPrimaryTitle
+    );
+    assert_eq!(
+        ColorFamily::Background.soft_title_token(),
+        ColorToken::BackgroundTitle
+    );
     assert_eq!(
         ColorFamily::from_theme_name("primary"),
         Some((ColorFamily::Primary, false))
@@ -2614,5 +2887,8 @@ fn represents_custom_theme_color_families_and_soft_roles() {
     assert_eq!(ColorFamily::from_name("happy-day"), None);
     assert_eq!(ColorToken::from_name("happy"), Some(happy.color_token()));
     assert_eq!(ColorToken::from_name("happyText"), Some(happy.text_token()));
-    assert_eq!(ColorToken::from_name("happyTitle"), Some(happy.title_token()));
+    assert_eq!(
+        ColorToken::from_name("happyTitle"),
+        Some(happy.title_token())
+    );
 }

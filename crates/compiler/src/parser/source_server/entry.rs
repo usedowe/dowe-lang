@@ -7,6 +7,7 @@ pub fn parse_server_file(path: &Path, nodes: &[SourceNode]) -> DoweResult<Server
         &ServerImports::default(),
         &types,
         &EnvironmentConfig::default(),
+        true,
     )
 }
 
@@ -32,9 +33,20 @@ fn parse_server_source_for(
     environment: &EnvironmentConfig,
     include_seeders: bool,
 ) -> DoweResult<ServerRoot> {
-    let types = TypeRegistry::parse_file(root, file)?;
+    let types = TypeRegistry::parse_file_with_import_filter(
+        root,
+        file,
+        &|file, import| !include_seeders && seeder_import_names(file).contains(&import.local),
+    )?;
     let imports = server_imports(root, file, environment, include_seeders)?;
-    parse_server_nodes(&file.path, &file.nodes, &imports, &types, environment)
+    parse_server_nodes(
+        &file.path,
+        &file.nodes,
+        &imports,
+        &types,
+        environment,
+        include_seeders,
+    )
 }
 
 pub(crate) fn validate_server_module_source(
@@ -51,6 +63,7 @@ fn parse_server_nodes(
     imports: &ServerImports,
     types: &TypeRegistry,
     environment: &EnvironmentConfig,
+    include_seeders: bool,
 ) -> DoweResult<ServerRoot> {
     if let Some(app) = nodes.iter().find(|node| node.name == "app") {
         return Err(node_error(app, "`app` has been renamed to `main`"));
@@ -72,10 +85,19 @@ fn parse_server_nodes(
         .transpose()?;
 
     let databases = database_bindings(imports, &backend, desktop_server.as_ref())?;
+    let inspector = build_server_inspector(
+        path,
+        nodes,
+        &backend,
+        &databases,
+        &imports.excluded_seeder_paths,
+        include_seeders,
+    )?;
     Ok(ServerRoot {
         backend,
         desktop_server,
         databases,
+        inspector,
     })
 }
 
@@ -84,6 +106,7 @@ pub struct ServerRoot {
     pub backend: ServerConfig,
     pub desktop_server: Option<ServerConfig>,
     pub databases: Vec<DatabaseBinding>,
+    pub inspector: ServerInspectorManifest,
 }
 
 #[derive(Debug, Clone)]
@@ -118,6 +141,7 @@ struct ServerImports {
     endpoint_groups: HashMap<String, EndpointGroup>,
     entities: HashMap<String, DatabaseEntity>,
     seeders: HashMap<String, DatabaseSeeder>,
+    excluded_seeder_paths: HashSet<std::path::PathBuf>,
 }
 
 #[derive(Clone, Default)]

@@ -178,6 +178,11 @@ and `Button` is one direct quoted child. Dynamic visible text uses one complete 
 required bare references; `in` names the array, `as` introduces the scoped item, and `key`
 identifies the item across updates.
 
+Declare immutable data with `const` directly in a page or layout, or directly inside a visual block
+above the `each` that uses it. Dowe hoists the nested declaration into the owning page or layout
+scope without adding a visual wrapper, preserving the container's direct children. Do not declare
+constants inside reusable `component` exports.
+
 This is mandatory for two or more same-shape sibling units, including rows composed from `Flex`,
 `Icon`, and text. Put the collection declaration before the visual tree and make the `each` wrap the
 complete repeated unit. Copying the unit and changing only its content is invalid authoring even when
@@ -237,6 +242,43 @@ Import Stores with `@/` or a relative path from their actual project location. D
 a View Store; target-local persistence is not a credential vault. Store declarations remain
 Views-only regardless of their folder. Persistent hydration falls back to the declared initial value
 when stored data is malformed or structurally incompatible with that initial shape.
+
+## View-to-server contracts
+
+An internal `request` crosses the Views and Server authoring boundary. The View remains the owner of
+interaction and presentation state, but the task must load the companion `dowe-server` skill when
+the project-owned route needs to be added or changed. Do this even when the prompt begins with a
+page, screenshot, table, form, search field, pagination control, or other UI reference.
+
+Record one row per affected request before editing:
+
+| Field | Required decision |
+| --- | --- |
+| Caller | Page or layout plus its named `fn` or `init` |
+| Request | HTTP method and resolved `route` or `path` |
+| Client input | Body fields, headers, route params, and values that remain untrusted |
+| Client output | Minimal serializable response shape consumed by the View |
+| View states | Loading, success, empty, error, unauthorized, and retry behavior when applicable |
+| Server route | Endpoint entry and matching method |
+| Server layers | Handler, middleware, service, repository, provider, and config owners |
+| Data impact | Entity, migration, Database, Cache, Vector, Queue, or file changes required |
+| Security | Authentication, authorization, tenant/owner scope, validation, and safe error behavior |
+
+Inspect the route implementation and its full imports instead of assuming that an `/api` string
+already has a compatible endpoint. A missing route, wrong method, incompatible body or response,
+missing authorization, or missing persistence behavior is part of the same fullstack task. Use the
+Server skill to modify only the layers required by the requested behavior, then re-check the matrix
+against the actual source.
+
+Do not solve a missing Server capability by moving Database, Cache, Vector, Queue, outbound
+server-only HTTP, secrets, filesystem, crypto, or spawn into a View. Do not copy an authorization or
+business rule into a Signal or View Store. The Server must treat every client value as untrusted and
+return only the fields the View needs. Views may hide an action, but the Server remains the
+authorization authority.
+
+For a request with an explicitly external, independently owned `base`, verify the external client
+contract without inventing a project Server route. The cross-skill gate applies to project-owned
+backend behavior and to any local adapter required by the requested feature.
 
 ## View function utilities
 

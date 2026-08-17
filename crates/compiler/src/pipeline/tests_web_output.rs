@@ -98,7 +98,8 @@ fn emits_view_inspector_only_for_development_web_output() {
 
 page loginPage
   Section id:"login"
-    CardContent"#,
+    CardContent
+    Empty type:"result" title:"No records" href:"/" actionLabel:"Open""#,
     )
     .expect("page import");
 
@@ -112,10 +113,13 @@ page loginPage
         .any(|chunk| chunk.inspector.is_some()));
     let inspector = fs::read_to_string(temp.path().join(".dowe/web/inspector.json"))
         .expect("development inspector manifest");
-    assert!(inspector.contains("\"version\":1"));
+    assert!(inspector.contains("\"version\":2"));
     assert!(inspector.contains("\"path\":\"pages/login.dowe\""));
     assert!(inspector.contains("\"path\":\"components/card-content.dowe\""));
     assert!(inspector.contains("\"usages\":[{\"path\":\"pages/login.dowe\""));
+    assert!(inspector.contains("\"props\":[{\"name\":\"id\",\"value\":\"\\\"login\\\"\"}]"));
+    assert!(inspector.contains("\"routes\":[{\"path\":\"/\""));
+    assert!(inspector.contains("\"breakpoints\":[{\"name\":\"xs\",\"minWidth\":0}"));
     assert!(inspector.contains("\"startLine\":"));
     let inspector_value: serde_json::Value =
         serde_json::from_str(&inspector).expect("inspector json");
@@ -127,14 +131,55 @@ page loginPage
         .collect::<Vec<_>>();
     assert_eq!(
         kinds,
-        vec!["Box", "Text", "Section", "Box", "Button", "Button", "Title"]
+        vec![
+            "Box", "Text", "Section", "Box", "Button", "Button", "Title", "Empty",
+        ]
     );
+    let marker_count = development_body.matches("data-dowe-node=").count();
+    let inspector_node_count = development
+        .web
+        .chunks
+        .iter()
+        .filter_map(|chunk| chunk.inspector.as_ref())
+        .map(|map| map.nodes.len())
+        .sum::<usize>();
+    assert_eq!(marker_count, inspector_node_count);
+    let first_node = inspector_value["nodes"]
+        .as_array()
+        .expect("inspector nodes")
+        .first()
+        .expect("first inspector node");
+    assert!(first_node["signals"].is_array());
+    assert!(first_node["actions"].is_array());
+    assert!(inspector_value["routes"].as_array().is_some());
 
     let live = compile_for_environment(temp.path(), CompileEnvironment::Live)
         .expect("live project");
     assert!(!live.web.pages[0].body_html.contains("data-dowe-node="));
     assert!(live.web.chunks.iter().all(|chunk| chunk.inspector.is_none()));
     assert!(!temp.path().join(".dowe/web/inspector.json").exists());
+}
+
+#[test]
+fn emits_server_inspector_only_for_development_server_output() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path());
+
+    let development = compile_dev(temp.path()).expect("development project");
+    assert!(development.server_inspector.is_some());
+    let manifest = temp.path().join(".dowe/server/inspector.json");
+    let value: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).expect("server inspector manifest"))
+            .expect("server inspector json");
+    assert_eq!(value["schema_version"], 2);
+    assert_eq!(value["port"], 8080);
+    assert!(value["routes"].as_array().is_some_and(|routes| !routes.is_empty()));
+    assert!(value["nodes"].as_array().is_some_and(|nodes| !nodes.is_empty()));
+
+    let live = compile_for_environment(temp.path(), CompileEnvironment::Live)
+        .expect("live project");
+    assert!(live.server_inspector.is_none());
+    assert!(!manifest.exists());
 }
 
 #[test]

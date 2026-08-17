@@ -618,9 +618,22 @@ fn render_compose_section_body(
         ));
     }
     let column_pad = " ".repeat(column_indent);
+    let horizontal_alignment = props
+        .center
+        .as_ref()
+        .map(|value| {
+            format!(
+                ", horizontalAlignment = {}",
+                compose_section_horizontal_alignment(value)
+            )
+        })
+        .unwrap_or_default();
+    let vertical_arrangement = compose_section_vertical_arrangement(props.gap.as_ref());
     output.push_str(&format!(
-        "{column_pad}Column(modifier = {}) {{\n",
-        modifier_for_section_content(props)
+        "{column_pad}Column(modifier = {}{}{}) {{\n",
+        modifier_for_section_content(props),
+        vertical_arrangement,
+        horizontal_alignment
     ));
     let color_scope = compose_content_color(props);
     if let Some(color) = color_scope.as_ref() {

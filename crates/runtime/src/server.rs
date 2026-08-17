@@ -2,7 +2,9 @@ use crate::background_jobs::start_init_background_jobs;
 use crate::error::{RuntimeError, RuntimeResult};
 use crate::handlers::{
     backend_declared_websocket_handler, backend_handler, desktop_declared_websocket_handler,
-    desktop_handler, dev_websocket_handler, views_handler,
+    desktop_handler, dev_websocket_handler, server_inspector_data, server_inspector_execute,
+    server_inspector_index, server_inspector_manifest, server_inspector_selection,
+    server_inspector_source, views_handler,
 };
 use crate::logging::log_info;
 use crate::production_handlers::{production_declared_websocket_handler, production_handler};
@@ -195,7 +197,7 @@ pub async fn start_dev_servers(
         .unwrap_or_default();
     let project_root = project.root.clone();
 
-    let state = DevRuntimeState {
+    let mut state = DevRuntimeState {
         project: Arc::new(RwLock::new(Arc::new(project))),
         events: DevEventBus::default(),
         dev_origins,
@@ -230,7 +232,13 @@ pub async fn start_dev_servers(
         } else {
             "http"
         };
+        state.dev_origins.push(format!("{scheme}://{addr}"));
         log_info(format!("Backend server started at {scheme}://{addr}"));
+        if state.project.read().await.server_inspector.is_some() {
+            log_info(format!(
+                "Server inspector available at {scheme}://{addr}/_dowe/dev/server/"
+            ));
+        }
         backend_addr = Some(addr);
         backend = Some(RunningServer {
             shutdown: Some(shutdown),
@@ -799,7 +807,28 @@ fn backend_router(
     queue_service: bool,
     project_root: std::path::PathBuf,
 ) -> Router {
-    let mut router = Router::new().route("/_dowe/dev/ws", get(dev_websocket_handler));
+    let mut router = Router::new()
+        .route("/_dowe/dev/ws", get(dev_websocket_handler))
+        .route("/_dowe/dev/server", get(server_inspector_index))
+        .route("/_dowe/dev/server/", get(server_inspector_index))
+        .route(
+            "/_dowe/dev/server/manifest.json",
+            get(server_inspector_manifest),
+        )
+        .route(
+            "/_dowe/dev/server/source/{id}",
+            get(server_inspector_source),
+        )
+        .route("/_dowe/dev/server/data/{kind}", get(server_inspector_data))
+        .route(
+            "/_dowe/dev/server/execute",
+            axum::routing::post(server_inspector_execute),
+        )
+        .route("/_dowe/dev/server/events", get(dev_websocket_handler))
+        .route(
+            "/_dowe/dev/server/selection",
+            axum::routing::post(server_inspector_selection),
+        );
     if cache_service {
         router = router.route("/v1/caches/{name}", get(cache_service_handler));
     }

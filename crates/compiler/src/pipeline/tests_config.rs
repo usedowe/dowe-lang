@@ -107,6 +107,33 @@ fn compiles_example_project_and_writes_chunks() {
 }
 
 #[test]
+fn compiles_database_registered_in_main_without_route_usage() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::write(
+        temp.path().join("server-config.dowe"),
+        r#"database RegisteredDb provider:"dowe" host:"127.0.0.1" port:4147 account:"docs" secret:"secret" name:"registered" entities:[] seeders:[]"#,
+    )
+    .expect("database config");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import RegisteredDb from "@/server-config"
+
+main
+  server port:8080
+    databases:[RegisteredDb]
+    route "/health"
+      response text:"ok""#,
+    )
+    .expect("registered main");
+
+    let project = compile_dev(temp.path()).expect("project");
+
+    assert_eq!(project.databases.len(), 1);
+    assert_eq!(project.databases[0].binding, "RegisteredDb");
+    assert_eq!(project.databases[0].connection.database, "registered");
+}
+
+#[test]
 fn compiles_views_without_a_server() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path());
@@ -651,7 +678,7 @@ fn writes_source_language_artifacts() {
     assert!(source.contains(r#""projectRootAlias": "@/""#));
     assert!(source.contains(r#""assetsImportable": false"#));
     assert!(source.contains("dynamic text uses exactly one braced binding"));
-    assert!(views.contains("main views:[dashboardRoutes,docsRoutes]"));
+    assert!(views.contains("main views:[dashboardRoutes docsRoutes]"));
     assert!(views.contains("server endpoints:[userRoutes,blogRoutes]"));
     assert!(server.contains(r#""root": "main.dowe""#));
     assert!(server.contains(r#""req.json""#));
@@ -670,6 +697,8 @@ fn writes_source_language_artifacts() {
     assert!(views.contains(r#""Video""#));
     assert!(views.contains(r#""Divider""#));
     assert!(views.contains("Section boxed:true"));
+    assert!(views.contains("center:{ xs:false md:true }"));
+    assert!(views.contains("gap:{ xs:2 md:4 }"));
     assert!(views.contains(r#""Input bind:signal.field""#));
     assert!(views.contains(r#""signalPathValidation""#));
     assert!(views.contains(r#"\"{blog.title}\" dynamic text child"#));

@@ -35,6 +35,48 @@ main
 }
 
 #[test]
+fn builds_inspector_request_metadata_from_compiled_actions() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        r#"type CreateUser
+  name:string
+  age:number
+
+main
+  server port:8080
+    route "/users/:id"
+      method POST async req
+        const body:CreateUser value:req.json
+        request query source:"query"
+        request auth source:"header" name:"Authorization"
+        return json:{ ok:true }
+    websocket "/events"
+      message ws
+        ws incoming source:"json"
+        send ws json:incoming"#
+            .to_string(),
+    )
+    .expect("source");
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let route = &server.inspector.routes[0];
+    assert_eq!(route.parameters[0].name, "id");
+    assert_eq!(route.parameters[0].location, "path");
+    assert!(
+        route
+            .parameters
+            .iter()
+            .any(|parameter| parameter.name == "query")
+    );
+    assert_eq!(route.headers[0].name, "Authorization");
+    assert_eq!(
+        route.body.as_ref().expect("body").fields[0].field_type,
+        "string"
+    );
+    assert_eq!(server.inspector.websockets[0].message_format, "json");
+}
+
+#[test]
 fn rejects_invalid_server_function_call_shape() {
     let temp = TempDir::new().expect("tempdir");
     let root = temp.path();
@@ -109,6 +151,17 @@ fn saveTicket params:{ ticket:TicketInput } return:"TicketOutput"
     let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
     let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
     let server = parse_server_source(root, &file, &EnvironmentConfig::default()).expect("server");
+    let inspector_entity = server
+        .inspector
+        .entities
+        .iter()
+        .find(|entity| entity.table == "directvAccounts")
+        .expect("inspector entity");
+    assert_eq!(inspector_entity.database, "iptv");
+    assert_eq!(inspector_entity.field_details[0].field_type, "string");
+    assert!(inspector_entity.field_details[0].primary);
+    assert!(inspector_entity.field_details[1].required);
+    assert!(inspector_entity.field_details[1].index);
     let endpoint = server
         .backend
         .find_endpoint(&HttpMethod::Get, "/api/tickets")

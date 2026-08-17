@@ -49,9 +49,8 @@ fn normalizes_accordion_single_open_defaults() {
 
 #[test]
 fn hides_image_controls_by_default_and_allows_explicit_enablement() {
-    let default_node =
-        super::image_component_node(vec![string_prop("src", "/assets/photo.jpg")])
-            .expect("default image");
+    let default_node = super::image_component_node(vec![string_prop("src", "/assets/photo.jpg")])
+        .expect("default image");
     let ViewNode::Image { props } = default_node else {
         panic!("image");
     };
@@ -186,21 +185,15 @@ fn exposes_the_normative_component_visual_defaults() {
         Some(&super::ColorFamily::Primary)
     );
     assert_eq!(
-        defaults
-            .tabs_variant
-            .get(&super::DesignComponentSlot::Tabs),
+        defaults.tabs_variant.get(&super::DesignComponentSlot::Tabs),
         Some(&super::TabsVariant::Pills)
     );
     assert!(defaults.border.is_empty());
     assert!(defaults.shadow.is_empty());
 
-    let mut section = container_component_node(
-        BuiltinComponent::Section,
-        Vec::new(),
-        Vec::new(),
-        true,
-    )
-    .expect("section");
+    let mut section =
+        container_component_node(BuiltinComponent::Section, Vec::new(), Vec::new(), true)
+            .expect("section");
     super::apply_design_defaults_to_tree(&mut section, &defaults);
     let ViewNode::Section { props, .. } = section else {
         panic!("section");
@@ -213,15 +206,17 @@ fn exposes_the_normative_component_visual_defaults() {
 
 #[test]
 fn resolves_function_toast_variant_with_design_precedence() {
-    let toast = |variant: Option<&str>| super::ViewFunctionStatement::Toast(super::ViewToastAction {
-        kind: "success".to_string(),
-        title: "Saved".to_string(),
-        message: "Changes saved".to_string(),
-        duration: None,
-        scheme: None,
-        variant: variant.map(str::to_string),
-        position: None,
-    });
+    let toast = |variant: Option<&str>| {
+        super::ViewFunctionStatement::Toast(super::ViewToastAction {
+            kind: "success".to_string(),
+            title: "Saved".to_string(),
+            message: "Changes saved".to_string(),
+            duration: None,
+            scheme: None,
+            variant: variant.map(str::to_string),
+            position: None,
+        })
+    };
     let action = |variant| super::ViewAction {
         id: "save".to_string(),
         name: "save".to_string(),
@@ -479,27 +474,33 @@ fn validates_brand_children_navigation_and_size() {
     assert!(
         container_component_node(BuiltinComponent::Brand, Vec::new(), Vec::new(), false).is_err()
     );
-    assert!(container_component_node(
-        BuiltinComponent::Brand,
-        vec![string_prop("label", "")],
-        vec![text_node("Dowe").expect("text")],
-        false,
-    )
-    .is_err());
-    assert!(container_component_node(
-        BuiltinComponent::Brand,
-        vec![string_prop("href", "javascript:alert(1)")],
-        vec![text_node("Dowe").expect("text")],
-        false,
-    )
-    .is_err());
-    assert!(container_component_node(
-        BuiltinComponent::Brand,
-        vec![string_prop("variant", "solid")],
-        vec![text_node("Dowe").expect("text")],
-        false,
-    )
-    .is_err());
+    assert!(
+        container_component_node(
+            BuiltinComponent::Brand,
+            vec![string_prop("label", "")],
+            vec![text_node("Dowe").expect("text")],
+            false,
+        )
+        .is_err()
+    );
+    assert!(
+        container_component_node(
+            BuiltinComponent::Brand,
+            vec![string_prop("href", "javascript:alert(1)")],
+            vec![text_node("Dowe").expect("text")],
+            false,
+        )
+        .is_err()
+    );
+    assert!(
+        container_component_node(
+            BuiltinComponent::Brand,
+            vec![string_prop("variant", "solid")],
+            vec![text_node("Dowe").expect("text")],
+            false,
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -556,21 +557,25 @@ fn validates_banner_children_and_required_external_navigation() {
             string_prop("variant", "solid"),
         ],
     ] {
-        assert!(container_component_node(
+        assert!(
+            container_component_node(
+                BuiltinComponent::Banner,
+                props,
+                vec![text_node("Dowe").expect("text")],
+                false,
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        container_component_node(
             BuiltinComponent::Banner,
-            props,
-            vec![text_node("Dowe").expect("text")],
+            vec![string_prop("href", "https://dowe.dev")],
+            Vec::new(),
             false,
         )
-        .is_err());
-    }
-    assert!(container_component_node(
-        BuiltinComponent::Banner,
-        vec![string_prop("href", "https://dowe.dev")],
-        Vec::new(),
-        false,
-    )
-    .is_err());
+        .is_err()
+    );
 }
 
 #[test]
@@ -675,6 +680,7 @@ fn validates_text_title_typography_props() {
         BuiltinComponent::Title,
         vec![
             string_prop("size", "4xl"),
+            string_prop("align", "center"),
             string_prop("color", "primary"),
             string_prop("bg", "softPrimary"),
             string_prop("weight", "black"),
@@ -692,6 +698,10 @@ fn validates_text_title_typography_props() {
         ViewNode::Title { props, value } => {
             assert_eq!(value, "Welcome");
             assert!(props.size.is_some());
+            assert_eq!(
+                props.align.expect("align").entries[0].value,
+                TextAlign::Center
+            );
             assert!(props.style.text.is_some());
             assert!(props.style.bg.is_some());
             assert_eq!(
@@ -722,6 +732,31 @@ fn validates_text_title_typography_props() {
     assert_eq!(
         error,
         ComponentError::invalid_prop("i18n", "i18n key segments separated by dots")
+    );
+
+    let rich_text_error = rich_text_component_node(
+        vec![string_prop("align", "center")],
+        vec![RichTextMark {
+            text: "Rich".to_string(),
+            style: RichTextMarkStyle::Mark,
+            color: ColorFamily::Primary,
+        }],
+    )
+    .expect_err("RichText align");
+    assert_eq!(
+        rich_text_error,
+        ComponentError::unknown_prop(BuiltinComponent::RichText, "align")
+    );
+
+    let invalid_align = text_component_node(
+        BuiltinComponent::Text,
+        vec![string_prop("align", "left")],
+        "Invalid",
+    )
+    .expect_err("invalid align");
+    assert_eq!(
+        invalid_align,
+        ComponentError::invalid_prop("align", "start, center, end or justify")
     );
 }
 
@@ -790,16 +825,20 @@ fn validates_svg_component_props_and_paths() {
             even_odd: true,
         }
     ));
-    assert!(svg_path_component(vec![
-        string_prop("d", "M0 0L1 1"),
-        string_prop("transform", "translate(4 6)"),
-    ])
-    .is_err());
-    assert!(svg_path_component(vec![
-        string_prop("d", "M0 0L1 1"),
-        string_prop("fillRule", "inherit"),
-    ])
-    .is_err());
+    assert!(
+        svg_path_component(vec![
+            string_prop("d", "M0 0L1 1"),
+            string_prop("transform", "translate(4 6)"),
+        ])
+        .is_err()
+    );
+    assert!(
+        svg_path_component(vec![
+            string_prop("d", "M0 0L1 1"),
+            string_prop("fillRule", "inherit"),
+        ])
+        .is_err()
+    );
 }
 
 #[test]
@@ -820,19 +859,23 @@ fn validates_runtime_svg_data_reference() {
     assert_eq!(props.data.as_deref(), Some("icon.svg"));
     assert!(paths.is_empty());
 
-    assert!(svg_component_node(
-        vec![
-            string_prop("data", "icon.svg"),
-            string_prop("viewBox", "0 0 24 24"),
-        ],
-        Vec::new(),
-    )
-    .is_err());
-    assert!(svg_component_node(
-        vec![string_prop("data", "icon.svg")],
-        vec![svg_path_component(vec![string_prop("d", "M0 0")]).expect("path")],
-    )
-    .is_err());
+    assert!(
+        svg_component_node(
+            vec![
+                string_prop("data", "icon.svg"),
+                string_prop("viewBox", "0 0 24 24"),
+            ],
+            Vec::new(),
+        )
+        .is_err()
+    );
+    assert!(
+        svg_component_node(
+            vec![string_prop("data", "icon.svg")],
+            vec![svg_path_component(vec![string_prop("d", "M0 0")]).expect("path")],
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -873,16 +916,31 @@ fn resolves_solar_icon_variant_names_and_paints() {
         }
     ));
 
-    let duotone = icon_component_node(vec![
-        string_prop("name", "alt-arrow-down-bold-duotone"),
-    ])
-    .expect("duotone icon");
+    let duotone = icon_component_node(vec![string_prop("name", "alt-arrow-down-bold-duotone")])
+        .expect("duotone icon");
     let ViewNode::Svg { paths, .. } = duotone else {
         panic!("icon svg");
     };
-    assert!(paths
-        .iter()
-        .any(|path| matches!(path.fill, SvgPathFill::Fill { opacity: 128, .. })));
+    assert!(
+        paths
+            .iter()
+            .any(|path| matches!(path.fill, SvgPathFill::Fill { opacity: 128, .. }))
+    );
+}
+
+#[test]
+fn preserves_dynamic_icon_name_bindings_for_lowering() {
+    let node = icon_component_node(vec![string_prop(
+        "name",
+        "@icon-binding:platform.icon",
+    )])
+    .expect("dynamic icon");
+    let ViewNode::Svg { props, paths } = node else {
+        panic!("icon svg");
+    };
+    assert_eq!(props.icon_name.as_deref(), Some("platform.icon"));
+    assert_eq!(props.view_box.as_str(), "0 0 24 24");
+    assert!(paths.is_empty());
 }
 
 #[test]
@@ -909,7 +967,11 @@ fn rejects_unknown_solar_icon_names_and_removed_style_prop() {
         string_prop("style", "bold"),
     ])
     .expect_err("removed style prop");
-    assert!(error.to_string().contains("include the Solar variant in name"));
+    assert!(
+        error
+            .to_string()
+            .contains("include the Solar variant in name")
+    );
 }
 
 #[test]
@@ -934,9 +996,11 @@ fn exports_every_solar_variant_as_runtime_svg_data() {
         .find(|entry| entry.name == "alt-arrow-down" && entry.style == "linear")
         .expect("linear arrow");
     assert_eq!(arrow.category, "arrows");
-    assert!(arrow
-        .svg
-        .starts_with("{\"viewBox\":\"0 0 24 24\",\"paths\":["));
+    assert!(
+        arrow
+            .svg
+            .starts_with("{\"viewBox\":\"0 0 24 24\",\"paths\":[")
+    );
     assert!(arrow.svg.contains("\"paint\":\"stroke\""));
 }
 
@@ -960,11 +1024,13 @@ fn resolves_svg_spinner_icons_and_rejects_removed_style_prop() {
             ..
         }
     )));
-    assert!(icon_component_node(vec![
-        string_prop("name", "svg-spinners:3-dots-bounce"),
-        string_prop("style", "bold"),
-    ])
-    .is_err());
+    assert!(
+        icon_component_node(vec![
+            string_prop("name", "svg-spinners:3-dots-bounce"),
+            string_prop("style", "bold"),
+        ])
+        .is_err()
+    );
     assert!(icon_component_node(vec![string_prop("name", "svg-spinners:not-a-spinner",)]).is_err());
 
     let pulse = icon_component_node(vec![string_prop("name", "svg-spinners:pulse")])
@@ -1000,11 +1066,13 @@ fn resolves_svg_logo_icons_with_bundled_source_and_native_paths() {
         SvgPathFill::LiteralFill { .. } | SvgPathFill::LiteralStroke { .. }
     )));
 
-    assert!(icon_component_node(vec![
-        string_prop("name", "svg-logos:github-icon"),
-        string_prop("style", "bold"),
-    ])
-    .is_err());
+    assert!(
+        icon_component_node(vec![
+            string_prop("name", "svg-logos:github-icon"),
+            string_prop("style", "bold"),
+        ])
+        .is_err()
+    );
     assert!(icon_component_node(vec![string_prop("name", "svg-logos:not-a-logo",)]).is_err());
 }
 
@@ -1061,6 +1129,7 @@ fn validates_responsive_text_typography_props() {
         BuiltinComponent::Text,
         vec![
             responsive_string_prop("size", &[("xs", "sm"), ("md", "lg")]),
+            responsive_string_prop("align", &[("xs", "start"), ("md", "justify")]),
             responsive_string_prop(
                 "weight",
                 &[("xs", "thin"), ("md", "extralight"), ("lg", "black")],
@@ -1079,6 +1148,10 @@ fn validates_responsive_text_typography_props() {
     match node {
         ViewNode::Text { props, .. } => {
             assert_eq!(props.size.expect("size").entries.len(), 2);
+            assert_eq!(
+                props.align.expect("align").entries[1].value,
+                TextAlign::Justify
+            );
             assert_eq!(
                 props.weight.expect("weight").entries[2].value,
                 TextWeight::Black
@@ -1217,9 +1290,11 @@ fn validates_side_nav_props_entries_and_icons() {
         vec![super::SideNavItem::Divider],
     )
     .expect_err("surface scheme");
-    assert!(invalid_scheme
-        .to_string()
-        .contains("invalid value for prop `scheme`"));
+    assert!(
+        invalid_scheme
+            .to_string()
+            .contains("invalid value for prop `scheme`")
+    );
 }
 
 #[test]
@@ -1289,9 +1364,11 @@ fn validates_rail_nav_props_items_and_required_icons() {
 
     let missing_icon = super::rail_nav_item_component(vec![string_prop("label", "Home")])
         .expect_err("missing icon");
-    assert!(missing_icon
-        .to_string()
-        .contains("invalid value for prop `icon`"));
+    assert!(
+        missing_icon
+            .to_string()
+            .contains("invalid value for prop `icon`")
+    );
 
     let conflicting_action = super::rail_nav_item_component(vec![
         string_prop("label", "Home"),
@@ -1300,9 +1377,11 @@ fn validates_rail_nav_props_items_and_required_icons() {
         string_prop("onClick", "openHome"),
     ])
     .expect_err("conflicting action");
-    assert!(conflicting_action
-        .to_string()
-        .contains("`href` and `onClick` cannot be used on the same RailNav item"));
+    assert!(
+        conflicting_action
+            .to_string()
+            .contains("`href` and `onClick` cannot be used on the same RailNav item")
+    );
 }
 
 #[test]
@@ -2050,8 +2129,7 @@ fn attaches_validation_and_form_messages_to_supported_controls() {
         string_prop("errorText", "Accept the terms"),
     ])
     .expect("checkbox");
-    let checkbox =
-        super::attach_form_validation(checkbox, vec![rule.clone()]).expect("validation");
+    let checkbox = super::attach_form_validation(checkbox, vec![rule.clone()]).expect("validation");
     let ViewNode::Checkbox { props } = checkbox else {
         panic!("checkbox");
     };
@@ -2060,13 +2138,15 @@ fn attaches_validation_and_form_messages_to_supported_controls() {
         .element
         .form_validation()
         .expect("form validation");
-    assert_eq!(validation.help_text.as_deref(), Some("Required to continue"));
+    assert_eq!(
+        validation.help_text.as_deref(),
+        Some("Required to continue")
+    );
     assert_eq!(validation.error_text.as_deref(), Some("Accept the terms"));
     assert_eq!(validation.rules, vec![rule]);
 
-    assert!(super::attach_form_validation(
-        super::text_node("Unsupported").expect("text"),
-        Vec::new()
-    )
-    .is_err());
+    assert!(
+        super::attach_form_validation(super::text_node("Unsupported").expect("text"), Vec::new())
+            .is_err()
+    );
 }

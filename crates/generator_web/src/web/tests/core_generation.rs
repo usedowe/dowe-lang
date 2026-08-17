@@ -503,6 +503,30 @@ fn renders_box_and_text_as_div_and_paragraph() {
 }
 
 #[test]
+fn preserves_multiline_text_in_one_paragraph() {
+    let tree = ViewNode::Title {
+        props: TextProps::default(),
+        value: "Full-stack development,\nfrom one codebase".to_string(),
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/views/pages/home.dowe"),
+        "page home",
+        &tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &tree);
+    let css = super::design_css_for_trees(
+        [&tree],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+    );
+
+    assert!(html.contains("<p class=\"dowe-title title-md\">Full-stack development,\nfrom one codebase</p>"));
+    assert!(css.contains("white-space:pre-line;"));
+    assert!(page.content.contains("Full-stack development"));
+}
+
+#[test]
 fn renders_section_markup_and_background_css() {
     let root = Path::new("/project");
     let page_tree = ViewNode::Section {
@@ -557,6 +581,76 @@ fn renders_section_markup_and_background_css() {
     let design_css = super::design_css();
     assert!(design_css.contains(".section-body{width:100%;}"));
     assert!(design_css.contains(".section-body.is-boxed{max-width:96rem;margin-inline:auto;}"));
+}
+
+#[test]
+fn renders_responsive_section_centering_on_the_body() {
+    let page_tree = ViewNode::Section {
+        props: StyleProps {
+            center: Some(ResponsiveValue::ordered(vec![
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xs,
+                    value: false,
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Md,
+                    value: true,
+                },
+            ])),
+            ..Default::default()
+        },
+        children: vec![text("Centered")],
+    };
+    let _page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &page_tree,
+    );
+
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+    assert!(html.contains(
+        "<div class=\"section-body section-center-false md:section-center-true px-4 md:px-6 py-10 md:py-16\">"
+    ));
+    let design_css = super::design_css();
+    assert!(design_css
+        .contains(".section-body{display:flex;flex-direction:column;align-items:flex-start;}"));
+    assert!(design_css
+        .contains(".section-body.section-center-true{align-items:center;}"));
+    assert!(design_css.contains(
+        "@media (min-width:768px){.md\\:section-center-true{align-items:center;}.md\\:section-center-false{align-items:flex-start;}}"
+    ));
+}
+
+#[test]
+fn renders_responsive_section_gap_on_the_body() {
+    let page_tree = ViewNode::Section {
+        props: StyleProps {
+            gap: Some(ResponsiveValue::ordered(vec![
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xs,
+                    value: GapValue::Single(GapSize::Scale(ScaleValue(4))),
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Md,
+                    value: GapValue::Single(GapSize::Scale(ScaleValue(8))),
+                },
+            ])),
+            ..Default::default()
+        },
+        children: vec![text("First"), text("Second")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &page_tree,
+    );
+
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+    assert!(html.contains("section-body gap-2 md:gap-4 px-4 md:px-6 py-10 md:py-16"));
+    assert!(page.css_content.contains(".gap-2{gap:0.5rem;}"));
+    assert!(page.css_content.contains(".md\\:gap-4{gap:1rem;}"));
 }
 
 #[test]
@@ -753,15 +847,17 @@ fn emits_web_manifest_and_html_artifacts() {
             .contains(r#"<link rel="icon" href="data:image/svg+xml,"#)
     );
     let mut web = super::WebOutput {
-        chunks: vec![layout, page],
-        pages: vec![view_page],
+        chunks: vec![Arc::new(layout), Arc::new(page)],
+        pages: vec![Arc::new(view_page)],
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
     };
     web.router_js = super::router_js(&web);
     let router_file_name = web.router_file_name();
-    web.pages[0].router_file_name.clone_from(&router_file_name);
+    Arc::make_mut(&mut web.pages[0])
+        .router_file_name
+        .clone_from(&router_file_name);
     super::prepare_design_asset(&mut web, &FontConfig::default(), &DesignConfig::default());
     let router_file_name = web.router_file_name();
     let design_file_name = web.design_file_name().to_string();
@@ -977,6 +1073,38 @@ fn emits_web_manifest_and_html_artifacts() {
     );
     assert!(!web.router_js.contains("function renderCharts"));
     assert!(super::runtime_chunks_for_trees(&ViewNode::Children, &text("Basic")).is_empty());
+
+    let design_css =
+        super::prepare_dev_design_asset(&mut web, &FontConfig::default(), &DesignConfig::default());
+    let initial_update = super::web_artifact_update(&web, None, design_css.clone());
+    assert!(
+        initial_update
+            .files
+            .iter()
+            .any(|artifact| artifact.relative_path == Path::new("web/router.js"))
+    );
+    assert_eq!(web.pages[0].router_file_name, "router.js");
+
+    let previous = web.clone();
+    let unchanged_update = super::web_artifact_update(&web, Some(&previous), design_css);
+    assert_eq!(unchanged_update.files.len(), 1);
+    assert_eq!(
+        unchanged_update.files[0].relative_path,
+        Path::new("web/manifest.json")
+    );
+
+    let previous = web.clone();
+    let previous_router = previous.router_js.clone();
+    Arc::make_mut(&mut web.pages[0]).page_chunk_id = "changed-page".to_string();
+    super::prepare_incremental_dev_design_asset(
+        &mut web,
+        &previous,
+        &FontConfig::default(),
+        &DesignConfig::default(),
+    );
+    assert_eq!(web.router_js, previous_router);
+    assert!(web.router_js.contains("async function startRouter()"));
+    assert!(web.router_js.contains("await syncDevRoutes()"));
 }
 
 #[test]
@@ -1237,9 +1365,13 @@ fn emits_reset_and_font_css() {
     let css = super::design_css();
 
     assert!(css.contains("body{--dowe-content-text:var(--dowe-backgroundText);--dowe-content-title:var(--dowe-backgroundTitle);margin:0;"));
-    assert!(css.contains(".dowe-text{color:var(--dowe-content-text,var(--dowe-backgroundText));}"));
+    assert!(css.contains(
+        ".dowe-text{color:var(--dowe-content-text,var(--dowe-backgroundText));white-space:pre-line;}"
+    ));
     assert!(
-        css.contains(".dowe-title{color:var(--dowe-content-title,var(--dowe-backgroundTitle));}")
+        css.contains(
+            ".dowe-title{color:var(--dowe-content-title,var(--dowe-backgroundTitle));white-space:pre-line;}"
+        )
     );
     assert!(css.contains("p,h1,h2,h3,h4,h5,h6{margin:0;"));
     assert!(css.contains("a{color:inherit;text-decoration:inherit;}"));

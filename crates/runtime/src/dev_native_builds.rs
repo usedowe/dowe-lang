@@ -1,11 +1,10 @@
 use crate::dev::{DevTarget, DevTargetSelection};
 use crate::dev_modules::{DevModuleRevision, PublishedDevModule};
 use crate::dev_targets::{build_hot_module_if_current, cancel_active_external_commands};
-use crate::error::RuntimeResult;
+use crate::error::{RuntimeError, RuntimeResult};
 use crate::logging::log_error;
 use crate::{DevEventType, DevRuntimeState};
-use dowe_compiler::CompiledProject;
-use sha2::{Digest, Sha256};
+use dowe_compiler::{AppOutput, CompiledProject, ViewPlatform, generate_dev_app_output};
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
@@ -30,22 +29,61 @@ pub(crate) struct NativeBuildCoordinator {
 
 struct NativeBuildWorker {
     latest: Arc<Mutex<u64>>,
-    fingerprints: Arc<Mutex<NativeBuildFingerprints>>,
+    projects: Arc<Mutex<NativeBuildProjects>>,
     sender: watch::Sender<Option<NativeBuildRequest>>,
 }
 
-struct NativeBuildFingerprints {
-    published: [u8; 32],
-    requested: [u8; 32],
+struct NativeBuildProjects {
+    published: Option<Arc<CompiledProject>>,
+    requested: Option<Arc<CompiledProject>>,
     requested_revision: u64,
 }
 
 #[derive(Clone)]
 struct NativeBuildRequest {
     revision: u64,
-    fingerprint: [u8; 32],
     project: Arc<CompiledProject>,
     paths: Vec<String>,
+}
+
+fn build_generated_hot_module_if_current(
+    project: &CompiledProject,
+    target: DevTarget,
+    revision: &DevModuleRevision,
+) -> RuntimeResult<Option<PublishedDevModule>> {
+    let generated = generated_native_app_output(project, target)?;
+    let files = generated
+        .as_ref()
+        .map(|output| output.files.as_slice())
+        .unwrap_or(project.apps.files.as_slice());
+    build_hot_module_if_current(&project.root, files, target, revision)
+}
+
+fn generated_native_app_output(
+    project: &CompiledProject,
+    target: DevTarget,
+) -> RuntimeResult<Option<AppOutput>> {
+    if project
+        .apps
+        .files
+        .iter()
+        .any(|file| file.target == target.as_str())
+    {
+        return Ok(None);
+    }
+    let platform = match target {
+        DevTarget::Android => ViewPlatform::Android,
+        DevTarget::Ios => ViewPlatform::Ios,
+        _ => {
+            return Err(RuntimeError::new(format!(
+                "{} does not use generated native app output",
+                target.label()
+            )));
+        }
+    };
+    generate_dev_app_output(project, platform)
+        .map(Some)
+        .map_err(RuntimeError::from)
 }
 
 impl NativeBuildCoordinator {
@@ -58,7 +96,7 @@ impl NativeBuildCoordinator {
             selection,
             state,
             project,
-            Arc::new(build_hot_module_if_current),
+            Arc::new(build_generated_hot_module_if_current),
         )
     }
 
@@ -88,17 +126,16 @@ impl NativeBuildCoordinator {
             .filter(|target| selection.contains(*target))
         {
             let latest = Arc::new(Mutex::new(0));
-            let fingerprint = native_target_fingerprint(project, target);
-            let fingerprints = Arc::new(Mutex::new(NativeBuildFingerprints {
-                published: fingerprint,
-                requested: fingerprint,
+            let projects = Arc::new(Mutex::new(NativeBuildProjects {
+                published: Some(Arc::clone(project)),
+                requested: None,
                 requested_revision: 0,
             }));
             let (sender, receiver) = watch::channel(None);
             handles.push(tokio::spawn(run_native_build_worker(
                 target,
                 Arc::clone(&latest),
-                Arc::clone(&fingerprints),
+                Arc::clone(&projects),
                 receiver,
                 state.clone(),
                 Arc::clone(&builder),
@@ -107,7 +144,7 @@ impl NativeBuildCoordinator {
                 target,
                 NativeBuildWorker {
                     latest,
-                    fingerprints,
+                    projects,
                     sender,
                 },
             );
@@ -120,25 +157,44 @@ impl NativeBuildCoordinator {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn new_for_test(
+        selection: &DevTargetSelection,
+        state: &DevRuntimeState,
+        project: &Arc<CompiledProject>,
+        builder: impl Fn(
+            &CompiledProject,
+            DevTarget,
+            &DevModuleRevision,
+        ) -> RuntimeResult<Option<PublishedDevModule>>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        Self::new_with_builder(selection, state, project, Arc::new(builder))
+    }
+
     pub(crate) fn enqueue(&mut self, project: Arc<CompiledProject>, paths: Vec<String>) {
         self.revision = self.revision.saturating_add(1);
         for (target, worker) in &mut self.workers {
-            let fingerprint = native_target_fingerprint(&project, *target);
             {
-                let mut fingerprints = worker
-                    .fingerprints
-                    .lock()
-                    .expect("native build fingerprint lock");
-                if fingerprint == fingerprints.requested {
+                let mut projects = worker.projects.lock().expect("native build project lock");
+                let matches_requested = projects.requested.as_ref().is_some_and(|requested| {
+                    native_target_inputs_equal(&project, requested, *target)
+                });
+                let matches_published = projects.requested.is_none()
+                    && projects.published.as_ref().is_some_and(|published| {
+                        native_target_inputs_equal(&project, published, *target)
+                    });
+                if matches_requested || matches_published {
                     continue;
                 }
-                fingerprints.requested = fingerprint;
-                fingerprints.requested_revision = self.revision;
+                projects.requested = Some(Arc::clone(&project));
+                projects.requested_revision = self.revision;
             }
             *worker.latest.lock().expect("native build revision lock") = self.revision;
             worker.sender.send_replace(Some(NativeBuildRequest {
                 revision: self.revision,
-                fingerprint,
                 project: Arc::clone(&project),
                 paths: paths.clone(),
             }));
@@ -150,20 +206,15 @@ impl NativeBuildCoordinator {
             return;
         };
         self.revision = self.revision.saturating_add(1);
-        let fingerprint = native_target_fingerprint(project, target);
         {
-            let mut fingerprints = worker
-                .fingerprints
-                .lock()
-                .expect("native build fingerprint lock");
-            fingerprints.published = [0; 32];
-            fingerprints.requested = fingerprint;
-            fingerprints.requested_revision = self.revision;
+            let mut projects = worker.projects.lock().expect("native build project lock");
+            projects.published = None;
+            projects.requested = Some(Arc::clone(project));
+            projects.requested_revision = self.revision;
         }
         *worker.latest.lock().expect("native build revision lock") = self.revision;
         worker.sender.send_replace(Some(NativeBuildRequest {
             revision: self.revision,
-            fingerprint,
             project: Arc::clone(project),
             paths: Vec::new(),
         }));
@@ -202,7 +253,7 @@ impl Drop for NativeBuildCoordinator {
 async fn run_native_build_worker(
     target: DevTarget,
     latest: Arc<Mutex<u64>>,
-    fingerprints: Arc<Mutex<NativeBuildFingerprints>>,
+    projects: Arc<Mutex<NativeBuildProjects>>,
     mut receiver: watch::Receiver<Option<NativeBuildRequest>>,
     state: DevRuntimeState,
     builder: NativeBuildFunction,
@@ -229,7 +280,7 @@ async fn run_native_build_worker(
                 .await;
         match result {
             Ok(Ok(Some(module))) => {
-                mark_native_build_published(&fingerprints, &request);
+                mark_native_build_published(&projects, &request);
                 let _ = revision.run_if_current(|| {
                     state.events.emit_module_update(
                         module.target,
@@ -239,10 +290,10 @@ async fn run_native_build_worker(
                 });
             }
             Ok(Ok(None)) => {
-                mark_native_build_retryable(&fingerprints, &request);
+                mark_native_build_retryable(&projects, &request);
             }
             Ok(Err(error)) => {
-                mark_native_build_retryable(&fingerprints, &request);
+                mark_native_build_retryable(&projects, &request);
                 let _ = revision.run_if_current(|| {
                     log_error(native_build_failure_message(target, &error));
                     state.events.emit(
@@ -254,7 +305,7 @@ async fn run_native_build_worker(
                 });
             }
             Err(error) => {
-                mark_native_build_retryable(&fingerprints, &request);
+                mark_native_build_retryable(&projects, &request);
                 let _ = revision.run_if_current(|| {
                     log_error(native_build_failure_message(target, &error));
                     state.events.emit(
@@ -274,49 +325,58 @@ fn native_build_failure_message(target: DevTarget, error: &impl std::fmt::Displa
 }
 
 fn mark_native_build_published(
-    fingerprints: &Mutex<NativeBuildFingerprints>,
+    projects: &Mutex<NativeBuildProjects>,
     request: &NativeBuildRequest,
 ) {
-    let mut fingerprints = fingerprints.lock().expect("native build fingerprint lock");
-    fingerprints.published = request.fingerprint;
+    let mut projects = projects.lock().expect("native build project lock");
+    if projects.requested_revision == request.revision {
+        projects.published = Some(Arc::clone(&request.project));
+        projects.requested = None;
+        projects.requested_revision = 0;
+    }
 }
 
 fn mark_native_build_retryable(
-    fingerprints: &Mutex<NativeBuildFingerprints>,
+    projects: &Mutex<NativeBuildProjects>,
     request: &NativeBuildRequest,
 ) {
-    let mut fingerprints = fingerprints.lock().expect("native build fingerprint lock");
-    if fingerprints.requested_revision == request.revision {
-        fingerprints.requested = fingerprints.published;
-        fingerprints.requested_revision = 0;
+    let mut projects = projects.lock().expect("native build project lock");
+    if projects.requested_revision == request.revision {
+        projects.requested = None;
+        projects.requested_revision = 0;
     }
 }
 
-fn native_target_fingerprint(project: &CompiledProject, target: DevTarget) -> [u8; 32] {
-    let mut files = project
-        .apps
-        .files
-        .iter()
-        .filter(|file| file.target == target.as_str())
-        .collect::<Vec<_>>();
-    files.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
-    let mut digest = Sha256::new();
-    for file in files {
-        digest.update(file.relative_path.to_string_lossy().as_bytes());
-        digest.update([0]);
-        digest.update(file.content.as_bytes());
-        digest.update([0]);
-    }
-    digest.finalize().into()
+fn native_target_inputs_equal(
+    left: &CompiledProject,
+    right: &CompiledProject,
+    target: DevTarget,
+) -> bool {
+    let routes_equal = match target {
+        DevTarget::Android => left.view_routes.android == right.view_routes.android,
+        DevTarget::Ios => left.view_routes.ios == right.view_routes.ios,
+        _ => false,
+    };
+    left.root == right.root
+        && left.capabilities.views == right.capabilities.views
+        && left.app_config == right.app_config
+        && left.font_config == right.font_config
+        && left.design_config == right.design_config
+        && left.environment_config.client_values() == right.environment_config.client_values()
+        && left.translations == right.translations
+        && routes_equal
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{NativeBuildRequest, native_build_failure_message, native_target_fingerprint};
+    use super::{
+        NativeBuildRequest, generated_native_app_output, native_build_failure_message,
+        native_target_inputs_equal,
+    };
     use crate::{
         DevEventBus, DevEventType, DevRuntimeState, DevTarget, DevTargetSelection, HostOs,
     };
-    use dowe_compiler::compile_dev;
+    use dowe_compiler::{DevCompilerSession, ViewPlatform, compile_dev};
     use std::fs;
     use std::path::PathBuf;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -343,7 +403,6 @@ mod tests {
         for revision in 1..=3 {
             sender.send_replace(Some(NativeBuildRequest {
                 revision,
-                fingerprint: [revision as u8; 32],
                 project: Arc::clone(&project),
                 paths: vec![format!("revision-{revision}")],
             }));
@@ -357,7 +416,7 @@ mod tests {
     }
 
     #[test]
-    fn server_only_change_preserves_native_fingerprints() {
+    fn server_only_change_preserves_native_inputs() {
         let temp = TempDir::new().expect("tempdir");
         write_project(temp.path(), "first", "one");
         let first = compile_dev(temp.path()).expect("first");
@@ -365,15 +424,12 @@ mod tests {
         let second = compile_dev(temp.path()).expect("second");
 
         for target in [DevTarget::Android, DevTarget::Ios] {
-            assert_eq!(
-                native_target_fingerprint(&first, target),
-                native_target_fingerprint(&second, target)
-            );
+            assert!(native_target_inputs_equal(&first, &second, target));
         }
     }
 
     #[test]
-    fn view_change_updates_each_native_fingerprint() {
+    fn view_change_updates_each_native_input() {
         let temp = TempDir::new().expect("tempdir");
         write_project(temp.path(), "first", "one");
         let first = compile_dev(temp.path()).expect("first");
@@ -381,9 +437,31 @@ mod tests {
         let second = compile_dev(temp.path()).expect("second");
 
         for target in [DevTarget::Android, DevTarget::Ios] {
-            assert_ne!(
-                native_target_fingerprint(&first, target),
-                native_target_fingerprint(&second, target)
+            assert!(!native_target_inputs_equal(&first, &second, target));
+        }
+    }
+
+    #[test]
+    fn native_workers_generate_target_bytes_from_an_app_free_snapshot() {
+        let temp = TempDir::new().expect("tempdir");
+        write_project(temp.path(), "first", "one");
+        let mut compiler = DevCompilerSession::new(
+            temp.path(),
+            [ViewPlatform::Web, ViewPlatform::Android, ViewPlatform::Ios],
+        )
+        .expect("compiler");
+        let project = compiler.compile_initial_web(false).expect("snapshot");
+        assert!(project.apps.files.is_empty());
+
+        for target in [DevTarget::Android, DevTarget::Ios] {
+            let generated = generated_native_app_output(&project, target)
+                .expect("generation")
+                .expect("generated output");
+            assert!(
+                generated
+                    .files
+                    .iter()
+                    .any(|file| file.target == target.as_str())
             );
         }
     }
@@ -582,7 +660,7 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn failed_native_fingerprint_can_be_retried_without_native_output_change() {
+    async fn failed_native_input_can_be_retried_without_native_output_change() {
         let temp = TempDir::new().expect("tempdir");
         write_project(temp.path(), "first", "one");
         let first = Arc::new(compile_dev(temp.path()).expect("first"));
@@ -590,10 +668,11 @@ mod tests {
         let second = Arc::new(compile_dev(temp.path()).expect("second"));
         write_project(temp.path(), "second", "two");
         let retry = Arc::new(compile_dev(temp.path()).expect("retry"));
-        assert_eq!(
-            native_target_fingerprint(&second, DevTarget::Android),
-            native_target_fingerprint(&retry, DevTarget::Android)
-        );
+        assert!(native_target_inputs_equal(
+            &second,
+            &retry,
+            DevTarget::Android
+        ));
         let state = DevRuntimeState {
             project: Arc::new(RwLock::new(Arc::clone(&first))),
             events: DevEventBus::new("native-retry"),

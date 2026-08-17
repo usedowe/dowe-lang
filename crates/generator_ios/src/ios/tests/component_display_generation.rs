@@ -398,6 +398,67 @@ fn generates_swiftui_svg_logo_paths() {
 }
 
 #[test]
+fn generates_swiftui_dynamic_icon_catalog_with_module_visibility() {
+    let dynamic_icon = icon_component_node(vec![ComponentProp {
+        name: "name".to_string(),
+        value: PropValue::String("@icon-binding:platform.icon".to_string()),
+    }])
+    .expect("dynamic icon");
+    let output = generate_ios(
+        &[ViewRoute {
+            id: "dynamic-icon".to_string(),
+            route_path: "/dynamic-icon".to_string(),
+            layout_tree: ViewNode::Children,
+            page_tree: dynamic_icon,
+            sections: Vec::new(),
+            navigation_actions: Vec::new(),
+        }],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let pages = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.swift"))
+        .expect("pages");
+    let catalog = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweDynamicIconCatalog.swift"))
+        .expect("dynamic icon catalog");
+    let shards = output
+        .files
+        .iter()
+        .filter(|file| {
+            file.relative_path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .is_some_and(|name| name.starts_with("DoweDynamicIconCatalogShard"))
+        })
+        .collect::<Vec<_>>();
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePageDynamicIconView.swift"))
+        .expect("dynamic icon view");
+
+    assert!(!pages.content.contains("DoweDynamicIconCatalog"));
+    assert!(
+        catalog
+            .content
+            .contains("let DoweDynamicIconCatalog: [String: String]")
+    );
+    assert!(catalog.content.contains("catalog.reserveCapacity("));
+    assert!(catalog.content.contains("DoweDynamicIconCatalogShard0.entries"));
+    assert!(shards.len() > 2);
+    assert!(shards.iter().all(|file| file.content.len() < 640_000));
+    assert!(views
+        .content
+        .contains("DoweDynamicIconCatalog[state.text("));
+}
+
+#[test]
 fn generates_swiftui_display_chat_and_motion_components() {
     let output = generate_ios(
         &[display_chat_motion_route()],

@@ -23,6 +23,8 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                     name,
                     "bg" | "color"
                         | "background"
+                        | "center"
+                        | "gap"
                         | "boxed"
                         | "cover"
                         | "overlay"

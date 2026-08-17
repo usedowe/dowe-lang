@@ -41,7 +41,7 @@ variables, functions, requests, or targets.
 ```text
 test "release metadata"
   assert true value:true
-  assert equal actual:{ name:"dowe" channels:["stable", "canary"] } expected:{ name:"dowe" channels:["stable", "canary"] }
+  assert equal actual:{ name:"dowe" channels:["stable" "canary"] } expected:{ name:"dowe" channels:["stable" "canary"] }
 ```
 
 `assert true` and `assert false` check an exact boolean `value`; `assert equal` compares `actual`

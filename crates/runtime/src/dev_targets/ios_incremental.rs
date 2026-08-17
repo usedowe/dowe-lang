@@ -1,5 +1,5 @@
 use crate::error::{RuntimeError, RuntimeResult};
-use dowe_compiler::{CompiledProject, GeneratedFile};
+use dowe_compiler::GeneratedFile;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
@@ -45,15 +45,7 @@ pub(super) struct IosIncrementalWorkspace {
 }
 
 impl IosHotModuleSnapshot {
-    pub fn from_project(
-        project: &CompiledProject,
-        target: &str,
-        toolchain_signature: &[u8],
-    ) -> RuntimeResult<Self> {
-        Self::from_generated_files(&project.apps.files, target, toolchain_signature)
-    }
-
-    fn from_generated_files(
+    pub(super) fn from_generated_files(
         files: &[GeneratedFile],
         target: &str,
         toolchain_signature: &[u8],

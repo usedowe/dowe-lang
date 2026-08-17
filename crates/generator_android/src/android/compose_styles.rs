@@ -15,10 +15,19 @@ fn render_compose_text(
     } else {
         String::new()
     };
+    let modifier = if props.align.is_some() && props.style.sizing.w.is_none() {
+        modifier_for_style_with_base(&props.style, "Modifier.fillMaxWidth()".to_string())
+    } else {
+        modifier_for_style(&props.style)
+    };
+    let text_align = props
+        .align
+        .as_ref()
+        .map(|value| format!(", textAlign = {}", compose_text_align(value)))
+        .unwrap_or_default();
     output.push_str(&format!(
-        "{pad}Text({}, modifier = {}, color = {}, fontSize = {size}, lineHeight = {}, fontFamily = {}, fontWeight = {}{spacing})\n",
+        "{pad}Text({}, modifier = {modifier}, color = {}, fontSize = {size}, lineHeight = {}, fontFamily = {}, fontWeight = {}{spacing}{text_align})\n",
         compose_visible_text_expression(value, props.i18n.as_deref(), context),
-        modifier_for_style(&props.style),
         text_color(title, props),
         text_line_height(title, props, &size),
         compose_font_value(font, default_family),
@@ -32,7 +41,10 @@ fn compose_text_expression(
     context: &ComposeReactiveContext,
 ) -> String {
     if let Some(key) = i18n {
-        return format!("stringResource(R.string.{})", translation_resource_name(key));
+        return format!(
+            "stringResource(R.string.{})",
+            translation_resource_name(key)
+        );
     }
     match context.dynamic_path(value) {
         Some(path) => context
@@ -49,7 +61,10 @@ fn compose_visible_text_expression(
     context: &ComposeReactiveContext,
 ) -> String {
     if let Some(key) = i18n {
-        return format!("stringResource(R.string.{})", translation_resource_name(key));
+        return format!(
+            "stringResource(R.string.{})",
+            translation_resource_name(key)
+        );
     }
     let Some(binding) = text_binding_path(value) else {
         return format!("\"{}\"", escape_kotlin(value));
@@ -64,9 +79,13 @@ fn compose_visible_text_expression(
 }
 
 fn compose_localized_literal(value: &str, i18n: Option<&str>) -> String {
-    i18n
-        .map(|key| format!("stringResource(R.string.{})", translation_resource_name(key)))
-        .unwrap_or_else(|| format!("\"{}\"", escape_kotlin(value)))
+    i18n.map(|key| {
+        format!(
+            "stringResource(R.string.{})",
+            translation_resource_name(key)
+        )
+    })
+    .unwrap_or_else(|| format!("\"{}\"", escape_kotlin(value)))
 }
 
 fn modifier_for_layout(props: &LayoutProps, flow: ComposeFlow) -> String {
@@ -151,11 +170,7 @@ fn modifier_for_style(props: &StyleProps) -> String {
 }
 
 fn modifier_for_style_with_shadow_shape(props: &StyleProps, shadow_shape: &str) -> String {
-    modifier_for_style_with_base_and_shadow_shape(
-        props,
-        "Modifier".to_string(),
-        Some(shadow_shape),
-    )
+    modifier_for_style_with_base_and_shadow_shape(props, "Modifier".to_string(), Some(shadow_shape))
 }
 
 fn modifier_for_avatar_style(props: &StyleProps) -> String {
@@ -179,8 +194,16 @@ fn modifier_for_container_style(props: &StyleProps, flow: ComposeFlow) -> String
 }
 
 fn compose_position_modifier(props: &PositionProps) -> String {
-    let vertical = if props.bottom.is_some() { "Bottom" } else { "Top" };
-    let horizontal = if props.right.is_some() { "End" } else { "Start" };
+    let vertical = if props.bottom.is_some() {
+        "Bottom"
+    } else {
+        "Top"
+    };
+    let horizontal = if props.right.is_some() {
+        "End"
+    } else {
+        "Start"
+    };
     let mut modifier = format!(".align(Alignment.{vertical}{horizontal})");
     let mut values = Vec::new();
     if let Some(value) = props.top.as_ref() {
@@ -212,10 +235,30 @@ fn modifier_for_section_content(props: &StyleProps) -> String {
     content.spacing = dowe_components::section_content_spacing(&props.spacing);
     let modifier = if props.boxed {
         "Modifier.widthIn(max = 1536.dp).fillMaxWidth()".to_string()
+    } else if props.center.is_some() {
+        "Modifier.fillMaxWidth()".to_string()
     } else {
         "Modifier".to_string()
     };
     modifier_for_style_with_base(&content, modifier)
+}
+
+fn compose_section_vertical_arrangement(value: Option<&ResponsiveValue<GapValue>>) -> String {
+    value
+        .map(|value| {
+            format!(
+                ", verticalArrangement = Arrangement.spacedBy({} ?: 0.dp)",
+                compose_gap_value(value)
+            )
+        })
+        .unwrap_or_default()
+}
+
+fn compose_section_horizontal_alignment(value: &ResponsiveValue<bool>) -> String {
+    format!(
+        "({} ?: false) ? Alignment.CenterHorizontally : Alignment.Start",
+        compose_bool_value(value)
+    )
 }
 
 fn modifier_for_bar(props: &BarProps, flow: ComposeFlow) -> String {
@@ -395,10 +438,7 @@ fn modifier_for_style_with_base_and_shadow_shape(
             .map(|value| {
                 format!(
                     "({} ?: 0.dp).toPx()",
-                    compose_responsive_value(value, |value| format!(
-                        "{}.dp",
-                        value.native_units()
-                    ))
+                    compose_responsive_value(value, |value| format!("{}.dp", value.native_units()))
                 )
             })
             .unwrap_or_else(|| "0f".to_string());
@@ -408,10 +448,7 @@ fn modifier_for_style_with_base_and_shadow_shape(
             .map(|value| {
                 format!(
                     "({} ?: 0.dp).toPx()",
-                    compose_responsive_value(value, |value| format!(
-                        "{}.dp",
-                        value.native_units()
-                    ))
+                    compose_responsive_value(value, |value| format!("{}.dp", value.native_units()))
                 )
             })
             .unwrap_or_else(|| "0f".to_string());
@@ -615,6 +652,9 @@ fn compose_gap_value(value: &ResponsiveValue<GapValue>) -> String {
 fn compose_size_value(value: &ResponsiveValue<SizeValue>) -> String {
     compose_responsive_value(value, |value| match value {
         SizeValue::Scale(value) => format!("DoweSize.Fixed({}.dp)", value.native_units()),
+        SizeValue::Container(value) => {
+            format!("DoweSize.Fixed({}.dp)", value.scale_value().native_units())
+        }
         SizeValue::Full => "DoweSize.Full".to_string(),
         SizeValue::ViewportMinus(value) => {
             format!("DoweSize.ViewportMinus({}.dp)", value.native_units())

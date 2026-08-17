@@ -215,7 +215,7 @@ fn crud_writes_auth_owned_blogs_and_layered_server_modules() {
     assert!(users_entity.contains("entity Users"));
     assert!(blogs_entity.contains("entity Blogs"));
     assert!(sessions_entity.contains("entity Sessions"));
-    assert!(database.contains("entities:[Users, Blogs, Sessions] seeders:[]"));
+    assert!(database.contains("entities:[Users Blogs Sessions] seeders:[]"));
     assert!(database.contains("cache appCache provider:\"dowe\""));
     assert!(env_example.contains("CACHE_HOST="));
     assert!(!env_example.contains("JWT_SECRET"));
@@ -245,7 +245,7 @@ fn crud_writes_auth_owned_blogs_and_layered_server_modules() {
     assert!(users_repository.contains("conn:appDb.insert table:\"users\""));
     assert!(users_repository.contains("id session source:\"ulid\""));
     assert!(
-        users_repository.contains("str sessionKey source:\"join\" values:[\"session\", args.id]")
+        users_repository.contains("str sessionKey source:\"join\" values:[\"session\" args.id]")
     );
     assert!(!users_repository.contains("let "));
     assert!(users_repository.contains("kv cached conn:appCache.set key:sessionKey"));

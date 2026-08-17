@@ -783,6 +783,12 @@ fn section_body_classes(props: &StyleProps) -> Vec<String> {
     if props.boxed {
         classes.push("is-boxed".to_string());
     }
+    append_responsive_classes(&mut classes, "section-center", props.center.as_ref(), |value| {
+        value.to_string()
+    });
+    append_responsive_classes(&mut classes, "gap", props.gap.as_ref(), |value| {
+        value.class_suffix()
+    });
     let mut content = props.clone();
     content.spacing = dowe_components::section_content_spacing(&props.spacing);
     let mut style_classes = Vec::new();

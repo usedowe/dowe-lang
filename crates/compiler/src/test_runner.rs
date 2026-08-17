@@ -407,7 +407,7 @@ mod tests {
     const PASSING_TEST: &str = r#"test "literal assertions"
   assert true value:true
   assert false value:false
-  assert equal actual:{ name:"dowe" versions:[1, 2] } expected:{ name:"dowe" versions:[1, 2] }
+  assert equal actual:{ name:"dowe" versions:[1 2] } expected:{ name:"dowe" versions:[1 2] }
 "#;
 
     #[test]

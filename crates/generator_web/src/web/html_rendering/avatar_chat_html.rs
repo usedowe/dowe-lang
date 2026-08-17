@@ -281,6 +281,7 @@ fn render_empty_html(props: &EmptyProps, context: &ReactiveRenderContext) -> Str
         .description
         .as_deref()
         .unwrap_or_else(|| empty_default_description(props.kind));
+    let root_attrs = attrs(empty_classes(props), Some(&root_element), None, context);
     let action = if props.style.navigation.is_some() || props.style.element.on_click.is_some() {
         let mut action_props = props.style.clone();
         action_props.element = ElementProps {
@@ -298,7 +299,7 @@ fn render_empty_html(props: &EmptyProps, context: &ReactiveRenderContext) -> Str
     };
     format!(
         r#"<div{}>{}<div class="empty-content"><h3 class="empty-title">{}</h3><p class="empty-description">{}</p></div>{}</div>"#,
-        attrs(empty_classes(props), Some(&root_element), None, context),
+        root_attrs,
         empty_icon_html(props.kind, context),
         escape_html(title),
         escape_html(description),

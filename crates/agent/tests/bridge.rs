@@ -267,6 +267,31 @@ fn public_skills_teach_canonical_view_and_server_directories() {
 }
 
 #[test]
+fn public_view_and_server_skills_connect_request_work() {
+    let core = get_public_skill("core", false).expect("core");
+    let server = get_public_skill("server", false).expect("server");
+    let views = get_public_skill("views", false).expect("views");
+
+    assert!(
+        core.content
+            .contains("load both `dowe-views` and `dowe-server`")
+    );
+    assert!(
+        views
+            .content
+            .contains("load the companion `dowe-server` skill")
+    );
+    assert!(views.content.contains("request-to-route matrix"));
+    assert!(views.content.contains("entities, migrations, Database"));
+    assert!(
+        server
+            .content
+            .contains("load the companion `dowe-views` skill")
+    );
+    assert!(server.content.contains("request-to-route matrix"));
+}
+
+#[test]
 fn public_skills_group_related_entities_into_bounded_modules() {
     let domain = get_public_skill("domain-modeling", true).expect("domain modeling");
     let server = get_public_skill("server", true).expect("server");
@@ -328,6 +353,10 @@ fn installs_and_updates_compiled_public_skills() {
         fs::read_to_string(installed.join("references/views.md")).expect("views reference");
     assert!(installed_views.contains(r#""{blog.title}""#));
     assert!(installed_views.contains(r#"`"blog.title"` is literal text"#));
+    let installed_server =
+        fs::read_to_string(temp.path().join(".agents/skills/dowe-server/SKILL.md"))
+            .expect("server skill");
+    assert!(installed_server.contains("load the companion `dowe-views` skill"));
     let installed_components = fs::read_to_string(installed.join("references/components.md"))
         .expect("components reference");
     assert_eq!(installed_components, VIEW_COMPONENT_REFERENCE);
@@ -568,7 +597,7 @@ fn view_skill_requires_semantic_ownership_and_collection_modeling() {
     assert!(
         compact
             .content
-            .contains("never copy sibling Cards or list units")
+            .contains("sibling Cards, feature rows, icon/text groups, or list units")
     );
     assert!(full.content.contains("never invent `MenuBar`"));
     assert!(
@@ -632,7 +661,7 @@ fn view_skill_reserves_box_for_advanced_layer_planes() {
 }
 
 #[test]
-fn view_skill_rejects_direct_same_kind_layout_nesting() {
+fn view_skill_keeps_same_kind_layout_nesting_only_for_distinct_subgroups() {
     let compact = get_public_skill("views", false).expect("compact views skill");
     let composition = get_public_skill_resource("views", "references/composition.md")
         .expect("composition resource");
@@ -642,32 +671,83 @@ fn view_skill_rejects_direct_same_kind_layout_nesting() {
     assert!(
         compact
             .content
-            .contains("Never generate a `Grid` as a direct child of another `Grid`")
+            .contains("Same-kind nesting is allowed only for a distinct subgroup")
     );
     assert!(
         compact
             .content
-            .contains("direct child of another `Flex`; flatten")
+            .contains("a column `Flex` may contain one row `Flex`")
     );
     assert!(
         composition
             .content
-            .contains("Direct same-kind layout nesting is a forbidden generated pattern")
+            .contains("Same-kind layout nesting requires a distinct subgroup")
     );
     assert!(
         composition
             .content
-            .contains("| `Grid` directly inside `Grid` |")
+            .contains("A feature row Flex containing a column")
     );
     assert!(
         composition
             .content
-            .contains("| `Flex` directly inside `Flex` |")
+            .contains("| Column Flex containing an action-row Flex | Keep both |")
     );
     assert!(
         reference_ui
             .content
-            .contains("No direct `Grid`-in-`Grid` or `Flex`-in-`Flex` wrapper remains")
+            .contains("Same-kind nesting remains only for a distinct subgroup")
+    );
+}
+
+#[test]
+fn view_skill_requires_default_first_minimal_props_for_reference_patterns() {
+    let compact = get_public_skill("views", false).expect("compact views skill");
+    let components = get_public_skill_resource("views", "references/components.md")
+        .expect("components resource");
+    let composition = get_public_skill_resource("views", "references/composition.md")
+        .expect("composition resource");
+    let reference_ui = get_public_skill_resource("views", "references/reference-ui.md")
+        .expect("reference UI resource");
+    let styles =
+        get_public_skill_resource("views", "references/styles.md").expect("styles resource");
+
+    assert!(compact.content.contains("strict prop-admission gate"));
+    assert!(
+        compact
+            .content
+            .contains("`Grid` and `Flex` default to zero gap")
+    );
+    assert!(
+        components
+            .content
+            .contains("If every answer is no, omit the prop")
+    );
+    assert!(components.content.contains("visibly independent surface"));
+    for pattern in [
+        "Hero with lead input",
+        "Hero with cover and actions",
+        "Media features",
+        "Icon features",
+        "FAQ split",
+        "Pricing",
+    ] {
+        assert!(composition.content.contains(pattern), "missing {pattern}");
+    }
+    assert!(
+        composition
+            .content
+            .contains("These maps are a prop ceiling for the first pass")
+    );
+    assert!(
+        reference_ui
+            .content
+            .contains("not as an automatic prop list")
+    );
+    assert!(
+        styles
+            .content
+            .contains("Admit a local prop only when at least one condition is true")
     );
 }
 

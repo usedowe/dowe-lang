@@ -12,26 +12,27 @@ fn parse_scale_prop(name: &str, value: &PropValue) -> ComponentResult<Responsive
 
 fn parse_size_prop(name: &str, value: &PropValue) -> ComponentResult<ResponsiveValue<SizeValue>> {
     let allow_viewport_height = matches!(name, "h" | "minH" | "maxH");
+    let allow_container_width = matches!(name, "w" | "minW" | "maxW");
     let expected = if allow_viewport_height {
         "Dowe scale value, full or vh-<scale>"
+    } else if allow_container_width {
+        "Dowe scale value, container size or full"
     } else {
         "Dowe scale value or full"
     };
-    parse_responsive(
-        name,
-        value,
-        expected,
-        |scalar| match scalar {
-            PropScalar::Number(value) => scale_value(value).map(SizeValue::Scale),
-            PropScalar::String(value) if value == "full" => Some(SizeValue::Full),
-            PropScalar::String(value) if allow_viewport_height => value
-                .strip_prefix("vh-")
-                .and_then(scale_value)
-                .map(SizeValue::ViewportMinus),
-            PropScalar::String(_) => None,
-            PropScalar::Boolean(_) => None,
-        },
-    )
+    parse_responsive(name, value, expected, |scalar| match scalar {
+        PropScalar::Number(value) => scale_value(value).map(SizeValue::Scale),
+        PropScalar::String(value) if value == "full" => Some(SizeValue::Full),
+        PropScalar::String(value) if allow_container_width => {
+            ContainerSize::from_name(value).map(SizeValue::Container)
+        }
+        PropScalar::String(value) if allow_viewport_height => value
+            .strip_prefix("vh-")
+            .and_then(scale_value)
+            .map(SizeValue::ViewportMinus),
+        PropScalar::String(_) => None,
+        PropScalar::Boolean(_) => None,
+    })
 }
 
 fn parse_rounded_prop(
@@ -102,6 +103,21 @@ fn parse_align_prop(name: &str, value: &PropValue) -> ComponentResult<Responsive
         "start, center, end, stretch or baseline",
         |scalar| match scalar {
             PropScalar::String(value) => Align::from_name(value),
+            PropScalar::Number(_) | PropScalar::Boolean(_) => None,
+        },
+    )
+}
+
+fn parse_text_align_prop(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<ResponsiveValue<TextAlign>> {
+    parse_responsive(
+        name,
+        value,
+        "start, center, end or justify",
+        |scalar| match scalar {
+            PropScalar::String(value) => TextAlign::from_name(value),
             PropScalar::Number(_) | PropScalar::Boolean(_) => None,
         },
     )
@@ -200,26 +216,36 @@ fn parse_rotation_prop(
     name: &str,
     value: &PropValue,
 ) -> ComponentResult<ResponsiveValue<ViewRotation>> {
-    parse_responsive(name, value, "whole degrees from -180 to 180", |scalar| match scalar {
-        PropScalar::Number(value) => value
-            .parse::<i16>()
-            .ok()
-            .filter(|value| (-180..=180).contains(value))
-            .map(ViewRotation),
-        PropScalar::String(_) | PropScalar::Boolean(_) => None,
-    })
+    parse_responsive(
+        name,
+        value,
+        "whole degrees from -180 to 180",
+        |scalar| match scalar {
+            PropScalar::Number(value) => value
+                .parse::<i16>()
+                .ok()
+                .filter(|value| (-180..=180).contains(value))
+                .map(ViewRotation),
+            PropScalar::String(_) | PropScalar::Boolean(_) => None,
+        },
+    )
 }
 
 fn parse_view_scale_prop(
     name: &str,
     value: &PropValue,
 ) -> ComponentResult<ResponsiveValue<ViewScale>> {
-    parse_responsive(name, value, "decimal factor from 0.5 to 2", |scalar| match scalar {
-        PropScalar::Number(value) => parse_decimal_hundredths(value)
-            .filter(|value| (50..=200).contains(value))
-            .map(ViewScale),
-        PropScalar::String(_) | PropScalar::Boolean(_) => None,
-    })
+    parse_responsive(
+        name,
+        value,
+        "decimal factor from 0.5 to 2",
+        |scalar| match scalar {
+            PropScalar::Number(value) => parse_decimal_hundredths(value)
+                .filter(|value| (50..=200).contains(value))
+                .map(ViewScale),
+            PropScalar::String(_) | PropScalar::Boolean(_) => None,
+        },
+    )
 }
 
 fn parse_translation_prop(
@@ -243,9 +269,9 @@ fn parse_transition_prop(name: &str, value: &PropValue) -> ComponentResult<ViewT
     match value {
         PropValue::String(value) => ViewTransition::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "none, quick, smooth or spring")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
-            Err(ComponentError::invalid_prop(name, "none, quick, smooth or spring"))
-        }
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+            ComponentError::invalid_prop(name, "none, quick, smooth or spring"),
+        ),
     }
 }
 
@@ -253,9 +279,9 @@ fn parse_gesture_prop(name: &str, value: &PropValue) -> ComponentResult<ViewGest
     match value {
         PropValue::String(value) => ViewGesture::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "none, lift, press, grow or tilt")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
-            Err(ComponentError::invalid_prop(name, "none, lift, press, grow or tilt"))
-        }
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+            ComponentError::invalid_prop(name, "none, lift, press, grow or tilt"),
+        ),
     }
 }
 
@@ -306,8 +332,9 @@ fn parse_text_spacing_prop(
 
 fn parse_variant_prop(name: &str, value: &PropValue) -> ComponentResult<ComponentVariant> {
     match value {
-        PropValue::String(value) => ComponentVariant::from_name(value)
-            .ok_or_else(|| ComponentError::invalid_prop(name, "solid, soft, outline, outlined, line or ghost")),
+        PropValue::String(value) => ComponentVariant::from_name(value).ok_or_else(|| {
+            ComponentError::invalid_prop(name, "solid, soft, outline, outlined, line or ghost")
+        }),
         PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
             ComponentError::invalid_prop(name, "solid, soft, outline, outlined, line or ghost"),
         ),
@@ -316,8 +343,9 @@ fn parse_variant_prop(name: &str, value: &PropValue) -> ComponentResult<Componen
 
 fn parse_tabs_variant_prop(name: &str, value: &PropValue) -> ComponentResult<TabsVariant> {
     match value {
-        PropValue::String(value) => TabsVariant::from_name(value)
-            .ok_or_else(|| ComponentError::invalid_prop(name, "solid, outlined, line, ghost or pills")),
+        PropValue::String(value) => TabsVariant::from_name(value).ok_or_else(|| {
+            ComponentError::invalid_prop(name, "solid, outlined, line, ghost or pills")
+        }),
         PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
             ComponentError::invalid_prop(name, "solid, outlined, line, ghost or pills"),
         ),
@@ -476,14 +504,22 @@ fn parse_show_prop(name: &str, value: &PropValue) -> ComponentResult<VisibilityC
                 let (Some(path), Some(operator), Some(value), None) =
                     (parts.next(), parts.next(), parts.next(), parts.next())
                 else {
-                    return Err(ComponentError::invalid_prop(name, "valid numeric condition"));
+                    return Err(ComponentError::invalid_prop(
+                        name,
+                        "valid numeric condition",
+                    ));
                 };
                 let operator = match operator {
                     "gt" => NumberComparisonOperator::GreaterThan,
                     "gte" => NumberComparisonOperator::GreaterThanOrEqual,
                     "lt" => NumberComparisonOperator::LessThan,
                     "lte" => NumberComparisonOperator::LessThanOrEqual,
-                    _ => return Err(ComponentError::invalid_prop(name, "valid numeric condition")),
+                    _ => {
+                        return Err(ComponentError::invalid_prop(
+                            name,
+                            "valid numeric condition",
+                        ));
+                    }
                 };
                 Ok(VisibilityCondition::NumberComparison {
                     path: path.to_string(),
@@ -499,21 +535,25 @@ fn parse_show_prop(name: &str, value: &PropValue) -> ComponentResult<VisibilityC
                 ))
             }
         }
-        PropValue::Boolean(_) | PropValue::Responsive(_) => parse_responsive(
-            name,
-            value,
-            "boolean",
-            |scalar| match scalar {
-                PropScalar::Boolean(value) => Some(*value),
-                PropScalar::String(_) | PropScalar::Number(_) => None,
-            },
-        )
-        .map(VisibilityCondition::Static),
+        PropValue::Boolean(_) | PropValue::Responsive(_) => {
+            parse_responsive_bool_prop(name, value)
+            .map(VisibilityCondition::Static)
+        }
         PropValue::Number(_) => Err(ComponentError::invalid_prop(
             name,
             "boolean, responsive boolean, signal bool path or numeric condition",
         )),
     }
+}
+
+fn parse_responsive_bool_prop(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<ResponsiveValue<bool>> {
+    parse_responsive(name, value, "boolean", |scalar| match scalar {
+        PropScalar::Boolean(value) => Some(*value),
+        PropScalar::String(_) | PropScalar::Number(_) => None,
+    })
 }
 
 fn is_reference_path(value: &str) -> bool {

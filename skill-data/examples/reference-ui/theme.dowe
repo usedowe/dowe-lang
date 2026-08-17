@@ -1,5 +1,5 @@
 theme
-  fonts default:"inter" install:["inter","manrope"]
+  fonts default:"inter" install:["inter" "manrope"]
   design defaultTheme:"reference-dark"
     Card variant:"soft" scheme:"surface" radius:"xl" shadow:"sm"
     Button variant:"solid" scheme:"primary" radius:"full" size:"md"

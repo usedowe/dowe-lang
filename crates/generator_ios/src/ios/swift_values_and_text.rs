@@ -5,6 +5,9 @@ fn swift_scale_value(value: &ResponsiveValue<ScaleValue>) -> String {
 fn swift_size_value(value: &ResponsiveValue<SizeValue>) -> String {
     swift_responsive_value(value, |value| match value {
         SizeValue::Scale(value) => format!("DoweSize.fixed(CGFloat({}))", value.native_units()),
+        SizeValue::Container(value) => {
+            format!("DoweSize.fixed(CGFloat({}))", value.scale_value().native_units())
+        }
         SizeValue::Full => "DoweSize.full".to_string(),
         SizeValue::ViewportMinus(value) => {
             format!("DoweSize.viewportMinus(CGFloat({}))", value.native_units())
@@ -100,9 +103,7 @@ fn swift_shadow_offset_value(value: &ResponsiveValue<ShadowSize>) -> String {
 }
 
 fn swift_shadow_opacity_value(value: &ResponsiveValue<ShadowSize>) -> String {
-    swift_responsive_value(value, |value| {
-        format!("Double({})", shadow_opacity(*value))
-    })
+    swift_responsive_value(value, |value| format!("Double({})", shadow_opacity(*value)))
 }
 
 fn swift_justify_value(value: &ResponsiveValue<Justify>) -> String {
@@ -243,10 +244,13 @@ fn swift_svg_paths(paths: &[SvgPath]) -> String {
                 "DoweSvgPathData(data: \"{}\", fill: {}, transform: {})",
                 escape_swift(&path.data),
                 swift_svg_fill(path.fill),
-                path.transform.as_ref().map(|value| format!(
-                    "CGAffineTransform(a: {}, b: {}, c: {}, d: {}, tx: {}, ty: {})",
-                    value.a, value.b, value.c, value.d, value.e, value.f
-                )).unwrap_or_else(|| "nil".to_string())
+                path.transform
+                    .as_ref()
+                    .map(|value| format!(
+                        "CGAffineTransform(a: {}, b: {}, c: {}, d: {}, tx: {}, ty: {})",
+                        value.a, value.b, value.c, value.d, value.e, value.f
+                    ))
+                    .unwrap_or_else(|| "nil".to_string())
             )
         })
         .collect::<Vec<_>>()
@@ -259,45 +263,111 @@ fn swift_svg_fill(fill: SvgPathFill) -> String {
         SvgPathFill::None => "DoweSvgFill.none".to_string(),
         SvgPathFill::CurrentColor => "DoweSvgFill.currentColor".to_string(),
         SvgPathFill::Color(token) => format!("DoweSvgFill.color({})", color_ref(token)),
-        SvgPathFill::RawFill { color, opacity, even_odd } => format!(
+        SvgPathFill::RawFill {
+            color,
+            opacity,
+            even_odd,
+        } => format!(
             "DoweSvgFill.fill(.some({}), {}, {})",
-            swift_hex_color(color), opacity as f32 / 255.0, even_odd
-        ),
-        SvgPathFill::Fill { color, opacity, even_odd } => format!(
-            "DoweSvgFill.fill({}, {}, {})",
-            color.map(color_ref).map(|value| format!(".some({value})")).unwrap_or_else(|| ".none".to_string()),
+            swift_hex_color(color),
             opacity as f32 / 255.0,
             even_odd
         ),
-        SvgPathFill::RawStroke { color, opacity, width, line_cap, line_join } => format!(
+        SvgPathFill::Fill {
+            color,
+            opacity,
+            even_odd,
+        } => format!(
+            "DoweSvgFill.fill({}, {}, {})",
+            color
+                .map(color_ref)
+                .map(|value| format!(".some({value})"))
+                .unwrap_or_else(|| ".none".to_string()),
+            opacity as f32 / 255.0,
+            even_odd
+        ),
+        SvgPathFill::RawStroke {
+            color,
+            opacity,
+            width,
+            line_cap,
+            line_join,
+        } => format!(
             "DoweSvgFill.stroke(.some({}), {}, {}, \"{}\", \"{}\")",
             swift_hex_color(color),
             opacity as f32 / 255.0,
             width as f32 / 100.0,
-            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
-            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+            match line_cap {
+                SvgLineCap::Butt => "butt",
+                SvgLineCap::Round => "round",
+                SvgLineCap::Square => "square",
+            },
+            match line_join {
+                SvgLineJoin::Miter => "miter",
+                SvgLineJoin::Round => "round",
+                SvgLineJoin::Bevel => "bevel",
+            }
         ),
-        SvgPathFill::LiteralFill { red, green, blue, opacity, even_odd } => format!(
+        SvgPathFill::LiteralFill {
+            red,
+            green,
+            blue,
+            opacity,
+            even_odd,
+        } => format!(
             "DoweSvgFill.fill(.some({}), {}, {})",
             swift_rgb_color(red, green, blue),
             opacity as f32 / 255.0,
             even_odd
         ),
-        SvgPathFill::LiteralStroke { red, green, blue, opacity, width, line_cap, line_join } => format!(
+        SvgPathFill::LiteralStroke {
+            red,
+            green,
+            blue,
+            opacity,
+            width,
+            line_cap,
+            line_join,
+        } => format!(
             "DoweSvgFill.stroke(.some({}), {}, {}, \"{}\", \"{}\")",
             swift_rgb_color(red, green, blue),
             opacity as f32 / 255.0,
             width as f32 / 100.0,
-            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
-            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+            match line_cap {
+                SvgLineCap::Butt => "butt",
+                SvgLineCap::Round => "round",
+                SvgLineCap::Square => "square",
+            },
+            match line_join {
+                SvgLineJoin::Miter => "miter",
+                SvgLineJoin::Round => "round",
+                SvgLineJoin::Bevel => "bevel",
+            }
         ),
-        SvgPathFill::Stroke { color, opacity, width, line_cap, line_join } => format!(
+        SvgPathFill::Stroke {
+            color,
+            opacity,
+            width,
+            line_cap,
+            line_join,
+        } => format!(
             "DoweSvgFill.stroke({}, {}, {}, \"{}\", \"{}\")",
-            color.map(color_ref).map(|value| format!(".some({value})")).unwrap_or_else(|| ".none".to_string()),
+            color
+                .map(color_ref)
+                .map(|value| format!(".some({value})"))
+                .unwrap_or_else(|| ".none".to_string()),
             opacity as f32 / 255.0,
             width as f32 / 100.0,
-            match line_cap { SvgLineCap::Butt => "butt", SvgLineCap::Round => "round", SvgLineCap::Square => "square" },
-            match line_join { SvgLineJoin::Miter => "miter", SvgLineJoin::Round => "round", SvgLineJoin::Bevel => "bevel" }
+            match line_cap {
+                SvgLineCap::Butt => "butt",
+                SvgLineCap::Round => "round",
+                SvgLineCap::Square => "square",
+            },
+            match line_join {
+                SvgLineJoin::Miter => "miter",
+                SvgLineJoin::Round => "round",
+                SvgLineJoin::Bevel => "bevel",
+            }
         ),
     }
 }
@@ -420,6 +490,15 @@ fn swift_modifiers_for_text(
         ));
     }
 
+    if let Some(value) = props.align.as_ref() {
+        if props.style.sizing.w.is_none() {
+            modifiers.push(format!(
+                ".frame(maxWidth: .infinity, alignment: {})",
+                swift_text_frame_alignment(value)
+            ));
+        }
+    }
+
     if title {
         let color = props
             .style
@@ -444,6 +523,30 @@ fn text_color(props: &TextProps) -> Option<String> {
         .as_ref()
         .map(swift_color_value)
         .map(|value| format!("{value} ?? DoweDesign.backgroundText"))
+}
+
+fn swift_dowe_text_alignment(value: &ResponsiveValue<TextAlign>) -> String {
+    format!(
+        "{} ?? DoweTextAlignment.start",
+        swift_responsive_value(value, |value| match value {
+            TextAlign::Start => "DoweTextAlignment.start".to_string(),
+            TextAlign::Center => "DoweTextAlignment.center".to_string(),
+            TextAlign::End => "DoweTextAlignment.end".to_string(),
+            TextAlign::Justify => "DoweTextAlignment.justify".to_string(),
+        })
+    )
+}
+
+fn swift_text_frame_alignment(value: &ResponsiveValue<TextAlign>) -> String {
+    format!(
+        "{} ?? Alignment.leading",
+        swift_responsive_value(value, |value| match value {
+            TextAlign::Start => "Alignment.leading".to_string(),
+            TextAlign::Center => "Alignment.center".to_string(),
+            TextAlign::End => "Alignment.trailing".to_string(),
+            TextAlign::Justify => "Alignment.leading".to_string(),
+        })
+    )
 }
 
 fn text_size(title: bool, props: &TextProps) -> String {

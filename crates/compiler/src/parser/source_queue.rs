@@ -264,7 +264,10 @@ fn validate_connection_static(
     if matches!(provider, QueueProvider::Cloudflare | QueueProvider::Vercel)
         && value.chars().any(char::is_control)
     {
-        return Err(node_error(node, "managed Queue connection value is invalid"));
+        return Err(node_error(
+            node,
+            "managed Queue connection value is invalid",
+        ));
     }
     Ok(())
 }

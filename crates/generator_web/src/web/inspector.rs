@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -9,6 +9,29 @@ pub struct ViewInspectorLocation {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewInspectorProp {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewInspectorSignal {
+    pub id: String,
+    pub name: String,
+    pub scope: String,
+    pub storage: String,
+    pub initial_json: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewInspectorAction {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ViewInspectorNode {
     pub id: String,
     pub kind: String,
@@ -16,6 +39,9 @@ pub struct ViewInspectorNode {
     pub start_line: usize,
     pub end_line: usize,
     pub usages: Vec<ViewInspectorLocation>,
+    pub props: Vec<ViewInspectorProp>,
+    pub signals: Vec<ViewInspectorSignal>,
+    pub actions: Vec<ViewInspectorAction>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -47,6 +73,7 @@ type SharedViewInspectorCursor = Rc<RefCell<ViewInspectorCursor>>;
 
 thread_local! {
     static VIEW_INSPECTOR_CURSOR: RefCell<Option<SharedViewInspectorCursor>> = const { RefCell::new(None) };
+    static VIEW_INSPECTOR_MARKER_AVAILABLE: Cell<bool> = const { Cell::new(false) };
 }
 
 fn with_view_inspector<T>(map: Option<&ViewInspectorMap>, render: impl FnOnce() -> T) -> T {
@@ -63,14 +90,26 @@ fn with_view_inspector<T>(map: Option<&ViewInspectorMap>, render: impl FnOnce() 
     VIEW_INSPECTOR_CURSOR.with(|current| {
         *current.borrow_mut() = None;
     });
+    VIEW_INSPECTOR_MARKER_AVAILABLE.with(|available| available.set(false));
+    result
+}
+
+fn with_view_inspector_node<T>(render: impl FnOnce() -> T) -> T {
+    let previous = VIEW_INSPECTOR_MARKER_AVAILABLE.with(|available| available.replace(true));
+    let result = render();
+    VIEW_INSPECTOR_MARKER_AVAILABLE.with(|available| available.set(previous));
     result
 }
 
 fn next_view_inspector_id() -> Option<String> {
     VIEW_INSPECTOR_CURSOR.with(|current| {
-        current
-            .borrow()
-            .as_ref()
-            .and_then(|cursor| cursor.borrow_mut().next_id())
+        current.borrow().as_ref().and_then(|cursor| {
+            VIEW_INSPECTOR_MARKER_AVAILABLE.with(|available| {
+                if !available.replace(false) {
+                    return None;
+                }
+                cursor.borrow_mut().next_id()
+            })
+        })
     })
 }

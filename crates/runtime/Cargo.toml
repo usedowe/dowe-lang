@@ -26,6 +26,7 @@ dowe_stdlib = { path = "../stdlib" }
 dowe_database = { path = "../database" }
 dowe_vector = { path = "../vector" }
 futures-util.workspace = true
+notify.workspace = true
 reqwest.workspace = true
 rcgen.workspace = true
 rustls-acme.workspace = true

@@ -28,6 +28,7 @@ main
   views:viewRoutes
   server port:8080
     endpoints:apiRoutes
+    databases:[appDb]
     init
       cron fn:everyDay schedule:"0 3 * * *" args:{}
 ```
@@ -38,9 +39,13 @@ main
 | --- | --- |
 | `app` | `name:string`, `bundle:reverse-DNS string` |
 | `views:<binding>` | One imported `views` binding |
-| `views:[...]` | Ordered non-empty imported `views` bindings |
-| `server` | `port:number`, `endpoints:<binding or list>`; optional `cors`, `init`, inline routes, WebSockets, and protocol children |
+| `views:[...]` | Ordered non-empty imported `views` bindings separated by spaces |
+| `server` | `port:number`, `endpoints:<binding or list>`, `databases:<binding list>`; optional `cors`, `init`, inline routes, WebSockets, and protocol children |
 | `desktop` | One nested `server` with the same server contract |
+
+Use spaces between array items, for example `views:[dashboardRoutes docsRoutes]` or
+`databases:[appDb]`. Comma-separated arrays remain accepted only as a migration form and are
+canonicalized by formatting.
 
 `theme.dowe` and `main.dowe` are Dowe configuration roots and cannot be imported. Dotenv files are
 not Dowe Source Format and cannot be imported. All reusable modules use static imports and the `@/`

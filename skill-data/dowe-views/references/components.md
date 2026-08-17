@@ -17,13 +17,28 @@ the matching `design` slot from `theme.dowe`; generated source should not repeat
 Keep only props that change the default, bind reactively, provide required content or accessibility,
 control layout or behavior, or are needed to demonstrate a deliberate variant.
 
+Use this admission gate for every local prop:
+
+1. Is the prop required by the component contract, content, binding, event, or accessibility role?
+2. Does it define essential structure that the component default cannot infer, such as responsive
+   Grid columns, a column Flex, a boxed Section, or a real cover asset?
+3. Does it express a visible and intentional non-default choice, such as the outlined secondary
+   action beside a default primary action?
+4. After rendering the default-first tree, does it fix one specific comparison mismatch on the
+   smallest real owner?
+
+If every answer is no, omit the prop. A prop must not be added merely because diagnostics accept it,
+because generators commonly emit it, or because the reference contains a measurable value for it.
+
 ```text
 Button w:"full"
   "Log in"
 
 Input bind:email label:"Email"
 
-Card p:5
+Card
+  Title
+    "Starter"
 ```
 
 These declarations are equivalent to spelling out the default `Button` solid/primary/md visual
@@ -34,26 +49,46 @@ which resolves to pills/primary. A non-default decision remains explicit, for ex
 prop over a complete restatement of the component's default style.
 
 Apply the same minimal-prop rule to container spacing. `Section` and `Card` already own responsive
-insets, while `Grid` and `Flex` should use `gap` for child rhythm. Do not add `px`, `py`, `pt`, `pb`,
-or `p` to every container, and do not invent unsupported margin aliases such as `mt`. Add a local
-padding override only when the real owner has a documented exception that the defaults cannot
-express. A `Card variant:"ghost" p:0` that only wraps another layout is not a meaningful Card;
-remove the wrapper and let the owning layout component carry the tree.
+insets. `Grid` and `Flex` have zero gap by default; add one `gap` only when a rendered sibling group
+needs explicit nonzero rhythm, never as an automatic companion to `columns` or `direction`. Do not
+add `px`, `py`, `pt`, `pb`, or `p` to every container, and do not invent unsupported margin aliases
+such as `mt`. Add a local padding override only when the real owner has a documented exception that
+the defaults cannot express. A `Card variant:"ghost" p:0` that only wraps another layout is not a
+meaningful Card; remove the wrapper and let the owning layout component carry the tree.
 
 ## Layout and text
 
 | Component | Use and essential contract |
 | --- | --- |
 | `Box` | Advanced neutral layer plane when normal flow cannot express the composition: normally a relative stage with direct absolute wrappers or a fixed viewport layer. Do not use it for ordinary spacing, sizing, centering, backgrounds, borders, visibility, Grid gutters, or control wrappers; put those props on the semantic, flow, media, or control owner. |
-| `Section` | Ordered page band and page-level vertical rhythm. A page begins with one or more sibling Sections; `boxed:true` constrains and centers only its generated inner body at `96rem` web or `1536` native. |
+| `Section` | Ordered page band and page-level vertical rhythm. A page begins with one or more sibling Sections; `boxed:true` constrains and centers only its generated inner body at `96rem` web or `1536` native, `center:true` or `center:{ xs:false md:true }` centers direct children responsively, and `gap` controls vertical spacing between them with a default of `0`. |
 | `Flex` | One-axis row or column using `direction`, `gap`, `align`, `justify`, and optional wrapping. |
 | `Grid` | Equal-width numeric column counts (1–12), optional numeric or `auto` rows, `gap`, and alignment. |
-| `Card` | One related semantic unit such as a form, metric, article, or profile. Avoid nesting Card inside Card. |
-| `Title` | One direct quoted visible-text child or one complete braced string binding. |
-| `Text` | One direct quoted visible-text child or one complete braced string binding. |
+| `Card` | One visibly independent surface with a contained background, border, radius, elevation, or inset treatment, such as a pricing offer or raised form. A semantic grouping that remains visually flat uses Grid or Flex instead. Avoid nesting Card inside Card. |
+| `Title` | One direct quoted or multiline visible-text child or one complete braced string binding; accepts logical `align` (`start`, `center`, `end`, or `justify`) and fluid `size`. |
+| `Text` | One direct quoted or multiline visible-text child or one complete braced string binding; accepts logical `align` (`start`, `center`, `end`, or `justify`) and fluid `size`. |
 | `Divider` | Horizontal or vertical separator; choose `orientation` instead of drawing a border-only Box. |
 
 `Section boxed:true` keeps the outer band, background, cover, overlay, border, and anchor full width while limiting the generated content body to `96rem` on web and `1536` logical units on Android and iOS. It defaults to `false` and accepts a static boolean.
+
+`Section center:true` centers direct children horizontally inside the generated content body. It defaults to `false` and accepts a boolean or responsive boolean object such as `center:{ xs:false md:true }`; the same value lowers to web, Android, and iOS alignment behavior.
+
+`Section gap:3` adds vertical spacing between direct children. It defaults to `0`, accepts a Dowe scale or pixel value such as `gap:"8px"`, and supports responsive values such as `gap:{ xs:2 md:4 }`; the same value lowers to web, Android, and iOS spacing behavior.
+
+`Text` and `Title` alignment is a text-node concern, not a container concern. Use `align:"start"`, `align:"center"`, `align:"end"`, or `align:"justify"`; the same logical value lowers to web, iOS, and Android. `RichText` remains a separate marked-text contract and does not accept `align`.
+
+Use one multiline string child for an intentional hard line break:
+
+```text
+Title size:"7xl" align:"center" maxW:"6xl"
+  """
+  Full-stack development,
+  from one codebase
+  """
+```
+
+Use `maxW` for natural wrapping. Do not duplicate `Text` or `Title` nodes or add `Flex` only to
+force a line boundary.
 
 ## Application shells and navigation
 
@@ -248,13 +283,14 @@ fn submit
 | `Camera` | Portable still-photo capture. Use `facing`, `label`, `disabled`, and named lifecycle functions; capture results include a target-local `url`, `mimeType`, dimensions, and `facing`. |
 | `Microphone` | Portable audio recording. Use `label`, optional positive `maxDuration`, `disabled`, and named lifecycle functions; stop results include a target-local `url`, `mimeType`, and `durationMs`. |
 | `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. Web download and fullscreen actions are hidden by default; set `hideControls:false` to enable both. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
-| `Icon` | Bundled vector selected by quoted `name`: Solar variant names, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or brand-colored `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. |
+| `Icon` | Bundled vector selected by quoted `name` or a string Signal, constant, or current `each` item path. Names use Solar variants, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. Web, native targets, and the Android development launcher update from the shared catalog; invalid runtime values fall back to the validated initial icon. |
 | `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. |
 | `Path` | Context-only Svg path with quoted `d`, paint, optional `fillRule:"nonzero|evenodd"`, and optional matrix transform. Use `evenodd` to preserve holes in compound paths. |
 
-`Icon name` is always a static quoted value; it cannot bind an `each` item or Signal path, so a
-collection with distinct icons uses explicit sibling declarations. Names must exist in the bundled
-catalog and diagnostics reject unknown names: for example `magnifier` and
+`Icon name` accepts a quoted catalog value or a readable string path. A collection can bind its
+current item, and a Signal can change the selected catalog entry without rebuilding the view tree.
+Names must exist in the bundled catalog at their initial value and diagnostics reject unknown names:
+for example `magnifier` and
 `magnifier-bold-duotone` are valid but `search` is not. Standalone icons accept
 `fill:<color token>`, `stroke:<color token>`, `w`, and `h`; `style` is not an Icon prop.
 
@@ -276,7 +312,7 @@ platform security policy. They never authorize user-authored JavaScript or nativ
 Charts consume portable Signal data rather than a target-specific chart library. Category charts
 (`ArcChart`, `BarChart`, `PieChart`) read items with `label` and `value`. Point charts
 (`AreaChart`, `LineChart`) read items with numeric `x` and `y`, or a `series` Signal whose items
-contain `label` and `data:[{ x, y }]`. Optional item `color` fields must be Dowe color tokens.
+contain `label` and `data:[{ x y }]`. Optional item `color` fields must be Dowe color tokens.
 Every chart accepts `variant`, `scheme`, `size` (`sm` to `xl`), `palette` (`default`, `rainbow`,
 `ocean`, `sunset`, `forest`, `neon`), `legendPosition` (`top`, `right`, `bottom`, `left`, `none`),
 `emptyLabel`, `loading`, and `hideLegend`. Diagnostics reject missing, incompatible, or invalid

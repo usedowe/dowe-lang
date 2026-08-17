@@ -4,16 +4,17 @@ use crate::model::{
 };
 use crate::parser::source_parser::parse_source_file;
 use dowe_components::{
-    AvatarStatus, Breakpoint, ButtonSize, CameraFacing, CanvasBackground, CanvasFit, CarouselIndicatorType,
-    CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition, ChartPalette, ChartSize,
-    ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant, CountdownSize,
-    DividerOrientation, EmptyKind, ImageAspect, ImageLoading, ImageObjectFit, MapMarkerIcon,
-    MarqueeOrientation, MarqueeSpeed, NativeExternalMode, NavigationAction, OverlayCornerPosition,
-    OverlayEntry, OverlayPosition, RichTextMarkStyle, SectionBackground, SkeletonAnimation,
-    SkeletonVariant, SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect,
-    ViewActionKind, ViewAnimation, ViewFunctionStatement, ViewGesture, ViewIcon, ViewNode,
-    ViewRotation, ViewScale, ViewSignalScope, ViewSignalStorage, ViewTransition, ViewTranslation,
-    VisibilityCondition, WebTarget,
+    AvatarStatus, Breakpoint, ButtonSize, CameraFacing, CanvasBackground, CanvasFit,
+    CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition,
+    ChartPalette, ChartSize, ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant,
+    CountdownSize, DividerOrientation, EmptyKind, GapSize, GapValue, ImageAspect, ImageLoading,
+    ImageObjectFit, MapMarkerIcon, MarqueeOrientation, MarqueeSpeed, NativeExternalMode,
+    NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayPosition, RichTextMarkStyle,
+    ScaleValue, SectionBackground, SkeletonAnimation, SkeletonVariant, SvgPathFill,
+    TableColumnAlign, TableSize, ToastKind, VideoAspect, ViewActionKind, ViewAnimation,
+    ViewFunctionStatement, ViewGesture, ViewIcon, ViewNode, ViewRotation, ViewScale,
+    ViewSignalScope, ViewSignalStorage, ViewTransition, ViewTranslation, VisibilityCondition,
+    WebTarget,
 };
 use std::fs;
 use std::path::Path;

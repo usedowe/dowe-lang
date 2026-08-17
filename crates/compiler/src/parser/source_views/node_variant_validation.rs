@@ -171,6 +171,29 @@ fn validate_node_variant_references(
                     ViewPathExpectation::Any,
                 )?;
             }
+            if let Some(name) = props.icon_name.as_deref() {
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    name,
+                    "Icon name",
+                    ViewPathExpectation::String,
+                )?;
+                if let Some(ViewSignalValue::String(value)) =
+                    signal_path_value(path, signals, locals, name, "Icon name")?
+                {
+                    if !dowe_components::all_icon_names()
+                        .iter()
+                        .any(|name| name == &value)
+                    {
+                        return Err(DoweError::at_path(
+                            path,
+                            format!("invalid initial icon name `{value}` for `Icon name`"),
+                        ));
+                    }
+                }
+            }
         }
         ViewNode::ToggleGroup { props, .. } => {
             if let Some(value) = props.value.as_deref() {

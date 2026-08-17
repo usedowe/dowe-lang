@@ -30,8 +30,13 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
     },
     ServerDocumentation {
         name: "server",
-        signature: "server port:<number> [endpoints:<symbol|array>]",
-        description: "Declares a Rust-backed Dowe server target with optional imported endpoint groups.",
+        signature: "server port:<number> [endpoints:<symbol|array>] [databases:<symbol|array>]",
+        description: "Declares a Rust-backed Dowe server target with optional imported endpoint groups and Database handles registered for project operations.",
+    },
+    ServerDocumentation {
+        name: "databases",
+        signature: "databases:[<database-binding>...]",
+        description: "Registers imported server-only Database handles so migrations, seeders, and runtime preparation can discover them from main.dowe.",
     },
     ServerDocumentation {
         name: "tls",
@@ -411,9 +416,14 @@ pub(super) fn component_prop_documentation(component: &str, prop: &str) -> Optio
     let props = props_for_component(component);
     (!props.is_empty() && props.contains(&prop)).then(|| {
         let value_type = prop_type(component, prop);
+        let description = if component == "Icon" && prop == "name" {
+            "Selects a member of the shared Solar, country-flag, SVG Spinner, or SVG Logos catalog. A bare path must resolve to a string; Signal changes update the icon and invalid runtime values use the validated initial icon."
+        } else {
+            prop_description(prop)
+        };
         format!(
             "### `{component}.{prop}`\n\n**Type:** `{value_type}`\n\n{}",
-            prop_description(prop)
+            description
         )
     })
 }
@@ -571,9 +581,11 @@ fn component_description(name: &str) -> &'static str {
         | "Date" | "DateRange" | "RadioGroup" | "Toggle" | "ToggleGroup" => {
             "Built-in cross-platform form and interaction component."
         }
-        "Code" | "Video" | "Iframe" | "Device" | "Audio" | "Camera" | "Microphone" | "Image" | "Canvas" | "Icon" | "Svg"
-        | "Path" | "Candlestick" | "ArcChart" | "AreaChart" | "BarChart" | "LineChart"
-        | "PieChart" | "Table" => "Built-in cross-platform media or data-display component.",
+        "Code" | "Video" | "Iframe" | "Device" | "Audio" | "Camera" | "Microphone" | "Image"
+        | "Canvas" | "Icon" | "Svg" | "Path" | "Candlestick" | "ArcChart" | "AreaChart"
+        | "BarChart" | "LineChart" | "PieChart" | "Table" => {
+            "Built-in cross-platform media or data-display component."
+        }
         _ => "Built-in Dowe Views component lowered to web, desktop, Android, and iOS targets.",
     }
 }
@@ -692,6 +704,10 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
 }
 
 fn prop_type(component: &str, prop: &str) -> String {
+    if component == "Icon" && prop == "name" {
+        return "quoted catalog icon name or string Signal, constant, or each-item path"
+            .to_string();
+    }
     if component == "Button" && matches!(prop, "loading" | "disabled") {
         return "boolean Signal or View Store path".to_string();
     }
@@ -735,6 +751,7 @@ fn prop_type(component: &str, prop: &str) -> String {
         | "showRgb"
         | "showCmyk"
         | "showOklch" => "boolean".to_string(),
+        "center" => "boolean | responsive boolean".to_string(),
         "template" => "boolean".to_string(),
         "w" | "h" | "minW" | "minH" | "maxW" | "maxH" => {
             "Dowe size | responsive Dowe size".to_string()
@@ -745,9 +762,10 @@ fn prop_type(component: &str, prop: &str) -> String {
         "translateX" | "translateY" => {
             "Dowe scale from -96 to 96 | responsive Dowe scale".to_string()
         }
+        "gap" => "Dowe scale value or px value | responsive gap".to_string(),
         "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "top" | "right" | "bottom" | "left"
-        | "gap" | "columns" | "rows" | "colSpan" | "rowSpan" | "min" | "max" | "step"
-        | "maxSize" | "maxPoints" | "offsetX" | "offsetY" | "autoplayInterval" | "slideWidth"
+        | "columns" | "rows" | "colSpan" | "rowSpan" | "min" | "max" | "step" | "maxSize"
+        | "maxPoints" | "offsetX" | "offsetY" | "autoplayInterval" | "slideWidth"
         | "slideHeight" | "slidesPerView" => "number | responsive number".to_string(),
         name if name.starts_with("on") => "fn reference".to_string(),
         "i18n" | "descriptionI18n" | "statusI18n" => "quoted translation key".to_string(),
@@ -774,11 +792,20 @@ fn prop_description(prop: &str) -> &'static str {
         "boxed" => {
             "Constrains and centers the component's generated content body while preserving its full-width structural container."
         }
+        "gap" => {
+            "Sets spacing between direct children. Accepts a Dowe scale or px value and responsive gap values; Section defaults to zero."
+        }
+        "center" => {
+            "Centers Section children horizontally. Accepts a boolean or responsive boolean values and defaults to false."
+        }
         "dockOnScroll" => {
             "Animates a fixed floating AppBar into the viewport top edge after the document passes 100px of scroll. Requires `floating:true` and `position:\"fixed\"`."
         }
         "position" => {
             "Controls Box flow and overlay placement with static, relative, absolute, or fixed positioning."
+        }
+        "align" => {
+            "Controls logical text alignment on Text and Title. Use start, center, end, or justify; responsive values keep the same target-neutral meaning."
         }
         "top" | "right" | "bottom" | "left" => {
             "Offsets an absolute or fixed Box using a scalar or responsive Dowe scale value."
@@ -796,7 +823,9 @@ fn prop_description(prop: &str) -> &'static str {
         "maxW" => "Limits the component width without forcing it to occupy the full limit.",
         "maxH" => "Limits the component height without adding implicit overflow behavior.",
         "fillRule" => "Selects the portable fill rule used to resolve compound Path regions.",
-        "size" => "Selects the component's canonical Dowe size.",
+        "size" => {
+            "Selects the component's canonical Dowe size. Text and Title sizes use the shared fluid scale, so a scalar value is responsive by default."
+        }
         "startIcon" | "endIcon" => {
             "Selects a quoted Solar icon resolved through the shared Icon catalog and sized from the Chip size."
         }

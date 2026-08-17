@@ -5,7 +5,126 @@ fn is_dynamic_reference(value: &str) -> bool {
             .all(|value| value.is_ascii_alphanumeric() || value == '_' || value == '.')
 }
 
-fn validate_navigation(pages: &[ViewPage]) -> DoweResult<()> {
+fn resolve_dynamic_icon_fallbacks(tree: &mut ViewNode) {
+    fn resolve_value(
+        path: &str,
+        values: &HashMap<String, ViewSignalValue>,
+        locals: &HashMap<String, Option<ViewSignalValue>>,
+    ) -> Option<ViewSignalValue> {
+        let root = path.split('.').next().unwrap_or(path);
+        let mut value = values
+            .get(root)
+            .cloned()
+            .or_else(|| locals.get(root).and_then(Clone::clone))?;
+        for field in path.split('.').skip(1) {
+            let ViewSignalValue::Object(fields) = value else {
+                return None;
+            };
+            value = fields
+                .into_iter()
+                .find_map(|(name, value)| (name == field).then_some(value))?;
+        }
+        Some(value)
+    }
+
+    fn visit(
+        node: &mut ViewNode,
+        values: &HashMap<String, ViewSignalValue>,
+        locals: &HashMap<String, Option<ViewSignalValue>>,
+    ) {
+        match node {
+            ViewNode::Scope {
+                constants,
+                signals,
+                children,
+                ..
+            } => {
+                let mut scoped = values.clone();
+                scoped.extend(
+                    constants
+                        .iter()
+                        .map(|constant| (constant.name.clone(), constant.value.clone())),
+                );
+                scoped.extend(
+                    signals
+                        .iter()
+                        .map(|signal| (signal.name.clone(), signal.initial.clone())),
+                );
+                for child in children {
+                    visit(child, &scoped, locals);
+                }
+            }
+            ViewNode::Each {
+                collection,
+                item,
+                children,
+                ..
+            } => {
+                let mut scoped = locals.clone();
+                let item_value =
+                    resolve_value(collection, values, locals).and_then(|value| match value {
+                        ViewSignalValue::Array(items) => items.first().cloned(),
+                        _ => None,
+                    });
+                scoped.insert(item.clone(), item_value);
+                for child in children {
+                    visit(child, values, &scoped);
+                }
+            }
+            ViewNode::Svg { props, paths } => {
+                let Some(binding) = props.icon_name.as_deref() else {
+                    return;
+                };
+                let Some(ViewSignalValue::String(name)) = resolve_value(binding, values, locals)
+                else {
+                    return;
+                };
+                if !dowe_components::all_icon_names()
+                    .iter()
+                    .any(|value| value == &name)
+                {
+                    return;
+                }
+                props.icon_fallback = Some(name.clone());
+                let mut icon_props = vec![ComponentProp {
+                    name: "name".to_string(),
+                    value: PropValue::String(name),
+                }];
+                if let Some(fill) = props.icon_fill {
+                    icon_props.push(ComponentProp {
+                        name: "fill".to_string(),
+                        value: PropValue::String(fill.as_str().to_string()),
+                    });
+                }
+                if let Some(stroke) = props.icon_stroke {
+                    icon_props.push(ComponentProp {
+                        name: "stroke".to_string(),
+                        value: PropValue::String(stroke.as_str().to_string()),
+                    });
+                }
+                if let Ok(ViewNode::Svg {
+                    props: fallback_props,
+                    paths: fallback_paths,
+                }) = icon_component_node(icon_props)
+                {
+                    props.view_box = fallback_props.view_box;
+                    *paths = fallback_paths;
+                }
+            }
+            _ => {
+                for group in node_child_groups_mut(node) {
+                    for child in group {
+                        visit(child, values, locals);
+                    }
+                }
+            }
+        }
+    }
+
+    visit(tree, &HashMap::new(), &HashMap::new());
+}
+
+fn validate_navigation(pages: &[Arc<ViewPage>]) -> DoweResult<()> {
     let mut sections_by_path = HashMap::new();
     for page in pages {
         sections_by_path.insert(

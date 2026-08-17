@@ -14,10 +14,23 @@ fn render_swift_text_svg_alert_node(
             append_swift_modifiers(output, indent, &swift_modifiers_for_divider(props, flow));
         }
         ViewNode::Title { props, value } => {
-            output.push_str(&format!(
-                "{pad}Text({})\n",
-                swift_visible_text_expression(value, props.i18n.as_deref(), context)
-            ));
+            let text_expression = props
+                .align
+                .as_ref()
+                .map(|align| {
+                    format!(
+                        "doweText({}, alignment: {})",
+                        swift_visible_text_value_expression(value, props.i18n.as_deref(), context),
+                        swift_dowe_text_alignment(align)
+                    )
+                })
+                .unwrap_or_else(|| {
+                    format!(
+                        "Text({})",
+                        swift_visible_text_expression(value, props.i18n.as_deref(), context)
+                    )
+                });
+            output.push_str(&format!("{pad}{text_expression}\n"));
             let modifiers = swift_modifiers_for_text(
                 true,
                 props,
@@ -27,10 +40,23 @@ fn render_swift_text_svg_alert_node(
             append_swift_modifiers(output, indent, &modifiers);
         }
         ViewNode::Text { props, value } => {
-            output.push_str(&format!(
-                "{pad}Text({})\n",
-                swift_visible_text_expression(value, props.i18n.as_deref(), context)
-            ));
+            let text_expression = props
+                .align
+                .as_ref()
+                .map(|align| {
+                    format!(
+                        "doweText({}, alignment: {})",
+                        swift_visible_text_value_expression(value, props.i18n.as_deref(), context),
+                        swift_dowe_text_alignment(align)
+                    )
+                })
+                .unwrap_or_else(|| {
+                    format!(
+                        "Text({})",
+                        swift_visible_text_expression(value, props.i18n.as_deref(), context)
+                    )
+                });
+            output.push_str(&format!("{pad}{text_expression}\n"));
             let modifiers = swift_modifiers_for_text(
                 false,
                 props,
@@ -103,10 +129,7 @@ fn render_swift_text_svg_alert_node(
             if let Some(data) = props.data.as_deref() {
                 let payload = if let Some(item) = context.item_value(data) {
                     let path = context.item_path(data).unwrap_or_else(|| data.to_string());
-                    format!(
-                        "state.json(\"{}\", item: {item})",
-                        escape_swift(&path)
-                    )
+                    format!("state.json(\"{}\", item: {item})", escape_swift(&path))
                 } else {
                     format!(
                         "state.json(\"{}\")",
@@ -116,6 +139,32 @@ fn render_swift_text_svg_alert_node(
                 output.push_str(&format!(
                     "{pad}DoweRuntimeSvgView(payload: {payload}, color: {}, animated: {})\n",
                     swift_svg_color(&props.style),
+                    props.is_animated()
+                ));
+                append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
+                return;
+            }
+            if let Some(name) = props.icon_name.as_deref() {
+                let name = if let Some(item) = context.item_value(name) {
+                    let path = context.item_path(name).unwrap_or_else(|| name.to_string());
+                    format!("state.text(\"{}\", item: {item})", escape_swift(&path))
+                } else {
+                    format!(
+                        "state.text(\"{}\")",
+                        escape_swift(&context.signal_path(name))
+                    )
+                };
+                let fallback =
+                    swift_string_literal(props.icon_fallback.as_deref().unwrap_or_default());
+                let color = props
+                    .icon_fill
+                    .or(props.icon_stroke)
+                    .map(color_ref)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| swift_svg_color(&props.style));
+                output.push_str(&format!(
+                    "{pad}DoweRuntimeSvgView(payload: DoweDynamicIconCatalog[{name}] ?? DoweDynamicIconCatalog[{fallback}] ?? \"\", color: {}, animated: {})\n",
+                    color,
                     props.is_animated()
                 ));
                 append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));

@@ -37,7 +37,7 @@ fn diagnostics_validate_native_test_documents() {
     let root = tempdir().expect("root");
     let valid = LanguageDocument {
         path: root.path().join("verification/release.dowe"),
-        source: "test \"metadata\"\n  assert true value:true\n  assert false value:false\n  assert equal actual:[1, 2] expected:[1, 2]\n".to_string(),
+        source: "test \"metadata\"\n  assert true value:true\n  assert false value:false\n  assert equal actual:[1 2] expected:[1 2]\n".to_string(),
     };
     let invalid = LanguageDocument {
         path: root.path().join("verification/invalid.dowe"),
@@ -83,7 +83,7 @@ fn formatter_keeps_multiple_imports_in_one_declaration() {
 #[test]
 fn formatter_preserves_main_views_reference_syntax() {
     let source =
-        "main\n  app name:\"Dowe\" bundle:\"dev.dowe.web\"\n  views:[siteRoutes, docsRoutes]\n";
+        "main\n  app name:\"Dowe\" bundle:\"dev.dowe.web\"\n  views:[siteRoutes docsRoutes]\n";
     let path = Path::new("/project/main.dowe");
 
     let formatted = format_document(Path::new("/project"), path, source).expect("format");
@@ -93,6 +93,20 @@ fn formatter_preserves_main_views_reference_syntax() {
         source
     );
     assert!(!formatted.contains("views views:"));
+}
+
+#[test]
+fn formatter_canonicalizes_comma_separated_arrays() {
+    let path = Path::new("/project/main.dowe");
+    let source = "main\n  views:[siteRoutes, docsRoutes]\n";
+
+    let formatted = format_document(Path::new("/project"), path, source).expect("format");
+
+    assert_eq!(formatted, "main\n  views:[siteRoutes docsRoutes]\n");
+    assert_eq!(
+        format_document(Path::new("/project"), path, &formatted).expect("format twice"),
+        formatted
+    );
 }
 
 #[test]
@@ -376,7 +390,7 @@ fn formatter_expands_nested_multiline_values() {
 
     assert_eq!(
         formatted,
-        "page canvasPage\n  signal gameScene:\n    value:[\n      {\n        type:\"rect\"\n        x:0\n        y:0\n        width:640\n        height:360\n        fill:\"background\"\n      },\n      {\n        type:\"circle\"\n        x:40\n        y:50\n        radius:2\n        fill:\"backgroundText\"\n        opacity:0.5\n        motion:{ vx:-18 wrap:true }\n      },\n    ]\n"
+        "page canvasPage\n  signal gameScene:\n    value:[\n      {\n        type:\"rect\"\n        x:0\n        y:0\n        width:640\n        height:360\n        fill:\"background\"\n      }\n      {\n        type:\"circle\"\n        x:40\n        y:50\n        radius:2\n        fill:\"backgroundText\"\n        opacity:0.5\n        motion:{ vx:-18 wrap:true }\n      }\n    ]\n"
     );
     assert_eq!(
         format_document(
@@ -743,7 +757,7 @@ fn diagnostics_accept_text_typography_props() {
     fs::create_dir_all(root.path().join("pages")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("pages/login.dowe"),
-        source: "page loginPage\n  Text size:\"md\" color:\"primaryText\" i18n:\"auth.login.title\"\n    \"Login\"\n".to_string(),
+        source: "page loginPage\n  Text size:\"md\" align:\"center\" color:\"primaryText\" i18n:\"auth.login.title\"\n    \"Login\"\n".to_string(),
     };
 
     let diagnostics = analyze_document(root.path(), &document);
@@ -751,6 +765,32 @@ fn diagnostics_accept_text_typography_props() {
     assert!(
         diagnostics.is_empty(),
         "unexpected diagnostics: {diagnostics:?}"
+    );
+
+    let alignment_document = LanguageDocument {
+        path: root.path().join("pages/alignment.dowe"),
+        source: "page alignmentPage\n  Text align:\n    \"Color\"\n".to_string(),
+    };
+    let alignment_completions = complete_document(root.path(), &alignment_document, 2, 14);
+    assert!(
+        alignment_completions
+            .iter()
+            .any(|item| item.label == "\"start\"")
+    );
+    assert!(
+        alignment_completions
+            .iter()
+            .any(|item| item.label == "\"center\"")
+    );
+    assert!(
+        alignment_completions
+            .iter()
+            .any(|item| item.label == "\"end\"")
+    );
+    assert!(
+        alignment_completions
+            .iter()
+            .any(|item| item.label == "\"justify\"")
     );
 
     let completion_document = LanguageDocument {
@@ -1151,12 +1191,12 @@ fn language_support_recognizes_view_constants() {
     let root = tempdir().expect("root");
     let document = LanguageDocument {
         path: root.path().join("pages/catalog.dowe"),
-        source: "page catalog\n  const plan value:{ name:\"Starter\" }\n  Text\n    plan.\n"
+        source: "page catalog\n  Grid\n    const plan value:{ name:\"Starter\" }\n    Text\n      plan.\n"
             .to_string(),
     };
     let base = complete_document(root.path(), &document, 1, 1);
     assert!(base.iter().any(|item| item.label == "const"));
-    let fields = complete_document(root.path(), &document, 4, "    plan.".len() + 1);
+    let fields = complete_document(root.path(), &document, 5, "      plan.".len() + 1);
     assert!(fields.iter().any(|item| item.label == "name"));
     assert!(
         document_symbols(root.path(), &document)
@@ -1165,7 +1205,7 @@ fn language_support_recognizes_view_constants() {
             .any(|symbol| symbol.name == "const plan")
     );
     assert!(
-        hover_at(root.path(), &document, 2, 4).is_some_and(|hover| hover.contains("immutable"))
+        hover_at(root.path(), &document, 3, 6).is_some_and(|hover| hover.contains("immutable"))
     );
 }
 
@@ -1667,6 +1707,8 @@ fn completions_include_current_view_component_props() {
 
     let section_props = complete_document(Path::new("/project"), &document, 3, 11);
     assert!(section_props.iter().any(|item| item.label == "background"));
+    assert!(section_props.iter().any(|item| item.label == "center"));
+    assert!(section_props.iter().any(|item| item.label == "gap"));
     assert!(section_props.iter().any(|item| item.label == "boxed"));
     assert!(section_props.iter().any(|item| item.label == "cover"));
     assert!(section_props.iter().any(|item| item.label == "color"));
@@ -1810,6 +1852,25 @@ fn completions_include_current_view_component_props() {
 }
 
 #[test]
+fn completions_include_container_width_values() {
+    let document = LanguageDocument {
+        path: Path::new("/project/pages/widths.dowe").to_path_buf(),
+        source: "page widthsPage\n  Box w:\n".to_string(),
+    };
+    let completions = complete_document(Path::new("/project"), &document, 2, 9);
+    for value in [
+        "full", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl",
+    ] {
+        assert!(
+            completions
+                .iter()
+                .any(|item| item.label == format!("\"{value}\"")),
+            "missing width value {value}"
+        );
+    }
+}
+
+#[test]
 fn completions_and_diagnostics_support_box_positioning() {
     let root = tempdir().expect("tempdir");
     fs::create_dir_all(root.path().join("pages")).expect("pages");
@@ -1849,6 +1910,34 @@ fn completions_include_section_boxed_boolean_values() {
     );
     assert!(values.iter().any(|item| item.label == "true"));
     assert!(values.iter().any(|item| item.label == "false"));
+}
+
+#[test]
+fn completions_include_section_center_boolean_values() {
+    let document = LanguageDocument {
+        path: Path::new("/project/pages/landing.dowe").to_path_buf(),
+        source: "page landingPage\n  Section center:\n".to_string(),
+    };
+
+    let values = complete_document(
+        Path::new("/project"),
+        &document,
+        2,
+        "  Section center:".len() + 1,
+    );
+    assert!(values.iter().any(|item| item.label == "true"));
+    assert!(values.iter().any(|item| item.label == "false"));
+}
+
+#[test]
+fn completions_include_section_gap_prop() {
+    let document = LanguageDocument {
+        path: Path::new("/project/pages/landing.dowe").to_path_buf(),
+        source: "page landingPage\n  Section \n".to_string(),
+    };
+
+    let values = complete_document(Path::new("/project"), &document, 2, "  Section ".len() + 1);
+    assert!(values.iter().any(|item| item.label == "gap"));
 }
 
 #[test]
@@ -2242,10 +2331,18 @@ fn completions_include_display_overlay_component_props_and_values() {
     assert!(chip_variant.iter().any(|item| item.label == "\"ghost\""));
 
     let chip_start_icon = complete_document(root, &document, 7, "  Chip startIcon:".len() + 1);
-    assert!(chip_start_icon.iter().any(|item| item.label == "\"settings\""));
+    assert!(
+        chip_start_icon
+            .iter()
+            .any(|item| item.label == "\"settings\"")
+    );
 
     let chip_end_icon = complete_document(root, &document, 8, "  Chip endIcon:".len() + 1);
-    assert!(chip_end_icon.iter().any(|item| item.label == "\"magnifier\""));
+    assert!(
+        chip_end_icon
+            .iter()
+            .any(|item| item.label == "\"magnifier\"")
+    );
 
     let skeleton_variant = complete_document(root, &document, 9, "  Skeleton variant:".len() + 1);
     assert!(
@@ -2961,6 +3058,7 @@ fn server_constructs_and_portable_utilities_have_editor_documentation() {
     let constructs = [
         "main",
         "server",
+        "databases",
         "tls",
         "endpoints",
         "route",

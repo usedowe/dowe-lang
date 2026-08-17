@@ -206,11 +206,9 @@ fn parse_array(path: &Path, line: usize, column: usize, source: &str) -> DoweRes
     }
 
     let body = &source[1..source.len() - 1];
-    let values = split_top_level_commas(body)
+    let values = split_top_level_array_items(body, column + 1)?
         .into_iter()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(|value| parse_value(path, line, column, value))
+        .map(|token| parse_value(path, line, token.column, &token.text))
         .collect::<DoweResult<Vec<_>>>()?;
     Ok(SourceValue::Array(values))
 }
@@ -261,15 +259,37 @@ fn parse_object(path: &Path, line: usize, column: usize, source: &str) -> DoweRe
     Ok(SourceValue::Object(entries))
 }
 
-fn split_top_level_commas(source: &str) -> Vec<&str> {
-    let mut parts = Vec::new();
-    let mut start = 0usize;
+fn split_top_level_array_items(source: &str, base_column: usize) -> DoweResult<Vec<SourceToken>> {
+    let mut tokens = Vec::new();
+    let mut start = None;
     let mut brace_depth = 0usize;
     let mut bracket_depth = 0usize;
     let mut string_delimiter = None;
     let mut escaped = false;
+    let mut multiline_string = false;
+
+    let mut push_token = |end: usize, start: &mut Option<usize>| {
+        if let Some(open) = start.take() {
+            let text = source[open..end].trim();
+            if !text.is_empty() {
+                let offset = source[open..].find(text).unwrap_or(0);
+                tokens.push(SourceToken {
+                    column: base_column + open + offset + 1,
+                    text: text.to_string(),
+                });
+            }
+        }
+    };
 
     for (index, value) in source.char_indices() {
+        if source[index..].starts_with("\"\"\"") {
+            start.get_or_insert(index);
+            multiline_string = !multiline_string;
+            continue;
+        }
+        if multiline_string {
+            continue;
+        }
         if let Some(delimiter) = string_delimiter {
             if escaped {
                 escaped = false;
@@ -282,21 +302,36 @@ fn split_top_level_commas(source: &str) -> Vec<&str> {
         }
 
         match value {
-            '"' => string_delimiter = Some(value),
-            '{' => brace_depth += 1,
-            '}' => brace_depth = brace_depth.saturating_sub(1),
-            '[' => bracket_depth += 1,
-            ']' => bracket_depth = bracket_depth.saturating_sub(1),
-            ',' if brace_depth == 0 && bracket_depth == 0 => {
-                parts.push(&source[start..index]);
-                start = index + 1;
+            '"' => {
+                start.get_or_insert(index);
+                string_delimiter = Some(value);
             }
-            _ => {}
+            '{' => {
+                start.get_or_insert(index);
+                brace_depth += 1;
+            }
+            '}' => brace_depth = brace_depth.saturating_sub(1),
+            '[' => {
+                start.get_or_insert(index);
+                bracket_depth += 1;
+            }
+            ']' => bracket_depth = bracket_depth.saturating_sub(1),
+            ',' if brace_depth == 0 && bracket_depth == 0 => push_token(index, &mut start),
+            value if value.is_whitespace() && brace_depth == 0 && bracket_depth == 0 => {
+                push_token(index, &mut start);
+            }
+            _ => {
+                start.get_or_insert(index);
+            }
         }
     }
 
-    parts.push(&source[start..]);
-    parts
+    if string_delimiter.is_some() || multiline_string {
+        return Err(DoweError::new("missing string closing quote"));
+    }
+
+    push_token(source.len(), &mut start);
+    Ok(tokens)
 }
 
 fn is_numeric_literal(value: &str) -> bool {
@@ -318,4 +353,66 @@ fn is_numeric_literal(value: &str) -> bool {
         }
     }
     digit_seen
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_value;
+    use crate::parser::source_ast::{SourceObjectEntry, SourceValue};
+    use std::path::Path;
+
+    #[test]
+    fn parses_whitespace_separated_arrays() {
+        let value = parse_value(
+            Path::new("/project/main.dowe"),
+            1,
+            1,
+            "[\"GET\" \"POST\" PATCH]",
+        )
+        .expect("array");
+
+        assert_eq!(
+            value,
+            SourceValue::Array(vec![
+                SourceValue::String("GET".to_string()),
+                SourceValue::String("POST".to_string()),
+                SourceValue::Bareword("PATCH".to_string()),
+            ])
+        );
+        assert_eq!(value.to_source(), "[\"GET\" \"POST\" PATCH]");
+    }
+
+    #[test]
+    fn preserves_nested_array_and_object_boundaries() {
+        let value = parse_value(
+            Path::new("/project/main.dowe"),
+            1,
+            1,
+            "[{ name:\"one, two\" values:[1 2] } { name:\"two\" values:[3 4] }]",
+        )
+        .expect("nested array");
+
+        let SourceValue::Array(items) = value else {
+            panic!("expected array");
+        };
+        assert_eq!(items.len(), 2);
+        assert!(matches!(
+            items[0],
+            SourceValue::Object(ref entries)
+                if entries.iter().any(|entry| matches!(
+                    entry,
+                    SourceObjectEntry::KeyValue { key, value }
+                        if key == "values"
+                            && matches!(value, SourceValue::Array(values) if values.len() == 2)
+                ))
+        ));
+    }
+
+    #[test]
+    fn accepts_comma_separated_migration_arrays() {
+        let value =
+            parse_value(Path::new("/project/main.dowe"), 1, 1, "[1, 2,]").expect("legacy array");
+
+        assert_eq!(value.to_source(), "[1 2]");
+    }
 }

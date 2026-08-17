@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use dowe_database_query::SelectQuery;
 use dowe_stdlib::StdlibCall;
+use serde::Serialize;
 
 pub use dowe_components::{
     DesignConfig, FontConfig, TranslationCatalog, ViewMetadata, ViewNode, ViewRoute,
@@ -22,11 +23,146 @@ pub struct CompiledProject {
     pub backend: ServerConfig,
     pub desktop_server: Option<ServerConfig>,
     pub databases: Vec<DatabaseBinding>,
+    pub server_inspector: Option<ServerInspectorManifest>,
     pub local_databases: bool,
     pub web: WebOutput,
     pub desktop_web: WebOutput,
     pub view_routes: ViewTargetRoutes,
     pub apps: AppOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorManifest {
+    pub schema_version: u32,
+    pub port: u16,
+    pub routes: Vec<ServerInspectorRoute>,
+    pub websockets: Vec<ServerInspectorWebSocket>,
+    pub nodes: Vec<ServerInspectorNode>,
+    pub edges: Vec<ServerInspectorEdge>,
+    pub resources: Vec<ServerInspectorResource>,
+    pub entities: Vec<ServerInspectorEntity>,
+    pub jobs: Vec<ServerInspectorJob>,
+    pub services: Vec<ServerInspectorService>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorSource {
+    pub path: String,
+    pub line: usize,
+    pub end_line: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorRoute {
+    pub id: String,
+    pub method: String,
+    pub path: String,
+    pub behavior: String,
+    pub source: Option<ServerInspectorSource>,
+    pub handler: Option<String>,
+    pub parameters: Vec<ServerInspectorParameter>,
+    pub headers: Vec<ServerInspectorHeader>,
+    pub body: Option<ServerInspectorBody>,
+    pub middleware: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorWebSocket {
+    pub id: String,
+    pub path: String,
+    pub source: Option<ServerInspectorSource>,
+    pub middleware: Vec<String>,
+    pub message_format: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorParameter {
+    pub name: String,
+    pub location: String,
+    pub required: bool,
+    pub field_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorHeader {
+    pub name: String,
+    pub required: bool,
+    pub sensitive: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorBody {
+    pub content_type: String,
+    pub required: bool,
+    pub fields: Vec<ServerInspectorBodyField>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorBodyField {
+    pub name: String,
+    pub field_type: String,
+    pub required: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorNode {
+    pub id: String,
+    pub kind: String,
+    pub label: String,
+    pub source: Option<ServerInspectorSource>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorEdge {
+    pub from: String,
+    pub to: String,
+    pub relation: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorResource {
+    pub id: String,
+    pub kind: String,
+    pub binding: String,
+    pub provider: String,
+    pub operations: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorEntity {
+    pub id: String,
+    pub binding: String,
+    pub database: String,
+    pub table: String,
+    pub fields: Vec<String>,
+    pub field_details: Vec<ServerInspectorEntityField>,
+    pub provider: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorEntityField {
+    pub name: String,
+    pub field_type: String,
+    pub primary: bool,
+    pub required: bool,
+    pub unique: bool,
+    pub index: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorJob {
+    pub id: String,
+    pub kind: String,
+    pub target: Option<String>,
+    pub schedule: Option<String>,
+    pub source: Option<ServerInspectorSource>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ServerInspectorService {
+    pub kind: String,
+    pub enabled: bool,
+    pub endpoint: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,6 +279,7 @@ pub enum EnvironmentValueSource {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerConfig {
     pub port: u16,
+    pub databases: Vec<StoreConnection>,
     pub tls: Option<TlsConfig>,
     pub endpoints: Vec<Endpoint>,
     pub websockets: Vec<WebSocketRoute>,
@@ -203,6 +340,7 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             port: 8080,
+            databases: Vec::new(),
             tls: None,
             endpoints: Vec::new(),
             websockets: Vec::new(),
@@ -1495,6 +1633,7 @@ mod tests {
     fn matches_dynamic_routes() {
         let server = ServerConfig {
             port: 8080,
+            databases: Vec::new(),
             tls: None,
             endpoints: vec![Endpoint {
                 method: HttpMethod::Get,
@@ -1526,6 +1665,7 @@ mod tests {
     fn matches_final_splat_routes() {
         let server = ServerConfig {
             port: 8080,
+            databases: Vec::new(),
             tls: None,
             endpoints: vec![Endpoint {
                 method: HttpMethod::Get,

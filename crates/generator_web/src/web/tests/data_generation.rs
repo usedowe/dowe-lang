@@ -456,6 +456,43 @@ fn emits_text_weight_override_css() {
 }
 
 #[test]
+fn emits_text_alignment_css() {
+    let root = Path::new("/project");
+    let page_tree = ViewNode::Text {
+        props: TextProps {
+            align: Some(ResponsiveValue::ordered(vec![
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Xs,
+                    value: TextAlign::Center,
+                },
+                ResponsiveEntry {
+                    breakpoint: Breakpoint::Lg,
+                    value: TextAlign::End,
+                },
+            ])),
+            ..Default::default()
+        },
+        value: "Aligned".to_string(),
+    };
+    let page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &page_tree,
+    );
+    assert!(page.content.contains("text-align-center"));
+    assert!(page.content.contains("lg:text-align-end"));
+    assert!(
+        page.css_content
+            .contains(".text-align-center{text-align:center;}")
+    );
+    assert!(
+        page.css_content
+            .contains(".lg\\:text-align-end{text-align:end;}")
+    );
+}
+
+#[test]
 fn emits_show_visibility_markup_and_css() {
     let root = Path::new("/project");
     let page_tree = show_tree();
@@ -492,6 +529,7 @@ fn emits_design_responsive_css_in_ascending_breakpoint_blocks() {
         &Default::default(),
         &FontConfig::default(),
         &DesignConfig::default(),
+        false,
         false,
     );
     let base_end = css.find("@keyframes dowe-scale-in").unwrap();

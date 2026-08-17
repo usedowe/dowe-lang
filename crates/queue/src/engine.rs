@@ -185,6 +185,32 @@ impl DoweQueue {
         })
     }
 
+    pub fn inspect_messages(&self, queue: &str, limit: usize) -> QueueResult<Vec<QueueMessage>> {
+        validate_queue_name(queue)?;
+        let state = self.lock_state()?;
+        let queue_state = state
+            .queues
+            .get(queue)
+            .ok_or_else(|| QueueError::QueueNotFound("Queue does not exist".to_string()))?;
+        let limit = limit.clamp(1, 100);
+        let mut messages = queue_state
+            .ready
+            .iter()
+            .take(limit)
+            .cloned()
+            .collect::<Vec<_>>();
+        if messages.len() < limit {
+            messages.extend(
+                queue_state
+                    .in_flight
+                    .values()
+                    .take(limit.saturating_sub(messages.len()))
+                    .map(|delivery| delivery.message.clone()),
+            );
+        }
+        Ok(messages)
+    }
+
     pub fn purge(&self, queue: &str) -> QueueResult<PurgeReport> {
         validate_queue_name(queue)?;
         let mut state = self.lock_state()?;

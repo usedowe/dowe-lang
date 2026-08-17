@@ -35,14 +35,17 @@ fn generated_views(
     ]
     .concat();
     output = output.replace("__DOWE_DESIGN__", &android_design_block(design_config));
-    output = output.replace(
-        "__DOWE_PHONE_COUNTRIES__",
-        &compose_phone_country_catalog(),
-    );
+    output = output.replace("__DOWE_PHONE_COUNTRIES__", &compose_phone_country_catalog());
     output = output.replace(
         "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__",
         SIDE_NAV_SUBMENU_ARROW_PATH,
     );
+    if routes.iter().any(|route| {
+        dowe_components::tree_has_dynamic_icon(&route.layout_tree)
+            || dowe_components::tree_has_dynamic_icon(&route.page_tree)
+    }) {
+        output.insert_str(0, &android_dynamic_icon_runtime());
+    }
     replace_android_font_support(&mut output, font_config, font_families);
 
     if routes.first().is_some() {
@@ -129,7 +132,7 @@ fn generated_views(
                 }
 "#,
         );
-    output.push_str("            }\n        }\n        }\n    }\n");
+        output.push_str("            }\n        }\n        }\n    }\n");
     } else {
         output.push_str("    Column {\n    }\n");
     }
@@ -139,9 +142,7 @@ fn generated_views(
     output.push_str(&compose_route_dispatcher(routes));
 
     for (route_index, route) in routes.iter().enumerate() {
-        output.push_str(&format!(
-            "\nprivate object DowePageShard{route_index} {{\n"
-        ));
+        output.push_str(&format!("\nprivate object DowePageShard{route_index} {{\n"));
         output.push('\n');
         output.push_str("@Composable\n");
         output.push_str(&format!(
@@ -229,13 +230,32 @@ fn generated_views(
     extract_compose_svg_path_helpers(output)
 }
 
+fn android_dynamic_icon_runtime() -> String {
+    let entries = dowe_components::runtime_icon_catalog_shared()
+        .expect("validated runtime icon catalog")
+        .iter()
+        .map(|(name, payload)| {
+            format!(
+                "    {} to {},",
+                compose_string_literal(&name),
+                compose_string_literal(&payload)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!(
+        "\nprivate val DoweDynamicIconCatalog = mapOf(\n{entries}\n)\n\n@Composable\nprivate fun DoweDynamicIcon(name: String, fallback: String, modifier: Modifier, color: Color, animated: Boolean = false) {{\n    DoweRuntimeSvg(payload = DoweDynamicIconCatalog[name] ?: DoweDynamicIconCatalog[fallback] ?: \"\", modifier = modifier, color = color, animated = animated)\n}}\n"
+    )
+}
+
 fn compose_route_dispatcher(routes: &[ViewRoute]) -> String {
     const ROUTES_PER_GROUP: usize = 24;
     if routes.is_empty() {
         return String::new();
     }
     let parameters = "path: String, viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, navigate: (String, String, String?) -> Unit, goBack: () -> Unit, openExternal: (String, String) -> Unit";
-    let arguments = "path, viewportWidth, scrollState, sectionRegistry, navigate, goBack, openExternal";
+    let arguments =
+        "path, viewportWidth, scrollState, sectionRegistry, navigate, goBack, openExternal";
     let mut output = format!(
         "\n@Composable\nprivate fun DoweRouteDispatcher({parameters}) {{\n    when ((DoweRoutes.paths.indexOf(path).coerceAtLeast(0)) / {ROUTES_PER_GROUP}) {{\n"
     );
