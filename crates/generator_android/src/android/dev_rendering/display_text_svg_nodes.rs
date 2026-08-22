@@ -54,7 +54,7 @@ fn render_dev_android_display_text_svg_node(
                 dev_text_line_height(true, props),
                 dev_font_value(props.style.font.as_ref().or(inherited_font))
             ));
-            apply_dev_android_style(&props.style, &view, false, output);
+            apply_dev_android_style(&props.style, &view, true, output);
             apply_dev_text_alignment(props, &view, parent_horizontal, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
@@ -70,7 +70,7 @@ fn render_dev_android_display_text_svg_node(
                 dev_text_line_height(false, props),
                 dev_font_value(props.style.font.as_ref().or(inherited_font))
             ));
-            apply_dev_android_style(&props.style, &view, false, output);
+            apply_dev_android_style(&props.style, &view, true, output);
             apply_dev_text_alignment(props, &view, parent_horizontal, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }

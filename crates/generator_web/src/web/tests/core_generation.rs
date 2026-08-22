@@ -58,7 +58,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
             .contains(".color-primaryText{color:var(--dowe-primaryText);}")
     );
     assert!(page.css_content.contains(
-        ".card.is-soft.is-muted{--dowe-content-text:var(--dowe-softMutedText);--dowe-content-title:var(--dowe-softMutedTitle);background-color:var(--dowe-softMuted);color:var(--dowe-softMutedText);border-color:var(--dowe-softMuted);}"
+        ".card.is-soft.is-muted{--dowe-content-text:var(--dowe-mutedText);--dowe-content-title:var(--dowe-mutedTitle);background-color:var(--dowe-muted);color:var(--dowe-mutedText);border-color:var(--dowe-muted);}"
     ));
 }
 
@@ -515,13 +515,12 @@ fn preserves_multiline_text_in_one_paragraph() {
         &tree,
     );
     let html = render_page_body(&ViewNode::Children, &tree);
-    let css = super::design_css_for_trees(
-        [&tree],
-        &FontConfig::default(),
-        &DesignConfig::default(),
-    );
+    let css =
+        super::design_css_for_trees([&tree], &FontConfig::default(), &DesignConfig::default());
 
-    assert!(html.contains("<p class=\"dowe-title title-md\">Full-stack development,\nfrom one codebase</p>"));
+    assert!(html.contains(
+        "<p class=\"dowe-title title-md\">Full-stack development,\nfrom one codebase</p>"
+    ));
     assert!(css.contains("white-space:pre-line;"));
     assert!(page.content.contains("Full-stack development"));
 }
@@ -536,7 +535,7 @@ fn renders_section_markup_and_background_css() {
             background: Some(ResponsiveValue::ordered(vec![
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Xs,
-                    value: SectionBackground::Soft,
+                    value: SectionBackground::Slate,
                 },
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Md,
@@ -562,12 +561,12 @@ fn renders_section_markup_and_background_css() {
     ));
     assert!(!html.contains("<section class=\"section is-boxed"));
     assert!(html.contains(
-        "section color-backgroundText has-background background-soft md:background-aurora"
+        "section color-backgroundText has-background background-slate md:background-aurora"
     ));
     assert!(page.css_content.contains(
-        "background-image:linear-gradient(135deg,var(--dowe-surface),var(--dowe-background));"
+        "background-image:linear-gradient(135deg,var(--dowe-muted),var(--dowe-surface),var(--dowe-background));"
     ));
-    assert!(page.css_content.contains("background-image:linear-gradient(135deg,var(--dowe-softPrimary),var(--dowe-softSecondary),var(--dowe-softTertiary));"));
+    assert!(page.css_content.contains("background-image:linear-gradient(135deg,var(--dowe-primary),var(--dowe-secondary),var(--dowe-tertiary));"));
     assert!(page.css_content.contains("@media (min-width:768px)"));
     let base_vertical_padding = page
         .css_content
@@ -584,10 +583,244 @@ fn renders_section_markup_and_background_css() {
 }
 
 #[test]
+fn makes_height_bounded_section_body_available_to_full_height_children() {
+    let page_tree = ViewNode::Section {
+        props: StyleProps {
+            sizing: dowe_components::SizingProps {
+                min_h: Some(ResponsiveValue::scalar(SizeValue::ViewportMinus(
+                    ScaleValue::from_half_steps(0),
+                ))),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![ViewNode::Grid {
+            props: GridProps {
+                columns: Some(ResponsiveValue::scalar(GridTracks::Count(1))),
+                style: StyleProps {
+                    sizing: dowe_components::SizingProps {
+                        min_h: Some(ResponsiveValue::scalar(SizeValue::Full)),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![text("Grid")],
+        }],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/login.dowe"),
+        "page loginPage",
+        &page_tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+
+    assert!(html.contains("min-h-vh-0"));
+    assert!(html.contains("section-body section-body-has-height px-4 md:px-6 py-10 md:py-16"));
+    assert!(html.contains("min-h-full"));
+    assert!(page.css_content.contains(".min-h-full"));
+    let design_css = super::design_css();
+    assert!(design_css.contains(
+        ".section{--dowe-component-display:flex;display:var(--dowe-show,var(--dowe-component-display));flex-direction:column;}"
+    ));
+    assert!(design_css.contains(".section-body{flex:1 1 auto;min-height:0;}"));
+    assert!(design_css.contains(
+        ".section-body-has-height>.h-full,.section-body-has-height>.min-h-full{flex:1 1 auto;min-height:0;}"
+    ));
+}
+
+#[test]
+fn emits_responsive_flex_item_classes_without_changing_grid_child_layout() {
+    let flex = ResponsiveValue::ordered(vec![
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Xs,
+            value: dowe_components::FlexItem::Fill,
+        },
+        ResponsiveEntry {
+            breakpoint: Breakpoint::Md,
+            value: dowe_components::FlexItem::None,
+        },
+    ]);
+    let tree = ViewNode::Section {
+        props: StyleProps {
+            sizing: dowe_components::SizingProps {
+                h: Some(ResponsiveValue::scalar(SizeValue::ViewportMinus(
+                    ScaleValue::from_half_steps(0),
+                ))),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![ViewNode::Grid {
+            props: GridProps {
+                style: StyleProps {
+                    flex: Some(flex.clone()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![ViewNode::Grid {
+                props: GridProps {
+                    style: StyleProps {
+                        flex: Some(flex),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                children: vec![text("Grid item")],
+            }],
+        }],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/flex.dowe"),
+        "page flexPage",
+        &tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &tree);
+
+    assert_eq!(html.matches("flex-1 md:flex-none").count(), 2);
+    assert!(page.css_content.contains(".flex-1{flex:1 1 0%;}"));
+    assert!(page.css_content.contains(".md\\:flex-none{flex:0 0 auto;}"));
+    assert!(super::design_css().contains(
+        ".grid{--dowe-component-display:grid;display:var(--dowe-show,var(--dowe-component-display));"
+    ));
+}
+
+#[test]
+fn emits_responsive_auto_and_full_height_constraints_for_containers() {
+    let sizing = dowe_components::SizingProps {
+        h: Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: SizeValue::Auto,
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: SizeValue::Full,
+            },
+        ])),
+        min_h: Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: SizeValue::Auto,
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: SizeValue::Full,
+            },
+        ])),
+        max_h: Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: SizeValue::Auto,
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: SizeValue::Full,
+            },
+        ])),
+        ..Default::default()
+    };
+    let tree = ViewNode::Children;
+    let page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![
+            ViewNode::Box {
+                props: StyleProps {
+                    sizing: sizing.clone(),
+                    ..Default::default()
+                },
+                children: Vec::new(),
+            },
+            ViewNode::Section {
+                props: StyleProps {
+                    sizing: sizing.clone(),
+                    ..Default::default()
+                },
+                children: Vec::new(),
+            },
+            ViewNode::Grid {
+                props: GridProps {
+                    style: StyleProps {
+                        sizing,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                children: Vec::new(),
+            },
+        ],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/heights.dowe"),
+        "page heightsPage",
+        &page_tree,
+    );
+    let html = render_page_body(&tree, &page_tree);
+
+    assert_eq!(html.matches(" h-auto").count(), 3);
+    assert_eq!(html.matches(" md:h-full").count(), 3);
+    assert_eq!(html.matches(" min-h-auto").count(), 3);
+    assert_eq!(html.matches(" md:min-h-full").count(), 3);
+    assert_eq!(html.matches(" max-h-auto").count(), 3);
+    assert_eq!(html.matches(" md:max-h-full").count(), 3);
+    assert!(page.css_content.contains(".h-auto{height:auto;}"));
+    assert!(page.css_content.contains(".min-h-auto{min-height:auto;}"));
+    assert!(page.css_content.contains(".max-h-auto{max-height:auto;}"));
+    assert!(page.css_content.contains(".md\\:h-full{height:100%;}"));
+    assert!(
+        page.css_content
+            .contains(".md\\:min-h-full{min-height:100%;}")
+    );
+    assert!(
+        page.css_content
+            .contains(".md\\:max-h-full{max-height:100%;}")
+    );
+}
+
+#[test]
+fn renders_flex_defaults_with_full_width_and_auto_height() {
+    let page_tree = ViewNode::Flex {
+        props: dowe_components::LayoutProps {
+            justify: Some(ResponsiveValue::scalar(dowe_components::Justify::Center)),
+            align: Some(ResponsiveValue::scalar(dowe_components::Align::Center)),
+            ..Default::default()
+        },
+        children: vec![text("Flex")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &page_tree,
+    );
+
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+    let design_css = super::design_css();
+
+    assert!(html.contains("class=\"flex direction-row justify-center align-center\""));
+    assert!(design_css.contains(".flex{--dowe-component-display:flex;display:var(--dowe-show,var(--dowe-component-display));width:100%;height:auto;}"));
+    assert!(
+        page.css_content
+            .contains(".justify-center{justify-content:center;}")
+    );
+    assert!(
+        page.css_content
+            .contains(".align-center{align-items:center;}")
+    );
+}
+
+#[test]
 fn renders_responsive_section_centering_on_the_body() {
     let page_tree = ViewNode::Section {
         props: StyleProps {
-            center: Some(ResponsiveValue::ordered(vec![
+            center_x: Some(ResponsiveValue::ordered(vec![
                 ResponsiveEntry {
                     breakpoint: Breakpoint::Xs,
                     value: false,
@@ -610,15 +843,16 @@ fn renders_responsive_section_centering_on_the_body() {
 
     let html = render_page_body(&ViewNode::Children, &page_tree);
     assert!(html.contains(
-        "<div class=\"section-body section-center-false md:section-center-true px-4 md:px-6 py-10 md:py-16\">"
+        "<div class=\"section-body section-center-x-false md:section-center-x-true px-4 md:px-6 py-10 md:py-16\">"
     ));
     let design_css = super::design_css();
-    assert!(design_css
-        .contains(".section-body{display:flex;flex-direction:column;align-items:flex-start;}"));
-    assert!(design_css
-        .contains(".section-body.section-center-true{align-items:center;}"));
+    assert!(
+        design_css
+            .contains(".section-body{display:flex;flex-direction:column;align-items:flex-start;}")
+    );
+    assert!(design_css.contains(".section-body.section-center-x-true{align-items:center;}"));
     assert!(design_css.contains(
-        "@media (min-width:768px){.md\\:section-center-true{align-items:center;}.md\\:section-center-false{align-items:flex-start;}}"
+        "@media (min-width:768px){.md\\:section-center-x-true{align-items:center;}.md\\:section-center-x-false{align-items:flex-start;}.md\\:section-center-y-true{justify-content:center;}.md\\:section-center-y-false{justify-content:flex-start;}}"
     ));
 }
 
@@ -968,7 +1202,7 @@ fn emits_web_manifest_and_html_artifacts() {
     assert!(controls.contains("const above=bottom<Math.min(height,224)&&top>bottom"));
     assert!(
         web.router_js
-            .contains("scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\"})")
+            .contains("scrollIntoView({behavior:reduce?\"auto\":\"smooth\",block:\"start\",})")
     );
     assert!(
         web.router_js
@@ -1004,6 +1238,10 @@ fn emits_web_manifest_and_html_artifacts() {
             .contains("boundary.outerHTML=wrapPage(route,page.render())")
     );
     assert!(web.router_js.contains("window.__doweHotUpdate=hotUpdate"));
+    assert!(
+        web.router_js
+            .contains("document.head.insertBefore(replacement,current)")
+    );
     assert!(
         web.router_js
             .contains("fetch(versionedAsset(\"manifest.json\",version)")
@@ -1042,10 +1280,8 @@ fn emits_web_manifest_and_html_artifacts() {
         web.router_js
             .contains("document.head.insertBefore(link,next||null)")
     );
-    assert!(
-        web.router_js
-            .contains("return Promise.all(route.cssChunks.map(path=>loadCss(route,path")
-    );
+    assert!(web.router_js.contains("route.cssChunks"));
+    assert!(web.router_js.contains("loadCss(route"));
     assert!(
         web.router_js
             .contains("if(!document.querySelector('script[src=\"/_dowe/dev/client.js\"]'))return")
@@ -1094,6 +1330,29 @@ fn emits_web_manifest_and_html_artifacts() {
     );
 
     let previous = web.clone();
+    let page = Arc::make_mut(&mut web.pages[0]);
+    page.html_document = page.html_document.replacen(
+        r#"data-dowe-router type="module" src="/router.js""#,
+        r#"data-dowe-router type="module" src="/""#,
+        1,
+    );
+    assert!(
+        page.html_document
+            .contains(r#"data-dowe-router type="module" src="/""#)
+    );
+    super::prepare_incremental_dev_design_asset(
+        &mut web,
+        &previous,
+        &FontConfig::default(),
+        &DesignConfig::default(),
+    );
+    assert!(
+        web.pages[0]
+            .html_document
+            .contains(r#"data-dowe-router type="module" src="/router.js""#)
+    );
+
+    let previous = web.clone();
     let previous_router = previous.router_js.clone();
     Arc::make_mut(&mut web.pages[0]).page_chunk_id = "changed-page".to_string();
     super::prepare_incremental_dev_design_asset(
@@ -1105,6 +1364,219 @@ fn emits_web_manifest_and_html_artifacts() {
     assert_eq!(web.router_js, previous_router);
     assert!(web.router_js.contains("async function startRouter()"));
     assert!(web.router_js.contains("await syncDevRoutes()"));
+}
+
+#[test]
+fn incremental_artifacts_use_safe_names_when_prepared_names_are_empty() {
+    let web = super::WebOutput {
+        chunks: Vec::new(),
+        pages: vec![Arc::new(super::ViewPage {
+            id: "index".to_string(),
+            route_path: "/".to_string(),
+            source_path: Path::new("/project/views/pages/index.dowe").to_path_buf(),
+            layout_tree: ViewNode::Children,
+            page_tree: text("Index"),
+            body_html: "<p>Index</p>".to_string(),
+            html_document: String::new(),
+            layout_text: String::new(),
+            page_text: "Index".to_string(),
+            layout_chunk_id: String::new(),
+            page_chunk_id: String::new(),
+            layout_chunk_ids: Vec::new(),
+            js_chunks: Vec::new(),
+            css_chunks: Vec::new(),
+            runtime_chunks: Vec::new(),
+            design_file_name: String::new(),
+            router_file_name: String::new(),
+            boundaries: Vec::new(),
+            sections: Vec::new(),
+            navigation_actions: Vec::new(),
+            metadata: Vec::new(),
+        })],
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: "export {}".to_string(),
+    };
+
+    assert_eq!(web.design_file_name(), "design.css");
+    let update = super::web_artifact_update(&web, None, String::new());
+
+    assert!(
+        update
+            .files
+            .iter()
+            .any(|file| file.relative_path == Path::new("web/design.css"))
+    );
+    assert!(
+        update
+            .files
+            .iter()
+            .any(|file| file.relative_path == Path::new("web/router.js"))
+    );
+    assert!(
+        !update
+            .files
+            .iter()
+            .any(|file| file.relative_path == Path::new("web"))
+    );
+}
+
+#[test]
+fn incremental_artifacts_publish_each_active_page_design_name() {
+    let index = super::ViewPage {
+        id: "index".to_string(),
+        route_path: "/".to_string(),
+        source_path: Path::new("/project/views/pages/index.dowe").to_path_buf(),
+        layout_tree: ViewNode::Children,
+        page_tree: text("Index"),
+        body_html: "<p>Index</p>".to_string(),
+        html_document: String::new(),
+        layout_text: String::new(),
+        page_text: "Index".to_string(),
+        layout_chunk_id: String::new(),
+        page_chunk_id: String::new(),
+        layout_chunk_ids: Vec::new(),
+        js_chunks: Vec::new(),
+        css_chunks: Vec::new(),
+        runtime_chunks: Vec::new(),
+        design_file_name: "design.css".to_string(),
+        router_file_name: "router.js".to_string(),
+        boundaries: Vec::new(),
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+        metadata: Vec::new(),
+    };
+    let mut login = index.clone();
+    login.id = "login".to_string();
+    login.route_path = "/login".to_string();
+    login.source_path = Path::new("/project/views/pages/login.dowe").to_path_buf();
+    login.design_file_name = "design-hot-reload.css".to_string();
+    let previous = super::WebOutput {
+        chunks: Vec::new(),
+        pages: vec![Arc::new(index.clone())],
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: "export {}".to_string(),
+    };
+    let web = super::WebOutput {
+        chunks: Vec::new(),
+        pages: vec![Arc::new(index), Arc::new(login)],
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: "export {}".to_string(),
+    };
+
+    let update = super::web_artifact_update(&web, Some(&previous), "body{}".to_string());
+
+    for path in ["web/design.css", "web/design-hot-reload.css"] {
+        assert!(
+            update
+                .expected_paths
+                .iter()
+                .any(|expected| expected == Path::new(path)),
+            "missing {path}"
+        );
+    }
+    assert!(
+        update
+            .files
+            .iter()
+            .any(|file| file.relative_path == Path::new("web/design-hot-reload.css"))
+    );
+}
+
+#[test]
+fn incremental_design_preparation_repairs_reused_page_capability_styles() {
+    let page = super::ViewPage {
+        id: "index".to_string(),
+        route_path: "/".to_string(),
+        source_path: Path::new("/project/views/pages/index.dowe").to_path_buf(),
+        layout_tree: navigation_shell_tree(),
+        page_tree: text("Home"),
+        body_html: "<p>Home</p>".to_string(),
+        html_document: String::new(),
+        layout_text: String::new(),
+        page_text: "Home".to_string(),
+        layout_chunk_id: "layout".to_string(),
+        page_chunk_id: "page".to_string(),
+        layout_chunk_ids: vec!["layout".to_string()],
+        js_chunks: vec![
+            "chunks/layouts/layout.js".to_string(),
+            "chunks/pages/page.js".to_string(),
+        ],
+        css_chunks: vec![
+            "chunks/layouts/layout.css".to_string(),
+            "chunks/pages/page.css".to_string(),
+        ],
+        runtime_chunks: vec!["chunks/runtime/controls.js".to_string()],
+        design_file_name: "design.css".to_string(),
+        router_file_name: "router.js".to_string(),
+        boundaries: vec!["layout:layout".to_string(), "page:page".to_string()],
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+        metadata: Vec::new(),
+    };
+    let mut initial = super::WebOutput {
+        chunks: Vec::new(),
+        pages: vec![Arc::new(page)],
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: String::new(),
+    };
+    super::prepare_dev_design_asset(
+        &mut initial,
+        &FontConfig::default(),
+        &DesignConfig::default(),
+    );
+
+    let mut stale_page = initial.pages[0].as_ref().clone();
+    stale_page
+        .css_chunks
+        .retain(|path| !path.starts_with("chunks/design/"));
+    stale_page.html_document = super::render_page_document(&stale_page);
+    let previous = super::WebOutput {
+        chunks: Vec::new(),
+        pages: vec![Arc::new(stale_page)],
+        translation_chunks: Vec::new(),
+        default_locale: None,
+        router_js: initial.router_js.clone(),
+    };
+    let mut web = previous.clone();
+
+    let design_css = super::prepare_incremental_dev_design_asset(
+        &mut web,
+        &previous,
+        &FontConfig::default(),
+        &DesignConfig::default(),
+    );
+    let navigation_css = web.pages[0]
+        .css_chunks
+        .iter()
+        .find(|path| path.starts_with("chunks/design/navigation-"))
+        .expect("navigation capability CSS");
+
+    assert!(web.pages[0].html_document.contains(&format!(
+        r#"data-dowe-css="{navigation_css}" rel="stylesheet" href="/{navigation_css}""#
+    )));
+    assert!(super::manifest(&web).contains(navigation_css));
+
+    let update = super::web_artifact_update(&web, Some(&previous), design_css);
+    assert!(
+        update
+            .files
+            .iter()
+            .any(|file| file.relative_path == Path::new("web/index.html"))
+    );
+}
+
+#[test]
+fn static_html_preserves_stable_development_asset_paths() {
+    let document = r#"<link href="/design.css"><script src="/router.js"></script>"#;
+    let static_document = super::static_html_document(document, "../");
+
+    assert!(static_document.contains(r#"href="../design.css""#));
+    assert!(static_document.contains(r#"src="../router.js""#));
+    assert!(!static_document.contains("design.css.html"));
 }
 
 #[test]

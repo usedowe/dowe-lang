@@ -14,6 +14,7 @@ use dowe_components::{
     CsvFieldProps, DateProps, DateRangeProps, DesignConfig, DividerOrientation, DividerProps,
     DragDropDirection, DragDropProps, DragGroup, DragItem, DrawerPosition, DrawerProps,
     DropdownProps, DropzoneProps, EditorProps, ElementProps, EmptyKind, EmptyProps, FabAction,
+    FlexItem,
     FabProps, FontConfig, GapSize, GapValue, GridProps, GridTracks, ImageAspect, ImageCropperProps,
     ImageCropperShape, ImageLoading, ImageObjectFit, ImageProps, Justify, LayoutProps, MapMarker,
     MapMarkerIcon, MapProps, MapWaypoint, MarqueeOrientation, MarqueeProps, MarqueeSpeed,

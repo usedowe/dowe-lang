@@ -773,7 +773,7 @@ struct DoweTableView: View {
                     .padding(.vertical, metrics.headerVerticalPadding)
             }
         }
-        .background(DoweDesign.softMuted)
+        .background(DoweDesign.muted)
     }
 
     private func tableRow(_ row: [String: Any], index: Int) -> some View {

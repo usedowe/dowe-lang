@@ -340,22 +340,22 @@ fn dev_activity_canvas_runtime() -> &'static str {
         if ("warningText".equals(token)) return DOWE_WARNING_TEXT;
         if ("danger".equals(token)) return DOWE_DANGER;
         if ("dangerText".equals(token)) return DOWE_DANGER_TEXT;
-        if ("softPrimary".equals(token)) return DOWE_SOFT_PRIMARY;
-        if ("softPrimaryText".equals(token)) return DOWE_SOFT_PRIMARY_TEXT;
-        if ("softSecondary".equals(token)) return DOWE_SOFT_SECONDARY;
-        if ("softSecondaryText".equals(token)) return DOWE_SOFT_SECONDARY_TEXT;
-        if ("softTertiary".equals(token)) return DOWE_SOFT_TERTIARY;
-        if ("softTertiaryText".equals(token)) return DOWE_SOFT_TERTIARY_TEXT;
-        if ("softMuted".equals(token)) return DOWE_SOFT_MUTED;
-        if ("softMutedText".equals(token)) return DOWE_SOFT_MUTED_TEXT;
-        if ("softSuccess".equals(token)) return DOWE_SOFT_SUCCESS;
-        if ("softSuccessText".equals(token)) return DOWE_SOFT_SUCCESS_TEXT;
-        if ("softInfo".equals(token)) return DOWE_SOFT_INFO;
-        if ("softInfoText".equals(token)) return DOWE_SOFT_INFO_TEXT;
-        if ("softWarning".equals(token)) return DOWE_SOFT_WARNING;
-        if ("softWarningText".equals(token)) return DOWE_SOFT_WARNING_TEXT;
-        if ("softDanger".equals(token)) return DOWE_SOFT_DANGER;
-        if ("softDangerText".equals(token)) return DOWE_SOFT_DANGER_TEXT;
+        if ("primary".equals(token)) return DOWE_PRIMARY;
+        if ("primaryText".equals(token)) return DOWE_PRIMARY_TEXT;
+        if ("secondary".equals(token)) return DOWE_SECONDARY;
+        if ("secondaryText".equals(token)) return DOWE_SECONDARY_TEXT;
+        if ("tertiary".equals(token)) return DOWE_TERTIARY;
+        if ("tertiaryText".equals(token)) return DOWE_TERTIARY_TEXT;
+        if ("muted".equals(token)) return DOWE_MUTED;
+        if ("mutedText".equals(token)) return DOWE_MUTED_TEXT;
+        if ("success".equals(token)) return DOWE_SUCCESS;
+        if ("successText".equals(token)) return DOWE_SUCCESS_TEXT;
+        if ("info".equals(token)) return DOWE_INFO;
+        if ("infoText".equals(token)) return DOWE_INFO_TEXT;
+        if ("warning".equals(token)) return DOWE_WARNING;
+        if ("warningText".equals(token)) return DOWE_WARNING_TEXT;
+        if ("danger".equals(token)) return DOWE_DANGER;
+        if ("dangerText".equals(token)) return DOWE_DANGER_TEXT;
         if ("transparent".equals(token)) return Color.TRANSPARENT;
         try { return Color.parseColor(token); } catch (IllegalArgumentException error) { return Color.TRANSPARENT; }
     }

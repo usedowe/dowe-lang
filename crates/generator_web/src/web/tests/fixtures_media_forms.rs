@@ -22,6 +22,7 @@ fn media_display_form_tree() -> ViewNode {
                         ..Default::default()
                     },
                     src: "https://example.com/photo.jpg".to_string(),
+                    reactive_src: None,
                     alt: "Photo".to_string(),
                     aspect: ImageAspect::Square,
                     object_fit: ImageObjectFit::Contain,

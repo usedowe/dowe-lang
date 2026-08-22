@@ -26,7 +26,9 @@ func doweFixedSize(_ value: DoweSize?, viewportHeight: CGFloat? = nil) -> CGFloa
     switch value {
     case .fixed(let size):
         return size
-    case .full:
+    case .percent:
+        return nil
+    case .full, .auto:
         return nil
     case .viewportMinus(let inset):
         guard let viewportHeight else {
@@ -41,10 +43,96 @@ func doweMaxSize(_ value: DoweSize?) -> CGFloat? {
         return nil
     }
     switch value {
-    case .fixed, .viewportMinus:
+    case .fixed, .percent, .viewportMinus, .auto:
         return nil
     case .full:
         return .infinity
+    }
+}
+
+private struct DoweParentHeightCapLayout: Layout {
+    let enabled: Bool
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let subview = subviews.first else {
+            return .zero
+        }
+        let content = subview.sizeThatFits(proposal)
+        guard enabled, let maximumHeight = proposal.height else {
+            return content
+        }
+        return CGSize(width: content.width, height: Swift.min(content.height, maximumHeight))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let subview = subviews.first else {
+            return
+        }
+        let content = subview.sizeThatFits(ProposedViewSize(width: bounds.width, height: enabled ? bounds.height : nil))
+        let height = enabled ? Swift.min(content.height, bounds.height) : content.height
+        subview.place(at: bounds.origin, proposal: ProposedViewSize(width: content.width, height: height))
+    }
+}
+
+extension View {
+    func doweMaxHeight(_ value: DoweSize?) -> some View {
+        let enabled: Bool
+        if case .full? = value {
+            enabled = true
+        } else {
+            enabled = false
+        }
+        return DoweParentHeightCapLayout(enabled: enabled) {
+            self
+        }
+    }
+}
+
+private func dowePercentage(_ value: DoweSize?) -> CGFloat? {
+    guard let value else {
+        return nil
+    }
+    if case .percent(let fraction) = value {
+        return fraction
+    }
+    return nil
+}
+
+private struct DowePercentageWidthLayout: Layout {
+    let widthFraction: CGFloat?
+    let minimumWidthFraction: CGFloat?
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let subview = subviews.first, let availableWidth = proposal.width else {
+            return subviews.first?.sizeThatFits(proposal) ?? .zero
+        }
+        let exactWidth = widthFraction.map { max(CGFloat(0), availableWidth * $0) }
+        let minimumWidth = minimumWidthFraction.map { max(CGFloat(0), availableWidth * $0) }
+        guard exactWidth != nil || minimumWidth != nil else {
+            return subview.sizeThatFits(proposal)
+        }
+        let intrinsicWidth = exactWidth == nil ? subview.sizeThatFits(.unspecified).width : CGFloat(0)
+        let resolvedWidth = max(exactWidth ?? intrinsicWidth, minimumWidth ?? CGFloat(0))
+        let measured = subview.sizeThatFits(ProposedViewSize(width: resolvedWidth, height: proposal.height))
+        return CGSize(width: resolvedWidth, height: measured.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let subview = subviews.first else {
+            return
+        }
+        subview.place(at: bounds.origin, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+    }
+}
+
+extension View {
+    func dowePercentageWidth(width: DoweSize?, minWidth: DoweSize?) -> some View {
+        DowePercentageWidthLayout(
+            widthFraction: dowePercentage(width),
+            minimumWidthFraction: dowePercentage(minWidth)
+        ) {
+            self
+        }
     }
 }
 
@@ -199,11 +287,16 @@ struct DoweFlowLayout: Layout {
 }
 
 struct DoweGridLayout: Layout {
-    let columns: Int
+    let tracks: [CGFloat]
     let rowGap: CGFloat?
     let columnGap: CGFloat?
     let justify: DoweAlign?
     let align: DoweAlign?
+    let fillHeight: Bool
+
+    private var normalizedTracks: [CGFloat] {
+        tracks.isEmpty ? [CGFloat(1)] : tracks.map { Swift.max($0, 0) }
+    }
 
     private func resolvedWidth(_ proposal: ProposedViewSize, _ subviews: Subviews) -> CGFloat {
         if let width = proposal.width {
@@ -212,25 +305,27 @@ struct DoweGridLayout: Layout {
         let widest = subviews.reduce(CGFloat(0)) { result, subview in
             Swift.max(result, subview.sizeThatFits(.unspecified).width)
         }
-        let count = Swift.max(columns, 1)
+        let count = normalizedTracks.count
         return widest * CGFloat(count) + CGFloat(Swift.max(count - 1, 0)) * (columnGap ?? 0)
     }
 
-    private func trackWidth(_ width: CGFloat) -> CGFloat {
-        let count = Swift.max(columns, 1)
-        let gaps = CGFloat(Swift.max(count - 1, 0)) * (columnGap ?? 0)
-        return Swift.max((width - gaps) / CGFloat(count), 0)
+    private func trackWidths(_ width: CGFloat) -> [CGFloat] {
+        let tracks = normalizedTracks
+        let gaps = CGFloat(Swift.max(tracks.count - 1, 0)) * (columnGap ?? 0)
+        let available = Swift.max(width - gaps, 0)
+        let total = Swift.max(tracks.reduce(CGFloat(0), +), 1)
+        return tracks.map { available * $0 / total }
     }
 
     private func itemSizes(_ width: CGFloat, _ subviews: Subviews) -> [CGSize] {
-        let itemWidth = trackWidth(width)
-        return subviews.map { subview in
-            subview.sizeThatFits(ProposedViewSize(width: itemWidth, height: nil))
+        let widths = trackWidths(width)
+        return subviews.enumerated().map { index, subview in
+            subview.sizeThatFits(ProposedViewSize(width: widths[index % widths.count], height: nil))
         }
     }
 
     private func rowHeights(_ sizes: [CGSize]) -> [CGFloat] {
-        let count = Swift.max(columns, 1)
+        let count = normalizedTracks.count
         return stride(from: 0, to: sizes.count, by: count).map { start in
             sizes[start..<Swift.min(start + count, sizes.count)].reduce(CGFloat(0)) { result, size in
                 Swift.max(result, size.height)
@@ -242,21 +337,29 @@ struct DoweGridLayout: Layout {
         let width = resolvedWidth(proposal, subviews)
         let heights = rowHeights(itemSizes(width, subviews))
         let gaps = CGFloat(Swift.max(heights.count - 1, 0)) * (rowGap ?? 0)
-        return CGSize(width: width, height: heights.reduce(CGFloat(0), +) + gaps)
+        let intrinsicHeight = heights.reduce(CGFloat(0), +) + gaps
+        let proposedHeight = proposal.height ?? intrinsicHeight
+        return CGSize(width: width, height: fillHeight ? Swift.max(intrinsicHeight, proposedHeight) : intrinsicHeight)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let count = Swift.max(columns, 1)
-        let itemWidth = trackWidth(bounds.width)
+        let tracks = normalizedTracks
+        let widths = trackWidths(bounds.width)
         let sizes = itemSizes(bounds.width, subviews)
-        let heights = rowHeights(sizes)
+        let intrinsicHeights = rowHeights(sizes)
+        let contentHeight = intrinsicHeights.reduce(CGFloat(0), +) + CGFloat(Swift.max(intrinsicHeights.count - 1, 0)) * (rowGap ?? 0)
+        let extraHeight = Swift.max(bounds.height - contentHeight, 0)
+        let rowExtra = intrinsicHeights.isEmpty ? CGFloat(0) : extraHeight / CGFloat(intrinsicHeights.count)
+        let heights = intrinsicHeights.map { $0 + rowExtra }
         var y = bounds.minY
         for row in heights.indices {
-            let start = row * count
-            let end = Swift.min(start + count, subviews.count)
+            let start = row * tracks.count
+            let end = Swift.min(start + tracks.count, subviews.count)
+            var x = bounds.minX
             for index in start..<end {
                 let column = index - start
                 let size = sizes[index]
+                let itemWidth = widths[column]
                 var xOffset: CGFloat = 0
                 if justify == .center {
                     xOffset = (itemWidth - size.width) / 2
@@ -269,16 +372,28 @@ struct DoweGridLayout: Layout {
                 } else if align == .end {
                     yOffset = heights[row] - size.height
                 }
-                let x = bounds.minX + CGFloat(column) * (itemWidth + (columnGap ?? 0)) + Swift.max(xOffset, 0)
-                let itemHeight = align == .stretch ? heights[row] : nil
+                let stretchesByDefault = align == nil || align == .stretch
+                let stretches = stretchesByDefault && subviews[index][DoweGridItemStretchKey.self]
+                let itemHeight = stretches ? heights[row] : nil
                 subviews[index].place(
-                    at: CGPoint(x: x, y: y + Swift.max(yOffset, 0)),
+                    at: CGPoint(x: x + Swift.max(xOffset, 0), y: y + Swift.max(yOffset, 0)),
                     anchor: .topLeading,
                     proposal: ProposedViewSize(width: itemWidth, height: itemHeight)
                 )
+                x += itemWidth + (columnGap ?? 0)
             }
             y += heights[row] + (rowGap ?? 0)
         }
+    }
+}
+
+private struct DoweGridItemStretchKey: LayoutValueKey {
+    static let defaultValue = true
+}
+
+extension View {
+    func doweGridItemStretches(_ value: Bool) -> some View {
+        layoutValue(key: DoweGridItemStretchKey.self, value: value)
     }
 }
 

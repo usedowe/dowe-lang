@@ -116,8 +116,8 @@
   transition:background-color 180ms ease,color 180ms ease;
 }
 .navmenu-submenu-item:hover,.navmenu-submenu-item.is-active {
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
 }
 .navmenu-submenu-content {
   display:flex;
@@ -169,7 +169,7 @@
 }
 .navmenu-lg .navmenu-item {
   gap:0.75rem;
-  padding:0.75rem 1.5rem;
+  padding:0.5rem 1rem;
   font-size:1.125rem;
 }
 .navmenu-lg .navmenu-icon,.navmenu-lg .navmenu-submenu-icon {
@@ -234,8 +234,8 @@
   flex:0 0 auto;
   border-radius:999px;
   padding:0.125rem 0.5rem;
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   font-size:0.75em;
   font-weight:600;
 }

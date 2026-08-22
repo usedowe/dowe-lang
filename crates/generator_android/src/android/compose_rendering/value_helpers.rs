@@ -26,6 +26,9 @@ fn compose_show_condition(show: &VisibilityCondition, context: &ComposeReactiveC
                 )
             }
         }
+        VisibilityCondition::StringEquality { path, value } => {
+            format!("state.text(\"{}\") == \"{}\"", escape_kotlin(&context.signal_path(path)), escape_kotlin(value))
+        }
         VisibilityCondition::NumberComparison { path, comparison } => {
             let value = if let Some(item) = context.item_value(path) {
                 let path = context.item_path(path).unwrap_or_else(|| path.to_string());

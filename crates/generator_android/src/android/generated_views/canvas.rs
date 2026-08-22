@@ -204,22 +204,22 @@ private fun doweCanvasColor(value: Any?, fallback: Color = Color.Transparent): C
     "warningText" -> DoweDesign.warningText
     "danger" -> DoweDesign.danger
     "dangerText" -> DoweDesign.dangerText
-    "softPrimary" -> DoweDesign.softPrimary
-    "softPrimaryText" -> DoweDesign.softPrimaryText
-    "softSecondary" -> DoweDesign.softSecondary
-    "softSecondaryText" -> DoweDesign.softSecondaryText
-    "softTertiary" -> DoweDesign.softTertiary
-    "softTertiaryText" -> DoweDesign.softTertiaryText
-    "softMuted" -> DoweDesign.softMuted
-    "softMutedText" -> DoweDesign.softMutedText
-    "softSuccess" -> DoweDesign.softSuccess
-    "softSuccessText" -> DoweDesign.softSuccessText
-    "softInfo" -> DoweDesign.softInfo
-    "softInfoText" -> DoweDesign.softInfoText
-    "softWarning" -> DoweDesign.softWarning
-    "softWarningText" -> DoweDesign.softWarningText
-    "softDanger" -> DoweDesign.softDanger
-    "softDangerText" -> DoweDesign.softDangerText
+    "primary" -> DoweDesign.primary
+    "primaryText" -> DoweDesign.primaryText
+    "secondary" -> DoweDesign.secondary
+    "secondaryText" -> DoweDesign.secondaryText
+    "tertiary" -> DoweDesign.tertiary
+    "tertiaryText" -> DoweDesign.tertiaryText
+    "muted" -> DoweDesign.muted
+    "mutedText" -> DoweDesign.mutedText
+    "success" -> DoweDesign.success
+    "successText" -> DoweDesign.successText
+    "info" -> DoweDesign.info
+    "infoText" -> DoweDesign.infoText
+    "warning" -> DoweDesign.warning
+    "warningText" -> DoweDesign.warningText
+    "danger" -> DoweDesign.danger
+    "dangerText" -> DoweDesign.dangerText
     "transparent" -> Color.Transparent
     else -> value?.toString()?.let { doweHexColor(it, fallback) } ?: fallback
 }

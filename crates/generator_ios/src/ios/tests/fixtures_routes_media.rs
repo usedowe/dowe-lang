@@ -177,7 +177,7 @@ fn candlestick_route() -> ViewRoute {
             },
             ComponentProp {
                 name: "variant".to_string(),
-                value: PropValue::String("soft".to_string()),
+                value: PropValue::String("solid".to_string()),
             },
             ComponentProp {
                 name: "scheme".to_string(),

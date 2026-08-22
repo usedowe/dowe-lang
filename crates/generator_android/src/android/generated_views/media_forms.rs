@@ -246,7 +246,7 @@ private fun DoweDeviceIconButton(icon: DoweDeviceIcon, selected: Boolean, onClic
         modifier = Modifier.size(40.dp).semantics { contentDescription = icon.profile },
         shape = RoundedCornerShape(DoweDesign.radius),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (selected) DoweDesign.softPrimary else Color.Transparent,
+            containerColor = if (selected) DoweDesign.primary else Color.Transparent,
             contentColor = if (selected) DoweDesign.primary else DoweDesign.backgroundText
         ),
         border = BorderStroke(1.dp, if (selected) DoweDesign.primary else DoweDesign.backgroundText),
@@ -502,7 +502,7 @@ private fun DoweImage(source: String, alt: String, aspect: String, objectFit: St
     }
     Box(
         modifier = modifier
-            .aspectRatio(doweImageAspect(aspect))
+            .then(if (aspect == "auto") Modifier else Modifier.aspectRatio(doweImageAspect(aspect)))
             .clip(shape)
             .background(backgroundColor)
             .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
@@ -823,10 +823,10 @@ private fun DoweColorField(value: String, onValueChange: (String) -> Unit, label
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = doweControlHeight(size) + if (floating) 8.dp else 0.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .height(doweControlHeight(size) + if (floating) 8.dp else 0.dp)
+                    .clip(RoundedCornerShape(DoweDesign.radius))
                     .background(backgroundColor)
-                    .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(10.dp)))
+                    .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(DoweDesign.radius)))
                     .clickable { expanded = !expanded }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -937,7 +937,7 @@ private fun DoweColorPickerPanel(value: String, hsv: DoweColorHsv, onHsvChange: 
 
 @Composable
 private fun DoweColorFormatRow(value: String) {
-    Text(value, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(DoweDesign.softMuted).padding(horizontal = 8.dp, vertical = 4.dp), color = DoweDesign.softMutedText, fontSize = 12.sp, maxLines = 1)
+    Text(value, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(DoweDesign.muted).padding(horizontal = 8.dp, vertical = 4.dp), color = DoweDesign.mutedText, fontSize = 12.sp, maxLines = 1)
 }
 
 private fun doweColorRgb(value: String): DoweColorRgb {
@@ -1001,10 +1001,10 @@ private fun DoweDateField(value: String, onValueChange: (String) -> Unit, label:
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = doweControlHeight(size) + if (floating) 8.dp else 0.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .height(doweControlHeight(size) + if (floating) 8.dp else 0.dp)
+                    .clip(RoundedCornerShape(DoweDesign.radius))
                     .background(backgroundColor)
-                    .then(if (borderColor == null && validationError == null) Modifier else Modifier.border(1.dp, if (validationError != null) DoweDesign.danger else borderColor!!, RoundedCornerShape(10.dp)))
+                    .then(if (borderColor == null && validationError == null) Modifier else Modifier.border(1.dp, if (validationError != null) DoweDesign.danger else borderColor!!, RoundedCornerShape(DoweDesign.radius)))
                     .clickable { if (expanded) touched = true; expanded = !expanded }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1039,10 +1039,10 @@ private fun DoweDateRangeField(startValue: String, endValue: String, onStartChan
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = doweControlHeight(size) + if (floating) 8.dp else 0.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .height(doweControlHeight(size) + if (floating) 8.dp else 0.dp)
+                    .clip(RoundedCornerShape(DoweDesign.radius))
                     .background(backgroundColor)
-                    .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(10.dp)))
+                    .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(DoweDesign.radius)))
                     .clickable { selectingEnd = false; expanded = !expanded }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,

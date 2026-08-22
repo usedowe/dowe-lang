@@ -131,7 +131,7 @@ fn render_dev_android_tabs(
         if props.variant == TabsVariant::Stepper && index + 1 < tabs.len() {
             let connector = next_dev_view(counter);
             output.push_str(&format!(
-                "        View {connector} = new View(this);\n        {connector}.setBackgroundColor(DOWE_SOFT_MUTED);\n        {connector}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({}), doweDp({})));\n",
+                "        View {connector} = new View(this);\n        {connector}.setBackgroundColor(DOWE_MUTED);\n        {connector}.setLayoutParams(new LinearLayout.LayoutParams(doweDp({}), doweDp({})));\n",
                 if vertical { 2 } else { 48 },
                 if vertical { 20 } else { 2 }
             ));
@@ -196,7 +196,7 @@ fn dev_tab_background(props: &TabsProps, active: bool, radius: &str) -> String {
                         dev_tabs_active_background(props)
                     )
                 } else {
-                    "doweInputBackground(Color.TRANSPARENT, DOWE_SOFT_MUTED, 999f)".to_string()
+                    "doweInputBackground(Color.TRANSPARENT, DOWE_MUTED, 999f)".to_string()
                 }
             }
         }

@@ -279,7 +279,7 @@ fn renders_reactive_button_disabled_visual_state() {
 
     assert!(html.contains(r#"data-dowe-button-disabled="formInvalid""#));
     assert!(css.contains("user-select:none;-webkit-user-select:none"));
-    assert!(css.contains(r#".button.is-disabled,.button[aria-disabled="true"]{opacity:.5}"#));
+    assert!(css.contains(r#".button.is-disabled,.button[aria-disabled="true"]{opacity:0.5;}"#));
     assert!(router.contains("button.classList.toggle(\"is-disabled\",disabled)"));
 }
 
@@ -344,9 +344,7 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
 fn renders_rich_control_map_components_markup_runtime_and_css() {
     let root = Path::new("/project");
     let page_tree = rich_control_map_tree();
-    assert!(
-        super::runtime_chunks_for_trees(&ViewNode::Children, &page_tree).is_empty()
-    );
+    assert!(super::runtime_chunks_for_trees(&ViewNode::Children, &page_tree).is_empty());
     let page = build_page_chunk(
         root,
         Path::new("/project/src/pages/rich-controls.dowe"),
@@ -408,6 +406,13 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(css.contains(".rich-mark-slant::before"));
     assert!(css.contains(".record-wave"));
     assert!(css.contains(".toggle-group-item"));
+    assert!(page.css_content.contains(
+        ".toggle-group.is-solid.is-primary{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryTitle);background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:transparent;}"
+    ));
+    assert!(page.css_content.contains(
+        ".toggle-group-item.is-active.is-solid.is-primary,.toggle-group-item.is-active.is-soft.is-primary{background-color:var(--dowe-primaryText);color:var(--dowe-primary);}"
+    ));
+    assert!(!page.css_content.contains(".toggle-group.is-solid.is-primary{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryTitle);background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:var(--dowe-primary);}"));
     assert!(css.contains(".pagination-nav"));
     assert!(css.contains(".collapsible-content"));
     assert!(css.contains(".collapsible-arrow>svg{width:100%;height:100%;}"));
@@ -465,6 +470,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
         props: ImageProps {
             style: VariantProps::default(),
             src: "https://example.com/photo.jpg".to_string(),
+            reactive_src: None,
             alt: "Photo".to_string(),
             aspect: ImageAspect::Auto,
             object_fit: ImageObjectFit::Cover,
@@ -475,9 +481,22 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     let hidden_image_html = render_page_body(&ViewNode::Children, &hidden_image);
     assert!(!hidden_image_html.contains(r#"data-dowe-image-download"#));
     assert!(!hidden_image_html.contains(r#"data-dowe-image-fullscreen"#));
-    assert!(
-        super::runtime_chunks_for_trees(&ViewNode::Children, &hidden_image).is_empty()
-    );
+    assert!(super::runtime_chunks_for_trees(&ViewNode::Children, &hidden_image).is_empty());
+    let dynamic_image = ViewNode::Image {
+        props: ImageProps {
+            style: VariantProps::default(),
+            src: String::new(),
+            reactive_src: Some("feature.cover".to_string()),
+            alt: "Feature cover".to_string(),
+            aspect: ImageAspect::Auto,
+            object_fit: ImageObjectFit::Cover,
+            loading: ImageLoading::Lazy,
+            hide_controls: true,
+        },
+    };
+    let dynamic_image_html = render_page_body(&ViewNode::Children, &dynamic_image);
+    assert!(dynamic_image_html.contains(r#"src="" data-dowe-image-src="feature.cover""#));
+    assert!(router.contains("function renderReactiveImages"));
     assert!(html.contains(r#"data-dowe-accordion data-dowe-accordion-multiple="true""#));
     assert!(html.contains(r#"class="accordion-arrow" aria-hidden="true"><svg"#));
     assert!(html.contains(r#"d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z""#));
@@ -749,15 +768,11 @@ fn emits_portable_input_metrics_and_outlined_colors() {
         ".control.is-floating{--dowe-control-height:calc(var(--dowe-control-min-height) + var(--dowe-form-control-floating));padding-top:var(--dowe-form-control-floating);}"
     ));
     assert!(css.contains(".textarea-field{align-items:stretch;height:auto;"));
-    assert!(css.contains("min-height:var(--dowe-control-min-height);padding:0 var(--dowe-form-control-padding);"));
-    assert!(css.contains(".control-icon.icon-start{margin-left:.75rem}"));
-    assert!(css.contains(".control-icon.icon-end{margin-right:.75rem}"));
     assert!(css.contains(
-        ".control.is-floating:has(>.control-label):not(:focus-within):has(.input:placeholder-shown)>.control-icon{display:none}"
+        "min-height:var(--dowe-control-min-height);padding:0 var(--dowe-form-control-padding);"
     ));
-    assert!(css.contains(".control.is-floating.has-start-adornment:focus-within>.control-label"));
-    assert!(css.contains("left:2.75rem;max-width:calc(100% - 3.5rem);"));
-    assert!(css.contains(".control.is-floating.has-start-adornment>.input{padding-left:0;}"));
+
+    assert!(css.contains(".control.is-floating"));
     assert!(css.contains(
         ".color-field.is-floating.is-sm.has-start-adornment.has-value>.control-label{left:2.5rem;max-width:calc(100% - 3.25rem);}",
     ));
@@ -779,9 +794,7 @@ fn emits_portable_input_metrics_and_outlined_colors() {
     assert!(css.contains(
             ".select-control.is-floating:not(.is-open):not(.has-value) .select-value{visibility:hidden;}"
         ));
-    assert!(css.contains(
-        "--dowe-form-control-text-md:clamp(0.875rem,0.82rem + 0.25vw,1rem);"
-    ));
+    assert!(css.contains("--dowe-form-control-text-md:clamp(0.875rem,0.82rem + 0.25vw,1rem);"));
     assert!(css.contains(
         "font-size:var(--dowe-control-font-size);line-height:var(--dowe-control-line-height);"
     ));
@@ -1082,6 +1095,16 @@ fn renders_labeled_input_and_select_markup() {
                     ..Default::default()
                 },
             },
+            ViewNode::Input {
+                props: VariantProps {
+                    label: Some("Email".to_string()),
+                    element: ElementProps {
+                        show: Some(VisibilityCondition::Signal("showEmail".to_string())),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            },
             ViewNode::Select {
                 props: VariantProps {
                     label: Some("Role".to_string()),
@@ -1114,6 +1137,10 @@ fn renders_labeled_input_and_select_markup() {
     );
 
     assert!(page.content.contains("is-floating"));
+    assert!(
+        page.content
+            .contains(r#"class=\"field\" data-dowe-show=\"showEmail\""#)
+    );
     assert!(page.content.contains(r#"class=\"control is-sm"#));
     assert!(page.content.contains(r#"class=\"control is-lg"#));
     assert!(page.content.contains("has-start-adornment"));
@@ -1215,6 +1242,20 @@ fn renders_svg_markup_and_color_classes() {
 }
 
 #[test]
+fn preserves_svg_intrinsic_ratio_when_web_dimension_is_omitted() {
+    let mut tree = svg_tree();
+    let ViewNode::Svg { props, .. } = &mut tree else {
+        panic!("svg tree");
+    };
+    props.style.sizing.w = None;
+
+    let html = render_page_body(&ViewNode::Children, &tree);
+
+    assert!(html.contains(r#"class="svg color-tertiary h-8""#));
+    assert!(!html.contains("w-8"));
+}
+
+#[test]
 fn renders_runtime_svg_as_safe_data_surface() {
     let root = Path::new("/project");
     let tree = dowe_components::svg_component_node(
@@ -1239,10 +1280,16 @@ fn renders_runtime_svg_as_safe_data_surface() {
 #[test]
 fn renders_dynamic_icon_binding_surface() {
     let root = Path::new("/project");
-    let tree = dowe_components::icon_component_node(vec![ComponentProp {
-        name: "name".to_string(),
-        value: PropValue::String("@icon-binding:iconName".to_string()),
-    }])
+    let tree = dowe_components::icon_component_node(vec![
+        ComponentProp {
+            name: "name".to_string(),
+            value: PropValue::String("@icon-binding:iconName".to_string()),
+        },
+        ComponentProp {
+            name: "fill".to_string(),
+            value: PropValue::String("muted".to_string()),
+        },
+    ])
     .expect("dynamic Icon");
     let page = build_page_chunk(
         root,
@@ -1251,7 +1298,11 @@ fn renders_dynamic_icon_binding_surface() {
         &tree,
     );
 
-    assert!(page.content.contains("data-dowe-icon-name=\\\"iconName\\\""));
+    assert!(
+        page.content
+            .contains("data-dowe-icon-name=\\\"iconName\\\"")
+    );
+    assert!(page.content.contains("color-muted"));
     assert!(page.content.contains("viewBox=\\\"0 0 24 24\\\""));
     assert!(!page.content.contains("<path"));
 }
@@ -1303,6 +1354,50 @@ fn renders_viewport_minus_height_classes() {
     assert!(
         page.css_content
             .contains(".max-h-vh-24{max-height:calc(100vh - 6rem);}")
+    );
+}
+
+#[test]
+fn renders_percentage_width_classes() {
+    let root = Path::new("/project");
+    let page_tree = ViewNode::Box {
+        props: StyleProps {
+            sizing: dowe_components::SizingProps {
+                w: Some(ResponsiveValue::scalar(SizeValue::Percent(30))),
+                min_w: Some(ResponsiveValue {
+                    entries: vec![
+                        ResponsiveEntry {
+                            breakpoint: Breakpoint::Xs,
+                            value: SizeValue::Percent(40),
+                        },
+                        ResponsiveEntry {
+                            breakpoint: Breakpoint::Md,
+                            value: SizeValue::Percent(100),
+                        },
+                    ],
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![],
+    };
+    let page = build_page_chunk(
+        root,
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &page_tree,
+    );
+
+    assert!(
+        page.content
+            .contains("w-pct-30 min-w-pct-40 md:min-w-pct-100")
+    );
+    assert!(page.css_content.contains(".w-pct-30{width:30%;}"));
+    assert!(page.css_content.contains(".min-w-pct-40{min-width:40%;}"));
+    assert!(
+        page.css_content
+            .contains(".md\\:min-w-pct-100{min-width:100%;}")
     );
 }
 

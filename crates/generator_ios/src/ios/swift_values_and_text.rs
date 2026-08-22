@@ -6,9 +6,16 @@ fn swift_size_value(value: &ResponsiveValue<SizeValue>) -> String {
     swift_responsive_value(value, |value| match value {
         SizeValue::Scale(value) => format!("DoweSize.fixed(CGFloat({}))", value.native_units()),
         SizeValue::Container(value) => {
-            format!("DoweSize.fixed(CGFloat({}))", value.scale_value().native_units())
+            format!(
+                "DoweSize.fixed(CGFloat({}))",
+                value.scale_value().native_units()
+            )
+        }
+        SizeValue::Percent(value) => {
+            format!("DoweSize.percent(CGFloat({}))", f32::from(*value) / 100.0)
         }
         SizeValue::Full => "DoweSize.full".to_string(),
+        SizeValue::Auto => "DoweSize.auto".to_string(),
         SizeValue::ViewportMinus(value) => {
             format!("DoweSize.viewportMinus(CGFloat({}))", value.native_units())
         }
@@ -189,7 +196,6 @@ fn swift_section_background_value(value: &ResponsiveValue<SectionBackground>) ->
 
 fn swift_section_background_expr(value: &SectionBackground) -> String {
     match value {
-        SectionBackground::Soft => "DoweSectionBackground.soft".to_string(),
         SectionBackground::Aurora => "DoweSectionBackground.aurora".to_string(),
         SectionBackground::Sunrise => "DoweSectionBackground.sunrise".to_string(),
         SectionBackground::Ocean => "DoweSectionBackground.ocean".to_string(),

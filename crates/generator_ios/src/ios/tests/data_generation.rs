@@ -147,7 +147,7 @@ fn generates_swiftui_table_with_columns_and_scheme() {
     assert!(views.contains("backgroundColor: Color.clear"));
     assert!(views.contains("contentColor: DoweDesign.primary"));
     assert!(views.contains("borderColor: Optional(DoweDesign.primary)"));
-    assert!(views.contains(".background(DoweDesign.softMuted)"));
+    assert!(views.contains(".background(DoweDesign.muted)"));
     assert!(views.contains("DoweDesign.surfaceText.opacity(0.12)"));
     assert!(views.contains("DoweDesign.surfaceText.opacity(0.28)"));
     assert!(views.contains("state.rows(dataPath)"));

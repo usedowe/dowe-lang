@@ -332,6 +332,13 @@ fn skill_records() -> &'static [SkillRecord] {
                     )),
                 },
                 SkillResource {
+                    path: "references/table.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/../../skill-data/dowe-views/references/table.md"
+                    )),
+                },
+                SkillResource {
                     path: "scripts/visual_qa.py",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),

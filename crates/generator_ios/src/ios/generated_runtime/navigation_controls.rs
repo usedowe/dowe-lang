@@ -248,8 +248,8 @@ struct DoweSideNavStatus: View {
             .fontWeight(.semibold)
             .padding(.horizontal, CGFloat(8))
             .padding(.vertical, CGFloat(2))
-            .background(DoweDesign.softMuted)
-            .foregroundStyle(DoweDesign.softMutedText)
+            .background(DoweDesign.muted)
+            .foregroundStyle(DoweDesign.mutedText)
             .clipShape(Capsule())
     }
 }

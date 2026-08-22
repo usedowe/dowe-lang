@@ -76,15 +76,14 @@ struct DoweSvgShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         let parsed = DoweSvgPathCache.shared.path(for: data)
-        let scaleX = rect.width / viewBox.width
-        let scaleY = rect.height / viewBox.height
+        let scale = min(rect.width / viewBox.width, rect.height / viewBox.height)
         let transform = CGAffineTransform(
-            a: scaleX,
+            a: scale,
             b: 0,
             c: 0,
-            d: scaleY,
-            tx: rect.minX - viewBox.minX * scaleX,
-            ty: rect.minY - viewBox.minY * scaleY
+            d: scale,
+            tx: rect.midX - (viewBox.minX + viewBox.width / 2) * scale,
+            ty: rect.midY - (viewBox.minY + viewBox.height / 2) * scale
         )
         return parsed.applying(pathTransform ?? .identity).applying(transform)
     }

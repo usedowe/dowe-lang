@@ -1,3 +1,11 @@
+fn compose_nav_menu_metrics(size: SideNavSize) -> (u16, u16, u16, u16, u16) {
+    match size {
+        SideNavSize::Sm => (8, 6, 8, 12, 10),
+        SideNavSize::Md => (12, 8, 10, 14, 12),
+        SideNavSize::Lg => (12, 8, 12, 16, 14),
+    }
+}
+
 fn render_compose_nav_menu(
     props: &NavMenuProps,
     items: &[NavMenuItem],
@@ -11,9 +19,9 @@ fn render_compose_nav_menu(
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
-        compose_side_nav_metrics(props.size);
+        compose_nav_menu_metrics(props.size);
     let border =
-        if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined {
+        if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             variant_content(&props.style)
         } else {
             "null"

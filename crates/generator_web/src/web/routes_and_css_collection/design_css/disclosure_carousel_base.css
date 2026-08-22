@@ -229,8 +229,8 @@
   justify-content:center;
   border:2px solid transparent;
   border-radius:var(--dowe-radius);
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   cursor:pointer;
   opacity:.58;
 }

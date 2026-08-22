@@ -1,3 +1,33 @@
+fn apply_component_visibility(
+    children: Vec<SourceNode>,
+    usage: &SourceNode,
+) -> DoweResult<Vec<SourceNode>> {
+    let Some(show) = usage.props.iter().find(|prop| prop.name == "show") else {
+        return Ok(children);
+    };
+    if !matches!(
+        show.value,
+        SourceValue::Bareword(_) | SourceValue::Object(_)
+    ) {
+        return Err(node_error(
+            usage,
+            "component `show` must be a boolean Signal path or a supported condition",
+        ));
+    }
+    Ok(children
+        .into_iter()
+        .map(|mut child| {
+            child.props.retain(|prop| prop.name != "show");
+            child.props.push(SourceProp {
+                name: "show".to_string(),
+                value: show.value.clone(),
+                location: show.location.clone(),
+            });
+            child
+        })
+        .collect())
+}
+
 impl RouteBuildContext<'_> {
     fn visit_route(
         &mut self,
@@ -402,7 +432,8 @@ impl RouteBuildContext<'_> {
                                 column: node.location.column,
                             });
                     }
-                    expanded.extend(self.component_children(&node.name, &import.path, node)?);
+                    let children = self.component_children(&node.name, &import.path, node)?;
+                    expanded.extend(apply_component_visibility(children, node)?);
                     continue;
                 }
             }

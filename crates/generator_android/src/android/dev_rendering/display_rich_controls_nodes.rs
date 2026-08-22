@@ -147,24 +147,43 @@ fn render_dev_android_display_rich_controls_node(
                                     ));
             apply_dev_android_style(&props.style.style, &view, true, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
-            for item in items {
+            let path = props
+                .value
+                .as_deref()
+                .map(|value| escape_java(&context.signal_path(value)))
+                .unwrap_or_default();
+            let action = props
+                .on_change
+                .as_deref()
+                .and_then(|name| context.action_id(name))
+                .map(|name| format!("doweRunAction(\"{}\", null); ", escape_java(name)))
+                .unwrap_or_default();
+            let selected_value = if path.is_empty() {
+                format!("\"{}\"", escape_java(&props.selected))
+            } else {
+                format!("doweTextValue(\"{path}\", null)")
+            };
+            for (index, item) in items.iter().enumerate() {
                 let button = next_dev_view(counter);
-                let active = item.id == props.selected;
+                let is_first = index == 0;
                 output.push_str(&format!(
-                                            "        TextView {button} = doweText(\"{}\", {}, 14f, 600, 0f, 1.2f, {});\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        {button}.setBackground(doweBackground({}, DOWE_RADIUS));\n",
+                                            "        String {button}Value = {selected_value};\n        boolean {button}Active = \"{}\".equals({button}Value) || ({button}Value.isEmpty() && {is_first});\n        TextView {button} = doweText(\"{}\", {button}Active ? {} : {}, 14f, 600, 0f, 1.2f, {});\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        {button}.setBackground(doweBackground({button}Active ? {} : Color.TRANSPARENT, DOWE_RADIUS));\n        {button}.setEnabled({});\n",
+                                            escape_java(&item.id),
                                             escape_java(&item.label),
-                                            if active { dev_variant_container(&props.style) } else { dev_variant_content(&props.style) },
+                                            dev_variant_container(&props.style),
+                                            dev_variant_content(&props.style),
                                             dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
-                                            if active { dev_variant_content(&props.style) } else { "Color.TRANSPARENT" }
+                                            dev_variant_content(&props.style),
+                                            !props.disabled,
                                         ));
-                if let Some(action) = props
-                    .on_change
-                    .as_deref()
-                    .and_then(|name| context.action_id(name))
-                {
+                let write = if path.is_empty() {
+                    String::new()
+                } else {
+                    format!("doweWrite(\"{path}\", \"{}\"); ", escape_java(&item.id))
+                };
+                if !props.disabled && (!path.is_empty() || !action.is_empty()) {
                     output.push_str(&format!(
-                        "        {button}.setOnClickListener(v -> doweRunAction(\"{}\", null));\n",
-                        escape_java(action)
+                        "        {button}.setOnClickListener(v -> {{ if (!{button}Active) {{ {write}{action}renderCurrentRoute(false); }} }});\n"
                     ));
                 }
                 output.push_str(&format!(

@@ -229,12 +229,16 @@ fn render_compose_flow_node(
         ViewNode::Grid { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);
             output.push_str(&format!(
-                        "{pad}DoweGrid(modifier = {}, columns = {}, horizontalGap = {}, verticalGap = {}, horizontalAlignment = {}) {{\n",
+                        "{pad}DoweGrid(modifier = {}, tracks = {}, horizontalGap = {}, verticalGap = {}, horizontalAlignment = {}, verticalAlignment = {}, horizontalStretch = {}, fillHeight = {}, verticalStretch = {}) {{\n",
                         modifier_for_grid(props, flow),
-                        compose_grid_column_count(props.columns.as_ref()),
+                        compose_grid_tracks(props.columns.as_ref()),
                         compose_grid_horizontal_gap(props.gap.as_ref()),
                         compose_grid_vertical_gap(props.gap.as_ref()),
-                        compose_grid_horizontal_alignment(props.justify.as_ref())
+                        compose_grid_horizontal_alignment(props.justify.as_ref()),
+                        compose_grid_vertical_alignment(props.align.as_ref()),
+                        compose_grid_horizontal_stretch(props.justify.as_ref()),
+                        compose_grid_fills_height(props),
+                        compose_grid_vertical_stretch(props.align.as_ref())
                     ));
             let color_scope = compose_content_color(&props.style);
             if let Some(color) = color_scope.as_ref() {
@@ -247,7 +251,7 @@ fn render_compose_flow_node(
                     child,
                     indent + if color_scope.is_some() { 8 } else { 4 },
                     output,
-                    ComposeFlow::Block,
+                    ComposeFlow::Grid,
                     current_font,
                     default_family,
                     context,
@@ -264,7 +268,11 @@ fn render_compose_flow_node(
             if props.style.element.on_click.is_some() {
                 modifier.push_str(&format!(
                     ".clickable(onClick = {})",
-                    compose_component_action(props.style.element.on_click.as_deref(), None, context)
+                    compose_component_action(
+                        props.style.element.on_click.as_deref(),
+                        None,
+                        context
+                    )
                 ));
             }
             output.push_str(&format!(
@@ -430,19 +438,19 @@ fn render_compose_flow_node(
                         )
                     })
             };
-            let icon_condition = |path: &str,
-                                  comparison: Option<&dowe_components::ReactiveNumberComparison>| {
-                comparison
-                    .map(|comparison| {
-                        format!(
-                            "(({}).toDoubleOrNull() ?: 0.0) {} {}",
-                            reactive_text(path, "0"),
-                            comparison.operator.as_str(),
-                            comparison.value
-                        )
-                    })
-                    .unwrap_or_else(|| reactive_bool(path))
-            };
+            let icon_condition =
+                |path: &str, comparison: Option<&dowe_components::ReactiveNumberComparison>| {
+                    comparison
+                        .map(|comparison| {
+                            format!(
+                                "(({}).toDoubleOrNull() ?: 0.0) {} {}",
+                                reactive_text(path, "0"),
+                                comparison.operator.as_str(),
+                                comparison.value
+                            )
+                        })
+                        .unwrap_or_else(|| reactive_bool(path))
+                };
             let action = props
                 .element
                 .on_click
@@ -459,11 +467,31 @@ fn render_compose_flow_node(
                     )
                 })
                 .unwrap_or_else(|| compose_navigation_action(props.navigation.as_ref()));
-            let loading = props.reactive.loading.as_ref().map(|path| reactive_bool(path));
-            let disabled = props.reactive.disabled.as_ref().map(|path| reactive_bool(path));
-            let variant = props.reactive.variant.as_ref().map(|path| reactive_text(path, "solid"));
-            let scheme = props.reactive.scheme.as_ref().map(|path| reactive_text(path, "primary"));
-            let size = props.reactive.size.as_ref().map(|path| reactive_text(path, "md"));
+            let loading = props
+                .reactive
+                .loading
+                .as_ref()
+                .map(|path| reactive_bool(path));
+            let disabled = props
+                .reactive
+                .disabled
+                .as_ref()
+                .map(|path| reactive_bool(path));
+            let variant = props
+                .reactive
+                .variant
+                .as_ref()
+                .map(|path| reactive_text(path, "solid"));
+            let scheme = props
+                .reactive
+                .scheme
+                .as_ref()
+                .map(|path| reactive_text(path, "primary"));
+            let size = props
+                .reactive
+                .size
+                .as_ref()
+                .map(|path| reactive_text(path, "md"));
             let variant_value = variant.clone().unwrap_or_else(|| {
                 format!(
                     "\"{}\"",
@@ -477,7 +505,12 @@ fn render_compose_flow_node(
                 )
             });
             let reactive_visual = variant.is_some() || scheme.is_some();
-            let radius = props.reactive.rounded.as_ref().map(|path| format!("doweButtonRadius({})", reactive_text(path, "md"))).unwrap_or_else(|| compose_control_radius(&props.style));
+            let radius = props
+                .reactive
+                .rounded
+                .as_ref()
+                .map(|path| format!("doweButtonRadius({})", reactive_text(path, "md")))
+                .unwrap_or_else(|| compose_control_radius(&props.style));
             let container = if reactive_visual {
                 format!("doweButtonContainer({variant_value}, {scheme_value})")
             } else {
@@ -489,7 +522,9 @@ fn render_compose_flow_node(
                 variant_content(props).to_string()
             };
             let border = if reactive_visual {
-                format!("if ({variant_value} == \"outlined\") BorderStroke(1.dp, {content}) else null")
+                format!(
+                    "if ({variant_value} == \"outlined\") BorderStroke(1.dp, {content}) else null"
+                )
             } else {
                 compose_button_border(props)
             };
@@ -513,7 +548,10 @@ fn render_compose_flow_node(
                 .as_ref()
                 .map(|size| format!("PaddingValues(horizontal = doweButtonHorizontalPadding({size}), vertical = doweButtonVerticalPadding({size}))"))
                 .unwrap_or_else(|| compose_content_padding(&props.style.spacing));
-            let min_height = size.as_ref().map(|size| format!("doweButtonMinHeight({size})")).unwrap_or_else(|| "0.dp".to_string());
+            let min_height = size
+                .as_ref()
+                .map(|size| format!("doweButtonMinHeight({size})"))
+                .unwrap_or_else(|| "0.dp".to_string());
             let enabled = if loading.is_some() && disabled.is_some() {
                 let loading_value = loading.as_deref().unwrap_or("false");
                 let disabled_value = disabled.as_deref().unwrap_or("false");
@@ -551,7 +589,10 @@ fn render_compose_flow_node(
                 let content_pad = " ".repeat(content_indent);
                 if let Some(icon) = props.icon_start.as_ref() {
                     if let Some(path) = props.reactive.icon_start_when.as_ref() {
-                        output.push_str(&format!("{content_pad}if ({}) {{\n", icon_condition(path, props.reactive.icon_start_comparison.as_ref())));
+                        output.push_str(&format!(
+                            "{content_pad}if ({}) {{\n",
+                            icon_condition(path, props.reactive.icon_start_comparison.as_ref())
+                        ));
                         render_compose_side_icon(icon, content_indent + 4, output);
                         output.push_str(&format!("{content_pad}}}\n"));
                     } else {
@@ -571,7 +612,10 @@ fn render_compose_flow_node(
                 }
                 if let Some(icon) = props.icon_end.as_ref() {
                     if let Some(path) = props.reactive.icon_end_when.as_ref() {
-                        output.push_str(&format!("{content_pad}if ({}) {{\n", icon_condition(path, props.reactive.icon_end_comparison.as_ref())));
+                        output.push_str(&format!(
+                            "{content_pad}if ({}) {{\n",
+                            icon_condition(path, props.reactive.icon_end_comparison.as_ref())
+                        ));
                         render_compose_side_icon(icon, content_indent + 4, output);
                         output.push_str(&format!("{content_pad}}}\n"));
                     } else {
@@ -580,7 +624,9 @@ fn render_compose_flow_node(
                 }
             };
             if let Some(loading) = loading.as_ref() {
-                output.push_str(&format!("{pad}    Box(contentAlignment = Alignment.Center) {{\n"));
+                output.push_str(&format!(
+                    "{pad}    Box(contentAlignment = Alignment.Center) {{\n"
+                ));
                 output.push_str(&format!(
                     "{pad}        Row(modifier = Modifier.graphicsLayer {{ alpha = if ({loading}) 0f else 1f }}, verticalAlignment = Alignment.CenterVertically) {{\n"
                 ));
@@ -619,7 +665,7 @@ fn render_compose_section_body(
     }
     let column_pad = " ".repeat(column_indent);
     let horizontal_alignment = props
-        .center
+        .center_x
         .as_ref()
         .map(|value| {
             format!(
@@ -628,7 +674,11 @@ fn render_compose_section_body(
             )
         })
         .unwrap_or_default();
-    let vertical_arrangement = compose_section_vertical_arrangement(props.gap.as_ref());
+    let vertical_arrangement = props
+        .center_y
+        .as_ref()
+        .map(compose_section_vertical_arrangement_centered)
+        .unwrap_or_else(|| compose_section_vertical_arrangement(props.gap.as_ref()));
     output.push_str(&format!(
         "{column_pad}Column(modifier = {}{}{}) {{\n",
         modifier_for_section_content(props),
@@ -705,7 +755,11 @@ fn render_compose_box(
         });
     let mut modifier = modifier_for_container_style(
         props,
-        if positioned { ComposeFlow::Inline } else { flow },
+        if positioned {
+            ComposeFlow::Inline
+        } else {
+            flow
+        },
     );
     if props.element.on_click.is_some() {
         modifier.push_str(&format!(
@@ -748,7 +802,8 @@ fn render_compose_box(
         );
         output.push_str(&format!("{pad}}}\n"));
     } else {
-        output.push_str(&format!("{pad}Column(modifier = {modifier}) {{\n"));
+        let horizontal_alignment = props.center_x.as_ref().map(|value| format!(", horizontalAlignment = {}", compose_section_horizontal_alignment(value))).unwrap_or_default();
+        output.push_str(&format!("{pad}Column(modifier = {modifier}{horizontal_alignment}) {{\n"));
         render_compose_box_children(
             props,
             children,
@@ -761,6 +816,15 @@ fn render_compose_box(
         );
         output.push_str(&format!("{pad}}}\n"));
     }
+}
+
+fn compose_section_vertical_arrangement_centered(
+    value: &ResponsiveValue<bool>,
+) -> String {
+    format!(
+        ", verticalArrangement = if ({} ?: false) Arrangement.Center else Arrangement.Top",
+        compose_bool_value(value)
+    )
 }
 
 fn render_compose_box_children(
@@ -783,7 +847,14 @@ fn render_compose_box_children(
     let child_indent = indent + if color_scope.is_some() { 4 } else { 0 };
     let child_pad = " ".repeat(child_indent);
     if layered {
-        output.push_str(&format!("{child_pad}Column {{\n"));
+        let horizontal_alignment = props
+            .center_x
+            .as_ref()
+            .map(compose_section_horizontal_alignment)
+            .unwrap_or_else(|| "Alignment.Start".to_string());
+        output.push_str(&format!(
+            "{child_pad}Column(horizontalAlignment = {horizontal_alignment}) {{\n"
+        ));
         render_compose_box_flow_children(
             children,
             child_indent + 4,

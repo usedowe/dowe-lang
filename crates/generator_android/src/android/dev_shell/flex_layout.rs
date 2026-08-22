@@ -20,6 +20,10 @@ fn dev_activity_flex_layout() -> &'static str {
             }
         }
 
+        boolean isHorizontal() {
+            return direction == DOWE_DIRECTION_ROW;
+        }
+
         @Override
         protected void dispatchDraw(Canvas canvas) {
             doweDrawChildShadows(this, canvas);
@@ -200,8 +204,9 @@ fn dev_activity_flex_layout() -> &'static str {
             int horizontalPadding = getPaddingLeft() + getPaddingRight();
             int verticalPadding = getPaddingTop() + getPaddingBottom();
             int visibleCount = 0;
-            int childrenHeight = 0;
+            int fixedHeight = 0;
             int maxWidth = 0;
+            float totalWeight = 0f;
             for (int i = 0; i < count; i++) {
                 View child = getChildAt(i);
                 if (child.getVisibility() == GONE) {
@@ -210,18 +215,44 @@ fn dev_activity_flex_layout() -> &'static str {
                 visibleCount++;
                 ViewGroup.LayoutParams params = doweChildParams(child);
                 float weight = doweChildWeight(child);
-                int width = weight > 0f || align == DOWE_ALIGN_STRETCH
-                    ? ViewGroup.LayoutParams.MATCH_PARENT
-                    : params.width;
-                int height = weight > 0f ? ViewGroup.LayoutParams.WRAP_CONTENT : params.height;
+                if (weight > 0f) {
+                    totalWeight += weight;
+                    continue;
+                }
+                int width = align == DOWE_ALIGN_STRETCH
+                    ? ViewGroup.LayoutParams.MATCH_PARENT : params.width;
                 child.measure(
                     getChildMeasureSpec(widthSpec, horizontalPadding, width),
-                    getChildMeasureSpec(heightSpec, verticalPadding, height)
+                    getChildMeasureSpec(heightSpec, verticalPadding, params.height)
+                );
+                fixedHeight += child.getMeasuredHeight();
+                maxWidth = Math.max(maxWidth, child.getMeasuredWidth());
+            }
+            int gapTotal = Math.max(0, visibleCount - 1) * gap;
+            int availableHeight = Math.max(0, MeasureSpec.getSize(heightSpec) - verticalPadding - gapTotal);
+            int remainingHeight = Math.max(0, availableHeight - fixedHeight);
+            int childrenHeight = fixedHeight;
+            for (int i = 0; i < count; i++) {
+                View child = getChildAt(i);
+                if (child.getVisibility() == GONE) {
+                    continue;
+                }
+                float weight = doweChildWeight(child);
+                if (weight <= 0f) {
+                    continue;
+                }
+                ViewGroup.LayoutParams params = doweChildParams(child);
+                int width = align == DOWE_ALIGN_STRETCH
+                    ? ViewGroup.LayoutParams.MATCH_PARENT : params.width;
+                int height = totalWeight > 0f
+                    ? Math.round(remainingHeight * (weight / totalWeight)) : 0;
+                child.measure(
+                    getChildMeasureSpec(widthSpec, horizontalPadding, width),
+                    MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
                 );
                 childrenHeight += child.getMeasuredHeight();
                 maxWidth = Math.max(maxWidth, child.getMeasuredWidth());
             }
-            int gapTotal = Math.max(0, visibleCount - 1) * gap;
             setMeasuredDimension(
                 resolveSize(horizontalPadding + maxWidth, widthSpec),
                 resolveSize(verticalPadding + childrenHeight + gapTotal, heightSpec)

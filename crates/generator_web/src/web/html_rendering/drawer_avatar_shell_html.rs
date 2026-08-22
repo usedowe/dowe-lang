@@ -99,9 +99,6 @@ fn render_drawer_html(
         ),
         class_attr(drawer_classes(props))
     );
-    if !props.hide_close_button {
-        html.push_str(&drawer_close_html());
-    }
     if !header.is_empty() {
         html.push_str("<div class=\"drawer-header\">");
         for child in header {
@@ -121,7 +118,11 @@ fn render_drawer_html(
         }
         html.push_str("</div>");
     }
-    html.push_str("</div></div>");
+    html.push_str("</div>");
+    if !props.hide_close_button {
+        html.push_str(&drawer_close_html(props.position.as_str()));
+    }
+    html.push_str("</div>");
     html
 }
 
@@ -133,9 +134,9 @@ fn drawer_panel_attrs(props: &DrawerProps, context: &ReactiveRenderContext) -> S
     )
 }
 
-fn drawer_close_html() -> String {
+fn drawer_close_html(position: &str) -> String {
     format!(
-        r#"<button class="drawer-close" type="button" aria-label="Close drawer" data-dowe-drawer-close>{}</button>"#,
+        r#"<button class="drawer-close is-{position}" type="button" aria-label="Close drawer" data-dowe-drawer-close>{}</button>"#,
         overlay_close_icon_html()
     )
 }

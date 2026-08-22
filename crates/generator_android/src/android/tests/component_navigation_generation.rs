@@ -323,7 +323,7 @@ fn generates_compose_and_dev_side_nav() {
             .content
             .contains("padding(horizontal = 8.dp, vertical = 2.dp)")
     );
-    assert!(views.content.contains("color = DoweDesign.softMutedText"));
+    assert!(views.content.contains("color = DoweDesign.mutedText"));
     assert!(
         views
             .content
@@ -382,7 +382,7 @@ fn generates_compose_and_dev_side_nav() {
     assert!(dev.content.contains("private TextView doweSideNavStatus"));
     assert!(
         dev.content
-            .contains("doweBackground(DOWE_SOFT_MUTED, 999f)")
+            .contains("doweBackground(DOWE_MUTED, 999f)")
     );
     assert!(dev.content.contains("Status, 10, true);"));
     assert!(dev.content.contains("Arrow, 10, true);"));
@@ -564,14 +564,17 @@ fn generates_compose_and_dev_navigation_shell_components() {
     assert!(
         views
             .content
-            .contains("Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())")
+            .contains("Box(modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds())")
     );
+    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth().zIndex(1f).background(DoweDesign.surface))"));
     assert!(views.content.contains("Text(\"Resource hub\""));
     assert!(views.content.contains("label = \"Side Home\""));
 
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("DoweDismissOnTouchLayout"));
     assert!(dev.content.contains("new PopupWindow("));
+    assert!(dev.content.contains("setElevation(doweDp(8))"));
+    assert!(dev.content.contains("setBackgroundColor(DOWE_SURFACE)"));
     assert!(dev.content.contains("showAsDropDown("));
     assert!(
         dev.content
@@ -730,7 +733,7 @@ fn generates_compose_and_dev_stepper() {
             .contains("horizontalScroll(rememberScrollState())")
     );
     assert!(dev.content.contains("\"1  \" +"));
-    assert!(dev.content.contains("DOWE_SOFT_MUTED"));
+    assert!(dev.content.contains("DOWE_MUTED"));
 }
 
 #[test]
@@ -783,8 +786,9 @@ fn generates_compose_and_dev_drawer() {
     assert!(
         views
             .content
-            .contains("Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())")
+            .contains("Box(modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds())")
     );
+    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth().zIndex(1f).background(DoweDesign.surface))"));
     assert!(views.content.contains("val doweDrawerNavigate = navigate"));
     assert!(views.content.contains("state.write(\"drawer01\", false)"));
     assert!(
@@ -827,7 +831,7 @@ fn generates_compose_and_dev_drawer() {
     assert!(dev.content.contains("new ScrollView(this);"));
     assert!(
         dev.content
-            .contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_SOFT_MUTED_TEXT")
+            .contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_MUTED_TEXT")
     );
     assert!(
         dev.content
@@ -859,18 +863,21 @@ fn generates_compose_and_dev_drawer() {
             .contains("scrollView.smoothScrollTo(0, destination);")
     );
     assert!(!dev.content.contains("doweTopRelativeToRoot"));
-    assert!(
-        dev.content
-            .contains("root.post(() -> { if (root.getWindowToken() != null) { view")
-    );
+    assert!(dev.content.contains(
+        "root.post(() -> { if (root.getWindowToken() != null) { doweActiveOverlay = view"
+    ));
+    assert!(dev.content.contains("doweActiveOverlay = null;"));
     assert!(
         dev.content
             .contains(r#"doweDrawerBackground(DOWE_SURFACE, null, "end", 0f)"#)
     );
     assert!(!dev.content.contains(".setText(\"x\")"));
     assert!(dev.content.contains(
-        "new FrameLayout.LayoutParams(doweDp(28), doweDp(28), Gravity.TOP | Gravity.END)"
+        "new FrameLayout.LayoutParams(doweDp(28), doweDp(28), Gravity.TOP | Gravity.START)"
     ));
+    assert!(dev
+        .content
+        .contains("Params.setMargins(doweDp(8), doweDp(8), 0, 0);"));
     assert!(dev.content.contains("doweAdd(parent, child, null, false);"));
     assert!(dev.content.contains("if (parent instanceof FrameLayout)"));
     assert!(dev.content.contains("doweFrameLayoutParams"));

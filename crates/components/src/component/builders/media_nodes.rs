@@ -319,6 +319,7 @@ pub fn audio_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
 
 pub fn image_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut src = None;
+    let mut reactive_src = None;
     let mut alt = String::new();
     let mut aspect = ImageAspect::Auto;
     let mut object_fit = ImageObjectFit::Cover;
@@ -327,7 +328,13 @@ pub fn image_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "src" => src = Some(parse_media_source(&prop.name, &prop.value)?),
+            "src" => {
+                if let Some(path) = reactive_reference(&prop.value) {
+                    reactive_src = Some(path);
+                } else {
+                    src = Some(parse_media_source(&prop.name, &prop.value)?);
+                }
+            }
             "alt" => alt = parse_static_string(&prop.name, &prop.value)?,
             "aspect" => aspect = parse_image_aspect(&prop.name, &prop.value)?,
             "objectFit" => object_fit = parse_image_object_fit(&prop.name, &prop.value)?,
@@ -342,8 +349,17 @@ pub fn image_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
     Ok(ViewNode::Image {
         props: ImageProps {
             style,
-            src: src
-                .ok_or_else(|| ComponentError::invalid_prop("src", "asset path or https URL"))?,
+            src: match (src, reactive_src.as_ref()) {
+                (Some(src), _) => src,
+                (None, Some(_)) => String::new(),
+                (None, None) => {
+                    return Err(ComponentError::invalid_prop(
+                        "src",
+                        "asset path, https URL or Signal path",
+                    ));
+                }
+            },
+            reactive_src,
             alt,
             aspect,
             object_fit,

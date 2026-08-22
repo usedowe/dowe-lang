@@ -187,20 +187,19 @@ fn renders_side_nav_markup_active_runtime_and_css() {
         css.contains(".sidenav-submenu.is-unbordered>.sidenav-submenu-content{border-left:0;}")
     );
     assert!(css.contains(".sidenav-chevron svg{display:block;width:1em;height:1em;}"));
-    assert!(css.contains(".sidenav-status{flex:0 0 auto;border-radius:999px;padding:0.125rem 0.5rem;background:var(--dowe-softMuted);color:var(--dowe-softMutedText);"));
+    assert!(css.contains(".sidenav-status{flex:0 0 auto;border-radius:999px;padding:0.125rem 0.5rem;background:var(--dowe-muted);color:var(--dowe-mutedText);"));
     assert!(css.contains(
         ".sidenav-submenu.is-open>.sidenav-submenu-content{grid-template-rows:1fr;opacity:1;"
     ));
     assert!(!css.contains("max-height:40rem"));
     assert!(
         page.css_content
-            .contains(".sidenav.is-ghost.is-muted .sidenav-entry:hover{background-color:transparent;color:var(--dowe-muted);}")
+            .contains(".sidenav.is-ghost.is-danger .sidenav-entry:hover{background-color:transparent;color:var(--dowe-danger);}")
     );
-    assert!(page.css_content.contains(".sidenav.is-soft.is-primary .sidenav-entry:hover{background-color:color-mix(in srgb,var(--dowe-softPrimary) 50%,transparent);color:var(--dowe-primary);}"));
-    assert!(page.css_content.contains(".sidenav.is-soft.is-muted .sidenav-entry.is-active{background-color:var(--dowe-softMuted);color:var(--dowe-softMutedText);border-color:transparent;font-weight:600;}"));
+    assert!(page.css_content.contains(".sidenav.is-soft.is-primary .sidenav-entry:hover{background-color:color-mix(in srgb,var(--dowe-primary) 50%,transparent);color:var(--dowe-primary);}"));
+    assert!(page.css_content.contains(".sidenav.is-soft.is-danger .sidenav-entry.is-active{background-color:var(--dowe-danger);color:var(--dowe-dangerText);border-color:transparent;font-weight:600;}"));
     assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-entry.is-active{background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:var(--dowe-primary);font-weight:600;}"));
     assert!(page.css_content.contains(".sidenav.is-outlined.is-primary .sidenav-entry.is-active{background-color:transparent;color:var(--dowe-primary);border-color:var(--dowe-primary);font-weight:600;}"));
-    assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-header,.sidenav.is-solid.is-primary .sidenav-header:hover,.sidenav.is-solid.is-primary .sidenav-header.is-active{background-color:transparent;color:var(--dowe-primary);}"));
     assert!(
         super::router_js(&super::WebOutput {
             chunks: Vec::new(),
@@ -530,6 +529,16 @@ fn renders_drawer_markup_runtime_and_css() {
         )
     );
     assert!(html.contains(r#"data-dowe-drawer-close"#));
+    assert!(html.contains(r#"class="drawer-close is-end""#));
+    let close_button_index = html.find("data-dowe-drawer-close").expect("close button");
+    let dialog_end_index = html
+        .find("aria-modal=\"true\"")
+        .map(|index| html[index..].find(">").map(|offset| index + offset + 1).unwrap())
+        .expect("dialog");
+    assert!(
+        close_button_index > dialog_end_index,
+        "close button must render outside the dialog panel"
+    );
     assert!(html.contains(r#"<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" focusable="false">"#));
     assert!(html.contains(r#"d="m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z""#));
     assert!(html.contains(r#"class="drawer-header""#));
@@ -545,6 +554,18 @@ fn renders_drawer_markup_runtime_and_css() {
     assert!(css.contains(".drawer.is-top{inset-inline:0;top:0;max-height:min(20rem,100vh);border-start-start-radius:0;border-start-end-radius:0;"));
     assert!(css.contains(".drawer.is-bottom{inset-inline:0;bottom:0;max-height:min(20rem,100vh);border-end-start-radius:0;border-end-end-radius:0;"));
     assert!(css.contains(".drawer-close svg{display:block;width:1em;height:1em;}"));
+    assert!(css.contains(
+        ".drawer-panel>.drawer-close.is-start{top:.5rem;right:.5rem;bottom:auto;left:auto;}"
+    ));
+    assert!(css.contains(
+        ".drawer-panel>.drawer-close.is-end{top:.5rem;left:.5rem;bottom:auto;right:auto;}"
+    ));
+    assert!(css.contains(
+        ".drawer-panel>.drawer-close.is-top{top:auto;right:.5rem;bottom:.5rem;left:auto;}"
+    ));
+    assert!(css.contains(
+        ".drawer-panel>.drawer-close.is-bottom{top:.5rem;right:.5rem;bottom:auto;left:auto;}"
+    ));
     assert!(page.css_content.contains(".drawer.is-soft.is-surface"));
     assert!(router.contains("function closeDrawer(drawer)"));
     assert!(router.contains("data-dowe-drawer-overlay"));

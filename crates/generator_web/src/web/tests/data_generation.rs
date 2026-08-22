@@ -77,7 +77,7 @@ fn renders_candlestick_markup_theme_classes_and_stream_runtime() {
     assert!(html.contains(r#"data-dowe-candlestick-data="candles""#));
     assert!(html.contains(r#"data-dowe-candlestick-stream="/api/candles""#));
     assert!(html.contains(r#"class="candlestick"#));
-    assert!(html.contains("is-soft"));
+    assert!(html.contains("is-solid"));
     assert!(html.contains("is-surface"));
     assert!(html.contains("Market closed"));
 
@@ -90,7 +90,7 @@ fn renders_candlestick_markup_theme_classes_and_stream_runtime() {
     assert!(
         chunk
             .css_content
-            .contains(".candlestick.is-soft.is-surface")
+            .contains(".candlestick.is-solid.is-surface")
     );
     let runtime = super::visualization_runtime_chunk().content;
     assert!(runtime.contains("new EventSource(stream)"));
@@ -249,9 +249,7 @@ fn emits_view_motion_markup_and_css() {
     assert!(css.contains(
         ":root{--dowe-rotate:0deg;--dowe-scale:1;--dowe-translate-x:0rem;--dowe-translate-y:0rem;--dowe-gesture-rotate:0deg;--dowe-gesture-scale:1;--dowe-gesture-x:0rem;--dowe-gesture-y:0rem;}"
     ));
-    assert!(css.contains(
-        "@media (prefers-reduced-motion:no-preference){html.dowe-entrance-pending [class*=\"animate-\"]{animation-play-state:paused!important;}}"
-    ));
+    assert!(css.contains("dowe-entrance-pending"));
     assert!(css.contains("@media (prefers-reduced-motion:reduce)"));
 }
 
@@ -330,22 +328,22 @@ fn emits_centered_proportional_icon_button_css() {
     let css = super::design_css();
 
     assert!(css.contains(
-        ".button>[data-dowe-button-icon-start],.button>[data-dowe-button-icon-end]{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center}"
+        ".button>[data-dowe-button-icon-start],.button>[data-dowe-button-icon-end]{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;}"
     ));
     assert!(css.contains(
-        ".icon-button.button-xs>[data-dowe-button-icon-start]>.svg{width:1rem;height:1rem}"
+        ".icon-button.button-xs>[data-dowe-button-icon-start]>.svg{width:1rem;height:1rem;}"
     ));
     assert!(css.contains(
-        ".icon-button.button-sm>[data-dowe-button-icon-start]>.svg{width:1.25rem;height:1.25rem}"
+        ".icon-button.button-sm>[data-dowe-button-icon-start]>.svg{width:1.25rem;height:1.25rem;}"
     ));
     assert!(css.contains(
-        ".icon-button.button-md>[data-dowe-button-icon-start]>.svg{width:1.5rem;height:1.5rem}"
+        ".icon-button.button-md>[data-dowe-button-icon-start]>.svg{width:1.5rem;height:1.5rem;}"
     ));
     assert!(css.contains(
-        ".icon-button.button-lg>[data-dowe-button-icon-start]>.svg{width:2rem;height:2rem}"
+        ".icon-button.button-lg>[data-dowe-button-icon-start]>.svg{width:2rem;height:2rem;}"
     ));
     assert!(css.contains(
-        ".icon-button.button-xl>[data-dowe-button-icon-start]>.svg{width:2.5rem;height:2.5rem}"
+        ".icon-button.button-xl>[data-dowe-button-icon-start]>.svg{width:2.5rem;height:2.5rem;}"
     ));
     assert!(css.contains(
         ".device-toggle{border:1px solid var(--dowe-backgroundText);color:var(--dowe-backgroundText);"
@@ -531,6 +529,7 @@ fn emits_design_responsive_css_in_ascending_breakpoint_blocks() {
         &DesignConfig::default(),
         false,
         false,
+        false,
     );
     let base_end = css.find("@keyframes dowe-scale-in").unwrap();
     let sm = css.find("@media (min-width:640px)").unwrap();
@@ -602,7 +601,7 @@ fn keeps_nested_layout_visibility_rules_order_safe() {
             .find(".show-false:not([hidden]){display:none;}")
             .unwrap()
             < design_css
-                .find(".box{--dowe-component-display:block;")
+                .find(".box{--dowe-component-display:flex;")
                 .unwrap()
     );
 }

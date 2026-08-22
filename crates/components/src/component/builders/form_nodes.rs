@@ -1130,8 +1130,6 @@ pub fn textarea_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Textarea, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Outlined);
-    style.color.get_or_insert(ColorFamily::Primary);
     style.size = Some(size);
     Ok(ViewNode::Textarea {
         props: TextareaProps {

@@ -2,6 +2,7 @@
 struct DesignCssFeatures {
     content: bool,
     section_center: bool,
+    box_center: bool,
     forms: bool,
     media: bool,
     visualization: bool,
@@ -16,6 +17,7 @@ impl DesignCssFeatures {
         Self {
             content: true,
             section_center: true,
+            box_center: true,
             forms: true,
             media: true,
             visualization: true,
@@ -39,8 +41,13 @@ impl DesignCssFeatures {
     }
 
     fn observe(&mut self, node: &ViewNode) {
-        if let ViewNode::Section { props, .. } = node {
-            self.section_center |= props.center.is_some();
+        match node {
+            ViewNode::Section { props, .. } => self.section_center |= props.center_x.is_some(),
+            ViewNode::Box { props, .. } => self.box_center |= props.center_x.is_some(),
+            _ => {}
+        }
+        if let ViewNode::Scope { actions, .. } = node {
+            self.overlays |= actions.iter().any(action_contains_toast);
         }
         self.content |= matches!(
             node,
@@ -100,9 +107,7 @@ impl DesignCssFeatures {
         );
         self.disclosure |= matches!(
             node,
-            ViewNode::Accordion { .. }
-                | ViewNode::Carousel { .. }
-                | ViewNode::Collapsible { .. }
+            ViewNode::Accordion { .. } | ViewNode::Carousel { .. } | ViewNode::Collapsible { .. }
         );
         self.feedback |= matches!(
             node,
@@ -140,4 +145,25 @@ impl DesignCssFeatures {
                 | ViewNode::Tooltip { .. }
         );
     }
+}
+
+fn action_contains_toast(action: &ViewAction) -> bool {
+    match &action.kind {
+        ViewActionKind::Sequence(statements) => statements_contain_toast(statements),
+        ViewActionKind::Request(_) | ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => false,
+    }
+}
+
+fn statements_contain_toast(statements: &[ViewFunctionStatement]) -> bool {
+    statements.iter().any(|statement| match statement {
+        ViewFunctionStatement::Toast(_) => true,
+        ViewFunctionStatement::If { success, error, .. } => {
+            statements_contain_toast(success) || statements_contain_toast(error)
+        }
+        ViewFunctionStatement::Validate { .. }
+        | ViewFunctionStatement::Request { .. }
+        | ViewFunctionStatement::Assign(_)
+        | ViewFunctionStatement::Reset(_)
+        | ViewFunctionStatement::Redirect { .. } => false,
+    })
 }

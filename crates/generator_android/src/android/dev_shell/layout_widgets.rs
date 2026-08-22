@@ -276,7 +276,7 @@ fn dev_activity_layout_widgets() -> &'static str {
         table.setLayoutParams(new HorizontalScrollView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         table.setMinimumWidth(doweTableMinimumWidth(widths));
         LinearLayout header = doweTableRow();
-        header.setBackgroundColor(DOWE_SOFT_MUTED);
+        header.setBackgroundColor(DOWE_MUTED);
         for (int index = 0; index < labels.length; index += 1) {
             TextView cell = doweTableCell(labels[index], contentColor, tableSize, true, alignments[index], widths[index], false);
             doweAdd(header, cell);
@@ -628,9 +628,9 @@ fn dev_activity_layout_widgets() -> &'static str {
     }
 
     private TextView doweSideNavStatus(String text, float descriptionSize, String font) {
-        TextView status = doweText(text, DOWE_SOFT_MUTED_TEXT, descriptionSize, 600, 0f, descriptionSize, font);
+        TextView status = doweText(text, DOWE_MUTED_TEXT, descriptionSize, 600, 0f, descriptionSize, font);
         status.setPadding(doweDp(8), doweDp(2), doweDp(8), doweDp(2));
-        status.setBackground(doweBackground(DOWE_SOFT_MUTED, 999f));
+        status.setBackground(doweBackground(DOWE_MUTED, 999f));
         return status;
     }
 

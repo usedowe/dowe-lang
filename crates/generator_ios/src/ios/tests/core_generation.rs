@@ -40,6 +40,86 @@ fn generates_persistent_view_store_for_swiftui() {
 }
 
 #[test]
+fn generates_flex_item_behavior_for_flex_parents_but_not_grid_children() {
+    let mut flex_route = route();
+    flex_route.layout_tree = ViewNode::Children;
+    flex_route.page_tree = ViewNode::Section {
+        props: StyleProps {
+            sizing: SizingProps {
+                h: Some(ResponsiveValue::scalar(SizeValue::ViewportMinus(
+                    ScaleValue::from_half_steps(0),
+                ))),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![ViewNode::Grid {
+            props: GridProps {
+                style: StyleProps {
+                    flex: Some(ResponsiveValue::ordered(vec![
+                        ResponsiveEntry {
+                            breakpoint: Breakpoint::Xs,
+                            value: FlexItem::Fill,
+                        },
+                        ResponsiveEntry {
+                            breakpoint: Breakpoint::Md,
+                            value: FlexItem::None,
+                        },
+                    ])),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![ViewNode::Grid {
+                props: GridProps {
+                    style: StyleProps {
+                        flex: Some(ResponsiveValue::scalar(FlexItem::Fill)),
+                        sizing: SizingProps {
+                            h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                                ScaleValue::from_half_steps(112),
+                            ))),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                children: vec![text("Grid item")],
+            },
+            ViewNode::Box {
+                props: StyleProps::default(),
+                children: vec![text("Flexible grid item")],
+            }],
+        }],
+    };
+    let generated = swift_content(&generate_ios(
+        &[flex_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(generated.contains("enum DoweFlexItem: Equatable"));
+    assert!(generated.contains("DoweFlexItem.fill"));
+    assert!(generated.contains("DoweFlexItem.none"));
+    assert_eq!(generated.matches(".doweFlexItem(").count(), 1);
+    assert!(generated.contains(
+        ".frame(maxHeight: .infinity, alignment: .top).layoutPriority(1)"
+    ));
+    assert!(generated.contains(
+        "fillHeight: (false) || ((doweResponsive(viewportWidth, xs: true, md: false) ?? false))"
+    ));
+    assert!(generated.contains(
+        "let stretches = stretchesByDefault && subviews[index][DoweGridItemStretchKey.self]"
+    ));
+    assert!(generated.contains(
+        ".doweGridItemStretches((doweResponsive(viewportWidth, xs: false) ?? true))"
+    ));
+    assert!(generated.contains(".doweGridItemStretches(true)"));
+    assert!(generated.contains("image.resizable().scaledToFill().clipped()"));
+}
+
+#[test]
 fn generates_dowe_global_toast_presenter_for_swiftui() {
     let mut toast_route = route();
     toast_route.page_tree = ViewNode::Scope {
@@ -71,7 +151,7 @@ fn generates_dowe_global_toast_presenter_for_swiftui() {
 
     assert!(generated.contains("DoweGlobalToast(toast: state.toast, close: state.closeToast)"));
     assert!(generated.contains("doweCardContainer(toast.variant, toast.scheme)"));
-    assert!(generated.contains("DoweOverlayCloseIcon(color: DoweDesign.softMutedText)"));
+    assert!(generated.contains("DoweOverlayCloseIcon(color: DoweDesign.mutedText)"));
     assert!(generated.contains(".accessibilityLabel(\"Close toast\")"));
     assert!(!generated.contains("UIAlertController"));
 }
@@ -265,6 +345,57 @@ fn generates_immutable_swift_constants() {
     let generated = swift_content(&output);
     assert!(generated.contains("constants: [\"plans01\": [\"Starter\"]]"));
     assert!(generated.contains("private let constants: [String: Any]"));
+}
+
+#[test]
+fn generates_dynamic_image_source_for_swiftui() {
+    let mut image_route = route();
+    image_route.page_tree = ViewNode::Scope {
+        constants: vec![dowe_components::ViewConstant {
+            id: "features01".to_string(),
+            name: "features".to_string(),
+            value: ViewSignalValue::Array(vec![ViewSignalValue::Object(vec![
+                (
+                    "id".to_string(),
+                    ViewSignalValue::String("feature".to_string()),
+                ),
+                (
+                    "cover".to_string(),
+                    ViewSignalValue::String("/assets/feature.webp".to_string()),
+                ),
+            ])]),
+        }],
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![ViewNode::Each {
+            item: "feature".to_string(),
+            collection: "features".to_string(),
+            key: "feature.id".to_string(),
+            children: vec![ViewNode::Image {
+                props: ImageProps {
+                    style: VariantProps::default(),
+                    src: String::new(),
+                    reactive_src: Some("feature.cover".to_string()),
+                    alt: "Feature".to_string(),
+                    aspect: ImageAspect::Auto,
+                    object_fit: ImageObjectFit::Cover,
+                    loading: ImageLoading::Lazy,
+                    hide_controls: true,
+                },
+            }],
+        }],
+    };
+    let generated = swift_content(&generate_ios(
+        &[image_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+    assert!(
+        generated.contains("DoweImageView(source: state.text(\"item.cover\", item: row.value)")
+    );
+    assert!(generated.contains("private func doweImageURL(_ source: String) -> URL?"));
+    assert!(generated.contains("directory == \".\" ? \"assets\""));
 }
 
 #[test]
@@ -564,7 +695,9 @@ fn generates_swiftui_box_and_text() {
         .find(|file| file.relative_path.ends_with("DoweIosViewModule.swift"))
         .expect("dev module");
     assert!(host.content.contains("dlopen(file.path"));
-    assert!(host.content.contains("/_dowe/dev/modules/manifest.json"));
+    assert!(host.content.contains("/_dowe/dev/modules/manifest.json?dowe_hmr="));
+    assert!(host.content.contains("request.cachePolicy = .reloadIgnoringLocalCacheData"));
+    assert!(host.content.contains("request.setValue(\"no-cache\", forHTTPHeaderField: \"Cache-Control\")"));
     assert!(host.content.contains("moduleEndpoint = resolveEndpoint()"));
     assert!(host.content.contains("showWaitingState(in: controller)"));
     assert!(host.content.contains("Preparing Dowe app"));
@@ -752,7 +885,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     assert!(views.contains(
         "content.foregroundStyle(explicitColor ?? inheritedColor ?? DoweDesign.backgroundTitle)"
     ));
-    assert!(views.contains(".environment(\\.doweTitleColor, DoweDesign.softMutedTitle)"));
+    assert!(views.contains(".environment(\\.doweTitleColor, DoweDesign.mutedTitle)"));
     let card_override = views
         .find("Text(verbatim: \"Card override\")")
         .expect("Card override");
@@ -762,7 +895,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         .find(".modifier(DoweTitleColorModifier(explicitColor: doweResponsive(viewportWidth, xs: DoweDesign.warning)))")
         .expect("Card override color");
     let inherited_color = card_tail
-        .find(".foregroundStyle(DoweDesign.softMutedText)")
+        .find(".foregroundStyle(DoweDesign.mutedText)")
         .expect("Card content color");
     assert!(override_color < inherited_color);
 }
@@ -942,7 +1075,7 @@ fn keeps_swiftui_box_background_and_foreground_across_nested_boxes() {
     );
     let views = swift_content(&output);
     let grid_start = views
-        .find("DoweGridLayout(columns: doweResponsive(viewportWidth, xs: 1, md: 3) ?? 1")
+        .find("DoweGridLayout(tracks: doweResponsive(viewportWidth, xs: [CGFloat(1)], md: [CGFloat(1), CGFloat(1), CGFloat(1)]) ?? [CGFloat(1)]")
         .expect("nested grid");
     let surface_section = &views[grid_start..];
     let padding = surface_section
@@ -1645,7 +1778,7 @@ fn reuses_stateful_scaffold_drawer_layout_when_page_mentions_binding_literals() 
 
     assert!(layouts.contains("struct DoweLayout0<"));
     assert!(layouts.contains("DoweDrawer(open: state.bool(\"layout.drawer.open\")"));
-    assert_eq!(layouts.matches("private func layoutSection").count(), 3);
+    assert_eq!(layouts.matches("private func layoutSection").count(), 5);
     assert!(layouts.contains("layoutSection0()"));
     assert!(layouts.contains("layoutSection1()"));
     assert!(layouts.contains("layoutSection2()"));
@@ -1773,7 +1906,7 @@ fn generates_swiftui_section_backgrounds() {
     assert!(padding < max_width);
     assert!(max_width < centered);
     assert!(views.contains("doweResponsive(viewportWidth, xs: DoweSectionBackground.aurora, md: DoweSectionBackground.ocean)"));
-    assert!(views.contains("LinearGradient(colors: [DoweDesign.softPrimary, DoweDesign.softSecondary, DoweDesign.softTertiary]"));
+    assert!(views.contains("LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.tertiary]"));
     assert!(views.contains("DoweCoverImage(source:"));
     assert!(views.contains("https://example.com/hero.jpg"));
     assert!(views.contains("DoweOverlay.color(Color.black.opacity(0.35))"));
@@ -1789,7 +1922,7 @@ fn generates_responsive_section_centering_for_swiftui() {
     let ViewNode::Section { props, .. } = &mut children[0] else {
         panic!("section route child");
     };
-    props.center = Some(ResponsiveValue::ordered(vec![
+    props.center_x = Some(ResponsiveValue::ordered(vec![
         ResponsiveEntry {
             breakpoint: Breakpoint::Xs,
             value: false,
@@ -1811,6 +1944,133 @@ fn generates_responsive_section_centering_for_swiftui() {
         "VStack(alignment: (doweResponsive(viewportWidth, xs: false, md: true) ?? false) ? .center : .leading, spacing: 0)"
     ));
     assert!(views.contains(".frame(maxWidth: .infinity, alignment: .leading)"));
+}
+
+#[test]
+fn fills_height_bounded_section_body_for_swiftui() {
+    let mut route = section_route();
+    let ViewNode::Box { children, .. } = &mut route.page_tree else {
+        panic!("section route root");
+    };
+    let ViewNode::Section {
+        props,
+        children: section_children,
+    } = &mut children[0]
+    else {
+        panic!("section route child");
+    };
+    props.sizing.min_h = Some(ResponsiveValue::scalar(SizeValue::ViewportMinus(
+        ScaleValue::from_half_steps(0),
+    )));
+    *section_children = vec![ViewNode::Grid {
+        props: GridProps {
+            columns: Some(ResponsiveValue::scalar(GridTracks::Count(1))),
+            style: StyleProps {
+                sizing: SizingProps {
+                    min_h: Some(ResponsiveValue::scalar(SizeValue::Full)),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![text("Grid")],
+    }];
+
+    let views = swift_content(&generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+    assert!(views.contains(".frame(maxHeight: .infinity)"));
+    assert!(views.contains(
+        ".frame(maxHeight: doweMaxSize(doweResponsive(viewportWidth, xs: DoweSize.full)))"
+    ));
+}
+
+#[test]
+fn generates_responsive_auto_and_full_height_constraints_for_containers() {
+    let sizing = SizingProps {
+        h: Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: SizeValue::Auto,
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: SizeValue::Full,
+            },
+        ])),
+        min_h: Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: SizeValue::Auto,
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: SizeValue::Full,
+            },
+        ])),
+        max_h: Some(ResponsiveValue::ordered(vec![
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Xs,
+                value: SizeValue::Auto,
+            },
+            ResponsiveEntry {
+                breakpoint: Breakpoint::Md,
+                value: SizeValue::Full,
+            },
+        ])),
+        ..Default::default()
+    };
+    let mut height_route = route();
+    height_route.layout_tree = ViewNode::Children;
+    height_route.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![
+            ViewNode::Box {
+                props: StyleProps {
+                    sizing: sizing.clone(),
+                    ..Default::default()
+                },
+                children: Vec::new(),
+            },
+            ViewNode::Section {
+                props: StyleProps {
+                    sizing: sizing.clone(),
+                    ..Default::default()
+                },
+                children: Vec::new(),
+            },
+            ViewNode::Grid {
+                props: GridProps {
+                    style: StyleProps {
+                        sizing,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                children: Vec::new(),
+            },
+        ],
+    };
+    let generated = swift_content(&generate_ios(
+        &[height_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+
+    assert!(
+        generated.contains("doweResponsive(viewportWidth, xs: DoweSize.auto, md: DoweSize.full)")
+    );
+    assert!(generated.contains("private struct DoweParentHeightCapLayout: Layout"));
+    assert!(generated.contains(
+        ".doweMaxHeight(doweResponsive(viewportWidth, xs: DoweSize.auto, md: DoweSize.full))"
+    ));
 }
 
 #[test]

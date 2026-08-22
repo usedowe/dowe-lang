@@ -167,7 +167,7 @@ fn render_compose_sidebar(
     ));
     if !header.is_empty() {
         output.push_str(&format!(
-            "{pad}        CompositionLocalProvider(LocalContentColor provides {}) {{\n{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n",
+            "{pad}        CompositionLocalProvider(LocalContentColor provides {}) {{\n{pad}        Column(modifier = Modifier.fillMaxWidth().zIndex(1f)) {{\n",
             scheme_title(&props.style)
         ));
         for child in header {
@@ -184,7 +184,7 @@ fn render_compose_sidebar(
         output.push_str(&format!("{pad}        }}\n{pad}        }}\n"));
     }
     output.push_str(&format!(
-        "{pad}        Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {{\n"
+        "{pad}        Box(modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds()) {{\n{pad}            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {{\n"
     ));
     for child in body {
         render_compose_node_in_flow(
@@ -197,7 +197,7 @@ fn render_compose_sidebar(
             context,
         );
     }
-    output.push_str(&format!("{pad}        }}\n"));
+    output.push_str(&format!("{pad}            }}\n{pad}        }}\n"));
     if !footer.is_empty() {
         output.push_str(&format!(
             "{pad}        Column(modifier = Modifier.fillMaxWidth()) {{\n"
@@ -349,8 +349,8 @@ fn render_compose_side_nav_data(
             escape_kotlin(&context.signal_path(path))
         )
     };
-    let variant = props.style.reactive.variant.as_ref().map(|path| reactive_text(path, "ghost"));
-    let scheme = props.style.reactive.scheme.as_ref().map(|path| reactive_text(path, "muted"));
+    let variant = props.style.reactive.variant.as_ref().map(|path| reactive_text(path, "solid"));
+    let scheme = props.style.reactive.scheme.as_ref().map(|path| reactive_text(path, "primary"));
     let size = props.style.reactive.size.as_ref().map(|path| reactive_text(path, "md"));
     let wide = compose_side_nav_wide(props, context);
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) = if let Some(size) = size.as_ref() {
@@ -365,11 +365,11 @@ fn render_compose_side_nav_data(
         let values = compose_side_nav_metrics(props.size);
         (values.0.to_string(), values.1.to_string(), values.2.to_string(), values.3.to_string(), values.4.to_string())
     };
-    let container = match (&variant, &scheme) { (None, None) => variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
-    let content = match (&variant, &scheme) { (None, None) => variant_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
-    let title = match (&variant, &scheme) { (None, None) => side_nav_header_content(&props.style).to_string(), _ => format!("doweSideNavHeaderColor({})", scheme.as_deref().unwrap_or("\"muted\"")) };
+    let container = match (&variant, &scheme) { (None, None) => variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"solid\""), scheme.as_deref().unwrap_or("\"primary\"")) };
+    let content = match (&variant, &scheme) { (None, None) => variant_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"solid\""), scheme.as_deref().unwrap_or("\"primary\"")) };
+    let title = side_nav_header_content(&props.style).to_string();
     let active_content = content.clone();
-    let border = if let Some(variant) = variant.as_ref() { format!("if ({variant} == \"outlined\") {content} else null") } else if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined { content.clone() } else { "null".to_string() };
+    let border = if let Some(variant) = variant.as_ref() { format!("if ({variant} == \"outlined\") {content} else null") } else if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined { content.clone() } else { "null".to_string() };
     let modifier = compose_side_nav_modifier(props, flow, &wide);
     output.push_str(&format!(
         "{pad}DoweSideNav(items = {}, stateKey = \"{}\", modifier = {}, activePath = activePath, wide = {}, paddingHorizontal = {padding_horizontal}.dp, paddingVertical = {padding_vertical}.dp, gap = {gap}.dp, labelSize = {label_size}f, descriptionSize = {description_size}f, fontFamily = {}, backgroundColor = {}, contentColor = {}, titleColor = {}, activeContentColor = {}, borderColor = {border}, navigate = navigate)\n",

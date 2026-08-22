@@ -8,13 +8,17 @@ Rust compiler and runtime contracts.
 
 ## Start
 
-1. Read `main.dowe` and the imported files that own the requested surface.
+1. Identify the requested source surface, then read `main.dowe` and only the direct imports that own that surface.
 2. Select one installed skill under `.agents/skills`: `dowe-core` for root structure,
    `dowe-domain-modeling` for business-domain architecture, `dowe-server` for server modules,
    `dowe-views` for view modules, or `dowe-theme` for `theme.dowe`.
 3. Open its `SKILL.md`, then only the reference named for the current task.
 4. Add a second skill or reference only when the request crosses that ownership boundary.
 5. Treat compiler diagnostics as the final syntax and prop authority.
+6. Pi discovers these skills from `.agents/skills`; load `/skill:dowe-core`, `/skill:dowe-server`,
+   `/skill:dowe-views`, `/skill:dowe-theme`, or `/skill:dowe-domain-modeling` when available,
+   then open only the focused reference required by the task. Run `dowe agent update` after
+   upgrading the Dowe CLI so installed skills match the compiler version.
 
 ## Spec-Driven Development
 
@@ -27,7 +31,7 @@ plan, status, check, or validation evidence.
 
 ## CodeGraph And Validation
 
-- Use CodeGraph when ownership, dependencies, modularity, or duplication are part of the change.
+- Use CodeGraph only when ownership, dependencies, modularity, or duplication cannot be determined from directly related files.
 - Persist CodeGraph or Harness evidence only when declared validation requires it.
 - Keep native Dowe tests in any project directory and run `dowe test [path ...]` for supported
   literal assertions.

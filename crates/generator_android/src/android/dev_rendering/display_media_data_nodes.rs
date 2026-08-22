@@ -115,9 +115,13 @@ fn render_dev_android_display_media_data_node(
         }
         ViewNode::Image { props } => {
             let view = next_dev_view(counter);
+            let source = props
+                .reactive_src
+                .as_deref()
+                .map(|path| dev_text_expression(path, None, context))
+                .unwrap_or_else(|| format!("\"{}\"", escape_java(&props.src)));
             output.push_str(&format!(
-                                        "        FrameLayout {view} = doweImage(\"{}\", \"{}\", \"{}\", \"{}\", {}, {});\n",
-                                        escape_java(&props.src),
+                                        "        FrameLayout {view} = doweImage({source}, \"{}\", \"{}\", \"{}\", {}, {});\n",
                                         escape_java(&props.alt),
                                         props.aspect.as_str(),
                                         props.object_fit.as_str(),

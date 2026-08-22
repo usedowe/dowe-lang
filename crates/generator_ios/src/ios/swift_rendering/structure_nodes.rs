@@ -119,7 +119,7 @@ fn render_swift_structure_node(
                 }
                 output.push_str(&format!(
                     "{pad}    VStack(alignment: {}, spacing: {section_spacing}) {{\n",
-                    swift_section_horizontal_alignment(props.center.as_ref())
+                    swift_section_horizontal_alignment(props.center_x.as_ref())
                 ));
                 for child in children {
                     render_swift_node_in_flow(
@@ -133,7 +133,11 @@ fn render_swift_structure_node(
                     );
                 }
                 output.push_str(&format!("{pad}    }}\n"));
-                append_swift_modifiers(output, indent + 4, &swift_modifiers_for_section_content(props));
+                append_swift_modifiers(
+                    output,
+                    indent + 4,
+                    &swift_modifiers_for_section_content(props),
+                );
                 output.push_str(&format!("{pad}}}\n"));
             } else if let Some(background) = props.background.as_ref() {
                 output.push_str(&format!("{pad}ZStack(alignment: .topLeading) {{\n"));
@@ -143,7 +147,7 @@ fn render_swift_structure_node(
                 ));
                 output.push_str(&format!(
                     "{pad}    VStack(alignment: {}, spacing: {section_spacing}) {{\n",
-                    swift_section_horizontal_alignment(props.center.as_ref())
+                    swift_section_horizontal_alignment(props.center_x.as_ref())
                 ));
                 for child in children {
                     render_swift_node_in_flow(
@@ -157,12 +161,16 @@ fn render_swift_structure_node(
                     );
                 }
                 output.push_str(&format!("{pad}    }}\n"));
-                append_swift_modifiers(output, indent + 4, &swift_modifiers_for_section_content(props));
+                append_swift_modifiers(
+                    output,
+                    indent + 4,
+                    &swift_modifiers_for_section_content(props),
+                );
                 output.push_str(&format!("{pad}}}\n"));
             } else {
                 output.push_str(&format!(
                     "{pad}VStack(alignment: {}, spacing: {section_spacing}) {{\n",
-                    swift_section_horizontal_alignment(props.center.as_ref())
+                    swift_section_horizontal_alignment(props.center_x.as_ref())
                 ));
                 for child in children {
                     render_swift_node_in_flow(
@@ -248,23 +256,20 @@ fn render_swift_structure_node(
                 );
             }
             output.push_str(&format!("{pad}        }}\n"));
-            append_swift_modifiers(
-                output,
-                indent + 8,
-                &swift_modifiers_for_layout(props, flow),
-            );
+            append_swift_modifiers(output, indent + 8, &swift_modifiers_for_layout(props, flow));
             output.push_str(&format!("{pad}    }}\n"));
             output.push_str(&format!("{pad}}}\n"));
         }
         ViewNode::Grid { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);
             output.push_str(&format!(
-                "{pad}DoweGridLayout(columns: {}, rowGap: {}, columnGap: {}, justify: {}, align: {}) {{\n",
-                swift_grid_column_count(props.columns.as_ref()),
+                "{pad}DoweGridLayout(tracks: {}, rowGap: {}, columnGap: {}, justify: {}, align: {}, fillHeight: {}) {{\n",
+                swift_grid_tracks(props.columns.as_ref()),
                 swift_grid_row_gap(props.gap.as_ref()),
                 swift_grid_column_gap(props.gap.as_ref()),
                 swift_grid_alignment(props.justify.as_ref()),
-                swift_grid_alignment(props.align.as_ref())
+                swift_grid_alignment(props.align.as_ref()),
+                swift_grid_fills_height(props, flow)
             ));
             for child in children {
                 render_swift_node_in_flow(
@@ -514,7 +519,8 @@ fn render_swift_box(
             }
         }
         output.push_str(&format!(
-            "{pad}    VStack(alignment: .leading, spacing: 0) {{\n"
+            "{pad}    VStack(alignment: {}, spacing: 0) {{\n",
+            swift_section_horizontal_alignment(props.center_x.as_ref())
         ));
         render_swift_box_flow_children(
             children,
@@ -541,7 +547,8 @@ fn render_swift_box(
         output.push_str(&format!("{pad}}}\n"));
     } else {
         output.push_str(&format!(
-            "{pad}VStack(alignment: .leading, spacing: 0) {{\n"
+            "{pad}VStack(alignment: {}, spacing: 0) {{\n",
+            swift_section_horizontal_alignment(props.center_x.as_ref())
         ));
         render_swift_box_flow_children(
             children,

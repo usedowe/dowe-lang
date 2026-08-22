@@ -114,6 +114,10 @@ fn ios_host_input_files(root: &Path) -> RuntimeResult<Vec<PathBuf>> {
     if assets.is_dir() {
         collect_files(&assets, &mut files)?;
     }
+    let project_assets = root.join("assets");
+    if project_assets.is_dir() {
+        collect_files(&project_assets, &mut files)?;
+    }
     for entry in fs::read_dir(root)? {
         let path = entry?.path();
         if path.is_dir() && path.extension().and_then(|value| value.to_str()) == Some("lproj") {
@@ -187,12 +191,18 @@ mod tests {
         let icon_changed =
             ios_app_cache_key(&ios_root, "arm64-apple-ios17.0-simulator", b"swift-1")
                 .expect("cache key");
+        fs::create_dir_all(ios_root.join("assets/img")).expect("project assets");
+        fs::write(ios_root.join("assets/img/feature.webp"), "image").expect("image");
+        let project_asset_changed =
+            ios_app_cache_key(&ios_root, "arm64-apple-ios17.0-simulator", b"swift-1")
+                .expect("cache key");
 
         assert_ne!(original, target_changed);
         assert_ne!(original, toolchain_changed);
         assert_eq!(original, view_changed);
         assert_ne!(original, input_changed);
         assert_ne!(input_changed, icon_changed);
+        assert_ne!(icon_changed, project_asset_changed);
     }
 
     #[test]

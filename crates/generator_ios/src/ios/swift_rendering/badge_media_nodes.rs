@@ -159,7 +159,25 @@ fn render_swift_audio(props: &AudioProps, indent: usize, output: &mut String) {
     );
 }
 
-fn render_swift_image(props: &ImageProps, indent: usize, output: &mut String) {
+fn swift_image_source(props: &ImageProps, context: &SwiftReactiveContext) -> String {
+    let Some(binding) = props.reactive_src.as_deref() else {
+        return swift_string_literal(&props.src);
+    };
+    let Some(path) = context.dynamic_path(binding) else {
+        return swift_string_literal(&props.src);
+    };
+    context
+        .item_value(binding)
+        .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
+        .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path)))
+}
+
+fn render_swift_image(
+    props: &ImageProps,
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
     let pad = " ".repeat(indent);
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
@@ -169,7 +187,7 @@ fn render_swift_image(props: &ImageProps, indent: usize, output: &mut String) {
     };
     output.push_str(&format!(
         "{pad}DoweImageView(source: {}, alt: {}, aspect: {}, objectFit: {}, loading: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {})\n",
-        swift_string_literal(&props.src),
+        swift_image_source(props, context),
         swift_string_literal(&props.alt),
         swift_string_literal(props.aspect.as_str()),
         swift_string_literal(props.object_fit.as_str()),

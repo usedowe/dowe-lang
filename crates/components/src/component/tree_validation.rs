@@ -305,7 +305,13 @@ fn validate_view_tree_with_parent(
             bottom,
             ..
         } => {
-            for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
+            for child in top
+                .iter()
+                .chain(start)
+                .chain(center)
+                .chain(end)
+                .chain(bottom)
+            {
                 validate_view_tree_with_parent(child, false, None)?;
             }
         }
@@ -404,7 +410,6 @@ fn validate_view_tree_with_parent(
     Ok(())
 }
 
-
 fn validate_nav_menu_item(item: &NavMenuItem) -> ComponentResult<()> {
     if let NavMenuItem::Megamenu { content, .. } = item {
         for child in content {
@@ -435,9 +440,7 @@ fn node_style_props(node: &ViewNode) -> Option<&StyleProps> {
         ViewNode::Audio { props } => Some(&props.style.style),
         ViewNode::Image { props } => Some(&props.style.style),
         ViewNode::Camera { props } => Some(&props.style.style),
-        ViewNode::Microphone { props } => {
-            Some(&props.style.style)
-        }
+        ViewNode::Microphone { props } => Some(&props.style.style),
         ViewNode::Accordion { props, .. } => Some(&props.style.style),
         ViewNode::Carousel { props, .. } => Some(&props.style.style),
         ViewNode::Checkbox { props } => Some(&props.style.style),
@@ -483,7 +486,10 @@ fn grid_static_columns(props: &GridProps) -> Option<u16> {
     let columns = props.columns.as_ref()?;
     let mut count = None;
     for entry in &columns.entries {
-        let current = entry.value.count()?;
+        let current = entry
+            .value
+            .count()
+            .or_else(|| entry.value.weights().map(|weights| weights.len() as u16))?;
         if let Some(existing) = count {
             if existing != current {
                 return None;

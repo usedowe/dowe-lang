@@ -60,11 +60,11 @@ meaningful Card; remove the wrapper and let the owning layout component carry th
 
 | Component | Use and essential contract |
 | --- | --- |
-| `Box` | Advanced neutral layer plane when normal flow cannot express the composition: normally a relative stage with direct absolute wrappers or a fixed viewport layer. Do not use it for ordinary spacing, sizing, centering, backgrounds, borders, visibility, Grid gutters, or control wrappers; put those props on the semantic, flow, media, or control owner. |
-| `Section` | Ordered page band and page-level vertical rhythm. A page begins with one or more sibling Sections; `boxed:true` constrains and centers only its generated inner body at `96rem` web or `1536` native, `center:true` or `center:{ xs:false md:true }` centers direct children responsively, and `gap` controls vertical spacing between them with a default of `0`. |
-| `Flex` | One-axis row or column using `direction`, `gap`, `align`, `justify`, and optional wrapping. |
-| `Grid` | Equal-width numeric column counts (1–12), optional numeric or `auto` rows, `gap`, and alignment. |
-| `Card` | One visibly independent surface with a contained background, border, radius, elevation, or inset treatment, such as a pricing offer or raised form. A semantic grouping that remains visually flat uses Grid or Flex instead. Avoid nesting Card inside Card. |
+| `Box` | Advanced neutral layer plane when normal flow cannot express the composition: normally a relative stage with direct absolute wrappers or a fixed viewport layer. Its normal-flow children are a vertical flex parent, so direct layout children can use `flex`. Do not use it for ordinary spacing, sizing, centering, backgrounds, borders, visibility, Grid gutters, or control wrappers; put those props on the semantic, flow, media, or control owner. |
+| `Section` | Ordered page band and page-level vertical rhythm. A page begins with one or more sibling Sections; `boxed:true` constrains and centers only its generated inner body at `96rem` web or `1536` native, `center:true` or `center:{ xs:false md:true }` centers direct children responsively, `gap` controls vertical spacing between them with a default of `0`, and `h`/`minH` make that body available to direct `h:"full"` or `minH:"full"` children after padding. It establishes a vertical flex parent for direct children. |
+| `Flex` | One-axis flex parent using `direction`, `gap`, `align`, `justify`, and optional wrapping. |
+| `Grid` | Equal-width numeric column counts (1–12), optional numeric or `auto` rows, `gap`, and alignment. Grid itself may use `flex` as a flex child, but it does not establish a flex parent for its own children. |
+| `Card` | One visibly independent surface with a contained background, border, radius, elevation, or inset treatment, such as a pricing offer or raised form. It establishes a vertical flex parent for direct children. A semantic grouping that remains visually flat uses Grid or Flex instead. Avoid nesting Card inside Card. |
 | `Title` | One direct quoted or multiline visible-text child or one complete braced string binding; accepts logical `align` (`start`, `center`, `end`, or `justify`) and fluid `size`. |
 | `Text` | One direct quoted or multiline visible-text child or one complete braced string binding; accepts logical `align` (`start`, `center`, `end`, or `justify`) and fluid `size`. |
 | `Divider` | Horizontal or vertical separator; choose `orientation` instead of drawing a border-only Box. |
@@ -74,6 +74,18 @@ meaningful Card; remove the wrapper and let the owning layout component carry th
 `Section center:true` centers direct children horizontally inside the generated content body. It defaults to `false` and accepts a boolean or responsive boolean object such as `center:{ xs:false md:true }`; the same value lowers to web, Android, and iOS alignment behavior.
 
 `Section gap:3` adds vertical spacing between direct children. It defaults to `0`, accepts a Dowe scale or pixel value such as `gap:"8px"`, and supports responsive values such as `gap:{ xs:2 md:4 }`; the same value lowers to web, Android, and iOS spacing behavior.
+
+`Section`, `Box`, `Flex`, `Grid`, and `Card` accept `flex:"initial"`, `flex:"auto"`,
+`flex:"none"`, or `flex:1`, including responsive values such as `flex:{ xs:1 md:"none" }`.
+The prop is effective only for a direct child of `Section`, `Box`, `Flex`, or `Card`. A direct Grid
+child can therefore fill a height-bounded Section with `flex:1`; a Grid child never receives flex
+item behavior because Grid owns tracks rather than a flex axis.
+
+When a Section declares `h` or `minH`, its generated content body fills the remaining inner height
+after effective padding. Use a direct `Grid`, `Flex`, or `Box` with `h:"full"` or `minH:"full"`
+when a split panel, form, or media region must reach the padded Section edges. A Section without
+`h` or `minH` remains content-sized; explicit or responsive Section padding stays on the generated
+body.
 
 `Text` and `Title` alignment is a text-node concern, not a container concern. Use `align:"start"`, `align:"center"`, `align:"end"`, or `align:"justify"`; the same logical value lowers to web, iOS, and Android. `RichText` remains a separate marked-text contract and does not accept `align`.
 
@@ -282,9 +294,9 @@ fn submit
 | `Audio` | Portable audio playback for a supported static source. Use `src`, optional `subtitle` and `avatarSrc`, and `variant`/`scheme`; Dowe owns the play/pause control, 50-bar seekable waveform, remaining-time footer, and web/Android/iOS interaction parity. |
 | `Camera` | Portable still-photo capture. Use `facing`, `label`, `disabled`, and named lifecycle functions; capture results include a target-local `url`, `mimeType`, dimensions, and `facing`. |
 | `Microphone` | Portable audio recording. Use `label`, optional positive `maxDuration`, `disabled`, and named lifecycle functions; stop results include a target-local `url`, `mimeType`, and `durationMs`. |
-| `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, with `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. Web download and fullscreen actions are hidden by default; set `hideControls:false` to enable both. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
+| `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, or whose bare `src` resolves to a typed string constant, Signal, or current `each` item field. Use `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. Web download and fullscreen actions are hidden by default; set `hideControls:false` to enable both. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
 | `Icon` | Bundled vector selected by quoted `name` or a string Signal, constant, or current `each` item path. Names use Solar variants, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. Web, native targets, and the Android development launcher update from the shared catalog; invalid runtime values fall back to the validated initial icon. |
-| `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. |
+| `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. If only `w` or only `h` is authored, the other axis stays automatic and preserves the vector ratio; with neither, the default is `6` by `6`. |
 | `Path` | Context-only Svg path with quoted `d`, paint, optional `fillRule:"nonzero|evenodd"`, and optional matrix transform. Use `evenodd` to preserve holes in compound paths. |
 
 `Icon name` accepts a quoted catalog value or a readable string path. A collection can bind its
@@ -353,7 +365,7 @@ component or use the responsive Grid pattern in `references/table.md` when cells
 | `Avatar` | Person or entity image, initials, or optional `icon` region with supported action and navigation behavior. |
 | `AvatarGroup` | Static `item` children or bound `items`, with visible-count and overflow behavior. |
 | `Badge` | Compact status or count surface containing one or more view children. |
-| `Brand` | Logo or identity container with one or more arbitrary view children, optional quoted `href` navigation, optional accessible `label`, and Box-compatible `w` and `h`; it adds no Button chrome. When used as an AppBar child, mount `Brand` or an imported Logo component directly in a region; do not wrap it with `Flex` just to place it beside sibling controls. |
+| `Brand` | Logo or identity container with one or more arbitrary view children, optional quoted `href` navigation, optional accessible `label`, and Box-compatible `w` and `h`; if only one dimension is authored, the other stays automatic. A native static `Svg w:"full" h:"full"` child preserves its `viewBox` ratio against that outer constraint. It adds no Button chrome. When used as an AppBar child, mount `Brand` or an imported Logo component directly in a region; do not wrap it with `Flex` just to place it beside sibling controls. |
 | `Banner` | Full-width external surface with one or more arbitrary view children, required quoted HTTPS `href`, optional accessible `label`, and common background, cover, spacing, sizing, border, radius, shadow, and visibility props; web opens a protected new tab and native targets use the system browser. |
 | `Chip` | Compact labeled token with optional static Solar `startIcon` and `endIcon` props or custom `start` and `end` icon regions, supported close behavior, portable motion props, and an optional whole-chip `onClick` action. Icon props scale with the Chip `size` across web, Android, and iOS. |
 | `Skeleton` | Loading placeholder sized to the content surface it represents. |

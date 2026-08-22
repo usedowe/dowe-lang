@@ -1050,6 +1050,7 @@ fn swift_sources(root: &Path) -> DeployResult<Vec<PathBuf>> {
 
 fn copy_ios_resources(source: &Path, app: &Path) -> DeployResult<()> {
     copy_tree(&source.join("Fonts"), &app.join("Fonts"))?;
+    copy_tree(&source.join("assets"), &app.join("assets"))?;
     if source.join("AppIcon.png").is_file() {
         copy_file(&source.join("AppIcon.png"), &app.join("AppIcon.png"))?;
     }
@@ -1161,9 +1162,9 @@ fn release_build_number() -> DeployResult<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        automatic_android_signing, explicit_android_signing, explicit_ios_signing,
-        macos_dmg_icon_command, profile_bundle_is_exact, profile_bundle_match, safe_name,
-        validate_host,
+        automatic_android_signing, copy_ios_resources, explicit_android_signing,
+        explicit_ios_signing, macos_dmg_icon_command, profile_bundle_is_exact,
+        profile_bundle_match, safe_name, validate_host,
     };
     use crate::model::BuildTarget;
     use std::fs;
@@ -1173,6 +1174,23 @@ mod tests {
     fn native_artifact_names_are_path_safe() {
         assert_eq!(safe_name("Clinic Desk"), "ClinicDesk");
         assert_eq!(safe_name("***"), "DoweApp");
+    }
+
+    #[test]
+    fn copies_project_assets_into_ios_release_bundle() {
+        let temp = TempDir::new().expect("temporary directory");
+        let source = temp.path().join("ios");
+        let app = temp.path().join("DoweApp.app");
+        fs::create_dir_all(source.join("assets/img")).expect("assets");
+        fs::create_dir_all(&app).expect("app");
+        fs::write(source.join("assets/img/feature.webp"), "image").expect("image");
+
+        copy_ios_resources(&source, &app).expect("resources");
+
+        assert_eq!(
+            fs::read(app.join("assets/img/feature.webp")).expect("bundle image"),
+            b"image"
+        );
     }
 
     #[test]

@@ -133,6 +133,7 @@ pub struct ToggleGroupProps {
     pub pagination: Option<PaginationProps>,
     pub value: Option<String>,
     pub selected: String,
+    pub multiple: bool,
     pub size: ButtonSize,
     pub wide: bool,
     pub vertical: bool,
@@ -303,6 +304,7 @@ pub struct AudioProps {
 pub struct ImageProps {
     pub style: VariantProps,
     pub src: String,
+    pub reactive_src: Option<String>,
     pub alt: String,
     pub aspect: ImageAspect,
     pub object_fit: ImageObjectFit,

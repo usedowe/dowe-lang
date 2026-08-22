@@ -91,6 +91,7 @@ pub fn toggle_group_component_node(
     }
     let mut value = None;
     let mut selected = None;
+    let mut multiple = false;
     let mut size = ButtonSize::Md;
     let mut wide = false;
     let mut vertical = false;
@@ -100,7 +101,7 @@ pub fn toggle_group_component_node(
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "value" => {
+            "value" | "bind" => {
                 value = Some(parse_signal_path(
                     &prop.name,
                     &prop.value,
@@ -108,6 +109,7 @@ pub fn toggle_group_component_node(
                 )?)
             }
             "selected" => selected = Some(parse_static_string_or_number(&prop.name, &prop.value)?),
+            "multiple" => multiple = parse_static_bool(&prop.name, &prop.value)?,
             "size" => size = parse_button_size_prop(&prop.name, &prop.value)?,
             "wide" => wide = parse_static_bool(&prop.name, &prop.value)?,
             "vertical" => vertical = parse_static_bool(&prop.name, &prop.value)?,
@@ -119,22 +121,33 @@ pub fn toggle_group_component_node(
         }
     }
     let selected = selected.unwrap_or_else(|| items[0].id.clone());
-    if !items.iter().any(|item| item.id == selected) {
-        return Err(ComponentError::invalid_prop_combination(format!(
-            "ToggleGroup selected value `{}` must match an item id",
-            selected
-        )));
+    let selected = selected
+        .split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+        .collect::<Vec<_>>();
+    if selected.is_empty() || selected.iter().any(|value| !items.iter().any(|item| item.id == *value)) {
+        return Err(ComponentError::invalid_prop_combination(
+            "ToggleGroup selected values must match item ids",
+        ));
+    }
+    if !multiple && selected.len() > 1 {
+        return Err(ComponentError::invalid_prop_combination(
+            "ToggleGroup selected accepts one value unless multiple is true",
+        ));
     }
     let mut style = parse_variant_props(BuiltinComponent::ToggleGroup, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
-    style.color.get_or_insert(ColorFamily::Muted);
+    style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::ToggleGroup {
         props: ToggleGroupProps {
             style,
             kind: ToggleGroupKind::Selection,
             pagination: None,
             value,
-            selected,
+            selected: selected.join(","),
+            multiple,
             size,
             wide,
             vertical,

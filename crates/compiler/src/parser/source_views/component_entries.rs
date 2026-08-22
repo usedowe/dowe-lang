@@ -306,6 +306,24 @@ fn lower_region(node: &SourceNode, label: &str, allow_children: bool) -> DoweRes
     lower_node_sequence(&node.children, allow_children)
 }
 
+fn lower_styled_region(
+    node: &SourceNode,
+    label: &str,
+    allow_children: bool,
+) -> DoweResult<Vec<ViewNode>> {
+    if !node.args.is_empty() {
+        return Err(node_error(node, format!("{label} cannot declare args")));
+    }
+    let children = lower_node_sequence(&node.children, allow_children)?;
+    if node.props.is_empty() {
+        return Ok(children);
+    }
+    let props = component_props(node, BuiltinComponent::Box)?;
+    let wrapper = container_component_node(BuiltinComponent::Box, props, children, allow_children)
+        .map_err(|error| component_error(node, error))?;
+    Ok(vec![wrapper])
+}
+
 fn overlay_item_props(
     node: &SourceNode,
     owner: BuiltinComponent,

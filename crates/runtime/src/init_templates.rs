@@ -26,11 +26,10 @@ const BLANK_THEME: &str = r##"theme
   design defaultTheme:"light"
     theme name:"light"
       colors:
-        primary color:"#1F3A5F" text:"#FFFFFF" title:"#FFFFFE"
-        secondary color:"#6BC670" text:"#102A15" title:"#102A15"
+        primary color:"#1F3A5F" text:"#EAF2F8" title:"#FFFFFF"
+        secondary color:"#6BC670" text:"#102A15" title:"#071B0B"
         background color:"#FFFFFF" text:"#17263A" title:"#17263E"
         surface color:"#F7F9FC" text:"#17263A" title:"#17263E"
-        softPrimary color:"#CCFBF3" text:"#073B35" title:"#073B35"
 "##;
 
 const CRUD_THEME: &str = r##"theme
@@ -38,30 +37,22 @@ const CRUD_THEME: &str = r##"theme
   design defaultTheme:"editorial"
     Card variant:"solid" scheme:"surface" rounded:"xl" shadow:"xs" shadowColor:"muted"
     Button variant:"solid" scheme:"primary" size:"md" rounded:"full"
-    Avatar variant:"soft" scheme:"primary" rounded:"full" size:"md"
-    Chip variant:"soft" scheme:"primary" rounded:"full" size:"sm"
+    Avatar variant:"solid" scheme:"primary" rounded:"full" size:"md"
+    Chip variant:"solid" scheme:"primary" rounded:"full" size:"sm"
     Text font:"manrope"
     Title font:"manrope"
     theme name:"editorial"
       colors:
         primary color:"#315f4f" text:"#ffffff" title:"#ffffff"
-        softPrimary color:"#dfeae4" text:"#17342b" title:"#17342b"
         secondary color:"#171a18" text:"#ffffff" title:"#ffffff"
-        softSecondary color:"#e4e6e2" text:"#202420" title:"#202420"
         tertiary color:"#8a7046" text:"#ffffff" title:"#ffffff"
-        softTertiary color:"#f1e8d8" text:"#49391f" title:"#49391f"
         muted color:"#6c706a" text:"#ffffff" title:"#ffffff"
-        softMuted color:"#dedfd9" text:"#343832" title:"#343832"
         background color:"#ecebe6" text:"#171a18" title:"#171a18"
         surface color:"#ffffff" text:"#171a18" title:"#171a18"
         success color:"#2f6b4f" text:"#ffffff" title:"#ffffff"
-        softSuccess color:"#dceee4" text:"#173d2c" title:"#173d2c"
         info color:"#476579" text:"#ffffff" title:"#ffffff"
-        softInfo color:"#e1ebf0" text:"#243d4c" title:"#243d4c"
         warning color:"#8a682c" text:"#ffffff" title:"#ffffff"
-        softWarning color:"#f4ead2" text:"#4d3917" title:"#4d3917"
         danger color:"#98504b" text:"#ffffff" title:"#ffffff"
-        softDanger color:"#f3dfdc" text:"#542a27" title:"#542a27"
 "##;
 
 const BLANK_ENV_EXAMPLE: &str = "BACKEND_URL=\nDOWE_DEPLOY_ACCESS_PASSWORD=\n";
@@ -405,9 +396,9 @@ layout AppLayout
                 "Editorial workspace"
         end
           Flex align:"center" gap:3
-            Chip show:{ xs:false md:true } variant:"soft" scheme:"success" size:"sm"
+            Chip show:{ xs:false md:true } variant:"solid" scheme:"success" size:"sm"
               "RUST FULLSTACK"
-            Avatar name:"Dowe Team" alt:"Dowe Team" variant:"soft" scheme:"secondary" size:"md" status:"online"
+            Avatar name:"Dowe Team" alt:"Dowe Team" variant:"solid" scheme:"secondary" size:"md" status:"online"
     main
       children
   Splash bind:sessionLoading
@@ -533,7 +524,7 @@ page homePage
       Grid columns:{ xs:1 md:2 } gap:6 align:"end"
         Grid columns:1 gap:4
           Flex align:"center" gap:3 wrap:true
-            Chip variant:"soft" scheme:"primary" size:"sm"
+            Chip variant:"solid" scheme:"primary" size:"sm"
               "EDITORIAL WORKSPACE"
             Chip variant:"outlined" scheme:"success" size:"sm"
               "LIVE DEMO"
@@ -550,7 +541,7 @@ page homePage
               "New story"
             Button show:session.authenticated onClick:openEditModal variant:"outlined" scheme:"secondary" iconStart:"pen"
               "Edit my story"
-        Card variant:"soft" scheme:"primary" p:5 rounded:"xl"
+        Card variant:"solid" scheme:"primary" p:5 rounded:"xl"
           Grid columns:1 gap:3
             Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
               "CURRENT SESSION"
@@ -562,7 +553,7 @@ page homePage
               "Sign in to publish and maintain your own stories."
             Text show:session.authenticated size:"sm" color:"muted"
               "Authenticated and ready to publish."
-            Chip show:session.authenticated variant:"soft" scheme:"success" size:"sm"
+            Chip show:session.authenticated variant:"solid" scheme:"success" size:"sm"
               "OWNER VERIFIED"
   Section boxed:true px:{ xs:4 md:8 } pb:{ xs:8 md:12 }
     Grid columns:{ xs:1 md:2 } gap:5 align:"start"
@@ -574,7 +565,7 @@ page homePage
                 "COMMUNITY JOURNAL"
               Title size:"2xl" weight:"black"
                 "Latest stories"
-            Button onClick:loadBlogs variant:"soft" scheme:"primary" size:"sm" iconStart:"restart"
+            Button onClick:loadBlogs variant:"solid" scheme:"primary" size:"sm" iconStart:"restart"
               "Refresh"
           Table data:blogs variant:"ghost" scheme:"surface" size:"md" dividers:true emptyTitle:"The journal is ready" emptyDescription:"Create an account and publish the first story."
             column field:"title" label:"Story" width:"2fr"
@@ -591,13 +582,13 @@ page homePage
               "Focused tasks open in their own workspace without crowding the journal."
             Button show:session.guest onClick:openRegisterModal iconStart:"add-circle"
               "Join the journal"
-            Button show:session.guest onClick:openLoginModal variant:"soft" scheme:"secondary" iconStart:"user"
+            Button show:session.guest onClick:openLoginModal variant:"solid" scheme:"secondary" iconStart:"user"
               "Access my account"
             Button show:session.authenticated onClick:openCreateModal iconStart:"add-circle"
               "Publish a story"
-            Button show:session.authenticated onClick:openEditModal variant:"soft" scheme:"secondary" iconStart:"pen"
+            Button show:session.authenticated onClick:openEditModal variant:"solid" scheme:"secondary" iconStart:"pen"
               "Revise a story"
-        Card variant:"soft" scheme:"success" p:5 rounded:"xl"
+        Card variant:"solid" scheme:"success" p:5 rounded:"xl"
           Grid columns:1 gap:3
             Avatar name:"Protected writing" alt:"Protected writing" variant:"solid" scheme:"success" size:"lg"
             Text size:"xs" weight:"bold" spacing:"widest" color:"success"

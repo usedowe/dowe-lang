@@ -1,6 +1,6 @@
 async function loadRouteModules(route, version = "") {
   await Promise.all(
-    (route.runtimeChunks || []).map(path => loadChunk(path, version))
+    (route.runtimeChunks || []).map((path) => loadChunk(path, version)),
   );
   const modules = [];
   for (const path of route.jsChunks)
@@ -18,17 +18,17 @@ function fragmentAppBarInset(target) {
   const scaffold = target.closest(".scaffold");
   if (!scaffold) return 0;
   return Array.from(
-    scaffold.querySelectorAll(".appbar.position-fixed,.appbar.position-sticky")
+    scaffold.querySelectorAll(".appbar.position-fixed,.appbar.position-sticky"),
   )
     .filter(
-      appBar =>
+      (appBar) =>
         appBar.closest(".scaffold") === scaffold &&
-        appBar.getClientRects().length
+        appBar.getClientRects().length,
     )
     .reduce(
       (largest, appBar) =>
         Math.max(largest, appBar.getBoundingClientRect().bottom),
-      0
+      0,
     );
 }
 function scrollToFragment(fragment) {
@@ -42,7 +42,7 @@ function scrollToFragment(fragment) {
     target.style.scrollMarginTop = `${Math.max(0, Math.ceil(fragmentAppBarInset(target)))}px`;
     target.scrollIntoView({
       behavior: reduce ? "auto" : "smooth",
-      block: "start"
+      block: "start",
     });
     if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
     target.focus({ preventScroll: true });
@@ -100,9 +100,15 @@ async function runPageTransition(update) {
   }
   document.documentElement.classList.add("page-transitioning");
   document.documentElement.setAttribute("data-dowe-page-transition", "fade");
-  const transition = document.startViewTransition(update);
+  let transition;
   try {
-    await transition.finished;
+    transition = document.startViewTransition(update);
+  } catch (error) {
+    await update();
+    return;
+  }
+  try {
+    await transition.finished.catch(() => {});
   } finally {
     document.documentElement.classList.remove("page-transitioning");
     document.documentElement.removeAttribute("data-dowe-page-transition");
@@ -128,7 +134,7 @@ async function navigate(value, options = {}) {
       route,
       currentFragment,
       !!options.replace,
-      options.writeHistory !== false
+      options.writeHistory !== false,
     );
     scrollToPageDestination(currentFragment);
     return;
@@ -146,7 +152,7 @@ async function navigate(value, options = {}) {
         modules = await loadRouteModules(route);
         const page = modules[modules.length - 1];
         const boundary = document.querySelector(
-          '[data-dowe-boundary^="page:"]'
+          '[data-dowe-boundary^="page:"]',
         );
         if (boundary) boundary.outerHTML = wrapPage(route, page.render());
         else {
@@ -170,7 +176,7 @@ async function navigate(value, options = {}) {
       route,
       currentFragment,
       !!options.replace,
-      options.writeHistory !== false
+      options.writeHistory !== false,
     );
     scrollToPageDestination(currentFragment);
   } catch (error) {
@@ -185,12 +191,14 @@ function routeFromManifest(record) {
     path: record.path,
     layoutChunks: record.layoutStack || [],
     pageChunk: record.pageChunk,
-    jsChunks: (record.jsChunks || []).map(path => path.replace(/^web\//, "")),
-    cssChunks: (record.cssChunks || []).map(path => path.replace(/^web\//, "")),
-    runtimeChunks: (record.runtimeChunks || []).map(path =>
-      path.replace(/^web\//, "")
+    jsChunks: (record.jsChunks || []).map((path) => path.replace(/^web\//, "")),
+    cssChunks: (record.cssChunks || []).map((path) =>
+      path.replace(/^web\//, ""),
     ),
-    metadata: record.metadata || []
+    runtimeChunks: (record.runtimeChunks || []).map((path) =>
+      path.replace(/^web\//, ""),
+    ),
+    metadata: record.metadata || [],
   };
 }
 function routesFromManifest(manifest) {
@@ -201,15 +209,15 @@ function routesFromManifest(manifest) {
 }
 function refreshDesignCss(path, version) {
   const current = document.querySelector("link[data-dowe-design]");
-  if (!current) return;
+  if (!current) return Promise.resolve();
   const replacement = current.cloneNode();
   replacement.href = versionedAsset(path || current.href, version);
-  replacement.addEventListener("load", () => current.remove(), { once: true });
-  document.head.appendChild(replacement);
+  document.head.insertBefore(replacement, current);
+  return waitForCss(replacement, current);
 }
 async function hotUpdate(version = "") {
   const response = await fetch(versionedAsset("manifest.json", version), {
-    cache: "no-store"
+    cache: "no-store",
   });
   if (!response.ok)
     throw new Error(`HMR manifest failed with status ${response.status}`);
@@ -226,7 +234,7 @@ async function hotUpdate(version = "") {
   if (!app) throw new Error("HMR app boundary is missing");
   const boundState = captureBoundState(app);
   routes = nextRoutes;
-  refreshDesignCss(manifest.designCss, version);
+  await refreshDesignCss(manifest.designCss, version);
   await loadRouteCss(route, version);
   prepareEntranceAnimations();
   const preserveLayouts = !!(

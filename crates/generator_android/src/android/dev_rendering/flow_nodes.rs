@@ -116,9 +116,10 @@ fn render_dev_android_flow_node(
                     children_method,
                 );
             } else if props.position().mode == BoxPosition::Relative
-                && children.iter().any(|child| {
-                    matches!(child, ViewNode::Box { props, .. } if props.position().mode == BoxPosition::Absolute)
-                })
+                && (props.cover.is_some()
+                    || children.iter().any(|child| {
+                        matches!(child, ViewNode::Box { props, .. } if props.position().mode == BoxPosition::Absolute)
+                    }))
             {
                 render_dev_android_relative_box(
                     props,
@@ -141,8 +142,14 @@ fn render_dev_android_flow_node(
                     "        LinearLayout {view} = doweContainer(false);\n"
                 ));
                 apply_dev_android_style(props, &view, true, output);
+                if props.center_x.is_some() || props.center_y.is_some() {
+                    let x = props.center_x.as_ref().map(dev_bool_value).unwrap_or_else(|| "false".to_string());
+                    let y = props.center_y.as_ref().map(dev_bool_value).unwrap_or_else(|| "false".to_string());
+                    output.push_str(&format!("        {view}.setGravity((Boolean.TRUE.equals({y}) ? Gravity.CENTER_VERTICAL : Gravity.TOP) | (Boolean.TRUE.equals({x}) ? Gravity.CENTER_HORIZONTAL : Gravity.START));\n"));
+                }
                 apply_dev_android_click(props, &view, context, output);
                 apply_dev_android_inline_width(props, &view, parent_horizontal, output);
+                apply_dev_android_flex_item(props, parent, &view, output);
                 output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
                 for child in children {
                     render_dev_android_node(
@@ -172,6 +179,28 @@ fn render_dev_android_flow_node(
             outer_props.spacing = Default::default();
             apply_dev_android_style(&outer_props, &view, true, output);
             apply_dev_android_inline_width(props, &view, parent_horizontal, output);
+            let exact_height = props
+                .sizing
+                .h
+                .as_ref()
+                .and_then(dev_section_exact_height)
+                .or_else(|| {
+                    props
+                        .sizing
+                        .min_h
+                        .as_ref()
+                        .and_then(dev_section_exact_height)
+                });
+            if let Some(exact_height) = exact_height {
+                output.push_str(&format!(
+                    "        LinearLayout.LayoutParams {view}Params = (LinearLayout.LayoutParams) {view}.getLayoutParams();\n        {view}Params.height = {exact_height};\n        {view}.setLayoutParams({view}Params);\n"
+                ));
+            } else if props.sizing.h.is_some() || props.sizing.min_h.is_some() {
+                output.push_str(&format!(
+                    "        LinearLayout.LayoutParams {view}Params = (LinearLayout.LayoutParams) {view}.getLayoutParams();\n        {view}Params.height = ViewGroup.LayoutParams.MATCH_PARENT;\n        {view}.setLayoutParams({view}Params);\n"
+                ));
+            }
+            apply_dev_android_flex_item(props, parent, &view, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             let body_constructor = if props.boxed {
                 "doweBoxedContainer(1536)"
@@ -184,12 +213,18 @@ fn render_dev_android_flow_node(
             let mut body_props = StyleProps::default();
             body_props.spacing = dowe_components::section_content_spacing(&props.spacing);
             apply_dev_android_style(&body_props, &body, false, output);
+            if props.sizing.h.is_some() || props.sizing.min_h.is_some() {
+                output.push_str(&format!(
+                    "        LinearLayout.LayoutParams {body}Params = (LinearLayout.LayoutParams) {body}.getLayoutParams();\n        {body}Params.height = ViewGroup.LayoutParams.MATCH_PARENT;\n        {body}.setLayoutParams({body}Params);\n"
+                ));
+            }
             output.push_str(&dev_add(&view, &body, None, false));
             let section_gap = dev_optional_gap(props.gap.as_ref(), false);
-            if let Some(center) = props.center.as_ref() {
+            if props.center_x.is_some() || props.center_y.is_some() {
+                let x = props.center_x.as_ref().map(dev_bool_value).unwrap_or_else(|| "false".to_string());
+                let y = props.center_y.as_ref().map(dev_bool_value).unwrap_or_else(|| "false".to_string());
                 output.push_str(&format!(
-                    "        {body}.setGravity(Boolean.TRUE.equals({}) ? Gravity.TOP | Gravity.CENTER_HORIZONTAL : Gravity.TOP | Gravity.START);\n",
-                    dev_bool_value(center)
+                    "        {body}.setGravity((Boolean.TRUE.equals({y}) ? Gravity.CENTER_VERTICAL : Gravity.TOP) | (Boolean.TRUE.equals({x}) ? Gravity.CENTER_HORIZONTAL : Gravity.START));\n"
                 ));
             }
             for child in children {
@@ -221,6 +256,7 @@ fn render_dev_android_flow_node(
             ));
             apply_dev_android_style(&props.style, &view, true, output);
             apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
+            apply_dev_android_flex_item(&props.style, parent, &view, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             for child in children {
                 render_dev_android_node(
@@ -241,16 +277,23 @@ fn render_dev_android_flow_node(
             let current_font = props.style.font.as_ref().or(inherited_font);
             let current_color = dev_inherited_color(&props.style, inherited_color.as_deref());
             let view = next_dev_view(counter);
-            let columns = dev_grid_columns(props.columns.as_ref());
+            let tracks = dev_grid_tracks(props.columns.as_ref());
             let row_gap =
                 dev_optional_gap(props.gap.as_ref(), false).unwrap_or_else(|| "null".to_string());
             let column_gap =
                 dev_optional_gap(props.gap.as_ref(), true).unwrap_or_else(|| "null".to_string());
             output.push_str(&format!(
-                "        DoweGridLayout {view} = doweGrid({columns}, {row_gap}, {column_gap});\n"
+                "        DoweGridLayout {view} = doweGrid({tracks}, {row_gap}, {column_gap});\n"
             ));
-            apply_dev_android_style(&props.style, &view, true, output);
+            apply_dev_android_style_with_shadow_radius(
+                &props.style,
+                &view,
+                true,
+                Some("0f"),
+                output,
+            );
             apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
+            apply_dev_android_flex_item(&props.style, parent, &view, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             for child in children {
                 render_dev_android_node(
@@ -282,6 +325,7 @@ fn render_dev_android_flow_node(
             apply_dev_android_style(&props.style, &view, false, output);
             apply_dev_android_click(&props.style, &view, context, output);
             apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
+            apply_dev_android_flex_item(&props.style, parent, &view, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             for child in children {
                 render_dev_android_node(
@@ -402,6 +446,11 @@ fn render_dev_android_flow_node(
             let variant = props.reactive.variant.as_ref().map(|path| reactive_text(path));
             let scheme = props.reactive.scheme.as_ref().map(|path| reactive_text(path));
             let disabled = props.reactive.disabled.as_ref().map(|path| reactive_bool(path));
+            let disabled_path = props.reactive.disabled.as_ref().map(|path| {
+                context
+                    .item_path(path)
+                    .unwrap_or_else(|| context.signal_path(path))
+            });
             let variant_value = variant.clone().unwrap_or_else(|| {
                 format!(
                     "\"{}\"",
@@ -479,7 +528,8 @@ fn render_dev_android_flow_node(
                     output.push_str(&format!("        {view}.setOnClickListener(v -> {action});\n"));
                 }
                 if let Some(disabled) = disabled.as_ref() {
-                    output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n        {view}.setAlpha({disabled} ? 0.5f : 1f);\n"));
+                    let disabled_path = disabled_path.as_deref().unwrap_or_default();
+                    output.push_str(&format!("        {view}.setTag(DOWE_DISABLED_PATH_TAG, \"{}\");\n        {view}.setEnabled(!({disabled}));\n        {view}.setAlpha({disabled} ? 0.5f : 1f);\n", escape_java(disabled_path)));
                 }
                 let mut button_style = props.style.clone();
                 button_style.shadow = None;
@@ -512,7 +562,8 @@ fn render_dev_android_flow_node(
                 ));
             }
             if let Some(disabled) = disabled.as_ref() {
-                output.push_str(&format!("        {view}.setEnabled(!({disabled}));\n        {view}.setAlpha({disabled} ? 0.5f : 1f);\n"));
+                let disabled_path = disabled_path.as_deref().unwrap_or_default();
+                output.push_str(&format!("        {view}.setTag(DOWE_DISABLED_PATH_TAG, \"{}\");\n        {view}.setEnabled(!({disabled}));\n        {view}.setAlpha({disabled} ? 0.5f : 1f);\n", escape_java(disabled_path)));
             }
             let mut button_style = props.style.clone();
             button_style.shadow = None;
@@ -556,7 +607,9 @@ fn render_dev_android_relative_box(
     apply_dev_android_style(props, &view, true, output);
     apply_dev_android_click(props, &view, context, output);
     apply_dev_android_inline_width(props, &view, parent_horizontal, output);
+    apply_dev_android_flex_item(props, parent, &view, output);
     output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+    render_dev_android_cover_image(props, &view, output);
     output.push_str(&format!(
         "        LinearLayout {content} = doweContainer(false);\n        {view}.addView({content}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));\n"
     ));
@@ -604,6 +657,17 @@ fn render_dev_android_relative_box(
             output.push_str("        }\n");
         }
     }
+}
+
+fn render_dev_android_cover_image(props: &StyleProps, view: &str, output: &mut String) {
+    let Some(cover) = props.cover.as_ref() else {
+        return;
+    };
+    let source =
+        dev_responsive_string_value(cover, |value| format!("\"{}\"", escape_java(&value.0)));
+    output.push_str(&format!(
+        "        String {view}Cover = {source};\n        if ({view}Cover != null && !{view}Cover.isEmpty()) {{\n            ImageView {view}CoverImage = new ImageView(this);\n            {view}CoverImage.setScaleType(ImageView.ScaleType.CENTER_CROP);\n            FrameLayout.LayoutParams {view}CoverParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);\n            {view}.addView({view}CoverImage, {view}CoverParams);\n            new Thread(() -> {{\n                Bitmap {view}CoverBitmap = doweLoadImageBitmap({view}Cover);\n                if ({view}CoverBitmap != null) {{\n                    runOnUiThread(() -> {view}CoverImage.setImageBitmap({view}CoverBitmap));\n                }}\n            }}).start();\n        }}\n"
+    ));
 }
 
 fn render_dev_android_positioned_box(

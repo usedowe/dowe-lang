@@ -492,4 +492,12 @@ impl NativeFlow {
     fn is_grid_item(self) -> bool {
         matches!(self, Self::GridItem)
     }
+
+    fn is_flex_item(self) -> bool {
+        !self.is_grid_item()
+    }
+
+    fn is_inline(self) -> bool {
+        matches!(self, Self::Inline)
+    }
 }

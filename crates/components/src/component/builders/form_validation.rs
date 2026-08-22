@@ -28,13 +28,20 @@ pub fn form_validation_rule(
 
 fn parse_parameterized_validation_rule(source: &str) -> ComponentResult<FormValidationRuleKind> {
     let Some((name, argument)) = source.split_once(':') else {
-        return Err(ComponentError::invalid_prop("rule", "known validation rule"));
+        return Err(ComponentError::invalid_prop(
+            "rule",
+            "known validation rule",
+        ));
     };
     match name {
         "min" => Ok(FormValidationRuleKind::Min(validation_count(argument)?)),
         "max" => Ok(FormValidationRuleKind::Max(validation_count(argument)?)),
-        "minWords" => Ok(FormValidationRuleKind::MinWords(validation_count(argument)?)),
-        "maxWords" => Ok(FormValidationRuleKind::MaxWords(validation_count(argument)?)),
+        "minWords" => Ok(FormValidationRuleKind::MinWords(validation_count(
+            argument,
+        )?)),
+        "maxWords" => Ok(FormValidationRuleKind::MaxWords(validation_count(
+            argument,
+        )?)),
         "matches" if valid_validation_path(argument) => {
             Ok(FormValidationRuleKind::Matches(argument.to_string()))
         }
@@ -49,7 +56,10 @@ fn parse_parameterized_validation_rule(source: &str) -> ComponentResult<FormVali
             "rule",
             "pattern:<portable regular expression>",
         )),
-        _ => Err(ComponentError::invalid_prop("rule", "known validation rule")),
+        _ => Err(ComponentError::invalid_prop(
+            "rule",
+            "known validation rule",
+        )),
     }
 }
 
@@ -121,9 +131,10 @@ pub fn attach_form_validation(
         ViewNode::Date { props } => &mut props.style.element,
         ViewNode::Phone { props } => &mut props.style.element,
         ViewNode::Pin { props } => &mut props.style.element,
+        ViewNode::Password { props } => &mut props.style.element,
         _ => {
             return Err(ComponentError::invalid_prop_combination(
-                "validate is only supported by Input, Date, Pin, Phone, Select and Checkbox",
+                "validate is only supported by Input, Password, Date, Pin, Phone, Select and Checkbox",
             ));
         }
     };

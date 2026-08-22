@@ -198,22 +198,22 @@ struct DoweCanvasView: View {
         case "warningText": return DoweDesign.warningText
         case "danger": return DoweDesign.danger
         case "dangerText": return DoweDesign.dangerText
-        case "softPrimary": return DoweDesign.softPrimary
-        case "softPrimaryText": return DoweDesign.softPrimaryText
-        case "softSecondary": return DoweDesign.softSecondary
-        case "softSecondaryText": return DoweDesign.softSecondaryText
-        case "softTertiary": return DoweDesign.softTertiary
-        case "softTertiaryText": return DoweDesign.softTertiaryText
-        case "softMuted": return DoweDesign.softMuted
-        case "softMutedText": return DoweDesign.softMutedText
-        case "softSuccess": return DoweDesign.softSuccess
-        case "softSuccessText": return DoweDesign.softSuccessText
-        case "softInfo": return DoweDesign.softInfo
-        case "softInfoText": return DoweDesign.softInfoText
-        case "softWarning": return DoweDesign.softWarning
-        case "softWarningText": return DoweDesign.softWarningText
-        case "softDanger": return DoweDesign.softDanger
-        case "softDangerText": return DoweDesign.softDangerText
+        case "primary": return DoweDesign.primary
+        case "primaryText": return DoweDesign.primaryText
+        case "secondary": return DoweDesign.secondary
+        case "secondaryText": return DoweDesign.secondaryText
+        case "tertiary": return DoweDesign.tertiary
+        case "tertiaryText": return DoweDesign.tertiaryText
+        case "muted": return DoweDesign.muted
+        case "mutedText": return DoweDesign.mutedText
+        case "success": return DoweDesign.success
+        case "successText": return DoweDesign.successText
+        case "info": return DoweDesign.info
+        case "infoText": return DoweDesign.infoText
+        case "warning": return DoweDesign.warning
+        case "warningText": return DoweDesign.warningText
+        case "danger": return DoweDesign.danger
+        case "dangerText": return DoweDesign.dangerText
         case "transparent": return Color.clear
         default: return doweColorFromHex(name, fallback: DoweDesign.backgroundText)
         }

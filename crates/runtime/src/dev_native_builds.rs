@@ -1,6 +1,9 @@
 use crate::dev::{DevTarget, DevTargetSelection};
 use crate::dev_modules::{DevModuleRevision, PublishedDevModule};
-use crate::dev_targets::{build_hot_module_if_current, cancel_active_external_commands};
+use crate::dev_targets::{
+    build_hot_module_if_current, cancel_active_external_commands,
+    cancel_active_external_commands_for,
+};
 use crate::error::{RuntimeError, RuntimeResult};
 use crate::logging::log_error;
 use crate::{DevEventType, DevRuntimeState};
@@ -193,6 +196,7 @@ impl NativeBuildCoordinator {
                 projects.requested_revision = self.revision;
             }
             *worker.latest.lock().expect("native build revision lock") = self.revision;
+            cancel_active_external_commands_for(*target);
             worker.sender.send_replace(Some(NativeBuildRequest {
                 revision: self.revision,
                 project: Arc::clone(&project),

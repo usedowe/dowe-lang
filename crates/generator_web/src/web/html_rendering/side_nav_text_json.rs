@@ -753,6 +753,8 @@ fn json_optional_path(value: Option<&str>, context: &ReactiveRenderContext) -> S
 fn box_classes(props: &StyleProps) -> Vec<String> {
     let mut classes = vec!["box".to_string()];
     append_style_classes(&mut classes, props);
+    append_responsive_classes(&mut classes, "box-center-x", props.center_x.as_ref(), |value| value.to_string());
+    append_responsive_classes(&mut classes, "box-center-y", props.center_y.as_ref(), |value| value.to_string());
     append_container_visual_classes(&mut classes, props);
     classes
 }
@@ -780,10 +782,16 @@ fn section_classes(props: &StyleProps) -> Vec<String> {
 
 fn section_body_classes(props: &StyleProps) -> Vec<String> {
     let mut classes = vec!["section-body".to_string()];
+    if props.sizing.h.is_some() || props.sizing.min_h.is_some() {
+        classes.push("section-body-has-height".to_string());
+    }
     if props.boxed {
         classes.push("is-boxed".to_string());
     }
-    append_responsive_classes(&mut classes, "section-center", props.center.as_ref(), |value| {
+    append_responsive_classes(&mut classes, "section-center-x", props.center_x.as_ref(), |value| {
+        value.to_string()
+    });
+    append_responsive_classes(&mut classes, "section-center-y", props.center_y.as_ref(), |value| {
         value.to_string()
     });
     append_responsive_classes(&mut classes, "gap", props.gap.as_ref(), |value| {

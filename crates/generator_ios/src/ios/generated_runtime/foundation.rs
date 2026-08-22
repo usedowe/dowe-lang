@@ -162,14 +162,14 @@ func doweButtonSoftTitleFamily(_ scheme: String) -> Color {
     switch scheme {
     case "background": return DoweDesign.backgroundTitle
     case "surface": return DoweDesign.surfaceTitle
-    case "secondary": return DoweDesign.softSecondaryTitle
-    case "tertiary": return DoweDesign.softTertiaryTitle
-    case "muted": return DoweDesign.softMutedTitle
-    case "success": return DoweDesign.softSuccessTitle
-    case "info": return DoweDesign.softInfoTitle
-    case "warning": return DoweDesign.softWarningTitle
-    case "danger": return DoweDesign.softDangerTitle
-    default: return DoweDesign.softPrimaryTitle
+    case "secondary": return DoweDesign.secondaryTitle
+    case "tertiary": return DoweDesign.tertiaryTitle
+    case "muted": return DoweDesign.mutedTitle
+    case "success": return DoweDesign.successTitle
+    case "info": return DoweDesign.infoTitle
+    case "warning": return DoweDesign.warningTitle
+    case "danger": return DoweDesign.dangerTitle
+    default: return DoweDesign.primaryTitle
     }
 }
 
@@ -195,14 +195,14 @@ func doweCardSoftFamily(_ scheme: String) -> Color {
     switch scheme {
     case "background": return DoweDesign.background
     case "surface": return DoweDesign.surface
-    case "secondary": return DoweDesign.softSecondary
-    case "tertiary": return DoweDesign.softTertiary
-    case "muted": return DoweDesign.softMuted
-    case "success": return DoweDesign.softSuccess
-    case "info": return DoweDesign.softInfo
-    case "warning": return DoweDesign.softWarning
-    case "danger": return DoweDesign.softDanger
-    default: return DoweDesign.softPrimary
+    case "secondary": return DoweDesign.secondary
+    case "tertiary": return DoweDesign.tertiary
+    case "muted": return DoweDesign.muted
+    case "success": return DoweDesign.success
+    case "info": return DoweDesign.info
+    case "warning": return DoweDesign.warning
+    case "danger": return DoweDesign.danger
+    default: return DoweDesign.primary
     }
 }
 
@@ -211,14 +211,14 @@ func doweCardSoftContent(_ scheme: String) -> Color {
     switch scheme {
     case "background": return DoweDesign.backgroundText
     case "surface": return DoweDesign.surfaceText
-    case "secondary": return DoweDesign.softSecondaryText
-    case "tertiary": return DoweDesign.softTertiaryText
-    case "muted": return DoweDesign.softMutedText
-    case "success": return DoweDesign.softSuccessText
-    case "info": return DoweDesign.softInfoText
-    case "warning": return DoweDesign.softWarningText
-    case "danger": return DoweDesign.softDangerText
-    default: return DoweDesign.softPrimaryText
+    case "secondary": return DoweDesign.secondaryText
+    case "tertiary": return DoweDesign.tertiaryText
+    case "muted": return DoweDesign.mutedText
+    case "success": return DoweDesign.successText
+    case "info": return DoweDesign.infoText
+    case "warning": return DoweDesign.warningText
+    case "danger": return DoweDesign.dangerText
+    default: return DoweDesign.primaryText
     }
 }
 
@@ -294,7 +294,9 @@ func doweButtonMinHeight(_ value: String) -> CGFloat {
 
 enum DoweSize {
     case fixed(CGFloat)
+    case percent(CGFloat)
     case full
+    case auto
     case viewportMinus(CGFloat)
 }
 
@@ -310,6 +312,35 @@ enum DoweJustify: Equatable {
 enum DoweFlexDirection: Equatable {
     case row
     case column
+}
+
+enum DoweFlexItem: Equatable {
+    case initial
+    case auto
+    case none
+    case fill
+}
+
+extension View {
+    @ViewBuilder
+    func doweFlexItem(_ value: DoweFlexItem, horizontal: Bool) -> some View {
+        switch value {
+        case .initial, .none:
+            self
+        case .auto:
+            if horizontal {
+                self.frame(maxWidth: .infinity, alignment: .leading).layoutPriority(1)
+            } else {
+                self.frame(maxHeight: .infinity, alignment: .top).layoutPriority(1)
+            }
+        case .fill:
+            if horizontal {
+                self.frame(maxWidth: .infinity, alignment: .leading).layoutPriority(1)
+            } else {
+                self.frame(maxHeight: .infinity, alignment: .top).layoutPriority(1)
+            }
+        }
+    }
 }
 
 enum DoweAlign {
@@ -531,15 +562,15 @@ struct DoweSectionBackgroundView: View {
         case .soft:
             LinearGradient(colors: [DoweDesign.surface, DoweDesign.background], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .aurora:
-            LinearGradient(colors: [DoweDesign.softPrimary, DoweDesign.softSecondary, DoweDesign.softTertiary], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.tertiary], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .sunrise:
-            LinearGradient(colors: [DoweDesign.softWarning, DoweDesign.softDanger, DoweDesign.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.warning, DoweDesign.danger, DoweDesign.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .ocean:
-            LinearGradient(colors: [DoweDesign.softInfo, DoweDesign.softPrimary, DoweDesign.softTertiary], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.info, DoweDesign.primary, DoweDesign.tertiary], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .meadow:
-            LinearGradient(colors: [DoweDesign.softSuccess, DoweDesign.softTertiary, DoweDesign.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.success, DoweDesign.tertiary, DoweDesign.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .slate:
-            LinearGradient(colors: [DoweDesign.softMuted, DoweDesign.surface, DoweDesign.background], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.muted, DoweDesign.surface, DoweDesign.background], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
     }
 }

@@ -444,7 +444,10 @@ pub async fn views_handler(
         return response;
     }
 
-    if uri.path() == "/design.css" || uri.path() == format!("/{}", project.web.design_file_name()) {
+    let design_file_name = uri.path().strip_prefix('/').filter(|file_name| {
+        project.web.has_design_file_name(file_name)
+    });
+    if design_file_name.is_some() {
         return cacheable_design_css_response(
             &project,
             &format!("web/{}", project.web.design_file_name()),

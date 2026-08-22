@@ -35,7 +35,11 @@ fn dev_activity_sources(
     output.push_str("    private String doweImageCropperShapeName;\n");
     output.push_str("    private DoweVideoLayout dowePictureInPictureVideo;\n    private boolean dowePictureInPictureRestoreFullscreen;\n    private static final int DOWE_DROPZONE_REQUEST = 5107;\n    private String doweDropzoneKey;\n    private long doweDropzoneMaxSize = -1L;\n    private boolean doweDropzoneMultiple;\n    private boolean dowePinnedAppBarDockOnScroll;\n    private int dowePinnedAppBarColor;\n    private int dowePinnedAppBarHeight;\n    private float dowePinnedAppBarDockProgress;\n    private View dowePinnedAppBarPlaceholder;\n    private View dowePinnedAppBarDivider;\n    private ValueAnimator dowePinnedAppBarAnimator;\n");
     output.push_str(&format!(
-        "    private final Activity doweActivity;\n    private Intent doweIntent;\n    private LinearLayout root;\n    private ScrollView scrollView;\n    private int viewportWidth;\n    private String currentPath = \"{}\";\n    private String currentFragment = null;\n    private String doweMountedPath = null;\n    private String doweMountedLayout = null;\n    private boolean externalOpen = false;\n    private Runnable doweDrawerNavigationClose = null;\n    private final ArrayList<DoweRouteEntry> backStack = new ArrayList<>();\n    private final HashMap<String, Object> doweState = new HashMap<>();\n    private final HashMap<String, Object> doweInitial = new HashMap<>();\n    private final HashMap<String, Boolean> doweSideNavMemory = new HashMap<>();\n    private final HashMap<String, String[]> doweSignalMetadata = new HashMap<>();\n    private final HashMap<String, Object> doweGlobalState = new HashMap<>();\n    private final HashMap<String, String> doweGlobalStorage = new HashMap<>();\n    private final HashMap<String, DoweAction> doweActions = new HashMap<>();\n    private final HashMap<String, DoweFormFieldMetadata[]> doweForms = new HashMap<>();\n    private final HashMap<String, View> sectionViews = new HashMap<>();\n    private final HashSet<String> doweLoaded = new HashSet<>();\n    private final HashSet<String> doweTouchedValidations = new HashSet<>();\n    private final HashSet<String> doweTouchedForms = new HashSet<>();\n\n",
+        "    private final Activity doweActivity;\n    private Intent doweIntent;\n    private LinearLayout root;\n    private ScrollView scrollView;\n    private int viewportWidth;\n    private String currentPath = \"{}\";\n    private String currentFragment = null;\n    private String doweMountedPath = null;\n    private String doweMountedLayout = null;\n    private boolean externalOpen = false;\n    private Runnable doweDrawerNavigationClose = null;
+    private PopupWindow doweActiveOverlay = null;
+    private int doweOverlayRender = 0;
+    private int doweOverlayClaimed = 0;
+    private final ArrayList<DoweRouteEntry> backStack = new ArrayList<>();\n    private final HashMap<String, Object> doweState = new HashMap<>();\n    private final HashMap<String, Object> doweInitial = new HashMap<>();\n    private final HashMap<String, Boolean> doweSideNavMemory = new HashMap<>();\n    private final HashMap<String, String[]> doweSignalMetadata = new HashMap<>();\n    private final HashMap<String, Object> doweGlobalState = new HashMap<>();\n    private final HashMap<String, String> doweGlobalStorage = new HashMap<>();\n    private final HashMap<String, DoweAction> doweActions = new HashMap<>();\n    private final HashMap<String, DoweFormFieldMetadata[]> doweForms = new HashMap<>();\n    private final HashMap<String, View> sectionViews = new HashMap<>();\n    private final HashSet<String> doweLoaded = new HashSet<>();\n    private final HashSet<String> doweTouchedValidations = new HashSet<>();\n    private final HashSet<String> doweTouchedForms = new HashSet<>();\n\n",
         escape_java(routes_first_path(routes))
     ));
     output.push_str(
@@ -434,6 +438,10 @@ fn dev_activity_sources(
 
     private void doweApplySystemInsets(View view) {
         view.setOnApplyWindowInsetsListener((target, insets) -> {
+            int previousLeft = target.getPaddingLeft();
+            int previousTop = target.getPaddingTop();
+            int previousRight = target.getPaddingRight();
+            int previousBottom = target.getPaddingBottom();
             if (Build.VERSION.SDK_INT >= 30) {
                 Insets safe = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
                 target.setPadding(safe.left, safe.top, safe.right, safe.bottom);
@@ -444,6 +452,12 @@ fn dev_activity_sources(
                     insets.getSystemWindowInsetRight(),
                     insets.getSystemWindowInsetBottom()
                 );
+            }
+            if (view == scrollView && (previousLeft != target.getPaddingLeft()
+                    || previousTop != target.getPaddingTop()
+                    || previousRight != target.getPaddingRight()
+                    || previousBottom != target.getPaddingBottom())) {
+                target.post(() -> renderCurrentRoute(false));
             }
             doweRelayoutPinnedAppBar();
             return insets;
@@ -456,6 +470,7 @@ fn dev_activity_sources(
     }
 
     private void renderCurrentRoute(boolean scrollToFragment) {
+        doweOverlayRender++;
         root.removeAllViews();
         View pinnedAppBar = ((ViewGroup) scrollView.getParent()).findViewWithTag("dowe-pinned-appbar");
         if (pinnedAppBar != null) {
@@ -505,7 +520,7 @@ fn dev_activity_sources(
     }
 
     output.push_str(
-        "        doweAutoload();\n        if (scrollToFragment) {\n            if (currentFragment == null) {\n                scrollView.scrollTo(0, 0);\n            } else {\n                doweScrollToFragment();\n            }\n        }\n    }\n\n",
+        "        if (doweActiveOverlay != null && doweActiveOverlay.isShowing() && doweOverlayClaimed != doweOverlayRender) {\n            doweActiveOverlay.dismiss();\n        }\n        doweAutoload();\n        if (scrollToFragment) {\n            if (currentFragment == null) {\n                scrollView.scrollTo(0, 0);\n            } else {\n                doweScrollToFragment();\n            }\n        }\n    }\n\n",
     );
 
     output.push_str("    private void doweInitializeState() {\n");

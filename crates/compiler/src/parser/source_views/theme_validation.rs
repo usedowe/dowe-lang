@@ -69,12 +69,12 @@ fn validate_custom_view_family(
     prop: &SourceProp,
     design: &DesignConfig,
     family: ColorFamily,
-    soft: bool,
+    _soft: bool,
 ) -> DoweResult<()> {
-    if design.default_theme().contains_color_family(family, soft) {
+    if design.default_theme().contains_color_family(family, false) {
         return Ok(());
     }
-    let name = family.theme_name(soft);
+    let name = family.theme_name(false);
     Err(prop_error(
         prop,
         format!(
@@ -109,6 +109,9 @@ fn effective_source_variant_is_soft(node: &SourceNode, design: &DesignConfig) ->
         "Checkbox" => DesignComponentSlot::Checkbox,
         "Input" => DesignComponentSlot::Input,
         "Date" => DesignComponentSlot::Date,
+        "DateRange" => DesignComponentSlot::DateRange,
+        "Color" => DesignComponentSlot::Color,
+        "Textarea" => DesignComponentSlot::Textarea,
         "Password" => DesignComponentSlot::Password,
         "Select" => DesignComponentSlot::Select,
         "Pin" => DesignComponentSlot::Pin,

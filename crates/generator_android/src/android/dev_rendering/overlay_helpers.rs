@@ -220,7 +220,7 @@ fn render_dev_android_modal(
         );
     }
     if !props.hide_close_button {
-        render_dev_android_overlay_close(&panel, "Close modal", &close, counter, output);
+        render_dev_android_overlay_close(&panel, "Close modal", &close, "Gravity.TOP | Gravity.END", "0, doweDp(8), doweDp(8), 0", counter, output);
     }
     output.push_str(&format!(
         "        FrameLayout.LayoutParams {panel}Params = new FrameLayout.LayoutParams(doweDp(Math.max(1, Math.min(560, Math.min(Math.max(0, viewportWidth - 32), (viewportWidth * 95) / 100)))), ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER);\n        {overlay}.addView({panel}, {panel}Params);\n        {popup_ref}[0] = new PopupWindow({overlay}, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true);\n        {popup_ref}[0].setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));\n        {popup_ref}[0].setOutsideTouchable(false);\n        {panel}.setOnClickListener(v -> {{ }});\n"
@@ -356,7 +356,7 @@ fn render_dev_android_toast(
     let close_icon = next_dev_view(counter);
     let close_paths = format!("{close}Paths");
     output.push_str(&format!(
-        "        DoweSvgView {close_icon} = new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_SOFT_MUTED_TEXT, {close_paths});\n        {close_icon}.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);\n        FrameLayout {close} = new FrameLayout(this);\n        {close}.setBackground(doweBackground(DOWE_SOFT_MUTED, 999f));\n        {close}.setContentDescription(\"Close toast\");\n        {close}.setFocusable(true);\n        ArrayList<DoweSvgPathEntry> {close_paths} = new ArrayList<>();\n        {close_paths}.add(new DoweSvgPathEntry(\"M0 0h24v24H0z\", false, null));\n        {close_paths}.add(new DoweSvgPathEntry(\"m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z\", true, null));\n        {close}.addView({close_icon}, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));\n        {close}.setLayoutParams(new LinearLayout.LayoutParams(doweDp(28), doweDp(28)));\n        {close}.setOnClickListener(v -> {{ {close_action} }});\n        doweAdd({content}, {close}, 8, true);\n        {panel}.addView({content}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n",
+        "        DoweSvgView {close_icon} = new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_MUTED_TEXT, {close_paths});\n        {close_icon}.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);\n        FrameLayout {close} = new FrameLayout(this);\n        {close}.setBackground(doweBackground(DOWE_MUTED, 999f));\n        {close}.setContentDescription(\"Close toast\");\n        {close}.setFocusable(true);\n        ArrayList<DoweSvgPathEntry> {close_paths} = new ArrayList<>();\n        {close_paths}.add(new DoweSvgPathEntry(\"M0 0h24v24H0z\", false, null));\n        {close_paths}.add(new DoweSvgPathEntry(\"m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z\", true, null));\n        {close}.addView({close_icon}, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));\n        {close}.setLayoutParams(new LinearLayout.LayoutParams(doweDp(28), doweDp(28)));\n        {close}.setOnClickListener(v -> {{ {close_action} }});\n        doweAdd({content}, {close}, 8, true);\n        {panel}.addView({content}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n",
         close = close.as_str(),
         close_icon = close_icon.as_str(),
         close_paths = close_paths.as_str(),
@@ -523,16 +523,27 @@ fn render_dev_android_overlay_close(
     panel: &str,
     label: &str,
     action: &str,
+    gravity: &str,
+    margins: &str,
     counter: &mut usize,
     output: &mut String,
-) {
+) -> String {
     let close = next_dev_view(counter);
     let close_icon = next_dev_view(counter);
     let close_paths = format!("{close}Paths");
     output.push_str(&format!(
-        "        FrameLayout {close} = new FrameLayout(this);\n        {close}.setBackground(doweBackground(DOWE_SOFT_MUTED, 999f));\n        {close}.setContentDescription(\"{}\");\n        {close}.setFocusable(true);\n        {close}.setOnClickListener(v -> {{ {action} }});\n        ArrayList<DoweSvgPathEntry> {close_paths} = new ArrayList<>();\n        {close_paths}.add(new DoweSvgPathEntry(\"M0 0h24v24H0z\", false, null));\n        {close_paths}.add(new DoweSvgPathEntry(\"m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z\", true, null));\n        DoweSvgView {close_icon} = new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_SOFT_MUTED_TEXT, {close_paths});\n        {close_icon}.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);\n        {close}.addView({close_icon}, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));\n        FrameLayout.LayoutParams {close}Params = new FrameLayout.LayoutParams(doweDp(28), doweDp(28), Gravity.TOP | Gravity.END);\n        {close}Params.setMargins(0, doweDp(8), doweDp(8), 0);\n        {panel}.addView({close}, {close}Params);\n",
+        "        FrameLayout {close} = new FrameLayout(this);\n        {close}.setBackground(doweBackground(DOWE_MUTED, 999f));\n        {close}.setContentDescription(\"{}\");\n        {close}.setFocusable(true);\n        {close}.setOnClickListener(v -> {{ {action} }});\n        ArrayList<DoweSvgPathEntry> {close_paths} = new ArrayList<>();\n        {close_paths}.add(new DoweSvgPathEntry(\"M0 0h24v24H0z\", false, null));\n        {close_paths}.add(new DoweSvgPathEntry(\"m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z\", true, null));\n        DoweSvgView {close_icon} = new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_MUTED_TEXT, {close_paths});\n        {close_icon}.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);\n        {close}.addView({close_icon}, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));\n        FrameLayout.LayoutParams {close}Params = new FrameLayout.LayoutParams(doweDp(28), doweDp(28), {gravity});\n        {close}Params.setMargins({margins});\n        {panel}.addView({close}, {close}Params);\n",
         escape_java(label)
     ));
+    close
+}
+
+fn dev_drawer_close_gravity(position: &DrawerPosition) -> (&'static str, &'static str) {
+    match position {
+        DrawerPosition::End => ("Gravity.TOP | Gravity.START", "doweDp(8), doweDp(8), 0, 0"),
+        DrawerPosition::Top => ("Gravity.BOTTOM | Gravity.END", "0, 0, doweDp(8), doweDp(8)"),
+        _ => ("Gravity.TOP | Gravity.END", "0, doweDp(8), doweDp(8), 0"),
+    }
 }
 
 fn render_dev_android_drawer(
@@ -547,6 +558,7 @@ fn render_dev_android_drawer(
     children_method: Option<&str>,
 ) {
     let overlay = next_dev_view(counter);
+    let layer = next_dev_view(counter);
     let panel = next_dev_view(counter);
     let content = next_dev_view(counter);
     let body_scroll = next_dev_view(counter);
@@ -577,20 +589,22 @@ fn render_dev_android_drawer(
         ),
     };
     output.push_str(&format!(
-        "        if (doweBool(\"{path}\")) {{\n        FrameLayout {overlay} = new FrameLayout(this);\n        {overlay}.setBackgroundColor(Color.argb(122, 15, 23, 42));\n        FrameLayout {panel} = new FrameLayout(this);\n        {panel}.setBackground(doweDrawerBackground({}, {}, \"{}\", {}));\n        FrameLayout.LayoutParams {panel}Params = new FrameLayout.LayoutParams({width}, {height}, {gravity});\n        {overlay}.addView({panel}, {panel}Params);\n        LinearLayout {content} = doweContainer(false);\n",
+        "        if (doweBool(\"{path}\")) {{\n        FrameLayout {overlay} = new FrameLayout(this);\n        {overlay}.setBackgroundColor(Color.argb(122, 15, 23, 42));\n        FrameLayout {layer} = new FrameLayout(this);\n        FrameLayout {panel} = new FrameLayout(this);\n        {panel}.setBackground(doweDrawerBackground({}, {}, \"{}\", {}));\n        {panel}.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        {layer}.addView({panel});\n        FrameLayout.LayoutParams {panel}Params = new FrameLayout.LayoutParams({width}, {height}, {gravity});\n        {overlay}.addView({layer}, {panel}Params);\n        LinearLayout {content} = doweContainer(false);\n",
         dev_card_variant_container(&props.style),
         dev_card_border(&props.style),
         props.position.as_str(),
         dev_drawer_radius(&props.style.style)
     ));
     apply_dev_android_style(&props.style.style, &content, false, output);
+    output.push_str(&format!("        {content}.setClipChildren(true);\n        {content}.setClipToPadding(true);\n"));
     output.push_str(&format!(
         "        FrameLayout.LayoutParams {content}Params = doweFrameLayoutParams({content}.getLayoutParams());\n        if ({content}Params.width == ViewGroup.LayoutParams.WRAP_CONTENT) {{\n            {content}Params.width = ViewGroup.LayoutParams.MATCH_PARENT;\n        }}\n        if ({content}Params.height == ViewGroup.LayoutParams.WRAP_CONTENT) {{\n            {content}Params.height = ViewGroup.LayoutParams.MATCH_PARENT;\n        }}\n        {panel}.addView({content}, {content}Params);\n        ScrollView {body_scroll} = new ScrollView(this);\n        {body_scroll}.setFillViewport(true);\n        LinearLayout {body_content} = doweContainer(false);\n        {body_scroll}.addView({body_content}, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
     ));
     if !header.is_empty() {
         let header_content = next_dev_view(counter);
         output.push_str(&format!(
-            "        LinearLayout {header_content} = doweContainer(false);\n        doweAdd({content}, {header_content});\n"
+            "        LinearLayout {header_content} = doweContainer(false);\n        {header_content}.setBackgroundColor({});\n        {header_content}.setElevation(doweDp(8));\n        {header_content}.setTranslationZ(doweDp(8));\n        {header_content}.setClipChildren(true);\n        doweAdd({content}, {header_content});\n",
+            dev_card_variant_container(&props.style)
         ));
         let current_font = props.style.style.font.as_ref().or(inherited_font);
         for child in header {
@@ -650,25 +664,31 @@ fn render_dev_android_drawer(
         "        PopupWindow {popup} = new PopupWindow({overlay}, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true);\n        {popup}.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));\n        {popup}.setOutsideTouchable(false);\n        {panel}.setOnClickListener(v -> {{ }});\n"
     ));
     output.push_str(&format!(
-        "        Runnable {navigation_close} = () -> {{ if ({popup}.isShowing()) {{ {popup}.dismiss(); }} doweWrite(\"{path}\", false); }};\n        doweDrawerNavigationClose = {navigation_close};\n        {popup}.setOnDismissListener(() -> {{ if (doweDrawerNavigationClose == {navigation_close}) {{ doweDrawerNavigationClose = null; }} }});\n"
+        "        Runnable {navigation_close} = () -> {{ PopupWindow activePopup = doweActiveOverlay; if (activePopup != null && activePopup.isShowing()) {{ activePopup.dismiss(); }} doweWrite(\"{path}\", false); }};\n        doweDrawerNavigationClose = {navigation_close};\n        {popup}.setOnDismissListener(() -> {{ doweDrawerNavigationClose = null; if (doweActiveOverlay == {popup}) {{ doweActiveOverlay = null; }} }});\n"
     ));
     if !props.disable_overlay_close {
         output.push_str(&format!(
-            "        {overlay}.setOnClickListener(v -> {{ {popup}.dismiss(); doweWrite(\"{path}\", false); renderCurrentRoute(false); }});\n"
+            "        {overlay}.setOnClickListener(v -> {{ {navigation_close}.run(); renderCurrentRoute(false); }});\n"
         ));
     }
+    let mut drawer_close_claim = String::new();
     if !props.hide_close_button {
-        render_dev_android_overlay_close(
-            &panel,
+        let (close_gravity, close_margins) = dev_drawer_close_gravity(&props.position);
+        let drawer_close = render_dev_android_overlay_close(
+            &overlay,
             "Close drawer",
-            &format!("{popup}.dismiss(); doweWrite(\"{path}\", false); renderCurrentRoute(false);"),
+            &format!("{navigation_close}.run(); renderCurrentRoute(false);"),
+            close_gravity,
+            close_margins,
             counter,
             output,
         );
+        drawer_close_claim = format!(
+            "            {overlay}.removeView({drawer_close});\n            existingOverlay.addView({drawer_close}, {drawer_close}Params);\n"
+        );
     }
     output.push_str(&format!(
-        "        root.post(() -> {{ if (root.getWindowToken() != null) {{ {popup}.showAtLocation(root, Gravity.FILL, 0, 0); }} }});\n        }}\n"
-    ));
+        "        if (doweActiveOverlay != null && doweActiveOverlay.isShowing() && doweActiveOverlay.getContentView() instanceof FrameLayout) {{\n            FrameLayout existingOverlay = (FrameLayout) doweActiveOverlay.getContentView();\n            existingOverlay.removeAllViews();\n            {overlay}.removeView({layer});\n            existingOverlay.addView({layer}, {panel}Params);\n{drawer_close_claim}\n            doweOverlayClaimed = doweOverlayRender;\n        }} else {{\n            root.post(() -> {{ if (root.getWindowToken() != null) {{ doweActiveOverlay = {popup}; {popup}.showAtLocation(root, Gravity.FILL, 0, 0); doweOverlayClaimed = doweOverlayRender; }} }});\n        }}\n        }}\n"));
 }
 
 fn dev_fab_content_gravity(position: OverlayCornerPosition) -> &'static str {

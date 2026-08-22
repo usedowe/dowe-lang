@@ -60,6 +60,13 @@ impl SvgViewBox {
             self.min_x, self.min_y, self.width, self.height
         )
     }
+
+    pub fn aspect_ratio(&self) -> Option<f64> {
+        let width = self.width.parse::<f64>().ok()?;
+        let height = self.height.parse::<f64>().ok()?;
+        (width.is_finite() && width > 0.0 && height.is_finite() && height > 0.0)
+            .then_some(width / height)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,4 +94,3 @@ impl SvgTransform {
         )
     }
 }
-

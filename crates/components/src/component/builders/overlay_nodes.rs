@@ -106,9 +106,7 @@ pub fn chip_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Chip, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Soft);
-    style.color.get_or_insert(ColorFamily::Muted);
+    let style = parse_variant_props(BuiltinComponent::Chip, &style_props)?;
     if start.is_some() && start_icon.is_some() {
         return Err(ComponentError::invalid_prop_combination(
             "Chip cannot combine `startIcon` with the `start` region",

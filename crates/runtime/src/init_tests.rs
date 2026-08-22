@@ -133,8 +133,8 @@ fn blank_template_writes_hello_page_and_endpoint() {
             .expect("theme")
             .contains(concat!(
                 "      colors:\n",
-                "        primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"\n",
-                "        secondary color:\"#6BC670\" text:\"#102A15\" title:\"#102A15\"\n",
+                "        primary color:\"#1F3A5F\" text:\"#EAF2F8\" title:\"#FFFFFF\"\n",
+                "        secondary color:\"#6BC670\" text:\"#102A15\" title:\"#071B0B\"\n",
                 "        background color:\"#FFFFFF\" text:\"#17263A\" title:\"#17263E\"\n",
                 "        surface color:\"#F7F9FC\" text:\"#17263A\" title:\"#17263E\"\n",
                 "        softPrimary color:\"#CCFBF3\" text:\"#073B35\" title:\"#073B35\"\n",

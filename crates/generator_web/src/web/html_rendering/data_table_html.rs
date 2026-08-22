@@ -15,6 +15,13 @@ fn render_svg_html(props: &SvgProps, paths: &[SvgPath], context: &ReactiveRender
         );
     }
     if let Some(name) = props.icon_name.as_deref() {
+        let mut classes = svg_classes(&props.style);
+        if let Some(fill) = props.icon_fill {
+            classes.push(format!("color-{}", fill.as_str()));
+        }
+        if let Some(stroke) = props.icon_stroke {
+            classes.push(format!("stroke-color-{}", stroke.as_str()));
+        }
         let mut extra = format!(
             r#" data-dowe-icon-name="{}""#,
             escape_attr(&context.signal_path(name))
@@ -27,12 +34,7 @@ fn render_svg_html(props: &SvgProps, paths: &[SvgPath], context: &ReactiveRender
         }
         return format!(
             r#"<svg{} xmlns="http://www.w3.org/2000/svg" viewBox="{}" aria-hidden="true"></svg>"#,
-            attrs(
-                svg_classes(&props.style),
-                Some(&props.style.element),
-                Some(&extra),
-                context
-            ),
+            attrs(classes, Some(&props.style.element), Some(&extra), context),
             escape_attr(&props.view_box.as_str())
         );
     }

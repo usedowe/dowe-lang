@@ -131,7 +131,9 @@ impl ContainerSize {
 pub enum SizeValue {
     Scale(ScaleValue),
     Container(ContainerSize),
+    Percent(u8),
     Full,
+    Auto,
     ViewportMinus(ScaleValue),
 }
 
@@ -229,7 +231,6 @@ pub enum OverlayPaint {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SectionBackground {
-    Soft,
     Aurora,
     Sunrise,
     Ocean,
@@ -240,7 +241,6 @@ pub enum SectionBackground {
 impl SectionBackground {
     pub fn from_name(value: &str) -> Option<Self> {
         match value {
-            "soft" => Some(Self::Soft),
             "aurora" => Some(Self::Aurora),
             "sunrise" => Some(Self::Sunrise),
             "ocean" => Some(Self::Ocean),
@@ -252,7 +252,6 @@ impl SectionBackground {
 
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Soft => "soft",
             Self::Aurora => "aurora",
             Self::Sunrise => "sunrise",
             Self::Ocean => "ocean",
@@ -263,7 +262,6 @@ impl SectionBackground {
 
     pub fn all() -> &'static [Self] {
         &[
-            Self::Soft,
             Self::Aurora,
             Self::Sunrise,
             Self::Ocean,
@@ -527,6 +525,7 @@ impl GapValue {
 pub enum GridTracks {
     Auto,
     Count(u16),
+    Fractions(Vec<u16>),
 }
 
 impl GridTracks {
@@ -534,13 +533,28 @@ impl GridTracks {
         match self {
             Self::Auto => "auto".to_string(),
             Self::Count(value) => value.to_string(),
+            Self::Fractions(values) => format!(
+                "fr-{}",
+                values
+                    .iter()
+                    .map(u16::to_string)
+                    .collect::<Vec<_>>()
+                    .join("-")
+            ),
         }
     }
 
     pub fn count(&self) -> Option<u16> {
         match self {
             Self::Count(value) => Some(*value),
-            Self::Auto => None,
+            Self::Auto | Self::Fractions(_) => None,
+        }
+    }
+
+    pub fn weights(&self) -> Option<&[u16]> {
+        match self {
+            Self::Fractions(values) => Some(values),
+            Self::Auto | Self::Count(_) => None,
         }
     }
 }
@@ -602,6 +616,38 @@ impl FlexDirection {
 
     pub fn all() -> &'static [Self] {
         &[Self::Row, Self::Column]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FlexItem {
+    Initial,
+    Auto,
+    None,
+    Fill,
+}
+
+impl FlexItem {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "initial" => Some(Self::Initial),
+            "auto" => Some(Self::Auto),
+            "none" => Some(Self::None),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Initial => "initial",
+            Self::Auto => "auto",
+            Self::None => "none",
+            Self::Fill => "1",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Initial, Self::Auto, Self::None, Self::Fill]
     }
 }
 

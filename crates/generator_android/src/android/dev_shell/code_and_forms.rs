@@ -620,10 +620,10 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
     }
 
     private TextView doweColorFormatView(String font) {
-        TextView view = doweText(" ", DOWE_SOFT_MUTED_TEXT, 12f, 400, 0f, 1.2f, "monospace");
+        TextView view = doweText(" ", DOWE_MUTED_TEXT, 12f, 400, 0f, 1.2f, "monospace");
         view.setSingleLine(true);
         view.setPadding(doweDp(8), doweDp(4), doweDp(8), doweDp(4));
-        view.setBackground(doweBackground(DOWE_SOFT_MUTED, DOWE_RADIUS));
+        view.setBackground(doweBackground(DOWE_MUTED, DOWE_RADIUS));
         return view;
     }
 
@@ -1075,6 +1075,27 @@ __DOWE_ANDROID_DEV_FONT_SUPPORT__
 
     private int doweAlpha(int color, float alpha) {
         return Color.argb(Math.round(Color.alpha(color) * alpha), Color.red(color), Color.green(color), Color.blue(color));
+    }
+
+    private void doweApplyFlexItem(ViewGroup parent, View child, Integer value) {
+        if (value == null || parent instanceof DoweGridLayout || !(parent instanceof LinearLayout || parent instanceof DoweFlexLayout)) {
+            return;
+        }
+        boolean horizontal = parent instanceof DoweFlexLayout && ((DoweFlexLayout) parent).isHorizontal();
+        LinearLayout.LayoutParams params = doweLinearLayoutParams(child.getLayoutParams());
+        if (value.intValue() == DOWE_FLEX_AUTO) {
+            params.weight = 1f;
+        } else if (value.intValue() == DOWE_FLEX_FILL) {
+            params.weight = 1f;
+            if (horizontal) {
+                params.width = 0;
+            } else {
+                params.height = 0;
+            }
+        } else {
+            params.weight = 0f;
+        }
+        child.setLayoutParams(params);
     }
 
     private void doweAdd(ViewGroup parent, View child) {

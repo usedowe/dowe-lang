@@ -148,9 +148,9 @@ private fun DoweSideNavStatus(text: String, descriptionSize: Float, fontFamily: 
         text = text,
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(DoweDesign.softMuted)
+            .background(DoweDesign.muted)
             .padding(horizontal = 8.dp, vertical = 2.dp),
-        color = DoweDesign.softMutedText,
+        color = DoweDesign.mutedText,
         fontSize = descriptionSize.sp,
         fontFamily = fontFamily,
         fontWeight = FontWeight.SemiBold
@@ -335,20 +335,25 @@ private fun DoweDrawer(open: Boolean, onClose: () -> Unit, position: String, bac
                 CompositionLocalProvider(LocalContentColor provides contentColor) {
                     content()
                 }
-                if (!hideCloseButton) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(DoweDesign.softMuted)
-                            .clickable(onClick = onClose)
-                            .width(28.dp)
-                            .height(28.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.softMutedText, paths = doweOverlayClosePaths)
-                    }
+            }
+            if (!hideCloseButton) {
+                val closeAlignment = when (position) {
+                    "end" -> Alignment.TopStart
+                    "top" -> Alignment.BottomEnd
+                    else -> Alignment.TopEnd
+                }
+                Box(
+                    modifier = Modifier
+                        .align(closeAlignment)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(DoweDesign.muted)
+                        .clickable(onClick = onClose)
+                        .width(28.dp)
+                        .height(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.mutedText, paths = doweOverlayClosePaths)
                 }
             }
         }
@@ -382,28 +387,27 @@ private fun DoweSectionBackgroundBox(modifier: Modifier = Modifier, background: 
 private fun doweSectionBackgroundBrush(background: DoweSectionBackground): Brush =
     when (background) {
         DoweSectionBackground.Soft -> Brush.linearGradient(listOf(DoweDesign.surface, DoweDesign.background))
-        DoweSectionBackground.Aurora -> Brush.linearGradient(listOf(DoweDesign.softPrimary, DoweDesign.softSecondary, DoweDesign.softTertiary))
-        DoweSectionBackground.Sunrise -> Brush.linearGradient(listOf(DoweDesign.softWarning, DoweDesign.softDanger, DoweDesign.surface))
-        DoweSectionBackground.Ocean -> Brush.linearGradient(listOf(DoweDesign.softInfo, DoweDesign.softPrimary, DoweDesign.softTertiary))
-        DoweSectionBackground.Meadow -> Brush.linearGradient(listOf(DoweDesign.softSuccess, DoweDesign.softTertiary, DoweDesign.surface))
-        DoweSectionBackground.Slate -> Brush.linearGradient(listOf(DoweDesign.softMuted, DoweDesign.surface, DoweDesign.background))
+        DoweSectionBackground.Aurora -> Brush.linearGradient(listOf(DoweDesign.primary, DoweDesign.secondary, DoweDesign.tertiary))
+        DoweSectionBackground.Sunrise -> Brush.linearGradient(listOf(DoweDesign.warning, DoweDesign.danger, DoweDesign.surface))
+        DoweSectionBackground.Ocean -> Brush.linearGradient(listOf(DoweDesign.info, DoweDesign.primary, DoweDesign.tertiary))
+        DoweSectionBackground.Meadow -> Brush.linearGradient(listOf(DoweDesign.success, DoweDesign.tertiary, DoweDesign.surface))
+        DoweSectionBackground.Slate -> Brush.linearGradient(listOf(DoweDesign.muted, DoweDesign.surface, DoweDesign.background))
     }
 
 @Composable
 private fun DoweCoverBox(modifier: Modifier = Modifier, source: String?, overlay: DoweOverlay?, content: @Composable BoxScope.() -> Unit) {
+    val context = LocalContext.current
+    var bitmap by remember(source) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(source) {
+        bitmap = if (source == null) null else withContext(Dispatchers.IO) { doweLoadImageBitmap(context, source) }
+    }
     Box(modifier = modifier.clipToBounds()) {
-        if (source != null) {
-            AndroidView(
+        bitmap?.let { image ->
+            Image(
+                bitmap = image.asImageBitmap(),
+                contentDescription = null,
                 modifier = Modifier.matchParentSize(),
-                factory = { context ->
-                    ImageView(context).apply {
-                        scaleType = ImageView.ScaleType.CENTER_CROP
-                        setImageURI(Uri.parse(source))
-                    }
-                },
-                update = { view ->
-                    view.setImageURI(Uri.parse(source))
-                }
+                contentScale = ContentScale.Crop
             )
         }
         when (overlay) {
@@ -416,22 +420,56 @@ private fun DoweCoverBox(modifier: Modifier = Modifier, source: String?, overlay
 }
 
 @Composable
-private fun DoweGrid(modifier: Modifier = Modifier, columns: Int, horizontalGap: Dp, verticalGap: Dp, horizontalAlignment: Alignment.Horizontal, content: @Composable () -> Unit) {
+private fun DoweGrid(modifier: Modifier = Modifier, tracks: List<Float>, horizontalGap: Dp, verticalGap: Dp, horizontalAlignment: Alignment.Horizontal, verticalAlignment: Alignment.Vertical, horizontalStretch: Boolean, fillHeight: Boolean, verticalStretch: Boolean, content: @Composable () -> Unit) {
     val density = LocalDensity.current
     Layout(content = content, modifier = modifier) { measurables, constraints ->
-        val columnCount = columns.coerceAtLeast(1)
+        val weights = tracks.ifEmpty { listOf(1f) }
+        val columnCount = weights.size
         val horizontal = with(density) { horizontalGap.roundToPx() }
         val vertical = with(density) { verticalGap.roundToPx() }
-        val cellWidth = ((constraints.maxWidth - horizontal * (columnCount - 1)).coerceAtLeast(0)) / columnCount
-        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0, maxWidth = cellWidth)) }
-        val rowHeights = placeables.chunked(columnCount).map { row -> row.maxOfOrNull { it.height } ?: 0 }
-        val height = rowHeights.sum() + vertical * (rowHeights.size - 1).coerceAtLeast(0)
-        layout(constraints.maxWidth, height.coerceIn(constraints.minHeight, constraints.maxHeight)) {
+        val availableWidth = (constraints.maxWidth - horizontal * (columnCount - 1)).coerceAtLeast(0)
+        val totalWeight = weights.sum().coerceAtLeast(1f)
+        val cellWidths = weights.map { (availableWidth * it / totalWeight).toInt() }
+        val placeables = measurables.mapIndexed { index, measurable ->
+            measurable.measure(constraints.copy(minWidth = if (horizontalStretch) cellWidths[index % columnCount] else 0, maxWidth = cellWidths[index % columnCount]))
+        }
+        val intrinsicRowHeights = placeables.chunked(columnCount).map { row -> row.maxOfOrNull { it.height } ?: 0 }
+        val intrinsicHeight = intrinsicRowHeights.sum() + vertical * (intrinsicRowHeights.size - 1).coerceAtLeast(0)
+        val height = if (fillHeight) {
+            constraints.maxHeight.coerceAtLeast(constraints.minHeight)
+        } else {
+            intrinsicHeight.coerceIn(constraints.minHeight, constraints.maxHeight)
+        }
+        val extraHeight = (height - intrinsicHeight).coerceAtLeast(0)
+        val rowExtra = if (intrinsicRowHeights.isEmpty()) 0 else extraHeight / intrinsicRowHeights.size
+        val rowRemainder = if (intrinsicRowHeights.isEmpty()) 0 else extraHeight % intrinsicRowHeights.size
+        val rowHeights = intrinsicRowHeights.mapIndexed { index, rowHeight ->
+            rowHeight + rowExtra + if (index < rowRemainder) 1 else 0
+        }
+        val laidOutPlaceables = if (verticalStretch) {
+            measurables.mapIndexed { index, measurable ->
+                val rowHeight = rowHeights[index / columnCount]
+                val stretched = measurable.measure(constraints.copy(
+                    minWidth = if (horizontalStretch) cellWidths[index % columnCount] else 0,
+                    maxWidth = cellWidths[index % columnCount],
+                    minHeight = 0,
+                    maxHeight = rowHeight
+                ))
+                if (stretched.height >= rowHeight) stretched else placeables[index]
+            }
+        } else {
+            placeables
+        }
+        layout(constraints.maxWidth, height) {
             var top = 0
-            placeables.chunked(columnCount).forEachIndexed { rowIndex, row ->
+            laidOutPlaceables.chunked(columnCount).forEachIndexed { rowIndex, row ->
+                var left = 0
                 row.forEachIndexed { columnIndex, placeable ->
-                    val offset = horizontalAlignment.align(placeable.width, cellWidth, layoutDirection)
-                    placeable.placeRelative(columnIndex * (cellWidth + horizontal) + offset, top)
+                    val cellWidth = cellWidths[columnIndex]
+                    val horizontalOffset = horizontalAlignment.align(placeable.width, cellWidth, layoutDirection)
+                    val verticalOffset = verticalAlignment.align(placeable.height, rowHeights[rowIndex])
+                    placeable.placeRelative(left + horizontalOffset, top + verticalOffset)
+                    left += cellWidth + horizontal
                 }
                 top += rowHeights[rowIndex] + vertical
             }

@@ -102,7 +102,7 @@ function selectToggleGroupItem(item) {
       );
     if (next === current) return;
     value = String(next);
-  } else {
+  } else if (!group.dataset.doweToggleGroupMultiple) {
     for (const other of group.querySelectorAll(
       "[data-dowe-toggle-group-item]"
     )) {
@@ -110,6 +110,10 @@ function selectToggleGroupItem(item) {
       other.classList.toggle("is-active", active);
       other.setAttribute("aria-checked", active ? "true" : "false");
     }
+  }
+  if (group.dataset.doweToggleGroupMultiple) {
+    const values = Array.from(group.querySelectorAll("[data-dowe-toggle-group-item].is-active"), item => item.dataset.doweToggleGroupItem);
+    value = values.join(",");
   }
   if (group.dataset.doweToggleGroupValue && activeView) {
     writePath(activeView.state, group.dataset.doweToggleGroupValue, value);
@@ -337,6 +341,14 @@ function renderRuntimeSvgs(root, state, scope) {
     renderRuntimeSvgElement(svg, value);
   }
 }
+function renderReactiveImages(root, state, scope) {
+  const scoped = !!scope;
+  for (const image of root.querySelectorAll("[data-dowe-image-src]")) {
+    if (!scoped && image.closest("[data-dowe-each-row]")) continue;
+    const value = readPath(state, image.dataset.doweImageSrc, scope);
+    image.src = value == null ? "" : String(value);
+  }
+}
 function renderSplashes(root, state, scope) {
   const scoped = !!scope;
   for (const boundary of root.querySelectorAll("[data-dowe-splash]")) {
@@ -354,6 +366,7 @@ function renderDynamic(root, state, scope) {
   renderReactiveButtons(root, state, scope);
   renderReactiveSideNavs(root, state, scope);
   renderRuntimeSvgs(root, state, scope);
+  renderReactiveImages(root, state, scope);
   for (const element of root.querySelectorAll("[data-dowe-text]")) {
     if (!scoped && element.closest("[data-dowe-each-row]")) continue;
     const value = readPath(state, element.dataset.doweText, scope);
@@ -389,8 +402,9 @@ function renderDynamic(root, state, scope) {
     if (!scoped && element.closest("[data-dowe-each-row]")) continue;
     const current = readPath(state, element.dataset.doweShow, scope),
       operator = element.dataset.doweShowOperator,
-      target = Number(element.dataset.doweShowValue);
-    let visible = !!current;
+      target = Number(element.dataset.doweShowValue),
+      equals = element.dataset.doweShowEquals;
+    let visible = equals !== undefined ? String(current) === equals : !!current;
     if (operator) {
       const value = Number(current);
       visible =

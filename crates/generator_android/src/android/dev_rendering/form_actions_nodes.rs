@@ -6,7 +6,7 @@ fn render_dev_android_form_actions_node(
     counter: &mut usize,
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
-    _inherited_color: Option<String>,
+    inherited_color: Option<String>,
     context: &ComposeReactiveContext,
     _children_method: Option<&str>,
 ) {
@@ -279,7 +279,7 @@ fn render_dev_android_form_actions_node(
                 output.push_str(&format!(
                                             "        TextView {label_view} = doweControlLabel(\"{}\", {}, {});\n        doweAdd({view}, {label_view});\n",
                                             escape_java(label),
-                                            dev_variant_content(&props.style),
+                                            dev_inherited_content_color(&props.style.style, inherited_color.as_deref()),
                                             dev_font_value(props.style.style.font.as_ref().or(inherited_font))
                                         ));
             }
@@ -385,7 +385,7 @@ fn render_dev_android_form_actions_node(
                 output.push_str(&format!(
                                             "        TextView {label_view} = doweControlLabel(\"{}\", {}, {});\n        doweAdd({view}, {label_view});\n",
                                             escape_java(label),
-                                            dev_variant_content(&props.style),
+                                            dev_inherited_content_color(&props.style.style, inherited_color.as_deref()),
                                             dev_font_value(props.style.style.font.as_ref().or(inherited_font))
                                         ));
             }
@@ -450,7 +450,7 @@ fn render_dev_android_form_actions_node(
                 output.push_str(&format!(
                                             "        TextView {label_view} = doweControlLabel(\"{}\", {}, {});\n        doweAdd({view}, {label_view});\n",
                                             escape_java(label),
-                                            dev_variant_content(&props.style),
+                                            dev_inherited_content_color(&props.style.style, inherited_color.as_deref()),
                                             dev_font_value(props.style.style.font.as_ref().or(inherited_font))
                                         ));
             }
@@ -532,7 +532,7 @@ fn render_dev_android_form_actions_node(
                 output.push_str(&format!(
                                             "        TextView {label_view} = doweControlLabel(\"{}\", {}, {});\n        doweAdd({view}, {label_view});\n",
                                             escape_java(label),
-                                            dev_variant_content(&props.style),
+                                            dev_inherited_content_color(&props.style.style, inherited_color.as_deref()),
                                             dev_font_value(props.style.style.font.as_ref().or(inherited_font))
                                         ));
             }

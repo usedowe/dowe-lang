@@ -201,12 +201,41 @@ fn runtime_features<'a>(roots: impl IntoIterator<Item = &'a ViewNode>) -> Runtim
     while let Some(node) = pending.pop() {
         features.controls |= node_uses_controls(node);
         features.media |= node_uses_media(node);
+        features.media |= node_actions_use_media(node);
         features.visualization |= node_uses_visualization(node);
         for group in dowe_components::node_child_groups(node) {
             pending.extend(group);
         }
     }
     features
+}
+
+fn node_actions_use_media(tree: &ViewNode) -> bool {
+    match tree {
+        ViewNode::Scope { actions, .. } => actions.iter().any(action_uses_media),
+        _ => false,
+    }
+}
+
+fn action_uses_media(action: &ViewAction) -> bool {
+    match &action.kind {
+        ViewActionKind::Sequence(statements) => statements_use_media(statements),
+        ViewActionKind::Request(_) | ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => false,
+    }
+}
+
+fn statements_use_media(statements: &[ViewFunctionStatement]) -> bool {
+    statements.iter().any(|statement| match statement {
+        ViewFunctionStatement::Toast(_) => true,
+        ViewFunctionStatement::If { success, error, .. } => {
+            statements_use_media(success) || statements_use_media(error)
+        }
+        ViewFunctionStatement::Validate { .. }
+        | ViewFunctionStatement::Request { .. }
+        | ViewFunctionStatement::Assign(_)
+        | ViewFunctionStatement::Reset(_)
+        | ViewFunctionStatement::Redirect { .. } => false,
+    })
 }
 
 fn node_uses_visualization(tree: &ViewNode) -> bool {

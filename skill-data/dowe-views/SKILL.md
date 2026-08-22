@@ -1,5 +1,6 @@
 ---
 name: dowe-views
+compatibility: Requires Python 3 for the optional visual QA scripts and the Dowe CLI for project validation.
 description: Use for Dowe view modules, routes, layouts, pages, UI composition, components, state, requests, responsive styles, Canvas, portable and advanced data tables, loading/empty/error states, search and pagination compositions, view targets, modern product or marketing visual direction, layered scenes, or exact and adapted reconstruction from an attached screenshot, mockup, template, or UI reference, including semantic component selection, shell/page ownership, reusable static fragments, and repeated collections rendered with each. Pair with dowe-server when a View request needs a project-owned route, server logic, persistence, or security change; skip only work that is entirely server-owned.
 ---
 

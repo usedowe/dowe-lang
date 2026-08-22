@@ -1,18 +1,24 @@
+#[derive(Clone)]
+struct IosLayoutScope<'a> {
+    constants: &'a [ViewConstant],
+    signals: &'a [ViewSignal],
+    actions: &'a [ViewAction],
+}
+
 struct IosLayoutSection<'a> {
     node: &'a ViewNode,
     flow: NativeFlow,
+    scopes: Vec<IosLayoutScope<'a>>,
 }
 
 fn ios_layout_sections(layout: &ViewNode) -> Vec<IosLayoutSection<'_>> {
     let mut sections = Vec::new();
-    let mut bindings = IosLayoutBindings::default();
-    ios_collect_scope_bindings(layout, &mut bindings);
     collect_ios_layout_sections(
         layout,
         NativeFlow::Block,
         true,
         true,
-        &bindings,
+        &Vec::new(),
         &mut sections,
     );
     sections
@@ -23,40 +29,48 @@ fn collect_ios_layout_sections<'a>(
     flow: NativeFlow,
     neutral_context: bool,
     root: bool,
-    bindings: &IosLayoutBindings,
+    scopes: &Vec<IosLayoutScope<'a>>,
     sections: &mut Vec<IosLayoutSection<'a>>,
 ) {
     if !root
         && neutral_context
         && ios_layout_section_candidate(node)
         && !ios_layout_contains_children(node)
-        && !ios_node_references_layout_bindings(node, bindings)
     {
-        sections.push(IosLayoutSection { node, flow });
+        sections.push(IosLayoutSection {
+            node,
+            flow,
+            scopes: scopes.clone(),
+        });
     }
 
     match node {
         ViewNode::Splash {
             content, children, ..
         } => {
-            collect_ios_layout_section_children(content, flow, neutral_context, bindings, sections);
-            collect_ios_layout_section_children(
-                children,
-                flow,
-                neutral_context,
-                bindings,
-                sections,
-            );
+            collect_ios_layout_section_children(content, flow, neutral_context, scopes, sections);
+            collect_ios_layout_section_children(children, flow, neutral_context, scopes, sections);
         }
-        ViewNode::Scope { children, .. } => {
-            collect_ios_layout_section_children(children, flow, neutral_context, bindings, sections)
+        ViewNode::Scope {
+            constants,
+            signals,
+            actions,
+            children,
+        } => {
+            let mut nested = scopes.clone();
+            nested.push(IosLayoutScope {
+                constants,
+                signals,
+                actions,
+            });
+            collect_ios_layout_section_children(children, flow, neutral_context, &nested, sections)
         }
         ViewNode::Box { props, children } | ViewNode::Section { props, children } => {
             collect_ios_layout_section_children(
                 children,
                 NativeFlow::Block,
                 neutral_context && props.font.is_none(),
-                bindings,
+                scopes,
                 sections,
             )
         }
@@ -64,21 +78,21 @@ fn collect_ios_layout_sections<'a>(
             children,
             NativeFlow::Inline,
             neutral_context && props.style.font.is_none(),
-            bindings,
+            scopes,
             sections,
         ),
         ViewNode::Grid { props, children } => collect_ios_layout_section_children(
             children,
             NativeFlow::Block,
             neutral_context && props.style.font.is_none(),
-            bindings,
+            scopes,
             sections,
         ),
         ViewNode::Card { props, children } => collect_ios_layout_section_children(
             children,
             NativeFlow::Block,
             neutral_context && props.style.font.is_none(),
-            bindings,
+            scopes,
             sections,
         ),
         ViewNode::Scaffold {
@@ -95,42 +109,24 @@ fn collect_ios_layout_sections<'a>(
                 app_bar,
                 NativeFlow::Block,
                 neutral,
-                bindings,
+                scopes,
                 sections,
             );
-            collect_ios_layout_section_children(
-                start,
-                NativeFlow::Block,
-                neutral,
-                bindings,
-                sections,
-            );
-            collect_ios_layout_section_children(
-                main,
-                NativeFlow::Block,
-                neutral,
-                bindings,
-                sections,
-            );
-            collect_ios_layout_section_children(
-                end,
-                NativeFlow::Block,
-                neutral,
-                bindings,
-                sections,
-            );
+            collect_ios_layout_section_children(start, NativeFlow::Block, neutral, scopes, sections);
+            collect_ios_layout_section_children(main, NativeFlow::Block, neutral, scopes, sections);
+            collect_ios_layout_section_children(end, NativeFlow::Block, neutral, scopes, sections);
             collect_ios_layout_section_children(
                 bottom_bar,
                 NativeFlow::Block,
                 neutral,
-                bindings,
+                scopes,
                 sections,
             );
             collect_ios_layout_section_children(
                 overlays,
                 NativeFlow::Block,
                 neutral,
-                bindings,
+                scopes,
                 sections,
             );
         }
@@ -151,39 +147,27 @@ fn collect_ios_layout_sections<'a>(
             bottom,
         } => {
             let neutral = neutral_context && props.style.style.font.is_none();
-            collect_ios_layout_section_children(
-                top,
-                NativeFlow::Block,
-                neutral,
-                bindings,
-                sections,
-            );
+            collect_ios_layout_section_children(top, NativeFlow::Block, neutral, scopes, sections);
             collect_ios_layout_section_children(
                 start,
                 NativeFlow::Inline,
                 neutral,
-                bindings,
+                scopes,
                 sections,
             );
             collect_ios_layout_section_children(
                 center,
                 NativeFlow::Inline,
                 neutral,
-                bindings,
+                scopes,
                 sections,
             );
-            collect_ios_layout_section_children(
-                end,
-                NativeFlow::Inline,
-                neutral,
-                bindings,
-                sections,
-            );
+            collect_ios_layout_section_children(end, NativeFlow::Inline, neutral, scopes, sections);
             collect_ios_layout_section_children(
                 bottom,
                 NativeFlow::Block,
                 neutral,
-                bindings,
+                scopes,
                 sections,
             );
         }
@@ -195,7 +179,7 @@ fn collect_ios_layout_sections<'a>(
             footer,
         } => {
             let neutral = neutral_context && props.style.style.font.is_none();
-            collect_ios_layout_section_slots(header, body, footer, neutral, bindings, sections);
+            collect_ios_layout_section_slots(header, body, footer, neutral, scopes, sections);
         }
         ViewNode::Sidebar {
             props,
@@ -204,13 +188,13 @@ fn collect_ios_layout_sections<'a>(
             footer,
         } => {
             let neutral = neutral_context && props.style.style.font.is_none();
-            collect_ios_layout_section_slots(header, body, footer, neutral, bindings, sections);
+            collect_ios_layout_section_slots(header, body, footer, neutral, scopes, sections);
         }
         ViewNode::Tooltip { props, children } => collect_ios_layout_section_children(
             children,
             NativeFlow::Block,
             neutral_context && props.style.style.font.is_none(),
-            bindings,
+            scopes,
             sections,
         ),
         ViewNode::Tabs { props, tabs } => {
@@ -220,7 +204,7 @@ fn collect_ios_layout_sections<'a>(
                     &tab.children,
                     NativeFlow::Block,
                     neutral,
-                    bindings,
+                    scopes,
                     sections,
                 );
             }
@@ -234,28 +218,22 @@ fn collect_ios_layout_section_slots<'a>(
     body: &'a [ViewNode],
     footer: &'a [ViewNode],
     neutral_context: bool,
-    bindings: &IosLayoutBindings,
+    scopes: &Vec<IosLayoutScope<'a>>,
     sections: &mut Vec<IosLayoutSection<'a>>,
 ) {
     collect_ios_layout_section_children(
         header,
         NativeFlow::Block,
         neutral_context,
-        bindings,
+        scopes,
         sections,
     );
-    collect_ios_layout_section_children(
-        body,
-        NativeFlow::Block,
-        neutral_context,
-        bindings,
-        sections,
-    );
+    collect_ios_layout_section_children(body, NativeFlow::Block, neutral_context, scopes, sections);
     collect_ios_layout_section_children(
         footer,
         NativeFlow::Block,
         neutral_context,
-        bindings,
+        scopes,
         sections,
     );
 }
@@ -264,11 +242,11 @@ fn collect_ios_layout_section_children<'a>(
     children: &'a [ViewNode],
     flow: NativeFlow,
     neutral_context: bool,
-    bindings: &IosLayoutBindings,
+    scopes: &Vec<IosLayoutScope<'a>>,
     sections: &mut Vec<IosLayoutSection<'a>>,
 ) {
     for child in children {
-        collect_ios_layout_sections(child, flow, neutral_context, false, bindings, sections);
+        collect_ios_layout_sections(child, flow, neutral_context, false, scopes, sections);
     }
 }
 

@@ -286,7 +286,7 @@ fn validates_button_visual_props() {
     let mut node = container_component_node(
         BuiltinComponent::Button,
         vec![
-            string_prop("variant", "soft"),
+            string_prop("variant", "ghost"),
             string_prop("scheme", "warning"),
             string_prop("size", "xs"),
             string_prop("rounded", "full"),
@@ -302,7 +302,7 @@ fn validates_button_visual_props() {
 
     match node {
         ViewNode::Button { props, .. } => {
-            assert_eq!(props.variant, Some(ComponentVariant::Soft));
+            assert_eq!(props.variant, Some(ComponentVariant::Ghost));
             assert_eq!(props.color, Some(ColorFamily::Warning));
             assert_eq!(props.size, Some(ButtonSize::Xs));
             assert!(props.style.rounded.is_some());
@@ -501,6 +501,32 @@ fn validates_brand_children_navigation_and_size() {
         )
         .is_err()
     );
+
+    let brand_only_height = container_component_node(
+        BuiltinComponent::Brand,
+        vec![number_prop("h", 8)],
+        vec![text_node("Dowe").expect("text")],
+        false,
+    )
+    .expect("brand with automatic width");
+    let ViewNode::Brand { props, .. } = brand_only_height else {
+        panic!("brand with automatic width");
+    };
+    assert!(props.style.sizing.w.is_none());
+    assert!(props.style.sizing.h.is_some());
+
+    let brand_only_width = container_component_node(
+        BuiltinComponent::Brand,
+        vec![number_prop("w", 16)],
+        vec![text_node("Dowe").expect("text")],
+        false,
+    )
+    .expect("brand with automatic height");
+    let ViewNode::Brand { props, .. } = brand_only_width else {
+        panic!("brand with automatic height");
+    };
+    assert!(props.style.sizing.w.is_some());
+    assert!(props.style.sizing.h.is_none());
 }
 
 #[test]
@@ -802,6 +828,65 @@ fn validates_svg_component_props_and_paths() {
         }
         _ => panic!("svg"),
     }
+
+    let svg_path = || {
+        svg_path_component(vec![
+            string_prop("d", "M0 0h24v24H0z"),
+            string_prop("fill", "currentColor"),
+        ])
+        .expect("svg path")
+    };
+    let only_height = svg_component_node(
+        vec![string_prop("viewBox", "0 0 120 60"), number_prop("h", 8)],
+        vec![svg_path()],
+    )
+    .expect("svg with automatic width");
+    let ViewNode::Svg {
+        props: only_height_props,
+        ..
+    } = only_height
+    else {
+        panic!("svg with automatic width");
+    };
+    assert!(only_height_props.style.sizing.w.is_none());
+    assert!(only_height_props.style.sizing.h.is_some());
+
+    let only_width = svg_component_node(
+        vec![string_prop("viewBox", "0 0 120 60"), number_prop("w", 16)],
+        vec![svg_path()],
+    )
+    .expect("svg with automatic height");
+    let ViewNode::Svg {
+        props: only_width_props,
+        ..
+    } = only_width
+    else {
+        panic!("svg with automatic height");
+    };
+    assert!(only_width_props.style.sizing.w.is_some());
+    assert!(only_width_props.style.sizing.h.is_none());
+
+    let default_size = svg_component_node(
+        vec![string_prop("viewBox", "0 0 24 24")],
+        vec![svg_path()],
+    )
+    .expect("default svg size");
+    let ViewNode::Svg {
+        props: default_props,
+        ..
+    } = default_size
+    else {
+        panic!("default svg size");
+    };
+    let expected_default = SizeValue::Scale(ScaleValue::from_half_steps(12));
+    assert_eq!(
+        default_props.style.sizing.w.expect("default width").entries[0].value,
+        expected_default
+    );
+    assert_eq!(
+        default_props.style.sizing.h.expect("default height").entries[0].value,
+        expected_default
+    );
 
     let fill = svg_path_component(vec![
         string_prop("d", "M0 0L1 1"),
@@ -1194,6 +1279,7 @@ fn validates_show_visibility_props() {
             }
             VisibilityCondition::Signal(_) => panic!("static show"),
             VisibilityCondition::NumberComparison { .. } => panic!("static show"),
+            VisibilityCondition::StringEquality { .. } => panic!("static show"),
         },
         _ => panic!("box"),
     }
@@ -1263,8 +1349,8 @@ fn validates_side_nav_props_entries_and_icons() {
     .expect("submenu");
     let node = super::side_nav_component_node(
         vec![
-            string_prop("variant", "soft"),
-            string_prop("scheme", "muted"),
+            string_prop("variant", "ghost"),
+            string_prop("scheme", "primary"),
             string_prop("size", "lg"),
             boolean_prop("wide", true),
         ],
@@ -1274,8 +1360,8 @@ fn validates_side_nav_props_entries_and_icons() {
 
     match node {
         ViewNode::SideNav { props, items } => {
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
-            assert_eq!(props.style.color, Some(ColorFamily::Muted));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
+            assert_eq!(props.style.color, Some(ColorFamily::Primary));
             assert_eq!(props.size, super::SideNavSize::Lg);
             assert!(props.wide);
             assert!(matches!(&items[0], super::SideNavItem::Item(props) if props.icon.is_some()));
@@ -1285,16 +1371,15 @@ fn validates_side_nav_props_entries_and_icons() {
         }
         _ => panic!("side nav"),
     }
-    let invalid_scheme = super::side_nav_component_node(
-        vec![string_prop("scheme", "surface")],
+    let structural_scheme = super::side_nav_component_node(
+        vec![string_prop("scheme", "primary")],
         vec![super::SideNavItem::Divider],
     )
-    .expect_err("surface scheme");
-    assert!(
-        invalid_scheme
-            .to_string()
-            .contains("invalid value for prop `scheme`")
-    );
+    .expect("primary scheme");
+    let ViewNode::SideNav { props, .. } = structural_scheme else {
+        panic!("side nav primary scheme");
+    };
+    assert_eq!(props.style.color, Some(ColorFamily::Primary));
 }
 
 #[test]
@@ -1314,6 +1399,8 @@ fn side_nav_memory_keys_use_ids_and_normalized_structure() {
     let ViewNode::SideNav { mut props, .. } = node else {
         panic!("side nav");
     };
+    assert_eq!(props.style.variant, None);
+    assert_eq!(props.style.color, None);
     let structural = super::side_nav_memory_key(&props, &items);
     assert!(structural.starts_with("structure:"));
     assert_eq!(structural, super::side_nav_memory_key(&props, &items));
@@ -1339,7 +1426,7 @@ fn validates_rail_nav_props_items_and_required_icons() {
     .expect("item");
     let node = super::rail_nav_component_node(
         vec![
-            string_prop("variant", "soft"),
+            string_prop("variant", "ghost"),
             string_prop("scheme", "primary"),
             string_prop("size", "lg"),
             boolean_prop("showLabels", true),
@@ -1350,7 +1437,7 @@ fn validates_rail_nav_props_items_and_required_icons() {
 
     match node {
         ViewNode::RailNav { props, items } => {
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
             assert_eq!(props.style.color, Some(ColorFamily::Primary));
             assert_eq!(props.size, super::SideNavSize::Lg);
             assert!(props.show_labels);
@@ -1414,8 +1501,8 @@ fn validates_navigation_shell_components() {
     .expect("megamenu");
     let nav_menu = super::nav_menu_component_node(
         vec![
-            string_prop("variant", "soft"),
-            string_prop("scheme", "surface"),
+            string_prop("variant", "ghost"),
+            string_prop("scheme", "primary"),
             string_prop("size", "lg"),
         ],
         vec![nav_item, submenu, megamenu],
@@ -1424,8 +1511,8 @@ fn validates_navigation_shell_components() {
 
     match &nav_menu {
         ViewNode::NavMenu { props, items } => {
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
-            assert_eq!(props.style.color, Some(ColorFamily::Surface));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
+            assert_eq!(props.style.color, Some(ColorFamily::Primary));
             assert_eq!(props.size, super::SideNavSize::Lg);
             assert_eq!(items.len(), 3);
             assert!(
@@ -1543,8 +1630,8 @@ fn validates_drawer_props_and_children() {
         vec![
             string_prop("open", "drawerOpen"),
             string_prop("position", "end"),
-            string_prop("variant", "soft"),
-            string_prop("scheme", "surface"),
+            string_prop("variant", "ghost"),
+            string_prop("scheme", "primary"),
             boolean_prop("disableOverlayClose", true),
             boolean_prop("hideCloseButton", true),
             responsive_boolean_prop("show", &[("xs", true), ("md", false)]),
@@ -1565,8 +1652,8 @@ fn validates_drawer_props_and_children() {
         } => {
             assert_eq!(props.open, "drawerOpen");
             assert_eq!(props.position, super::DrawerPosition::End);
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
-            assert_eq!(props.style.color, Some(ColorFamily::Surface));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
+            assert_eq!(props.style.color, Some(ColorFamily::Primary));
             assert!(props.disable_overlay_close);
             assert!(props.hide_close_button);
             assert!(props.style.element.show.is_some());
@@ -1597,7 +1684,7 @@ fn validates_display_and_overlay_component_props() {
         vec![
             string_prop("name", "Ada"),
             string_prop("scheme", "success"),
-            string_prop("variant", "soft"),
+            string_prop("variant", "solid"),
             string_prop("size", "lg"),
             string_prop("status", "online"),
             boolean_prop("bordered", true),
@@ -1608,7 +1695,7 @@ fn validates_display_and_overlay_component_props() {
     match avatar {
         ViewNode::Avatar { props, .. } => {
             assert_eq!(props.style.color, Some(ColorFamily::Success));
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
             assert_eq!(props.size, ButtonSize::Lg);
             assert_eq!(props.status, Some(super::AvatarStatus::Online));
             assert!(props.bordered);

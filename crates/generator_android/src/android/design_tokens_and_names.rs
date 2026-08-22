@@ -544,12 +544,89 @@ fn dev_size_value(value: &ResponsiveValue<SizeValue>) -> String {
     dev_responsive_value(value, |value| match value {
         SizeValue::Scale(value) => value.native_units().to_string(),
         SizeValue::Container(value) => value.scale_value().native_units().to_string(),
+        SizeValue::Percent(value) => format!("dowePercentSize({value})"),
         SizeValue::Full => "ViewGroup.LayoutParams.MATCH_PARENT".to_string(),
-        SizeValue::ViewportMinus(value) => format!(
-            "Math.max(0, getResources().getConfiguration().screenHeightDp - {})",
-            value.native_units()
-        ),
+        SizeValue::Auto => "ViewGroup.LayoutParams.WRAP_CONTENT".to_string(),
+        SizeValue::ViewportMinus(value) => {
+            format!("runtime.doweViewportHeight({})", value.native_units())
+        }
     })
+}
+
+fn dev_section_exact_height(value: &ResponsiveValue<SizeValue>) -> Option<String> {
+    if value
+        .entries
+        .iter()
+        .all(|entry| matches!(entry.value, SizeValue::ViewportMinus(_)))
+    {
+        Some(format!("runtime.doweDp({})", dev_size_value(value)))
+    } else {
+        None
+    }
+}
+
+fn android_section_bounded_size(
+    value: &ResponsiveValue<SizeValue>,
+    spacing: &dowe_components::SpacingProps,
+) -> ResponsiveValue<SizeValue> {
+    let effective_spacing = dowe_components::section_content_spacing(spacing);
+    ResponsiveValue::ordered(
+        value
+            .entries
+            .iter()
+            .map(|entry| {
+                let top = android_section_spacing_edge(&effective_spacing, entry.breakpoint, true);
+                let bottom =
+                    android_section_spacing_edge(&effective_spacing, entry.breakpoint, false);
+                let vertical_inset = top.saturating_add(bottom);
+                let value = match entry.value {
+                    SizeValue::ViewportMinus(inset) => SizeValue::ViewportMinus(
+                        ScaleValue::from_half_steps(inset.0.saturating_add(vertical_inset)),
+                    ),
+                    value => value,
+                };
+                dowe_components::ResponsiveEntry {
+                    breakpoint: entry.breakpoint,
+                    value,
+                }
+            })
+            .collect(),
+    )
+}
+
+fn android_section_spacing_edge(
+    spacing: &dowe_components::SpacingProps,
+    breakpoint: Breakpoint,
+    top: bool,
+) -> u16 {
+    let value = if let Some(all) = spacing.p.as_ref() {
+        android_responsive_scale_at(all, breakpoint)
+    } else if top {
+        spacing
+            .pt
+            .as_ref()
+            .or(spacing.py.as_ref())
+            .and_then(|value| android_responsive_scale_at(value, breakpoint))
+    } else {
+        spacing
+            .pb
+            .as_ref()
+            .or(spacing.py.as_ref())
+            .and_then(|value| android_responsive_scale_at(value, breakpoint))
+    };
+    value.map(|value| value.0).unwrap_or_default()
+}
+
+fn android_responsive_scale_at(
+    value: &ResponsiveValue<ScaleValue>,
+    breakpoint: Breakpoint,
+) -> Option<ScaleValue> {
+    value
+        .entries
+        .iter()
+        .rev()
+        .find(|entry| entry.breakpoint.min_width() <= breakpoint.min_width())
+        .map(|entry| entry.value)
 }
 
 fn dev_color_value(value: &ResponsiveValue<ColorToken>) -> String {
@@ -849,15 +926,15 @@ fn family_title_color(value: ColorFamily) -> ColorToken {
 }
 
 fn family_soft_color(value: ColorFamily) -> ColorToken {
-    value.soft_color_token()
+    value.color_token()
 }
 
 fn family_soft_text_color(value: ColorFamily) -> ColorToken {
-    value.soft_text_token()
+    value.text_token()
 }
 
 fn family_soft_title_color(value: ColorFamily) -> ColorToken {
-    value.soft_title_token()
+    value.title_token()
 }
 
 fn compose_screen_name(route: &str) -> String {

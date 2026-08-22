@@ -4,13 +4,13 @@ function splitDestination(value) {
     return {
       path: currentRoute ? currentRoute.path : initialPath,
       fragment: decodeFragment(value),
-      href: value
+      href: value,
     };
   const url = new URL(value, location.href);
   return {
     path: normalizePath(url.pathname),
     fragment: decodeFragment(url.hash),
-    href: url.pathname + url.hash
+    href: url.pathname + url.hash,
   };
 }
 function versionedAsset(path, version = "") {
@@ -21,10 +21,12 @@ function versionedAsset(path, version = "") {
   return url.href;
 }
 function waitForCss(link, current = null) {
-  if (link.dataset.doweCssReady === "true" || link.sheet)
+  if (link.dataset.doweCssReady === "true" || link.sheet) {
+    if (current) current.remove();
     return Promise.resolve();
+  }
   return new Promise((resolve, reject) => {
-    const finish = loaded => {
+    const finish = (loaded) => {
       if (loaded) {
         link.dataset.doweCssReady = "true";
         if (current) current.remove();
@@ -53,14 +55,14 @@ function loadCss(route, path, version = "") {
   link.dataset.doweCss = path;
   const next = route.cssChunks
     .slice(route.cssChunks.indexOf(path) + 1)
-    .map(next => document.querySelector(`link[data-dowe-css="${next}"]`))
-    .find(found => found && found !== current);
+    .map((next) => document.querySelector(`link[data-dowe-css="${next}"]`))
+    .find((found) => found && found !== current);
   document.head.insertBefore(link, next || null);
   return waitForCss(link, current);
 }
 function loadRouteCss(route, version = "") {
   return Promise.all(
-    route.cssChunks.map(path => loadCss(route, path, version))
+    route.cssChunks.map((path) => loadCss(route, path, version)),
   );
 }
 function applyRouteMetadata(route) {
@@ -105,7 +107,7 @@ function localeCandidates() {
     Array.isArray(navigator.languages) && navigator.languages.length
       ? navigator.languages
       : [navigator.language || ""];
-  return values.flatMap(value => {
+  return values.flatMap((value) => {
     const locale = String(value).toLowerCase();
     const primary = locale.split("-")[0];
     return locale === primary ? [locale] : [locale, primary];
@@ -122,7 +124,7 @@ async function loadTranslations() {
     translationsPromise =
       locale && localeChunks[locale]
         ? loadChunk(localeChunks[locale])
-            .then(module => module.translations || {})
+            .then((module) => module.translations || {})
             .catch(() => ({}))
         : Promise.resolve({});
   }
@@ -138,7 +140,7 @@ async function hydrateTranslations(root) {
 async function loadEnv() {
   if (!envPromise)
     envPromise = fetch(asset("env.json"), { cache: "no-store" })
-      .then(response => (response.ok ? response.json() : {}))
+      .then((response) => (response.ok ? response.json() : {}))
       .catch(() => ({}));
   return envPromise;
 }
@@ -164,8 +166,8 @@ window.__doweRegisterRuntimeCapability = (name, setup) => {
       onViewportResize,
       onViewportScroll,
       prefersReducedMotion,
-      getActiveView: () => activeView
-    })
+      getActiveView: () => activeView,
+    }),
   );
 };
 function runtimeCapability(name) {
@@ -194,17 +196,17 @@ function compatibleSignalValue(value, initial) {
   if (Array.isArray(initial)) {
     if (!Array.isArray(value)) return false;
     if (!initial.length) return true;
-    return value.every(item =>
-      initial.some(expected => compatibleSignalValue(item, expected))
+    return value.every((item) =>
+      initial.some((expected) => compatibleSignalValue(item, expected)),
     );
   }
   if (initial && typeof initial === "object") {
     if (!value || typeof value !== "object" || Array.isArray(value))
       return false;
     return Object.keys(initial).every(
-      key =>
+      (key) =>
         Object.prototype.hasOwnProperty.call(value, key) &&
-        compatibleSignalValue(value[key], initial[key])
+        compatibleSignalValue(value[key], initial[key]),
     );
   }
   return signalShape(value) === signalShape(initial);
@@ -216,7 +218,7 @@ function storedSignal(signal) {
   if (signal.storage !== "local") return undefined;
   try {
     const raw = localStorage.getItem(
-      signalStorageKey(signal.storageKey || signal.name)
+      signalStorageKey(signal.storageKey || signal.name),
     );
     return raw == null ? undefined : JSON.parse(raw);
   } catch (error) {
@@ -270,12 +272,12 @@ function readPathRaw(state, path, scope) {
 }
 function formDefinition(signal) {
   const existing = (activeView?.forms || []).find(
-    form => form.signal === signal
+    (form) => form.signal === signal,
   );
   if (existing) return existing;
   const fields = [];
   for (const root of document.querySelectorAll(
-    "[data-dowe-validation-kind][data-dowe-validation-form]"
+    "[data-dowe-validation-kind][data-dowe-validation-form]",
   )) {
     if (root.dataset.doweValidationForm !== signal) continue;
     let rules = [];
@@ -286,11 +288,11 @@ function formDefinition(signal) {
     }
     if (!rules.length) continue;
     const path = root.dataset.doweValidationField || "";
-    if (!fields.some(field => field.path === path))
+    if (!fields.some((field) => field.path === path))
       fields.push({
         path,
         kind: root.dataset.doweValidationKind || "string",
-        rules
+        rules,
       });
   }
   return { signal, fields };
@@ -312,15 +314,15 @@ function formDerivedPath(state, path, scope) {
     return {
       found: true,
       value: (form.fields || []).every(
-        field => !formFieldError(form, field, state, scope)
-      )
+        (field) => !formFieldError(form, field, state, scope),
+      ),
     };
   if (parts[1] === "isInvalid" && parts.length === 2)
     return {
       found: true,
       value: (form.fields || []).some(
-        field => !!formFieldError(form, field, state, scope)
-      )
+        (field) => !!formFieldError(form, field, state, scope),
+      ),
     };
   if (parts[1] === "errors") {
     const errors = {};
@@ -330,7 +332,7 @@ function formDerivedPath(state, path, scope) {
     }
     return {
       found: true,
-      value: parts.length === 2 ? errors : errors[fieldPath] || undefined
+      value: parts.length === 2 ? errors : errors[fieldPath] || undefined,
     };
   }
   if (parts[1] === "touched") {
@@ -339,7 +341,7 @@ function formDerivedPath(state, path, scope) {
       touched[field.path] = !!formTouched[form.signal + "." + field.path];
     return {
       found: true,
-      value: parts.length === 2 ? touched : !!touched[fieldPath]
+      value: parts.length === 2 ? touched : !!touched[fieldPath],
     };
   }
   return { found: false, value: undefined };

@@ -513,9 +513,6 @@ fn collect_js_node_segments(
                     class_attr(drawer_classes(props))
                 ),
             );
-            if !props.hide_close_button {
-                push_literal(segments, &drawer_close_html());
-            }
             if !header.is_empty() {
                 push_literal(segments, "<div class=\"drawer-header\">");
                 for child in header {
@@ -535,7 +532,11 @@ fn collect_js_node_segments(
                 }
                 push_literal(segments, "</div>");
             }
-            push_literal(segments, "</div></div>");
+            push_literal(segments, "</div>");
+            if !props.hide_close_button {
+                push_literal(segments, &drawer_close_html(props.position.as_str()));
+            }
+            push_literal(segments, "</div>");
         }
         ViewNode::Each {
             item,

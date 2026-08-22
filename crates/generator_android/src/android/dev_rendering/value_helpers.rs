@@ -10,6 +10,13 @@ fn dev_show_condition(show: &VisibilityCondition, context: &ComposeReactiveConte
                 .unwrap_or_else(|| context.signal_path(path));
             format!("doweBool(\"{}\", {item})", escape_java(&path))
         }
+        VisibilityCondition::StringEquality { path, value } => {
+            format!(
+                "\"{}\".equals(doweTextValue(\"{}\", null))",
+                escape_java(value),
+                escape_java(&context.signal_path(path))
+            )
+        }
         VisibilityCondition::NumberComparison { path, comparison } => {
             let item = context.item_value(path).unwrap_or("null");
             let path = context

@@ -6,7 +6,7 @@ fn render_dev_android_form_fields_node(
     counter: &mut usize,
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
-    _inherited_color: Option<String>,
+    inherited_color: Option<String>,
     context: &ComposeReactiveContext,
     _children_method: Option<&str>,
 ) {
@@ -51,7 +51,7 @@ fn render_dev_android_form_fields_node(
                     format!("doweBackground({}, {radius})", dev_variant_container(props))
                 };
             let font = dev_font_value(props.style.font.as_ref().or(inherited_font));
-            let content = dev_variant_content(props);
+            let content = dev_inherited_content_color(&props.style, inherited_color.as_deref());
             let field_background = if (props.label_floating && props.label.is_some()) || has_icons {
                 "setBackgroundColor(Color.TRANSPARENT)".to_string()
             } else {
@@ -107,7 +107,7 @@ fn render_dev_android_form_fields_node(
                         icon,
                         counter,
                         output,
-                        Some(content),
+                        Some(&content),
                     );
                     output.push_str(&format!(
                         "        {icon}.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);\n"
@@ -123,7 +123,7 @@ fn render_dev_android_form_fields_node(
                         icon,
                         counter,
                         output,
-                        Some(content),
+                        Some(&content),
                     );
                     output.push_str(&format!(
                         "        {icon}.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);\n"
@@ -273,7 +273,7 @@ fn render_dev_android_form_fields_node(
                     )
                 };
             let font = dev_font_value(props.style.font.as_ref().or(inherited_font));
-            let content = dev_variant_content(props);
+            let content = dev_inherited_content_color(&props.style, inherited_color.as_deref());
             let placeholder = props.placeholder.as_deref().unwrap_or("Select an option");
             let bind_path = props
                 .element
@@ -931,6 +931,7 @@ fn render_dev_android_password(
     counter: &mut usize,
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    inherited_color: Option<String>,
     context: &ComposeReactiveContext,
 ) {
     let view = next_dev_view(counter);
@@ -942,21 +943,22 @@ fn render_dev_android_password(
         props.style.label_floating,
     )
     .native_units();
+    let radius = dev_style_radius(&props.style.style);
     let background =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             format!(
-                "doweInputBackground({}, {}, DOWE_RADIUS)",
+                "doweInputBackground({}, {}, {radius})",
                 dev_variant_container(&props.style),
                 java_color(ColorToken::Muted)
             )
         } else {
             format!(
-                "doweBackground({}, DOWE_RADIUS)",
+                "doweBackground({}, {radius})",
                 dev_variant_container(&props.style)
             )
         };
     let font = dev_font_value(props.style.style.font.as_ref().or(inherited_font));
-    let content = dev_variant_content(&props.style);
+    let content = dev_inherited_content_color(&props.style.style, inherited_color.as_deref());
     let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
     let hide_icon = solar_control_icon("eye-closed").expect("bundled Password conceal icon");
     let show_icon_view = render_dev_android_icon_view(&show_icon, counter, output, Some(&content));
@@ -974,16 +976,16 @@ fn render_dev_android_password(
         .filter(|_| !props.style.label_floating)
     {
         output.push_str(&format!(
-            "        LinearLayout {view} = doweContainer(false);\n        TextView {view}Label = doweControlLabel(\"{}\", {content}, {font});\n        doweAdd({view}, {view}Label);\n",
+            "        LinearLayout {view} = doweContainer(false);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        TextView {view}Label = doweControlLabel(\"{}\", {content}, {font});\n        doweAdd({view}, {view}Label);\n",
             escape_java(label)
         ));
     } else {
         output.push_str(&format!(
-            "        LinearLayout {view} = doweContainer(false);\n"
+            "        LinearLayout {view} = doweContainer(false);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
         ));
     }
     output.push_str(&format!(
-        "        EditText {field} = new EditText(this);\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(true);\n        {field}.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);\n        {field}.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), {}, doweDp(48), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n",
+        "        EditText {field} = new EditText(this);\n        {field}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {field}.setTextSize({});\n        {field}.setIncludeFontPadding(false);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setTextColor({content});\n        {field}.setSingleLine(true);\n        {field}.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);\n        {field}.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());\n        {field}.setTypeface(Typeface.create({font}, android.graphics.Typeface.NORMAL));\n        {field}.setMinWidth(0);\n        {field}.setMinimumWidth(0);\n        {field}.setMinHeight(doweDp({}));\n        {field}.setMinimumHeight(doweDp({}));\n        {field}.setPadding(doweDp({}), {}, doweDp({}), 0);\n        {field}.setBackgroundColor(Color.TRANSPARENT);\n",
         text_size,
         control_height,
         control_height,
@@ -992,7 +994,8 @@ fn render_dev_android_password(
             "doweDp(10)"
         } else {
             "0"
-        }
+        },
+        INPUT_HORIZONTAL_PADDING.native_units() + 32
     ));
     if !placeholder.is_empty() && !(props.style.label_floating && props.style.label.is_some()) {
         output.push_str(&format!(
@@ -1027,16 +1030,27 @@ fn render_dev_android_password(
         ));
     } else {
         output.push_str(&format!(
-            "        FrameLayout {frame} = new FrameLayout(this);\n        {frame}.setMinimumHeight(doweDp({control_height}));\n        {frame}.setBackground({background});\n        {frame}.addView({field}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL));\n"
+            "        FrameLayout {frame} = new FrameLayout(this);\n        {frame}.setMinimumHeight(doweDp({control_height}));\n        {frame}.setBackground({background});\n        {frame}.addView({field}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER_VERTICAL));\n"
         ));
     }
     output.push_str(&format!(
-        "        FrameLayout {toggle} = new FrameLayout(this);\n        {toggle}.setContentDescription(\"Show password\");\n        {toggle}.setBackground(doweBackground(Color.TRANSPARENT, DOWE_RADIUS));\n        {toggle}.addView({show_icon_view}, new FrameLayout.LayoutParams(doweDp(20), doweDp(20), Gravity.CENTER));\n        {hide_icon_view}.setVisibility(View.GONE);\n        {toggle}.addView({hide_icon_view}, new FrameLayout.LayoutParams(doweDp(20), doweDp(20), Gravity.CENTER));\n        FrameLayout.LayoutParams {toggle}Params = new FrameLayout.LayoutParams(doweDp(32), doweDp(32), Gravity.END | Gravity.CENTER_VERTICAL);\n        {toggle}Params.setMargins(0, 0, doweDp(4), 0);\n        {frame}.addView({toggle}, {toggle}Params);\n        final boolean[] {toggle}Visible = new boolean[]{{false}};\n        {toggle}.setOnClickListener(target -> {{\n            {toggle}Visible[0] = !{toggle}Visible[0];\n            {field}.setTransformationMethod({toggle}Visible[0] ? android.text.method.HideReturnsTransformationMethod.getInstance() : android.text.method.PasswordTransformationMethod.getInstance());\n            {show_icon_view}.setVisibility({toggle}Visible[0] ? View.GONE : View.VISIBLE);\n            {hide_icon_view}.setVisibility({toggle}Visible[0] ? View.VISIBLE : View.GONE);\n            {toggle}.setContentDescription({toggle}Visible[0] ? \"Hide password\" : \"Show password\");\n            {field}.setSelection({field}.length());\n        }});\n"
+        "        {frame}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
+    ));
+    output.push_str(&format!(
+        "        FrameLayout {toggle} = new FrameLayout(this);\n        {toggle}.setContentDescription(\"Show password\");\n        {toggle}.setBackground(doweBackground(Color.TRANSPARENT, {radius}));\n        {toggle}.addView({show_icon_view}, new FrameLayout.LayoutParams(doweDp(20), doweDp(20), Gravity.CENTER));\n        {hide_icon_view}.setVisibility(View.GONE);\n        {toggle}.addView({hide_icon_view}, new FrameLayout.LayoutParams(doweDp(20), doweDp(20), Gravity.CENTER));\n        FrameLayout.LayoutParams {toggle}Params = new FrameLayout.LayoutParams(doweDp(32), doweDp(32), Gravity.END | Gravity.CENTER_VERTICAL);\n        {toggle}Params.setMargins(0, 0, doweDp(4), 0);\n        {frame}.addView({toggle}, {toggle}Params);\n        final boolean[] {toggle}Visible = new boolean[]{{false}};\n        {toggle}.setOnClickListener(target -> {{\n            {toggle}Visible[0] = !{toggle}Visible[0];\n            {field}.setTransformationMethod({toggle}Visible[0] ? android.text.method.HideReturnsTransformationMethod.getInstance() : android.text.method.PasswordTransformationMethod.getInstance());\n            {show_icon_view}.setVisibility({toggle}Visible[0] ? View.GONE : View.VISIBLE);\n            {hide_icon_view}.setVisibility({toggle}Visible[0] ? View.VISIBLE : View.GONE);\n            {toggle}.setContentDescription({toggle}Visible[0] ? \"Hide password\" : \"Show password\");\n            {field}.setSelection({field}.length());\n        }});\n"
     ));
     if read_only {
         output.push_str(&format!("        {toggle}.setEnabled(false);\n"));
     }
-    output.push_str(&format!("        doweAdd({view}, {frame});\n"));
+    output.push_str(&format!("        doweAdd({view}, {frame}, 4, false);\n"));
+    if dev_has_validation(&props.style.element) {
+        output.push_str(&format!(
+            "        DoweValidationBinding {field}Validation = doweValidation(\"{field}\", {view}, {field}, {field}, {}, {}, {}, () -> {field}.getText().toString(), false, {content}, {font});\n        {field}Validation.watchText();\n",
+            dev_validation_help(&props.style.element),
+            dev_validation_error(&props.style.element),
+            dev_validation_rules(&props.style.element, context)
+        ));
+    }
 
     let strength_update = if props.hide_strength {
         None

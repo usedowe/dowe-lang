@@ -129,10 +129,26 @@ fn render_image_html(props: &ImageProps, context: &ReactiveRenderContext) -> Str
     let mut classes = variant_classes("image", &props.style);
     classes.push(props.aspect.as_str().to_string());
     classes.push(format!("fit-{}", props.object_fit.as_str()));
+    let source = if props.reactive_src.is_some() {
+        ""
+    } else {
+        &props.src
+    };
+    let reactive_source = props
+        .reactive_src
+        .as_deref()
+        .map(|path| {
+            format!(
+                r#" data-dowe-image-src="{}""#,
+                escape_attr(&context.signal_path(path))
+            )
+        })
+        .unwrap_or_default();
     format!(
-        r#"<figure{} data-dowe-image><img class="image-element" src="{}" alt="{}" loading="{}">{}</figure>"#,
+        r#"<figure{} data-dowe-image><img class="image-element" src="{}"{} alt="{}" loading="{}">{}</figure>"#,
         attrs(classes, Some(&props.style.element), None, context),
-        escape_attr(&props.src),
+        escape_attr(source),
+        reactive_source,
         escape_attr(&props.alt),
         props.loading.as_str(),
         controls

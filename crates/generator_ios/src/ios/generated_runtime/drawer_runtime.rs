@@ -166,21 +166,21 @@ struct DoweDrawerSurface<Content: View>: View {
                         panelShape
                             .stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1))
                     )
-                    .overlay(alignment: .topTrailing) {
-                        if !hideCloseButton {
-                            Button(action: close) {
-                                DoweOverlayCloseIcon(color: DoweDesign.softMutedText)
-                                    .frame(width: CGFloat(28), height: CGFloat(28))
-                                    .background(DoweDesign.softMuted)
-                                    .foregroundStyle(DoweDesign.softMutedText)
-                                    .clipShape(Circle())
-                                    .frame(width: CGFloat(44), height: CGFloat(44))
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
                     .offset(x: offset.width, y: offset.height)
+                if !hideCloseButton {
+                    Button(action: close) {
+                        DoweOverlayCloseIcon(color: DoweDesign.mutedText)
+                            .frame(width: CGFloat(28), height: CGFloat(28))
+                            .background(DoweDesign.muted)
+                            .foregroundStyle(DoweDesign.mutedText)
+                            .clipShape(Circle())
+                            .frame(width: CGFloat(44), height: CGFloat(44))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: closeButtonAlignment)
+                    .opacity(active ? 1 : 0)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
         }
@@ -195,6 +195,17 @@ struct DoweDrawerSurface<Content: View>: View {
 
     private var vertical: Bool {
         position == "start" || position == "end"
+    }
+
+    private var closeButtonAlignment: Alignment {
+        switch position {
+        case "end":
+            return .topLeading
+        case "top":
+            return .bottomTrailing
+        default:
+            return .topTrailing
+        }
     }
 
     private var panelShape: UnevenRoundedRectangle {

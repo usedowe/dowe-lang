@@ -1077,6 +1077,25 @@ fn rejects_removed_slot_defaults_and_unknown_component_default_props() {
 }
 
 #[test]
+fn accepts_navigation_and_chip_theme_defaults() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path());
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r#"theme
+  design defaultTheme:"light"
+    Chip variant:"outlined" scheme:"primary"
+    SideNav variant:"soft" scheme:"surface"
+    Sidebar variant:"ghost" scheme:"surface"
+    NavMenu variant:"solid" scheme:"surface"
+    theme name:"light""#,
+    )
+    .expect("theme");
+
+    compile_dev(temp.path()).expect("navigation and chip theme defaults");
+}
+
+#[test]
 fn rejects_invalid_text_and_title_theme_defaults() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path());

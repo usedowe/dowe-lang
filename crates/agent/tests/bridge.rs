@@ -166,6 +166,7 @@ fn lists_public_authoring_skills_without_workspace_skills() {
             "references/components.md",
             "references/styles.md",
             "references/canvas.md",
+            "references/table.md",
             "scripts/visual_qa.py",
             "scripts/visual_qa_blueprint.py",
             "scripts/visual_qa_png.py"
@@ -210,6 +211,36 @@ fn lists_public_authoring_skills_without_workspace_skills() {
         let full = get_public_skill(&skill.id, true).expect("full skill");
         assert!(!full.content.contains("Node.js"));
         assert!(!full.content.contains("Tailwind"));
+    }
+}
+
+#[test]
+fn public_skills_follow_agent_skills_metadata_contract() {
+    for skill in public_skills() {
+        let document = get_public_skill(&skill.id, false).expect("skill document");
+        let frontmatter = document
+            .content
+            .strip_prefix("---\n")
+            .and_then(|content| content.split_once("\n---\n"))
+            .map(|(header, _)| header)
+            .expect("frontmatter");
+        let name = frontmatter
+            .lines()
+            .find_map(|line| line.strip_prefix("name: "))
+            .expect("name");
+        let description = frontmatter
+            .lines()
+            .find_map(|line| line.strip_prefix("description: "))
+            .expect("description");
+        assert_eq!(name, skill.name);
+        assert!(!name.is_empty() && name.len() <= 64);
+        assert!(
+            name.bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+        );
+        assert!(!description.is_empty() && description.len() <= 1024);
+        assert!(!document.content.contains("/Users/varb/"));
+        assert!(!document.content.contains("/Users/varb/Work/dowe/"));
     }
 }
 

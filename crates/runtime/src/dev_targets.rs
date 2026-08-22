@@ -100,7 +100,7 @@ pub(super) fn run_required(
     let child = spawn(config)
         .map_err(|error| RuntimeError::new(format!("{} target failed: {error}", target.label())))?;
     let control = child.controller();
-    register_active_external_command(control.clone());
+    register_active_external_command(target, control.clone());
     let output = child.wait();
     unregister_active_external_command(control.spawn_id);
     let output = output
@@ -136,28 +136,41 @@ pub(crate) fn cancel_active_external_commands() {
         .lock()
         .expect("active command lock")
         .clone();
-    for control in controls {
+    for (_, control) in controls {
         let _ = control.cancel();
     }
 }
 
-fn active_command_controls() -> &'static Mutex<Vec<ProcessControl>> {
-    static CONTROLS: OnceLock<Mutex<Vec<ProcessControl>>> = OnceLock::new();
+fn active_command_controls() -> &'static Mutex<Vec<(DevTarget, ProcessControl)>> {
+    static CONTROLS: OnceLock<Mutex<Vec<(DevTarget, ProcessControl)>>> = OnceLock::new();
     CONTROLS.get_or_init(|| Mutex::new(Vec::new()))
 }
 
-fn register_active_external_command(control: ProcessControl) {
+fn register_active_external_command(target: DevTarget, control: ProcessControl) {
     active_command_controls()
         .lock()
         .expect("active command lock")
-        .push(control);
+        .push((target, control));
 }
 
 fn unregister_active_external_command(spawn_id: u64) {
     active_command_controls()
         .lock()
         .expect("active command lock")
-        .retain(|control| control.spawn_id != spawn_id);
+        .retain(|(_, control)| control.spawn_id != spawn_id);
+}
+
+pub(crate) fn cancel_active_external_commands_for(target: DevTarget) {
+    let controls = active_command_controls()
+        .lock()
+        .expect("active command lock")
+        .iter()
+        .filter(|(active_target, _)| *active_target == target)
+        .map(|(_, control)| control.clone())
+        .collect::<Vec<_>>();
+    for control in controls {
+        let _ = control.cancel();
+    }
 }
 
 pub(super) fn run_allow_failure(

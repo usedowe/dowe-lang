@@ -167,6 +167,21 @@ fn language_supports_web_metadata_declarations() {
 }
 
 #[test]
+fn formatter_indents_multiline_child_delimiters() {
+    let path = Path::new("/project/pages/title.dowe");
+    let source = "page titlePage\n  Title\n    \"\"\"\n    Hello,\n    world\n    \"\"\"\n";
+    let formatted = format_document(Path::new("/project"), path, source).expect("format");
+    assert_eq!(
+        formatted,
+        "page titlePage\n  Title\n    \"\"\"\n    Hello,\n    world\n    \"\"\"\n"
+    );
+    assert_eq!(
+        format_document(Path::new("/project"), path, &formatted).expect("format twice"),
+        formatted
+    );
+}
+
+#[test]
 fn formatter_preserves_multiline_string_content() {
     let path = Path::new("/project/pages/code.dowe");
     let source = "page codePage\n  Code:\n    language:\"dowe\"\n    content:\"\"\"\n      page example\n        Text\n          \"Hello\"\n\n        Button\n          \"Continue\"\n    \"\"\"\n";
@@ -1703,12 +1718,14 @@ fn completions_include_current_view_component_props() {
     assert!(box_props.iter().any(|item| item.label == "left"));
     assert!(box_props.iter().any(|item| item.label == "maxW"));
     assert!(box_props.iter().any(|item| item.label == "maxH"));
+    assert!(box_props.iter().any(|item| item.label == "flex"));
     assert!(!box_props.iter().any(|item| item.label == "text"));
 
     let section_props = complete_document(Path::new("/project"), &document, 3, 11);
     assert!(section_props.iter().any(|item| item.label == "background"));
-    assert!(section_props.iter().any(|item| item.label == "center"));
+    assert!(section_props.iter().any(|item| item.label == "centerX"));
     assert!(section_props.iter().any(|item| item.label == "gap"));
+    assert!(section_props.iter().any(|item| item.label == "flex"));
     assert!(section_props.iter().any(|item| item.label == "boxed"));
     assert!(section_props.iter().any(|item| item.label == "cover"));
     assert!(section_props.iter().any(|item| item.label == "color"));
@@ -1859,7 +1876,8 @@ fn completions_include_container_width_values() {
     };
     let completions = complete_document(Path::new("/project"), &document, 2, 9);
     for value in [
-        "full", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl",
+        "full", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl", "10%", "20%",
+        "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%",
     ] {
         assert!(
             completions
@@ -1868,6 +1886,18 @@ fn completions_include_container_width_values() {
             "missing width value {value}"
         );
     }
+
+    let max_width_document = LanguageDocument {
+        path: Path::new("/project/pages/widths.dowe").to_path_buf(),
+        source: "page widthsPage\n  Box maxW:\n".to_string(),
+    };
+    let max_width_completions =
+        complete_document(Path::new("/project"), &max_width_document, 2, 12);
+    assert!(
+        max_width_completions
+            .iter()
+            .all(|item| item.label != "\"50%\"")
+    );
 }
 
 #[test]
@@ -1916,14 +1946,14 @@ fn completions_include_section_boxed_boolean_values() {
 fn completions_include_section_center_boolean_values() {
     let document = LanguageDocument {
         path: Path::new("/project/pages/landing.dowe").to_path_buf(),
-        source: "page landingPage\n  Section center:\n".to_string(),
+        source: "page landingPage\n  Section centerX:\n".to_string(),
     };
 
     let values = complete_document(
         Path::new("/project"),
         &document,
         2,
-        "  Section center:".len() + 1,
+        "  Section centerX:".len() + 1,
     );
     assert!(values.iter().any(|item| item.label == "true"));
     assert!(values.iter().any(|item| item.label == "false"));
@@ -2031,7 +2061,7 @@ fn completions_include_quoted_static_component_values() {
 
     let variant = complete_document(Path::new("/project"), &document, 3, 17);
     assert!(variant.iter().any(|item| item.label == "\"outlined\""));
-    assert!(variant.iter().any(|item| item.label == "\"soft\""));
+    assert!(variant.iter().any(|item| item.label == "\"ghost\""));
 
     let fill = complete_document(Path::new("/project"), &document, 4, 13);
     assert!(fill.iter().any(|item| item.label == "\"none\""));
@@ -2463,7 +2493,7 @@ fn completions_include_rich_control_map_component_props_and_values() {
 
     let record_variant = complete_document(root, &document, 7, "  Record variant:".len() + 1);
     assert!(record_variant.iter().any(|item| item.label == "\"solid\""));
-    assert!(record_variant.iter().any(|item| item.label == "\"soft\""));
+    assert!(!record_variant.iter().any(|item| item.label == "\"soft\""));
     assert!(!record_variant.iter().any(|item| item.label == "\"ghost\""));
 
     let toggle_props = complete_document(root, &document, 8, "  ToggleGroup ".len() + 1);
@@ -2545,6 +2575,43 @@ fn completions_include_flex_direction_prop_and_values() {
     );
     assert!(values.iter().any(|item| item.label == "\"row\""));
     assert!(values.iter().any(|item| item.label == "\"column\""));
+}
+
+#[test]
+fn completions_include_flex_item_prop_and_values() {
+    let document = LanguageDocument {
+        path: Path::new("/project/pages/layout.dowe").to_path_buf(),
+        source: "page layoutPage\n  Box \n  Section \n  Flex \n  Grid \n  Card \n  Box flex:\n"
+            .to_string(),
+    };
+
+    for (line, column) in [(2, 7), (3, 11), (4, 8), (5, 8), (6, 8)] {
+        let props = complete_document(Path::new("/project"), &document, line, column);
+        assert!(props.iter().any(|item| item.label == "flex"));
+    }
+
+    let values = complete_document(Path::new("/project"), &document, 7, "  Box flex:".len() + 1);
+    assert!(values.iter().any(|item| item.label == "\"initial\""));
+    assert!(values.iter().any(|item| item.label == "\"auto\""));
+    assert!(values.iter().any(|item| item.label == "\"none\""));
+    assert!(values.iter().any(|item| item.label == "1"));
+}
+
+#[test]
+fn diagnostics_accept_flex_item_prop_on_grid() {
+    let root = tempdir().expect("root");
+    fs::create_dir_all(root.path().join("pages")).expect("pages");
+    let document = LanguageDocument {
+        path: root.path().join("pages/layout.dowe"),
+        source: "page layoutPage\n  Grid flex:1\n    Text\n      \"Grid\"\n".to_string(),
+    };
+
+    let diagnostics = analyze_document(root.path(), &document);
+
+    assert!(
+        diagnostics.is_empty(),
+        "unexpected diagnostics: {diagnostics:?}"
+    );
 }
 
 #[test]

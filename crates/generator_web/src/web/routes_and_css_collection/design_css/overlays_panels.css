@@ -87,8 +87,8 @@
   justify-content:center;
   border:0;
   border-radius:999px;
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   font:inherit;
   font-size:1.25rem;
   line-height:1;
@@ -132,6 +132,33 @@
   top:.5rem;
   right:.5rem;
 }
+.drawer-panel > .drawer-close {
+  z-index:1;
+}
+.drawer-panel > .drawer-close.is-start {
+  top:.5rem;
+  right:.5rem;
+  bottom:auto;
+  left:auto;
+}
+.drawer-panel > .drawer-close.is-end {
+  top:.5rem;
+  left:.5rem;
+  bottom:auto;
+  right:auto;
+}
+.drawer-panel > .drawer-close.is-top {
+  top:auto;
+  right:.5rem;
+  bottom:.5rem;
+  left:auto;
+}
+.drawer-panel > .drawer-close.is-bottom {
+  top:.5rem;
+  right:.5rem;
+  bottom:auto;
+  left:auto;
+}
 .drawer-close,.modal-close,.toast-close {
   display:inline-flex;
   width:1.75rem;
@@ -141,8 +168,8 @@
   justify-content:center;
   border:0;
   border-radius:999px;
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   font:inherit;
   line-height:1;
   cursor:pointer;

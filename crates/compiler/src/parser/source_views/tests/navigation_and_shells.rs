@@ -330,6 +330,42 @@ fn parses_stepper_and_rejects_invalid_structure() {
 }
 
 #[test]
+fn parses_padding_on_drawer_and_sidebar_regions() {
+    let tree = parse_page(
+        r#"page shellPage
+  signal drawerOpen value:false
+  Sidebar
+    header p:2
+      Text
+        "Header"
+    body px:{ xs:2 md:4 }
+      Text
+        "Body"
+  Drawer open:drawerOpen
+    body
+      Text
+        "Body"
+    footer py:{ xs:1 md:3 }
+      Text
+        "Footer""#,
+    )
+    .expect("tree");
+
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("scope");
+    };
+    let ViewNode::Sidebar { header, body, .. } = &children[0] else {
+        panic!("sidebar");
+    };
+    assert!(matches!(header[0], ViewNode::Box { .. }));
+    assert!(matches!(body[0], ViewNode::Box { .. }));
+    let ViewNode::Drawer { footer, .. } = &children[1] else {
+        panic!("drawer");
+    };
+    assert!(matches!(footer[0], ViewNode::Box { .. }));
+}
+
+#[test]
 fn parses_drawer_with_signal_open_and_responsive_show() {
     let tree = parse_page(
             r#"page navPage

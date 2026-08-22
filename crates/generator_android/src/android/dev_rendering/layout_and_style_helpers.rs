@@ -19,6 +19,25 @@ fn apply_dev_android_inline_width(
     }
 }
 
+fn apply_dev_android_flex_item(props: &StyleProps, parent: &str, view: &str, output: &mut String) {
+    let Some(value) = props.flex.as_ref() else {
+        return;
+    };
+    output.push_str(&format!(
+        "        Integer {view}Flex = {};\n        doweApplyFlexItem({parent}, {view}, {view}Flex);\n",
+        dev_flex_item(value)
+    ));
+}
+
+fn dev_flex_item(value: &ResponsiveValue<FlexItem>) -> String {
+    dev_responsive_value(value, |value| match value {
+        FlexItem::Initial => "DOWE_FLEX_INITIAL".to_string(),
+        FlexItem::Auto => "DOWE_FLEX_AUTO".to_string(),
+        FlexItem::None => "DOWE_FLEX_NONE".to_string(),
+        FlexItem::Fill => "DOWE_FLEX_FILL".to_string(),
+    })
+}
+
 fn dev_optional_gap(value: Option<&ResponsiveValue<GapValue>>, horizontal: bool) -> Option<String> {
     value.map(|value| dev_responsive_value(value, |value| dev_gap_expr(value, horizontal)))
 }
@@ -110,10 +129,35 @@ fn apply_dev_text_alignment(
     ));
 }
 
-fn dev_grid_columns(value: Option<&ResponsiveValue<GridTracks>>) -> String {
+fn dev_grid_tracks(value: Option<&ResponsiveValue<GridTracks>>) -> String {
     value
-        .map(|value| dev_responsive_value(value, |value| value.count().unwrap_or(1).to_string()))
-        .unwrap_or_else(|| "1".to_string())
+        .map(|value| {
+            dev_responsive_tracks(value, |value| match value {
+                GridTracks::Count(count) => {
+                    format!("new float[]{{{}}}", vec!["1f"; *count as usize].join(", "))
+                }
+                GridTracks::Fractions(weights) => format!(
+                    "new float[]{{{}}}",
+                    weights
+                        .iter()
+                        .map(|weight| format!("{weight}f"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                GridTracks::Auto => "new float[]{1f}".to_string(),
+            })
+        })
+        .unwrap_or_else(|| "new float[]{1f}".to_string())
+}
+
+fn dev_responsive_tracks<T, F>(value: &ResponsiveValue<T>, map: F) -> String
+where
+    F: Fn(&T) -> String,
+{
+    format!(
+        "doweResponsiveTracks(viewportWidth, {})",
+        dev_responsive_args(value, map)
+    )
 }
 
 fn dev_inherited_color(props: &StyleProps, inherited_color: Option<&str>) -> Option<String> {
@@ -126,15 +170,23 @@ fn dev_inherited_color(props: &StyleProps, inherited_color: Option<&str>) -> Opt
 }
 
 fn dev_content_colors(text: &str, title: &str) -> String {
-    format!("{text}\u{1f}{title}")
+    format!("{text}|{title}")
 }
 
 fn dev_inherited_text_color(value: Option<&str>) -> Option<&str> {
-    value.map(|value| value.split_once('\u{1f}').map_or(value, |colors| colors.0))
+    value.map(|value| value.split_once('|').map_or(value, |colors| colors.0))
+}
+
+fn dev_inherited_content_color(props: &StyleProps, inherited_color: Option<&str>) -> String {
+    dev_inherited_color(props, inherited_color)
+        .as_deref()
+        .and_then(|value| dev_inherited_text_color(Some(value)))
+        .unwrap_or("DOWE_BACKGROUND_TEXT")
+        .to_string()
 }
 
 fn dev_inherited_title_color(value: Option<&str>) -> Option<&str> {
-    value.map(|value| value.split_once('\u{1f}').map_or(value, |colors| colors.1))
+    value.map(|value| value.split_once('|').map_or(value, |colors| colors.1))
 }
 
 fn dev_svg_color(props: &StyleProps, inherited_color: Option<&str>) -> String {
@@ -365,6 +417,16 @@ fn apply_dev_android_style(
     include_background: bool,
     output: &mut String,
 ) {
+    apply_dev_android_style_with_shadow_radius(props, view, include_background, None, output);
+}
+
+fn apply_dev_android_style_with_shadow_radius(
+    props: &StyleProps,
+    view: &str,
+    include_background: bool,
+    shadow_radius: Option<&str>,
+    output: &mut String,
+) {
     if let Some(id) = props.element.id.as_ref() {
         output.push_str(&format!(
             "        doweRegisterSection(\"{}\", {view});\n",
@@ -476,7 +538,7 @@ fn apply_dev_android_style(
 
     if props.sizing.w.is_some() || props.sizing.h.is_some() {
         output.push_str(&format!(
-            "        Integer {view}Width = {};\n        Integer {view}Height = {};\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(doweDimension({view}Width), doweDimension({view}Height)));\n",
+            "        Integer {view}Width = {};\n        Integer {view}Height = {};\n        ViewGroup.LayoutParams {view}SizeParams = {view}.getLayoutParams();\n        if ({view}SizeParams == null) {{\n            {view}SizeParams = new ViewGroup.LayoutParams(\n                {view}Width != null ? doweDimension({view}Width) : ViewGroup.LayoutParams.WRAP_CONTENT,\n                {view}Height != null ? doweDimension({view}Height) : ViewGroup.LayoutParams.WRAP_CONTENT\n            );\n        }} else {{\n            if ({view}Width != null) {{ {view}SizeParams.width = doweDimension({view}Width); }}\n            if ({view}Height != null) {{ {view}SizeParams.height = doweDimension({view}Height); }}\n        }}\n        {view}.setLayoutParams({view}SizeParams);\n        doweApplyPercentWidth({view}, {view}Width);\n",
             dev_optional_size(props.sizing.w.as_ref()),
             dev_optional_size(props.sizing.h.as_ref())
         ));
@@ -484,13 +546,13 @@ fn apply_dev_android_style(
 
     if let Some(value) = props.sizing.min_w.as_ref() {
         output.push_str(&format!(
-            "        Integer {view}MinWidth = {};\n        if ({view}MinWidth != null && {view}MinWidth != ViewGroup.LayoutParams.MATCH_PARENT) {{\n            {view}.setMinimumWidth(doweDp({view}MinWidth));\n        }}\n",
+            "        Integer {view}MinWidth = {};\n        if ({view}MinWidth != null && {view}MinWidth != ViewGroup.LayoutParams.MATCH_PARENT && !doweIsPercentSize({view}MinWidth)) {{\n            {view}.setMinimumWidth(doweDp({view}MinWidth));\n        }}\n        doweApplyPercentMinWidth({view}, {view}MinWidth);\n",
             dev_size_value(value)
         ));
     }
     if let Some(value) = props.sizing.min_h.as_ref() {
         output.push_str(&format!(
-            "        Integer {view}MinHeight = {};\n        if ({view}MinHeight != null && {view}MinHeight != ViewGroup.LayoutParams.MATCH_PARENT) {{\n            {view}.setMinimumHeight(doweDp({view}MinHeight));\n        }}\n",
+            "        Integer {view}MinHeight = {};\n        if ({view}MinHeight != null && {view}MinHeight != ViewGroup.LayoutParams.WRAP_CONTENT) {{\n            if ({view}MinHeight == ViewGroup.LayoutParams.MATCH_PARENT) {{\n                ViewGroup.LayoutParams {view}MinHeightParams = {view}.getLayoutParams();\n                if ({view}MinHeightParams == null) {{\n                    {view}MinHeightParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);\n                }} else {{\n                    {view}MinHeightParams.height = ViewGroup.LayoutParams.MATCH_PARENT;\n                }}\n                {view}.setLayoutParams({view}MinHeightParams);\n            }} else {{\n                {view}.setMinimumHeight(doweDp({view}MinHeight));\n            }}\n        }}\n",
             dev_size_value(value)
         ));
     }
@@ -502,7 +564,11 @@ fn apply_dev_android_style(
         ));
     }
 
-    apply_dev_android_shadow(props, view, output);
+    if let Some(shadow_radius) = shadow_radius {
+        apply_dev_android_shadow_with_radius(props, view, shadow_radius, output);
+    } else {
+        apply_dev_android_shadow(props, view, output);
+    }
 
     if let Some(value) = props.rounded.as_ref() {
         output.push_str(&format!(

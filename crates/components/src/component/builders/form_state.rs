@@ -12,6 +12,7 @@ fn collect_view_form_fields(node: &ViewNode, forms: &mut BTreeMap<String, Vec<Vi
         ViewNode::Checkbox { .. } => Some(ViewFormFieldKind::Boolean),
         ViewNode::Date { .. }
         | ViewNode::Input { .. }
+        | ViewNode::Password { .. }
         | ViewNode::Pin { .. }
         | ViewNode::Phone { .. }
         | ViewNode::Select { .. } => Some(ViewFormFieldKind::String),
@@ -50,20 +51,48 @@ fn collect_view_form_fields(node: &ViewNode, forms: &mut BTreeMap<String, Vec<Vi
 fn form_children(node: &ViewNode) -> Vec<&ViewNode> {
     let mut children = Vec::new();
     match node {
-        ViewNode::Scope { children: values, .. }
-        | ViewNode::Each { children: values, .. }
-        | ViewNode::Box { children: values, .. }
-        | ViewNode::Section { children: values, .. }
-        | ViewNode::Flex { children: values, .. }
-        | ViewNode::Grid { children: values, .. }
-        | ViewNode::Card { children: values, .. }
-        | ViewNode::Button { children: values, .. }
-        | ViewNode::Brand { children: values, .. }
-        | ViewNode::Banner { children: values, .. }
-        | ViewNode::Badge { children: values, .. }
-        | ViewNode::Tooltip { children: values, .. }
-        | ViewNode::Marquee { children: values, .. }
-        | ViewNode::Collapsible { children: values, .. } => children.extend(values),
+        ViewNode::Scope {
+            children: values, ..
+        }
+        | ViewNode::Each {
+            children: values, ..
+        }
+        | ViewNode::Box {
+            children: values, ..
+        }
+        | ViewNode::Section {
+            children: values, ..
+        }
+        | ViewNode::Flex {
+            children: values, ..
+        }
+        | ViewNode::Grid {
+            children: values, ..
+        }
+        | ViewNode::Card {
+            children: values, ..
+        }
+        | ViewNode::Button {
+            children: values, ..
+        }
+        | ViewNode::Brand {
+            children: values, ..
+        }
+        | ViewNode::Banner {
+            children: values, ..
+        }
+        | ViewNode::Badge {
+            children: values, ..
+        }
+        | ViewNode::Tooltip {
+            children: values, ..
+        }
+        | ViewNode::Marquee {
+            children: values, ..
+        }
+        | ViewNode::Collapsible {
+            children: values, ..
+        } => children.extend(values),
         ViewNode::Splash {
             content,
             children: values,

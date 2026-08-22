@@ -27,8 +27,8 @@
   justify-content:center;
   margin-left:-.75rem;
   border-radius:9999px;
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   box-shadow:0 0 0 3px var(--dowe-background);
   font-weight:700;
 }
@@ -67,8 +67,8 @@
   align-items:center;
   justify-content:center;
   border-radius:9999px;
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   font-weight:700;
   object-fit:cover;
 }
@@ -135,8 +135,8 @@
 .chat-bubble {
   border-radius:1rem;
   padding:.65rem .85rem;
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   font-size:.9375rem;
   line-height:1.4;
 }

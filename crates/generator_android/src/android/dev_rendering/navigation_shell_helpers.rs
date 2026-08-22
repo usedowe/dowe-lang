@@ -311,9 +311,9 @@ fn render_dev_android_side_nav_data(
         let values = compose_side_nav_metrics(props.size);
         (values.0.to_string(), values.1.to_string(), values.2.to_string(), values.3.to_string(), values.4.to_string())
     };
-    let container = match (&variant, &scheme) { (None, None) => dev_variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
-    let content = match (&variant, &scheme) { (None, None) => dev_nav_active_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"ghost\""), scheme.as_deref().unwrap_or("\"muted\"")) };
-    let title = match (&variant, &scheme) { (None, None) => dev_side_nav_header_content(&props.style).to_string(), _ => format!("doweSideNavHeaderColor({})", scheme.as_deref().unwrap_or("\"muted\"")) };
+    let container = match (&variant, &scheme) { (None, None) => dev_variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"solid\""), scheme.as_deref().unwrap_or("\"primary\"")) };
+    let content = match (&variant, &scheme) { (None, None) => dev_nav_active_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"solid\""), scheme.as_deref().unwrap_or("\"primary\"")) };
+    let title = dev_side_nav_header_content(&props.style).to_string();
     let wide = dev_side_nav_wide(props, context);
     let entries = dev_side_nav_entries(items);
     output.push_str(&format!(

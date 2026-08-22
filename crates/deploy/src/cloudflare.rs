@@ -1,6 +1,6 @@
 use crate::access::DeployAccess;
-use crate::edge_queue::{EdgeQueueProvider, QueueEdgePlan, queue_edge_plans};
 use crate::cloudflare_wasm;
+use crate::edge_queue::{EdgeQueueProvider, QueueEdgePlan, queue_edge_plans};
 use crate::error::{DeployError, DeployResult};
 use crate::files::write_file;
 use crate::model::DeployEnvironment;

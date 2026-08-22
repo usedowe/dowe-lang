@@ -46,14 +46,14 @@ private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, 
                             .align(Alignment.TopEnd)
                             .padding(8.dp)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(DoweDesign.softMuted)
+                            .background(DoweDesign.muted)
                             .clickable(onClick = close)
                             .semantics { contentDescription = "Close modal" }
                             .width(28.dp)
                             .height(28.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.softMutedText, paths = doweOverlayClosePaths)
+                        DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.mutedText, paths = doweOverlayClosePaths)
                     }
                 }
             }
@@ -137,14 +137,14 @@ private fun DoweToast(visible: Boolean, title: String, description: String, posi
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .background(DoweDesign.softMuted)
+                    .background(DoweDesign.muted)
                     .clickable { dismissed = true; close?.invoke() }
                     .semantics { contentDescription = "Close toast" }
                     .width(28.dp)
                     .height(28.dp),
                 contentAlignment = Alignment.Center
             ) {
-                DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.softMutedText, paths = doweOverlayClosePaths)
+                DoweSvg(viewBox = doweOverlayCloseViewBox, modifier = Modifier.width(18.dp).height(18.dp), color = DoweDesign.mutedText, paths = doweOverlayClosePaths)
             }
         }
     }

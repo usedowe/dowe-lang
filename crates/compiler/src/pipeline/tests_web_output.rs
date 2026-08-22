@@ -521,6 +521,7 @@ fn copies_project_assets_to_android_bundle() {
             .join(".dowe/apps/android/app/src/main/assets/avatars/ada.png")
             .is_file()
     );
+    assert!(temp.path().join(".dowe/apps/ios/assets/avatars/ada.png").is_file());
 }
 
 #[test]
@@ -764,12 +765,12 @@ layout AuthLayout
     start
       Sidebar show:{ xs:false md:true } w:96 pr:6 variant:"soft" scheme:"surface" rounded:"lg" border:1 p:4
         body
-          SideNav variant:"ghost" scheme:"muted" size:"sm" wide:true
+          SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
             DocsNavigation
     main
       Drawer show:{ xs:true md:false } open:openDrawer position:"start" variant:"soft" scheme:"surface" disableOverlayClose:false hideCloseButton:false p:4 w:80
         body
-          SideNav variant:"ghost" scheme:"muted" size:"sm" wide:true
+          SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
             DocsNavigation
       children"#,
         r#"page loginPage

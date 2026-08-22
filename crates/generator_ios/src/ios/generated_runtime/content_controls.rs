@@ -508,8 +508,8 @@ struct DoweColorField: View {
         .padding(.horizontal, CGFloat(12))
         .frame(maxWidth: .infinity, minHeight: doweControlHeight(size) + (floating ? CGFloat(8) : CGFloat(0)), alignment: .leading)
         .background(backgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
-        .overlay(RoundedRectangle(cornerRadius: CGFloat(10)).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
+        .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
+        .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
     }
 
     private var canonicalValue: String {
@@ -619,8 +619,8 @@ private struct DoweColorPickerPanel: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, CGFloat(8))
             .padding(.vertical, CGFloat(4))
-            .background(DoweDesign.softMuted)
-            .foregroundStyle(DoweDesign.softMutedText)
+            .background(DoweDesign.muted)
+            .foregroundStyle(DoweDesign.mutedText)
             .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
     }
 }
@@ -905,8 +905,8 @@ struct DoweDateField: View {
                 .padding(.horizontal, CGFloat(12))
                 .frame(maxWidth: .infinity, minHeight: doweControlHeight(size) + (floating ? CGFloat(8) : CGFloat(0)), alignment: .leading)
                 .background(backgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
-                .overlay(RoundedRectangle(cornerRadius: CGFloat(10)).stroke(validationError == nil ? (borderColor ?? Color.clear) : DoweDesign.danger, lineWidth: validationError == nil && borderColor == nil ? CGFloat(0) : CGFloat(1)))
+                .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
+                .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(validationError == nil ? (borderColor ?? Color.clear) : DoweDesign.danger, lineWidth: validationError == nil && borderColor == nil ? CGFloat(0) : CGFloat(1)))
             }
             .buttonStyle(.plain)
             .background(DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(286), maxWidth: CGFloat(340), maxHeight: CGFloat(420), preferredHeight: CGFloat(370), onDismiss: { expanded = false; touched = true }) {
@@ -982,8 +982,8 @@ struct DoweDateRangeField: View {
                 .padding(.horizontal, CGFloat(12))
                 .frame(maxWidth: .infinity, minHeight: doweControlHeight(size) + (floating ? CGFloat(8) : CGFloat(0)), alignment: .leading)
                 .background(backgroundColor)
-                .clipShape(RoundedRectangle(cornerRadius: CGFloat(10)))
-                .overlay(RoundedRectangle(cornerRadius: CGFloat(10)).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
+                .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
+                .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
             }
             .buttonStyle(.plain)
             .background(DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(600), maxWidth: CGFloat(720), maxHeight: CGFloat(460), preferredHeight: CGFloat(390), onDismiss: { expanded = false }) {

@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 pub(super) const IOS_INCREMENTAL_MODULE_NAME: &str = "DoweIosViewModule";
 
-const IOS_INCREMENTAL_CACHE_SCHEMA: &[u8] = b"dowe-ios-incremental-v2";
+const IOS_INCREMENTAL_CACHE_SCHEMA: &[u8] = b"dowe-ios-incremental-v3";
 const IOS_HOT_MODULE_VERSION_SCHEMA: &[u8] = b"dowe-ios-hot-module-v2";
 const IOS_HOST_ABI_SCHEMA: &[u8] = b"dowe-ios-dev-host-abi-v2";
 const IOS_SOURCE_REVISION_PLACEHOLDER: &str = "__DOWE_IOS_SOURCE_REVISION__";

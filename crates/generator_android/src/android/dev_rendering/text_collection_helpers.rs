@@ -397,5 +397,16 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ComposeFlow {
     Block,
+    Grid,
     Inline,
+}
+
+impl ComposeFlow {
+    fn is_block(self) -> bool {
+        matches!(self, Self::Block | Self::Grid)
+    }
+
+    fn is_flex_item(self) -> bool {
+        matches!(self, Self::Block | Self::Inline)
+    }
 }

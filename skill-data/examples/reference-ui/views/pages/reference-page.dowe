@@ -44,7 +44,7 @@ page ReferencePage
     Flex direction:"column" gap:{ xs:10 md:14 }
       Grid columns:{ xs:1 lg:2 } gap:{ xs:10 lg:16 } align:"center"
         Flex direction:"column" align:"start" gap:5
-          Chip variant:"soft" scheme:"primary"
+          Chip variant:"solid" scheme:"primary"
             "REFERENCE SYSTEM · LIVE"
           Title size:{ xs:"5xl" md:"7xl" } weight:"black"
             "Build interfaces with a point of view"
@@ -59,7 +59,7 @@ page ReferencePage
             "✓ Semantic components · authored composition · deterministic review"
         Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
           Flex direction:"column" align:"center" justify:"center" minH:{ xs:64 md:80 }
-            Card variant:"soft" scheme:"surface" p:{ xs:6 md:8 } rounded:"xl" shadow:"lg" shadowColor:"tertiary"
+            Card variant:"solid" scheme:"surface" p:{ xs:6 md:8 } rounded:"xl" shadow:"lg" shadowColor:"tertiary"
               Grid columns:1 gap:4
                 Flex align:"center" justify:"between" gap:4
                   Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:12 h:12
@@ -85,14 +85,14 @@ page ReferencePage
                   "Less generic drift"
       Grid columns:{ xs:2 md:4 } gap:3
         each in:proofMetrics as:metric key:metric.id
-          Card variant:"soft" scheme:"surface" p:{ xs:4 md:5 } h:"full" border:1 borderColor:"muted"
+          Card variant:"solid" scheme:"surface" p:{ xs:4 md:5 } h:"full" border:1 borderColor:"muted"
             Flex direction:"column" gap:1
               Title size:{ xs:"2xl" md:"3xl" } weight:"black" color:"primary"
                 "{metric.value}"
               Text size:"xs" color:"muted"
                 "{metric.label}"
 
-  Section bg:"softMuted" boxed:true py:6
+  Section bg:"muted" boxed:true py:6
     Marquee
       Flex align:"center" gap:2
         Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:6 h:6
@@ -124,7 +124,7 @@ page ReferencePage
           Flex direction:"column" gap:5
             Grid columns:2 align:"center" gap:4
               Icon name:"gallery-bold-duotone" fill:"primaryText" w:10 h:10
-              Chip variant:"soft" scheme:"muted"
+              Chip variant:"solid" scheme:"muted"
                 "QUALITY FLOOR"
             Title size:"3xl" weight:"black"
               "Foundation + payload + detail"
@@ -132,7 +132,7 @@ page ReferencePage
               "A shorter page may use fewer bands. It should not use flatter bands."
       Grid columns:{ xs:1 sm:2 } gap:4 align:"stretch" w:"full"
         each in:features as:feature key:feature.id
-          Card variant:"soft" scheme:"background" p:{ xs:5 md:6 } h:"full" border:1 borderColor:"muted"
+          Card variant:"solid" scheme:"background" p:{ xs:5 md:6 } h:"full" border:1 borderColor:"muted"
             Flex direction:"column" justify:"between" gap:8 h:"full"
               Grid columns:1 gap:3
                 Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
@@ -185,7 +185,7 @@ page ReferencePage
           "Direction first, visual payload second, responsive refinement last."
       Flex direction:"column" gap:3
         each in:steps as:step key:step.id
-          Card variant:"soft" scheme:"muted" rounded:"xl" p:{ xs:5 md:6 }
+          Card variant:"solid" scheme:"muted" rounded:"xl" p:{ xs:5 md:6 }
             Flex align:"start" gap:{ xs:4 md:6 }
               Chip variant:"solid" scheme:"primary"
                 "{step.number}"
@@ -199,7 +199,7 @@ page ReferencePage
     Card variant:"solid" scheme:"primary" p:{ xs:7 md:10 } shadow:"xl" shadowColor:"primary"
       Grid columns:{ xs:1 md:2 } gap:8 align:"center"
         Flex direction:"column" align:"start" gap:3
-          Chip variant:"soft" scheme:"muted"
+          Chip variant:"solid" scheme:"muted"
             "REFERENCE-DRIVEN · PRODUCT-READY"
           Title size:{ xs:"4xl" md:"5xl" } weight:"black"
             "Make technical correctness look intentional"

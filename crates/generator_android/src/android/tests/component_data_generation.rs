@@ -7,7 +7,7 @@ fn keeps_implicit_box_and_theme_select_visible_inside_dev_flex() {
         &[],
     );
     let dev = dev_java_source(&output);
-    assert_eq!(dev.content.matches("doweWrapContentWidth(").count(), 2);
+    assert_eq!(dev.content.matches("doweWrapContentWidth(").count(), 3);
     assert!(dev.content.contains(
         "setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))"
     ));
@@ -84,7 +84,7 @@ fn generates_android_table_for_compose_and_dev_runtime() {
     assert!(views.content.contains("borderColor = DoweDesign.primary"));
     assert!(views
         .content
-        .contains("background(DoweDesign.softMuted)"));
+        .contains("background(DoweDesign.muted)"));
     assert!(views
         .content
         .contains("DoweDesign.surfaceText.copy(alpha = 0.12f)"));
@@ -123,7 +123,7 @@ fn generates_android_table_for_compose_and_dev_runtime() {
     assert!(dev
         .content
         .contains("Color.TRANSPARENT, DOWE_PRIMARY, DOWE_PRIMARY"));
-    assert!(dev.content.contains("header.setBackgroundColor(DOWE_SOFT_MUTED)"));
+    assert!(dev.content.contains("header.setBackgroundColor(DOWE_MUTED)"));
     assert!(dev
         .content
         .contains("doweAlpha(DOWE_SURFACE_TEXT, 0.12f)"));

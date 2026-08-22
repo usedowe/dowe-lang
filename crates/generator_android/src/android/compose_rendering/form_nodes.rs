@@ -230,10 +230,11 @@ fn render_compose_form_node(
             let text_size = form_control_text_size(control_size);
             let font_size = compose_text_size_expr(false, text_size);
             output.push_str(&format!(
-                "{pad}DowePassword(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, minHeight = {}.dp, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), hideStrength = {}, weakLabel = {}, mediumLabel = {}, strongLabel = {}, readOnly = {}, showIcon = {}, hideIcon = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                "{pad}DowePassword(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, floating = {}, fontFamily = {}, minHeight = {}.dp, fontSize = {font_size}, lineHeight = doweTextLineHeight({font_size}, {}f), hideStrength = {}, weakLabel = {}, mediumLabel = {}, strongLabel = {}, readOnly = {}, showIcon = {}, hideIcon = {}, modifier = {}, backgroundColor = {}, contentColor = {}, helpText = {}, errorText = {}, validationRules = {})\n",
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or_default()),
                 props.style.label_floating,
+                compose_font_value(props.style.style.font.as_ref().or(inherited_font), default_family),
                 form_control_min_height(control_size, props.style.label_floating)
                 .native_units(),
                 text_typography(false, text_size).line_height,
@@ -246,7 +247,10 @@ fn render_compose_form_node(
                 compose_password_icon(&hide_icon),
                 modifier_for_style(&props.style.style),
                 variant_container(&props.style),
-                variant_content(&props.style)
+                variant_content(&props.style),
+                compose_optional_string(props.help_text.as_deref()),
+                compose_optional_string(props.error_text.as_deref()),
+                compose_validation_rules(&props.style.element, context)
             ));
         }
         ViewNode::Phone { props } => {

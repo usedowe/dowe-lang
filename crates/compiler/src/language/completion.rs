@@ -12,12 +12,12 @@ use dowe_components::{
     CameraFacing, CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve,
     ChartLegendPosition, ChartPalette, ChartSize, ChatBoxMode, CodeLanguage, ColorFamily,
     ColorToken, ComponentVariant, ContainerSize, CountdownSize, DividerOrientation, DrawerPosition,
-    EmptyKind, FlexDirection, FontFamily, GridAlignment, ImageAspect, ImageLoading, ImageObjectFit,
-    Justify, MarqueeOrientation, MarqueeSpeed, NativeExternalMode, NavigationOperation,
-    OverlayCornerPosition, OverlayPosition, RoundedSize, SectionBackground, ShadowSize,
-    SideNavSize, SkeletonAnimation, SkeletonVariant, TableColumnAlign, TableSize, TabsPosition,
-    TabsVariant, TextAlign, TextSize, TextSpacing, TextWeight, ToastKind, VIEW_META_NAMES,
-    VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewTransition, WebTarget,
+    EmptyKind, FlexDirection, FlexItem, FontFamily, GridAlignment, ImageAspect, ImageLoading,
+    ImageObjectFit, Justify, MarqueeOrientation, MarqueeSpeed, NativeExternalMode,
+    NavigationOperation, OverlayCornerPosition, OverlayPosition, RoundedSize, SectionBackground,
+    ShadowSize, SideNavSize, SkeletonAnimation, SkeletonVariant, TableColumnAlign, TableSize,
+    TabsPosition, TabsVariant, TextAlign, TextSize, TextSpacing, TextWeight, ToastKind,
+    VIEW_META_NAMES, VideoAspect, ViewAnimation, ViewGesture, ViewIcon, ViewTransition, WebTarget,
 };
 use std::collections::BTreeSet;
 use std::fs;
@@ -485,7 +485,7 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "appBar",
         "main",
         "start",
-        "center",
+        "centerX",
         "end",
         "bottomBar",
         "overlays",
@@ -806,6 +806,27 @@ pub(super) fn component_value_completions(
     }
 
     match (component, prop) {
+        (
+            BuiltinComponent::Box
+            | BuiltinComponent::Section
+            | BuiltinComponent::Flex
+            | BuiltinComponent::Grid
+            | BuiltinComponent::Card,
+            "flex",
+        ) => {
+            let mut values = quoted_values(
+                FlexItem::all()
+                    .iter()
+                    .filter(|value| **value != FlexItem::Fill)
+                    .map(|value| value.as_str()),
+            );
+            values.push(completion(
+                "1",
+                LanguageCompletionKind::Value,
+                "static flex fill value",
+            ));
+            Some(values)
+        }
         (BuiltinComponent::Icon, "name") => Some(quoted_values(dowe_components::all_icon_names())),
         (BuiltinComponent::IconButton, "icon")
         | (BuiltinComponent::SideNav | BuiltinComponent::RailNav, "icon")
@@ -1190,7 +1211,9 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Section, "background") => Some(quoted_values(
             SectionBackground::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Section, "center") => Some(boolean_values()),
+        (BuiltinComponent::Box | BuiltinComponent::Section, "centerX" | "centerY") => {
+            Some(boolean_values())
+        }
         (BuiltinComponent::Section, "boxed") => Some(boolean_values()),
         (BuiltinComponent::RichText, "title") => Some(boolean_values()),
         (BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText, "size") => {
@@ -1231,7 +1254,16 @@ pub(super) fn component_value_completions(
                 .chain(ColorToken::all().iter().map(|value| value.as_str())),
         )),
         (BuiltinComponent::Path, "fillRule") => Some(quoted_values(["nonzero", "evenodd"])),
-        (_, "w" | "minW" | "maxW") => {
+        (_, "h" | "minH" | "maxH") => Some(quoted_values(["full", "auto"])),
+        (_, "w" | "minW") => Some(quoted_values(
+            ["full"]
+                .into_iter()
+                .chain(ContainerSize::all().iter().map(|value| value.as_str()))
+                .chain([
+                    "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%",
+                ]),
+        )),
+        (_, "maxW") => {
             Some(quoted_values(["full"].into_iter().chain(
                 ContainerSize::all().iter().map(|value| value.as_str()),
             )))
@@ -1346,7 +1378,7 @@ fn collect_custom_color_families(node: &SourceNode, families: &mut BTreeSet<Stri
 }
 
 fn solid_soft_values() -> Vec<LanguageCompletion> {
-    quoted_values(["solid", "soft"])
+    quoted_values(["solid"])
 }
 
 fn control_size_values() -> Vec<LanguageCompletion> {
@@ -1396,7 +1428,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Section" => SECTION_PROPS.to_vec(),
         "Flex" => LAYOUT_PROPS.to_vec(),
         "Grid" => GRID_PROPS.to_vec(),
-        "Card" => VARIANT_PROPS.to_vec(),
+        "Card" => combined_props(&["flex"], VARIANT_PROPS),
         "AppBar" => APP_BAR_PROPS.to_vec(),
         "BottomBar" => FLOATING_BAR_PROPS.to_vec(),
         "Footer" => BAR_PROPS.to_vec(),
@@ -1691,6 +1723,8 @@ const BOX_PROPS: &[&str] = &[
     "font",
     "bg",
     "color",
+    "centerX",
+    "centerY",
     "cover",
     "overlay",
     "animation",
@@ -1718,6 +1752,7 @@ const BOX_PROPS: &[&str] = &[
     "borderColor",
     "shadow",
     "shadowColor",
+    "flex",
     "onClick",
 ];
 const SECTION_PROPS: &[&str] = &[
@@ -1727,8 +1762,10 @@ const SECTION_PROPS: &[&str] = &[
     "bg",
     "color",
     "background",
-    "center",
+    "centerX",
+    "centerY",
     "gap",
+    "flex",
     "boxed",
     "cover",
     "overlay",
@@ -1760,6 +1797,7 @@ const LAYOUT_PROPS: &[&str] = &[
     "justify",
     "align",
     "gap",
+    "flex",
     "id",
     "show",
     "font",
@@ -1788,9 +1826,9 @@ const LAYOUT_PROPS: &[&str] = &[
     "shadowColor",
 ];
 const GRID_PROPS: &[&str] = &[
-    "columns", "rows", "justify", "align", "gap", "id", "show", "font", "bg", "color", "cover",
-    "overlay", "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "maxW", "maxH",
+    "columns", "rows", "justify", "align", "gap", "flex", "id", "show", "font", "bg", "color",
+    "cover", "overlay", "colSpan", "rowSpan", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h",
+    "minW", "minH", "maxW", "maxH",
 ];
 const VARIANT_PROPS: &[&str] = &[
     "variant",
@@ -2441,6 +2479,7 @@ const MICROPHONE_PROPS: &[&str] = &[
 const TOGGLE_GROUP_PROPS: &[&str] = &[
     "value",
     "selected",
+    "multiple",
     "size",
     "wide",
     "vertical",

@@ -725,6 +725,7 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
 }
 
 fn render_password_html(props: &PasswordProps, context: &ReactiveRenderContext) -> String {
+    let has_validation = has_form_validation_contract(&props.style.element);
     let show_icon = solar_control_icon("eye").expect("bundled Password reveal icon");
     let hide_icon = solar_control_icon("eye-closed").expect("bundled Password conceal icon");
     let toggle = format!(
@@ -733,7 +734,7 @@ fn render_password_html(props: &PasswordProps, context: &ReactiveRenderContext) 
         render_svg_html(&hide_icon.props, &hide_icon.paths, context)
     );
     let input = format!(
-        r#"<input class="password-input input" type="password"{}{}{}{}{} data-dowe-password-input>{toggle}"#,
+        r#"<input class="password-input input" type="password"{}{}{}{}{}{} data-dowe-password-input>{toggle}"#,
         input_placeholder_attr(&props.style),
         props
             .value
@@ -750,6 +751,11 @@ fn render_password_html(props: &PasswordProps, context: &ReactiveRenderContext) 
             " disabled"
         } else if props.readonly {
             " readonly"
+        } else {
+            ""
+        },
+        if has_validation {
+            " data-dowe-validation-control"
         } else {
             ""
         }
@@ -1117,13 +1123,32 @@ fn render_field_block_kind(
     };
     let validation_attrs =
         render_form_validation_attrs(&props.element, help_text, error_text, value_kind, context);
+    let mut field_classes = vec!["field".to_string()];
+    append_responsive_classes(
+        &mut field_classes,
+        "w",
+        props.style.sizing.w.as_ref(),
+        size_suffix,
+    );
+    append_responsive_classes(
+        &mut field_classes,
+        "min-w",
+        props.style.sizing.min_w.as_ref(),
+        size_suffix,
+    );
+    append_responsive_classes(
+        &mut field_classes,
+        "max-w",
+        props.style.sizing.max_w.as_ref(),
+        size_suffix,
+    );
     format!(
         r#"<div{}>{}{body_html}{}</div>"#,
         attrs(
-            vec!["field".to_string()],
-            None,
+            field_classes,
+            Some(&props.element),
             Some(&validation_attrs),
-            context
+            context,
         ),
         label,
         help

@@ -418,6 +418,8 @@ pub(super) fn component_prop_documentation(component: &str, prop: &str) -> Optio
         let value_type = prop_type(component, prop);
         let description = if component == "Icon" && prop == "name" {
             "Selects a member of the shared Solar, country-flag, SVG Spinner, or SVG Logos catalog. A bare path must resolve to a string; Signal changes update the icon and invalid runtime values use the validated initial icon."
+        } else if component == "Image" && prop == "src" {
+            "Accepts a quoted packaged asset or HTTPS URL, or a bare path resolving to a string constant, Signal, or each-item value. The compiler validates the path and string type before lowering it for every target."
         } else {
             prop_description(prop)
         };
@@ -460,7 +462,7 @@ pub(super) fn theme_documentation(owner: &str, token: &str, root_theme: bool) ->
                 .to_string(),
         ),
         ("design", "design", _) => Some(
-            "## `design`\n\n```dowe\ndesign defaultTheme:\"light\"\n  Button variant:\"outlined\"\n  Input variant:\"outlined\" scheme:\"primary\"\n  Text font:\"manrope\"\n  Title font:\"syne\"\n  theme name:\"light\"\n```\n\nConfigures the default named color theme and static visual defaults that Dowe injects into the shared view model. The precedence is explicit usage prop, then the matching `design` entry, then the built-in component default. Built-in defaults intentionally add no border or shadow unless the project configures those props. The normalized defaults are shared by web, desktop, Android, and iOS output.\n\n**Accepted props**\n\n- `defaultTheme`: declared theme name used initially\n\n**Accepted children**\n\n- `Button`, `IconButton`, `Card`, `Drawer`, `Toast`, `Section`, `Accordion`, `Checkbox`, `Input`, `Date`, `Password`, `Select`, `Pin`, `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip`, `Tabs`\n- `Chip`, `Avatar`, and `Ui` for existing shared visual defaults\n- `Text` for the default text font\n- `Title` for the default title font\n- `theme` for named color tokens"
+            "## `design`\n\n```dowe\ndesign defaultTheme:\"light\"\n  Button variant:\"outlined\"\n  Input variant:\"outlined\" scheme:\"primary\"\n  Text font:\"manrope\"\n  Title font:\"syne\"\n  theme name:\"light\"\n```\n\nConfigures the default named color theme and static visual defaults that Dowe injects into the shared view model. The precedence is explicit usage prop, then the matching `design` entry, then the built-in component default. Built-in defaults intentionally add no border or shadow unless the project configures those props. The normalized defaults are shared by web, desktop, Android, and iOS output.\n\n**Accepted props**\n\n- `defaultTheme`: declared theme name used initially\n\n**Accepted children**\n\n- `Button`, `IconButton`, `Card`, `Drawer`, `Toast`, `Section`, `Accordion`, `Checkbox`, `Input`, `Date`, `Password`, `Select`, `Pin`, `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip`, `Tabs`\n- `Chip`, `SideNav`, `Sidebar`, `NavMenu`, `Avatar`, and `Ui` for existing shared visual defaults\n- `Text` for the default text font\n- `Title` for the default title font\n- `theme` for named color tokens"
                 .to_string(),
         ),
         ("Tabs", "Tabs", _) => Some(
@@ -470,7 +472,7 @@ pub(super) fn theme_documentation(owner: &str, token: &str, root_theme: bool) ->
         (component @ ("Card" | "Button" | "IconButton" | "Drawer" | "Toast" | "Section" | "Accordion" | "Checkbox" | "Input" | "Date" | "Password" | "Select" | "Pin" | "AppBar" | "Footer" | "Modal" | "Dropdown" | "Tooltip" | "Chip" | "Avatar" | "Ui"), token, _)
             if component == token => Some(
             format!(
-                "## `{component}` theme defaults\n\n```dowe\n{component} variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n```\n\nDeclares optional static defaults for `{component}` inside `design`. An explicit prop on a component usage always wins; omitted props retain Dowe's built-in component defaults.\n\n**Accepted props**\n\n- `variant`: `solid`, `soft`, `outline`, `outlined`, `line`, or `ghost`\n- `scheme`: semantic color family\n- `radius` or `rounded`: `xs`, `sm`, `md`, `lg`, `xl`, or `full`\n- `shadow`: `xs`, `sm`, `md`, `lg`, or `xl`\n- `shadowColor`: semantic color family\n- `border`: integer from `1` to `4`\n- `borderColor`: semantic color family\n- `size`: `xs`, `sm`, `md`, `lg`, or `xl`"
+                "## `{component}` theme defaults\n\n```dowe\n{component} variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n```\n\nDeclares optional static defaults for `{component}` inside `design`. An explicit prop on a component usage always wins; omitted props retain Dowe's built-in component defaults.\n\n**Accepted props**\n\n- `variant`: `solid`, `outline`, `outlined`, `line`, or `ghost`\n- `scheme`: semantic color family\n- `radius` or `rounded`: `xs`, `sm`, `md`, `lg`, `xl`, or `full`\n- `shadow`: `xs`, `sm`, `md`, `lg`, or `xl`\n- `shadowColor`: semantic color family\n- `border`: integer from `1` to `4`\n- `borderColor`: semantic color family\n- `size`: `xs`, `sm`, `md`, `lg`, or `xl`"
             ),
         ),
         (component @ ("Text" | "Title"), token, _) if component == token => Some(format!(
@@ -625,7 +627,7 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
         "AppBar" | "Footer" => &[
             ("top", "(optional full-width region)"),
             ("start", "(optional region)"),
-            ("center", "(optional region)"),
+            ("centerX", "(optional region)"),
             ("end", "(optional region)"),
             ("bottom", "(optional full-width region)"),
         ],
@@ -711,6 +713,10 @@ fn prop_type(component: &str, prop: &str) -> String {
     if component == "Button" && matches!(prop, "loading" | "disabled") {
         return "boolean Signal or View Store path".to_string();
     }
+    if component == "Image" && prop == "src" {
+        return "quoted packaged or HTTPS source, or string constant, Signal, or each-item path"
+            .to_string();
+    }
     if let Some(values) = BuiltinComponent::from_name(component)
         .and_then(|component| component_value_completions(component, prop))
         .filter(|values| !values.is_empty())
@@ -751,10 +757,10 @@ fn prop_type(component: &str, prop: &str) -> String {
         | "showRgb"
         | "showCmyk"
         | "showOklch" => "boolean".to_string(),
-        "center" => "boolean | responsive boolean".to_string(),
+        "centerX" | "centerY" => "boolean | responsive boolean".to_string(),
         "template" => "boolean".to_string(),
         "w" | "h" | "minW" | "minH" | "maxW" | "maxH" => {
-            "Dowe size | responsive Dowe size".to_string()
+            "Dowe size, auto or responsive Dowe size".to_string()
         }
         "fillRule" => "quoted nonzero | evenodd".to_string(),
         "rotate" => "number from -180 to 180 | responsive number".to_string(),
@@ -763,6 +769,7 @@ fn prop_type(component: &str, prop: &str) -> String {
             "Dowe scale from -96 to 96 | responsive Dowe scale".to_string()
         }
         "gap" => "Dowe scale value or px value | responsive gap".to_string(),
+        "flex" => "\"initial\" | \"auto\" | \"none\" | 1 | responsive flex value".to_string(),
         "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "top" | "right" | "bottom" | "left"
         | "columns" | "rows" | "colSpan" | "rowSpan" | "min" | "max" | "step" | "maxSize"
         | "maxPoints" | "offsetX" | "offsetY" | "autoplayInterval" | "slideWidth"
@@ -795,8 +802,14 @@ fn prop_description(prop: &str) -> &'static str {
         "gap" => {
             "Sets spacing between direct children. Accepts a Dowe scale or px value and responsive gap values; Section defaults to zero."
         }
-        "center" => {
-            "Centers Section children horizontally. Accepts a boolean or responsive boolean values and defaults to false."
+        "flex" => {
+            "Sets this Box, Section, Flex, Grid, or Card item's flex behavior when its direct parent is Section, Box, Flex, or Card. Use initial, auto, none, or 1; Grid children ignore it."
+        }
+        "centerX" => {
+            "Centers Box or Section children horizontally. Accepts a boolean or responsive boolean value and defaults to false."
+        }
+        "centerY" => {
+            "Centers Box or Section children vertically when the container has available height. Accepts a boolean or responsive boolean value and defaults to false."
         }
         "dockOnScroll" => {
             "Animates a fixed floating AppBar into the viewport top edge after the document passes 100px of scroll. Requires `floating:true` and `position:\"fixed\"`."
@@ -821,7 +834,15 @@ fn prop_description(prop: &str) -> &'static str {
             "Adds portable hover or press feedback while respecting reduced-motion settings."
         }
         "maxW" => "Limits the component width without forcing it to occupy the full limit.",
-        "maxH" => "Limits the component height without adding implicit overflow behavior.",
+        "h" => {
+            "Sets the component height. Accepts a Dowe scale, full, auto, vh-<scale>, or responsive values."
+        }
+        "minH" => {
+            "Sets the component minimum height. Accepts a Dowe scale, full, auto, vh-<scale>, or responsive values."
+        }
+        "maxH" => {
+            "Limits the component height without adding implicit overflow behavior. Accepts a Dowe scale, full, auto, vh-<scale>, or responsive values."
+        }
         "fillRule" => "Selects the portable fill rule used to resolve compound Path regions.",
         "size" => {
             "Selects the component's canonical Dowe size. Text and Title sizes use the shared fluid scale, so a scalar value is responsive by default."

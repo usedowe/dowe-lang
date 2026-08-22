@@ -44,7 +44,7 @@ fn render_swift_media_data_node(
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
         }
-        ViewNode::Image { props } => render_swift_image(props, indent, output),
+        ViewNode::Image { props } => render_swift_image(props, indent, output, context),
         ViewNode::Accordion { props, items } => render_swift_accordion(
             props,
             items,

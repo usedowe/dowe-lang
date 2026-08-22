@@ -307,10 +307,10 @@ struct DoweModal<Header: View, Content: View, Footer: View>: View {
                 .overlay(alignment: .topTrailing) {
                     if !hideCloseButton {
                         Button(action: close) {
-                            DoweOverlayCloseIcon(color: DoweDesign.softMutedText)
+                            DoweOverlayCloseIcon(color: DoweDesign.mutedText)
                                 .frame(width: CGFloat(28), height: CGFloat(28))
-                                .background(DoweDesign.softMuted)
-                                .foregroundStyle(DoweDesign.softMutedText)
+                                .background(DoweDesign.muted)
+                                .foregroundStyle(DoweDesign.mutedText)
                                 .clipShape(Circle())
                                 .frame(width: CGFloat(44), height: CGFloat(44))
                                 .contentShape(Rectangle())
@@ -451,10 +451,10 @@ struct DoweToast: View {
                 dismissed = true
                 close?()
             } label: {
-                DoweOverlayCloseIcon(color: DoweDesign.softMutedText)
+                DoweOverlayCloseIcon(color: DoweDesign.mutedText)
                     .frame(width: CGFloat(28), height: CGFloat(28))
-                    .background(DoweDesign.softMuted)
-                    .foregroundStyle(DoweDesign.softMutedText)
+                    .background(DoweDesign.muted)
+                    .foregroundStyle(DoweDesign.mutedText)
                     .clipShape(Circle())
                     .frame(width: CGFloat(44), height: CGFloat(44))
                     .contentShape(Rectangle())

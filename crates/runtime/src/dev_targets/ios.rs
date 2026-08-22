@@ -407,6 +407,10 @@ fn copy_ios_resources(ios_root: &Path, bundle: &Path) -> RuntimeResult<()> {
     if fonts.is_dir() {
         copy_dir(&fonts, &bundle.join("Fonts"))?;
     }
+    let assets = ios_root.join("assets");
+    if assets.is_dir() {
+        copy_dir(&assets, &bundle.join("assets"))?;
+    }
     for entry in fs::read_dir(ios_root)? {
         let path = entry?.path();
         if path.extension().and_then(|value| value.to_str()) == Some("lproj")
@@ -809,8 +813,8 @@ fn ios_swift_link_args(object_files: &[PathBuf], bundle: &Path, target: String) 
 #[cfg(test)]
 mod tests {
     use super::{
-        IOS_INCREMENTAL_MODULE_NAME, bounded_ios_swift_job_count, ios_asset_catalog_args,
-        ios_build_root, ios_cleanup_commands, ios_hot_module_compile_args,
+        IOS_INCREMENTAL_MODULE_NAME, bounded_ios_swift_job_count, copy_ios_resources,
+        ios_asset_catalog_args, ios_build_root, ios_cleanup_commands, ios_hot_module_compile_args,
         ios_hot_module_link_args, ios_install_config, ios_launch_config, ios_open_simulator_config,
         ios_runtime_label, ios_simulator_target, ios_swift_compile_args, ios_swift_job_count,
         ios_swift_link_args, ios_swift_object_files, ios_swift_output_map,
@@ -820,6 +824,7 @@ mod tests {
     use crate::error::RuntimeError;
     use dowe_spawn::StreamMode;
     use std::cell::{Cell, RefCell};
+    use std::fs;
     use std::path::Path;
     use std::sync::{Arc, Mutex};
 
@@ -874,6 +879,23 @@ mod tests {
                 .join(std::process::id().to_string())
         );
         assert!(!build_root.starts_with(root.join(".dowe/apps")));
+    }
+
+    #[test]
+    fn copies_project_assets_into_ios_bundle_resources() {
+        let temp = tempfile::tempdir().expect("temporary directory");
+        let ios_root = temp.path().join("ios");
+        let bundle = temp.path().join("DoweIosApp.app");
+        fs::create_dir_all(ios_root.join("assets/img")).expect("assets");
+        fs::create_dir_all(&bundle).expect("bundle");
+        fs::write(ios_root.join("assets/img/feature.webp"), "image").expect("image");
+
+        copy_ios_resources(&ios_root, &bundle).expect("resources");
+
+        assert_eq!(
+            fs::read(bundle.join("assets/img/feature.webp")).expect("bundle image"),
+            b"image"
+        );
     }
 
     #[test]

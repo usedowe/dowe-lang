@@ -37,17 +37,14 @@ fn render_swift_drawer(
         output.push_str(&format!(
             "{pad}        VStack(alignment: .leading, spacing: 0) {{\n"
         ));
-        for child in header {
-            render_swift_node_in_flow(
-                child,
-                indent + 12,
-                output,
-                NativeFlow::Block,
-                current_font,
-                default_family,
-                context,
-            );
-        }
+        render_swift_region_children(
+            header,
+            indent + 12,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
         output.push_str(&format!("{pad}        }}\n"));
         output.push_str(&format!(
             "{pad}        .frame(maxWidth: .infinity, alignment: .topLeading)\n"
@@ -56,17 +53,14 @@ fn render_swift_drawer(
     output.push_str(&format!(
         "{pad}        ScrollView {{\n{pad}            VStack(alignment: .leading, spacing: 0) {{\n"
     ));
-    for child in body {
-        render_swift_node_in_flow(
-            child,
-            indent + 16,
-            output,
-            NativeFlow::Block,
-            current_font,
-            default_family,
-            context,
-        );
-    }
+    render_swift_region_children(
+        body,
+        indent + 16,
+        output,
+        current_font,
+        default_family,
+        context,
+    );
     output.push_str(&format!(
         "{pad}            }}\n{pad}            .frame(maxWidth: .infinity, alignment: .topLeading)\n{pad}        }}\n{pad}        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"
     ));
@@ -74,17 +68,14 @@ fn render_swift_drawer(
         output.push_str(&format!(
             "{pad}        VStack(alignment: .leading, spacing: 0) {{\n"
         ));
-        for child in footer {
-            render_swift_node_in_flow(
-                child,
-                indent + 12,
-                output,
-                NativeFlow::Block,
-                current_font,
-                default_family,
-                context,
-            );
-        }
+        render_swift_region_children(
+            footer,
+            indent + 12,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
         output.push_str(&format!("{pad}        }}\n"));
         output.push_str(&format!(
             "{pad}        .frame(maxWidth: .infinity, alignment: .topLeading)\n"

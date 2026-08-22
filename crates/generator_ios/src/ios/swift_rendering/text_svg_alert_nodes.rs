@@ -141,7 +141,7 @@ fn render_swift_text_svg_alert_node(
                     swift_svg_color(&props.style),
                     props.is_animated()
                 ));
-                append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
+                append_swift_modifiers(output, indent, &swift_modifiers_for_svg(props));
                 return;
             }
             if let Some(name) = props.icon_name.as_deref() {
@@ -167,7 +167,7 @@ fn render_swift_text_svg_alert_node(
                     color,
                     props.is_animated()
                 ));
-                append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
+                append_swift_modifiers(output, indent, &swift_modifiers_for_svg(props));
                 return;
             }
             output.push_str(&format!(
@@ -177,7 +177,7 @@ fn render_swift_text_svg_alert_node(
                 swift_svg_paths(paths),
                 props.is_animated()
             ));
-            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
+            append_swift_modifiers(output, indent, &swift_modifiers_for_svg(props));
         }
         _ => unreachable!(),
     }

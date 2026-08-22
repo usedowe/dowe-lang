@@ -182,6 +182,26 @@ fn parses_multiple_page_root_nodes_as_one_logical_scope() {
 }
 
 #[test]
+fn accepts_flex_item_values_on_supported_layout_components() {
+    parse_page(
+        r#"page flexPage
+  Section h:"vh-0"
+    Box flex:"initial"
+      Text
+        "Box"
+    Flex flex:"auto"
+      Card flex:"none"
+        Text
+          "Card"
+    Grid flex:{ xs:1 md:"none" }
+      Grid flex:1
+        Text
+          "Grid""#,
+    )
+    .expect("flex items");
+}
+
+#[test]
 fn accepts_direct_layout_and_page_metadata_without_adding_visual_roots() {
     parse_page(
         r#"layout HomeLayout
@@ -287,6 +307,50 @@ fn parses_each_over_an_immutable_view_constant() {
     };
     assert!(
         matches!(&children[0], ViewNode::Each { item, collection, key, .. } if item == "option" && collection == "options" && key == "option.id")
+    );
+}
+
+#[test]
+fn accepts_image_source_from_a_constant_each_item_path() {
+    let tree = parse_page(
+        r#"page imageCatalogPage
+  const homeFeatures value:[{ id:"intuitive-interface" cover:"/assets/img/soluciones-escalables.webp" }]
+  Flex
+    each in:homeFeatures as:feature key:feature.id
+      Image src:feature.cover alt:"Feature cover""#,
+    )
+    .expect("dynamic image source");
+
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("constant scope");
+    };
+    let ViewNode::Flex { children, .. } = &children[0] else {
+        panic!("flex");
+    };
+    let ViewNode::Each { children, .. } = &children[0] else {
+        panic!("each");
+    };
+    let ViewNode::Image { props } = &children[0] else {
+        panic!("image");
+    };
+    assert_eq!(props.reactive_src.as_deref(), Some("feature.cover"));
+    assert!(props.src.is_empty());
+}
+
+#[test]
+fn rejects_non_string_dynamic_image_source() {
+    let error = parse_page(
+        r#"page invalidImagePage
+  const features value:[{ id:"feature" cover:42 }]
+  each in:features as:feature key:feature.id
+    Image src:feature.cover alt:"Feature""#,
+    )
+    .expect_err("non-string image source");
+    assert!(
+        error
+            .to_string()
+            .contains("invalid signal path `feature.cover` in `src`: expected string"),
+        "{error}"
     );
 }
 

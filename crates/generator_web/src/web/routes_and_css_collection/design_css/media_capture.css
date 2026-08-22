@@ -35,7 +35,7 @@
 .camera-button,.microphone-button {
   border:0;
   border-radius:var(--dowe-radius);
-  background:var(--dowe-soft);
+  background:var(--dowe-muted);
   color:inherit;
   cursor:pointer;
   font:inherit;

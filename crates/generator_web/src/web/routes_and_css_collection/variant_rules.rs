@@ -333,7 +333,6 @@ fn collect_variant_rules<'a>(
                         ColorFamily::Primary,
                         ColorFamily::Secondary,
                         ColorFamily::Tertiary,
-                        ColorFamily::Muted,
                         ColorFamily::Success,
                         ColorFamily::Info,
                         ColorFamily::Warning,

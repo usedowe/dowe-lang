@@ -32,10 +32,18 @@
   font-weight:600;
   line-height:1;
   white-space:nowrap;
-  transition:background-color 160ms ease,color 160ms ease,box-shadow 160ms ease,opacity 160ms ease;
+  transition:background-color 160ms ease,color 160ms ease,box-shadow 160ms ease,opacity 160ms ease,transform 120ms ease;
+  -webkit-user-select:none;
+  user-select:none;
 }
 .toggle-group-item:not(.is-active) {
   opacity:.72;
+}
+.toggle-group-item.is-active {
+  opacity:1;
+}
+.toggle-group.is-vertical .toggle-group-item {
+  width:100%;
 }
 .toggle-group-item:hover {
   opacity:1;

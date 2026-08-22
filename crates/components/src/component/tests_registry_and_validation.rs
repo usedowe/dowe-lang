@@ -5,7 +5,7 @@ use super::{
     ButtonSize, COMPONENT_REGISTRY, COUNTRY_FLAGS, CanvasBackground, CanvasFit, CarouselVariant,
     ChartCurve, ChartLegendPosition, ChartPalette, ChartSize, CodeLanguage, CodeTemplateSegment,
     CodeTokenKind, ColorFamily, ColorToken, ComponentError, ComponentProp, ComponentVariant,
-    ContainerSize, DeviceProfile, DividerOrientation, EmptyKind, FabProps, FlexDirection,
+    ContainerSize, DeviceProfile, DividerOrientation, EmptyKind, FabProps, FlexDirection, FlexItem,
     FontFamily, GapSize, GapValue, GridAlignment, GridTracks, IframeLoading, NativeExternalMode,
     NavigationAction, OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation,
     ResponsivePropEntry, RichTextMark, RichTextMarkStyle, RoundedSize, SVG_LOGOS, SVG_SPINNERS,
@@ -341,7 +341,7 @@ fn validates_code_source_and_highlighting() {
     let node = code_node(
         vec![
             string_prop("language", "dowe"),
-            string_prop("variant", "soft"),
+            string_prop("variant", "ghost"),
             string_prop("scheme", "surface"),
         ],
         "page loginPage\n  meta name:\"title\" content:\"Login\"\n  Card scheme:\"primary\"\n    Text\n      Login".to_string(),
@@ -667,7 +667,7 @@ fn validates_candlestick_props_and_defaults() {
     let node = candlestick_node(vec![
         string_prop("data", "candles"),
         string_prop("stream", "/api/market/candles"),
-        string_prop("variant", "soft"),
+        string_prop("variant", "ghost"),
         string_prop("scheme", "surface"),
         string_prop("upColor", "success"),
         string_prop("downColor", "danger"),
@@ -680,7 +680,7 @@ fn validates_candlestick_props_and_defaults() {
         ViewNode::Candlestick { props } => {
             assert_eq!(props.data, "candles");
             assert_eq!(props.stream.as_deref(), Some("/api/market/candles"));
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
             assert_eq!(props.style.color, Some(ColorFamily::Surface));
             assert_eq!(props.up_color, ColorToken::Success);
             assert_eq!(props.down_color, ColorToken::Danger);
@@ -849,7 +849,7 @@ fn validates_table_props_columns_and_defaults() {
     let node = table_node(
         vec![
             string_prop("data", "users"),
-            string_prop("variant", "soft"),
+            string_prop("variant", "ghost"),
             string_prop("scheme", "surface"),
             string_prop("size", "lg"),
             boolean_prop("striped", true),
@@ -865,7 +865,7 @@ fn validates_table_props_columns_and_defaults() {
     match node {
         ViewNode::Table { props } => {
             assert_eq!(props.data, "users");
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
             assert_eq!(props.style.color, Some(ColorFamily::Surface));
             assert_eq!(props.size, TableSize::Lg);
             assert!(props.striped);
@@ -1330,7 +1330,7 @@ fn validates_design_props() {
             string_prop("font", "roboto"),
             number_string_prop("px", "0.5"),
             number_prop("p", 8),
-            responsive_number_prop("h", &[("xs", 16), ("md", 24)]),
+            responsive_string_prop("h", &[("xs", "full"), ("md", "auto")]),
             string_prop("minH", "vh-16"),
             responsive_number_prop("maxW", &[("xs", 64), ("md", 80)]),
             string_prop("maxH", "vh-24"),
@@ -1355,10 +1355,7 @@ fn validates_design_props() {
                 props.spacing.px.expect("px").entries[0].value,
                 ScaleValue::from_half_steps(1)
             );
-            assert_eq!(
-                props.sizing.h.expect("h").entries[1].value,
-                SizeValue::Scale(ScaleValue::from_half_steps(48))
-            );
+            assert_eq!(props.sizing.h.expect("h").entries[1].value, SizeValue::Auto);
             assert_eq!(
                 props.sizing.min_h.expect("minH").entries[0].value,
                 SizeValue::ViewportMinus(ScaleValue::from_half_steps(32))
@@ -1383,7 +1380,7 @@ fn validates_design_props() {
             false,
         )
         .expect_err("invalid viewport height"),
-        ComponentError::invalid_prop("h", "Dowe scale value, full or vh-<scale>")
+        ComponentError::invalid_prop("h", "Dowe scale value, full, auto or vh-<scale>")
     );
 
     assert_eq!(
@@ -1394,7 +1391,10 @@ fn validates_design_props() {
             false,
         )
         .expect_err("viewport height as width"),
-        ComponentError::invalid_prop("w", "Dowe scale value, container size or full")
+        ComponentError::invalid_prop(
+            "w",
+            "Dowe scale value, container size, percentage from 10% to 100% in 10% increments or full",
+        )
     );
 
     assert_eq!(
@@ -1448,7 +1448,70 @@ fn validates_container_width_values_for_all_width_props() {
         .expect_err("container height");
         assert_eq!(
             error,
-            ComponentError::invalid_prop(prop, "Dowe scale value, full or vh-<scale>")
+            ComponentError::invalid_prop(prop, "Dowe scale value, full, auto or vh-<scale>")
+        );
+    }
+}
+
+#[test]
+fn validates_percentage_width_values() {
+    for prop in ["w", "minW"] {
+        for percentage in (10..=100).step_by(10) {
+            let value = format!("{percentage}%");
+            let node = container_component_node(
+                BuiltinComponent::Box,
+                vec![string_prop(prop, &value)],
+                vec![text_node("Hello").expect("text")],
+                false,
+            )
+            .expect("percentage width");
+
+            let sizing = match node {
+                ViewNode::Box { props, .. } => props.sizing,
+                _ => panic!("box"),
+            };
+            let parsed = match prop {
+                "w" => sizing.w,
+                "minW" => sizing.min_w,
+                _ => unreachable!(),
+            }
+            .expect("width prop")
+            .entries[0]
+                .value;
+            assert_eq!(parsed, SizeValue::Percent(percentage));
+        }
+    }
+
+    for (prop, expected) in [
+        ("maxW", "Dowe scale value, container size or full"),
+        ("h", "Dowe scale value, full, auto or vh-<scale>"),
+        ("minH", "Dowe scale value, full, auto or vh-<scale>"),
+        ("maxH", "Dowe scale value, full, auto or vh-<scale>"),
+    ] {
+        let error = container_component_node(
+            BuiltinComponent::Box,
+            vec![string_prop(prop, "50%")],
+            vec![text_node("Hello").expect("text")],
+            false,
+        )
+        .expect_err("unsupported percentage");
+        assert_eq!(error, ComponentError::invalid_prop(prop, expected));
+    }
+
+    for value in ["0%", "15%", "110%", "%10", "10%%"] {
+        let error = container_component_node(
+            BuiltinComponent::Box,
+            vec![string_prop("w", value)],
+            vec![text_node("Hello").expect("text")],
+            false,
+        )
+        .expect_err("invalid percentage");
+        assert_eq!(
+            error,
+            ComponentError::invalid_prop(
+                "w",
+                "Dowe scale value, container size, percentage from 10% to 100% in 10% increments or full",
+            )
         );
     }
 }
@@ -1524,6 +1587,32 @@ fn validates_container_refactor_props() {
         ComponentError::invalid_prop("wrap", "boolean")
     );
 
+    let default_grid =
+        container_component_node(BuiltinComponent::Grid, Vec::new(), Vec::new(), false)
+            .expect("default grid");
+    match default_grid {
+        ViewNode::Grid { props, .. } => {
+            assert_eq!(
+                props.columns.expect("columns").entries[0].value,
+                GridTracks::Count(1)
+            );
+            assert_eq!(
+                props.justify.expect("justify").entries[0].value,
+                GridAlignment::Stretch
+            );
+            assert_eq!(
+                props.align.expect("align").entries[0].value,
+                GridAlignment::Stretch
+            );
+            assert_eq!(
+                props.style.sizing.w.expect("width").entries[0].value,
+                SizeValue::Full
+            );
+            assert!(props.style.sizing.h.is_none());
+        }
+        _ => panic!("grid"),
+    }
+
     let grid = container_component_node(
         BuiltinComponent::Grid,
         vec![
@@ -1574,15 +1663,33 @@ fn validates_container_refactor_props() {
         _ => panic!("grid"),
     }
 
+    let fractional_grid = container_component_node(
+        BuiltinComponent::Grid,
+        vec![string_prop("columns", "1fr 2fr 1fr")],
+        Vec::new(),
+        false,
+    )
+    .expect("fractional grid columns");
+    match fractional_grid {
+        ViewNode::Grid { props, .. } => assert_eq!(
+            props.columns.expect("columns").entries[0].value,
+            GridTracks::Fractions(vec![1, 2, 1])
+        ),
+        _ => panic!("grid"),
+    }
+
     assert_eq!(
         container_component_node(
             BuiltinComponent::Grid,
-            vec![string_prop("columns", "5fr 7fr")],
+            vec![string_prop("columns", "5fr 0fr")],
             Vec::new(),
             false,
         )
-        .expect_err("fractional grid columns"),
-        ComponentError::invalid_prop("columns", "positive integer from 1 to 12")
+        .expect_err("invalid fractional grid columns"),
+        ComponentError::invalid_prop(
+            "columns",
+            "positive integer from 1 to 12 or space-separated positive fr tracks"
+        )
     );
 
     assert_eq!(
@@ -1604,7 +1711,75 @@ fn validates_container_refactor_props() {
             false,
         )
         .expect_err("too many grid columns"),
-        ComponentError::invalid_prop("columns", "positive integer from 1 to 12")
+        ComponentError::invalid_prop(
+            "columns",
+            "positive integer from 1 to 12 or space-separated positive fr tracks"
+        )
+    );
+}
+
+#[test]
+fn parses_flex_item_values_on_layout_components() {
+    let box_node = container_component_node(
+        BuiltinComponent::Box,
+        vec![ComponentProp {
+            name: "flex".to_string(),
+            value: PropValue::Responsive(vec![
+                ResponsivePropEntry {
+                    breakpoint: "xs".to_string(),
+                    value: super::PropScalar::Number("1".to_string()),
+                },
+                ResponsivePropEntry {
+                    breakpoint: "md".to_string(),
+                    value: super::PropScalar::String("none".to_string()),
+                },
+            ]),
+        }],
+        Vec::new(),
+        false,
+    )
+    .expect("box flex");
+    let ViewNode::Box { props, .. } = box_node else {
+        panic!("box");
+    };
+    let flex = props.flex.expect("flex");
+    assert_eq!(flex.entries[0].value, FlexItem::Fill);
+    assert_eq!(flex.entries[1].breakpoint, Breakpoint::Md);
+    assert_eq!(flex.entries[1].value, FlexItem::None);
+
+    for (component, value, expected) in [
+        (BuiltinComponent::Section, "initial", FlexItem::Initial),
+        (BuiltinComponent::Flex, "auto", FlexItem::Auto),
+        (BuiltinComponent::Grid, "none", FlexItem::None),
+        (BuiltinComponent::Card, "auto", FlexItem::Auto),
+    ] {
+        let node = container_component_node(
+            component,
+            vec![string_prop("flex", value)],
+            Vec::new(),
+            false,
+        )
+        .expect("flex item component");
+        let flex = match node {
+            ViewNode::Section { props, .. } => props.flex,
+            ViewNode::Flex { props, .. } => props.style.flex,
+            ViewNode::Grid { props, .. } => props.style.flex,
+            ViewNode::Card { props, .. } => props.style.flex,
+            _ => panic!("layout component"),
+        }
+        .expect("flex");
+        assert_eq!(flex.entries[0].value, expected);
+    }
+
+    assert_eq!(
+        container_component_node(
+            BuiltinComponent::Box,
+            vec![number_prop("flex", 2)],
+            Vec::new(),
+            false,
+        )
+        .expect_err("invalid flex item"),
+        ComponentError::invalid_prop("flex", "initial, auto, none or 1")
     );
 }
 
@@ -1797,7 +1972,7 @@ fn rejects_invalid_section_background_props() {
         invalid_background,
         ComponentError::invalid_prop(
             "background",
-            "soft, aurora, sunrise, ocean, meadow or slate"
+            "aurora, sunrise, ocean, meadow or slate"
         )
     );
 
@@ -1844,11 +2019,11 @@ fn parses_section_center_as_static_and_responsive_boolean() {
     let ViewNode::Section { props, .. } = default else {
         panic!("section");
     };
-    assert!(props.center.is_none());
+    assert!(props.center_x.is_none());
 
     let centered = container_component_node(
         BuiltinComponent::Section,
-        vec![boolean_prop("center", true)],
+        vec![boolean_prop("centerX", true)],
         vec![text_node("Hero").expect("text")],
         false,
     )
@@ -1857,14 +2032,14 @@ fn parses_section_center_as_static_and_responsive_boolean() {
         panic!("section");
     };
     assert_eq!(
-        props.center.as_ref().expect("center").entries[0].value,
+        props.center_x.as_ref().expect("center").entries[0].value,
         true
     );
 
     let responsive = container_component_node(
         BuiltinComponent::Section,
         vec![responsive_boolean_prop(
-            "center",
+            "centerX",
             &[("xs", false), ("md", true)],
         )],
         vec![text_node("Hero").expect("text")],
@@ -1874,9 +2049,9 @@ fn parses_section_center_as_static_and_responsive_boolean() {
     let ViewNode::Section { props, .. } = responsive else {
         panic!("section");
     };
-    assert_eq!(props.center.as_ref().expect("center").entries.len(), 2);
+    assert_eq!(props.center_x.as_ref().expect("center").entries.len(), 2);
     assert_eq!(
-        props.center.as_ref().expect("center").entries[1].value,
+        props.center_x.as_ref().expect("center").entries[1].value,
         true
     );
 }
@@ -1885,26 +2060,26 @@ fn parses_section_center_as_static_and_responsive_boolean() {
 fn rejects_invalid_section_center_values() {
     let string_value = container_component_node(
         BuiltinComponent::Section,
-        vec![string_prop("center", "true")],
+        vec![string_prop("centerX", "true")],
         vec![text_node("Hero").expect("text")],
         false,
     )
     .expect_err("center string");
     assert_eq!(
         string_value,
-        ComponentError::invalid_prop("center", "boolean")
+        ComponentError::invalid_prop("centerX", "boolean")
     );
 
     let invalid_breakpoint = container_component_node(
         BuiltinComponent::Section,
-        vec![responsive_boolean_prop("center", &[("xxl", true)])],
+        vec![responsive_boolean_prop("centerX", &[("xxl", true)])],
         vec![text_node("Hero").expect("text")],
         false,
     )
     .expect_err("center breakpoint");
     assert_eq!(
         invalid_breakpoint,
-        ComponentError::invalid_prop("center", "valid breakpoint")
+        ComponentError::invalid_prop("centerX", "valid breakpoint")
     );
 }
 
@@ -2041,7 +2216,7 @@ fn parses_overlay_forms() {
 #[test]
 fn validates_variant_props() {
     let node = input_node(vec![
-        string_prop("variant", "soft"),
+        string_prop("variant", "ghost"),
         string_prop("scheme", "danger"),
         string_prop("bind", "blog.title"),
         string_prop("label", "Title"),
@@ -2052,7 +2227,7 @@ fn validates_variant_props() {
 
     match node {
         ViewNode::Input { props } => {
-            assert_eq!(props.variant, Some(ComponentVariant::Soft));
+            assert_eq!(props.variant, Some(ComponentVariant::Ghost));
             assert_eq!(props.color, Some(ColorFamily::Danger));
             assert_eq!(props.element.bind.as_deref(), Some("blog.title"));
             assert_eq!(props.label.as_deref(), Some("Title"));
@@ -2068,7 +2243,7 @@ fn validates_layout_bar_props_and_regions() {
     let node = bar_component_node(
         BuiltinComponent::AppBar,
         vec![
-            string_prop("variant", "soft"),
+            string_prop("variant", "ghost"),
             string_prop("scheme", "surface"),
             boolean_prop("bordered", true),
             boolean_prop("blurred", true),
@@ -2095,7 +2270,7 @@ fn validates_layout_bar_props_and_regions() {
             top,
             bottom,
         } => {
-            assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+            assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
             assert_eq!(props.style.color, Some(ColorFamily::Surface));
             assert!(props.bordered);
             assert!(props.blurred);
@@ -2792,7 +2967,7 @@ fn exposes_only_requested_runtime_icon_payloads() {
 
 #[test]
 fn exposes_text_and_title_roles_for_every_theme_color_family() {
-    assert_eq!(ColorToken::all().len(), 54);
+    assert_eq!(ColorToken::all().len(), 30);
     assert_eq!(
         ColorToken::from_name("primaryText"),
         Some(ColorToken::PrimaryText)
@@ -2830,10 +3005,7 @@ fn exposes_text_and_title_roles_for_every_theme_color_family() {
         ColorFamily::from_theme_name("primary"),
         Some((ColorFamily::Primary, false))
     );
-    assert_eq!(
-        ColorFamily::from_theme_name("softPrimary"),
-        Some((ColorFamily::Primary, true))
-    );
+    assert_eq!(ColorFamily::from_theme_name("softPrimary"), None);
     assert_eq!(ColorFamily::from_theme_name("softBackground"), None);
     assert_eq!(
         ColorFamily::Primary.theme_tokens(false),
@@ -2846,12 +3018,19 @@ fn exposes_text_and_title_roles_for_every_theme_color_family() {
     assert_eq!(
         ColorFamily::Primary.theme_tokens(true),
         Some([
-            ColorToken::SoftPrimary,
-            ColorToken::SoftPrimaryText,
-            ColorToken::SoftPrimaryTitle,
+            ColorToken::Primary,
+            ColorToken::PrimaryText,
+            ColorToken::PrimaryTitle,
         ])
     );
-    assert_eq!(ColorFamily::Background.theme_tokens(true), None);
+    assert_eq!(
+        ColorFamily::Background.theme_tokens(true),
+        Some([
+            ColorToken::Background,
+            ColorToken::BackgroundText,
+            ColorToken::BackgroundTitle,
+        ])
+    );
 
     for name in ["light", "dark"] {
         let theme = integrated_design_theme(name).expect("integrated theme");
@@ -2874,10 +3053,7 @@ fn represents_custom_theme_color_families_and_soft_roles() {
     assert_eq!(happy.soft_text_token().as_str(), "softHappyText");
     assert_eq!(happy.soft_title_token().as_str(), "softHappyTitle");
     assert_eq!(brand_accent.as_str(), "brandAccent");
-    assert_eq!(
-        ColorFamily::from_theme_name("softHappy"),
-        Some((happy, true))
-    );
+    assert_eq!(ColorFamily::from_theme_name("softHappy"), None);
     assert_eq!(ColorFamily::from_name("softHappy"), None);
     assert_eq!(ColorFamily::from_name("happyText"), None);
     assert_eq!(ColorFamily::from_name("onHappy"), None);

@@ -1,6 +1,6 @@
+use crate::edge_queue::{EdgeQueueProvider, queue_edge_marker};
 use crate::error::DeployResult;
 use dowe_compiler::{Endpoint, EndpointBehavior, HttpMethod};
-use crate::edge_queue::{EdgeQueueProvider, queue_edge_marker};
 mod codegen;
 
 const DATA_BASE: u32 = 1024;
@@ -85,10 +85,7 @@ enum BodyKind {
     Queue = 2,
 }
 
-pub fn generate(
-    endpoints: &[Endpoint],
-    provider: EdgeQueueProvider,
-) -> DeployResult<Vec<u8>> {
+pub fn generate(endpoints: &[Endpoint], provider: EdgeQueueProvider) -> DeployResult<Vec<u8>> {
     let mut data = DataStore::new();
     let not_found = data.add_text("Not Found");
     let invalid_json = data.add_text("Expected JSON object");

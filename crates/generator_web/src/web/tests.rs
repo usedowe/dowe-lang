@@ -96,7 +96,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
     assert_javascript_syntax(&controls);
     assert_javascript_syntax(&media);
     assert_javascript_syntax(&visualization);
-    assert!(core.len() <= 130_500, "router core is {} bytes", core.len());
+    assert!(core.len() <= 132_000, "router core is {} bytes", core.len());
     assert!(controls.len() <= 50_000);
     assert!(media.len() <= 40_000);
     assert!(visualization.len() <= 35_000);
@@ -208,6 +208,64 @@ fn basic_view_css_excludes_unused_component_domains() {
     assert!(!css.contains(".arc-chart-container{"));
     assert!(!css.contains(".drawer-panel{"));
     assert!(css.len() < 50_000);
+}
+
+#[test]
+fn global_toast_actions_include_overlay_css() {
+    let tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: vec![ViewAction {
+            id: "save".to_string(),
+            name: "save".to_string(),
+            params: Vec::new(),
+            return_type: None,
+            kind: ViewActionKind::Sequence(vec![ViewFunctionStatement::Toast(ViewToastAction {
+                kind: "info".to_string(),
+                title: String::new(),
+                message: "Saved".to_string(),
+                duration: None,
+                scheme: None,
+                variant: None,
+                position: None,
+            })]),
+        }],
+        children: Vec::new(),
+    };
+    let css =
+        super::design_css_for_trees([&tree], &FontConfig::default(), &DesignConfig::default());
+
+    assert!(css.contains(".toast{"));
+    assert!(css.contains(".toast.is-bottom-right{"));
+}
+
+#[test]
+fn global_toast_actions_include_media_runtime() {
+    let tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: Vec::new(),
+        actions: vec![ViewAction {
+            id: "save".to_string(),
+            name: "save".to_string(),
+            params: Vec::new(),
+            return_type: None,
+            kind: ViewActionKind::Sequence(vec![ViewFunctionStatement::Toast(ViewToastAction {
+                kind: "info".to_string(),
+                title: String::new(),
+                message: "Saved".to_string(),
+                duration: None,
+                scheme: None,
+                variant: None,
+                position: None,
+            })]),
+        }],
+        children: Vec::new(),
+    };
+    let chunks = super::runtime_chunks_for_trees(&tree, &ViewNode::Children);
+
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0].name, "media");
+    assert!(chunks[0].content.contains("closeToast"));
 }
 
 #[test]

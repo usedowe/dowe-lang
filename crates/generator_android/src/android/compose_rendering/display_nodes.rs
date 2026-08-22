@@ -19,7 +19,7 @@ fn render_compose_display_node(
             render_compose_microphone(props, indent, output, context);
         }
         ViewNode::Image { props } => {
-            render_compose_image(props, indent, output);
+            render_compose_image(props, indent, output, context);
         }
         ViewNode::Accordion { props, items } => {
             render_compose_accordion(
@@ -433,7 +433,7 @@ fn render_compose_display_node(
                 };
                 output.push_str(&format!(
                     "{pad}DoweRuntimeSvg(payload = {payload}, modifier = {}, color = {}, animated = {})\n",
-                    modifier_for_style(&props.style),
+                    compose_svg_modifier(props),
                     compose_svg_color(&props.style),
                     props.is_animated()
                 ));
@@ -468,7 +468,7 @@ fn render_compose_display_node(
             output.push_str(&format!(
                 "{pad}DoweSvg(viewBox = {}, modifier = {}, color = {}, paths = {}, animated = {})\n",
                 compose_svg_view_box(&props.view_box),
-                modifier_for_style(&props.style),
+                compose_svg_modifier(props),
                 compose_svg_color(&props.style),
                 compose_svg_paths(paths),
                 props.is_animated()

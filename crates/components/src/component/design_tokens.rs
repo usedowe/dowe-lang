@@ -67,6 +67,7 @@ pub struct DesignDefaults {
     pub variant: BTreeMap<DesignComponentSlot, ComponentVariant>,
     pub tabs_variant: BTreeMap<DesignComponentSlot, TabsVariant>,
     pub size: BTreeMap<DesignComponentSlot, ButtonSize>,
+    pub label_floating: BTreeMap<DesignComponentSlot, bool>,
 }
 
 impl Default for DesignDefaults {
@@ -88,6 +89,7 @@ impl DesignDefaults {
             variant: BTreeMap::new(),
             tabs_variant: BTreeMap::new(),
             size: BTreeMap::new(),
+            label_floating: BTreeMap::new(),
         }
     }
 
@@ -107,6 +109,10 @@ impl DesignDefaults {
             (DesignComponentSlot::Password, ColorFamily::Primary),
             (DesignComponentSlot::Select, ColorFamily::Primary),
             (DesignComponentSlot::Pin, ColorFamily::Primary),
+            (DesignComponentSlot::SideNav, ColorFamily::Primary),
+            (DesignComponentSlot::Sidebar, ColorFamily::Surface),
+            (DesignComponentSlot::NavMenu, ColorFamily::Primary),
+            (DesignComponentSlot::Chip, ColorFamily::Primary),
             (DesignComponentSlot::AppBar, ColorFamily::Surface),
             (DesignComponentSlot::Footer, ColorFamily::Surface),
             (DesignComponentSlot::Modal, ColorFamily::Surface),
@@ -130,6 +136,10 @@ impl DesignDefaults {
             (DesignComponentSlot::Password, ComponentVariant::Outlined),
             (DesignComponentSlot::Select, ComponentVariant::Outlined),
             (DesignComponentSlot::Pin, ComponentVariant::Outlined),
+            (DesignComponentSlot::SideNav, ComponentVariant::Solid),
+            (DesignComponentSlot::Sidebar, ComponentVariant::Solid),
+            (DesignComponentSlot::NavMenu, ComponentVariant::Solid),
+            (DesignComponentSlot::Chip, ComponentVariant::Solid),
             (DesignComponentSlot::AppBar, ComponentVariant::Solid),
             (DesignComponentSlot::Footer, ComponentVariant::Solid),
             (DesignComponentSlot::Modal, ComponentVariant::Solid),
@@ -171,6 +181,7 @@ impl DesignDefaults {
         defaults.variant.extend(configured.variant);
         defaults.tabs_variant.extend(configured.tabs_variant);
         defaults.size.extend(configured.size);
+        defaults.label_floating.extend(configured.label_floating);
         defaults
     }
 }
@@ -201,9 +212,15 @@ pub enum DesignComponentSlot {
     Checkbox,
     Input,
     Date,
+    DateRange,
+    Color,
+    Textarea,
     Password,
     Select,
     Pin,
+    SideNav,
+    Sidebar,
+    NavMenu,
     AppBar,
     Footer,
     Modal,
@@ -284,9 +301,15 @@ impl DesignComponentSlot {
             "Checkbox" => Some(Self::Checkbox),
             "Input" => Some(Self::Input),
             "Date" => Some(Self::Date),
+            "DateRange" => Some(Self::DateRange),
+            "Color" => Some(Self::Color),
+            "Textarea" => Some(Self::Textarea),
             "Password" => Some(Self::Password),
             "Select" => Some(Self::Select),
             "Pin" => Some(Self::Pin),
+            "SideNav" => Some(Self::SideNav),
+            "Sidebar" => Some(Self::Sidebar),
+            "NavMenu" => Some(Self::NavMenu),
             "AppBar" => Some(Self::AppBar),
             "Footer" => Some(Self::Footer),
             "Modal" => Some(Self::Modal),
@@ -314,9 +337,15 @@ impl DesignComponentSlot {
             Self::Checkbox => "Checkbox",
             Self::Input => "Input",
             Self::Date => "Date",
+            Self::DateRange => "DateRange",
+            Self::Color => "Color",
+            Self::Textarea => "Textarea",
             Self::Password => "Password",
             Self::Select => "Select",
             Self::Pin => "Pin",
+            Self::SideNav => "SideNav",
+            Self::Sidebar => "Sidebar",
+            Self::NavMenu => "NavMenu",
             Self::AppBar => "AppBar",
             Self::Footer => "Footer",
             Self::Modal => "Modal",
@@ -343,9 +372,15 @@ impl DesignComponentSlot {
             Self::Checkbox,
             Self::Input,
             Self::Date,
+            Self::DateRange,
+            Self::Color,
+            Self::Textarea,
             Self::Password,
             Self::Select,
             Self::Pin,
+            Self::SideNav,
+            Self::Sidebar,
+            Self::NavMenu,
             Self::AppBar,
             Self::Footer,
             Self::Modal,
@@ -396,30 +431,6 @@ pub fn integrated_design_theme(name: &str) -> Option<DesignTheme> {
                 (ColorToken::Danger, "#dc2626"),
                 (ColorToken::DangerText, "#ffffff"),
                 (ColorToken::DangerTitle, "#ffffff"),
-                (ColorToken::SoftPrimary, "#dbeafe"),
-                (ColorToken::SoftPrimaryText, "#1e3a8a"),
-                (ColorToken::SoftPrimaryTitle, "#1e3a8a"),
-                (ColorToken::SoftSecondary, "#e0e7ff"),
-                (ColorToken::SoftSecondaryText, "#312e81"),
-                (ColorToken::SoftSecondaryTitle, "#312e81"),
-                (ColorToken::SoftTertiary, "#ccfbf1"),
-                (ColorToken::SoftTertiaryText, "#134e4a"),
-                (ColorToken::SoftTertiaryTitle, "#134e4a"),
-                (ColorToken::SoftMuted, "#e2e8f0"),
-                (ColorToken::SoftMutedText, "#334155"),
-                (ColorToken::SoftMutedTitle, "#334155"),
-                (ColorToken::SoftSuccess, "#dcfce7"),
-                (ColorToken::SoftSuccessText, "#14532d"),
-                (ColorToken::SoftSuccessTitle, "#14532d"),
-                (ColorToken::SoftInfo, "#e0f2fe"),
-                (ColorToken::SoftInfoText, "#075985"),
-                (ColorToken::SoftInfoTitle, "#075985"),
-                (ColorToken::SoftWarning, "#fef3c7"),
-                (ColorToken::SoftWarningText, "#78350f"),
-                (ColorToken::SoftWarningTitle, "#78350f"),
-                (ColorToken::SoftDanger, "#fee2e2"),
-                (ColorToken::SoftDangerText, "#7f1d1d"),
-                (ColorToken::SoftDangerTitle, "#7f1d1d"),
             ],
             8,
         )),
@@ -456,30 +467,6 @@ pub fn integrated_design_theme(name: &str) -> Option<DesignTheme> {
                 (ColorToken::Danger, "#f87171"),
                 (ColorToken::DangerText, "#450a0a"),
                 (ColorToken::DangerTitle, "#450a0a"),
-                (ColorToken::SoftPrimary, "#1e3a8a"),
-                (ColorToken::SoftPrimaryText, "#dbeafe"),
-                (ColorToken::SoftPrimaryTitle, "#dbeafe"),
-                (ColorToken::SoftSecondary, "#312e81"),
-                (ColorToken::SoftSecondaryText, "#e0e7ff"),
-                (ColorToken::SoftSecondaryTitle, "#e0e7ff"),
-                (ColorToken::SoftTertiary, "#134e4a"),
-                (ColorToken::SoftTertiaryText, "#ccfbf1"),
-                (ColorToken::SoftTertiaryTitle, "#ccfbf1"),
-                (ColorToken::SoftMuted, "#334155"),
-                (ColorToken::SoftMutedText, "#e2e8f0"),
-                (ColorToken::SoftMutedTitle, "#e2e8f0"),
-                (ColorToken::SoftSuccess, "#14532d"),
-                (ColorToken::SoftSuccessText, "#dcfce7"),
-                (ColorToken::SoftSuccessTitle, "#dcfce7"),
-                (ColorToken::SoftInfo, "#075985"),
-                (ColorToken::SoftInfoText, "#e0f2fe"),
-                (ColorToken::SoftInfoTitle, "#e0f2fe"),
-                (ColorToken::SoftWarning, "#78350f"),
-                (ColorToken::SoftWarningText, "#fef3c7"),
-                (ColorToken::SoftWarningTitle, "#fef3c7"),
-                (ColorToken::SoftDanger, "#7f1d1d"),
-                (ColorToken::SoftDangerText, "#fee2e2"),
-                (ColorToken::SoftDangerTitle, "#fee2e2"),
             ],
             8,
         )),
@@ -743,30 +730,6 @@ impl ColorToken {
             Self::Danger,
             Self::DangerText,
             Self::DangerTitle,
-            Self::SoftPrimary,
-            Self::SoftPrimaryText,
-            Self::SoftPrimaryTitle,
-            Self::SoftSecondary,
-            Self::SoftSecondaryText,
-            Self::SoftSecondaryTitle,
-            Self::SoftTertiary,
-            Self::SoftTertiaryText,
-            Self::SoftTertiaryTitle,
-            Self::SoftMuted,
-            Self::SoftMutedText,
-            Self::SoftMutedTitle,
-            Self::SoftSuccess,
-            Self::SoftSuccessText,
-            Self::SoftSuccessTitle,
-            Self::SoftInfo,
-            Self::SoftInfoText,
-            Self::SoftInfoTitle,
-            Self::SoftWarning,
-            Self::SoftWarningText,
-            Self::SoftWarningTitle,
-            Self::SoftDanger,
-            Self::SoftDangerText,
-            Self::SoftDangerTitle,
         ]
     }
 }
@@ -928,32 +891,10 @@ impl ColorFamily {
     }
 
     pub fn from_theme_name(value: &str) -> Option<(Self, bool)> {
-        if let Some(family) = Self::from_name(value) {
-            return Some((family, false));
-        }
-        let suffix = value.strip_prefix("soft")?;
-        let mut chars = suffix.chars();
-        let first = chars.next()?;
-        if !first.is_ascii_uppercase() {
-            return None;
-        }
-        let mut base = first.to_ascii_lowercase().to_string();
-        base.extend(chars);
-        let family = Self::from_name(&base)?;
-        (!matches!(family, Self::Background | Self::Surface)).then_some((family, true))
+        Self::from_name(value).map(|family| (family, false))
     }
 
-    pub fn theme_tokens(self, soft: bool) -> Option<[ColorToken; 3]> {
-        if soft {
-            if matches!(self, Self::Background | Self::Surface) {
-                return None;
-            }
-            return Some([
-                self.soft_color_token(),
-                self.soft_text_token(),
-                self.soft_title_token(),
-            ]);
-        }
+    pub fn theme_tokens(self, _soft: bool) -> Option<[ColorToken; 3]> {
         Some([self.color_token(), self.text_token(), self.title_token()])
     }
 
@@ -969,14 +910,6 @@ impl ColorFamily {
             "info",
             "warning",
             "danger",
-            "softPrimary",
-            "softSecondary",
-            "softTertiary",
-            "softMuted",
-            "softSuccess",
-            "softInfo",
-            "softWarning",
-            "softDanger",
         ]
     }
 
@@ -1182,7 +1115,6 @@ impl ComponentVariant {
     pub fn from_name(value: &str) -> Option<Self> {
         match value {
             "solid" => Some(Self::Solid),
-            "soft" => Some(Self::Soft),
             "outlined" | "outline" => Some(Self::Outlined),
             "ghost" => Some(Self::Ghost),
             "line" => Some(Self::Line),
@@ -1203,7 +1135,6 @@ impl ComponentVariant {
     pub fn all() -> &'static [Self] {
         &[
             Self::Solid,
-            Self::Soft,
             Self::Outlined,
             Self::Ghost,
             Self::Line,

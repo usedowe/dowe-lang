@@ -176,16 +176,20 @@ fn generates_swiftui_display_overlay_components() {
         .find("presentationRevision += 1")
         .expect("toast dismissal revision");
     assert!(dismiss_idempotence_guard < dismiss_revision);
-    assert!(toast_dismiss_output
-        .contains("guard immediate || showScheduled || containerView?.superview != nil else"));
+    assert!(
+        toast_dismiss_output
+            .contains("guard immediate || showScheduled || containerView?.superview != nil else")
+    );
     assert!(toast_dismiss_output.contains(
         "guard revision == self.presentationRevision, !self.parent.isPresented, self.isDismissing else"
     ));
     assert!(toast_dismiss_output.contains("self.isDismissing = false"));
     assert!(toast_dismiss_output.contains("container.removeFromSuperview()"));
     assert!(toast_presenter_output.contains("height: UIView.layoutFittingExpandedSize.height"));
-    assert!(toast_presenter_output
-        .contains("container.bounds = CGRect(origin: .zero, size: frame.size)"));
+    assert!(
+        toast_presenter_output
+            .contains("container.bounds = CGRect(origin: .zero, size: frame.size)")
+    );
     assert!(
         toast_presenter_output.contains("container.center = CGPoint(x: frame.midX, y: frame.midY)")
     );
@@ -204,7 +208,7 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains(
         "DoweToastOverlayPresenter(isPresented: visible && !dismissed, position: position)"
     ));
-    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.softMutedText)"));
+    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.mutedText)"));
     assert!(views.contains(".accessibilityLabel(\"Close toast\")"));
     assert!(views.contains("DoweDropdown(backgroundColor: DoweDesign.surface"));
     let dropdown_start = views
@@ -252,10 +256,14 @@ fn generates_swiftui_display_overlay_components() {
         .find("window.addSubview(container)")
         .expect("anchored popover window mount");
     assert!(first_measurement < first_mount);
-    assert!(!views[anchored_presenter_start..anchored_presenter_end]
-        .contains("context.coordinator.show(from: uiView)"));
-    assert!(!views[anchored_presenter_start..anchored_presenter_end]
-        .contains("anchor.layoutIfNeeded()\n                DispatchQueue.main.async"));
+    assert!(
+        !views[anchored_presenter_start..anchored_presenter_end]
+            .contains("context.coordinator.show(from: uiView)")
+    );
+    assert!(
+        !views[anchored_presenter_start..anchored_presenter_end]
+            .contains("anchor.layoutIfNeeded()\n                DispatchQueue.main.async")
+    );
     assert_eq!(
         views[anchored_presenter_start..anchored_presenter_end]
             .matches("presentationRevision += 1")
@@ -292,8 +300,11 @@ fn generates_swiftui_display_overlay_components() {
     assert!(views.contains("scroller.frame = container.bounds"));
     assert!(views.contains("container.layer.shadowOpacity = Float(0.12)"));
     assert!(views.contains("container.layer.shadowRadius = CGFloat(16)"));
-    assert!(views
-        .contains("container.layer.shadowOffset = CGSize(width: CGFloat(0), height: CGFloat(8))"));
+    assert!(
+        views.contains(
+            "container.layer.shadowOffset = CGSize(width: CGFloat(0), height: CGFloat(8))"
+        )
+    );
     assert!(views.contains(
         "container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: DoweDesign.radius).cgPath"
     ));
@@ -310,7 +321,9 @@ fn generates_swiftui_display_overlay_components() {
         .expect("overlay item after dropdown popover");
     assert!(!views[popover_start..popover_end].contains("ScrollView"));
     assert!(!views[popover_start..popover_end].contains(".shadow("));
-    assert!(!views[popover_start..popover_end].contains(".presentationCompactAdaptation(.popover)"));
+    assert!(
+        !views[popover_start..popover_end].contains(".presentationCompactAdaptation(.popover)")
+    );
     assert!(views.contains("DoweCommand(open: state.bool(\"modal01\")"));
 }
 
@@ -333,7 +346,7 @@ fn generates_ios_overlay_surface_action_and_close_parity() {
         "confirmBackgroundColor: DoweDesign.warning, confirmContentColor: DoweDesign.warningText"
     ));
     assert!(views.contains("struct DoweOverlayCloseIcon: View"));
-    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.softMutedText)"));
+    assert!(views.contains("DoweOverlayCloseIcon(color: DoweDesign.mutedText)"));
     assert!(views.contains("let modalWidth = geometry.size.width * 0.95"));
     assert!(views.contains(".frame(maxWidth: modalWidth, alignment: .leading)"));
     assert!(views.contains(".frame(width: CGFloat(28), height: CGFloat(28))"));
@@ -440,7 +453,10 @@ fn generates_swiftui_dynamic_icon_catalog_with_module_visibility() {
     let views = output
         .files
         .iter()
-        .find(|file| file.relative_path.ends_with("DowePageDynamicIconView.swift"))
+        .find(|file| {
+            file.relative_path
+                .ends_with("DowePageDynamicIconView.swift")
+        })
         .expect("dynamic icon view");
 
     assert!(!pages.content.contains("DoweDynamicIconCatalog"));
@@ -450,12 +466,14 @@ fn generates_swiftui_dynamic_icon_catalog_with_module_visibility() {
             .contains("let DoweDynamicIconCatalog: [String: String]")
     );
     assert!(catalog.content.contains("catalog.reserveCapacity("));
-    assert!(catalog.content.contains("DoweDynamicIconCatalogShard0.entries"));
+    assert!(
+        catalog
+            .content
+            .contains("DoweDynamicIconCatalogShard0.entries")
+    );
     assert!(shards.len() > 2);
     assert!(shards.iter().all(|file| file.content.len() < 640_000));
-    assert!(views
-        .content
-        .contains("DoweDynamicIconCatalog[state.text("));
+    assert!(views.content.contains("DoweDynamicIconCatalog[state.text("));
 }
 
 #[test]
@@ -511,8 +529,11 @@ fn generates_swiftui_rich_control_map_components() {
     assert!(views.contains("private struct DoweRichTextLayout: Layout"));
     assert!(views.contains("let ideal = subview.sizeThatFits(.unspecified)"));
     assert!(views.contains("let constrainedWidth = min(ideal.width, width)"));
-    assert!(views
-        .contains("subview.sizeThatFits(ProposedViewSize(width: constrainedWidth, height: nil))"));
+    assert!(
+        views.contains(
+            "subview.sizeThatFits(ProposedViewSize(width: constrainedWidth, height: nil))"
+        )
+    );
     assert!(views.contains(
         "let resolvedWidth = proposal.width.map { min(contentWidth, $0) } ?? contentWidth"
     ));
@@ -621,7 +642,7 @@ fn generates_portable_grid_controls_and_variant_colors() {
     let views = swift_content(&output);
 
     assert!(views.contains(
-            "DoweGridLayout(columns: doweResponsive(viewportWidth, xs: 1, md: 2) ?? 1, rowGap: doweResponsive(viewportWidth, xs: CGFloat(16)), columnGap: doweResponsive(viewportWidth, xs: CGFloat(24)), justify: nil, align: nil) {"
+            "DoweGridLayout(tracks: doweResponsive(viewportWidth, xs: [CGFloat(1)], md: [CGFloat(1), CGFloat(1)]) ?? [CGFloat(1)], rowGap: doweResponsive(viewportWidth, xs: CGFloat(16)), columnGap: doweResponsive(viewportWidth, xs: CGFloat(24)), justify: nil, align: nil, fillHeight: false) {"
         ));
     assert!(views.contains("struct DoweGridLayout: Layout"));
     assert!(
@@ -631,7 +652,7 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(views.contains(
             "backgroundColor: Color.clear, contentColor: DoweDesign.secondary, borderColor: Optional(DoweDesign.muted)"
         ));
-    assert!(views.contains(".foregroundStyle(DoweDesign.softMutedText)"));
+    assert!(views.contains(".foregroundStyle(DoweDesign.mutedText)"));
     assert!(views.contains(".background(DoweDesign.surface)"));
     assert!(views.contains(".foregroundStyle(DoweDesign.surfaceText)"));
     assert!(views.contains(".stroke(DoweDesign.surface, lineWidth: CGFloat(1))"));
@@ -920,9 +941,20 @@ fn emits_large_theme_catalog_once_outside_route_view_expressions() {
         2
     );
     assert!(!page.content.contains("DoweSelectOption(value:"));
-    assert_eq!(page.content.matches("helpText: nil, errorText: nil, validationRules: []").count(), 2);
-    assert!(page.content.contains("private func routeBranch0() -> some View"));
-    assert!(page.content.contains("private func routeBranch2() -> some View"));
+    assert_eq!(
+        page.content
+            .matches("helpText: nil, errorText: nil, validationRules: []")
+            .count(),
+        2
+    );
+    assert!(
+        page.content
+            .contains("private func routeBranch0() -> some View")
+    );
+    assert!(
+        page.content
+            .contains("private func routeBranch2() -> some View")
+    );
     assert!(
         theme
             .content
@@ -1020,8 +1052,10 @@ fn generates_swiftui_media_display_form_components() {
         .expect("image aspect helper");
     assert!(image_runtime.contains("DoweImageAspectLayout(ratio: doweImageAspect(aspect))"));
     assert!(image_runtime.contains("struct DoweImageAspectLayout: Layout"));
-    assert!(image_runtime
-        .contains("return CGSize(width: resolvedWidth, height: resolvedWidth / resolvedRatio)"));
+    assert!(
+        image_runtime
+            .contains("return CGSize(width: resolvedWidth, height: resolvedWidth / resolvedRatio)")
+    );
     assert!(image_runtime.contains("proposal: ProposedViewSize(bounds.size)"));
     assert!(image_runtime.contains(".clipped()"));
     assert!(image_runtime.contains(".accessibilityAddTraits(.isImage)"));
@@ -1042,8 +1076,12 @@ fn generates_swiftui_media_display_form_components() {
     assert!(!views.contains("__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__"));
     assert!(views.contains(".rotationEffect(open ? .degrees(90) : .degrees(0))"));
     assert!(views.contains("Text(label)\n                        .font(.system(size: CGFloat(15), weight: .bold))\n                        .foregroundStyle(contentColor)"));
-    assert!(views.contains("variant == \"ghost\" || variant == \"line\" ? CGFloat(0) : CGFloat(8)"));
-    assert!(views.contains("variant == \"ghost\" || variant == \"line\" ? CGFloat(0) : CGFloat(4)"));
+    assert!(
+        views.contains("variant == \"ghost\" || variant == \"line\" ? CGFloat(0) : CGFloat(8)")
+    );
+    assert!(
+        views.contains("variant == \"ghost\" || variant == \"line\" ? CGFloat(0) : CGFloat(4)")
+    );
     assert!(views.contains(".frame(maxWidth: .infinity, alignment: .leading)"));
     assert!(views.contains("borderStyle: \"separator\""));
     assert!(views.contains("if borderStyle == \"separator\""));
@@ -1114,8 +1152,10 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("doweColorFromHsv(hue, saturation, brightness)"));
     assert!(views.contains("doweColorCmykText(doweColorRgb(value))"));
     assert!(views.contains("doweColorOklchText(doweColorRgb(value))"));
-    assert!(views
-        .contains("DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(300)"));
+    assert!(
+        views
+            .contains("DoweAnchoredPopoverPresenter(isPresented: expanded, minWidth: CGFloat(300)")
+    );
     assert!(views.contains("trigger\n                    .allowsHitTesting(false)"));
     assert!(views.contains(".padding(.leading, doweControlSwatchSize(size) + CGFloat(10))"));
     assert!(
@@ -1164,7 +1204,11 @@ fn generates_swiftui_advanced_form_components() {
     assert!(combo_box.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(12), preferredBase: CGFloat(11.2), preferredViewport: CGFloat(0.2), max: CGFloat(14))"), "{combo_box}");
     assert!(views.contains("DoweComboOption(value: \"admin\", label: \"Admin\""));
     assert!(views.contains("DoweComboAnchorPresenter"));
-    assert!(views.contains("DoweAnchoredPopoverPresenter(isPresented: isPresented, minWidth: CGFloat(280)"));
+    assert!(
+        views.contains(
+            "DoweAnchoredPopoverPresenter(isPresented: isPresented, minWidth: CGFloat(280)"
+        )
+    );
     assert!(views.contains("loadingText: \"Loading\""));
     assert!(views.contains("disabled: false"));
     assert!(views.contains("struct DoweCsvColumn: Identifiable"));
@@ -1179,7 +1223,9 @@ fn generates_swiftui_advanced_form_components() {
     assert!(views.contains("doweCropImage("));
     assert!(views.contains("return \"data:\\(jpeg ? \"image/jpeg\" : \"image/png\")"));
     assert!(views.contains("Button(\"Apply\")"));
-    assert!(views.contains("context.stroke(path, with: .color(.white.opacity(0.65)), lineWidth: CGFloat(1))"));
+    assert!(views.contains(
+        "context.stroke(path, with: .color(.white.opacity(0.65)), lineWidth: CGFloat(1))"
+    ));
     assert!(!views.contains("context.stroke(Path { path in"));
     assert!(views.contains("DowePassword(value: state.binding(\"profile.password\")"));
     let password_call = views
@@ -1218,6 +1264,7 @@ fn generates_swiftui_advanced_form_components() {
     assert!(
         password.contains(".accessibilityLabel(visible ? \"Hide password\" : \"Show password\")")
     );
+    assert!(password.contains("if validationError != nil"));
     assert!(views.contains("DowePhone(value: state.binding(\"profile.phone\")"));
     let phone_call = views
         .lines()
@@ -1228,14 +1275,18 @@ fn generates_swiftui_advanced_form_components() {
         "{phone_call}"
     );
     assert!(phone_call.contains("fontSize: doweTextSize(viewportWidth, min: CGFloat(16), preferredBase: CGFloat(15.2), preferredViewport: CGFloat(0.3), max: CGFloat(18))"), "{phone_call}");
-    assert!(phone_page
-        .content
-        .contains("countries: DowePhoneCatalog.countries"));
+    assert!(
+        phone_page
+            .content
+            .contains("countries: DowePhoneCatalog.countries")
+    );
     assert!(!phone_page.content.contains("DowePhoneCountry(code:"));
     assert!(phone_catalogs.len() > 2);
-    assert!(phone_catalogs
-        .iter()
-        .all(|file| file.content.len() < 128_000));
+    assert!(
+        phone_catalogs
+            .iter()
+            .all(|file| file.content.len() < 128_000)
+    );
     assert!(views.contains("DowePhoneCountry(code: \"US\""));
     let phone = views
         .split("struct DowePhone: View")
@@ -1279,8 +1330,11 @@ fn generates_swiftui_advanced_form_components() {
         pin.contains("let cellHeight: CGFloat = size == \"sm\" ? 32 : (size == \"lg\" ? 48 : 40)")
     );
     assert!(pin.contains(".font(.system(size: fontSize, weight: .bold))"));
-    assert!(pin
-        .contains("nextFocus = !nextCells[index].isEmpty && index + 1 < length ? index + 1 : nil"));
+    assert!(
+        pin.contains(
+            "nextFocus = !nextCells[index].isEmpty && index + 1 < length ? index + 1 : nil"
+        )
+    );
     assert!(pin.contains("DispatchQueue.main.async"));
     assert!(pin.contains("SecureField(\"\", text: binding(for: index))"));
     assert!(views.contains("DoweTextarea(value: state.binding(\"profile.bio\")"));
@@ -1352,9 +1406,11 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     );
     assert!(!views.contains(".onChange(of: activeFragment) { value in doweScroll(proxy, value) }"));
     assert!(views.contains(".id(\"hero\")"));
-    assert!(routing
-        .content
-        .contains("static let sections: [String: [String]]"));
+    assert!(
+        routing
+            .content
+            .contains("static let sections: [String: [String]]")
+    );
     assert!(routing.content.contains(r#""/signup": ["join"]"#));
 }
 
@@ -1606,8 +1662,11 @@ fn generates_swiftui_svg_views() {
     assert!(views.contains("let evenOdd: Bool"));
     assert!(views.contains("if path.evenOdd { value[\"evenOdd\"] = true }"));
     assert!(views.contains("path.evenOdd ? \" fillRule:\\\"evenodd\\\"\" : \"\""));
-    assert!(views
-        .contains("case \"parse.svg\": return DoweSvgImporter.convert(text(\"value\"), colors:"));
+    assert!(
+        views.contains(
+            "case \"parse.svg\": return DoweSvgImporter.convert(text(\"value\"), colors:"
+        )
+    );
     assert!(views.contains("c.253.847.1 1.895-.62 2.618a.75.75"));
     assert!(views.contains("if characters[index] == \"-\" || characters[index] == \"+\""));
     assert!(views.contains(
@@ -1624,6 +1683,91 @@ fn generates_swiftui_svg_views() {
         ));
     assert!(!views.contains(", maxWidth: doweMaxSize("));
     assert!(!views.contains(", maxHeight: doweMaxSize("));
+}
+
+#[test]
+fn generates_svg_aspect_ratio_for_single_swiftui_dimension() {
+    let mut tree = svg_tree();
+    let ViewNode::Svg { props, .. } = &mut tree else {
+        panic!("svg tree");
+    };
+    props.style.sizing.w = None;
+    props.view_box.width = "48".to_string();
+    props.view_box.height = "24".to_string();
+    let route = ViewRoute {
+        id: "svg-ratio".to_string(),
+        route_path: "/svg-ratio".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: tree,
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains(".aspectRatio(CGFloat(2.000000), contentMode: .fit)"));
+    let height = views
+        .find(".frame(height: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.fixed(CGFloat(32)))")
+        .expect("svg height modifier");
+    let ratio = views
+        .find(".aspectRatio(CGFloat(2.000000), contentMode: .fit)")
+        .expect("svg ratio modifier");
+    assert!(height < ratio);
+}
+
+#[test]
+fn preserves_full_svg_ratio_inside_single_dimension_brand_on_swiftui() {
+    let mut child = svg_tree();
+    let ViewNode::Svg { props, .. } = &mut child else {
+        panic!("svg tree");
+    };
+    props.style.sizing.w = Some(ResponsiveValue::scalar(SizeValue::Full));
+    props.style.sizing.h = Some(ResponsiveValue::scalar(SizeValue::Full));
+    props.view_box.width = "562".to_string();
+    props.view_box.height = "145".to_string();
+    let route = ViewRoute {
+        id: "brand-ratio".to_string(),
+        route_path: "/brand-ratio".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Brand {
+            props: BrandProps {
+                style: StyleProps {
+                    sizing: SizingProps {
+                        h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                            ScaleValue::from_half_steps(24),
+                        ))),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                navigation: Some(NavigationAction::Internal {
+                    path: "/".to_string(),
+                    fragment: None,
+                    operation: NavigationOperation::Push,
+                }),
+                label: Some("Dowe home".to_string()),
+            },
+            children: vec![child],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains(".aspectRatio(CGFloat(3.875862), contentMode: .fit)"));
 }
 
 #[test]
@@ -1720,7 +1864,11 @@ fn generates_disabled_button_opacity_for_swiftui() {
 
     assert!(views.contains(".textSelection(.disabled)"));
     assert!(views.contains(".disabled(state.bool(\"formInvalid\", fallback: true))"));
-    assert!(views.contains(".opacity(state.bool(\"formInvalid\", fallback: true) ? 0.5 : 1)"));
+    assert!(views.contains(".background(DoweDesign.secondary.opacity(state.bool(\"formInvalid\", fallback: true) ? 0.5 : 1))"));
+    assert_eq!(
+        views.matches(".opacity(state.bool(\"formInvalid\", fallback: true) ? 0.5 : 1)").count(),
+        1
+    );
 }
 
 #[test]
@@ -1829,6 +1977,40 @@ fn generates_full_hit_targets_for_icon_and_text_buttons() {
 }
 
 #[test]
+fn generates_swiftui_percentage_widths() {
+    let route = ViewRoute {
+        id: "percentage".to_string(),
+        route_path: "/percentage".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Box {
+            props: StyleProps {
+                sizing: SizingProps {
+                    w: Some(ResponsiveValue::scalar(SizeValue::Percent(30))),
+                    min_w: Some(ResponsiveValue::scalar(SizeValue::Percent(60))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains("DoweSize.percent(CGFloat(0.3))"));
+    assert!(views.contains("DoweSize.percent(CGFloat(0.6))"));
+    assert!(views.contains(".dowePercentageWidth(width:"));
+    assert!(views.contains("minimumWidthFraction: dowePercentage(minWidth)"));
+}
+
+#[test]
 fn generates_swiftui_viewport_minus_height() {
     let route = ViewRoute {
         id: "viewport".to_string(),
@@ -1933,7 +2115,9 @@ fn generates_swiftui_form_validation_contract() {
     assert!(source.contains("helpText: \"Use your work email\""));
     assert!(source.contains("touched ? doweValidationError"));
     assert!(source.contains("DoweDesign.danger"));
-    let date_start = source.find("struct DoweDateField: View").expect("date field");
+    let date_start = source
+        .find("struct DoweDateField: View")
+        .expect("date field");
     let date_end = source[date_start..]
         .find("struct DoweDateRangeField: View")
         .map(|offset| date_start + offset)
@@ -2000,7 +2184,9 @@ fn generates_swiftui_camera_and_microphone_capture_contract() {
     assert!(source.contains("let sourceType: UIImagePickerController.SourceType"));
     assert!(source.contains("if sourceType == .camera"));
     assert!(source.contains("AVAudioRecorderDelegate"));
-    assert!(source.contains("AVAudioApplication.requestRecordPermission(completionHandler: handlePermission)"));
+    assert!(source.contains(
+        "AVAudioApplication.requestRecordPermission(completionHandler: handlePermission)"
+    ));
     assert!(source.contains("let handlePermission: @Sendable (Bool) -> Void"));
     assert!(source.contains("nonisolated func audioRecorderDidFinishRecording"));
     assert!(source.contains("Task { @MainActor [weak self] in"));

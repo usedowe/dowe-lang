@@ -229,9 +229,7 @@ pub fn side_nav_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::SideNav, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Ghost);
-    style.color.get_or_insert(ColorFamily::Muted);
+    let style = parse_variant_props(BuiltinComponent::SideNav, &style_props)?;
     Ok(ViewNode::SideNav {
         props: SideNavProps {
             style,
@@ -301,9 +299,7 @@ pub fn sidebar_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::Sidebar, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Ghost);
-    style.color.get_or_insert(ColorFamily::Muted);
+    let style = parse_variant_props(BuiltinComponent::Sidebar, &style_props)?;
     Ok(ViewNode::Sidebar {
         props: SidebarProps { style },
         header,
@@ -334,9 +330,7 @@ pub fn nav_menu_component_node(
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::NavMenu, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Ghost);
-    style.color.get_or_insert(ColorFamily::Muted);
+    let style = parse_variant_props(BuiltinComponent::NavMenu, &style_props)?;
     Ok(ViewNode::NavMenu {
         props: NavMenuProps {
             style,

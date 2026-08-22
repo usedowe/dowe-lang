@@ -80,7 +80,25 @@ fn render_compose_microphone(
     ));
 }
 
-fn render_compose_image(props: &ImageProps, indent: usize, output: &mut String) {
+fn compose_image_source(props: &ImageProps, context: &ComposeReactiveContext) -> String {
+    let Some(binding) = props.reactive_src.as_deref() else {
+        return compose_string_literal(&props.src);
+    };
+    let Some(path) = context.dynamic_path(binding) else {
+        return compose_string_literal(&props.src);
+    };
+    context
+        .item_value(binding)
+        .map(|item| format!("state.text(\"{}\", {item})", escape_kotlin(&path)))
+        .unwrap_or_else(|| format!("state.text(\"{}\")", escape_kotlin(&path)))
+}
+
+fn render_compose_image(
+    props: &ImageProps,
+    indent: usize,
+    output: &mut String,
+    context: &ComposeReactiveContext,
+) {
     let pad = " ".repeat(indent);
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
@@ -90,7 +108,7 @@ fn render_compose_image(props: &ImageProps, indent: usize, output: &mut String) 
     };
     output.push_str(&format!(
         "{pad}DoweImage(source = {}, alt = {}, aspect = {}, objectFit = {}, loading = {}, modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, borderColor = {border})\n",
-        compose_string_literal(&props.src),
+        compose_image_source(props, context),
         compose_string_literal(&props.alt),
         compose_string_literal(props.aspect.as_str()),
         compose_string_literal(props.object_fit.as_str()),

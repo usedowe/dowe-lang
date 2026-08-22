@@ -648,6 +648,9 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
     append_responsive_classes(classes, "min-h", props.sizing.min_h.as_ref(), size_suffix);
     append_responsive_classes(classes, "max-w", props.sizing.max_w.as_ref(), size_suffix);
     append_responsive_classes(classes, "max-h", props.sizing.max_h.as_ref(), size_suffix);
+    append_responsive_classes(classes, "flex", props.flex.as_ref(), |value| {
+        value.as_str().to_string()
+    });
     append_responsive_classes(classes, "rounded", props.rounded.as_ref(), |value| {
         value.as_str().to_string()
     });
@@ -746,7 +749,9 @@ fn size_suffix(value: &SizeValue) -> String {
     match value {
         SizeValue::Scale(value) => value.class_suffix(),
         SizeValue::Container(value) => value.as_str().to_string(),
+        SizeValue::Percent(value) => format!("pct-{value}"),
         SizeValue::Full => "full".to_string(),
+        SizeValue::Auto => "auto".to_string(),
         SizeValue::ViewportMinus(value) => format!("vh-{}", value.class_suffix()),
     }
 }
@@ -1084,7 +1089,13 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
             return render_field_block(props, None, None, &control, context);
         }
         return format!(
-            r#"<label class="field"><span class="field-label">{}</span>{}</label>"#,
+            r#"<label{}><span class="field-label">{}</span>{}</label>"#,
+            attrs(
+                vec!["field".to_string()],
+                Some(&props.element),
+                None,
+                context,
+            ),
             escape_html(props.label.as_deref().unwrap_or_default()),
             control
         );
@@ -1553,6 +1564,11 @@ fn attrs(
                     escape_attr(&comparison.value)
                 ));
             }
+            VisibilityCondition::StringEquality { path, value } => output.push_str(&format!(
+                r#" data-dowe-show="{}" data-dowe-show-equals="{}""#,
+                escape_attr(&context.signal_path(path)),
+                escape_attr(value)
+            )),
             VisibilityCondition::Static(_) => {}
         }
     }

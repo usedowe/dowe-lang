@@ -35,15 +35,15 @@ fn title_token(family: ColorFamily) -> &'static str {
 }
 
 fn soft_token(family: ColorFamily) -> &'static str {
-    family.soft_color_token().as_str()
+    family.color_token().as_str()
 }
 
 fn soft_text_token(family: ColorFamily) -> &'static str {
-    family.soft_text_token().as_str()
+    family.text_token().as_str()
 }
 
 fn soft_title_token(family: ColorFamily) -> &'static str {
-    family.soft_title_token().as_str()
+    family.title_token().as_str()
 }
 
 fn append_responsive_rule(css: &mut String, breakpoint: Breakpoint, class_name: &str, body: &str) {

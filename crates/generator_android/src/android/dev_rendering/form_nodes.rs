@@ -41,6 +41,7 @@ fn render_dev_android_form_node(
             counter,
             output,
             inherited_font,
+            inherited_color,
             context,
         ),
         ViewNode::ImageCropper { props } => render_dev_android_image_cropper(

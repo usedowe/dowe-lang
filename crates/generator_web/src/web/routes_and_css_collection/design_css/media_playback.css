@@ -170,7 +170,7 @@
 .device-toggle:hover,.device-toggle.is-active {
   border-color:var(--dowe-primary);
   color:var(--dowe-primary);
-  background:var(--dowe-soft-primary)
+  background:var(--dowe-muted)
 }
 .device-stage {
   width:100%;

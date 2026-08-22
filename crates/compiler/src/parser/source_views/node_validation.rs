@@ -28,6 +28,16 @@ fn validate_node_references(
                 ViewPathExpectation::Number,
             )?;
         }
+        if let Some(VisibilityCondition::StringEquality { path: show, .. }) = props.show.as_ref() {
+            validate_typed_path(
+                path,
+                signals,
+                locals,
+                show,
+                "show.when",
+                ViewPathExpectation::String,
+            )?;
+        }
         if let Some(binding) = props.bind.as_ref() {
             if signals.contains_key(path_root(binding))
                 && !writable_signals.contains(path_root(binding))
@@ -109,7 +119,7 @@ fn validate_node_references(
                     signal_path_value(path, signals, locals, binding, name)?
                 {
                     let allowed: &[&str] = match name {
-                        "variant" => &["solid", "soft", "outlined", "ghost"],
+                        "variant" => &["solid", "outlined", "ghost"],
                         "scheme" => &[
                             "primary",
                             "secondary",
@@ -183,12 +193,11 @@ fn validate_node_references(
                     signal_path_value(path, signals, locals, binding, name)?
                 {
                     let allowed: &[&str] = match name {
-                        "variant" => &["solid", "soft", "outlined", "ghost"],
+                        "variant" => &["solid", "outlined", "ghost"],
                         "scheme" => &[
                             "primary",
                             "secondary",
                             "tertiary",
-                            "muted",
                             "success",
                             "info",
                             "warning",

@@ -6,6 +6,10 @@ pub enum VisibilityCondition {
         path: String,
         comparison: ReactiveNumberComparison,
     },
+    StringEquality {
+        path: String,
+        value: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -9,7 +9,7 @@
   align-items:center;
   justify-content:space-between;
   width:100%;
-  min-height:2.5rem;
+  min-height:inherit;
   padding:0;
   border:0;
   background:transparent;
@@ -90,8 +90,8 @@
   line-height:1;
 }
 .date-picker-nav:hover {
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
 }
 .date-picker-nav:disabled {
   cursor:not-allowed;
@@ -104,8 +104,8 @@
   margin:.5rem 0 .25rem;
   padding:.25rem 0;
   border-radius:var(--dowe-radius);
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
 }
 .date-picker-weekdays .weekday {
   font-size:.6875rem;
@@ -135,8 +135,8 @@
   font-size:.8125rem;
 }
 .date-picker-day-button:hover {
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
 }
 .date-picker-day-button.today {
   font-weight:800;
@@ -148,8 +148,8 @@
 }
 .date-picker-day-button.is-in-range {
   border-radius:0;
-  background:var(--dowe-softPrimary);
-  color:var(--dowe-softPrimaryText);
+  background:var(--dowe-primary);
+  color:var(--dowe-primaryText);
 }
 .date-picker-day-button.is-start {
   border-start-end-radius:0;

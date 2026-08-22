@@ -1,85 +1,100 @@
 .control {
-  --dowe-component-display:flex;
-  --dowe-control-min-height:var(--dowe-form-control-min-md);
-  --dowe-control-height:var(--dowe-control-min-height);
-  --dowe-control-font-size:var(--dowe-form-control-text-md);
-  --dowe-control-line-height:var(--dowe-form-control-line-md);
-  position:relative;
-  display:var(--dowe-show,var(--dowe-component-display));
-  align-items:center;
-  width:100%;
-  height:var(--dowe-control-height);
-  min-height:var(--dowe-control-height);
-  gap:0.5rem;
-  border-radius:var(--dowe-radius);
-  font-size:var(--dowe-control-font-size);
-  line-height:var(--dowe-control-line-height);
+    --dowe-component-display: flex;
+    --dowe-control-min-height: var(--dowe-form-control-min-md);
+    --dowe-control-height: var(--dowe-control-min-height);
+    --dowe-control-font-size: var(--dowe-form-control-text-md);
+    --dowe-control-line-height: var(--dowe-form-control-line-md);
+    position: relative;
+    display: var(--dowe-show, var(--dowe-component-display));
+    align-items: center;
+    width: 100%;
+    height: var(--dowe-control-height);
+    min-height: var(--dowe-control-height);
+    gap: 0.5rem;
+    border-radius: var(--dowe-radius);
+    font-size: var(--dowe-control-font-size);
+    line-height: var(--dowe-control-line-height);
 }
 .control.is-sm {
-  --dowe-control-min-height:var(--dowe-form-control-min-sm);
-  --dowe-control-font-size:var(--dowe-form-control-text-sm);
-  --dowe-control-line-height:var(--dowe-form-control-line-sm);
+    --dowe-control-min-height: var(--dowe-form-control-min-sm);
+    --dowe-control-font-size: var(--dowe-form-control-text-sm);
+    --dowe-control-line-height: var(--dowe-form-control-line-sm);
 }
 .control.is-md {
-  --dowe-control-min-height:var(--dowe-form-control-min-md);
-  --dowe-control-font-size:var(--dowe-form-control-text-md);
-  --dowe-control-line-height:var(--dowe-form-control-line-md);
+    --dowe-control-min-height: var(--dowe-form-control-min-md);
+    --dowe-control-font-size: var(--dowe-form-control-text-md);
+    --dowe-control-line-height: var(--dowe-form-control-line-md);
 }
 .control.is-lg {
-  --dowe-control-min-height:var(--dowe-form-control-min-lg);
-  --dowe-control-font-size:var(--dowe-form-control-text-lg);
-  --dowe-control-line-height:var(--dowe-form-control-line-lg);
+    --dowe-control-min-height: var(--dowe-form-control-min-lg);
+    --dowe-control-font-size: var(--dowe-form-control-text-lg);
+    --dowe-control-line-height: var(--dowe-form-control-line-lg);
 }
 .control.is-floating {
-  --dowe-control-height:calc(var(--dowe-control-min-height) + var(--dowe-form-control-floating));
-  padding-top:var(--dowe-form-control-floating);
+    --dowe-control-height: calc(
+        var(--dowe-control-min-height) + var(--dowe-form-control-floating)
+    );
+    padding-top: var(--dowe-form-control-floating);
 }
 .control-label {
-  position:absolute;
-  left:var(--dowe-form-control-padding);
-  top:50%;
-  max-width:calc(100% - var(--dowe-form-control-padding-double));
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-  transform:translateY(-50%);
-  font-size:1em;
-  line-height:1;
-  pointer-events:none;
-  transition:top 160ms ease,transform 160ms ease,font-size 160ms ease;
+    color: inherit;
+    position: absolute;
+    left: var(--dowe-form-control-padding);
+    top: 50%;
+    max-width: calc(100% - var(--dowe-form-control-padding-double));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: translateY(-50%);
+    font-size: 1em;
+    line-height: 1;
+    pointer-events: none;
+    transition:
+        top 160ms ease,
+        transform 160ms ease,
+        font-size 160ms ease;
 }
-.control.is-floating:focus-within .control-label,.control.is-floating:has(.input:not(:placeholder-shown)) .control-label,.control.is-floating.has-value .control-label,.control.is-floating.is-open .control-label {
-  top:0.25rem;
-  transform:translateY(0);
-  font-size:0.75rem;
+.control.is-floating:focus-within .control-label,
+.control.is-floating:has(.input:not(:placeholder-shown)) .control-label,
+.control.is-floating.has-value .control-label,
+.control.is-floating.is-open .control-label {
+    top: 0.25rem;
+    transform: translateY(0);
+    font-size: 0.75rem;
 }
-.flex>.control,.flex>.field,.flex>.select {
-  flex:1 1 0;
-  min-width:0;
+.flex > .control,
+.flex > .field,
+.flex > .select {
+    flex: 1 1 0;
+    min-width: 0;
 }
-.control.is-floating.has-start-adornment:focus-within>.control-label,.control.is-floating.has-start-adornment:has(.input:not(:placeholder-shown))>.control-label,.control.is-floating.has-start-adornment.has-value>.control-label,.control.is-floating.has-start-adornment.is-open>.control-label {
-  left:var(--dowe-form-control-label-start);
-  max-width:calc(100% - var(--dowe-form-control-label-width));
+.control.is-floating.has-start-adornment:focus-within > .control-label,
+.control.is-floating.has-start-adornment:has(.input:not(:placeholder-shown))
+    > .control-label,
+.control.is-floating.has-start-adornment.has-value > .control-label,
+.control.is-floating.has-start-adornment.is-open > .control-label {
+    left: var(--dowe-form-control-label-start);
+    max-width: calc(100% - var(--dowe-form-control-label-width));
 }
 .input {
-  box-sizing:border-box;
-  flex:1;
-  width:100%;
-  min-width:0;
-  min-height:var(--dowe-control-min-height);
-  padding:0 var(--dowe-form-control-padding);
-  border:0;
-  background:transparent;
-  color:inherit;
-  font-family:inherit;
-  font-size:var(--dowe-control-font-size);
-  line-height:var(--dowe-control-line-height);
-  font-weight:400;
-  outline:0;
+    box-sizing: border-box;
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    min-height: var(--dowe-control-min-height);
+    padding: 0 var(--dowe-form-control-padding);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: var(--dowe-control-font-size);
+    line-height: var(--dowe-control-line-height);
+    font-weight: 400;
+    outline: 0;
 }
 .control.is-floating .input::placeholder {
-  opacity:0;
+    opacity: 0;
 }
 .control.is-floating:focus-within .input::placeholder {
-  opacity:1;
+    opacity: 1;
 }

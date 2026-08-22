@@ -531,7 +531,7 @@ fn parses_sidebar_as_regional_shell_surface() {
       Text
         "Workspace"
     body
-      SideNav variant:"ghost" scheme:"muted" size:"sm" wide:true
+      SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
         item label:"Home" href:"/"
         submenu label:"Content" open:true
           item label:"Blogs" href:"/blogs"

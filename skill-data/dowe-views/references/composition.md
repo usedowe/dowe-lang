@@ -534,6 +534,22 @@ fields need one structural stack, make the primary submit action full width only
 requires it, and keep legal or privacy copy with the form. Collapse the outer split Grid to one
 column on `xs` so the promise remains before the form.
 
+For a viewport-height split form, put `minH:"vh-0"` on the owning Section and `minH:"full"` on
+the direct split Grid. The generated Section body accounts for its responsive padding, so both
+panels can fill the usable inner height without a spacer or an extra sizing-only wrapper:
+
+```text
+Section minH:"vh-0"
+  Grid columns:{ xs:1 md:2 } minH:"full"
+    Box
+      Text
+        "Product promise"
+    Grid columns:1 minH:"full"
+      Input label:"Email"
+      Button
+        "Continue"
+```
+
 Use component-owned defaults first. When the default-first render proves an exception, use one
 `gap`, responsive direction, or `w`/`maxW` on the real owner for the missing rhythm or measure. The
 default Section body already provides responsive horizontal and vertical insets, so omit Section

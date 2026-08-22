@@ -2,7 +2,7 @@ fn variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_color(color)),
+        ComponentVariant::Soft => color_ref(family_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             "Color.clear"
         }
@@ -13,7 +13,7 @@ fn variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_text_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
+        ComponentVariant::Soft => color_ref(family_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             color_ref(family_color(color))
         }
@@ -24,7 +24,7 @@ fn variant_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_title_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_title_color(color)),
+        ComponentVariant::Soft => color_ref(family_title_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             color_ref(family_color(color))
         }
@@ -34,7 +34,7 @@ fn variant_title(props: &VariantProps) -> &'static str {
 fn scheme_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Soft => color_ref(family_soft_title_color(color)),
+        ComponentVariant::Soft => color_ref(family_title_color(color)),
         _ => color_ref(family_title_color(color)),
     }
 }
@@ -47,7 +47,7 @@ fn nav_active_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Ghost) {
         ComponentVariant::Solid => color_ref(family_text_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
+        ComponentVariant::Soft => color_ref(family_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
@@ -107,7 +107,7 @@ fn table_variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_color(color)),
+        ComponentVariant::Soft => color_ref(family_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             "Color.clear"
         }
@@ -118,7 +118,7 @@ fn table_variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_text_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
+        ComponentVariant::Soft => color_ref(family_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
@@ -132,7 +132,7 @@ fn table_variant_content(props: &VariantProps) -> &'static str {
 
 fn tabs_list_background(props: &TabsProps) -> &'static str {
     match props.variant {
-        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_color(props.color)),
+        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_color(props.color)),
         TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             "Color.clear"
         }
@@ -141,7 +141,7 @@ fn tabs_list_background(props: &TabsProps) -> &'static str {
 
 fn tabs_list_content(props: &TabsProps) -> &'static str {
     match props.variant {
-        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_text_color(props.color)),
+        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_text_color(props.color)),
         TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             color_ref(tabs_accent_token(props.color))
         }
@@ -188,7 +188,20 @@ fn tabs_accent_token(value: ColorFamily) -> ColorToken {
 }
 
 fn color_ref(value: ColorToken) -> &'static str {
-    intern_generated_color_name(format!("DoweDesign.{}", value.as_str()))
+    intern_generated_color_name(format!("DoweDesign.{}", swift_color_member(value)))
+}
+
+fn swift_color_member(value: ColorToken) -> &'static str {
+    let name = value.as_str();
+    match name.strip_prefix("soft") {
+        Some(suffix) if suffix.starts_with(|character: char| character.is_ascii_uppercase()) => {
+            let mut characters = suffix.chars();
+            let first = characters.next().expect("soft color role").to_ascii_lowercase();
+            let mapped: String = first.to_string() + characters.as_str();
+            Box::leak(mapped.into_boxed_str())
+        }
+        _ => name,
+    }
 }
 
 fn intern_generated_color_name(value: String) -> &'static str {
@@ -353,18 +366,6 @@ fn family_text_color(value: ColorFamily) -> ColorToken {
 
 fn family_title_color(value: ColorFamily) -> ColorToken {
     value.title_token()
-}
-
-fn family_soft_color(value: ColorFamily) -> ColorToken {
-    value.soft_color_token()
-}
-
-fn family_soft_text_color(value: ColorFamily) -> ColorToken {
-    value.soft_text_token()
-}
-
-fn family_soft_title_color(value: ColorFamily) -> ColorToken {
-    value.soft_title_token()
 }
 
 fn swift_view_name(route: &str) -> String {

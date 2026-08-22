@@ -23,7 +23,6 @@ fn compose_section_background_value(value: &ResponsiveValue<SectionBackground>) 
 
 fn compose_section_background_expr(value: &SectionBackground) -> String {
     match value {
-        SectionBackground::Soft => "DoweSectionBackground.Soft".to_string(),
         SectionBackground::Aurora => "DoweSectionBackground.Aurora".to_string(),
         SectionBackground::Sunrise => "DoweSectionBackground.Sunrise".to_string(),
         SectionBackground::Ocean => "DoweSectionBackground.Ocean".to_string(),

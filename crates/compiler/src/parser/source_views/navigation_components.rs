@@ -94,15 +94,15 @@ fn lower_sidebar_node(node: &SourceNode, allow_children: bool) -> DoweResult<Vie
     for child in &node.children {
         match child.name.as_str() {
             "header" if header.is_none() => {
-                header = Some(lower_region(child, "Sidebar header", allow_children)?)
+                header = Some(lower_styled_region(child, "Sidebar header", allow_children)?)
             }
             "header" => return Err(node_error(child, "duplicate `header` region in Sidebar")),
             "body" if body.is_none() => {
-                body = Some(lower_region(child, "Sidebar body", allow_children)?)
+                body = Some(lower_styled_region(child, "Sidebar body", allow_children)?)
             }
             "body" => return Err(node_error(child, "duplicate `body` region in Sidebar")),
             "footer" if footer.is_none() => {
-                footer = Some(lower_region(child, "Sidebar footer", allow_children)?)
+                footer = Some(lower_styled_region(child, "Sidebar footer", allow_children)?)
             }
             "footer" => return Err(node_error(child, "duplicate `footer` region in Sidebar")),
             _ => {

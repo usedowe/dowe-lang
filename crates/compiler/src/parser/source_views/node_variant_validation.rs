@@ -257,6 +257,18 @@ fn validate_node_variant_references(
             validate_optional_action(path, actions, props.on_stop.as_deref())?;
             validate_optional_action(path, actions, props.on_error.as_deref())?;
         }
+        ViewNode::Image { props } => {
+            if let Some(src) = props.reactive_src.as_deref() {
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    src,
+                    "src",
+                    ViewPathExpectation::String,
+                )?;
+            }
+        }
         ViewNode::ArcChart { props } => {
             validate_category_chart_common(path, signals, &props.common, "ArcChart")?;
         }
@@ -288,7 +300,25 @@ fn validate_node_variant_references(
                 }
             }
         }
-        ViewNode::NavMenu { items, .. } => {
+        ViewNode::NavMenu { props, items } => {
+            for (name, binding) in [
+                ("variant", props.style.reactive.variant.as_deref()),
+                ("scheme", props.style.reactive.scheme.as_deref()),
+            ] {
+                if let Some(binding) = binding {
+                    validate_typed_path(path, signals, locals, binding, name, ViewPathExpectation::String)?;
+                    if let Some(ViewSignalValue::String(value)) = signal_path_value(path, signals, locals, binding, name)? {
+                        let allowed: &[&str] = if name == "variant" {
+                            &["solid", "outlined", "ghost"]
+                        } else {
+                            &["primary", "secondary", "tertiary", "success", "info", "warning", "danger"]
+                        };
+                        if !allowed.contains(&value.as_str()) {
+                            return Err(DoweError::at_path(path, format!("invalid initial value `{value}` for reactive NavMenu prop `{name}`")));
+                        }
+                    }
+                }
+            }
             validate_nav_menu_actions(path, items, actions)?;
             for group in node_child_groups(node) {
                 for child in group {

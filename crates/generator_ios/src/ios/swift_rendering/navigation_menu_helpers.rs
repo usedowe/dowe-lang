@@ -11,8 +11,63 @@ fn render_swift_region_children(
         return;
     }
     for child in children {
-        render_swift_node_in_flow(
-            child,
+        if matches!(child, ViewNode::Box { props, .. } if region_box_has_style(props)) {
+            render_swift_region_box_direct(
+                child,
+                indent,
+                output,
+                inherited_font,
+                default_family,
+                context,
+            );
+        } else {
+            render_swift_node_in_flow(
+                child,
+                indent,
+                output,
+                NativeFlow::Block,
+                inherited_font,
+                default_family,
+                context,
+            );
+        }
+    }
+}
+
+fn region_box_has_style(props: &StyleProps) -> bool {
+    props.spacing.p.is_some()
+        || props.spacing.px.is_some()
+        || props.spacing.py.is_some()
+        || props.spacing.pl.is_some()
+        || props.spacing.pr.is_some()
+        || props.spacing.pt.is_some()
+        || props.spacing.pb.is_some()
+}
+
+fn render_swift_region_box_direct(
+    node: &ViewNode,
+    indent: usize,
+    output: &mut String,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &SwiftReactiveContext,
+) {
+    if let Some(show) = node_element_props(node).and_then(|props| props.show.as_ref()) {
+        let pad = " ".repeat(indent);
+        output.push_str(&format!("{pad}if {} {{\\n", swift_show_condition(show, context)));
+        render_swift_node_body(
+            node,
+            indent + 4,
+            output,
+            NativeFlow::Block,
+            inherited_font,
+            default_family,
+            context,
+        );
+        output.push_str(&format!("{pad}}}\\n"));
+    } else {
+        render_swift_node_body(
+            node,
             indent,
             output,
             NativeFlow::Block,
@@ -176,6 +231,9 @@ fn swift_show_condition(show: &VisibilityCondition, context: &SwiftReactiveConte
                 )
             }
         }
+        VisibilityCondition::StringEquality { path, value } => {
+            format!("state.text(\"{}\") == \"{}\"", escape_swift(&context.signal_path(path)), escape_swift(value))
+        }
         VisibilityCondition::NumberComparison { path, comparison } => {
             let value = if let Some(item) = context.item_value(path) {
                 let path = context.item_path(path).unwrap_or_else(|| path.to_string());
@@ -204,6 +262,14 @@ struct SwiftBarOptions {
     boxed_regions: bool,
 }
 
+fn swift_nav_menu_metrics(size: SideNavSize) -> (u16, u16, u16, u16, u16) {
+    match size {
+        SideNavSize::Sm => (8, 6, 8, 12, 10),
+        SideNavSize::Md => (12, 8, 10, 14, 12),
+        SideNavSize::Lg => (12, 8, 12, 16, 14),
+    }
+}
+
 fn render_swift_nav_menu(
     props: &NavMenuProps,
     items: &[NavMenuItem],
@@ -217,9 +283,9 @@ fn render_swift_nav_menu(
     let pad = " ".repeat(indent);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
-        swift_side_nav_metrics(props.size);
+        swift_nav_menu_metrics(props.size);
     let border =
-        if props.style.variant.unwrap_or(ComponentVariant::Ghost) == ComponentVariant::Outlined {
+        if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             format!("Optional({})", variant_content(&props.style))
         } else {
             "nil".to_string()

@@ -108,12 +108,12 @@
   cursor:pointer;
 }
 .select-option:hover,.select-option.is-focused {
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
 }
 .select-option.is-selected {
-  background:var(--dowe-softPrimary);
-  color:var(--dowe-softPrimaryText);
+  background:var(--dowe-primary);
+  color:var(--dowe-primaryText);
 }
 .select-option-label {
   font-weight:500;

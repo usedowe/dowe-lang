@@ -231,17 +231,14 @@ fn render_swift_sidebar(
         output.push_str(&format!(
             "{pad}    VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
         ));
-        for child in header {
-            render_swift_node_in_flow(
-                child,
-                indent + 8,
-                output,
-                NativeFlow::Block,
-                current_font,
-                default_family,
-                context,
-            );
-        }
+        render_swift_region_children(
+            header,
+            indent + 8,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
         output.push_str(&format!("{pad}    }}\n"));
         output.push_str(&format!(
             "{pad}    .frame(maxWidth: .infinity, alignment: .topLeading)\n"
@@ -254,17 +251,14 @@ fn render_swift_sidebar(
     output.push_str(&format!(
         "{pad}    ScrollView {{\n{pad}        VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
     ));
-    for child in body {
-        render_swift_node_in_flow(
-            child,
-            indent + 12,
-            output,
-            NativeFlow::Block,
-            current_font,
-            default_family,
-            context,
-        );
-    }
+    render_swift_region_children(
+        body,
+        indent + 12,
+        output,
+        current_font,
+        default_family,
+        context,
+    );
     output.push_str(&format!(
         "{pad}        }}\n{pad}        .frame(maxWidth: .infinity, alignment: .topLeading)\n{pad}    }}\n{pad}    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n"
     ));
@@ -272,17 +266,14 @@ fn render_swift_sidebar(
         output.push_str(&format!(
             "{pad}    VStack(alignment: .leading, spacing: CGFloat(0)) {{\n"
         ));
-        for child in footer {
-            render_swift_node_in_flow(
-                child,
-                indent + 8,
-                output,
-                NativeFlow::Block,
-                current_font,
-                default_family,
-                context,
-            );
-        }
+        render_swift_region_children(
+            footer,
+            indent + 8,
+            output,
+            current_font,
+            default_family,
+            context,
+        );
         output.push_str(&format!("{pad}    }}\n"));
         output.push_str(&format!(
             "{pad}    .frame(maxWidth: .infinity, alignment: .topLeading)\n"
@@ -448,13 +439,13 @@ fn render_swift_side_nav_data(
         .reactive
         .variant
         .as_ref()
-        .map(|path| reactive_text(path, "ghost"));
+        .map(|path| reactive_text(path, "solid"));
     let scheme = props
         .style
         .reactive
         .scheme
         .as_ref()
-        .map(|path| reactive_text(path, "muted"));
+        .map(|path| reactive_text(path, "primary"));
     let size = props
         .style
         .reactive
@@ -485,16 +476,16 @@ fn render_swift_side_nav_data(
         (None, None) => variant_container(&props.style).to_string(),
         _ => format!(
             "doweButtonContainer({}, {})",
-            variant.as_deref().unwrap_or("\"ghost\""),
-            scheme.as_deref().unwrap_or("\"muted\"")
+            variant.as_deref().unwrap_or("\"solid\""),
+            scheme.as_deref().unwrap_or("\"primary\"")
         ),
     };
     let content = match (&variant, &scheme) {
         (None, None) => variant_content(&props.style).to_string(),
         _ => format!(
             "doweButtonContent({}, {})",
-            variant.as_deref().unwrap_or("\"ghost\""),
-            scheme.as_deref().unwrap_or("\"muted\"")
+            variant.as_deref().unwrap_or("\"solid\""),
+            scheme.as_deref().unwrap_or("\"primary\"")
         ),
     };
     let active_content = content.clone();
@@ -502,7 +493,13 @@ fn render_swift_side_nav_data(
         (None, None) => side_nav_header_content(&props.style).to_string(),
         _ => format!(
             "doweSideNavHeaderColor({})",
-            scheme.as_deref().unwrap_or("\"muted\"")
+            props
+                .style
+                .reactive
+                .scheme
+                .as_ref()
+                .map(|path| reactive_text(path, "muted"))
+                .unwrap_or_else(|| "\"muted\"".to_string())
         ),
     };
     let border = if let Some(variant) = variant.as_ref() {

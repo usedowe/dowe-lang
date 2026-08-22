@@ -1,5 +1,7 @@
 fn dev_java_reactive_runtime() -> &'static str {
-    r#"    private static final class DoweSvgImportMatrix {
+    r#"    private static final int DOWE_DISABLED_PATH_TAG = 0x7f0d0001;
+
+    private static final class DoweSvgImportMatrix {
         private final double a;
         private final double b;
         private final double c;
@@ -570,14 +572,14 @@ fn dev_java_reactive_runtime() -> &'static str {
     private int doweButtonSoftTitleFamily(String scheme) {
         if ("background".equals(scheme)) return DOWE_BACKGROUND_TITLE;
         if ("surface".equals(scheme)) return DOWE_SURFACE_TITLE;
-        if ("secondary".equals(scheme)) return DOWE_SOFT_SECONDARY_TITLE;
-        if ("tertiary".equals(scheme)) return DOWE_SOFT_TERTIARY_TITLE;
-        if ("muted".equals(scheme)) return DOWE_SOFT_MUTED_TITLE;
-        if ("success".equals(scheme)) return DOWE_SOFT_SUCCESS_TITLE;
-        if ("info".equals(scheme)) return DOWE_SOFT_INFO_TITLE;
-        if ("warning".equals(scheme)) return DOWE_SOFT_WARNING_TITLE;
-        if ("danger".equals(scheme)) return DOWE_SOFT_DANGER_TITLE;
-        return DOWE_SOFT_PRIMARY_TITLE;
+        if ("secondary".equals(scheme)) return DOWE_SECONDARY_TITLE;
+        if ("tertiary".equals(scheme)) return DOWE_TERTIARY_TITLE;
+        if ("muted".equals(scheme)) return DOWE_MUTED_TITLE;
+        if ("success".equals(scheme)) return DOWE_SUCCESS_TITLE;
+        if ("info".equals(scheme)) return DOWE_INFO_TITLE;
+        if ("warning".equals(scheme)) return DOWE_WARNING_TITLE;
+        if ("danger".equals(scheme)) return DOWE_DANGER_TITLE;
+        return DOWE_PRIMARY_TITLE;
     }
 
     private int doweSideNavHeaderColor(String scheme) {
@@ -772,6 +774,7 @@ fn dev_java_reactive_runtime() -> &'static str {
         if (parts.length == 1) {
             doweState.put(parts[0], doweCopy(value));
             dowePersistRoot(parts[0]);
+            doweRefreshReactiveControls();
             return;
         }
         HashMap<String, Object> object = new HashMap<>();
@@ -784,6 +787,27 @@ fn dev_java_reactive_runtime() -> &'static str {
         object.put(parts[1], value);
         doweState.put(parts[0], object);
         dowePersistRoot(parts[0]);
+        doweRefreshReactiveControls();
+    }
+
+    private void doweRefreshReactiveControls() {
+        if (root == null) return;
+        doweRefreshReactiveControls(root);
+    }
+
+    private void doweRefreshReactiveControls(View view) {
+        Object disabledPath = view.getTag(DOWE_DISABLED_PATH_TAG);
+        if (disabledPath instanceof String) {
+            boolean disabled = doweBool((String) disabledPath, null);
+            view.setEnabled(!disabled);
+            view.setAlpha(disabled ? 0.5f : 1f);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                doweRefreshReactiveControls(group.getChildAt(index));
+            }
+        }
     }
 
     private Object doweStdlib(DoweAction action, Map<String, Object> item) {
@@ -1216,27 +1240,27 @@ fn dev_java_reactive_runtime() -> &'static str {
     private int doweToastSoftFamily(String scheme) {
         if ("background".equals(scheme)) return DOWE_BACKGROUND;
         if ("surface".equals(scheme)) return DOWE_SURFACE;
-        if ("secondary".equals(scheme)) return DOWE_SOFT_SECONDARY;
-        if ("tertiary".equals(scheme)) return DOWE_SOFT_TERTIARY;
-        if ("muted".equals(scheme)) return DOWE_SOFT_MUTED;
-        if ("success".equals(scheme)) return DOWE_SOFT_SUCCESS;
-        if ("info".equals(scheme)) return DOWE_SOFT_INFO;
-        if ("warning".equals(scheme)) return DOWE_SOFT_WARNING;
-        if ("danger".equals(scheme)) return DOWE_SOFT_DANGER;
-        return DOWE_SOFT_PRIMARY;
+        if ("secondary".equals(scheme)) return DOWE_SECONDARY;
+        if ("tertiary".equals(scheme)) return DOWE_TERTIARY;
+        if ("muted".equals(scheme)) return DOWE_MUTED;
+        if ("success".equals(scheme)) return DOWE_SUCCESS;
+        if ("info".equals(scheme)) return DOWE_INFO;
+        if ("warning".equals(scheme)) return DOWE_WARNING;
+        if ("danger".equals(scheme)) return DOWE_DANGER;
+        return DOWE_PRIMARY;
     }
 
     private int doweToastSoftTextFamily(String scheme) {
         if ("background".equals(scheme)) return DOWE_BACKGROUND_TEXT;
         if ("surface".equals(scheme)) return DOWE_SURFACE_TEXT;
-        if ("secondary".equals(scheme)) return DOWE_SOFT_SECONDARY_TEXT;
-        if ("tertiary".equals(scheme)) return DOWE_SOFT_TERTIARY_TEXT;
-        if ("muted".equals(scheme)) return DOWE_SOFT_MUTED_TEXT;
-        if ("success".equals(scheme)) return DOWE_SOFT_SUCCESS_TEXT;
-        if ("info".equals(scheme)) return DOWE_SOFT_INFO_TEXT;
-        if ("warning".equals(scheme)) return DOWE_SOFT_WARNING_TEXT;
-        if ("danger".equals(scheme)) return DOWE_SOFT_DANGER_TEXT;
-        return DOWE_SOFT_PRIMARY_TEXT;
+        if ("secondary".equals(scheme)) return DOWE_SECONDARY_TEXT;
+        if ("tertiary".equals(scheme)) return DOWE_TERTIARY_TEXT;
+        if ("muted".equals(scheme)) return DOWE_MUTED_TEXT;
+        if ("success".equals(scheme)) return DOWE_SUCCESS_TEXT;
+        if ("info".equals(scheme)) return DOWE_INFO_TEXT;
+        if ("warning".equals(scheme)) return DOWE_WARNING_TEXT;
+        if ("danger".equals(scheme)) return DOWE_DANGER_TEXT;
+        return DOWE_PRIMARY_TEXT;
     }
 
     private void doweShowToast(DoweStep step) {
@@ -1255,14 +1279,14 @@ fn dev_java_reactive_runtime() -> &'static str {
         message.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         doweAdd(panel, message);
         FrameLayout close = new FrameLayout(this);
-        close.setBackground(doweBackground(DOWE_SOFT_MUTED, 999f));
+        close.setBackground(doweBackground(DOWE_MUTED, 999f));
         close.setContentDescription("Close toast");
         close.setFocusable(true);
         close.setLayoutParams(new LinearLayout.LayoutParams(doweDp(28), doweDp(28), 0f));
         ArrayList<DoweSvgPathEntry> paths = new ArrayList<>();
         paths.add(new DoweSvgPathEntry("M0 0h24v24H0z", false, null));
         paths.add(new DoweSvgPathEntry("m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073l.084.073L12 10.939l6.47-6.47a.75.75 0 1 1 1.06 1.061L13.061 12l6.47 6.47a.75.75 0 0 1 .072.976l-.073.084a.75.75 0 0 1-.976.073l-.084-.073L12 13.061l-6.47 6.47a.75.75 0 0 1-1.06-1.061L10.939 12l-6.47-6.47a.75.75 0 0 1-.072-.976l.073-.084z", true, null));
-        DoweSvgView icon = new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_SOFT_MUTED_TEXT, paths);
+        DoweSvgView icon = new DoweSvgView(this, 0f, 0f, 24f, 24f, DOWE_MUTED_TEXT, paths);
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         close.addView(icon, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));
         LinearLayout.LayoutParams closeParams = (LinearLayout.LayoutParams) close.getLayoutParams();

@@ -118,7 +118,7 @@
   position:absolute;
   inset:0;
   overflow:hidden;
-  background:linear-gradient(135deg,color-mix(in srgb,currentColor 10%,transparent),transparent 42%),var(--dowe-softMuted);
+  background:linear-gradient(135deg,color-mix(in srgb,currentColor 10%,transparent),transparent 42%),var(--dowe-muted);
 }
 .map-grid {
   position:absolute;

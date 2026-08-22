@@ -126,7 +126,7 @@ fn parse_toast_statement(node: &SourceNode) -> DoweResult<ViewToastAction> {
             _ => {
                 return Err(node_error(
                     node,
-                    "`toast variant` must be solid, soft, outlined, or ghost",
+                    "`toast variant` must be solid, outlined, or ghost",
                 ));
             }
         },

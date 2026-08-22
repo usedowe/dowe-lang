@@ -105,5 +105,9 @@ public class DoweDevActivity extends ContextThemeWrapper {
     private static final int DOWE_ALIGN_BASELINE = 4;
     private static final int DOWE_DIRECTION_ROW = 0;
     private static final int DOWE_DIRECTION_COLUMN = 1;
+    private static final int DOWE_FLEX_INITIAL = 0;
+    private static final int DOWE_FLEX_AUTO = 1;
+    private static final int DOWE_FLEX_NONE = 2;
+    private static final int DOWE_FLEX_FILL = 3;
 "#
 }

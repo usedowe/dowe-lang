@@ -16,10 +16,10 @@ fn dev_activity_drawables_media() -> &'static str {
     };
     private final ConcurrentHashMap<String, Object> doweImageLoadLocks = new ConcurrentHashMap<>();
 
-    private DoweGridLayout doweGrid(Integer columns, Integer rowGap, Integer columnGap) {
+    private DoweGridLayout doweGrid(float[] tracks, Integer rowGap, Integer columnGap) {
         DoweGridLayout view = new DoweGridLayout(
             this,
-            columns == null ? 1 : columns,
+            tracks == null ? new float[]{1f} : tracks,
             doweDp(rowGap == null ? 0 : rowGap),
             doweDp(columnGap == null ? 0 : columnGap)
         );
@@ -119,15 +119,15 @@ fn dev_activity_drawables_media() -> &'static str {
     private GradientDrawable doweSectionBackground(String value) {
         int[] colors;
         if ("aurora".equals(value)) {
-            colors = new int[] { DOWE_SOFT_PRIMARY, DOWE_SOFT_SECONDARY, DOWE_SOFT_TERTIARY };
+            colors = new int[] { DOWE_PRIMARY, DOWE_SECONDARY, DOWE_TERTIARY };
         } else if ("sunrise".equals(value)) {
-            colors = new int[] { DOWE_SOFT_WARNING, DOWE_SOFT_DANGER, DOWE_SURFACE };
+            colors = new int[] { DOWE_WARNING, DOWE_DANGER, DOWE_SURFACE };
         } else if ("ocean".equals(value)) {
-            colors = new int[] { DOWE_SOFT_INFO, DOWE_SOFT_PRIMARY, DOWE_SOFT_TERTIARY };
+            colors = new int[] { DOWE_INFO, DOWE_PRIMARY, DOWE_TERTIARY };
         } else if ("meadow".equals(value)) {
-            colors = new int[] { DOWE_SOFT_SUCCESS, DOWE_SOFT_TERTIARY, DOWE_SURFACE };
+            colors = new int[] { DOWE_SUCCESS, DOWE_TERTIARY, DOWE_SURFACE };
         } else if ("slate".equals(value)) {
-            colors = new int[] { DOWE_SOFT_MUTED, DOWE_SURFACE, DOWE_BACKGROUND };
+            colors = new int[] { DOWE_MUTED, DOWE_SURFACE, DOWE_BACKGROUND };
         } else {
             colors = new int[] { DOWE_SURFACE, DOWE_BACKGROUND };
         }
@@ -821,7 +821,7 @@ fn dev_activity_drawables_media() -> &'static str {
     }
 
     private GradientDrawable doweDeviceIconButtonBackground(boolean selected) {
-        return doweInputBackground(selected ? DOWE_SOFT_PRIMARY : DOWE_BACKGROUND, selected ? DOWE_PRIMARY : DOWE_BACKGROUND_TEXT, DOWE_RADIUS);
+        return doweInputBackground(selected ? DOWE_PRIMARY : DOWE_BACKGROUND, selected ? DOWE_PRIMARY : DOWE_BACKGROUND_TEXT, DOWE_RADIUS);
     }
 
     private void doweSetDeviceProfile(FrameLayout stage, FrameLayout preview, String profile, DoweDeviceOption[] options, FrameLayout[] buttons) {
@@ -902,6 +902,9 @@ fn dev_activity_drawables_media() -> &'static str {
     }
 
     private float doweImageAspect(String value) {
+        if ("auto".equals(value)) {
+            return 0f;
+        }
         if (value != null) {
             try { return Math.max(0.01f, Float.parseFloat(value)); } catch (NumberFormatException ignored) {}
         }
@@ -924,6 +927,10 @@ fn dev_activity_drawables_media() -> &'static str {
 
         @Override
         protected void onMeasure(int widthSpec, int heightSpec) {
+            if (aspect <= 0) {
+                super.onMeasure(widthSpec, heightSpec);
+                return;
+            }
             int width = MeasureSpec.getSize(widthSpec);
             int height = Math.round(width / aspect);
             super.onMeasure(widthSpec, MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));

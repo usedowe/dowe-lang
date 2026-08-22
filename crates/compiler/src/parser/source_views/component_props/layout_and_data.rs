@@ -5,11 +5,14 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                     name,
                     "bg"
                         | "color"
+                        | "centerX"
+                        | "centerY"
                         | "cover"
                         | "overlay"
                         | "animation"
                         | "colSpan"
                         | "rowSpan"
+                        | "flex"
                         | "position"
                         | "top"
                         | "right"
@@ -23,7 +26,8 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                     name,
                     "bg" | "color"
                         | "background"
-                        | "center"
+                        | "centerX"
+                        | "centerY"
                         | "gap"
                         | "boxed"
                         | "cover"
@@ -34,11 +38,12 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                         | "borderColor"
                         | "colSpan"
                         | "rowSpan"
+                        | "flex"
                 )
             }
-            BuiltinComponent::Flex => matches!(name, "justify" | "align" | "gap"),
+            BuiltinComponent::Flex => matches!(name, "justify" | "align" | "gap" | "flex"),
             BuiltinComponent::Grid => {
-                matches!(name, "columns" | "rows" | "justify" | "align" | "gap")
+                matches!(name, "columns" | "rows" | "justify" | "align" | "gap" | "flex")
             }
             BuiltinComponent::Input | BuiltinComponent::Select => {
                 matches!(

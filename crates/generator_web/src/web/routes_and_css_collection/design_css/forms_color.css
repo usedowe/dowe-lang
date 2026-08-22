@@ -194,8 +194,8 @@
 .color-picker-value-code {
   display:block;
   border-radius:var(--dowe-radius);
-  background:var(--dowe-softMuted);
-  color:var(--dowe-softMutedText);
+  background:var(--dowe-muted);
+  color:var(--dowe-mutedText);
   padding:.375rem .5rem;
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:.75rem;

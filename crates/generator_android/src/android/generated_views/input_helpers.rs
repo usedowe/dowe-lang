@@ -58,7 +58,7 @@ private fun DoweInput(value: String, onValueChange: (String) -> Unit, modifier: 
     val validationError = errorText ?: if (touched) doweValidationError(value, validationRules) else null
     val resolvedBorderColor = if (validationError != null) DoweDesign.danger else borderColor
     val surface = modifier
-        .heightIn(min = minHeight)
+        .height(minHeight)
         .clip(shape)
         .background(backgroundColor)
         .then(if (resolvedBorderColor == null) Modifier else Modifier.border(1.dp, resolvedBorderColor, shape))
@@ -130,7 +130,7 @@ private fun DoweSelect(value: String, onValueChange: (String) -> Unit, bound: Bo
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = minHeight)
+                    .height(minHeight)
                     .clip(shape)
                     .background(backgroundColor)
                     .then(if (resolvedBorderColor == null) Modifier else Modifier.border(1.dp, resolvedBorderColor, shape))
@@ -386,7 +386,7 @@ private fun doweCropBitmap(bitmap: android.graphics.Bitmap, aspect: Float, zoom:
 }
 
 @Composable
-private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, bound: Boolean, initialValue: String, label: String?, placeholder: String, alt: String, accept: String, aspectRatio: String?, minWidth: Int, minHeight: Int, maxWidth: Int?, maxHeight: Int?, shape: String, size: String, disabled: Boolean, helpText: String?, errorText: String?, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, bound: Boolean, initialValue: String, label: String?, placeholder: String, alt: String, accept: String, aspectRatio: String?, minWidth: Int, minHeight: Int, maxImageWidth: Int?, maxImageHeight: Int?, shape: String, cropSize: String, disabled: Boolean, helpText: String?, errorText: String?, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
     val context = LocalContext.current
     var localValue by remember { mutableStateOf(initialValue) }
     val appliedValue = if (bound && value.isNotEmpty()) value else if (bound && value.isEmpty() && localValue == initialValue && initialValue.isNotEmpty()) initialValue else if (bound) value else localValue
@@ -436,7 +436,7 @@ private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, bou
     val frameShape = if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(18.dp)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (label != null) Text(label, fontWeight = FontWeight.SemiBold, color = contentColor)
-        Box(modifier = Modifier.size(doweImageCropperSize(size)).clip(frameShape).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.2f), frameShape).clickable(enabled = !disabled) { if (appliedBitmap == null) picker.launch(doweDropzoneMimeTypes(accept)) else openExisting() }, contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(doweImageCropperSize(cropSize)).clip(frameShape).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.2f), frameShape).clickable(enabled = !disabled) { if (appliedBitmap == null) picker.launch(doweDropzoneMimeTypes(accept)) else openExisting() }, contentAlignment = Alignment.Center) {
             if (appliedBitmap != null) Image(bitmap = appliedBitmap!!.asImageBitmap(), contentDescription = alt, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop) else Text(placeholder, color = contentColor, fontWeight = FontWeight.Bold)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -459,7 +459,7 @@ private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, bou
                     val frameHeight = minOf(maxHeight, maxWidth / aspect)
                     Box(modifier = Modifier.width(frameWidth).height(frameHeight).clip(if (shape == "circle") RoundedCornerShape(999.dp) else RoundedCornerShape(0.dp)).pointerInput(Unit) { detectTransformGestures { _, pan, zoomChange, _ -> offset += pan; zoom = (zoom * zoomChange).coerceIn(1f, 3f) } }) {
                         Image(bitmap = draftBitmap!!.asImageBitmap(), contentDescription = alt, modifier = Modifier.fillMaxSize().graphicsLayer { scaleX = zoom; scaleY = zoom; translationX = offset.x; translationY = offset.y }, contentScale = ContentScale.Crop)
-                        Canvas(modifier = Modifier.fillMaxSize()) { drawLine(Color.White.copy(alpha = 0.65f), Offset(size.width / 3f, 0f), Offset(size.width / 3f, size.height)); drawLine(Color.White.copy(alpha = 0.65f), Offset(size.width * 2f / 3f, 0f), Offset(size.width * 2f / 3f, size.height)); drawLine(Color.White.copy(alpha = 0.65f), Offset(0f, size.height / 3f), Offset(size.width, size.height / 3f)); drawLine(Color.White.copy(alpha = 0.65f), Offset(0f, size.height * 2f / 3f), Offset(size.width, size.height * 2f / 3f)) }
+                        Canvas(modifier = Modifier.fillMaxSize()) { val canvasSize = size; drawLine(Color.White.copy(alpha = 0.65f), Offset(canvasSize.width / 3f, 0f), Offset(canvasSize.width / 3f, canvasSize.height)); drawLine(Color.White.copy(alpha = 0.65f), Offset(canvasSize.width * 2f / 3f, 0f), Offset(canvasSize.width * 2f / 3f, canvasSize.height)); drawLine(Color.White.copy(alpha = 0.65f), Offset(0f, canvasSize.height / 3f), Offset(canvasSize.width, canvasSize.height / 3f)); drawLine(Color.White.copy(alpha = 0.65f), Offset(0f, canvasSize.height * 2f / 3f), Offset(canvasSize.width, canvasSize.height * 2f / 3f)) }
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -471,7 +471,7 @@ private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, bou
                     Spacer(modifier = Modifier.weight(1f))
                     TextButton(onClick = { cropDialog = false }) { Text("Cancel", color = contentColor) }
                     Button(onClick = {
-                        val result = doweCropBitmap(draftBitmap!!, aspect, zoom, offset, minWidth, minHeight, maxWidth, maxHeight)
+                        val result = doweCropBitmap(draftBitmap!!, aspect, zoom, offset, minWidth, minHeight, maxImageWidth, maxImageHeight)
                         if (result == null) cropError = "Image must be at least $minWidth × $minHeight pixels." else {
                             val next = doweBitmapDataUrl(result, draftMime)
                             localValue = next
@@ -488,16 +488,20 @@ private fun DoweImageCropper(value: String, onValueChange: (String) -> Unit, bou
 }
 
 @Composable
-private fun DowePassword(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, minHeight: Dp, fontSize: TextUnit, lineHeight: TextUnit, hideStrength: Boolean, weakLabel: String, mediumLabel: String, strongLabel: String, readOnly: Boolean, showIcon: @Composable () -> Unit, hideIcon: @Composable () -> Unit, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+private fun DowePassword(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, floating: Boolean, fontFamily: FontFamily, minHeight: Dp, fontSize: TextUnit, lineHeight: TextUnit, hideStrength: Boolean, weakLabel: String, mediumLabel: String, strongLabel: String, readOnly: Boolean, showIcon: @Composable () -> Unit, hideIcon: @Composable () -> Unit, modifier: Modifier, backgroundColor: Color, contentColor: Color, helpText: String? = null, errorText: String? = null, validationRules: List<DoweValidationRule> = emptyList()) {
     var visible by remember { mutableStateOf(false) }
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        DoweInput(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth(), label = label, placeholder = placeholder, floating = floating, fontFamily = FontFamily.Default, fontSize = fontSize, lineHeight = lineHeight, minHeight = minHeight, horizontalPadding = 12.dp, shape = RoundedCornerShape(12.dp), backgroundColor = backgroundColor, contentColor = contentColor, borderColor = contentColor.copy(alpha = 0.22f), endIcon = { Box(modifier = Modifier.size(32.dp).semantics { contentDescription = if (visible) "Hide password" else "Show password" }.clickable(enabled = !readOnly) { visible = !visible }, contentAlignment = Alignment.Center) { if (visible) hideIcon() else showIcon() } }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+    var hadFocus by remember { mutableStateOf(false) }
+    var touched by remember { mutableStateOf(false) }
+    val validationError = errorText ?: if (touched) doweValidationError(value, validationRules) else null
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        DoweInput(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth().onFocusChanged { state -> if (state.isFocused) hadFocus = true else if (hadFocus) touched = true }, label = label, placeholder = placeholder, floating = floating, fontFamily = fontFamily, fontSize = fontSize, lineHeight = lineHeight, minHeight = minHeight, horizontalPadding = 12.dp, shape = RoundedCornerShape(12.dp), backgroundColor = backgroundColor, contentColor = contentColor, borderColor = if (validationError != null) DoweDesign.danger else contentColor.copy(alpha = 0.22f), endIcon = { Box(modifier = Modifier.size(32.dp).semantics { contentDescription = if (visible) "Hide password" else "Show password" }.clickable(enabled = !readOnly) { visible = !visible }, contentAlignment = Alignment.Center) { if (visible) hideIcon() else showIcon() } }, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
         if (!hideStrength) {
             val score = listOf(value.length >= 8, value.length >= 12, value.any { it.isDigit() }, value.any { it.isUpperCase() }, value.any { it.isLowerCase() }, value.any { !it.isLetterOrDigit() }).count { it }
             val strengthColor = if (score <= 2) DoweDesign.danger else if (score <= 4) DoweDesign.warning else DoweDesign.success
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) { repeat(6) { index -> Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(999.dp)).background(if (index < score) strengthColor else contentColor.copy(alpha = 0.18f))) } }
             if (score > 0) Text(if (score <= 2) weakLabel else if (score <= 4) mediumLabel else strongLabel, fontSize = 12.sp, color = strengthColor)
         }
+        DoweValidationFeedback(helpText, validationError, contentColor)
     }
 }
 
@@ -681,23 +685,51 @@ private fun Modifier.dowePadding(all: Dp?, horizontal: Dp?, vertical: Dp?, start
 private fun Modifier.doweWidth(value: DoweSize?): Modifier =
     when (value) {
         is DoweSize.Fixed -> width(value.value)
+        is DoweSize.Percent -> fillMaxWidth(value.fraction)
         is DoweSize.ViewportMinus -> width((LocalConfiguration.current.screenWidthDp.dp - value.inset).coerceAtLeast(0.dp))
         DoweSize.Full -> fillMaxWidth()
+        DoweSize.Auto -> this
         null -> this
     }
+
+@Composable
+private fun doweViewportHeight(inset: Dp): Dp {
+    return (LocalConfiguration.current.screenHeightDp.dp - inset).coerceAtLeast(0.dp)
+}
 
 @Composable
 private fun Modifier.doweHeight(value: DoweSize?): Modifier =
     when (value) {
         is DoweSize.Fixed -> height(value.value)
-        is DoweSize.ViewportMinus -> height((LocalConfiguration.current.screenHeightDp.dp - value.inset).coerceAtLeast(0.dp))
+        is DoweSize.Percent -> this
+        is DoweSize.ViewportMinus -> height(doweViewportHeight(value.inset))
         DoweSize.Full -> fillMaxHeight()
+        DoweSize.Auto -> this
         null -> this
+    }
+
+private fun Modifier.doweMinWidthFraction(fraction: Float): Modifier =
+    layout { measurable, constraints ->
+        if (!constraints.hasBoundedWidth) {
+            val placeable = measurable.measure(constraints)
+            layout(placeable.width, placeable.height) {
+                placeable.placeRelative(0, 0)
+            }
+        } else {
+            val minimumWidth = (constraints.maxWidth * fraction)
+                .toInt()
+                .coerceIn(constraints.minWidth, constraints.maxWidth)
+            val placeable = measurable.measure(constraints.copy(minWidth = minimumWidth))
+            layout(placeable.width, placeable.height) {
+                placeable.placeRelative(0, 0)
+            }
+        }
     }
 
 private fun Modifier.doweMinWidth(value: DoweSize?): Modifier =
     when (value) {
         is DoweSize.Fixed -> widthIn(min = value.value)
+        is DoweSize.Percent -> doweMinWidthFraction(value.fraction)
         else -> this
     }
 
@@ -705,7 +737,8 @@ private fun Modifier.doweMinWidth(value: DoweSize?): Modifier =
 private fun Modifier.doweMinHeight(value: DoweSize?): Modifier =
     when (value) {
         is DoweSize.Fixed -> heightIn(min = value.value)
-        is DoweSize.ViewportMinus -> heightIn(min = (LocalConfiguration.current.screenHeightDp.dp - value.inset).coerceAtLeast(0.dp))
+        is DoweSize.ViewportMinus -> heightIn(min = doweViewportHeight(value.inset))
+        DoweSize.Full -> fillMaxHeight()
         else -> this
     }
 
@@ -721,8 +754,22 @@ private fun Modifier.doweMaxWidth(value: DoweSize?): Modifier =
 private fun Modifier.doweMaxHeight(value: DoweSize?): Modifier =
     when (value) {
         is DoweSize.Fixed -> heightIn(max = value.value)
-        is DoweSize.ViewportMinus -> heightIn(max = (LocalConfiguration.current.screenHeightDp.dp - value.inset).coerceAtLeast(0.dp))
+        is DoweSize.ViewportMinus -> heightIn(max = doweViewportHeight(value.inset))
+        DoweSize.Full -> doweMaxParentHeight()
         else -> this
+    }
+
+private fun Modifier.doweMaxParentHeight(): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        val height = if (constraints.hasBoundedHeight) {
+            minOf(placeable.height, constraints.maxHeight)
+        } else {
+            placeable.height
+        }
+        layout(placeable.width, height) {
+            placeable.placeRelative(0, 0)
+        }
     }
 
 private fun Modifier.doweRounded(radius: Dp?): Modifier =
@@ -743,6 +790,15 @@ private fun doweGridHorizontalAlignment(value: DoweAlign?): Alignment.Horizontal
         DoweAlign.Center -> Alignment.CenterHorizontally
         DoweAlign.End -> Alignment.End
         else -> Alignment.Start
+    }
+
+private fun doweGridHorizontalStretch(value: DoweAlign?): Boolean = value == DoweAlign.Stretch
+
+private fun doweGridVerticalAlignment(value: DoweAlign?): Alignment.Vertical =
+    when (value) {
+        DoweAlign.Center -> Alignment.CenterVertically
+        DoweAlign.End -> Alignment.Bottom
+        else -> Alignment.Top
     }
 
 private fun doweVerticalAlignment(value: DoweAlign?): Alignment.Vertical =

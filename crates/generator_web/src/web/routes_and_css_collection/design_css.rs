@@ -47,6 +47,7 @@ fn design_css_for_web(
         design_config,
         features.forms,
         features.section_center,
+        features.box_center,
     )
 }
 
@@ -66,6 +67,7 @@ fn compose_design_css(
         design_config,
         features.forms,
         features.section_center,
+        features.box_center,
     );
     for chunk in design_css_chunks(features) {
         css.push_str(&chunk.content);
@@ -79,6 +81,7 @@ fn compose_design_base_css(
     design_config: &DesignConfig,
     include_form_metrics: bool,
     include_section_center_rules: bool,
+    include_box_center_rules: bool,
 ) -> String {
     let fonts = font_config.effective_families(used_fonts);
     let mut css = String::new();
@@ -97,6 +100,9 @@ fn compose_design_base_css(
     append_responsive_visibility_css(&mut css);
     if include_section_center_rules {
         append_responsive_section_center_css(&mut css);
+    }
+    if include_box_center_rules {
+        append_responsive_box_center_css(&mut css);
     }
     minify_css(&css)
 }
@@ -255,15 +261,34 @@ fn append_responsive_visibility_css(css: &mut String) {
     }
 }
 
+fn append_responsive_box_center_css(css: &mut String) {
+    for breakpoint in [Breakpoint::Sm, Breakpoint::Md, Breakpoint::Lg, Breakpoint::Xl] {
+        css.push_str(&format!("@media (min-width:{}px){{", breakpoint.min_width()));
+        css.push_str(&format!(".{}\\:box-center-x-true{{align-items:center;}}", breakpoint.as_str()));
+        css.push_str(&format!(".{}\\:box-center-x-false{{align-items:flex-start;}}", breakpoint.as_str()));
+        css.push_str(&format!(".{}\\:box-center-y-true{{justify-content:center;}}", breakpoint.as_str()));
+        css.push_str(&format!(".{}\\:box-center-y-false{{justify-content:flex-start;}}", breakpoint.as_str()));
+        css.push('}');
+    }
+}
+
 fn append_responsive_section_center_css(css: &mut String) {
     for breakpoint in [Breakpoint::Sm, Breakpoint::Md, Breakpoint::Lg, Breakpoint::Xl] {
         css.push_str(&format!("@media (min-width:{}px){{", breakpoint.min_width()));
         css.push_str(&format!(
-            ".{}\\:section-center-true{{align-items:center;}}",
+            ".{}\\:section-center-x-true{{align-items:center;}}",
             breakpoint.as_str()
         ));
         css.push_str(&format!(
-            ".{}\\:section-center-false{{align-items:flex-start;}}",
+            ".{}\\:section-center-x-false{{align-items:flex-start;}}",
+            breakpoint.as_str()
+        ));
+        css.push_str(&format!(
+            ".{}\\:section-center-y-true{{justify-content:center;}}",
+            breakpoint.as_str()
+        ));
+        css.push_str(&format!(
+            ".{}\\:section-center-y-false{{justify-content:flex-start;}}",
             breakpoint.as_str()
         ));
         css.push('}');

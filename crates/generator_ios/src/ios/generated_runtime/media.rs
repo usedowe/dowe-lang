@@ -3,16 +3,33 @@ fn swift_runtime_media() -> &'static str {
     let source: String
 
     var body: some View {
-        if source.hasPrefix("https://"), let url = URL(string: source) {
+        if let url = doweImageURL(source) {
             AsyncImage(url: url) { image in
-                image.resizable().scaledToFill()
+                image.resizable().scaledToFill().clipped()
             } placeholder: {
                 Color.clear
             }
         } else {
-            Image(source).resizable().scaledToFill()
+            Image(source).resizable().scaledToFill().clipped()
         }
     }
+}
+
+private func doweImageURL(_ source: String) -> URL? {
+    let value = source.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !value.isEmpty else { return nil }
+    if value.hasPrefix("https://") { return URL(string: value) }
+    let path = value.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    guard path.hasPrefix("assets/") else { return nil }
+    let relative = String(path.dropFirst("assets/".count)) as NSString
+    let file = relative.lastPathComponent as NSString
+    let directory = relative.deletingLastPathComponent
+    let subdirectory = directory == "." ? "assets" : "assets/\(directory)"
+    return Bundle.main.url(
+        forResource: file.deletingPathExtension,
+        withExtension: file.pathExtension.isEmpty ? nil : file.pathExtension,
+        subdirectory: subdirectory
+    )
 }
 
 struct DoweCodeToken {
@@ -346,7 +363,7 @@ struct DoweDevicePreview: View {
                     }
                     .frame(width: CGFloat(40), height: CGFloat(40))
                     .foregroundStyle(profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText)
-                    .background(profile == option.profile ? DoweDesign.softPrimary : Color.clear)
+                    .background(profile == option.profile ? DoweDesign.primary : Color.clear)
                     .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
                     .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText, lineWidth: CGFloat(1)))
                     .buttonStyle(.plain)
@@ -646,21 +663,16 @@ struct DoweImageView: View {
     let radius: CGFloat
 
     var body: some View {
-        DoweImageAspectLayout(ratio: doweImageAspect(aspect)) {
-            ZStack {
-                AsyncImage(url: URL(string: source)) { image in
-                    if objectFit == "contain" {
-                        image.resizable().scaledToFit()
-                    } else {
-                        image.resizable().scaledToFill()
-                    }
-                } placeholder: {
-                    Rectangle().fill(contentColor.opacity(0.12))
+        Group {
+            if aspect == "auto" {
+                doweImageContent(source: source, alt: alt, objectFit: objectFit, contentColor: contentColor)
+            } else {
+                DoweImageAspectLayout(ratio: doweImageAspect(aspect)) {
+                    doweImageContent(source: source, alt: alt, objectFit: objectFit, contentColor: contentColor)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(backgroundColor)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: radius))
@@ -673,6 +685,25 @@ struct DoweImageView: View {
         .accessibilityLabel(Text(alt))
         .accessibilityHidden(alt.isEmpty)
     }
+}
+
+@ViewBuilder
+private func doweImageContent(source: String, alt: String, objectFit: String, contentColor: Color) -> some View {
+                if let url = doweImageURL(source) {
+                    AsyncImage(url: url) { image in
+                        if objectFit == "contain" {
+                            image.resizable().scaledToFit()
+                        } else {
+                            image.resizable().scaledToFill()
+                        }
+                    } placeholder: {
+                        Rectangle().fill(contentColor.opacity(0.12))
+                    }
+                } else {
+                    Image(source)
+                        .resizable()
+                        .aspectRatio(contentMode: objectFit == "contain" ? .fit : .fill)
+                }
 }
 
 struct DoweImageAspectLayout: Layout {

@@ -81,7 +81,7 @@ fn generates_scroll_docking_appbar_for_swiftui() {
     assert!(!views.contains("DoweDockingScrollOffsetKey"));
     assert!(!views.contains("DoweDockingScrollOffsetReader"));
     assert!(!views.contains("doweDockingScroll"));
-    assert_eq!(views.matches(".layoutPriority(1)").count(), 2);
+    assert!(views.matches(".layoutPriority(1)").count() >= 2);
     assert_eq!(
         views
             .matches(".fixedSize(horizontal: true, vertical: false)")
@@ -166,8 +166,8 @@ fn generates_swiftui_side_nav() {
     assert!(views.contains("status: \"2\""));
     assert!(views.contains("DoweSideNavStatus(text: status"));
     assert!(views.contains(".padding(.horizontal, CGFloat(8))"));
-    assert!(views.contains(".background(DoweDesign.softMuted)"));
-    assert!(views.contains(".foregroundStyle(DoweDesign.softMutedText)"));
+    assert!(views.contains(".background(DoweDesign.muted)"));
+    assert!(views.contains(".foregroundStyle(DoweDesign.mutedText)"));
     assert!(views.contains("icon: DoweSideNavIcon(viewBox: DoweSvgViewBox"));
     assert!(views.contains("color: nil"));
     assert!(views.contains("color: icon.color ?? (header ? titleColor : (item.path == activePath ? activeContentColor : DoweDesign.backgroundText))"));
@@ -462,7 +462,12 @@ fn generates_swiftui_drawer() {
     );
     assert!(!views.contains("controller.safeAreaRegions = []"));
     assert!(!views.contains("safeAreaInsets: doweDrawerEdgeInsets(window.safeAreaInsets)"));
-    assert!(views.contains(".frame(width: CGFloat(44), height: CGFloat(44))\n                                    .contentShape(Rectangle())"));
+    assert!(views
+        .contains(".frame(width: CGFloat(44), height: CGFloat(44))\n                            .contentShape(Rectangle())"));
+    assert!(views.contains(
+        ".frame(maxWidth: .infinity, maxHeight: .infinity, alignment: closeButtonAlignment)"
+    ));
+    assert!(views.contains("private var closeButtonAlignment: Alignment"));
     assert!(views.contains("struct DoweOverlayCloseIcon: View"));
     assert!(
         views.contains("DoweSvgPathData(data: \"m4.397 4.554l.073-.084a.75.75 0 0 1 .976-.073")

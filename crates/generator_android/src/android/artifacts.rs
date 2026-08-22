@@ -8,7 +8,7 @@ use dowe_components::{
     CommandEntry, CommandProps, ComponentVariant, CountdownProps, CoverSource, CsvColumn,
     DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation, DividerProps,
     DragGroup, DragItem, DrawerPosition, DrawerProps, DropdownProps, DropzoneProps, ElementProps,
-    EmptyProps, FabAction, FabProps, FlexDirection, FontConfig, FontFamily, FormValidationRuleKind,
+    EmptyProps, FabAction, FabProps, FlexDirection, FlexItem, FontConfig, FontFamily, FormValidationRuleKind,
     GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
     INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps, MapMarker, MapProps,
     MapWaypoint, MarqueeProps, MicrophoneProps, ModalProps, NavMenuItem, NavMenuItemProps,

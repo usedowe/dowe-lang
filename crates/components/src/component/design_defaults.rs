@@ -74,9 +74,11 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         }
         ViewNode::Input { props } => {
             apply_variant_defaults(props, defaults, DesignComponentSlot::Input);
+            apply_label_floating_default(props, defaults, DesignComponentSlot::Input);
         }
         ViewNode::Select { props, .. } => {
             apply_variant_defaults(props, defaults, DesignComponentSlot::Select);
+            apply_label_floating_default(props, defaults, DesignComponentSlot::Select);
         }
         ViewNode::Drawer {
             props,
@@ -159,7 +161,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             body,
             footer,
         } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Sidebar);
             for child in header.iter_mut().chain(body).chain(footer) {
                 apply_design_defaults_to_tree(child, defaults);
             }
@@ -214,13 +216,16 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
         ViewNode::Color { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::Color);
         }
         ViewNode::Date { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Date)
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Date);
+            apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::Date);
         }
         ViewNode::DateRange { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::DateRange);
         }
         ViewNode::RadioGroup { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
@@ -272,7 +277,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
         }
         ViewNode::ToggleGroup { props, .. } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Button)
         }
         ViewNode::ChatBox { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Card);
@@ -294,6 +299,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         }
         ViewNode::Password { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Password);
+            apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::Password);
         }
         ViewNode::Phone { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
@@ -302,7 +308,12 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Pin);
         }
         ViewNode::Textarea { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Textarea);
+            apply_label_floating_default(
+                &mut props.style,
+                defaults,
+                DesignComponentSlot::Textarea,
+            );
         }
         ViewNode::Code { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
@@ -335,10 +346,10 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.common.style, defaults, DesignComponentSlot::Ui)
         }
         ViewNode::NavMenu { props, .. } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::NavMenu);
         }
         ViewNode::SideNav { props, .. } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::SideNav);
         }
         ViewNode::RailNav { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
@@ -635,6 +646,20 @@ fn apply_tabs_defaults(props: &mut TabsProps, defaults: &DesignDefaults) {
             .unwrap_or(ColorFamily::Primary);
     }
     apply_style_defaults(&mut props.style, defaults, DesignComponentSlot::Tabs);
+}
+
+fn apply_label_floating_default(
+    props: &mut VariantProps,
+    defaults: &DesignDefaults,
+    slot: DesignComponentSlot,
+) {
+    if !props.label_floating {
+        props.label_floating = defaults
+            .label_floating
+            .get(&slot)
+            .copied()
+            .unwrap_or(false);
+    }
 }
 
 fn apply_style_defaults(

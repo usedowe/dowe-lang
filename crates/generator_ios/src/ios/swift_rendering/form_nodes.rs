@@ -200,7 +200,13 @@ fn render_swift_form_node(
             } else {
                 variant_container(props).to_string()
             };
-            modifiers.push(format!(".background({container})"));
+            if let Some(disabled) = disabled.as_deref() {
+                modifiers.push(format!(
+                    ".background({container}.opacity({disabled} ? 0.5 : 1))"
+                ));
+            } else {
+                modifiers.push(format!(".background({container})"));
+            }
             modifiers.push(format!(".foregroundStyle({content})"));
             let radius = props
                 .reactive
@@ -250,9 +256,6 @@ fn render_swift_form_node(
                     ".modifier(DoweAnimationModifier(preset: {}))",
                     swift_animation_preset(animation)
                 ));
-            }
-            if let Some(disabled) = disabled.as_deref() {
-                modifiers.push(format!(".opacity({disabled} ? 0.5 : 1)"));
             }
             append_swift_modifiers(output, indent, &modifiers);
         }
@@ -473,7 +476,7 @@ fn render_swift_form_node(
             let control_size = props.style.size.unwrap_or(ButtonSize::Md);
             let text_size = form_control_text_size(control_size);
             output.push_str(&format!(
-                "{pad}DowePassword(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, minHeight: CGFloat({}), fontSize: {}, lineHeight: CGFloat({}), hideStrength: {}, weakLabel: {}, mediumLabel: {}, strongLabel: {}, readOnly: {}, showIcon: {}, hideIcon: {}, backgroundColor: {}, contentColor: {})\n",
+                "{pad}DowePassword(value: {}, initialValue: {}, label: {}, placeholder: {}, floating: {}, minHeight: CGFloat({}), fontSize: {}, lineHeight: CGFloat({}), hideStrength: {}, weakLabel: {}, mediumLabel: {}, strongLabel: {}, readOnly: {}, showIcon: {}, hideIcon: {}, backgroundColor: {}, contentColor: {}, helpText: {}, errorText: {}, validationRules: {})\n",
                 swift_text_binding(props.style.element.bind.as_deref(), context),
                 swift_string_literal(props.value.as_deref().unwrap_or_default()),
                 swift_optional_literal(props.style.label.as_deref()),
@@ -491,7 +494,10 @@ fn render_swift_form_node(
                 swift_control_icon(Some(&show_icon)),
                 swift_control_icon(Some(&hide_icon)),
                 variant_container(&props.style),
-                variant_content(&props.style)
+                variant_content(&props.style),
+                swift_optional_literal(props.help_text.as_deref()),
+                swift_optional_literal(props.error_text.as_deref()),
+                swift_validation_rules(&props.style.element, context, false)
             ));
             append_swift_modifiers(
                 output,

@@ -7,7 +7,7 @@ use dowe_components::{
     ComboOption, CommandEntry, CommandProps, ComponentVariant, CountdownProps, CoverSource,
     CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation,
     DividerProps, DragGroup, DragItem, DrawerProps, DropdownProps, DropzoneProps, ElementProps,
-    EmptyProps, FabAction, FabProps, FlexDirection, FontConfig, FontFamily, FormValidationRuleKind,
+    EmptyProps, FabAction, FabProps, FlexDirection, FlexItem, FontConfig, FontFamily, FormValidationRuleKind,
     GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
     INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps, MapMarker, MapProps,
     MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps,
@@ -17,9 +17,9 @@ use dowe_components::{
     ScaffoldProps, ScaleValue, SectionBackground, SelectOption, SelectOptionEach, ShadowSize,
     SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps, SideNavSize, SidebarProps, SizeValue,
     SkeletonProps, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill,
-    SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableSize, TabsProps, TabsVariant,
-    TextAlign, TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps,
-    ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
+    SvgProps, SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableSize, TabsProps,
+    TabsVariant, TextAlign, TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps,
+    ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
     TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction, ViewActionKind,
     ViewAnimation, ViewConstant, ViewForm, ViewFormFieldKind, ViewGesture, ViewNode,
     ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
@@ -498,6 +498,10 @@ fn ios_layout(index: usize, layout: &ViewNode, font_config: &FontConfig) -> Stri
         output.push_str(&format!(
             "    @ViewBuilder\n    private func layoutSection{section_index}() -> some View {{\n"
         ));
+        let section_context = section.scopes.iter().fold(
+            context.without_node_expression(section.node),
+            |context, scope| context.with_scope(scope.constants, scope.signals, scope.actions),
+        );
         render_swift_node_in_flow(
             section.node,
             8,
@@ -505,7 +509,7 @@ fn ios_layout(index: usize, layout: &ViewNode, font_config: &FontConfig) -> Stri
             section.flow,
             None,
             font_config.default_family,
-            &context.without_node_expression(section.node),
+            &section_context,
         );
         output.push_str("    }\n\n");
     }
@@ -664,16 +668,19 @@ final class DoweIosDevModuleCoordinator: NSObject {
         else {
             return
         }
-        apply(file, version: version)
+        _ = apply(file, version: version)
     }
 
     private func poll() {
         persistCurrentPath()
-        guard !loading, let endpoint = moduleEndpoint, let url = URL(string: endpoint + "/_dowe/dev/modules/manifest.json") else {
+        guard !loading, let endpoint = moduleEndpoint, let url = URL(string: endpoint + "/_dowe/dev/modules/manifest.json?dowe_hmr=\(UUID().uuidString)") else {
             return
         }
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         loading = true
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
             guard let self else { return }
             defer { self.loading = false }
             guard
@@ -684,17 +691,19 @@ final class DoweIosDevModuleCoordinator: NSObject {
                 let version = ios["version"] as? String,
                 let path = ios["path"] as? String,
                 version != self.activeVersion,
-                version != self.attemptedVersion,
-                let moduleUrl = URL(string: endpoint + path)
+                let moduleUrl = URL(string: endpoint + path + "?dowe_hmr=\(version)")
             else {
                 return
             }
-            URLSession.shared.dataTask(with: moduleUrl) { [weak self] data, _, _ in
+            var moduleRequest = URLRequest(url: moduleUrl)
+            moduleRequest.cachePolicy = .reloadIgnoringLocalCacheData
+            moduleRequest.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+            URLSession.shared.dataTask(with: moduleRequest) { [weak self] data, _, _ in
                 guard let self, let data, let file = self.moduleFile(version: version) else { return }
                 do {
                     try data.write(to: file, options: .atomic)
                     DispatchQueue.main.async {
-                        self.apply(file, version: version)
+                        _ = self.apply(file, version: version)
                     }
                 } catch {
                 }
@@ -702,13 +711,13 @@ final class DoweIosDevModuleCoordinator: NSObject {
         }.resume()
     }
 
-    private func apply(_ file: URL, version: String) {
-        attemptedVersion = version
-        guard let container else { return }
+    @discardableResult
+    private func apply(_ file: URL, version: String) -> Bool {
+        guard let container else { return false }
         let handle = dlopen(file.path, RTLD_NOW | RTLD_LOCAL)
         guard let handle, let symbol = dlsym(handle, "dowe_create_root_view_controller") else {
             if let handle { dlclose(handle) }
-            return
+            return false
         }
         typealias Factory = @convention(c) (UnsafePointer<CChar>?) -> UnsafeMutableRawPointer
         let factory = unsafeBitCast(symbol, to: Factory.self)
@@ -730,6 +739,8 @@ final class DoweIosDevModuleCoordinator: NSObject {
         activeRoute = path
         UserDefaults.standard.set(version, forKey: activeVersionKey)
         handles.append(handle)
+        attemptedVersion = version
+        return true
     }
 
     private func currentPath() -> String {

@@ -27,13 +27,21 @@ function onViewportScroll(task) {
   viewportScrollTasks.add(task);
   return () => viewportScrollTasks.delete(task);
 }
-window.addEventListener("resize", () => scheduleViewportTasks(viewportResizeTasks), {
-  passive: true
-});
-window.addEventListener("scroll", () => scheduleViewportTasks(viewportScrollTasks), {
-  passive: true,
-  capture: true
-});
+window.addEventListener(
+  "resize",
+  () => scheduleViewportTasks(viewportResizeTasks),
+  {
+    passive: true,
+  },
+);
+window.addEventListener(
+  "scroll",
+  () => scheduleViewportTasks(viewportScrollTasks),
+  {
+    passive: true,
+    capture: true,
+  },
+);
 function normalizePath(path) {
   const normalized = (path || "/").replace(/\/$/, "");
   return normalized || "/";
@@ -58,7 +66,7 @@ function locationDestination() {
   return {
     path: normalizePath(location.pathname),
     fragment: decodeFragment(location.hash),
-    href: location.pathname + location.hash
+    href: location.pathname + location.hash,
   };
 }
 const startupDestination = locationDestination();
@@ -123,7 +131,7 @@ function hydrateThemeSelects(root = document) {
   for (const control of root.querySelectorAll("[data-dowe-theme-select]"))
     if (
       selectOptions(control).some(
-        option => option.dataset.doweOptionValue === theme
+        (option) => option.dataset.doweOptionValue === theme,
       )
     ) {
       control.dataset.doweValue = theme;
@@ -146,10 +154,17 @@ function applyDoweTheme(theme, transition = true) {
   }
   document.documentElement.classList.add("theme-transitioning");
   document.documentElement.setAttribute("data-dowe-theme-transition", "circle");
-  const viewTransition = document.startViewTransition(update);
-  viewTransition.finished.finally(() => {
+  let viewTransition;
+  try {
+    viewTransition = document.startViewTransition(update);
+  } catch (error) {
+    update();
+    return;
+  }
+  const cleanup = () => {
     document.documentElement.classList.remove("theme-transitioning");
     document.documentElement.removeAttribute("data-dowe-theme-transition");
-  });
+  };
+  viewTransition.finished.then(cleanup, cleanup);
 }
-applyDoweTheme(storedDoweTheme(), false);
+queueMicrotask(() => applyDoweTheme(storedDoweTheme(), false));

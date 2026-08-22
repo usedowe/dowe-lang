@@ -1103,9 +1103,14 @@ struct DowePassword: View {
     let hideIcon: DoweControlIcon
     let backgroundColor: Color
     let contentColor: Color
+    let helpText: String?
+    let errorText: String?
+    let validationRules: [DoweValidationRule]
     @State private var localValue: String?
     @State private var visible = false
     @FocusState private var focused: Bool
+    @State private var hadFocus = false
+    @State private var touched = false
 
     private var currentText: String {
         value?.wrappedValue ?? localValue ?? initialValue
@@ -1124,6 +1129,10 @@ struct DowePassword: View {
                 }
             }
         )
+    }
+
+    private var validationError: String? {
+        errorText ?? (touched ? doweValidationError(currentText, rules: validationRules) : nil)
     }
 
     private var strengthScore: Int {
@@ -1217,7 +1226,11 @@ struct DowePassword: View {
             .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
             .background(backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: CGFloat(12)))
-            .overlay(RoundedRectangle(cornerRadius: CGFloat(12)).stroke(contentColor.opacity(0.22), lineWidth: CGFloat(1)))
+            .overlay {
+                if validationError != nil {
+                    RoundedRectangle(cornerRadius: CGFloat(12)).stroke(DoweDesign.danger, lineWidth: CGFloat(1))
+                }
+            }
 
             if !hideStrength {
                 HStack(spacing: CGFloat(4)) {
@@ -1232,7 +1245,12 @@ struct DowePassword: View {
                     .font(.caption)
                     .foregroundStyle(strengthColor)
             }
+            DoweValidationFeedback(helpText: helpText, error: validationError, contentColor: contentColor)
         }
+        .onChange(of: focused) { _, next in
+            if next { hadFocus = true } else if hadFocus { touched = true }
+        }
+        .accessibilityValue(validationError ?? "")
     }
 }
 

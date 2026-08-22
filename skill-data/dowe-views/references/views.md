@@ -393,7 +393,8 @@ root-relative URL under `/assets/` in the development web server and web package
 | `assets/img/hero.webp` | `/assets/img/hero.webp` |
 | `assets/social/home.png` | `/assets/social/home.png` |
 
-Use the view URL in `Image src` and in `cover` props. `assets/img/hero.webp`,
+Use the view URL in static `Image src` and in `cover` props. A dynamic `Image src` may read a
+string field from a constant, Signal, or current `each` item. `assets/img/hero.webp`,
 `/img/hero.webp`, and `/Users/name/project/assets/img/hero.webp` are not equivalents and must not be
 substituted for `/assets/img/hero.webp`. The built-in runtime only resolves project media under
 `/assets/**`; a 404 at `/img/**` means the public prefix was dropped. Check the file's spelling and
@@ -410,6 +411,10 @@ to one normalized Dowe vector record or JSON string; it does not accept SVG mark
 quoted `d`, a `fill` using `currentColor`, `none`, a design color token, or a hexadecimal color, and
 optional `transform:"matrix(a b c d e f)"`. Keep `Path` documented
 with `Svg` rather than treating it as a standalone component.
+
+For static `Svg`, authoring only `w` or only `h` leaves the other axis automatic and preserves the
+`viewBox` ratio. If neither is authored, the default is `6` by `6`. `Brand` follows the same
+single-axis rule using the intrinsic measure of its children.
 
 Canvas is a built-in View component, not a separate application surface. Use it only when semantic
 components cannot express a drawing, chart, diagram, game-like scene, or custom pointer

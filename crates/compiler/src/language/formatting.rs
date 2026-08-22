@@ -58,6 +58,7 @@ fn format_node(node: &SourceNode, lines: &mut Vec<String>) {
     let mut inline = header.clone();
     inline.extend(node.props.iter().map(format_prop));
     let inline = format!("{indent}{}", inline.join(" "));
+    let inline = indent_multiline_lines(&inline, &indent);
     let has_multiline_string = node
         .props
         .iter()
@@ -114,6 +115,10 @@ fn format_self_named_node(node: &SourceNode, indent: &str, lines: &mut Vec<Strin
 
 fn format_prop(prop: &SourceProp) -> String {
     format!("{}:{}", prop.name, prop.value.to_source())
+}
+
+fn indent_multiline_lines(value: &str, indent: &str) -> String {
+    value.replace("\n\"\"\"", &format!("\n{indent}\"\"\""))
 }
 
 fn format_multiline_prop(prop: &SourceProp, indent: usize, lines: &mut Vec<String>) {

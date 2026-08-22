@@ -38,6 +38,22 @@ fn dev_activity_svg_view() -> &'static str {
         }
 
         @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+            int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+            int widthSize = MeasureSpec.getSize(widthMeasureSpec);
+            int heightSize = MeasureSpec.getSize(heightMeasureSpec);
+            int width = widthMode == MeasureSpec.EXACTLY ? widthSize : Math.max(1, Math.round(viewBoxWidth));
+            int height = heightMode == MeasureSpec.EXACTLY ? heightSize : Math.max(1, Math.round(viewBoxHeight));
+            if (widthMode == MeasureSpec.EXACTLY && heightMode != MeasureSpec.EXACTLY) {
+                height = Math.max(1, Math.round(width * viewBoxHeight / viewBoxWidth));
+            } else if (heightMode == MeasureSpec.EXACTLY && widthMode != MeasureSpec.EXACTLY) {
+                width = Math.max(1, Math.round(height * viewBoxWidth / viewBoxHeight));
+            }
+            setMeasuredDimension(resolveSize(width, widthMeasureSpec), resolveSize(height, heightMeasureSpec));
+        }
+
+        @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             int checkpoint = canvas.save();
@@ -46,11 +62,14 @@ fn dev_activity_svg_view() -> &'static str {
                 canvas.rotate(elapsed * 360f / 900f, getWidth() / 2f, getHeight() / 2f);
                 postInvalidateOnAnimation();
             }
-            float scaleX = getWidth() / viewBoxWidth;
-            float scaleY = getHeight() / viewBoxHeight;
+            float scale = Math.min(getWidth() / viewBoxWidth, getHeight() / viewBoxHeight);
+            float renderedWidth = viewBoxWidth * scale;
+            float renderedHeight = viewBoxHeight * scale;
+            float offsetX = (getWidth() - renderedWidth) / 2f;
+            float offsetY = (getHeight() - renderedHeight) / 2f;
             Matrix matrix = new Matrix();
-            matrix.postTranslate(-minX, -minY);
-            matrix.postScale(scaleX, scaleY);
+            matrix.postTranslate(offsetX - minX * scale, offsetY - minY * scale);
+            matrix.postScale(scale, scale);
             for (DoweSvgPathEntry entry : paths) {
                 Integer fill = entry.currentColor ? Integer.valueOf(currentColor) : entry.color;
                 if (fill == null) {
@@ -67,7 +86,7 @@ fn dev_activity_svg_view() -> &'static str {
                 paint.setColor(fill);
                 paint.setAlpha(entry.alpha);
                 paint.setStyle(entry.stroke ? Paint.Style.STROKE : Paint.Style.FILL);
-                paint.setStrokeWidth(entry.strokeWidth * Math.min(scaleX, scaleY));
+                paint.setStrokeWidth(entry.strokeWidth * scale);
                 paint.setStrokeCap("round".equals(entry.lineCap) ? Paint.Cap.ROUND : "square".equals(entry.lineCap) ? Paint.Cap.SQUARE : Paint.Cap.BUTT);
                 paint.setStrokeJoin("round".equals(entry.lineJoin) ? Paint.Join.ROUND : "bevel".equals(entry.lineJoin) ? Paint.Join.BEVEL : Paint.Join.MITER);
                 canvas.drawPath(path, paint);

@@ -92,19 +92,87 @@ fn modifier_for_layout(props: &LayoutProps, flow: ComposeFlow) -> String {
     modifier_for_container_style(&props.style, flow)
 }
 
-fn modifier_for_grid(props: &GridProps, flow: ComposeFlow) -> String {
-    modifier_for_container_style(&props.style, flow)
+fn compose_grid_has_full_height(props: &GridProps) -> bool {
+    props.style.sizing.h.as_ref().is_some_and(|value| {
+        value
+            .entries
+            .iter()
+            .any(|entry| entry.value == SizeValue::Full)
+    })
 }
 
-fn compose_grid_column_count(value: Option<&ResponsiveValue<GridTracks>>) -> String {
+fn compose_grid_fills_height(props: &GridProps) -> String {
+    props
+        .style
+        .sizing
+        .h
+        .as_ref()
+        .map(|value| {
+            format!(
+                "({} ?: false)",
+                compose_responsive_value(value, |value| matches!(value, SizeValue::Full)
+                    .to_string())
+            )
+        })
+        .unwrap_or_else(|| "false".to_string())
+}
+
+fn compose_grid_vertical_stretch(value: Option<&ResponsiveValue<GridAlignment>>) -> String {
     value
         .map(|value| {
             format!(
-                "{} ?: 1",
-                compose_responsive_value(value, |value| value.count().unwrap_or(1).to_string())
+                "{} ?: true",
+                compose_responsive_value(value, |value| matches!(value, GridAlignment::Stretch)
+                    .to_string())
             )
         })
-        .unwrap_or_else(|| "1".to_string())
+        .unwrap_or_else(|| "true".to_string())
+}
+
+fn modifier_for_grid(props: &GridProps, flow: ComposeFlow) -> String {
+    let mut modifier = String::from("Modifier");
+    if flow.is_block() && props.style.sizing.w.is_none() {
+        modifier.push_str(".fillMaxWidth()");
+    }
+    if flow == ComposeFlow::Grid && props.style.sizing.h.is_none() {
+        modifier.push_str(".fillMaxHeight()");
+    }
+    if flow.is_block() && compose_grid_has_full_height(props) {
+        modifier.push_str(&format!(
+            ".then(if {} {{ Modifier.weight(1f, fill = true) }} else {{ Modifier }})",
+            compose_grid_fills_height(props)
+        ));
+    }
+    let mut modifier = modifier_for_style_with_base_and_shadow_shape(
+        &props.style,
+        modifier,
+        Some("RoundedCornerShape(0.dp)"),
+    );
+    append_compose_flex_item_modifier(&mut modifier, props.style.flex.as_ref(), flow);
+    modifier
+}
+
+fn compose_grid_tracks(value: Option<&ResponsiveValue<GridTracks>>) -> String {
+    value
+        .map(|value| {
+            format!(
+                "{} ?: listOf(1f)",
+                compose_responsive_value(value, |value| match value {
+                    GridTracks::Count(count) =>
+                        format!("listOf({})", vec!["1f"; *count as usize].join(", ")),
+                    GridTracks::Fractions(weights) => format!(
+                        "listOf({})",
+                        weights
+                            .iter()
+                            .map(|weight| format!("{weight}f"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                    GridTracks::Auto => "listOf(1f)".to_string(),
+                })
+            )
+        })
+        .unwrap_or_else(|| "listOf(1f)".to_string())
 }
 
 fn compose_grid_horizontal_gap(value: Option<&ResponsiveValue<GapValue>>) -> String {
@@ -169,6 +237,21 @@ fn modifier_for_style(props: &StyleProps) -> String {
     modifier_for_style_with_base(props, "Modifier".to_string())
 }
 
+fn compose_svg_modifier(props: &SvgProps) -> String {
+    let mut modifier = modifier_for_style(&props.style);
+    if props.data.is_none()
+        && props.icon_name.is_none()
+        && props.motion.is_none()
+        && props.style.sizing.w.is_some() != props.style.sizing.h.is_some()
+        && let Some(ratio) = props.view_box.aspect_ratio()
+    {
+        modifier.push_str(&format!(
+            ".aspectRatio({ratio:.6}f, matchHeightConstraintsFirst = true)"
+        ));
+    }
+    modifier
+}
+
 fn modifier_for_style_with_shadow_shape(props: &StyleProps, shadow_shape: &str) -> String {
     modifier_for_style_with_base_and_shadow_shape(props, "Modifier".to_string(), Some(shadow_shape))
 }
@@ -187,10 +270,34 @@ fn compose_content_color(props: &StyleProps) -> Option<String> {
 
 fn modifier_for_container_style(props: &StyleProps, flow: ComposeFlow) -> String {
     let mut modifier = String::from("Modifier");
-    if flow == ComposeFlow::Block && props.sizing.w.is_none() {
+    if flow.is_block() && props.sizing.w.is_none() {
         modifier.push_str(".fillMaxWidth()");
     }
-    modifier_for_style_with_base(props, modifier)
+    let mut modifier = modifier_for_style_with_base(props, modifier);
+    if (flow == ComposeFlow::Grid || props.center_y.is_some()) && props.sizing.h.is_none() {
+        modifier.push_str(".fillMaxHeight()");
+    }
+    append_compose_flex_item_modifier(&mut modifier, props.flex.as_ref(), flow);
+    modifier
+}
+
+fn append_compose_flex_item_modifier(
+    modifier: &mut String,
+    value: Option<&ResponsiveValue<FlexItem>>,
+    flow: ComposeFlow,
+) {
+    if !flow.is_flex_item() {
+        return;
+    }
+    let Some(value) = value else {
+        return;
+    };
+    let item_modifier = compose_responsive_value(value, |value| match value {
+        FlexItem::Initial | FlexItem::None => "Modifier".to_string(),
+        FlexItem::Auto => "Modifier.weight(1f, fill = false)".to_string(),
+        FlexItem::Fill => "Modifier.weight(1f, fill = true)".to_string(),
+    });
+    modifier.push_str(&format!(".then({item_modifier} ?: Modifier)"));
 }
 
 fn compose_position_modifier(props: &PositionProps) -> String {
@@ -233,12 +340,28 @@ fn modifier_for_section_container(props: &StyleProps, flow: ComposeFlow) -> Stri
 fn modifier_for_section_content(props: &StyleProps) -> String {
     let mut content = StyleProps::default();
     content.spacing = dowe_components::section_content_spacing(&props.spacing);
+    content.sizing = props.sizing.clone();
+    content.sizing.h = content
+        .sizing
+        .h
+        .as_ref()
+        .map(|value| android_section_bounded_size(value, &props.spacing));
+    content.sizing.min_h = content
+        .sizing
+        .min_h
+        .as_ref()
+        .map(|value| android_section_bounded_size(value, &props.spacing));
     let modifier = if props.boxed {
         "Modifier.widthIn(max = 1536.dp).fillMaxWidth()".to_string()
-    } else if props.center.is_some() {
+    } else if props.center_x.is_some() {
         "Modifier.fillMaxWidth()".to_string()
     } else {
         "Modifier".to_string()
+    };
+    let modifier = if props.sizing.h.is_some() || props.sizing.min_h.is_some() {
+        format!("{modifier}.fillMaxHeight()")
+    } else {
+        modifier
     };
     modifier_for_style_with_base(&content, modifier)
 }
@@ -263,7 +386,7 @@ fn compose_section_horizontal_alignment(value: &ResponsiveValue<bool>) -> String
 
 fn modifier_for_bar(props: &BarProps, flow: ComposeFlow) -> String {
     let mut modifier = String::from("Modifier");
-    if flow == ComposeFlow::Block && props.style.style.sizing.w.is_none() {
+    if flow.is_block() && props.style.style.sizing.w.is_none() {
         modifier.push_str(".fillMaxWidth()");
     }
     modifier.push_str(".heightIn(min = 48.dp)");
@@ -301,7 +424,7 @@ fn modifier_for_divider(props: &DividerProps, flow: ComposeFlow) -> String {
     let mut modifier = String::from("Modifier");
     match props.orientation {
         DividerOrientation::Horizontal => {
-            if flow == ComposeFlow::Block && props.style.sizing.w.is_none() {
+            if flow.is_block() && props.style.sizing.w.is_none() {
                 modifier.push_str(".fillMaxWidth()");
             }
             if props.style.sizing.h.is_none() {
@@ -516,6 +639,20 @@ fn compose_grid_horizontal_alignment(value: Option<&ResponsiveValue<GridAlignmen
     )
 }
 
+fn compose_grid_vertical_alignment(value: Option<&ResponsiveValue<GridAlignment>>) -> String {
+    format!(
+        "doweGridVerticalAlignment({})",
+        compose_optional_grid_alignment(value)
+    )
+}
+
+fn compose_grid_horizontal_stretch(value: Option<&ResponsiveValue<GridAlignment>>) -> String {
+    format!(
+        "doweGridHorizontalStretch({})",
+        compose_optional_grid_alignment(value)
+    )
+}
+
 fn compose_vertical_alignment(value: Option<&ResponsiveValue<Align>>) -> String {
     format!("doweVerticalAlignment({})", compose_optional_align(value))
 }
@@ -655,7 +792,11 @@ fn compose_size_value(value: &ResponsiveValue<SizeValue>) -> String {
         SizeValue::Container(value) => {
             format!("DoweSize.Fixed({}.dp)", value.scale_value().native_units())
         }
+        SizeValue::Percent(value) => {
+            format!("DoweSize.Percent({}f)", f32::from(*value) / 100.0)
+        }
         SizeValue::Full => "DoweSize.Full".to_string(),
+        SizeValue::Auto => "DoweSize.Auto".to_string(),
         SizeValue::ViewportMinus(value) => {
             format!("DoweSize.ViewportMinus({}.dp)", value.native_units())
         }

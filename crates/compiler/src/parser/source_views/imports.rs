@@ -181,14 +181,25 @@ fn reject_unused_imports(
 }
 
 fn reject_component_usage_shape(node: &SourceNode) -> DoweResult<()> {
-    if !node.args.is_empty() || !node.props.is_empty() || !node.children.is_empty() {
+    if !node.args.is_empty() || !node.children.is_empty() {
         return Err(node_error(
             node,
             format!(
-                "component `{}` cannot declare args, props or children",
+                "component `{}` cannot declare args or children",
                 node.name
             ),
         ));
+    }
+    for prop in &node.props {
+        if prop.name != "show" {
+            return Err(node_error(
+                node,
+                format!(
+                    "component `{}` only supports the `show` prop",
+                    node.name
+                ),
+            ));
+        }
     }
     Ok(())
 }

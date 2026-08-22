@@ -334,7 +334,13 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
             dev_variant_references_layout_bindings(props, bindings)
         }
         ViewNode::Audio { props } => dev_variant_references_layout_bindings(&props.style, bindings),
-        ViewNode::Image { props } => dev_variant_references_layout_bindings(&props.style, bindings),
+        ViewNode::Image { props } => {
+            dev_variant_references_layout_bindings(&props.style, bindings)
+                || props
+                    .reactive_src
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+        }
         ViewNode::Camera { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Microphone { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Code { props } => dev_variant_references_layout_bindings(&props.style, bindings),
@@ -848,7 +854,8 @@ fn dev_visibility_references_layout_bindings(
     match value {
         VisibilityCondition::Static(_) => false,
         VisibilityCondition::Signal(path) => bindings.references_signal(path),
-        VisibilityCondition::NumberComparison { path, .. } => bindings.references_signal(path),
+        VisibilityCondition::NumberComparison { path, .. }
+        | VisibilityCondition::StringEquality { path, .. } => bindings.references_signal(path),
     }
 }
 

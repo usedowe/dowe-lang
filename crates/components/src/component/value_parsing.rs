@@ -13,8 +13,11 @@ fn parse_scale_prop(name: &str, value: &PropValue) -> ComponentResult<Responsive
 fn parse_size_prop(name: &str, value: &PropValue) -> ComponentResult<ResponsiveValue<SizeValue>> {
     let allow_viewport_height = matches!(name, "h" | "minH" | "maxH");
     let allow_container_width = matches!(name, "w" | "minW" | "maxW");
+    let allow_percentage_width = matches!(name, "w" | "minW");
     let expected = if allow_viewport_height {
-        "Dowe scale value, full or vh-<scale>"
+        "Dowe scale value, full, auto or vh-<scale>"
+    } else if allow_percentage_width {
+        "Dowe scale value, container size, percentage from 10% to 100% in 10% increments or full"
     } else if allow_container_width {
         "Dowe scale value, container size or full"
     } else {
@@ -23,6 +26,14 @@ fn parse_size_prop(name: &str, value: &PropValue) -> ComponentResult<ResponsiveV
     parse_responsive(name, value, expected, |scalar| match scalar {
         PropScalar::Number(value) => scale_value(value).map(SizeValue::Scale),
         PropScalar::String(value) if value == "full" => Some(SizeValue::Full),
+        PropScalar::String(value) if allow_viewport_height && value == "auto" => {
+            Some(SizeValue::Auto)
+        }
+        PropScalar::String(value) if allow_percentage_width && value.ends_with('%') => value
+            .strip_suffix('%')
+            .and_then(|value| value.parse::<u8>().ok())
+            .filter(|value| (10..=100).contains(value) && value % 10 == 0)
+            .map(SizeValue::Percent),
         PropScalar::String(value) if allow_container_width => {
             ContainerSize::from_name(value).map(SizeValue::Container)
         }
@@ -92,6 +103,17 @@ fn parse_flex_direction_prop(
 ) -> ComponentResult<ResponsiveValue<FlexDirection>> {
     parse_responsive(name, value, "row or column", |scalar| match scalar {
         PropScalar::String(value) => FlexDirection::from_name(value),
+        PropScalar::Number(_) | PropScalar::Boolean(_) => None,
+    })
+}
+
+fn parse_flex_item_prop(
+    name: &str,
+    value: &PropValue,
+) -> ComponentResult<ResponsiveValue<FlexItem>> {
+    parse_responsive(name, value, "initial, auto, none or 1", |scalar| match scalar {
+        PropScalar::String(value) => FlexItem::from_name(value),
+        PropScalar::Number(value) if value == "1" => Some(FlexItem::Fill),
         PropScalar::Number(_) | PropScalar::Boolean(_) => None,
     })
 }
@@ -167,7 +189,7 @@ fn parse_grid_tracks_prop(
         name,
         value,
         if max_count.is_some() {
-            "positive integer from 1 to 12"
+            "positive integer from 1 to 12 or space-separated positive fr tracks"
         } else {
             "positive integer or auto"
         },
@@ -177,11 +199,21 @@ fn parse_grid_tracks_prop(
                 .ok()
                 .filter(|value| *value > 0 && max_count.is_none_or(|max| *value <= max))
                 .map(GridTracks::Count),
+            PropScalar::String(value) if max_count.is_some() => parse_fraction_tracks(value),
             PropScalar::String(value) if auto_allowed && value == "auto" => Some(GridTracks::Auto),
             PropScalar::String(_) => None,
             PropScalar::Boolean(_) => None,
         },
     )
+}
+
+fn parse_fraction_tracks(value: &str) -> Option<GridTracks> {
+    let tracks = value
+        .split_whitespace()
+        .map(|track| track.strip_suffix("fr")?.parse::<u16>().ok())
+        .collect::<Option<Vec<_>>>()?;
+    (!tracks.is_empty() && tracks.iter().all(|value| *value > 0))
+        .then_some(GridTracks::Fractions(tracks))
 }
 
 fn parse_span_prop(name: &str, value: &PropValue) -> ComponentResult<ResponsiveValue<GridSpan>> {
@@ -333,10 +365,10 @@ fn parse_text_spacing_prop(
 fn parse_variant_prop(name: &str, value: &PropValue) -> ComponentResult<ComponentVariant> {
     match value {
         PropValue::String(value) => ComponentVariant::from_name(value).ok_or_else(|| {
-            ComponentError::invalid_prop(name, "solid, soft, outline, outlined, line or ghost")
+            ComponentError::invalid_prop(name, "solid, outline, outlined, line or ghost")
         }),
         PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
-            ComponentError::invalid_prop(name, "solid, soft, outline, outlined, line or ghost"),
+            ComponentError::invalid_prop(name, "solid, outline, outlined, line or ghost"),
         ),
     }
 }
@@ -430,7 +462,9 @@ fn parse_family_prop(
 ) -> ComponentResult<ColorFamily> {
     let accepts_structural = matches!(
         component,
-        BuiltinComponent::Card
+        BuiltinComponent::Box
+            | BuiltinComponent::Section
+            | BuiltinComponent::Card
             | BuiltinComponent::Code
             | BuiltinComponent::Video
             | BuiltinComponent::Candlestick
@@ -444,7 +478,6 @@ fn parse_family_prop(
             | BuiltinComponent::AppBar
             | BuiltinComponent::Footer
             | BuiltinComponent::BottomBar
-            | BuiltinComponent::NavMenu
             | BuiltinComponent::Sidebar
             | BuiltinComponent::Drawer
             | BuiltinComponent::Avatar
@@ -474,6 +507,8 @@ fn parse_family_prop(
     );
     let expected = if accepts_structural {
         "primary, secondary, tertiary, muted, background, surface, success, info, warning or danger"
+    } else if matches!(component, BuiltinComponent::SideNav | BuiltinComponent::NavMenu) {
+        "primary, secondary, tertiary, success, info, warning or danger"
     } else {
         "primary, secondary, tertiary, muted, success, info, warning or danger"
     };
@@ -481,8 +516,10 @@ fn parse_family_prop(
         PropValue::String(value) => {
             let family = ColorFamily::from_name(value)
                 .ok_or_else(|| ComponentError::invalid_prop(name, expected))?;
-            if !accepts_structural
-                && matches!(family, ColorFamily::Background | ColorFamily::Surface)
+            if (!accepts_structural
+                && matches!(family, ColorFamily::Background | ColorFamily::Surface))
+                || (matches!(component, BuiltinComponent::SideNav | BuiltinComponent::NavMenu)
+                    && matches!(family, ColorFamily::Muted))
             {
                 return Err(ComponentError::invalid_prop(name, expected));
             }
@@ -499,6 +536,15 @@ fn parse_show_prop(name: &str, value: &PropValue) -> ComponentResult<VisibilityC
         PropValue::String(value) => {
             if is_reference_path(value) {
                 Ok(VisibilityCondition::Signal(value.clone()))
+            } else if let Some(value) = value.strip_prefix("@string-condition:") {
+                let mut parts = value.splitn(2, ':');
+                let (Some(path), Some(expected)) = (parts.next(), parts.next()) else {
+                    return Err(ComponentError::invalid_prop(name, "valid string equality condition"));
+                };
+                Ok(VisibilityCondition::StringEquality {
+                    path: path.to_string(),
+                    value: expected.to_string(),
+                })
             } else if let Some(value) = value.strip_prefix("@number-condition:") {
                 let mut parts = value.split(':');
                 let (Some(path), Some(operator), Some(value), None) =
@@ -536,8 +582,7 @@ fn parse_show_prop(name: &str, value: &PropValue) -> ComponentResult<VisibilityC
             }
         }
         PropValue::Boolean(_) | PropValue::Responsive(_) => {
-            parse_responsive_bool_prop(name, value)
-            .map(VisibilityCondition::Static)
+            parse_responsive_bool_prop(name, value).map(VisibilityCondition::Static)
         }
         PropValue::Number(_) => Err(ComponentError::invalid_prop(
             name,

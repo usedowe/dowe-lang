@@ -13,7 +13,7 @@ use dowe_components::{
     ComponentVariant, CountdownProps, CountdownSize, CoverSource, CsvColumn, CsvFieldProps,
     DateProps, DateRangeProps, DesignConfig, DividerOrientation, DividerProps, DragDropDirection,
     DragDropProps, DragGroup, DragItem, DrawerPosition, DrawerProps, DropdownProps, DropzoneProps,
-    EditorProps, ElementProps, EmptyKind, EmptyProps, FabAction, FabProps, FontConfig, GapSize,
+    EditorProps, ElementProps, EmptyKind, EmptyProps, FabAction, FabProps, FlexItem, FontConfig, GapSize,
     GapValue, GridProps, GridTracks, ImageAspect, ImageCropperProps, ImageCropperShape,
     ImageLoading, ImageObjectFit, ImageProps, MapMarker, MapMarkerIcon, MapProps, MapWaypoint,
     MarqueeOrientation, MarqueeProps, MarqueeSpeed, MicrophoneProps, ModalProps, NavMenuItem,

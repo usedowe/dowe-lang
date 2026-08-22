@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +62,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -119,7 +121,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -132,10 +136,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -164,6 +170,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerType
@@ -171,7 +178,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
-import androidx.compose.ui.input.pointer.awaitPointerEvent
+
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.platform.LocalContext
@@ -202,6 +209,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
@@ -220,8 +229,6 @@ import android.os.SystemClock
 import android.util.LruCache
 import android.view.Surface
 import android.view.WindowManager
-import java.io.File
-import java.io.FileOutputStream
 import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.net.HttpURLConnection
@@ -309,27 +316,27 @@ private fun doweButtonTitleFamily(scheme: String): Color = when (scheme) {
 }
 
 private fun doweButtonSoftFamily(scheme: String): Color = when (scheme) {
-    "secondary" -> DoweDesign.softSecondary
-    "tertiary" -> DoweDesign.softTertiary
-    "muted" -> DoweDesign.softMuted
-    "success" -> DoweDesign.softSuccess
-    "info" -> DoweDesign.softInfo
-    "warning" -> DoweDesign.softWarning
-    "danger" -> DoweDesign.softDanger
-    else -> DoweDesign.softPrimary
+    "secondary" -> DoweDesign.secondary
+    "tertiary" -> DoweDesign.tertiary
+    "muted" -> DoweDesign.muted
+    "success" -> DoweDesign.success
+    "info" -> DoweDesign.info
+    "warning" -> DoweDesign.warning
+    "danger" -> DoweDesign.danger
+    else -> DoweDesign.primary
 }
 
 private fun doweButtonSoftTitleFamily(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.backgroundTitle
     "surface" -> DoweDesign.surfaceTitle
-    "secondary" -> DoweDesign.softSecondaryTitle
-    "tertiary" -> DoweDesign.softTertiaryTitle
-    "muted" -> DoweDesign.softMutedTitle
-    "success" -> DoweDesign.softSuccessTitle
-    "info" -> DoweDesign.softInfoTitle
-    "warning" -> DoweDesign.softWarningTitle
-    "danger" -> DoweDesign.softDangerTitle
-    else -> DoweDesign.softPrimaryTitle
+    "secondary" -> DoweDesign.secondaryTitle
+    "tertiary" -> DoweDesign.tertiaryTitle
+    "muted" -> DoweDesign.mutedTitle
+    "success" -> DoweDesign.successTitle
+    "info" -> DoweDesign.infoTitle
+    "warning" -> DoweDesign.warningTitle
+    "danger" -> DoweDesign.dangerTitle
+    else -> DoweDesign.primaryTitle
 }
 
 private fun doweSideNavHeaderColor(scheme: String): Color = doweButtonContent("ghost", scheme)
@@ -352,14 +359,14 @@ private fun doweCardSoftFamily(scheme: String): Color = when (scheme) {
 private fun doweCardSoftContent(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.backgroundText
     "surface" -> DoweDesign.surfaceText
-    "secondary" -> DoweDesign.softSecondaryText
-    "tertiary" -> DoweDesign.softTertiaryText
-    "muted" -> DoweDesign.softMutedText
-    "success" -> DoweDesign.softSuccessText
-    "info" -> DoweDesign.softInfoText
-    "warning" -> DoweDesign.softWarningText
-    "danger" -> DoweDesign.softDangerText
-    else -> DoweDesign.softPrimaryText
+    "secondary" -> DoweDesign.secondaryText
+    "tertiary" -> DoweDesign.tertiaryText
+    "muted" -> DoweDesign.mutedText
+    "success" -> DoweDesign.successText
+    "info" -> DoweDesign.infoText
+    "warning" -> DoweDesign.warningText
+    "danger" -> DoweDesign.dangerText
+    else -> DoweDesign.primaryText
 }
 
 private fun doweCardContainer(variant: String, scheme: String): Color = when (variant) {
@@ -698,8 +705,10 @@ private object DoweFonts {
 
 private sealed class DoweSize {
     data class Fixed(val value: Dp) : DoweSize()
+    data class Percent(val fraction: Float) : DoweSize()
     data class ViewportMinus(val inset: Dp) : DoweSize()
     object Full : DoweSize()
+    object Auto : DoweSize()
 }
 
 private sealed class DoweOverlay {

@@ -10,7 +10,7 @@ use dowe_components::{
     CsvFieldProps, DateProps, DateRangeProps, DesignConfig, DesignTheme, DeviceProps, DividerProps,
     DragDropProps, DragGroup, DragItem, DrawerProps, DropdownProps, DropzoneProps, EditorProps,
     ElementProps, EmptyKind, EmptyProps, FORM_CONTROL_FLOATING_HEIGHT_INCREMENT, FabAction,
-    FabProps, FlexDirection, FontConfig, FontFamily, FormValidationRuleKind, GapSize, GapValue,
+    FabProps, FlexDirection, FlexItem, FontConfig, FontFamily, FormValidationRuleKind, GapSize, GapValue,
     GridAlignment, GridProps, INPUT_HORIZONTAL_PADDING, IframeProps, ImageCropperProps, ImageProps,
     Justify, LayoutProps, LineChartProps, MapMarker, MapProps, MapWaypoint, MarqueeProps,
     MicrophoneProps, ModalProps, NativeExternalMode, NavMenuItem, NavMenuItemProps, NavMenuProps,
@@ -96,7 +96,28 @@ impl WebOutput {
         self.pages
             .first()
             .map(|page| page.design_file_name.as_str())
+            .filter(|file_name| !file_name.is_empty())
             .unwrap_or("design.css")
+    }
+
+    pub fn design_file_names(&self) -> BTreeSet<String> {
+        let mut file_names = self
+            .pages
+            .iter()
+            .map(|page| page.design_file_name.clone())
+            .filter(|file_name| !file_name.is_empty())
+            .collect::<BTreeSet<_>>();
+        file_names.insert(self.design_file_name().to_string());
+        file_names
+    }
+
+    pub fn has_design_file_name(&self, file_name: &str) -> bool {
+        !file_name.is_empty()
+            && (self.design_file_name() == file_name
+                || self
+                    .pages
+                    .iter()
+                    .any(|page| page.design_file_name == file_name))
     }
 }
 
@@ -551,10 +572,6 @@ fn prepare_design_asset_with_router(
     let css = design_css_for_web(web, font_config, design_config);
     let file_name = design_css_file_name(&css);
     for page in &mut web.pages {
-        if reusable_prepared_page(previous, page).is_some() {
-            continue;
-        }
-        let page = Arc::make_mut(page);
         let mut css_chunks = design_css_chunks(DesignCssFeatures::collect([
             &page.layout_tree,
             &page.page_tree,
@@ -568,7 +585,9 @@ fn prepare_design_asset_with_router(
                 .filter(|path| !path.starts_with("chunks/design/"))
                 .cloned(),
         );
-        page.css_chunks = css_chunks;
+        if page.css_chunks != css_chunks {
+            Arc::make_mut(page).css_chunks = css_chunks;
+        }
     }
     if stable_router {
         if let Some(previous) = previous {
@@ -588,6 +607,7 @@ fn prepare_design_asset_with_router(
         if let Some(previous) = reusable_prepared_page(previous, page)
             && previous.design_file_name == file_name
             && previous.router_file_name == router_file_name
+            && page_document_has_asset_references(page, &file_name, &router_file_name)
         {
             continue;
         }
@@ -597,6 +617,37 @@ fn prepare_design_asset_with_router(
         page.html_document = render_page_document(page);
     }
     css
+}
+
+fn page_document_has_asset_references(
+    page: &ViewPage,
+    design_file_name: &str,
+    router_file_name: &str,
+) -> bool {
+    let design_reference = format!(
+        r#"<link data-dowe-design rel="stylesheet" href="/{}">"#,
+        escape_attr(design_file_name)
+    );
+    let router_reference = format!(
+        r#"<script data-dowe-router type="module" src="/{}"></script>"#,
+        escape_attr(router_file_name)
+    );
+    let css_references = page
+        .css_chunks
+        .iter()
+        .map(|path| {
+            let path = escape_attr(path);
+            format!(r#"<link data-dowe-css="{path}" rel="stylesheet" href="/{path}">"#)
+        })
+        .collect::<String>();
+    let runtime_preloads = page
+        .runtime_chunks
+        .iter()
+        .map(|path| format!(r#"<link rel="modulepreload" href="/{path}">"#))
+        .collect::<String>();
+    page.html_document.contains(&format!(
+        "{design_reference}{css_references}{runtime_preloads}{router_reference}"
+    ))
 }
 
 fn reusable_prepared_page<'a>(
@@ -713,15 +764,20 @@ pub fn web_artifact_update(
         }
     }
 
-    let design_path = Path::new("web").join(web.design_file_name());
-    expected_paths.insert(design_path.clone());
-    if previous.is_none_or(|output| output.design_file_name() != web.design_file_name()) {
-        files.push(WebArtifact {
-            relative_path: design_path,
-            content: design_css,
-            kind: WebArtifactKind::Css,
-            target: "web",
-        });
+    let previous_design_file_names = previous
+        .map(WebOutput::design_file_names)
+        .unwrap_or_default();
+    for file_name in web.design_file_names() {
+        let design_path = Path::new("web").join(&file_name);
+        expected_paths.insert(design_path.clone());
+        if !previous_design_file_names.contains(&file_name) {
+            files.push(WebArtifact {
+                relative_path: design_path,
+                content: design_css.clone(),
+                kind: WebArtifactKind::Css,
+                target: "web",
+            });
+        }
     }
 
     let router_file_name = prepared_router_file_name(web);
@@ -793,6 +849,7 @@ fn prepared_router_file_name(web: &WebOutput) -> &str {
     web.pages
         .first()
         .map(|page| page.router_file_name.as_str())
+        .filter(|file_name| !file_name.is_empty())
         .unwrap_or("router.js")
 }
 
@@ -916,6 +973,10 @@ fn prefixed_path(prefix: &Path, path: &Path) -> PathBuf {
 fn static_html_document(document: &str, asset_prefix: &str) -> String {
     let document = document
         .replace(
+            r#"href="/design.css""#,
+            &format!(r#"href="{asset_prefix}design.css""#),
+        )
+        .replace(
             r#"href="/design-"#,
             &format!(r#"href="{asset_prefix}design-"#),
         )
@@ -926,6 +987,10 @@ fn static_html_document(document: &str, asset_prefix: &str) -> String {
         .replace(
             r#"src="/router-"#,
             &format!(r#"src="{asset_prefix}router-"#),
+        )
+        .replace(
+            r#"src="/router.js""#,
+            &format!(r#"src="{asset_prefix}router.js""#),
         )
         .replace(
             r#"src="/chunks/"#,

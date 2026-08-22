@@ -122,6 +122,19 @@ fn class_body(class_name: &str) -> Option<String> {
     if class_name == "flex-wrap" {
         return Some("flex-wrap:wrap;".to_string());
     }
+    if let Some(value) = class_name.strip_prefix("flex-")
+        && let Some(value) = FlexItem::from_name(value)
+    {
+        return Some(match value {
+            FlexItem::Initial => "flex:0 1 auto;".to_string(),
+            FlexItem::Auto => "flex:1 1 auto;".to_string(),
+            FlexItem::None => "flex:0 0 auto;".to_string(),
+            FlexItem::Fill => unreachable!(),
+        });
+    }
+    if class_name == "flex-1" {
+        return Some("flex:1 1 0%;".to_string());
+    }
     if let Some(value) = class_name.strip_prefix("position-")
         && let Some(position) = BoxPosition::from_name(value)
     {
@@ -542,6 +555,15 @@ fn class_body(class_name: &str) -> Option<String> {
             });
         }
     }
+    for (prefix, css_property) in [("w-pct", "width"), ("min-w-pct", "min-width")] {
+        if let Some(value) = class_name.strip_prefix(&format!("{prefix}-"))
+            && let Ok(value) = value.parse::<u8>()
+            && (10..=100).contains(&value)
+            && value % 10 == 0
+        {
+            return Some(format!("{css_property}:{value}%;"));
+        }
+    }
     for (prefix, css_property) in [
         ("w", "width"),
         ("min-w", "min-width"),
@@ -550,7 +572,10 @@ fn class_body(class_name: &str) -> Option<String> {
         if let Some(suffix) = class_name.strip_prefix(&format!("{prefix}-"))
             && let Some(value) = ContainerSize::from_name(suffix)
         {
-            return Some(format!("{css_property}:var(--container-{});", value.as_str()));
+            return Some(format!(
+                "{css_property}:var(--container-{});",
+                value.as_str()
+            ));
         }
     }
     if let Some(suffix) = class_name.strip_prefix("vh-")
@@ -588,6 +613,9 @@ fn class_body(class_name: &str) -> Option<String> {
         "min-h-full" => return Some("min-height:100%;".to_string()),
         "max-w-full" => return Some("max-width:100%;".to_string()),
         "max-h-full" => return Some("max-height:100%;".to_string()),
+        "h-auto" => return Some("height:auto;".to_string()),
+        "min-h-auto" => return Some("min-height:auto;".to_string()),
+        "max-h-auto" => return Some("max-height:auto;".to_string()),
         _ => {}
     }
     if let Some(value) = class_name.strip_prefix("rounded-") {
@@ -616,6 +644,12 @@ fn class_body(class_name: &str) -> Option<String> {
             family.as_str()
         ));
     }
+    if let Some(value) = class_name.strip_prefix("box-center-x-") {
+        return Some(format!("align-items:{};", if value == "true" { "center" } else { "flex-start" }));
+    }
+    if let Some(value) = class_name.strip_prefix("box-center-y-") {
+        return Some(format!("justify-content:{};", if value == "true" { "center" } else { "flex-start" }));
+    }
     if let Some(value) = class_name.strip_prefix("justify-")
         && let Some(justify) = Justify::from_name(value)
     {
@@ -636,13 +670,25 @@ fn class_body(class_name: &str) -> Option<String> {
     {
         return Some(format!("text-align:{};", text_align_css(align)));
     }
-    if let Some(value) = class_name.strip_prefix("grid-cols-")
-        && let Ok(count) = value.parse::<u16>()
-        && count > 0
-    {
-        return Some(format!(
-            "grid-template-columns:repeat({count},minmax(0,1fr));"
-        ));
+    if let Some(value) = class_name.strip_prefix("grid-cols-") {
+        if let Ok(count) = value.parse::<u16>()
+            && count > 0
+        {
+            return Some(format!(
+                "grid-template-columns:repeat({count},minmax(0,1fr));"
+            ));
+        }
+        if let Some(weights) = value.strip_prefix("fr-") {
+            let tracks = weights
+                .split('-')
+                .filter_map(|weight| weight.parse::<u16>().ok())
+                .filter(|weight| *weight > 0)
+                .map(|weight| format!("{weight}fr"))
+                .collect::<Vec<_>>();
+            if !tracks.is_empty() && tracks.len() == weights.split('-').count() {
+                return Some(format!("grid-template-columns:{};", tracks.join(" ")));
+            }
+        }
     }
     if let Some(value) = class_name.strip_prefix("grid-rows-") {
         if value == "auto" {
@@ -658,9 +704,7 @@ fn class_body(class_name: &str) -> Option<String> {
         && let Some(align) = GridAlignment::from_name(value)
     {
         let css_val = grid_alignment_css(align);
-        return Some(format!(
-            "justify-items:{css_val};justify-content:{css_val};"
-        ));
+        return Some(format!("justify-items:{css_val};"));
     }
     if let Some(value) = class_name.strip_prefix("grid-align-")
         && let Some(align) = GridAlignment::from_name(value)
@@ -758,6 +802,11 @@ fn append_single_variant_css(
     let soft = soft_token(family);
     let soft_text = soft_text_token(family);
     let soft_title = soft_title_token(family);
+    let (surface, surface_text) = if family == ColorFamily::Background {
+        ("background", "backgroundText")
+    } else {
+        ("surface", "surfaceText")
+    };
     if base == "control" && variant == ComponentVariant::Outlined {
         let (surface, content, accent) = match family {
             ColorFamily::Background => ("background", text, text),
@@ -870,22 +919,39 @@ fn append_single_variant_css(
         ));
         return;
     }
-    if base == "toggle-group-item" {
+    if base == "toggle-group" {
         match variant {
-            ComponentVariant::Solid => css.push_str(&format!(
-                ".toggle-group-item.is-active.is-solid.is-{name}{{background-color:var(--dowe-{color});color:var(--dowe-{text});box-shadow:0 1px 6px rgba(15,23,42,.14);}}"
-            )),
-            ComponentVariant::Soft => css.push_str(&format!(
-                ".toggle-group-item.is-active.is-soft.is-{name}{{background-color:var(--dowe-{soft});color:var(--dowe-{soft_text});}}"
+            ComponentVariant::Solid | ComponentVariant::Soft => css.push_str(&format!(
+                ".toggle-group.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{text});--dowe-content-title:var(--dowe-{title});background-color:var(--dowe-{color});color:var(--dowe-{text});border-color:transparent;}}",
+                variant = variant.as_str()
             )),
             ComponentVariant::Outlined => css.push_str(&format!(
-                ".toggle-group-item.is-active.is-outlined.is-{name}{{background-color:transparent;color:var(--dowe-{color});box-shadow:inset 0 0 0 1px var(--dowe-{color});}}"
+                ".toggle-group.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{surface_text});--dowe-content-title:var(--dowe-{surface_text});background-color:var(--dowe-{surface});color:var(--dowe-{surface_text});border:1px solid var(--dowe-{color});}}"
             )),
-            ComponentVariant::Line => css.push_str(&format!(
-                ".toggle-group-item.is-active.is-line.is-{name}{{background-color:transparent;color:var(--dowe-{color});box-shadow:inset 0 -2px 0 var(--dowe-{color});}}"
+            ComponentVariant::Line | ComponentVariant::Ghost => {
+                let content = if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
+                    text
+                } else {
+                    color
+                };
+                css.push_str(&format!(
+                    ".toggle-group.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content});background-color:transparent;color:var(--dowe-{content});border-color:transparent;}}",
+                    variant = variant.as_str()
+                ));
+            }
+        }
+        return;
+    }
+    if base == "toggle-group-item" {
+        match variant {
+            ComponentVariant::Solid | ComponentVariant::Soft => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-solid.is-{name},.toggle-group-item.is-active.is-soft.is-{name}{{background-color:var(--dowe-{text});color:var(--dowe-{color});}}"
             )),
-            ComponentVariant::Ghost => css.push_str(&format!(
-                ".toggle-group-item.is-active.is-ghost.is-{name}{{background-color:transparent;color:var(--dowe-{color});}}"
+            ComponentVariant::Outlined => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-outlined.is-{name}{{background-color:var(--dowe-{surface_text});color:var(--dowe-{surface});}}"
+            )),
+            ComponentVariant::Line | ComponentVariant::Ghost => css.push_str(&format!(
+                ".toggle-group-item.is-active.is-line.is-{name},.toggle-group-item.is-active.is-ghost.is-{name}{{background-color:var(--dowe-{color});color:var(--dowe-{text});}}"
             )),
         }
         return;
@@ -919,13 +985,8 @@ fn append_single_variant_css(
                 "transparent".to_string(),
             ),
         };
-        let (context_text, context_title) = if variant == "soft" {
-            (soft_text, soft_title)
-        } else {
-            (text, title)
-        };
         css.push_str(&format!(
-            ".sidenav.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{context_text});--dowe-content-title:var(--dowe-{context_title});}}.sidenav.is-{variant}.is-{name} .sidenav-header,.sidenav.is-{variant}.is-{name} .sidenav-header:hover,.sidenav.is-{variant}.is-{name} .sidenav-header.is-active{{background-color:transparent;color:var(--dowe-{accent});}}.sidenav.is-{variant}.is-{name} .sidenav-entry:hover{{background-color:{hover_background};color:var(--dowe-{accent});}}.sidenav.is-{variant}.is-{name} .sidenav-entry.is-active{{background-color:{active_background};color:var(--dowe-{active_content});border-color:{active_border};font-weight:600;}}"
+            ".sidenav.is-{variant}.is-{name} .sidenav-entry:hover{{background-color:{hover_background};color:var(--dowe-{accent});}}.sidenav.is-{variant}.is-{name} .sidenav-entry.is-active{{background-color:{active_background};color:var(--dowe-{active_content});border-color:{active_border};font-weight:600;}}"
         ));
         return;
     }
@@ -964,37 +1025,14 @@ fn append_single_variant_css(
         return;
     }
     if base == "navmenu" {
-        let (background, content, border) = match variant {
-            ComponentVariant::Solid => (color, text, color),
-            ComponentVariant::Soft => (soft, soft_text, soft),
-            ComponentVariant::Outlined => (
-                "transparent",
-                nav_active_content_token(family, variant),
-                nav_active_content_token(family, variant),
-            ),
-            ComponentVariant::Line => (
-                "transparent",
-                nav_active_content_token(family, variant),
-                nav_active_content_token(family, variant),
-            ),
-            ComponentVariant::Ghost => (
-                "transparent",
-                nav_active_content_token(family, variant),
-                "transparent",
-            ),
+        let (hover_background, active_background, active_content, active_border) = match variant {
+            ComponentVariant::Solid => (format!("color-mix(in srgb,var(--dowe-{color}) 20%,transparent)"), format!("var(--dowe-{color})"), text, format!("var(--dowe-{color})")),
+            ComponentVariant::Soft => (format!("color-mix(in srgb,var(--dowe-{soft}) 50%,transparent)"), format!("var(--dowe-{soft})"), soft_text, "transparent".to_string()),
+            ComponentVariant::Outlined | ComponentVariant::Line => (format!("color-mix(in srgb,var(--dowe-{soft}) 50%,transparent)"), "transparent".to_string(), color, format!("var(--dowe-{color})")),
+            ComponentVariant::Ghost => ("transparent".to_string(), "transparent".to_string(), color, "transparent".to_string()),
         };
         css.push_str(&format!(
-            ".navmenu.is-{variant}.is-{name} .navmenu-item:hover{{background-color:var(--dowe-{soft});color:var(--dowe-{soft_text});}}.navmenu.is-{variant}.is-{name} .navmenu-item.is-active,.navmenu.is-{variant}.is-{name} .navmenu-item.is-open{{background-color:{};color:var(--dowe-{content});border-color:{};}}",
-            if background == "transparent" {
-                "transparent".to_string()
-            } else {
-                format!("var(--dowe-{background})")
-            },
-            if border == "transparent" {
-                "transparent".to_string()
-            } else {
-                format!("var(--dowe-{border})")
-            },
+            ".navmenu.is-{variant}.is-{name} .navmenu-item:hover{{background-color:{hover_background};color:var(--dowe-{color});}}.navmenu.is-{variant}.is-{name} .navmenu-item.is-active,.navmenu.is-{variant}.is-{name} .navmenu-item.is-open{{background-color:{active_background};color:var(--dowe-{active_content});border-color:{active_border};font-weight:600;}}",
             variant = variant.as_str()
         ));
         return;
@@ -1044,23 +1082,8 @@ fn append_single_variant_css(
                 color
             };
             css.push_str(&format!(
-                ".{base}.is-ghost.is-{name}{{background-color:transparent;color:var(--dowe-{content});border-color:transparent;}}"
+                ".{base}.is-ghost.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content});background-color:transparent;color:var(--dowe-{content});border-color:transparent;}}"
             ));
-        }
-    }
-}
-
-fn nav_active_content_token(family: ColorFamily, variant: ComponentVariant) -> &'static str {
-    match variant {
-        ComponentVariant::Solid => text_token(family),
-        ComponentVariant::Soft => soft_text_token(family),
-        ComponentVariant::Outlined | ComponentVariant::Ghost
-            if matches!(family, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            text_token(family)
-        }
-        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
-            family.as_str()
         }
     }
 }
@@ -1089,7 +1112,7 @@ fn append_tabs_variant_css(css: &mut String, family: ColorFamily, variant: TabsV
             ".tabs-list.is-pills.is-{name}{{border-radius:9999px;background-color:var(--dowe-{soft});color:var(--dowe-{soft_text});}}.tabs-list.is-pills.is-{name} .tab{{border-radius:9999px;}}.tabs-list.is-pills.is-{name} .tab.on-active{{background-color:var(--dowe-{active_background});color:var(--dowe-{active_content});}}"
         )),
         TabsVariant::Stepper => css.push_str(&format!(
-            ".tabs-list.is-stepper.is-{name}{{gap:0;padding:0;overflow-x:auto;scroll-snap-type:x proximity;}}.tabs-list.is-stepper.is-{name} .tab{{gap:0.625rem;padding:0.5rem 0;scroll-snap-align:start;color:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{content:\"\";display:block;width:2rem;height:2px;margin-inline:0.5rem;background:var(--dowe-softMuted);}}.tabs-list.is-stepper.is-{name} .tab.on-active{{color:var(--dowe-{accent});}}.tabs-list.is-stepper.is-{name} .step-indicator{{display:inline-grid;place-items:center;flex:0 0 auto;width:2rem;height:2rem;border:2px solid var(--dowe-softMuted);border-radius:9999px;background:var(--dowe-background);color:var(--dowe-muted);font-weight:700;}}.tabs-list.is-stepper.is-{name} .tab.on-active .step-indicator{{border-color:var(--dowe-{accent});background:var(--dowe-{active_background});color:var(--dowe-{active_content});}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab{{width:100%;}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{position:absolute;top:2.5rem;left:0.9375rem;width:2px;height:1.5rem;margin:0;background:var(--dowe-softMuted);}}"
+            ".tabs-list.is-stepper.is-{name}{{gap:0;padding:0;overflow-x:auto;scroll-snap-type:x proximity;}}.tabs-list.is-stepper.is-{name} .tab{{gap:0.625rem;padding:0.5rem 0;scroll-snap-align:start;color:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{content:\"\";display:block;width:2rem;height:2px;margin-inline:0.5rem;background:var(--dowe-muted);}}.tabs-list.is-stepper.is-{name} .tab.on-active{{color:var(--dowe-{accent});}}.tabs-list.is-stepper.is-{name} .step-indicator{{display:inline-grid;place-items:center;flex:0 0 auto;width:2rem;height:2rem;border:2px solid var(--dowe-muted);border-radius:9999px;background:var(--dowe-background);color:var(--dowe-muted);font-weight:700;}}.tabs-list.is-stepper.is-{name} .tab.on-active .step-indicator{{border-color:var(--dowe-{accent});background:var(--dowe-{active_background});color:var(--dowe-{active_content});}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab{{width:100%;}}.tabs.is-start .tabs-list.is-stepper.is-{name} .tab:not(:last-child)::after{{position:absolute;top:2.5rem;left:0.9375rem;width:2px;height:1.5rem;margin:0;background:var(--dowe-muted);}}"
         )),
     }
 }
@@ -1224,12 +1247,11 @@ fn overlay_key(value: &OverlayPaint) -> String {
 
 fn section_background_css(value: SectionBackground) -> String {
     match value {
-        SectionBackground::Soft => "background-image:linear-gradient(135deg,var(--dowe-surface),var(--dowe-background));".to_string(),
-        SectionBackground::Aurora => "background-image:linear-gradient(135deg,var(--dowe-softPrimary),var(--dowe-softSecondary),var(--dowe-softTertiary));".to_string(),
-        SectionBackground::Sunrise => "background-image:linear-gradient(135deg,var(--dowe-softWarning),var(--dowe-softDanger),var(--dowe-surface));".to_string(),
-        SectionBackground::Ocean => "background-image:linear-gradient(135deg,var(--dowe-softInfo),var(--dowe-softPrimary),var(--dowe-softTertiary));".to_string(),
-        SectionBackground::Meadow => "background-image:linear-gradient(135deg,var(--dowe-softSuccess),var(--dowe-softTertiary),var(--dowe-surface));".to_string(),
-        SectionBackground::Slate => "background-image:linear-gradient(135deg,var(--dowe-softMuted),var(--dowe-surface),var(--dowe-background));".to_string(),
+        SectionBackground::Aurora => "background-image:linear-gradient(135deg,var(--dowe-primary),var(--dowe-secondary),var(--dowe-tertiary));".to_string(),
+        SectionBackground::Sunrise => "background-image:linear-gradient(135deg,var(--dowe-warning),var(--dowe-danger),var(--dowe-surface));".to_string(),
+        SectionBackground::Ocean => "background-image:linear-gradient(135deg,var(--dowe-info),var(--dowe-primary),var(--dowe-tertiary));".to_string(),
+        SectionBackground::Meadow => "background-image:linear-gradient(135deg,var(--dowe-success),var(--dowe-tertiary),var(--dowe-surface));".to_string(),
+        SectionBackground::Slate => "background-image:linear-gradient(135deg,var(--dowe-muted),var(--dowe-surface),var(--dowe-background));".to_string(),
     }
 }
 

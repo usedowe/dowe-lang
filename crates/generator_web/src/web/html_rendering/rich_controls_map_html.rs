@@ -89,7 +89,7 @@ fn render_toggle_group_html(
     if props.kind == ToggleGroupKind::Pagination {
         return render_pagination_html(props, items, context);
     }
-    let mut extra = String::from(r#" role="radiogroup" data-dowe-toggle-group"#);
+    let mut extra = String::from(if props.multiple { r#" role="group" data-dowe-toggle-group data-dowe-toggle-group-multiple"# } else { r#" role="radiogroup" data-dowe-toggle-group"# });
     if let Some(value) = props.value.as_ref() {
         extra.push_str(&format!(
             r#" data-dowe-toggle-group-value="{}""#,
@@ -108,7 +108,7 @@ fn render_toggle_group_html(
     let buttons = items
         .iter()
         .map(|item| {
-            let active = item.id == props.selected;
+            let active = props.selected.split(',').any(|value| value == item.id);
             let variant = props.style.variant.unwrap_or(ComponentVariant::Solid).as_str();
             let family = props.style.color.unwrap_or(ColorFamily::Muted);
             let color = family.as_str();

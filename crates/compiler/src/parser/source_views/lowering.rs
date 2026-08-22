@@ -400,8 +400,9 @@ fn lower_remaining_view_node(
             image_cropper_component_node(props).map_err(|error| component_error(node, error))
         }
         BuiltinComponent::Password => {
-            reject_children(node)?;
-            password_component_node(props).map_err(|error| component_error(node, error))
+            let control =
+                password_component_node(props).map_err(|error| component_error(node, error))?;
+            lower_validated_form_control(node, control)
         }
         BuiltinComponent::Phone => {
             let control =
@@ -409,7 +410,8 @@ fn lower_remaining_view_node(
             lower_validated_form_control(node, control)
         }
         BuiltinComponent::Pin => {
-            let control = pin_component_node(props).map_err(|error| component_error(node, error))?;
+            let control =
+                pin_component_node(props).map_err(|error| component_error(node, error))?;
             lower_validated_form_control(node, control)
         }
         BuiltinComponent::Textarea => {

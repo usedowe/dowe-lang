@@ -303,6 +303,9 @@ pub(crate) fn compile_project(
             if platform_selected(selected_platforms.as_ref(), ViewPlatform::Android) {
                 copy_project_assets(&project.root)?;
             }
+            if platform_selected(selected_platforms.as_ref(), ViewPlatform::Ios) {
+                copy_project_assets_to_ios(&project.root)?;
+            }
             if compile_apps && previous_views.is_none() {
                 icon_artifacts::sync_project_icons(
                     &project.root,
@@ -355,6 +358,9 @@ pub(crate) fn complete_dev_app_outputs(
         write_app_artifacts(project)?;
         if platform_selected(Some(selected_platforms), ViewPlatform::Android) {
             copy_project_assets(&project.root)?;
+        }
+        if platform_selected(Some(selected_platforms), ViewPlatform::Ios) {
+            copy_project_assets_to_ios(&project.root)?;
         }
     }
     let font_families =
@@ -712,8 +718,18 @@ fn copy_font_asset(source: &Path, destination: &Path) -> DoweResult<()> {
 }
 
 fn copy_project_assets(root: &Path) -> DoweResult<()> {
+    copy_project_assets_to(
+        root,
+        &root.join(".dowe/apps/android/app/src/main/assets"),
+    )
+}
+
+fn copy_project_assets_to_ios(root: &Path) -> DoweResult<()> {
+    copy_project_assets_to(root, &root.join(".dowe/apps/ios/assets"))
+}
+
+fn copy_project_assets_to(root: &Path, destination: &Path) -> DoweResult<()> {
     let source = root.join("assets");
-    let destination = root.join(".dowe/apps/android/app/src/main/assets");
     if destination.exists() {
         fs::remove_dir_all(&destination)
             .map_err(|error| DoweError::at_path(&destination, error.to_string()))?;

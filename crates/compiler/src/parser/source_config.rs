@@ -617,9 +617,10 @@ fn parse_design(node: &SourceNode) -> DoweResult<DesignConfig> {
                 }
             }
             "Card" | "Button" | "IconButton" | "Drawer" | "Toast" | "Section" | "Accordion"
-            | "Checkbox" | "Input" | "Date" | "Password" | "Select" | "Pin" | "AppBar"
-            | "Footer" | "Modal" | "Dropdown" | "Tooltip" | "Tabs" | "Chip" | "Avatar" | "Ui"
-            | "Text" | "Title" => parse_component_defaults(child, &mut configured_defaults)?,
+            | "Checkbox" | "Input" | "Date" | "DateRange" | "Color" | "Textarea" | "Password"
+            | "Select" | "Pin" | "AppBar" | "Footer" | "Modal" | "Dropdown" | "Tooltip"
+            | "Tabs" | "Chip" | "SideNav" | "Sidebar" | "NavMenu" | "Avatar" | "Ui" | "Text"
+            | "Title" => parse_component_defaults(child, &mut configured_defaults)?,
             _ => {
                 return Err(node_error(
                     child,
@@ -709,17 +710,6 @@ fn validate_design_custom_color_defaults(
                 continue;
             }
             validate_design_custom_color_default(prop, theme, family, false)?;
-            let soft_variant = if slot == DesignComponentSlot::Tabs {
-                defaults
-                    .tabs_variant
-                    .get(&slot)
-                    .is_some_and(|variant| *variant == TabsVariant::Pills)
-            } else {
-                defaults.variant.get(&slot) == Some(&ComponentVariant::Soft)
-            };
-            if prop_name == "scheme" && soft_variant {
-                validate_design_custom_color_default(prop, theme, family, true)?;
-            }
         }
     }
     Ok(())
@@ -729,12 +719,12 @@ fn validate_design_custom_color_default(
     prop: &SourceProp,
     theme: &DesignTheme,
     family: ColorFamily,
-    soft: bool,
+    _soft: bool,
 ) -> DoweResult<()> {
-    if theme.contains_color_family(family, soft) {
+    if theme.contains_color_family(family, false) {
         return Ok(());
     }
-    let name = family.theme_name(soft);
+    let name = family.theme_name(false);
     Err(prop_error(
         prop,
         format!(
@@ -817,7 +807,7 @@ fn parse_component_defaults(node: &SourceNode, defaults: &mut DesignDefaults) ->
                     let value = ComponentVariant::from_name(&value).ok_or_else(|| {
                         prop_error(
                             prop,
-                            "variant must be solid, soft, outline, outlined, line or ghost",
+                            "variant must be solid, outline, outlined, line or ghost",
                         )
                     })?;
                     set_component_default(prop, &mut defaults.variant, slot, value)?;
@@ -828,6 +818,21 @@ fn parse_component_defaults(node: &SourceNode, defaults: &mut DesignDefaults) ->
                 let value = ButtonSize::from_name(&value)
                     .ok_or_else(|| prop_error(prop, "size must be xs, sm, md, lg or xl"))?;
                 set_component_default(prop, &mut defaults.size, slot, value)?;
+            }
+            "labelFloating"
+                if matches!(
+                    slot,
+                    DesignComponentSlot::Input
+                        | DesignComponentSlot::Password
+                        | DesignComponentSlot::Select
+                        | DesignComponentSlot::Date
+                        | DesignComponentSlot::DateRange
+                        | DesignComponentSlot::Color
+                        | DesignComponentSlot::Textarea
+                ) =>
+            {
+                let value = parse_boolean_prop(prop, "labelFloating")?;
+                set_component_default(prop, &mut defaults.label_floating, slot, value)?;
             }
             _ => {
                 return Err(prop_error(
@@ -921,7 +926,7 @@ fn parse_colors(
         ));
     }
     for family_node in &node.children {
-        let Some((family, soft)) = ColorFamily::from_theme_name(&family_node.name) else {
+        let Some((family, _)) = ColorFamily::from_theme_name(&family_node.name) else {
             return Err(node_error(
                 family_node,
                 format!("unknown color family `{}`", family_node.name),
@@ -949,7 +954,7 @@ fn parse_colors(
                 ),
             ));
         }
-        let tokens = family.theme_tokens(soft).ok_or_else(|| {
+        let tokens = family.theme_tokens(false).ok_or_else(|| {
             node_error(
                 family_node,
                 format!("unknown color family `{}`", family_node.name),

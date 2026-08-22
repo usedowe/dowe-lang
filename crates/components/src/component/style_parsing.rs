@@ -4,6 +4,7 @@ fn parse_style_props(
     mode: StylePropMode,
 ) -> ComponentResult<StyleProps> {
     let mut style = StyleProps::default();
+    let mut scheme = None;
 
     for prop in props {
         match prop.name.as_str() {
@@ -51,6 +52,9 @@ fn parse_style_props(
             {
                 style.element.on_click = Some(parse_required_string(&prop.name, &prop.value)?)
             }
+            "scheme" if matches!(mode, StylePropMode::Box | StylePropMode::Section) => {
+                scheme = Some(parse_family_prop(component, &prop.name, &prop.value)?);
+            }
             "bg" if style_accepts_colors(mode) => {
                 style.bg = Some(parse_color_prop(&prop.name, &prop.value)?)
             }
@@ -66,11 +70,26 @@ fn parse_style_props(
             "background" if style_accepts_background(mode) => {
                 style.background = Some(parse_background_prop(&prop.name, &prop.value)?)
             }
-            "center" if matches!(mode, StylePropMode::Section) => {
-                style.center = Some(parse_responsive_bool_prop(&prop.name, &prop.value)?)
+            "centerX" if matches!(mode, StylePropMode::Box | StylePropMode::Section) => {
+                style.center_x = Some(parse_responsive_bool_prop(&prop.name, &prop.value)?)
+            }
+            "centerY" if matches!(mode, StylePropMode::Box | StylePropMode::Section) => {
+                style.center_y = Some(parse_responsive_bool_prop(&prop.name, &prop.value)?)
             }
             "gap" if matches!(mode, StylePropMode::Section) => {
                 style.gap = Some(parse_gap_prop(&prop.name, &prop.value, false)?)
+            }
+            "flex"
+                if matches!(
+                    component,
+                    BuiltinComponent::Section
+                        | BuiltinComponent::Box
+                        | BuiltinComponent::Grid
+                        | BuiltinComponent::Flex
+                        | BuiltinComponent::Card
+                ) =>
+            {
+                style.flex = Some(parse_flex_item_prop(&prop.name, &prop.value)?)
             }
             "boxed" if matches!(mode, StylePropMode::Section) => {
                 style.boxed = parse_static_bool(&prop.name, &prop.value)?
@@ -146,6 +165,15 @@ fn parse_style_props(
                 style.shadow_color = Some(parse_family_prop(component, &prop.name, &prop.value)?)
             }
             _ => return Err(ComponentError::unknown_prop(component, &prop.name)),
+        }
+    }
+
+    if let Some(family) = scheme {
+        if style.bg.is_none() {
+            style.bg = Some(ResponsiveValue::scalar(family.color_token()));
+        }
+        if style.text.is_none() {
+            style.text = Some(ResponsiveValue::scalar(family.text_token()));
         }
     }
 
@@ -250,7 +278,16 @@ fn parse_grid_props(
     component: BuiltinComponent,
     props: &[ComponentProp],
 ) -> ComponentResult<GridProps> {
-    let mut grid = GridProps::default();
+    let mut grid = GridProps {
+        columns: Some(ResponsiveValue::scalar(GridTracks::Count(1))),
+        rows: Some(ResponsiveValue::scalar(GridTracks::Auto)),
+        justify: Some(ResponsiveValue::scalar(GridAlignment::Stretch)),
+        align: Some(ResponsiveValue::scalar(GridAlignment::Stretch)),
+        gap: Some(ResponsiveValue::scalar(GapValue::Single(GapSize::Scale(
+            ScaleValue::from_half_steps(0),
+        )))),
+        ..GridProps::default()
+    };
     let mut style_props = Vec::new();
 
     for prop in props {
@@ -274,6 +311,9 @@ fn parse_grid_props(
     }
 
     grid.style = parse_style_props(component, &style_props, StylePropMode::Grid)?;
+    if grid.style.sizing.w.is_none() {
+        grid.style.sizing.w = Some(ResponsiveValue::scalar(SizeValue::Full));
+    }
     Ok(grid)
 }
 
@@ -936,15 +976,11 @@ fn parse_svg_props(
         }
     }
 
-    if style.sizing.w.is_none() {
-        style.sizing.w = Some(ResponsiveValue::scalar(SizeValue::Scale(
-            ScaleValue::from_half_steps(12),
-        )));
-    }
-    if style.sizing.h.is_none() {
-        style.sizing.h = Some(ResponsiveValue::scalar(SizeValue::Scale(
-            ScaleValue::from_half_steps(12),
-        )));
+    if style.sizing.w.is_none() && style.sizing.h.is_none() {
+        let default_size =
+            ResponsiveValue::scalar(SizeValue::Scale(ScaleValue::from_half_steps(12)));
+        style.sizing.w = Some(default_size.clone());
+        style.sizing.h = Some(default_size);
     }
 
     if data.is_some() && view_box.is_some() {
@@ -1272,7 +1308,7 @@ fn parse_background_prop(
     parse_responsive(
         name,
         value,
-        "soft, aurora, sunrise, ocean, meadow or slate",
+        "aurora, sunrise, ocean, meadow or slate",
         |scalar| match scalar {
             PropScalar::String(value) => SectionBackground::from_name(value),
             PropScalar::Number(_) | PropScalar::Boolean(_) => None,

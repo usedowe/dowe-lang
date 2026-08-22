@@ -27,6 +27,9 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
             "variant" | "scheme" | "size" | "wide",
             SourceValue::Bareword(path),
         ) => PropValue::String(format!("@signal:{path}")),
+        (BuiltinComponent::Image, "src", SourceValue::Bareword(path)) => {
+            PropValue::String(format!("@signal:{path}"))
+        }
         (BuiltinComponent::Icon, "name", SourceValue::Bareword(path)) => {
             PropValue::String(format!("@icon-binding:{path}"))
         }
@@ -34,7 +37,7 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
             PropValue::String(parse_conditional_icon(prop, entries)?)
         }
         (_, "show", SourceValue::Object(entries)) if show_condition_entries(entries) => {
-            PropValue::String(parse_show_number_condition(prop, entries)?)
+            PropValue::String(parse_show_condition(prop, entries)?)
         }
         _ => prop_value(prop)?,
     };
@@ -45,11 +48,35 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
 }
 
 fn show_condition_entries(entries: &[SourceObjectEntry]) -> bool {
-    entries
-        .iter()
-        .any(|entry| {
-            matches!(entry, SourceObjectEntry::KeyValue { key, .. } if matches!(key.as_str(), "when" | "gt" | "gte" | "lt" | "lte"))
-        })
+    entries.iter().any(|entry| {
+        matches!(entry, SourceObjectEntry::KeyValue { key, .. } if matches!(key.as_str(), "when" | "eq" | "equals" | "gt" | "gte" | "lt" | "lte"))
+    })
+}
+
+fn parse_show_condition(
+    prop: &SourceProp,
+    entries: &[SourceObjectEntry],
+) -> DoweResult<String> {
+    if entries.iter().any(|entry| matches!(entry, SourceObjectEntry::KeyValue { key, .. } if matches!(key.as_str(), "eq" | "equals"))) {
+        let mut path = None;
+        let mut value = None;
+        for entry in entries {
+            let SourceObjectEntry::KeyValue { key, value: entry_value } = entry else {
+                return Err(prop_error(prop, "show conditions do not accept spreads"));
+            };
+            match (key.as_str(), entry_value) {
+                ("when", SourceValue::Bareword(path_value)) => path = Some(path_value.clone()),
+                ("eq" | "equals", SourceValue::String(value_value)) => value = Some(value_value.clone()),
+                ("when", _) => return Err(prop_error(prop, "show condition `when` must be a Signal path")),
+                ("eq" | "equals", _) => return Err(prop_error(prop, "show condition equality value must be quoted")),
+                _ => return Err(prop_error(prop, "show equality conditions only accept `when` and `eq`")),
+            }
+        }
+        let path = path.ok_or_else(|| prop_error(prop, "show condition requires `when`"))?;
+        let value = value.ok_or_else(|| prop_error(prop, "show condition requires `eq`"))?;
+        return Ok(format!("@string-condition:{path}:{value}"));
+    }
+    parse_show_number_condition(prop, entries)
 }
 
 fn parse_show_number_condition(
@@ -274,6 +301,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             "variant" | "scheme" | "size" | "wide",
             SourceValue::Bareword(_),
         ) => true,
+        (BuiltinComponent::Image, "src", SourceValue::Bareword(_)) => true,
         (BuiltinComponent::Button, "iconStart" | "iconEnd", SourceValue::Object(_)) => true,
         (
             BuiltinComponent::Input
@@ -295,7 +323,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             SourceValue::Bareword(_),
         )
         | (BuiltinComponent::DateRange, "start" | "end", SourceValue::Bareword(_))
-        | (BuiltinComponent::ToggleGroup, "value", SourceValue::Bareword(_))
+        | (BuiltinComponent::ToggleGroup, "value" | "bind", SourceValue::Bareword(_))
         | (BuiltinComponent::Candlestick, "data", SourceValue::Bareword(_))
         | (
             BuiltinComponent::Canvas,

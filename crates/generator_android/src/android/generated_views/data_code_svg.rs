@@ -425,7 +425,7 @@ private fun DoweTable(state: DoweReactiveState, dataPath: String, columns: List<
         val columnExpansion = (tableWidth - minimumWidth) / columns.size.coerceAtLeast(1).toFloat()
         Box(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
             Column(modifier = Modifier.width(tableWidth)) {
-                Row(modifier = Modifier.fillMaxWidth().background(DoweDesign.softMuted)) {
+                Row(modifier = Modifier.fillMaxWidth().background(DoweDesign.muted)) {
                     columns.forEach { column ->
                         Box(modifier = Modifier.width(doweTableColumnWidth(column.width) + columnExpansion).padding(horizontal = metrics.horizontalPadding, vertical = metrics.headerVerticalPadding), contentAlignment = doweTableBoxAlignment(column.align)) {
                             Text(
@@ -647,11 +647,15 @@ private fun DoweSvg(viewBox: DoweSvgViewBox, modifier: Modifier, color: Color, p
         0f
     }
     Canvas(modifier = modifier.rotate(rotation)) {
-        val scaleX = size.width / viewBox.width
-        val scaleY = size.height / viewBox.height
+        val scale = minOf(size.width / viewBox.width, size.height / viewBox.height)
+        val renderedWidth = viewBox.width * scale
+        val renderedHeight = viewBox.height * scale
         withTransform({
-            scale(scaleX = scaleX, scaleY = scaleY)
-            translate(left = -viewBox.minX, top = -viewBox.minY)
+            scale(scaleX = scale, scaleY = scale)
+            translate(
+                left = (size.width - renderedWidth) / (2f * scale) - viewBox.minX,
+                top = (size.height - renderedHeight) / (2f * scale) - viewBox.minY
+            )
         }) {
             paths.forEach { entry ->
                 val fill = when (val value = entry.fill) {

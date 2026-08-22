@@ -9,7 +9,7 @@
 .rich-mark {
   --rich-accent:var(--dowe-info);
   --rich-on-accent:var(--dowe-infoText);
-  --rich-soft-accent:var(--dowe-softInfo);
+  --rich-soft-accent:var(--dowe-info);
   display:inline-block;
   box-sizing:border-box;
   max-width:100%;
@@ -181,42 +181,42 @@
 .rich-mark.is-primary {
   --rich-accent:var(--dowe-primary);
   --rich-on-accent:var(--dowe-primaryText);
-  --rich-soft-accent:var(--dowe-softPrimary);
+  --rich-soft-accent:var(--dowe-primary);
 }
 .rich-mark.is-secondary {
   --rich-accent:var(--dowe-secondary);
   --rich-on-accent:var(--dowe-secondaryText);
-  --rich-soft-accent:var(--dowe-softSecondary);
+  --rich-soft-accent:var(--dowe-secondary);
 }
 .rich-mark.is-tertiary {
   --rich-accent:var(--dowe-tertiary);
   --rich-on-accent:var(--dowe-tertiaryText);
-  --rich-soft-accent:var(--dowe-softTertiary);
+  --rich-soft-accent:var(--dowe-tertiary);
 }
 .rich-mark.is-muted {
   --rich-accent:var(--dowe-muted);
   --rich-on-accent:var(--dowe-mutedText);
-  --rich-soft-accent:var(--dowe-softMuted);
+  --rich-soft-accent:var(--dowe-muted);
 }
 .rich-mark.is-success {
   --rich-accent:var(--dowe-success);
   --rich-on-accent:var(--dowe-successText);
-  --rich-soft-accent:var(--dowe-softSuccess);
+  --rich-soft-accent:var(--dowe-success);
 }
 .rich-mark.is-info {
   --rich-accent:var(--dowe-info);
   --rich-on-accent:var(--dowe-infoText);
-  --rich-soft-accent:var(--dowe-softInfo);
+  --rich-soft-accent:var(--dowe-info);
 }
 .rich-mark.is-warning {
   --rich-accent:var(--dowe-warning);
   --rich-on-accent:var(--dowe-warningText);
-  --rich-soft-accent:var(--dowe-softWarning);
+  --rich-soft-accent:var(--dowe-warning);
 }
 .rich-mark.is-danger {
   --rich-accent:var(--dowe-danger);
   --rich-on-accent:var(--dowe-dangerText);
-  --rich-soft-accent:var(--dowe-softDanger);
+  --rich-soft-accent:var(--dowe-danger);
 }
 @keyframes dowe-rich-neon-flicker {
   0%,100% {
@@ -263,7 +263,7 @@
 }
 .table-header {
   white-space:nowrap;
-  background:var(--dowe-softMuted);
+  background:var(--dowe-muted);
   color:currentColor;
   font-size:0.875rem;
   font-weight:600;

@@ -148,15 +148,15 @@ fn lower_drawer_node(node: &SourceNode, allow_children: bool) -> DoweResult<View
     for child in &node.children {
         match child.name.as_str() {
             "header" if header.is_none() => {
-                header = Some(lower_region(child, "Drawer header", allow_children)?)
+                header = Some(lower_styled_region(child, "Drawer header", allow_children)?)
             }
             "header" => return Err(node_error(child, "duplicate `header` region in Drawer")),
             "body" if body.is_none() => {
-                body = Some(lower_region(child, "Drawer body", allow_children)?)
+                body = Some(lower_styled_region(child, "Drawer body", allow_children)?)
             }
             "body" => return Err(node_error(child, "duplicate `body` region in Drawer")),
             "footer" if footer.is_none() => {
-                footer = Some(lower_region(child, "Drawer footer", allow_children)?)
+                footer = Some(lower_styled_region(child, "Drawer footer", allow_children)?)
             }
             "footer" => return Err(node_error(child, "duplicate `footer` region in Drawer")),
             _ => body_nodes.push(child.clone()),

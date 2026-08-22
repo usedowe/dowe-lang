@@ -105,6 +105,7 @@ fn is_known_display_prop(component: BuiltinComponent, name: &str) -> bool {
                 name,
                 "value"
                     | "selected"
+                    | "multiple"
                     | "size"
                     | "wide"
                     | "vertical"
