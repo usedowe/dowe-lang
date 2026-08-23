@@ -480,14 +480,21 @@ fn swift_modifiers_for_text(
     default_family: FontFamily,
 ) -> Vec<String> {
     let size = text_size(title, props);
-    let mut modifiers = vec![
+    let mut modifiers = vec![];
+    if let Some(binding) = props.size_binding.as_ref() {
+        modifiers.push(format!(".font(doweDynamicFontSize(state.text(\"{}\")))", escape_swift(&binding.path)));
+    }
+    if let Some(binding) = props.weight_binding.as_ref() {
+        modifiers.push(format!(".fontWeight(doweDynamicFontWeight(state.text(\"{}\")))", escape_swift(&binding.path)));
+    }
+    modifiers.extend(vec![
         format!(".font({})", swift_font_value(font, &size, default_family)),
         format!(".fontWeight({})", text_weight(title, props)),
         format!(
             ".lineSpacing(doweTextLineSpacing(fontSize: {size}, lineHeight: {}))",
             text_line_height(title, props)
         ),
-    ];
+    ]);
 
     if title || props.letter_spacing.is_some() {
         modifiers.push(format!(

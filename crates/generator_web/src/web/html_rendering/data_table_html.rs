@@ -32,6 +32,18 @@ fn render_svg_html(props: &SvgProps, paths: &[SvgPath], context: &ReactiveRender
                 escape_attr(fallback)
             ));
         }
+        if let Some(binding) = props.icon_fill_binding.as_deref() {
+            extra.push_str(&format!(
+                r#" data-dowe-icon-fill="{}""#,
+                escape_attr(&context.signal_path(binding))
+            ));
+        }
+        if let Some(binding) = props.icon_stroke_binding.as_deref() {
+            extra.push_str(&format!(
+                r#" data-dowe-icon-stroke="{}""#,
+                escape_attr(&context.signal_path(binding))
+            ));
+        }
         return format!(
             r#"<svg{} xmlns="http://www.w3.org/2000/svg" viewBox="{}" aria-hidden="true"></svg>"#,
             attrs(classes, Some(&props.style.element), Some(&extra), context),

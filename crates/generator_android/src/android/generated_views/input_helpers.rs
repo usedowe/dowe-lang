@@ -1,5 +1,26 @@
 fn android_runtime_input_helpers() -> &'static str {
-    r#"private data class DoweValidationRule(val kind: String, val argument: String?, val message: String)
+    r#"private fun Modifier.doweReactiveStyle(property: String, value: String): Modifier {
+    val number = value.toFloatOrNull()
+    return when (property) {
+        "p" -> if (number != null) padding(number.dp) else this
+        "px" -> if (number != null) padding(horizontal = number.dp) else this
+        "py" -> if (number != null) padding(vertical = number.dp) else this
+        "pl" -> if (number != null) padding(start = number.dp) else this
+        "pr" -> if (number != null) padding(end = number.dp) else this
+        "pt" -> if (number != null) padding(top = number.dp) else this
+        "pb" -> if (number != null) padding(bottom = number.dp) else this
+        "w" -> if (number != null) width(number.dp) else this
+        "h" -> if (number != null) height(number.dp) else this
+        "minW" -> if (number != null) widthIn(min = number.dp) else this
+        "minH" -> if (number != null) heightIn(min = number.dp) else this
+        "maxW" -> if (number != null) widthIn(max = number.dp) else this
+        "maxH" -> if (number != null) heightIn(max = number.dp) else this
+        "border" -> if (number != null) border(number.dp, Color.Transparent) else this
+        else -> this
+    }
+}
+
+private data class DoweValidationRule(val kind: String, val argument: String?, val message: String)
 
 private fun doweValidationError(value: String, rules: List<DoweValidationRule>): String? {
     for (rule in rules) {

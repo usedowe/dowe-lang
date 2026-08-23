@@ -18,22 +18,22 @@ fn render_swift_side_nav_data(
     };
     let variant = props
         .style
-        .reactive
-        .variant
-        .as_ref()
-        .map(|path| reactive_text(path, "solid"));
+        .bindings()
+        .iter()
+        .find(|binding| binding.property == dowe_components::VariantBindingProperty::Variant)
+        .map(|binding| reactive_text(&binding.binding.path, "solid"));
     let scheme = props
         .style
-        .reactive
-        .scheme
-        .as_ref()
-        .map(|path| reactive_text(path, "primary"));
+        .bindings()
+        .iter()
+        .find(|binding| binding.property == dowe_components::VariantBindingProperty::Scheme)
+        .map(|binding| reactive_text(&binding.binding.path, "primary"));
     let size = props
         .style
-        .reactive
-        .size
-        .as_ref()
-        .map(|path| reactive_text(path, "md"));
+        .bindings()
+        .iter()
+        .find(|binding| binding.property == dowe_components::VariantBindingProperty::Size)
+        .map(|binding| reactive_text(&binding.binding.path, "md"));
     let wide = swift_side_nav_wide(props, context);
     let (padding_horizontal, padding_vertical, gap, label_size, description_size) =
         if let Some(size) = size.as_ref() {

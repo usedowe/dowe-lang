@@ -1224,6 +1224,9 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Title | BuiltinComponent::Text, "align") => Some(quoted_values(
             TextAlign::all().iter().map(|value| value.as_str()),
         )),
+        (BuiltinComponent::Title, "as") => {
+            Some(quoted_values(["h1", "h2", "h3", "h4", "h5", "h6"]))
+        }
         (
             BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText,
             "weight",
@@ -1515,7 +1518,8 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Icon" => ICON_PROPS.to_vec(),
         "Svg" => SVG_PROPS.to_vec(),
         "Path" => PATH_PROPS.to_vec(),
-        "Title" | "Text" => TEXT_PROPS.to_vec(),
+        "Title" => [&TEXT_PROPS[..], &["as"][..]].concat(),
+        "Text" => TEXT_PROPS.to_vec(),
         "Audio" => combined_props(&["src", "subtitle", "avatarSrc"], VARIANT_PROPS),
         "Camera" => CAMERA_PROPS.to_vec(),
         "Microphone" => MICROPHONE_PROPS.to_vec(),

@@ -3,9 +3,13 @@ pub struct TextProps {
     pub style: StyleProps,
     pub align: Option<ResponsiveValue<TextAlign>>,
     pub size: Option<ResponsiveValue<TextSize>>,
+    pub size_binding: Option<PropBinding>,
     pub weight: Option<ResponsiveValue<TextWeight>>,
+    pub weight_binding: Option<PropBinding>,
     pub letter_spacing: Option<ResponsiveValue<TextSpacing>>,
+    pub letter_spacing_binding: Option<PropBinding>,
     pub i18n: Option<String>,
+    pub as_tag: Option<String>,
     pub title: bool,
 }
 
@@ -26,7 +30,9 @@ pub struct SvgProps {
     pub icon_name: Option<String>,
     pub icon_fallback: Option<String>,
     pub icon_fill: Option<ColorToken>,
+    pub icon_fill_binding: Option<String>,
     pub icon_stroke: Option<ColorToken>,
+    pub icon_stroke_binding: Option<String>,
     pub motion: Option<SvgMotion>,
 }
 

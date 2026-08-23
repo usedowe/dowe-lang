@@ -65,22 +65,30 @@ pub async fn run_dev_with_options(
     selection: DevTargetSelection,
     options: DevRunOptions,
 ) -> RuntimeResult<()> {
-    let root = root.as_ref();
+    let root = root.as_ref().to_path_buf();
     let platforms = selected_view_platforms(&selection);
-    let mut compiler = DevCompilerSession::new(root, platforms).map_err(RuntimeError::from)?;
+    let compile_server =
+        selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop);
     let defer_apps = selection.contains(DevTarget::Desktop)
         || selection.contains(DevTarget::Android)
         || selection.contains(DevTarget::Ios);
-    let mut project = if defer_apps {
-        compiler.compile_initial_web(
-            selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop),
-        )
-    } else {
-        compiler.compile_initial(
-            selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop),
-        )
-    }
-    .map_err(RuntimeError::from)?;
+    let (compiler, mut project) = std::thread::Builder::new()
+        .name("dowe-initial-compile".to_string())
+        .stack_size(64 * 1024 * 1024)
+        .spawn(move || -> RuntimeResult<_> {
+            let mut compiler =
+                DevCompilerSession::new(&root, platforms).map_err(RuntimeError::from)?;
+            let project = if defer_apps {
+                compiler.compile_initial_web(compile_server)
+            } else {
+                compiler.compile_initial(compile_server)
+            }
+            .map_err(RuntimeError::from)?;
+            Ok((compiler, project))
+        })
+        .map_err(|error| RuntimeError::new(error.to_string()))?
+        .join()
+        .map_err(|_| RuntimeError::new("initial compile thread panicked"))??;
     if !selection.contains(DevTarget::Server) {
         project.server_inspector = None;
         let inspector_root = project.root.join(".dowe/server");

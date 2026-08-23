@@ -277,16 +277,32 @@ fn parse_text_props(
     let mut style_props = Vec::new();
 
     for prop in props {
+        let value = prop.value.binding_fallback().unwrap_or_else(|| prop.value.clone());
+        let binding = prop.value.binding().cloned();
         match prop.name.as_str() {
             "align" if matches!(component, BuiltinComponent::Text | BuiltinComponent::Title) => {
                 text.align = Some(parse_text_align_prop(&prop.name, &prop.value)?)
             }
-            "size" => text.size = Some(parse_text_size_prop(&prop.name, &prop.value)?),
-            "weight" => text.weight = Some(parse_text_weight_prop(&prop.name, &prop.value)?),
+            "size" => {
+                text.size = Some(parse_text_size_prop(&prop.name, &value)?);
+                text.size_binding = binding;
+            }
+            "weight" => {
+                text.weight = Some(parse_text_weight_prop(&prop.name, &value)?);
+                text.weight_binding = binding;
+            }
             "spacing" => {
-                text.letter_spacing = Some(parse_text_spacing_prop(&prop.name, &prop.value)?)
+                text.letter_spacing = Some(parse_text_spacing_prop(&prop.name, &value)?);
+                text.letter_spacing_binding = binding;
             }
             "i18n" => text.i18n = Some(parse_i18n_key_prop(&prop.name, &prop.value)?),
+            "as" if component == BuiltinComponent::Title => {
+                let value = match &prop.value {
+                    PropValue::String(value) if matches!(value.as_str(), "h1" | "h2" | "h3" | "h4" | "h5" | "h6") => value.clone(),
+                    _ => return Err(ComponentError::invalid_prop(&prop.name, "h1, h2, h3, h4, h5 or h6")),
+                };
+                text.as_tag = Some(value);
+            }
             "title" if component == BuiltinComponent::RichText => {
                 text.title = parse_static_bool(&prop.name, &prop.value)?
             }

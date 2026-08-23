@@ -25,4 +25,7 @@ include!("model/code_model.rs");
 include!("model/visibility_and_svg.rs");
 include!("model/feedback_variants.rs");
 include!("model/responsive_props.rs");
+include!("model/style_bindings.rs");
+include!("model/variant_bindings.rs");
 include!("model/builtin_component.rs");
+include!("prop_contracts.rs");

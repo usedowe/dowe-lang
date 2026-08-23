@@ -308,7 +308,13 @@ pub(crate) async fn server_response(
                                 .await
                             {
                                 Ok(value) => json_response(StatusCode::OK, value),
-                                Err(error) => store_error_response(error),
+                                Err(error) => {
+                                    log_error(format!(
+                                        "Database query failed for `{}`: {error}",
+                                        query.connection.database
+                                    ));
+                                    store_error_response(error)
+                                }
                             }
                         }
                         EndpointBehavior::StoreTransactionJson(transaction) => {

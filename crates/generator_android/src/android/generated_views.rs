@@ -147,7 +147,7 @@ fn generated_views(
     }
 
     output.push_str("}\n");
-    output.push_str(compose_reactive_runtime());
+    output.push_str(&compose_reactive_runtime());
     output.push_str(&compose_route_dispatcher(routes));
 
     for (route_index, route) in routes.iter().enumerate() {

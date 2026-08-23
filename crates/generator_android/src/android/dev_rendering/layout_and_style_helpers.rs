@@ -411,6 +411,28 @@ fn next_dev_view(counter: &mut usize) -> String {
     value
 }
 
+fn dev_android_style_tag(property: &str) -> &'static str {
+    match property {
+        "p" => "DOWE_STYLE_P_TAG",
+        "px" => "DOWE_STYLE_PX_TAG",
+        "py" => "DOWE_STYLE_PY_TAG",
+        "pl" => "DOWE_STYLE_PL_TAG",
+        "pr" => "DOWE_STYLE_PR_TAG",
+        "pt" => "DOWE_STYLE_PT_TAG",
+        "pb" => "DOWE_STYLE_PB_TAG",
+        "w" => "DOWE_STYLE_W_TAG",
+        "h" => "DOWE_STYLE_H_TAG",
+        "minW" => "DOWE_STYLE_MIN_W_TAG",
+        "minH" => "DOWE_STYLE_MIN_H_TAG",
+        "maxW" => "DOWE_STYLE_MAX_W_TAG",
+        "maxH" => "DOWE_STYLE_MAX_H_TAG",
+        "border" => "DOWE_STYLE_BORDER_TAG",
+        "rounded" => "DOWE_STYLE_ROUNDED_TAG",
+        "bg" => "DOWE_STYLE_BG_TAG",
+        _ => "DOWE_STYLE_COLOR_TAG",
+    }
+}
+
 fn apply_dev_android_style(
     props: &StyleProps,
     view: &str,
@@ -431,6 +453,12 @@ fn apply_dev_android_style_with_shadow_radius(
         output.push_str(&format!(
             "        doweRegisterSection(\"{}\", {view});\n",
             escape_java(id)
+        ));
+    }
+    for binding in props.bindings() {
+        output.push_str(&format!(
+            "        {view}.setTag({}, \"{}\");\n",
+            dev_android_style_tag(binding.property.as_str()), escape_java(&binding.binding.path)
         ));
     }
 

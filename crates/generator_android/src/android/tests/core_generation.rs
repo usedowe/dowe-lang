@@ -994,7 +994,7 @@ fn generates_compose_box_and_text() {
     );
     assert!(
         dev.content
-            .contains("private static int DOWE_BACKGROUND = Color.rgb(255, 255, 255);")
+            .contains("private static int DOWE_BACKGROUND = 0xFFFFFFFF;")
     );
     assert!(
         dev.content
@@ -1717,6 +1717,56 @@ fn generates_centered_icon_button_without_empty_android_label() {
             .contains("setOnClickListener(v -> doweNavigate(\"push\", \"/save\", null))")
     );
     assert!(!route_shards.contains(r#"doweText("")"#));
+}
+
+#[test]
+fn emits_generic_variant_bindings_on_android() {
+    let mut route = route();
+    route.page_tree = ViewNode::Button {
+        props: VariantProps {
+            variant_binding: Some(dowe_components::PropBinding::string("item.variant")),
+            ..Default::default()
+        },
+        children: vec![text("Action")],
+    };
+    let generated = all_android_source(&generate_android(&[route], &FontConfig::default(), &DesignConfig::default(), &[]));
+    assert!(generated.contains("doweReactiveStyle(\"variant\", state.text(\"item.variant\"))"));
+}
+
+#[test]
+fn generates_java_runtime_catalogs_from_component_contract() {
+    let output = generate_android(&[route()], &FontConfig::default(), &DesignConfig::default(), &[]);
+    let source = dev_java_source(&output).content;
+    assert!(source.contains("DOWE_PROP_VARIANTS = {\"solid\", \"soft\", \"outlined\", \"ghost\"}"));
+    assert!(source.contains("DOWE_PROP_SCHEMES = {\"primary\", \"secondary\", \"accent\", \"muted\", \"success\", \"info\", \"warning\", \"danger\"}"));
+}
+
+#[test]
+fn generates_java_runtime_variant_metadata_and_refresh() {
+    let mut route = route();
+    route.page_tree = ViewNode::Button {
+        props: VariantProps {
+            reactive: ReactiveVariantProps {
+                variant: Some("item.variant".to_string()),
+                scheme: Some("theme.scheme".to_string()),
+                size: Some("item.size".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![text("Action")],
+    };
+    let generated = all_android_source(&generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+    assert!(generated.contains("setTag(DOWE_VARIANT_TAG, \"item.variant\")"));
+    assert!(generated.contains("setTag(DOWE_SCHEME_TAG, \"theme.scheme\")"));
+    assert!(generated.contains("setTag(DOWE_SIZE_TAG, \"item.size\")"));
+    assert!(generated.contains("doweApplyReactiveVariant(view)"));
+    assert!(generated.contains("doweButtonContent(variant, scheme)"));
 }
 
 #[test]

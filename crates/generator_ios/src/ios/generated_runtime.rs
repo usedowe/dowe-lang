@@ -210,7 +210,7 @@ func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool {
 
 "#,
     );
-    output.push_str(swift_reactive_runtime());
+    output.push_str(&swift_reactive_runtime());
 
     output
 }

@@ -112,7 +112,7 @@ fn is_known_selection_and_text_prop(component: BuiltinComponent, name: &str) -> 
                 matches!(
                     name,
                     "size" | "weight" | "spacing" | "bg" | "color" | "i18n"
-                )
+                ) || (component == BuiltinComponent::Title && name == "as")
             }
         _ => false,
     }

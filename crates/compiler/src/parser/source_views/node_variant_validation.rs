@@ -171,6 +171,26 @@ fn validate_node_variant_references(
                     ViewPathExpectation::Any,
                 )?;
             }
+            if let Some(fill) = props.icon_fill_binding.as_deref() {
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    fill,
+                    "Icon fill",
+                    ViewPathExpectation::String,
+                )?;
+            }
+            if let Some(stroke) = props.icon_stroke_binding.as_deref() {
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    stroke,
+                    "Icon stroke",
+                    ViewPathExpectation::String,
+                )?;
+            }
             if let Some(name) = props.icon_name.as_deref() {
                 validate_typed_path(
                     path,

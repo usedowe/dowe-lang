@@ -78,6 +78,8 @@ fn parse_variant_props(
     let mut form_error_text = None;
 
     for prop in props {
+        let binding = prop.value.binding().cloned();
+        let value = prop.value.binding_fallback().unwrap_or_else(|| prop.value.clone());
         match prop.name.as_str() {
             "variant" if reactive_reference(&prop.value).is_some() => {
                 variant_props.reactive.variant = reactive_reference(&prop.value)
@@ -139,9 +141,13 @@ fn parse_variant_props(
                 let name = parse_static_string(&prop.name, &prop.value)?;
                 variant_props.icon_start = Some(solar_control_icon(&name)?);
             }
-            "variant" => variant_props.variant = Some(parse_variant_prop(&prop.name, &prop.value)?),
+            "variant" => {
+                variant_props.variant = Some(parse_variant_prop(&prop.name, &value)?);
+                variant_props.variant_binding = binding;
+            }
             "scheme" => {
-                variant_props.color = Some(parse_family_prop(component, &prop.name, &prop.value)?)
+                variant_props.color = Some(parse_family_prop(component, &prop.name, &value)?);
+                variant_props.color_binding = binding
             }
             "size"
                 if matches!(
@@ -155,7 +161,8 @@ fn parse_variant_props(
                         | BuiltinComponent::Fab
                 ) =>
             {
-                variant_props.size = Some(parse_button_size_prop(&prop.name, &prop.value)?)
+                variant_props.size = Some(parse_button_size_prop(&prop.name, &value)?);
+                variant_props.size_binding = binding
             }
             "size"
                 if matches!(
@@ -163,7 +170,8 @@ fn parse_variant_props(
                     BuiltinComponent::Input | BuiltinComponent::Select
                 ) =>
             {
-                variant_props.size = Some(parse_control_size_prop(&prop.name, &prop.value)?)
+                variant_props.size = Some(parse_control_size_prop(&prop.name, &value)?);
+                variant_props.size_binding = binding
             }
             "label" if component == BuiltinComponent::IconButton => {
                 variant_props.label = Some(parse_required_string(&prop.name, &prop.value)?)

@@ -178,6 +178,31 @@ fn generates_swiftui_side_nav() {
 }
 
 #[test]
+fn emits_generic_style_binding_on_ios() {
+    let mut route = side_nav_route();
+    if let ViewNode::SideNav { props, .. } = &mut route.page_tree {
+        props.style.style.bg_binding = Some(dowe_components::PropBinding::string("item.fill"));
+    }
+    let views = swift_content(&generate_ios(&[route], &FontConfig::default(), &DesignConfig::default(), &[]));
+    assert!(views.contains("state.text(\"item.fill\")"));
+}
+
+#[test]
+fn emits_generic_variant_bindings_on_ios() {
+    let mut route = side_nav_route();
+    let ViewNode::SideNav { props, .. } = &mut route.page_tree else {
+        panic!("expected side nav route");
+    };
+    props.style.reactive.variant = Some("item.variant".to_string());
+    props.style.reactive.scheme = Some("theme.scheme".to_string());
+    props.style.reactive.size = Some("item.size".to_string());
+    let views = swift_content(&generate_ios(&[route], &FontConfig::default(), &DesignConfig::default(), &[]));
+    assert!(views.contains("state.text(\"item.variant\", fallback: \"solid\")"));
+    assert!(views.contains("state.text(\"theme.scheme\", fallback: \"primary\")"));
+    assert!(views.contains("state.text(\"item.size\", fallback: \"md\")"));
+}
+
+#[test]
 fn generates_reactive_swiftui_side_nav_header_color_from_scheme() {
     let mut route = side_nav_route();
     let ViewNode::SideNav { props, .. } = &mut route.page_tree else {

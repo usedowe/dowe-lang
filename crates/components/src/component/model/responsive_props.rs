@@ -26,12 +26,19 @@ impl FontConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SpacingProps {
     pub p: Option<ResponsiveValue<ScaleValue>>,
+    pub p_binding: Option<PropBinding>,
     pub px: Option<ResponsiveValue<ScaleValue>>,
+    pub px_binding: Option<PropBinding>,
     pub py: Option<ResponsiveValue<ScaleValue>>,
+    pub py_binding: Option<PropBinding>,
     pub pl: Option<ResponsiveValue<ScaleValue>>,
+    pub pl_binding: Option<PropBinding>,
     pub pr: Option<ResponsiveValue<ScaleValue>>,
+    pub pr_binding: Option<PropBinding>,
     pub pt: Option<ResponsiveValue<ScaleValue>>,
+    pub pt_binding: Option<PropBinding>,
     pub pb: Option<ResponsiveValue<ScaleValue>>,
+    pub pb_binding: Option<PropBinding>,
 }
 
 impl SpacingProps {
@@ -166,11 +173,17 @@ pub fn section_content_spacing(spacing: &SpacingProps) -> SpacingProps {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SizingProps {
     pub w: Option<ResponsiveValue<SizeValue>>,
+    pub w_binding: Option<PropBinding>,
     pub h: Option<ResponsiveValue<SizeValue>>,
+    pub h_binding: Option<PropBinding>,
     pub min_w: Option<ResponsiveValue<SizeValue>>,
+    pub min_w_binding: Option<PropBinding>,
     pub min_h: Option<ResponsiveValue<SizeValue>>,
+    pub min_h_binding: Option<PropBinding>,
     pub max_w: Option<ResponsiveValue<SizeValue>>,
+    pub max_w_binding: Option<PropBinding>,
     pub max_h: Option<ResponsiveValue<SizeValue>>,
+    pub max_h_binding: Option<PropBinding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -201,6 +214,18 @@ impl<T> ResponsiveValue<T> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReactiveValue<T> {
+    pub value: T,
+    pub binding: Option<PropBinding>,
+}
+
+impl<T> ReactiveValue<T> {
+    pub fn static_value(value: T) -> Self { Self { value, binding: None } }
+    pub fn bound(value: T, binding: PropBinding) -> Self { Self { value, binding: Some(binding) } }
+    pub fn is_dynamic(&self) -> bool { self.binding.is_some() }
+}
+
 impl<T> ResponsiveValue<T> {
     pub fn ordered(mut entries: Vec<ResponsiveEntry<T>>) -> Self {
         entries.sort_by_key(|entry| entry.breakpoint.order());
@@ -227,12 +252,45 @@ pub struct ComponentProp {
     pub value: PropValue,
 }
 
+impl PropValue {
+    pub fn binding(&self) -> Option<&PropBinding> {
+        match self { Self::Binding(binding) => Some(binding), _ => None }
+    }
+
+    pub fn binding_fallback(&self) -> Option<PropValue> {
+        self.binding().and_then(|binding| binding.fallback.as_deref().cloned())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PropValue {
     String(String),
     Number(String),
     Boolean(bool),
     Responsive(Vec<ResponsivePropEntry>),
+    Binding(PropBinding),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PropBinding {
+    pub path: String,
+    pub kind: PropValueKind,
+    pub fallback: Option<Box<PropValue>>,
+}
+
+impl PropBinding {
+    pub fn new(path: impl Into<String>, kind: PropValueKind) -> Self {
+        Self { path: path.into(), kind, fallback: None }
+    }
+
+    pub fn string(path: impl Into<String>) -> Self {
+        Self::new(path, PropValueKind::String)
+    }
+
+    pub fn with_fallback(mut self, fallback: PropValue) -> Self {
+        self.fallback = Some(Box::new(fallback));
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

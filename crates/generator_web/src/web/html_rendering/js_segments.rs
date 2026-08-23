@@ -354,6 +354,7 @@ fn collect_js_node_segments(
                     Some(&props.style.element),
                     value,
                     props.i18n.as_deref(),
+                    props.as_tag.as_deref(),
                     context,
                 ),
             );
@@ -367,6 +368,7 @@ fn collect_js_node_segments(
                     Some(&props.style.element),
                     value,
                     props.i18n.as_deref(),
+                    None,
                     context,
                 ),
             );

@@ -444,7 +444,12 @@ fn modifier_for_divider(props: &DividerProps, flow: ComposeFlow) -> String {
 }
 
 fn modifier_for_style_with_base(props: &StyleProps, modifier: String) -> String {
-    modifier_for_style_with_base_and_shadow_shape(props, modifier, None)
+    let mut modifier = modifier_for_style_with_base_and_shadow_shape(props, modifier, None);
+    for binding in props.bindings() {
+        let path = escape_kotlin(&binding.binding.path);
+        modifier.push_str(&format!(".doweReactiveStyle(\"{}\", state.text(\"{}\"))", binding.property.as_str(), path));
+    }
+    modifier
 }
 
 fn modifier_for_style_with_base_and_shadow_shape(

@@ -170,7 +170,7 @@ Common structural props include `Grid columns`, `rows`, and `gap`; `Flex directi
 `justify`, and `wrap`; and responsive values such as `columns:{ xs:1 md:2 }`. Read
 `references/styles.md` for the complete color, variant, spacing, sizing, typography, `show`,
 `animation`, cover, anchor, and navigation prop contract. Static visible text for `Text`, `Title`,
-and `Button` is one direct quoted child. Dynamic visible text uses one complete braced binding path.
+and `Button` is one direct quoted child. Dynamic visible text uses one complete braced binding path. The binding must resolve to a string; numeric or boolean Signals cannot be rendered directly. Convert numeric results with `set <stringSignal> source:parse.string value:<numberPath>` before binding them in `Text` or `Title`.
 
 ## Repeated views
 
@@ -178,10 +178,14 @@ and `Button` is one direct quoted child. Dynamic visible text uses one complete 
 required bare references; `in` names the array, `as` introduces the scoped item, and `key`
 identifies the item across updates.
 
-Declare immutable data with `const` directly in a page or layout, or directly inside a visual block
-above the `each` that uses it. Dowe hoists the nested declaration into the owning page or layout
-scope without adding a visual wrapper, preserving the container's direct children. Do not declare
-constants inside reusable `component` exports.
+Declare immutable data with `const` directly in a page or layout. When a `const` is used only once,
+prefer the local-constant visual strategy: place it immediately above the visual subtree that
+consumes it, inside the nearest owning visual block. Dowe hoists the nested declaration into the
+owning page or layout scope without adding a visual wrapper, preserving the container's direct
+children and keeping the data next to the values it supplies. For a one-use collection, put it
+immediately above its `each`; for a one-use table catalog, put it immediately above the `Table`.
+Keep a constant at page/layout scope when multiple visual subtrees or page logic use it. Do not
+declare constants inside reusable `component` exports.
 
 This is mandatory for two or more same-shape sibling units, including rows composed from `Flex`,
 `Icon`, and text. Put the collection declaration before the visual tree and make the `each` wrap the
@@ -189,13 +193,39 @@ complete repeated unit. Copying the unit and changing only its content is invali
 the rendered screenshot is correct.
 
 ```text
-each in:blogs as:blog key:blog.id
+const homeFeatures:
+  value:[
+    { id:"one" title:"First" description:"..." cover:"/assets/img/one.webp" }
+    { id:"two" title:"Second" description:"..." cover:"/assets/img/two.webp" }
+  ]
+each in:homeFeatures as:feature key:feature.id
   Card
     Title
-      "{blog.title}"
+      "{feature.title}"
     Text
-      "{blog.content}"
+      "{feature.description}"
 ```
+
+For a constant used by only one nearby visual block, keep the declaration local to that block:
+
+```text
+Section
+  const textProps:
+    value:[
+      { prop:"align" type:"start | center | end | justify | responsive object" defaultValue:"start" }
+      { prop:"size" type:"xs through 9xl" defaultValue:"md (fluid)" }
+    ]
+  Table
+    data:textProps
+    column field:"prop" label:"Prop" width:"1fr"
+    column field:"type" label:"Type" width:"3fr"
+    column field:"defaultValue" label:"Default" width:"2fr"
+```
+
+The local declaration is authoring structure, not a rendered wrapper. It is valid for one-use
+`const` values and collections, including a `const` directly above an `each`. Do not use it for
+reactive data (`signal`/Store), data consumed by multiple visual subtrees, or constants inside
+reusable components.
 
 Inside the loop, item paths stay scoped for visible text and reactive props such as
 `scheme:blog.scheme`. `Select` also accepts a structural `each` over an immutable `const` catalog
@@ -205,7 +235,7 @@ Static-only props do not become dynamic because they are inside `each`. `Icon.na
 compiler-validated name; do not use `name:<item.icon>`. Use the supported runtime `Svg data:<reference>`
 contract for a genuinely runtime vector catalog, or keep the component's static contract intact.
 
-`"blog.title"` is literal text. A braced binding must resolve to a string. Mixed text such as
+`"blog.title"` is literal text. A braced binding must resolve to a string; do not bind `number`, `bool`, or object paths directly. Convert numeric values to a string Signal with `parse.string` before rendering them. Mixed text such as
 `"By {blog.author}"` is not interpolated and remains literal. Braces apply to direct visible-text
 children only; props continue to use bare references such as `bind:form.title`, `show:ready`, and
 `onClick:save`. Static `Text` and `Title` copy remains verbatim across targets; email- and URL-shaped

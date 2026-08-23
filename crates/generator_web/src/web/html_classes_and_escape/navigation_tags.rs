@@ -245,6 +245,16 @@ fn banner_tags(props: &BannerProps, context: &ReactiveRenderContext) -> (String,
 
 fn reactive_button_attrs(props: &VariantProps, context: &ReactiveRenderContext) -> String {
     let mut attrs = String::new();
+    for binding in props.bindings() {
+        let name = binding.property.as_str();
+        if matches!(name, "variant" | "scheme" | "size" | "rounded") {
+            attrs.push_str(&format!(
+                r#" data-dowe-variant-binding="true" data-dowe-{}="{}""#,
+                name,
+                escape_attr(&context.signal_path(&binding.binding.path))
+            ));
+        }
+    }
     for (name, value) in [
         ("variant", props.reactive.variant.as_deref()),
         ("scheme", props.reactive.scheme.as_deref()),

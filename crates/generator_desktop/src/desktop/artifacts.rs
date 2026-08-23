@@ -182,7 +182,7 @@ fn desktop_target_manifest(
         .map(|route| route.route_path.as_str())
         .unwrap_or("/");
     format!(
-        r#"{{"target":"{target}","entrypoint":"{entrypoint}","app":{{"name":"{}","bundle":"{}"}},"routerMode":"spa","webManifest":"../web/manifest.json","webIndex":"../web/index.html","window":{{"title":"{}","width":1024,"height":768}},"deepLinks":{{"scheme":"dowe-dev","host":"generated","initialPath":"{initial}","routes":[{route_values}]}},"externalPolicies":["system","webview"]}}"#,
+        r#"{{"target":"{target}","entrypoint":"{entrypoint}","app":{{"name":"{}","bundle":"{}"}},"routerMode":"spa","webRuntime":"shared","reactiveProps":true,"webManifest":"../web/manifest.json","webIndex":"../web/index.html","window":{{"title":"{}","width":1024,"height":768}},"deepLinks":{{"scheme":"dowe-dev","host":"generated","initialPath":"{initial}","routes":[{route_values}]}},"externalPolicies":["system","webview"]}}"#,
         escape_json(app_name),
         escape_json(app_bundle),
         escape_json(app_name)

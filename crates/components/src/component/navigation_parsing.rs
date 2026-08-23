@@ -14,7 +14,7 @@ fn parse_required_string(name: &str, value: &PropValue) -> ComponentResult<Strin
     match value {
         PropValue::String(value) if !value.is_empty() => Ok(value.clone()),
         PropValue::String(_) => Err(ComponentError::invalid_prop(name, "non-empty string")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "static string"))
         }
     }

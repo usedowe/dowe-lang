@@ -439,6 +439,9 @@ fn text_color(title: bool, props: &TextProps) -> String {
 }
 
 fn text_size(title: bool, props: &TextProps) -> String {
+    if let Some(binding) = props.size_binding.as_ref() {
+        return format!("doweDynamicTextSize(state.text(\"{}\"))", escape_kotlin(&binding.path));
+    }
     let fallback = compose_text_size_expr(title, TextSize::Md);
     props
         .size
@@ -464,6 +467,9 @@ fn text_line_height(title: bool, props: &TextProps, size: &str) -> String {
 }
 
 fn text_weight(title: bool, props: &TextProps) -> String {
+    if let Some(binding) = props.weight_binding.as_ref() {
+        return format!("doweDynamicTextWeight(state.text(\"{}\"))", escape_kotlin(&binding.path));
+    }
     if let Some(value) = props.weight.as_ref() {
         let fallback = compose_text_weight(TextWeight::Regular);
         return format!(
@@ -490,6 +496,9 @@ fn text_weight(title: bool, props: &TextProps) -> String {
 }
 
 fn text_spacing(title: bool, props: &TextProps) -> String {
+    if let Some(binding) = props.letter_spacing_binding.as_ref() {
+        return format!("doweDynamicTextSpacing(state.text(\"{}\"))", escape_kotlin(&binding.path));
+    }
     if let Some(value) = props.letter_spacing.as_ref() {
         let fallback = "0f.em";
         return format!(

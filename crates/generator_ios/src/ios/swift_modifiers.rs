@@ -476,7 +476,32 @@ fn swift_navigation_action(action: Option<&NavigationAction>) -> String {
 }
 
 fn swift_modifiers_for_style(props: &StyleProps) -> Vec<String> {
-    swift_modifiers_for_style_with_width_alignment(props, None)
+    let mut modifiers = swift_modifiers_for_style_with_width_alignment(props, None);
+    for binding in props.bindings() {
+        let path = escape_swift(&binding.binding.path);
+        let value = format!("state.text(\"{}\")", path);
+        let modifier = match binding.property {
+            dowe_components::StyleBindingProperty::TextColor => format!(".foregroundStyle(doweDynamicColor({value}))"),
+            dowe_components::StyleBindingProperty::BackgroundColor => format!(".background(doweDynamicColor({value}))"),
+            dowe_components::StyleBindingProperty::Padding => format!(".padding(CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::PaddingInline => format!(".padding(.horizontal, CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::PaddingBlock => format!(".padding(.vertical, CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::PaddingLeft => format!(".padding(.leading, CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::PaddingRight => format!(".padding(.trailing, CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::PaddingTop => format!(".padding(.top, CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::PaddingBottom => format!(".padding(.bottom, CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::Width => format!(".frame(width: CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::Height => format!(".frame(height: CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::MinWidth => format!(".frame(minWidth: CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::MinHeight => format!(".frame(minHeight: CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::MaxWidth => format!(".frame(maxWidth: CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::MaxHeight => format!(".frame(maxHeight: CGFloat(Double({value}) ?? 0) / 8.0)"),
+            dowe_components::StyleBindingProperty::BorderWidth => format!(".overlay(RoundedRectangle(cornerRadius: 0).stroke(Color.primary, lineWidth: CGFloat(Double({value}) ?? 0)) )"),
+            dowe_components::StyleBindingProperty::BorderRadius => format!(".clipShape(RoundedRectangle(cornerRadius: CGFloat(Double({value}) ?? 0)))"),
+        };
+        modifiers.push(modifier);
+    }
+    modifiers
 }
 
 fn swift_modifiers_for_svg(props: &SvgProps) -> Vec<String> {

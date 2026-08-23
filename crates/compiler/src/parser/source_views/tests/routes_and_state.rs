@@ -355,6 +355,28 @@ fn rejects_non_string_dynamic_image_source() {
 }
 
 #[test]
+fn accepts_generic_reactive_style_props_from_each_item_paths() {
+    let tree = parse_page(
+        r#"page catalogPage
+  const catalogSources value:[{ id:"one" fill:"primary" padding:8 width:16 title:"One" }]
+  each in:catalogSources as:catalog key:catalog.id
+    Card p:catalog.padding w:catalog.width bg:catalog.fill
+      Text
+        "{catalog.title}""#,
+    ).expect("generic reactive style props");
+    fn find(node: &ViewNode) -> Option<&dowe_components::StyleProps> {
+        match node {
+            ViewNode::Card { props, .. } => Some(&props.style),
+            _ => dowe_components::node_child_groups(node).into_iter().find_map(|group| group.iter().find_map(find)),
+        }
+    }
+    let style = find(&tree).expect("card style");
+    assert!(style.spacing.p_binding.is_some());
+    assert!(style.sizing.w_binding.is_some());
+    assert!(style.bg_binding.is_some());
+}
+
+#[test]
 fn accepts_icon_name_from_constant_signal_and_each_item_paths() {
     let tree = parse_page(
         r#"page platformPage

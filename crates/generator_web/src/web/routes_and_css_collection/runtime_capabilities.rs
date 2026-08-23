@@ -1,3 +1,7 @@
+const STYLES_RUNTIME_MODULES: &[&str] = &[include_str!("router_runtime/reactive_styles.js")];
+
+const STYLES_RUNTIME_EXPORTS: &[&str] = &["renderStyles"];
+
 const CONTROLS_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/color_picker.js"),
     include_str!("router_runtime/forms_1.js"),
@@ -110,6 +114,9 @@ pub fn runtime_chunks_for_trees(
 ) -> Vec<GeneratedRuntimeChunk> {
     let features = runtime_features([layout_tree, page_tree]);
     let mut chunks = Vec::new();
+    if features.styles {
+        chunks.push(styles_runtime_chunk());
+    }
     if features.controls {
         chunks.push(controls_runtime_chunk());
     }
@@ -120,6 +127,11 @@ pub fn runtime_chunks_for_trees(
         chunks.push(visualization_runtime_chunk());
     }
     chunks
+}
+
+fn styles_runtime_chunk() -> GeneratedRuntimeChunk {
+    static CHUNK: std::sync::OnceLock<GeneratedRuntimeChunk> = std::sync::OnceLock::new();
+    CHUNK.get_or_init(|| capability_runtime_chunk("styles", STYLES_RUNTIME_MODULES, STYLES_RUNTIME_EXPORTS)).clone()
 }
 
 fn controls_runtime_chunk() -> GeneratedRuntimeChunk {
@@ -154,13 +166,36 @@ fn capability_runtime_chunk(
     );
     source.reserve(modules.iter().map(|module| module.len()).sum());
     for module in modules {
-        source.push_str(module);
+        let module = if name == "styles" {
+            module
+                .replace("__DOWE_VARIANTS__", &runtime_values(dowe_components::BuiltinComponent::Button, "variant"))
+                .replace("__DOWE_SCHEMES__", &runtime_values(dowe_components::BuiltinComponent::Button, "scheme"))
+                .replace("__DOWE_SIZES__", &runtime_values(dowe_components::BuiltinComponent::Button, "size"))
+                .replace("__DOWE_ROUNDED__", &runtime_values(dowe_components::BuiltinComponent::Button, "rounded"))
+        } else {
+            (*module).to_string()
+        };
+        source.push_str(&module);
         source.push('\n');
+    }
+    if name == "styles" {
+        source.push_str("const dowePropColors=");
+        source.push_str(&runtime_colors());
+        source.push(';');
     }
     source.push_str("return{setActiveView(view){activeView=view},");
     source.push_str(&exported_functions.join(","));
     source.push_str("};});");
     GeneratedRuntimeChunk::new(name, minify_js(&source))
+}
+
+fn runtime_colors() -> String {
+    format!("[{}]", dowe_components::prop_color_tokens().iter().map(|value| format!("\"{value}\"")).collect::<Vec<_>>().join(","))
+}
+
+fn runtime_values(component: dowe_components::BuiltinComponent, name: &str) -> String {
+    let values = dowe_components::prop_allowed_values(component, name);
+    format!("[{}]", values.iter().map(|value| format!("\"{value}\"")).collect::<Vec<_>>().join(","))
 }
 
 fn visualization_runtime_chunk() -> GeneratedRuntimeChunk {
@@ -190,6 +225,7 @@ fn visualization_runtime_chunk() -> GeneratedRuntimeChunk {
 
 #[derive(Default)]
 struct RuntimeFeatures {
+    styles: bool,
     controls: bool,
     media: bool,
     visualization: bool,
@@ -199,6 +235,7 @@ fn runtime_features<'a>(roots: impl IntoIterator<Item = &'a ViewNode>) -> Runtim
     let mut features = RuntimeFeatures::default();
     let mut pending = roots.into_iter().collect::<Vec<_>>();
     while let Some(node) = pending.pop() {
+        features.styles |= false;
         features.controls |= node_uses_controls(node);
         features.media |= node_uses_media(node);
         features.media |= node_actions_use_media(node);
@@ -236,6 +273,20 @@ fn statements_use_media(statements: &[ViewFunctionStatement]) -> bool {
         | ViewFunctionStatement::Reset(_)
         | ViewFunctionStatement::Redirect { .. } => false,
     })
+}
+
+#[allow(dead_code)]
+fn node_uses_style_bindings(node: &ViewNode) -> bool {
+    let style_has_binding = |style: &dowe_components::StyleProps| !style.bindings().is_empty();
+    match node {
+        ViewNode::Box { props, .. } | ViewNode::Section { props, .. } => style_has_binding(props),
+        ViewNode::Flex { props, .. } => style_has_binding(&props.style),
+        ViewNode::Grid { props, .. } => style_has_binding(&props.style),
+        ViewNode::Card { props, .. } | ViewNode::Button { props, .. } => style_has_binding(&props.style),
+        ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => style_has_binding(&props.style),
+        ViewNode::Svg { props, .. } => style_has_binding(&props.style),
+        _ => false,
+    }
 }
 
 fn node_uses_visualization(tree: &ViewNode) -> bool {

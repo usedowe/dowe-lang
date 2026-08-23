@@ -1,5 +1,48 @@
-fn swift_reactive_runtime() -> &'static str {
+fn swift_reactive_runtime() -> String {
     r#"
+private func doweDynamicFontSize(_ value: String) -> Font {
+    switch value { case "xs": return .caption; case "sm": return .subheadline; case "lg": return .title3; case "xl": return .title2; default: return .body }
+}
+private func doweDynamicFontWeight(_ value: String) -> Font.Weight {
+    switch value { case "thin": return .thin; case "light": return .light; case "medium": return .medium; case "semibold": return .semibold; case "bold": return .bold; case "black": return .black; default: return .regular }
+}
+
+@MainActor
+private func doweDynamicColor(_ value: String) -> Color {
+    switch value {
+    case "primary": return DoweDesign.primary
+    case "secondary": return DoweDesign.secondary
+    case "accent": return DoweDesign.accent
+    case "muted": return DoweDesign.muted
+    case "success": return DoweDesign.success
+    case "info": return DoweDesign.info
+    case "warning": return DoweDesign.warning
+    case "danger": return DoweDesign.danger
+    default: return DoweDesign.primary
+    }
+}
+private let dowePropVariants = [__DOWE_VARIANTS__]
+private let dowePropSchemes = [__DOWE_SCHEMES__]
+private let dowePropSizes = [__DOWE_SIZES__]
+private let dowePropRounded = [__DOWE_ROUNDED__]
+private let dowePropColors = [__DOWE_COLORS__]
+private let dowePropIcons = [__DOWE_ICON_NAMES__]
+
+private func doweValidEnum(_ value: String, _ kind: String) -> String {
+    let allowed: Set<String>
+    let fallback: String
+    switch kind {
+    case "variant": allowed = Set(dowePropVariants); fallback = "solid"
+    case "scheme": allowed = Set(dowePropSchemes); fallback = "primary"
+    case "size": allowed = Set(dowePropSizes); fallback = "md"
+    case "rounded": allowed = Set(dowePropRounded); fallback = "md"
+    case "color": allowed = Set(dowePropColors); fallback = "primary"
+    case "icon": allowed = Set(dowePropIcons); fallback = ""
+    default: return value
+    }
+    return allowed.contains(value) ? value : fallback
+}
+
 struct DoweRow: Identifiable {
     let id: String
     let value: [String: Any]
@@ -819,7 +862,7 @@ final class DoweReactiveState: ObservableObject {
         case "list.first": return list("values").first
         case "list.last": return list("values").last
         case "list.count": return list("values").count
-        case "list.filterEquals": return list("values").filter { stdlibEqual(read($0, path: text("field")), args["value"]) }
+        case "list.filterEquals": return list("values").filter { stdlibEqual(read($0, path: text("field")), args["value"] ?? nil) }
         case "list.filterContains": return list("values").filter { stdlibText(read($0, path: text("field"))).lowercased().contains(text("value").lowercased()) }
         case "list.mapField": return list("values").map { read($0, path: text("field")) as Any }
         case "list.sumBy": return list("values").compactMap { stdlibNumber(read($0, path: text("field"))) }.reduce(0, +)
@@ -1129,4 +1172,22 @@ final class DoweReactiveState: ObservableObject {
     }
 }
 "#
+    .replace("__DOWE_VARIANTS__", &runtime_swift_values(dowe_components::BuiltinComponent::Button, "variant"))
+    .replace("__DOWE_SCHEMES__", &runtime_swift_values(dowe_components::BuiltinComponent::Button, "scheme"))
+    .replace("__DOWE_SIZES__", &runtime_swift_values(dowe_components::BuiltinComponent::Button, "size"))
+    .replace("__DOWE_ROUNDED__", &runtime_swift_values(dowe_components::BuiltinComponent::Button, "rounded"))
+    .replace("__DOWE_COLORS__", &runtime_swift_values(dowe_components::BuiltinComponent::Button, "scheme"))
+    .replace("__DOWE_ICON_NAMES__", &runtime_swift_icons())
+}
+
+fn runtime_swift_icons() -> String {
+    dowe_components::all_icon_names().iter().map(|value| format!("\"{}\"", value.replace('"', "\\\""))).collect::<Vec<_>>().join(", ")
+}
+
+fn runtime_swift_values(component: dowe_components::BuiltinComponent, name: &str) -> String {
+    dowe_components::prop_allowed_values(component, name)
+        .iter()
+        .map(|value| format!("\"{value}\""))
+        .collect::<Vec<_>>()
+        .join(", ")
 }

@@ -66,7 +66,7 @@ fn parse_static_scale(name: &str, value: &PropValue) -> ComponentResult<ScaleVal
     match value {
         PropValue::Number(value) => scale_value(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "Dowe scale value from 0 to 96")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => Err(
             ComponentError::invalid_prop(name, "Dowe scale value from 0 to 96"),
         ),
     }
@@ -78,7 +78,7 @@ fn parse_number_literal(name: &str, value: &PropValue) -> ComponentResult<String
         PropValue::String(_)
         | PropValue::Number(_)
         | PropValue::Boolean(_)
-        | PropValue::Responsive(_) => Err(ComponentError::invalid_prop(name, "number")),
+        | PropValue::Responsive(_) | PropValue::Binding(_) => Err(ComponentError::invalid_prop(name, "number")),
     }
 }
 
@@ -98,7 +98,7 @@ fn parse_positive_u64(name: &str, value: &PropValue) -> ComponentResult<u64> {
             .ok()
             .filter(|value| *value > 0)
             .ok_or_else(|| ComponentError::invalid_prop(name, "positive integer")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "positive integer"))
         }
     }
@@ -110,7 +110,7 @@ fn parse_non_negative_u64(name: &str, value: &PropValue) -> ComponentResult<u64>
             .parse::<u64>()
             .ok()
             .ok_or_else(|| ComponentError::invalid_prop(name, "non-negative integer")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "non-negative integer"))
         }
     }
@@ -164,7 +164,7 @@ fn parse_non_negative_u16(name: &str, value: &PropValue) -> ComponentResult<u16>
             .parse::<u16>()
             .ok()
             .ok_or_else(|| ComponentError::invalid_prop(name, "non-negative integer")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "non-negative integer"))
         }
     }

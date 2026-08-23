@@ -257,12 +257,117 @@
         doweRefreshReactiveControls();
     }
 
+    private float doweReactiveNumber(Object value, float fallback) {
+        if (value instanceof Number) return ((Number) value).floatValue();
+        try { return Float.parseFloat(String.valueOf(value)); } catch (Exception error) { return fallback; }
+    }
+
+    private int doweStyleTag(String property) {
+        if ("p".equals(property)) return DOWE_STYLE_P_TAG;
+        if ("px".equals(property)) return DOWE_STYLE_PX_TAG;
+        if ("py".equals(property)) return DOWE_STYLE_PY_TAG;
+        if ("pl".equals(property)) return DOWE_STYLE_PL_TAG;
+        if ("pr".equals(property)) return DOWE_STYLE_PR_TAG;
+        if ("pt".equals(property)) return DOWE_STYLE_PT_TAG;
+        if ("pb".equals(property)) return DOWE_STYLE_PB_TAG;
+        if ("w".equals(property)) return DOWE_STYLE_W_TAG;
+        if ("h".equals(property)) return DOWE_STYLE_H_TAG;
+        if ("minW".equals(property)) return DOWE_STYLE_MIN_W_TAG;
+        if ("minH".equals(property)) return DOWE_STYLE_MIN_H_TAG;
+        if ("maxW".equals(property)) return DOWE_STYLE_MAX_W_TAG;
+        if ("maxH".equals(property)) return DOWE_STYLE_MAX_H_TAG;
+        if ("border".equals(property)) return DOWE_STYLE_BORDER_TAG;
+        if ("rounded".equals(property)) return DOWE_STYLE_ROUNDED_TAG;
+        if ("bg".equals(property)) return DOWE_STYLE_BG_TAG;
+        return DOWE_STYLE_COLOR_TAG;
+    }
+
+    private void doweApplyReactiveStyles(View view) {
+        String[] properties = new String[] {"p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW", "minH", "maxW", "maxH", "border", "rounded", "bg", "color"};
+        for (String property : properties) {
+            Object path = view.getTag(doweStyleTag(property));
+            if (path instanceof String) doweApplyReactiveStyle(view, property, doweRead((String) path, null));
+        }
+    }
+
+    private static final String[] DOWE_PROP_COLORS = {__DOWE_PROP_COLORS__};
+    private static final String[] DOWE_PROP_VARIANTS = {__DOWE_PROP_VARIANTS__};
+    private static final String[] DOWE_PROP_SCHEMES = {__DOWE_PROP_SCHEMES__};
+    private static final String[] DOWE_PROP_SIZES = {__DOWE_PROP_SIZES__};
+    private static final String[] DOWE_PROP_ROUNDED = {__DOWE_PROP_ROUNDED__};
+
+    private boolean doweContains(String[] values, String value) {
+        for (String candidate : values) if (candidate.equals(value)) return true;
+        return false;
+    }
+
+    private boolean doweValidReactiveEnum(String value, String property) {
+        if ("icon".equals(property)) return value != null && !value.isEmpty();
+        if ("color".equals(property)) return doweContains(DOWE_PROP_COLORS, value);
+        if ("variant".equals(property)) return doweContains(DOWE_PROP_VARIANTS, value);
+        if ("size".equals(property)) return doweContains(DOWE_PROP_SIZES, value);
+        if ("rounded".equals(property)) return doweContains(DOWE_PROP_ROUNDED, value);
+        return doweContains(DOWE_PROP_SCHEMES, value);
+    }
+
+    private String doweReactiveEnum(Object path, String property, String fallback) {
+        if (!(path instanceof String)) return fallback;
+        String value = doweTextValue((String) path, null);
+        return doweValidReactiveEnum(value, property) ? value : fallback;
+    }
+
+    private void doweApplyReactiveVariant(View view) {
+        Object schemePath = view.getTag(DOWE_SCHEME_TAG);
+        Object variantPath = view.getTag(DOWE_VARIANT_TAG);
+        Object sizePath = view.getTag(DOWE_SIZE_TAG);
+        String scheme = doweReactiveEnum(schemePath, "scheme", "primary");
+        String variant = doweReactiveEnum(variantPath, "variant", "solid");
+        if (view instanceof TextView) {
+            ((TextView) view).setTextColor(doweButtonContent(variant, scheme));
+            if (sizePath instanceof String) {
+                String size = doweReactiveEnum(sizePath, "size", "md");
+                ((TextView) view).setTextSize("xs".equals(size) ? 12f : "sm".equals(size) ? 14f : "lg".equals(size) ? 18f : "xl".equals(size) ? 20f : 16f);
+                view.setMinimumHeight(doweButtonMinHeight(size));
+                view.setPadding(doweButtonHorizontalPadding(size), doweButtonVerticalPadding(size), doweButtonHorizontalPadding(size), doweButtonVerticalPadding(size));
+            }
+        }
+        if (variantPath instanceof String || schemePath instanceof String) {
+            view.setBackground(doweInputBackground(doweButtonContainer(variant, scheme), "outlined".equals(variant) ? doweButtonContent(variant, scheme) : null, DOWE_RADIUS));
+        }
+    }
+
+    private void doweApplyReactiveStyle(View view, String property, Object raw) {
+        float value = doweReactiveNumber(raw, 0f);
+        int left = view.getPaddingLeft(), top = view.getPaddingTop(), right = view.getPaddingRight(), bottom = view.getPaddingBottom();
+        if (property.equals("p")) left = top = right = bottom = doweDp((int) value);
+        else if (property.equals("px")) left = right = doweDp((int) value);
+        else if (property.equals("py")) top = bottom = doweDp((int) value);
+        else if (property.equals("pl")) left = doweDp((int) value);
+        else if (property.equals("pr")) right = doweDp((int) value);
+        else if (property.equals("pt")) top = doweDp((int) value);
+        else if (property.equals("pb")) bottom = doweDp((int) value);
+        if (property.startsWith("p")) view.setPadding(left, top, right, bottom);
+        else if (property.equals("w") && view.getLayoutParams() != null) view.getLayoutParams().width = doweDp((int) value);
+        else if (property.equals("h") && view.getLayoutParams() != null) view.getLayoutParams().height = doweDp((int) value);
+        else if (property.equals("minW")) view.setMinimumWidth(doweDp((int) value));
+        else if (property.equals("minH")) view.setMinimumHeight(doweDp((int) value));
+        else if (property.equals("maxW") && view.getLayoutParams() != null) view.getLayoutParams().width = Math.min(view.getLayoutParams().width, doweDp((int) value));
+        else if (property.equals("maxH") && view.getLayoutParams() != null) view.getLayoutParams().height = Math.min(view.getLayoutParams().height, doweDp((int) value));
+        else if (property.equals("border")) view.setBackground(doweStyledBackground(Color.TRANSPARENT, DOWE_MUTED, (int) value, DOWE_RADIUS));
+        else if (property.equals("rounded")) view.setBackground(doweBackground(Color.TRANSPARENT, doweButtonRadius(String.valueOf(raw))));
+        else if (property.equals("bg")) view.setBackgroundColor(doweButtonFamily(String.valueOf(raw)));
+        else if (property.equals("color") && view instanceof TextView) ((TextView) view).setTextColor(doweButtonTextFamily(String.valueOf(raw)));
+        view.requestLayout();
+    }
+
     private void doweRefreshReactiveControls() {
         if (root == null) return;
         doweRefreshReactiveControls(root);
     }
 
     private void doweRefreshReactiveControls(View view) {
+        doweApplyReactiveStyles(view);
+        doweApplyReactiveVariant(view);
         Object disabledPath = view.getTag(DOWE_DISABLED_PATH_TAG);
         if (disabledPath instanceof String) {
             boolean disabled = doweBool((String) disabledPath, null);

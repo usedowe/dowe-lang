@@ -25,9 +25,9 @@ pub fn canvas_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
             "background" => background = parse_canvas_background(&prop.name, &prop.value)?,
             "pixelated" => pixelated = parse_static_bool(&prop.name, &prop.value)?,
             "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
-            "onPointer" => on_pointer = Some(parse_required_string(&prop.name, &prop.value)?),
-            "onKey" => on_key = Some(parse_required_string(&prop.name, &prop.value)?),
-            "onMotion" => on_motion = Some(parse_required_string(&prop.name, &prop.value)?),
+            "onPointer" => on_pointer = Some(parse_signal_path(&prop.name, &prop.value, "signal path")?),
+            "onKey" => on_key = Some(parse_signal_path(&prop.name, &prop.value, "signal path")?),
+            "onMotion" => on_motion = Some(parse_signal_path(&prop.name, &prop.value, "signal path")?),
             "motionRate" => motion_rate = parse_canvas_motion_rate(&prop.name, &prop.value)?,
             _ => style_props.push(prop),
         }
@@ -70,7 +70,7 @@ fn parse_canvas_motion_rate(name: &str, value: &PropValue) -> ComponentResult<u8
             .ok()
             .filter(|value| (1..=60).contains(value))
             .ok_or_else(|| ComponentError::invalid_prop(name, "integer from 1 through 60")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "integer from 1 through 60"))
         }
     }
@@ -89,7 +89,7 @@ fn parse_canvas_fps(name: &str, value: &PropValue) -> ComponentResult<u8> {
             .ok()
             .filter(|value| (1..=120).contains(value))
             .ok_or_else(|| ComponentError::invalid_prop(name, "integer from 1 through 120")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "integer from 1 through 120"))
         }
     }

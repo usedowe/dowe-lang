@@ -1,4 +1,5 @@
 use crate::database_runtime::{ConfiguredDatabaseClient, configured_database_client};
+use crate::logging::log_error;
 use crate::server::DevRuntimeState;
 use crate::server_actions::{
     execute_resolved_log, execute_server_action, execute_server_action_with_resolver,

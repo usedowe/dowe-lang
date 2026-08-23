@@ -30,14 +30,51 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
         (BuiltinComponent::Image, "src", SourceValue::Bareword(path)) => {
             PropValue::String(format!("@signal:{path}"))
         }
+        (
+            BuiltinComponent::Drawer
+                | BuiltinComponent::Modal
+                | BuiltinComponent::AlertDialog
+                | BuiltinComponent::Command,
+            "open",
+            SourceValue::Bareword(path),
+        ) => PropValue::String(path.clone()),
+        (BuiltinComponent::Icon, "fill" | "stroke", SourceValue::Bareword(path)) => {
+            PropValue::Binding(
+                dowe_components::PropBinding::new(
+                    path.clone(),
+                    if matches!(prop.name.as_str(), "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "w" | "h" | "minW" | "minH" | "maxW" | "maxH" | "border") {
+                        dowe_components::PropValueKind::Number
+                    } else {
+                        dowe_components::PropValueKind::String
+                    },
+                )
+                .with_fallback(if matches!(prop.name.as_str(), "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "w" | "h" | "minW" | "minH" | "maxW" | "maxH" | "border") {
+                    PropValue::Number("8".to_string())
+                } else {
+                    PropValue::String(String::new())
+                }),
+            )
+        }
         (BuiltinComponent::Icon, "name", SourceValue::Bareword(path)) => {
             PropValue::String(format!("@icon-binding:{path}"))
         }
         (BuiltinComponent::Button, "iconStart" | "iconEnd", SourceValue::Object(entries)) => {
             PropValue::String(parse_conditional_icon(prop, entries)?)
         }
+        (_, "show", SourceValue::Bareword(path)) => {
+            PropValue::String(format!("@signal:{path}"))
+        }
         (_, "show", SourceValue::Object(entries)) if show_condition_entries(entries) => {
             PropValue::String(parse_show_condition(prop, entries)?)
+        }
+        (_, _, SourceValue::Bareword(path))
+            if dowe_components::accepts_reactive_prop(component, &prop.name) => {
+            let contract = dowe_components::component_prop_contract(component, &prop.name)
+                .expect("reactive component prop contract");
+            PropValue::Binding(
+                dowe_components::PropBinding::new(path.clone(), contract.kind)
+                    .with_fallback(dowe_components::default_binding_value(contract)),
+            )
         }
         _ => prop_value(prop)?,
     };
@@ -271,6 +308,8 @@ fn validate_component_prop_source(
     }
     if !is_known_component_prop(component, &prop.name)
         || allows_bare_component_reference(component, prop)
+        || matches!(&prop.value, SourceValue::Bareword(_))
+            && dowe_components::accepts_reactive_prop(component, &prop.name)
     {
         return Ok(());
     }
@@ -294,7 +333,11 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             "variant" | "scheme" | "size" | "rounded",
             SourceValue::Bareword(_),
         ) => true,
-        (BuiltinComponent::Icon, "name", SourceValue::Bareword(_)) => true,
+        (
+            BuiltinComponent::Icon,
+            "fill" | "stroke",
+            SourceValue::Bareword(_),
+        ) | (BuiltinComponent::Icon, "name", SourceValue::Bareword(_)) => true,
         (BuiltinComponent::Button, "loading" | "disabled", SourceValue::Bareword(_)) => true,
         (
             BuiltinComponent::SideNav,

@@ -6,6 +6,16 @@ fn render_side_nav_html(
 ) -> String {
     let memory_key = side_nav_memory_key(props, items);
     let mut reactive_attrs = String::new();
+    for binding in props.style.bindings() {
+        let name = binding.property.as_str();
+        if matches!(name, "variant" | "scheme" | "size" | "rounded") {
+            reactive_attrs.push_str(&format!(
+                r#" data-dowe-variant-binding="true" data-dowe-{}="{}""#,
+                name,
+                escape_attr(&context.signal_path(&binding.binding.path))
+            ));
+        }
+    }
     for (name, value) in [
         ("variant", props.style.reactive.variant.as_deref()),
         ("scheme", props.style.reactive.scheme.as_deref()),

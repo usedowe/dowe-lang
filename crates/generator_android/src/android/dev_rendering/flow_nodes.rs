@@ -527,6 +527,15 @@ fn render_dev_android_flow_node(
                 if let Some(action) = action {
                     output.push_str(&format!("        {view}.setOnClickListener(v -> {action});\n"));
                 }
+                if let Some(variant) = props.reactive.variant.as_ref() {
+                    output.push_str(&format!("        {view}.setTag(DOWE_VARIANT_TAG, \"{}\");\n", escape_java(variant)));
+                }
+                if let Some(scheme) = props.reactive.scheme.as_ref() {
+                    output.push_str(&format!("        {view}.setTag(DOWE_SCHEME_TAG, \"{}\");\n", escape_java(scheme)));
+                }
+                if let Some(size) = props.reactive.size.as_ref() {
+                    output.push_str(&format!("        {view}.setTag(DOWE_SIZE_TAG, \"{}\");\n", escape_java(size)));
+                }
                 if let Some(disabled) = disabled.as_ref() {
                     let disabled_path = disabled_path.as_deref().unwrap_or_default();
                     output.push_str(&format!("        {view}.setTag(DOWE_DISABLED_PATH_TAG, \"{}\");\n        {view}.setEnabled(!({disabled}));\n        {view}.setAlpha({disabled} ? 0.5f : 1f);\n", escape_java(disabled_path)));

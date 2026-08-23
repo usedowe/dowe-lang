@@ -118,22 +118,7 @@ fn validate_node_references(
                 if let Some(ViewSignalValue::String(value)) =
                     signal_path_value(path, signals, locals, binding, name)?
                 {
-                    let allowed: &[&str] = match name {
-                        "variant" => &["solid", "outlined", "ghost"],
-                        "scheme" => &[
-                            "primary",
-                            "secondary",
-                            "accent",
-                            "muted",
-                            "success",
-                            "info",
-                            "warning",
-                            "danger",
-                        ],
-                        "size" => &["xs", "sm", "md", "lg", "xl"],
-                        "rounded" => &["xs", "sm", "md", "lg", "xl", "full"],
-                        _ => &[],
-                    };
+                    let allowed = dowe_components::prop_allowed_values(BuiltinComponent::Button, name);
                     if !allowed.contains(&value.as_str()) {
                         return Err(DoweError::at_path(
                             path,
@@ -192,20 +177,7 @@ fn validate_node_references(
                 if let Some(ViewSignalValue::String(value)) =
                     signal_path_value(path, signals, locals, binding, name)?
                 {
-                    let allowed: &[&str] = match name {
-                        "variant" => &["solid", "outlined", "ghost"],
-                        "scheme" => &[
-                            "primary",
-                            "secondary",
-                            "accent",
-                            "success",
-                            "info",
-                            "warning",
-                            "danger",
-                        ],
-                        "size" => &["sm", "md", "lg"],
-                        _ => &[],
-                    };
+                    let allowed = dowe_components::prop_allowed_values(BuiltinComponent::SideNav, name);
                     if !allowed.contains(&value.as_str()) {
                         return Err(DoweError::at_path(
                             path,

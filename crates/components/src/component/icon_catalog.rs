@@ -421,7 +421,9 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
     let mut name = None;
     let mut dynamic_name = None;
     let mut fill = None;
+    let mut fill_binding = None;
     let mut stroke = None;
+    let mut stroke_binding = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
@@ -439,8 +441,20 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
                     "removed; include the Solar variant in name",
                 ));
             }
-            "fill" => fill = parse_icon_color(&prop.name, &prop.value)?,
-            "stroke" => stroke = parse_icon_color(&prop.name, &prop.value)?,
+            "fill" => match &prop.value {
+                PropValue::Binding(binding) => fill_binding = Some(binding.path.clone()),
+                PropValue::String(value) if value.starts_with("@signal:") => {
+                    fill_binding = value.strip_prefix("@signal:").map(str::to_string)
+                }
+                _ => fill = parse_icon_color(&prop.name, &prop.value)?,
+            },
+            "stroke" => match &prop.value {
+                PropValue::Binding(binding) => stroke_binding = Some(binding.path.clone()),
+                PropValue::String(value) if value.starts_with("@signal:") => {
+                    stroke_binding = value.strip_prefix("@signal:").map(str::to_string)
+                }
+                _ => stroke = parse_icon_color(&prop.name, &prop.value)?,
+            },
             _ => style_props.push(prop),
         }
     }
@@ -458,7 +472,9 @@ pub fn icon_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
         let mut props = parse_svg_props(BuiltinComponent::Icon, &style_props)?;
         props.icon_name = Some(path);
         props.icon_fill = fill;
+        props.icon_fill_binding = fill_binding;
         props.icon_stroke = stroke;
+        props.icon_stroke_binding = stroke_binding;
         return Ok(ViewNode::Svg {
             props,
             paths: Vec::new(),
@@ -1147,7 +1163,9 @@ pub fn side_nav_submenu_arrow_icon() -> SideNavIcon {
             icon_name: None,
             icon_fallback: None,
             icon_fill: None,
+            icon_fill_binding: None,
             icon_stroke: None,
+            icon_stroke_binding: None,
             motion: None,
         },
         paths: vec![

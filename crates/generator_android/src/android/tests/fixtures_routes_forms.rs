@@ -120,7 +120,9 @@ fn flex_alignment_route() -> ViewRoute {
                                 icon_name: None,
                                 icon_fallback: None,
                                 icon_fill: None,
+            icon_fill_binding: None,
                                 icon_stroke: None,
+            icon_stroke_binding: None,
                                 motion: None,
                             },
                             paths: vec![SvgPath {

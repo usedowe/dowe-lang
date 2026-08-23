@@ -235,7 +235,7 @@ fn parse_animation_prop(name: &str, value: &PropValue) -> ComponentResult<ViewAn
                 "none, fadeIn, slideUp, slideDown, slideLeft, slideRight or scaleIn",
             )
         }),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(
                 name,
                 "none, fadeIn, slideUp, slideDown, slideLeft, slideRight or scaleIn",
@@ -301,7 +301,7 @@ fn parse_transition_prop(name: &str, value: &PropValue) -> ComponentResult<ViewT
     match value {
         PropValue::String(value) => ViewTransition::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "none, quick, smooth or spring")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => Err(
             ComponentError::invalid_prop(name, "none, quick, smooth or spring"),
         ),
     }
@@ -311,7 +311,7 @@ fn parse_gesture_prop(name: &str, value: &PropValue) -> ComponentResult<ViewGest
     match value {
         PropValue::String(value) => ViewGesture::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "none, lift, press, grow or tilt")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => Err(
             ComponentError::invalid_prop(name, "none, lift, press, grow or tilt"),
         ),
     }
@@ -367,7 +367,7 @@ fn parse_variant_prop(name: &str, value: &PropValue) -> ComponentResult<Componen
         PropValue::String(value) => ComponentVariant::from_name(value).ok_or_else(|| {
             ComponentError::invalid_prop(name, "solid, outline, outlined, line or ghost")
         }),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => Err(
             ComponentError::invalid_prop(name, "solid, outline, outlined, line or ghost"),
         ),
     }
@@ -378,7 +378,7 @@ fn parse_tabs_variant_prop(name: &str, value: &PropValue) -> ComponentResult<Tab
         PropValue::String(value) => TabsVariant::from_name(value).ok_or_else(|| {
             ComponentError::invalid_prop(name, "solid, outlined, line, ghost or pills")
         }),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => Err(
             ComponentError::invalid_prop(name, "solid, outlined, line, ghost or pills"),
         ),
     }
@@ -388,7 +388,7 @@ fn parse_tabs_position_prop(name: &str, value: &PropValue) -> ComponentResult<Ta
     match value {
         PropValue::String(value) => TabsPosition::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "top, bottom, start or end")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => Err(
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => Err(
             ComponentError::invalid_prop(name, "top, bottom, start or end"),
         ),
     }
@@ -398,7 +398,7 @@ fn parse_button_size_prop(name: &str, value: &PropValue) -> ComponentResult<Butt
     match value {
         PropValue::String(value) => ButtonSize::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "xs, sm, md, lg or xl")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "xs, sm, md, lg or xl"))
         }
     }
@@ -408,7 +408,7 @@ fn parse_side_nav_size_prop(name: &str, value: &PropValue) -> ComponentResult<Si
     match value {
         PropValue::String(value) => SideNavSize::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "sm, md or lg")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "sm, md or lg"))
         }
     }
@@ -418,7 +418,7 @@ fn parse_table_size_prop(name: &str, value: &PropValue) -> ComponentResult<Table
     match value {
         PropValue::String(value) => TableSize::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "sm, md or lg")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "sm, md or lg"))
         }
     }
@@ -431,7 +431,7 @@ fn parse_table_column_align_prop(
     match value {
         PropValue::String(value) => TableColumnAlign::from_name(value)
             .ok_or_else(|| ComponentError::invalid_prop(name, "start, center or end")),
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "start, center or end"))
         }
     }
@@ -442,14 +442,14 @@ fn parse_static_string(name: &str, value: &PropValue) -> ComponentResult<String>
         PropValue::String(value) => Ok(value.clone()),
         PropValue::Number(value) => Ok(value.clone()),
         PropValue::Boolean(value) => Ok(value.to_string()),
-        PropValue::Responsive(_) => Err(ComponentError::invalid_prop(name, "static scalar")),
+        PropValue::Responsive(_) | PropValue::Binding(_) => Err(ComponentError::invalid_prop(name, "static scalar")),
     }
 }
 
 fn parse_static_bool(name: &str, value: &PropValue) -> ComponentResult<bool> {
     match value {
         PropValue::Boolean(value) => Ok(*value),
-        PropValue::String(_) | PropValue::Number(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Number(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "boolean"))
         }
     }
@@ -525,7 +525,7 @@ fn parse_family_prop(
             }
             Ok(family)
         }
-        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Number(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, expected))
         }
     }
@@ -536,6 +536,8 @@ fn parse_show_prop(name: &str, value: &PropValue) -> ComponentResult<VisibilityC
         PropValue::String(value) => {
             if is_reference_path(value) {
                 Ok(VisibilityCondition::Signal(value.clone()))
+            } else if let Some(value) = value.strip_prefix("@signal:") {
+                Ok(VisibilityCondition::Signal(value.to_string()))
             } else if let Some(value) = value.strip_prefix("@string-condition:") {
                 let mut parts = value.splitn(2, ':');
                 let (Some(path), Some(expected)) = (parts.next(), parts.next()) else {
@@ -581,7 +583,7 @@ fn parse_show_prop(name: &str, value: &PropValue) -> ComponentResult<VisibilityC
                 ))
             }
         }
-        PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             parse_responsive_bool_prop(name, value).map(VisibilityCondition::Static)
         }
         PropValue::Number(_) => Err(ComponentError::invalid_prop(
@@ -641,6 +643,22 @@ where
         PropValue::Boolean(value) => parse(&PropScalar::Boolean(*value))
             .map(ResponsiveValue::scalar)
             .ok_or_else(|| ComponentError::invalid_prop(name, expected)),
+        PropValue::Binding(binding) => {
+            let fallback = binding.fallback.as_deref().ok_or_else(|| {
+                ComponentError::invalid_prop(name, "reactive value with a valid fallback")
+            })?;
+            let scalar = match fallback {
+                PropValue::String(value) => PropScalar::String(value.clone()),
+                PropValue::Number(value) => PropScalar::Number(value.clone()),
+                PropValue::Boolean(value) => PropScalar::Boolean(*value),
+                PropValue::Responsive(_) | PropValue::Binding(_) => {
+                    return Err(ComponentError::invalid_prop(name, expected));
+                }
+            };
+            parse(&scalar)
+                .map(ResponsiveValue::scalar)
+                .ok_or_else(|| ComponentError::invalid_prop(name, expected))
+        },
         PropValue::Responsive(entries) => {
             let mut parsed = Vec::new();
             for entry in entries {

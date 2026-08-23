@@ -43,7 +43,11 @@ fn parse_toast_kind(name: &str, value: &PropValue) -> ComponentResult<ToastKind>
 }
 
 fn parse_signal_path(name: &str, value: &PropValue, expected: &str) -> ComponentResult<String> {
-    let value = parse_required_string(name, value)?;
+    let value = match value {
+        PropValue::String(value) => value.clone(),
+        PropValue::Binding(binding) => binding.path.clone(),
+        _ => return Err(ComponentError::invalid_prop(name, expected)),
+    };
     if is_reference_path(&value) {
         Ok(value)
     } else {

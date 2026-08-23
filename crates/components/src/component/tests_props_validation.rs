@@ -419,6 +419,7 @@ fn validates_text_title_typography_props() {
             string_prop("weight", "black"),
             string_prop("spacing", "tight"),
             string_prop("i18n", "home.hero.title"),
+            string_prop("as", "h1"),
             string_prop("font", "poppins"),
             number_prop("p", 4),
             string_prop("rounded", "md"),
@@ -450,6 +451,7 @@ fn validates_text_title_typography_props() {
                 TextSpacing::Tight
             );
             assert_eq!(props.i18n.as_deref(), Some("home.hero.title"));
+            assert_eq!(props.as_tag.as_deref(), Some("h1"));
             assert!(props.style.spacing.p.is_some());
             assert!(props.style.rounded.is_some());
         }

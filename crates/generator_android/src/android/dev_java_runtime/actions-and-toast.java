@@ -1,4 +1,9 @@
-        doweRunAction(id, item, () -> renderCurrentRoute(false));
+        doweRunAction(id, item, () -> {
+            if (doweActiveOverlay != null && doweActiveOverlay.isShowing()) {
+                doweActiveOverlay.dismiss();
+            }
+            renderCurrentRoute(false);
+        });
     }
 
     private void doweRunAction(String id, Map<String, Object> item, Runnable completion) {

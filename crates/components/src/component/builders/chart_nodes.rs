@@ -342,7 +342,7 @@ fn parse_chart_angle(name: &str, value: &PropValue) -> ComponentResult<i16> {
         PropValue::Number(value) => value
             .parse::<i16>()
             .map_err(|_| ComponentError::invalid_prop(name, "integer degrees")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "integer degrees"))
         }
     }
@@ -351,7 +351,7 @@ fn parse_chart_angle(name: &str, value: &PropValue) -> ComponentResult<i16> {
 fn parse_chart_opacity(name: &str, value: &PropValue) -> ComponentResult<u16> {
     let value = match value {
         PropValue::Number(value) => value,
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             return Err(ComponentError::invalid_prop(name, "number between 0 and 1"));
         }
     };

@@ -310,6 +310,17 @@ fn design_asset_name_is_content_addressed_and_deterministic() {
 }
 
 #[test]
+fn reactive_variant_and_style_capability_are_selected_for_bound_props() {
+    let tree = ViewNode::Card {
+        props: VariantProps { style: StyleProps { bg_binding: Some(dowe_components::PropBinding::string("theme.color")), ..Default::default() }, variant_binding: Some(dowe_components::PropBinding::string("theme.variant")), ..Default::default() },
+        children: Vec::new(),
+    };
+    let chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &tree);
+    assert_eq!(chunks.iter().map(|chunk| chunk.name).collect::<Vec<_>>(), vec!["styles"]);
+    assert!(chunks[0].content.contains("renderStyles"));
+}
+
+#[test]
 fn style_capability_chunks_are_selected_and_content_addressed() {
     let basic = ViewNode::Box {
         props: Default::default(),

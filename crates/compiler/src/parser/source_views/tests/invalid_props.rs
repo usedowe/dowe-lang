@@ -65,6 +65,18 @@
     }
 
     #[test]
+    fn accepts_title_as_heading_prop() {
+        let tree = parse_page(
+            r#"page componentsPage
+  Title as:"h1"
+    "Main heading""#,
+        )
+        .expect("Title as prop");
+
+        assert!(matches!(tree, dowe_components::ViewNode::Title { props, .. } if props.as_tag.as_deref() == Some("h1")));
+    }
+
+    #[test]
     fn rejects_quoted_rich_text_title_mode() {
         let error = parse_page(
             r#"page componentsPage
@@ -216,6 +228,17 @@
                 "invalid value for prop `message`: expected quoted static string literal"
             )
         );
+    }
+
+    #[test]
+    fn rejects_invalid_reactive_initial_values() {
+        let error = parse_page(
+            r#"page invalidReactivePage
+  signal variantChoice value:"not-valid"
+  Button variant:variantChoice
+    "Action""#,
+        ).expect_err("invalid reactive enum");
+        assert!(error.to_string().contains("invalid initial value"), "{error}");
     }
 
     #[test]

@@ -1,5 +1,40 @@
-fn compose_reactive_runtime() -> &'static str {
+fn compose_reactive_runtime() -> String {
     r#"
+private fun doweDynamicTextSize(value: String): TextUnit = when (value) {
+    "xs" -> 12.sp
+    "sm" -> 14.sp
+    "lg" -> 20.sp
+    "xl" -> 24.sp
+    else -> 16.sp
+}
+private fun doweDynamicTextWeight(value: String): FontWeight = when (value) {
+    "thin" -> FontWeight.Thin
+    "light" -> FontWeight.Light
+    "medium" -> FontWeight.Medium
+    "semibold" -> FontWeight.SemiBold
+    "bold" -> FontWeight.Bold
+    "black" -> FontWeight.Black
+    else -> FontWeight.Normal
+}
+private fun doweDynamicTextSpacing(value: String): TextUnit = value.toFloatOrNull()?.sp ?: 0.sp
+private fun doweValidEnum(value: String, kind: String): String = when (kind) {
+    "variant" -> if (value in DowePropCatalog.variants) value else "solid"
+    "scheme" -> if (value in DowePropCatalog.schemes) value else "primary"
+    "size" -> if (value in DowePropCatalog.sizes) value else "md"
+    "rounded" -> if (value in DowePropCatalog.rounded) value else "md"
+    "color" -> if (value in DowePropCatalog.colors) value else "primary"
+    "icon" -> if (value in DowePropCatalog.icons) value else ""
+    else -> value
+}
+private object DowePropCatalog {
+    val icons = setOf(__DOWE_ICON_NAMES__)
+    val colors = setOf(__DOWE_COLORS__)
+    val variants = setOf(__DOWE_VARIANTS__)
+    val schemes = setOf(__DOWE_SCHEMES__)
+    val sizes = setOf(__DOWE_SIZES__)
+    val rounded = setOf(__DOWE_ROUNDED__)
+}
+
 private data class DoweRow(val id: String, val value: Map<String, Any?>)
 
 private data class DoweRequestAction(
@@ -847,4 +882,22 @@ private fun doweNativeValue(value: Any?): Any? =
         else -> value
     }
 "#
+    .replace("__DOWE_VARIANTS__", &runtime_kotlin_values(dowe_components::BuiltinComponent::Button, "variant"))
+    .replace("__DOWE_SCHEMES__", &runtime_kotlin_values(dowe_components::BuiltinComponent::Button, "scheme"))
+    .replace("__DOWE_SIZES__", &runtime_kotlin_values(dowe_components::BuiltinComponent::Button, "size"))
+    .replace("__DOWE_ROUNDED__", &runtime_kotlin_values(dowe_components::BuiltinComponent::Button, "rounded"))
+    .replace("__DOWE_COLORS__", &runtime_kotlin_values(dowe_components::BuiltinComponent::Button, "scheme"))
+    .replace("__DOWE_ICON_NAMES__", &runtime_kotlin_icons())
+}
+
+fn runtime_kotlin_icons() -> String {
+    dowe_components::all_icon_names().iter().map(|value| format!("\"{}\"", value.replace('"', "\\\""))).collect::<Vec<_>>().join(", ")
+}
+
+fn runtime_kotlin_values(component: dowe_components::BuiltinComponent, name: &str) -> String {
+    dowe_components::prop_allowed_values(component, name)
+        .iter()
+        .map(|value| format!("\"{value}\""))
+        .collect::<Vec<_>>()
+        .join(", ")
 }

@@ -51,8 +51,8 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     assert!(html.contains("<article class=\"card"));
     assert!(html.contains("is-soft is-muted"));
     assert!(html.contains("<p class=\"dowe-text text-md\">Card inherited</p>"));
-    assert!(html.contains("<p class=\"dowe-title title-md\">Card title inherited</p>"));
-    assert!(html.contains("<p class=\"dowe-title title-md color-warning\">Card override</p>"));
+    assert!(html.contains("<h2 class=\"dowe-title title-md\">Card title inherited</h2>"));
+    assert!(html.contains("<h2 class=\"dowe-title title-md color-warning\">Card override</h2>"));
     assert!(
         page.css_content
             .contains(".color-primaryText{color:var(--dowe-primaryText);}")
@@ -503,6 +503,19 @@ fn renders_box_and_text_as_div_and_paragraph() {
 }
 
 #[test]
+fn renders_title_as_selected_heading_tag_on_web() {
+    let tree = ViewNode::Title {
+        props: TextProps {
+            as_tag: Some("h1".to_string()),
+            ..Default::default()
+        },
+        value: "Main heading".to_string(),
+    };
+    let html = render_page_body(&ViewNode::Children, &tree);
+    assert!(html.contains("<h1 class=\"dowe-title title-md\">Main heading</h1>"));
+}
+
+#[test]
 fn preserves_multiline_text_in_one_paragraph() {
     let tree = ViewNode::Title {
         props: TextProps::default(),
@@ -519,7 +532,7 @@ fn preserves_multiline_text_in_one_paragraph() {
         super::design_css_for_trees([&tree], &FontConfig::default(), &DesignConfig::default());
 
     assert!(html.contains(
-        "<p class=\"dowe-title title-md\">Full-stack development,\nfrom one codebase</p>"
+        "<h2 class=\"dowe-title title-md\">Full-stack development,\nfrom one codebase</h2>"
     ));
     assert!(css.contains("white-space:pre-line;"));
     assert!(page.content.contains("Full-stack development"));

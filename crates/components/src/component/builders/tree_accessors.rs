@@ -658,6 +658,6 @@ fn prop_value_string(name: &str, value: &PropValue) -> ComponentResult<String> {
         PropValue::String(value) => Ok(value.clone()),
         PropValue::Boolean(value) => Ok(value.to_string()),
         PropValue::Number(value) => Ok(value.clone()),
-        PropValue::Responsive(_) => Err(ComponentError::invalid_prop(name, "static scalar")),
+        PropValue::Responsive(_) | PropValue::Binding(_) => Err(ComponentError::invalid_prop(name, "static scalar")),
     }
 }

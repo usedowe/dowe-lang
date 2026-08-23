@@ -24,7 +24,9 @@ pub struct StyleProps {
     pub element: ElementProps,
     pub font: Option<ResponsiveValue<FontFamily>>,
     pub bg: Option<ResponsiveValue<ColorToken>>,
+    pub bg_binding: Option<PropBinding>,
     pub text: Option<ResponsiveValue<ColorToken>>,
+    pub text_binding: Option<PropBinding>,
     pub cover: Option<ResponsiveValue<CoverSource>>,
     pub overlay: Option<ResponsiveValue<OverlayPaint>>,
     pub background: Option<ResponsiveValue<SectionBackground>>,
@@ -37,7 +39,9 @@ pub struct StyleProps {
     pub spacing: SpacingProps,
     pub sizing: SizingProps,
     pub rounded: Option<ResponsiveValue<RoundedSize>>,
+    pub rounded_binding: Option<PropBinding>,
     pub border: Option<ResponsiveValue<BorderWidth>>,
+    pub border_binding: Option<PropBinding>,
     pub border_color: Option<ColorFamily>,
     pub shadow: Option<ResponsiveValue<ShadowSize>>,
     pub shadow_color: Option<ColorFamily>,
@@ -237,6 +241,9 @@ pub struct VariantProps {
     pub icon_only: bool,
     pub navigation: Option<NavigationAction>,
     pub reactive: ReactiveVariantProps,
+    pub variant_binding: Option<PropBinding>,
+    pub color_binding: Option<PropBinding>,
+    pub size_binding: Option<PropBinding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

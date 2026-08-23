@@ -837,12 +837,12 @@ fn android_java_color_literal(value: &str) -> String {
     let red = u8::from_str_radix(&raw[0..2], 16).expect("red color");
     let green = u8::from_str_radix(&raw[2..4], 16).expect("green color");
     let blue = u8::from_str_radix(&raw[4..6], 16).expect("blue color");
-    if raw.len() == 6 {
-        format!("Color.rgb({red}, {green}, {blue})")
+    let alpha = if raw.len() == 6 {
+        255
     } else {
-        let alpha = u8::from_str_radix(&raw[6..8], 16).expect("alpha color");
-        format!("Color.argb({alpha}, {red}, {green}, {blue})")
-    }
+        u8::from_str_radix(&raw[6..8], 16).expect("alpha color")
+    };
+    format!("0x{alpha:02X}{red:02X}{green:02X}{blue:02X}")
 }
 
 fn font_display_name(value: FontFamily) -> &'static str {
@@ -858,16 +858,20 @@ fn dev_design_constants(design: &DesignConfig) -> String {
     ));
     for token in theme.ordered_color_tokens() {
         output.push_str(&format!(
-            "    private static int {} = {};\n",
+            "    private static int {};\n",
+            java_color(token)
+        ));
+    }
+    output.push_str("    private static float DOWE_RADIUS;\n");
+    output.push_str("\n    private void doweApplyTheme(String name) {\n");
+    for token in theme.ordered_color_tokens() {
+        output.push_str(&format!(
+            "        {} = {};\n",
             java_color(token),
             android_java_color_literal(theme.color_value(token))
         ));
     }
-    output.push_str(&format!(
-        "    private static float DOWE_RADIUS = {}f;\n",
-        theme.radius
-    ));
-    output.push_str("\n    private void doweApplyTheme(String name) {\n");
+    output.push_str(&format!("        DOWE_RADIUS = {}f;\n", theme.radius));
     for (index, theme) in design.themes.iter().enumerate() {
         output.push_str(&format!(
             "        {} (\"{}\".equals(name)) {{\n",

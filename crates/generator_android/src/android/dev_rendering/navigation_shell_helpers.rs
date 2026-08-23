@@ -316,6 +316,15 @@ fn render_dev_android_side_nav_data(
     let title = dev_side_nav_header_content(&props.style).to_string();
     let wide = dev_side_nav_wide(props, context);
     let entries = dev_side_nav_entries(items);
+    if let Some(path) = props.style.reactive.variant.as_ref() {
+        output.push_str(&format!("        {parent}.setTag(DOWE_VARIANT_TAG, \"{}\");\n", escape_java(path)));
+    }
+    if let Some(path) = props.style.reactive.scheme.as_ref() {
+        output.push_str(&format!("        {parent}.setTag(DOWE_SCHEME_TAG, \"{}\");\n", escape_java(path)));
+    }
+    if let Some(path) = props.style.reactive.size.as_ref() {
+        output.push_str(&format!("        {parent}.setTag(DOWE_SIZE_TAG, \"{}\");\n", escape_java(path)));
+    }
     output.push_str(&format!(
         "        doweRenderSideNav({parent}, {entries}, \"{}\", {wide}, {padding_horizontal}, {padding_vertical}, {gap}, {label_size}, {description_size}, {}, {}, {}, {});\n",
         escape_java(&side_nav_memory_key(props, items)),

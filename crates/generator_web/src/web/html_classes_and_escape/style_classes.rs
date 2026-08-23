@@ -1,4 +1,5 @@
 fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
+    append_reactive_style_markers(classes, props);
     append_show_classes(classes, props.element.show.as_ref());
     append_responsive_classes(classes, "font", props.font.as_ref(), |value| {
         value.as_str().to_string()
@@ -130,6 +131,31 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
         props.grid_item().row_span.as_ref(),
         |value| value.0.to_string(),
     );
+}
+
+fn append_reactive_style_markers(classes: &mut Vec<String>, props: &StyleProps) {
+    for binding in props.bindings() {
+        let name = match binding.property {
+            dowe_components::StyleBindingProperty::BackgroundColor => "bg",
+            dowe_components::StyleBindingProperty::TextColor => "color",
+            dowe_components::StyleBindingProperty::Padding => "p",
+            dowe_components::StyleBindingProperty::PaddingInline => "px",
+            dowe_components::StyleBindingProperty::PaddingBlock => "py",
+            dowe_components::StyleBindingProperty::PaddingLeft => "pl",
+            dowe_components::StyleBindingProperty::PaddingRight => "pr",
+            dowe_components::StyleBindingProperty::PaddingTop => "pt",
+            dowe_components::StyleBindingProperty::PaddingBottom => "pb",
+            dowe_components::StyleBindingProperty::Width => "w",
+            dowe_components::StyleBindingProperty::Height => "h",
+            dowe_components::StyleBindingProperty::MinWidth => "minW",
+            dowe_components::StyleBindingProperty::MinHeight => "minH",
+            dowe_components::StyleBindingProperty::MaxWidth => "maxW",
+            dowe_components::StyleBindingProperty::MaxHeight => "maxH",
+            dowe_components::StyleBindingProperty::BorderWidth => "border",
+            dowe_components::StyleBindingProperty::BorderRadius => "rounded",
+        };
+        classes.push(format!("dowe-style-binding-{name}-{}", binding.binding.path));
+    }
 }
 
 fn append_show_classes(classes: &mut Vec<String>, value: Option<&VisibilityCondition>) {

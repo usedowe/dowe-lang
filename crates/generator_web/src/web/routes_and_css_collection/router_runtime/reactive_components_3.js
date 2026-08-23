@@ -303,11 +303,17 @@ function runtimeSvgPath(path) {
     transform
   };
 }
-function renderRuntimeSvgElement(svg, value) {
+function renderRuntimeSvgElement(svg, value, fill, stroke) {
   const record = runtimeSvgRecord(value);
   while (svg.firstChild) svg.removeChild(svg.firstChild);
   svg.dataset.doweSvgValid = "false";
   if (!record) return;
+  const colors = ["primary", "secondary", "accent", "muted", "success", "info", "warning", "danger"];
+  for (const prefix of ["color-", "stroke-color-"]) {
+    for (const token of colors) svg.classList.remove(prefix + token);
+  }
+  if (colors.includes(fill)) svg.classList.add("color-" + fill);
+  if (colors.includes(stroke)) svg.classList.add("stroke-color-" + stroke);
   const paths = record.paths.map(runtimeSvgPath);
   if (paths.some(path => !path)) return;
   svg.setAttribute("viewBox", record.viewBox);
@@ -338,7 +344,9 @@ function renderRuntimeSvgs(root, state, scope) {
     if (!scoped && svg.closest("[data-dowe-each-row]")) continue;
     const dynamic = svg.dataset.doweIconName,
       value = dynamic ? doweIconCatalog[String(readPath(state, dynamic, scope))] || doweIconCatalog[svg.dataset.doweIconFallback || ""] : readPath(state, svg.dataset.doweSvgData, scope);
-    renderRuntimeSvgElement(svg, value);
+    const fill = svg.dataset.doweIconFill ? String(readPath(state, svg.dataset.doweIconFill, scope) || "") : "";
+    const stroke = svg.dataset.doweIconStroke ? String(readPath(state, svg.dataset.doweIconStroke, scope) || "") : "";
+    renderRuntimeSvgElement(svg, value, fill, stroke);
   }
 }
 function renderReactiveImages(root, state, scope) {
@@ -367,6 +375,7 @@ function renderDynamic(root, state, scope) {
   renderReactiveSideNavs(root, state, scope);
   renderRuntimeSvgs(root, state, scope);
   renderReactiveImages(root, state, scope);
+  runtimeCall("styles", "renderStyles", [root, state, scope]);
   for (const element of root.querySelectorAll("[data-dowe-text]")) {
     if (!scoped && element.closest("[data-dowe-each-row]")) continue;
     const value = readPath(state, element.dataset.doweText, scope);

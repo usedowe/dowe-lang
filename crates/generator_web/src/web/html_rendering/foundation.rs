@@ -373,6 +373,7 @@ fn render_html_node_with_context(
             Some(&props.style.element),
             value,
             props.i18n.as_deref(),
+            props.as_tag.as_deref(),
             context,
         ),
         ViewNode::Text { props, value } => render_text_html(
@@ -381,6 +382,7 @@ fn render_html_node_with_context(
             Some(&props.style.element),
             value,
             props.i18n.as_deref(),
+            None,
             context,
         ),
         ViewNode::Alert { props } => {

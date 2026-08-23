@@ -11,7 +11,11 @@ fn parse_svg_props(
             "id" => style.element.id = Some(parse_id_prop(&prop.name, &prop.value)?),
             "show" => style.element.show = Some(parse_show_prop(&prop.name, &prop.value)?),
             "viewBox" => view_box = Some(parse_svg_view_box(&prop.name, &prop.value)?),
-            "data" => data = Some(parse_required_string(&prop.name, &prop.value)?),
+            "data" => data = Some(match &prop.value {
+                PropValue::String(value) => value.clone(),
+                PropValue::Binding(binding) => binding.path.clone(),
+                _ => return Err(ComponentError::invalid_prop("data", "signal or static SVG data")),
+            }),
             "color" => style.text = Some(parse_color_prop(&prop.name, &prop.value)?),
             "w" => style.sizing.w = Some(parse_size_prop(&prop.name, &prop.value)?),
             "h" => style.sizing.h = Some(parse_size_prop(&prop.name, &prop.value)?),
@@ -50,7 +54,9 @@ fn parse_svg_props(
         icon_name: None,
         icon_fallback: None,
         icon_fill: None,
+            icon_fill_binding: None,
         icon_stroke: None,
+            icon_stroke_binding: None,
         motion: None,
     })
 }

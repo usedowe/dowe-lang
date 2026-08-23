@@ -36,6 +36,42 @@ Read `references/data.md` for Database, Cache, and Vector handles, entities, see
 operation utilities. Read `references/runtime.md` for TLS, outbound HTTP, responses, crypto,
 spawn, JWT, WebSockets, CORS, background jobs, protocol transports, and local models.
 
+## Third-party HTTP providers
+
+Use `server/providers` as the single ownership boundary for integrations with external APIs. Create
+one file per third party, such as `server/providers/openai.dowe`,
+`server/providers/cloudflare.dowe`, or `server/providers/other.dowe`. A provider file may export
+multiple related operations as separate `fn` declarations, but it must not mix unrelated providers.
+
+Each provider function owns the complete outbound contract: endpoint path, HTTP method, request
+headers, authentication, JSON payload, timeout, response normalization, and safe error shape. Put
+provider credentials and base URLs in server-only environment variables. Do not pass secrets from a
+View or request body, log authorization headers, or return the raw upstream response when a smaller
+application-owned shape is sufficient.
+
+Services import provider functions and coordinate business behavior. Handlers parse requests and
+return HTTP responses; they do not contain `http` statements for third-party APIs.
+
+```text
+fn createChatCompletion params:{ prompt:string }
+  http upstream method:"post" base:env.OPENAI_BASE_URL path:"/v1/chat/completions" bearer:env.OPENAI_API_KEY json:{ model:"gpt-4o-mini" messages:[{ role:"user" content:args.prompt }] } timeoutMs:30000 mode:"json"
+  if upstream.ok
+    return value:{ ok:true data:upstream.json }
+  return value:{ ok:false error:"provider_unavailable" status:upstream.status }
+```
+
+```text
+fn sendCloudflareEmail params:{ recipient:string subject:string body:string }
+  http upstream method:"post" base:env.CLOUDFLARE_EMAILS_BASE_URL path:"/send" bearer:env.CLOUDFLARE_EMAILS_API_TOKEN json:{ to:args.recipient subject:args.subject text:args.body } timeoutMs:10000 mode:"json"
+  if upstream.ok
+    return value:{ ok:true id:upstream.json.id }
+  return value:{ ok:false error:"email_provider_unavailable" status:upstream.status }
+```
+
+Import these functions from services using their provider module path, for example
+`@/server/providers/openai` and `@/server/providers/cloudflare`. Add every server-only `env.*`
+name to the root `.env.example` without placing real credentials there.
+
 ## View request consumers
 
 A route consumed by a Dowe View has one coordinated contract even though source ownership remains

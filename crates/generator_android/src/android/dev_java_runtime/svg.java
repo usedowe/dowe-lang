@@ -1,4 +1,24 @@
     private static final int DOWE_DISABLED_PATH_TAG = 0x7f0d0001;
+    private static final int DOWE_STYLE_P_TAG = 0x7f0d0002;
+    private static final int DOWE_STYLE_PX_TAG = 0x7f0d0003;
+    private static final int DOWE_STYLE_PY_TAG = 0x7f0d0004;
+    private static final int DOWE_STYLE_PL_TAG = 0x7f0d0005;
+    private static final int DOWE_STYLE_PR_TAG = 0x7f0d0006;
+    private static final int DOWE_STYLE_PT_TAG = 0x7f0d0007;
+    private static final int DOWE_STYLE_PB_TAG = 0x7f0d0008;
+    private static final int DOWE_STYLE_W_TAG = 0x7f0d0009;
+    private static final int DOWE_STYLE_H_TAG = 0x7f0d000a;
+    private static final int DOWE_STYLE_MIN_W_TAG = 0x7f0d000b;
+    private static final int DOWE_STYLE_MIN_H_TAG = 0x7f0d000c;
+    private static final int DOWE_STYLE_MAX_W_TAG = 0x7f0d000d;
+    private static final int DOWE_STYLE_MAX_H_TAG = 0x7f0d000e;
+    private static final int DOWE_STYLE_BORDER_TAG = 0x7f0d000f;
+    private static final int DOWE_STYLE_ROUNDED_TAG = 0x7f0d0010;
+    private static final int DOWE_STYLE_BG_TAG = 0x7f0d0011;
+    private static final int DOWE_STYLE_COLOR_TAG = 0x7f0d0012;
+    private static final int DOWE_VARIANT_TAG = 0x7f0d0013;
+    private static final int DOWE_SCHEME_TAG = 0x7f0d0014;
+    private static final int DOWE_SIZE_TAG = 0x7f0d0015;
 
     private static final class DoweSvgImportMatrix {
         private final double a;

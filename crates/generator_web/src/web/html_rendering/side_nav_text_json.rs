@@ -305,11 +305,12 @@ fn svg_path_attributes(paint: SvgPathFill) -> String {
 }
 
 fn render_text_html(
-    _base: &str,
+    base: &str,
     classes: Vec<String>,
     element: Option<&ElementProps>,
     value: &str,
     i18n: Option<&str>,
+    tag: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
     let dynamic = visible_dynamic_text_attr(value, context);
@@ -322,8 +323,9 @@ fn render_text_html(
     } else {
         String::new()
     };
+    let tag = tag.unwrap_or(if base == "title" { "h2" } else { "p" });
     format!(
-        "<p{}>{}</p>",
+        "<{tag}{}>{}</{tag}>",
         attrs(
             classes,
             element,

@@ -79,7 +79,11 @@ fn parse_iframe_tokens(
 }
 
 fn parse_reference_path(name: &str, value: &PropValue) -> ComponentResult<String> {
-    let value = parse_required_string(name, value)?;
+    let value = match value {
+        PropValue::String(value) => value.clone(),
+        PropValue::Binding(binding) => binding.path.clone(),
+        _ => return Err(ComponentError::invalid_prop(name, "signal array path")),
+    };
     if is_reference_path(&value) {
         Ok(value)
     } else {
@@ -159,7 +163,7 @@ fn parse_positive_u16(name: &str, value: &PropValue) -> ComponentResult<u16> {
             .ok()
             .filter(|value| *value > 0)
             .ok_or_else(|| ComponentError::invalid_prop(name, "positive integer")),
-        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) => {
+        PropValue::String(_) | PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => {
             Err(ComponentError::invalid_prop(name, "positive integer"))
         }
     }
@@ -182,7 +186,7 @@ fn parse_media_source(name: &str, value: &PropValue) -> ComponentResult<String> 
 fn parse_static_string_or_number(name: &str, value: &PropValue) -> ComponentResult<String> {
     match value {
         PropValue::String(value) | PropValue::Number(value) => Ok(value.clone()),
-        PropValue::Boolean(_) | PropValue::Responsive(_) => Err(ComponentError::invalid_prop(
+        PropValue::Boolean(_) | PropValue::Responsive(_) | PropValue::Binding(_) => Err(ComponentError::invalid_prop(
             name,
             "static string or number",
         )),

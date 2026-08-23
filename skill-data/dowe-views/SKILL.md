@@ -45,6 +45,13 @@ Before authoring the repeated view:
 
 - Declare immutable reference content in a page or layout `const`, or use a typed `signal`/Store when
   the collection is reactive. Give every record a stable string `id`.
+- Apply the local-constant visual strategy: when an immutable `const` is used only once, place it
+  immediately above the visual subtree that consumes it, inside the nearest owning visual block.
+  This keeps the data and its rendered values together so authors do not need to scroll to the top
+  of the page. Dowe hoists the declaration into the page or layout scope without rendering a
+  wrapper. Keep a `const` at the page or layout level only when it is used by multiple visual
+  subtrees or is shared by page logic. For a one-use collection, place the `const` directly above
+  its `each`; for a one-use table catalog, place it directly above the `Table` that binds it.
 - Render one complete repeated unit with exactly one `each in:<collection> as:<item> key:<item.id>`.
   The `each` must wrap the whole unit, including its icon, copy, actions, and state—not just one text
   node inside a set of copied siblings.
@@ -181,9 +188,18 @@ theme or color changes.
 14. Apply the non-duplication gate to every repeated same-shape unit: use a `const` for immutable
     reference-defined content, a typed `signal` for a page collection refreshed or replaced by
     requests or local workflows, and an imported View Store only for state shared across routes.
-    Render the complete unit with one `each in:<collection> as:<item> key:<item-path>`; never copy
-    sibling Cards, feature rows, icon/text groups, or list units. A result with repeated siblings is
-    incomplete even when it looks visually correct.
+    Use the local-constant visual strategy for immutable data used once: put the `const` immediately
+    above the `each` or component subtree that consumes it, inside the nearest visual owner. The
+    compiler hoists it without adding a rendered node. Keep shared or multi-use constants at the
+    page/layout scope. Render the complete unit with one
+    `each in:<collection> as:<item> key:<item-path>`; never copy sibling Cards, feature rows,
+    icon/text groups, or list units. A result with repeated siblings is incomplete even when it
+    looks visually correct. For server-backed catalogs, load metadata and
+    records through requests, keep metadata in a Signal, and render one keyed `each` block. Never
+    hardcode labels, counts, slugs, or create one selection function per record. If a compound
+    navigation component cannot consume a dynamic collection, use the closest supported data-bound
+    control (such as `Select`) and one shared loading function rather than inventing dynamic entry
+    syntax.
 15. Extract a static fragment reused in two or more places, such as a logo or a vertical `SideNav`
     tree mounted in both Sidebar and Drawer, into a `component` under `views/components`; keep signals,
     functions, caller bindings, and data-bound `each` templates in the owning layout or page because
@@ -242,7 +258,11 @@ theme or color changes.
 24. Validate bindings, component props, text children, routes, and target support with Dowe
    diagnostics. For internal requests, also verify the request-to-route matrix against the actual
    Server source and validate the complete View and Server import graph; do not assume the compiler
-   proves a response shape that the source does not declare.
+   proves a response shape that the source does not declare. For catalog requests, verify that the
+   Server returns the display label, stable key, and authoritative count; the View must not duplicate
+   those values in static navigation entries. Before binding a value in visible text, verify that
+   its resolved type is `string`; convert numeric or boolean values with `parse.string` into a
+   dedicated string Signal first.
 25. Before visual QA, audit every repeated region: name its collection and owner, verify stable ids,
    confirm one `each` wraps the complete repeated subtree, and check that no copied sibling has
    survived. Verify static-only props such as `Icon.name` remain compiler-valid. Audit every local
