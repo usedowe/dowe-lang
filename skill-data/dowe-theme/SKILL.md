@@ -53,14 +53,19 @@ theme
    an existing base theme during page generation.
 5. Give modern dark interfaces distinct canvas, surface, quiet-surface, and accent roles. Do not
    assign nearly identical dark values to every family or make every Card use the brand color.
-6. Choose defaults that establish a quiet baseline. Reserve stronger borders, shadows, glows,
+6. Base `muted` on the project's `primary` color as a lighter, lower-emphasis tonal counterpart,
+   similar to an inverse relationship without mechanically inverting channels. Choose `mutedText`
+   and `mutedTitle` to stand out clearly against that lighter muted fill. This is useful for solid
+   controls such as `Input` where a solid primary surface would be too heavy; use muted to preserve
+   hierarchy while reducing visual weight.
+7. Choose defaults that establish a quiet baseline. Reserve stronger borders, shadows, glows,
    covers, transforms, and motion for intentional focal instances in views.
-7. Keep local component visual props only when one instance intentionally differs.
-8. Treat `design` as the source of repeated visual policy. View generation must omit component
+8. Keep local component visual props only when one instance intentionally differs.
+9. Treat `design` as the source of repeated visual policy. View generation must omit component
    props already supplied by `design` or by the built-in component contract; emit only local
    exceptions, reactive bindings, layout/behavior props, and required content or accessibility.
-9. Validate contrast, completeness, font tokens, surface separation, and target support.
-10. Use Dowe semantic names and the closed Dowe font token catalog, matched by typographic
+10. Validate contrast, completeness, font tokens, surface separation, and target support.
+11. Use Dowe semantic names and the closed Dowe font token catalog, matched by typographic
    character when the reference family is unavailable.
 
 ## Reference routing

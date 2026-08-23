@@ -42,7 +42,10 @@ otherwise: `SelectTheme` defaults to `outlined` plus `surface`, and `RailNav` de
 plus `muted`. The normalized variant name is `outlined`.
 
 `solid` maps the scheme family to its base, text, and title roles; `soft` maps to the matching
-`soft*`, `soft*Text`, and `soft*Title` roles;
+`soft*`, `soft*Text`, and `soft*Title` roles. Author `muted` as a lighter tonal counterpart of
+`primary`, with `mutedText` and `mutedTitle` chosen for clear contrast against that lighter fill.
+Use `muted` for lower-emphasis solid controls such as `Input` when a solid primary surface feels
+too heavy, rather than treating muted as an unrelated neutral.
 `outlined` uses a structural surface with a family-colored border, and `ghost` is transparent with
 family-colored content. Child-bearing variant surfaces pass their resolved foreground token to all
 of their content regions unless the descendant declares `color`; for example, a soft muted Card
