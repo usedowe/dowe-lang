@@ -142,7 +142,7 @@ fn generates_compose_and_dev_display_overlay_components() {
     );
     assert!(views.content.contains("contentScale = ContentScale.Crop"));
     assert!(views.content.contains(
-        "modifier = Modifier.doweShadow(radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(999.dp), color = DoweDesign.tertiary, alpha = 0.28f)"
+        "modifier = Modifier.doweShadow(radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(999.dp), color = DoweDesign.accent, alpha = 0.28f)"
     ));
     assert!(
         views
@@ -248,7 +248,7 @@ fn generates_compose_and_dev_display_overlay_components() {
     let dev = dev_java_source(&output);
     assert!(dev
         .content
-        .contains(", doweResponsiveInt(viewportWidth, 44, null, null, null, null), DOWE_TERTIARY, 999f, 0.28f);"));
+        .contains(", doweResponsiveInt(viewportWidth, 44, null, null, null, null), DOWE_ACCENT, 999f, 0.28f);"));
     assert!(
         dev.content
             .contains(".setLayoutParams(new LinearLayout.LayoutParams(doweDp(48), doweDp(48)));")
@@ -439,13 +439,13 @@ fn generates_compose_modal_width_from_overlay_constraints() {
 #[test]
 fn generates_android_solar_icon_paints() {
     let stroke = SvgPathFill::Stroke {
-        color: Some(ColorToken::Tertiary),
+        color: Some(ColorToken::Accent),
         opacity: 128,
         width: 150,
         line_cap: SvgLineCap::Round,
         line_join: SvgLineJoin::Round,
     };
-    assert!(compose_svg_fill(stroke).contains("DoweSvgFill.Stroke(DoweDesign.tertiary"));
+    assert!(compose_svg_fill(stroke).contains("DoweSvgFill.Stroke(DoweDesign.accent"));
     assert!(dev_svg_path_details(stroke).contains("true, 128, 1.5f"));
     assert!(android_runtime_data_code_svg().contains("drawscope.Stroke"));
     assert!(dev_activity_svg_view().contains("Paint.Style.STROKE"));
@@ -1993,7 +1993,7 @@ fn generates_svg_compose_and_dev_views() {
     assert!(views.content.contains("DoweSvgViewBox(0f, 0f, 24f, 24f)"));
     assert!(views.content.contains("DoweSvgFill.CurrentColor"));
     assert!(views.content.contains(
-        "doweResponsive(viewportWidth, xs = DoweDesign.tertiary) ?: LocalContentColor.current"
+        "doweResponsive(viewportWidth, xs = DoweDesign.accent) ?: LocalContentColor.current"
     ));
     assert!(
         views
@@ -2105,7 +2105,7 @@ fn generates_svg_compose_and_dev_views() {
         dev.content
             .contains("protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)")
     );
-    assert!(dev.content.contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, doweColor(doweResponsiveInt(viewportWidth, DOWE_TERTIARY, null, null, null, null), DOWE_BACKGROUND_TEXT)"));
+    assert!(dev.content.contains("new DoweSvgView(this, 0f, 0f, 24f, 24f, doweColor(doweResponsiveInt(viewportWidth, DOWE_ACCENT, null, null, null, null), DOWE_BACKGROUND_TEXT)"));
 }
 
 #[test]

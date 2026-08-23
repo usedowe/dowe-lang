@@ -59,7 +59,7 @@ page ReferencePage
             "✓ Semantic components · authored composition · deterministic review"
         Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
           Flex direction:"column" align:"center" justify:"center" minH:{ xs:64 md:80 }
-            Card variant:"solid" scheme:"surface" p:{ xs:6 md:8 } rounded:"xl" shadow:"lg" shadowColor:"tertiary"
+            Card variant:"solid" scheme:"surface" p:{ xs:6 md:8 } rounded:"xl" shadow:"lg" shadowColor:"accent"
               Grid columns:1 gap:4
                 Flex align:"center" justify:"between" gap:4
                   Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:12 h:12
@@ -72,7 +72,7 @@ page ReferencePage
                 Flex gap:2
                   Divider scheme:"primary" w:"full"
                   Divider scheme:"secondary" w:"full"
-                  Divider scheme:"tertiary" w:"full"
+                  Divider scheme:"accent" w:"full"
           Box position:"absolute" top:4 right:4
             Chip variant:"solid" scheme:"primary" shadow:"md" shadowColor:"primary"
               "COMPILED"
@@ -107,7 +107,7 @@ page ReferencePage
         Text size:"sm" weight:"bold"
           "RESPONSIVE PROOF"
       Flex align:"center" gap:2
-        Icon name:"layers-minimalistic-bold-duotone" fill:"tertiary" w:6 h:6
+        Icon name:"layers-minimalistic-bold-duotone" fill:"accent" w:6 h:6
         Text size:"sm" weight:"bold"
           "VISUAL QA"
 

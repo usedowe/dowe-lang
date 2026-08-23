@@ -181,7 +181,7 @@
             colors.add(key);
             index = colors.size() - 1;
         }
-        String[] tokens = {"primary", "secondary", "tertiary", "muted", "success", "info", "warning", "danger"};
+        String[] tokens = {"primary", "secondary", "accent", "muted", "success", "info", "warning", "danger"};
         return tokens[index % tokens.length];
     }
 

@@ -188,8 +188,8 @@ private fun doweCanvasColor(value: Any?, fallback: Color = Color.Transparent): C
     "primaryText" -> DoweDesign.primaryText
     "secondary" -> DoweDesign.secondary
     "secondaryText" -> DoweDesign.secondaryText
-    "tertiary" -> DoweDesign.tertiary
-    "tertiaryText" -> DoweDesign.tertiaryText
+    "accent" -> DoweDesign.accent
+    "accentText" -> DoweDesign.accentText
     "muted" -> DoweDesign.muted
     "mutedText" -> DoweDesign.mutedText
     "background" -> DoweDesign.background
@@ -208,8 +208,8 @@ private fun doweCanvasColor(value: Any?, fallback: Color = Color.Transparent): C
     "primaryText" -> DoweDesign.primaryText
     "secondary" -> DoweDesign.secondary
     "secondaryText" -> DoweDesign.secondaryText
-    "tertiary" -> DoweDesign.tertiary
-    "tertiaryText" -> DoweDesign.tertiaryText
+    "accent" -> DoweDesign.accent
+    "accentText" -> DoweDesign.accentText
     "muted" -> DoweDesign.muted
     "mutedText" -> DoweDesign.mutedText
     "success" -> DoweDesign.success

@@ -311,7 +311,7 @@ fn validate_node_variant_references(
                         let allowed: &[&str] = if name == "variant" {
                             &["solid", "outlined", "ghost"]
                         } else {
-                            &["primary", "secondary", "tertiary", "success", "info", "warning", "danger"]
+                            &["primary", "secondary", "accent", "success", "info", "warning", "danger"]
                         };
                         if !allowed.contains(&value.as_str()) {
                             return Err(DoweError::at_path(path, format!("invalid initial value `{value}` for reactive NavMenu prop `{name}`")));

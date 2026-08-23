@@ -196,7 +196,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     ));
     for (label, token) in [
         ("Section inherited", "secondaryText"),
-        ("Flex inherited", "tertiaryText"),
+        ("Flex inherited", "accentText"),
         ("Grid inherited", "mutedText"),
         ("Brand inherited", "surfaceText"),
         ("Banner inherited", "infoText"),
@@ -248,7 +248,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     assert!(dev.content[card_override..card_override + 320].contains("DOWE_WARNING"));
     for (label, token) in [
         ("Section inherited", "DOWE_SECONDARY_TEXT"),
-        ("Flex inherited", "DOWE_TERTIARY_TEXT"),
+        ("Flex inherited", "DOWE_ACCENT_TEXT"),
         ("Grid inherited", "DOWE_MUTED_TEXT"),
         ("Brand inherited", "DOWE_SURFACE_TEXT"),
         ("Banner inherited", "DOWE_INFO_TEXT"),
@@ -1222,8 +1222,8 @@ fn generates_text_and_title_background_for_compose_and_dev_launcher() {
                 props: TextProps {
                     size: Some(ResponsiveValue::scalar(TextSize::Sm)),
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::TertiaryText)),
-                        bg: Some(ResponsiveValue::scalar(ColorToken::Tertiary)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::AccentText)),
+                        bg: Some(ResponsiveValue::scalar(ColorToken::Accent)),
                         rounded: Some(ResponsiveValue::scalar(RoundedSize::Full)),
                         ..Default::default()
                     },
@@ -1235,8 +1235,8 @@ fn generates_text_and_title_background_for_compose_and_dev_launcher() {
                 props: TextProps {
                     size: Some(ResponsiveValue::scalar(TextSize::Sm)),
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::TertiaryText)),
-                        bg: Some(ResponsiveValue::scalar(ColorToken::Tertiary)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::AccentText)),
+                        bg: Some(ResponsiveValue::scalar(ColorToken::Accent)),
                         rounded: Some(ResponsiveValue::scalar(RoundedSize::Full)),
                         ..Default::default()
                     },
@@ -1257,14 +1257,14 @@ fn generates_text_and_title_background_for_compose_and_dev_launcher() {
         .iter()
         .find(|file| file.relative_path.ends_with("DowePages.kt"))
         .expect("views");
-    let text_modifier = ".doweRounded(doweResponsive(viewportWidth, xs = 999.dp)).doweBackground(doweResponsive(viewportWidth, xs = DoweDesign.tertiary))";
+    let text_modifier = ".doweRounded(doweResponsive(viewportWidth, xs = 999.dp)).doweBackground(doweResponsive(viewportWidth, xs = DoweDesign.accent))";
     assert_eq!(views.content.matches(text_modifier).count(), 2);
-    assert!(views.content.contains("DoweDesign.tertiaryText"));
+    assert!(views.content.contains("DoweDesign.accentText"));
 
     let dev = dev_java_source(&output);
     assert_eq!(
         dev.content
-            .matches("Background = doweResponsiveInt(viewportWidth, DOWE_TERTIARY")
+            .matches("Background = doweResponsiveInt(viewportWidth, DOWE_ACCENT")
             .count(),
         2
     );
@@ -1805,7 +1805,7 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
             ViewNode::Avatar {
                 props: AvatarProps {
                     style: VariantProps {
-                        style: shadow_style(ShadowSize::Lg, ColorFamily::Tertiary),
+                        style: shadow_style(ShadowSize::Lg, ColorFamily::Accent),
                         ..Default::default()
                     },
                     src: None,
@@ -1863,7 +1863,7 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
     for expected in [
         "radius = doweResponsive(viewportWidth, xs = 24.dp) ?: 0.dp, shape = RoundedCornerShape(doweResponsive(viewportWidth, xs = 8.dp) ?: DoweDesign.radius), color = DoweDesign.primary, alpha = 0.28f",
         "radius = doweResponsive(viewportWidth, xs = 12.dp) ?: 0.dp, shape = RoundedCornerShape(DoweDesign.radius), color = DoweDesign.secondary, alpha = 0.28f",
-        "radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(999.dp), color = DoweDesign.tertiary, alpha = 0.28f",
+        "radius = doweResponsive(viewportWidth, xs = 44.dp) ?: 0.dp, shape = RoundedCornerShape(999.dp), color = DoweDesign.accent, alpha = 0.28f",
         "radius = doweResponsive(viewportWidth, xs = 2.dp) ?: 0.dp, shape = RoundedCornerShape(null ?: DoweDesign.radius), color = DoweDesign.success, alpha = 0.28f",
         "radius = doweResponsive(viewportWidth, xs = 24.dp) ?: 0.dp, shape = RoundedCornerShape(doweResponsive(viewportWidth, xs = 12.dp) ?: DoweDesign.radius), color = DoweDesign.info, alpha = 0.28f",
     ] {
@@ -1885,7 +1885,7 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
     for expected in [
         "doweResponsiveInt(viewportWidth, 24, null, null, null, null), DOWE_PRIMARY, doweFloat(doweResponsiveFloat(viewportWidth, 8f, null, null, null, null), DOWE_RADIUS), 0.28f",
         "doweResponsiveInt(viewportWidth, 12, null, null, null, null), DOWE_SECONDARY, DOWE_RADIUS, 0.28f",
-        "doweResponsiveInt(viewportWidth, 44, null, null, null, null), DOWE_TERTIARY, 999f, 0.28f",
+        "doweResponsiveInt(viewportWidth, 44, null, null, null, null), DOWE_ACCENT, 999f, 0.28f",
         "doweResponsiveInt(viewportWidth, 2, null, null, null, null), DOWE_SUCCESS, DOWE_RADIUS, 0.28f",
     ] {
         assert!(dev.content.contains(expected), "missing {expected}");
@@ -2134,7 +2134,7 @@ fn generates_compose_and_dev_section_backgrounds() {
     );
     assert!(views.content.contains("Column(modifier = Modifier.dowePadding(all = null, horizontal = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp), vertical = doweResponsive(viewportWidth, xs = 40.dp, md = 64.dp)"));
     assert!(views.content.contains("background = doweResponsive(viewportWidth, xs = DoweSectionBackground.Aurora, md = DoweSectionBackground.Ocean)"));
-    assert!(views.content.contains("Brush.linearGradient(listOf(DoweDesign.primary, DoweDesign.secondary, DoweDesign.tertiary))"));
+    assert!(views.content.contains("Brush.linearGradient(listOf(DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent))"));
     assert!(views.content.contains("DoweCoverBox("));
     assert!(views.content.contains("https://example.com/hero.jpg"));
     assert!(

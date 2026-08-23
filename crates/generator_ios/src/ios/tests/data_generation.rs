@@ -13,7 +13,7 @@ fn generates_swiftui_code_with_copy_and_theme_tokens() {
     assert!(views.contains("DoweCodeView(source: \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      Documentation\""));
     assert!(views.contains("DoweDesign.primary"));
     assert!(views.contains("DoweDesign.info"));
-    assert!(views.contains("DoweDesign.tertiary"));
+    assert!(views.contains("DoweDesign.accent"));
     assert!(views.contains("DoweDesign.success"));
     assert!(views.contains("DoweDesign.warning"));
     assert!(views.contains("DoweDesign.danger"));

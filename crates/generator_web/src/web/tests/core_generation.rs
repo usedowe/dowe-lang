@@ -566,7 +566,7 @@ fn renders_section_markup_and_background_css() {
     assert!(page.css_content.contains(
         "background-image:linear-gradient(135deg,var(--dowe-muted),var(--dowe-surface),var(--dowe-background));"
     ));
-    assert!(page.css_content.contains("background-image:linear-gradient(135deg,var(--dowe-primary),var(--dowe-secondary),var(--dowe-tertiary));"));
+    assert!(page.css_content.contains("background-image:linear-gradient(135deg,var(--dowe-primary),var(--dowe-secondary),var(--dowe-accent));"));
     assert!(page.css_content.contains("@media (min-width:768px)"));
     let base_vertical_padding = page
         .css_content

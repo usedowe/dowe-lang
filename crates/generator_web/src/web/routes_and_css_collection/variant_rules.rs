@@ -181,7 +181,7 @@ fn collect_variant_rules<'a>(
                     for color in [
                         ColorFamily::Primary,
                         ColorFamily::Secondary,
-                        ColorFamily::Tertiary,
+                        ColorFamily::Accent,
                         ColorFamily::Muted,
                         ColorFamily::Success,
                         ColorFamily::Info,
@@ -332,7 +332,7 @@ fn collect_variant_rules<'a>(
                     for color in [
                         ColorFamily::Primary,
                         ColorFamily::Secondary,
-                        ColorFamily::Tertiary,
+                        ColorFamily::Accent,
                         ColorFamily::Success,
                         ColorFamily::Info,
                         ColorFamily::Warning,

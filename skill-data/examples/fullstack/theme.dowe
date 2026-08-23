@@ -9,7 +9,7 @@ theme
       colors:
         primary color:"#0a0d12" text:"#f8f8f6" title:"#f8f8f6"
         secondary color:"#050607" text:"#f7f7f4" title:"#f7f7f4"
-        tertiary color:"#1f3a5f" text:"#f7f7f4" title:"#f7f7f4"
+        accent color:"#1f3a5f" text:"#f7f7f4" title:"#f7f7f4"
         muted color:"#6f716f" text:"#f7f7f4" title:"#f7f7f4"
         background color:"#f7f7f5" text:"#0d0f12" title:"#0d0f12"
         surface color:"#ffffff" text:"#101114" title:"#101114"

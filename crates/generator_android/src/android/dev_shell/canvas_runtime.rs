@@ -324,8 +324,8 @@ fn dev_activity_canvas_runtime() -> &'static str {
         if ("primaryText".equals(token)) return DOWE_PRIMARY_TEXT;
         if ("secondary".equals(token)) return DOWE_SECONDARY;
         if ("secondaryText".equals(token)) return DOWE_SECONDARY_TEXT;
-        if ("tertiary".equals(token)) return DOWE_TERTIARY;
-        if ("tertiaryText".equals(token)) return DOWE_TERTIARY_TEXT;
+        if ("accent".equals(token)) return DOWE_ACCENT;
+        if ("accentText".equals(token)) return DOWE_ACCENT_TEXT;
         if ("muted".equals(token)) return DOWE_MUTED;
         if ("mutedText".equals(token)) return DOWE_MUTED_TEXT;
         if ("background".equals(token)) return DOWE_BACKGROUND;
@@ -344,8 +344,8 @@ fn dev_activity_canvas_runtime() -> &'static str {
         if ("primaryText".equals(token)) return DOWE_PRIMARY_TEXT;
         if ("secondary".equals(token)) return DOWE_SECONDARY;
         if ("secondaryText".equals(token)) return DOWE_SECONDARY_TEXT;
-        if ("tertiary".equals(token)) return DOWE_TERTIARY;
-        if ("tertiaryText".equals(token)) return DOWE_TERTIARY_TEXT;
+        if ("accent".equals(token)) return DOWE_ACCENT;
+        if ("accentText".equals(token)) return DOWE_ACCENT_TEXT;
         if ("muted".equals(token)) return DOWE_MUTED;
         if ("mutedText".equals(token)) return DOWE_MUTED_TEXT;
         if ("success".equals(token)) return DOWE_SUCCESS;

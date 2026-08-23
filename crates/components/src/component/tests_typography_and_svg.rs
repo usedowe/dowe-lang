@@ -23,7 +23,7 @@ fn validates_svg_component_props_and_paths() {
     let node = svg_component_node(
         vec![
             string_prop("viewBox", "0 0 24 24"),
-            string_prop("color", "tertiary"),
+            string_prop("color", "accent"),
             number_prop("w", 8),
             number_prop("h", 8),
         ],
@@ -187,7 +187,7 @@ fn resolves_solar_icon_variant_names_and_paints() {
     let linear = icon_component_node(vec![
         string_prop("name", "alt-arrow-down"),
         string_prop("fill", "secondary"),
-        string_prop("stroke", "tertiary"),
+        string_prop("stroke", "accent"),
     ])
     .expect("linear icon");
     let ViewNode::Svg { props, paths } = linear else {
@@ -201,7 +201,7 @@ fn resolves_solar_icon_variant_names_and_paints() {
     assert!(matches!(
         paths[0].fill,
         SvgPathFill::Stroke {
-            color: Some(ColorToken::Tertiary),
+            color: Some(ColorToken::Accent),
             width: 150,
             line_cap: SvgLineCap::Round,
             line_join: SvgLineJoin::Round,

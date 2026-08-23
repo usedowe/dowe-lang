@@ -407,9 +407,9 @@ pub fn integrated_design_theme(name: &str) -> Option<DesignTheme> {
                 (ColorToken::Secondary, "#4f46e5"),
                 (ColorToken::SecondaryText, "#ffffff"),
                 (ColorToken::SecondaryTitle, "#ffffff"),
-                (ColorToken::Tertiary, "#0f766e"),
-                (ColorToken::TertiaryText, "#ffffff"),
-                (ColorToken::TertiaryTitle, "#ffffff"),
+                (ColorToken::Accent, "#0f766e"),
+                (ColorToken::AccentText, "#ffffff"),
+                (ColorToken::AccentTitle, "#ffffff"),
                 (ColorToken::Muted, "#64748b"),
                 (ColorToken::MutedText, "#ffffff"),
                 (ColorToken::MutedTitle, "#ffffff"),
@@ -443,9 +443,9 @@ pub fn integrated_design_theme(name: &str) -> Option<DesignTheme> {
                 (ColorToken::Secondary, "#a5b4fc"),
                 (ColorToken::SecondaryText, "#111827"),
                 (ColorToken::SecondaryTitle, "#111827"),
-                (ColorToken::Tertiary, "#5eead4"),
-                (ColorToken::TertiaryText, "#042f2e"),
-                (ColorToken::TertiaryTitle, "#042f2e"),
+                (ColorToken::Accent, "#5eead4"),
+                (ColorToken::AccentText, "#042f2e"),
+                (ColorToken::AccentTitle, "#042f2e"),
                 (ColorToken::Muted, "#94a3b8"),
                 (ColorToken::MutedText, "#0f172a"),
                 (ColorToken::MutedTitle, "#0f172a"),
@@ -519,9 +519,9 @@ impl ColorToken {
     pub const Secondary: Self = Self(3);
     pub const SecondaryText: Self = Self(4);
     pub const SecondaryTitle: Self = Self(5);
-    pub const Tertiary: Self = Self(6);
-    pub const TertiaryText: Self = Self(7);
-    pub const TertiaryTitle: Self = Self(8);
+    pub const Accent: Self = Self(6);
+    pub const AccentText: Self = Self(7);
+    pub const AccentTitle: Self = Self(8);
     pub const Muted: Self = Self(9);
     pub const MutedText: Self = Self(10);
     pub const MutedTitle: Self = Self(11);
@@ -549,9 +549,9 @@ impl ColorToken {
     pub const SoftSecondary: Self = Self(33);
     pub const SoftSecondaryText: Self = Self(34);
     pub const SoftSecondaryTitle: Self = Self(35);
-    pub const SoftTertiary: Self = Self(36);
-    pub const SoftTertiaryText: Self = Self(37);
-    pub const SoftTertiaryTitle: Self = Self(38);
+    pub const SoftAccent: Self = Self(36);
+    pub const SoftAccentText: Self = Self(37);
+    pub const SoftAccentTitle: Self = Self(38);
     pub const SoftMuted: Self = Self(39);
     pub const SoftMutedText: Self = Self(40);
     pub const SoftMutedTitle: Self = Self(41);
@@ -581,9 +581,9 @@ impl ColorToken {
             "secondary" => Some(Self::Secondary),
             "secondaryText" => Some(Self::SecondaryText),
             "secondaryTitle" => Some(Self::SecondaryTitle),
-            "tertiary" => Some(Self::Tertiary),
-            "tertiaryText" => Some(Self::TertiaryText),
-            "tertiaryTitle" => Some(Self::TertiaryTitle),
+            "accent" => Some(Self::Accent),
+            "accentText" => Some(Self::AccentText),
+            "accentTitle" => Some(Self::AccentTitle),
             "muted" => Some(Self::Muted),
             "mutedText" => Some(Self::MutedText),
             "mutedTitle" => Some(Self::MutedTitle),
@@ -611,9 +611,9 @@ impl ColorToken {
             "softSecondary" => Some(Self::SoftSecondary),
             "softSecondaryText" => Some(Self::SoftSecondaryText),
             "softSecondaryTitle" => Some(Self::SoftSecondaryTitle),
-            "softTertiary" => Some(Self::SoftTertiary),
-            "softTertiaryText" => Some(Self::SoftTertiaryText),
-            "softTertiaryTitle" => Some(Self::SoftTertiaryTitle),
+            "softAccent" => Some(Self::SoftAccent),
+            "softAccentText" => Some(Self::SoftAccentText),
+            "softAccentTitle" => Some(Self::SoftAccentTitle),
             "softMuted" => Some(Self::SoftMuted),
             "softMutedText" => Some(Self::SoftMutedText),
             "softMutedTitle" => Some(Self::SoftMutedTitle),
@@ -642,9 +642,9 @@ impl ColorToken {
             Self::Secondary => "secondary",
             Self::SecondaryText => "secondaryText",
             Self::SecondaryTitle => "secondaryTitle",
-            Self::Tertiary => "tertiary",
-            Self::TertiaryText => "tertiaryText",
-            Self::TertiaryTitle => "tertiaryTitle",
+            Self::Accent => "accent",
+            Self::AccentText => "accentText",
+            Self::AccentTitle => "accentTitle",
             Self::Muted => "muted",
             Self::MutedText => "mutedText",
             Self::MutedTitle => "mutedTitle",
@@ -672,9 +672,9 @@ impl ColorToken {
             Self::SoftSecondary => "softSecondary",
             Self::SoftSecondaryText => "softSecondaryText",
             Self::SoftSecondaryTitle => "softSecondaryTitle",
-            Self::SoftTertiary => "softTertiary",
-            Self::SoftTertiaryText => "softTertiaryText",
-            Self::SoftTertiaryTitle => "softTertiaryTitle",
+            Self::SoftAccent => "softAccent",
+            Self::SoftAccentText => "softAccentText",
+            Self::SoftAccentTitle => "softAccentTitle",
             Self::SoftMuted => "softMuted",
             Self::SoftMutedText => "softMutedText",
             Self::SoftMutedTitle => "softMutedTitle",
@@ -706,9 +706,9 @@ impl ColorToken {
             Self::Secondary,
             Self::SecondaryText,
             Self::SecondaryTitle,
-            Self::Tertiary,
-            Self::TertiaryText,
-            Self::TertiaryTitle,
+            Self::Accent,
+            Self::AccentText,
+            Self::AccentTitle,
             Self::Muted,
             Self::MutedText,
             Self::MutedTitle,
@@ -763,7 +763,7 @@ impl ColorFamily {
     const CUSTOM_OFFSET: u16 = 10;
     pub const Primary: Self = Self(0);
     pub const Secondary: Self = Self(1);
-    pub const Tertiary: Self = Self(2);
+    pub const Accent: Self = Self(2);
     pub const Muted: Self = Self(3);
     pub const Background: Self = Self(4);
     pub const Surface: Self = Self(5);
@@ -781,7 +781,7 @@ impl ColorFamily {
         match self {
             Self::Primary => ColorToken::Primary,
             Self::Secondary => ColorToken::Secondary,
-            Self::Tertiary => ColorToken::Tertiary,
+            Self::Accent => ColorToken::Accent,
             Self::Muted => ColorToken::Muted,
             Self::Background => ColorToken::Background,
             Self::Surface => ColorToken::Surface,
@@ -797,7 +797,7 @@ impl ColorFamily {
         match self {
             Self::Primary => ColorToken::PrimaryText,
             Self::Secondary => ColorToken::SecondaryText,
-            Self::Tertiary => ColorToken::TertiaryText,
+            Self::Accent => ColorToken::AccentText,
             Self::Muted => ColorToken::MutedText,
             Self::Background => ColorToken::BackgroundText,
             Self::Surface => ColorToken::SurfaceText,
@@ -813,7 +813,7 @@ impl ColorFamily {
         match self {
             Self::Primary => ColorToken::PrimaryTitle,
             Self::Secondary => ColorToken::SecondaryTitle,
-            Self::Tertiary => ColorToken::TertiaryTitle,
+            Self::Accent => ColorToken::AccentTitle,
             Self::Muted => ColorToken::MutedTitle,
             Self::Background => ColorToken::BackgroundTitle,
             Self::Surface => ColorToken::SurfaceTitle,
@@ -829,7 +829,7 @@ impl ColorFamily {
         match self {
             Self::Primary => ColorToken::SoftPrimary,
             Self::Secondary => ColorToken::SoftSecondary,
-            Self::Tertiary => ColorToken::SoftTertiary,
+            Self::Accent => ColorToken::SoftAccent,
             Self::Muted => ColorToken::SoftMuted,
             Self::Background => ColorToken::Background,
             Self::Surface => ColorToken::Surface,
@@ -845,7 +845,7 @@ impl ColorFamily {
         match self {
             Self::Primary => ColorToken::SoftPrimaryText,
             Self::Secondary => ColorToken::SoftSecondaryText,
-            Self::Tertiary => ColorToken::SoftTertiaryText,
+            Self::Accent => ColorToken::SoftAccentText,
             Self::Muted => ColorToken::SoftMutedText,
             Self::Background => ColorToken::BackgroundText,
             Self::Surface => ColorToken::SurfaceText,
@@ -861,7 +861,7 @@ impl ColorFamily {
         match self {
             Self::Primary => ColorToken::SoftPrimaryTitle,
             Self::Secondary => ColorToken::SoftSecondaryTitle,
-            Self::Tertiary => ColorToken::SoftTertiaryTitle,
+            Self::Accent => ColorToken::SoftAccentTitle,
             Self::Muted => ColorToken::SoftMutedTitle,
             Self::Background => ColorToken::BackgroundTitle,
             Self::Surface => ColorToken::SurfaceTitle,
@@ -877,7 +877,7 @@ impl ColorFamily {
         match value {
             "primary" => Some(Self::Primary),
             "secondary" => Some(Self::Secondary),
-            "tertiary" => Some(Self::Tertiary),
+            "accent" => Some(Self::Accent),
             "muted" => Some(Self::Muted),
             "background" => Some(Self::Background),
             "surface" => Some(Self::Surface),
@@ -902,7 +902,7 @@ impl ColorFamily {
         &[
             "primary",
             "secondary",
-            "tertiary",
+            "accent",
             "muted",
             "background",
             "surface",
@@ -917,7 +917,7 @@ impl ColorFamily {
         match self {
             Self::Primary => "primary",
             Self::Secondary => "secondary",
-            Self::Tertiary => "tertiary",
+            Self::Accent => "accent",
             Self::Muted => "muted",
             Self::Background => "background",
             Self::Surface => "surface",
@@ -948,7 +948,7 @@ impl ColorFamily {
         &[
             Self::Primary,
             Self::Secondary,
-            Self::Tertiary,
+            Self::Accent,
             Self::Muted,
             Self::Background,
             Self::Surface,

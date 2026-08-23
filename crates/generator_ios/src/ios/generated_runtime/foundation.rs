@@ -115,7 +115,7 @@ func doweButtonFamily(_ scheme: String) -> Color {
     case "background": return DoweDesign.background
     case "surface": return DoweDesign.surface
     case "secondary": return DoweDesign.secondary
-    case "tertiary": return DoweDesign.tertiary
+    case "accent": return DoweDesign.accent
     case "muted": return DoweDesign.muted
     case "success": return DoweDesign.success
     case "info": return DoweDesign.info
@@ -131,7 +131,7 @@ func doweButtonTextFamily(_ scheme: String) -> Color {
     case "background": return DoweDesign.backgroundText
     case "surface": return DoweDesign.surfaceText
     case "secondary": return DoweDesign.secondaryText
-    case "tertiary": return DoweDesign.tertiaryText
+    case "accent": return DoweDesign.accentText
     case "muted": return DoweDesign.mutedText
     case "success": return DoweDesign.successText
     case "info": return DoweDesign.infoText
@@ -147,7 +147,7 @@ func doweButtonTitleFamily(_ scheme: String) -> Color {
     case "background": return DoweDesign.backgroundTitle
     case "surface": return DoweDesign.surfaceTitle
     case "secondary": return DoweDesign.secondaryTitle
-    case "tertiary": return DoweDesign.tertiaryTitle
+    case "accent": return DoweDesign.accentTitle
     case "muted": return DoweDesign.mutedTitle
     case "success": return DoweDesign.successTitle
     case "info": return DoweDesign.infoTitle
@@ -163,7 +163,7 @@ func doweButtonSoftTitleFamily(_ scheme: String) -> Color {
     case "background": return DoweDesign.backgroundTitle
     case "surface": return DoweDesign.surfaceTitle
     case "secondary": return DoweDesign.secondaryTitle
-    case "tertiary": return DoweDesign.tertiaryTitle
+    case "accent": return DoweDesign.accentTitle
     case "muted": return DoweDesign.mutedTitle
     case "success": return DoweDesign.successTitle
     case "info": return DoweDesign.infoTitle
@@ -196,7 +196,7 @@ func doweCardSoftFamily(_ scheme: String) -> Color {
     case "background": return DoweDesign.background
     case "surface": return DoweDesign.surface
     case "secondary": return DoweDesign.secondary
-    case "tertiary": return DoweDesign.tertiary
+    case "accent": return DoweDesign.accent
     case "muted": return DoweDesign.muted
     case "success": return DoweDesign.success
     case "info": return DoweDesign.info
@@ -212,7 +212,7 @@ func doweCardSoftContent(_ scheme: String) -> Color {
     case "background": return DoweDesign.backgroundText
     case "surface": return DoweDesign.surfaceText
     case "secondary": return DoweDesign.secondaryText
-    case "tertiary": return DoweDesign.tertiaryText
+    case "accent": return DoweDesign.accentText
     case "muted": return DoweDesign.mutedText
     case "success": return DoweDesign.successText
     case "info": return DoweDesign.infoText
@@ -562,13 +562,13 @@ struct DoweSectionBackgroundView: View {
         case .soft:
             LinearGradient(colors: [DoweDesign.surface, DoweDesign.background], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .aurora:
-            LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.tertiary], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .sunrise:
             LinearGradient(colors: [DoweDesign.warning, DoweDesign.danger, DoweDesign.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .ocean:
-            LinearGradient(colors: [DoweDesign.info, DoweDesign.primary, DoweDesign.tertiary], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.info, DoweDesign.primary, DoweDesign.accent], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .meadow:
-            LinearGradient(colors: [DoweDesign.success, DoweDesign.tertiary, DoweDesign.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [DoweDesign.success, DoweDesign.accent, DoweDesign.surface], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .slate:
             LinearGradient(colors: [DoweDesign.muted, DoweDesign.surface, DoweDesign.background], startPoint: .topLeading, endPoint: .bottomTrailing)
         }

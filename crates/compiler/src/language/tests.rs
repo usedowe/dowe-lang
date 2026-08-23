@@ -1045,7 +1045,7 @@ fn diagnostics_accept_svg_paths() {
     fs::create_dir_all(root.path().join("pages")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("pages/login.dowe"),
-        source: "page loginPage\n  Svg viewBox:\"0 0 24 24\" color:\"tertiary\" w:8 h:8\n    Path d:\"M0 0h24v24H0z\" fill:\"none\"\n    Path d:\"M3.5 12a8.5 8.5 0 1 1 17 0\" fill:\"currentColor\"\n"
+        source: "page loginPage\n  Svg viewBox:\"0 0 24 24\" color:\"accent\" w:8 h:8\n    Path d:\"M0 0h24v24H0z\" fill:\"none\"\n    Path d:\"M3.5 12a8.5 8.5 0 1 1 17 0\" fill:\"currentColor\"\n"
             .to_string(),
     };
 
@@ -2066,7 +2066,7 @@ fn completions_include_quoted_static_component_values() {
     let fill = complete_document(Path::new("/project"), &document, 4, 13);
     assert!(fill.iter().any(|item| item.label == "\"none\""));
     assert!(fill.iter().any(|item| item.label == "\"currentColor\""));
-    assert!(fill.iter().any(|item| item.label == "\"tertiary\""));
+    assert!(fill.iter().any(|item| item.label == "\"accent\""));
 
     let navigate = complete_document(Path::new("/project"), &document, 5, 19);
     assert!(navigate.iter().any(|item| item.label == "\"push\""));
@@ -2737,7 +2737,7 @@ fn completions_include_video_component_props_and_values() {
 
     let schemes = complete_document(Path::new("/project"), &document, 4, 16);
     assert!(schemes.iter().any(|item| item.label == "\"surface\""));
-    assert!(schemes.iter().any(|item| item.label == "\"tertiary\""));
+    assert!(schemes.iter().any(|item| item.label == "\"accent\""));
 }
 
 #[test]
@@ -2808,7 +2808,7 @@ fn completions_include_candlestick_component_props_and_values() {
 
     let schemes = complete_document(Path::new("/project"), &document, 5, 22);
     assert!(schemes.iter().any(|item| item.label == "\"surface\""));
-    assert!(schemes.iter().any(|item| item.label == "\"tertiary\""));
+    assert!(schemes.iter().any(|item| item.label == "\"accent\""));
 
     let colors = complete_document(Path::new("/project"), &document, 6, 23);
     assert!(colors.iter().any(|item| item.label == "\"success\""));

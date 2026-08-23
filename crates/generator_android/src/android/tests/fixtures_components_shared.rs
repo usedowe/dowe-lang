@@ -64,7 +64,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Flex {
                 props: LayoutProps {
                     style: StyleProps {
-                        text: Some(ResponsiveValue::scalar(ColorToken::TertiaryText)),
+                        text: Some(ResponsiveValue::scalar(ColorToken::AccentText)),
                         ..Default::default()
                     },
                     ..Default::default()

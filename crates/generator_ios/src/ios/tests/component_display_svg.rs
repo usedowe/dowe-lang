@@ -14,7 +14,7 @@ fn generates_swiftui_svg_views() {
     assert!(views.contains("DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24))"));
     assert!(views.contains("DoweSvgFill.currentColor"));
     assert!(views.contains(
-        "doweResponsive(viewportWidth, xs: DoweDesign.tertiary) ?? DoweDesign.backgroundText"
+        "doweResponsive(viewportWidth, xs: DoweDesign.accent) ?? DoweDesign.backgroundText"
     ));
     assert!(views.contains("private final class DoweSvgPathCache: @unchecked Sendable"));
     assert!(views.contains("DoweSvgPathCache.shared.path(for: data)"));

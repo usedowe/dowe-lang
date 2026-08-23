@@ -23,8 +23,8 @@ theme
         softPrimary color:"#e7e9ec" text:"#0a0d12" title:"#0a0d12"
         secondary color:"#050607" text:"#f7f7f4" title:"#f7f7f4"
         softSecondary color:"#171a1f" text:"#f7f7f4" title:"#f7f7f4"
-        tertiary color:"#1f3a5f" text:"#f7f7f4" title:"#f7f7f4"
-        softTertiary color:"#dce7f5" text:"#0b1624" title:"#0b1624"
+        accent color:"#1f3a5f" text:"#f7f7f4" title:"#f7f7f4"
+        softAccent color:"#dce7f5" text:"#0b1624" title:"#0b1624"
         muted color:"#6f716f" text:"#f7f7f4" title:"#f7f7f4"
         softMuted color:"#eeeeec" text:"#252525" title:"#252525"
         background color:"#f7f7f5" text:"#0d0f12" title:"#0d0f12"
@@ -109,7 +109,7 @@ asks for a theme or visual-system change.
 | Page canvas, body copy, and headings | `background color:… text:… title:…` |
 | Cards, bars, menus, and raised panels | `surface color:… text:… title:…` |
 | Brand and primary action family | Complete `primary` and `softPrimary` fill, text, and title triples |
-| Supporting accent family | `secondary` or `tertiary` complete family |
+| Supporting accent family | `secondary` or `accent` complete family |
 | Secondary copy and quiet fills | Complete `muted` and `softMuted` fill, text, and title triples |
 | Repeated success, information, warning, or error meaning | Matching semantic status family |
 | Repeated Card, Button, Avatar, or Chip treatment | Supported dedicated `design` slot |
@@ -140,7 +140,7 @@ styling individual components:
 | Primary surface | `surface` family | Clearly separable from the canvas without requiring a border everywhere |
 | Quiet panel or divider field | Commonly the `softMuted` fill, text, and title triple | Low-contrast grouping for secondary content, navigation, and ambient regions |
 | Brand emphasis | `primary` family | Saturated accent for actions, values, focal labels, and occasional glow—not every Card |
-| Supporting visual accent | `secondary` or `tertiary` family | Complements the brand and distinguishes charts, data, or a second product concept |
+| Supporting visual accent | `secondary` or `accent` family | Complements the brand and distinguishes charts, data, or a second product concept |
 
 In a dark theme, test broad adjacent fills at page scale. Values that differ only in name but look
 identical on a large monitor do not create depth. Conversely, do not brighten every Card until the

@@ -116,7 +116,7 @@ private struct DoweSvgImportedPath {
 
 private final class DoweSvgImporter: NSObject, XMLParserDelegate {
     private let identity = DoweSvgImportMatrix(a: 1, b: 0, c: 0, d: 1, e: 0, f: 0)
-    private let tokens = ["primary", "secondary", "tertiary", "muted", "success", "info", "warning", "danger"]
+    private let tokens = ["primary", "secondary", "accent", "muted", "success", "info", "warning", "danger"]
     private var stack: [DoweSvgImportContext] = []
     private var colors: [String] = []
     private var paths: [DoweSvgImportedPath] = []

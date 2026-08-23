@@ -231,7 +231,7 @@ fn compose_code_token_color(kind: CodeTokenKind, plain: &str) -> String {
         CodeTokenKind::Type => "DoweDesign.info".to_string(),
         CodeTokenKind::String => "DoweDesign.success".to_string(),
         CodeTokenKind::Number => "DoweDesign.warning".to_string(),
-        CodeTokenKind::Attribute => "DoweDesign.tertiary".to_string(),
+        CodeTokenKind::Attribute => "DoweDesign.accent".to_string(),
         CodeTokenKind::Comment => "DoweDesign.muted".to_string(),
         CodeTokenKind::Punctuation => "DoweDesign.danger".to_string(),
     }

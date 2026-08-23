@@ -363,13 +363,13 @@ fn generates_swiftui_solar_icon_paints() {
     });
     assert!(fill.contains("DoweSvgFill.fill(.some(DoweDesign.secondary)"));
     let stroke = swift_svg_fill(SvgPathFill::Stroke {
-        color: Some(ColorToken::Tertiary),
+        color: Some(ColorToken::Accent),
         opacity: 255,
         width: 150,
         line_cap: SvgLineCap::Round,
         line_join: SvgLineJoin::Round,
     });
-    assert!(stroke.contains("DoweSvgFill.stroke(.some(DoweDesign.tertiary)"));
+    assert!(stroke.contains("DoweSvgFill.stroke(.some(DoweDesign.accent)"));
     assert!(swift_runtime_svg_runtime().contains("StrokeStyle(lineWidth: width"));
 }
 

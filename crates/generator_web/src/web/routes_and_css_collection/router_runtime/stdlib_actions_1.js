@@ -267,7 +267,7 @@ function stdSvgFill(value, colors) {
     tokens = [
       "primary",
       "secondary",
-      "tertiary",
+      "accent",
       "muted",
       "success",
       "info",

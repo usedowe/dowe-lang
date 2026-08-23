@@ -2,10 +2,10 @@
 fn parses_svg_component_with_path_children() {
     let tree = parse_page(
             r#"page iconPage
-  Svg viewBox:"0 0 24 24" color:"tertiary" w:8 h:8
+  Svg viewBox:"0 0 24 24" color:"accent" w:8 h:8
     Path d:"M0 0h24v24H0z" fill:"none"
     Path fill:"currentColor" fillRule:"evenodd" d:"M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12s4.477 10 10 10s10-4.477 10-10"
-    Path fill:"tertiary" d:"M1 1h2v2H1z""#,
+    Path fill:"accent" d:"M1 1h2v2H1z""#,
         )
         .expect("tree");
 
@@ -23,7 +23,7 @@ fn parses_svg_component_with_path_children() {
             even_odd: true,
         }
     );
-    assert_eq!(paths[2].fill, SvgPathFill::Color(ColorToken::Tertiary));
+    assert_eq!(paths[2].fill, SvgPathFill::Color(ColorToken::Accent));
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn parses_runtime_svg_data_and_rejects_mixed_geometry() {
 fn parses_video_component_with_hls_source() {
     let tree = parse_page(
             r#"page videoPage
-  Video src:"https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" poster:"/images/video.jpg" autoplay:true aspect:"vertical" variant:"soft" scheme:"tertiary""#,
+  Video src:"https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" poster:"/images/video.jpg" autoplay:true aspect:"vertical" variant:"soft" scheme:"accent""#,
         )
         .expect("tree");
 
@@ -156,7 +156,7 @@ fn parses_video_component_with_hls_source() {
     assert!(props.autoplay);
     assert_eq!(props.aspect, VideoAspect::Vertical);
     assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
-    assert_eq!(props.style.color, Some(ColorFamily::Tertiary));
+    assert_eq!(props.style.color, Some(ColorFamily::Accent));
 }
 
 #[test]

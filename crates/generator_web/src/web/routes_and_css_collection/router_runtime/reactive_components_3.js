@@ -138,7 +138,7 @@ function renderReactiveButtons(root, state, scope) {
     schemes = [
       "primary",
       "secondary",
-      "tertiary",
+      "accent",
       "muted",
       "success",
       "info",
@@ -208,7 +208,7 @@ function renderReactiveSideNavs(root, state, scope) {
     schemes = [
       "primary",
       "secondary",
-      "tertiary",
+      "accent",
       "muted",
       "success",
       "info",

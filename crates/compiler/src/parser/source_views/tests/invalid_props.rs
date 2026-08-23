@@ -196,7 +196,7 @@
 
         let color_error = parse_page(
             r#"page visualPage
-  Svg viewBox:"0 0 24 24" color:tertiary
+  Svg viewBox:"0 0 24 24" color:accent
     Path d:"M0 0h24v24H0z""#,
         )
         .expect_err("color error");

@@ -339,7 +339,7 @@ fn crud_generates_a_modal_editorial_dashboard() {
     for role in [
         "primary color:",
         "secondary color:",
-        "tertiary color:",
+        "accent color:",
         "muted color:",
         "background color:",
         "surface color:",

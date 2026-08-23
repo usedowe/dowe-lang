@@ -62,7 +62,7 @@ private data class DoweSvgImportedPath(val data: String, val fill: String, val e
 
 private object DoweSvgImporter {
     private val identity = DoweSvgImportMatrix(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
-    private val tokens = listOf("primary", "secondary", "tertiary", "muted", "success", "info", "warning", "danger")
+    private val tokens = listOf("primary", "secondary", "accent", "muted", "success", "info", "warning", "danger")
     private val tagPattern = Regex("<(/?)([A-Za-z][A-Za-z0-9:_-]*)([^>]*)>")
     private val attrPattern = Regex("([A-Za-z_:][A-Za-z0-9_.:-]*)\\s*=\\s*([\\\"'])(.*?)\\2")
     private val pathPattern = Regex("[0-9\\sMmZzLlHhVvCcSsQqTtAa+.,eE-]+")

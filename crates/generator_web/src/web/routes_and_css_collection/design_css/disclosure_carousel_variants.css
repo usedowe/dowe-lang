@@ -11,8 +11,8 @@
 .carousel.is-secondary {
   --dowe-carousel-accent:var(--dowe-secondary);
 }
-.carousel.is-tertiary {
-  --dowe-carousel-accent:var(--dowe-tertiary);
+.carousel.is-accent {
+  --dowe-carousel-accent:var(--dowe-accent);
 }
 .carousel.is-muted {
   --dowe-carousel-accent:var(--dowe-muted);

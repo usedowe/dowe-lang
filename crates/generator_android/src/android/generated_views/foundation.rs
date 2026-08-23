@@ -280,7 +280,7 @@ private fun doweButtonFamily(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.background
     "surface" -> DoweDesign.surface
     "secondary" -> DoweDesign.secondary
-    "tertiary" -> DoweDesign.tertiary
+    "accent" -> DoweDesign.accent
     "muted" -> DoweDesign.muted
     "success" -> DoweDesign.success
     "info" -> DoweDesign.info
@@ -293,7 +293,7 @@ private fun doweButtonTextFamily(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.backgroundText
     "surface" -> DoweDesign.surfaceText
     "secondary" -> DoweDesign.secondaryText
-    "tertiary" -> DoweDesign.tertiaryText
+    "accent" -> DoweDesign.accentText
     "muted" -> DoweDesign.mutedText
     "success" -> DoweDesign.successText
     "info" -> DoweDesign.infoText
@@ -306,7 +306,7 @@ private fun doweButtonTitleFamily(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.backgroundTitle
     "surface" -> DoweDesign.surfaceTitle
     "secondary" -> DoweDesign.secondaryTitle
-    "tertiary" -> DoweDesign.tertiaryTitle
+    "accent" -> DoweDesign.accentTitle
     "muted" -> DoweDesign.mutedTitle
     "success" -> DoweDesign.successTitle
     "info" -> DoweDesign.infoTitle
@@ -317,7 +317,7 @@ private fun doweButtonTitleFamily(scheme: String): Color = when (scheme) {
 
 private fun doweButtonSoftFamily(scheme: String): Color = when (scheme) {
     "secondary" -> DoweDesign.secondary
-    "tertiary" -> DoweDesign.tertiary
+    "accent" -> DoweDesign.accent
     "muted" -> DoweDesign.muted
     "success" -> DoweDesign.success
     "info" -> DoweDesign.info
@@ -330,7 +330,7 @@ private fun doweButtonSoftTitleFamily(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.backgroundTitle
     "surface" -> DoweDesign.surfaceTitle
     "secondary" -> DoweDesign.secondaryTitle
-    "tertiary" -> DoweDesign.tertiaryTitle
+    "accent" -> DoweDesign.accentTitle
     "muted" -> DoweDesign.mutedTitle
     "success" -> DoweDesign.successTitle
     "info" -> DoweDesign.infoTitle
@@ -360,7 +360,7 @@ private fun doweCardSoftContent(scheme: String): Color = when (scheme) {
     "background" -> DoweDesign.backgroundText
     "surface" -> DoweDesign.surfaceText
     "secondary" -> DoweDesign.secondaryText
-    "tertiary" -> DoweDesign.tertiaryText
+    "accent" -> DoweDesign.accentText
     "muted" -> DoweDesign.mutedText
     "success" -> DoweDesign.successText
     "info" -> DoweDesign.infoText

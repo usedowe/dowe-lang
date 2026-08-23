@@ -369,7 +369,7 @@ fn svg_tree() -> ViewNode {
         props: SvgProps {
             style: StyleProps {
                 text: Some(ResponsiveValue::scalar(
-                    dowe_components::ColorToken::Tertiary,
+                    dowe_components::ColorToken::Accent,
                 )),
                 sizing: dowe_components::SizingProps {
                     w: Some(ResponsiveValue::scalar(dowe_components::SizeValue::Scale(

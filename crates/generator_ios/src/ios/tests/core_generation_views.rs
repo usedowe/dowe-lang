@@ -629,7 +629,7 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
                                 value: BorderWidth(2),
                             }])),
                             border_color: Some(ColorFamily::Warning),
-                            ..shadow_style(ShadowSize::Lg, ColorFamily::Tertiary)
+                            ..shadow_style(ShadowSize::Lg, ColorFamily::Accent)
                         },
                         ..Default::default()
                     },
@@ -698,7 +698,7 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
     for expected in [
         "DoweShadowSpec(color: DoweDesign.primary.opacity(0.28), blurRadius: doweResponsive(viewportWidth, xs: CGFloat(24)) ?? CGFloat(0), offsetY: doweResponsive(viewportWidth, xs: CGFloat(10)) ?? CGFloat(0)), cornerRadius: doweResponsive(viewportWidth, xs: CGFloat(8)) ?? DoweDesign.radius",
         "DoweShadowSpec(color: DoweDesign.secondary.opacity(0.28), blurRadius: doweResponsive(viewportWidth, xs: CGFloat(12)) ?? CGFloat(0), offsetY: doweResponsive(viewportWidth, xs: CGFloat(4)) ?? CGFloat(0)), cornerRadius: DoweDesign.radius",
-        "shadow: Optional(DoweShadowSpec(color: DoweDesign.tertiary.opacity(0.28), blurRadius: doweResponsive(viewportWidth, xs: CGFloat(44)) ?? CGFloat(0), offsetY: doweResponsive(viewportWidth, xs: CGFloat(18)) ?? CGFloat(0)))",
+        "shadow: Optional(DoweShadowSpec(color: DoweDesign.accent.opacity(0.28), blurRadius: doweResponsive(viewportWidth, xs: CGFloat(44)) ?? CGFloat(0), offsetY: doweResponsive(viewportWidth, xs: CGFloat(18)) ?? CGFloat(0)))",
         "shadow: Optional(DoweShadowSpec(color: DoweDesign.success.opacity(0.28), blurRadius: doweResponsive(viewportWidth, xs: CGFloat(2)) ?? CGFloat(0), offsetY: doweResponsive(viewportWidth, xs: CGFloat(1)) ?? CGFloat(0)))",
         "shadow: Optional(DoweShadowSpec(color: DoweDesign.info.opacity(0.28), blurRadius: doweResponsive(viewportWidth, xs: CGFloat(24)) ?? CGFloat(0), offsetY: doweResponsive(viewportWidth, xs: CGFloat(10)) ?? CGFloat(0)))",
     ] {

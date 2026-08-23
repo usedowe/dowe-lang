@@ -173,13 +173,13 @@ fn renders_solar_icon_fill_and_stroke_attributes() {
     assert!(fill.contains("opacity=\"0.502\""));
     assert!(fill.contains("fill-rule=\"evenodd\""));
     let stroke = svg_path_attributes(SvgPathFill::Stroke {
-        color: Some(ColorToken::Tertiary),
+        color: Some(ColorToken::Accent),
         opacity: 255,
         width: 150,
         line_cap: SvgLineCap::Round,
         line_join: SvgLineJoin::Round,
     });
-    assert!(stroke.contains("stroke=\"var(--dowe-tertiary)\""));
+    assert!(stroke.contains("stroke=\"var(--dowe-accent)\""));
     assert!(stroke.contains("stroke-width=\"1.50\""));
 }
 
@@ -1215,7 +1215,7 @@ fn renders_svg_markup_and_color_classes() {
 
     assert!(page.content.contains(r#"<svg"#));
     assert!(page.content.contains(r#"class=\"svg"#));
-    assert!(page.content.contains("color-tertiary"));
+    assert!(page.content.contains("color-accent"));
     assert!(page.content.contains("w-8"));
     assert!(page.content.contains("h-8"));
     assert!(
@@ -1235,7 +1235,7 @@ fn renders_svg_markup_and_color_classes() {
     assert!(page.css_content.contains(".svg"));
     assert!(
         page.css_content
-            .contains(".color-tertiary{color:var(--dowe-tertiary);}")
+            .contains(".color-accent{color:var(--dowe-accent);}")
     );
     assert!(page.css_content.contains(".w-8{width:2rem;}"));
     assert!(page.css_content.contains(".h-8{height:2rem;}"));
@@ -1251,7 +1251,7 @@ fn preserves_svg_intrinsic_ratio_when_web_dimension_is_omitted() {
 
     let html = render_page_body(&ViewNode::Children, &tree);
 
-    assert!(html.contains(r#"class="svg color-tertiary h-8""#));
+    assert!(html.contains(r#"class="svg color-accent h-8""#));
     assert!(!html.contains("w-8"));
 }
 

@@ -119,13 +119,13 @@ fn dev_activity_drawables_media() -> &'static str {
     private GradientDrawable doweSectionBackground(String value) {
         int[] colors;
         if ("aurora".equals(value)) {
-            colors = new int[] { DOWE_PRIMARY, DOWE_SECONDARY, DOWE_TERTIARY };
+            colors = new int[] { DOWE_PRIMARY, DOWE_SECONDARY, DOWE_ACCENT };
         } else if ("sunrise".equals(value)) {
             colors = new int[] { DOWE_WARNING, DOWE_DANGER, DOWE_SURFACE };
         } else if ("ocean".equals(value)) {
-            colors = new int[] { DOWE_INFO, DOWE_PRIMARY, DOWE_TERTIARY };
+            colors = new int[] { DOWE_INFO, DOWE_PRIMARY, DOWE_ACCENT };
         } else if ("meadow".equals(value)) {
-            colors = new int[] { DOWE_SUCCESS, DOWE_TERTIARY, DOWE_SURFACE };
+            colors = new int[] { DOWE_SUCCESS, DOWE_ACCENT, DOWE_SURFACE };
         } else if ("slate".equals(value)) {
             colors = new int[] { DOWE_MUTED, DOWE_SURFACE, DOWE_BACKGROUND };
         } else {

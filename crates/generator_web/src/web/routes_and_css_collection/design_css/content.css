@@ -188,10 +188,10 @@
   --rich-on-accent:var(--dowe-secondaryText);
   --rich-soft-accent:var(--dowe-secondary);
 }
-.rich-mark.is-tertiary {
-  --rich-accent:var(--dowe-tertiary);
-  --rich-on-accent:var(--dowe-tertiaryText);
-  --rich-soft-accent:var(--dowe-tertiary);
+.rich-mark.is-accent {
+  --rich-accent:var(--dowe-accent);
+  --rich-on-accent:var(--dowe-accentText);
+  --rich-soft-accent:var(--dowe-accent);
 }
 .rich-mark.is-muted {
   --rich-accent:var(--dowe-muted);
@@ -461,7 +461,7 @@
   color:var(--dowe-warning);
 }
 .code-token-attribute {
-  color:var(--dowe-tertiary);
+  color:var(--dowe-accent);
 }
 .code-token-comment {
   color:var(--dowe-muted);

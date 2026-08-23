@@ -41,9 +41,9 @@
   border-color:var(--dowe-secondary);
   background:color-mix(in srgb,var(--dowe-secondary) 10%,transparent);
 }
-.dropzone-input.is-active.is-tertiary {
-  border-color:var(--dowe-tertiary);
-  background:color-mix(in srgb,var(--dowe-tertiary) 10%,transparent);
+.dropzone-input.is-active.is-accent {
+  border-color:var(--dowe-accent);
+  background:color-mix(in srgb,var(--dowe-accent) 10%,transparent);
 }
 .dropzone-input.is-active.is-muted {
   border-color:var(--dowe-mutedText);

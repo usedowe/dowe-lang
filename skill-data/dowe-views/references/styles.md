@@ -10,7 +10,7 @@ keep project or built-in defaults.
 
 | Family                                                                                              | Base tokens                                       | Soft tokens                                             |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
-| Action families `primary`, `secondary`, `tertiary`, `muted`, `success`, `info`, `warning`, `danger` | `<family>`, `<family>Text`, `<family>Title`       | `soft<Family>`, `soft<Family>Text`, `soft<Family>Title` |
+| Action families `primary`, `secondary`, `accent`, `muted`, `success`, `info`, `warning`, `danger` | `<family>`, `<family>Text`, `<family>Title`       | `soft<Family>`, `soft<Family>Text`, `soft<Family>Title` |
 | Structural `background`                                                                             | `background`, `backgroundText`, `backgroundTitle` | none                                                    |
 | Structural `surface`                                                                                | `surface`, `surfaceText`, `surfaceTitle`          | none                                                    |
 

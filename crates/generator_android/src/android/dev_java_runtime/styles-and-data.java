@@ -1,7 +1,7 @@
         if ("background".equals(scheme)) return DOWE_BACKGROUND;
         if ("surface".equals(scheme)) return DOWE_SURFACE;
         if ("secondary".equals(scheme)) return DOWE_SECONDARY;
-        if ("tertiary".equals(scheme)) return DOWE_TERTIARY;
+        if ("accent".equals(scheme)) return DOWE_ACCENT;
         if ("muted".equals(scheme)) return DOWE_MUTED;
         if ("success".equals(scheme)) return DOWE_SUCCESS;
         if ("info".equals(scheme)) return DOWE_INFO;
@@ -14,7 +14,7 @@
         if ("background".equals(scheme)) return DOWE_BACKGROUND_TEXT;
         if ("surface".equals(scheme)) return DOWE_SURFACE_TEXT;
         if ("secondary".equals(scheme)) return DOWE_SECONDARY_TEXT;
-        if ("tertiary".equals(scheme)) return DOWE_TERTIARY_TEXT;
+        if ("accent".equals(scheme)) return DOWE_ACCENT_TEXT;
         if ("muted".equals(scheme)) return DOWE_MUTED_TEXT;
         if ("success".equals(scheme)) return DOWE_SUCCESS_TEXT;
         if ("info".equals(scheme)) return DOWE_INFO_TEXT;
@@ -27,7 +27,7 @@
         if ("background".equals(scheme)) return DOWE_BACKGROUND_TITLE;
         if ("surface".equals(scheme)) return DOWE_SURFACE_TITLE;
         if ("secondary".equals(scheme)) return DOWE_SECONDARY_TITLE;
-        if ("tertiary".equals(scheme)) return DOWE_TERTIARY_TITLE;
+        if ("accent".equals(scheme)) return DOWE_ACCENT_TITLE;
         if ("muted".equals(scheme)) return DOWE_MUTED_TITLE;
         if ("success".equals(scheme)) return DOWE_SUCCESS_TITLE;
         if ("info".equals(scheme)) return DOWE_INFO_TITLE;
@@ -40,7 +40,7 @@
         if ("background".equals(scheme)) return DOWE_BACKGROUND_TITLE;
         if ("surface".equals(scheme)) return DOWE_SURFACE_TITLE;
         if ("secondary".equals(scheme)) return DOWE_SECONDARY_TITLE;
-        if ("tertiary".equals(scheme)) return DOWE_TERTIARY_TITLE;
+        if ("accent".equals(scheme)) return DOWE_ACCENT_TITLE;
         if ("muted".equals(scheme)) return DOWE_MUTED_TITLE;
         if ("success".equals(scheme)) return DOWE_SUCCESS_TITLE;
         if ("info".equals(scheme)) return DOWE_INFO_TITLE;

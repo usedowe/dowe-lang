@@ -105,10 +105,10 @@ fn overlay_key(value: &OverlayPaint) -> String {
 
 fn section_background_css(value: SectionBackground) -> String {
     match value {
-        SectionBackground::Aurora => "background-image:linear-gradient(135deg,var(--dowe-primary),var(--dowe-secondary),var(--dowe-tertiary));".to_string(),
+        SectionBackground::Aurora => "background-image:linear-gradient(135deg,var(--dowe-primary),var(--dowe-secondary),var(--dowe-accent));".to_string(),
         SectionBackground::Sunrise => "background-image:linear-gradient(135deg,var(--dowe-warning),var(--dowe-danger),var(--dowe-surface));".to_string(),
-        SectionBackground::Ocean => "background-image:linear-gradient(135deg,var(--dowe-info),var(--dowe-primary),var(--dowe-tertiary));".to_string(),
-        SectionBackground::Meadow => "background-image:linear-gradient(135deg,var(--dowe-success),var(--dowe-tertiary),var(--dowe-surface));".to_string(),
+        SectionBackground::Ocean => "background-image:linear-gradient(135deg,var(--dowe-info),var(--dowe-primary),var(--dowe-accent));".to_string(),
+        SectionBackground::Meadow => "background-image:linear-gradient(135deg,var(--dowe-success),var(--dowe-accent),var(--dowe-surface));".to_string(),
         SectionBackground::Slate => "background-image:linear-gradient(135deg,var(--dowe-muted),var(--dowe-surface),var(--dowe-background));".to_string(),
     }
 }

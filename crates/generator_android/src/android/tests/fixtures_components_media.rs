@@ -435,7 +435,7 @@ fn svg_tree() -> ViewNode {
         props: SvgProps {
             style: StyleProps {
                 text: Some(ResponsiveValue::scalar(
-                    dowe_components::ColorToken::Tertiary,
+                    dowe_components::ColorToken::Accent,
                 )),
                 sizing: dowe_components::SizingProps {
                     w: Some(ResponsiveValue::scalar(dowe_components::SizeValue::Scale(
@@ -505,7 +505,7 @@ fn display_overlay_tree() -> ViewNode {
                         color: Some(ColorFamily::Success),
                         style: StyleProps {
                             shadow: Some(ResponsiveValue::scalar(ShadowSize::Lg)),
-                            shadow_color: Some(ColorFamily::Tertiary),
+                            shadow_color: Some(ColorFamily::Accent),
                             ..Default::default()
                         },
                         ..Default::default()

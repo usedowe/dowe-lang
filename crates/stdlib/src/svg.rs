@@ -7,7 +7,7 @@ const MAX_SVG_PATHS: usize = 1_024;
 const COLOR_TOKENS: &[&str] = &[
     "primary",
     "secondary",
-    "tertiary",
+    "accent",
     "muted",
     "success",
     "info",
@@ -646,7 +646,7 @@ mod tests {
             "Path d:\"M2 3H6V8H2Z\" fill:\"secondary\" transform:\"matrix(2 0 0 2 4 6)\""
         ));
         assert_eq!(output.matches("fill:\"secondary\"").count(), 2);
-        assert_eq!(output.matches("fill:\"tertiary\"").count(), 1);
+        assert_eq!(output.matches("fill:\"accent\"").count(), 1);
     }
 
     #[test]

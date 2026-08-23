@@ -182,8 +182,8 @@ struct DoweCanvasView: View {
         case "primaryText": return DoweDesign.primaryText
         case "secondary": return DoweDesign.secondary
         case "secondaryText": return DoweDesign.secondaryText
-        case "tertiary": return DoweDesign.tertiary
-        case "tertiaryText": return DoweDesign.tertiaryText
+        case "accent": return DoweDesign.accent
+        case "accentText": return DoweDesign.accentText
         case "muted": return DoweDesign.muted
         case "mutedText": return DoweDesign.mutedText
         case "background": return DoweDesign.background
@@ -202,8 +202,8 @@ struct DoweCanvasView: View {
         case "primaryText": return DoweDesign.primaryText
         case "secondary": return DoweDesign.secondary
         case "secondaryText": return DoweDesign.secondaryText
-        case "tertiary": return DoweDesign.tertiary
-        case "tertiaryText": return DoweDesign.tertiaryText
+        case "accent": return DoweDesign.accent
+        case "accentText": return DoweDesign.accentText
         case "muted": return DoweDesign.muted
         case "mutedText": return DoweDesign.mutedText
         case "success": return DoweDesign.success

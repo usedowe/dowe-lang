@@ -78,7 +78,7 @@ fn generates_swiftui_section_backgrounds() {
     assert!(padding < max_width);
     assert!(max_width < centered);
     assert!(views.contains("doweResponsive(viewportWidth, xs: DoweSectionBackground.aurora, md: DoweSectionBackground.ocean)"));
-    assert!(views.contains("LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.tertiary]"));
+    assert!(views.contains("LinearGradient(colors: [DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent]"));
     assert!(views.contains("DoweCoverImage(source:"));
     assert!(views.contains("https://example.com/hero.jpg"));
     assert!(views.contains("DoweOverlay.color(Color.black.opacity(0.35))"));

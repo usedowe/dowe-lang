@@ -45,7 +45,7 @@ const CRUD_THEME: &str = r##"theme
       colors:
         primary color:"#315f4f" text:"#ffffff" title:"#ffffff"
         secondary color:"#171a18" text:"#ffffff" title:"#ffffff"
-        tertiary color:"#8a7046" text:"#ffffff" title:"#ffffff"
+        accent color:"#8a7046" text:"#ffffff" title:"#ffffff"
         muted color:"#6c706a" text:"#ffffff" title:"#ffffff"
         background color:"#ecebe6" text:"#171a18" title:"#171a18"
         surface color:"#ffffff" text:"#171a18" title:"#171a18"

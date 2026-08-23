@@ -37,7 +37,7 @@ fn dev_code_token_color(kind: CodeTokenKind, plain: &str) -> String {
         CodeTokenKind::Type => "DOWE_INFO".to_string(),
         CodeTokenKind::String => "DOWE_SUCCESS".to_string(),
         CodeTokenKind::Number => "DOWE_WARNING".to_string(),
-        CodeTokenKind::Attribute => "DOWE_TERTIARY".to_string(),
+        CodeTokenKind::Attribute => "DOWE_ACCENT".to_string(),
         CodeTokenKind::Comment => "DOWE_MUTED".to_string(),
         CodeTokenKind::Punctuation => "DOWE_DANGER".to_string(),
     }

@@ -178,8 +178,8 @@
 .slider.is-secondary {
   --dowe-slider-color:var(--dowe-secondary);
 }
-.slider.is-tertiary {
-  --dowe-slider-color:var(--dowe-tertiary);
+.slider.is-accent {
+  --dowe-slider-color:var(--dowe-accent);
 }
 .slider.is-muted {
   --dowe-slider-color:var(--dowe-muted);

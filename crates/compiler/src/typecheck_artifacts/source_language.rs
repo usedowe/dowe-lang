@@ -196,7 +196,7 @@ const CONFIG_SURFACE: &str = r##"{
     "runtimeSwitching": false,
     "colors": {
       "declaration": "colors: -> primary color:\"#2563eb\" text:\"#ffffff\" title:\"#ffffff\"",
-      "families": ["primary", "secondary", "tertiary", "muted", "background", "surface", "success", "info", "warning", "danger", ],
+      "families": ["primary", "secondary", "accent", "muted", "background", "surface", "success", "info", "warning", "danger", ],
       "roles": ["color", "text", "title"],
       "flatRoleAuthoring": "rejected"
     }
@@ -209,7 +209,7 @@ const CONFIG_SURFACE: &str = r##"{
     "radius": ["xs", "sm", "md", "lg", "xl", "full"],
     "shadow": ["xs", "sm", "md", "lg", "xl"],
     "border": [1, 2, 3, 4],
-    "scheme": ["primary", "secondary", "tertiary", "muted", "background", "surface", "success", "info", "warning", "danger"],
+    "scheme": ["primary", "secondary", "accent", "muted", "background", "surface", "success", "info", "warning", "danger"],
     "variant": ["solid", "outline", "outlined", "ghost", "line"],
     "tabsVariant": ["solid", "outlined", "line", "ghost", "pills"]
   },

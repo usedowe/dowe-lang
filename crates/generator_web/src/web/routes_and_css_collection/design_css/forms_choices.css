@@ -77,8 +77,8 @@
 .checkbox-input.is-secondary,.radio.is-secondary,.toggle-input.is-secondary {
   color:var(--dowe-secondary);
 }
-.checkbox-input.is-tertiary,.radio.is-tertiary,.toggle-input.is-tertiary {
-  color:var(--dowe-tertiary);
+.checkbox-input.is-accent,.radio.is-accent,.toggle-input.is-accent {
+  color:var(--dowe-accent);
 }
 .checkbox-input.is-muted,.radio.is-muted,.toggle-input.is-muted {
   color:var(--dowe-muted);

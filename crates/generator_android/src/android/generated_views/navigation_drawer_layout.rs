@@ -387,10 +387,10 @@ private fun DoweSectionBackgroundBox(modifier: Modifier = Modifier, background: 
 private fun doweSectionBackgroundBrush(background: DoweSectionBackground): Brush =
     when (background) {
         DoweSectionBackground.Soft -> Brush.linearGradient(listOf(DoweDesign.surface, DoweDesign.background))
-        DoweSectionBackground.Aurora -> Brush.linearGradient(listOf(DoweDesign.primary, DoweDesign.secondary, DoweDesign.tertiary))
+        DoweSectionBackground.Aurora -> Brush.linearGradient(listOf(DoweDesign.primary, DoweDesign.secondary, DoweDesign.accent))
         DoweSectionBackground.Sunrise -> Brush.linearGradient(listOf(DoweDesign.warning, DoweDesign.danger, DoweDesign.surface))
-        DoweSectionBackground.Ocean -> Brush.linearGradient(listOf(DoweDesign.info, DoweDesign.primary, DoweDesign.tertiary))
-        DoweSectionBackground.Meadow -> Brush.linearGradient(listOf(DoweDesign.success, DoweDesign.tertiary, DoweDesign.surface))
+        DoweSectionBackground.Ocean -> Brush.linearGradient(listOf(DoweDesign.info, DoweDesign.primary, DoweDesign.accent))
+        DoweSectionBackground.Meadow -> Brush.linearGradient(listOf(DoweDesign.success, DoweDesign.accent, DoweDesign.surface))
         DoweSectionBackground.Slate -> Brush.linearGradient(listOf(DoweDesign.muted, DoweDesign.surface, DoweDesign.background))
     }
 

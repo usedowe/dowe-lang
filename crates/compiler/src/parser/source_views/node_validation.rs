@@ -123,7 +123,7 @@ fn validate_node_references(
                         "scheme" => &[
                             "primary",
                             "secondary",
-                            "tertiary",
+                            "accent",
                             "muted",
                             "success",
                             "info",
@@ -197,7 +197,7 @@ fn validate_node_references(
                         "scheme" => &[
                             "primary",
                             "secondary",
-                            "tertiary",
+                            "accent",
                             "success",
                             "info",
                             "warning",

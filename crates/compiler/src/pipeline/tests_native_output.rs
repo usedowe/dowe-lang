@@ -772,7 +772,7 @@ fn compiles_code_blocks_with_cross_target_copy_and_highlighting() {
       """
     Code:
       language:"python"
-      scheme:"tertiary"
+      scheme:"accent"
       content:"""
         def main():
           return True
@@ -799,7 +799,7 @@ fn compiles_code_blocks_with_cross_target_copy_and_highlighting() {
     assert!(android.contains("DoweDesign.info"));
     assert!(android.contains("DoweDesign.success"));
     assert!(android.contains("DoweDesign.warning"));
-    assert!(android.contains("DoweDesign.tertiary"));
+    assert!(android.contains("DoweDesign.accent"));
     assert!(android.contains("DoweDesign.danger"));
 
     let android_dev = android_dev_output(temp.path());
@@ -815,7 +815,7 @@ fn compiles_code_blocks_with_cross_target_copy_and_highlighting() {
     assert!(ios.contains("DoweDesign.info"));
     assert!(ios.contains("DoweDesign.success"));
     assert!(ios.contains("DoweDesign.warning"));
-    assert!(ios.contains("DoweDesign.tertiary"));
+    assert!(ios.contains("DoweDesign.accent"));
     assert!(ios.contains("DoweDesign.danger"));
 }
 

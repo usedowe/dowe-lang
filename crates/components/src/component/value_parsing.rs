@@ -506,11 +506,11 @@ fn parse_family_prop(
             | BuiltinComponent::Tabs
     );
     let expected = if accepts_structural {
-        "primary, secondary, tertiary, muted, background, surface, success, info, warning or danger"
+        "primary, secondary, accent, muted, background, surface, success, info, warning or danger"
     } else if matches!(component, BuiltinComponent::SideNav | BuiltinComponent::NavMenu) {
-        "primary, secondary, tertiary, success, info, warning or danger"
+        "primary, secondary, accent, success, info, warning or danger"
     } else {
-        "primary, secondary, tertiary, muted, success, info, warning or danger"
+        "primary, secondary, accent, muted, success, info, warning or danger"
     };
     match value {
         PropValue::String(value) => {

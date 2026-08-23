@@ -67,7 +67,7 @@ fn generates_android_code_with_copy_and_theme_tokens() {
     assert!(views.content.contains("DoweCode(source = \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      Documentation\""));
     assert!(views.content.contains("DoweDesign.primary"));
     assert!(views.content.contains("DoweDesign.info"));
-    assert!(views.content.contains("DoweDesign.tertiary"));
+    assert!(views.content.contains("DoweDesign.accent"));
     assert!(views.content.contains("DoweDesign.success"));
     assert!(views.content.contains("DoweDesign.warning"));
     assert!(views.content.contains("DoweDesign.danger"));

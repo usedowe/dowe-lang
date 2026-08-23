@@ -699,7 +699,7 @@ fn rejects_invalid_design_props() {
         error,
         ComponentError::invalid_prop(
             "scheme",
-            "primary, secondary, tertiary, muted, success, info, warning or danger"
+            "primary, secondary, accent, muted, success, info, warning or danger"
         )
     );
 
