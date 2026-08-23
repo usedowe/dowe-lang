@@ -1,6 +1,14 @@
 include!("generated_runtime/foundation.rs");
 include!("generated_runtime/media.rs");
 include!("generated_runtime/capture.rs");
+include!("generated_runtime/accordion.rs");
+include!("generated_runtime/carousel.rs");
+include!("generated_runtime/checkbox.rs");
+include!("generated_runtime/color.rs");
+include!("generated_runtime/date.rs");
+include!("generated_runtime/radio.rs");
+include!("generated_runtime/slider.rs");
+include!("generated_runtime/toggle.rs");
 include!("generated_runtime/content_controls.rs");
 include!("generated_runtime/data_display.rs");
 include!("generated_runtime/canvas_runtime.rs");
@@ -33,11 +41,12 @@ fn generated_views(
     font_families: &BTreeSet<FontFamily>,
     design_config: &DesignConfig,
 ) -> String {
+    let content_controls = swift_runtime_content_controls();
     let mut output = [
         swift_runtime_foundation(),
         swift_runtime_media(),
         swift_runtime_capture(),
-        swift_runtime_content_controls(),
+        content_controls.as_str(),
         swift_runtime_data_display(),
         swift_runtime_canvas(),
         swift_runtime_avatar_chat(),

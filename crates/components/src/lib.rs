@@ -25,5 +25,11 @@ include!("component/side_nav_memory.rs");
 #[cfg(test)]
 mod tests {
     include!("component/tests_registry_and_validation.rs");
-    include!("component/tests_props_and_tree.rs");
+    include!("component/tests_props_helpers.rs");
+    include!("component/tests_props_defaults.rs");
+    include!("component/tests_props_validation.rs");
+    include!("component/tests_typography_and_svg.rs");
+    include!("component/tests_navigation_and_tree.rs");
+    include!("component/tests_tree_helpers.rs");
+    include!("component/tests_form_validation.rs");
 }

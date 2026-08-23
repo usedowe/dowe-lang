@@ -20,7 +20,16 @@ fn generated_views(
 ) -> String {
     let mut output = [
         android_runtime_foundation(),
-        android_runtime_media_forms(),
+        android_runtime_media_video(),
+        android_runtime_media_device_iframe(),
+        android_runtime_media_audio(),
+        android_runtime_media_image(),
+        android_runtime_media_accordion_carousel(),
+        android_runtime_media_checkbox(),
+        android_runtime_media_color(),
+        android_runtime_media_date(),
+        android_runtime_media_choice(),
+        android_runtime_media_upload(),
         android_runtime_capture(),
         android_runtime_data_code_svg(),
         android_runtime_canvas(),
