@@ -28,7 +28,7 @@ struct DoweToggleGroup: View {
         }
         stack
             .padding(4)
-            .frame(maxWidth: wide ? .infinity : nil)
+            .frame(maxWidth: wide ? .infinity : nil, alignment: .leading)
             .background(backgroundColor)
             .foregroundStyle(contentColor)
             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -45,13 +45,15 @@ struct DoweToggleGroup: View {
                 onChange?()
             } label: {
                 Text(item.label)
-                    .font(.system(size: size == "lg" ? 17 : size == "xs" ? 12 : size == "sm" ? 13 : 14, weight: .semibold))
+                    .font(.system(size: size == "lg" ? 18 : size == "xs" ? 12 : size == "sm" ? 13 : 14, weight: .semibold))
+                    .lineLimit(1)
                     .frame(maxWidth: wide ? .infinity : nil)
-                    .frame(height: size == "lg" ? 44 : size == "xs" ? 24 : size == "sm" ? 32 : 40)
-                    .padding(.horizontal, size == "lg" ? 16 : 10)
+                    .frame(height: size == "lg" ? 48 : size == "xs" ? 24 : size == "sm" ? 32 : 40)
+                    .padding(.horizontal, size == "lg" ? 16 : size == "xs" ? 8 : size == "sm" ? 10 : 12)
                     .background(value == item.id ? contentColor : Color.clear)
                     .foregroundStyle(value == item.id ? backgroundColor : contentColor.opacity(0.72))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .contentShape(RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
             .accessibilityAddTraits(value == item.id ? .isSelected : [])

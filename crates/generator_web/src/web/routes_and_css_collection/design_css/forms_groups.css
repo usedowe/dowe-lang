@@ -8,7 +8,13 @@
   padding:.25rem;
 }
 .toggle-group.is-wide {
+  align-self:stretch;
   width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  flex:1 1 100%;
+  overflow:hidden;
 }
 .toggle-group.is-vertical {
   flex-direction:column;
@@ -20,6 +26,8 @@
 }
 .toggle-group-item {
   display:inline-flex;
+  box-sizing:border-box;
+  min-width:0;
   align-items:center;
   justify-content:center;
   gap:.5rem;
@@ -49,7 +57,9 @@
   opacity:1;
 }
 .toggle-group.is-wide .toggle-group-item {
-  flex:1;
+  min-width:0;
+  flex:1 1 0;
+  width:0;
 }
 .toggle-group-xs .toggle-group-item {
   height:1.5rem;

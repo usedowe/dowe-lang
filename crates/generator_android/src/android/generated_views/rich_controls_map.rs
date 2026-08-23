@@ -3,20 +3,20 @@ fn android_runtime_rich_controls_map() -> &'static str {
 
 @Composable
 private fun DoweToggleGroup(value: String, onValueChange: (String) -> Unit, items: List<DoweToggleGroupItem>, size: String, wide: Boolean, vertical: Boolean, disabled: Boolean, ariaLabel: String?, backgroundColor: Color, contentColor: Color, borderColor: Color?, onChange: (() -> Unit)?, modifier: Modifier) {
-    val container = modifier.clip(RoundedCornerShape(10.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(10.dp)) else Modifier).padding(4.dp)
+    val container = modifier.then(if (wide) Modifier.fillMaxWidth() else Modifier).clip(RoundedCornerShape(10.dp)).background(backgroundColor).then(if (borderColor != null) Modifier.border(1.dp, borderColor, RoundedCornerShape(10.dp)) else Modifier).padding(4.dp)
     val buttonContent: @Composable RowScope.(DoweToggleGroupItem) -> Unit = { item ->
-        Text(text = item.label, fontSize = when (size) { "xs" -> 12.sp; "sm" -> 13.sp; "lg" -> 17.sp; else -> 14.sp }, fontWeight = FontWeight.SemiBold)
+        Text(text = item.label, fontSize = when (size) { "xs" -> 12.sp; "sm" -> 13.sp; "lg" -> 18.sp; else -> 14.sp }, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
     if (vertical) {
         Column(modifier = container, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             items.forEach { item ->
-                Button(enabled = !disabled, onClick = { onValueChange(item.id); onChange?.invoke() }, colors = ButtonDefaults.buttonColors(containerColor = if (value == item.id) contentColor else Color.Transparent, contentColor = if (value == item.id) backgroundColor else contentColor.copy(alpha = 0.72f)), modifier = if (wide) Modifier.fillMaxWidth() else Modifier) { buttonContent(item) }
+                Button(enabled = !disabled, onClick = { onValueChange(item.id); onChange?.invoke() }, shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = when (size) { "xs" -> 8.dp; "sm" -> 10.dp; "lg" -> 16.dp; else -> 12.dp }), colors = ButtonDefaults.buttonColors(containerColor = if (value == item.id) contentColor else Color.Transparent, contentColor = if (value == item.id) backgroundColor else contentColor.copy(alpha = 0.72f)), modifier = (if (wide) Modifier.fillMaxWidth() else Modifier).height(when (size) { "xs" -> 24.dp; "sm" -> 32.dp; "lg" -> 48.dp; else -> 40.dp })) { buttonContent(item) }
             }
         }
     } else {
         Row(modifier = container.then(if (wide) Modifier.fillMaxWidth() else Modifier), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             items.forEach { item ->
-                Button(enabled = !disabled, onClick = { onValueChange(item.id); onChange?.invoke() }, colors = ButtonDefaults.buttonColors(containerColor = if (value == item.id) contentColor else Color.Transparent, contentColor = if (value == item.id) backgroundColor else contentColor.copy(alpha = 0.72f)), modifier = if (wide) Modifier.weight(1f) else Modifier) { buttonContent(item) }
+                Button(enabled = !disabled, onClick = { onValueChange(item.id); onChange?.invoke() }, shape = RoundedCornerShape(8.dp), contentPadding = PaddingValues(horizontal = when (size) { "xs" -> 8.dp; "sm" -> 10.dp; "lg" -> 16.dp; else -> 12.dp }), colors = ButtonDefaults.buttonColors(containerColor = if (value == item.id) contentColor else Color.Transparent, contentColor = if (value == item.id) backgroundColor else contentColor.copy(alpha = 0.72f)), modifier = Modifier.weight(1f).height(when (size) { "xs" -> 24.dp; "sm" -> 32.dp; "lg" -> 48.dp; else -> 40.dp })) { buttonContent(item) }
             }
         }
     }

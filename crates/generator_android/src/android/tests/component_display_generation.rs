@@ -704,6 +704,7 @@ fn generates_compose_and_dev_rich_control_map_components() {
             .content
             .contains("DoweToggleGroup(value = state.text(\"mode\")")
     );
+    assert!(views.content.contains("elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp, focusedElevation = 0.dp, hoveredElevation = 0.dp, disabledElevation = 0.dp)"));
     assert!(
         views
             .content

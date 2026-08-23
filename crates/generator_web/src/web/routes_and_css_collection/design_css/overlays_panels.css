@@ -28,10 +28,28 @@
 .drawer-header,.drawer-footer {
   display:flex;
   width:100%;
+  box-sizing:border-box;
+  min-width:0;
   flex:0 0 auto;
-  align-items:center;
+  align-items:stretch;
   justify-content:space-between;
   gap:1rem;
+}
+.drawer-header>*,.drawer-footer>* {
+  min-width:0;
+}
+.drawer-header>.toggle-group,.drawer-footer>.toggle-group,
+.drawer-header>.box:has(>.toggle-group.is-wide),.drawer-footer>.box:has(>.toggle-group.is-wide) {
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  flex:1 1 100%;
+}
+.drawer-header>.box:has(>.toggle-group.is-wide)>.toggle-group,.drawer-footer>.box:has(>.toggle-group.is-wide)>.toggle-group {
+  display:flex;
+  width:100%;
+  min-width:0;
+  flex:1 1 100%;
 }
 .drawer-body {
   display:flex;

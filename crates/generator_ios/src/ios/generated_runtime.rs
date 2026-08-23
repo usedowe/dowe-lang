@@ -12,7 +12,15 @@ include!("generated_runtime/anchored_popover.rs");
 include!("generated_runtime/overlays.rs");
 include!("generated_runtime/navigation_controls.rs");
 include!("generated_runtime/drawer_runtime.rs");
-include!("generated_runtime/input_select_runtime.rs");
+include!("generated_runtime/input_controls.rs");
+include!("generated_runtime/select_controls.rs");
+include!("generated_runtime/combo_controls.rs");
+include!("generated_runtime/drag_drop_controls.rs");
+include!("generated_runtime/editor_image_controls.rs");
+include!("generated_runtime/password_control.rs");
+include!("generated_runtime/phone_control.rs");
+include!("generated_runtime/pin_control.rs");
+include!("generated_runtime/textarea_control.rs");
 include!("generated_runtime/dropzone.rs");
 include!("generated_runtime/svg_runtime.rs");
 include!("generated_runtime/layout_helpers.rs");
@@ -40,7 +48,15 @@ fn generated_views(
         swift_runtime_overlays(),
         swift_runtime_navigation_controls(),
         swift_runtime_drawer_runtime(),
-        swift_runtime_input_select_runtime(),
+        swift_runtime_input_controls(),
+        swift_runtime_select_controls(),
+        swift_runtime_combo_controls(),
+        swift_runtime_drag_drop_controls(),
+        swift_runtime_editor_image_controls(),
+        swift_runtime_password_control(),
+        swift_runtime_phone_control(),
+        swift_runtime_pin_control(),
+        swift_runtime_textarea_control(),
         swift_runtime_dropzone(),
         swift_runtime_svg_runtime(),
         swift_runtime_layout_helpers(),

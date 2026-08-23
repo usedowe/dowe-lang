@@ -145,6 +145,9 @@ fn render_dev_android_display_rich_controls_node(
                                         "        LinearLayout {view} = doweContainer({horizontal});\n        {view}.setPadding(doweDp(4), doweDp(4), doweDp(4), doweDp(4));\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS));\n",
                                         dev_variant_container(&props.style)
                                     ));
+            if !props.wide {
+                output.push_str(&format!("        doweWrapContentWidth({view});\n"));
+            }
             apply_dev_android_style(&props.style.style, &view, true, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             let path = props
@@ -167,12 +170,30 @@ fn render_dev_android_display_rich_controls_node(
                 let button = next_dev_view(counter);
                 let is_first = index == 0;
                 output.push_str(&format!(
-                                            "        String {button}Value = {selected_value};\n        boolean {button}Active = \"{}\".equals({button}Value) || ({button}Value.isEmpty() && {is_first});\n        TextView {button} = doweText(\"{}\", {button}Active ? {} : {}, 14f, 600, 0f, 1.2f, {});\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        {button}.setBackground(doweBackground({button}Active ? {} : Color.TRANSPARENT, DOWE_RADIUS));\n        {button}.setEnabled({});\n",
+                                            "        String {button}Value = {selected_value};\n        boolean {button}Active = \"{}\".equals({button}Value) || ({button}Value.isEmpty() && {is_first});\n        TextView {button} = doweText(\"{}\", {button}Active ? {} : {}, {}, 600, 0f, 1.2f, {});\n        {button}.setGravity(Gravity.CENTER);\n        {button}.setPadding(doweDp({}), 0, doweDp({}), 0);\n        {button}.setBackground(doweBackground({button}Active ? {} : Color.TRANSPARENT, DOWE_RADIUS));\n        {button}.setEnabled({});\n",
                                             escape_java(&item.id),
                                             escape_java(&item.label),
                                             dev_variant_container(&props.style),
                                             dev_variant_content(&props.style),
+                                            match props.size {
+                                                ButtonSize::Xs => "12f",
+                                                ButtonSize::Sm => "13f",
+                                                ButtonSize::Lg => "18f",
+                                                _ => "14f",
+                                            },
                                             dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
+                                            match props.size {
+                                                ButtonSize::Xs => 8,
+                                                ButtonSize::Sm => 10,
+                                                ButtonSize::Lg => 16,
+                                                _ => 12,
+                                            },
+                                            match props.size {
+                                                ButtonSize::Xs => 8,
+                                                ButtonSize::Sm => 10,
+                                                ButtonSize::Lg => 16,
+                                                _ => 12,
+                                            },
                                             dev_variant_content(&props.style),
                                             !props.disabled,
                                         ));
@@ -186,9 +207,26 @@ fn render_dev_android_display_rich_controls_node(
                         "        {button}.setOnClickListener(v -> {{ if (!{button}Active) {{ {write}{action}renderCurrentRoute(false); }} }});\n"
                     ));
                 }
+                let button_width = if props.wide && horizontal {
+                    "0"
+                } else if props.wide {
+                    "ViewGroup.LayoutParams.MATCH_PARENT"
+                } else {
+                    "ViewGroup.LayoutParams.WRAP_CONTENT"
+                };
+                let button_height = match props.size {
+                    ButtonSize::Xs => 24,
+                    ButtonSize::Sm => 32,
+                    ButtonSize::Lg => 48,
+                    _ => 40,
+                };
                 output.push_str(&format!(
-                    "        doweAdd({view}, {button}, doweDp(4), {});\n",
-                    if horizontal { "true" } else { "false" }
+                    "        LinearLayout.LayoutParams {button}Params = new LinearLayout.LayoutParams({button_width}, doweDp({button_height}));\n        {button}Params.setMargins(doweDp(4), 0, 0, 0);\n{}        {view}.addView({button}, {button}Params);\n",
+                    if props.wide && horizontal {
+                        format!("        {button}Params.weight = 1f;\n")
+                    } else {
+                        String::new()
+                    }
                 ));
             }
         }

@@ -240,3 +240,95 @@ fn validate_date_bounds(min: Option<&str>, max: Option<&str>) -> ComponentResult
     }
     Ok(())
 }
+
+fn parse_drag_drop_direction(name: &str, value: &PropValue) -> ComponentResult<DragDropDirection> {
+    let value = parse_required_string(name, value)?;
+    DragDropDirection::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "horizontal or vertical"))
+}
+
+fn parse_image_cropper_shape(name: &str, value: &PropValue) -> ComponentResult<ImageCropperShape> {
+    let value = parse_required_string(name, value)?;
+    ImageCropperShape::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "circle or square"))
+}
+
+fn parse_pin_kind(name: &str, value: &PropValue) -> ComponentResult<PinKind> {
+    let value = parse_required_string(name, value)?;
+    PinKind::from_name(&value)
+        .ok_or_else(|| ComponentError::invalid_prop(name, "text, password or number"))
+}
+
+fn parse_u16_in_range(
+    name: &str,
+    value: &PropValue,
+    min: u16,
+    max: u16,
+) -> ComponentResult<u16> {
+    let value = parse_positive_u64(name, value)?;
+    if (u64::from(min)..=u64::from(max)).contains(&value) {
+        Ok(value as u16)
+    } else {
+        Err(ComponentError::invalid_prop_combination(format!(
+            "`{name}` must be an integer from {min} to {max}"
+        )))
+    }
+}
+
+fn parse_u8_in_range(name: &str, value: &PropValue, min: u8, max: u8) -> ComponentResult<u8> {
+    let value = parse_positive_u64(name, value)?;
+    if (u64::from(min)..=u64::from(max)).contains(&value) {
+        Ok(value as u8)
+    } else {
+        Err(ComponentError::invalid_prop_combination(format!(
+            "`{name}` must be an integer from {min} to {max}"
+        )))
+    }
+}
+
+fn parse_country_code(name: &str, value: &PropValue) -> ComponentResult<String> {
+    let value = parse_required_string(name, value)?;
+    if valid_country_code(&value) {
+        Ok(value)
+    } else {
+        Err(ComponentError::invalid_prop(name, "uppercase ISO alpha-2 code"))
+    }
+}
+
+fn parse_country_code_list(name: &str, value: &PropValue) -> ComponentResult<Vec<String>> {
+    let value = parse_required_string(name, value)?;
+    let mut countries = Vec::new();
+    for country in value.split(',').map(str::trim).filter(|value| !value.is_empty()) {
+        if !valid_country_code(country) {
+            return Err(ComponentError::invalid_prop(
+                name,
+                "comma-separated uppercase ISO alpha-2 codes",
+            ));
+        }
+        countries.push(country.to_string());
+    }
+    Ok(countries)
+}
+
+fn valid_country_code(value: &str) -> bool {
+    value.len() == 2 && value.chars().all(|value| value.is_ascii_uppercase())
+}
+
+fn validate_dimensions(
+    min_width: u16,
+    min_height: u16,
+    max_width: Option<u16>,
+    max_height: Option<u16>,
+) -> ComponentResult<()> {
+    if max_width.is_some_and(|max_width| max_width < min_width) {
+        return Err(ComponentError::invalid_prop_combination(
+            "`maxWidth` cannot be smaller than `minWidth`",
+        ));
+    }
+    if max_height.is_some_and(|max_height| max_height < min_height) {
+        return Err(ComponentError::invalid_prop_combination(
+            "`maxHeight` cannot be smaller than `minHeight`",
+        ));
+    }
+    Ok(())
+}

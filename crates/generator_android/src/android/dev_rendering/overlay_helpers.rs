@@ -603,7 +603,7 @@ fn render_dev_android_drawer(
     if !header.is_empty() {
         let header_content = next_dev_view(counter);
         output.push_str(&format!(
-            "        LinearLayout {header_content} = doweContainer(false);\n        {header_content}.setBackgroundColor({});\n        {header_content}.setElevation(doweDp(8));\n        {header_content}.setTranslationZ(doweDp(8));\n        {header_content}.setClipChildren(true);\n        doweAdd({content}, {header_content});\n",
+            "        LinearLayout {header_content} = doweContainer(false);\n        {header_content}.setBackgroundColor({});\n        {header_content}.setClipChildren(true);\n        doweAdd({content}, {header_content});\n",
             dev_card_variant_container(&props.style)
         ));
         let current_font = props.style.style.font.as_ref().or(inherited_font);

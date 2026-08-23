@@ -36,7 +36,7 @@ fn render_compose_drawer(
     let current_font = props.style.style.font.as_ref().or(inherited_font);
     if !header.is_empty() {
         output.push_str(&format!(
-            "{pad}        Column(modifier = Modifier.fillMaxWidth().zIndex(100f).background({})) {{\n",
+            "{pad}        Column(modifier = Modifier.fillMaxWidth().background({})) {{\n",
             card_variant_container(&props.style)
         ));
         for child in header {
@@ -53,7 +53,7 @@ fn render_compose_drawer(
         output.push_str(&format!("{pad}        }}\n"));
     }
     output.push_str(&format!(
-        "{pad}        Box(modifier = Modifier.fillMaxWidth().weight(1f).zIndex(0f).clipToBounds()) {{\n{pad}            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {{\n"
+        "{pad}        Box(modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds()) {{\n{pad}            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {{\n"
     ));
     for child in body {
         render_compose_node_in_flow(

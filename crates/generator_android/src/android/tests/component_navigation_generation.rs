@@ -233,6 +233,24 @@ fn generates_scroll_docking_appbar_for_compose_and_dev_launcher() {
 }
 
 #[test]
+fn keeps_drawer_header_visually_flat() {
+    let output = generate_android(
+        &[drawer_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+
+    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth().background(DoweDesign.surface))"));
+    assert!(!views.content.contains("Column(modifier = Modifier.fillMaxWidth().zIndex(100f).background(DoweDesign.surface))"));
+}
+
+#[test]
 fn keeps_unbordered_persistent_appbar_visually_flat() {
     let output = generate_android(
         &[unbordered_persistent_appbar_route()],
@@ -819,6 +837,8 @@ fn generates_compose_and_dev_drawer() {
     assert!(dev.content.contains("if (doweBool(\"drawer01\"))"));
     assert!(dev.content.contains("new PopupWindow("));
     assert!(dev.content.contains("doweWrite(\"drawer01\", false)"));
+    assert!(!dev.content.contains("setElevation(doweDp(8))"));
+    assert!(!dev.content.contains("setTranslationZ(doweDp(8))"));
     assert!(
         dev.content
             .contains("private Runnable doweDrawerNavigationClose = null;")
