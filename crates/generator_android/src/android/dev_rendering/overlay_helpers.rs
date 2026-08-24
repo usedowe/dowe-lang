@@ -205,19 +205,25 @@ fn render_dev_android_modal(
             children_method,
         );
     }
-    for child in footer {
-        render_dev_android_node(
-            child,
-            &content,
-            None,
-            false,
-            counter,
-            output,
-            current_font,
-            current_color.clone(),
-            context,
-            children_method,
-        );
+    if !footer.is_empty() {
+        let footer_content = next_dev_view(counter);
+        output.push_str(&format!(
+            "        LinearLayout {footer_content} = doweContainer(false);\n        {footer_content}.setPadding(0, doweDp(8), 0, doweDp(8));\n        {content}.addView({footer_content}, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n"
+        ));
+        for child in footer {
+            render_dev_android_node(
+                child,
+                &footer_content,
+                None,
+                false,
+                counter,
+                output,
+                current_font,
+                current_color.clone(),
+                context,
+                children_method,
+            );
+        }
     }
     if !props.hide_close_button {
         render_dev_android_overlay_close(&panel, "Close modal", &close, "Gravity.TOP | Gravity.END", "0, doweDp(8), doweDp(8), 0", counter, output);

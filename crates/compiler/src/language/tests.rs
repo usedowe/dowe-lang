@@ -1095,6 +1095,19 @@ fn diagnostics_place_component_prop_errors_on_prop_token() {
 }
 
 #[test]
+fn diagnostics_accept_each_item_icon_references() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("pages")).expect("pages");
+    let document = LanguageDocument {
+        path: root.path().join("pages/catalog.dowe"),
+        source: "page catalogPage\n  const catalogSources:\n    value:[{ id:\"solar\" name:\"layers-line-duotone\" fill:\"primary\" title:\"Solar\" description:\"Description\" }]\n  Grid\n    each in:catalogSources as:catalog key:catalog.id\n      Icon name:catalog.name fill:catalog.fill w:9 h:9\n".to_string(),
+    };
+
+    let diagnostics = analyze_document(root.path(), &document);
+    assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
+}
+
+#[test]
 fn diagnostics_report_unquoted_static_component_strings() {
     let root = tempdir().expect("tempdir");
     fs::create_dir_all(root.path().join("pages")).expect("src");

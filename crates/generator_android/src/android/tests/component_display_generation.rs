@@ -361,6 +361,9 @@ fn generates_android_overlay_surface_action_and_close_parity() {
             .contains(".width(28.dp)\n                            .height(28.dp)")
     );
     assert!(views.content.contains(
+        "Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))"
+    ));
+    assert!(views.content.contains(
         "val toastWidth = (viewportWidth - 32.dp).coerceAtLeast(1.dp).coerceAtMost(420.dp)"
     ));
     assert!(views.content.contains(".width(toastWidth)"));
@@ -380,6 +383,9 @@ fn generates_android_overlay_surface_action_and_close_parity() {
         dev.content
             .contains("setContentDescription(\"Close modal\")")
     );
+    assert!(dev.content.contains(
+        "setPadding(0, doweDp(8), 0, doweDp(8));"
+    ));
     assert!(dev.content.contains(
         "doweDp(Math.max(1, Math.min(560, Math.min(Math.max(0, viewportWidth - 32), (viewportWidth * 95) / 100))))"
     ));

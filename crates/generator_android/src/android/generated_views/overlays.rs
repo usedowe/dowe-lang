@@ -37,7 +37,11 @@ private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, 
                     ) {
                         header?.invoke()
                         content()
-                        footer?.invoke()
+                        footer?.let {
+                            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                                it()
+                            }
+                        }
                     }
                 }
                 if (!hideCloseButton) {
