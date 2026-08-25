@@ -49,7 +49,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         "<div class=\"box color-primaryText\"><p class=\"dowe-text text-md\">Box inherited</p><p class=\"dowe-text text-md color-danger\">Box override</p></div>"
     ));
     assert!(html.contains("<article class=\"card"));
-    assert!(html.contains("is-soft is-muted"));
+    assert!(html.contains("is-solid is-muted"));
     assert!(html.contains("<p class=\"dowe-text text-md\">Card inherited</p>"));
     assert!(html.contains("<h2 class=\"dowe-title title-md\">Card title inherited</h2>"));
     assert!(html.contains("<h2 class=\"dowe-title title-md color-warning\">Card override</h2>"));
@@ -58,7 +58,7 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
             .contains(".color-primaryText{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryText);color:var(--dowe-primaryText);}")
     );
     assert!(page.css_content.contains(
-        ".card.is-soft.is-muted{--dowe-content-text:var(--dowe-mutedText);--dowe-content-title:var(--dowe-mutedTitle);background-color:var(--dowe-muted);color:var(--dowe-mutedText);border-color:var(--dowe-muted);}"
+        ".card.is-solid.is-muted{--dowe-content-text:var(--dowe-mutedText);--dowe-content-title:var(--dowe-mutedTitle);background-color:var(--dowe-muted);color:var(--dowe-mutedText);border-color:var(--dowe-muted);}"
     ));
 }
 
@@ -1702,7 +1702,7 @@ fn emits_container_refactor_css() {
     );
     assert!(page.css_content.contains("@media (min-width:768px)"));
     assert!(page.css_content.contains("rgba(0,0,0,0.6)"));
-    assert!(page.css_content.contains(".card.is-soft.is-surface"));
+    assert!(page.css_content.contains(".card.is-solid.is-surface"));
 }
 
 #[test]

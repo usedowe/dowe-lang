@@ -202,7 +202,7 @@ fn dev_activity_code_and_forms_validation() -> &'static str {
             view.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             view.setShadowLayer(0f, doweDp(3), doweDp(3), doweAlpha(accent, 0.6f));
         } else if ("tag".equals(style)) {
-            view.setBackground(doweBackground(doweToastSoftFamily(scheme), DOWE_RADIUS));
+            view.setBackground(doweBackground(doweToastFamily(scheme), DOWE_RADIUS));
             view.setPadding(doweDp(12), doweDp(4), doweDp(12), doweDp(4));
             view.setElevation(doweDp(2));
         }

@@ -19,7 +19,6 @@ theme
     theme name:"dark"
       colors:
         primary color:"#D6F966" text:"#08101A" title:"#08101A"
-        softPrimary color:"#2A3D12" text:"#E5FFA0" title:"#E5FFA0"
         background color:"#010314" text:"#FFFFFF" title:"#FFFFFF"
         surface color:"#063453" text:"#FFFFFF" title:"#FFFFFF"
 ```

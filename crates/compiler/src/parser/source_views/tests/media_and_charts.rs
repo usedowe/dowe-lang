@@ -141,7 +141,7 @@ fn parses_runtime_svg_data_and_rejects_mixed_geometry() {
 fn parses_video_component_with_hls_source() {
     let tree = parse_page(
             r#"page videoPage
-  Video src:"https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" poster:"/images/video.jpg" autoplay:true aspect:"vertical" variant:"soft" scheme:"accent""#,
+  Video src:"https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" poster:"/images/video.jpg" autoplay:true aspect:"vertical" variant:"solid" scheme:"accent""#,
         )
         .expect("tree");
 
@@ -295,7 +295,7 @@ fn parses_candlestick_component_with_typed_data_and_stream() {
 
 page marketPage
   signal candles type:Candle[] value:[{ time:"2026-06-01T09:30:00Z" open:102 high:108 low:99 close:106 }]
-  Candlestick data:candles stream:"/api/market/candles" variant:"soft" scheme:"surface" upColor:"success" downColor:"danger" emptyLabel:"Waiting" maxPoints:120"#,
+  Candlestick data:candles stream:"/api/market/candles" variant:"solid" scheme:"surface" upColor:"success" downColor:"danger" emptyLabel:"Waiting" maxPoints:120"#,
         )
         .expect("tree");
 
@@ -490,7 +490,7 @@ fn parses_table_component_with_typed_data_and_columns() {
 
 page usersPage
   signal users type:UserRow[] value:[{ name:"Ana" status:"active" }]
-  Table data:users variant:"soft" scheme:"surface" size:"lg" striped:true bordered:true dividers:true emptyTitle:"No users" emptyDescription:"Invite users"
+  Table data:users variant:"solid" scheme:"surface" size:"lg" striped:true bordered:true dividers:true emptyTitle:"No users" emptyDescription:"Invite users"
     column field:"name" label:"Name"
     column field:"status" label:"Status" align:"end" width:"8rem""#,
         )

@@ -177,7 +177,7 @@ private fun DoweRichText(marks: List<DoweRichTextMark>, fontFamily: FontFamily?,
 private fun DoweRichTextRun(mark: DoweRichTextMark, fontFamily: FontFamily?, fontSize: TextUnit, contentColor: Color) {
     val accent = doweButtonFamily(mark.scheme)
     val onAccent = doweButtonTextFamily(mark.scheme)
-    val softAccent = doweButtonSoftFamily(mark.scheme)
+    val accentColor = doweButtonFamily(mark.scheme)
     val inheritedColor = if (contentColor == Color.Unspecified) DoweDesign.backgroundText else contentColor
     val density = LocalDensity.current
     var measuredTextWidth by remember(mark.text, fontFamily, fontSize) { mutableStateOf<Dp?>(null) }
@@ -227,7 +227,7 @@ private fun DoweRichTextRun(mark: DoweRichTextMark, fontFamily: FontFamily?, fon
             }
             drawPath(path, accent, style = Stroke(width = 2.dp.toPx()))
         }
-        "tag" -> Modifier.doweShadow(radius = 8.dp, shape = shape, color = inheritedColor, alpha = 0.1f).clip(shape).background(softAccent).padding(horizontal = 12.dp, vertical = 4.dp)
+        "tag" -> Modifier.doweShadow(radius = 8.dp, shape = shape, color = inheritedColor, alpha = 0.1f).clip(shape).background(accentColor).padding(horizontal = 12.dp, vertical = 4.dp)
         else -> Modifier
     }
     val resolvedText = if (mark.style == "mark" || mark.style == "neon") mark.text.uppercase(Locale.ROOT) else mark.text

@@ -20,7 +20,7 @@ pub fn fab_component_node(
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Fab, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::Fab, style.variant)?;
+    require_solid_variant(BuiltinComponent::Fab, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     let size = *style.size.get_or_insert(ButtonSize::Lg);

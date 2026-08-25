@@ -241,7 +241,7 @@ pub enum SectionBackground {
 impl SectionBackground {
     pub fn from_name(value: &str) -> Option<Self> {
         match value {
-            "aurora" | "soft" => Some(Self::Aurora),
+            "aurora" => Some(Self::Aurora),
             "sunrise" => Some(Self::Sunrise),
             "ocean" => Some(Self::Ocean),
             "meadow" => Some(Self::Meadow),

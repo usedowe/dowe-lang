@@ -235,7 +235,7 @@ fn rejects_property_suite_props_after_children() {
     let error = parse_source_file(
         Path::new("/project"),
         Path::new("/project/pages/card.dowe"),
-        "page cardPage\n  Card:\n    variant:\"soft\"\n    Text\n      \"Status\"\n    p:4\n"
+        "page cardPage\n  Card:\n    variant:\"solid\"\n    Text\n      \"Status\"\n    p:4\n"
             .to_string(),
     )
     .expect_err("late prop");

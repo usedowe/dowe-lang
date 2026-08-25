@@ -140,7 +140,7 @@ fn applies_toast_design_defaults_to_global_function_statements() {
         temp.path().join("theme.dowe"),
         r#"theme
   design defaultTheme:"light"
-    Toast variant:"soft"
+    Toast variant:"outlined"
     theme name:"light""#,
     )
     .expect("theme");
@@ -167,7 +167,7 @@ fn applies_toast_design_defaults_to_global_function_statements() {
 
     assert_eq!(
         toast_variants(&project.web.pages[0].page_tree),
-        vec![Some("soft".to_string()), Some("outlined".to_string())]
+        vec![Some("outlined".to_string()), Some("outlined".to_string())]
     );
     assert_eq!(
         project.view_routes.web[0].page_tree,
@@ -222,14 +222,14 @@ fn compiles_design_system_components_and_responsive_props() {
         r#"page loginPage
   Box p:10 px:0.5 w:"full"
     Flex direction:{ xs:"column" md:"row" } wrap:true justify:"center" align:"center" gap:{ xs:2 lg:6 }
-      Card variant:"soft" scheme:"primary" rounded:"lg" border:1 p:{ xs:4 md:8 }
-        Title size:"2xl" bg:"softPrimary" weight:"extrabold" spacing:"tight" p:4
+      Card variant:"solid" scheme:"primary" rounded:"lg" border:1 p:{ xs:4 md:8 }
+        Title size:"2xl" bg:"primary" weight:"extrabold" spacing:"tight" p:4
           "Welcome"
         Text size:"md" bg:"surface" color:"primaryText" weight:"bold" spacing:"wide" rounded:"md" border:1
           "Login"
         Button variant:"solid" scheme:"danger"
           "Save"
-        Button variant:"soft" scheme:"warning" size:"lg" rounded:"full"
+        Button variant:"outlined" scheme:"warning" size:"lg" rounded:"full"
           "Warn"
         Input variant:"outlined" scheme:"info"
         Card scheme:"primary"
@@ -243,9 +243,9 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(body.contains(r#"class="box bg-background color-backgroundText p-2 md:p-4""#));
     assert!(body.contains(r#"class="box p-10 px-0.5 w-full""#));
     assert!(body.contains(r#"class="flex direction-column md:direction-row flex-wrap justify-center align-center gap-2 lg:gap-6""#));
-    assert!(body.contains(r#"class="card p-4 md:p-8 rounded-lg border-1 is-soft is-primary""#));
+    assert!(body.contains(r#"class="card p-4 md:p-8 rounded-lg border-1 is-solid is-primary""#));
     assert!(body.contains(
-        r#"class="dowe-title title-2xl bg-softPrimary p-4 weight-extrabold tracking-tight""#
+        r#"class="dowe-title title-2xl bg-primary p-4 weight-extrabold tracking-tight""#
     ));
     assert!(body.contains(
             r#"class="dowe-text text-md bg-surface color-primaryText rounded-md border-1 weight-bold tracking-wide""#
@@ -254,7 +254,7 @@ fn compiles_design_system_components_and_responsive_props() {
         "is-solid is-danger"
     ));
     assert!(body.contains(
-        "is-soft is-warning"
+        "is-outlined is-warning"
     ));
     assert!(body.contains("control is-md is-outlined is-info"));
     assert!(body.contains("input"));

@@ -14,7 +14,7 @@ fn renders_code_markup_theme_classes_and_copy_runtime() {
         "page docsPage",
         &tree,
     );
-    assert!(chunk.css_content.contains(".code-block.is-soft.is-surface"));
+    assert!(chunk.css_content.contains(".code-block.is-solid.is-surface"));
     assert!(
         super::router_js(&super::WebOutput {
             chunks: Vec::new(),
@@ -298,7 +298,7 @@ fn emits_button_size_and_variant_css() {
 
     assert!(page.content.contains("button-lg"));
     assert!(page.content.contains("rounded-full"));
-    assert!(page.content.contains("is-soft"));
+    assert!(page.content.contains("is-solid"));
     assert!(page.content.contains("is-warning"));
     assert!(
         page.css_content
@@ -308,7 +308,7 @@ fn emits_button_size_and_variant_css() {
         page.css_content
             .contains(".rounded-full{border-radius:9999px;}")
     );
-    assert!(page.css_content.contains(".button.is-soft.is-warning"));
+    assert!(page.css_content.contains(".button.is-solid.is-warning"));
 }
 
 #[test]

@@ -471,7 +471,7 @@
         "rating carousel",
         "logo quote",
         "split media",
-        "soft cards"
+        "quiet cards"
       ],
       "responsive": "Stack proof units at xs while keeping attribution and rating context together.",
       "tags": [
@@ -603,14 +603,14 @@
       ]
     },
     {
-      "id": "accordion/soft-panels",
+      "id": "accordion/quiet-panels",
       "family": "accordion",
-      "title": "Soft Panels",
-      "variant": "soft-panels",
+      "title": "Quiet Panels",
+      "variant": "quiet-panels",
       "tags": [
         "accordion",
         "panels",
-        "soft"
+        "quiet"
       ]
     },
     {
@@ -1366,13 +1366,13 @@
       ]
     },
     {
-      "id": "testimonial/soft-cards",
+      "id": "testimonial/quiet-cards",
       "family": "testimonial",
-      "title": "Soft Cards",
-      "variant": "soft-cards",
+      "title": "Quiet Cards",
+      "variant": "quiet-cards",
       "tags": [
         "cards",
-        "soft",
+        "quiet",
         "testimonial"
       ]
     },

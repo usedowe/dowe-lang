@@ -186,16 +186,7 @@ fn color_ref(value: ColorToken) -> &'static str {
 }
 
 fn swift_color_member(value: ColorToken) -> &'static str {
-    let name = value.as_str();
-    match name.strip_prefix("soft") {
-        Some(suffix) if suffix.starts_with(|character: char| character.is_ascii_uppercase()) => {
-            let mut characters = suffix.chars();
-            let first = characters.next().expect("soft color role").to_ascii_lowercase();
-            let mapped: String = first.to_string() + characters.as_str();
-            Box::leak(mapped.into_boxed_str())
-        }
-        _ => name,
-    }
+    value.as_str()
 }
 
 fn intern_generated_color_name(value: String) -> &'static str {

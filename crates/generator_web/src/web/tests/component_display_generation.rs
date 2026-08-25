@@ -12,7 +12,7 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     let css = super::design_css();
     let router = full_runtime_for_test();
 
-    assert!(html.contains(r#"class="avatar is-soft is-success avatar-lg is-bordered""#));
+    assert!(html.contains(r#"class="avatar is-solid is-success avatar-lg is-bordered""#));
     assert!(html.contains(r#"class="badge is-bottom-right""#));
     assert!(html.contains(r#"class="badge-content is-solid is-danger""#));
     assert!(html.contains(r#"class="chip is-outlined is-info chip-sm has-close""#));
@@ -34,7 +34,7 @@ fn renders_display_and_overlay_components_markup_runtime_and_css() {
     assert!(!html.contains("data-dowe-toast-close>&times;"));
     assert!(html.contains(r#"class="dropdown-popover is-solid is-surface""#));
     assert!(html.contains(r#"data-dowe-command-open="modal01""#));
-    assert!(page.css_content.contains(".avatar.is-soft.is-success"));
+    assert!(page.css_content.contains(".avatar.is-solid.is-success"));
     assert!(page.css_content.contains(".w-4{width:1rem;}"));
     assert!(page.css_content.contains(".h-4{height:1rem;}"));
     assert!(
@@ -120,7 +120,7 @@ fn resolves_modal_and_alert_dialog_panels_like_card_surfaces() {
         "alert",
         &alert,
     );
-    assert!(alert_page.css_content.contains(".modal.is-soft.is-surface"));
+    assert!(alert_page.css_content.contains(".modal.is-solid.is-surface"));
     assert!(
         alert_page
             .css_content
@@ -304,7 +304,7 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
     });
 
     assert!(html.contains(r#"class="avatar-group"#));
-    assert!(html.contains("is-soft"));
+    assert!(html.contains("is-solid"));
     assert!(html.contains("is-primary"));
     assert!(html.contains("avatar-group-sm"));
     assert!(html.contains("is-auto-fit"));
@@ -329,7 +329,7 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
     assert!(
         !page
             .css_content
-            .contains(".avatar-group.is-soft.is-primary")
+            .contains(".avatar-group.is-solid.is-primary")
     );
     assert!(page.css_content.contains(".chat-box"));
     assert!(page.css_content.contains(".empty"));
@@ -380,13 +380,13 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-countdown-target="2030-01-01T00:00:00Z""#));
     assert!(html.contains(r#"data-dowe-map"#));
     assert!(html.contains(r#"data-dowe-map-marker="office""#));
-    assert!(page.css_content.contains(".media.is-soft.is-primary"));
+    assert!(page.css_content.contains(".media.is-solid.is-primary"));
     assert!(page
         .css_content
-        .contains(".media.is-soft.is-primary .media-button{background-color:var(--dowe-primary);color:var(--dowe-primaryText);}"));
+        .contains(".media.is-solid.is-primary .media-button{background-color:var(--dowe-primary);color:var(--dowe-primaryText);}"));
     assert!(
         page.css_content
-            .contains(".toggle-group.is-soft.is-secondary")
+            .contains(".toggle-group.is-solid.is-secondary")
     );
     assert!(
         page.css_content
@@ -396,7 +396,7 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
         page.css_content
             .contains(".countdown-box.is-outlined.is-primary")
     );
-    assert!(page.css_content.contains(".map.is-soft.is-surface"));
+    assert!(page.css_content.contains(".map.is-solid.is-surface"));
     assert!(css.contains(".rich-mark-grad"));
     assert!(css.contains("max-width:100%;width:100%;text-align:center;line-height:inherit"));
     assert!(css.contains("background:var(--rich-accent);color:var(--rich-on-accent)"));
@@ -410,7 +410,7 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
         ".toggle-group.is-solid.is-primary{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryTitle);background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:transparent;}"
     ));
     assert!(page.css_content.contains(
-        ".toggle-group-item.is-active.is-solid.is-primary,.toggle-group-item.is-active.is-soft.is-primary{background-color:var(--dowe-primaryText);color:var(--dowe-primary);}"
+        ".toggle-group-item.is-active.is-solid.is-primary,.toggle-group-item.is-active.is-solid.is-primary{background-color:var(--dowe-primaryText);color:var(--dowe-primary);}"
     ));
     assert!(!page.css_content.contains(".toggle-group.is-solid.is-primary{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryTitle);background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:var(--dowe-primary);}"));
     assert!(css.contains(".pagination-nav"));
@@ -451,7 +451,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     let css = super::design_css();
     let router = full_runtime_for_test();
 
-    assert!(html.contains(r#"class="media is-soft is-primary""#));
+    assert!(html.contains(r#"class="media is-solid is-primary""#));
     assert!(html.contains(r#"data-dowe-audio"#));
     assert!(html.contains(r#"data-dowe-audio-play-icon"#));
     assert!(html.contains(r#"data-dowe-audio-pause-icon"#));
@@ -519,7 +519,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"class="radio is-muted is-lg""#));
     assert!(html.contains(r#"class="toggle-input is-secondary""#));
 
-    assert!(page.css_content.contains(".media.is-soft.is-primary"));
+    assert!(page.css_content.contains(".media.is-solid.is-primary"));
     assert!(
         page.css_content
             .contains(".accordion.is-outlined.is-surface")
@@ -692,7 +692,7 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"maxlength="160""#));
     assert!(page.css_content.contains(".control.is-outlined.is-primary"));
     assert!(page.css_content.contains(".button.is-outlined.is-primary"));
-    assert!(page.css_content.contains(".drag-drop.is-soft.is-primary"));
+    assert!(page.css_content.contains(".drag-drop.is-solid.is-primary"));
     assert!(css.contains(".combo-box-options"));
     assert!(css.contains(".combo-box-popover{position:fixed;"));
     assert!(css.contains(".combo-box-option:disabled"));

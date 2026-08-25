@@ -11,9 +11,9 @@ fn compiles_theme_fab_slider_and_dropzone_across_targets() {
   fn resetVolume
     reset volume
   Box id:"top"
-    ToggleTheme variant:"soft" scheme:"secondary" size:"sm" lightLabel:"Light mode" darkLabel:"Dark mode"
+    ToggleTheme variant:"solid" scheme:"secondary" size:"sm" lightLabel:"Light mode" darkLabel:"Dark mode"
     SelectTheme label:"Theme palette" placeholder:"Choose a palette" variant:"outlined" scheme:"surface" size:"sm"
-    Fab position:"bottom-left" offsetX:6 offsetY:8 icon:"settings" label:"Actions" variant:"soft" scheme:"primary" size:"lg" onClick:resetVolume
+    Fab position:"bottom-left" offsetX:6 offsetY:8 icon:"settings" label:"Actions" variant:"solid" scheme:"primary" size:"lg" onClick:resetVolume
       fabAction label:"Top" icon:"link" href:"#top" navigate:"replace" scheme:"info"
       fabAction label:"Reset" icon:"dismiss" onClick:resetVolume scheme:"danger"
     Slider bind:volume value:40 min:0 max:100 step:5 label:"Volume" name:"volume" scheme:"warning" size:"lg"

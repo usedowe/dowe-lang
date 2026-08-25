@@ -45,7 +45,7 @@ fn variant_title(props: &VariantProps) -> &'static str {
 fn scheme_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Solid => color_ref(family_soft_title_color(color)),
+        ComponentVariant::Solid => color_ref(family_title_color(color)),
         _ => color_ref(family_title_color(color)),
     }
 }
@@ -171,7 +171,7 @@ fn dev_variant_title(props: &VariantProps) -> &'static str {
 fn dev_scheme_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Solid => java_color(family_soft_title_color(color)),
+        ComponentVariant::Solid => java_color(family_title_color(color)),
         _ => java_color(family_title_color(color)),
     }
 }
@@ -292,7 +292,7 @@ fn dev_button_border(props: &VariantProps) -> &'static str {
 
 fn tabs_list_background(props: &TabsProps) -> &'static str {
     match props.variant {
-        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_color(props.color)),
+        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_color(props.color)),
         TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             "Color.Transparent"
         }
@@ -301,7 +301,7 @@ fn tabs_list_background(props: &TabsProps) -> &'static str {
 
 fn tabs_list_content(props: &TabsProps) -> &'static str {
     match props.variant {
-        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_soft_text_color(props.color)),
+        TabsVariant::Solid | TabsVariant::Pills => color_ref(family_text_color(props.color)),
         TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             color_ref(tabs_accent_token(props.color))
         }
@@ -349,7 +349,7 @@ fn tabs_accent_token(value: ColorFamily) -> ColorToken {
 
 fn dev_tabs_list_background(props: &TabsProps) -> &'static str {
     match props.variant {
-        TabsVariant::Solid | TabsVariant::Pills => java_color(family_soft_color(props.color)),
+        TabsVariant::Solid | TabsVariant::Pills => java_color(family_color(props.color)),
         TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             "Color.TRANSPARENT"
         }
@@ -358,7 +358,7 @@ fn dev_tabs_list_background(props: &TabsProps) -> &'static str {
 
 fn dev_tabs_list_content(props: &TabsProps) -> &'static str {
     match props.variant {
-        TabsVariant::Solid | TabsVariant::Pills => java_color(family_soft_text_color(props.color)),
+        TabsVariant::Solid | TabsVariant::Pills => java_color(family_text_color(props.color)),
         TabsVariant::Outlined | TabsVariant::Line | TabsVariant::Ghost | TabsVariant::Stepper => {
             java_color(tabs_accent_token(props.color))
         }
@@ -916,18 +916,6 @@ fn family_text_color(value: ColorFamily) -> ColorToken {
 }
 
 fn family_title_color(value: ColorFamily) -> ColorToken {
-    value.title_token()
-}
-
-fn family_soft_color(value: ColorFamily) -> ColorToken {
-    value.color_token()
-}
-
-fn family_soft_text_color(value: ColorFamily) -> ColorToken {
-    value.text_token()
-}
-
-fn family_soft_title_color(value: ColorFamily) -> ColorToken {
     value.title_token()
 }
 

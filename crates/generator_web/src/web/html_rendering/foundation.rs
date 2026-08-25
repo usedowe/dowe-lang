@@ -34,11 +34,11 @@ fn title_token(family: ColorFamily) -> &'static str {
     family.title_token().as_str()
 }
 
-fn soft_token(family: ColorFamily) -> &'static str {
+fn family_color_token(family: ColorFamily) -> &'static str {
     family.color_token().as_str()
 }
 
-fn soft_text_token(family: ColorFamily) -> &'static str {
+fn family_text_token(family: ColorFamily) -> &'static str {
     family.text_token().as_str()
 }
 

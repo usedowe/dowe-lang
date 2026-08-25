@@ -693,7 +693,7 @@ fn generates_compose_and_dev_rich_control_map_components() {
             .contains("background(accent).padding(horizontal = 8.dp, vertical = 2.dp)")
     );
     assert!(views.content.contains("doweButtonTextFamily(mark.scheme)"));
-    assert!(views.content.contains("doweButtonSoftFamily(mark.scheme)"));
+    assert!(views.content.contains("doweButtonFamily(mark.scheme)"));
     assert!(views.content.contains(
         "if (contentColor == Color.Unspecified) DoweDesign.backgroundText else contentColor"
     ));

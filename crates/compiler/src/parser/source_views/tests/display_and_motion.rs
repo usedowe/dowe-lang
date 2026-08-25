@@ -37,7 +37,7 @@
   fn close
     reset modalOpen
   Box
-    Avatar name:"Ada" alt:"Ada Lovelace" scheme:"success" variant:"soft" size:"lg" status:"online" bordered:true
+    Avatar name:"Ada" alt:"Ada Lovelace" scheme:"success" variant:"solid" size:"lg" status:"online" bordered:true
     Badge text:"3" scheme:"danger" position:"bottom-right"
       Avatar name:"Ada" alt:"Ada"
     Chip variant:"outlined" scheme:"info" size:"sm" startIcon:"settings" endIcon:"magnifier" onClose:close
@@ -192,11 +192,11 @@ page displayPage
   fn sendMessage
     reset loading
   Box
-    AvatarGroup items:people size:"sm" max:3 autoFit:true inline:false bordered:true scheme:"primary" variant:"soft"
+    AvatarGroup items:people size:"sm" max:3 autoFit:true inline:false bordered:true scheme:"primary" variant:"solid"
       item src:"/ada.png" name:"Ada" alt:"Ada Lovelace" onClick:sendMessage
       item name:"Grace" alt:"Grace Hopper" href:"/docs"
     ChatBox messages:messages mode:"conversation" currentUserId:"ada" userName:"Ada" userAvatar:"/ada.png" userStatus:"online" assistantName:"Dowe" assistantAvatar:"/dowe.png" showHeader:true placeholder:"Ask Dowe" showAttachments:true showVoiceNote:true showCamera:true loading:loading sending:loading streaming:loading hasMore:loading onSend:sendMessage onLoadMore:sendMessage onStop:sendMessage onVoiceNote:sendMessage onFileAttach:sendMessage onCameraCapture:sendMessage
-    Empty type:"result" title:"Nothing found" description:"Try again" actionLabel:"Retry" onClick:sendMessage scheme:"info" variant:"soft"
+    Empty type:"result" title:"Nothing found" description:"Try again" actionLabel:"Retry" onClick:sendMessage scheme:"info" variant:"solid"
     Marquee speed:"fast" pauseOnHover:true reverse:true orientation:"horizontal" fade:true fadeColor:"background" gap:4
       Text
         "Moving"
@@ -285,15 +285,15 @@ page displayPage
     RichText title:true size:"lg" weight:"bold"
       mark text:"Launch" style:"grad" scheme:"primary"
       mark text:"ready" style:"pill" scheme:"success"
-    Record name:"voice" maxDuration:90 onStart:choose onConfirm:done variant:"soft" scheme:"primary"
-    ToggleGroup value:mode selected:"map" size:"sm" wide:true ariaLabel:"Display mode" onChange:choose variant:"soft" scheme:"secondary"
+    Record name:"voice" maxDuration:90 onStart:choose onConfirm:done variant:"solid" scheme:"primary"
+    ToggleGroup value:mode selected:"map" size:"sm" wide:true ariaLabel:"Display mode" onChange:choose variant:"solid" scheme:"secondary"
       item id:"list" label:"List" icon:"search"
       item id:"map" label:"Map" icon:"settings"
     Collapsible label:"Details" defaultOpen:true scheme:"surface"
       Text
         "Body"
     Countdown target:"2030-01-01T00:00:00Z" size:"xl" showDays:true showHours:true showMinutes:true showSeconds:false onComplete:done scheme:"primary" variant:"outlined"
-    Map centerLat:4.7109 centerLng:-74.0721 zoom:12 height:"360px" width:"100%" showScale:true showLocationControl:true routeStartLat:4.7109 routeStartLng:-74.0721 routeEndLat:4.65 routeEndLng:-74.09 onRoute:done scheme:"primary" variant:"soft"
+    Map centerLat:4.7109 centerLng:-74.0721 zoom:12 height:"360px" width:"100%" showScale:true showLocationControl:true routeStartLat:4.7109 routeStartLng:-74.0721 routeEndLat:4.65 routeEndLng:-74.09 onRoute:done scheme:"primary" variant:"solid"
       marker id:"office" lat:4.7109 lng:-74.0721 label:"Office" popup:"Main" icon:"start" onClick:choose
       waypoint lat:4.68 lng:-74.08"#,
         )

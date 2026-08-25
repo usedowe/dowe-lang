@@ -113,7 +113,7 @@ fn code_route() -> ViewRoute {
                     value: PropValue::String("surface".to_string()),
                 },
             ],
-            "page docsPage\n  Card variant:\"soft\" p:4 show:true\n    Text\n      Documentation".to_string(),
+            "page docsPage\n  Card variant:\"solid\" p:4 show:true\n    Text\n      Documentation".to_string(),
         )
         .expect("code"),
         sections: Vec::new(),

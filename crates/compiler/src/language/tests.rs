@@ -1060,7 +1060,7 @@ fn diagnostics_place_component_prop_errors_on_prop_token() {
     fs::create_dir_all(root.path().join("pages")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("pages/login.dowe"),
-        source: "page loginPage\n  Input variant:\"soft\" unknownLabel:test\n".to_string(),
+        source: "page loginPage\n  Input variant:\"solid\" unknownLabel:test\n".to_string(),
     };
 
     let diagnostics = analyze_document(root.path(), &document);
@@ -1071,9 +1071,9 @@ fn diagnostics_place_component_prop_errors_on_prop_token() {
 
     assert_eq!(
         diagnostic.message,
-        "2:24: unknown prop `unknownLabel` on `Input`"
+        "2:25: unknown prop `unknownLabel` on `Input`"
     );
-    assert_eq!(diagnostic.range, LanguageRange::single_line(2, 24, 12));
+    assert_eq!(diagnostic.range, LanguageRange::single_line(2, 25, 12));
 }
 
 #[test]
@@ -1315,7 +1315,7 @@ fn completions_and_hover_include_server_tasks_and_cron() {
 fn hover_documents_theme_and_fonts_configuration() {
     let document = LanguageDocument {
         path: Path::new("/project/theme.dowe").to_path_buf(),
-        source: "theme\n  fonts default:\"manrope\" install:[\"manrope\",\"inter\"]\n  design defaultTheme:\"light\"\n    Card variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n    Button variant:\"solid\" scheme:\"secondary\" size:\"md\"\n    Avatar radius:\"full\" size:\"md\"\n    Chip variant:\"soft\" scheme:\"secondary\" radius:\"full\" size:\"sm\"\n    Text font:\"manrope\"\n    Title font:\"syne\"\n    theme name:\"light\"\n      colors:\n        primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"\n        happy color:\"#176C75\" text:\"#FFFFFE\" title:\"#FFFFFE\"\n"
+        source: "theme\n  fonts default:\"manrope\" install:[\"manrope\",\"inter\"]\n  design defaultTheme:\"light\"\n    Card variant:\"outline\" scheme:\"primary\" radius:\"xs\" shadow:\"xs\"\n    Button variant:\"solid\" scheme:\"secondary\" size:\"md\"\n    Avatar radius:\"full\" size:\"md\"\n    Chip variant:\"solid\" scheme:\"secondary\" radius:\"full\" size:\"sm\"\n    Text font:\"manrope\"\n    Title font:\"syne\"\n    theme name:\"light\"\n      colors:\n        primary color:\"#1F3A5F\" text:\"#FFFFFF\" title:\"#FFFFFE\"\n        happy color:\"#176C75\" text:\"#FFFFFE\" title:\"#FFFFFE\"\n"
             .to_string(),
     };
 
@@ -2132,7 +2132,6 @@ fn completions_include_quoted_static_component_values() {
     let tabs_variant = complete_document(Path::new("/project"), &document, 15, 17);
     assert!(tabs_variant.iter().any(|item| item.label == "\"line\""));
     assert!(tabs_variant.iter().any(|item| item.label == "\"pills\""));
-    assert!(!tabs_variant.iter().any(|item| item.label == "\"soft\""));
 
     let tabs_position = complete_document(Path::new("/project"), &document, 16, 18);
     assert!(tabs_position.iter().any(|item| item.label == "\"start\""));
@@ -2487,7 +2486,6 @@ fn completions_include_rich_control_map_component_props_and_values() {
 
     let record_variant = complete_document(root, &document, 7, "  Record variant:".len() + 1);
     assert!(record_variant.iter().any(|item| item.label == "\"solid\""));
-    assert!(!record_variant.iter().any(|item| item.label == "\"soft\""));
     assert!(!record_variant.iter().any(|item| item.label == "\"ghost\""));
 
     let toggle_props = complete_document(root, &document, 8, "  ToggleGroup ".len() + 1);

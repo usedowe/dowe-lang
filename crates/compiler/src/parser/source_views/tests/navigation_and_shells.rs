@@ -2,7 +2,7 @@
 fn rejects_sidebar_navigation_entries() {
     let error = parse_page(
         r#"page navPage
-  Sidebar variant:"soft" scheme:"surface"
+  Sidebar variant:"solid" scheme:"surface"
     item label:"Home" href:"/""#,
     )
     .expect_err("sidebar item");
@@ -25,7 +25,7 @@ fn parses_nav_menu_items_submenus_and_megamenu_content() {
       item label:"Install" href:"#install"
     megamenu label:"Resources"
       content
-        Card variant:"soft" scheme:"surface"
+        Card variant:"solid" scheme:"surface"
           Text
             "Resource hub""##,
     )
@@ -370,7 +370,7 @@ fn parses_drawer_with_signal_open_and_responsive_show() {
     let tree = parse_page(
             r#"page navPage
   signal drawerOpen value:false
-  Drawer open:drawerOpen position:"end" variant:"soft" scheme:"surface" show:{ xs:true md:false } disableOverlayClose:true hideCloseButton:true
+  Drawer open:drawerOpen position:"end" variant:"solid" scheme:"surface" show:{ xs:true md:false } disableOverlayClose:true hideCloseButton:true
     header
       Title
         "Menu"

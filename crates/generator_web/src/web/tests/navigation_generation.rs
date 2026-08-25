@@ -51,20 +51,20 @@ fn renders_layout_bars_markup_and_css() {
     let css = super::design_css();
 
     assert!(html.contains(
-        r#"<header class="appbar is-soft is-surface position-fixed is-bordered is-blurred is-floating is-dock-on-scroll"><div class="appbar-top">"#
+        r#"<header class="appbar is-solid is-surface position-fixed is-bordered is-blurred is-floating is-dock-on-scroll"><div class="appbar-top">"#
     ));
     assert!(
         html.contains(r#"</div><div class="appbar-content is-boxed"><div class="appbar-start">"#)
     );
     assert!(html.contains(r#"</div></div><div class="appbar-bottom">"#));
     assert!(html.contains(r#"<div class="appbar-start">"#));
-    assert!(html.contains(r#"<footer class="footer is-soft is-surface is-bordered is-blurred">"#));
+    assert!(html.contains(r#"<footer class="footer is-solid is-surface is-bordered is-blurred">"#));
     assert!(html.contains(
-        r#"<footer class="footer is-soft is-surface is-bordered is-blurred"><div class="footer-inner is-boxed"><div class="footer-top">"#
+        r#"<footer class="footer is-solid is-surface is-bordered is-blurred"><div class="footer-inner is-boxed"><div class="footer-top">"#
     ));
     assert!(html.contains(r#"</div><div class="footer-content"><div class="footer-start">"#));
     assert!(html.contains(r#"</div></div><div class="footer-bottom">"#));
-    assert!(html.contains(r#"<nav class="bottombar is-soft is-surface is-bordered is-blurred">"#));
+    assert!(html.contains(r#"<nav class="bottombar is-solid is-surface is-bordered is-blurred">"#));
     assert!(html.contains(r#"<div class="bottombar-tabs is-boxed">"#));
     assert!(html.contains(r#"class="bottombar-tab is-featured""#));
     assert!(html.contains(r#"data-dowe-bottombar-href="/create""#));
@@ -81,8 +81,8 @@ fn renders_layout_bars_markup_and_css() {
         ".appbar-content.is-boxed,.footer-inner.is-boxed,.bottombar-content.is-boxed{max-width:96rem;margin:0 auto;}"
     ));
     assert!(css.contains(".bottombar-tabs.is-boxed{max-width:96rem;margin:0 auto;}"));
-    assert!(page.css_content.contains(".appbar.is-soft.is-surface"));
-    assert!(page.css_content.contains(".bottombar.is-soft.is-surface"));
+    assert!(page.css_content.contains(".appbar.is-solid.is-surface"));
+    assert!(page.css_content.contains(".bottombar.is-solid.is-surface"));
 
     let router = super::router_js(&super::WebOutput {
         chunks: Vec::new(),
@@ -197,8 +197,8 @@ fn renders_side_nav_markup_active_runtime_and_css() {
         page.css_content
             .contains(".sidenav.is-ghost.is-danger .sidenav-entry:hover{background-color:transparent;color:var(--dowe-danger);}")
     );
-    assert!(page.css_content.contains(".sidenav.is-soft.is-primary .sidenav-entry:hover{background-color:color-mix(in srgb,var(--dowe-primary) 50%,transparent);color:var(--dowe-primary);}"));
-    assert!(page.css_content.contains(".sidenav.is-soft.is-danger .sidenav-entry.is-active{background-color:var(--dowe-danger);color:var(--dowe-dangerText);border-color:transparent;font-weight:600;}"));
+    assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-entry:hover{background-color:color-mix(in srgb,var(--dowe-primary) 50%,transparent);color:var(--dowe-primary);}"));
+    assert!(page.css_content.contains(".sidenav.is-solid.is-danger .sidenav-entry.is-active{background-color:var(--dowe-danger);color:var(--dowe-dangerText);border-color:transparent;font-weight:600;}"));
     assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-entry.is-active{background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:var(--dowe-primary);font-weight:600;}"));
     assert!(page.css_content.contains(".sidenav.is-outlined.is-primary .sidenav-entry.is-active{background-color:transparent;color:var(--dowe-primary);border-color:var(--dowe-primary);font-weight:600;}"));
     assert!(
@@ -295,7 +295,7 @@ fn renders_rail_nav_icons_tooltips_labels_and_active_state() {
         router_js: String::new(),
     });
 
-    assert!(html.contains(r#"<nav class="railnav is-soft is-primary railnav-md""#));
+    assert!(html.contains(r#"<nav class="railnav is-solid is-primary railnav-md""#));
     assert!(html.contains(r#"class="tooltip railnav-tooltip" data-dowe-tooltip"#));
     assert!(
         html.contains(r#"class="tooltip-popover is-solid is-muted position-end" role="tooltip""#)
@@ -310,7 +310,7 @@ fn renders_rail_nav_icons_tooltips_labels_and_active_state() {
     assert!(css.contains(".railnav-md{width:4rem;}"));
     assert!(
         page.css_content
-            .contains(".railnav.is-soft.is-primary .railnav-item.is-active")
+            .contains(".railnav.is-solid.is-primary .railnav-item.is-active")
     );
     assert!(router.contains("[data-dowe-railnav-href]"));
     assert!(router.contains("document.addEventListener(\"focusin\""));
@@ -351,7 +351,7 @@ fn renders_navigation_shell_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-navmenu-href="/docs""#));
     assert!(html.contains(r#"data-dowe-i18n="home.hero.title""#));
     assert!(html.contains("Resource hub"));
-    assert!(html.contains(r#"<aside class="sidebar w-96 is-soft is-surface""#));
+    assert!(html.contains(r#"<aside class="sidebar w-96 is-solid is-surface""#));
     assert!(html.contains(r#"<div class="sidebar-body">"#));
     assert!(html.contains(r#"<nav class="sidenav is-ghost is-muted sidenav-md is-wide""#));
     assert!(html.contains(r#"data-dowe-sidenav-href="/""#));
@@ -527,7 +527,7 @@ fn renders_drawer_markup_runtime_and_css() {
     assert!(html.contains(r#"class="drawer-panel" data-dowe-drawer data-dowe-drawer-open="drawerOpen" data-dowe-drawer-disable-overlay-close="true" hidden"#));
     assert!(
         html.contains(
-            r#"class="drawer is-soft is-surface is-end" role="dialog" aria-modal="true""#
+            r#"class="drawer is-solid is-surface is-end" role="dialog" aria-modal="true""#
         )
     );
     assert!(html.contains(r#"data-dowe-drawer-close"#));
@@ -568,7 +568,7 @@ fn renders_drawer_markup_runtime_and_css() {
     assert!(css.contains(
         ".drawer-panel>.drawer-close.is-bottom{top:.5rem;right:.5rem;bottom:auto;left:auto;}"
     ));
-    assert!(page.css_content.contains(".drawer.is-soft.is-surface"));
+    assert!(page.css_content.contains(".drawer.is-solid.is-surface"));
     assert!(router.contains("function closeDrawer(drawer)"));
     assert!(router.contains("data-dowe-drawer-overlay"));
 
@@ -595,5 +595,5 @@ fn renders_drawer_markup_runtime_and_css() {
             footer: Vec::new(),
         },
     );
-    assert!(rounded_html.contains("drawer rounded-lg is-soft is-surface is-start"));
+    assert!(rounded_html.contains("drawer rounded-lg is-solid is-surface is-start"));
 }

@@ -9,7 +9,7 @@
   signal endDate value:"2026-06-08"
   signal choice value:"basic"
   Box
-    Audio src:"https://cdn.pixabay.com/audio/2022/04/25/audio_5d61b5204f.mp3" subtitle:"Preview" avatarSrc:"https://example.com/avatar.png" scheme:"primary" variant:"soft"
+    Audio src:"https://cdn.pixabay.com/audio/2022/04/25/audio_5d61b5204f.mp3" subtitle:"Preview" avatarSrc:"https://example.com/avatar.png" scheme:"primary" variant:"solid"
     Image src:"https://example.com/photo.jpg" alt:"Photo" aspect:"square" objectFit:"contain" loading:"eager" hideControls:true scheme:"secondary"
     Accordion multiple:true variant:"outlined" scheme:"surface"
       item id:"intro" label:"Intro" defaultOpen:true
@@ -146,7 +146,7 @@
     set capture value:item
   signal capture value:""
   Box
-    Camera facing:"user" label:"Take photo" disabled:false onStart:cameraStart onCapture:cameraCapture onError:cameraError variant:"soft" scheme:"primary"
+    Camera facing:"user" label:"Take photo" disabled:false onStart:cameraStart onCapture:cameraCapture onError:cameraError variant:"solid" scheme:"primary"
     Microphone label:"Record audio" maxDuration:30 disabled:false onStart:microphoneStart onStop:microphoneStop onError:microphoneError variant:"outlined" scheme:"secondary""##,
         )
         .expect("tree");
@@ -189,9 +189,9 @@
   fn create
     reset volume
   Box
-    ToggleTheme variant:"soft" scheme:"secondary" size:"sm" lightLabel:"Light mode" darkLabel:"Dark mode"
+    ToggleTheme variant:"solid" scheme:"secondary" size:"sm" lightLabel:"Light mode" darkLabel:"Dark mode"
     SelectTheme label:"Theme palette" placeholder:"Choose a palette" variant:"outlined" scheme:"surface" size:"sm"
-    Fab position:"top-left" fixed:false offsetX:6 offsetY:8 icon:"settings" label:"Actions" variant:"soft" scheme:"primary" size:"lg" onClick:create
+    Fab position:"top-left" fixed:false offsetX:6 offsetY:8 icon:"settings" label:"Actions" variant:"solid" scheme:"primary" size:"lg" onClick:create
       fabAction label:"Docs" icon:"link" href:"#top" navigate:"replace" scheme:"info"
       fabAction label:"Create" icon:"plus" onClick:create scheme:"success"
     Slider bind:volume min:0 max:100 step:5 label:"Volume" name:"volume" hideLabel:false scheme:"warning" size:"lg"

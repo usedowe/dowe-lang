@@ -55,7 +55,7 @@ layout SiteLayout
             item label:"Services" href:"/#services"
     main
       children
-      Footer boxed:true variant:"soft" scheme:"surface"
+      Footer boxed:true variant:"solid" scheme:"surface"
         start
           Text weight:"bold"
             "SOLTECH"
@@ -440,7 +440,7 @@ inside semantic components and place only their wrappers on the layer plane.
 ```text
 Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
   Flex direction:"column" align:"center" justify:"center" gap:4 minH:{ xs:64 md:80 }
-    Card variant:"soft" scheme:"surface" p:8 rounded:"xl" rotate:-3 animation:"scaleIn"
+    Card variant:"solid" scheme:"surface" p:8 rounded:"xl" rotate:-3 animation:"scaleIn"
       Grid columns:1 gap:3
         Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:14 h:14
         Title size:"2xl" weight:"black"
@@ -669,7 +669,7 @@ before considering a band finished.
 | A `Box` with an icon standing in for a photo | `Image` with the named asset path and `scheme` | The unresolved frame is already the placeholder, and the path stays swappable |
 | Every band is eyebrow + centered title + equal Cards | Alternate split, mosaic, visual-stage, proof-row, and text-led bands according to their jobs | Repeating one skeleton makes a long page look generated and flat |
 | A rich reference scene reduced to one framed Image | Relative stage with the focal asset, floating proof, visible ornament, and foreground treatment | The missing layers carry the reference's depth and identity |
-| Every Card uses the same border and soft fill | Establish primary, supporting, and quiet surface roles | Surface hierarchy directs attention and prevents component-library sameness |
+| Every Card uses the same border and quiet fill | Establish primary, supporting, and quiet surface roles | Surface hierarchy directs attention and prevents component-library sameness |
 | Decoration added without a product concept | Choose two or three motifs from the product and reuse them deliberately | Specific visual language feels natural; arbitrary effects feel synthetic |
 | Empty space used where the reference has visual evidence | Add the original payload, chart, logo field, process artifact, or declared asset placeholder | Whitespace cannot substitute for missing information or media |
 

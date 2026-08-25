@@ -67,7 +67,7 @@ fn parse_command_shortcut(name: &str, value: &PropValue) -> ComponentResult<Stri
     }
 }
 
-fn require_solid_or_soft(
+fn require_solid_variant(
     component: BuiltinComponent,
     variant: Option<ComponentVariant>,
 ) -> ComponentResult<()> {
@@ -75,7 +75,7 @@ fn require_solid_or_soft(
         variant,
         Some(ComponentVariant::Outlined | ComponentVariant::Ghost)
     ) {
-        return Err(ComponentError::invalid_prop("variant", "solid or soft"));
+        return Err(ComponentError::invalid_prop("variant", "solid"));
     }
     if component == BuiltinComponent::Avatar {
         return Ok(());

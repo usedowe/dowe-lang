@@ -185,7 +185,7 @@ fn rejects_invalid_video_usage() {
 fn parses_layout_bar_regions() {
     let tree = parse_page(
             r#"page barsPage
-  AppBar variant:"soft" scheme:"surface" position:"fixed" bordered:true blurred:true boxed:true floating:true hideOnScroll:true dockOnScroll:true
+  AppBar variant:"solid" scheme:"surface" position:"fixed" bordered:true blurred:true boxed:true floating:true hideOnScroll:true dockOnScroll:true
     top
       Text
         "Notice"
@@ -251,7 +251,7 @@ fn parses_layout_bar_regions() {
 fn parses_footer_full_width_regions() {
     let tree = parse_page(
         r#"page footerPage
-  Footer variant:"soft" scheme:"surface" boxed:true
+  Footer variant:"solid" scheme:"surface" boxed:true
     top
       Text
         "Directory"
@@ -337,7 +337,7 @@ fn parses_footer_full_width_regions() {
 fn parses_bottom_bar_tabs_with_icon_and_featured_state() {
     let tree = parse_page(
         r#"page tabsPage
-  BottomBar variant:"soft" scheme:"surface"
+  BottomBar variant:"solid" scheme:"surface"
     tab href:"/home" label:"Home"
       Icon name:"home"
     tab href:"/create" label:"Create" featured:true
@@ -418,7 +418,7 @@ fn rejects_invalid_layout_bar_regions() {
 fn parses_side_nav_entries_submenus_and_icons() {
     let tree = parse_page(
         r#"page navPage
-  SideNav variant:"soft" scheme:"primary" size:"lg" wide:true
+  SideNav variant:"solid" scheme:"primary" size:"lg" wide:true
     header label:"Workspace" description:"Account navigation"
     item label:"Home" href:"/" icon:"home"
     divider
@@ -475,7 +475,7 @@ fn parses_reactive_side_nav_visual_props() {
 fn parses_rail_nav_items_icons_and_labels() {
     let tree = parse_page(
         r#"page railPage
-  RailNav variant:"soft" scheme:"primary" size:"lg" showLabels:true
+  RailNav variant:"solid" scheme:"primary" size:"lg" showLabels:true
     item label:"Home" i18n:"navigation.home" href:"/" icon:"home"
     divider
     item label:"Settings" onClick:openSettings icon:"settings""#,

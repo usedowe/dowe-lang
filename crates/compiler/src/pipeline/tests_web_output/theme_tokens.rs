@@ -19,7 +19,7 @@ fn compiles_design_tokens_from_theme_dowe() {
       tab id:"overview" label:"Overview"
         Text
           "Overview"
-    Card variant:"soft" scheme:"success" p:5 rounded:"md"
+    Card variant:"solid" scheme:"success" p:5 rounded:"md"
       Text
         "Override""#,
     );
@@ -59,7 +59,7 @@ fn compiles_design_tokens_from_theme_dowe() {
     assert!(body.contains("card p-4 lg:p-5 rounded-md border-1 border-color-primary shadow-xs shadow-color-primary is-outlined is-surface"));
     assert!(body.contains("button button-md"));
     assert!(body.contains("is-solid is-primary"));
-    assert!(body.contains("card p-5 rounded-md border-1 border-color-primary shadow-xs shadow-color-primary is-soft is-success"));
+    assert!(body.contains("card p-5 rounded-md border-1 border-color-primary shadow-xs shadow-color-primary is-solid is-success"));
     assert!(body.contains("tabs"));
 
     let css = fs::read_to_string(

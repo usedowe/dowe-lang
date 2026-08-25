@@ -8,9 +8,9 @@ keep project or built-in defaults.
 
 ## Semantic color tokens
 
-| Family                                                                                              | Base tokens                                       | Soft tokens                                             |
+| Family                                                                                              | Base tokens                                       | Additional tonal tokens                                      |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
-| Action families `primary`, `secondary`, `accent`, `muted`, `success`, `info`, `warning`, `danger` | `<family>`, `<family>Text`, `<family>Title`       | `soft<Family>`, `soft<Family>Text`, `soft<Family>Title` |
+| Action families `primary`, `secondary`, `accent`, `muted`, `success`, `info`, `warning`, `danger` | `<family>`, `<family>Text`, `<family>Title`       | `<Family>`, `<Family>Text`, `<Family>Title` |
 | Structural `background`                                                                             | `background`, `backgroundText`, `backgroundTitle` | none                                                    |
 | Structural `surface`                                                                                | `surface`, `surfaceText`, `surfaceTitle`          | none                                                    |
 
@@ -26,7 +26,7 @@ and `RailNav` accepts action families only. `scheme` on `Accordion` accepts acti
 `background` and `surface`. `scheme` on `SelectTheme`, `Card`, `Video`, the chart
 components, `Table`, `Dropzone`, `NavMenu`, `Sidebar`, `Tabs`, `Drawer`, `AppBar`, `Footer`,
 `Modal`, `Dropdown`, and `Tooltip` also accepts
-`background` and `surface`. Structural schemes have no soft pair; soft variants degrade to the
+`background` and `surface`. Structural schemes have no base pair; solid variants degrade to the
 structural tokens.
 
 ## Variants
@@ -35,21 +35,21 @@ structural tokens.
 `Table`, `Button`, `ToggleTheme`, `SelectTheme`, `Dropzone`, `Input`, `Select`, `NavMenu`,
 `SideNav`, `RailNav`, `Sidebar`, `Drawer`, `Toast`, `Modal`, `Dropdown`, `Tooltip`, and
 `Accordion` support
-`solid`, `soft`, `outlined`, and `ghost`.
-`Fab` supports `solid` and `soft`. `Tabs` supports `solid`, `outlined`, `line`, `ghost`, and
+`solid`, `outlined`, and `ghost`.
+`Fab` supports `solid`. `Tabs` supports `solid`, `outlined`, `line`, `ghost`, and
 `pills`. Defaults are `variant:"solid"` and `scheme:"primary"` unless a component declares
 otherwise: `SelectTheme` defaults to `outlined` plus `surface`, and `RailNav` defaults to `ghost`
 plus `muted`. The normalized variant name is `outlined`.
 
-`solid` maps the scheme family to its base, text, and title roles; `soft` maps to the matching
-`soft*`, `soft*Text`, and `soft*Title` roles. Author `muted` as a lighter tonal counterpart of
+`solid` maps the scheme family to its base, text, and title roles; `outlined` uses structural
+`*`, `*Text`, and `*Title` roles. Author `muted` as a lighter tonal counterpart of
 `primary`, with `mutedText` and `mutedTitle` chosen for clear contrast against that lighter fill.
 Use `muted` for lower-emphasis solid controls such as `Input` when a solid primary surface feels
 too heavy, rather than treating muted as an unrelated neutral.
 `outlined` uses a structural surface with a family-colored border, and `ghost` is transparent with
 family-colored content. Child-bearing variant surfaces pass their resolved foreground token to all
-of their content regions unless the descendant declares `color`; for example, a soft muted Card
-supplies `softMutedText` to ordinary content and `softMutedTitle` to `Title`. AppBar or Footer
+of their content regions unless the descendant declares `color`; for example, a muted Card
+supplies `MutedText` to ordinary content and `MutedTitle` to `Title`. AppBar or Footer
 supplies its content roles to `top`, `start`, `center`, `end`, and `bottom`. Button labels use the
 text role. Transparent `SideNav` headers use the visible base color of their `scheme`; an explicit
 icon color remains a local override.
@@ -57,10 +57,10 @@ Native iOS rows explicitly restore the background foreground for inactive labels
 so a muted scheme cannot make them disappear against the page background.
 
 `Accordion` keeps `variant` and `scheme` orthogonal across targets: `ghost` is a flat row treatment
-with a 22% bottom separator, `soft` uses a quiet family surface with neutral item panels and a 16%
+with a 22% bottom separator, `outlined` uses a quiet family surface with neutral item panels and a 16%
 item border, `outlined` uses a structural panel with a family-colored outer and item border, and
 `solid` uses the family base with a 24% paired-text item border. Structural schemes remain readable
-in every treatment; `soft` falls back to structural roles when no soft token exists. The default
+in every treatment; structural treatments use structural roles. The default
 `Accordion` variant is `ghost`, and its item state plus bundled `SideNav` disclosure arrow are
 generated from the same normalized model for web, Android Compose, the Android development launcher,
 and iOS.
@@ -146,14 +146,14 @@ apply them consistently:
 
 | Role       | Purpose                                                              | Typical treatment                                                                          |
 | ---------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Focal      | Primary offer, product stage, important metric, or conversion action | High-contrast `solid` or `soft`, largest radius, one strong shadow or glow, optional cover |
-| Supporting | Feature, proof, process step, or secondary panel                     | Quiet `soft` or selective `outlined`, medium radius, restrained border or shadow           |
+| Focal      | Primary offer, product stage, important metric, or conversion action | High-contrast `solid`, largest radius, one strong shadow or glow, optional cover |
+| Supporting | Feature, proof, process step, or secondary panel                     | Quiet `outlined` or selective `solid`, medium radius, restrained border or shadow           |
 | Ambient    | Shell, background field, logo rail, technical texture, or separator  | Structural token, `ghost`, Section preset, cover plus overlay, Divider, or no Card at all  |
 
 Use borders to describe structure and shadows to establish elevation. Applying both at maximum
 strength to every surface destroys hierarchy. Reserve colored `shadowColor` for one or two focal
 objects per viewport; use quiet structural contrast elsewhere. In dark themes, distinguish
-`background`, `surface`, and at least one soft family so Cards do not disappear into the canvas or
+`background`, `surface`, and at least one base family so Cards do not disappear into the canvas or
 form a wall of identical navy rectangles.
 
 Create depth with supported relationships, not random effects:
@@ -161,7 +161,7 @@ Create depth with supported relationships, not random effects:
 - Put a full-bleed `Section cover` or background preset behind a boxed content rail.
 - Place a focal Card, Image, chart, or product visual inside a relative Box and add one to three
   absolute proof or status wrappers.
-- Use a nearby soft token for broad surfaces and a saturated family for small accents, values,
+- Use a nearby muted token for broad surfaces and a saturated family for small accents, values,
   active controls, and visual anchors.
 - Combine one strong foreground silhouette with quiet background ornament; do not make every layer
   equally bright.
@@ -224,7 +224,7 @@ exceptional layer plane that normal flow cannot express.
 | Grid item          | `colSpan`, `rowSpan`                                | Positive integers on direct `Box`, `Section`, or `Card` children of `Grid`                                                                                                           |
 | Box position       | `position`, `top`, `right`, `bottom`, `left`        | Static position mode; responsive Dowe-scale offsets on absolute or fixed Box                                                                                                         |
 | Media background   | `cover`, `overlay`                                  | Static asset path or `https://` URL; boolean, opacity number, RGBA, or linear gradient                                                                                               |
-| Section background | `background`                                        | `soft`, `aurora`, `sunrise`, `ocean`, `meadow`, `slate` on `Section`                                                                                                                 |
+| Section background | `background`                                        | `aurora`, `sunrise`, `ocean`, `meadow`, `slate` on `Section`                                                                                                                 |
 | Boxed width        | `boxed`                                             | Static boolean on `Section`, `Scaffold`, `AppBar`, `Footer`, `BottomBar`                                                                                                             |
 | Elevation          | `shadow`, `shadowColor`                             | `xs` to `xl`; semantic color family                                                                                                                                                  |
 | Text               | `size`, `align`, `color`, `bg`, `weight`, `spacing` | `xs` to `9xl`; `start`, `center`, `end`, or `justify`; color tokens; typography overrides                                                                                            |
@@ -517,7 +517,7 @@ page chipMotionPage
   Flex direction:"column" align:"center" gap:3 animation:"fadeIn"
     Chip variant:"solid" scheme:"warning" size:"sm" rotate:-7 transition:"spring" gesture:"lift" onClick:selectMobile
       "Mobile Apps"
-    Chip variant:"soft" scheme:"muted" size:"sm" rotate:4 transition:"smooth" gesture:"press"
+    Chip variant:"solid" scheme:"muted" size:"sm" rotate:4 transition:"smooth" gesture:"press"
       "Web Sites"
     Chip variant:"solid" scheme:"success" size:"sm" rotate:-4 transition:"quick" gesture:"grow"
       "Software"

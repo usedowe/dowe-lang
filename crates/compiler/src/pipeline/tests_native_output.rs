@@ -62,7 +62,7 @@ fn compiles_refactored_container_props() {
     Box colSpan:{ md:2 } cover:{ xs:"/mobile.jpg" md:"/desktop.jpg" } overlay:true
       Text
         "Hero"
-    Card variant:"soft" scheme:"surface" rounded:"full" rowSpan:2 cover:"/images/card.jpg" overlay:0.6
+    Card variant:"solid" scheme:"surface" rounded:"full" rowSpan:2 cover:"/images/card.jpg" overlay:0.6
       Text
         "Card""#,
     );
@@ -79,7 +79,7 @@ fn compiles_refactored_container_props() {
     assert!(body.contains("has-cover"));
     assert!(body.contains("has-overlay"));
     assert!(body.contains("p-4 lg:p-5"));
-    assert!(body.contains("is-soft is-surface"));
+    assert!(body.contains("is-solid is-surface"));
 
     let page_css_path = temp.path().join(".dowe/web").join(generated_css_chunk(
         &project.web.pages[0].css_chunks,
@@ -133,7 +133,7 @@ fn compiles_container_foreground_inheritance_for_all_view_targets() {
       "Box inherited"
     Text color:"danger"
       "Box override"
-  Card variant:"soft" scheme:"muted"
+  Card variant:"solid" scheme:"muted"
     Text
       "Card inherited"
     Title color:"warning"
@@ -145,7 +145,7 @@ fn compiles_container_foreground_inheritance_for_all_view_targets() {
     assert!(body.contains("box color-primaryText"));
     assert!(body.contains("Box override"));
     assert!(body.contains("color-danger"));
-    assert!(body.contains("card p-4 lg:p-5 rounded-md is-soft is-muted"));
+    assert!(body.contains("card p-4 lg:p-5 rounded-md is-solid is-muted"));
     assert!(body.contains("Card override"));
     assert!(body.contains("color-warning"));
 
@@ -181,12 +181,12 @@ fn compiles_layout_bars_without_ios_dividers() {
         temp.path(),
         r#"layout AuthLayout
   Box
-    AppBar variant:"soft" scheme:"surface" position:"sticky" bordered:true boxed:true
+    AppBar variant:"solid" scheme:"surface" position:"sticky" bordered:true boxed:true
       start
         Text
           "Dowe"
     children
-    BottomBar variant:"soft" scheme:"surface" bordered:true boxed:true
+    BottomBar variant:"solid" scheme:"surface" bordered:true boxed:true
       tab href:"/login" label:"Home"
         Icon name:"home"
     Footer scheme:"background" bordered:true boxed:true
@@ -506,22 +506,6 @@ fn rejects_unknown_components() {
 fn rejects_invalid_design_system_props() {
     assert_compile_error(
         r#"page loginPage
-  Box bg:"softBackground"
-    Text
-      "Login""#,
-        "invalid value for prop `bg`",
-    );
-
-    assert_compile_error(
-        r#"page loginPage
-  Box text:backgroundText
-    Text
-      "Login""#,
-        "unknown prop `text`",
-    );
-
-    assert_compile_error(
-        r#"page loginPage
   Box
     Button color:"primary"
       "Login""#,
@@ -734,11 +718,11 @@ fn compiles_code_blocks_with_cross_target_copy_and_highlighting() {
       "Documentation"
     Code:
       language:"dowe"
-      variant:"soft"
+      variant:"solid"
       scheme:"surface"
       content:"""
         page docsPage
-          Card variant:"soft" p:4 show:true
+          Card variant:"solid" p:4 show:true
             Text
               "Documentation"
       """
@@ -790,7 +774,7 @@ fn compiles_code_blocks_with_cross_target_copy_and_highlighting() {
     .expect("android");
     assert!(android.contains("private fun DoweCode("));
     assert!(android.contains("clipboard.setText(AnnotatedString(source))"));
-    assert!(android.contains("DoweCode(source = \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      \\\"Documentation\\\"\""));
+    assert!(android.contains("DoweCode(source = \"page docsPage\\n  Card variant:\\\"solid\\\" p:4 show:true\\n    Text\\n      \\\"Documentation\\\"\""));
     assert!(android.contains("DoweDesign.primary"));
     assert!(android.contains("DoweDesign.info"));
     assert!(android.contains("DoweDesign.success"));
@@ -806,7 +790,7 @@ fn compiles_code_blocks_with_cross_target_copy_and_highlighting() {
     let ios = ios_swift_output(temp.path());
     assert!(ios.contains("struct DoweCodeView: View"));
     assert!(ios.contains("UIPasteboard.general.string = source"));
-    assert!(ios.contains("DoweCodeView(source: \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      \\\"Documentation\\\"\""));
+    assert!(ios.contains("DoweCodeView(source: \"page docsPage\\n  Card variant:\\\"solid\\\" p:4 show:true\\n    Text\\n      \\\"Documentation\\\"\""));
     assert!(ios.contains("DoweDesign.primary"));
     assert!(ios.contains("DoweDesign.info"));
     assert!(ios.contains("DoweDesign.success"));

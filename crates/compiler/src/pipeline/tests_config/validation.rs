@@ -170,7 +170,6 @@ fn accepts_grouped_theme_color_families_and_rejects_flat_roles() {
         primary color:"#1F3A5F" text:"#FFFFFF" title:"#FFFFFE"
         background color:"#FFFFFF" text:"#17263A" title:"#17263E"
         surface color:"#F7F9FC" text:"#17263A" title:"#17263E"
-        softPrimary color:"#CCFBF3" text:"#073B35" title:"#073B35"
     theme name:"brand" extends:"light"
       colors:
         primary title:"#FFFEEE""##,
@@ -185,7 +184,6 @@ fn accepts_grouped_theme_color_families_and_rejects_flat_roles() {
         "primaryTitle:\"#FFFFFE\"",
         "onPrimary:\"#FFFFFF\"",
         "onSuccess:\"#FFFFFF\"",
-        "onSoftPrimary:\"#073B35\"",
     ] {
         fs::write(
             temp.path().join("theme.dowe"),
@@ -211,13 +209,13 @@ fn accepts_grouped_theme_color_families_and_rejects_flat_roles() {
   design defaultTheme:"light"
     theme name:"light"
       colors:
-        softBackground color:"#FFFFFF" text:"#17263A" title:"#17263E""##,
+        primaryText color:"#FFFFFF" text:"#17263A" title:"#17263E""##,
     )
     .expect("unknown family");
     let message = compile_dev(temp.path())
         .expect_err("unknown color family")
         .to_string();
-    assert!(message.contains("unknown color family `softBackground`"), "{message}");
+    assert!(message.contains("unknown color family `primaryText`"), "{message}");
 }
 
 #[test]
@@ -232,7 +230,7 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
       "Saved"
     Text
       "Your changes are ready."
-  Card variant:"soft" scheme:"happy"
+  Card variant:"solid" scheme:"happy"
     Title
       "Gentle success""#,
     );
@@ -243,7 +241,6 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     theme name:"light"
       colors:
         happy color:"#176c75" text:"#fffffe" title:"#fffefe"
-        softHappy color:"#d9f3f1" text:"#124d53" title:"#124d53"
     theme name:"dark"
       colors:
         happy color:"#55c2cc" text:"#071e20" title:"#071e20""##,
@@ -258,13 +255,10 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     assert_eq!(light.color_value(happy.color_token()), "#176c75");
     assert_eq!(light.color_value(happy.text_token()), "#fffffe");
     assert_eq!(light.color_value(happy.title_token()), "#fffefe");
-    assert_eq!(light.color_value(happy.color_token()), "#d9f3f1");
     assert_eq!(dark.color_value(happy.color_token()), "#55c2cc");
-    assert_eq!(dark.color_value(happy.color_token()), "#d9f3f1");
 
     let body = &project.web.pages[0].body_html;
     assert!(body.contains("is-solid is-happy"), "{body}");
-    assert!(body.contains("is-soft is-happy"), "{body}");
 
     let design_css = fs::read_to_string(
         temp.path()
@@ -275,7 +269,6 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     assert!(design_css.contains("--dowe-happy:#176c75;"), "{design_css}");
     assert!(design_css.contains("--dowe-happyText:#fffffe;"), "{design_css}");
     assert!(design_css.contains("--dowe-happyTitle:#fffefe;"), "{design_css}");
-    assert!(design_css.contains("--dowe-softHappy:#d9f3f1;"), "{design_css}");
     assert!(
         design_css.contains("[data-dowe-theme=\"dark\"]{")
             && design_css.contains("--dowe-happy:#55c2cc;"),
@@ -297,7 +290,7 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
         "{page_css}"
     );
     assert!(
-        page_css.contains(".card.is-soft.is-happy")
+        page_css.contains(".card.is-solid.is-happy")
             && page_css.contains("var(--dowe-happyText)")
             && page_css.contains("var(--dowe-happyTitle)"),
         "{page_css}"
@@ -309,7 +302,6 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     )
     .expect("android theme");
     assert!(android_theme.contains("\"happy\" to Color(0xFF176C75)"));
-    assert!(android_theme.contains("\"softHappy\" to Color(0xFFD9F3F1)"));
     let android_pages = fs::read_to_string(
         temp.path()
             .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
@@ -331,7 +323,7 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
 }
 
 #[test]
-fn rejects_undeclared_custom_scheme_and_missing_custom_soft_family() {
+fn rejects_undeclared_custom_scheme() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture_with_views(
         temp.path(),
@@ -343,26 +335,6 @@ fn rejects_undeclared_custom_scheme_and_missing_custom_soft_family() {
         Ok(_) => panic!("expected undeclared custom scheme to fail"),
     };
     assert!(undeclared.contains("happy"), "{undeclared}");
-
-    fs::write(
-        temp.path().join("theme.dowe"),
-        r##"theme
-  design defaultTheme:"light"
-    theme name:"light"
-      colors:
-        happy color:"#176c75" text:"#fffffe" title:"#fffffe""##,
-    )
-    .expect("theme");
-    fs::write(
-        temp.path().join("pages/login.dowe"),
-        "page loginPage\n  Card variant:\"soft\" scheme:\"happy\"\n    Text\n      \"Missing soft\"",
-    )
-    .expect("page");
-    let missing_soft = match compile_dev(temp.path()) {
-        Err(error) => error.to_string(),
-        Ok(_) => panic!("expected missing custom soft family to fail"),
-    };
-    assert!(missing_soft.contains("softHappy"), "{missing_soft}");
 }
 
 #[test]
@@ -411,7 +383,7 @@ fn accepts_navigation_and_chip_theme_defaults() {
         r#"theme
   design defaultTheme:"light"
     Chip variant:"outlined" scheme:"primary"
-    SideNav variant:"soft" scheme:"surface"
+    SideNav variant:"solid" scheme:"surface"
     Sidebar variant:"ghost" scheme:"surface"
     NavMenu variant:"solid" scheme:"surface"
     theme name:"light""#,
@@ -426,7 +398,7 @@ fn rejects_invalid_text_and_title_theme_defaults() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path());
     for (line, expected) in [
-        ("Text variant:\"soft\"", "`variant` is not a theme default prop for `Text`"),
+        ("Text variant:\"solid\"", "`variant` is not a theme default prop for `Text`"),
         ("Title radius:\"md\"", "`radius` is not a theme default prop for `Title`"),
         ("Text font:\"arial\"", "unknown font token `arial` in `Text.font`"),
         ("Title font:\"Inter\"", "unknown font token `Inter` in `Title.font`"),

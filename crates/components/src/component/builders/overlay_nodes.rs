@@ -22,7 +22,7 @@ pub fn avatar_component_node(
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Avatar, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::Avatar, style.variant)?;
+    require_solid_variant(BuiltinComponent::Avatar, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::Avatar {
@@ -62,7 +62,7 @@ pub fn badge_component_node(
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Badge, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::Badge, style.variant)?;
+    require_solid_variant(BuiltinComponent::Badge, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::Badge {
@@ -283,7 +283,7 @@ pub fn tooltip_component_node(
         }
     }
     let style = parse_variant_props(BuiltinComponent::Tooltip, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::Tooltip, style.variant)?;
+    require_solid_variant(BuiltinComponent::Tooltip, style.variant)?;
     Ok(ViewNode::Tooltip {
         props: TooltipProps {
             style,

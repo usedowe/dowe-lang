@@ -106,38 +106,12 @@
         return DOWE_PRIMARY_TEXT;
     }
 
-    private int doweToastSoftFamily(String scheme) {
-        if ("background".equals(scheme)) return DOWE_BACKGROUND;
-        if ("surface".equals(scheme)) return DOWE_SURFACE;
-        if ("secondary".equals(scheme)) return DOWE_SECONDARY;
-        if ("accent".equals(scheme)) return DOWE_ACCENT;
-        if ("muted".equals(scheme)) return DOWE_MUTED;
-        if ("success".equals(scheme)) return DOWE_SUCCESS;
-        if ("info".equals(scheme)) return DOWE_INFO;
-        if ("warning".equals(scheme)) return DOWE_WARNING;
-        if ("danger".equals(scheme)) return DOWE_DANGER;
-        return DOWE_PRIMARY;
-    }
-
-    private int doweToastSoftTextFamily(String scheme) {
-        if ("background".equals(scheme)) return DOWE_BACKGROUND_TEXT;
-        if ("surface".equals(scheme)) return DOWE_SURFACE_TEXT;
-        if ("secondary".equals(scheme)) return DOWE_SECONDARY_TEXT;
-        if ("accent".equals(scheme)) return DOWE_ACCENT_TEXT;
-        if ("muted".equals(scheme)) return DOWE_MUTED_TEXT;
-        if ("success".equals(scheme)) return DOWE_SUCCESS_TEXT;
-        if ("info".equals(scheme)) return DOWE_INFO_TEXT;
-        if ("warning".equals(scheme)) return DOWE_WARNING_TEXT;
-        if ("danger".equals(scheme)) return DOWE_DANGER_TEXT;
-        return DOWE_PRIMARY_TEXT;
-    }
-
     private void doweShowToast(DoweStep step) {
         String scheme = step.scheme == null ? ("error".equals(step.kind) ? "danger" : step.kind) : step.scheme;
         String variant = step.variant == null ? "solid" : step.variant;
         String position = step.position == null ? "top-right" : step.position;
-        int background = "soft".equals(variant) ? doweToastSoftFamily(scheme) : "outlined".equals(variant) ? ("background".equals(scheme) ? DOWE_BACKGROUND : DOWE_SURFACE) : "ghost".equals(variant) ? Color.TRANSPARENT : doweToastFamily(scheme);
-        int content = "solid".equals(variant) ? doweToastTextFamily(scheme) : "soft".equals(variant) ? doweToastSoftTextFamily(scheme) : "outlined".equals(variant) ? ("background".equals(scheme) ? DOWE_BACKGROUND_TEXT : DOWE_SURFACE_TEXT) : ("background".equals(scheme) || "surface".equals(scheme) ? doweToastTextFamily(scheme) : doweToastFamily(scheme));
+        int background = "solid".equals(variant) ? doweToastFamily(scheme) : "outlined".equals(variant) ? ("background".equals(scheme) ? DOWE_BACKGROUND : DOWE_SURFACE) : "ghost".equals(variant) ? Color.TRANSPARENT : doweToastFamily(scheme);
+        int content = "solid".equals(variant) ? doweToastTextFamily(scheme) : "outlined".equals(variant) ? ("background".equals(scheme) ? DOWE_BACKGROUND_TEXT : DOWE_SURFACE_TEXT) : ("background".equals(scheme) || "surface".equals(scheme) ? doweToastTextFamily(scheme) : doweToastFamily(scheme));
         Integer border = "outlined".equals(variant) ? doweToastFamily(scheme) : null;
         LinearLayout panel = doweContainer(true);
         panel.setGravity(Gravity.CENTER_VERTICAL);

@@ -390,7 +390,7 @@ private struct DoweRichTextRun: View {
         } else if mark.style == "slant" {
             DoweRichSlantShape().fill(accent)
         } else if mark.style == "tag" {
-            RoundedRectangle(cornerRadius: DoweDesign.radius).fill(doweCardSoftFamily(mark.scheme))
+            RoundedRectangle(cornerRadius: DoweDesign.radius).fill(doweCardFamily(mark.scheme))
         } else {
             Color.clear
         }

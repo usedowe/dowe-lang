@@ -52,7 +52,7 @@ page InvoiceTablePage
         "Invoice ledger"
       Table:
         data:invoices
-        variant:"soft"
+        variant:"solid"
         scheme:"surface"
         size:"md"
         striped:true
@@ -91,7 +91,7 @@ not defaults to copy into every table.
 
 | Situation | Recommended direction |
 | --- | --- |
-| Dashboard or workspace table | `variant:"soft" scheme:"surface" size:"md" striped:true dividers:true rounded:"md"` |
+| Dashboard or workspace table | `variant:"solid" scheme:"surface" size:"md" striped:true dividers:true rounded:"md"` |
 | Dense finance or audit ledger | `variant:"outlined" scheme:"surface" size:"sm" bordered:true dividers:true rounded:"md"` |
 | Small, low-emphasis table | `variant:"ghost"` or a minimal surface with the project theme defaults |
 | Few columns with spacious reading | `size:"lg"`, restrained widths, and no unnecessary stripes |
@@ -109,7 +109,7 @@ to an unreadable width, or maintain a duplicated mobile table tree. Native targe
 widths as preferred or minimum track sizes: they distribute remaining space when the table is narrower
 than the viewport and preserve the minimum widths with horizontal scrolling when it is wider.
 
-`variant` and `scheme` resolve consistently across targets. The header uses the neutral `softMuted`
+`variant` and `scheme` resolve consistently across targets. The header uses the neutral `muted`
 surface, while stripes, dividers, and bordered cell separators remain neutral so an action-family
 scheme does not make the table structure visually noisy. Use `surface` or `background` for structural
 schemes when the table should recede into the page.
@@ -122,9 +122,9 @@ product domain:
 | Block | Starting point | UX purpose |
 | --- | --- | --- |
 | Team directory | Responsive Grid rows with `Input`, `Skeleton`, `IconButton`, and `Pagination` | Rich identity cells, mobile field reduction, explicit row actions, and server-backed results |
-| Invoice ledger | `Table` with `soft`/`surface`, `md`, `striped`, `bordered`, `dividers`, and explicit `fr` widths | Fast scanning of identifiers, customers, dates, amounts, and status |
+| Invoice ledger | `Table` with `muted`/`surface`, `md`, `striped`, `bordered`, `dividers`, and explicit `fr` widths | Fast scanning of identifiers, customers, dates, amounts, and status |
 | Project status | `Table` with `outlined`/`surface`, `sm`, `striped`, `bordered`, `dividers`, and end-aligned progress/status | Dense operational tracking with deliberate column proportions |
-| Empty workspace | `Table` with `soft`/`surface`, `bordered`, `emptyTitle`, and `emptyDescription` | Make the no-records state intentional and explain the next action |
+| Empty workspace | `Table` with `muted`/`surface`, `bordered`, `emptyTitle`, and `emptyDescription` | Make the no-records state intentional and explain the next action |
 
 The directory block is intentionally a responsive Grid rather than a `Table`: its composed avatar,
 role, status, hidden fields, and action menu are outside the Table contract. The other three blocks
@@ -178,7 +178,7 @@ page MembersPage
       Table:
         show:{ when:loadState lt:1 }
         data:members
-        variant:"soft"
+        variant:"solid"
         scheme:"surface"
         size:"md"
         striped:true
@@ -221,7 +221,7 @@ Flex direction:"column" gap:0
   each in:members as:member key:member.id
     Grid columns:{ xs:3 md:7 } gap:3 align:"center" p:3 border:1 borderColor:"muted"
       Flex align:"center" gap:3
-        Avatar alt:"Team member avatar" variant:"soft" scheme:"muted" size:"md"
+        Avatar alt:"Team member avatar" variant:"solid" scheme:"muted" size:"md"
         Grid columns:1 gap:0
           Text size:"sm" weight:"bold"
             "{member.name}"

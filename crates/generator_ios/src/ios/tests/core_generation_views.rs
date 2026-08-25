@@ -264,10 +264,10 @@ fn keeps_fixed_width_box_content_leading_aligned() {
     fixed_width.page_tree = ViewNode::Box {
         props: StyleProps {
             bg: Some(ResponsiveValue::scalar(
-                ColorToken::from_name("softPrimary").expect("soft token"),
+                ColorToken::from_name("primary").expect("color token"),
             )),
             text: Some(ResponsiveValue::scalar(
-                ColorToken::from_name("softPrimaryText").expect("soft token"),
+                ColorToken::from_name("primaryText").expect("color token"),
             )),
             spacing: dowe_components::SpacingProps {
                 p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(6))),

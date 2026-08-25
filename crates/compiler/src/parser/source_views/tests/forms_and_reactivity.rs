@@ -533,7 +533,7 @@ fn parses_interactive_motion_props() {
 fn parses_section_background_props() {
     let tree = parse_page(
         r#"page landingPage
-  Section id:"hero" background:{ xs:"soft" md:"aurora" } color:"backgroundText" boxed:true p:8
+  Section id:"hero" background:{ xs:"aurora" md:"aurora" } color:"backgroundText" boxed:true p:8
     Text
       "Hero""#,
     )

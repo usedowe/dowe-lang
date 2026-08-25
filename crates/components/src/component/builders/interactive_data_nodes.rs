@@ -27,7 +27,7 @@ pub fn record_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Record, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::Record, style.variant)?;
+    require_solid_variant(BuiltinComponent::Record, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::Record {

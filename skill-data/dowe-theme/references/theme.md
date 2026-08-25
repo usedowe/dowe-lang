@@ -14,35 +14,35 @@ theme
     Card variant:"outlined" scheme:"primary" radius:"xs" shadow:"xs"
     Button variant:"solid" scheme:"secondary" size:"md"
     Avatar radius:"full" size:"md"
-    Chip variant:"soft" scheme:"secondary" radius:"full" size:"sm"
+    Chip variant:"solid" scheme:"secondary" radius:"full" size:"sm"
     Text font:"manrope"
     Title font:"syne"
     theme name:"light"
       colors:
         primary color:"#0a0d12" text:"#f8f8f6" title:"#f8f8f6"
-        softPrimary color:"#e7e9ec" text:"#0a0d12" title:"#0a0d12"
+        Primary color:"#e7e9ec" text:"#0a0d12" title:"#0a0d12"
         secondary color:"#050607" text:"#f7f7f4" title:"#f7f7f4"
-        softSecondary color:"#171a1f" text:"#f7f7f4" title:"#f7f7f4"
+        Secondary color:"#171a1f" text:"#f7f7f4" title:"#f7f7f4"
         accent color:"#1f3a5f" text:"#f7f7f4" title:"#f7f7f4"
-        softAccent color:"#dce7f5" text:"#0b1624" title:"#0b1624"
+        Accent color:"#dce7f5" text:"#0b1624" title:"#0b1624"
         muted color:"#6f716f" text:"#f7f7f4" title:"#f7f7f4"
-        softMuted color:"#eeeeec" text:"#252525" title:"#252525"
+        Muted color:"#eeeeec" text:"#252525" title:"#252525"
         background color:"#f7f7f5" text:"#0d0f12" title:"#0d0f12"
         surface color:"#ffffff" text:"#101114" title:"#101114"
         success color:"#2f6f4f" text:"#f7f7f4" title:"#f7f7f4"
-        softSuccess color:"#dfeee5" text:"#102519" title:"#102519"
+        Success color:"#dfeee5" text:"#102519" title:"#102519"
         info color:"#385b87" text:"#f7f7f4" title:"#f7f7f4"
-        softInfo color:"#e1eaf4" text:"#102033" title:"#102033"
+        Info color:"#e1eaf4" text:"#102033" title:"#102033"
         warning color:"#7a6534" text:"#f7f7f4" title:"#f7f7f4"
-        softWarning color:"#f1ead9" text:"#2b230f" title:"#2b230f"
+        Warning color:"#f1ead9" text:"#2b230f" title:"#2b230f"
         danger color:"#8a2f35" text:"#f7f7f4" title:"#f7f7f4"
-        softDanger color:"#f2dddd" text:"#361216" title:"#361216"
+        Danger color:"#f2dddd" text:"#361216" title:"#361216"
     theme name:"dark" extends:"light"
       colors:
         background color:"#050607" text:"#f7f7f4" title:"#f7f7f4"
         surface color:"#101114" text:"#f7f7f4" title:"#f7f7f4"
         muted color:"#8a8d93" text:"#050607" title:"#050607"
-        softMuted color:"#181a1e" text:"#f7f7f4" title:"#f7f7f4"
+        Muted color:"#181a1e" text:"#f7f7f4" title:"#f7f7f4"
 ```
 
 ## Custom color families
@@ -54,7 +54,7 @@ defines a complete fill, text, and title triple and can then be used as a compon
 colors:
   happy color:"#176c75" text:"#fffffe" title:"#fffffe"
   sad color:"#394867" text:"#fffffe" title:"#fffffe"
-  softHappy color:"#d9f3f1" text:"#124d53" title:"#124d53"
+  Happy color:"#d9f3f1" text:"#124d53" title:"#124d53"
 ```
 
 ```text
@@ -63,8 +63,8 @@ Card scheme:"happy"
   Text "Your changes are ready."
 ```
 
-The base family creates `happy`, `happyText`, and `happyTitle`. `softHappy` is a separate optional
-triple used by `variant:"soft" scheme:"happy"`; Dowe never derives it from `happy`. A referenced
+The base family creates `happy`, `happyText`, and `happyTitle`. `Happy` is a separate optional
+triple used by `variant:"solid" scheme:"happy"`; Dowe never derives it from `happy`. A referenced
 custom family must be complete in the resolved default theme. Alternate themes may override its
 roles and otherwise retain the default theme values. Names contain at most 48 ASCII letters or
 numbers, start with a lowercase letter, and use lower camel case. Do not declare normalized role
@@ -108,9 +108,9 @@ asks for a theme or visual-system change.
 | --- | --- |
 | Page canvas, body copy, and headings | `background color:… text:… title:…` |
 | Cards, bars, menus, and raised panels | `surface color:… text:… title:…` |
-| Brand and primary action family | Complete `primary` and `softPrimary` fill, text, and title triples |
+| Brand and primary action family | Complete `primary` and `Primary` fill, text, and title triples |
 | Supporting accent family | `secondary` or `accent` complete family |
-| Secondary copy and quiet fills | Base `muted` on `primary` as a lighter, lower-emphasis tonal counterpart; choose `mutedText` and `mutedTitle` for clear contrast, then complete the `softMuted` triple when soft variants are needed |
+| Secondary copy and quiet fills | Base `muted` on `primary` as a lighter, lower-emphasis tonal counterpart; choose `mutedText` and `mutedTitle` for clear contrast, then complete the `Muted` triple when solid variants are needed |
 | Repeated success, information, warning, or error meaning | Matching semantic status family |
 | Repeated Card, Button, Avatar, or Chip treatment | Supported dedicated `design` slot |
 | Repeated control or surface treatment without a dedicated slot | Supported `Ui` defaults |
@@ -138,7 +138,7 @@ styling individual components:
 | --- | --- | --- |
 | Canvas | `background` family | Quietest broad field with readable body copy and headings |
 | Primary surface | `surface` family | Clearly separable from the canvas without requiring a border everywhere |
-| Quiet panel or divider field | `muted` or `softMuted` fill, text, and title triple | `muted` is a lighter tonal counterpart of `primary`; use it when a solid primary surface is too heavy, including solid form controls such as `Input` |
+| Quiet panel or divider field | `muted` or `Muted` fill, text, and title triple | `muted` is a lighter tonal counterpart of `primary`; use it when a solid primary surface is too heavy, including solid form controls such as `Input` |
 | Brand emphasis | `primary` family | Saturated accent for actions, values, focal labels, and occasional glow—not every Card |
 | Supporting visual accent | `secondary` or `accent` family | Complements the brand and distinguishes charts, data, or a second product concept |
 
@@ -156,7 +156,7 @@ character, then let size, measure, and layout create hierarchy in views. Do not 
 composition by adding more font families or using the maximum Title size in every section.
 
 Every action and status family is a child of `colors:` with `color`, `text`, and `title` props, plus
-the corresponding grouped soft family. `muted` should be authored as a lighter tonal counterpart
+the corresponding grouped base family. `muted` should be authored as a lighter tonal counterpart
 of `primary`, not as an unrelated neutral; its `text` and `title` roles must remain clearly legible
 against the lighter fill. This gives solid controls such as `Input` a quieter alternative to a
 heavy primary surface. `background` and `surface` are structural triples.
@@ -193,7 +193,7 @@ contract is defined by `/specs/features/00149-normalize-view-component-defaults`
 
 The `Toast` `variant` default also applies to the lowercase global `toast` statement used inside a
 View `fn` or `init`, even though that statement does not create a `Toast` node in the visual tree.
-Use `Toast variant:"soft"` for a project-wide global feedback surface; an explicit `variant` on a
+Use `Toast variant:"solid"` for a project-wide global feedback surface; an explicit `variant` on a
 statement still wins, and the built-in fallback is `solid`.
 
 Code generation should omit resolved defaults from View source. Prefer `Button "Log in"` or
@@ -205,7 +205,7 @@ same props into every page, layout, or component.
 
 | Prop | Accepted values |
 | --- | --- |
-| `variant` | `solid`, `soft`, `outlined`, `ghost`; `Tabs` additionally accepts `line` and `pills` |
+| `variant` | `solid`, `outlined`, `ghost`; `Tabs` additionally accepts `line` and `pills` |
 | `scheme` | Semantic color family |
 | `radius` or `rounded` | `xs`, `sm`, `md`, `lg`, `xl`, `full` |
 | `size` | `xs`, `sm`, `md`, `lg`, `xl` |

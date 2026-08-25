@@ -908,8 +908,8 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::Fab
             | BuiltinComponent::Record,
             "variant",
-        ) => Some(solid_soft_values()),
-        (BuiltinComponent::Audio, "variant") => Some(solid_soft_values()),
+        ) => Some(solid_values()),
+        (BuiltinComponent::Audio, "variant") => Some(solid_values()),
         (BuiltinComponent::Carousel, "variant") => Some(quoted_values(
             CarouselVariant::all().iter().map(|value| value.as_str()),
         )),
@@ -1396,7 +1396,7 @@ fn collect_custom_color_families(node: &SourceNode, families: &mut BTreeSet<Stri
     }
 }
 
-fn solid_soft_values() -> Vec<LanguageCompletion> {
+fn solid_values() -> Vec<LanguageCompletion> {
     quoted_values(["solid"])
 }
 

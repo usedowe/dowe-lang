@@ -93,7 +93,7 @@ pub fn avatar_group_component_node(
         ));
     }
     let mut style = parse_variant_props(BuiltinComponent::AvatarGroup, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::AvatarGroup, style.variant)?;
+    require_solid_variant(BuiltinComponent::AvatarGroup, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::AvatarGroup {

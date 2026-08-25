@@ -36,26 +36,13 @@
         return DOWE_PRIMARY_TITLE;
     }
 
-    private int doweButtonSoftTitleFamily(String scheme) {
-        if ("background".equals(scheme)) return DOWE_BACKGROUND_TITLE;
-        if ("surface".equals(scheme)) return DOWE_SURFACE_TITLE;
-        if ("secondary".equals(scheme)) return DOWE_SECONDARY_TITLE;
-        if ("accent".equals(scheme)) return DOWE_ACCENT_TITLE;
-        if ("muted".equals(scheme)) return DOWE_MUTED_TITLE;
-        if ("success".equals(scheme)) return DOWE_SUCCESS_TITLE;
-        if ("info".equals(scheme)) return DOWE_INFO_TITLE;
-        if ("warning".equals(scheme)) return DOWE_WARNING_TITLE;
-        if ("danger".equals(scheme)) return DOWE_DANGER_TITLE;
-        return DOWE_PRIMARY_TITLE;
-    }
-
     private int doweSideNavHeaderColor(String scheme) {
         return doweButtonContent("ghost", scheme);
     }
 
     private int doweButtonContainer(String variant, String scheme) {
         if ("outlined".equals(variant) || "ghost".equals(variant)) return Color.TRANSPARENT;
-        if ("soft".equals(variant)) return doweAlpha(doweButtonFamily(scheme), 0.14f);
+        if ("solid".equals(variant)) return doweAlpha(doweButtonFamily(scheme), 0.14f);
         return doweButtonFamily(scheme);
     }
 

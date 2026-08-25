@@ -122,7 +122,7 @@ fn generates_init_sequence_and_reactive_splash_for_swiftui() {
                             message: "Users loaded".to_string(),
                             duration: Some(1500),
                             scheme: Some("success".to_string()),
-                            variant: Some("soft".to_string()),
+                            variant: Some("solid".to_string()),
                             position: Some("top-right".to_string()),
                         }),
                     ],

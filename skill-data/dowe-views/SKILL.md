@@ -305,7 +305,7 @@ it. Do not invent sorting, pagination, selection, search, toolbar, or custom-cel
 - Always handle loading, loaded rows, errors, and a genuinely empty result as separate visual
   states. Do not let a temporary empty array flash the empty copy while the first request is in
   flight, and keep the next action visible when no records exist.
-- Prefer the documented neutral `soft`/`surface` recipe for dashboards, `outlined` for dense
+- Prefer the documented neutral `muted`/`surface` recipe for dashboards, `outlined` for dense
   ledgers, `sm` for many columns, and `md` for normal reading density. Add `striped`, `dividers`,
   `bordered`, and `rounded` only when they improve scanning or boundary clarity; use `scheme`, not
   `color`, for the Table family.

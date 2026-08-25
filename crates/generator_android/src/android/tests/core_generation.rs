@@ -550,7 +550,7 @@ fn generates_global_toasts_for_sequential_request_functions() {
                             message: "Signed in".to_string(),
                             duration: Some(3000),
                             scheme: Some("success".to_string()),
-                            variant: Some("soft".to_string()),
+                            variant: Some("solid".to_string()),
                             position: Some("top-right".to_string()),
                         }),
                     ],

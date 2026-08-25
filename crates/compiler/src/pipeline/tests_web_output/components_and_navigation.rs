@@ -77,12 +77,12 @@ layout AuthLayout
           Text size:"xl" weight:"black" spacing:"normal"
             "DOWE"
     start
-      Sidebar show:{ xs:false md:true } w:96 pr:6 variant:"soft" scheme:"surface" rounded:"lg" border:1 p:4
+      Sidebar show:{ xs:false md:true } w:96 pr:6 variant:"solid" scheme:"surface" rounded:"lg" border:1 p:4
         body
           SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
             DocsNavigation
     main
-      Drawer show:{ xs:true md:false } open:openDrawer position:"start" variant:"soft" scheme:"surface" disableOverlayClose:false hideCloseButton:false p:4 w:80
+      Drawer show:{ xs:true md:false } open:openDrawer position:"start" variant:"solid" scheme:"surface" disableOverlayClose:false hideCloseButton:false p:4 w:80
         body
           SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
             DocsNavigation
@@ -137,7 +137,7 @@ fn compiles_fixed_appbar_with_automatic_scaffold_insets() {
         r#"layout AuthLayout
   Scaffold
     appBar
-      AppBar position:"fixed" variant:"soft" scheme:"surface" bordered:true
+      AppBar position:"fixed" variant:"solid" scheme:"surface" bordered:true
         start
           Text
             "Dowe"

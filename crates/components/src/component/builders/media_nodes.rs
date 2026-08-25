@@ -303,7 +303,7 @@ pub fn audio_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Audio, &style_props)?;
-    require_solid_or_soft(BuiltinComponent::Audio, style.variant)?;
+    require_solid_variant(BuiltinComponent::Audio, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::Audio {
