@@ -197,6 +197,25 @@ fn render_swift_media_data_node(
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }
+        ViewNode::Diagram { props } => {
+            output.push_str(&format!(
+                "{pad}DoweDiagramView(state: state, nodesPath: {}, edgesPath: {}, fitView: {}, panOnDrag: {}, zoomOnScroll: {}, minimap: {}, showGrid: {}, emptyLabel: {}, onNodeClick: {}, onNodeDrag: {}, onConnect: {}, backgroundColor: {}, contentColor: {})\n",
+                swift_string_literal(&context.signal_path(&props.nodes)),
+                swift_string_literal(&context.signal_path(&props.edges)),
+                props.fit_view,
+                props.pan_on_drag,
+                props.zoom_on_scroll,
+                props.minimap,
+                props.show_grid,
+                swift_string_literal(&props.empty_label),
+                swift_optional_literal(props.on_node_click.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_node_drag.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_connect.as_deref().and_then(|value| context.action_id(value))),
+                card_variant_container(&props.style),
+                card_variant_content(&props.style),
+            ));
+            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style.style));
+        }
         ViewNode::Candlestick { props } => {
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined

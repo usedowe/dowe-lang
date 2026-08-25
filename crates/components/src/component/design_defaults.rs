@@ -325,6 +325,9 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         ViewNode::Candlestick { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
         }
+        ViewNode::Diagram { props } => {
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+        }
         ViewNode::Table { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
         }

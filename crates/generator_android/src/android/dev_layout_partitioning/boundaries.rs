@@ -184,6 +184,7 @@ fn dev_children_boundary(
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

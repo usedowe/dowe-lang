@@ -16,6 +16,7 @@ fn render_dev_android_display_node(
         | ViewNode::Camera { .. }
         | ViewNode::Microphone { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }
         | ViewNode::BarChart { .. }

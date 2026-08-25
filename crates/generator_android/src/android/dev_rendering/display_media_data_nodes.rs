@@ -649,6 +649,41 @@ fn render_dev_android_display_media_data_node(
             apply_dev_android_style(&props.style, &view, false, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
+        ViewNode::Diagram { props } => {
+            let view = next_dev_view(counter);
+            let on_node_click = props
+                .on_node_click
+                .as_deref()
+                .and_then(|value| context.action_id(value))
+                .map(|value| format!("\"{}\"", escape_java(value)))
+                .unwrap_or_else(|| "null".to_string());
+            let on_node_drag = props
+                .on_node_drag
+                .as_deref()
+                .and_then(|value| context.action_id(value))
+                .map(|value| format!("\"{}\"", escape_java(value)))
+                .unwrap_or_else(|| "null".to_string());
+            let on_connect = props
+                .on_connect
+                .as_deref()
+                .and_then(|value| context.action_id(value))
+                .map(|value| format!("\"{}\"", escape_java(value)))
+                .unwrap_or_else(|| "null".to_string());
+            output.push_str(&format!(
+                "        DoweDiagramView {view} = doweDiagram(\"{}\", \"{}\", {}, {}, {}, {}, {}, {}, {on_node_click}, {on_node_drag}, {on_connect}, DOWE_SURFACE, DOWE_BACKGROUND_TEXT, {});\n",
+                escape_java(&context.signal_path(&props.nodes)),
+                escape_java(&context.signal_path(&props.edges)),
+                props.fit_view,
+                props.pan_on_drag,
+                props.zoom_on_scroll,
+                props.minimap,
+                props.show_grid,
+                format!("\"{}\"", escape_java(&props.empty_label)),
+                dev_style_radius(&props.style.style),
+            ));
+            apply_dev_android_style(&props.style.style, &view, false, output);
+            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+        }
         ViewNode::Candlestick { props } => {
             let view = next_dev_view(counter);
             let stream = props

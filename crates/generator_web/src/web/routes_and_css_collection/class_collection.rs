@@ -111,6 +111,7 @@ fn collect_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

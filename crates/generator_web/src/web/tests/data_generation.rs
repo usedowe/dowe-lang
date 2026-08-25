@@ -605,3 +605,41 @@ fn keeps_nested_layout_visibility_rules_order_safe() {
                 .unwrap()
     );
 }
+
+#[test]
+fn renders_diagram_markup_css_and_runtime() {
+    let tree = diagram_tree();
+    let runtime_chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &tree);
+    assert_eq!(runtime_chunks.len(), 1);
+    assert_eq!(runtime_chunks[0].name, "visualization");
+    let html = render_page_body(&ViewNode::Children, &tree);
+    assert!(html.contains(r#"data-dowe-diagram data-dowe-diagram-fit-view="true""#));
+    assert!(html.contains(r#"data-dowe-diagram-nodes="flowNodes""#));
+    assert!(html.contains(r#"data-dowe-diagram-edges="flowEdges""#));
+    assert!(html.contains(r#"data-dowe-diagram-minimap="true""#));
+    assert!(html.contains(r#"data-dowe-diagram-empty-label="No flow yet""#));
+    assert!(html.contains(r#"data-dowe-diagram-on-node-click="selectNode""#));
+    assert!(html.contains(r#"data-dowe-diagram-on-connect="connectNodes""#));
+    assert!(html.contains("diagram-canvas"));
+    assert!(html.contains("diagram-nodes-layer"));
+    assert!(html.contains("diagram-minimap-svg"));
+
+    let chunk = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/diagram.dowe"),
+        "page diagramPage",
+        &tree,
+    );
+    assert!(chunk.css_content.contains(".diagram.is-solid.is-surface"));
+    let design_css = super::design_css();
+    assert!(design_css.contains(".diagram .diagram-canvas"));
+    assert!(design_css.contains(".diagram .diagram-node-port"));
+    let runtime = super::visualization_runtime_chunk().content;
+    assert!(runtime.contains("function renderDiagrams"));
+    assert!(runtime.contains("function hydrateDiagrams"));
+    assert!(runtime.contains("doweDiagramOnNodeClick"));
+    assert!(runtime.contains("doweDiagramOnConnect"));
+    assert!(runtime.contains("data-dowe-diagram-node-id"));
+    assert!(runtime.contains("persistDiagramConnection"));
+    assert!(runtime.contains("setAttribute(\"viewBox\""));
+}

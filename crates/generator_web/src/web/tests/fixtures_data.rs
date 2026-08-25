@@ -239,6 +239,39 @@ fn charts_tree() -> ViewNode {
     }
 }
 
+fn diagram_tree() -> ViewNode {
+    ViewNode::Box {
+        props: Default::default(),
+        children: vec![dowe_components::diagram_component_node(vec![
+            ComponentProp {
+                name: "nodes".to_string(),
+                value: PropValue::String("flowNodes".to_string()),
+            },
+            ComponentProp {
+                name: "edges".to_string(),
+                value: PropValue::String("flowEdges".to_string()),
+            },
+            ComponentProp {
+                name: "minimap".to_string(),
+                value: PropValue::Boolean(true),
+            },
+            ComponentProp {
+                name: "onNodeClick".to_string(),
+                value: PropValue::String("selectNode".to_string()),
+            },
+            ComponentProp {
+                name: "onConnect".to_string(),
+                value: PropValue::String("connectNodes".to_string()),
+            },
+            ComponentProp {
+                name: "emptyLabel".to_string(),
+                value: PropValue::String("No flow yet".to_string()),
+            },
+        ])
+        .expect("diagram")],
+    }
+}
+
 fn table_tree() -> ViewNode {
     dowe_components::table_node(
         vec![

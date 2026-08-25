@@ -845,6 +845,7 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::Code
             | BuiltinComponent::Video
             | BuiltinComponent::Candlestick
+            | BuiltinComponent::Diagram
             | BuiltinComponent::ArcChart
             | BuiltinComponent::AreaChart
             | BuiltinComponent::BarChart
@@ -921,6 +922,7 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::Code
             | BuiltinComponent::Video
             | BuiltinComponent::Candlestick
+            | BuiltinComponent::Diagram
             | BuiltinComponent::ArcChart
             | BuiltinComponent::AreaChart
             | BuiltinComponent::BarChart
@@ -1518,6 +1520,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Device" => DEVICE_PROPS.to_vec(),
         "Canvas" => CANVAS_PROPS.to_vec(),
         "Candlestick" => CANDLESTICK_PROPS.to_vec(),
+        "Diagram" => DIAGRAM_PROPS.to_vec(),
         "ArcChart" => ARC_CHART_PROPS.to_vec(),
         "AreaChart" => AREA_CHART_PROPS.to_vec(),
         "BarChart" => BAR_CHART_PROPS.to_vec(),
@@ -3317,6 +3320,20 @@ const CANVAS_PROPS: &[&str] = &[
     "maxH",
     "rounded",
     "border",
+];
+const DIAGRAM_PROPS: &[&str] = &[
+    "nodes",
+    "edges",
+    "fitView",
+    "panOnDrag",
+    "zoomOnScroll",
+    "minimap",
+    "controls",
+    "showGrid",
+    "emptyLabel",
+    "onNodeClick",
+    "onNodeDrag",
+    "onConnect",
 ];
 const CANDLESTICK_PROPS: &[&str] = &[
     "data",

@@ -152,6 +152,23 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                         | "maxPoints"
                 )
             }
+            BuiltinComponent::Diagram => {
+                matches!(
+                    name,
+                    "nodes"
+                        | "edges"
+                        | "fitView"
+                        | "panOnDrag"
+                        | "zoomOnScroll"
+                        | "minimap"
+                        | "controls"
+                        | "showGrid"
+                        | "emptyLabel"
+                        | "onNodeClick"
+                        | "onNodeDrag"
+                        | "onConnect"
+                )
+            }
             BuiltinComponent::ArcChart => {
                 matches!(
                     name,

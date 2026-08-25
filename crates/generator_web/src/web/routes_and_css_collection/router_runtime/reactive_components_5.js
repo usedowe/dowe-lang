@@ -133,6 +133,7 @@ function hydrate(
   hydrateRecords(root);
   hydrateCarousels(root);
   visualization?.hydrateCandlesticks(activeView);
+  visualization?.hydrateDiagrams(activeView);
   hydrateTypeWriters(root);
   hydrateRichTexts(root);
   hydrateCountdowns(root);

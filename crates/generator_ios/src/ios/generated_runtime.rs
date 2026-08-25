@@ -11,6 +11,7 @@ include!("generated_runtime/slider.rs");
 include!("generated_runtime/toggle.rs");
 include!("generated_runtime/content_controls.rs");
 include!("generated_runtime/data_display.rs");
+include!("generated_runtime/diagram_runtime.rs");
 include!("generated_runtime/canvas_runtime.rs");
 include!("generated_runtime/avatar_chat.rs");
 include!("generated_runtime/empty_motion_text.rs");
@@ -48,6 +49,7 @@ fn generated_views(
         swift_runtime_capture(),
         content_controls.as_str(),
         swift_runtime_data_display(),
+        swift_runtime_diagram(),
         swift_runtime_canvas(),
         swift_runtime_avatar_chat(),
         swift_runtime_empty_motion_text(),

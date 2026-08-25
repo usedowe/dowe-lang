@@ -189,6 +189,7 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         ViewNode::Iframe { props } => collect_style_custom_rules(&props.style, rules),
         ViewNode::Device { props, .. } => collect_style_custom_rules(&props.style, rules),
         ViewNode::Canvas { props } => collect_style_custom_rules(&props.style, rules),
+        ViewNode::Diagram { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Candlestick { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::ArcChart { props } => collect_style_custom_rules(&props.common.style.style, rules),
         ViewNode::AreaChart { props } => {

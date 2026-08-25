@@ -2,7 +2,7 @@ use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, AlertProps, Align, ArcChartProps,
     AreaChartProps, AudioProps, AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps,
     BannerProps, BarChartProps, BarProps, BottomBarTab, BoxPosition, BrandProps, Breakpoint,
-    ButtonSize, CameraProps, CandlestickProps, CanvasBackground, CanvasProps,
+    ButtonSize, CameraProps, CandlestickProps, CanvasBackground, CanvasProps, DiagramProps,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,
     ChartCommonProps, ChatBoxProps, CheckboxProps, ChipProps, CodeProps, CodeTemplateSegment,
     CollapsibleProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,

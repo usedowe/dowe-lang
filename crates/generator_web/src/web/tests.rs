@@ -98,7 +98,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
     assert_javascript_syntax(&visualization);
     assert!(controls.len() <= 50_000);
     assert!(media.len() <= 40_000);
-    assert!(visualization.len() <= 35_000);
+    assert!(visualization.len() <= 55_000);
     assert!(controls.contains("onViewportResize"));
     assert!(controls.contains("onViewportScroll"));
 }

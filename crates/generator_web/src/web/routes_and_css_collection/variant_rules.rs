@@ -285,6 +285,9 @@ fn collect_variant_rules<'a>(
         ViewNode::Candlestick { props } => {
             push_variant_rule(variants, "candlestick", &props.style);
         }
+        ViewNode::Diagram { props } => {
+            push_variant_rule(variants, "diagram", &props.style);
+        }
         ViewNode::ArcChart { props } => {
             push_variant_rule(variants, "arc-chart-container", &props.common.style);
         }
@@ -658,6 +661,7 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

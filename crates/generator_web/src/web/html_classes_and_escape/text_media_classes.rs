@@ -54,6 +54,21 @@ fn candlestick_classes(props: &CandlestickProps) -> Vec<String> {
     variant_classes("candlestick", &props.style)
 }
 
+fn diagram_classes(props: &DiagramProps) -> Vec<String> {
+    let mut classes = vec!["diagram".to_string()];
+    append_style_classes(&mut classes, &props.style.style);
+    if !props.controls {
+        classes.push("hide-controls".to_string());
+    }
+    if !props.minimap {
+        classes.push("hide-minimap".to_string());
+    }
+    if !props.show_grid {
+        classes.push("hide-grid".to_string());
+    }
+    classes
+}
+
 fn chart_classes(base: &str, props: &ChartCommonProps) -> Vec<String> {
     let mut classes = variant_classes(base, &props.style);
     classes.push(format!("is-{}", props.size.as_str()));

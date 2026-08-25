@@ -1,0 +1,169 @@
+.diagram {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--dowe-rounded, 12px);
+  background: var(--dowe-surface);
+  color: var(--dowe-on-surface);
+}
+
+.diagram .diagram-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.diagram .diagram-canvas.is-panning {
+  cursor: grabbing;
+}
+
+.diagram.hide-grid .diagram-canvas {
+  background-image: none;
+}
+
+.diagram .diagram-canvas:not(.hide-grid),
+.diagram:not(.hide-grid) .diagram-canvas {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, currentColor 8%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, currentColor 8%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.diagram .diagram-edges-layer,
+.diagram .diagram-nodes-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+}
+
+.diagram .diagram-edges-layer {
+  overflow: visible;
+  pointer-events: none;
+}
+
+.diagram .diagram-edge {
+  pointer-events: stroke;
+}
+
+.diagram .diagram-nodes-layer {
+  transform-origin: 0 0;
+}
+
+.diagram .diagram-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background: var(--dowe-surface);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
+  font-size: 13px;
+  line-height: 1.2;
+  text-align: center;
+  user-select: none;
+  cursor: grab;
+}
+
+.diagram .diagram-node.is-selected {
+  outline: 2px solid var(--dowe-primary);
+  outline-offset: 1px;
+}
+
+.diagram .diagram-node.is-connecting {
+  cursor: crosshair;
+}
+
+.diagram .diagram-node-port {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--dowe-primary);
+  background: var(--dowe-surface);
+  transform: translateY(-50%);
+  cursor: crosshair;
+}
+
+.diagram .diagram-edge {
+  stroke: color-mix(in srgb, currentColor 45%, transparent);
+  stroke-width: 2;
+  fill: none;
+}
+
+.diagram .diagram-edge.is-selected {
+  stroke: var(--dowe-primary);
+}
+
+.diagram .diagram-edge-label {
+  font-size: 11px;
+  fill: currentColor;
+  paint-order: stroke;
+  stroke: var(--dowe-surface);
+  stroke-width: 3px;
+}
+
+.diagram .diagram-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.diagram .diagram-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diagram.hide-controls .diagram-controls {
+  display: none;
+}
+
+.diagram .diagram-controls button {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 8px;
+  background: var(--dowe-surface);
+  color: inherit;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.diagram .diagram-minimap {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 120px;
+  height: 80px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, var(--dowe-surface) 88%, transparent);
+  overflow: hidden;
+}
+
+.diagram.hide-minimap .diagram-minimap {
+  display: none;
+}
+
+.diagram .diagram-minimap-svg {
+  width: 100%;
+  height: 100%;
+}

@@ -214,6 +214,10 @@ fn lower_remaining_view_node(
             reject_children(node)?;
             candlestick_node(props).map_err(|error| component_error(node, error))
         }
+        BuiltinComponent::Diagram => {
+            reject_children(node)?;
+            diagram_component_node(props).map_err(|error| component_error(node, error))
+        }
         BuiltinComponent::ArcChart => {
             reject_children(node)?;
             arc_chart_component_node(props).map_err(|error| component_error(node, error))

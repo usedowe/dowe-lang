@@ -197,6 +197,7 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }
         | ViewNode::BarChart { .. }
@@ -276,6 +277,7 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         ViewNode::Device { props, .. } => Some(&props.style.element),
         ViewNode::Canvas { props } => Some(&props.style.element),
         ViewNode::Candlestick { props } => Some(&props.style.element),
+        ViewNode::Diagram { props } => Some(&props.style.element),
         ViewNode::ArcChart { props } => Some(&props.common.style.element),
         ViewNode::AreaChart { props } => Some(&props.common.style.element),
         ViewNode::BarChart { props } => Some(&props.common.style.element),
@@ -363,6 +365,7 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }
         | ViewNode::BarChart { .. }

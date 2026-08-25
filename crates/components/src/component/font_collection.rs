@@ -261,6 +261,7 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         ViewNode::Device { props, .. } => collect_style_font_families(&props.style, fonts),
         ViewNode::Canvas { props } => collect_style_font_families(&props.style, fonts),
         ViewNode::Candlestick { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Diagram { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::ArcChart { props } => collect_style_font_families(&props.common.style.style, fonts),
         ViewNode::AreaChart { props } => {
             collect_style_font_families(&props.common.style.style, fonts)

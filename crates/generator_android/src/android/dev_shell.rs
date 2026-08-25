@@ -16,6 +16,7 @@ include!("dev_shell/image_cropper.rs");
 include!("dev_shell/candlestick_runtime.rs");
 include!("dev_shell/chart_runtime.rs");
 include!("dev_shell/canvas_runtime.rs");
+include!("dev_shell/diagram_runtime.rs");
 include!("dev_shell/code_and_forms/code_and_text.rs");
 include!("dev_shell/code_and_forms/validation.rs");
 include!("dev_shell/code_and_forms/rich_text_countdown.rs");

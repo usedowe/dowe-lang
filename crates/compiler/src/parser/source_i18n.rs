@@ -515,6 +515,7 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

@@ -482,6 +482,17 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             classes.insert("candlestick-canvas".to_string());
             classes.insert("candlestick-empty".to_string());
         }
+        ViewNode::Diagram { props } => {
+            classes.extend(diagram_classes(props));
+            classes.insert("diagram-canvas".to_string());
+            classes.insert("diagram-edges-layer".to_string());
+            classes.insert("diagram-nodes-layer".to_string());
+            classes.insert("diagram-node".to_string());
+            classes.insert("diagram-node-label".to_string());
+            classes.insert("diagram-edge".to_string());
+            classes.insert("diagram-edge-label".to_string());
+            classes.insert("diagram-empty".to_string());
+        }
         ViewNode::ArcChart { props } => {
             collect_chart_classes("arc-chart-container", &props.common, classes);
         }

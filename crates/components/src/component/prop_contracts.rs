@@ -199,6 +199,9 @@ pub fn component_prop_contract(
         {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }
+        "nodes" | "edges" if component == BuiltinComponent::Diagram => {
+            Some(ComponentPropContract::new(PropValueKind::Any))
+        }
         "scene" | "onPointer" | "onKey" | "onMotion" if component == BuiltinComponent::Canvas => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }

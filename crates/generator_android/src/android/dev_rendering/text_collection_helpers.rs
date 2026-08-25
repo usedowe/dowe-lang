@@ -379,6 +379,7 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

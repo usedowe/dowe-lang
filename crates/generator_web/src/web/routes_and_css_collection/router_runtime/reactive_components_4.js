@@ -83,6 +83,7 @@ function renderReactive(view) {
   visualization?.renderCharts(view.root, view.state, null);
   visualization?.renderCanvases(view.root, view.state, null);
   visualization?.renderCandlesticks(view.root, view.state, null);
+  visualization?.renderDiagrams(view.root, view.state, null);
   hydrateCameras(view.root);
   hydrateMicrophones(view.root);
   hydrateScaffoldInsets(view.root);

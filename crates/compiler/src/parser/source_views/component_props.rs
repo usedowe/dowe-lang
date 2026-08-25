@@ -370,6 +370,11 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
         | (BuiltinComponent::ToggleGroup, "bind", SourceValue::Bareword(_))
         | (BuiltinComponent::Candlestick, "data", SourceValue::Bareword(_))
         | (
+            BuiltinComponent::Diagram,
+            "nodes" | "edges" | "onNodeClick" | "onNodeDrag" | "onConnect",
+            SourceValue::Bareword(_),
+        )
+        | (
             BuiltinComponent::Canvas,
             "scene" | "onPointer" | "onKey" | "onMotion",
             SourceValue::Bareword(_),

@@ -318,6 +318,9 @@ fn collect_js_node_segments(
         ViewNode::Canvas { props } => {
             push_literal(segments, &render_canvas_html(props, context));
         }
+        ViewNode::Diagram { props } => {
+            push_literal(segments, &render_diagram_html(props, context));
+        }
         ViewNode::Audio { props } => {
             push_literal(segments, &render_audio_html(props, context));
         }

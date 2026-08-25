@@ -581,6 +581,8 @@ fn dev_activity_sources(
     output.push_str(dev_activity_candlestick_runtime());
     output.push_str(dev_activity_chart_runtime());
     output.push_str(dev_activity_canvas_runtime());
+    output.push_str(dev_activity_diagram_runtime());
+    output.push_str(dev_activity_diagram_view());
     output.push_str(&dev_activity_code_and_forms());
     if has_phones {
         output.push_str(dev_activity_phone_flag_runtime());

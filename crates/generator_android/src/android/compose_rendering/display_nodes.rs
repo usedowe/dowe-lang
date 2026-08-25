@@ -205,6 +205,25 @@ fn render_compose_display_node(
                 modifier_for_style(&props.style),
             ));
         }
+        ViewNode::Diagram { props } => {
+            output.push_str(&format!(
+                        "{pad}DoweDiagram(state = state, nodesPath = {}, edgesPath = {}, fitView = {}, panOnDrag = {}, zoomOnScroll = {}, minimap = {}, showGrid = {}, emptyLabel = {}, onNodeClick = {}, onNodeDrag = {}, onConnect = {}, backgroundColor = {}, contentColor = {}, modifier = {})\n",
+                        compose_string_literal(&context.signal_path(&props.nodes)),
+                        compose_string_literal(&context.signal_path(&props.edges)),
+                        props.fit_view,
+                        props.pan_on_drag,
+                        props.zoom_on_scroll,
+                        props.minimap,
+                        props.show_grid,
+                        compose_string_literal(&props.empty_label),
+                        compose_optional_string(props.on_node_click.as_deref().and_then(|value| context.action_id(value))),
+                        compose_optional_string(props.on_node_drag.as_deref().and_then(|value| context.action_id(value))),
+                        compose_optional_string(props.on_connect.as_deref().and_then(|value| context.action_id(value))),
+                        card_variant_container(&props.style),
+                        card_variant_content(&props.style),
+                        modifier_for_style(&props.style.style),
+                    ));
+        }
         ViewNode::Candlestick { props } => {
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined

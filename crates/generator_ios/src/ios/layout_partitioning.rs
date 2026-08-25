@@ -228,6 +228,7 @@ fn ios_collect_scope_bindings(node: &ViewNode, bindings: &mut IosLayoutBindings)
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }
@@ -356,6 +357,17 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
                     .iter()
                     .chain(&props.on_key)
                     .chain(&props.on_motion)
+                    .any(|value| bindings.references_action(value))
+        }
+        ViewNode::Diagram { props } => {
+            ios_style_references_layout_bindings(&props.style.style, bindings)
+                || bindings.references_signal(&props.nodes)
+                || bindings.references_signal(&props.edges)
+                || props
+                    .on_node_click
+                    .iter()
+                    .chain(&props.on_node_drag)
+                    .chain(&props.on_connect)
                     .any(|value| bindings.references_action(value))
         }
         ViewNode::Checkbox { props } => ios_variant_references_layout_bindings(&props.style, bindings),
@@ -1190,6 +1202,7 @@ fn ios_children_boundary(
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

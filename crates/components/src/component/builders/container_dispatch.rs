@@ -421,6 +421,13 @@ pub fn container_component_node(
                 Err(ComponentError::children_not_allowed(component))
             }
         }
+        BuiltinComponent::Diagram => {
+            if children.is_empty() {
+                diagram_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
         BuiltinComponent::ArcChart => {
             if children.is_empty() {
                 arc_chart_component_node(props)

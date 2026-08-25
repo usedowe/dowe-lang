@@ -101,6 +101,7 @@ impl DesignCssFeatures {
                 | ViewNode::Candlestick { .. }
                 | ViewNode::Canvas { .. }
                 | ViewNode::Countdown { .. }
+                | ViewNode::Diagram { .. }
                 | ViewNode::LineChart { .. }
                 | ViewNode::Map { .. }
                 | ViewNode::PieChart { .. }

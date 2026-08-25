@@ -138,6 +138,9 @@ pub enum ViewNode {
     Candlestick {
         props: CandlestickProps,
     },
+    Diagram {
+        props: DiagramProps,
+    },
     ArcChart {
         props: ArcChartProps,
     },

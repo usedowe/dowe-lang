@@ -62,6 +62,15 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
                     .is_some_and(|value| bindings.references_signal(value))
         }
         ViewNode::Camera { props } => dev_variant_references_layout_bindings(&props.style, bindings),
+        ViewNode::Diagram { props } => {
+            dev_style_references_layout_bindings(&props.style.style, bindings)
+                || bindings.references_signal(&props.nodes)
+                || bindings.references_signal(&props.edges)
+                || props
+                    .on_node_click
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+        }
         ViewNode::Microphone { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Code { props } => dev_variant_references_layout_bindings(&props.style, bindings),
         ViewNode::Video { props } => dev_variant_references_layout_bindings(&props.style, bindings),

@@ -308,3 +308,48 @@ fn rejects_invalid_table_props_and_columns() {
         ComponentError::invalid_prop("width", "portable table width")
     );
 }
+
+#[test]
+fn validates_diagram_component_props_and_defaults() {
+    let diagram = diagram_component_node(vec![
+        string_prop("nodes", "flow.nodes"),
+        string_prop("edges", "flow.edges"),
+        string_prop("onNodeClick", "selectNode"),
+        boolean_prop("minimap", true),
+        string_prop("emptyLabel", "Empty flow"),
+    ])
+    .expect("diagram");
+    match diagram {
+        ViewNode::Diagram { props } => {
+            assert_eq!(props.nodes, "flow.nodes");
+            assert_eq!(props.edges, "flow.edges");
+            assert_eq!(props.on_node_click.as_deref(), Some("selectNode"));
+            assert!(props.minimap);
+            assert!(props.fit_view);
+            assert!(props.pan_on_drag);
+            assert!(props.zoom_on_scroll);
+            assert!(props.controls);
+            assert!(props.show_grid);
+            assert_eq!(props.empty_label, "Empty flow");
+            assert_eq!(
+                props.style.style.sizing.h,
+                Some(ResponsiveValue::scalar(SizeValue::Scale(
+                    ScaleValue::from_half_steps(150)
+                )))
+            );
+        }
+        _ => panic!("diagram"),
+    }
+
+    assert!(diagram_component_node(vec![string_prop("nodes", "nodes")]).is_err());
+    assert!(diagram_component_node(vec![string_prop("edges", "edges")]).is_err());
+    assert_eq!(
+        diagram_component_node(vec![
+            string_prop("nodes", "nodes"),
+            string_prop("edges", "edges"),
+            string_prop("unknownProp", "value"),
+        ])
+        .expect_err("unknown prop"),
+        ComponentError::unknown_prop(BuiltinComponent::Diagram, "unknownProp")
+    );
+}

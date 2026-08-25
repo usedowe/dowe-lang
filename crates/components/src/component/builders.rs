@@ -1,6 +1,7 @@
 include!("builders/primitive_nodes.rs");
 include!("builders/media_nodes.rs");
 include!("builders/chart_nodes.rs");
+include!("builders/diagram_nodes.rs");
 include!("builders/canvas_nodes.rs");
 include!("builders/form_choice_nodes.rs");
 include!("builders/form_action_nodes.rs");

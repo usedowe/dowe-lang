@@ -516,3 +516,27 @@ page usersPage
     assert_eq!(props.columns[1].align, TableColumnAlign::End);
     assert_eq!(props.columns[1].width.as_deref(), Some("8rem"));
 }
+
+#[test]
+fn parses_diagram_with_signal_paths_and_interaction_props() {
+    let tree = parse_page(
+        r#"page diagramPage
+  signal nodes value:[{ id:"input" x:20 y:20 width:120 height:48 label:"Input" }]
+  signal edges value:[{ id:"edge" source:"input" target:"input" }]
+  Diagram nodes:nodes edges:edges fitView:true minimap:true onNodeClick:selectNode onNodeDrag:moveNode onConnect:connectNodes"#,
+    )
+    .expect("diagram");
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("scope");
+    };
+    let ViewNode::Diagram { props } = &children[0] else {
+        panic!("diagram");
+    };
+    assert_eq!(props.nodes, "nodes");
+    assert_eq!(props.edges, "edges");
+    assert!(props.fit_view);
+    assert!(props.minimap);
+    assert_eq!(props.on_node_click.as_deref(), Some("selectNode"));
+    assert_eq!(props.on_node_drag.as_deref(), Some("moveNode"));
+    assert_eq!(props.on_connect.as_deref(), Some("connectNodes"));
+}

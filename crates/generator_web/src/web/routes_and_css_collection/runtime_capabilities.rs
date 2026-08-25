@@ -21,6 +21,7 @@ const VISUALIZATION_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/visualization_2.js"),
     include_str!("router_runtime/visualization_3.js"),
     include_str!("router_runtime/visualization_4.js"),
+    include_str!("router_runtime/visualization_5.js"),
 ];
 
 const CONTROLS_RUNTIME_EXPORTS: &[&str] = &[
@@ -216,7 +217,7 @@ fn visualization_runtime_chunk() -> GeneratedRuntimeChunk {
                 source.push('\n');
             }
             source.push_str(
-                "return{renderCharts,renderCanvases,renderCandlesticks,closeCandlestickStreams,closeCanvasFrames,hydrateCanvases,hydrateCandlesticks};});",
+                "return{renderCharts,renderCanvases,renderCandlesticks,closeCandlestickStreams,closeCanvasFrames,hydrateCanvases,hydrateCandlesticks,renderDiagrams,hydrateDiagrams};});",
             );
             GeneratedRuntimeChunk::new("visualization", minify_js(&source))
         })
@@ -296,6 +297,7 @@ fn node_uses_visualization(tree: &ViewNode) -> bool {
     matches!(
         tree,
         ViewNode::Canvas { .. }
+            | ViewNode::Diagram { .. }
             | ViewNode::Candlestick { .. }
             | ViewNode::ArcChart { .. }
             | ViewNode::AreaChart { .. }

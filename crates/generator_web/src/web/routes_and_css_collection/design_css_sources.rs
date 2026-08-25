@@ -30,6 +30,7 @@ const DESIGN_VISUALIZATION_CSS: &[&str] = &[
     include_str!("design_css/visualization_data.css"),
     include_str!("design_css/visualization_charts.css"),
     include_str!("design_css/visualization_canvas.css"),
+    include_str!("design_css/visualization_diagram.css"),
 ];
 
 const DESIGN_DISCLOSURE_CSS: &[&str] = &[

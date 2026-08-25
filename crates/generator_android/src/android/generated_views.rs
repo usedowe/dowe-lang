@@ -2,6 +2,7 @@ include!("generated_views/foundation.rs");
 include!("generated_views/media_forms.rs");
 include!("generated_views/capture.rs");
 include!("generated_views/data_code_svg.rs");
+include!("generated_views/diagram.rs");
 include!("generated_views/canvas.rs");
 include!("generated_views/avatar_chat.rs");
 include!("generated_views/empty_motion_text.rs");
@@ -32,6 +33,7 @@ fn generated_views(
         android_runtime_media_upload(),
         android_runtime_capture(),
         android_runtime_data_code_svg(),
+        android_runtime_diagram(),
         android_runtime_canvas(),
         android_runtime_avatar_chat(),
         android_runtime_empty_motion_text(),

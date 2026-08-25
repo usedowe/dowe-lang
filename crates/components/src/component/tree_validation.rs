@@ -372,6 +372,7 @@ fn validate_view_tree_with_parent(
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
         | ViewNode::Candlestick { .. }
+        | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }
         | ViewNode::BarChart { .. }

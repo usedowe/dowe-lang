@@ -365,6 +365,7 @@ fn render_html_node_with_context(
         ViewNode::Device { props, iframe } => render_device_html(props, iframe, context),
         ViewNode::Canvas { props } => render_canvas_html(props, context),
         ViewNode::Candlestick { props } => render_candlestick_html(props, context),
+        ViewNode::Diagram { props } => render_diagram_html(props, context),
         ViewNode::ArcChart { props } => render_arc_chart_html(props, context),
         ViewNode::AreaChart { props } => render_area_chart_html(props, context),
         ViewNode::BarChart { props } => render_bar_chart_html(props, context),
