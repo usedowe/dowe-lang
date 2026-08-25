@@ -6,7 +6,6 @@ use crate::model::{
     CompileEnvironment, EndpointBehavior, EnvironmentValueSource, EnvironmentVisibility,
     HttpMethod, ServerLogLevel, ServerLogValue, ServerStatement,
 };
-use crate::parser::validate_design_copilot_dowe;
 use std::fs;
 use std::path::Path;
 use tempfile::TempDir;

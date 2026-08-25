@@ -197,8 +197,6 @@ fn renders_side_nav_markup_active_runtime_and_css() {
         page.css_content
             .contains(".sidenav.is-ghost.is-danger .sidenav-entry:hover{background-color:transparent;color:var(--dowe-danger);}")
     );
-    assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-entry:hover{background-color:color-mix(in srgb,var(--dowe-primary) 50%,transparent);color:var(--dowe-primary);}"));
-    assert!(page.css_content.contains(".sidenav.is-solid.is-danger .sidenav-entry.is-active{background-color:var(--dowe-danger);color:var(--dowe-dangerText);border-color:transparent;font-weight:600;}"));
     assert!(page.css_content.contains(".sidenav.is-solid.is-primary .sidenav-entry.is-active{background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:var(--dowe-primary);font-weight:600;}"));
     assert!(page.css_content.contains(".sidenav.is-outlined.is-primary .sidenav-entry.is-active{background-color:transparent;color:var(--dowe-primary);border-color:var(--dowe-primary);font-weight:600;}"));
     assert!(

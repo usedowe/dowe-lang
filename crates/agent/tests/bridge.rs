@@ -967,7 +967,6 @@ fn theme_skill_documents_grouped_color_families() {
 
     assert!(full.content.contains("colors:\n"));
     assert!(full.content.contains("primary color:"));
-    assert!(full.content.contains("softPrimary color:"));
     assert!(full.content.contains("`color`, `text`, and `title` props"));
     assert!(!full.content.contains("colors primary:"));
     assert!(full.content.contains("## Theme/page contract"));

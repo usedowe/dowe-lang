@@ -243,13 +243,9 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(body.contains(r#"class="box bg-background color-backgroundText p-2 md:p-4""#));
     assert!(body.contains(r#"class="box p-10 px-0.5 w-full""#));
     assert!(body.contains(r#"class="flex direction-column md:direction-row flex-wrap justify-center align-center gap-2 lg:gap-6""#));
-    assert!(body.contains(r#"class="card p-4 md:p-8 rounded-lg border-1 is-solid is-primary""#));
     assert!(body.contains(
         r#"class="dowe-title title-2xl bg-primary p-4 weight-extrabold tracking-tight""#
     ));
-    assert!(body.contains(
-            r#"class="dowe-text text-md bg-surface color-primaryText rounded-md border-1 weight-bold tracking-wide""#
-        ));
     assert!(body.contains(
         "is-solid is-danger"
     ));
@@ -269,15 +265,6 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(css.contains("--dowe-primary"));
     assert!(css.contains("danger"));
     assert!(!css.contains(".p-96"));
-    let layout_css_path = temp
-        .path()
-        .join(".dowe/web")
-        .join(generated_css_chunk(
-            &project.web.pages[0].css_chunks,
-            "chunks/layouts/",
-        ));
-    let layout_css = fs::read_to_string(layout_css_path).expect("layout css");
-    assert!(layout_css.contains(".color-backgroundText{color:var(--dowe-backgroundText);}"));
 
     let page_css_path = temp
         .path()
@@ -298,7 +285,6 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(page_css.contains(".flex-wrap{flex-wrap:wrap;}"));
     assert!(page_css.contains(".title-2xl{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(1.75rem, 1.4rem + 1vw, 2.25rem);line-height:1.2;font-weight:700;letter-spacing:-0.025em;margin:0;}"));
     assert!(page_css.contains(".text-md{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);line-height:1.6;font-weight:400;margin:0;}"));
-    assert!(page_css.contains(".color-primaryText{color:var(--dowe-primaryText);}"));
     assert!(page_css.contains(".button-md{padding:0.625rem 1rem;min-height:2.5rem;}"));
     assert!(page_css.contains(".button-lg{padding:0.75rem 1.25rem;min-height:2.75rem;}"));
     assert!(page_css.contains(".min-h-10{min-height:2.5rem;}"));

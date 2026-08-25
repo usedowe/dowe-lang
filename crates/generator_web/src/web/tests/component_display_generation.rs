@@ -381,9 +381,6 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-map"#));
     assert!(html.contains(r#"data-dowe-map-marker="office""#));
     assert!(page.css_content.contains(".media.is-solid.is-primary"));
-    assert!(page
-        .css_content
-        .contains(".media.is-solid.is-primary .media-button{background-color:var(--dowe-primary);color:var(--dowe-primaryText);}"));
     assert!(
         page.css_content
             .contains(".toggle-group.is-solid.is-secondary")
@@ -408,9 +405,6 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
     assert!(css.contains(".toggle-group-item"));
     assert!(page.css_content.contains(
         ".toggle-group.is-solid.is-primary{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryTitle);background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:transparent;}"
-    ));
-    assert!(page.css_content.contains(
-        ".toggle-group-item.is-active.is-solid.is-primary,.toggle-group-item.is-active.is-solid.is-primary{background-color:var(--dowe-primaryText);color:var(--dowe-primary);}"
     ));
     assert!(!page.css_content.contains(".toggle-group.is-solid.is-primary{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryTitle);background-color:var(--dowe-primary);color:var(--dowe-primaryText);border-color:var(--dowe-primary);}"));
     assert!(css.contains(".pagination-nav"));

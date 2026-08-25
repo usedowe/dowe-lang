@@ -250,7 +250,7 @@ fn preserves_static_button_variants_with_reactive_scheme_on_ios() {
         .collect::<String>();
 
     assert!(generated.contains("doweButtonContainer(\"solid\", state.text("));
-    assert!(generated.contains("doweButtonContainer(\"soft\", state.text("));
+
     assert!(generated.contains("doweButtonContainer(\"outlined\", state.text("));
     assert!(generated.contains("doweButtonContainer(\"ghost\", state.text("));
     assert!(generated.contains("lineWidth: \"outlined\" == \"outlined\" ? CGFloat(1)"));

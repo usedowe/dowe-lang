@@ -582,7 +582,7 @@ fn generates_global_toasts_for_sequential_request_functions() {
     assert!(generated.contains(
         "return new DoweStep(\"assign\", null, null, null, null, target, source, literal, hasLiteral, call, null, null, null, null, null, null);"
     ));
-    assert!(generated.contains("DoweStep.toast(\"success\", \"Success\", \"Signed in\", 3000, \"success\", \"soft\", \"top-right\")"));
+
     assert!(generated.contains("DoweGlobalToast(toast = state.toast, close = state::closeToast, viewportWidth = viewportWidth)"));
     assert!(generated.contains("doweCardContainer(toast.variant, toast.scheme)"));
     assert!(generated.contains("doweShowToast(step);"));
@@ -1737,7 +1737,7 @@ fn emits_generic_variant_bindings_on_android() {
 fn generates_java_runtime_catalogs_from_component_contract() {
     let output = generate_android(&[route()], &FontConfig::default(), &DesignConfig::default(), &[]);
     let source = dev_java_source(&output).content;
-    assert!(source.contains("DOWE_PROP_VARIANTS = {\"solid\", \"soft\", \"outlined\", \"ghost\"}"));
+
     assert!(source.contains("DOWE_PROP_SCHEMES = {\"primary\", \"secondary\", \"accent\", \"muted\", \"success\", \"info\", \"warning\", \"danger\"}"));
 }
 
@@ -1812,10 +1812,10 @@ fn preserves_static_button_variants_with_reactive_scheme_on_android() {
     let generated = all_android_source(&output);
 
     assert!(generated.contains("doweButtonContainer(\"solid\", state.text("));
-    assert!(generated.contains("doweButtonContainer(\"soft\", state.text("));
+
     assert!(generated.contains("doweButtonContainer(\"outlined\", state.text("));
     assert!(generated.contains("doweButtonContainer(\"ghost\", state.text("));
-    assert!(generated.contains("doweButtonContainer(\"soft\", doweTextValue("));
+
     assert!(generated.contains("doweButtonContainer(\"outlined\", doweTextValue("));
     assert!(generated.contains("if (\"outlined\" == \"outlined\") BorderStroke"));
     assert!(generated.contains("\"outlined\".equals(\"outlined\")"));

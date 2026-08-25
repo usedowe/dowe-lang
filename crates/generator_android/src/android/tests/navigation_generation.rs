@@ -64,7 +64,7 @@ fn generates_android_code_with_copy_and_theme_tokens() {
             .content
             .contains("clipboard.setText(AnnotatedString(source))")
     );
-    assert!(views.content.contains("DoweCode(source = \"page docsPage\\n  Card variant:\\\"soft\\\" p:4 show:true\\n    Text\\n      Documentation\""));
+    assert!(views.content.contains("DoweCode(source = \"page docsPage\\n  Card variant:\\\"solid\\\" p:4 show:true\\n    Text\\n      Documentation\""));
     assert!(views.content.contains("DoweDesign.primary"));
     assert!(views.content.contains("DoweDesign.info"));
     assert!(views.content.contains("DoweDesign.accent"));
