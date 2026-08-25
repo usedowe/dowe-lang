@@ -5,7 +5,7 @@ use super::{
 use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, AudioProps, AvatarGroupItem, AvatarGroupProps,
     AvatarProps, AvatarStatus, BadgeProps, BannerProps, BarPosition, BarProps, BottomBarTab,
-    BoxPosition, BrandProps, Breakpoint, ButtonSize, CameraFacing, CameraProps,
+    BorderWidth, BoxPosition, BrandProps, Breakpoint, ButtonSize, CameraFacing, CameraProps,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,
     ChatBoxMode, ChatBoxProps, CheckboxProps, ChipProps, CollapsibleProps, ColorFamily, ColorProps,
     ColorToken, ComboBoxProps, ComboOption, CommandEntry, CommandProps, ComponentProp,

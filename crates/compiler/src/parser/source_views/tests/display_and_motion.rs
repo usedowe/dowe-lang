@@ -43,7 +43,7 @@
     Chip variant:"outlined" scheme:"info" size:"sm" startIcon:"settings" endIcon:"magnifier" onClose:close
       Filter
     Skeleton variant:"rounded" animation:"pulse"
-    Modal open:modalOpen scheme:"surface" hideCloseButton:true
+    Modal bind:modalOpen scheme:"surface" hideCloseButton:true
       header
         Title
           "Settings"
@@ -52,7 +52,7 @@
       footer
         Button onClick:close
           "Close"
-    AlertDialog open:modalOpen title:"Delete?" description:"Cannot undo." confirmText:"Delete" cancelText:"Cancel" onConfirm:close onCancel:close scheme:"danger"
+    AlertDialog bind:modalOpen title:"Delete?" description:"Cannot undo." confirmText:"Delete" cancelText:"Cancel" onConfirm:close onCancel:close scheme:"danger"
     Tooltip label:"More actions" position:"end" scheme:"muted"
       Text
         "Hover"
@@ -64,7 +64,7 @@
       item label:"Profile" onClick:close
       divider
       item label:"Docs" href:"/docs" description:"Open docs"
-    Command open:modalOpen placeholder:"Search" shortcut:"p" scheme:"muted"
+    Command bind:modalOpen placeholder:"Search" shortcut:"p" scheme:"muted"
       item label:"Back" history:"back"
       group label:"Admin"
         item label:"Users" onClick:close"#,
@@ -286,7 +286,7 @@ page displayPage
       mark text:"Launch" style:"grad" scheme:"primary"
       mark text:"ready" style:"pill" scheme:"success"
     Record name:"voice" maxDuration:90 onStart:choose onConfirm:done variant:"solid" scheme:"primary"
-    ToggleGroup value:mode selected:"map" size:"sm" wide:true ariaLabel:"Display mode" onChange:choose variant:"solid" scheme:"secondary"
+    ToggleGroup bind:mode selected:"map" size:"sm" wide:true ariaLabel:"Display mode" onChange:choose variant:"solid" scheme:"secondary"
       item id:"list" label:"List" icon:"search"
       item id:"map" label:"Map" icon:"settings"
     Collapsible label:"Details" defaultOpen:true scheme:"surface"

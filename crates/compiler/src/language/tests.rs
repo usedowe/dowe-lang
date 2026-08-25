@@ -465,7 +465,7 @@ fn diagnostics_accept_imported_reusable_view_components() {
             "    main\n",
             "      children\n",
             "    overlays\n",
-            "      Drawer open:openMenu\n",
+            "      Drawer bind:openMenu\n",
             "        body\n",
             "          ViewsNavigation\n"
         )
@@ -1430,7 +1430,7 @@ fn completions_include_show_booleans_and_signals() {
     fs::create_dir_all(root.path().join("pages")).expect("src");
     let document = LanguageDocument {
         path: root.path().join("pages/ready.dowe"),
-        source: "page readyPage\n  signal isReady value:false\n  Text show:\n    Ready\n  Drawer open:\n    Text\n      Menu\n"
+        source: "page readyPage\n  signal isReady value:false\n  Text show:\n    Ready\n  Drawer bind:\n    Text\n      Menu\n"
             .to_string(),
     };
 
@@ -1788,7 +1788,7 @@ fn completions_include_current_view_component_props() {
     assert!(!tabs_props.iter().any(|item| item.label == "color"));
 
     let drawer_props = complete_document(Path::new("/project"), &document, 16, 10);
-    assert!(drawer_props.iter().any(|item| item.label == "open"));
+    assert!(drawer_props.iter().any(|item| item.label == "bind"));
     assert!(drawer_props.iter().any(|item| item.label == "position"));
     assert!(drawer_props.iter().any(|item| item.label == "scheme"));
     assert!(drawer_props.iter().any(|item| item.label == "show"));
@@ -2489,7 +2489,7 @@ fn completions_include_rich_control_map_component_props_and_values() {
     assert!(!record_variant.iter().any(|item| item.label == "\"ghost\""));
 
     let toggle_props = complete_document(root, &document, 8, "  ToggleGroup ".len() + 1);
-    assert!(toggle_props.iter().any(|item| item.label == "value"));
+    assert!(toggle_props.iter().any(|item| item.label == "bind"));
     assert!(toggle_props.iter().any(|item| item.label == "selected"));
     assert!(toggle_props.iter().any(|item| item.label == "onChange"));
 

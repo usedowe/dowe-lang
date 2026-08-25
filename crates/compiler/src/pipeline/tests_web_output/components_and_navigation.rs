@@ -82,7 +82,7 @@ layout AuthLayout
           SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
             DocsNavigation
     main
-      Drawer show:{ xs:true md:false } open:openDrawer position:"start" variant:"solid" scheme:"surface" disableOverlayClose:false hideCloseButton:false p:4 w:80
+      Drawer show:{ xs:true md:false } bind:openDrawer position:"start" variant:"solid" scheme:"surface" disableOverlayClose:false hideCloseButton:false p:4 w:80
         body
           SideNav variant:"ghost" scheme:"primary" size:"sm" wide:true
             DocsNavigation

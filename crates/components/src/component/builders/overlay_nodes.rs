@@ -181,7 +181,7 @@ pub fn modal_component_node(
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "open" => {
+            "bind" => {
                 open = Some(parse_signal_path(
                     &prop.name,
                     &prop.value,
@@ -201,7 +201,7 @@ pub fn modal_component_node(
     Ok(ViewNode::Modal {
         props: ModalProps {
             style,
-            open: open.ok_or_else(|| ComponentError::invalid_prop("open", "signal bool path"))?,
+            open: open.ok_or_else(|| ComponentError::invalid_prop("bind", "signal bool path"))?,
             on_close,
             disable_overlay_close,
             hide_close_button,
@@ -224,7 +224,7 @@ pub fn alert_dialog_component_node(props: Vec<ComponentProp>) -> ComponentResult
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "open" => {
+            "bind" => {
                 open = Some(parse_signal_path(
                     &prop.name,
                     &prop.value,
@@ -248,7 +248,7 @@ pub fn alert_dialog_component_node(props: Vec<ComponentProp>) -> ComponentResult
     Ok(ViewNode::AlertDialog {
         props: AlertDialogProps {
             style,
-            open: open.ok_or_else(|| ComponentError::invalid_prop("open", "signal bool path"))?,
+            open: open.ok_or_else(|| ComponentError::invalid_prop("bind", "signal bool path"))?,
             title,
             description,
             confirm_text,
@@ -404,7 +404,7 @@ pub fn command_component_node(
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "open" => {
+            "bind" => {
                 open = Some(parse_signal_path(
                     &prop.name,
                     &prop.value,

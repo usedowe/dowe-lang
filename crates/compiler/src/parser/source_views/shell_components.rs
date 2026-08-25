@@ -141,7 +141,7 @@ fn lower_bar_node(
                 .map_err(|error| node_error(child, error.message()))?;
             let mut open = None;
             for prop in menu_props {
-                if prop.name == "mobileMenuOpen" {
+                if prop.name == "bind" {
                     if let PropValue::Binding(binding) = prop.value {
                         open = Some(binding.path);
                     }

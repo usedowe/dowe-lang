@@ -108,24 +108,24 @@
     }
 
     #[test]
-    fn rejects_invalid_drawer_open_signal() {
+    fn rejects_invalid_drawer_bind_signal() {
         let missing = parse_page(
             r#"page navPage
   Drawer
     Text
       "Navigation""#,
         )
-        .expect_err("open");
+        .expect_err("bind");
         assert!(
             missing
                 .to_string()
-                .contains("invalid value for prop `open`: expected signal bool path")
+                .contains("invalid value for prop `bind`: expected signal bool path")
         );
 
         let wrong_type = parse_page(
             r#"page navPage
   signal title value:"Navigation"
-  Drawer open:title
+  Drawer bind:title
     Text
       "Navigation""#,
         )
@@ -133,13 +133,13 @@
         assert!(
             wrong_type
                 .to_string()
-                .contains("invalid signal path `title` in `open`: expected bool")
+                .contains("invalid signal path `title` in `bind`: expected bool")
         );
 
         let quoted = parse_page(
             r#"page navPage
   signal drawerOpen value:false
-  Drawer open:"drawerOpen"
+  Drawer bind:"drawerOpen"
     Text
       "Navigation""#,
         )
@@ -147,13 +147,13 @@
         assert!(
             quoted
                 .to_string()
-                .contains("invalid value for prop `open`: expected signal bool path")
+                .contains("invalid value for prop `bind`: expected signal bool path")
         );
 
         let duplicate = parse_page(
             r#"page navPage
   signal drawerOpen value:false
-  Drawer open:drawerOpen
+  Drawer bind:drawerOpen
     body
       Text
         "Primary"

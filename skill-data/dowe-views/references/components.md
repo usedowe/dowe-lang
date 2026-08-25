@@ -164,7 +164,7 @@ layout SiteLayout
     main
       children
     overlays
-      Drawer open:openNavigation show:{ xs:true md:false }
+      Drawer bind:openNavigation show:{ xs:true md:false }
         body
           SiteNavigation
 ```
@@ -187,7 +187,7 @@ the `Sidebar body` and `Drawer body`.
 | `Fab` | Primary floating action with optional direct `fabAction` secondary actions. Place shell-level floating behavior in Scaffold overlays. Its primary trigger defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
 | `fabAction` | Context-only secondary action inside Fab with an icon, label, and function or navigation target. |
 | `Record` | Recording control driven by named start, pause, resume, cancel, and confirm functions where supported. |
-| `ToggleGroup` | One-of-many or multi-choice control with direct `item` entries, a state value, and a named change function. |
+| `ToggleGroup` | One-of-many or multi-choice control with direct `item` entries, a bound state Signal, and a named change function. |
 | `Pagination` | Binds the current page with `bind`, accepts a static count or numeric Signal in `total`, and uses `pageSize` plus optional `onChange`; the portable subset supports at most 25 pages. |
 
 ## Forms

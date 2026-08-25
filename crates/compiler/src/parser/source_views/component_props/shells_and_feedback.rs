@@ -45,7 +45,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
                     | "floating"
                     | "hideOnScroll"
                     | "dockOnScroll"
-                    | "mobileMenuOpen"
+                    | "bind"
             )
         }
         BuiltinComponent::BottomBar => {
@@ -76,7 +76,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
         BuiltinComponent::Step => matches!(name, "id" | "label"),
         BuiltinComponent::Drawer => matches!(
             name,
-            "open" | "position" | "variant" | "scheme" | "disableOverlayClose" | "hideCloseButton"
+            "bind" | "position" | "variant" | "scheme" | "disableOverlayClose" | "hideCloseButton"
         ),
         BuiltinComponent::Avatar => matches!(
             name,
@@ -115,7 +115,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
         BuiltinComponent::Skeleton => matches!(name, "variant" | "animation"),
         BuiltinComponent::Modal => matches!(
             name,
-            "open"
+            "bind"
                 | "onClose"
                 | "variant"
                 | "scheme"
@@ -125,7 +125,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
         ),
         BuiltinComponent::AlertDialog => matches!(
             name,
-            "open"
+            "bind"
                 | "title"
                 | "description"
                 | "confirmText"
@@ -155,7 +155,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
         BuiltinComponent::Dropdown => matches!(name, "scheme" | "color"),
         BuiltinComponent::Command => matches!(
             name,
-            "open"
+            "bind"
                 | "placeholder"
                 | "emptyText"
                 | "closeText"

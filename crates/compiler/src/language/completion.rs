@@ -1998,7 +1998,7 @@ const STEPPER_PROPS: &[&str] = &[
 ];
 const STEP_PROPS: &[&str] = &["id", "label", "i18n"];
 const DRAWER_PROPS: &[&str] = &[
-    "open",
+    "bind",
     "position",
     "variant",
     "scheme",
@@ -2140,7 +2140,7 @@ const SKELETON_PROPS: &[&str] = &[
     "shadowColor",
 ];
 const MODAL_PROPS: &[&str] = &[
-    "open",
+    "bind",
     "onClose",
     "variant",
     "scheme",
@@ -2166,7 +2166,7 @@ const MODAL_PROPS: &[&str] = &[
     "border",
 ];
 const ALERT_DIALOG_PROPS: &[&str] = &[
-    "open",
+    "bind",
     "title",
     "description",
     "confirmText",
@@ -2241,7 +2241,7 @@ const DROPDOWN_PROPS: &[&str] = &[
     "minH", "maxW", "maxH", "rounded", "border",
 ];
 const COMMAND_PROPS: &[&str] = &[
-    "open",
+    "bind",
     "placeholder",
     "emptyText",
     "closeText",
@@ -2498,7 +2498,7 @@ const MICROPHONE_PROPS: &[&str] = &[
     "border",
 ];
 const TOGGLE_GROUP_PROPS: &[&str] = &[
-    "value",
+    "bind",
     "selected",
     "multiple",
     "size",

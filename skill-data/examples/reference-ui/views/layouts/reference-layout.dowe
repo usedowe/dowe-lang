@@ -35,7 +35,7 @@ layout ReferenceLayout
           Text size:"sm" color:"muted"
             "Portable source · authored visual direction"
     overlays
-      Drawer open:openNavigation
+      Drawer bind:openNavigation
         header
           Text weight:"bold"
             "Navigation"

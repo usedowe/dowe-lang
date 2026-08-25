@@ -421,10 +421,10 @@ pub fn drawer_component_node(
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "open" => {
+            "bind" => {
                 let value = parse_required_string(&prop.name, &prop.value)?;
                 if !is_reference_path(&value) {
-                    return Err(ComponentError::invalid_prop("open", "signal bool path"));
+                    return Err(ComponentError::invalid_prop("bind", "signal bool path"));
                 }
                 open = Some(value);
             }
@@ -445,7 +445,7 @@ pub fn drawer_component_node(
     Ok(ViewNode::Drawer {
         props: DrawerProps {
             style,
-            open: open.ok_or_else(|| ComponentError::invalid_prop("open", "signal bool path"))?,
+            open: open.ok_or_else(|| ComponentError::invalid_prop("bind", "signal bool path"))?,
             position,
             disable_overlay_close,
             hide_close_button,

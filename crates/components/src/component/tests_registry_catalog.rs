@@ -440,10 +440,48 @@ fn exposes_text_and_title_roles_for_every_theme_color_family() {
         ])
     );
 
-    for name in ["light", "dark"] {
-        let theme = integrated_design_theme(name).expect("integrated theme");
-        assert_eq!(theme.colors.len(), ColorToken::all().len());
+    let expected_light = [
+        (ColorToken::Primary, "#1F3A5F"),
+        (ColorToken::PrimaryText, "#EBF2FA"),
+        (ColorToken::PrimaryTitle, "#FFFFFF"),
+        (ColorToken::Secondary, "#6BC670"),
+        (ColorToken::SecondaryText, "#0F291E"),
+        (ColorToken::SecondaryTitle, "#040D05"),
+        (ColorToken::Accent, "#3F7A8A"),
+        (ColorToken::AccentText, "#F0F7F9"),
+        (ColorToken::AccentTitle, "#FFFFFF"),
+        (ColorToken::Muted, "#E2E8F0"),
+        (ColorToken::MutedText, "#334155"),
+        (ColorToken::MutedTitle, "#1F3A5F"),
+        (ColorToken::Background, "#F3F1EE"),
+        (ColorToken::BackgroundText, "#334155"),
+        (ColorToken::BackgroundTitle, "#1F3A5F"),
+        (ColorToken::Surface, "#FFFFFF"),
+        (ColorToken::SurfaceText, "#334155"),
+        (ColorToken::SurfaceTitle, "#1F3A5F"),
+        (ColorToken::Success, "#16A34A"),
+        (ColorToken::SuccessText, "#E8F5E9"),
+        (ColorToken::SuccessTitle, "#FFFFFF"),
+        (ColorToken::Info, "#0084D1"),
+        (ColorToken::InfoText, "#E1F5FE"),
+        (ColorToken::InfoTitle, "#FFFFFF"),
+        (ColorToken::Warning, "#D08700"),
+        (ColorToken::WarningText, "#1F1400"),
+        (ColorToken::WarningTitle, "#0D0900"),
+        (ColorToken::Danger, "#E7000B"),
+        (ColorToken::DangerText, "#FFEBEE"),
+        (ColorToken::DangerTitle, "#FFFFFF"),
+    ];
+    let light = integrated_design_theme("light").expect("light theme");
+    for (token, value) in expected_light {
+        assert_eq!(light.color_value(token), value);
     }
+
+    let dark = integrated_design_theme("dark").expect("dark theme");
+    assert_eq!(dark.color_value(ColorToken::Primary), "#F3F1EE");
+    assert_eq!(dark.color_value(ColorToken::Muted), "#334155");
+    assert_eq!(dark.color_value(ColorToken::Background), "#111827");
+    assert_eq!(dark.color_value(ColorToken::Surface), "#1F2937");
 }
 
 #[test]

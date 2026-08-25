@@ -1,4 +1,88 @@
 #[test]
+fn uses_builtin_theme_colors_on_web_android_and_ios() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Card scheme:\"primary\"\n    Text\n      \"Default\"",
+    );
+
+    let project = compile_dev(temp.path()).expect("default design theme");
+
+    let css = fs::read_to_string(
+        temp.path()
+            .join(".dowe/web")
+            .join(project.web.design_file_name()),
+    )
+    .expect("design css");
+    assert!(css.contains("--dowe-primary:#1F3A5F;"));
+    assert!(css.contains("--dowe-primaryText:#EBF2FA;"));
+    assert!(css.contains("--dowe-surface:#FFFFFF;"));
+    assert!(css.contains("--dowe-success:#16A34A;"));
+    assert!(css.contains("[data-dowe-theme=\"dark\"]{"));
+    assert!(css.contains("--dowe-background:#111827;"));
+
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DoweTheme.kt"),
+    )
+    .expect("android theme");
+    assert!(android.contains("\"primary\" to Color(0xFF1F3A5F)"));
+    assert!(android.contains("\"primaryText\" to Color(0xFFEBF2FA)"));
+    assert!(android.contains("\"surface\" to Color(0xFFFFFFFF)"));
+    assert!(android.contains("name = \"dark\""));
+    assert!(android.contains("\"background\" to Color(0xFF111827)"));
+
+    let ios = fs::read_to_string(temp.path().join(".dowe/apps/ios/DoweTheme.swift"))
+        .expect("ios theme");
+    assert!(ios.contains("\"primary\": Color(red: 0.122, green: 0.227, blue: 0.373)"));
+    assert!(ios.contains("\"primaryText\": Color(red: 0.922, green: 0.949, blue: 0.980)"));
+    assert!(ios.contains("\"surface\": Color(red: 1.000, green: 1.000, blue: 1.000)"));
+    assert!(ios.contains("name: \"dark\""));
+    assert!(ios.contains("\"background\": Color(red: 0.067, green: 0.094, blue: 0.153)"));
+}
+
+#[test]
+fn compiles_dark_theme_overrides_with_light_inheritance() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Text\n    \"Default\"",
+    );
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r##"theme
+  design defaultTheme:"light"
+    theme name:"light"
+      colors:
+        primary color:"#1F3A5F" text:"#EBF2FA" title:"#FFFFFF"
+        secondary color:"#6BC670" text:"#0F291E" title:"#040D05"
+        accent color:"#3F7A8A" text:"#F0F7F9" title:"#FFFFFF"
+        muted color:"#E2E8F0" text:"#334155" title:"#1F3A5F"
+        background color:"#F3F1EE" text:"#334155" title:"#1F3A5F"
+        surface color:"#FFFFFF" text:"#334155" title:"#1F3A5F"
+        success color:"#16A34A" text:"#E8F5E9" title:"#FFFFFF"
+        info color:"#0084D1" text:"#E1F5FE" title:"#FFFFFF"
+        warning color:"#D08700" text:"#1F1400" title:"#0D0900"
+        danger color:"#E7000B" text:"#FFEBEE" title:"#FFFFFF"
+    theme name:"dark" extends:"light"
+      colors:
+        primary color:"#F3F1EE" text:"#334155" title:"#1F3A5F"
+        muted color:"#334155" text:"#D5DEE9" title:"#F3F7FC"
+        background color:"#111827" text:"#E5E7EB" title:"#F9FAFB"
+        surface color:"#1F2937" text:"#E5E7EB" title:"#F9FAFB""##,
+    )
+    .expect("theme");
+
+    let project = compile_dev(temp.path()).expect("inherited dark theme");
+    let dark = project.design_config.theme("dark").expect("dark theme");
+    assert_eq!(dark.color_value(dowe_components::ColorToken::Secondary), "#6bc670");
+    assert_eq!(dark.color_value(dowe_components::ColorToken::Primary), "#f3f1ee");
+    assert_eq!(dark.color_value(dowe_components::ColorToken::MutedText), "#d5dee9");
+}
+
+#[test]
 fn compiles_design_tokens_from_theme_dowe() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture_with_views(

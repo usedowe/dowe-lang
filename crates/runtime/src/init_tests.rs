@@ -300,18 +300,18 @@ fn crud_generates_a_modal_editorial_dashboard() {
     ] {
         assert!(!page.contains(&format!("\"{removed_copy}\"")));
     }
-    assert_eq!(page.matches("  Modal open:").count(), 4);
+    assert_eq!(page.matches("  Modal bind:").count(), 4);
     for modal in [
         "registerModalOpen",
         "loginModalOpen",
         "createModalOpen",
         "editModalOpen",
     ] {
-        assert!(page.contains(&format!("Modal open:{modal}")));
+        assert!(page.contains(&format!("Modal bind:{modal}")));
         assert!(page.contains(&format!("set {modal} value:false")));
     }
 
-    let first_modal = page.find("  Modal open:").expect("first modal");
+    let first_modal = page.find("  Modal bind:").expect("first modal");
     let dashboard = &page[..first_modal];
     for control in ["Input ", "Password ", "Textarea "] {
         assert!(

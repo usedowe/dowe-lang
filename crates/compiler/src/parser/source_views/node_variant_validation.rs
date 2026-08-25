@@ -376,7 +376,7 @@ fn validate_node_variant_references(
                 signals,
                 locals,
                 &props.open,
-                "open",
+                "bind",
                 ViewPathExpectation::Bool,
             )?;
             for child in header.iter().chain(body).chain(footer) {
@@ -397,7 +397,7 @@ fn validate_node_variant_references(
                 signals,
                 locals,
                 &props.open,
-                "open",
+                "bind",
                 ViewPathExpectation::Bool,
             )?;
             validate_optional_action(path, actions, props.on_close.as_deref())?;
@@ -411,7 +411,7 @@ fn validate_node_variant_references(
                 signals,
                 locals,
                 &props.open,
-                "open",
+                "bind",
                 ViewPathExpectation::Bool,
             )?;
             validate_optional_action(path, actions, props.on_confirm.as_deref())?;
@@ -441,7 +441,7 @@ fn validate_node_variant_references(
                     signals,
                     locals,
                     open,
-                    "open",
+                    "bind",
                     ViewPathExpectation::Bool,
                 )?;
             }

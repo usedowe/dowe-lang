@@ -26,10 +26,22 @@ const BLANK_THEME: &str = r##"theme
   design defaultTheme:"light"
     theme name:"light"
       colors:
-        primary color:"#1F3A5F" text:"#EAF2F8" title:"#FFFFFF"
-        secondary color:"#6BC670" text:"#102A15" title:"#071B0B"
-        background color:"#FFFFFF" text:"#17263A" title:"#17263E"
-        surface color:"#F7F9FC" text:"#17263A" title:"#17263E"
+        primary color:"#1F3A5F" text:"#EBF2FA" title:"#FFFFFF"
+        secondary color:"#6BC670" text:"#0F291E" title:"#040D05"
+        accent color:"#3F7A8A" text:"#F0F7F9" title:"#FFFFFF"
+        muted color:"#E2E8F0" text:"#334155" title:"#1F3A5F"
+        background color:"#F3F1EE" text:"#334155" title:"#1F3A5F"
+        surface color:"#FFFFFF" text:"#334155" title:"#1F3A5F"
+        success color:"#16A34A" text:"#E8F5E9" title:"#FFFFFF"
+        info color:"#0084D1" text:"#E1F5FE" title:"#FFFFFF"
+        warning color:"#D08700" text:"#1F1400" title:"#0D0900"
+        danger color:"#E7000B" text:"#FFEBEE" title:"#FFFFFF"
+    theme name:"dark" extends:"light"
+      colors:
+        primary color:"#F3F1EE" text:"#334155" title:"#1F3A5F"
+        muted color:"#334155" text:"#D5DEE9" title:"#F3F7FC"
+        background color:"#111827" text:"#E5E7EB" title:"#F9FAFB"
+        surface color:"#1F2937" text:"#E5E7EB" title:"#F9FAFB"
 "##;
 
 const CRUD_THEME: &str = r##"theme
@@ -598,7 +610,7 @@ page homePage
             Text size:"sm" color:"muted"
               "The verified session subject is the only owner accepted by create and update."
 
-  Modal open:registerModalOpen onClose:closeRegisterModal scheme:"surface"
+  Modal bind:registerModalOpen onClose:closeRegisterModal scheme:"surface"
     header
       Grid columns:1 gap:1
         Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
@@ -618,7 +630,7 @@ page homePage
         Button onClick:register iconStart:"add-circle"
           "Create account"
 
-  Modal open:loginModalOpen onClose:closeLoginModal scheme:"surface"
+  Modal bind:loginModalOpen onClose:closeLoginModal scheme:"surface"
     header
       Grid columns:1 gap:1
         Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
@@ -637,7 +649,7 @@ page homePage
         Button onClick:login iconStart:"user"
           "Sign in"
 
-  Modal open:createModalOpen onClose:closeCreateModal scheme:"surface"
+  Modal bind:createModalOpen onClose:closeCreateModal scheme:"surface"
     header
       Grid columns:1 gap:1
         Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
@@ -656,7 +668,7 @@ page homePage
         Button onClick:createBlog scheme:"success" iconStart:"check-circle"
           "Publish story"
 
-  Modal open:editModalOpen onClose:closeEditModal scheme:"surface"
+  Modal bind:editModalOpen onClose:closeEditModal scheme:"surface"
     header
       Grid columns:1 gap:1
         Text size:"xs" weight:"bold" spacing:"widest" color:"primary"

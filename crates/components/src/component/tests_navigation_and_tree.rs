@@ -414,7 +414,7 @@ fn validates_navigation_shell_components() {
 fn validates_drawer_props_and_children() {
     let node = super::drawer_component_node(
         vec![
-            string_prop("open", "drawerOpen"),
+            string_prop("bind", "drawerOpen"),
             string_prop("position", "end"),
             string_prop("variant", "ghost"),
             string_prop("scheme", "primary"),
@@ -451,7 +451,7 @@ fn validates_drawer_props_and_children() {
     }
 
     let error = super::drawer_component_node(
-        vec![string_prop("open", "drawerOpen")],
+        vec![string_prop("bind", "drawerOpen")],
         Vec::new(),
         Vec::new(),
         Vec::new(),
@@ -545,7 +545,7 @@ fn validates_display_and_overlay_component_props() {
 
     let modal = super::modal_component_node(
         vec![
-            string_prop("open", "open"),
+            string_prop("bind", "open"),
             string_prop("scheme", "surface"),
         ],
         vec![text_node("Header").expect("text")],
@@ -565,7 +565,7 @@ fn validates_display_and_overlay_component_props() {
     ));
 
     let dialog = super::alert_dialog_component_node(vec![
-        string_prop("open", "open"),
+        string_prop("bind", "open"),
         string_prop("title", "Delete?"),
         string_prop("description", "Cannot undo."),
         string_prop("onConfirm", "confirm"),
@@ -648,7 +648,7 @@ fn validates_display_and_overlay_component_props() {
     assert!(matches!(dropdown, ViewNode::Dropdown { entries, .. } if entries.len() == 1));
 
     let command = super::command_component_node(
-        vec![string_prop("open", "open"), string_prop("shortcut", "p")],
+        vec![string_prop("bind", "open"), string_prop("shortcut", "p")],
         vec![super::CommandEntry::Item(
             super::overlay_item_component(
                 BuiltinComponent::Command,

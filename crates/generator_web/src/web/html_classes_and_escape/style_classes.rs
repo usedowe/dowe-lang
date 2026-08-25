@@ -112,6 +112,8 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
     });
     if let Some(value) = props.border_color {
         classes.push(format!("border-color-{}", value.as_str()));
+    } else if props.border.is_some() {
+        classes.push("border-color-primary".to_string());
     }
     append_responsive_classes(classes, "shadow", props.shadow.as_ref(), |value| {
         value.as_str().to_string()

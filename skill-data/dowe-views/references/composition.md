@@ -162,7 +162,7 @@ layout DocsLayout
     main
       children
     overlays
-      Drawer open:openDrawer
+      Drawer bind:openDrawer
         body
           ViewsNavigation
 ```

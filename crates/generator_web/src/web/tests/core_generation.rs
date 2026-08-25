@@ -94,6 +94,28 @@ fn preserves_explicit_border_width_and_color_over_variant_defaults() {
 }
 
 #[test]
+fn defaults_border_color_to_primary_when_border_color_is_omitted() {
+    let tree = ViewNode::Box {
+        props: StyleProps {
+            border: Some(ResponsiveValue::scalar(BorderWidth(1))),
+            ..Default::default()
+        },
+        children: vec![text("Box")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/borders.dowe"),
+        "page BordersPage",
+        &tree,
+    );
+
+    assert!(page.content.contains("border-1 border-color-primary"));
+    assert!(page
+        .css_content
+        .contains(".border-color-primary{border-color:var(--dowe-primary) !important;}"));
+}
+
+#[test]
 fn rejects_incompatible_persisted_view_store_shapes() {
     let web = super::WebOutput {
         chunks: Vec::new(),

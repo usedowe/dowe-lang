@@ -201,7 +201,7 @@ fn parses_layout_bar_regions() {
     bottom
       Text
         "Status"
-    mobileMenu mobileMenuOpen:menuOpen
+    mobileMenu bind:menuOpen
       header
         Text
           "Navigation"
@@ -410,7 +410,7 @@ fn rejects_invalid_layout_bar_regions() {
     assert!(
         direct_child
             .to_string()
-            .contains("AppBar only accepts top, start, center, end or bottom regions")
+            .contains("AppBar only accepts top, start, center, end, bottom or mobileMenu regions")
     );
 }
 

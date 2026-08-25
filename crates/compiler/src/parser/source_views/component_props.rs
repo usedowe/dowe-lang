@@ -35,7 +35,7 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
                 | BuiltinComponent::Modal
                 | BuiltinComponent::AlertDialog
                 | BuiltinComponent::Command,
-            "open",
+            "bind",
             SourceValue::Bareword(path),
         ) => PropValue::String(path.clone()),
         (BuiltinComponent::Icon, "fill" | "stroke", SourceValue::Bareword(path)) => {
@@ -223,12 +223,12 @@ fn validate_component_prop_source(
             | BuiltinComponent::Modal
             | BuiltinComponent::AlertDialog
             | BuiltinComponent::Command
-    ) && prop.name == "open"
+    ) && prop.name == "bind"
         && !matches!(&prop.value, SourceValue::Bareword(_))
     {
         return Err(prop_error(
             prop,
-            ComponentError::invalid_prop("open", "signal bool path").to_string(),
+            ComponentError::invalid_prop("bind", "signal bool path").to_string(),
         ));
     }
     if component == BuiltinComponent::Toast
@@ -367,7 +367,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             SourceValue::Bareword(_),
         )
         | (BuiltinComponent::DateRange, "start" | "end", SourceValue::Bareword(_))
-        | (BuiltinComponent::ToggleGroup, "value" | "bind", SourceValue::Bareword(_))
+        | (BuiltinComponent::ToggleGroup, "bind", SourceValue::Bareword(_))
         | (BuiltinComponent::Candlestick, "data", SourceValue::Bareword(_))
         | (
             BuiltinComponent::Canvas,
@@ -445,7 +445,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             | BuiltinComponent::Modal
             | BuiltinComponent::AlertDialog
             | BuiltinComponent::Command,
-            "open",
+            "bind",
             SourceValue::Bareword(_),
         )
         | (BuiltinComponent::Toast, "source", SourceValue::Bareword(_)) => true,

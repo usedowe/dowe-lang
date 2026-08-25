@@ -341,7 +341,7 @@ fn parses_padding_on_drawer_and_sidebar_regions() {
     body px:{ xs:2 md:4 }
       Text
         "Body"
-  Drawer open:drawerOpen
+  Drawer bind:drawerOpen
     body
       Text
         "Body"
@@ -370,7 +370,7 @@ fn parses_drawer_with_signal_open_and_responsive_show() {
     let tree = parse_page(
             r#"page navPage
   signal drawerOpen value:false
-  Drawer open:drawerOpen position:"end" variant:"solid" scheme:"surface" show:{ xs:true md:false } disableOverlayClose:true hideCloseButton:true
+  Drawer bind:drawerOpen position:"end" variant:"solid" scheme:"surface" show:{ xs:true md:false } disableOverlayClose:true hideCloseButton:true
     header
       Title
         "Menu"
@@ -409,7 +409,7 @@ fn parses_drawer_with_signal_open_and_responsive_show() {
     let legacy = parse_page(
         r#"page navPage
   signal drawerOpen value:false
-  Drawer open:drawerOpen
+  Drawer bind:drawerOpen
     Text
       "Navigation""#,
     )

@@ -154,7 +154,7 @@ pub fn component_prop_contract(
         }
         "wide" if component == BuiltinComponent::SideNav => Some(boolean),
         "src" if component == BuiltinComponent::Image => Some(string),
-        "open"
+        "bind"
             if matches!(
                 component,
                 BuiltinComponent::Drawer
@@ -165,7 +165,7 @@ pub fn component_prop_contract(
         {
             Some(boolean)
         }
-        "mobileMenuOpen" if component == BuiltinComponent::AppBar => Some(boolean),
+        "bind" if component == BuiltinComponent::AppBar => Some(boolean),
         "source" if component == BuiltinComponent::Toast => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }
@@ -184,7 +184,7 @@ pub fn component_prop_contract(
             Some(boolean)
         }
         "start" | "end" if component == BuiltinComponent::DateRange => Some(string),
-        "value" if component == BuiltinComponent::ToggleGroup => Some(string),
+        "bind" if component == BuiltinComponent::ToggleGroup => Some(string),
         "data" | "series"
             if matches!(
                 component,
