@@ -536,7 +536,16 @@ fn render_dev_android_flow_node(
                         escape_java(props.label.as_deref().unwrap_or_default())
                     ));
                 }
-                if let Some(icon) = props.icon_start.as_ref() {
+                if let Some(path) = props.swap_bind.as_deref() {
+                    if let Some(icon) = props.icon_start.as_ref() {
+                        let on_icon = render_dev_android_icon_view(icon, counter, output, Some(&content));
+                        output.push_str(&format!("        {on_icon}.setVisibility(doweBool(\"{}\") ? View.VISIBLE : View.GONE);\n        doweAdd({view}, {on_icon});\n", escape_java(&context.signal_path(path))));
+                    }
+                    if let Some(icon) = props.swap_icon_off.as_ref() {
+                        let off_icon = render_dev_android_icon_view(icon, counter, output, Some(&content));
+                        output.push_str(&format!("        {off_icon}.setVisibility(doweBool(\"{}\") ? View.GONE : View.VISIBLE);\n        doweAdd({view}, {off_icon});\n", escape_java(&context.signal_path(path))));
+                    }
+                } else if let Some(icon) = props.icon_start.as_ref() {
                     if let Some(path) = props.reactive.icon_start_when.as_ref() {
                         output.push_str(&format!("        if ({}) {{\n", icon_condition(path, props.reactive.icon_start_comparison.as_ref())));
                         render_dev_android_side_nav_icon(icon, &view, counter, output, Some(&content));
@@ -558,7 +567,14 @@ fn render_dev_android_flow_node(
                         }
                     }
                 }
-                if let Some(action) = action {
+                if let Some(path) = props.swap_bind.as_deref() {
+                    let bind = escape_java(&context.signal_path(path));
+                    let action_body = action
+                        .as_deref()
+                        .and_then(|value| value.strip_prefix("{ ").and_then(|body| body.strip_suffix(" }")))
+                        .unwrap_or("");
+                    output.push_str(&format!("        {view}.setOnClickListener(v -> {{ doweWrite(\"{bind}\", !doweBool(\"{bind}\")); {action_body} renderCurrentRoute(false); }});\n"));
+                } else if let Some(action) = action {
                     output.push_str(&format!("        {view}.setOnClickListener(v -> {action});\n"));
                 }
                 if let Some(variant) = props.reactive.variant.as_ref() {

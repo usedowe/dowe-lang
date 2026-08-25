@@ -467,6 +467,16 @@ fn render_compose_flow_node(
                     )
                 })
                 .unwrap_or_else(|| compose_navigation_action(props.navigation.as_ref()));
+            let action = if let Some(path) = props.swap_bind.as_deref() {
+                let bind = escape_kotlin(&context.signal_path(path));
+                let body = action
+                    .strip_prefix("{ ")
+                    .and_then(|value| value.strip_suffix(" }"))
+                    .unwrap_or("");
+                format!("{{ state.write(\"{bind}\", !state.bool(\"{bind}\")); {body} }}")
+            } else {
+                action
+            };
             let loading = props
                 .reactive
                 .loading
@@ -587,7 +597,20 @@ fn render_compose_flow_node(
                     ));
             let render_contents = |content_indent: usize, output: &mut String| {
                 let content_pad = " ".repeat(content_indent);
-                if let Some(icon) = props.icon_start.as_ref() {
+                if let Some(path) = props.swap_bind.as_deref() {
+                    output.push_str(&format!(
+                        "{content_pad}if (state.bool(\"{}\")) {{\n",
+                        escape_kotlin(&context.signal_path(path))
+                    ));
+                    if let Some(icon) = props.icon_start.as_ref() {
+                        render_compose_side_icon(icon, content_indent + 4, output);
+                    }
+                    output.push_str(&format!("{content_pad}}} else {{\n"));
+                    if let Some(icon) = props.swap_icon_off.as_ref() {
+                        render_compose_side_icon(icon, content_indent + 4, output);
+                    }
+                    output.push_str(&format!("{content_pad}}}\n"));
+                } else if let Some(icon) = props.icon_start.as_ref() {
                     if let Some(path) = props.reactive.icon_start_when.as_ref() {
                         output.push_str(&format!(
                             "{content_pad}if ({}) {{\n",

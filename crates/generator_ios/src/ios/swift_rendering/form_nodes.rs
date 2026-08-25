@@ -74,6 +74,16 @@ fn render_swift_form_node(
                 .loading
                 .as_ref()
                 .map(|path| reactive_bool(path));
+            let action = if let Some(path) = props.swap_bind.as_deref() {
+                let bind = escape_swift(&context.signal_path(path));
+                let body = action
+                    .strip_prefix("{ ")
+                    .and_then(|value| value.strip_suffix(" }"))
+                    .unwrap_or("");
+                format!("{{ state.write(\"{bind}\", value: !state.bool(\"{bind}\")); {body} }}")
+            } else {
+                action
+            };
             let disabled = props
                 .reactive
                 .disabled
@@ -112,7 +122,20 @@ fn render_swift_form_node(
                 |content_indent: usize, opacity: Option<&str>, output: &mut String| {
                     let content_pad = " ".repeat(content_indent);
                     output.push_str(&format!("{content_pad}HStack(spacing: 8) {{\n"));
-                    if let Some(icon) = props.icon_start.as_ref() {
+                    if let Some(path) = props.swap_bind.as_deref() {
+                        output.push_str(&format!(
+                            "{content_pad}    if state.bool(\"{}\") {{\n",
+                            escape_swift(&context.signal_path(path))
+                        ));
+                        if let Some(icon) = props.icon_start.as_ref() {
+                            render_swift_button_icon(icon, &content, content_indent + 8, output);
+                        }
+                        output.push_str(&format!("{content_pad}    }} else {{\n"));
+                        if let Some(icon) = props.swap_icon_off.as_ref() {
+                            render_swift_button_icon(icon, &content, content_indent + 8, output);
+                        }
+                        output.push_str(&format!("{content_pad}    }}\n"));
+                    } else if let Some(icon) = props.icon_start.as_ref() {
                         if let Some(path) = props.reactive.icon_start_when.as_ref() {
                             output.push_str(&format!(
                                 "{content_pad}    if {} {{\n",
