@@ -1,40 +1,4 @@
 #[test]
-fn rejects_legacy_server_function_assignment() {
-    let temp = TempDir::new().expect("tempdir");
-    let root = temp.path();
-    fs::create_dir_all(root.join("server/services")).expect("services");
-    fs::write(
-        root.join("main.dowe"),
-        r#"import saveTicket from "@/server/services/tickets"
-
-main
-  server port:0
-    route "/api/tickets"
-      handler
-        let result = saveTicket args:{ title:"Open" }
-        return json:result"#,
-    )
-    .expect("main");
-    fs::write(
-        root.join("server/services/tickets.dowe"),
-        r#"fn saveTicket params:{ title:string }
-  return value:{ title:args.title }"#,
-    )
-    .expect("function");
-
-    let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
-    let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
-    let error = parse_server_source(root, &file, &EnvironmentConfig::default())
-        .expect_err("legacy function call");
-
-    assert!(
-        error
-            .to_string()
-            .contains("server function calls use `saveTicket result args:{ ... }`")
-    );
-}
-
-#[test]
 fn builds_inspector_request_metadata_from_compiled_actions() {
     let file = parse_source_file(
         Path::new("/project"),
@@ -151,17 +115,6 @@ fn saveTicket params:{ ticket:TicketInput } return:"TicketOutput"
     let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
     let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
     let server = parse_server_source(root, &file, &EnvironmentConfig::default()).expect("server");
-    let inspector_entity = server
-        .inspector
-        .entities
-        .iter()
-        .find(|entity| entity.table == "directvAccounts")
-        .expect("inspector entity");
-    assert_eq!(inspector_entity.database, "iptv");
-    assert_eq!(inspector_entity.field_details[0].field_type, "string");
-    assert!(inspector_entity.field_details[0].primary);
-    assert!(inspector_entity.field_details[1].required);
-    assert!(inspector_entity.field_details[1].index);
     let endpoint = server
         .backend
         .find_endpoint(&HttpMethod::Get, "/api/tickets")
@@ -839,41 +792,6 @@ fn rejects_inline_task_captures_and_control_statements() {
         assert!(rendered.contains("main.dowe"), "{rendered}");
     }
 }
-
-#[test]
-fn rejects_legacy_go_with_a_task_repair() {
-    let temp = TempDir::new().expect("tempdir");
-    let root = temp.path();
-    fs::create_dir_all(root.join("server/tasks")).expect("tasks");
-    fs::write(
-        root.join("server/tasks/cleanup.dowe"),
-        r#"fn runCleanup
-  return value:{ ok:true }"#,
-    )
-    .expect("function");
-    fs::write(
-        root.join("main.dowe"),
-        r#"import runCleanup from "@/server/tasks/cleanup"
-
-main
-  server port:0
-    init
-      go runCleanup"#,
-    )
-    .expect("main");
-
-    let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
-    let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
-    let error =
-        parse_server_source(root, &file, &EnvironmentConfig::default()).expect_err("legacy go");
-
-    assert!(
-        error
-            .to_string()
-            .contains("`go` was renamed to `task`; use `task fn:runCleanup`")
-    );
-}
-
 #[test]
 fn functions_import_store_handles_from_config_modules() {
     let temp = TempDir::new().expect("tempdir");

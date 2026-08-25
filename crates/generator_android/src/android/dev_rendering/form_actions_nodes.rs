@@ -13,11 +13,16 @@ fn render_dev_android_form_actions_node(
     match node {
         ViewNode::ToggleTheme { props } => {
             let view = next_dev_view(counter);
+            let light_icon = render_dev_android_icon_view(&props.light_icon, counter, output, Some(&dev_variant_content(&props.style)));
+            let dark_icon = render_dev_android_icon_view(&props.dark_icon, counter, output, Some(&dev_variant_content(&props.style)));
             output.push_str(&format!(
-                                        "        Button {view} = new Button(this);\n        final boolean[] {view}Dark = new boolean[]{{\"dark\".equals(getSharedPreferences(\"dowe\", 0).getString(\"theme-preference\", \"light\"))}};\n        {view}.setText({view}Dark[0] ? \"sun\" : \"moon\");\n        {view}.setAllCaps(false);\n        {view}.setTextColor({});\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS));\n        {view}.setOnClickListener(v -> {{ {view}Dark[0] = !{view}Dark[0]; doweSetTheme({view}Dark[0] ? \"dark\" : \"light\"); }});\n",
-                                        dev_variant_content(&props.style),
-                                        dev_variant_container(&props.style)
-                                    ));
+                "        FrameLayout {view} = new FrameLayout(this);\n        final boolean[] {view}Dark = new boolean[]{{\"dark\".equals(getSharedPreferences(\"dowe\", 0).getString(\"theme-preference\", \"light\"))}};\n        {view}.setContentDescription({view}Dark[0] ? \"{}\" : \"{}\");\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS));\n        {view}.setOnClickListener(v -> {{ {view}Dark[0] = !{view}Dark[0]; {view}.setContentDescription({view}Dark[0] ? \"{}\" : \"{}\"); doweSetTheme({view}Dark[0] ? \"dark\" : \"light\"); }});\n        {view}.addView({light_icon}, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));\n        {view}.addView({dark_icon}, new FrameLayout.LayoutParams(doweDp(18), doweDp(18), Gravity.CENTER));\n        {dark_icon}.setVisibility({view}Dark[0] ? View.INVISIBLE : View.VISIBLE);\n        {light_icon}.setVisibility({view}Dark[0] ? View.VISIBLE : View.INVISIBLE);\n",
+                escape_java(&props.light_label),
+                escape_java(&props.dark_label),
+                dev_variant_container(&props.style),
+                escape_java(&props.light_label),
+                escape_java(&props.dark_label)
+            ));
             apply_dev_android_style(&props.style.style, &view, false, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }

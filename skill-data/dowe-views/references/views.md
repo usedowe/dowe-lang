@@ -154,6 +154,11 @@ directly in AppBar `center` or `end`; it is not the navigation child of `Drawer`
 `Drawer body`. On responsive shells, hide the AppBar `NavMenu`, show an `IconButton` that opens the
 Drawer, and reuse one static `SideNav` component in the desktop Sidebar and mobile Drawer.
 
+Drawer regions do not add authored content spacing. Give `header` and `footer` their own compact
+horizontal and vertical padding, normally `px:4 py:2`, and give `body` content padding such as
+`p:4` or `px:4 py:5`. Keep the padding on the region that owns the content, not on an empty wrapper;
+for navigation, mount the `SideNav` directly in `body` and apply the spacing to `body`.
+
 AppBar regions are already horizontal flex containers. Keep `Brand`/Logo, `NavMenu`, `Button`, and
 `IconButton` as direct region children; never add a wrapper `Flex` just for `align`, `gap`, or
 sibling placement. For a mobile Drawer trigger, put `IconButton` before Brand in `start` or directly
@@ -235,7 +240,7 @@ Static-only props do not become dynamic because they are inside `each`. `Icon.na
 compiler-validated name; do not use `name:<item.icon>`. Use the supported runtime `Svg data:<reference>`
 contract for a genuinely runtime vector catalog, or keep the component's static contract intact.
 
-`"blog.title"` is literal text. A braced binding must resolve to a string; do not bind `number`, `bool`, or object paths directly. Convert numeric values to a string Signal with `parse.string` before rendering them. Mixed text such as
+`"blog.title"` is literal text. A braced binding such as "{blog.title}" must resolve to a string; do not bind `number`, `bool`, or object paths directly. Convert numeric values to a string Signal with `parse.string` before rendering them. Mixed text such as
 `"By {blog.author}"` is not interpolated and remains literal. Braces apply to direct visible-text
 children only; props continue to use bare references such as `bind:form.title`, `show:ready`, and
 `onClick:save`. Static `Text` and `Title` copy remains verbatim across targets; email- and URL-shaped

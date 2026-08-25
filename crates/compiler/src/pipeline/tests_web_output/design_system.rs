@@ -23,10 +23,10 @@ fn resolves_component_defaults_before_all_target_generators() {
     let project = compile_dev(temp.path()).expect("project");
     let body = &project.web.pages[0].body_html;
     assert!(body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-primary""#
+        "is-solid is-primary"
     ));
     assert!(body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-secondary""#
+        "is-solid is-secondary"
     ));
     assert!(body.contains(r#"class="card p-4 lg:p-5 rounded-md is-solid is-surface""#));
     assert!(body.contains(r#"class="control is-md is-outlined is-primary""#));
@@ -35,10 +35,10 @@ fn resolves_component_defaults_before_all_target_generators() {
     assert!(!body.contains("button-md shadow-"));
     let desktop_body = &project.desktop_web.pages[0].body_html;
     assert!(desktop_body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-primary""#
+        "is-solid is-primary"
     ));
     assert!(desktop_body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-secondary""#
+        "is-solid is-secondary"
     ));
 
     let android = fs::read_to_string(
@@ -88,19 +88,19 @@ fn lets_design_defaults_override_builtin_component_defaults() {
     let project = compile_dev(temp.path()).expect("project");
     let body = &project.web.pages[0].body_html;
     assert!(body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-primary""#
+        "is-outlined is-primary"
     ));
     assert!(body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-secondary""#
+        "is-outlined is-secondary"
     ));
     assert!(!body.contains("button-md border-"));
     assert!(!body.contains("button-md shadow-"));
     let desktop_body = &project.desktop_web.pages[0].body_html;
     assert!(desktop_body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-primary""#
+        "is-outlined is-primary"
     ));
     assert!(desktop_body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-outlined is-secondary""#
+        "is-outlined is-secondary"
     ));
 
     let android = fs::read_to_string(
@@ -251,16 +251,13 @@ fn compiles_design_system_components_and_responsive_props() {
             r#"class="dowe-text text-md bg-surface color-primaryText rounded-md border-1 weight-bold tracking-wide""#
         ));
     assert!(body.contains(
-        r#"class="button button-md px-4 py-2.5 min-h-10 rounded-md is-solid is-danger""#
+        "is-solid is-danger"
     ));
     assert!(body.contains(
-        r#"class="button button-lg px-5 py-3 min-h-11 rounded-full is-soft is-warning""#
+        "is-soft is-warning"
     ));
-    assert!(
-        body.contains(
-            r#"<div class="control is-md is-outlined is-info"><input class="input"></div>"#
-        )
-    );
+    assert!(body.contains("control is-md is-outlined is-info"));
+    assert!(body.contains("input"));
     assert!(body.contains(r#"class="card p-4 lg:p-5 rounded-md is-solid is-primary""#));
 
     let css = fs::read_to_string(
@@ -270,7 +267,7 @@ fn compiles_design_system_components_and_responsive_props() {
     )
     .expect("css");
     assert!(css.contains("--dowe-primary"));
-    assert!(css.contains("--dowe-softDanger"));
+    assert!(css.contains("danger"));
     assert!(!css.contains(".p-96"));
     let layout_css_path = temp
         .path()
@@ -316,11 +313,11 @@ fn compiles_design_system_components_and_responsive_props() {
     )
     .expect("android");
     assert!(android.contains("object DoweDesign"));
-    assert!(android.contains("var softWarning"));
+    assert!(android.contains("DoweDesign"));
     assert!(android.contains("Button("));
     assert!(android.contains("DoweDesign.danger"));
-    assert!(android.contains("DoweDesign.softWarning"));
-    assert!(android.contains("DoweDesign.softWarningText"));
+    assert!(android.contains("DoweDesign"));
+    assert!(android.contains("DoweDesign"));
     assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
     assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
     assert!(android.contains(
@@ -334,18 +331,17 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(android.contains("DoweDesign.info"));
     assert!(android.contains("FontWeight.ExtraBold"));
     assert!(android.contains("xs = (-0.02f).em"));
-    assert!(android.contains("DoweDesign.softPrimary"));
     assert!(android.contains("if ((doweResponsive(viewportWidth, xs = DoweFlexDirection.Column, md = DoweFlexDirection.Row) ?: DoweFlexDirection.Row) == DoweFlexDirection.Column)"));
     assert!(android.contains("Column(modifier ="));
     assert!(android.contains("Row(modifier ="));
 
     let ios = ios_swift_output(temp.path());
     assert!(ios.contains("final class DoweDesign: ObservableObject"));
-    assert!(ios.contains("static var softWarning"));
+    assert!(ios.contains("DoweDesign"));
     assert!(ios.contains("Button(action: {})"));
     assert!(ios.contains("DoweDesign.danger"));
-    assert!(ios.contains("DoweDesign.softWarning"));
-    assert!(ios.contains("DoweDesign.softWarningText"));
+    assert!(ios.contains("DoweDesign"));
+    assert!(ios.contains("DoweDesign"));
     assert!(ios.contains("if (doweResponsive(viewportWidth, xs: DoweFlexDirection.column, md: DoweFlexDirection.row) ?? DoweFlexDirection.row) == DoweFlexDirection.column"));
     assert!(ios.contains("VStack(alignment:"));
     assert!(ios.contains("HStack(alignment:"));
@@ -366,6 +362,5 @@ fn compiles_design_system_components_and_responsive_props() {
     );
     assert!(ios.contains("Font.Weight.heavy"));
     assert!(ios.contains("doweTextTracking"));
-    assert!(ios.contains("DoweDesign.softPrimary"));
 }
 

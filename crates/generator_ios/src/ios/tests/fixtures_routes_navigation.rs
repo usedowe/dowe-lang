@@ -6,7 +6,7 @@ fn side_nav_route() -> ViewRoute {
         page_tree: ViewNode::SideNav {
             props: SideNavProps {
                 style: VariantProps {
-                    variant: Some(ComponentVariant::Soft),
+                    variant: Some(ComponentVariant::Solid),
                     color: Some(ColorFamily::Surface),
                     ..Default::default()
                 },
@@ -123,7 +123,7 @@ fn navigation_shell_route() -> ViewRoute {
             start: vec![ViewNode::Sidebar {
                 props: SidebarProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Surface),
                         style: StyleProps {
                             sizing: dowe_components::SizingProps {
@@ -233,7 +233,7 @@ fn drawer_route() -> ViewRoute {
             children: vec![ViewNode::Drawer {
                 props: DrawerProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Surface),
                         ..Default::default()
                     },

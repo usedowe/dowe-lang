@@ -121,6 +121,10 @@ force a line boundary.
 | `Stepper` | Ordered numbered workflow selected through direct `step` entries; use `scheme` and `horizontal` or `vertical` orientation. |
 | `step` | Context-only child of Stepper with unique quoted `id`, quoted `label`, and panel children. |
 
+Drawer regions do not add authored content spacing. Give `header` and `footer` their own compact
+padding, normally `px:4 py:2`, and give `body` content padding such as `p:4` or `px:4 py:5`.
+For navigation, mount `SideNav` directly in `body` and apply the spacing to that region.
+
 `Scaffold boxed:true` centers and limits only the `start`, `main`, and `end` body while leaving the outer shell, bars, and overlays full width.
 
 Section, Scaffold, AppBar, Footer, and BottomBar use the wide boxed content cap of `96rem` on web and `1536` logical units on Android and iOS. Their outer bands, shells, and bar surfaces remain full width.

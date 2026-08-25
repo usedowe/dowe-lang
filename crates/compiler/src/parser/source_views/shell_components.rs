@@ -105,25 +105,73 @@ fn lower_bar_node(
     let mut end = None;
     let mut top = None;
     let mut bottom = None;
+    let mut mobile_menu = None;
 
     for child in &node.children {
         if !matches!(
             child.name.as_str(),
-            "top" | "start" | "center" | "end" | "bottom"
+            "top" | "start" | "center" | "end" | "bottom" | "mobileMenu"
         ) {
             return Err(node_error(
                 child,
                 format!(
-                    "{} only accepts top, start, center, end or bottom regions",
+                    "{} only accepts top, start, center, end, bottom or mobileMenu regions",
                     component.as_str()
                 ),
             ));
         }
-        if !child.args.is_empty() || !child.props.is_empty() {
+        if !child.args.is_empty() || (!child.props.is_empty() && child.name != "mobileMenu") {
             return Err(node_error(
                 child,
                 "bar regions cannot declare args or props",
             ));
+        }
+        if child.name == "mobileMenu" {
+            if component != BuiltinComponent::AppBar {
+                return Err(node_error(child, "only AppBar accepts a mobileMenu region"));
+            }
+            if mobile_menu.is_some() {
+                return Err(node_error(child, "duplicate `mobileMenu` region in AppBar"));
+            }
+            let menu_props = child
+                .props
+                .iter()
+                .map(|prop| component_prop(BuiltinComponent::AppBar, prop))
+                .collect::<DoweResult<Vec<_>>>()
+                .map_err(|error| node_error(child, error.message()))?;
+            let mut open = None;
+            for prop in menu_props {
+                if prop.name == "mobileMenuOpen" {
+                    if let PropValue::Binding(binding) = prop.value {
+                        open = Some(binding.path);
+                    }
+                } else {
+                    return Err(node_error(child, format!("mobileMenu does not accept `{}`", prop.name)));
+                }
+            }
+            let mut header = Vec::new();
+            let mut body = Vec::new();
+            let mut footer = Vec::new();
+            for region in &child.children {
+                if !matches!(region.name.as_str(), "header" | "body" | "footer") {
+                    return Err(node_error(
+                        region,
+                        "mobileMenu only accepts header, body or footer regions",
+                    ));
+                }
+                if !region.args.is_empty() || !region.props.is_empty() {
+                    return Err(node_error(region, "mobileMenu regions cannot declare args or props"));
+                }
+                let children = lower_node_sequence(&region.children, allow_children)?;
+                match region.name.as_str() {
+                    "header" if header.is_empty() => header = children,
+                    "body" if body.is_empty() => body = children,
+                    "footer" if footer.is_empty() => footer = children,
+                    name => return Err(node_error(region, format!("duplicate `{name}` region in mobileMenu"))),
+                }
+            }
+            mobile_menu = Some(MobileMenu { open, header, body, footer });
+            continue;
         }
         let children = lower_node_sequence(&child.children, allow_children)?;
         match child.name.as_str() {
@@ -149,6 +197,7 @@ fn lower_bar_node(
         center.unwrap_or_default(),
         end.unwrap_or_default(),
         bottom.unwrap_or_default(),
+        mobile_menu,
         allow_children,
     )
     .map_err(|error| component_error(node, error))

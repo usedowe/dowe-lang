@@ -104,7 +104,7 @@ fn dev_text_references_layout_bindings(
 ) -> bool {
     dev_style_references_layout_bindings(&props.style, bindings)
         || (props.i18n.is_none()
-            && text_binding_path(value).is_some_and(|path| bindings.references_signal(path)))
+            && text_template_bindings(value).any(|path| bindings.references_signal(&path)))
 }
 
 fn dev_chart_references_layout_bindings(

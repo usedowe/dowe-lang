@@ -314,11 +314,20 @@ pub fn theme_toggle_component_node(props: Vec<ComponentProp>) -> ComponentResult
     style.color.get_or_insert(ColorFamily::Primary);
     let size = *style.size.get_or_insert(ButtonSize::Md);
     apply_icon_button_size_defaults(&mut style.style, size);
+    let icon_size = ResponsiveValue::scalar(SizeValue::Scale(size.icon_button_icon_size()));
+    let mut light_icon = solar_control_icon("sun")?;
+    light_icon.props.style.sizing.w = Some(icon_size.clone());
+    light_icon.props.style.sizing.h = Some(icon_size.clone());
+    let mut dark_icon = solar_control_icon("moon")?;
+    dark_icon.props.style.sizing.w = Some(icon_size.clone());
+    dark_icon.props.style.sizing.h = Some(icon_size);
     Ok(ViewNode::ToggleTheme {
         props: ThemeToggleProps {
             style,
             light_label,
             dark_label,
+            light_icon,
+            dark_icon,
         },
     })
 }

@@ -48,7 +48,9 @@ fn class_body(class_name: &str) -> Option<String> {
         return Some(format!("background-color:var(--dowe-{token});"));
     }
     if let Some(token) = class_name.strip_prefix("color-") {
-        return Some(format!("color:var(--dowe-{token});"));
+        return Some(format!(
+            "--dowe-content-text:var(--dowe-{token});--dowe-content-title:var(--dowe-{token});color:var(--dowe-{token});"
+        ));
     }
     if let Some(value) = class_name.strip_prefix("animate-")
         && let Some(animation) = animation_css(value)
@@ -164,12 +166,12 @@ fn class_body(class_name: &str) -> Option<String> {
     if let Some(value) = class_name.strip_prefix("border-")
         && matches!(value, "1" | "2" | "3" | "4")
     {
-        return Some(format!("border-width:{value}px;border-style:solid;"));
+        return Some(format!("border-width:{value}px !important;border-style:solid !important;"));
     }
     if let Some(value) = class_name.strip_prefix("border-color-")
         && let Some(family) = ColorFamily::from_name(value)
     {
-        return Some(format!("border-color:var(--dowe-{});", family.as_str()));
+        return Some(format!("border-color:var(--dowe-{}) !important;", family.as_str()));
     }
     if let Some(value) = class_name.strip_prefix("shadow-")
         && let Some(size) = ShadowSize::from_name(value)
@@ -243,13 +245,13 @@ fn class_body(class_name: &str) -> Option<String> {
     if let Some(value) = class_name.strip_prefix("grid-justify-")
         && let Some(align) = GridAlignment::from_name(value)
     {
-        let css_val = grid_alignment_css(align);
-        return Some(format!("justify-items:{css_val};"));
+        let css_val = grid_justify_css(align);
+        return Some(format!("justify-content:{css_val};"));
     }
     if let Some(value) = class_name.strip_prefix("grid-align-")
         && let Some(align) = GridAlignment::from_name(value)
     {
-        return Some(format!("align-items:{};", grid_alignment_css(align)));
+        return Some(format!("align-items:{};", grid_align_css(align)));
     }
     if let Some(value) = class_name.strip_prefix("col-span-")
         && let Ok(span) = value.parse::<u16>()

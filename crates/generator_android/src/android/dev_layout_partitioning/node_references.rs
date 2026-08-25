@@ -244,6 +244,7 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
             center,
             end,
             bottom,
+            ..
         }
         | ViewNode::Footer {
             props,
@@ -252,6 +253,7 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
             center,
             end,
             bottom,
+            ..
         } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
                 || dev_children_reference_layout_bindings(top, bindings)

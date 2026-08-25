@@ -161,22 +161,6 @@ mod tests {
             assert_eq!(options.i18n_enabled(), i18n);
         }
     }
-
-    #[test]
-    fn parses_legacy_template_aliases() {
-        for (name, template) in [
-            ("cloudflare-crud", ProjectTemplate::Crud),
-            ("docker-crud", ProjectTemplate::Crud),
-            ("cloudflare-blank", ProjectTemplate::Blank),
-            ("docker-blank", ProjectTemplate::Blank),
-        ] {
-            let args = vec!["--template".to_string(), name.to_string()];
-            let options = parse_init_options(&args).expect("parse").expect("options");
-
-            assert_eq!(options.template(), template);
-        }
-    }
-
     #[test]
     fn leaves_template_to_interactive_menu_without_flags() {
         let template = parse_init_options(&[]).expect("parse");
@@ -204,15 +188,6 @@ mod tests {
 
         assert!(error.to_string().contains("one --template value"));
     }
-
-    #[test]
-    fn rejects_removed_legacy_template() {
-        let args = vec!["--template".to_string(), "clinic-desk".to_string()];
-        let error = parse_init_options(&args).expect_err("error");
-
-        assert!(error.to_string().contains("unknown init template"));
-    }
-
     #[test]
     fn rejects_removed_database_option() {
         let args = vec!["--database".to_string(), "db".to_string()];

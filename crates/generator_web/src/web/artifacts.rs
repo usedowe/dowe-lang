@@ -9,7 +9,7 @@ use dowe_components::{
     CommandEntry, CommandProps, ComponentVariant, ContainerSize, CountdownProps, CoverSource, CsvColumn,
     CsvFieldProps, DateProps, DateRangeProps, DesignConfig, DesignTheme, DeviceProps, DividerProps,
     DragDropProps, DragGroup, DragItem, DrawerProps, DropdownProps, DropzoneProps, EditorProps,
-    ElementProps, EmptyKind, EmptyProps, FORM_CONTROL_FLOATING_HEIGHT_INCREMENT, FabAction,
+    ElementProps, EmptyKind, EmptyProps, MobileMenu, FORM_CONTROL_FLOATING_HEIGHT_INCREMENT, FabAction,
     FabProps, FlexDirection, FlexItem, FontConfig, FontFamily, FormValidationRuleKind, GapSize, GapValue,
     GridAlignment, GridProps, INPUT_HORIZONTAL_PADDING, IframeProps, ImageCropperProps, ImageProps,
     Justify, LayoutProps, LineChartProps, MapMarker, MapProps, MapWaypoint, MarqueeProps,
@@ -30,7 +30,7 @@ use dowe_components::{
     ViewSignalValue, VisibilityCondition, WebTarget, collect_node_font_families,
     collect_view_forms, empty_icon, form_control_min_height, form_control_text_size,
     ordered_phone_countries, phone_countries, phone_country, phone_country_flag_icon,
-    side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon, text_binding_path,
+    side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon, text_template_segments,
     text_spacing_em, text_typography, text_weight_number,
 };
 use dowe_minifier::{minify_css, minify_js};

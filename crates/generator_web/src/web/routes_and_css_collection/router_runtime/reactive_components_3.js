@@ -381,6 +381,13 @@ function renderDynamic(root, state, scope) {
     const value = readPath(state, element.dataset.doweText, scope);
     element.textContent = value == null ? "" : String(value);
   }
+  for (const element of root.querySelectorAll("[data-dowe-template]")) {
+    if (!scoped && element.closest("[data-dowe-each-row]")) continue;
+    element.textContent = element.dataset.doweTemplate.replace(/\{([^{}]+)\}/g, (_, path) => {
+      const value = readPath(state, path, scope);
+      return value == null ? "" : String(value);
+    });
+  }
   for (const input of root.querySelectorAll(
     "[data-dowe-bind]:not([data-dowe-select]):not([data-dowe-combo-box]):not([data-dowe-pin]):not([data-dowe-editor])"
   )) {
@@ -401,6 +408,12 @@ function renderDynamic(root, state, scope) {
         "has-value",
         value != null && String(value) !== ""
       );
+  }
+  for (const swap of root.querySelectorAll("[data-dowe-swap]")) {
+    const active = !!readPath(state, swap.dataset.doweSwapBind, scope);
+    swap.querySelector("[data-dowe-swap-on]")?.toggleAttribute("hidden", !active);
+    swap.querySelector("[data-dowe-swap-off]")?.toggleAttribute("hidden", active);
+    swap.setAttribute("aria-pressed", active ? "true" : "false");
   }
   renderDoweColors(root, state, scope);
   renderDateFields(root, state, scope);

@@ -126,17 +126,19 @@ fn render_swift_audio(props: &AudioProps, indent: usize, output: &mut String) {
     let play = solar_control_icon("play").expect("bundled Audio play icon");
     let pause = solar_control_icon("pause").expect("bundled Audio pause icon");
     let mut button_style = props.style.clone();
-    button_style.variant = Some(if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Solid {
-        ComponentVariant::Soft
-    } else {
-        ComponentVariant::Solid
-    });
+    button_style.variant = Some(
+        if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Solid {
+            ComponentVariant::Solid
+        } else {
+            ComponentVariant::Solid
+        },
+    );
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             format!("Optional({})", card_variant_content(&props.style))
         } else {
             "nil".to_string()
-    };
+        };
     output.push_str(&format!(
         "{pad}DoweAudioView(source: {}, subtitle: {}, avatarSource: {}, playIcon: DoweVideoIcon(viewBox: {}, paths: {}), pauseIcon: DoweVideoIcon(viewBox: {}, paths: {}), backgroundColor: {}, contentColor: {}, buttonBackgroundColor: {}, buttonContentColor: {}, borderColor: {border}, radius: {})\n",
         swift_string_literal(&props.src),
@@ -184,7 +186,7 @@ fn render_swift_image(
             format!("Optional({})", card_variant_content(&props.style))
         } else {
             "nil".to_string()
-    };
+        };
     output.push_str(&format!(
         "{pad}DoweImageView(source: {}, alt: {}, aspect: {}, objectFit: {}, loading: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {})\n",
         swift_image_source(props, context),
@@ -234,21 +236,18 @@ fn render_swift_accordion(
         "nil".to_string()
     };
     let item_background = match variant {
-        ComponentVariant::Soft | ComponentVariant::Outlined => color_ref(ColorToken::Surface),
+        ComponentVariant::Solid | ComponentVariant::Outlined => color_ref(ColorToken::Surface),
         _ => "Color.clear",
     };
     let item_border = match variant {
-        ComponentVariant::Soft => content_color.to_string(),
-        ComponentVariant::Outlined => color_ref(family_color(
-            style.color.unwrap_or(ColorFamily::Primary),
-        ))
-        .to_string(),
-        ComponentVariant::Solid | ComponentVariant::Ghost | ComponentVariant::Line => {
-            content_color.to_string()
+        ComponentVariant::Solid => content_color.to_string(),
+        ComponentVariant::Outlined => {
+            color_ref(family_color(style.color.unwrap_or(ColorFamily::Primary))).to_string()
         }
+        ComponentVariant::Ghost | ComponentVariant::Line => content_color.to_string(),
     };
     let item_border_opacity = match variant {
-        ComponentVariant::Soft => "0.16",
+        ComponentVariant::Solid => "0.16",
         ComponentVariant::Outlined => "0.24",
         ComponentVariant::Ghost => "0.22",
         _ => "0.24",

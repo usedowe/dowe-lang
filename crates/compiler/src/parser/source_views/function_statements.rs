@@ -117,12 +117,8 @@ fn parse_toast_statement(node: &SourceNode) -> DoweResult<ViewToastAction> {
     let variant = optional_static_string_prop(node, "variant")?;
     let variant = match variant {
         Some(value) => match ComponentVariant::from_name(&value) {
-            Some(
-                parsed @ (ComponentVariant::Solid
-                | ComponentVariant::Soft
-                | ComponentVariant::Outlined
-                | ComponentVariant::Ghost),
-            ) => Some(parsed.as_str().to_string()),
+            Some(parsed @ (ComponentVariant::Solid | ComponentVariant::Outlined | ComponentVariant::Ghost)) =>
+                Some(parsed.as_str().to_string()),
             _ => {
                 return Err(node_error(
                     node,

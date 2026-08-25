@@ -7,7 +7,7 @@
   justify-content:center;
   gap:1rem;
   margin:0;
-  overflow:hidden;
+  overflow:visible;
   border-radius:var(--dowe-radius);
 }
 .arc-chart-container.legend-top,.area-chart-container.legend-top,.bar-chart-container.legend-top,.line-chart-container.legend-top,.pie-chart-container.legend-top {
@@ -210,6 +210,10 @@
   align-items:center;
   justify-content:center;
   overflow:visible;
+  width:min(100%,24rem);
+  aspect-ratio:1;
+  min-height:0;
+  margin-inline:auto;
 }
 .arc-chart-container .dowe-chart-arc-viewport .dowe-chart-svg {
   max-width:100%;
@@ -228,6 +232,9 @@
 .arc-chart-container.legend-left .dowe-chart-arc-viewport,.arc-chart-container.legend-right .dowe-chart-arc-viewport {
   min-width:0;
 }
+.dowe-chart-tooltip { position:absolute; z-index:2; top:.75rem; left:50%; max-width:calc(100% - 1.5rem); padding:.45rem .75rem; border:1px solid currentColor; border-radius:999px; background:var(--dowe-surface,currentColor); color:currentColor; box-shadow:0 .35rem 1rem #0003; font-size:.8rem; font-weight:700; line-height:1.2; transform:translateX(-50%); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dowe-chart-tooltip[hidden] { display:none; }
+.dowe-chart-arc:focus-visible,.dowe-chart-arc.is-selected { opacity:1; filter:brightness(1.12); }
 .arc-chart-container.legend-left .dowe-chart-legend,.arc-chart-container.legend-right .dowe-chart-legend {
   max-width:35%;
 }

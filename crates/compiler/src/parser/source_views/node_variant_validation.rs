@@ -116,7 +116,8 @@ fn validate_node_variant_references(
         }
         ViewNode::Title { props, value } | ViewNode::Text { props, value } => {
             let binding = text_binding_path(value);
-            if props.i18n.is_some() && binding.is_some() {
+            let template_bindings = dowe_components::text_template_bindings(value).collect::<Vec<_>>();
+            if props.i18n.is_some() && (binding.is_some() || !template_bindings.is_empty()) {
                 return Err(DoweError::at_path(
                     path,
                     "`i18n` requires a static fallback text child",
@@ -131,6 +132,17 @@ fn validate_node_variant_references(
                     "text",
                     ViewPathExpectation::String,
                 )?;
+            } else {
+                for binding in template_bindings {
+                    validate_typed_path(
+                        path,
+                        signals,
+                        locals,
+                        &binding,
+                        "text",
+                        ViewPathExpectation::String,
+                    )?;
+                }
             }
         }
         ViewNode::Alert { props } => {

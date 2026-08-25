@@ -185,11 +185,17 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
             center,
             end,
             bottom,
+            mobile_menu,
         }
         => {
             collect_style_font_families(&props.style.style, fonts);
             for child in top.iter().chain(start).chain(center).chain(end).chain(bottom) {
                 collect_node_font_families(child, fonts);
+            }
+            if let Some(menu) = mobile_menu {
+                for child in menu.header.iter().chain(&menu.body).chain(&menu.footer) {
+                    collect_node_font_families(child, fonts);
+                }
             }
         }
         ViewNode::Footer {

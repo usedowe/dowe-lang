@@ -3,17 +3,19 @@ fn render_compose_audio(props: &AudioProps, indent: usize, output: &mut String) 
     let play = solar_control_icon("play").expect("bundled Audio play icon");
     let pause = solar_control_icon("pause").expect("bundled Audio pause icon");
     let mut button_style = props.style.clone();
-    button_style.variant = Some(if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Solid {
-        ComponentVariant::Soft
-    } else {
-        ComponentVariant::Solid
-    });
+    button_style.variant = Some(
+        if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Solid {
+            ComponentVariant::Solid
+        } else {
+            ComponentVariant::Solid
+        },
+    );
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
             card_variant_content(&props.style)
         } else {
             "null"
-    };
+        };
     output.push_str(&format!(
         "{pad}DoweAudio(source = {}, subtitle = {}, avatarSource = {}, playIconViewBox = {}, playIconPaths = {}, pauseIconViewBox = {}, pauseIconPaths = {}, modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, contentColor = {}, buttonBackgroundColor = {}, buttonContentColor = {}, borderColor = {border})\n",
         compose_string_literal(&props.src),
@@ -105,7 +107,7 @@ fn render_compose_image(
             card_variant_content(&props.style)
         } else {
             "null"
-    };
+        };
     output.push_str(&format!(
         "{pad}DoweImage(source = {}, alt = {}, aspect = {}, objectFit = {}, loading = {}, modifier = {}, shape = RoundedCornerShape({}), backgroundColor = {}, borderColor = {border})\n",
         compose_image_source(props, context),
@@ -146,20 +148,18 @@ fn render_compose_accordion(
         "null"
     };
     let item_background = match variant {
-        ComponentVariant::Soft | ComponentVariant::Outlined => color_ref(ColorToken::Surface),
+        ComponentVariant::Solid | ComponentVariant::Outlined => color_ref(ColorToken::Surface),
         _ => "Color.Transparent",
     };
     let item_border = match variant {
-        ComponentVariant::Soft => card_variant_content(&style),
+        ComponentVariant::Solid => card_variant_content(&style),
         ComponentVariant::Outlined => {
             color_ref(family_color(style.color.unwrap_or(ColorFamily::Primary)))
         }
-        ComponentVariant::Solid | ComponentVariant::Ghost | ComponentVariant::Line => {
-            card_variant_content(&style)
-        }
+        ComponentVariant::Ghost | ComponentVariant::Line => card_variant_content(&style),
     };
     let item_border_alpha = match variant {
-        ComponentVariant::Soft => "0.16f",
+        ComponentVariant::Solid => "0.16f",
         ComponentVariant::Outlined => "0.24f",
         ComponentVariant::Ghost => "0.22f",
         _ => "0.24f",
@@ -241,7 +241,10 @@ fn render_compose_carousel(
                 context,
             );
         }
-        output.push_str(&format!("{pad}    }}){}\n", if index + 1 == slides.len() { "" } else { "," }));
+        output.push_str(&format!(
+            "{pad}    }}){}\n",
+            if index + 1 == slides.len() { "" } else { "," }
+        ));
     }
     output.push_str(&format!(
         "{pad}), autoplay = {}, autoplayInterval = {}, disableLoop = {}, hideControls = {}, hideIndicators = {}, showNavigation = {}, showCounter = {}, orientation = {}, size = {}, indicatorType = {}, title = {}, slideWidth = {}, slideHeight = {}, slidesPerView = {}, gap = {}, modifier = {}, accentColor = {})\n",
@@ -268,11 +271,17 @@ fn render_compose_carousel(
 fn render_compose_theme_toggle(props: &ThemeToggleProps, indent: usize, output: &mut String) {
     let pad = " ".repeat(indent);
     output.push_str(&format!(
-        "{pad}DoweThemeToggle(modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {})\n",
+        "{pad}DoweThemeToggle(modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, lightIconViewBox = {}, lightIconPaths = {}, lightIconModifier = {}, darkIconViewBox = {}, darkIconPaths = {}, darkIconModifier = {})\n",
         modifier_for_style(&props.style.style),
         variant_container(&props.style),
         variant_content(&props.style),
-        compose_variant_border(&props.style)
+        compose_variant_border(&props.style),
+        compose_svg_view_box(&props.light_icon.props.view_box),
+        compose_svg_paths(&props.light_icon.paths),
+        modifier_for_style(&props.light_icon.props.style),
+        compose_svg_view_box(&props.dark_icon.props.view_box),
+        compose_svg_paths(&props.dark_icon.paths),
+        modifier_for_style(&props.dark_icon.props.style),
     ));
 }
 

@@ -187,6 +187,8 @@ pub struct ThemeToggleProps {
     pub style: VariantProps,
     pub light_label: String,
     pub dark_label: String,
+    pub light_icon: SideNavIcon,
+    pub dark_icon: SideNavIcon,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

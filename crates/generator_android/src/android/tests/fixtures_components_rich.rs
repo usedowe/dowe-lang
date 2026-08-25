@@ -28,7 +28,7 @@ fn display_chat_motion_tree() -> ViewNode {
                 props: AvatarGroupProps {
                     style: VariantProps {
                         color: Some(ColorFamily::Primary),
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         ..Default::default()
                     },
                     items: Some("people".to_string()),
@@ -59,7 +59,7 @@ fn display_chat_motion_tree() -> ViewNode {
                 props: ChatBoxProps {
                     style: VariantProps {
                         color: Some(ColorFamily::Surface),
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         ..Default::default()
                     },
                     messages: "messages".to_string(),
@@ -91,7 +91,7 @@ fn display_chat_motion_tree() -> ViewNode {
                 props: EmptyProps {
                     style: VariantProps {
                         color: Some(ColorFamily::Info),
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         ..Default::default()
                     },
                     kind: EmptyKind::Result,
@@ -160,7 +160,7 @@ fn rich_control_map_tree() -> ViewNode {
             ViewNode::Record {
                 props: RecordProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Primary),
                         ..Default::default()
                     },
@@ -179,7 +179,7 @@ fn rich_control_map_tree() -> ViewNode {
             ViewNode::ToggleGroup {
                 props: ToggleGroupProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Secondary),
                         ..Default::default()
                     },
@@ -273,7 +273,7 @@ fn rich_control_map_tree() -> ViewNode {
             ViewNode::Map {
                 props: MapProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Surface),
                         ..Default::default()
                     },

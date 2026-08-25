@@ -35,6 +35,7 @@ fn parse_style_props(
                         | BuiltinComponent::Date
                         | BuiltinComponent::RadioGroup
                         | BuiltinComponent::Toggle
+                        | BuiltinComponent::Swap
                 ) =>
             {
                 style.element.bind = Some(parse_required_string(&prop.name, &value)?)
@@ -61,7 +62,7 @@ fn parse_style_props(
                 style.bg = Some(parse_color_prop(&prop.name, &value)?);
                 style.bg_binding = binding;
             }
-            "color" if style_accepts_colors(mode) => {
+            "color" if style_accepts_colors(mode) && !matches!(mode, StylePropMode::Card) => {
                 style.text = Some(parse_color_prop(&prop.name, &value)?);
                 style.text_binding = binding;
             }
@@ -235,16 +236,21 @@ fn parse_style_props(
 }
 
 fn reactive_reference(value: &PropValue) -> Option<String> {
-    let PropValue::String(value) = value else {
-        return None;
-    };
-    value.strip_prefix("@signal:").map(str::to_string)
+    match value {
+        PropValue::String(value) => value.strip_prefix("@signal:").map(str::to_string),
+        PropValue::Binding(binding) => Some(binding.path.clone()),
+        _ => None,
+    }
 }
 
 fn style_accepts_colors(mode: StylePropMode) -> bool {
     matches!(
         mode,
-        StylePropMode::Box | StylePropMode::Banner | StylePropMode::Section | StylePropMode::Text
+        StylePropMode::Box
+            | StylePropMode::Banner
+            | StylePropMode::Section
+            | StylePropMode::Card
+            | StylePropMode::Text
     )
 }
 

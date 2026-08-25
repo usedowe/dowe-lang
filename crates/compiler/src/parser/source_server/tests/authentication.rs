@@ -25,28 +25,6 @@
             } if binding == "verified"
         ));
     }
-
-    #[test]
-    fn rejects_legacy_session_verification_assignment() {
-        let temp = TempDir::new().expect("tempdir");
-        let root = temp.path();
-        write_session_middleware_project(
-            root,
-            "let verified = session.verify cache:appCache database:appDb token:token maxAge:2592000",
-        );
-
-        let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
-        let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
-        let error = parse_server_source(root, &file, &EnvironmentConfig::default())
-            .expect_err("legacy session expression");
-
-        assert!(
-            error
-                .to_string()
-                .contains("session verification uses `session <binding>")
-        );
-    }
-
     #[test]
     fn parses_server_function_call_from_middleware() {
         let temp = TempDir::new().expect("tempdir");
@@ -362,27 +340,6 @@ main
             ServerStatement::Jwt(ServerJwtStatement::Encrypt { .. })
         ));
     }
-
-    #[test]
-    fn rejects_legacy_jwt_let_expression() {
-        let file = parse_source_file(
-            Path::new("/project"),
-            Path::new("/project/main.dowe"),
-            r#"main
-  server port:8080
-    route "/login"
-      handler req
-        let token = jwt.sign claims:{ sub:"user-1" } secret:env.JWT_SECRET algorithm:"HS256"
-        return json:{ token:token }"#
-                .to_string(),
-        )
-        .expect("source");
-        let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
-            .expect_err("legacy JWT let must fail");
-
-        assert!(error.to_string().contains("JWT expressions use"));
-    }
-
     #[test]
     fn parses_typed_server_function_call_chain() {
         let temp = TempDir::new().expect("tempdir");

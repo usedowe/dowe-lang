@@ -241,7 +241,7 @@ pub enum SectionBackground {
 impl SectionBackground {
     pub fn from_name(value: &str) -> Option<Self> {
         match value {
-            "aurora" => Some(Self::Aurora),
+            "aurora" | "soft" => Some(Self::Aurora),
             "sunrise" => Some(Self::Sunrise),
             "ocean" => Some(Self::Ocean),
             "meadow" => Some(Self::Meadow),
@@ -562,18 +562,34 @@ impl GridTracks {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GridAlignment {
     Start,
-    Center,
     End,
+    EndSafe,
+    Center,
+    CenterSafe,
+    Between,
+    Around,
+    Evenly,
     Stretch,
+    Baseline,
+    BaselineLast,
+    Normal,
 }
 
 impl GridAlignment {
     pub fn from_name(value: &str) -> Option<Self> {
         match value {
             "start" => Some(Self::Start),
-            "center" => Some(Self::Center),
             "end" => Some(Self::End),
+            "end-safe" => Some(Self::EndSafe),
+            "center" => Some(Self::Center),
+            "center-safe" => Some(Self::CenterSafe),
+            "between" => Some(Self::Between),
+            "around" => Some(Self::Around),
+            "evenly" => Some(Self::Evenly),
             "stretch" => Some(Self::Stretch),
+            "baseline" => Some(Self::Baseline),
+            "baseline-last" => Some(Self::BaselineLast),
+            "normal" => Some(Self::Normal),
             _ => None,
         }
     }
@@ -581,14 +597,35 @@ impl GridAlignment {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Start => "start",
-            Self::Center => "center",
             Self::End => "end",
+            Self::EndSafe => "end-safe",
+            Self::Center => "center",
+            Self::CenterSafe => "center-safe",
+            Self::Between => "between",
+            Self::Around => "around",
+            Self::Evenly => "evenly",
             Self::Stretch => "stretch",
+            Self::Baseline => "baseline",
+            Self::BaselineLast => "baseline-last",
+            Self::Normal => "normal",
         }
     }
 
     pub fn all() -> &'static [Self] {
-        &[Self::Start, Self::Center, Self::End, Self::Stretch]
+        &[
+            Self::Start,
+            Self::End,
+            Self::EndSafe,
+            Self::Center,
+            Self::CenterSafe,
+            Self::Between,
+            Self::Around,
+            Self::Evenly,
+            Self::Stretch,
+            Self::Baseline,
+            Self::BaselineLast,
+            Self::Normal,
+        ]
     }
 }
 
@@ -659,6 +696,10 @@ pub enum Justify {
     Between,
     Around,
     Evenly,
+    Stretch,
+    Normal,
+    EndSafe,
+    CenterSafe,
 }
 
 impl Justify {
@@ -670,6 +711,10 @@ impl Justify {
             "between" | "space-between" => Some(Self::Between),
             "around" | "space-around" => Some(Self::Around),
             "evenly" | "space-evenly" => Some(Self::Evenly),
+            "stretch" => Some(Self::Stretch),
+            "normal" => Some(Self::Normal),
+            "end-safe" => Some(Self::EndSafe),
+            "center-safe" => Some(Self::CenterSafe),
             _ => None,
         }
     }
@@ -682,6 +727,10 @@ impl Justify {
             Self::Between => "between",
             Self::Around => "around",
             Self::Evenly => "evenly",
+            Self::Stretch => "stretch",
+            Self::Normal => "normal",
+            Self::EndSafe => "end-safe",
+            Self::CenterSafe => "center-safe",
         }
     }
 
@@ -690,9 +739,13 @@ impl Justify {
             Self::Start,
             Self::Center,
             Self::End,
+            Self::EndSafe,
+            Self::CenterSafe,
             Self::Between,
             Self::Around,
             Self::Evenly,
+            Self::Stretch,
+            Self::Normal,
         ]
     }
 }
@@ -704,6 +757,9 @@ pub enum Align {
     End,
     Stretch,
     Baseline,
+    BaselineLast,
+    EndSafe,
+    CenterSafe,
 }
 
 impl Align {
@@ -714,6 +770,9 @@ impl Align {
             "end" | "flex-end" => Some(Self::End),
             "stretch" => Some(Self::Stretch),
             "baseline" => Some(Self::Baseline),
+            "baseline-last" => Some(Self::BaselineLast),
+            "end-safe" => Some(Self::EndSafe),
+            "center-safe" => Some(Self::CenterSafe),
             _ => None,
         }
     }
@@ -725,6 +784,9 @@ impl Align {
             Self::End => "end",
             Self::Stretch => "stretch",
             Self::Baseline => "baseline",
+            Self::BaselineLast => "baseline-last",
+            Self::EndSafe => "end-safe",
+            Self::CenterSafe => "center-safe",
         }
     }
 
@@ -733,8 +795,11 @@ impl Align {
             Self::Start,
             Self::Center,
             Self::End,
-            Self::Stretch,
+            Self::EndSafe,
+            Self::CenterSafe,
             Self::Baseline,
+            Self::BaselineLast,
+            Self::Stretch,
         ]
     }
 }

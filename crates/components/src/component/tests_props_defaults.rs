@@ -252,7 +252,7 @@ fn resolves_function_toast_variant_with_design_precedence() {
     let mut themed_defaults = super::DesignDefaults::with_builtin_defaults();
     themed_defaults.variant.insert(
         super::DesignComponentSlot::Toast,
-        super::ComponentVariant::Soft,
+        super::ComponentVariant::Solid,
     );
     let mut themed = vec![action(None)];
     super::apply_design_defaults_to_actions(&mut themed, &themed_defaults);
@@ -265,7 +265,7 @@ fn resolves_function_toast_variant_with_design_precedence() {
     let super::ViewFunctionStatement::Toast(toast) = &success[0] else {
         panic!("themed toast");
     };
-    assert_eq!(toast.variant.as_deref(), Some("soft"));
+    assert_eq!(toast.variant.as_deref(), Some("solid"));
 
     let mut explicit = vec![action(Some("ghost"))];
     super::apply_design_defaults_to_actions(&mut explicit, &themed_defaults);

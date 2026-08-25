@@ -122,7 +122,7 @@ fn advanced_form_tree() -> ViewNode {
             },
             ViewNode::DragDrop {
                 props: DragDropProps {
-                    style: advanced_style("Tasks", None, ComponentVariant::Soft),
+                    style: advanced_style("Tasks", None, ComponentVariant::Solid),
                     empty_text: "No tasks".to_string(),
                     direction: DragDropDirection::Horizontal,
                     allow_group_transfer: true,

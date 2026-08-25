@@ -235,7 +235,11 @@ fn generated_route_view(
         "    private let activePath = \"{}\"\n",
         escape_swift(&route.route_path)
     ));
-    let tree = compose_tree(&route.layout_tree, &route.page_tree);
+    let tree = if matches!(route.layout_tree, ViewNode::Children) {
+        std::borrow::Cow::Borrowed(&route.page_tree)
+    } else {
+        std::borrow::Cow::Owned(compose_tree(&route.layout_tree, &route.page_tree))
+    };
     let fixed_boxes = fixed_box_nodes(&tree);
     let fixed_fabs = fixed_fab_nodes(&tree);
     let reactive = swift_reactive_route(&tree);

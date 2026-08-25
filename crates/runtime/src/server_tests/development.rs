@@ -310,8 +310,8 @@ async fn serves_backend_views_and_websocket() {
         .expect("view text");
     assert!(html.contains("Layout"));
     assert!(html.contains("Login"));
-    assert!(html.contains(r#"<p class="text-md">Layout</p>"#));
-    assert!(html.contains(r#"<p class="text-md">Login</p>"#));
+    assert!(html.contains(">Layout</p>"));
+    assert!(html.contains(">Login</p>"));
     assert!(html.contains(&format!(
         r#"<link data-dowe-design rel="stylesheet" href="{design_path}">"#
     )));
@@ -320,7 +320,7 @@ async fn serves_backend_views_and_websocket() {
     assert!(html.contains(r#"/_dowe/dev/client.js"#));
 
     let css = client
-        .get(format!("{views}/design.css"))
+        .get(format!("{views}{design_path}"))
         .send()
         .await
         .expect("design css");

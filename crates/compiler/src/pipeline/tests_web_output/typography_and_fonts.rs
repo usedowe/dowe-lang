@@ -92,7 +92,7 @@ fn compiles_platform_reset_and_font_tokens() {
     assert!(body.contains(r#"class="dowe-text text-md font-manrope""#));
     assert!(body.contains(r#"class="dowe-title title-md font-poppins""#));
     assert!(body.contains(
-        r#"class="button button-md font-montserrat px-4 py-2.5 min-h-10 rounded-md is-solid is-primary""#
+        "is-solid is-primary"
     ));
     assert!(body.contains("font-roboto"));
     assert!(body.contains("is-md font-roboto is-outlined is-primary"));

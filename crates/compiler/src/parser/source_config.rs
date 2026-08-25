@@ -721,10 +721,10 @@ fn validate_design_custom_color_default(
     family: ColorFamily,
     _soft: bool,
 ) -> DoweResult<()> {
-    if theme.contains_color_family(family, false) {
+    if theme.contains_color_family(family) {
         return Ok(());
     }
-    let name = family.theme_name(false);
+    let name = family.theme_name();
     Err(prop_error(
         prop,
         format!(
@@ -911,6 +911,20 @@ fn parse_raw_theme(node: &SourceNode) -> DoweResult<RawTheme> {
     })
 }
 
+fn parse_theme_color_family_name(value: &str) -> Option<(ColorFamily, bool)> {
+    if let Some(base) = value.strip_prefix("soft") {
+        let mut chars = base.chars();
+        let first = chars.next()?.to_ascii_lowercase();
+        let mut name = first.to_string();
+        name.extend(chars);
+        if matches!(name.as_str(), "background" | "surface") {
+            return None;
+        }
+        return ColorFamily::from_name(&name).map(|family| (family, true));
+    }
+    ColorFamily::from_theme_name(value)
+}
+
 fn parse_colors(
     node: &SourceNode,
     colors: &mut BTreeMap<ColorToken, String>,
@@ -926,7 +940,7 @@ fn parse_colors(
         ));
     }
     for family_node in &node.children {
-        let Some((family, _)) = ColorFamily::from_theme_name(&family_node.name) else {
+        let Some((family, soft)) = parse_theme_color_family_name(&family_node.name) else {
             return Err(node_error(
                 family_node,
                 format!("unknown color family `{}`", family_node.name),
@@ -954,12 +968,19 @@ fn parse_colors(
                 ),
             ));
         }
-        let tokens = family.theme_tokens(false).ok_or_else(|| {
-            node_error(
-                family_node,
-                format!("unknown color family `{}`", family_node.name),
-            )
-        })?;
+        let tokens = if soft {
+            [
+                family.color_token(),
+                family.text_token(),
+                family.title_token(),
+            ]
+        } else {
+            [
+                family.color_token(),
+                family.text_token(),
+                family.title_token(),
+            ]
+        };
         for (role, token) in ["color", "text", "title"].into_iter().zip(tokens) {
             let Some(prop) = family_node.prop(role) else {
                 continue;

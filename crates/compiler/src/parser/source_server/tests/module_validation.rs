@@ -20,36 +20,6 @@
                 .contains("config modules only support database handle bindings")
         );
     }
-
-    #[test]
-    fn rejects_legacy_service_declarations() {
-        let temp = TempDir::new().expect("tempdir");
-        let root = temp.path();
-        fs::create_dir_all(root.join("handlers")).expect("handlers");
-        fs::write(
-            root.join("main.dowe"),
-            r#"import listTickets from "@/handlers/tickets"
-
-main
-  server port:0
-    route "/api/tickets"
-      method GET handler:listTickets"#,
-        )
-        .expect("main");
-        fs::write(
-            root.join("handlers/tickets.dowe"),
-            r#"service listTickets
-  return value:{ ok:true }"#,
-        )
-        .expect("legacy service");
-        let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
-        let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
-        let error = parse_server_source(root, &file, &EnvironmentConfig::default())
-            .expect_err("legacy service error");
-
-        assert!(error.to_string().contains("replaced by `fn`"));
-    }
-
     #[test]
     fn rejects_response_return_inside_server_function() {
         let temp = TempDir::new().expect("tempdir");
@@ -225,27 +195,6 @@ main
                     && statement.call.args[0].name == "value"
         ));
     }
-
-    #[test]
-    fn rejects_legacy_stdlib_assignment() {
-        let file = parse_source_file(
-            Path::new("/project"),
-            Path::new("/project/main.dowe"),
-            r#"main
-  server port:8080
-    route "/api/session"
-      handler
-        let sessionKey = str.join values:["session", req.params.id] delimiter:":"
-        return json:{ key:sessionKey }"#
-                .to_string(),
-        )
-        .expect("source");
-        let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
-            .expect_err("legacy stdlib assignment");
-
-        assert!(error.to_string().contains("str sessionKey source:\"join\""));
-    }
-
     #[test]
     fn parses_request_websocket_and_agent_capabilities() {
         let root = Path::new("/project");
@@ -293,30 +242,6 @@ main
                 if statement.binding == "chat" && statement.source == "request"
         ));
     }
-
-    #[test]
-    fn rejects_legacy_response_selector() {
-        let file = parse_source_file(
-            Path::new("/project"),
-            Path::new("/project/main.dowe"),
-            r#"main
-  server port:8080
-    route "/health"
-      handler
-        return response json:{ ok:true }"#
-                .to_string(),
-        )
-        .expect("source");
-        let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes)
-            .expect_err("legacy response selector");
-
-        assert!(
-            error
-                .to_string()
-                .contains("HTTP returns use `return <props>`; remove `response`")
-        );
-    }
-
     #[test]
     fn rejects_authorization_header_on_outbound_http_request() {
         let root = Path::new("/project");

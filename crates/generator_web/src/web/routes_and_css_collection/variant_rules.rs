@@ -32,7 +32,34 @@ fn collect_variant_rules<'a>(
             }
         }
         ViewNode::Card { props, children } => {
-            push_variant_rule(variants, "card", props);
+            if props.reactive.scheme.is_some() || props.reactive.variant.is_some() {
+                for variant in [
+                    ComponentVariant::Solid,
+                    ComponentVariant::Solid,
+                    ComponentVariant::Outlined,
+                    ComponentVariant::Ghost,
+                ] {
+                    for color in [
+                        ColorFamily::Primary,
+                        ColorFamily::Secondary,
+                        ColorFamily::Accent,
+                        ColorFamily::Muted,
+                        ColorFamily::Success,
+                        ColorFamily::Info,
+                        ColorFamily::Warning,
+                        ColorFamily::Danger,
+                        ColorFamily::Background,
+                        ColorFamily::Surface,
+                    ] {
+                        let mut reactive_props = props.clone();
+                        reactive_props.variant = Some(variant);
+                        reactive_props.color = Some(color);
+                        push_variant_rule(variants, "card", &reactive_props);
+                    }
+                }
+            } else {
+                push_variant_rule(variants, "card", props);
+            }
             for child in children {
                 collect_variant_rules(child, variants);
             }
@@ -174,7 +201,7 @@ fn collect_variant_rules<'a>(
             if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
                 for variant in [
                     ComponentVariant::Solid,
-                    ComponentVariant::Soft,
+                    ComponentVariant::Solid,
                     ComponentVariant::Outlined,
                     ComponentVariant::Ghost,
                 ] {
@@ -287,6 +314,7 @@ fn collect_variant_rules<'a>(
             center,
             end,
             bottom,
+            ..
         } => {
             push_variant_rule(variants, "appbar", &props.style);
             for child in top
@@ -306,6 +334,7 @@ fn collect_variant_rules<'a>(
             center,
             end,
             bottom,
+            ..
         } => {
             push_variant_rule(variants, "footer", &props.style);
             for child in top
@@ -325,7 +354,7 @@ fn collect_variant_rules<'a>(
             if props.style.reactive.variant.is_some() || props.style.reactive.scheme.is_some() {
                 for variant in [
                     ComponentVariant::Solid,
-                    ComponentVariant::Soft,
+                    ComponentVariant::Solid,
                     ComponentVariant::Outlined,
                     ComponentVariant::Ghost,
                 ] {

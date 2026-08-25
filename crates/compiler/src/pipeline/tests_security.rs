@@ -143,7 +143,7 @@ fn rejects_spawn_actions_in_server_until_contract_exists() {
 fn ignores_non_dowe_files_outside_the_module_graph() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path());
-    fs::write(temp.path().join("legacy.tsx"), "<Box />").expect("unrelated source");
+    fs::write(temp.path().join("unrelated.tsx"), "<Box />").expect("unrelated source");
 
     compile_dev(temp.path()).expect("project");
 }

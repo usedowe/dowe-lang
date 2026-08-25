@@ -12,14 +12,14 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
     validate_component_prop_source(component, prop)?;
     let value = match (component, prop.name.as_str(), &prop.value) {
         (
-            BuiltinComponent::Button | BuiltinComponent::IconButton,
+            BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Swap,
             "variant" | "scheme" | "size" | "rounded",
             SourceValue::Bareword(path),
         ) => PropValue::String(format!("@signal:{path}")),
-        (BuiltinComponent::Button, "loading", SourceValue::Bareword(path)) => {
+        (BuiltinComponent::Button | BuiltinComponent::Swap, "loading", SourceValue::Bareword(path)) => {
             PropValue::String(format!("@signal:{path}"))
         }
-        (BuiltinComponent::Button, "disabled", SourceValue::Bareword(path)) => {
+        (BuiltinComponent::Button | BuiltinComponent::Swap, "disabled", SourceValue::Bareword(path)) => {
             PropValue::String(format!("@signal:{path}"))
         }
         (
@@ -329,7 +329,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
         }
         (_, "show", SourceValue::Object(entries)) if show_condition_entries(entries) => true,
         (
-            BuiltinComponent::Button | BuiltinComponent::IconButton,
+            BuiltinComponent::Button | BuiltinComponent::IconButton | BuiltinComponent::Swap,
             "variant" | "scheme" | "size" | "rounded",
             SourceValue::Bareword(_),
         ) => true,
@@ -338,7 +338,7 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             "fill" | "stroke",
             SourceValue::Bareword(_),
         ) | (BuiltinComponent::Icon, "name", SourceValue::Bareword(_)) => true,
-        (BuiltinComponent::Button, "loading" | "disabled", SourceValue::Bareword(_)) => true,
+        (BuiltinComponent::Button | BuiltinComponent::Swap, "loading" | "disabled", SourceValue::Bareword(_)) => true,
         (
             BuiltinComponent::SideNav,
             "variant" | "scheme" | "size" | "wide",
@@ -361,7 +361,8 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             | BuiltinComponent::Password
             | BuiltinComponent::Phone
             | BuiltinComponent::Pin
-            | BuiltinComponent::Textarea,
+            | BuiltinComponent::Textarea
+            | BuiltinComponent::Swap,
             "bind",
             SourceValue::Bareword(_),
         )

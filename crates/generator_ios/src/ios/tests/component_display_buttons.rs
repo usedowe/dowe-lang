@@ -41,7 +41,7 @@ fn generates_disabled_button_opacity_for_swiftui() {
         layout_tree: ViewNode::Children,
         page_tree: ViewNode::Button {
             props: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Secondary),
                 reactive: ReactiveVariantProps {
                     disabled: Some("formInvalid".to_string()),

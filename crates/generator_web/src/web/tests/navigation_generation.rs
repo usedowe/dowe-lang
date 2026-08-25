@@ -15,6 +15,7 @@ fn renders_layout_bars_markup_and_css() {
                 center: vec![text("Brand")],
                 end: vec![text("Account")],
                 bottom: vec![text("Status")],
+                mobile_menu: None,
             },
             ViewNode::Footer {
                 props: bar_props(false),
@@ -253,7 +254,7 @@ fn renders_rail_nav_icons_tooltips_labels_and_active_state() {
     let icon_only = ViewNode::RailNav {
         props: RailNavProps {
             style: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Primary),
                 ..Default::default()
             },
@@ -404,6 +405,7 @@ fn overlays_main_under_sticky_floating_appbar() {
             center: Vec::new(),
             end: Vec::new(),
             bottom: Vec::new(),
+                mobile_menu: None,
         }],
         start: Vec::new(),
         main: vec![text("Main content")],
@@ -499,7 +501,7 @@ fn renders_drawer_markup_runtime_and_css() {
     let page_tree = ViewNode::Drawer {
         props: DrawerProps {
             style: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Surface),
                 ..Default::default()
             },
@@ -575,7 +577,7 @@ fn renders_drawer_markup_runtime_and_css() {
         &ViewNode::Drawer {
             props: DrawerProps {
                 style: VariantProps {
-                    variant: Some(ComponentVariant::Soft),
+                    variant: Some(ComponentVariant::Solid),
                     color: Some(ColorFamily::Surface),
                     style: StyleProps {
                         rounded: Some(ResponsiveValue::scalar(RoundedSize::Lg)),

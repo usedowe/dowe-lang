@@ -167,7 +167,7 @@
         assert_eq!(props.on_start.as_deref(), Some("cameraStart"));
         assert_eq!(props.on_capture.as_deref(), Some("cameraCapture"));
         assert_eq!(props.on_error.as_deref(), Some("cameraError"));
-        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
 
         let ViewNode::Microphone { props } = &children[1] else {
             panic!("microphone");
@@ -216,7 +216,7 @@
         };
         assert_eq!(props.light_label, "Light mode");
         assert_eq!(props.dark_label, "Dark mode");
-        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
         assert_eq!(props.style.color, Some(ColorFamily::Secondary));
 
         let ViewNode::SelectTheme { props } = &box_children[1] else {
@@ -235,7 +235,7 @@
         assert_eq!(props.position, OverlayCornerPosition::TopLeft);
         assert!(!props.fixed);
         assert_eq!(props.icon, ViewIcon::Settings);
-        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
         assert_eq!(props.style.color, Some(ColorFamily::Primary));
         assert_eq!(actions.len(), 2);
         assert_eq!(actions[0].label, "Docs");

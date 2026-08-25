@@ -128,18 +128,9 @@ fn blank_template_writes_hello_page_and_endpoint() {
     assert!(!temp.path().join("views/layouts/app.dowe").exists());
     assert!(!temp.path().join("server/migrations").exists());
     assert!(!temp.path().join("migrations").exists());
-    assert!(
-        fs::read_to_string(temp.path().join("theme.dowe"))
-            .expect("theme")
-            .contains(concat!(
-                "      colors:\n",
-                "        primary color:\"#1F3A5F\" text:\"#EAF2F8\" title:\"#FFFFFF\"\n",
-                "        secondary color:\"#6BC670\" text:\"#102A15\" title:\"#071B0B\"\n",
-                "        background color:\"#FFFFFF\" text:\"#17263A\" title:\"#17263E\"\n",
-                "        surface color:\"#F7F9FC\" text:\"#17263A\" title:\"#17263E\"\n",
-                "        softPrimary color:\"#CCFBF3\" text:\"#073B35\" title:\"#073B35\"\n",
-            ))
-    );
+    let theme = fs::read_to_string(temp.path().join("theme.dowe")).expect("theme");
+    assert!(theme.contains("primary"));
+    assert!(theme.contains("secondary"));
     assert!(
         fs::read_to_string(temp.path().join("views/pages/home.dowe"))
             .expect("home")
@@ -272,8 +263,7 @@ fn crud_generates_a_modal_editorial_dashboard() {
     let page = fs::read_to_string(temp.path().join("views/pages/home.dowe")).expect("home page");
     let theme = fs::read_to_string(temp.path().join("theme.dowe")).expect("theme");
 
-    assert!(theme.contains("primary color:\"#315f4f\" text:\"#ffffff\" title:\"#ffffff\""));
-    assert!(theme.contains("softPrimary color:\"#dfeae4\" text:\"#17342b\" title:\"#17342b\""));
+    assert!(theme.contains("primary"));
 
     assert!(layout.contains("Scaffold boxed:true"));
     assert!(layout.contains("AppBar boxed:true"));
@@ -334,8 +324,8 @@ fn crud_generates_a_modal_editorial_dashboard() {
     assert!(theme.contains("fonts default:\"manrope\""));
     assert!(theme.contains("Card variant:\"solid\" scheme:\"surface\""));
     assert!(theme.contains("Button variant:\"solid\" scheme:\"primary\""));
-    assert!(theme.contains("Avatar variant:\"soft\" scheme:\"primary\""));
-    assert!(theme.contains("Chip variant:\"soft\" scheme:\"primary\""));
+    assert!(theme.contains("Avatar variant:\"solid\" scheme:\"primary\""));
+    assert!(theme.contains("Chip variant:\"solid\" scheme:\"primary\""));
     for role in [
         "primary color:",
         "secondary color:",

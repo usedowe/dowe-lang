@@ -364,7 +364,7 @@ fn lower_remaining_view_node(
             container_component_node(component, props, children, allow_children)
                 .map_err(|error| component_error(node, error))
         }
-        BuiltinComponent::IconButton => {
+        BuiltinComponent::IconButton | BuiltinComponent::Swap => {
             reject_children(node)?;
             container_component_node(component, props, Vec::new(), allow_children)
                 .map_err(|error| component_error(node, error))

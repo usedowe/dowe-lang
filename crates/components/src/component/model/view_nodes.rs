@@ -181,6 +181,7 @@ pub enum ViewNode {
         center: Vec<ViewNode>,
         end: Vec<ViewNode>,
         bottom: Vec<ViewNode>,
+        mobile_menu: Option<MobileMenu>,
     },
     Footer {
         props: BarProps,

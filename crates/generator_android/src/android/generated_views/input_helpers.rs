@@ -801,38 +801,39 @@ private fun Modifier.doweBorder(width: Dp?, radius: Dp?): Modifier =
 
 private fun doweHorizontalAlignment(value: DoweAlign?): Alignment.Horizontal =
     when (value) {
-        DoweAlign.Center, DoweAlign.Stretch, DoweAlign.Baseline -> Alignment.CenterHorizontally
-        DoweAlign.End -> Alignment.End
+        DoweAlign.Center, DoweAlign.Stretch, DoweAlign.Baseline, DoweAlign.BaselineLast, DoweAlign.CenterSafe -> Alignment.CenterHorizontally
+        DoweAlign.End, DoweAlign.EndSafe -> Alignment.End
         else -> Alignment.Start
     }
 
 private fun doweGridHorizontalAlignment(value: DoweAlign?): Alignment.Horizontal =
     when (value) {
-        DoweAlign.Center -> Alignment.CenterHorizontally
-        DoweAlign.End -> Alignment.End
+        DoweAlign.Center, DoweAlign.CenterSafe -> Alignment.CenterHorizontally
+        DoweAlign.End, DoweAlign.EndSafe -> Alignment.End
         else -> Alignment.Start
     }
 
-private fun doweGridHorizontalStretch(value: DoweAlign?): Boolean = value == DoweAlign.Stretch
+private fun doweGridHorizontalStretch(value: DoweAlign?): Boolean =
+    value == DoweAlign.Stretch || value == DoweAlign.Normal
 
 private fun doweGridVerticalAlignment(value: DoweAlign?): Alignment.Vertical =
     when (value) {
-        DoweAlign.Center -> Alignment.CenterVertically
-        DoweAlign.End -> Alignment.Bottom
+        DoweAlign.Center, DoweAlign.CenterSafe -> Alignment.CenterVertically
+        DoweAlign.End, DoweAlign.EndSafe -> Alignment.Bottom
         else -> Alignment.Top
     }
 
 private fun doweVerticalAlignment(value: DoweAlign?): Alignment.Vertical =
     when (value) {
-        DoweAlign.Center, DoweAlign.Stretch -> Alignment.CenterVertically
-        DoweAlign.End -> Alignment.Bottom
+        DoweAlign.Center, DoweAlign.Stretch, DoweAlign.Baseline, DoweAlign.BaselineLast, DoweAlign.CenterSafe -> Alignment.CenterVertically
+        DoweAlign.End, DoweAlign.EndSafe -> Alignment.Bottom
         else -> Alignment.Top
     }
 
 private fun doweHorizontalArrangement(value: DoweJustify?, gap: Dp?): Arrangement.Horizontal =
     when (value) {
-        DoweJustify.Center -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.CenterHorizontally)
-        DoweJustify.End -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.End)
+        DoweJustify.Center, DoweJustify.CenterSafe -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.CenterHorizontally)
+        DoweJustify.End, DoweJustify.EndSafe -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.End)
         DoweJustify.Between -> Arrangement.SpaceBetween
         DoweJustify.Around -> Arrangement.SpaceAround
         DoweJustify.Evenly -> Arrangement.SpaceEvenly
@@ -841,8 +842,8 @@ private fun doweHorizontalArrangement(value: DoweJustify?, gap: Dp?): Arrangemen
 
 private fun doweVerticalArrangement(value: DoweJustify?, gap: Dp?): Arrangement.Vertical =
     when (value) {
-        DoweJustify.Center -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.CenterVertically)
-        DoweJustify.End -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.Bottom)
+        DoweJustify.Center, DoweJustify.CenterSafe -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.CenterVertically)
+        DoweJustify.End, DoweJustify.EndSafe -> Arrangement.spacedBy(gap ?: 0.dp, Alignment.Bottom)
         DoweJustify.Between -> Arrangement.SpaceBetween
         DoweJustify.Around -> Arrangement.SpaceAround
         DoweJustify.Evenly -> Arrangement.SpaceEvenly

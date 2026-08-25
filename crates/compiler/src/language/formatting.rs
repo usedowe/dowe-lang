@@ -67,10 +67,20 @@ fn format_node(node: &SourceNode, lines: &mut Vec<String>) {
         && node.args.is_empty()
         && node.props.is_empty()
         && !node.children.is_empty()
-        && node
-            .children
-            .iter()
-            .all(|child| ColorFamily::from_theme_name(&child.name).is_some());
+        && node.children.iter().all(|child| {
+            ColorFamily::from_theme_name(&child.name).is_some()
+                || matches!(
+                    child.name.as_str(),
+                    "softPrimary"
+                        | "softSecondary"
+                        | "softAccent"
+                        | "softMuted"
+                        | "softSuccess"
+                        | "softInfo"
+                        | "softWarning"
+                        | "softDanger"
+                )
+        });
     if grouped_colors {
         lines.push(format!("{indent}colors:"));
     } else if !node.props.is_empty()

@@ -86,20 +86,6 @@ fn updates_an_initialized_external_agent_project() {
     );
     assert!(stdout.contains("updated 5 Dowe skills"));
 }
-
-#[test]
-fn rejects_implicit_legacy_chat_from_agent_command() {
-    let output = dowe()
-        .args(["agent", "build a dashboard"])
-        .output()
-        .expect("agent command");
-    let stderr = String::from_utf8(output.stderr).expect("stderr");
-
-    assert!(!output.status.success());
-    assert!(stderr.contains("Usage: dowe"));
-    assert!(!stderr.contains("llm_server_request_failed"));
-}
-
 #[test]
 fn human_example_search_prints_dowe_source() {
     let output = dowe()

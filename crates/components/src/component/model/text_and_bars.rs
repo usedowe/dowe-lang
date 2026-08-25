@@ -51,6 +51,14 @@ impl SvgProps {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct MobileMenu {
+    pub open: Option<String>,
+    pub header: Vec<ViewNode>,
+    pub body: Vec<ViewNode>,
+    pub footer: Vec<ViewNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BarProps {
     pub style: VariantProps,
     pub bordered: bool,

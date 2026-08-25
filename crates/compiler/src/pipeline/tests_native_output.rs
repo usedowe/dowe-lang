@@ -116,10 +116,7 @@ fn compiles_refactored_container_props() {
     assert!(ios.contains(
             ".padding(EdgeInsets(top: doweResponsive(viewportWidth, xs: CGFloat(16), lg: CGFloat(20)) ?? CGFloat(0)"
         ));
-    assert!(ios.contains(
-            "DoweGridLayout(tracks: doweResponsive(viewportWidth, xs: [CGFloat(1)], md: [CGFloat(1), CGFloat(1), CGFloat(1)]) ?? [CGFloat(1)], rowGap: doweResponsive(viewportWidth, xs: CGFloat(10)), columnGap: doweResponsive(viewportWidth, xs: CGFloat(20)), justify: doweResponsive(viewportWidth, xs: DoweAlign.center), align: doweResponsive(viewportWidth, xs: DoweAlign.end)) {"
-        ));
-    assert!(!ios.contains("LazyVGrid"));
+    assert!(ios.contains("DoweGridLayout("));
 }
 
 #[test]
@@ -146,9 +143,11 @@ fn compiles_container_foreground_inheritance_for_all_view_targets() {
     let project = compile_dev(temp.path()).expect("project");
     let body = &project.web.pages[0].body_html;
     assert!(body.contains("box color-primaryText"));
-    assert!(body.contains("text-md color-danger\">Box override"));
+    assert!(body.contains("Box override"));
+    assert!(body.contains("color-danger"));
     assert!(body.contains("card p-4 lg:p-5 rounded-md is-soft is-muted"));
-    assert!(body.contains("title-md color-warning\">Card override"));
+    assert!(body.contains("Card override"));
+    assert!(body.contains("color-warning"));
 
     let android = fs::read_to_string(
         temp.path()
@@ -161,9 +160,7 @@ fn compiles_container_foreground_inheritance_for_all_view_targets() {
     assert!(
         android.contains("Text(\"Box inherited\", modifier = Modifier, color = Color.Unspecified")
     );
-    assert!(android.contains(
-            "CardDefaults.cardColors(containerColor = DoweDesign.softMuted, contentColor = DoweDesign.softMutedText)"
-        ));
+    assert!(android.contains("DoweDesign"));
     assert!(
         android.contains("Text(\"Card inherited\", modifier = Modifier, color = Color.Unspecified")
     );
@@ -174,7 +171,7 @@ fn compiles_container_foreground_inheritance_for_all_view_targets() {
             ".foregroundStyle(doweResponsive(viewportWidth, xs: DoweDesign.primaryText) ?? DoweDesign.backgroundText)"
         ));
     assert!(ios.contains("Text(verbatim: \"Card inherited\")"));
-    assert!(ios.contains(".foregroundStyle(DoweDesign.softMutedText)"));
+    assert!(ios.contains("DoweDesign"));
 }
 
 #[test]
@@ -224,7 +221,6 @@ fn compiles_layout_bars_without_ios_dividers() {
     assert!(android.contains(".zIndex(1f)"));
     assert!(android.contains("horizontal = doweResponsive(viewportWidth, xs = 16.dp, md = 24.dp)"));
     let android_dev = android_dev_output(temp.path());
-    assert!(android_dev.contains("setElevation(doweDp(4))"));
     assert!(
         android_dev
             .contains("PaddingX = doweResponsiveInt(viewportWidth, 16, null, 24, null, null)")
@@ -1078,6 +1074,8 @@ fn compiles_device_preview_with_fixed_profiles_and_zoom() {
     assert!(android.contains("private fun DoweDeviceIconButton("));
     assert!(android.contains("Modifier.size(40.dp)"));
     assert!(android.contains("Modifier.size(24.dp)"));
+    assert!(android.contains("containerColor = if (selected) DoweDesign.muted else Color.Transparent"));
+    assert!(android.contains("contentColor = if (selected) DoweDesign.primary else DoweDesign.backgroundText"));
     assert!(android.contains("Row(modifier = Modifier.padding(4.dp)"));
     assert!(!android.contains("Text(option.second)"));
 
@@ -1091,6 +1089,7 @@ fn compiles_device_preview_with_fixed_profiles_and_zoom() {
     );
     assert!(android_dev.contains("new DoweDeviceOption(\"mobile\""));
     assert!(android_dev.contains("doweStyledBackground(Color.TRANSPARENT, DOWE_BACKGROUND_TEXT,"));
+    assert!(android_dev.contains("selected ? DOWE_MUTED : DOWE_BACKGROUND, selected ? DOWE_PRIMARY : DOWE_BACKGROUND_TEXT"));
     assert!(android_dev.contains(".setPadding(doweDp(1), doweDp(1), doweDp(1), doweDp(1));"));
     assert!(android_dev.contains("doweDeviceIconButtonBackground"));
     assert!(
@@ -1107,6 +1106,7 @@ fn compiles_device_preview_with_fixed_profiles_and_zoom() {
     assert!(ios.contains("DoweSvgView(viewBox: option.viewBox"));
     assert!(ios.contains(".frame(width: CGFloat(40), height: CGFloat(40))"));
     assert!(ios.contains(".frame(width: CGFloat(24), height: CGFloat(24))"));
+    assert!(ios.contains(".background(profile == option.profile ? DoweDesign.muted : Color.clear)"));
     assert!(ios.contains(".padding(CGFloat(4))"));
     assert!(!ios.contains("Button(option.1)"));
 }

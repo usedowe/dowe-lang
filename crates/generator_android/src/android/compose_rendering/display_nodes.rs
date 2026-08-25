@@ -81,7 +81,7 @@ fn render_compose_display_node(
                     .collect::<Vec<_>>()
                     .join(" + ")
             };
-            let border = if props.style.variant.unwrap_or(ComponentVariant::Soft)
+            let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined
             {
                 card_variant_content(&props.style)

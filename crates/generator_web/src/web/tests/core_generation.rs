@@ -55,11 +55,42 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
     assert!(html.contains("<h2 class=\"dowe-title title-md color-warning\">Card override</h2>"));
     assert!(
         page.css_content
-            .contains(".color-primaryText{color:var(--dowe-primaryText);}")
+            .contains(".color-primaryText{--dowe-content-text:var(--dowe-primaryText);--dowe-content-title:var(--dowe-primaryText);color:var(--dowe-primaryText);}")
     );
     assert!(page.css_content.contains(
         ".card.is-soft.is-muted{--dowe-content-text:var(--dowe-mutedText);--dowe-content-title:var(--dowe-mutedTitle);background-color:var(--dowe-muted);color:var(--dowe-mutedText);border-color:var(--dowe-muted);}"
     ));
+}
+
+#[test]
+fn preserves_explicit_border_width_and_color_over_variant_defaults() {
+    let tree = ViewNode::Card {
+        props: VariantProps {
+            style: StyleProps {
+                border: Some(ResponsiveValue::scalar(dowe_components::BorderWidth(3))),
+                border_color: Some(ColorFamily::Danger),
+                ..Default::default()
+            },
+            variant: Some(ComponentVariant::Solid),
+            color: Some(ColorFamily::Primary),
+            ..Default::default()
+        },
+        children: vec![text("Card")],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/borders.dowe"),
+        "page BordersPage",
+        &tree,
+    );
+
+    assert!(page
+        .css_content
+        .contains(".border-3{border-width:3px !important;border-style:solid !important;}"));
+    assert!(page
+        .css_content
+        .contains(".border-color-danger{border-color:var(--dowe-danger) !important;}"));
+    assert!(page.css_content.contains(".card.is-solid.is-primary"));
 }
 
 #[test]
@@ -1635,7 +1666,7 @@ fn emits_container_refactor_css() {
             },
             ViewNode::Card {
                 props: VariantProps {
-                    variant: Some(ComponentVariant::Soft),
+                    variant: Some(ComponentVariant::Solid),
                     color: Some(dowe_components::ColorFamily::Surface),
                     ..Default::default()
                 },
@@ -1652,6 +1683,7 @@ fn emits_container_refactor_css() {
 
     assert!(page.content.contains("grid-cols-3"));
     assert!(page.content.contains("grid-justify-center"));
+    assert!(page.css_content.contains("justify-content:center;"));
     assert!(page.content.contains("col-span-2"));
     assert!(page.content.contains("has-cover"));
     assert!(page.content.contains("has-overlay"));

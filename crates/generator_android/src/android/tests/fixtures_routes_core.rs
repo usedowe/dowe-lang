@@ -83,6 +83,7 @@ fn bar_route() -> ViewRoute {
                     center: vec![text("Brand")],
                     end: vec![text("Account")],
                     bottom: Vec::new(),
+                mobile_menu: None,
                 },
                 ViewNode::Children,
                 ViewNode::Footer {
@@ -132,6 +133,7 @@ fn docking_appbar_route() -> ViewRoute {
                 center: vec![text("Navigation")],
                 end: vec![text("Account")],
                 bottom: Vec::new(),
+                mobile_menu: None,
             }],
             start: Vec::new(),
             main: vec![ViewNode::Children],
@@ -167,6 +169,7 @@ fn unbordered_persistent_appbar_route() -> ViewRoute {
             center: Vec::new(),
             end: vec![text("Account")],
             bottom: Vec::new(),
+                mobile_menu: None,
         },
         page_tree: text("Page"),
         sections: Vec::new(),
@@ -181,7 +184,7 @@ fn side_nav_route() -> ViewRoute {
         layout_tree: ViewNode::SideNav {
             props: SideNavProps {
                 style: VariantProps {
-                    variant: Some(ComponentVariant::Soft),
+                    variant: Some(ComponentVariant::Solid),
                     color: Some(ColorFamily::Surface),
                     ..Default::default()
                 },
@@ -294,7 +297,7 @@ fn navigation_shell_route() -> ViewRoute {
             start: vec![ViewNode::Sidebar {
                 props: SidebarProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Surface),
                         style: StyleProps {
                             sizing: dowe_components::SizingProps {
@@ -402,7 +405,7 @@ fn drawer_route() -> ViewRoute {
             children: vec![ViewNode::Drawer {
                 props: DrawerProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Surface),
                         ..Default::default()
                     },

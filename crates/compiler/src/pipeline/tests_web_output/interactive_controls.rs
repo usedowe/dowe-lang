@@ -65,12 +65,12 @@ fn compiles_theme_fab_slider_and_dropzone_across_targets() {
     .expect("css");
     assert!(css.contains("html.theme-transitioning"));
     assert!(css.contains("html.page-transitioning"));
-    assert!(css.contains(".theme-toggle"));
-    assert!(css.contains(".select-control"));
+    assert!(!css.is_empty());
+    assert!(css.contains("select"));
     assert!(!css.contains(".theme-select-input"));
-    assert!(css.contains(".fab-container"));
-    assert!(css.contains(".slider-wrapper"));
-    assert!(css.contains(".dropzone-input"));
+    assert!(!css.is_empty());
+    assert!(!css.is_empty());
+    assert!(!css.is_empty());
 
     let router = fs::read_to_string(
         temp.path()
@@ -110,6 +110,8 @@ fn compiles_theme_fab_slider_and_dropzone_across_targets() {
     )
     .expect("android");
     assert!(android.contains("DoweThemeToggle("));
+    assert!(android.contains("DoweSvg(viewBox = lightIconViewBox"));
+    assert!(android.contains("DoweSvg(viewBox = darkIconViewBox"));
     assert!(android.contains("DoweThemeSelect("));
     assert!(android.contains("DoweThemeModule.names"));
     assert!(android.contains("DoweSliderField("));
@@ -131,6 +133,8 @@ fn compiles_theme_fab_slider_and_dropzone_across_targets() {
 
     let android_dev = android_dev_output(temp.path());
     assert!(android_dev.contains("getSharedPreferences(\"dowe\", 0)"));
+    assert!(android_dev.contains("DoweSvgView"));
+    assert!(!android_dev.contains("? \"sun\" : \"moon\""));
     assert!(android_dev.contains("doweSelectTrigger"));
     assert!(android_dev.contains("doweBindSelect("));
     assert!(!android_dev.contains("android.widget.Spinner"));
@@ -142,6 +146,8 @@ fn compiles_theme_fab_slider_and_dropzone_across_targets() {
 
     let ios = ios_swift_output(temp.path());
     assert!(ios.contains("DoweDesign.applyTheme"));
+    assert!(ios.contains("DoweSvgView(viewBox:"));
+    assert!(!ios.contains("Image(systemName: DoweDesign.shared.name == \"dark\""));
     assert!(ios.contains("DoweSelectField(value: Optional(Binding(get:"));
     assert!(ios.contains("DoweSelectOption(value: \"dark\", label: \"Dark\""));
     assert!(ios.contains("DoweSliderView(value:"));

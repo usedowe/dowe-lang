@@ -66,16 +66,24 @@ fn compose_visible_text_expression(
             translation_resource_name(key)
         );
     }
-    let Some(binding) = text_binding_path(value) else {
+    let segments = text_template_segments(value);
+    if segments.iter().all(|(_, binding)| binding.is_none()) {
         return format!("\"{}\"", escape_kotlin(value));
-    };
-    match context.dynamic_path(binding) {
-        Some(path) => context
-            .item_value(binding)
-            .map(|item| format!("state.text(\"{}\", {item})", escape_kotlin(&path)))
-            .unwrap_or_else(|| format!("state.text(\"{}\")", escape_kotlin(&path))),
-        None => format!("\"{}\"", escape_kotlin(value)),
     }
+    segments
+        .into_iter()
+        .map(|(literal, binding)| match binding {
+            Some(binding) => match context.dynamic_path(&binding) {
+                Some(path) => context
+                    .item_value(&binding)
+                    .map(|item| format!("state.text(\"{}\", {item})", escape_kotlin(&path)))
+                    .unwrap_or_else(|| format!("state.text(\"{}\")", escape_kotlin(&path))),
+                None => format!("\"{{{}}}\"", escape_kotlin(&binding)),
+            },
+            None => format!("\"{}\"", escape_kotlin(&literal)),
+        })
+        .collect::<Vec<_>>()
+        .join(" + ")
 }
 
 fn compose_localized_literal(value: &str, i18n: Option<&str>) -> String {
@@ -698,7 +706,9 @@ fn compose_button_border(props: &VariantProps) -> String {
 }
 
 fn compose_card_border(props: &VariantProps) -> String {
-    if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+    if props.style.border.is_some() {
+        "null".to_string()
+    } else if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
         format!("BorderStroke(1.dp, {})", variant_content(props))
     } else {
         "null".to_string()

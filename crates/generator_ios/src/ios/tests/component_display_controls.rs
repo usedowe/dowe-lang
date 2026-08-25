@@ -219,7 +219,7 @@ fn preserves_static_button_variants_with_reactive_scheme_on_ios() {
         actions: Vec::new(),
         children: [
             ComponentVariant::Solid,
-            ComponentVariant::Soft,
+            ComponentVariant::Solid,
             ComponentVariant::Outlined,
             ComponentVariant::Ghost,
         ]

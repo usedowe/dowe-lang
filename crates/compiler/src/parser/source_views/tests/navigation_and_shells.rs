@@ -397,7 +397,7 @@ fn parses_drawer_with_signal_open_and_responsive_show() {
     };
     assert_eq!(props.open, "drawerOpen");
     assert_eq!(props.position, dowe_components::DrawerPosition::End);
-    assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+    assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
     assert_eq!(props.style.color, Some(ColorFamily::Surface));
     assert!(props.disable_overlay_close);
     assert!(props.hide_close_button);

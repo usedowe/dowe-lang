@@ -60,6 +60,7 @@ fn stateful_scaffold_drawer_layout_route(boxed: bool) -> ViewRoute {
                     center: vec![text("Docs")],
                     end: Vec::new(),
                     bottom: Vec::new(),
+                mobile_menu: None,
                 }],
                 start: vec![ViewNode::Sidebar {
                     props: SidebarProps {

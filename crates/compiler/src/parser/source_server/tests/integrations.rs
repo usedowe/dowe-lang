@@ -254,57 +254,6 @@ fn parses_declared_websocket_http_bridge() {
         ServerStatement::WebSocketSseBridge(_)
     ));
 }
-
-#[test]
-fn rejects_legacy_app_root() {
-    let file = parse_source_file(
-        Path::new("/project"),
-        Path::new("/project/main.dowe"),
-        r#"app
-  server port:8080"#
-            .to_string(),
-    )
-    .expect("source");
-
-    let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
-
-    assert!(error.to_string().contains("renamed to `main`"));
-}
-
-#[test]
-fn rejects_legacy_backend_block() {
-    let file = parse_source_file(
-        Path::new("/project"),
-        Path::new("/project/main.dowe"),
-        r#"main
-  backend port:8080"#
-            .to_string(),
-    )
-    .expect("source");
-
-    let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
-
-    assert!(error.to_string().contains("renamed to `server`"));
-}
-
-#[test]
-fn rejects_legacy_endpoint_block() {
-    let file = parse_source_file(
-        Path::new("/project"),
-        Path::new("/project/main.dowe"),
-        r#"main
-  server port:8080
-    endpoint "/api/status"
-      response text:"OK""#
-            .to_string(),
-    )
-    .expect("source");
-
-    let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
-
-    assert!(error.to_string().contains("renamed to `route`"));
-}
-
 #[test]
 fn infers_store_insert_fields_for_log_references() {
     let file = parse_source_file(
@@ -432,31 +381,6 @@ main
         } if binding == "body"
     ));
 }
-
-#[test]
-fn rejects_legacy_request_json_assignment() {
-    let file = parse_source_file(
-        Path::new("/project"),
-        Path::new("/project/main.dowe"),
-        r#"main
-  server port:8080
-    route "/api/users"
-      method POST async req
-        let body = await req.json()
-        return json:body"#
-            .to_string(),
-    )
-    .expect("source");
-
-    let error = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect_err("error");
-
-    assert!(
-        error
-            .to_string()
-            .contains("const <binding[:Type]> value:req.json")
-    );
-}
-
 #[test]
 fn validates_shared_type_imported_by_request_body() {
     let temp = TempDir::new().expect("tempdir");

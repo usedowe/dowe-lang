@@ -114,7 +114,14 @@ fn swift_shadow_opacity_value(value: &ResponsiveValue<ShadowSize>) -> String {
 }
 
 fn swift_justify_value(value: &ResponsiveValue<Justify>) -> String {
-    swift_responsive_value(value, |value| format!("DoweJustify.{}", value.as_str()))
+    swift_responsive_value(value, |value| {
+        let name = match value {
+            Justify::EndSafe => "endSafe",
+            Justify::CenterSafe => "centerSafe",
+            _ => value.as_str(),
+        };
+        format!("DoweJustify.{name}")
+    })
 }
 
 fn swift_flex_direction_value(value: &ResponsiveValue<FlexDirection>) -> String {
@@ -128,11 +135,27 @@ fn swift_flex_direction_value(value: &ResponsiveValue<FlexDirection>) -> String 
 }
 
 fn swift_align_value(value: &ResponsiveValue<Align>) -> String {
-    swift_responsive_value(value, |value| format!("DoweAlign.{}", value.as_str()))
+    swift_responsive_value(value, |value| {
+        let name = match value {
+            Align::BaselineLast => "baselineLast",
+            Align::EndSafe => "endSafe",
+            Align::CenterSafe => "centerSafe",
+            _ => value.as_str(),
+        };
+        format!("DoweAlign.{name}")
+    })
 }
 
 fn swift_grid_alignment_value(value: &ResponsiveValue<GridAlignment>) -> String {
-    swift_responsive_value(value, |value| format!("DoweAlign.{}", value.as_str()))
+    swift_responsive_value(value, |value| {
+        let name = match value {
+            GridAlignment::EndSafe => "endSafe",
+            GridAlignment::CenterSafe => "centerSafe",
+            GridAlignment::BaselineLast => "baselineLast",
+            _ => value.as_str(),
+        };
+        format!("DoweAlign.{name}")
+    })
 }
 
 fn swift_font_expr(value: &FontFamily) -> String {

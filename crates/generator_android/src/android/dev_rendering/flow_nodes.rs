@@ -312,17 +312,51 @@ fn render_dev_android_flow_node(
         }
         ViewNode::Card { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);
-            let current_color = Some(dev_content_colors(
-                dev_card_variant_content(props),
-                dev_card_variant_title(props),
-            ));
             let view = next_dev_view(counter);
+            let reactive_scheme = props.reactive.scheme.as_ref().map(|path| {
+                let item = context.active_item().unwrap_or("null");
+                let path = context
+                    .item_path(path)
+                    .unwrap_or_else(|| context.signal_path(path));
+                format!("runtime.doweTextValue(\"{}\", {item})", escape_java(&path))
+            });
+            let current_color = reactive_scheme
+                .as_ref()
+                .map(|scheme| dev_content_colors(
+                    &format!("runtime.doweButtonTextFamily({scheme})"),
+                    &format!("runtime.doweButtonTitleFamily({scheme})"),
+                ))
+                .or_else(|| Some(dev_content_colors(
+                    dev_card_variant_content(props),
+                    dev_card_variant_title(props),
+                )));
+            let container = reactive_scheme
+                .as_ref()
+                .map(|scheme| format!("runtime.doweButtonFamily({scheme})"))
+                .unwrap_or_else(|| dev_card_variant_container(props).to_string());
             output.push_str(&format!(
-                "        LinearLayout {view} = doweCard({}, {});\n",
-                dev_card_variant_container(props),
+                "        LinearLayout {view} = runtime.doweCard({container}, {});\n",
                 dev_card_border(props)
             ));
+            if let Some(path) = props.reactive.scheme.as_ref() {
+                output.push_str(&format!(
+                    "        {view}.setTag(DOWE_SCHEME_TAG, \"{}\");\n",
+                    escape_java(path)
+                ));
+            }
             apply_dev_android_style(&props.style, &view, false, output);
+            if let Some(border) = props.style.border.as_ref() {
+                let border_color = props
+                    .style
+                    .border_color
+                    .map(|family| java_color(family_color(family)).to_string())
+                    .unwrap_or_else(|| "DOWE_BACKGROUND_TEXT".to_string());
+                output.push_str(&format!(
+                    "        {view}.setBackground(doweStyledBackground({container}, {border_color}, {}, {}));\n",
+                    dev_border_value(border),
+                    dev_style_radius(&props.style)
+                ));
+            }
             apply_dev_android_click(&props.style, &view, context, output);
             apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
             apply_dev_android_flex_item(&props.style, parent, &view, output);

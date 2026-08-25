@@ -18,6 +18,21 @@ function hydrateScrollHidingAppBars(root) {
     });
   }
 }
+function hydrateAppBarMobileMenus(root) {
+  const update = () => {
+    for (const bar of document.querySelectorAll(".appbar")) {
+      const menu = bar.querySelector(":scope > .appbar-mobile-menu");
+      if (!menu) continue;
+      const available = Math.max(0, window.innerHeight - bar.getBoundingClientRect().bottom);
+      menu.style.setProperty("--dowe-mobile-menu-max-height", `${available}px`);
+    }
+  };
+  update();
+  if (!root.__doweMobileMenuResizeHydrated) {
+    root.__doweMobileMenuResizeHydrated = true;
+    window.addEventListener("resize", update, { passive: true });
+  }
+}
 function hydrateScrollDockingAppBars(root) {
   for (const bar of root.querySelectorAll(".appbar.is-dock-on-scroll")) {
     if (bar.__doweScrollDockHydrated) continue;
@@ -129,6 +144,7 @@ function hydrate(
   hydrateAdvancedForms(root);
   hydrateScrollHidingAppBars(root);
   hydrateScrollDockingAppBars(root);
+  hydrateAppBarMobileMenus(root);
   hydrateNavTreeSubmenus(root, "sidenav");
   renderNavigationActive(root, route.path);
   releaseEntranceAnimations();

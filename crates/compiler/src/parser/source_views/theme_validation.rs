@@ -4,10 +4,7 @@ fn validate_view_theme_references(node: &SourceNode, design: &DesignConfig) -> D
         && let Some(family) = ColorFamily::from_name(value)
         && !family.is_builtin()
     {
-        validate_custom_view_family(prop, design, family, false)?;
-        if effective_source_variant_is_soft(node, design) {
-            validate_custom_view_family(prop, design, family, true)?;
-        }
+        validate_custom_view_family(prop, design, family)?;
     }
     for prop in &node.props {
         if matches!(prop.name.as_str(), "bg" | "color" | "fill" | "stroke") {
@@ -18,7 +15,7 @@ fn validate_view_theme_references(node: &SourceNode, design: &DesignConfig) -> D
             && let Some(family) = ColorFamily::from_name(value)
             && !family.is_builtin()
         {
-            validate_custom_view_family(prop, design, family, false)?;
+            validate_custom_view_family(prop, design, family)?;
         }
     }
     for child in &node.children {
@@ -69,12 +66,15 @@ fn validate_custom_view_family(
     prop: &SourceProp,
     design: &DesignConfig,
     family: ColorFamily,
-    _soft: bool,
 ) -> DoweResult<()> {
-    if design.default_theme().contains_color_family(family, false) {
+    let tokens = [family.color_token(), family.text_token(), family.title_token()];
+    if tokens
+        .into_iter()
+        .all(|token| design.default_theme().contains_color_token(token))
+    {
         return Ok(());
     }
-    let name = family.theme_name(false);
+    let name = family.theme_name();
     Err(prop_error(
         prop,
         format!(
@@ -83,62 +83,4 @@ fn validate_custom_view_family(
             design.default_theme
         ),
     ))
-}
-
-fn effective_source_variant_is_soft(node: &SourceNode, design: &DesignConfig) -> bool {
-    if node.name == "Tabs"
-        && let Some(prop) = node.prop("variant")
-        && let SourceValue::String(value) = &prop.value
-    {
-        return matches!(value.as_str(), "pills");
-    }
-    if let Some(prop) = node.prop("variant")
-        && let SourceValue::String(value) = &prop.value
-        && let Some(variant) = ComponentVariant::from_name(value)
-    {
-        return variant == ComponentVariant::Soft;
-    }
-    let slot = match node.name.as_str() {
-        "Card" => DesignComponentSlot::Card,
-        "Button" => DesignComponentSlot::Button,
-        "IconButton" => DesignComponentSlot::IconButton,
-        "Drawer" => DesignComponentSlot::Drawer,
-        "Toast" => DesignComponentSlot::Toast,
-        "Section" => DesignComponentSlot::Section,
-        "Accordion" => DesignComponentSlot::Accordion,
-        "Checkbox" => DesignComponentSlot::Checkbox,
-        "Input" => DesignComponentSlot::Input,
-        "Date" => DesignComponentSlot::Date,
-        "DateRange" => DesignComponentSlot::DateRange,
-        "Color" => DesignComponentSlot::Color,
-        "Textarea" => DesignComponentSlot::Textarea,
-        "Password" => DesignComponentSlot::Password,
-        "Select" => DesignComponentSlot::Select,
-        "Pin" => DesignComponentSlot::Pin,
-        "AppBar" => DesignComponentSlot::AppBar,
-        "Footer" => DesignComponentSlot::Footer,
-        "Modal" => DesignComponentSlot::Modal,
-        "Dropdown" => DesignComponentSlot::Dropdown,
-        "Tooltip" => DesignComponentSlot::Tooltip,
-        "Tabs" => DesignComponentSlot::Tabs,
-        "Chip" => DesignComponentSlot::Chip,
-        "Avatar" | "AvatarGroup" => DesignComponentSlot::Avatar,
-        "Text" => DesignComponentSlot::Text,
-        "Title" => DesignComponentSlot::Title,
-        _ => DesignComponentSlot::Ui,
-    };
-    if slot == DesignComponentSlot::Tabs {
-        return design
-            .defaults
-            .tabs_variant
-            .get(&slot)
-            .copied()
-            .is_some_and(|variant| matches!(variant, TabsVariant::Pills));
-    }
-    design
-        .defaults
-        .variant
-        .get(&slot)
-        .copied()
-        .is_some_and(|variant| variant == ComponentVariant::Soft)
 }

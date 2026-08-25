@@ -26,7 +26,8 @@ use dowe_components::{
     collect_route_font_families, collect_view_forms, compose_tree, empty_icon, fixed_box_nodes,
     fixed_fab_nodes, form_control_min_height, form_control_text_size, node_child_groups,
     node_element_props, phone_countries, phone_country_flag_icon, side_nav_memory_key,
-    side_nav_submenu_arrow_icon, solar_control_icon, text_binding_path, text_spacing_em,
+    side_nav_submenu_arrow_icon, solar_control_icon, text_template_bindings,
+    text_template_segments, text_spacing_em,
     text_typography, view_icon,
 };
 use std::collections::{BTreeMap, BTreeSet};

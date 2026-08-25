@@ -234,6 +234,18 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "target"
                     | "externalMode"
             ),
+            BuiltinComponent::Swap => matches!(
+                name,
+                "iconOn"
+                    | "iconOff"
+                    | "label"
+                    | "bind"
+                    | "variant"
+                    | "scheme"
+                    | "size"
+                    | "rounded"
+                    | "disabled"
+            ),
             BuiltinComponent::ToggleTheme => {
                 matches!(
                     name,

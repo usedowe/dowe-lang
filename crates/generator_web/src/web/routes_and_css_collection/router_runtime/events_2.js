@@ -1,6 +1,15 @@
 document.addEventListener("click", event => {
   const target = event.target;
   if (!target || !target.closest) return;
+  const swap = target.closest("[data-dowe-swap]");
+  if (swap && activeView && !swap.matches(":disabled")) {
+    const path = swap.dataset.doweSwapBind;
+    writePath(activeView.state, path, !readPath(activeView.state, path));
+    renderReactive(activeView);
+    swap.classList.remove("is-swapping");
+    requestAnimationFrame(() => swap.classList.add("is-swapping"));
+    return;
+  }
   const handled = () => {
     event.preventDefault();
     event.stopImmediatePropagation();

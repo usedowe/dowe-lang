@@ -156,18 +156,19 @@ fn collect_js_node_segments(
             push_literal(segments, "</div>");
         }
         ViewNode::Card { props, children } => {
-            push_literal(
-                segments,
-                &format!(
-                    "<article{}>",
-                    attrs(
-                        variant_classes("card", props),
-                        Some(&props.element),
-                        None,
-                        context,
-                    )
-                ),
+            let mut card_attrs = attrs(
+                variant_classes("card", props),
+                Some(&props.element),
+                None,
+                context,
             );
+            if let Some(path) = props.reactive.scheme.as_deref() {
+                card_attrs.push_str(&format!(
+                    r#" data-dowe-variant-binding="true" data-dowe-scheme="{}""#,
+                    escape_attr(&context.signal_path(path))
+                ));
+            }
+            push_literal(segments, &format!("<article{}>", card_attrs));
             for child in children {
                 collect_js_segments(child, segments, context);
             }
@@ -193,7 +194,15 @@ fn collect_js_node_segments(
                 push_literal(segments, "<span data-dowe-button-content>");
             }
             if let Some(icon) = props.icon_start.as_ref() {
-                push_literal(segments, "<span data-dowe-button-icon-start>");
+                push_literal(segments, "<span data-dowe-button-icon-start data-dowe-swap-on>");
+                push_literal(
+                    segments,
+                    &render_svg_html(&icon.props, &icon.paths, context),
+                );
+                push_literal(segments, "</span>");
+            }
+            if let Some(icon) = props.swap_icon_off.as_ref() {
+                push_literal(segments, "<span data-dowe-button-icon-start data-dowe-swap-off hidden>");
                 push_literal(
                     segments,
                     &render_svg_html(&icon.props, &icon.paths, context),
@@ -417,9 +426,9 @@ fn collect_js_node_segments(
             center,
             end,
             bottom,
-            ..
+            mobile_menu,
         } => collect_bar_js_segments(
-            "header", "appbar", props, top, start, center, end, bottom, segments, context,
+            "header", "appbar", props, top, start, center, end, bottom, mobile_menu.as_ref(), segments, context,
         ),
         ViewNode::Footer {
             props,
@@ -429,7 +438,7 @@ fn collect_js_node_segments(
             end,
             bottom,
         } => collect_bar_js_segments(
-            "footer", "footer", props, top, start, center, end, bottom, segments, context,
+            "footer", "footer", props, top, start, center, end, bottom, None, segments, context,
         ),
         ViewNode::BottomBar { props, tabs, .. } => {
             push_literal(segments, &render_bottom_bar_html(props, tabs, context))

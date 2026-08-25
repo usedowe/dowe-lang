@@ -1,6 +1,6 @@
 function renderReactiveVariants(root, state, scope) {
   const scoped = !!scope;
-  const variants = __DOWE_VARIANTS__, schemes = __DOWE_SCHEMES__, sizes = __DOWE_SIZES__, rounded = __DOWE_ROUNDED__;
+  const variants = __DOWE_VARIANTS__, schemes = [...__DOWE_SCHEMES__, "background", "surface"], sizes = __DOWE_SIZES__, rounded = __DOWE_ROUNDED__;
   for (const element of root.querySelectorAll("[data-dowe-variant-binding]")) {
     if (!scoped && element.closest("[data-dowe-each-row]")) continue;
     for (const [key, values, prefix, fallback] of [["doweVariant", variants, "is-", "solid"], ["doweScheme", schemes, "is-", "primary"], ["doweSize", sizes, "", "md"], ["doweRounded", rounded, "rounded-", "md"]]) {

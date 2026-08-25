@@ -32,7 +32,7 @@ fn container_foreground_tree() -> ViewNode {
             },
             ViewNode::Card {
                 props: VariantProps {
-                    variant: Some(ComponentVariant::Soft),
+                    variant: Some(ComponentVariant::Solid),
                     color: Some(ColorFamily::Muted),
                     ..Default::default()
                 },
@@ -140,7 +140,7 @@ fn container_foreground_tree() -> ViewNode {
             ViewNode::Collapsible {
                 props: CollapsibleProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Primary),
                         ..Default::default()
                     },

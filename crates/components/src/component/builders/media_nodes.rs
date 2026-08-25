@@ -28,7 +28,7 @@ pub fn code_node(props: Vec<ComponentProp>, content: String) -> ComponentResult<
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Code, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Soft);
+    style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Surface);
     let source = content;
     let tokens = highlight_code(language, &source);

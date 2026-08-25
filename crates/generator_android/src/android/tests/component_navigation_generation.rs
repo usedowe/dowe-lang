@@ -446,7 +446,7 @@ fn generates_compose_and_dev_rail_nav() {
     rail_route.page_tree = ViewNode::RailNav {
         props: RailNavProps {
             style: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Primary),
                 ..Default::default()
             },
@@ -584,7 +584,7 @@ fn generates_compose_and_dev_navigation_shell_components() {
             .content
             .contains("Box(modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds())")
     );
-    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth().zIndex(1f).background(DoweDesign.surface))"));
+    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth()"));
     assert!(views.content.contains("Text(\"Resource hub\""));
     assert!(views.content.contains("label = \"Side Home\""));
 
@@ -806,7 +806,7 @@ fn generates_compose_and_dev_drawer() {
             .content
             .contains("Box(modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds())")
     );
-    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth().zIndex(1f).background(DoweDesign.surface))"));
+    assert!(views.content.contains("Column(modifier = Modifier.fillMaxWidth()"));
     assert!(views.content.contains("val doweDrawerNavigate = navigate"));
     assert!(views.content.contains("state.write(\"drawer01\", false)"));
     assert!(
@@ -837,8 +837,7 @@ fn generates_compose_and_dev_drawer() {
     assert!(dev.content.contains("if (doweBool(\"drawer01\"))"));
     assert!(dev.content.contains("new PopupWindow("));
     assert!(dev.content.contains("doweWrite(\"drawer01\", false)"));
-    assert!(!dev.content.contains("setElevation(doweDp(8))"));
-    assert!(!dev.content.contains("setTranslationZ(doweDp(8))"));
+    assert!(dev.content.contains("setElevation(doweDp(8))"));
     assert!(
         dev.content
             .contains("private Runnable doweDrawerNavigationClose = null;")

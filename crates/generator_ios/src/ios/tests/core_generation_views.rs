@@ -263,8 +263,12 @@ fn keeps_fixed_width_box_content_leading_aligned() {
     fixed_width.layout_tree = ViewNode::Children;
     fixed_width.page_tree = ViewNode::Box {
         props: StyleProps {
-            bg: Some(ResponsiveValue::scalar(ColorToken::SoftPrimary)),
-            text: Some(ResponsiveValue::scalar(ColorToken::SoftPrimaryText)),
+            bg: Some(ResponsiveValue::scalar(
+                ColorToken::from_name("softPrimary").expect("soft token"),
+            )),
+            text: Some(ResponsiveValue::scalar(
+                ColorToken::from_name("softPrimaryText").expect("soft token"),
+            )),
             spacing: dowe_components::SpacingProps {
                 p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(6))),
                 ..Default::default()

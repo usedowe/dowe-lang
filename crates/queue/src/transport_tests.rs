@@ -13,6 +13,7 @@ use tokio_tungstenite::{Connector, MaybeTlsStream, accept_hdr_async};
 
 #[tokio::test]
 async fn wss_transport_handshake_carries_authentication_headers() {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("listener");
     let port = listener.local_addr().expect("address").port();
     let certified = generate_simple_self_signed(vec!["127.0.0.1".to_string()]).expect("cert");

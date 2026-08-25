@@ -33,6 +33,12 @@ impl WebOutput {
         let mut chunks = Vec::new();
         if paths
             .iter()
+            .any(|path| path.starts_with("chunks/runtime/styles-"))
+        {
+            chunks.push(styles_runtime_chunk());
+        }
+        if paths
+            .iter()
             .any(|path| path.starts_with("chunks/runtime/controls-"))
         {
             chunks.push(controls_runtime_chunk());

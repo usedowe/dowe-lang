@@ -273,6 +273,7 @@ struct DoweChartView: View {
     let showInlineLabels: Bool
     let arcHideValues: Bool
     let arcShowGlow: Bool
+    @State private var selectedArcIndex: Int?
 
     private var rows: [[String: Any]] {
         if let dataPath {
@@ -401,6 +402,20 @@ struct DoweChartView: View {
                     drawPieChart(categories, context: &context, size: size)
                 }
             }
+            if chartType == "arc", let selectedArcIndex, !loading, selectedArcIndex < categories.count {
+                let item = categories[selectedArcIndex]
+                Text(item.label + (arcHideValues ? "" : " · \(item.value)"))
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .lineLimit(1)
+                    .padding(.horizontal, CGFloat(12))
+                    .padding(.vertical, CGFloat(7))
+                    .background(backgroundColor.opacity(0.96), in: Capsule())
+                    .overlay(Capsule().stroke(contentColor.opacity(0.24), lineWidth: CGFloat(1)))
+                    .frame(maxWidth: chartWidth - CGFloat(24))
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .padding(.top, CGFloat(4))
+            }
             if chartType == "pie", !loading, !isEmpty, (centerLabel != nil || centerValue != nil) {
                 VStack(spacing: CGFloat(2)) {
                     if let centerLabel {
@@ -439,6 +454,19 @@ struct DoweChartView: View {
         .frame(maxWidth: chartType == "pie" || chartType == "arc" ? chartWidth : .infinity, minHeight: isCircularChart ? CGFloat(184) : CGFloat(252))
         .aspectRatio(chartType == "pie" || chartType == "arc" ? CGFloat(1) : nil, contentMode: .fit)
         .shadow(color: showGlow || arcShowGlow ? contentColor.opacity(0.22) : .clear, radius: showGlow || arcShowGlow ? CGFloat(14) : .zero)
+        .contentShape(Rectangle())
+        .gesture(SpatialTapGesture().onEnded { event in
+            guard chartType == "arc", !categories.isEmpty else { return }
+            let center = CGPoint(x: chartWidth / 2, y: chartWidth / 2)
+            let distance = hypot(event.location.x - center.x, event.location.y - center.y)
+            let radius = max(CGFloat(1), chartWidth / 2 - CGFloat(18))
+            let ringCount = max(1, categories.count)
+            let ringGap = min(CGFloat(max(0, gap)), max(CGFloat(1), radius / CGFloat(ringCount * 3)))
+            let stroke = max(CGFloat(6), min(CGFloat(max(6, thickness)), (radius - ringGap * CGFloat(ringCount - 1)) / (CGFloat(ringCount) + CGFloat(0.5))))
+            selectedArcIndex = categories.indices.min { left, right in
+                abs(distance - max(stroke / 2 + 2, radius - CGFloat(left) * (stroke + ringGap))) < abs(distance - max(stroke / 2 + 2, radius - CGFloat(right) * (stroke + ringGap)))
+            }
+        })
     }
 
     private var totalValue: Double {

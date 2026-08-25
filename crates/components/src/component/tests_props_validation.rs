@@ -415,7 +415,7 @@ fn validates_text_title_typography_props() {
             string_prop("size", "4xl"),
             string_prop("align", "center"),
             string_prop("color", "primary"),
-            string_prop("bg", "softPrimary"),
+            string_prop("bg", "primary"),
             string_prop("weight", "black"),
             string_prop("spacing", "tight"),
             string_prop("i18n", "home.hero.title"),

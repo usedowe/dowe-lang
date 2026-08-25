@@ -200,7 +200,17 @@ fn parses_layout_bar_regions() {
         "Home"
     bottom
       Text
-        "Status""#,
+        "Status"
+    mobileMenu mobileMenuOpen:menuOpen
+      header
+        Text
+          "Navigation"
+      body
+        Button href:"/docs"
+          "Docs"
+      footer
+        Text
+          "Mobile navigation""#,
         )
         .expect("tree");
 
@@ -211,12 +221,13 @@ fn parses_layout_bar_regions() {
         center,
         end,
         bottom,
+        mobile_menu,
     } = tree
     else {
         panic!("appbar");
     };
 
-    assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+    assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
     assert_eq!(props.style.color, Some(ColorFamily::Surface));
     assert!(props.bordered);
     assert!(props.blurred);
@@ -224,11 +235,16 @@ fn parses_layout_bar_regions() {
     assert!(props.floating);
     assert!(props.hide_on_scroll);
     assert!(props.dock_on_scroll);
+    assert_eq!(mobile_menu.as_ref().and_then(|menu| menu.open.as_deref()), Some("menuOpen"));
     assert_eq!(top.len(), 1);
     assert_eq!(start.len(), 1);
     assert_eq!(center.len(), 1);
     assert_eq!(end.len(), 1);
     assert_eq!(bottom.len(), 1);
+    let menu = mobile_menu.expect("mobile menu");
+    assert_eq!(menu.header.len(), 1);
+    assert_eq!(menu.body.len(), 1);
+    assert_eq!(menu.footer.len(), 1);
 }
 
 #[test]
@@ -414,7 +430,7 @@ fn parses_side_nav_entries_submenus_and_icons() {
     let ViewNode::SideNav { props, items } = tree else {
         panic!("side nav");
     };
-    assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+    assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
     assert_eq!(props.style.color, Some(ColorFamily::Primary));
     assert_eq!(props.size, dowe_components::SideNavSize::Lg);
     assert!(props.wide);
@@ -469,7 +485,7 @@ fn parses_rail_nav_items_icons_and_labels() {
     let ViewNode::RailNav { props, items } = tree else {
         panic!("rail nav");
     };
-    assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+    assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
     assert_eq!(props.style.color, Some(ColorFamily::Primary));
     assert_eq!(props.size, dowe_components::SideNavSize::Lg);
     assert!(props.show_labels);

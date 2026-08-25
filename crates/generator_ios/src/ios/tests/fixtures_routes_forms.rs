@@ -95,7 +95,7 @@ fn parity_route() -> ViewRoute {
                 },
                 ViewNode::Card {
                     props: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Muted),
                         ..Default::default()
                     },
@@ -229,7 +229,7 @@ fn media_display_form_route() -> ViewRoute {
                 ViewNode::Audio {
                     props: AudioProps {
                         style: VariantProps {
-                            variant: Some(ComponentVariant::Soft),
+                            variant: Some(ComponentVariant::Solid),
                             color: Some(ColorFamily::Primary),
                             ..Default::default()
                         },

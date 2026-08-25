@@ -1,7 +1,7 @@
 fn bar_props(floating: bool) -> BarProps {
     BarProps {
         style: VariantProps {
-            variant: Some(ComponentVariant::Soft),
+            variant: Some(ComponentVariant::Solid),
             color: Some(ColorFamily::Surface),
             ..Default::default()
         },
@@ -37,7 +37,7 @@ fn shell_sidebar(label: &str) -> ViewNode {
     ViewNode::Sidebar {
         props: SidebarProps {
             style: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Surface),
                 style: StyleProps {
                     sizing: dowe_components::SizingProps {

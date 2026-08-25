@@ -137,6 +137,7 @@ fn collect_ios_layout_sections<'a>(
             center,
             end,
             bottom,
+            ..
         }
         | ViewNode::Footer {
             props,
@@ -145,6 +146,7 @@ fn collect_ios_layout_sections<'a>(
             center,
             end,
             bottom,
+            ..
         } => {
             let neutral = neutral_context && props.style.style.font.is_none();
             collect_ios_layout_section_children(top, NativeFlow::Block, neutral, scopes, sections);

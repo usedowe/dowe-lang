@@ -16,15 +16,20 @@ fn render_dev_android_display_media_data_node(
             let pause = solar_control_icon("pause").expect("bundled Audio pause icon");
             let content_color = dev_card_variant_content(&props.style);
             let mut button_style = props.style.clone();
-            button_style.variant = Some(if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Solid {
-                ComponentVariant::Soft
-            } else {
-                ComponentVariant::Solid
-            });
+            button_style.variant = Some(
+                if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Solid
+                {
+                    ComponentVariant::Solid
+                } else {
+                    ComponentVariant::Solid
+                },
+            );
             let button_background = dev_variant_container(&button_style);
             let button_content = dev_variant_content(&button_style);
-            let play_view = render_dev_android_icon_view(&play, counter, output, Some(button_content));
-            let pause_view = render_dev_android_icon_view(&pause, counter, output, Some(button_content));
+            let play_view =
+                render_dev_android_icon_view(&play, counter, output, Some(button_content));
+            let pause_view =
+                render_dev_android_icon_view(&pause, counter, output, Some(button_content));
             let view = next_dev_view(counter);
             let subtitle = props
                 .subtitle
@@ -140,7 +145,7 @@ fn render_dev_android_display_media_data_node(
             let current_color = Some(content_color.to_string());
             let radius = dev_style_radius(&props.style.style);
             let item_background = match variant {
-                ComponentVariant::Soft | ComponentVariant::Outlined => {
+                ComponentVariant::Solid | ComponentVariant::Outlined => {
                     java_color(ColorToken::Surface)
                 }
                 _ => "Color.TRANSPARENT",
@@ -151,15 +156,19 @@ fn render_dev_android_display_media_data_node(
                 "null"
             };
             let item_border = match variant {
-                ComponentVariant::Soft => "null".to_string(),
+                ComponentVariant::Solid => "null".to_string(),
                 ComponentVariant::Outlined => {
                     format!(
                         "doweAlpha({}, 0.24f)",
                         java_color(family_color(style.color.unwrap_or(ColorFamily::Primary)))
                     )
                 }
-                ComponentVariant::Solid | ComponentVariant::Ghost | ComponentVariant::Line => {
-                    let alpha = if variant == ComponentVariant::Ghost { "0.22f" } else { "0.24f" };
+                ComponentVariant::Ghost | ComponentVariant::Line => {
+                    let alpha = if variant == ComponentVariant::Ghost {
+                        "0.22f"
+                    } else {
+                        "0.24f"
+                    };
                     format!("doweAlpha({content_color}, {alpha})")
                 }
             };
@@ -173,18 +182,14 @@ fn render_dev_android_display_media_data_node(
                                         outer_border,
                                         item_background,
                                         item_border,
-                                        variant == ComponentVariant::Soft,
+                                        variant == ComponentVariant::Solid,
                                     ));
             apply_dev_android_style(&style.style, &view, true, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             for item in items {
                 let arrow = side_nav_submenu_arrow_icon();
-                let arrow_view = render_dev_android_icon_view(
-                    &arrow,
-                    counter,
-                    output,
-                    Some(content_color),
-                );
+                let arrow_view =
+                    render_dev_android_icon_view(&arrow, counter, output, Some(content_color));
                 let body = next_dev_view(counter);
                 output.push_str(&format!(
                     "        LinearLayout {body} = doweAccordionItem({view}, \"{}\", {}, {}, {}, {arrow_view});\n",
@@ -261,17 +266,19 @@ fn render_dev_android_display_media_data_node(
                     "        ScrollView {scroll} = new ScrollView(this);\n        {scroll}.setFillViewport(false);\n        {scroll}.setVerticalScrollBarEnabled(false);\n        {scroll}.setOverScrollMode(View.OVER_SCROLL_NEVER);\n        {scroll}.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        LinearLayout {track} = doweContainer(false);\n        {scroll}.addView({track}, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {viewport}.addView({scroll});\n        doweAdd({view}, {viewport});\n"
                 ));
             }
-            let slide_width = props.slide_width.unwrap_or(if matches!(
-                props.variant,
-                CarouselVariant::Simple
-                    | CarouselVariant::Masonry
-                    | CarouselVariant::Rtl
-                    | CarouselVariant::Sticky
-            ) {
-                280
-            } else {
-                320
-            });
+            let slide_width = props.slide_width.unwrap_or(
+                if matches!(
+                    props.variant,
+                    CarouselVariant::Simple
+                        | CarouselVariant::Masonry
+                        | CarouselVariant::Rtl
+                        | CarouselVariant::Sticky
+                ) {
+                    280
+                } else {
+                    320
+                },
+            );
             for slide in slides {
                 let slide_view = next_dev_view(counter);
                 output.push_str(&format!(
@@ -289,8 +296,7 @@ fn render_dev_android_display_media_data_node(
                 }
                 output.push_str(&format!(
                     "        doweAdd({track}, {slide_view}, doweDp({}), {});\n",
-                    props.gap,
-                    horizontal
+                    props.gap, horizontal
                 ));
                 for child in &slide.children {
                     render_dev_android_node(
@@ -399,10 +405,20 @@ fn render_dev_android_display_media_data_node(
             let source = if props.template_segments.is_empty() {
                 format!("\"{}\"", escape_java(&props.source))
             } else {
-                props.template_segments.iter().map(|segment| match segment {
-                    CodeTemplateSegment::Static { text, .. } => format!("\"{}\"", escape_java(text)),
-                    CodeTemplateSegment::Binding(path) => format!("doweTextValue(\"{}\", null)", escape_java(&context.signal_path(path))),
-                }).collect::<Vec<_>>().join(" + ")
+                props
+                    .template_segments
+                    .iter()
+                    .map(|segment| match segment {
+                        CodeTemplateSegment::Static { text, .. } => {
+                            format!("\"{}\"", escape_java(text))
+                        }
+                        CodeTemplateSegment::Binding(path) => format!(
+                            "doweTextValue(\"{}\", null)",
+                            escape_java(&context.signal_path(path))
+                        ),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" + ")
             };
             let (texts, colors) = if props.template_segments.is_empty() {
                 (
@@ -507,7 +523,11 @@ fn render_dev_android_display_media_data_node(
         }
         ViewNode::Iframe { props } => {
             let view = next_dev_view(counter);
-            let scripts = props.sandbox.as_ref().map(|tokens| tokens.iter().any(|token| token == "scripts")).unwrap_or(true);
+            let scripts = props
+                .sandbox
+                .as_ref()
+                .map(|tokens| tokens.iter().any(|token| token == "scripts"))
+                .unwrap_or(true);
             output.push_str(&format!(
                 "        FrameLayout {view} = doweIframe(\"{}\", \"{}\", {}, {});\n",
                 escape_java(&props.src),
@@ -517,13 +537,19 @@ fn render_dev_android_display_media_data_node(
             ));
             apply_dev_android_style(&props.style, &view, false, output);
             if props.style.border.is_some() {
-                output.push_str(&format!("        {view}.setPadding(doweDp(1), doweDp(1), doweDp(1), doweDp(1));\n"));
+                output.push_str(&format!(
+                    "        {view}.setPadding(doweDp(1), doweDp(1), doweDp(1), doweDp(1));\n"
+                ));
             }
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::Device { props, iframe } => {
             let view = next_dev_view(counter);
-            let scripts = iframe.sandbox.as_ref().map(|tokens| tokens.iter().any(|token| token == "scripts")).unwrap_or(true);
+            let scripts = iframe
+                .sandbox
+                .as_ref()
+                .map(|tokens| tokens.iter().any(|token| token == "scripts"))
+                .unwrap_or(true);
             let mut options = Vec::new();
             for (index, option) in props.options.iter().enumerate() {
                 let paths_name = format!("{view}DevicePaths{index}");
@@ -564,15 +590,32 @@ fn render_dev_android_display_media_data_node(
             ));
             apply_dev_android_style(&props.style, &view, true, output);
             if props.style.border.is_some() {
-                output.push_str(&format!("        {view}.setPadding(doweDp(1), doweDp(1), doweDp(1), doweDp(1));\n"));
+                output.push_str(&format!(
+                    "        {view}.setPadding(doweDp(1), doweDp(1), doweDp(1), doweDp(1));\n"
+                ));
             }
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::Canvas { props } => {
             let view = next_dev_view(counter);
-            let on_pointer = props.on_pointer.as_deref().and_then(|value| context.action_id(value)).map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string());
-            let on_key = props.on_key.as_deref().and_then(|value| context.action_id(value)).map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string());
-            let on_motion = props.on_motion.as_deref().and_then(|value| context.action_id(value)).map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string());
+            let on_pointer = props
+                .on_pointer
+                .as_deref()
+                .and_then(|value| context.action_id(value))
+                .map(|value| format!("\"{}\"", escape_java(value)))
+                .unwrap_or_else(|| "null".to_string());
+            let on_key = props
+                .on_key
+                .as_deref()
+                .and_then(|value| context.action_id(value))
+                .map(|value| format!("\"{}\"", escape_java(value)))
+                .unwrap_or_else(|| "null".to_string());
+            let on_motion = props
+                .on_motion
+                .as_deref()
+                .and_then(|value| context.action_id(value))
+                .map(|value| format!("\"{}\"", escape_java(value)))
+                .unwrap_or_else(|| "null".to_string());
             let background = match props.background {
                 CanvasBackground::Transparent => "Color.TRANSPARENT".to_string(),
                 CanvasBackground::Color(color) => java_color(color).to_string(),
@@ -754,10 +797,15 @@ fn render_dev_android_chart(
         })
         .or_else(|| {
             arc_props.map(|arc| {
-                format!(", false, 60, null, null, {}, 0, false, false, false, false", arc.start_angle)
+                format!(
+                    ", false, 60, null, null, {}, 0, false, false, false, false",
+                    arc.start_angle
+                )
             })
         })
-        .unwrap_or_else(|| ", false, 60, null, null, -90, 0, false, false, false, false".to_string());
+        .unwrap_or_else(|| {
+            ", false, 60, null, null, -90, 0, false, false, false, false".to_string()
+        });
     let arc_args = arc_props
         .map(|arc| {
             format!(

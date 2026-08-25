@@ -343,6 +343,10 @@ fn compose_justify_name(value: Justify) -> &'static str {
         Justify::Between => "Between",
         Justify::Around => "Around",
         Justify::Evenly => "Evenly",
+        Justify::Stretch => "Stretch",
+        Justify::Normal => "Normal",
+        Justify::EndSafe => "EndSafe",
+        Justify::CenterSafe => "CenterSafe",
     }
 }
 
@@ -353,15 +357,26 @@ fn compose_align_name(value: Align) -> &'static str {
         Align::End => "End",
         Align::Stretch => "Stretch",
         Align::Baseline => "Baseline",
+        Align::BaselineLast => "BaselineLast",
+        Align::EndSafe => "EndSafe",
+        Align::CenterSafe => "CenterSafe",
     }
 }
 
 fn compose_grid_alignment_name(value: GridAlignment) -> &'static str {
     match value {
         GridAlignment::Start => "Start",
-        GridAlignment::Center => "Center",
         GridAlignment::End => "End",
+        GridAlignment::EndSafe => "EndSafe",
+        GridAlignment::Center => "Center",
+        GridAlignment::CenterSafe => "CenterSafe",
+        GridAlignment::Between => "Between",
+        GridAlignment::Around => "Around",
+        GridAlignment::Evenly => "Evenly",
         GridAlignment::Stretch => "Stretch",
+        GridAlignment::Baseline => "Baseline",
+        GridAlignment::BaselineLast => "BaselineLast",
+        GridAlignment::Normal => "Normal",
     }
 }
 

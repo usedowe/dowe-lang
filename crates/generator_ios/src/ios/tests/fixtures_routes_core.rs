@@ -77,6 +77,7 @@ fn bar_route() -> ViewRoute {
                     center: vec![text("Brand")],
                     end: vec![text("Account")],
                     bottom: Vec::new(),
+                mobile_menu: None,
                 },
                 ViewNode::Children,
                 ViewNode::Footer {
@@ -126,6 +127,7 @@ fn docking_appbar_route() -> ViewRoute {
                 center: vec![text("Navigation")],
                 end: vec![text("Account")],
                 bottom: Vec::new(),
+                mobile_menu: None,
             }],
             start: Vec::new(),
             main: vec![ViewNode::Children],
@@ -156,6 +158,7 @@ fn appbar_divider_route() -> ViewRoute {
                     center: vec![text("Brand")],
                     end: vec![text("Account")],
                     bottom: Vec::new(),
+                mobile_menu: None,
                 },
                 ViewNode::Children,
             ],

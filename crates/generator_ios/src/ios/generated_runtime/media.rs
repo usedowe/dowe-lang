@@ -363,7 +363,7 @@ struct DoweDevicePreview: View {
                     }
                     .frame(width: CGFloat(40), height: CGFloat(40))
                     .foregroundStyle(profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText)
-                    .background(profile == option.profile ? DoweDesign.primary : Color.clear)
+                    .background(profile == option.profile ? DoweDesign.muted : Color.clear)
                     .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
                     .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText, lineWidth: CGFloat(1)))
                     .buttonStyle(.plain)

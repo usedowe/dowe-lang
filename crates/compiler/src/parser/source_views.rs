@@ -10,18 +10,9 @@ use crate::parser::source_i18n::validate_view_i18n_keys;
 use crate::parser::source_imports::resolve_import;
 use crate::parser::source_parser::parse_source_file;
 use crate::parser::source_stdlib::parse_stdlib_call;
-use crate::parser::source_types::{TypeRegistry, is_shared_type_path, validate_source_value_type};
+use crate::parser::source_types::{is_shared_type_path, validate_source_value_type, TypeRegistry};
 use crate::parser::source_values::parse_value;
 use dowe_components::{
-    BuiltinComponent, COMPONENT_REGISTRY, CodeTemplateSegment, ColorFamily, ColorToken,
-    ComponentError, ComponentProp, ComponentVariant, DesignComponentSlot, DesignConfig,
-    NavigationAction, NavigationOperation, OverlayCornerPosition, PropScalar, PropValue,
-    ResponsivePropEntry, StdlibArgument, StdlibCall, StdlibValue, TabsVariant, ToggleGroupKind,
-    VIEW_META_NAMES, ViewAction, ViewActionKind, ViewAssignAction, ViewConstant,
-    ViewFunctionParameter, ViewFunctionReturn, ViewFunctionStatement, ViewMetadata,
-    ViewNavigationAction, ViewRequestAction, ViewRequestHeader, ViewRequestHeaderValue,
-    ViewRequestMethod, ViewResetAction, ViewSection, ViewSignal, ViewSignalScope,
-    ViewSignalStorage, ViewSignalValue, ViewToastAction, VisibilityCondition,
     accordion_component_node, accordion_item_component, alert_dialog_component_node,
     apply_design_defaults_to_tree, apply_theme_catalog_to_tree, arc_chart_component_node,
     area_chart_component_node, attach_form_validation, audio_component_node, avatar_component_node,
@@ -56,7 +47,16 @@ use dowe_components::{
     textarea_component_node, theme_select_component_node, theme_toggle_component_node,
     toast_component_node, toggle_component_node, toggle_group_component_node,
     toggle_group_item_component, tooltip_component_node, type_writer_component_node,
-    type_writer_item_component, validate_view_tree, video_node,
+    type_writer_item_component, validate_view_tree, video_node, BuiltinComponent,
+    CodeTemplateSegment, ColorFamily, ColorToken, ComponentError, ComponentProp, ComponentVariant,
+    DesignConfig, MobileMenu, NavigationAction, NavigationOperation, OverlayCornerPosition,
+    PropScalar, PropValue, ResponsivePropEntry, StdlibArgument, StdlibCall, StdlibValue,
+    ToggleGroupKind, ViewAction, ViewActionKind, ViewAssignAction, ViewConstant,
+    ViewFunctionParameter, ViewFunctionReturn, ViewFunctionStatement, ViewMetadata,
+    ViewNavigationAction, ViewRequestAction, ViewRequestHeader, ViewRequestHeaderValue,
+    ViewRequestMethod, ViewResetAction, ViewSection, ViewSignal, ViewSignalScope,
+    ViewSignalStorage, ViewSignalValue, ViewToastAction, VisibilityCondition, COMPONENT_REGISTRY,
+    VIEW_META_NAMES,
 };
 use dowe_generator_web::{build_translation_chunks, render_page_document, router_js};
 use dowe_stdlib::StdlibSurface;

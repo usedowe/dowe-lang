@@ -10,7 +10,7 @@ fn validates_responsive_text_typography_props() {
                 &[("xs", "thin"), ("md", "extralight"), ("lg", "black")],
             ),
             responsive_string_prop("spacing", &[("xs", "normal"), ("md", "wide")]),
-            responsive_string_prop("bg", &[("md", "softInfo")]),
+            responsive_string_prop("bg", &[("md", "info")]),
             responsive_string_prop(
                 "font",
                 &[("xs", "inter"), ("md", "manrope"), ("lg", "lora")],

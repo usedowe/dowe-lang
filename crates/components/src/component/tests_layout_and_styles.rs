@@ -204,6 +204,94 @@ fn validates_percentage_width_values() {
 }
 
 #[test]
+fn validates_flex_alignment_contract() {
+    for value in [
+        "start", "end", "end-safe", "center", "center-safe", "between", "around",
+        "evenly", "stretch", "normal",
+    ] {
+        let node = container_component_node(
+            BuiltinComponent::Flex,
+            vec![string_prop("justify", value)],
+            Vec::new(),
+            false,
+        )
+        .expect("valid justify value");
+        let ViewNode::Flex { props, .. } = node else {
+            panic!("flex");
+        };
+        assert_eq!(props.justify.expect("justify").entries[0].value.as_str(), value);
+    }
+
+    for value in [
+        "start", "end", "end-safe", "center", "center-safe", "baseline", "baseline-last",
+        "stretch",
+    ] {
+        let node = container_component_node(
+            BuiltinComponent::Flex,
+            vec![string_prop("align", value)],
+            Vec::new(),
+            false,
+        )
+        .expect("valid align value");
+        let ViewNode::Flex { props, .. } = node else {
+            panic!("flex");
+        };
+        assert_eq!(props.align.expect("align").entries[0].value.as_str(), value);
+    }
+}
+
+#[test]
+fn validates_grid_alignment_contract() {
+    for value in [
+        "start", "end", "end-safe", "center", "center-safe", "between", "around",
+        "evenly", "stretch", "normal",
+    ] {
+        let node = container_component_node(
+            BuiltinComponent::Grid,
+            vec![string_prop("justify", value)],
+            Vec::new(),
+            false,
+        )
+        .expect("valid grid justify value");
+        let ViewNode::Grid { props, .. } = node else {
+            panic!("grid");
+        };
+        assert_eq!(props.justify.expect("justify").entries[0].value.as_str(), value);
+    }
+
+    for value in [
+        "start", "end", "end-safe", "center", "center-safe", "baseline", "baseline-last",
+        "stretch",
+    ] {
+        let node = container_component_node(
+            BuiltinComponent::Grid,
+            vec![string_prop("align", value)],
+            Vec::new(),
+            false,
+        )
+        .expect("valid grid align value");
+        let ViewNode::Grid { props, .. } = node else {
+            panic!("grid");
+        };
+        assert_eq!(props.align.expect("align").entries[0].value.as_str(), value);
+    }
+}
+
+#[test]
+fn rejects_grid_alignment_values_for_the_wrong_axis() {
+    for (prop, value) in [("justify", "baseline"), ("align", "between")] {
+        let error = container_component_node(
+            BuiltinComponent::Grid,
+            vec![string_prop(prop, value)],
+            Vec::new(),
+            false,
+        )
+        .expect_err("invalid grid alignment value");
+        assert!(error.message.contains(prop));
+    }
+}
+
+#[test]
 fn validates_container_refactor_props() {
     let flex = container_component_node(
         BuiltinComponent::Flex,
@@ -944,6 +1032,7 @@ fn validates_layout_bar_props_and_regions() {
         vec![text_node("Brand").expect("text")],
         vec![children_node(true).expect("children")],
         Vec::new(),
+        None,
         true,
     )
     .expect("appbar");
@@ -956,6 +1045,7 @@ fn validates_layout_bar_props_and_regions() {
             end,
             top,
             bottom,
+            ..
         } => {
             assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
             assert_eq!(props.style.color, Some(ColorFamily::Surface));
@@ -982,6 +1072,7 @@ fn validates_layout_bar_props_and_regions() {
         vec![text_node("Navigation").expect("text")],
         Vec::new(),
         vec![text_node("Legal").expect("text")],
+        None,
         false,
     )
     .expect("footer");
@@ -1009,6 +1100,7 @@ fn validates_layout_bar_props_and_regions() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        None,
         false,
     )
     .expect_err("footer floating");
@@ -1026,6 +1118,7 @@ fn validates_layout_bar_props_and_regions() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        None,
         false,
     )
     .expect_err("appbar position");
@@ -1042,6 +1135,7 @@ fn validates_layout_bar_props_and_regions() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        None,
         false,
     )
     .expect_err("bottom bar position");
@@ -1058,6 +1152,7 @@ fn validates_layout_bar_props_and_regions() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        None,
         false,
     )
     .expect_err("dock without fixed floating AppBar");
@@ -1076,6 +1171,7 @@ fn validates_layout_bar_props_and_regions() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        None,
         false,
     )
     .expect_err("footer dock on scroll");
@@ -1095,6 +1191,7 @@ fn applies_footer_padding_defaults_and_preserves_overrides() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        None,
         false,
     )
     .expect("default footer");
@@ -1129,6 +1226,7 @@ fn applies_footer_padding_defaults_and_preserves_overrides() {
         Vec::new(),
         Vec::new(),
         Vec::new(),
+        None,
         false,
     )
     .expect("authored footer");

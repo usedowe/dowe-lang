@@ -23,16 +23,24 @@ fn swift_visible_text_expression(
     if let Some(key) = i18n {
         return format!("String(localized: \"{}\")", escape_swift(key));
     }
-    let Some(binding) = text_binding_path(value) else {
+    let segments = text_template_segments(value);
+    if segments.iter().all(|(_, binding)| binding.is_none()) {
         return format!("verbatim: \"{}\"", escape_swift(value));
-    };
-    match context.dynamic_path(binding) {
-        Some(path) => context
-            .item_value(binding)
-            .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
-            .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path))),
-        None => format!("verbatim: \"{}\"", escape_swift(value)),
     }
+    segments
+        .into_iter()
+        .map(|(literal, binding)| match binding {
+            Some(binding) => match context.dynamic_path(&binding) {
+                Some(path) => context
+                    .item_value(&binding)
+                    .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
+                    .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path))),
+                None => format!("\"{{{}}}\"", escape_swift(&binding)),
+            },
+            None => format!("\"{}\"", escape_swift(&literal)),
+        })
+        .collect::<Vec<_>>()
+        .join(" + ")
 }
 
 fn swift_visible_text_value_expression(
@@ -43,16 +51,24 @@ fn swift_visible_text_value_expression(
     if let Some(key) = i18n {
         return format!("String(localized: \"{}\")", escape_swift(key));
     }
-    let Some(binding) = text_binding_path(value) else {
+    let segments = text_template_segments(value);
+    if segments.iter().all(|(_, binding)| binding.is_none()) {
         return format!("\"{}\"", escape_swift(value));
-    };
-    match context.dynamic_path(binding) {
-        Some(path) => context
-            .item_value(binding)
-            .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
-            .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path))),
-        None => format!("\"{}\"", escape_swift(value)),
     }
+    segments
+        .into_iter()
+        .map(|(literal, binding)| match binding {
+            Some(binding) => match context.dynamic_path(&binding) {
+                Some(path) => context
+                    .item_value(&binding)
+                    .map(|item| format!("state.text(\"{}\", item: {item})", escape_swift(&path)))
+                    .unwrap_or_else(|| format!("state.text(\"{}\")", escape_swift(&path))),
+                None => format!("\"{{{}}}\"", escape_swift(&binding)),
+            },
+            None => format!("\"{}\"", escape_swift(&literal)),
+        })
+        .collect::<Vec<_>>()
+        .join(" + ")
 }
 
 fn swift_localized_literal(value: &str, i18n: Option<&str>) -> String {

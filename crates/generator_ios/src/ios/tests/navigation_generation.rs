@@ -316,7 +316,7 @@ fn generates_swiftui_rail_nav() {
     rail_route.page_tree = ViewNode::RailNav {
         props: RailNavProps {
             style: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Primary),
                 ..Default::default()
             },

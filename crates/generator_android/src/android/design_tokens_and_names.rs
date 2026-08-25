@@ -16,7 +16,6 @@ fn variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             "Color.Transparent"
         }
@@ -27,7 +26,6 @@ fn variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_text_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             color_ref(family_color(color))
         }
@@ -38,7 +36,6 @@ fn variant_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_title_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_title_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             color_ref(family_color(color))
         }
@@ -48,7 +45,7 @@ fn variant_title(props: &VariantProps) -> &'static str {
 fn scheme_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Soft => color_ref(family_soft_title_color(color)),
+        ComponentVariant::Solid => color_ref(family_soft_title_color(color)),
         _ => color_ref(family_title_color(color)),
     }
 }
@@ -61,7 +58,6 @@ fn nav_active_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Ghost) {
         ComponentVariant::Solid => color_ref(family_text_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
@@ -112,7 +108,7 @@ fn card_variant_title(props: &VariantProps) -> &'static str {
         {
             color_ref(family_text_color(color))
         }
-        ComponentVariant::Solid | ComponentVariant::Soft => variant_title(props),
+        ComponentVariant::Solid => variant_title(props),
         ComponentVariant::Line | ComponentVariant::Ghost => variant_content(props),
     }
 }
@@ -121,7 +117,6 @@ fn table_variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             "Color.Transparent"
         }
@@ -132,7 +127,6 @@ fn table_variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => color_ref(family_text_color(color)),
-        ComponentVariant::Soft => color_ref(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
@@ -148,7 +142,6 @@ fn dev_variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => java_color(family_color(color)),
-        ComponentVariant::Soft => java_color(family_soft_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             "Color.TRANSPARENT"
         }
@@ -159,7 +152,6 @@ fn dev_variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => java_color(family_text_color(color)),
-        ComponentVariant::Soft => java_color(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             java_color(family_color(color))
         }
@@ -170,7 +162,6 @@ fn dev_variant_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => java_color(family_title_color(color)),
-        ComponentVariant::Soft => java_color(family_soft_title_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             java_color(family_color(color))
         }
@@ -180,7 +171,7 @@ fn dev_variant_title(props: &VariantProps) -> &'static str {
 fn dev_scheme_title(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Soft => java_color(family_soft_title_color(color)),
+        ComponentVariant::Solid => java_color(family_soft_title_color(color)),
         _ => java_color(family_title_color(color)),
     }
 }
@@ -193,7 +184,6 @@ fn dev_nav_active_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Primary);
     match props.variant.unwrap_or(ComponentVariant::Ghost) {
         ComponentVariant::Solid => java_color(family_text_color(color)),
-        ComponentVariant::Soft => java_color(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
@@ -244,7 +234,7 @@ fn dev_card_variant_title(props: &VariantProps) -> &'static str {
         {
             java_color(family_text_color(color))
         }
-        ComponentVariant::Solid | ComponentVariant::Soft => dev_variant_title(props),
+        ComponentVariant::Solid => dev_variant_title(props),
         ComponentVariant::Line | ComponentVariant::Ghost => dev_variant_content(props),
     }
 }
@@ -253,7 +243,6 @@ fn dev_table_variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => java_color(family_color(color)),
-        ComponentVariant::Soft => java_color(family_soft_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
             "Color.TRANSPARENT"
         }
@@ -264,7 +253,6 @@ fn dev_table_variant_content(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
     match props.variant.unwrap_or(ComponentVariant::Solid) {
         ComponentVariant::Solid => java_color(family_text_color(color)),
-        ComponentVariant::Soft => java_color(family_soft_text_color(color)),
         ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost
             if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
         {
@@ -285,7 +273,9 @@ fn dev_table_border(props: &VariantProps) -> &'static str {
 }
 
 fn dev_card_border(props: &VariantProps) -> &'static str {
-    if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+    if props.style.border.is_some() {
+        "null"
+    } else if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
         dev_variant_content(props)
     } else {
         "null"

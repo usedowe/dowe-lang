@@ -356,11 +356,9 @@ fn exposes_runtime_payloads_for_every_icon_name() {
     assert!(catalog.iter().any(|(name, payload)| {
         name == "route-bold-duotone" && payload.contains("\"viewBox\"")
     }));
-    assert!(
-        catalog
-            .iter()
-            .any(|(name, payload)| { name == "country-flags:CO" && payload.contains("\"paths\"") })
-    );
+    assert!(catalog
+        .iter()
+        .any(|(name, payload)| { name == "country-flags:CO" && payload.contains("\"paths\"") }));
     assert!(catalog.iter().any(|(name, payload)| {
         name == "svg-logos:github-icon" && payload.contains("\"paths\"")
     }));
@@ -410,29 +408,13 @@ fn exposes_text_and_title_roles_for_every_theme_color_family() {
         ColorToken::from_name("primaryTitle"),
         Some(ColorToken::PrimaryTitle)
     );
-    assert_eq!(
-        ColorToken::from_name("softPrimaryText"),
-        Some(ColorToken::SoftPrimaryText)
-    );
-    assert_eq!(
-        ColorToken::from_name("softPrimaryTitle"),
-        Some(ColorToken::SoftPrimaryTitle)
-    );
     assert_eq!(ColorToken::from_name("onPrimary"), None);
     assert_eq!(ColorToken::from_name("onSuccess"), None);
     assert_eq!(ColorToken::from_name("onSoftPrimary"), None);
     assert_eq!(ColorFamily::Primary.text_token(), ColorToken::PrimaryText);
     assert_eq!(ColorFamily::Primary.title_token(), ColorToken::PrimaryTitle);
     assert_eq!(
-        ColorFamily::Primary.soft_text_token(),
-        ColorToken::SoftPrimaryText
-    );
-    assert_eq!(
-        ColorFamily::Primary.soft_title_token(),
-        ColorToken::SoftPrimaryTitle
-    );
-    assert_eq!(
-        ColorFamily::Background.soft_title_token(),
+        ColorFamily::Background.title_token(),
         ColorToken::BackgroundTitle
     );
     assert_eq!(
@@ -442,7 +424,7 @@ fn exposes_text_and_title_roles_for_every_theme_color_family() {
     assert_eq!(ColorFamily::from_theme_name("softPrimary"), None);
     assert_eq!(ColorFamily::from_theme_name("softBackground"), None);
     assert_eq!(
-        ColorFamily::Primary.theme_tokens(false),
+        ColorFamily::Primary.theme_tokens(),
         Some([
             ColorToken::Primary,
             ColorToken::PrimaryText,
@@ -450,15 +432,7 @@ fn exposes_text_and_title_roles_for_every_theme_color_family() {
         ])
     );
     assert_eq!(
-        ColorFamily::Primary.theme_tokens(true),
-        Some([
-            ColorToken::Primary,
-            ColorToken::PrimaryText,
-            ColorToken::PrimaryTitle,
-        ])
-    );
-    assert_eq!(
-        ColorFamily::Background.theme_tokens(true),
+        ColorFamily::Background.theme_tokens(),
         Some([
             ColorToken::Background,
             ColorToken::BackgroundText,
@@ -473,7 +447,7 @@ fn exposes_text_and_title_roles_for_every_theme_color_family() {
 }
 
 #[test]
-fn represents_custom_theme_color_families_and_soft_roles() {
+fn represents_custom_theme_color_families_and_roles() {
     let happy = ColorFamily::from_name("happy").expect("custom family");
     let brand_accent = ColorFamily::from_name("brandAccent").expect("custom camel family");
 
@@ -483,9 +457,6 @@ fn represents_custom_theme_color_families_and_soft_roles() {
     assert_eq!(happy.color_token().as_str(), "happy");
     assert_eq!(happy.text_token().as_str(), "happyText");
     assert_eq!(happy.title_token().as_str(), "happyTitle");
-    assert_eq!(happy.soft_color_token().as_str(), "softHappy");
-    assert_eq!(happy.soft_text_token().as_str(), "softHappyText");
-    assert_eq!(happy.soft_title_token().as_str(), "softHappyTitle");
     assert_eq!(brand_accent.as_str(), "brandAccent");
     assert_eq!(ColorFamily::from_theme_name("softHappy"), None);
     assert_eq!(ColorFamily::from_name("softHappy"), None);

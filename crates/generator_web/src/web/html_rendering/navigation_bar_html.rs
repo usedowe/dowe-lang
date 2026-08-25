@@ -7,6 +7,7 @@ fn render_bar_html(
     center: &[ViewNode],
     end: &[ViewNode],
     bottom: &[ViewNode],
+    mobile_menu: Option<&MobileMenu>,
     children_html: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
@@ -62,6 +63,9 @@ fn render_bar_html(
         children_html,
         context,
     ));
+    if base == "appbar" {
+        html.push_str(&render_mobile_menu_html(mobile_menu, children_html, context));
+    }
     if base == "footer" {
         html.push_str("</div>");
     }
@@ -98,6 +102,27 @@ fn render_bottom_bar_html(
     html
 }
 
+fn render_mobile_menu_html(
+    menu: Option<&MobileMenu>,
+    children_html: Option<&str>,
+    context: &ReactiveRenderContext,
+) -> String {
+    let Some(menu) = menu else { return String::new(); };
+    let open = menu.open.as_deref().map(|path| {
+        format!(r#" data-dowe-show="{}""#, escape_attr(&context.signal_path(path)))
+    }).unwrap_or_default();
+    let mut html = format!(r#"<div class="appbar-mobile-menu"{open} hidden>"#);
+    for (name, children) in [("header", &menu.header), ("body", &menu.body), ("footer", &menu.footer)] {
+        if !children.is_empty() {
+            html.push_str(&format!(r#"<div class="appbar-mobile-menu-{name}">"#));
+            for child in children { html.push_str(&render_html_with_context(child, children_html, context)); }
+            html.push_str("</div>");
+        }
+    }
+    html.push_str("</div>");
+    html
+}
+
 fn render_bar_region_html(
     base: &str,
     name: &str,
@@ -125,6 +150,7 @@ fn collect_bar_js_segments(
     center: &[ViewNode],
     end: &[ViewNode],
     bottom: &[ViewNode],
+    mobile_menu: Option<&MobileMenu>,
     segments: &mut Vec<JsSegment>,
     context: &ReactiveRenderContext,
 ) {
@@ -156,6 +182,13 @@ fn collect_bar_js_segments(
     collect_bar_region_js_segments(base, "end", end, segments, context);
     push_literal(segments, "</div>");
     collect_bar_region_js_segments(base, "bottom", bottom, segments, context);
+    if base == "appbar" {
+        if let Some(menu) = mobile_menu {
+            collect_bar_region_js_segments(base, "mobile-menu", &menu.header, segments, context);
+            collect_bar_region_js_segments(base, "mobile-menu", &menu.body, segments, context);
+            collect_bar_region_js_segments(base, "mobile-menu", &menu.footer, segments, context);
+        }
+    }
     if base == "footer" {
         push_literal(segments, "</div>");
     }

@@ -121,6 +121,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             center,
             end,
             bottom,
+            ..
         } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::AppBar);
             for child in top

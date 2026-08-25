@@ -76,11 +76,20 @@ fn parse_variant_props(
     let mut external_mode = None;
     let mut form_help_text = None;
     let mut form_error_text = None;
+    let mut swap_bind = None;
 
     for prop in props {
         let binding = prop.value.binding().cloned();
         let value = prop.value.binding_fallback().unwrap_or_else(|| prop.value.clone());
         match prop.name.as_str() {
+            "bind" if component == BuiltinComponent::Swap => {
+                swap_bind = Some(
+                    prop.value
+                        .binding()
+                        .map(|binding| binding.path.clone())
+                        .ok_or_else(|| ComponentError::invalid_prop(&prop.name, "boolean Signal path"))?,
+                );
+            }
             "variant" if reactive_reference(&prop.value).is_some() => {
                 variant_props.reactive.variant = reactive_reference(&prop.value)
             }
@@ -100,7 +109,7 @@ fn parse_variant_props(
                 variant_props.reactive.loading = Some(loading);
                 variant_props.loading_icon = Some(svg_spinner_control_icon("3-dots-move")?);
             }
-            "disabled" if component == BuiltinComponent::Button => {
+            "disabled" if matches!(component, BuiltinComponent::Button | BuiltinComponent::Swap) => {
                 let disabled = reactive_reference(&prop.value).ok_or_else(|| {
                     ComponentError::invalid_prop(&prop.name, "boolean Signal or View Store path")
                 })?;
@@ -141,6 +150,14 @@ fn parse_variant_props(
                 let name = parse_static_string(&prop.name, &prop.value)?;
                 variant_props.icon_start = Some(solar_control_icon(&name)?);
             }
+            "iconOn" if component == BuiltinComponent::Swap => {
+                let name = parse_static_string(&prop.name, &prop.value)?;
+                variant_props.icon_start = Some(solar_control_icon(&name)?);
+            }
+            "iconOff" if component == BuiltinComponent::Swap => {
+                let name = parse_static_string(&prop.name, &prop.value)?;
+                variant_props.swap_icon_off = Some(solar_control_icon(&name)?);
+            }
             "variant" => {
                 variant_props.variant = Some(parse_variant_prop(&prop.name, &value)?);
                 variant_props.variant_binding = binding;
@@ -154,6 +171,7 @@ fn parse_variant_props(
                     component,
                     BuiltinComponent::Button
                         | BuiltinComponent::IconButton
+                        | BuiltinComponent::Swap
                         | BuiltinComponent::Chip
                         | BuiltinComponent::AvatarGroup
                         | BuiltinComponent::ToggleTheme
@@ -173,7 +191,7 @@ fn parse_variant_props(
                 variant_props.size = Some(parse_control_size_prop(&prop.name, &value)?);
                 variant_props.size_binding = binding
             }
-            "label" if component == BuiltinComponent::IconButton => {
+            "label" if matches!(component, BuiltinComponent::IconButton | BuiltinComponent::Swap) => {
                 variant_props.label = Some(parse_required_string(&prop.name, &prop.value)?)
             }
             "label"
@@ -331,8 +349,23 @@ fn parse_variant_props(
         validation.error_text = form_error_text;
     }
     variant_props.element = variant_props.style.element.clone();
+    if component == BuiltinComponent::Swap {
+        variant_props.element.bind = swap_bind.clone();
+        variant_props.style.element.bind = swap_bind.clone();
+        variant_props.swap_bind = swap_bind.clone();
+    }
     variant_props.navigation =
         parse_navigation_props(component, href, navigate, history, target, external_mode)?;
+    if component == BuiltinComponent::Swap {
+        variant_props.icon_only = true;
+        if variant_props.icon_start.is_none() || variant_props.swap_icon_off.is_none() {
+            return Err(ComponentError::invalid_prop("iconOn/iconOff", "known quoted Solar icon names"));
+        }
+        if swap_bind.is_none() {
+            return Err(ComponentError::invalid_prop("bind", "boolean Signal path"));
+        }
+        variant_props.swap_bind = swap_bind.clone();
+    }
     if component == BuiltinComponent::IconButton {
         variant_props.icon_only = true;
         if variant_props.icon_start.is_none() {

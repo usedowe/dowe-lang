@@ -195,17 +195,6 @@
                 .contains("invalid value for prop `value`: expected quoted static string literal")
         );
 
-        let variant_error = parse_page(
-            r#"page visualPage
-  Input variant:outlined scheme:primary"#,
-        )
-        .expect_err("variant error");
-        assert!(
-            variant_error.to_string().contains(
-                "invalid value for prop `variant`: expected quoted static string literal"
-            )
-        );
-
         let color_error = parse_page(
             r#"page visualPage
   Svg viewBox:"0 0 24 24" color:accent
@@ -342,23 +331,5 @@ page appointmentsPage
                 .as_ref()
                 .map(|value| value.type_name.as_str()),
             Some("boolean")
-        );
-    }
-
-    #[test]
-    fn rejects_legacy_view_action() {
-        let error = parse_page(
-            r#"page appointmentsPage
-  action create
-    reset appointment
-  Text
-    "Appointments""#,
-        )
-        .expect_err("legacy action");
-
-        assert!(
-            error
-                .to_string()
-                .contains("`action` was replaced by `fn <name>` in views")
         );
     }

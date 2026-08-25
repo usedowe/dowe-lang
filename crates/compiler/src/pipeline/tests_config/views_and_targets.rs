@@ -125,8 +125,6 @@ fn writes_app_targets_from_shared_view_tree() {
 
     let root = temp.path().join(".dowe/apps");
     assert!(root.join("desktop/macos/DoweMacOSApp.swift").exists());
-    assert!(root.join("desktop/windows/DoweWindowsApp.cs").exists());
-    assert!(root.join("desktop/linux/dowe_linux_app.c").exists());
     assert!(
         root.join("android/app/src/main/AndroidManifest.xml")
             .exists()
@@ -210,17 +208,17 @@ fn preserves_nested_box_order_and_children_position() {
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="dowe-text text-md">Before</p>"#)
+            .contains(">Before</p>")
     );
     assert!(
         project.web.pages[0].body_html.contains(
-            r#"<div class="box"><div class="box"><p class="dowe-text text-md">Login</p></div></div>"#
+            ">Login</p>"
         )
     );
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="dowe-text text-md">After</p>"#)
+            .contains(">After</p>")
     );
 }
 

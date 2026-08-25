@@ -217,6 +217,8 @@ function renderPieArcChart(chart, svg, state, scope, type) {
       chart.dataset.doweChartShowGlow === "true"
   );
   clearSvg(svg);
+  const tooltip = chart.querySelector("[data-dowe-chart-tooltip]");
+  if (tooltip) tooltip.hidden = true;
   if (!data.length || chart.dataset.doweChartLoading === "true") return;
   const size = chartSize(svg);
   const cx = size.width / 2,
@@ -251,7 +253,7 @@ function renderPieArcChart(chart, svg, state, scope, type) {
         thickness / 2 + 2,
         radius - index * (thickness + ringGap)
       );
-      addSvg(svg, "path", [
+      const backgroundArc = addSvg(svg, "path", [
         ["d", arcPath(cx, cy, r, start, end)],
         ["class", "dowe-chart-arc"],
         ["stroke", "currentColor"],
@@ -260,14 +262,29 @@ function renderPieArcChart(chart, svg, state, scope, type) {
         ["fill", "none"],
         ["stroke-linecap", "round"]
       ]);
-      addSvg(svg, "path", [
+      const progressArc = addSvg(svg, "path", [
         ["d", arcPath(cx, cy, r, start, start + range * progress)],
         ["class", "dowe-chart-arc"],
         ["stroke", chartColor(chart, index, item.color)],
         ["stroke-width", thickness],
         ["fill", "none"],
-        ["stroke-linecap", "round"]
+        ["stroke-linecap", "round"],
+        ["tabindex", "0"],
+        ["role", "button"],
+        ["aria-label", String(item.label) + " " + String(item.value)]
       ]);
+      const showTooltip = () => {
+        if (!tooltip) return;
+        tooltip.textContent = String(item.label) + (chart.dataset.doweChartHideValues === "true" ? "" : " · " + String(item.value));
+        tooltip.hidden = false;
+        chart.querySelectorAll(".dowe-chart-arc.is-selected").forEach(node => node.classList.remove("is-selected"));
+        progressArc.classList.add("is-selected");
+      };
+      [backgroundArc, progressArc].forEach(node => {
+        node.addEventListener("pointerenter", showTooltip);
+        node.addEventListener("focus", showTooltip);
+        node.addEventListener("click", showTooltip);
+      });
       if (chart.dataset.doweChartShowInlineLabels === "true") {
         const point = polarPoint(
           cx,

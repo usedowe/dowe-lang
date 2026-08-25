@@ -149,6 +149,7 @@ private fun DoweChart(state: DoweReactiveState, chartType: String, dataPath: Str
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        var selectedArc by remember { mutableStateOf<Int?>(null) }
         val chartModifier = if (chartType == "pie" || chartType == "arc") {
             Modifier
                 .fillMaxWidth()
@@ -159,7 +160,19 @@ private fun DoweChart(state: DoweReactiveState, chartType: String, dataPath: Str
             Modifier.weight(1f).fillMaxWidth()
         }
         Box(modifier = chartModifier, contentAlignment = Alignment.Center) {
-            Canvas(modifier = Modifier.matchParentSize()) {
+            Canvas(modifier = Modifier.matchParentSize().pointerInput(categories) {
+                detectTapGestures { offset ->
+                    if (chartType == "arc" && categories.isNotEmpty()) {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val radius = min(size.width, size.height) / 2f - 18f
+                        val ringCount = categories.size.coerceAtLeast(1)
+                        val ringGap = min(gap.toFloat().coerceAtLeast(0f), max(1f, radius / (ringCount * 3f)))
+                        val stroke = max(6f, min(thickness.toFloat().coerceAtLeast(6f), (radius - ringGap * (ringCount - 1)) / (ringCount + 0.5f)))
+                        val distance = sqrt((offset.x - center.x).pow(2f) + (offset.y - center.y).pow(2f))
+                        selectedArc = categories.indices.minByOrNull { index -> abs(distance - max(stroke / 2f + 2f, radius - index * (stroke + ringGap))) }
+                    }
+                }
+            }) {
                 if (loading || (points.isEmpty() && categories.isEmpty())) {
                     return@Canvas
                 }
@@ -181,6 +194,12 @@ private fun DoweChart(state: DoweReactiveState, chartType: String, dataPath: Str
                 ) {
                     centerLabel?.let { Text(text = it, color = contentColor.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
                     Text(text = centerValue ?: categories.sumOf { it.value.toDouble() }.toFloat().toString(), color = contentColor, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                }
+            }
+            selectedArc?.let { index ->
+                if (chartType == "arc" && !loading && index < categories.size) {
+                    val item = categories[index]
+                    Text(text = item.label + if (arcHideValues) "" else " · " + item.value, modifier = Modifier.align(Alignment.TopCenter).padding(top = 4.dp).background(backgroundColor.copy(alpha = 0.96f), RoundedCornerShape(999.dp)).border(1.dp, contentColor.copy(alpha = 0.24f), RoundedCornerShape(999.dp)).padding(horizontal = 12.dp, vertical = 7.dp), color = contentColor, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
             if (chartType == "arc" && !loading && categories.isNotEmpty() && (centerText != null || centerValue != null)) {

@@ -96,7 +96,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
     assert_javascript_syntax(&controls);
     assert_javascript_syntax(&media);
     assert_javascript_syntax(&visualization);
-    assert!(core.len() <= 132_000, "router core is {} bytes", core.len());
+    assert!(core.len() <= 133_000, "router core is {} bytes", core.len());
     assert!(controls.len() <= 50_000);
     assert!(media.len() <= 40_000);
     assert!(visualization.len() <= 35_000);

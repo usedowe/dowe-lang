@@ -1,8 +1,13 @@
 fn render_swift_theme_toggle(props: &ThemeToggleProps, indent: usize, output: &mut String) {
     let pad = " ".repeat(indent);
     output.push_str(&format!(
-        "{pad}Button(action: {{\n{pad}    DoweDesign.applyTheme(DoweDesign.shared.name == \"dark\" ? \"light\" : \"dark\")\n{pad}}}) {{\n{pad}    Image(systemName: DoweDesign.shared.name == \"dark\" ? \"sun.max\" : \"moon.stars\")\n{pad}        .font(.system(size: CGFloat(18), weight: .semibold))\n{pad}}}\n"
+        "{pad}Button(action: {{\n{pad}    DoweDesign.applyTheme(DoweDesign.shared.name == \"dark\" ? \"light\" : \"dark\")\n{pad}}}) {{\n"
     ));
+    output.push_str(&format!("{pad}    if DoweDesign.shared.name == \"dark\" {{\n"));
+    render_swift_button_icon(&props.light_icon, &card_variant_content(&props.style), indent + 8, output);
+    output.push_str(&format!("{pad}    }} else {{\n"));
+    render_swift_button_icon(&props.dark_icon, &card_variant_content(&props.style), indent + 8, output);
+    output.push_str(&format!("{pad}    }}\n{pad}}}\n"));
     let mut modifiers = swift_modifiers_for_style(&props.style.style);
     modifiers.push(format!(
         ".background({})",

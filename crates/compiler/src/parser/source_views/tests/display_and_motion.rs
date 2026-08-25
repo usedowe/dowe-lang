@@ -87,7 +87,7 @@
             panic!("avatar");
         };
         assert_eq!(props.style.color, Some(ColorFamily::Success));
-        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
         assert_eq!(props.size, ButtonSize::Lg);
         assert_eq!(props.status, Some(AvatarStatus::Online));
         assert!(props.bordered);
@@ -227,7 +227,7 @@ page displayPage
         assert!(props.auto_fit);
         assert!(!props.inline);
         assert!(props.bordered);
-        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
         assert_eq!(items.len(), 2);
         assert_eq!(items[0].on_click.as_deref(), Some("sendMessage"));
         assert!(items[1].navigation.is_some());
@@ -333,7 +333,7 @@ page displayPage
         assert_eq!(props.max_duration, Some(90));
         assert_eq!(props.on_start.as_deref(), Some("choose"));
         assert_eq!(props.on_confirm.as_deref(), Some("done"));
-        assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+        assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
 
         let ViewNode::ToggleGroup { props, items } = &box_children[2] else {
             panic!("toggle group");

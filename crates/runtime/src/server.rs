@@ -89,6 +89,13 @@ pub async fn start_dev_servers(
     targets: DevServerTargets,
 ) -> RuntimeResult<RunningDevServers> {
     project.local_databases = true;
+    start_dev_servers_shared(Arc::new(project), targets).await
+}
+
+pub(crate) async fn start_dev_servers_shared(
+    project: Arc<CompiledProject>,
+    targets: DevServerTargets,
+) -> RuntimeResult<RunningDevServers> {
     crate::database_bootstrap::prepare_databases(&project).await?;
     if targets.backend {
         log_info("Backend server starting");
@@ -198,7 +205,7 @@ pub async fn start_dev_servers(
     let project_root = project.root.clone();
 
     let mut state = DevRuntimeState {
-        project: Arc::new(RwLock::new(Arc::new(project))),
+        project: Arc::new(RwLock::new(project)),
         events: DevEventBus::default(),
         dev_origins,
         cache_mode: crate::handlers::CacheRuntimeMode::Local,

@@ -100,7 +100,7 @@ fn resolves_modal_and_alert_dialog_panels_like_card_surfaces() {
     let alert = ViewNode::AlertDialog {
         props: AlertDialogProps {
             style: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Warning),
                 ..Default::default()
             },
@@ -257,7 +257,7 @@ fn renders_reactive_button_loading_spinner_and_runtime_binding() {
 fn renders_reactive_button_disabled_visual_state() {
     let button = ViewNode::Button {
         props: VariantProps {
-            variant: Some(ComponentVariant::Soft),
+            variant: Some(ComponentVariant::Solid),
             color: Some(ColorFamily::Secondary),
             reactive: ReactiveVariantProps {
                 disabled: Some("formInvalid".to_string()),
@@ -946,7 +946,7 @@ fn advanced_form_tree() -> ViewNode {
             },
             ViewNode::DragDrop {
                 props: DragDropProps {
-                    style: advanced_style("Tasks", None, ComponentVariant::Soft),
+                    style: advanced_style("Tasks", None, ComponentVariant::Solid),
                     empty_text: "No tasks".to_string(),
                     direction: DragDropDirection::Horizontal,
                     allow_group_transfer: true,
@@ -1235,7 +1235,7 @@ fn renders_svg_markup_and_color_classes() {
     assert!(page.css_content.contains(".svg"));
     assert!(
         page.css_content
-            .contains(".color-accent{color:var(--dowe-accent);}")
+            .contains(".color-accent{--dowe-content-text:var(--dowe-accent);--dowe-content-title:var(--dowe-accent);color:var(--dowe-accent);}")
     );
     assert!(page.css_content.contains(".w-8{width:2rem;}"));
     assert!(page.css_content.contains(".h-8{height:2rem;}"));

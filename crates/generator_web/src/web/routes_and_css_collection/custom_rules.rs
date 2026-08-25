@@ -212,6 +212,7 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
             center,
             end,
             bottom,
+            ..
         }
         => {
             collect_style_custom_rules(&props.style.style, rules);

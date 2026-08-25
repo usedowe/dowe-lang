@@ -18,6 +18,7 @@ fn render_dev_android_navigation_node(
             center,
             end,
             bottom,
+            ..
         } => {
             render_dev_android_bar(
                 props,
@@ -45,6 +46,7 @@ fn render_dev_android_navigation_node(
             center,
             end,
             bottom,
+            ..
         } => {
             render_dev_android_bar(
                 props,

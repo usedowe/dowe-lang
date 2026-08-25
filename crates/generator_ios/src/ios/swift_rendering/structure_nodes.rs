@@ -337,17 +337,55 @@ fn render_swift_structure_node(
             card_style.shadow_color = None;
             card_style.set_animation(None);
             let mut modifiers = swift_modifiers_for_container_style(&card_style, flow);
-            modifiers.push(format!(".background({})", card_variant_container(props)));
-            modifiers.push(format!(".foregroundStyle({})", card_variant_content(props)));
-            modifiers.push(format!(
-                ".environment(\\.doweTitleColor, {})",
-                card_variant_title(props)
-            ));
+            let reactive_text = |path: &str, fallback: &str| {
+                context
+                    .item_value(path)
+                    .map(|item| {
+                        format!(
+                            "state.text(\"{}\", item: {item})",
+                            escape_swift(&context.item_path(path).expect("item path"))
+                        )
+                    })
+                    .unwrap_or_else(|| {
+                        format!(
+                            "state.text(\"{}\", fallback: \"{fallback}\")",
+                            escape_swift(&context.signal_path(path))
+                        )
+                    })
+            };
+            let variant = props
+                .reactive
+                .variant
+                .as_deref()
+                .map(|path| reactive_text(path, "solid"))
+                .unwrap_or_else(|| format!("\"{}\"", props.variant.unwrap_or(ComponentVariant::Solid).as_str()));
+            let scheme = props
+                .reactive
+                .scheme
+                .as_deref()
+                .map(|path| reactive_text(path, "primary"))
+                .unwrap_or_else(|| format!("\"{}\"", props.color.unwrap_or(ColorFamily::Primary).as_str()));
+            if props.reactive.scheme.is_some() || props.reactive.variant.is_some() {
+                modifiers.push(format!(".background(doweCardContainer({variant}, {scheme}))"));
+                modifiers.push(format!(".foregroundStyle(doweCardContent({variant}, {scheme}))"));
+                modifiers.push(format!(
+                    ".environment(\\.doweTitleColor, doweCardTitle({variant}, {scheme}))"
+                ));
+            } else {
+                modifiers.push(format!(".background({})", card_variant_container(props)));
+                modifiers.push(format!(".foregroundStyle({})", card_variant_content(props)));
+                modifiers.push(format!(
+                    ".environment(\\.doweTitleColor, {})",
+                    card_variant_title(props)
+                ));
+            }
             let radius = swift_card_radius(&props.style);
             modifiers.push(format!(
                 ".clipShape(RoundedRectangle(cornerRadius: {radius}))"
             ));
-            if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
+            if props.style.border.is_none()
+                && props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined
+            {
                 modifiers.push(format!(
                     ".overlay(RoundedRectangle(cornerRadius: {radius}).stroke({}, lineWidth: CGFloat(1)))",
                     variant_content(props)

@@ -138,9 +138,9 @@ extension View {
 
 func doweHorizontalAlignment(_ value: DoweAlign?) -> HorizontalAlignment {
     switch value {
-    case .center:
+    case .center, .centerSafe:
         return .center
-    case .end:
+    case .end, .endSafe:
         return .trailing
     default:
         return .leading
@@ -149,9 +149,13 @@ func doweHorizontalAlignment(_ value: DoweAlign?) -> HorizontalAlignment {
 
 func doweVerticalAlignment(_ value: DoweAlign?) -> VerticalAlignment {
     switch value {
-    case .center, .stretch:
+    case .center, .stretch, .centerSafe:
         return .center
-    case .end:
+    case .baseline:
+        return .firstTextBaseline
+    case .baselineLast:
+        return .lastTextBaseline
+    case .end, .endSafe:
         return .bottom
     default:
         return .top
@@ -160,9 +164,9 @@ func doweVerticalAlignment(_ value: DoweAlign?) -> VerticalAlignment {
 
 func doweFrameAlignment(_ value: DoweJustify?) -> Alignment {
     switch value {
-    case .center, .around, .evenly:
+    case .center, .around, .evenly, .centerSafe:
         return .center
-    case .end:
+    case .end, .endSafe:
         return .trailing
     default:
         return .leading
@@ -171,9 +175,9 @@ func doweFrameAlignment(_ value: DoweJustify?) -> Alignment {
 
 func doweColumnFrameAlignment(_ value: DoweAlign?) -> Alignment {
     switch value {
-    case .center:
+    case .center, .centerSafe:
         return .center
-    case .end:
+    case .end, .endSafe:
         return .trailing
     default:
         return .leading
@@ -361,15 +365,15 @@ struct DoweGridLayout: Layout {
                 let size = sizes[index]
                 let itemWidth = widths[column]
                 var xOffset: CGFloat = 0
-                if justify == .center {
+                if justify == .center || justify == .centerSafe {
                     xOffset = (itemWidth - size.width) / 2
-                } else if justify == .end {
+                } else if justify == .end || justify == .endSafe {
                     xOffset = itemWidth - size.width
                 }
                 var yOffset: CGFloat = 0
-                if align == .center {
+                if align == .center || align == .centerSafe {
                     yOffset = (heights[row] - size.height) / 2
-                } else if align == .end {
+                } else if align == .end || align == .endSafe {
                     yOffset = heights[row] - size.height
                 }
                 let stretchesByDefault = align == nil || align == .stretch

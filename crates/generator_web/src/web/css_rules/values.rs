@@ -48,6 +48,10 @@ fn justify_css(value: Justify) -> &'static str {
         Justify::Between => "space-between",
         Justify::Around => "space-around",
         Justify::Evenly => "space-evenly",
+        Justify::Stretch => "stretch",
+        Justify::Normal => "normal",
+        Justify::EndSafe => "safe flex-end",
+        Justify::CenterSafe => "safe center",
     }
 }
 
@@ -58,6 +62,9 @@ fn align_css(value: Align) -> &'static str {
         Align::End => "flex-end",
         Align::Stretch => "stretch",
         Align::Baseline => "baseline",
+        Align::BaselineLast => "last baseline",
+        Align::EndSafe => "safe flex-end",
+        Align::CenterSafe => "safe center",
     }
 }
 
@@ -70,12 +77,36 @@ fn text_align_css(value: TextAlign) -> &'static str {
     }
 }
 
-fn grid_alignment_css(value: GridAlignment) -> &'static str {
+fn grid_justify_css(value: GridAlignment) -> &'static str {
     match value {
-        GridAlignment::Start => "start",
+        GridAlignment::Start => "flex-start",
+        GridAlignment::End => "flex-end",
+        GridAlignment::EndSafe => "safe flex-end",
         GridAlignment::Center => "center",
-        GridAlignment::End => "end",
+        GridAlignment::CenterSafe => "safe center",
+        GridAlignment::Between => "space-between",
+        GridAlignment::Around => "space-around",
+        GridAlignment::Evenly => "space-evenly",
         GridAlignment::Stretch => "stretch",
+        GridAlignment::Normal => "normal",
+        GridAlignment::Baseline | GridAlignment::BaselineLast => "normal",
+    }
+}
+
+fn grid_align_css(value: GridAlignment) -> &'static str {
+    match value {
+        GridAlignment::Start => "flex-start",
+        GridAlignment::End => "flex-end",
+        GridAlignment::EndSafe => "safe flex-end",
+        GridAlignment::Center => "center",
+        GridAlignment::CenterSafe => "safe center",
+        GridAlignment::Stretch => "stretch",
+        GridAlignment::Baseline => "baseline",
+        GridAlignment::BaselineLast => "last baseline",
+        GridAlignment::Between
+        | GridAlignment::Around
+        | GridAlignment::Evenly
+        | GridAlignment::Normal => "normal",
     }
 }
 

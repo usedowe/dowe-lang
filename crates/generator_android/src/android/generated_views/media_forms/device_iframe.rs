@@ -32,7 +32,7 @@ private fun DoweDeviceIconButton(icon: DoweDeviceIcon, selected: Boolean, onClic
         modifier = Modifier.size(40.dp).semantics { contentDescription = icon.profile },
         shape = RoundedCornerShape(DoweDesign.radius),
         colors = ButtonDefaults.buttonColors(
-            containerColor = if (selected) DoweDesign.primary else Color.Transparent,
+            containerColor = if (selected) DoweDesign.muted else Color.Transparent,
             contentColor = if (selected) DoweDesign.primary else DoweDesign.backgroundText
         ),
         border = BorderStroke(1.dp, if (selected) DoweDesign.primary else DoweDesign.backgroundText),

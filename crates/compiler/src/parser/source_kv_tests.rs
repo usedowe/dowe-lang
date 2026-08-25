@@ -218,33 +218,6 @@ fn rejects_undefined_cache_connection() {
             .contains("Cache connection `missing` is not defined")
     );
 }
-
-#[test]
-fn rejects_legacy_cache_syntax() {
-    let error = parse_server(
-        r#"main
-  server port:0
-    route "/api/cache"
-      handler
-        kv cache name:"clinic"
-        return json:{ ok:true }"#,
-    )
-    .expect_err("error");
-    assert!(error.to_string().contains("Cache connections use `cache"));
-
-    let error = parse_server(
-        r#"main
-  server port:0
-    route "/api/cache"
-      handler
-        cache appCache provider:"dowe" host:"127.0.0.1" port:4148 account:"app" secret:"secret" name:"clinic"
-        query value kv:appCache.get key:"appointment:1"
-        return json:{ data:value }"#,
-    )
-    .expect_err("error");
-    assert!(error.to_string().contains("Cache operations use `kv"));
-}
-
 fn parse_server(source: &str) -> crate::DoweResult<ServerRoot> {
     let file = parse_source_file(
         Path::new("/project"),

@@ -3,7 +3,7 @@ use crate::dev_targets::{cancel_active_external_commands, start_external_target}
 use crate::dev_watch::run_watch_loop;
 use crate::error::{RuntimeError, RuntimeResult};
 use crate::logging::{LoadingStatus, log_info};
-use crate::server::{DevServerTargets, RunningDevServers, start_dev_servers};
+use crate::server::{DevServerTargets, RunningDevServers};
 use dowe_compiler::{CompiledProject, DevCompilerSession, ViewPlatform};
 use dowe_spawn::{ChildProcess, ProcessControl, SpawnConfig, run};
 use futures_util::stream::{FuturesUnordered, StreamExt};
@@ -147,11 +147,14 @@ async fn start_dev_session_with_compiler_options(
                 .map_err(|error| RuntimeError::new(error.to_string()))?;
         }
     }
+    project.local_databases = true;
+    let mut project = Arc::new(project);
     let server_targets = dev_server_targets(&selection);
-    let servers = match start_dev_servers(project.clone(), server_targets).await {
-        Ok(servers) => servers,
-        Err(error) => return Err(error),
-    };
+    let servers =
+        match crate::server::start_dev_servers_shared(project.clone(), server_targets).await {
+            Ok(servers) => servers,
+            Err(error) => return Err(error),
+        };
     if project.apps.files.is_empty()
         && (selection.contains(DevTarget::Desktop)
             || selection.contains(DevTarget::Android)
@@ -159,29 +162,29 @@ async fn start_dev_session_with_compiler_options(
     {
         log_info("Native app artifacts generating in parallel");
         let compiler_for_apps = compiler.clone();
-        let mut project_for_apps = project.clone();
-        let app_result = tokio::task::spawn_blocking(move || {
-            compiler_for_apps
-                .complete_dev_app_outputs(&mut project_for_apps)
-                .map(|()| project_for_apps)
-        })
-        .await;
+        let project_for_apps = project.clone();
+        let app_result = std::thread::Builder::new()
+            .name("dowe-native-app-generation".to_string())
+            .stack_size(64 * 1024 * 1024)
+            .spawn(move || {
+                let mut project_for_apps = (*project_for_apps).clone();
+                compiler_for_apps
+                    .complete_dev_app_outputs(&mut project_for_apps)
+                    .map(|()| project_for_apps)
+            })
+            .map_err(|error| RuntimeError::new(error.to_string()))?
+            .join()
+            .map_err(|_| RuntimeError::new("native app generation thread panicked"))?;
         match app_result {
-            Ok(Ok(completed)) => {
-                project = completed;
+            Ok(completed) => {
+                project = Arc::new(completed);
                 log_info("Native app artifacts ready");
                 let state = servers.runtime_state();
-                *state.project.write().await = Arc::new(project.clone());
-            }
-            Ok(Err(error)) => {
-                let _ = servers.shutdown().await;
-                return Err(RuntimeError::from(error));
+                *state.project.write().await = project.clone();
             }
             Err(error) => {
                 let _ = servers.shutdown().await;
-                return Err(RuntimeError::new(format!(
-                    "initial native app generation failed: {error}"
-                )));
+                return Err(RuntimeError::from(error));
             }
         }
     }
@@ -203,7 +206,7 @@ async fn start_dev_session_with_compiler_options(
         .map(|addr| format!("http://{addr}"));
 
     match start_external_targets(
-        &project,
+        project.clone(),
         &selection,
         desktop_origin,
         dev_origin,
@@ -238,7 +241,7 @@ pub(crate) fn dev_server_targets(selection: &DevTargetSelection) -> DevServerTar
 }
 
 async fn start_external_targets(
-    project: &CompiledProject,
+    project: Arc<CompiledProject>,
     selection: &DevTargetSelection,
     desktop_origin: Option<String>,
     dev_origin: Option<String>,

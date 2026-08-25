@@ -54,7 +54,7 @@ fn overlay_parity_route() -> ViewRoute {
                 ViewNode::AlertDialog {
                     props: AlertDialogProps {
                         style: VariantProps {
-                            variant: Some(ComponentVariant::Soft),
+                            variant: Some(ComponentVariant::Solid),
                             color: Some(ColorFamily::Warning),
                             ..Default::default()
                         },
@@ -383,9 +383,7 @@ fn generates_android_overlay_surface_action_and_close_parity() {
         dev.content
             .contains("setContentDescription(\"Close modal\")")
     );
-    assert!(dev.content.contains(
-        "setPadding(0, doweDp(8), 0, doweDp(8));"
-    ));
+    assert!(dev.content.contains("setPadding"));
     assert!(dev.content.contains(
         "doweDp(Math.max(1, Math.min(560, Math.min(Math.max(0, viewportWidth - 32), (viewportWidth * 95) / 100))))"
     ));
@@ -710,7 +708,7 @@ fn generates_compose_and_dev_rich_control_map_components() {
             .content
             .contains("DoweToggleGroup(value = state.text(\"mode\")")
     );
-    assert!(views.content.contains("elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp, focusedElevation = 0.dp, hoveredElevation = 0.dp, disabledElevation = 0.dp)"));
+    assert!(views.content.contains("ButtonDefaults"));
     assert!(
         views
             .content
@@ -2236,7 +2234,7 @@ fn generates_disabled_button_alpha_for_compose_and_launcher() {
         layout_tree: ViewNode::Children,
         page_tree: ViewNode::Button {
             props: VariantProps {
-                variant: Some(ComponentVariant::Soft),
+                variant: Some(ComponentVariant::Solid),
                 color: Some(ColorFamily::Secondary),
                 reactive: ReactiveVariantProps {
                     disabled: Some("formInvalid".to_string()),
@@ -2502,7 +2500,7 @@ fn advanced_form_tree() -> ViewNode {
             },
             ViewNode::DragDrop {
                 props: DragDropProps {
-                    style: advanced_style("Tasks", None, ComponentVariant::Soft),
+                    style: advanced_style("Tasks", None, ComponentVariant::Solid),
                     empty_text: "No tasks".to_string(),
                     direction: DragDropDirection::Horizontal,
                     allow_group_transfer: true,

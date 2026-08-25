@@ -42,10 +42,6 @@ fn soft_text_token(family: ColorFamily) -> &'static str {
     family.text_token().as_str()
 }
 
-fn soft_title_token(family: ColorFamily) -> &'static str {
-    family.title_token().as_str()
-}
-
 fn append_responsive_rule(css: &mut String, breakpoint: Breakpoint, class_name: &str, body: &str) {
     css.push_str(&format!(
         ".{}\\:{}{{{body}}}",
@@ -259,15 +255,19 @@ fn render_html_node_with_context(
             html
         }
         ViewNode::Card { props, children } => {
-            let mut html = format!(
-                "<article{}>",
-                attrs(
-                    variant_classes("card", props),
-                    Some(&props.element),
-                    None,
-                    context,
-                )
+            let mut card_attrs = attrs(
+                variant_classes("card", props),
+                Some(&props.element),
+                None,
+                context,
             );
+            if let Some(path) = props.reactive.scheme.as_deref() {
+                card_attrs.push_str(&format!(
+                    r#" data-dowe-variant-binding="true" data-dowe-scheme="{}""#,
+                    escape_attr(&context.signal_path(path))
+                ));
+            }
+            let mut html = format!("<article{}>", card_attrs);
             for child in children {
                 html.push_str(&render_html_with_context(child, children_html, context));
             }
@@ -290,7 +290,12 @@ fn render_html_node_with_context(
                 html.push_str("<span data-dowe-button-content>");
             }
             if let Some(icon) = props.icon_start.as_ref() {
-                html.push_str("<span data-dowe-button-icon-start>");
+                html.push_str("<span data-dowe-button-icon-start data-dowe-swap-on>");
+                html.push_str(&render_svg_html(&icon.props, &icon.paths, context));
+                html.push_str("</span>");
+            }
+            if let Some(icon) = props.swap_icon_off.as_ref() {
+                html.push_str("<span data-dowe-button-icon-start data-dowe-swap-off hidden>");
                 html.push_str(&render_svg_html(&icon.props, &icon.paths, context));
                 html.push_str("</span>");
             }
@@ -492,7 +497,7 @@ fn render_html_node_with_context(
             center,
             end,
             bottom,
-            ..
+            mobile_menu,
         } => render_bar_html(
             "header",
             "appbar",
@@ -502,6 +507,7 @@ fn render_html_node_with_context(
             center,
             end,
             bottom,
+            mobile_menu.as_ref(),
             children_html,
             context,
         ),
@@ -521,6 +527,7 @@ fn render_html_node_with_context(
             center,
             end,
             bottom,
+            None,
             children_html,
             context,
         ),

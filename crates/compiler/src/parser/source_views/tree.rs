@@ -96,7 +96,7 @@ fn lower_export_tree_with_stores(
     }
 
     let normal_children = lower_node_sequence(&visual_nodes, allow_children)?;
-    if normal_children.is_empty() {
+    if normal_children.is_empty() && actions.is_empty() {
         return Err(node_error(node, "view exports must contain a visual node"));
     }
     if node.name == "layout" && normal_children.len() != 1 {

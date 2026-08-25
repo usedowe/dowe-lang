@@ -98,11 +98,14 @@ public class DoweDevActivity extends ContextThemeWrapper {
     private static final int DOWE_JUSTIFY_BETWEEN = 3;
     private static final int DOWE_JUSTIFY_AROUND = 4;
     private static final int DOWE_JUSTIFY_EVENLY = 5;
+    private static final int DOWE_JUSTIFY_STRETCH = 6;
+    private static final int DOWE_JUSTIFY_NORMAL = 7;
     private static final int DOWE_ALIGN_START = 0;
     private static final int DOWE_ALIGN_CENTER = 1;
     private static final int DOWE_ALIGN_END = 2;
     private static final int DOWE_ALIGN_STRETCH = 3;
     private static final int DOWE_ALIGN_BASELINE = 4;
+    private static final int DOWE_ALIGN_BASELINE_LAST = 5;
     private static final int DOWE_DIRECTION_ROW = 0;
     private static final int DOWE_DIRECTION_COLUMN = 1;
     private static final int DOWE_FLEX_INITIAL = 0;

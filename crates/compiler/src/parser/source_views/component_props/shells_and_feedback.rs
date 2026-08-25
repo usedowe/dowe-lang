@@ -45,6 +45,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
                     | "floating"
                     | "hideOnScroll"
                     | "dockOnScroll"
+                    | "mobileMenuOpen"
             )
         }
         BuiltinComponent::BottomBar => {

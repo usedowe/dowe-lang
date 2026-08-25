@@ -88,7 +88,7 @@ private fun DoweToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit, ena
 }
 
 @Composable
-private fun DoweThemeToggle(modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?) {
+private fun DoweThemeToggle(modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?, lightIconViewBox: DoweSvgViewBox, lightIconPaths: List<DoweSvgPath>, lightIconModifier: Modifier, darkIconViewBox: DoweSvgViewBox, darkIconPaths: List<DoweSvgPath>, darkIconModifier: Modifier) {
     val context = LocalContext.current
     val current = DoweDesign.name
     Button(
@@ -102,7 +102,11 @@ private fun DoweThemeToggle(modifier: Modifier, backgroundColor: Color, contentC
             DoweDesign.applyTheme(next)
         }
     ) {
-        Text(if (current == "dark") "sun" else "moon", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        if (current == "dark") {
+            DoweSvg(viewBox = lightIconViewBox, modifier = lightIconModifier, color = LocalContentColor.current, paths = lightIconPaths)
+        } else {
+            DoweSvg(viewBox = darkIconViewBox, modifier = darkIconModifier, color = LocalContentColor.current, paths = darkIconPaths)
+        }
     }
 }
 

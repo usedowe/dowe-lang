@@ -359,14 +359,21 @@ fn dynamic_text_attr(value: &str, context: &ReactiveRenderContext) -> String {
 }
 
 fn visible_dynamic_text_attr(value: &str, context: &ReactiveRenderContext) -> String {
-    text_binding_path(value)
-        .map(|path| {
-            format!(
-                r#" data-dowe-text="{}""#,
-                escape_attr(&context.signal_path(path))
-            )
-        })
-        .unwrap_or_default()
+    let bindings = text_template_segments(value)
+        .into_iter()
+        .filter_map(|(_, binding)| binding)
+        .collect::<Vec<_>>();
+    if bindings.is_empty() {
+        return String::new();
+    }
+    let mut template = value.to_string();
+    for binding in bindings {
+        template = template.replace(
+            &format!("{{{binding}}}"),
+            &format!("{{{}}}", context.signal_path(&binding)),
+        );
+    }
+    format!(r#" data-dowe-template="{}""#, escape_attr(&template))
 }
 
 fn is_dynamic_path(value: &str) -> bool {

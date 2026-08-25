@@ -260,9 +260,15 @@ pub fn container_component_node(
                 children,
             })
         }
-        BuiltinComponent::IconButton => {
+        BuiltinComponent::IconButton | BuiltinComponent::Swap => {
             if children.is_empty() {
-                let props = parse_variant_props(component, &props)?;
+                let mut props = parse_variant_props(component, &props)?;
+                if component == BuiltinComponent::Swap {
+                    let binding = props.style.element.bind.clone().ok_or_else(|| {
+                        ComponentError::invalid_prop("bind", "boolean Signal path")
+                    })?;
+                    props.swap_bind = Some(binding);
+                }
                 Ok(ViewNode::Button { props, children })
             } else {
                 Err(ComponentError::children_not_allowed(component))

@@ -277,10 +277,12 @@ impl DesignTheme {
             .collect()
     }
 
-    pub fn contains_color_family(&self, family: ColorFamily, soft: bool) -> bool {
-        family
-            .theme_tokens(soft)
-            .is_some_and(|tokens| tokens.into_iter().all(|token| self.colors.contains_key(&token)))
+    pub fn contains_color_family(&self, family: ColorFamily) -> bool {
+        family.theme_tokens().is_some_and(|tokens| {
+            tokens
+                .into_iter()
+                .all(|token| self.colors.contains_key(&token))
+        })
     }
 
     pub fn contains_color_token(&self, token: ColorToken) -> bool {
@@ -401,36 +403,36 @@ pub fn integrated_design_theme(name: &str) -> Option<DesignTheme> {
         "light" => Some(theme_from_values(
             "light",
             &[
-                (ColorToken::Primary, "#2563eb"),
-                (ColorToken::PrimaryText, "#ffffff"),
-                (ColorToken::PrimaryTitle, "#ffffff"),
-                (ColorToken::Secondary, "#4f46e5"),
-                (ColorToken::SecondaryText, "#ffffff"),
-                (ColorToken::SecondaryTitle, "#ffffff"),
-                (ColorToken::Accent, "#0f766e"),
-                (ColorToken::AccentText, "#ffffff"),
-                (ColorToken::AccentTitle, "#ffffff"),
-                (ColorToken::Muted, "#64748b"),
-                (ColorToken::MutedText, "#ffffff"),
-                (ColorToken::MutedTitle, "#ffffff"),
-                (ColorToken::Background, "#ffffff"),
-                (ColorToken::BackgroundText, "#111827"),
-                (ColorToken::BackgroundTitle, "#111827"),
-                (ColorToken::Surface, "#f8fafc"),
-                (ColorToken::SurfaceText, "#111827"),
-                (ColorToken::SurfaceTitle, "#111827"),
-                (ColorToken::Success, "#16a34a"),
-                (ColorToken::SuccessText, "#ffffff"),
-                (ColorToken::SuccessTitle, "#ffffff"),
-                (ColorToken::Info, "#0284c7"),
-                (ColorToken::InfoText, "#ffffff"),
-                (ColorToken::InfoTitle, "#ffffff"),
-                (ColorToken::Warning, "#d97706"),
-                (ColorToken::WarningText, "#111827"),
-                (ColorToken::WarningTitle, "#111827"),
-                (ColorToken::Danger, "#dc2626"),
-                (ColorToken::DangerText, "#ffffff"),
-                (ColorToken::DangerTitle, "#ffffff"),
+                (ColorToken::Primary, "#1F3A5F"),
+                (ColorToken::PrimaryText, "#EAF2F8"),
+                (ColorToken::PrimaryTitle, "#FFFFFF"),
+                (ColorToken::Secondary, "#6BC670"),
+                (ColorToken::SecondaryText, "#102A15"),
+                (ColorToken::SecondaryTitle, "#071B0B"),
+                (ColorToken::Accent, "#3F7A8A"),
+                (ColorToken::AccentText, "#EAF2F8"),
+                (ColorToken::AccentTitle, "#FFFFFF"),
+                (ColorToken::Muted, "#d0d5dc"),
+                (ColorToken::MutedText, "#374151"),
+                (ColorToken::MutedTitle, "#1F2937"),
+                (ColorToken::Background, "#f3f1ee"),
+                (ColorToken::BackgroundText, "#374151"),
+                (ColorToken::BackgroundTitle, "#1F2937"),
+                (ColorToken::Surface, "#f9f8f6"),
+                (ColorToken::SurfaceText, "#374151"),
+                (ColorToken::SurfaceTitle, "#1F2937"),
+                (ColorToken::Success, "#00A63E"),
+                (ColorToken::SuccessText, "#D9FBE6"),
+                (ColorToken::SuccessTitle, "#FFFFFF"),
+                (ColorToken::Info, "#0084D1"),
+                (ColorToken::InfoText, "#D9F3FF"),
+                (ColorToken::InfoTitle, "#FFFFFF"),
+                (ColorToken::Warning, "#D08700"),
+                (ColorToken::WarningText, "#211500"),
+                (ColorToken::WarningTitle, "#0D0900"),
+                (ColorToken::Danger, "#E7000B"),
+                (ColorToken::DangerText, "#FFE0E2"),
+                (ColorToken::DangerTitle, "#FFFFFF"),
             ],
             8,
         )),
@@ -474,11 +476,7 @@ pub fn integrated_design_theme(name: &str) -> Option<DesignTheme> {
     }
 }
 
-fn theme_from_values(
-    name: &str,
-    colors: &[(ColorToken, &str)],
-    radius: u16,
-) -> DesignTheme {
+fn theme_from_values(name: &str, colors: &[(ColorToken, &str)], radius: u16) -> DesignTheme {
     DesignTheme {
         name: name.to_string(),
         colors: colors
@@ -512,7 +510,7 @@ impl Ord for ColorToken {
 
 #[allow(non_upper_case_globals)]
 impl ColorToken {
-    const CUSTOM_OFFSET: u16 = 54;
+    const CUSTOM_OFFSET: u16 = 30;
     pub const Primary: Self = Self(0);
     pub const PrimaryText: Self = Self(1);
     pub const PrimaryTitle: Self = Self(2);
@@ -543,31 +541,6 @@ impl ColorToken {
     pub const Danger: Self = Self(27);
     pub const DangerText: Self = Self(28);
     pub const DangerTitle: Self = Self(29);
-    pub const SoftPrimary: Self = Self(30);
-    pub const SoftPrimaryText: Self = Self(31);
-    pub const SoftPrimaryTitle: Self = Self(32);
-    pub const SoftSecondary: Self = Self(33);
-    pub const SoftSecondaryText: Self = Self(34);
-    pub const SoftSecondaryTitle: Self = Self(35);
-    pub const SoftAccent: Self = Self(36);
-    pub const SoftAccentText: Self = Self(37);
-    pub const SoftAccentTitle: Self = Self(38);
-    pub const SoftMuted: Self = Self(39);
-    pub const SoftMutedText: Self = Self(40);
-    pub const SoftMutedTitle: Self = Self(41);
-    pub const SoftSuccess: Self = Self(42);
-    pub const SoftSuccessText: Self = Self(43);
-    pub const SoftSuccessTitle: Self = Self(44);
-    pub const SoftInfo: Self = Self(45);
-    pub const SoftInfoText: Self = Self(46);
-    pub const SoftInfoTitle: Self = Self(47);
-    pub const SoftWarning: Self = Self(48);
-    pub const SoftWarningText: Self = Self(49);
-    pub const SoftWarningTitle: Self = Self(50);
-    pub const SoftDanger: Self = Self(51);
-    pub const SoftDangerText: Self = Self(52);
-    pub const SoftDangerTitle: Self = Self(53);
-
     fn custom(value: &str) -> Option<Self> {
         let id = intern_color_identifier(value)?;
         Self::CUSTOM_OFFSET.checked_add(id).map(Self)
@@ -605,30 +578,6 @@ impl ColorToken {
             "danger" => Some(Self::Danger),
             "dangerText" => Some(Self::DangerText),
             "dangerTitle" => Some(Self::DangerTitle),
-            "softPrimary" => Some(Self::SoftPrimary),
-            "softPrimaryText" => Some(Self::SoftPrimaryText),
-            "softPrimaryTitle" => Some(Self::SoftPrimaryTitle),
-            "softSecondary" => Some(Self::SoftSecondary),
-            "softSecondaryText" => Some(Self::SoftSecondaryText),
-            "softSecondaryTitle" => Some(Self::SoftSecondaryTitle),
-            "softAccent" => Some(Self::SoftAccent),
-            "softAccentText" => Some(Self::SoftAccentText),
-            "softAccentTitle" => Some(Self::SoftAccentTitle),
-            "softMuted" => Some(Self::SoftMuted),
-            "softMutedText" => Some(Self::SoftMutedText),
-            "softMutedTitle" => Some(Self::SoftMutedTitle),
-            "softSuccess" => Some(Self::SoftSuccess),
-            "softSuccessText" => Some(Self::SoftSuccessText),
-            "softSuccessTitle" => Some(Self::SoftSuccessTitle),
-            "softInfo" => Some(Self::SoftInfo),
-            "softInfoText" => Some(Self::SoftInfoText),
-            "softInfoTitle" => Some(Self::SoftInfoTitle),
-            "softWarning" => Some(Self::SoftWarning),
-            "softWarningText" => Some(Self::SoftWarningText),
-            "softWarningTitle" => Some(Self::SoftWarningTitle),
-            "softDanger" => Some(Self::SoftDanger),
-            "softDangerText" => Some(Self::SoftDangerText),
-            "softDangerTitle" => Some(Self::SoftDangerTitle),
             _ if is_valid_color_token_name(value) => Self::custom(value),
             _ => None,
         }
@@ -666,30 +615,6 @@ impl ColorToken {
             Self::Danger => "danger",
             Self::DangerText => "dangerText",
             Self::DangerTitle => "dangerTitle",
-            Self::SoftPrimary => "softPrimary",
-            Self::SoftPrimaryText => "softPrimaryText",
-            Self::SoftPrimaryTitle => "softPrimaryTitle",
-            Self::SoftSecondary => "softSecondary",
-            Self::SoftSecondaryText => "softSecondaryText",
-            Self::SoftSecondaryTitle => "softSecondaryTitle",
-            Self::SoftAccent => "softAccent",
-            Self::SoftAccentText => "softAccentText",
-            Self::SoftAccentTitle => "softAccentTitle",
-            Self::SoftMuted => "softMuted",
-            Self::SoftMutedText => "softMutedText",
-            Self::SoftMutedTitle => "softMutedTitle",
-            Self::SoftSuccess => "softSuccess",
-            Self::SoftSuccessText => "softSuccessText",
-            Self::SoftSuccessTitle => "softSuccessTitle",
-            Self::SoftInfo => "softInfo",
-            Self::SoftInfoText => "softInfoText",
-            Self::SoftInfoTitle => "softInfoTitle",
-            Self::SoftWarning => "softWarning",
-            Self::SoftWarningText => "softWarningText",
-            Self::SoftWarningTitle => "softWarningTitle",
-            Self::SoftDanger => "softDanger",
-            Self::SoftDangerText => "softDangerText",
-            Self::SoftDangerTitle => "softDangerTitle",
             _ => color_identifier(self.0 - Self::CUSTOM_OFFSET),
         }
     }
@@ -825,54 +750,6 @@ impl ColorFamily {
         }
     }
 
-    pub fn soft_color_token(self) -> ColorToken {
-        match self {
-            Self::Primary => ColorToken::SoftPrimary,
-            Self::Secondary => ColorToken::SoftSecondary,
-            Self::Accent => ColorToken::SoftAccent,
-            Self::Muted => ColorToken::SoftMuted,
-            Self::Background => ColorToken::Background,
-            Self::Surface => ColorToken::Surface,
-            Self::Success => ColorToken::SoftSuccess,
-            Self::Info => ColorToken::SoftInfo,
-            Self::Warning => ColorToken::SoftWarning,
-            Self::Danger => ColorToken::SoftDanger,
-            _ => custom_soft_color_token(self.as_str(), ""),
-        }
-    }
-
-    pub fn soft_text_token(self) -> ColorToken {
-        match self {
-            Self::Primary => ColorToken::SoftPrimaryText,
-            Self::Secondary => ColorToken::SoftSecondaryText,
-            Self::Accent => ColorToken::SoftAccentText,
-            Self::Muted => ColorToken::SoftMutedText,
-            Self::Background => ColorToken::BackgroundText,
-            Self::Surface => ColorToken::SurfaceText,
-            Self::Success => ColorToken::SoftSuccessText,
-            Self::Info => ColorToken::SoftInfoText,
-            Self::Warning => ColorToken::SoftWarningText,
-            Self::Danger => ColorToken::SoftDangerText,
-            _ => custom_soft_color_token(self.as_str(), "Text"),
-        }
-    }
-
-    pub fn soft_title_token(self) -> ColorToken {
-        match self {
-            Self::Primary => ColorToken::SoftPrimaryTitle,
-            Self::Secondary => ColorToken::SoftSecondaryTitle,
-            Self::Accent => ColorToken::SoftAccentTitle,
-            Self::Muted => ColorToken::SoftMutedTitle,
-            Self::Background => ColorToken::BackgroundTitle,
-            Self::Surface => ColorToken::SurfaceTitle,
-            Self::Success => ColorToken::SoftSuccessTitle,
-            Self::Info => ColorToken::SoftInfoTitle,
-            Self::Warning => ColorToken::SoftWarningTitle,
-            Self::Danger => ColorToken::SoftDangerTitle,
-            _ => custom_soft_color_token(self.as_str(), "Title"),
-        }
-    }
-
     pub fn from_name(value: &str) -> Option<Self> {
         match value {
             "primary" => Some(Self::Primary),
@@ -894,7 +771,7 @@ impl ColorFamily {
         Self::from_name(value).map(|family| (family, false))
     }
 
-    pub fn theme_tokens(self, _soft: bool) -> Option<[ColorToken; 3]> {
+    pub fn theme_tokens(self) -> Option<[ColorToken; 3]> {
         Some([self.color_token(), self.text_token(), self.title_token()])
     }
 
@@ -929,15 +806,8 @@ impl ColorFamily {
         }
     }
 
-    pub fn theme_name(self, soft: bool) -> String {
-        if !soft {
-            return self.as_str().to_string();
-        }
-        let mut chars = self.as_str().chars();
-        let first = chars.next().expect("color family");
-        let mut name = format!("soft{}", first.to_ascii_uppercase());
-        name.extend(chars);
-        name
+    pub fn theme_name(self) -> String {
+        self.as_str().to_string()
     }
 
     pub fn is_builtin(self) -> bool {
@@ -968,18 +838,12 @@ fn custom_color_role_token(value: &str, role: &str) -> ColorToken {
     custom_color_token(&format!("{value}{role}"))
 }
 
-fn custom_soft_color_token(value: &str, role: &str) -> ColorToken {
-    let mut chars = value.chars();
-    let first = chars.next().expect("custom color family");
-    let mut name = format!("soft{}", first.to_ascii_uppercase());
-    name.extend(chars);
-    name.push_str(role);
-    custom_color_token(&name)
-}
-
 fn is_valid_color_token_name(value: &str) -> bool {
     let bytes = value.as_bytes();
     if bytes.is_empty() || bytes.len() > 64 || !bytes[0].is_ascii_lowercase() {
+        return false;
+    }
+    if value.starts_with("soft") {
         return false;
     }
     if value
@@ -998,20 +862,13 @@ fn is_valid_custom_color_family_name(value: &str) -> bool {
         return false;
     }
     if !bytes.iter().all(u8::is_ascii_alphanumeric)
+        || value.starts_with("soft")
         || value.ends_with("Text")
         || value.ends_with("Title")
-        || value == "soft"
         || matches!(
             value,
             "theme" | "design" | "fonts" | "colors" | "color" | "text" | "title"
         )
-    {
-        return false;
-    }
-    if value
-        .strip_prefix("soft")
-        .and_then(|suffix| suffix.as_bytes().first())
-        .is_some_and(u8::is_ascii_uppercase)
     {
         return false;
     }
@@ -1105,7 +962,6 @@ impl FontFamily {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ComponentVariant {
     Solid,
-    Soft,
     Outlined,
     Ghost,
     Line,
@@ -1125,7 +981,6 @@ impl ComponentVariant {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Solid => "solid",
-            Self::Soft => "soft",
             Self::Outlined => "outlined",
             Self::Ghost => "ghost",
             Self::Line => "line",
@@ -1133,12 +988,7 @@ impl ComponentVariant {
     }
 
     pub fn all() -> &'static [Self] {
-        &[
-            Self::Solid,
-            Self::Outlined,
-            Self::Ghost,
-            Self::Line,
-        ]
+        &[Self::Solid, Self::Outlined, Self::Ghost, Self::Line]
     }
 }
 

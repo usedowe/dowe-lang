@@ -54,7 +54,7 @@ fn overlay_parity_route() -> ViewRoute {
                 ViewNode::AlertDialog {
                     props: AlertDialogProps {
                         style: VariantProps {
-                            variant: Some(ComponentVariant::Soft),
+                            variant: Some(ComponentVariant::Solid),
                             color: Some(ColorFamily::Warning),
                             ..Default::default()
                         },

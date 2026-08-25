@@ -16,7 +16,7 @@ fn display_overlay_tree() -> ViewNode {
             ViewNode::Avatar {
                 props: AvatarProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Success),
                         ..Default::default()
                     },
@@ -127,7 +127,7 @@ fn display_overlay_tree() -> ViewNode {
                 },
                 trigger: vec![ViewNode::Button {
                     props: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Primary),
                         ..Default::default()
                     },

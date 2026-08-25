@@ -25,7 +25,7 @@ pub fn alert_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let message = message
         .ok_or_else(|| ComponentError::invalid_prop("message", "static string or signal path"))?;
     let mut style = parse_variant_props(BuiltinComponent::Alert, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Soft);
+    style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(kind.color());
 
     Ok(ViewNode::Alert {

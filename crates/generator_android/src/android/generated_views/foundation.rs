@@ -32,6 +32,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -432,7 +433,11 @@ private enum class DoweJustify {
     End,
     Between,
     Around,
-    Evenly
+    Evenly,
+    Stretch,
+    Normal,
+    EndSafe,
+    CenterSafe
 }
 
 private enum class DoweFlexDirection {
@@ -442,10 +447,17 @@ private enum class DoweFlexDirection {
 
 private enum class DoweAlign {
     Start,
-    Center,
     End,
+    EndSafe,
+    Center,
+    CenterSafe,
+    Between,
+    Around,
+    Evenly,
     Stretch,
-    Baseline
+    Baseline,
+    BaselineLast,
+    Normal
 }
 
 private enum class DoweAnimationPreset {

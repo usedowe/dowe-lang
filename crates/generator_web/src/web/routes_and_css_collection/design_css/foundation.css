@@ -150,6 +150,17 @@
 .button.icon-button {
     padding: 0;
 }
+.button[data-dowe-swap] > [data-dowe-button-icon-start] {
+    transition: transform 180ms ease, opacity 180ms ease;
+}
+.button[data-dowe-swap].is-swapping > [data-dowe-swap-on] {
+    animation: dowe-swap-out 180ms ease;
+}
+.button[data-dowe-swap].is-swapping > [data-dowe-swap-off] {
+    animation: dowe-swap-in 180ms ease;
+}
+@keyframes dowe-swap-out { from { transform: rotate(0deg) scale(1); opacity: 1; } to { transform: rotate(90deg) scale(.7); opacity: 0; } }
+@keyframes dowe-swap-in { from { transform: rotate(-90deg) scale(.7); opacity: 0; } to { transform: rotate(0deg) scale(1); opacity: 1; } }
 .icon-button.button-xs {
     width: 1.5rem;
     height: 1.5rem;

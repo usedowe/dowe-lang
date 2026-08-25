@@ -4,6 +4,11 @@ fn button_tags(props: &VariantProps, context: &ReactiveRenderContext) -> (String
         classes.push("icon-button".to_string());
     }
     let accessibility = props
+        .swap_bind
+        .as_deref()
+        .map(|bind| format!(r#" aria-pressed="{}" data-dowe-swap data-dowe-swap-bind="{}""#, if props.style.element.bind.is_some() { "false" } else { "false" }, escape_attr(bind)))
+        .unwrap_or_default()
+        + &props
         .icon_only
         .then(|| {
             format!(

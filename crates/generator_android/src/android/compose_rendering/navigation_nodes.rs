@@ -15,6 +15,7 @@ fn render_compose_navigation_node(
             center,
             end,
             bottom,
+            ..
         } => {
             render_compose_bar(
                 props,
@@ -40,6 +41,7 @@ fn render_compose_navigation_node(
             center,
             end,
             bottom,
+            ..
         } => {
             render_compose_bar(
                 props,

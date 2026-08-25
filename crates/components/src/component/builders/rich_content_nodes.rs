@@ -251,7 +251,7 @@ pub fn empty_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Empty, &style_props)?;
-    style.variant.get_or_insert(ComponentVariant::Soft);
+    style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::Empty {
         props: EmptyProps {

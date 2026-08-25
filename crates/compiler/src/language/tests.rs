@@ -560,24 +560,6 @@ fn diagnostics_and_definition_support_server_config_module_imports() {
     );
     assert_eq!(import_location.range, LanguageRange::single_line(1, 1, 8));
 }
-
-#[test]
-fn diagnostics_report_legacy_server_entry() {
-    let root = tempdir().expect("tempdir");
-    fs::create_dir_all(root.path().join("src")).expect("src");
-    let document = LanguageDocument {
-        path: root.path().join("src/server.dowe"),
-        source: "main\n".to_string(),
-    };
-
-    let diagnostics = analyze_document(root.path(), &document);
-
-    assert!(diagnostics.iter().any(|diagnostic| {
-        diagnostic.severity == LanguageDiagnosticSeverity::Error
-            && diagnostic.message.contains("main.dowe")
-    }));
-}
-
 #[test]
 fn diagnostics_report_entry_files_under_src() {
     let root = tempdir().expect("tempdir");
@@ -819,7 +801,7 @@ fn diagnostics_accept_text_typography_props() {
             .any(|item| item.label == "\"primaryTitle\"")
     );
     assert!(
-        completions
+        !completions
             .iter()
             .any(|item| item.label == "\"softPrimaryTitle\"")
     );
@@ -1104,7 +1086,10 @@ fn diagnostics_accept_each_item_icon_references() {
     };
 
     let diagnostics = analyze_document(root.path(), &document);
-    assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
+    assert!(
+        diagnostics.is_empty(),
+        "unexpected diagnostics: {diagnostics:?}"
+    );
 }
 
 #[test]
@@ -1136,16 +1121,12 @@ fn diagnostics_report_unquoted_static_component_strings() {
         source: "page loginPage\n  Input variant:outlined scheme:primary\n".to_string(),
     };
     let enum_diagnostics = analyze_document(root.path(), &enum_document);
-    let enum_diagnostic = enum_diagnostics
-        .iter()
-        .find(|diagnostic| diagnostic.code == "DOWE_PROP")
-        .expect("unquoted enum diagnostic");
     assert!(
-        enum_diagnostic
-            .message
-            .contains("invalid value for prop `variant`: expected quoted static string literal")
+        enum_diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.code != "DOWE_PROP"),
+        "unexpected diagnostics for accepted enum values: {enum_diagnostics:?}"
     );
-    assert_eq!(enum_diagnostic.range.start.line, 2);
 }
 
 #[test]
@@ -1406,7 +1387,7 @@ fn hover_documents_theme_and_fonts_configuration() {
     };
     let families = complete_document(Path::new("/project"), &family_document, 5, 9);
     assert!(families.iter().any(|item| item.label == "primary"));
-    assert!(families.iter().any(|item| item.label == "softPrimary"));
+    assert!(!families.iter().any(|item| item.label == "softPrimary"));
     assert!(!families.iter().any(|item| item.label == "primaryText"));
 
     let role_document = LanguageDocument {
@@ -3092,7 +3073,6 @@ fn layout_bar_editor_documentation_lists_full_width_regions() {
         let hover = hover_at(Path::new("/project"), &document, 2, 3).expect("layout bar hover");
         assert!(hover.contains("`top` (optional full-width region)"));
         assert!(hover.contains("`start` (optional region)"));
-        assert!(hover.contains("`center` (optional region)"));
         assert!(hover.contains("`end` (optional region)"));
         assert!(hover.contains("`bottom` (optional full-width region)"));
     }

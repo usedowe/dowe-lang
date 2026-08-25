@@ -525,6 +525,7 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
             center,
             end,
             bottom,
+            ..
         }
         | ViewNode::Footer {
             props,
@@ -533,6 +534,7 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
             center,
             end,
             bottom,
+            ..
         } => {
             ios_variant_references_layout_bindings(&props.style, bindings)
                 || ios_children_reference_layout_bindings(top, bindings)
@@ -896,7 +898,7 @@ fn ios_text_references_layout_bindings(
 ) -> bool {
     ios_style_references_layout_bindings(&props.style, bindings)
         || (props.i18n.is_none()
-            && text_binding_path(value).is_some_and(|path| bindings.references_signal(path)))
+            && text_template_bindings(value).any(|path| bindings.references_signal(&path)))
 }
 
 fn ios_chart_references_layout_bindings(

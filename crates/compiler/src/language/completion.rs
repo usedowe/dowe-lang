@@ -829,6 +829,7 @@ pub(super) fn component_value_completions(
         }
         (BuiltinComponent::Icon, "name") => Some(quoted_values(dowe_components::all_icon_names())),
         (BuiltinComponent::IconButton, "icon")
+        | (BuiltinComponent::Swap, "iconOn" | "iconOff")
         | (BuiltinComponent::SideNav | BuiltinComponent::RailNav, "icon")
         | (BuiltinComponent::Button | BuiltinComponent::Input, "iconStart" | "iconEnd")
         | (BuiltinComponent::Chip, "startIcon" | "endIcon") => {
@@ -1283,8 +1284,23 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::Flex, "align") => Some(quoted_values(
             Align::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Grid, "justify" | "align") => Some(quoted_values(
-            GridAlignment::all().iter().map(|value| value.as_str()),
+        (BuiltinComponent::Grid, prop @ ("justify" | "align")) => Some(quoted_values(
+            GridAlignment::all()
+                .iter()
+                .filter(|value| {
+                    if prop == "justify" {
+                        !matches!(value, GridAlignment::Baseline | GridAlignment::BaselineLast)
+                    } else {
+                        !matches!(
+                            value,
+                            GridAlignment::Between
+                                | GridAlignment::Around
+                                | GridAlignment::Evenly
+                                | GridAlignment::Normal
+                        )
+                    }
+                })
+                .map(|value| value.as_str()),
         )),
         (
             BuiltinComponent::Button
@@ -1514,6 +1530,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Brand" => BRAND_PROPS.to_vec(),
         "Banner" => BANNER_PROPS.to_vec(),
         "IconButton" => ICON_BUTTON_PROPS.to_vec(),
+        "Swap" => SWAP_PROPS.to_vec(),
         "Alert" => ALERT_PROPS.to_vec(),
         "Icon" => ICON_PROPS.to_vec(),
         "Svg" => SVG_PROPS.to_vec(),
@@ -3667,6 +3684,9 @@ const BANNER_PROPS: &[&str] = &[
     "borderColor",
     "shadow",
     "shadowColor",
+];
+const SWAP_PROPS: &[&str] = &[
+    "bind", "iconOn", "iconOff", "label", "variant", "scheme", "size", "rounded", "disabled",
 ];
 const ICON_BUTTON_PROPS: &[&str] = &[
     "icon",

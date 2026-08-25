@@ -336,7 +336,7 @@ fn render_chart_html(
     context: &ReactiveRenderContext,
 ) -> String {
     format!(
-        r#"<figure{}><div class="dowe-chart-viewport{}"><svg class="dowe-chart-svg" viewBox="0 0 600 300" preserveAspectRatio="{}" aria-hidden="true"></svg><div class="dowe-chart-loading">Loading</div><figcaption class="dowe-chart-empty">{}</figcaption></div><div class="dowe-chart-legend" data-dowe-chart-legend></div></figure>"#,
+        r#"<figure{}><div class="dowe-chart-viewport{}"><svg class="dowe-chart-svg" viewBox="0 0 600 300" preserveAspectRatio="{}" aria-hidden="true"></svg><div class="dowe-chart-tooltip" data-dowe-chart-tooltip hidden role="status"></div><div class="dowe-chart-loading">Loading</div><figcaption class="dowe-chart-empty">{}</figcaption></div><div class="dowe-chart-legend" data-dowe-chart-legend></div></figure>"#,
         attrs(
             chart_classes(class_base, props),
             Some(&props.style.element),

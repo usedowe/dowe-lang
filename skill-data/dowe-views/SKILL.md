@@ -141,7 +141,10 @@ theme or color changes.
    adapter. For mobile navigation, put the Drawer trigger before the `Brand`/logo when both are in
    `start`, or put it directly in `end`; do not place it after the brand inside a wrapper `Flex` as
    the default. Do not rebuild the same AppBar with `Box` nodes in `overlays`; use `Drawer` there
-   only for the mobile navigation surface, and put a vertical `SideNav` in its `body`. Reusable
+   only for the mobile navigation surface, and put a vertical `SideNav` in its `body`. Drawer
+   regions do not provide content padding: use `header px:4 py:2`, `body p:4` (or a deliberate
+   responsive equivalent), and `footer px:4 py:2` when those regions contain authored content.
+   Keep spacing on the region owner and do not add a wrapper only to carry padding. Reusable
    components accept no props, so keep the static `SideNav` navigation component reusable in both
    the desktop `Sidebar` and mobile `Drawer`, while the AppBar owns its direct `NavMenu` instance.
 9. Put exactly one normal `Scaffold` root in every layout; add one direct `Splash` sibling only when
@@ -192,8 +195,7 @@ theme or color changes.
     above the `each` or component subtree that consumes it, inside the nearest visual owner. The
     compiler hoists it without adding a rendered node. Keep shared or multi-use constants at the
     page/layout scope. Render the complete unit with one
-    `each in:<collection> as:<item> key:<item-path>`; never copy sibling Cards, feature rows,
-    icon/text groups, or list units. A result with repeated siblings is incomplete even when it
+    `each in:<collection> as:<item> key:<item-path>`; never copy sibling Cards, feature rows, icon/text groups, or list units. A result with repeated siblings is incomplete even when it
     looks visually correct. For server-backed catalogs, load metadata and
     records through requests, keep metadata in a Signal, and render one keyed `each` block. Never
     hardcode labels, counts, slugs, or create one selection function per record. If a compound

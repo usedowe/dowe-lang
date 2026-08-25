@@ -240,6 +240,15 @@ func doweCardContent(_ variant: String, _ scheme: String) -> Color {
 }
 
 @MainActor
+func doweCardTitle(_ variant: String, _ scheme: String) -> Color {
+    if variant == "soft" { return doweButtonTitleFamily(scheme) }
+    if variant == "outlined" && scheme == "background" { return DoweDesign.backgroundTitle }
+    if variant == "outlined" { return DoweDesign.surfaceTitle }
+    if variant == "ghost" && (scheme == "background" || scheme == "surface") { return doweButtonTextFamily(scheme) }
+    return doweButtonTitleFamily(scheme)
+}
+
+@MainActor
 func doweCardBorder(_ variant: String, _ scheme: String) -> Color? {
     variant == "outlined" ? doweButtonFamily(scheme) : nil
 }
@@ -307,6 +316,10 @@ enum DoweJustify: Equatable {
     case between
     case around
     case evenly
+    case stretch
+    case normal
+    case endSafe
+    case centerSafe
 }
 
 enum DoweFlexDirection: Equatable {
@@ -345,10 +358,17 @@ extension View {
 
 enum DoweAlign {
     case start
-    case center
     case end
+    case endSafe
+    case center
+    case centerSafe
+    case between
+    case around
+    case evenly
     case stretch
     case baseline
+    case baselineLast
+    case normal
 }
 
 enum DoweFont {

@@ -130,6 +130,7 @@ pub fn bar_component_node(
     center: Vec<ViewNode>,
     end: Vec<ViewNode>,
     bottom: Vec<ViewNode>,
+    mobile_menu: Option<MobileMenu>,
     allow_children: bool,
 ) -> ComponentResult<ViewNode> {
     if top.is_empty()
@@ -137,6 +138,7 @@ pub fn bar_component_node(
         && center.is_empty()
         && end.is_empty()
         && bottom.is_empty()
+        && mobile_menu.is_none()
     {
         return Err(ComponentError::invalid_prop_combination(format!(
             "{} requires at least one region with content",
@@ -148,7 +150,12 @@ pub fn bar_component_node(
             || contains_children(&start)
             || contains_children(&center)
             || contains_children(&end)
-            || contains_children(&bottom))
+            || contains_children(&bottom)
+            || mobile_menu.as_ref().is_some_and(|menu| {
+                contains_children(&menu.header)
+                    || contains_children(&menu.body)
+                    || contains_children(&menu.footer)
+            }))
     {
         return Err(ComponentError::children_outside_layout());
     }
@@ -161,6 +168,7 @@ pub fn bar_component_node(
             center,
             end,
             bottom,
+            mobile_menu,
         }),
         BuiltinComponent::Footer => Ok(ViewNode::Footer {
             props,

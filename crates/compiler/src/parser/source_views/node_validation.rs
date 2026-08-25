@@ -48,6 +48,7 @@ fn validate_node_references(
                 ));
             }
             let expectation = match node {
+                ViewNode::Button { props, .. } if props.swap_bind.is_some() => ViewPathExpectation::Bool,
                 ViewNode::Checkbox { .. } | ViewNode::Toggle { .. } => ViewPathExpectation::Bool,
                 ViewNode::Slider { .. } => ViewPathExpectation::Number,
                 _ => ViewPathExpectation::String,

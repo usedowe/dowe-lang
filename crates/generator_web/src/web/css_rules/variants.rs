@@ -43,7 +43,6 @@ fn append_single_variant_css(
     let title = title_token(family);
     let soft = soft_token(family);
     let soft_text = soft_text_token(family);
-    let soft_title = soft_title_token(family);
     let (surface, surface_text) = if family == ColorFamily::Background {
         ("background", "backgroundText")
     } else {
@@ -91,16 +90,6 @@ fn append_single_variant_css(
                     "transparent".to_string(),
                     "transparent".to_string(),
                     format!("1px solid color-mix(in srgb,var(--dowe-{text}) 24%,transparent)"),
-                    "calc(var(--dowe-radius) * .85)".to_string(),
-                    ".25rem",
-                    ".75rem",
-                ),
-                ComponentVariant::Soft => (
-                    format!("var(--dowe-{soft})"),
-                    soft_text,
-                    "transparent".to_string(),
-                    "var(--dowe-surface)".to_string(),
-                    format!("1px solid color-mix(in srgb,var(--dowe-{soft_text}) 16%,transparent)"),
                     "calc(var(--dowe-radius) * .85)".to_string(),
                     ".25rem",
                     ".75rem",
@@ -163,7 +152,7 @@ fn append_single_variant_css(
     }
     if base == "toggle-group" {
         match variant {
-            ComponentVariant::Solid | ComponentVariant::Soft => css.push_str(&format!(
+            ComponentVariant::Solid => css.push_str(&format!(
                 ".toggle-group.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{text});--dowe-content-title:var(--dowe-{title});background-color:var(--dowe-{color});color:var(--dowe-{text});border-color:transparent;}}",
                 variant = variant.as_str()
             )),
@@ -186,7 +175,7 @@ fn append_single_variant_css(
     }
     if base == "toggle-group-item" {
         match variant {
-            ComponentVariant::Solid | ComponentVariant::Soft => css.push_str(&format!(
+            ComponentVariant::Solid => css.push_str(&format!(
                 ".toggle-group-item.is-active.is-solid.is-{name},.toggle-group-item.is-active.is-soft.is-{name}{{background-color:var(--dowe-{text});color:var(--dowe-{color});}}"
             )),
             ComponentVariant::Outlined => css.push_str(&format!(
@@ -268,10 +257,24 @@ fn append_single_variant_css(
     }
     if base == "navmenu" {
         let (hover_background, active_background, active_content, active_border) = match variant {
-            ComponentVariant::Solid => (format!("color-mix(in srgb,var(--dowe-{color}) 20%,transparent)"), format!("var(--dowe-{color})"), text, format!("var(--dowe-{color})")),
-            ComponentVariant::Soft => (format!("color-mix(in srgb,var(--dowe-{soft}) 50%,transparent)"), format!("var(--dowe-{soft})"), soft_text, "transparent".to_string()),
-            ComponentVariant::Outlined | ComponentVariant::Line => (format!("color-mix(in srgb,var(--dowe-{soft}) 50%,transparent)"), "transparent".to_string(), color, format!("var(--dowe-{color})")),
-            ComponentVariant::Ghost => ("transparent".to_string(), "transparent".to_string(), color, "transparent".to_string()),
+            ComponentVariant::Solid => (
+                format!("color-mix(in srgb,var(--dowe-{color}) 20%,transparent)"),
+                format!("var(--dowe-{color})"),
+                text,
+                format!("var(--dowe-{color})"),
+            ),
+            ComponentVariant::Outlined | ComponentVariant::Line => (
+                format!("color-mix(in srgb,var(--dowe-{soft}) 50%,transparent)"),
+                "transparent".to_string(),
+                color,
+                format!("var(--dowe-{color})"),
+            ),
+            ComponentVariant::Ghost => (
+                "transparent".to_string(),
+                "transparent".to_string(),
+                color,
+                "transparent".to_string(),
+            ),
         };
         css.push_str(&format!(
             ".navmenu.is-{variant}.is-{name} .navmenu-item:hover{{background-color:{hover_background};color:var(--dowe-{color});}}.navmenu.is-{variant}.is-{name} .navmenu-item.is-active,.navmenu.is-{variant}.is-{name} .navmenu-item.is-open{{background-color:{active_background};color:var(--dowe-{active_content});border-color:{active_border};font-weight:600;}}",
@@ -282,7 +285,6 @@ fn append_single_variant_css(
     if base == "media" {
         let (button_background, button_content) = match variant {
             ComponentVariant::Solid => (format!("var(--dowe-{soft})"), color),
-            ComponentVariant::Soft => (format!("var(--dowe-{color})"), text),
             ComponentVariant::Outlined => ("transparent".to_string(), color),
             ComponentVariant::Line | ComponentVariant::Ghost => ("transparent".to_string(), color),
         };
@@ -294,9 +296,6 @@ fn append_single_variant_css(
     match variant {
         ComponentVariant::Solid => css.push_str(&format!(
             ".{base}.is-solid.is-{name}{{--dowe-content-text:var(--dowe-{text});--dowe-content-title:var(--dowe-{title});background-color:var(--dowe-{color});color:var(--dowe-{text});border-color:var(--dowe-{color});}}"
-        )),
-        ComponentVariant::Soft => css.push_str(&format!(
-            ".{base}.is-soft.is-{name}{{--dowe-content-text:var(--dowe-{soft_text});--dowe-content-title:var(--dowe-{soft_title});background-color:var(--dowe-{soft});color:var(--dowe-{soft_text});border-color:var(--dowe-{soft});}}"
         )),
         ComponentVariant::Outlined => {
             let (surface, content, content_title) = if matches!(base, "card" | "modal" | "toast") {

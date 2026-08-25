@@ -70,6 +70,9 @@ fn dev_flex_justify_value(value: &ResponsiveValue<Justify>) -> String {
         Justify::Between => "DOWE_JUSTIFY_BETWEEN".to_string(),
         Justify::Around => "DOWE_JUSTIFY_AROUND".to_string(),
         Justify::Evenly => "DOWE_JUSTIFY_EVENLY".to_string(),
+        Justify::Stretch | Justify::Normal => "DOWE_JUSTIFY_START".to_string(),
+        Justify::EndSafe => "DOWE_JUSTIFY_END".to_string(),
+        Justify::CenterSafe => "DOWE_JUSTIFY_CENTER".to_string(),
     })
 }
 
@@ -86,6 +89,9 @@ fn dev_flex_align_value(value: &ResponsiveValue<Align>) -> String {
         Align::End => "DOWE_ALIGN_END".to_string(),
         Align::Stretch => "DOWE_ALIGN_STRETCH".to_string(),
         Align::Baseline => "DOWE_ALIGN_BASELINE".to_string(),
+        Align::BaselineLast => "DOWE_ALIGN_BASELINE".to_string(),
+        Align::EndSafe => "DOWE_ALIGN_END".to_string(),
+        Align::CenterSafe => "DOWE_ALIGN_CENTER".to_string(),
     })
 }
 
@@ -388,16 +394,24 @@ fn dev_visible_text_expression(
     if let Some(key) = i18n {
         return format!("getString(R.string.{})", translation_resource_name(key));
     }
-    let Some(binding) = text_binding_path(value) else {
+    let segments = text_template_segments(value);
+    if segments.iter().all(|(_, binding)| binding.is_none()) {
         return format!("\"{}\"", escape_java(value));
-    };
-    match context.dynamic_path(binding) {
-        Some(path) => context
-            .item_value(binding)
-            .map(|item| format!("doweTextValue(\"{}\", {item})", escape_java(&path)))
-            .unwrap_or_else(|| format!("doweTextValue(\"{}\", null)", escape_java(&path))),
-        None => format!("\"{}\"", escape_java(value)),
     }
+    segments
+        .into_iter()
+        .map(|(literal, binding)| match binding {
+            Some(binding) => match context.dynamic_path(&binding) {
+                Some(path) => context
+                    .item_value(&binding)
+                    .map(|item| format!("doweTextValue(\"{}\", {item})", escape_java(&path)))
+                    .unwrap_or_else(|| format!("doweTextValue(\"{}\", null)", escape_java(&path))),
+                None => format!("\"{{{}}}\"", escape_java(&binding)),
+            },
+            None => format!("\"{}\"", escape_java(&literal)),
+        })
+        .collect::<Vec<_>>()
+        .join(" + ")
 }
 
 fn dev_localized_literal(value: &str, i18n: Option<&str>) -> String {
@@ -493,8 +507,12 @@ fn apply_dev_android_style_with_shadow_radius(
             .as_ref()
             .map(dev_border_value)
             .unwrap_or_else(|| "null".to_string());
+        let border_color = props
+            .border_color
+            .map(|family| java_color(family_color(family)).to_string())
+            .unwrap_or_else(|| "DOWE_BACKGROUND_TEXT".to_string());
         output.push_str(&format!(
-            "        {view}.setBackground(doweStyledBackground({background}, DOWE_BACKGROUND_TEXT, {border}, {}));\n",
+            "        {view}.setBackground(doweStyledBackground({background}, {border_color}, {border}, {}));\n",
             dev_style_radius(props)
         ));
     }

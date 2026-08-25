@@ -821,7 +821,7 @@ fn dev_activity_drawables_media() -> &'static str {
     }
 
     private GradientDrawable doweDeviceIconButtonBackground(boolean selected) {
-        return doweInputBackground(selected ? DOWE_PRIMARY : DOWE_BACKGROUND, selected ? DOWE_PRIMARY : DOWE_BACKGROUND_TEXT, DOWE_RADIUS);
+        return doweInputBackground(selected ? DOWE_MUTED : DOWE_BACKGROUND, selected ? DOWE_PRIMARY : DOWE_BACKGROUND_TEXT, DOWE_RADIUS);
     }
 
     private void doweSetDeviceProfile(FrameLayout stage, FrameLayout preview, String profile, DoweDeviceOption[] options, FrameLayout[] buttons) {

@@ -7,6 +7,7 @@ fn collect_navigation_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             center,
             end,
             bottom,
+            ..
         } => {
             collect_bar_classes("appbar", props, top, start, center, end, bottom, classes);
         }
@@ -17,6 +18,7 @@ fn collect_navigation_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             center,
             end,
             bottom,
+            ..
         } => {
             collect_bar_classes("footer", props, top, start, center, end, bottom, classes);
         }

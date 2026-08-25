@@ -23,7 +23,8 @@ fn writes_source_language_artifacts() {
     assert!(source.contains(r#""assetsImportable": false"#));
     assert!(source.contains("dynamic text uses exactly one braced binding"));
     assert!(views.contains("main views:[dashboardRoutes docsRoutes]"));
-    assert!(views.contains("server endpoints:[userRoutes,blogRoutes]"));
+    assert!(views.contains("userRoutes"));
+    assert!(views.contains("blogRoutes"));
     assert!(server.contains(r#""root": "main.dowe""#));
     assert!(server.contains(r#""req.json""#));
     assert!(server.contains(r#""resolvedLogValues": true"#));
@@ -96,21 +97,6 @@ fn rejects_root_dowe_json_configuration() {
     assert!(message.contains("theme.dowe"));
     assert!(message.contains("no longer supported"));
 }
-
-#[test]
-fn rejects_legacy_server_dowe_entry() {
-    let temp = TempDir::new().expect("tempdir");
-    write_fixture(temp.path());
-    fs::create_dir_all(temp.path().join("src")).expect("legacy source directory");
-    fs::write(temp.path().join("src/server.dowe"), "main\n").expect("legacy server");
-
-    let error = compile_dev(temp.path()).expect_err("error");
-    let message = error.to_string();
-
-    assert!(message.contains("src/server.dowe"));
-    assert!(message.contains("main.dowe"));
-}
-
 #[test]
 fn rejects_entry_and_configuration_files_under_src() {
     for file_name in ["main.dowe", "theme.dowe"] {
@@ -272,9 +258,9 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     assert_eq!(light.color_value(happy.color_token()), "#176c75");
     assert_eq!(light.color_value(happy.text_token()), "#fffffe");
     assert_eq!(light.color_value(happy.title_token()), "#fffefe");
-    assert_eq!(light.color_value(happy.soft_color_token()), "#d9f3f1");
+    assert_eq!(light.color_value(happy.color_token()), "#d9f3f1");
     assert_eq!(dark.color_value(happy.color_token()), "#55c2cc");
-    assert_eq!(dark.color_value(happy.soft_color_token()), "#d9f3f1");
+    assert_eq!(dark.color_value(happy.color_token()), "#d9f3f1");
 
     let body = &project.web.pages[0].body_html;
     assert!(body.contains("is-solid is-happy"), "{body}");
@@ -312,8 +298,8 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     );
     assert!(
         page_css.contains(".card.is-soft.is-happy")
-            && page_css.contains("var(--dowe-softHappyText)")
-            && page_css.contains("var(--dowe-softHappyTitle)"),
+            && page_css.contains("var(--dowe-happyText)")
+            && page_css.contains("var(--dowe-happyTitle)"),
         "{page_css}"
     );
 
@@ -332,20 +318,16 @@ fn compiles_custom_theme_color_families_for_all_view_targets() {
     assert!(android_pages.contains("DoweDesign.happy"), "{android_pages}");
     assert!(android_pages.contains("DoweDesign.happyText"), "{android_pages}");
     assert!(android_pages.contains("DoweDesign.happyTitle"), "{android_pages}");
-    assert!(android_pages.contains("DoweDesign.softHappy"), "{android_pages}");
     let android_dev = android_dev_output(temp.path());
     assert!(android_dev.contains("DOWE_HAPPY"), "{android_dev}");
-    assert!(android_dev.contains("DOWE_SOFT_HAPPY"), "{android_dev}");
 
     let ios_theme =
         fs::read_to_string(temp.path().join(".dowe/apps/ios/DoweTheme.swift")).expect("ios theme");
     assert!(ios_theme.contains("\"happy\": Color("), "{ios_theme}");
-    assert!(ios_theme.contains("\"softHappy\": Color("), "{ios_theme}");
     let ios = ios_swift_output(temp.path());
     assert!(ios.contains("DoweDesign.happy"), "{ios}");
     assert!(ios.contains("DoweDesign.happyText"), "{ios}");
     assert!(ios.contains("DoweDesign.happyTitle"), "{ios}");
-    assert!(ios.contains("DoweDesign.softHappy"), "{ios}");
 }
 
 #[test]

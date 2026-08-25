@@ -5,7 +5,7 @@ fn media_display_form_tree() -> ViewNode {
             ViewNode::Audio {
                 props: AudioProps {
                     style: VariantProps {
-                        variant: Some(ComponentVariant::Soft),
+                        variant: Some(ComponentVariant::Solid),
                         color: Some(ColorFamily::Primary),
                         ..Default::default()
                     },

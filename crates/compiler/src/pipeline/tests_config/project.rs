@@ -13,12 +13,12 @@ fn compiles_example_project_and_writes_chunks() {
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="dowe-text text-md">Layout</p>"#)
+            .contains(">Layout</p>")
     );
     assert!(
         project.web.pages[0]
             .body_html
-            .contains(r#"<p class="dowe-text text-md">Login</p>"#)
+            .contains(">Login</p>")
     );
     assert!(
         project.web.pages[0]

@@ -235,7 +235,7 @@ fn runtime_features<'a>(roots: impl IntoIterator<Item = &'a ViewNode>) -> Runtim
     let mut features = RuntimeFeatures::default();
     let mut pending = roots.into_iter().collect::<Vec<_>>();
     while let Some(node) = pending.pop() {
-        features.styles |= false;
+        features.styles |= node_uses_style_bindings(node);
         features.controls |= node_uses_controls(node);
         features.media |= node_uses_media(node);
         features.media |= node_actions_use_media(node);
@@ -282,7 +282,10 @@ fn node_uses_style_bindings(node: &ViewNode) -> bool {
         ViewNode::Box { props, .. } | ViewNode::Section { props, .. } => style_has_binding(props),
         ViewNode::Flex { props, .. } => style_has_binding(&props.style),
         ViewNode::Grid { props, .. } => style_has_binding(&props.style),
-        ViewNode::Card { props, .. } | ViewNode::Button { props, .. } => style_has_binding(&props.style),
+        ViewNode::Card { props, .. } | ViewNode::Button { props, .. } => {
+            style_has_binding(&props.style)
+                || !props.bindings().is_empty()
+        }
         ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => style_has_binding(&props.style),
         ViewNode::Svg { props, .. } => style_has_binding(&props.style),
         _ => false,

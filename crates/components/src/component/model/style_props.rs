@@ -237,6 +237,8 @@ pub struct VariantProps {
     pub label_floating: bool,
     pub icon_start: Option<SideNavIcon>,
     pub icon_end: Option<SideNavIcon>,
+    pub swap_icon_off: Option<SideNavIcon>,
+    pub swap_bind: Option<String>,
     pub loading_icon: Option<SideNavIcon>,
     pub icon_only: bool,
     pub navigation: Option<NavigationAction>,

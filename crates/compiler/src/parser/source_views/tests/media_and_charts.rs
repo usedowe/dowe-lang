@@ -155,7 +155,7 @@ fn parses_video_component_with_hls_source() {
     assert_eq!(props.poster.as_deref(), Some("/images/video.jpg"));
     assert!(props.autoplay);
     assert_eq!(props.aspect, VideoAspect::Vertical);
-    assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+    assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
     assert_eq!(props.style.color, Some(ColorFamily::Accent));
 }
 
@@ -183,21 +183,6 @@ fn parses_code_multiline_content_with_relative_indentation() {
         "page example\n  Text\n    \"Hello\"\n\n  Button\n    \"Continue\""
     );
 }
-
-#[test]
-fn rejects_legacy_code_lines() {
-    let error = parse_page(
-        r#"page codePage
-  Code lines:["page example"]"#,
-    )
-    .expect_err("legacy lines");
-    assert!(
-        error
-            .to_string()
-            .contains("was replaced by multiline `content`")
-    );
-}
-
 #[test]
 fn parses_canvas_component_and_validates_scene_signal() {
     let tree = parse_page(
@@ -322,7 +307,7 @@ page marketPage
     };
     assert_eq!(props.data, "candles");
     assert_eq!(props.stream.as_deref(), Some("/api/market/candles"));
-    assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+    assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
     assert_eq!(props.style.color, Some(ColorFamily::Surface));
     assert_eq!(props.up_color, ColorToken::Success);
     assert_eq!(props.down_color, ColorToken::Danger);
@@ -518,7 +503,7 @@ page usersPage
         panic!("table");
     };
     assert_eq!(props.data, "users");
-    assert_eq!(props.style.variant, Some(ComponentVariant::Soft));
+    assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
     assert_eq!(props.style.color, Some(ColorFamily::Surface));
     assert_eq!(props.size, TableSize::Lg);
     assert!(props.striped);

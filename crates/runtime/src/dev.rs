@@ -257,21 +257,6 @@ mod tests {
         assert_eq!(loaded.selection, selection);
         assert!(!loaded.quit_simulators_on_exit);
     }
-
-    #[test]
-    fn legacy_selection_defaults_to_quitting_simulators() {
-        let temp = TempDir::new().expect("tempdir");
-        let path = dev_target_selection_path(temp.path());
-        fs::create_dir_all(path.parent().expect("parent")).expect("dir");
-        fs::write(&path, r#"{"version":1,"targets":["android"]}"#).expect("write");
-
-        let loaded = load_dev_target_preferences(temp.path(), HostOs::Linux)
-            .expect("load")
-            .expect("stored preferences");
-
-        assert!(loaded.quit_simulators_on_exit);
-    }
-
     #[test]
     fn target_updates_preserve_simulator_quit_preference() {
         let temp = TempDir::new().expect("tempdir");

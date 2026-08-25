@@ -278,7 +278,7 @@ fn emits_button_size_and_variant_css() {
     let root = Path::new("/project");
     let page_tree = ViewNode::Button {
         props: VariantProps {
-            variant: Some(ComponentVariant::Soft),
+            variant: Some(ComponentVariant::Solid),
             color: Some(ColorFamily::Warning),
             size: Some(ButtonSize::Lg),
             style: StyleProps {

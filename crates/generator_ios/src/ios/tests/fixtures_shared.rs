@@ -32,7 +32,7 @@ fn container_foreground_tree() -> ViewNode {
             },
             ViewNode::Card {
                 props: VariantProps {
-                    variant: Some(ComponentVariant::Soft),
+                    variant: Some(ComponentVariant::Solid),
                     color: Some(ColorFamily::Muted),
                     ..Default::default()
                 },

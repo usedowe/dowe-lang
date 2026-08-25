@@ -83,6 +83,11 @@ Android, or iOS generation:
 | `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip` | `scheme:"surface" variant:"solid"`              |
 | `Tabs`                                             | `variant:"pills" scheme:"primary"`              |
 
+Drawer `header`, `body`, and `footer` regions are layout boundaries, not padded content surfaces.
+When authored content reaches an edge, add spacing directly to the region: use `header px:4 py:2`,
+`body p:4` (or an intentional responsive equivalent), and `footer px:4 py:2`. Do not expect the
+Drawer or nested `Flex`/`Grid` to create an inner gutter automatically.
+
 These built-ins set no `border` or `shadow`. Resolution is per prop: an explicit component prop
 wins, then the matching `design` slot, then this built-in value. A partial override such as
 `Button scheme:"secondary"` therefore preserves the configured or built-in variant and radius.

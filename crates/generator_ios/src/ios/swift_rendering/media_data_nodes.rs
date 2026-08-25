@@ -93,7 +93,7 @@ fn render_swift_media_data_node(
                     .collect::<Vec<_>>()
                     .join(" + ")
             };
-            let border = if props.style.variant.unwrap_or(ComponentVariant::Soft)
+            let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined
             {
                 format!("Optional({})", card_variant_content(&props.style))
