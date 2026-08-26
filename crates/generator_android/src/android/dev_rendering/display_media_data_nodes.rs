@@ -670,12 +670,13 @@ fn render_dev_android_display_media_data_node(
                 .map(|value| format!("\"{}\"", escape_java(value)))
                 .unwrap_or_else(|| "null".to_string());
             output.push_str(&format!(
-                "        DoweDiagramView {view} = doweDiagram(\"{}\", \"{}\", {}, {}, {}, {}, {}, {}, {on_node_click}, {on_node_drag}, {on_connect}, DOWE_SURFACE, DOWE_BACKGROUND_TEXT, {});\n",
+                "        DoweDiagramView {view} = doweDiagram(\"{}\", \"{}\", {}, {}, {}, {}, {}, {}, {}, {on_node_click}, {on_node_drag}, {on_connect}, DOWE_SURFACE, DOWE_BACKGROUND_TEXT, {});\n",
                 escape_java(&context.signal_path(&props.nodes)),
                 escape_java(&context.signal_path(&props.edges)),
                 props.fit_view,
                 props.pan_on_drag,
                 props.zoom_on_scroll,
+                props.controls,
                 props.minimap,
                 props.show_grid,
                 format!("\"{}\"", escape_java(&props.empty_label)),

@@ -207,12 +207,13 @@ fn render_compose_display_node(
         }
         ViewNode::Diagram { props } => {
             output.push_str(&format!(
-                        "{pad}DoweDiagram(state = state, nodesPath = {}, edgesPath = {}, fitView = {}, panOnDrag = {}, zoomOnScroll = {}, minimap = {}, showGrid = {}, emptyLabel = {}, onNodeClick = {}, onNodeDrag = {}, onConnect = {}, backgroundColor = {}, contentColor = {}, modifier = {})\n",
+                        "{pad}DoweDiagram(state = state, nodesPath = {}, edgesPath = {}, fitView = {}, panOnDrag = {}, zoomOnScroll = {}, controls = {}, minimap = {}, showGrid = {}, emptyLabel = {}, onNodeClick = {}, onNodeDrag = {}, onConnect = {}, backgroundColor = {}, contentColor = {}, modifier = {})\n",
                         compose_string_literal(&context.signal_path(&props.nodes)),
                         compose_string_literal(&context.signal_path(&props.edges)),
                         props.fit_view,
                         props.pan_on_drag,
                         props.zoom_on_scroll,
+                        props.controls,
                         props.minimap,
                         props.show_grid,
                         compose_string_literal(&props.empty_label),

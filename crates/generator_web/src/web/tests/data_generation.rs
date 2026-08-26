@@ -634,6 +634,9 @@ fn renders_diagram_markup_css_and_runtime() {
     let design_css = super::design_css();
     assert!(design_css.contains(".diagram .diagram-canvas"));
     assert!(design_css.contains(".diagram .diagram-node-port"));
+    assert!(design_css.contains(".diagram .diagram-edge-preview"));
+    assert!(design_css.contains(".diagram .diagram-minimap-viewport"));
+    assert!(design_css.contains(".diagram .diagram-node.is-connect-target"));
     let runtime = super::visualization_runtime_chunk().content;
     assert!(runtime.contains("function renderDiagrams"));
     assert!(runtime.contains("function hydrateDiagrams"));
@@ -641,5 +644,10 @@ fn renders_diagram_markup_css_and_runtime() {
     assert!(runtime.contains("doweDiagramOnConnect"));
     assert!(runtime.contains("data-dowe-diagram-node-id"));
     assert!(runtime.contains("persistDiagramConnection"));
-    assert!(runtime.contains("setAttribute(\"viewBox\""));
+    assert!(runtime.contains("diagramEdgeGeometry"));
+    assert!(runtime.contains("diagram-edge-preview"));
+    assert!(runtime.contains("diagram-minimap-viewport"));
+    assert!(runtime.contains("backgroundPosition"));
+    assert!(runtime.contains("is-connect-target"));
+    assert!(runtime.contains("function diagramPosition"));
 }

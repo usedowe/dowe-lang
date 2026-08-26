@@ -17,6 +17,40 @@ fn parses_indented_component_tree() {
 }
 
 #[test]
+fn ignores_line_comments_in_view_and_server_source() {
+    for path in ["/project/views/home.dowe", "/project/server/api.dowe"] {
+        let file = parse_source_file(
+            Path::new("/project"),
+            Path::new(path),
+            "// page ignored\npage home\n  // child ignored\n  Text content:\"https://example.test//path\" // trailing\n"
+                .to_string(),
+        )
+        .expect("comments");
+
+        assert_eq!(file.nodes.len(), 1);
+        assert_eq!(file.nodes[0].children.len(), 1);
+        assert_eq!(file.nodes[0].children[0].props[0].name, "content");
+    }
+}
+
+#[test]
+fn preserves_comment_markers_in_multiline_and_structured_values() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/views/code.dowe"),
+        "page code\n  Code content:\"\"\"\n    // displayed source\n    Text\n  \"\"\"\n  signal data value:[\n    { url:\"https://example.test//item\" // ignored\n    },\n  ]\n"
+            .to_string(),
+    )
+    .expect("comment markers");
+
+    assert_eq!(file.nodes[0].children.len(), 2);
+    assert!(matches!(
+        file.nodes[0].children[0].props[0].value,
+        super::SourceValue::String(_)
+    ));
+}
+
+#[test]
 fn rejects_tabs_in_indentation() {
     let error = parse_source_file(
         Path::new("/project"),

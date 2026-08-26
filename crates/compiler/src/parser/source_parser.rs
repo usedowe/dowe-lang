@@ -157,13 +157,18 @@ fn logical_lines(path: &Path, source: &str) -> DoweResult<Vec<LogicalLine>> {
 
     while index < physical_lines.len() {
         let physical = physical_lines[index];
-        if physical.trim().is_empty() {
+        if physical.trim().is_empty() || physical.trim_start().starts_with("//") {
             index += 1;
             continue;
         }
         let line = index + 1;
         let indent_spaces = leading_indent(path, line, physical)?;
-        let mut value = physical[indent_spaces..].trim_end().to_string();
+        let value = strip_line_comment(physical[indent_spaces..].trim_end());
+        if value.trim().is_empty() {
+            index += 1;
+            continue;
+        }
+        let mut value = value.to_string();
         if value.contains("\"\"\"") {
             let opening_count = value.matches("\"\"\"").count();
             if opening_count != 1 || !value.ends_with("\"\"\"") {
@@ -227,9 +232,10 @@ fn logical_lines(path: &Path, source: &str) -> DoweResult<Vec<LogicalLine>> {
             if !physical.trim().is_empty() {
                 leading_indent(path, index + 1, physical)?;
             }
+            let next_value = strip_line_comment(physical.trim());
             value.push('\n');
-            value.push_str(physical.trim());
-            delimiters.scan(path, index + 1, physical.trim())?;
+            value.push_str(next_value);
+            delimiters.scan(path, index + 1, next_value)?;
         }
 
         logical_lines.push(LogicalLine {
@@ -241,6 +247,38 @@ fn logical_lines(path: &Path, source: &str) -> DoweResult<Vec<LogicalLine>> {
     }
 
     Ok(logical_lines)
+}
+
+fn strip_line_comment(source: &str) -> &str {
+    let mut escaped = false;
+    let mut in_string = false;
+    let bytes = source.as_bytes();
+    let mut index = 0;
+
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == b'"' {
+                in_string = false;
+            }
+            index += 1;
+            continue;
+        }
+        if byte == b'"' {
+            in_string = true;
+            index += 1;
+        } else if byte == b'/' && bytes.get(index + 1) == Some(&b'/') {
+            return source[..index].trim_end();
+        } else {
+            index += 1;
+        }
+    }
+
+    source
 }
 
 impl DelimiterState {

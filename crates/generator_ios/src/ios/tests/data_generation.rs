@@ -70,6 +70,35 @@ fn generates_swiftui_iframe_with_hardened_webview() {
 }
 
 #[test]
+fn generates_swiftui_diagram_with_viewport_and_connection_runtime() {
+    let output = generate_ios(
+        &[diagram_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+
+    assert!(views.contains("struct DoweDiagramView: View"));
+    assert!(views.contains(
+        "DoweDiagramView(state: state, nodesPath: \"flowNodes\", edgesPath: \"flowEdges\", fitView: true, panOnDrag: true, zoomOnScroll: true, controls: true, minimap: true"
+    ));
+    assert!(views.contains("func fitViewport(_ size: CGSize)"));
+    assert!(views.contains("func borderPoint(_ node: [String: Any], toward: CGPoint) -> CGPoint"));
+    assert!(views.contains("func edgeGeometry(_ source: [String: Any], _ target: [String: Any], type: String?)"));
+    assert!(views.contains("private func isConnectionTarget(_ node: [String: Any]) -> Bool"));
+    assert!(views.contains("StrokeStyle(lineWidth: 2, dash: [6, 4])"));
+    assert!(views.contains("func persistConnection(source: String, target: String)"));
+    assert!(views.contains("func moveNode(_ node: [String: Any], to point: CGPoint)"));
+    assert!(views.contains("func moveViewport(minimapPoint: CGPoint, canvasSize: CGSize)"));
+    assert!(views.contains("func diagramControlButton(_ label: String, action: @escaping () -> Void)"));
+    assert!(views.contains("MagnificationGesture()"));
+    assert!(views.contains("SpatialTapGesture(coordinateSpace: .named(\"doweDiagramCanvas\"))"));
+    assert!(views.contains("state.run(onNodeClick, item: node)"));
+    assert!(views.contains("state.run(onConnect, item: [\"source\": id, \"target\": targetId])"));
+}
+
+#[test]
 fn generates_swiftui_candlestick_with_canvas_and_stream() {
     let output = generate_ios(
         &[candlestick_route()],

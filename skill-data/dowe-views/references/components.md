@@ -323,6 +323,7 @@ platform security policy. They never authorize user-authored JavaScript or nativ
 | `BarChart` | Categorical values rendered as bars from compatible `data` and optional series metadata. |
 | `LineChart` | Series data rendered as lines from compatible `data` and series metadata. |
 | `PieChart` | Non-negative categorical values rendered as slices from compatible `data`. |
+| `Diagram` | Interactive node editor over `nodes` and `edges` Signals with portable pan, zoom, selection, drag, and connection behavior. |
 | `Table` | Semantic portable table for a Signal or compatible immutable array of scalar rows. Use one or more direct `column` definitions with quoted field and label metadata; use `references/table.md` for advanced table composition. |
 
 Charts consume portable Signal data rather than a target-specific chart library. Category charts
@@ -349,6 +350,17 @@ together. Its portable options include `donut`, `donutWidth`, `centerLabel`, `ce
 Each `Candlestick` item provides `time` plus numeric `open`, `high`, `low`, and `close`. Optional
 props include `stream` for an SSE feed upserted by `time`, `upColor` and `downColor` tokens, and
 `maxPoints`. Validation rejects OHLC values where `high` or `low` contradicts the body.
+
+`Diagram nodes:<signal> edges:<signal>` renders an interactive node editor from typed node and
+edge collections. Node items require a unique `id` and numeric `x` and `y`, and accept optional
+numeric `width` (default `160`) and `height` (default `56`), `label`, and `type` styling hint. Edge
+items require a unique `id` with `source` and `target` node ids, and accept optional `label` and a
+`type` of `default` bezier, `straight`, or `step`; edges referencing unknown nodes are ignored.
+Optional props are `fitView`, `panOnDrag`, `zoomOnScroll`, `controls`, `minimap`, `showGrid`, and
+`emptyLabel`, plus `onNodeClick`, `onNodeDrag`, and `onConnect` action names. Pan, pinch and wheel
+zoom, node drag with position persistence into the bound signals, node and edge selection,
+port-based connections with a live preview, a minimap with the current viewport, and zoom controls
+behave the same across web, Android Compose, the Android development launcher, and iOS.
 
 `Table data:<array-path>` requires at least one direct `column` with quoted `field` and `label`;
 `field` is a relative row path such as `profile.email`, optional `align` accepts `start`,
