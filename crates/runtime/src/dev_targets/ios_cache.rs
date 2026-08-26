@@ -20,7 +20,11 @@ pub(super) fn ios_app_cache_key(
         update_digest(&mut digest, relative.to_string_lossy().as_bytes());
         update_digest(&mut digest, &fs::read(path)?);
     }
-    Ok(format!("{:x}", digest.finalize()))
+    Ok(digest
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 pub(super) fn cached_ios_app(project_root: &Path, cache_key: &str) -> Option<PathBuf> {

@@ -24,6 +24,31 @@ fn parses_main_server_route() {
 }
 
 #[test]
+fn parses_server_ai_chat_statement() {
+    let file = parse_source_file(
+        Path::new("/project"),
+        Path::new("/project/main.dowe"),
+        r#"main
+  server port:8080
+    route "/api/generate"
+      handler
+        ai result source:"chat" prompt:"create a login" files:["main.dowe"] model:"gemma-4-e2b"
+        return json:result"#
+            .to_string(),
+    )
+    .expect("source");
+
+    let server = parse_server_file(Path::new("/project/main.dowe"), &file.nodes).expect("server");
+    let action = server
+        .backend
+        .find_endpoint(&HttpMethod::Get, "/api/generate")
+        .expect("route")
+        .endpoint
+        .action;
+    assert!(matches!(action.statements.first(), Some(ServerStatement::AiChat(_))));
+}
+
+#[test]
 fn registers_imported_databases_for_project_operations() {
     let root = TempDir::new().expect("root");
     fs::write(

@@ -127,6 +127,7 @@ pub enum ServerStatement {
     CryptoCencAesCtr(ServerCryptoCencAesCtrStatement),
     Jwt(ServerJwtStatement),
     AgentChat(AgentChatTransform),
+    AiChat(AiChatStatement),
     WebSocketJson(WebSocketJsonStatement),
     WebSocketSendJson(WebSocketSendJsonStatement),
     WebSocketSseBridge(WebSocketSseBridgeStatement),

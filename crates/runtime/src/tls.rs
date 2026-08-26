@@ -250,7 +250,7 @@ async fn tls_instance(
                 .map_err(|error| RuntimeError::new(error.to_string()))?;
             let rustls = RustlsConfig::from_pem(
                 certified.cert.pem().into_bytes(),
-                certified.key_pair.serialize_pem().into_bytes(),
+                certified.signing_key.serialize_pem().into_bytes(),
             )
             .await?;
             let server = axum_server::from_tcp_rustls(listener, rustls)?.handle(handle);

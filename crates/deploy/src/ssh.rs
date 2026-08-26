@@ -242,7 +242,10 @@ fn generate_ssh_with_runtime(
     let executable_path = output.join(&binary_name);
     write_file(&executable_path, &executable)?;
     set_executable(&executable_path)?;
-    let sha256 = format!("{:x}", Sha256::digest(&executable));
+    let sha256 = Sha256::digest(&executable)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
     let mut manifest = serde_json::to_string_pretty(&json!({
         "version": 1,
         "target": DeployTarget::Ssh,

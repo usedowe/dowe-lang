@@ -251,7 +251,12 @@ fn ios_hot_module_version(
         update_digest(&mut hash, source.relative_path.to_string_lossy().as_bytes());
         update_digest(&mut hash, source.content.as_bytes());
     }
-    format!("{:x}", hash.finalize())[..16].to_string()
+    let digest = hash
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    digest[..16].to_string()
 }
 
 fn ios_incremental_cache_key(target: &str, toolchain_signature: &[u8], host_abi: &[u8]) -> String {
@@ -261,7 +266,10 @@ fn ios_incremental_cache_key(target: &str, toolchain_signature: &[u8], host_abi:
     update_digest(&mut hash, target.as_bytes());
     update_digest(&mut hash, toolchain_signature);
     update_digest(&mut hash, host_abi);
-    format!("{:x}", hash.finalize())
+    hash.finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 fn ios_incremental_output_map(

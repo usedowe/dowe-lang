@@ -9,6 +9,7 @@ name = "dowe"
 path = "src/main.rs"
 
 [dependencies]
+dowe_ai = { path = "../ai" }
 dialoguer = "0.12.0"
 dowe_agent = { path = "../agent" }
 dowe_agent_harness = { path = "../agent_harness" }

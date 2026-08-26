@@ -42,7 +42,10 @@ impl DeployAccess {
         }
         Ok(Some(Self {
             environment,
-            password_hash: format!("{:x}", Sha256::digest(password.as_bytes())),
+            password_hash: Sha256::digest(password.as_bytes())
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect(),
         }))
     }
 

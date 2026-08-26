@@ -204,6 +204,14 @@ pub struct AgentChatTransform {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AiChatStatement {
+    pub binding: String,
+    pub prompt: StoreLiteral,
+    pub files: StoreLiteral,
+    pub model: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WebSocketJsonStatement {
     pub binding: String,
 }

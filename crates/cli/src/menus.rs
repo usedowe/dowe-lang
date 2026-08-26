@@ -440,10 +440,11 @@ pub(crate) fn dev_target_default_states(
         .collect()
 }
 
-pub(crate) fn root_commands() -> [&'static str; 17] {
+pub(crate) fn root_commands() -> [&'static str; 18] {
     [
         "dev",
         "agent",
+        "ai",
         "build",
         "cache",
         "codegraph",
@@ -506,6 +507,7 @@ mod tests {
             [
                 "dev",
                 "agent",
+                "ai",
                 "build",
                 "cache",
                 "codegraph",

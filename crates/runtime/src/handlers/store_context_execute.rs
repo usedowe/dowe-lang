@@ -90,6 +90,31 @@ impl<'a> StoreActionContext<'a> {
                 self.bindings
                     .insert(statement.binding.clone(), agent_chat_body(source));
             }
+            ServerStatement::AiChat(statement) => {
+                let prompt = self
+                    .evaluate(&statement.prompt)?
+                    .into_json()
+                    .ok_or_else(StoreActionError::missing_http)?;
+                if !prompt.is_string() {
+                    return Err(StoreActionError::invalid_body(
+                        "AI prompt must resolve to a string",
+                    ));
+                }
+                let files = self
+                    .evaluate(&statement.files)?
+                    .into_json()
+                    .ok_or_else(StoreActionError::missing_http)?;
+                dowe_ai::build_file_context(self.root, &files).map_err(|_| StoreActionError {
+                    status: StatusCode::BAD_REQUEST,
+                    code: "invalid_ai_files",
+                    message: "AI files must be readable paths inside the project root",
+                })?;
+                return Err(StoreActionError {
+                    status: StatusCode::SERVICE_UNAVAILABLE,
+                    code: "ai_model_unavailable",
+                    message: "Local AI inference is not available in this runtime",
+                });
+            }
             ServerStatement::WebSocketJson(statement) => {
                 let value =
                     serde_json::from_slice::<Value>(self.body).map_err(|_| StoreActionError {

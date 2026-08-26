@@ -5,7 +5,7 @@ use base64::Engine;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use ctr::Ctr128BE;
 use ctr::cipher::{KeyIvInit, StreamCipher};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit as HmacKeyInit, Mac};
 use rand_core::{OsRng, RngCore};
 use serde_json::{Map, Value};
 use sha2::Sha256;
@@ -128,7 +128,7 @@ pub fn encrypt_jwe_dir_a256gcm(claims: &Value, key: &str) -> Result<String, Cryp
     let plaintext = serde_json::to_vec(claims).map_err(|_| CryptoError::InvalidClaims)?;
     let encrypted = cipher
         .encrypt(
-            Nonce::from_slice(&nonce),
+            &Nonce::try_from(&nonce[..]).map_err(|_| CryptoError::InvalidEncryption)?,
             Payload {
                 msg: &plaintext,
                 aad: protected.as_bytes(),
@@ -175,7 +175,7 @@ pub fn decrypt_jwe_dir_a256gcm(
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| CryptoError::InvalidKey)?;
     let plaintext = cipher
         .decrypt(
-            Nonce::from_slice(&nonce),
+            &Nonce::try_from(nonce.as_slice()).map_err(|_| CryptoError::InvalidEncryption)?,
             Payload {
                 msg: &ciphertext,
                 aad: segments[0].as_bytes(),
@@ -392,7 +392,7 @@ fn hex_value(value: u8) -> Option<u8> {
 
 fn hmac_sha256(secret: &[u8], input: &[u8]) -> Result<Vec<u8>, CryptoError> {
     let mut mac =
-        <HmacSha256 as Mac>::new_from_slice(secret).map_err(|_| CryptoError::InvalidKey)?;
+        <HmacSha256 as HmacKeyInit>::new_from_slice(secret).map_err(|_| CryptoError::InvalidKey)?;
     mac.update(input);
     Ok(mac.finalize().into_bytes().to_vec())
 }

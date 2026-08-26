@@ -86,6 +86,13 @@ fn infer_agent_chat_statement(
     bindings.insert(statement.binding.clone(), DoweType::Unknown);
 }
 
+fn infer_ai_chat_statement(
+    statement: &AiChatStatement,
+    bindings: &mut HashMap<String, DoweType>,
+) {
+    bindings.insert(statement.binding.clone(), DoweType::Unknown);
+}
+
 fn validate_jwt_statement_references(
     node: &SourceNode,
     statement: &ServerJwtStatement,

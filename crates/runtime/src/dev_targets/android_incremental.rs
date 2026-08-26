@@ -118,7 +118,11 @@ pub(super) fn android_toolchain_fingerprint(
     }
     update_path_digest(&mut hash, android_jar)?;
     update_path_digest(&mut hash, base_classes)?;
-    Ok(format!("{:x}", hash.finalize()))
+    Ok(hash
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 pub(super) fn android_hot_module_version(
@@ -131,7 +135,12 @@ pub(super) fn android_hot_module_version(
         update_digest(&mut hash, source.relative_path.to_string_lossy().as_bytes());
         update_digest(&mut hash, source.content.as_bytes());
     }
-    format!("{:x}", hash.finalize())[..16].to_string()
+    let digest = hash
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    digest[..16].to_string()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -748,7 +757,11 @@ fn dex_key(toolchain: &str, classes_root: &Path, classes: &[String]) -> RuntimeR
         update_digest(&mut hash, relative.as_bytes());
         update_digest(&mut hash, &fs::read(classes_root.join(relative))?);
     }
-    Ok(format!("{:x}", hash.finalize()))
+    Ok(hash
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
 }
 
 fn prune_staged_outputs(
@@ -1029,7 +1042,10 @@ fn update_path_digest(hash: &mut Sha256, path: &Path) -> RuntimeResult<()> {
 }
 
 fn digest_bytes(value: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(value))
+    Sha256::digest(value)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 fn update_digest(hash: &mut Sha256, value: &[u8]) {

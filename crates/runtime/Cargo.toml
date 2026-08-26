@@ -14,6 +14,7 @@ axum-server.workspace = true
 argon2.workspace = true
 base64.workspace = true
 bytes.workspace = true
+dowe_ai = { path = "../ai" }
 dowe_components = { path = "../components" }
 dowe_compiler = { path = "../compiler" }
 dowe_crypto = { path = "../crypto" }

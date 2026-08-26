@@ -194,13 +194,17 @@ fn start_android_avd(
     avd: String,
     processes: &mut Vec<RunningExternalProcess>,
 ) -> RuntimeResult<()> {
+    let mut options = quiet_command_options(None, StreamMode::Ignore);
+    options
+        .env_remove
+        .push("DYLD_FALLBACK_LIBRARY_PATH".to_string());
     processes.push(spawn_background(
         DevTarget::Android,
         SpawnConfig::new(
             emulator.to_string_lossy().to_string(),
             ["-avd".to_string(), avd],
         )
-        .with_options(quiet_command_options(None, StreamMode::Ignore)),
+        .with_options(options),
     )?);
     Ok(())
 }

@@ -299,6 +299,26 @@ fn parse_agent_chat_let(node: &SourceNode) -> DoweResult<Option<AgentChatTransfo
     Ok(Some(AgentChatTransform { binding, source }))
 }
 
+fn parse_ai_chat_declaration(node: &SourceNode) -> DoweResult<AiChatStatement> {
+    if node.args.len() != 1 || !node.children.is_empty() {
+        return Err(node_error(node, "AI chat uses `ai <binding> source:\"chat\" prompt:<value> files:<value>`"));
+    }
+    let binding = node.args[0]
+        .as_string_like()
+        .ok_or_else(|| node_error(node, "AI chat requires a result binding"))?;
+    validate_binding_name(node, &binding)?;
+    reject_unknown_props(node, &["source", "prompt", "files", "model"])?;
+    if required_source_selector(node, "ai")? != "chat" {
+        return Err(node_error(node, "ai only supports `source:\"chat\"`"));
+    }
+    Ok(AiChatStatement {
+        binding,
+        prompt: required_store_literal_prop(node, "prompt")?,
+        files: required_store_literal_prop(node, "files")?,
+        model: optional_prop_string(node, "model")?,
+    })
+}
+
 fn parse_agent_chat_declaration(node: &SourceNode) -> DoweResult<AgentChatTransform> {
     if node.args.len() != 1 || !node.children.is_empty() {
         return Err(node_error(

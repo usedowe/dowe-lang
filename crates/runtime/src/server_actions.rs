@@ -26,6 +26,7 @@ pub(crate) fn execute_server_action_with_resolver(
             ServerStatement::CryptoCencAesCtr(_) => {}
             ServerStatement::Jwt(_) => {}
             ServerStatement::AgentChat(_) => {}
+            ServerStatement::AiChat(_) => {}
             ServerStatement::WebSocketJson(_) => {}
             ServerStatement::WebSocketSendJson(_) => {}
             ServerStatement::WebSocketSseBridge(_) => {}

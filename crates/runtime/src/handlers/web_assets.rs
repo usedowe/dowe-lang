@@ -347,7 +347,11 @@ fn web_text_response(
 }
 
 fn content_etag(content: &[u8]) -> String {
-    format!(r#"W/"{:x}""#, Sha256::digest(content))
+    let digest = Sha256::digest(content)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    format!(r#"W/"{digest}""#)
 }
 
 pub(crate) fn generated_json_response(project: &CompiledProject, relative_path: &str) -> Response {

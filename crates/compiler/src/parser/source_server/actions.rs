@@ -113,6 +113,13 @@ fn parse_action(
                 infer_agent_chat_statement(&statement, &mut inferred_bindings);
                 statements.push(ServerStatement::AgentChat(statement));
             }
+            "ai" => {
+                let statement = parse_ai_chat_declaration(child)?;
+                validate_store_literal_references(child, &statement.prompt, &inferred_bindings)?;
+                validate_store_literal_references(child, &statement.files, &inferred_bindings)?;
+                infer_ai_chat_statement(&statement, &mut inferred_bindings);
+                statements.push(ServerStatement::AiChat(statement));
+            }
             name if dowe_stdlib::is_stdlib_namespace(name) => {
                 let statement = parse_stdlib_declaration(child)?;
                 validate_stdlib_statement_references(child, &statement, &inferred_bindings)?;

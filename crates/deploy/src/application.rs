@@ -74,7 +74,10 @@ pub(crate) fn generate_embedded_application(
     set_executable(&executable_path)?;
     Ok(ApplicationPackage {
         executable: executable_path,
-        sha256: format!("{:x}", Sha256::digest(&executable)),
+        sha256: Sha256::digest(&executable)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect(),
         size: executable.len(),
     })
 }

@@ -189,7 +189,10 @@ fn ios_profile_candidate(path: &Path, identities: &HashSet<String>) -> Option<Io
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(certificate.split_whitespace().collect::<String>())
             .ok()?;
-        let fingerprint = format!("{:X}", Sha1::digest(bytes));
+        let fingerprint = Sha1::digest(bytes)
+            .iter()
+            .map(|byte| format!("{byte:02X}"))
+            .collect::<String>();
         identities.contains(&fingerprint).then_some(fingerprint)
     })?;
     Some(IosProfileCandidate {

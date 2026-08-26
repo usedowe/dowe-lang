@@ -273,6 +273,7 @@ fn assert_log(statement: &ServerStatement, level: ServerLogLevel, values: &[Serv
         ServerStatement::CryptoCencAesCtr(_) => panic!("expected log statement"),
         ServerStatement::Jwt(_) => panic!("expected log statement"),
         ServerStatement::AgentChat(_) => panic!("expected log statement"),
+        ServerStatement::AiChat(_) => panic!("expected log statement"),
         ServerStatement::WebSocketJson(_) => panic!("expected log statement"),
         ServerStatement::WebSocketSendJson(_) => panic!("expected log statement"),
         ServerStatement::WebSocketSseBridge(_) => panic!("expected log statement"),

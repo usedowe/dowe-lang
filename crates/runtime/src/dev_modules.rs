@@ -83,7 +83,12 @@ pub(crate) fn web_module_version(project: &CompiledProject) -> String {
         hash.update(chunk.id.as_bytes());
         hash.update(chunk.locale.as_bytes());
     }
-    format!("{:x}", hash.finalize())[..16].to_string()
+    let digest = hash
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    digest[..16].to_string()
 }
 
 pub(crate) fn publish_dev_module(

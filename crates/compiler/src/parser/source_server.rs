@@ -1,9 +1,9 @@
 use crate::CronSchedule;
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
-    AgentChatTransform, AgentResponseEndpoint, CacheConnection, CorsConfig, DatabaseBinding,
-    DatabaseEntity, DatabaseFieldType, DatabaseSeeder, DoweType, DoweTypeField, Endpoint,
-    EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint,
+    AgentChatTransform, AgentResponseEndpoint, AiChatStatement, CacheConnection, CorsConfig,
+    DatabaseBinding, DatabaseEntity, DatabaseFieldType, DatabaseSeeder, DoweType, DoweTypeField,
+    Endpoint, EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint,
     HttpBytesEndpoint, HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint,
     HttpRedirectPolicy, HttpResponseMode, HttpReverseProxyEndpoint, OutboundHttpHeader,
     OutboundHttpRequest, ResponseCookie, ResponseHeader, ReverseProxyStrategy, RtpConfig,

@@ -339,6 +339,11 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
         description: "Transforms a server-side Dowe Agent chat request and declares its result binding.",
     },
     ServerDocumentation {
+        name: "ai",
+        signature: "ai <binding> source:\"chat\" prompt:<value> files:<value> [model:\"...\"]",
+        description: "Runs a server-side local AI chat request with project file context.",
+    },
+    ServerDocumentation {
         name: "ws",
         signature: "ws <binding> source:\"json\"",
         description: "Parses the active WebSocket message as a JSON-compatible result binding.",
