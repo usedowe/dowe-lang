@@ -39,12 +39,11 @@ fn parse_overlay_prop(
     parse_responsive(
         name,
         value,
-        "boolean, opacity from 0 to 1, color token, rgba or linear-gradient",
+        "opacity from 0 to 1",
         |scalar| match scalar {
-            PropScalar::Boolean(true) => Some(OverlayPaint::BlackOpacity("0.4".to_string())),
-            PropScalar::Boolean(false) => None,
+            PropScalar::Boolean(_) => None,
             PropScalar::Number(value) => parse_overlay_opacity(value),
-            PropScalar::String(value) => parse_overlay_string(value),
+            PropScalar::String(_) => None,
         },
     )
 }
@@ -96,19 +95,6 @@ fn parse_overlay_opacity(value: &str) -> Option<OverlayPaint> {
         return None;
     }
     Some(OverlayPaint::BlackOpacity(normalize_decimal(value)))
-}
-
-fn parse_overlay_string(value: &str) -> Option<OverlayPaint> {
-    if let Some(token) = ColorToken::from_name(value) {
-        return Some(OverlayPaint::Color(token));
-    }
-    if is_valid_rgba(value) {
-        return Some(OverlayPaint::Rgba(value.to_string()));
-    }
-    if is_valid_linear_gradient(value) {
-        return Some(OverlayPaint::LinearGradient(value.to_string()));
-    }
-    None
 }
 
 fn normalize_decimal(value: &str) -> String {

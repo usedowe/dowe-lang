@@ -1,3 +1,5 @@
+use crate::AvatarSize;
+
 #[test]
 fn validates_responsive_text_typography_props() {
     let node = text_component_node(
@@ -482,7 +484,7 @@ fn validates_display_and_overlay_component_props() {
         ViewNode::Avatar { props, .. } => {
             assert_eq!(props.style.color, Some(ColorFamily::Success));
             assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
-            assert_eq!(props.size, ButtonSize::Lg);
+            assert_eq!(props.size, AvatarSize::Lg);
             assert_eq!(props.status, Some(super::AvatarStatus::Online));
             assert!(props.bordered);
         }
@@ -709,17 +711,17 @@ fn rejects_invalid_design_props() {
         ComponentError::unknown_prop(BuiltinComponent::Input, "color")
     );
 
-    let error = container_component_node(
+    let card = container_component_node(
         BuiltinComponent::Card,
-        vec![string_prop("color", "primary")],
+        vec![string_prop("color", "white")],
         Vec::new(),
         false,
     )
-    .expect_err("error");
-    assert_eq!(
-        error,
-        ComponentError::unknown_prop(BuiltinComponent::Card, "color")
-    );
+    .expect("Card color override");
+    let ViewNode::Card { props, .. } = card else {
+        panic!("expected Card");
+    };
+    assert_eq!(props.style.text.expect("Card color").entries[0].value, ColorToken::White);
 
     let error = container_component_node(
         BuiltinComponent::Alert,

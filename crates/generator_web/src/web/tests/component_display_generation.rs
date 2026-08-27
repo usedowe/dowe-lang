@@ -249,6 +249,7 @@ fn renders_reactive_button_loading_spinner_and_runtime_binding() {
     assert!(html.contains("is-svg-spinner"));
     assert!(html.contains(r#"data-dowe-button-loading="saving""#));
     assert!(css.contains(".button.is-loading>[data-dowe-button-content]"));
+    assert!(css.contains(".button>[data-dowe-button-content]{display:inline-flex;"));
     assert!(router.contains("doweButtonLoading"));
     assert!(router.contains("aria-busy"));
 }

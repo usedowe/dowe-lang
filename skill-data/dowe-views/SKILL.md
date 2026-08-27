@@ -226,13 +226,29 @@ theme or color changes.
     generated source, documentation examples, and reusable view fragments; use `theme.dowe` for
     repeated visual policy rather than copying the same values into every instance. See
     `references/styles.md` for the current default matrix and minimal-prop examples.
-    For `Text` and `Title`, use `align:"start"`, `align:"center"`, `align:"end"`, or
+    Never write a `color` prop on `Text` or `Title`—not even `color:"muted"` or
+    `color:"primary"`. Their foreground must come from the nearest parent `scheme`, which
+    already resolves the appropriate `Text` and `Title` roles. If contrast or hierarchy is wrong,
+    fix the parent scheme or use typography props such as `size` and `weight`; do not override the
+    text color locally. This is a hard authoring rule for generated source, examples, and reusable
+    fragments. For `Text` and `Title`, use `align:"start"`, `align:"center"`, `align:"end"`, or
     `align:"justify"` for logical text alignment. A scalar typography size such as `size:"lg"`
-    is already fluid/responsive; write a responsive size object only when the design intentionally
-    changes at named breakpoints, not merely to make the size responsive.
-    Keep one semantic text node for intentional line boundaries by using a multiline string child;
-    use `maxW` when natural wrapping is acceptable. Do not duplicate `Text` or `Title` nodes or add
-    a `Flex` only to force a heading onto multiple lines.
+    is already fluid/responsive; never write a responsive size object merely to make the size
+    responsive. Use a responsive size object only when the design explicitly changes typography at
+    named breakpoints after the scalar fluid size has been rejected by visual comparison.
+    `Title` renders as `h2` by default. A page may have exactly one prominent document title rendered
+    as `Title as:"h1"`, normally the first hero title; do not add `as:"h1"` to section headings or
+    use it more than once. An `as:"h1"` Title must always use one fixed scalar `size:"..."` value;
+    never combine `as:"h1"` with a responsive size object. `as` is an SEO/HTML heading-semantic
+    exception, not a visual styling prop: the title's size and weight remain controlled by the
+    normal Title defaults. Do not
+    author `weight` on `Title` for ordinary headings; use `Text` when a custom text weight is needed.
+    Keep one semantic text node for intentional line boundaries by using a multiline string child.
+    When several adjacent `Text` nodes are prose explaining the same control, API, or behavior,
+    merge them into one `Text` with a triple-quoted multiline child and blank lines between
+    paragraphs. Do not emit one `Text` per sentence or paragraph merely to create vertical spacing;
+    use the owning Grid/Flex `gap` for genuinely separate semantic blocks. Do not duplicate `Text`
+    or `Title` nodes or add a `Flex` only to force a heading onto multiple lines.
     Apply a strict prop-admission gate before writing any local prop. Keep it only when it is
     required by the component contract or accessibility, owns data or behavior, defines essential
     structure that no default can infer, expresses an explicit non-default choice, or fixes a
@@ -245,11 +261,13 @@ theme or color changes.
     `Card` already provides responsive inner padding. `Grid` and `Flex` default to zero gap, so add
     one `gap` only when their siblings need an explicit nonzero rhythm after the default-first tree
     is rendered; do not pre-encode every measured whitespace value. Never use padding on a Grid or
-    Flex merely to separate its children. Add `p`, `px`, `py`, `pt`, or `pb` only when a specific
-    user requirement or rendered comparison proves that the default is insufficient, and put the
-    smallest override on one real owner instead of stacking equivalent padding on `Section`,
-    `Grid`, and `Card`. Treat `Card variant:"ghost" p:0` as invalid wrapper noise when it only
-    groups a layout tree; remove it unless the reference shows a real independent surface.
+    Flex merely to separate its children. `Section` owns responsive page insets: never author
+    `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` on a page Section, in any breakpoint or dimension.
+    This is a hard rule, including `Section p:0`; use the default Section padding and solve inner
+    rhythm with the child Grid/Flex gap. Put a padding exception on a different real owner only
+    when its own contract requires it. Treat `Card variant:"ghost" p:0` as invalid wrapper noise
+    when it only groups a layout tree; remove it unless the reference shows a real independent
+    surface.
 20. Use Signals and View Stores for state, `fn` for event workflows, and one `init` for ordered
     mount-time work.
 21. Write static visible text as `"Blog title"` and dynamic visible text as one complete braced

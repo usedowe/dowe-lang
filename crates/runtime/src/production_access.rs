@@ -106,7 +106,10 @@ mod tests {
 
     #[test]
     fn accepts_the_password_and_ignores_the_basic_username() {
-        let hash = format!("{:x}", Sha256::digest(b"stage-password-123"));
+        let hash = Sha256::digest(b"stage-password-123")
+            .iter()
+            .map(|value| format!("{value:02x}"))
+            .collect::<String>();
         let access = ProductionAccess::new("stage", &hash).expect("access");
         let credentials =
             base64::engine::general_purpose::STANDARD.encode("tester:stage-password-123");

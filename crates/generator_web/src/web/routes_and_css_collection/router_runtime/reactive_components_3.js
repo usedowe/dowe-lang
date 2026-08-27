@@ -316,18 +316,20 @@ function renderRuntimeSvgElement(svg, value, fill, stroke) {
   if (colors.includes(stroke)) svg.classList.add("stroke-color-" + stroke);
   const paths = record.paths.map(runtimeSvgPath);
   if (paths.some(path => !path)) return;
+  const hasFillColor = [...svg.classList].some(name => name.startsWith("color-"));
+  const hasStrokeColor = [...svg.classList].some(name => name.startsWith("stroke-color-"));
   svg.setAttribute("viewBox", record.viewBox);
   for (const path of paths) {
     const node = document.createElementNS("http://www.w3.org/2000/svg", "path");
     node.setAttribute("d", path.data);
     if (path.paint === "stroke") {
       node.setAttribute("fill", "none");
-      node.setAttribute("stroke", path.color);
+      node.setAttribute("stroke", hasStrokeColor ? "currentColor" : path.color);
       node.setAttribute("stroke-width", String(path.width / 100));
       node.setAttribute("stroke-linecap", path.lineCap);
       node.setAttribute("stroke-linejoin", path.lineJoin);
     } else {
-      node.setAttribute("fill", path.paint === "none" ? "none" : path.paint === "currentColor" ? "currentColor" : path.color);
+      node.setAttribute("fill", path.paint === "none" ? "none" : path.paint === "currentColor" || hasFillColor ? "currentColor" : path.color);
       if (path.evenOdd) node.setAttribute("fill-rule", "evenodd");
     }
     if (path.opacity !== 255) node.setAttribute("opacity", String(path.opacity / 255));
@@ -347,6 +349,25 @@ function renderRuntimeSvgs(root, state, scope) {
     const fill = svg.dataset.doweIconFill ? String(readPath(state, svg.dataset.doweIconFill, scope) || "") : "";
     const stroke = svg.dataset.doweIconStroke ? String(readPath(state, svg.dataset.doweIconStroke, scope) || "") : "";
     renderRuntimeSvgElement(svg, value, fill, stroke);
+  }
+}
+function renderReactiveAvatars(root, state, scope) {
+  const scoped = !!scope;
+  const sizes = ["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl", "5xl", "6xl", "7xl"];
+  for (const avatar of root.querySelectorAll("[data-dowe-avatar-size], [data-dowe-avatar-name], [data-dowe-avatar-alt]")) {
+    if (!scoped && avatar.closest("[data-dowe-each-row]")) continue;
+    if (avatar.dataset.doweAvatarSize) {
+      const value = String(readPath(state, avatar.dataset.doweAvatarSize, scope) || "md");
+      const resolved = sizes.includes(value) ? value : "md";
+      for (const size of sizes) avatar.classList.remove("avatar-" + size);
+      avatar.classList.add("avatar-" + resolved);
+    }
+    const name = avatar.dataset.doweAvatarName ? readPath(state, avatar.dataset.doweAvatarName, scope) : null;
+    const alt = avatar.dataset.doweAvatarAlt ? readPath(state, avatar.dataset.doweAvatarAlt, scope) : null;
+    const image = avatar.querySelector(".avatar-image");
+    if (image && alt != null) image.alt = String(alt);
+    const label = avatar.querySelector(".avatar-name");
+    if (label && name != null) label.textContent = String(name).slice(0, 1).toUpperCase();
   }
 }
 function renderReactiveImages(root, state, scope) {
@@ -375,6 +396,7 @@ function renderDynamic(root, state, scope) {
   renderReactiveSideNavs(root, state, scope);
   renderRuntimeSvgs(root, state, scope);
   renderReactiveImages(root, state, scope);
+  renderReactiveAvatars(root, state, scope);
   runtimeCall("styles", "renderStyles", [root, state, scope]);
   for (const element of root.querySelectorAll("[data-dowe-text]")) {
     if (!scoped && element.closest("[data-dowe-each-row]")) continue;

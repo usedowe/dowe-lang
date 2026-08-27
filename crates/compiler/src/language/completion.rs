@@ -8,12 +8,12 @@ use crate::language::documentation::{
 use crate::language::model::{LanguageCompletion, LanguageCompletionKind, LanguageDocument};
 use crate::parser::{SourceNode, SourceValue, parse_source_file};
 use dowe_components::{
-    AlertKind, Align, AvatarStatus, BarPosition, BoxPosition, BuiltinComponent, ButtonSize,
-    CameraFacing, CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve,
-    ChartLegendPosition, ChartPalette, ChartSize, ChatBoxMode, CodeLanguage, ColorFamily,
-    ColorToken, ComponentVariant, ContainerSize, CountdownSize, DividerOrientation, DrawerPosition,
-    EmptyKind, FlexDirection, FlexItem, FontFamily, GridAlignment, ImageAspect, ImageLoading,
-    ImageObjectFit, Justify, MarqueeOrientation, MarqueeSpeed, NativeExternalMode,
+    AlertKind, Align, AvatarSize, AvatarStatus, BarPosition, BoxPosition, BuiltinComponent,
+    ButtonSize, CameraFacing, CarouselIndicatorType, CarouselOrientation, CarouselVariant,
+    ChartCurve, ChartLegendPosition, ChartPalette, ChartSize, ChatBoxMode, CodeLanguage,
+    ColorFamily, ColorToken, ComponentVariant, ContainerSize, CountdownSize, DividerOrientation,
+    DrawerPosition, EmptyKind, FlexDirection, FlexItem, FontFamily, GridAlignment, ImageAspect,
+    ImageLoading, ImageObjectFit, Justify, MarqueeOrientation, MarqueeSpeed, NativeExternalMode,
     NavigationOperation, OverlayCornerPosition, OverlayPosition, RoundedSize, SectionBackground,
     ShadowSize, SideNavSize, SkeletonAnimation, SkeletonVariant, TableColumnAlign, TableSize,
     TabsPosition, TabsVariant, TextAlign, TextSize, TextSpacing, TextWeight, ToastKind,
@@ -1009,9 +1009,11 @@ pub(super) fn component_value_completions(
                 })
                 .map(|value| value.as_str()),
         )),
+        (BuiltinComponent::Avatar, "size") => Some(quoted_values(
+            AvatarSize::all().iter().map(|value| value.as_str()),
+        )),
         (
             BuiltinComponent::Button
-            | BuiltinComponent::Avatar
             | BuiltinComponent::AvatarGroup
             | BuiltinComponent::Chip
             | BuiltinComponent::ToggleTheme
@@ -2029,6 +2031,7 @@ const DRAWER_PROPS: &[&str] = &[
 const AVATAR_PROPS: &[&str] = &[
     "src",
     "name",
+    "icon",
     "alt",
     "href",
     "navigate",

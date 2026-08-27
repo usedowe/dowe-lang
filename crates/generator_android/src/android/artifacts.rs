@@ -1,6 +1,6 @@
 use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, Align, ArcChartProps, AudioProps,
-    AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps, BarPosition, BarProps, BorderWidth,
+    AvatarGroupItem, AvatarGroupProps, AvatarProps, AvatarSize, BadgeProps, BarPosition, BarProps, BorderWidth,
     BottomBarTab, BoxPosition, Breakpoint, ButtonSize, CameraProps, CanvasBackground,
     CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps,
     ChatBoxProps, CheckboxProps, ChipProps, CodeTemplateSegment, CodeToken, CodeTokenKind,

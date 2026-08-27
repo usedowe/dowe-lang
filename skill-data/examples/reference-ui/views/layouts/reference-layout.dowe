@@ -32,7 +32,7 @@ layout ReferenceLayout
               Text weight:"black"
                 "REFERENCE"
         end
-          Text size:"sm" color:"muted"
+          Text size:"sm"
             "Portable source · authored visual direction"
     overlays
       Drawer bind:openNavigation

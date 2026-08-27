@@ -261,10 +261,16 @@ impl DesignConfig {
 
 impl DesignTheme {
     pub fn color_value(&self, token: ColorToken) -> &str {
-        self.colors
-            .get(&token)
-            .map(String::as_str)
-            .expect("design color token")
+        match token.as_str() {
+            "white" => "#FFFFFF",
+            "black" => "#000000",
+            "transparent" => "#00000000",
+            _ => self
+                .colors
+                .get(&token)
+                .map(String::as_str)
+                .expect("design color token"),
+        }
     }
 
     pub fn ordered_color_tokens(&self) -> Vec<ColorToken> {
@@ -513,7 +519,7 @@ impl Ord for ColorToken {
 
 #[allow(non_upper_case_globals)]
 impl ColorToken {
-    const CUSTOM_OFFSET: u16 = 30;
+    const CUSTOM_OFFSET: u16 = 33;
     pub const Primary: Self = Self(0);
     pub const PrimaryText: Self = Self(1);
     pub const PrimaryTitle: Self = Self(2);
@@ -544,6 +550,9 @@ impl ColorToken {
     pub const Danger: Self = Self(27);
     pub const DangerText: Self = Self(28);
     pub const DangerTitle: Self = Self(29);
+    pub const White: Self = Self(30);
+    pub const Black: Self = Self(31);
+    pub const Transparent: Self = Self(32);
     fn custom(value: &str) -> Option<Self> {
         let id = intern_color_identifier(value)?;
         Self::CUSTOM_OFFSET.checked_add(id).map(Self)
@@ -581,6 +590,9 @@ impl ColorToken {
             "danger" => Some(Self::Danger),
             "dangerText" => Some(Self::DangerText),
             "dangerTitle" => Some(Self::DangerTitle),
+            "white" => Some(Self::White),
+            "black" => Some(Self::Black),
+            "transparent" => Some(Self::Transparent),
             _ if is_valid_color_token_name(value) => Self::custom(value),
             _ => None,
         }
@@ -618,6 +630,9 @@ impl ColorToken {
             Self::Danger => "danger",
             Self::DangerText => "dangerText",
             Self::DangerTitle => "dangerTitle",
+            Self::White => "white",
+            Self::Black => "black",
+            Self::Transparent => "transparent",
             _ => color_identifier(self.0 - Self::CUSTOM_OFFSET),
         }
     }

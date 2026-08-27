@@ -410,7 +410,7 @@ fn validates_container_refactor_props() {
                     string_prop("scheme", "surface"),
                     string_prop("rounded", "full"),
                     string_prop("cover", "/images/card.jpg"),
-                    boolean_prop("overlay", true),
+                    number_prop("overlay", 1),
                 ],
                 vec![text_node("Card").expect("text")],
                 false,
@@ -939,7 +939,7 @@ fn rejects_invalid_section_gap_values() {
 fn rejects_overlay_without_cover() {
     let error = container_component_node(
         BuiltinComponent::Box,
-        vec![boolean_prop("overlay", true)],
+        vec![number_prop("overlay", 1)],
         vec![text_node("Hero").expect("text")],
         false,
     )
@@ -957,7 +957,7 @@ fn parses_overlay_forms() {
         BuiltinComponent::Box,
         vec![
             string_prop("cover", "/images/hero.jpg"),
-            string_prop("overlay", "rgba(0,0,0,0.5)"),
+            number_prop("overlay", 1),
         ],
         vec![text_node("Hero").expect("text")],
         false,
@@ -968,7 +968,7 @@ fn parses_overlay_forms() {
         ViewNode::Box { props, .. } => {
             assert!(matches!(
                 props.overlay.expect("overlay").entries[0].value,
-                OverlayPaint::Rgba(_)
+                OverlayPaint::BlackOpacity(_)
             ));
         }
         _ => panic!("box"),

@@ -17,8 +17,11 @@ fn collect_display_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
                     style: props.style.clone(),
                     src: item.src.clone(),
                     name: item.name.clone(),
+                    name_binding: None,
                     alt: item.alt.clone().unwrap_or_default(),
-                    size: props.size,
+                    alt_binding: None,
+                    size: AvatarSize::from_name(props.size.as_str()).expect("avatar group size"),
+                    size_binding: None,
                     status: None,
                     bordered: props.bordered,
                 };

@@ -1,3 +1,10 @@
+fn parse_avatar_size(name: &str, value: &PropValue) -> ComponentResult<AvatarSize> {
+    let value = parse_required_string(name, value)?;
+    AvatarSize::from_name(&value).ok_or_else(|| {
+        ComponentError::invalid_prop(name, "xs, sm, md, lg, xl, 2xl, 3xl, 4xl, 5xl, 6xl or 7xl")
+    })
+}
+
 fn parse_avatar_status(name: &str, value: &PropValue) -> ComponentResult<AvatarStatus> {
     let value = parse_required_string(name, value)?;
     AvatarStatus::from_name(&value)

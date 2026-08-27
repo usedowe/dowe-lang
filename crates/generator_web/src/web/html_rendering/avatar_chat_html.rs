@@ -29,7 +29,16 @@ fn render_avatar_html(
             )
         })
         .unwrap_or_default();
-    let (tag, tag_attrs, close) = avatar_tags(props, context);
+    let (tag, mut tag_attrs, close) = avatar_tags(props, context);
+    if let Some(binding) = props.size_binding.as_ref() {
+        tag_attrs.push_str(&format!(r#" data-dowe-avatar-size="{}""#, escape_attr(&context.signal_path(&binding.path))));
+    }
+    if let Some(binding) = props.name_binding.as_ref() {
+        tag_attrs.push_str(&format!(r#" data-dowe-avatar-name="{}""#, escape_attr(&context.signal_path(&binding.path))));
+    }
+    if let Some(binding) = props.alt_binding.as_ref() {
+        tag_attrs.push_str(&format!(r#" data-dowe-avatar-alt="{}""#, escape_attr(&context.signal_path(&binding.path))));
+    }
     format!("<{tag}{tag_attrs}>{status}{content}</{close}>")
 }
 
@@ -156,12 +165,15 @@ fn render_avatar_group_item_html(
         style,
         src: item.src.clone(),
         name: item.name.clone(),
+        name_binding: None,
         alt: item
             .alt
             .clone()
             .or_else(|| item.name.clone())
             .unwrap_or_default(),
-        size: group.size,
+        alt_binding: None,
+        size: AvatarSize::from_name(group.size.as_str()).expect("avatar group size"),
+        size_binding: None,
         status: None,
         bordered: group.bordered,
     };

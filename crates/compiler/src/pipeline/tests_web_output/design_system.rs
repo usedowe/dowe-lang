@@ -285,9 +285,9 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(page_css.contains(".flex-wrap{flex-wrap:wrap;}"));
     assert!(page_css.contains(".title-2xl{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(1.75rem, 1.4rem + 1vw, 2.25rem);line-height:1.2;font-weight:700;letter-spacing:-0.025em;margin:0;}"));
     assert!(page_css.contains(".text-md{--dowe-component-display:block;display:var(--dowe-show,var(--dowe-component-display));font-size:clamp(0.875rem, 0.82rem + 0.25vw, 1rem);line-height:1.6;font-weight:400;margin:0;}"));
-    assert!(page_css.contains(".button-md{padding:0.625rem 1rem;min-height:2.5rem;}"));
-    assert!(page_css.contains(".button-lg{padding:0.75rem 1.25rem;min-height:2.75rem;}"));
-    assert!(page_css.contains(".min-h-10{min-height:2.5rem;}"));
+    assert!(page_css.contains(".button-md{padding:0.625rem 1rem;height:2.5rem;}"));
+    assert!(page_css.contains(".button-lg{padding:0.75rem 1.25rem;height:2.75rem;}"));
+    assert!(page_css.contains(".h-10{height:2.5rem;}"));
     assert!(page_css.contains(".rounded-full{border-radius:9999px;}"));
     assert!(page_css.contains(".weight-extrabold{font-weight:800;}"));
     assert!(page_css.contains(".tracking-wide{letter-spacing:0.02em;}"));

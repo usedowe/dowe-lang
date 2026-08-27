@@ -42,7 +42,7 @@
 
     private int doweButtonContainer(String variant, String scheme) {
         if ("outlined".equals(variant) || "ghost".equals(variant)) return Color.TRANSPARENT;
-        if ("solid".equals(variant)) return doweAlpha(doweButtonFamily(scheme), 0.14f);
+        if ("solid".equals(variant)) return doweButtonFamily(scheme);
         return doweButtonFamily(scheme);
     }
 

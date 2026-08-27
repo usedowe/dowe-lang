@@ -1,10 +1,79 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AvatarSize {
+    Xs,
+    Sm,
+    Md,
+    Lg,
+    Xl,
+    Xxl,
+    Xxxl,
+    Xxxxl,
+    Xxxxxl,
+    Xxxxxxl,
+    Xxxxxxxl,
+}
+
+impl AvatarSize {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "xs" => Some(Self::Xs),
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            "2xl" => Some(Self::Xxl),
+            "3xl" => Some(Self::Xxxl),
+            "4xl" => Some(Self::Xxxxl),
+            "5xl" => Some(Self::Xxxxxl),
+            "6xl" => Some(Self::Xxxxxxl),
+            "7xl" => Some(Self::Xxxxxxxl),
+            _ => None,
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Xs,
+            Self::Sm,
+            Self::Md,
+            Self::Lg,
+            Self::Xl,
+            Self::Xxl,
+            Self::Xxxl,
+            Self::Xxxxl,
+            Self::Xxxxxl,
+            Self::Xxxxxxl,
+            Self::Xxxxxxxl,
+        ]
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Xs => "xs",
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+            Self::Xxl => "2xl",
+            Self::Xxxl => "3xl",
+            Self::Xxxxl => "4xl",
+            Self::Xxxxxl => "5xl",
+            Self::Xxxxxxl => "6xl",
+            Self::Xxxxxxxl => "7xl",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AvatarProps {
     pub style: VariantProps,
     pub src: Option<String>,
     pub name: Option<String>,
+    pub name_binding: Option<PropBinding>,
     pub alt: String,
-    pub size: ButtonSize,
+    pub alt_binding: Option<PropBinding>,
+    pub size: AvatarSize,
+    pub size_binding: Option<PropBinding>,
     pub status: Option<AvatarStatus>,
     pub bordered: bool,
 }

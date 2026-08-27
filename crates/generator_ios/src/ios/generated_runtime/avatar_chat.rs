@@ -86,6 +86,12 @@ fn swift_runtime_avatar_chat() -> &'static str {
         case "sm": return CGFloat(32)
         case "lg": return CGFloat(48)
         case "xl": return CGFloat(64)
+        case "2xl": return CGFloat(80)
+        case "3xl": return CGFloat(96)
+        case "4xl": return CGFloat(112)
+        case "5xl": return CGFloat(128)
+        case "6xl": return CGFloat(144)
+        case "7xl": return CGFloat(160)
         default: return CGFloat(40)
         }
     }
@@ -96,6 +102,12 @@ fn swift_runtime_avatar_chat() -> &'static str {
         case "sm": return CGFloat(8)
         case "lg": return CGFloat(12)
         case "xl": return CGFloat(16)
+        case "2xl": return CGFloat(20)
+        case "3xl": return CGFloat(24)
+        case "4xl": return CGFloat(28)
+        case "5xl": return CGFloat(32)
+        case "6xl": return CGFloat(36)
+        case "7xl": return CGFloat(40)
         default: return CGFloat(10)
         }
     }
@@ -106,6 +118,12 @@ fn swift_runtime_avatar_chat() -> &'static str {
         case "sm": return CGFloat(14)
         case "lg": return CGFloat(18)
         case "xl": return CGFloat(24)
+        case "2xl": return CGFloat(28)
+        case "3xl": return CGFloat(32)
+        case "4xl": return CGFloat(36)
+        case "5xl": return CGFloat(40)
+        case "6xl": return CGFloat(44)
+        case "7xl": return CGFloat(48)
         default: return CGFloat(16)
         }
     }

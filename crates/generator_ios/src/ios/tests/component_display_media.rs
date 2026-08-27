@@ -156,6 +156,16 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("private let doweAudioWaveform: [CGFloat]"));
     assert!(views.contains("private struct DoweAudioControlButton: View"));
     assert!(views.contains(".animation(.easeInOut(duration: 0.3), value: currentTime)"));
+    assert!(views.contains("struct DoweCoverImage: View"));
+    let cover_runtime = views
+        .split("struct DoweCoverImage: View")
+        .nth(1)
+        .expect("cover runtime")
+        .split("private func doweImageURL")
+        .next()
+        .expect("cover runtime boundary");
+    assert!(cover_runtime.contains("GeometryReader { proxy in"));
+    assert!(cover_runtime.contains(".frame(width: proxy.size.width, height: proxy.size.height)"));
     assert!(views.contains("struct DoweImageView: View"));
     let image_runtime = views
         .split("struct DoweImageView: View")

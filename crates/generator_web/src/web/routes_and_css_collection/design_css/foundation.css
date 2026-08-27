@@ -10,6 +10,9 @@
     --dowe-gesture-scale: 1;
     --dowe-gesture-x: 0rem;
     --dowe-gesture-y: 0rem;
+    --dowe-white: #ffffff;
+    --dowe-black: #000000;
+    --dowe-transparent: #00000000;
 }
 @media (prefers-reduced-motion: no-preference) {
     html.dowe-entrance-pending [class*="animate-"] {
@@ -233,6 +236,13 @@
 .button > [data-dowe-button-content] > [data-dowe-button-icon-end] > .svg {
     width: 1.5rem;
     height: 1.5rem;
+}
+.button > [data-dowe-button-content] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
 }
 .button.is-loading > [data-dowe-button-content] {
     visibility: hidden;

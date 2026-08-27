@@ -371,7 +371,7 @@ fn generates_android_overlay_surface_action_and_close_parity() {
     let dev = dev_java_source(&output);
     assert!(
         dev.content.contains(
-            ".setBackground(doweInputBackground(DOWE_SURFACE, DOWE_WARNING, DOWE_RADIUS));"
+            ".setBackground(doweInputBackground(DOWE_WARNING, null, DOWE_RADIUS));"
         )
     );
     assert!(
@@ -888,7 +888,7 @@ fn generates_portable_grid_controls_and_variant_colors() {
             .contains("contentColor = DoweDesign.mutedText")
     );
     assert!(views.content.contains(
-            "CardDefaults.cardColors(containerColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText), border = BorderStroke(1.dp, DoweDesign.surface)"
+            "CardDefaults.cardColors(containerColor = Color.Transparent, contentColor = DoweDesign.surface), border = BorderStroke(1.dp, DoweDesign.surface)"
         ));
     assert!(
         views
@@ -915,15 +915,15 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(dev.content.contains(
         "setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))"
     ));
-    assert!(dev.content.contains("doweCard(DOWE_MUTED, null)"));
-    assert!(dev.content.contains("doweCard(DOWE_SURFACE, DOWE_SURFACE)"));
+    assert!(dev.content.contains("doweCard(DOWE_MUTED, (\"outlined\".equals(\"solid\") ? null : null))"));
+    assert!(dev.content.contains("doweCard(Color.TRANSPARENT, (\"outlined\".equals(\"solid\") ? DOWE_SURFACE : null))"));
     assert!(dev.content.contains(
         "setBackground(doweInputBackground(Color.TRANSPARENT, DOWE_PRIMARY, DOWE_RADIUS))"
     ));
     assert!(dev.content.contains("setBackgroundTintList(null)"));
     assert!(
         dev.content
-            .contains("doweText(\"Surface\", DOWE_SURFACE_TEXT")
+            .contains("doweText(\"Surface\", DOWE_SURFACE")
     );
 }
 
@@ -1292,9 +1292,9 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(!views.content.contains("Text(if (open) \"^\" else \"v\")"));
     assert!(
         dev.content
-            .contains("doweAccordion(true, \"ghost\", Color.TRANSPARENT, DOWE_SURFACE_TEXT, null")
+            .contains("doweAccordion(true, \"ghost\", Color.TRANSPARENT, DOWE_SURFACE, null")
     );
-    assert!(dev.content.contains("doweAlpha(DOWE_SURFACE_TEXT, 0.22f)"));
+    assert!(dev.content.contains("doweAlpha(DOWE_SURFACE, 0.22f)"));
     assert!(!dev.content.contains("arrow.setBackgroundColor"));
     assert!(
         dev.content

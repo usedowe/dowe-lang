@@ -136,6 +136,9 @@ fn append_style_classes(classes: &mut Vec<String>, props: &StyleProps) {
 }
 
 fn append_reactive_style_markers(classes: &mut Vec<String>, props: &StyleProps) {
+    if let Some(binding) = props.animation_binding.as_ref() {
+        classes.push(format!("dowe-style-binding-animation-{}", binding.path));
+    }
     for binding in props.bindings() {
         let name = match binding.property {
             dowe_components::StyleBindingProperty::BackgroundColor => "bg",

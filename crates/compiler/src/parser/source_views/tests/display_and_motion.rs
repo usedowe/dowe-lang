@@ -1,4 +1,33 @@
     #[test]
+    fn accepts_calculated_avatar_props_from_each_item_paths() {
+        let tree = parse_page(
+            r#"page avatarCatalogPage
+  const avatarSizes value:[{ id:"ada" label:"Ada" size:"lg" pixels:"96 px" }]
+  Flex
+    each in:avatarSizes as:avatar key:avatar.id
+      Avatar name:avatar.label alt:avatar.label size:avatar.size scheme:"primary"
+"#,
+        )
+        .expect("dynamic avatar props");
+
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::Flex { children, .. } = &children[0] else {
+            panic!("flex");
+        };
+        let ViewNode::Each { children, .. } = &children[0] else {
+            panic!("each");
+        };
+        let ViewNode::Avatar { props, .. } = &children[0] else {
+            panic!("avatar");
+        };
+        assert_eq!(props.name_binding.as_ref().map(|binding| binding.path.as_str()), Some("avatar.label"));
+        assert_eq!(props.alt_binding.as_ref().map(|binding| binding.path.as_str()), Some("avatar.label"));
+        assert_eq!(props.size_binding.as_ref().map(|binding| binding.path.as_str()), Some("avatar.size"));
+    }
+
+    #[test]
     fn preserves_explicit_line_breaks_in_text_components() {
         let tree = parse_page(
             r#"page typographyPage
@@ -88,7 +117,7 @@
         };
         assert_eq!(props.style.color, Some(ColorFamily::Success));
         assert_eq!(props.style.variant, Some(ComponentVariant::Solid));
-        assert_eq!(props.size, ButtonSize::Lg);
+        assert_eq!(props.size, AvatarSize::Lg);
         assert_eq!(props.status, Some(AvatarStatus::Online));
         assert!(props.bordered);
 
@@ -382,4 +411,29 @@ page displayPage
         assert_eq!(markers[0].on_click.as_deref(), Some("choose"));
         assert_eq!(waypoints.len(), 1);
         assert_eq!(waypoints[0].lng, "-74.08");
+    }
+
+    #[test]
+    fn parses_avatar_icons_from_region_and_prop() {
+        let tree = parse_page(
+            r#"page avatarIcons
+  Avatar name:"Dowe Agent" alt:"Dowe Agent" icon:platform.icon
+  Avatar name:"Dowe Agent" alt:"Dowe Agent"
+    icon
+      Icon name:platform.icon fill:"surface" w:10 h:10"#,
+        )
+        .expect("avatar icons");
+        let ViewNode::Scope { children, .. } = &tree else {
+            panic!("scope");
+        };
+        let ViewNode::Avatar { props, icon } = &children[0] else {
+            panic!("prop avatar");
+        };
+        assert!(props.name.as_deref() == Some("Dowe Agent"));
+        assert_eq!(icon.as_ref().and_then(|value| value.props.icon_name.as_deref()), Some("platform.icon"));
+        assert_eq!(icon.as_ref().and_then(|value| value.props.icon_fill), Some(ColorToken::PrimaryText));
+        let ViewNode::Avatar { icon, .. } = &children[1] else {
+            panic!("region avatar");
+        };
+        assert!(icon.is_some());
     }

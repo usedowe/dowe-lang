@@ -331,17 +331,20 @@ private fun doweButtonContent(variant: String, scheme: String): Color =
 
 private fun doweCardContainer(variant: String, scheme: String): Color = when (variant) {
     "solid" -> doweButtonFamily(scheme)
-    "outlined" -> if (scheme == "background") DoweDesign.background else DoweDesign.surface
-    "ghost" -> Color.Transparent
+    "outlined", "ghost" -> Color.Transparent
     else -> doweButtonFamily(scheme)
 }
 
 private fun doweCardContent(variant: String, scheme: String): Color = when (variant) {
     "solid" -> doweButtonTextFamily(scheme)
-    "solid" -> doweButtonTextFamily(scheme)
-    "outlined" -> if (scheme == "background") DoweDesign.backgroundText else DoweDesign.surfaceText
-    "ghost" -> if (scheme == "background" || scheme == "surface") doweButtonTextFamily(scheme) else doweButtonFamily(scheme)
+    "outlined", "ghost" -> doweButtonFamily(scheme)
     else -> doweButtonTextFamily(scheme)
+}
+
+private fun doweCardTitle(variant: String, scheme: String): Color = when (variant) {
+    "solid" -> doweButtonTitleFamily(scheme)
+    "outlined", "ghost" -> doweButtonFamily(scheme)
+    else -> doweButtonTitleFamily(scheme)
 }
 
 private fun doweCardBorder(variant: String, scheme: String): Color? =

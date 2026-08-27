@@ -87,31 +87,14 @@ fn card_variant_content(props: &VariantProps) -> &'static str {
             ColorFamily::Background => color_ref(ColorToken::BackgroundText),
             _ => color_ref(ColorToken::SurfaceText),
         },
-        ComponentVariant::Ghost
-            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            color_ref(family_text_color(color))
-        }
+        ComponentVariant::Ghost if matches!(color, ColorFamily::Background | ColorFamily::Surface) => color_ref(family_text_color(color)),
         _ => variant_content(props),
     }
 }
 
-fn card_variant_title(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Outlined => match color {
-            ColorFamily::Background => color_ref(ColorToken::BackgroundTitle),
-            _ => color_ref(ColorToken::SurfaceTitle),
-        },
-        ComponentVariant::Ghost
-            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            color_ref(family_text_color(color))
-        }
-        ComponentVariant::Solid => variant_title(props),
-        ComponentVariant::Line | ComponentVariant::Ghost => variant_content(props),
-    }
-}
+fn card_surface_container(props: &VariantProps) -> &'static str { variant_container(props) }
+fn card_surface_content(props: &VariantProps) -> &'static str { variant_content(props) }
+fn card_surface_title(props: &VariantProps) -> &'static str { variant_title(props) }
 
 fn table_variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
@@ -196,47 +179,15 @@ fn dev_nav_active_content(props: &VariantProps) -> &'static str {
 }
 
 fn dev_card_variant_container(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Outlined => match color {
-            ColorFamily::Background => java_color(ColorToken::Background),
-            _ => java_color(ColorToken::Surface),
-        },
-        _ => dev_variant_container(props),
-    }
+    dev_variant_container(props)
 }
 
 fn dev_card_variant_content(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Outlined => match color {
-            ColorFamily::Background => java_color(ColorToken::BackgroundText),
-            _ => java_color(ColorToken::SurfaceText),
-        },
-        ComponentVariant::Ghost
-            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            java_color(family_text_color(color))
-        }
-        _ => dev_variant_content(props),
-    }
+    dev_variant_content(props)
 }
 
 fn dev_card_variant_title(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Outlined => match color {
-            ColorFamily::Background => java_color(ColorToken::BackgroundTitle),
-            _ => java_color(ColorToken::SurfaceTitle),
-        },
-        ComponentVariant::Ghost
-            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            java_color(family_text_color(color))
-        }
-        ComponentVariant::Solid => dev_variant_title(props),
-        ComponentVariant::Line | ComponentVariant::Ghost => dev_variant_content(props),
-    }
+    dev_variant_title(props)
 }
 
 fn dev_table_variant_container(props: &VariantProps) -> &'static str {
@@ -710,7 +661,12 @@ where
 }
 
 fn color_ref(value: ColorToken) -> &'static str {
-    intern_generated_color_name(format!("DoweDesign.{}", value.as_str()))
+    match value.as_str() {
+        "white" => "Color.White",
+        "black" => "Color.Black",
+        "transparent" => "Color.Transparent",
+        _ => intern_generated_color_name(format!("DoweDesign.{}", value.as_str())),
+    }
 }
 
 fn android_design_block(design: &DesignConfig) -> String {

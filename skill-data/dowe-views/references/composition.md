@@ -60,7 +60,7 @@ layout SiteLayout
           Text weight:"bold"
             "SOLTECH"
         end
-          Text size:"sm" color:"muted"
+          Text size:"sm"
             "Strategy and consulting"
 ```
 
@@ -79,7 +79,7 @@ layout AppLayout
     Section
       Flex direction:"column" align:"center" justify:"center" gap:3 h:"full"
         Icon name:"svg-spinners:ring-resize" w:10 h:10
-        Text size:"sm" color:"muted"
+        Text size:"sm"
           "Validating your session"
 ```
 
@@ -334,11 +334,12 @@ layout AuthLayout
 Use one responsive page tree. Let the form Grid own width, maximum width, and field rhythm; let each
 control and Button own its surface and size. Add a Card only when the reference visibly groups the
 form on a raised, filled, or outlined panel. A visually flat form remains Grid/Flex content.
-`Section p:0` and a form-side `px` override are
-exceptional full-viewport or rail decisions; do not copy them to ordinary page bands.
+A page Section never receives a padding override, including `p:0` or responsive `p*` values.
+For full-viewport or rail decisions, keep the Section default and place required spacing on the
+inner Flex/Grid that owns the form or media region.
 
 ```text
-Section p:0 minH:"vh-0"
+Section minH:"vh-0"
   Flex direction:"column" align:"center" justify:"center" gap:{ xs:8 md:12 } minH:"vh-0"
     Image src:"/assets/images/brand.svg" alt:"Brand" w:{ xs:72 md:96 }
     Grid columns:1 gap:6 w:"full" maxW:96 px:{ xs:4 md:0 }
@@ -356,7 +357,7 @@ translation: those techniques encode one viewport guess and shrink the usable fo
 outer split is already only half of the viewport.
 
 ```text
-Section p:0 minH:"vh-0"
+Section minH:"vh-0"
   Grid columns:{ xs:1 md:2 } gap:0 minH:"vh-0"
     Box cover:"/assets/images/auth-login.webp" minH:{ xs:40 md:"vh-0" }
     Flex:
@@ -367,9 +368,9 @@ Section p:0 minH:"vh-0"
       minH:{ xs:"vh-40" md:"vh-0" }
       Grid columns:1 gap:5 w:"full" maxW:96
         Flex direction:"column" gap:2
-          Title size:"3xl" weight:"black"
+          Title size:"3xl"
             "Log in"
-          Text size:"sm" color:"muted"
+          Text size:"sm"
             "Use your account to continue securely."
         Flex direction:"column" gap:4
           Input bind:email label:"Email address" placeholder:"you@example.com" w:"full"
@@ -443,9 +444,9 @@ Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"
     Card variant:"solid" scheme:"surface" p:8 rounded:"xl" rotate:-3 animation:"scaleIn"
       Grid columns:1 gap:3
         Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:14 h:14
-        Title size:"2xl" weight:"black"
+        Title size:"2xl"
           "Core product"
-        Text size:"sm" color:"muted"
+        Text size:"sm"
           "One focal surface anchors the scene."
   Box position:"absolute" top:4 right:4
     Chip variant:"solid" scheme:"primary" shadow:"md" shadowColor:"primary"
@@ -453,9 +454,9 @@ Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"
   Box position:"absolute" left:4 bottom:4
     Card variant:"solid" scheme:"background" p:4 shadow:"lg"
       Flex align:"center" gap:3
-        Title size:"2xl" weight:"black" color:"primary"
+        Title size:"2xl"
           "+32%"
-        Text size:"xs" color:"muted"
+        Text size:"xs"
           "Verified activity"
 ```
 
@@ -518,9 +519,14 @@ When a composition needs different visual weight, use nested containers or expli
 widths on the relevant content instead of a target-specific track template.
 
 Prefer a scalar `Title size:"6xl"`; Text and Title sizes already use the fluid responsive scale.
-Use `Title size:{ xs:"4xl" md:"6xl" }` only when the design deliberately changes the token at
-those breakpoints. When specific line breaks are part of the composition, author separate compact and wide headline
-groups with complementary `show` values. Never hide the only copy or action at a breakpoint.
+Never add a responsive size object merely to make typography responsive. Use one only for an
+explicit breakpoint typography change proven after rendering the scalar size. `Title` renders as
+`h2` by default; use `as:"h1"` exactly once for the page's primary title, normally this hero title,
+and omit it from every other Title. The `as:"h1"` Title must use one fixed scalar `size:"..."` value;
+never combine it with a responsive size object or custom weight. This affects web SEO semantics only,
+not visual weight. When specific line breaks are part of the composition, use one multiline child
+rather than duplicate
+compact and wide headline groups. Never hide the only copy or action at a breakpoint.
 
 Treat a media-backed `Box` as a deliberate visual stage: give it a meaningful `minH`, portable
 `cover`, radius, optional shadow, and `position:"relative"`. Place overlay content inside direct
@@ -552,10 +558,10 @@ Section minH:"vh-0"
 
 Use component-owned defaults first. When the default-first render proves an exception, use one
 `gap`, responsive direction, or `w`/`maxW` on the real owner for the missing rhythm or measure. The
-default Section body already provides responsive horizontal and vertical insets, so omit Section
-`p*` props for ordinary bands. Add `pt`, `pb`, `px`, or another padding override only when a user
-requirement or rendered comparison proves a meaningful exception; keep it on one owner instead of
-repeating it through Section, Grid, and Card. Never use unsupported margin props or insert size-only
+default Section body already provides responsive horizontal and vertical insets, so omit all
+Section `p*` props for every band. This prohibition includes `p:0`, responsive objects, and
+full-viewport forms. Put required spacing on the inner Grid/Flex/Card owner instead of repeating it
+through Section, Grid, and Card. Never use unsupported margin props or insert size-only
 Box spacers, empty Grid cells, or breakpoint-specific wrapper trees to reproduce offsets from one
 screenshot.
 

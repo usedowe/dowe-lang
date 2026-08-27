@@ -38,6 +38,9 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
             "bind",
             SourceValue::Bareword(path),
         ) => PropValue::String(path.clone()),
+        (BuiltinComponent::Avatar, "icon", SourceValue::Bareword(path)) => {
+            PropValue::String(format!("@icon-binding:{path}"))
+        }
         (BuiltinComponent::Icon, "fill" | "stroke", SourceValue::Bareword(path)) => {
             PropValue::Binding(
                 dowe_components::PropBinding::new(
@@ -60,6 +63,15 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
         }
         (BuiltinComponent::Button, "iconStart" | "iconEnd", SourceValue::Object(entries)) => {
             PropValue::String(parse_conditional_icon(prop, entries)?)
+        }
+        (BuiltinComponent::Card, "animation", SourceValue::Bareword(path)) => {
+            PropValue::Binding(
+                dowe_components::PropBinding::new(
+                    path.clone(),
+                    dowe_components::PropValueKind::String,
+                )
+                .with_fallback(PropValue::String("none".to_string())),
+            )
         }
         (_, "show", SourceValue::Bareword(path)) => {
             PropValue::String(format!("@signal:{path}"))
@@ -333,11 +345,18 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             "variant" | "scheme" | "size" | "rounded",
             SourceValue::Bareword(_),
         ) => true,
+        (BuiltinComponent::Card, "animation", SourceValue::Bareword(_)) => true,
         (
+            BuiltinComponent::Avatar,
+            "icon",
+            SourceValue::Bareword(_),
+        )
+        | (
             BuiltinComponent::Icon,
             "fill" | "stroke",
             SourceValue::Bareword(_),
-        ) | (BuiltinComponent::Icon, "name", SourceValue::Bareword(_)) => true,
+        )
+        | (BuiltinComponent::Icon, "name", SourceValue::Bareword(_)) => true,
         (BuiltinComponent::Button | BuiltinComponent::Swap, "loading" | "disabled", SourceValue::Bareword(_)) => true,
         (
             BuiltinComponent::SideNav,

@@ -1,5 +1,7 @@
 use crate::menus;
-use dowe_compiler::{compile_dev, compile_dev_with_seeders, generate_database_migrations};
+use dowe_compiler::{
+    compile_dev_server, compile_dev_server_with_seeders, generate_database_migrations,
+};
 use dowe_database::{
     DatabaseServiceConfig, create_account, init_database, list_databases, open_database, run_bench,
     start_database_service,
@@ -118,7 +120,7 @@ pub(crate) async fn run_database_command(
             if args.len() > 1 {
                 return Err("dowe database seeders does not accept arguments".into());
             }
-            let project = compile_dev_with_seeders(&root)?;
+            let project = compile_dev_server_with_seeders(&root, true)?;
             let databases = project.databases.len();
             seed_local_databases(project).await?;
             println!("applied local seeders for {databases} database(s)");
@@ -127,7 +129,7 @@ pub(crate) async fn run_database_command(
             if args.len() > 1 {
                 return Err("dowe database migrate does not accept arguments".into());
             }
-            let project = compile_dev(&root)?;
+            let project = compile_dev_server(&root)?;
             let report = generate_database_migrations(&project)?;
             println!(
                 "database migrations created {} unchanged {} dynamic {}",

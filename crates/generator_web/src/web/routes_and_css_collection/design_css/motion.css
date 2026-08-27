@@ -238,3 +238,9 @@ html.page-transitioning[data-dowe-page-transition='scale']::view-transition-new(
     opacity:0;
   }
 }
+.animate-fade-in { animation:dowe-fade-in 220ms ease-out both; }
+.animate-slide-up { animation:dowe-slide-up 220ms ease-out both; }
+.animate-slide-down { animation:dowe-slide-down 220ms ease-out both; }
+.animate-slide-left { animation:dowe-slide-left 220ms ease-out both; }
+.animate-slide-right { animation:dowe-slide-right 220ms ease-out both; }
+.animate-scale-in { animation:dowe-scale-in 220ms ease-out both; }

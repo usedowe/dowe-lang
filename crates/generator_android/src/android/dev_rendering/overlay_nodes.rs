@@ -29,7 +29,7 @@ fn render_dev_android_overlay_node(
                 children_method,
             );
         }
-        ViewNode::Avatar { props, .. } => {
+        ViewNode::Avatar { props, icon } => {
             let label = props
                 .name
                 .as_deref()
@@ -37,17 +37,34 @@ fn render_dev_android_overlay_node(
                 .and_then(|value| value.chars().next())
                 .map(|value| value.to_uppercase().to_string())
                 .unwrap_or_else(|| "A".to_string());
-            let (size, text_size) = match props.size {
-                ButtonSize::Xs => (24, 12),
-                ButtonSize::Sm => (32, 14),
-                ButtonSize::Md => (40, 16),
-                ButtonSize::Lg => (48, 18),
-                ButtonSize::Xl => (64, 24),
+            let (_static_size, static_text_size) = match props.size {
+                AvatarSize::Xs => (24, 12),
+                AvatarSize::Sm => (32, 14),
+                AvatarSize::Md => (40, 16),
+                AvatarSize::Lg => (48, 18),
+                AvatarSize::Xl => (64, 24),
+                AvatarSize::Xxl => (80, 28),
+                AvatarSize::Xxxl => (96, 32),
+                AvatarSize::Xxxxl => (112, 36),
+                AvatarSize::Xxxxxl => (128, 40),
+                AvatarSize::Xxxxxxl => (144, 44),
+                AvatarSize::Xxxxxxxl => (160, 48),
             };
+            let size_value = props
+                .size_binding
+                .as_ref()
+                .map(|binding| dev_text_expression(&binding.path, None, context))
+                .unwrap_or_else(|| format!("\"{}\"", props.size.as_str()));
+            let size = format!("doweAvatarSize({size_value})");
+            let text_size = props
+                .size_binding
+                .as_ref()
+                .map(|binding| format!("doweAvatarTextSize({})", dev_text_expression(&binding.path, None, context)))
+                .unwrap_or_else(|| format!("{static_text_size}f"));
             let view = next_dev_view(counter);
             if let Some(source) = props.src.as_deref() {
                 output.push_str(&format!(
-                    "        FrameLayout {view} = doweAvatarImage(\"{}\", \"{}\", {}, {}, {}, {text_size}f, {});\n",
+                    "        FrameLayout {view} = doweAvatarImage(\"{}\", \"{}\", {}, {}, {}, {text_size}, {});\n",
                     escape_java(source),
                     escape_java(&props.alt),
                     dev_text_expression(&label, None, context),
@@ -55,9 +72,33 @@ fn render_dev_android_overlay_node(
                     dev_variant_content(&props.style),
                     dev_font_value(props.style.style.font.as_ref().or(inherited_font))
                 ));
+            } else if let Some(icon) = icon {
+                output.push_str(&format!(
+                    "        FrameLayout {view} = new FrameLayout(this);\n"
+                ));
+                let icon_view = format!("view{counter}");
+                let icon_node = ViewNode::Svg {
+                    props: icon.props.clone(),
+                    paths: icon.paths.clone(),
+                };
+                render_dev_android_node(
+                    &icon_node,
+                    &view,
+                    None,
+                    false,
+                    counter,
+                    output,
+                    inherited_font,
+                    inherited_color.clone(),
+                    context,
+                    children_method,
+                );
+                output.push_str(&format!(
+                    "        FrameLayout.LayoutParams {icon_view}Params = new FrameLayout.LayoutParams(doweDp((int)({size} * .6f)), doweDp((int)({size} * .6f)));\n        {icon_view}Params.gravity = Gravity.CENTER;\n        {icon_view}.setLayoutParams({icon_view}Params);\n"
+                ));
             } else {
                 output.push_str(&format!(
-                    "        TextView {view} = doweText({}, {}, {text_size}f, 600, 0f, 1.2f, {});\n        {view}.setGravity(Gravity.CENTER);\n",
+                    "        TextView {view} = doweText({}, {}, {text_size}, 600, 0f, 1.2f, {});\n        {view}.setGravity(Gravity.CENTER);\n",
                     dev_text_expression(&label, None, context),
                     dev_variant_content(&props.style),
                     dev_font_value(props.style.style.font.as_ref().or(inherited_font))

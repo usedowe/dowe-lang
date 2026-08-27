@@ -24,7 +24,7 @@ fn scale_suffix_rem(value: &str) -> Option<String> {
 
 fn button_size_css(value: ButtonSize) -> String {
     format!(
-        "padding:{} {};min-height:{};",
+        "padding:{} {};height:{};",
         scale_rem(value.padding_y()),
         scale_rem(value.padding_x()),
         scale_rem(value.min_height())
@@ -285,7 +285,7 @@ fn append_single_variant_css(
             ".{base}.is-solid.is-{name}{{--dowe-content-text:var(--dowe-{text});--dowe-content-title:var(--dowe-{title});background-color:var(--dowe-{color});color:var(--dowe-{text});border-color:var(--dowe-{color});}}"
         )),
         ComponentVariant::Outlined => {
-            let (surface, content, content_title) = if matches!(base, "card" | "modal" | "toast") {
+            let (surface, content, content_title) = if matches!(base, "modal" | "toast") {
                 if family == ColorFamily::Background {
                     ("var(--dowe-background)", "backgroundText", "backgroundTitle")
                 } else {

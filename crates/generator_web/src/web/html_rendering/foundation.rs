@@ -261,11 +261,20 @@ fn render_html_node_with_context(
                 None,
                 context,
             );
-            if let Some(path) = props.reactive.scheme.as_deref() {
-                card_attrs.push_str(&format!(
-                    r#" data-dowe-variant-binding="true" data-dowe-scheme="{}""#,
-                    escape_attr(&context.signal_path(path))
-                ));
+            if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
+                card_attrs.push_str(r#" data-dowe-variant-binding="true""#);
+                if let Some(path) = props.reactive.variant.as_deref() {
+                    card_attrs.push_str(&format!(
+                        r#" data-dowe-variant="{}""#,
+                        escape_attr(&context.signal_path(path))
+                    ));
+                }
+                if let Some(path) = props.reactive.scheme.as_deref() {
+                    card_attrs.push_str(&format!(
+                        r#" data-dowe-scheme="{}""#,
+                        escape_attr(&context.signal_path(path))
+                    ));
+                }
             }
             let mut html = format!("<article{}>", card_attrs);
             for child in children {

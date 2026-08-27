@@ -33,6 +33,9 @@ fn variant_classes(base: &str, props: &VariantProps) -> Vec<String> {
     append_style_classes(&mut classes, &props.style);
     if base == "card" {
         append_container_visual_classes(&mut classes, &props.style);
+        append_responsive_classes(&mut classes, "card-color", props.style.text.as_ref(), |value| {
+            value.as_str().to_string()
+        });
     }
     let default_variant = if base == "accordion" {
         ComponentVariant::Ghost

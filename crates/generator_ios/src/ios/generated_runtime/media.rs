@@ -3,14 +3,20 @@ fn swift_runtime_media() -> &'static str {
     let source: String
 
     var body: some View {
-        if let url = doweImageURL(source) {
-            AsyncImage(url: url) { image in
-                image.resizable().scaledToFill().clipped()
-            } placeholder: {
-                Color.clear
+        GeometryReader { proxy in
+            Group {
+                if let url = doweImageURL(source) {
+                    AsyncImage(url: url) { image in
+                        image.resizable().scaledToFill().clipped()
+                    } placeholder: {
+                        Color.clear
+                    }
+                } else {
+                    Image(source).resizable().scaledToFill().clipped()
+                }
             }
-        } else {
-            Image(source).resizable().scaledToFill().clipped()
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
         }
     }
 }

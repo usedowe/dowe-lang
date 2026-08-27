@@ -34,10 +34,17 @@ pub fn compile_dev(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
 }
 
 pub fn compile_dev_server(root: impl AsRef<Path>) -> DoweResult<CompiledProject> {
+    compile_dev_server_with_seeders(root, false)
+}
+
+pub fn compile_dev_server_with_seeders(
+    root: impl AsRef<Path>,
+    include_seeders: bool,
+) -> DoweResult<CompiledProject> {
     compile_project(
         root,
         CompileEnvironment::Development,
-        false,
+        include_seeders,
         true,
         false,
         true,

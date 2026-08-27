@@ -56,6 +56,9 @@ pub fn prop_color_tokens() -> &'static [&'static str] {
         "danger",
         "background",
         "surface",
+        "white",
+        "black",
+        "transparent",
     ]
 }
 
@@ -154,6 +157,11 @@ pub fn component_prop_contract(
         }
         "wide" if component == BuiltinComponent::SideNav => Some(boolean),
         "src" if component == BuiltinComponent::Image => Some(string),
+        "animation" if component == BuiltinComponent::Card => Some(string),
+        "name" | "alt" if component == BuiltinComponent::Avatar => Some(string),
+        "icon" if component == BuiltinComponent::Avatar => {
+            Some(string.with_validator(PropValidator::IconName))
+        }
         "bind"
             if matches!(
                 component,

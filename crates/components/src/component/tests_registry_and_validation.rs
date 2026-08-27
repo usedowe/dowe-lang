@@ -1,5 +1,13 @@
 use std::{fs, path::Path};
 
+#[test]
+fn avatar_icon_prop_has_a_shared_contract() {
+    let contract = super::component_prop_contract(super::BuiltinComponent::Avatar, "icon")
+        .expect("Avatar icon prop contract");
+    assert_eq!(contract.kind, super::PropValueKind::String);
+    assert_eq!(contract.validator, super::PropValidator::IconName);
+}
+
 use super::{
     AvatarGroupProps, BarPosition, BoxPosition, BrandProps, Breakpoint, BuiltinComponent,
     ButtonSize, COMPONENT_REGISTRY, COUNTRY_FLAGS, CanvasBackground, CanvasFit, CarouselVariant,

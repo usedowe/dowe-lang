@@ -14,11 +14,14 @@ keep project or built-in defaults.
 | Structural `background`                                                                             | `background`, `backgroundText`, `backgroundTitle` | none                                                    |
 | Structural `surface`                                                                                | `surface`, `surfaceText`, `surfaceTitle`          | none                                                    |
 
-`bg` and `color` accept color tokens. On a child-bearing container, `color:<token>` sets the
-inherited foreground for descendant text and current-color paint until a descendant declares its
-own `color`. This includes `Box`, `Section`, `Flex`, `Grid`, `Brand`, `Banner`, `Marquee`, and
-`Scaffold`. `Box bg:<token>` paints the container after padding and size and before radius and
-border. On `Text` and `Title`, `bg:<token>` paints the content-sized text surface; combine it with
+`bg` and `color` accept design color tokens plus the system colors `white`, `black`, and
+`transparent`; these system colors are target-provided and must not be declared in `theme.dowe`.
+On a child-bearing container, `color:<token>` sets the inherited foreground for descendant text
+and current-color paint until a descendant declares its own `color`. This includes `Box`, `Section`, `Flex`, `Grid`, `Brand`, `Banner`, `Marquee`, and
+`Scaffold`. Although the compiler accepts `color` on `Text` and `Title`, never author it there:
+let their parent `scheme` provide the `Text` and `Title` roles. `Box bg:<token>` paints the
+container after padding and size and before radius and border. On `Text` and `Title`, `bg:<token>`
+paints the content-sized text surface; combine it with
 `rounded` and padding when the text should read as a pill or badge.
 
 `scheme` on `Button`, `ToggleTheme`, `Fab`, `fabAction`, `Slider`, `Input`, `Select`, `SideNav`,
@@ -46,10 +49,11 @@ plus `muted`. The normalized variant name is `outlined`.
 `primary`, with `mutedText` and `mutedTitle` chosen for clear contrast against that lighter fill.
 Use `muted` for lower-emphasis solid controls such as `Input` when a solid primary surface feels
 too heavy, rather than treating muted as an unrelated neutral.
-`outlined` uses a structural surface with a family-colored border, and `ghost` is transparent with
-family-colored content. Child-bearing variant surfaces pass their resolved foreground token to all
-of their content regions unless the descendant declares `color`; for example, a muted Card
-supplies `MutedText` to ordinary content and `MutedTitle` to `Title`. AppBar or Footer
+`outlined` is transparent with family-colored content, title, and border, and `ghost` is
+transparent with family-colored content and title. Child-bearing variant surfaces pass their resolved foreground token to all
+of their content regions. A muted Card supplies `MutedText` to ordinary content and `MutedTitle` to
+`Title`; `Text` and `Title` must not locally override that inherited foreground with a `color` prop.
+If a text contrast issue appears, change the owning surface's `scheme` instead. AppBar or Footer
 supplies its content roles to `top`, `start`, `center`, `end`, and `bottom`. Button labels use the
 text role. Transparent `SideNav` headers use the visible base color of their `scheme`; an explicit
 icon color remains a local override.
@@ -127,6 +131,8 @@ Resolve container spacing in this order:
 
 1. Keep the component and theme defaults. An ordinary `Section` already provides
    `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }`; a `Card` already provides `p:{ xs:4 lg:5 }`.
+   Never author `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` on a page `Section`, including a
+   responsive object or `p:0`. This is strict in every breakpoint and dimension.
 2. Render the minimal tree. `Grid` and `Flex` default to zero gap; add one `gap` on the owning
    container only when the child group needs explicit nonzero rhythm. Do not add a gap automatically
    with every Grid or Flex, and do not add padding merely to separate its children.
@@ -135,8 +141,10 @@ Resolve container spacing in this order:
    do not repeat the same inset on `Section`, `Grid`, and `Card`.
 4. Use `Box` only for its documented layer responsibility, never as a padding or margin workaround.
 
-An explicit responsive padding object is an exception, not the normal way to author every band. A
-transparent `Card variant:"ghost" p:0` used only as a layout wrapper is also unnecessary; remove it
+Padding on a page Section is not an exception. Keep Section padding omitted even for compact bands,
+heroes, full-viewport compositions, and responsive overrides; move required inner spacing to the
+actual Grid, Flex, Card, or control owner. A transparent `Card variant:"ghost" p:0` used only as a
+layout wrapper is also unnecessary; remove it
 unless the Card owns a meaningful semantic or behavioral boundary.
 
 ## Surface hierarchy and modern depth
@@ -223,7 +231,7 @@ exceptional layer plane that normal flow cannot express.
 | Layout             | `justify`, `align`, `gap`, `columns`, `rows`, `flex` | Layout keywords, numeric grid counts, scale values, validated pixel gaps; `flex` accepts `"initial"`, `"auto"`, `"none"`, or `1`, including responsive values |
 | Grid item          | `colSpan`, `rowSpan`                                | Positive integers on direct `Box`, `Section`, or `Card` children of `Grid`                                                                                                           |
 | Box position       | `position`, `top`, `right`, `bottom`, `left`        | Static position mode; responsive Dowe-scale offsets on absolute or fixed Box                                                                                                         |
-| Media background   | `cover`, `overlay`                                  | Static asset path or `https://` URL; boolean, opacity number, RGBA, or linear gradient                                                                                               |
+| Media background   | `cover`, `overlay`                                  | Static asset path or `https://` URL; numeric opacity from `0` to `1`                                                                                               |
 | Section background | `background`                                        | `aurora`, `sunrise`, `ocean`, `meadow`, `slate` on `Section`                                                                                                                 |
 | Boxed width        | `boxed`                                             | Static boolean on `Section`, `Scaffold`, `AppBar`, `Footer`, `BottomBar`                                                                                                             |
 | Elevation          | `shadow`, `shadowColor`                             | `xs` to `xl`; semantic color family                                                                                                                                                  |
@@ -291,24 +299,41 @@ entries, `Splash`, and `Path` do not accept these shared style props.
 ## Typography
 
 `Text` and `Title` use fluid typography driven by `size`, defaulting to `md`. `Title` defaults to
-weight `600` with tight tracking; `Text` defaults to weight `400`. Both accept:
+weight `600` with tight tracking; `Text` defaults to weight `400`. Omit `weight` on `Title`:
+the Title component already supplies the appropriate heading weight, so `weight:"black"` is
+authoring noise unless a spec explicitly requires a different title weight. `Title` renders as HTML
+`h2` by default. Use `as:"h1"` exactly once for the page's primary document title, normally the hero;
+this is an SEO heading-semantic choice only and does not change visual styling. An `as:"h1"` Title
+must use one fixed scalar `size:"..."` value and must not use a responsive size object or custom
+weight. Omit `as` from every other Title. Both accept:
 
 | Prop               | Values                                                                                       |
 | ------------------ | -------------------------------------------------------------------------------------------- |
 | `align`            | `start`, `center`, `end`, `justify`, or responsive object                                    |
 | `size`             | `xs` through `9xl`                                                                           |
-| `color`, `bg`      | Design color tokens                                                                          |
+| `bg`              | Design color tokens                                                                          |
 | `weight`           | `thin`, `extralight`, `light`, `regular`, `medium`, `semibold`, `bold`, `extrabold`, `black` |
 | `spacing`          | `tightest`, `tighter`, `tight`, `normal`, `wide`, `wider`, `widest`                          |
 | `font`             | Dowe font token, overriding the `theme.dowe` `Text` or `Title` default                       |
 | Common style props | `p*`, `w`, `h`, `minW`, `minH`, `maxW`, `maxH`, `rounded`, `border`                          |
 
-`size` is fluid/responsive when written as a scalar, so `size:"lg"` is the preferred form and
-does not need a breakpoint object. Use `size:{ xs:"md" lg:"xl" }` only for an intentional
-breakpoint override. `align` is independent from `Flex.align` and `Grid.align`; it controls the
+Do not author `color` on `Text` or `Title`, including `color:"muted"` and `color:"primary"`.
+Their color is inherited from the nearest parent `scheme`, which resolves the corresponding
+`Text` and `Title` roles. Use the parent's scheme to fix contrast; use `size`, `weight`, or
+`spacing` for hierarchy. This prohibition applies even when the compiler accepts the prop and
+is mandatory in generated views, documentation examples, and reusable fragments.
+
+`size` is fluid/responsive when written as a scalar, so `size:"lg"` is the required preferred
+form and does not need a breakpoint object. Do not write a responsive size object merely to make a
+Title or Text responsive. Use one only for an explicit breakpoint typography change proven after
+rendering the scalar size; this exception never applies to `Title as:"h1"`, which must remain scalar.
+`align` is independent from `Flex.align` and `Grid.align`; it controls the
 text lines themselves and uses logical edges so `start` and `end` remain portable in RTL layouts.
-Use a multiline string child when a line boundary must be deterministic; use `maxW` when natural
-wrapping is acceptable. Both forms remain one semantic `Text` or `Title` node across targets.
+Use a multiline string child when a line boundary must be deterministic or when adjacent prose
+belongs to one explanatory block; use `maxW` when natural wrapping is acceptable. Merge consecutive
+explanatory `Text` nodes into one triple-quoted `Text`, using blank lines between paragraphs. Do not
+create separate Text nodes just to obtain vertical spacing; use the parent Grid/Flex `gap`. Both
+forms remain one semantic `Text` or `Title` node across targets.
 
 ## Button metrics and navigation
 
@@ -340,7 +365,8 @@ content body with responsive defaults `px:{ xs:4 md:6 }` and `py:{ xs:10 md:16 }
 vertical inset separates ordinary page bands without repeated props. `boxed:true` caps and centers
 only that body at `96rem` web or `1536` native. `Section background:<preset>` cannot combine with
 `cover` because both are base layers. `Card` defaults to `variant:"solid"`, `scheme:"surface"`,
-`rounded:"md"`, and inner padding `p:{ xs:4 lg:5 }`.
+`rounded:"md"`, and inner padding `p:{ xs:4 lg:5 }`. `Card color:"white"`, `color:"black"`,
+or `color:"transparent"` overrides the scheme foreground and is useful for cover cards.
 
 Padding overrides follow scope: `p` replaces all sides, `px`/`py` replace one axis, and
 `pl`/`pr`/`pt`/`pb` replace one side while unspecified sides keep the default.
@@ -406,10 +432,7 @@ only when the region has grouped-surface semantics, not merely to obtain a backg
 | -------------------------------------- | ------------------------------------------ |
 | `cover:"/images/hero.jpg"`             | Static asset path cover image              |
 | `cover:"https://example.com/hero.jpg"` | Validated HTTPS cover image                |
-| `overlay:true`                         | Black overlay at `0.4` opacity             |
 | `overlay:0.6`                          | Black overlay at the given opacity         |
-| `overlay:"rgba(0,0,0,0.5)"`            | Validated RGBA overlay                     |
-| `overlay:"linear-gradient(...)"`       | Portable validated linear gradient overlay |
 
 The stack renders image, then overlay, then content. `overlay` without `cover`, dynamic `cover`
 values, and unsafe URL schemes fail compilation. `Box`, `Section`, and `Card` support both props.

@@ -219,7 +219,7 @@ fn dev_activity_flex_layout() -> &'static str {
                     totalWeight += weight;
                     continue;
                 }
-                int width = align == DOWE_ALIGN_STRETCH
+                int width = align == DOWE_ALIGN_STRETCH && params.width == ViewGroup.LayoutParams.WRAP_CONTENT
                     ? ViewGroup.LayoutParams.MATCH_PARENT : params.width;
                 child.measure(
                     getChildMeasureSpec(widthSpec, horizontalPadding, width),
@@ -242,7 +242,7 @@ fn dev_activity_flex_layout() -> &'static str {
                     continue;
                 }
                 ViewGroup.LayoutParams params = doweChildParams(child);
-                int width = align == DOWE_ALIGN_STRETCH
+                int width = align == DOWE_ALIGN_STRETCH && params.width == ViewGroup.LayoutParams.WRAP_CONTENT
                     ? ViewGroup.LayoutParams.MATCH_PARENT : params.width;
                 int height = totalWeight > 0f
                     ? Math.round(remainingHeight * (weight / totalWeight)) : 0;

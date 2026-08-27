@@ -1,6 +1,6 @@
 ---
 name: dowe-server
-description: Use for Dowe source under server or server blocks: routes, handlers, middleware, functions, persistence, tasks, protocols, security, responses, and project-owned backend behavior required by a View request. Pair with dowe-views when a route has an affected View consumer; skip work that is entirely visual or theme-only.
+description: "Use for Dowe source under server or server blocks: routes, handlers, middleware, functions, persistence, tasks, protocols, security, responses, and project-owned backend behavior required by a View request. Pair with dowe-views when a route has an affected View consumer; skip work that is entirely visual or theme-only."
 ---
 
 # Dowe server authoring

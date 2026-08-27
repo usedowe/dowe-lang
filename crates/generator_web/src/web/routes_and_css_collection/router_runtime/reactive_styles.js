@@ -65,5 +65,16 @@ function renderReactiveStyles(root, state, scope) {
       const css = reactiveStyleValue(name, value);
       if (css != null) element.style[property] = css;
     }
+    const animationMarker = [...element.classList].find(value => value.startsWith("dowe-style-binding-animation-"));
+    if (animationMarker) {
+      const path = animationMarker.slice("dowe-style-binding-animation-".length);
+      const animation = String(readPath(state, path, scope) || "none");
+      const animationClasses = {
+        fadeIn: "animate-fade-in", slideUp: "animate-slide-up", slideDown: "animate-slide-down",
+        slideLeft: "animate-slide-left", slideRight: "animate-slide-right", scaleIn: "animate-scale-in"
+      };
+      for (const className of Object.values(animationClasses)) element.classList.remove(className);
+      if (Object.prototype.hasOwnProperty.call(animationClasses, animation)) element.classList.add(animationClasses[animation]);
+    }
   }
 }

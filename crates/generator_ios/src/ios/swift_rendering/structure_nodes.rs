@@ -287,10 +287,29 @@ fn render_swift_structure_node(
         }
         ViewNode::Card { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);
+            let mut card_outer_style = props.style.clone();
+            let has_cover = card_outer_style.cover.is_some();
+            if has_cover {
+                card_outer_style.spacing = Default::default();
+            }
+            let mut content_style = StyleProps::default();
+            content_style.spacing = props.style.spacing.clone();
+            let content_modifiers = swift_modifiers_for_style_with_width_alignment(&content_style, None).join("");
+            let content_color_modifier = props
+                .style
+                .text
+                .as_ref()
+                .map(|color| {
+                    let color = swift_color_value(color);
+                    format!(
+                        ".foregroundStyle({color} ?? Color.clear).environment(\\.doweTitleColor, {color} ?? Color.clear)"
+                    )
+                })
+                .unwrap_or_default();
             if props.style.cover.is_some() {
                 output.push_str(&format!("{pad}ZStack(alignment: .topLeading) {{\n"));
                 output.push_str(&format!(
-                    "{pad}    DoweCoverImage(source: {} ?? \"\")\n",
+                    "{pad}    DoweCoverImage(source: {} ?? \"\")\n        .frame(maxWidth: .infinity, maxHeight: .infinity)\n        .clipped()\n",
                     swift_cover_value(props.style.cover.as_ref().expect("cover"))
                 ));
                 if let Some(overlay) = props.style.overlay.as_ref() {
@@ -313,8 +332,8 @@ fn render_swift_structure_node(
                         context,
                     );
                 }
-                output.push_str(&format!("{pad}    }}\n"));
-                output.push_str(&format!("{pad}}}\n"));
+                output.push_str(&format!("{pad}    }}{content_modifiers}{content_color_modifier}\n"));
+                output.push_str(&format!("{pad}}}.frame(maxWidth: .infinity, alignment: .leading)\n"));
             } else {
                 output.push_str(&format!(
                     "{pad}VStack(alignment: .leading, spacing: 0) {{\n"
@@ -332,11 +351,7 @@ fn render_swift_structure_node(
                 }
                 output.push_str(&format!("{pad}}}\n"));
             }
-            let mut card_style = props.style.clone();
-            card_style.shadow = None;
-            card_style.shadow_color = None;
-            card_style.set_animation(None);
-            let mut modifiers = swift_modifiers_for_container_style(&card_style, flow);
+            let mut modifiers = swift_modifiers_for_container_style(&card_outer_style, flow);
             let reactive_text = |path: &str, fallback: &str| {
                 context
                     .item_value(path)
@@ -372,18 +387,27 @@ fn render_swift_structure_node(
                     ".environment(\\.doweTitleColor, doweCardTitle({variant}, {scheme}))"
                 ));
             } else {
-                modifiers.push(format!(".background({})", card_variant_container(props)));
-                modifiers.push(format!(".foregroundStyle({})", card_variant_content(props)));
+                modifiers.push(format!(".background({})", card_surface_container(props)));
+                modifiers.push(format!(".foregroundStyle({})", card_surface_content(props)));
                 modifiers.push(format!(
                     ".environment(\\.doweTitleColor, {})",
-                    card_variant_title(props)
+                    card_surface_title(props)
                 ));
+            }
+            if let Some(color) = props.style.text.as_ref() {
+                let color = swift_color_value(color);
+                modifiers.push(format!(".foregroundStyle({color} ?? Color.clear)"));
+                modifiers.push(format!(".environment(\\.doweTitleColor, {color} ?? Color.clear)"));
             }
             let radius = swift_card_radius(&props.style);
             modifiers.push(format!(
                 ".clipShape(RoundedRectangle(cornerRadius: {radius}))"
             ));
-            if props.style.border.is_none()
+            if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
+                modifiers.push(format!(
+                    ".overlay(RoundedRectangle(cornerRadius: {radius}).stroke(doweCardContent({variant}, {scheme}), lineWidth: ({variant} == \"outlined\" ? CGFloat(1) : CGFloat(0))))"
+                ));
+            } else if props.style.border.is_none()
                 && props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined
             {
                 modifiers.push(format!(

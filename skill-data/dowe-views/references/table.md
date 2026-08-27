@@ -225,7 +225,7 @@ Flex direction:"column" gap:0
         Grid columns:1 gap:0
           Text size:"sm" weight:"bold"
             "{member.name}"
-          Text size:"xs" color:"muted"
+          Text size:"xs"
             "{member.role}"
       Text size:"sm" show:{ xs:false md:true }
         "{member.company}"

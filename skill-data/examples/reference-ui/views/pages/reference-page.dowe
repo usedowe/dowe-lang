@@ -48,14 +48,14 @@ page ReferencePage
             "REFERENCE SYSTEM · LIVE"
           Title size:{ xs:"5xl" md:"7xl" } weight:"black"
             "Build interfaces with a point of view"
-          Text size:{ xs:"md" md:"lg" } color:"muted"
+          Text size:{ xs:"md" md:"lg" }
             "Translate evidence into layered, natural product design without sacrificing Dowe portability."
           Grid columns:{ xs:1 sm:2 } align:{ xs:"stretch" sm:"center" } gap:3
             Button href:"/#product" size:"lg"
               "Explore the system"
             Button href:"/#workflow" variant:"outlined" scheme:"muted" size:"lg"
               "See the workflow"
-          Text size:"sm" color:"muted"
+          Text size:"sm"
             "✓ Semantic components · authored composition · deterministic review"
         Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
           Flex direction:"column" align:"center" justify:"center" minH:{ xs:64 md:80 }
@@ -67,7 +67,7 @@ page ReferencePage
                     "DOWE UI"
                 Title size:{ xs:"2xl" md:"3xl" } weight:"black"
                   "Portable visual stage"
-                Text size:"sm" color:"muted"
+                Text size:"sm"
                   "One focal object anchors proof, status, and spatial detail."
                 Flex gap:2
                   Divider scheme:"primary" w:"full"
@@ -79,17 +79,17 @@ page ReferencePage
           Box position:"absolute" left:4 bottom:4
             Card variant:"solid" scheme:"background" p:4 shadow:"lg"
               Flex align:"center" gap:3
-                Title size:"2xl" weight:"black" color:"primary"
+                Title size:"2xl" weight:"black"
                   "32%"
-                Text size:"xs" color:"muted"
+                Text size:"xs"
                   "Less generic drift"
       Grid columns:{ xs:2 md:4 } gap:3
         each in:proofMetrics as:metric key:metric.id
           Card variant:"solid" scheme:"surface" p:{ xs:4 md:5 } h:"full" border:1 borderColor:"muted"
             Flex direction:"column" gap:1
-              Title size:{ xs:"2xl" md:"3xl" } weight:"black" color:"primary"
+              Title size:{ xs:"2xl" md:"3xl" } weight:"black"
                 "{metric.value}"
-              Text size:"xs" color:"muted"
+              Text size:"xs"
                 "{metric.label}"
 
   Section bg:"muted" boxed:true py:6
@@ -114,11 +114,11 @@ page ReferencePage
   Section id:"product" boxed:true bg:"surface" py:{ xs:12 md:20 }
     Flex direction:{ xs:"column" md:"row" } gap:{ xs:8 md:14 } align:"start"
       Grid columns:1 align:"start" gap:4 w:"full"
-        Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+        Text size:"xs" weight:"bold" spacing:"widest"
           "DESIGN GRAMMAR"
         Title size:{ xs:"4xl" md:"5xl" } weight:"black"
           "Structure that still feels designed"
-        Text color:"muted"
+        Text
           "The system keeps semantic ownership while giving every important band a visual payload and a distinct composition."
         Card variant:"solid" scheme:"primary" p:6 shadow:"xl" shadowColor:"primary"
           Flex direction:"column" gap:5
@@ -135,11 +135,11 @@ page ReferencePage
           Card variant:"solid" scheme:"background" p:{ xs:5 md:6 } h:"full" border:1 borderColor:"muted"
             Flex direction:"column" justify:"between" gap:8 h:"full"
               Grid columns:1 gap:3
-                Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+                Text size:"xs" weight:"bold" spacing:"widest"
                   "{feature.index}"
                 Title size:"2xl" weight:"black"
                   "{feature.title}"
-                Text size:"sm" color:"muted"
+                Text size:"sm"
                   "{feature.description}"
               Divider scheme:"primary"
 
@@ -147,11 +147,11 @@ page ReferencePage
     Flex direction:"column" gap:{ xs:8 md:12 }
       Grid columns:{ xs:1 md:2 } gap:5 align:"end"
         Flex direction:"column" align:"start" gap:3
-          Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+          Text size:"xs" weight:"bold" spacing:"widest"
             "STATEFUL PRODUCT UI"
           Title size:{ xs:"4xl" md:"6xl" } weight:"black"
             "Behavior belongs inside the composition"
-          Text color:"muted"
+          Text
             "Loading, empty, populated, and error states remain declarative without reducing the page to dashboard boilerplate."
         Button onClick:loadMetrics loading:loadingMetrics size:"lg"
           "Refresh metrics"
@@ -165,23 +165,23 @@ page ReferencePage
           Card variant:"solid" scheme:"surface" p:6 shadow:"lg"
             Grid columns:1 gap:3
               Flex align:"center" justify:"between" gap:3
-                Text size:"sm" color:"muted"
+                Text size:"sm"
                   "{metric.label}"
                 Icon name:"check-circle-bold-duotone" fill:"success" w:6 h:6
-              Title size:"4xl" weight:"black" color:"primary"
+              Title size:"4xl" weight:"black"
                 "{metric.value}"
               Divider scheme:"muted"
-              Text size:"sm" color:"muted"
+              Text size:"sm"
                 "{metric.detail}"
 
   Section id:"workflow" boxed:true bg:"background" py:{ xs:12 md:20 }
     Grid columns:{ xs:1 md:2 } gap:{ xs:8 md:16 } align:"start"
       Flex direction:"column" align:"start" gap:4
-        Text size:"xs" weight:"bold" spacing:"widest" color:"primary"
+        Text size:"xs" weight:"bold" spacing:"widest"
           "FROM EVIDENCE TO SOURCE"
         Title size:{ xs:"4xl" md:"5xl" } weight:"black"
           "Three deliberate passes"
-        Text color:"muted"
+        Text
           "Direction first, visual payload second, responsive refinement last."
       Flex direction:"column" gap:3
         each in:steps as:step key:step.id
@@ -192,7 +192,7 @@ page ReferencePage
               Grid columns:1 gap:2
                 Title size:"2xl" weight:"black"
                   "{step.title}"
-                Text size:"sm" color:"muted"
+                Text size:"sm"
                   "{step.description}"
 
   Section id:"contact" background:"meadow" boxed:true py:{ xs:12 md:20 }

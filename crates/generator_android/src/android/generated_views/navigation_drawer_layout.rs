@@ -405,7 +405,7 @@ private fun DoweCoverBox(modifier: Modifier = Modifier, source: String?, overlay
             Image(
                 bitmap = image.asImageBitmap(),
                 contentDescription = null,
-                modifier = Modifier.matchParentSize(),
+                modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
         }

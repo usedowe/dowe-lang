@@ -77,13 +77,14 @@ private fun doweReadImageBitmap(context: android.content.Context, source: String
         connection.setRequestProperty("User-Agent", "Dowe/1.0")
         connection.setRequestProperty("Accept", "image/*")
         try {
-            connection.inputStream.use { input ->
-                FileOutputStream(temporary).use { output -> input.copyTo(output) }
-            }
+            if (connection.responseCode !in 200..299) return null
+            val bytes = connection.inputStream.use { it.readBytes() }
+            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+            FileOutputStream(temporary).use { output -> output.write(bytes) }
             if (!temporary.renameTo(cached)) {
                 temporary.delete()
             }
-            BitmapFactory.decodeFile(cached.absolutePath)
+            bitmap
         } finally {
             connection.disconnect()
             temporary.delete()

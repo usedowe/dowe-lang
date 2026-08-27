@@ -1,6 +1,6 @@
 use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, AlertProps, Align, ArcChartProps,
-    AreaChartProps, AudioProps, AvatarGroupItem, AvatarGroupProps, AvatarProps, BadgeProps,
+    AreaChartProps, AudioProps, AvatarGroupItem, AvatarGroupProps, AvatarProps, AvatarSize, BadgeProps,
     BannerProps, BarChartProps, BarProps, BottomBarTab, BoxPosition, BrandProps, Breakpoint,
     ButtonSize, CameraProps, CandlestickProps, CanvasBackground, CanvasProps, DiagramProps,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,

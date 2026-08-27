@@ -52,7 +52,9 @@ layout AppLayout
 ```
 
 Every page starts with `Section`. Add sibling `Section` declarations for distinct hero, content,
-form, catalog, pricing, testimonial, or call-to-action bands.
+form, catalog, pricing, testimonial, or call-to-action bands. Section already owns responsive
+padding; never author `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` on a page Section, including
+responsive values and `p:0`.
 
 ```text
 page BlogsPage
@@ -174,8 +176,19 @@ outline the complete control.
 Common structural props include `Grid columns`, `rows`, and `gap`; `Flex direction`, `gap`, `align`,
 `justify`, and `wrap`; and responsive values such as `columns:{ xs:1 md:2 }`. Read
 `references/styles.md` for the complete color, variant, spacing, sizing, typography, `show`,
-`animation`, cover, anchor, and navigation prop contract. Static visible text for `Text`, `Title`,
-and `Button` is one direct quoted child. Dynamic visible text uses one complete braced binding path. The binding must resolve to a string; numeric or boolean Signals cannot be rendered directly. Convert numeric results with `set <stringSignal> source:parse.string value:<numberPath>` before binding them in `Text` or `Title`.
+`animation`, cover, anchor, and navigation prop contract. `Title` renders as `h2` by default;
+use `as:"h1"` exactly once for the page's primary title, normally in the hero, and omit it from
+all other Titles. This is an SEO heading-semantic choice only. An `as:"h1"` Title must use one
+fixed scalar `size:"..."` value; never use a responsive size object or custom weight with it. Omit
+`weight` on Title because its heading weight is already appropriate; use its scalar fluid `size`
+for normal Titles rather than a responsive size object unless a deliberate breakpoint typography
+change is proven. Static visible text for `Text`,
+`Title`, and `Button` is one direct quoted child. Dynamic visible text uses one complete braced
+binding path. The binding must resolve to a string; numeric or boolean Signals cannot be rendered
+directly. Convert numeric results with `set <stringSignal> source:parse.string value:<numberPath>`
+before binding them in `Text` or `Title`. Merge adjacent explanatory Text nodes into one Text with
+a triple-quoted multiline child and blank lines between paragraphs; use parent gap for separate
+semantic blocks.
 
 ## Repeated views
 

@@ -265,7 +265,10 @@ async fn production_access_protects_routes_and_assets_before_the_application() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
     let project = compile_dev(temp.path()).expect("project");
-    let hash = format!("{:x}", Sha256::digest(b"stage-password-123"));
+    let hash = Sha256::digest(b"stage-password-123")
+        .iter()
+        .map(|value| format!("{value:02x}"))
+        .collect::<String>();
     let access = ProductionAccess::new("stage", &hash).expect("access");
     let server =
         start_production_with_access(project, "127.0.0.1:0".parse().expect("addr"), Some(access))

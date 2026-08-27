@@ -679,7 +679,7 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
             ("view components", "(required body content)"),
             ("footer", "(optional region)"),
         ],
-        "Avatar" => &[("icon", "(optional region)")],
+        "Avatar" => &[("icon", "(optional region with one Svg or Icon child)")],
         "Dropdown" => &[
             ("trigger", "(required region)"),
             ("header", "(optional region)"),

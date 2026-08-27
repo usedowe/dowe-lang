@@ -374,11 +374,16 @@ fn generates_relative_box_cover_from_project_assets_for_compose_and_dev_launcher
         .next()
         .expect("cover runtime boundary");
     assert!(cover_runtime.contains("doweLoadImageBitmap(context, source)"));
+    assert!(generated.contains("connection.responseCode !in 200..299"));
+    assert!(generated.contains("BitmapFactory.decodeByteArray(bytes, 0, bytes.size)"));
+    assert!(cover_runtime.contains("modifier = Modifier.fillMaxSize()"));
     assert!(!cover_runtime.contains("setImageURI(Uri.parse(source))"));
 
     let dev = dev_java_source(&output).content;
     assert!(dev.contains("/assets/img/guarias-login.webp"));
     assert!(dev.contains("CoverImage.setScaleType(ImageView.ScaleType.CENTER_CROP)"));
+    assert!(dev.contains("connection.getResponseCode() < 200"));
+    assert!(dev.contains("BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length)"));
     assert!(dev.contains("doweLoadImageBitmap(view"));
 }
 
@@ -1036,7 +1041,10 @@ fn generates_compose_box_and_text() {
     assert!(dev.content.contains(
             "new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)"
         ));
-    assert!(dev.content.contains("doweCard(DOWE_PRIMARY, null)"));
+    assert!(
+        dev.content
+            .contains("doweCard(DOWE_PRIMARY, (\"outlined\".equals(\"solid\") ? null : null))")
+    );
     assert!(dev.content.contains(
         "private GradientDrawable doweInputBackground(int color, Integer strokeColor, float radius)"
     ));
@@ -1625,6 +1633,7 @@ fn generates_centered_icon_button_without_empty_android_label() {
                         },
                         ..Default::default()
                     },
+                    size: Some(ButtonSize::Md),
                     icon_start: Some(solar_control_icon("settings").expect("settings icon")),
                     icon_only: true,
                     label: Some("Open settings".to_string()),
@@ -1683,11 +1692,13 @@ fn generates_centered_icon_button_without_empty_android_label() {
         .collect::<Vec<_>>()
         .join("\n");
 
-    assert!(
-        compose
-            .content
-            .contains(".semantics { contentDescription = \"Open settings\" }.defaultMinSize")
-    );
+    assert!(compose.content.contains(".semantics { contentDescription = \"Open settings\" }"));
+    assert!(compose
+        .content
+        .contains(".doweWidth(doweResponsive(viewportWidth, xs = DoweSize.Fixed(40.dp)))"));
+    assert!(compose
+        .content
+        .contains(".doweHeight(doweResponsive(viewportWidth, xs = DoweSize.Fixed(40.dp)))"));
     assert!(
         compose
             .content
@@ -1858,8 +1869,11 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
                     },
                     src: None,
                     name: Some("Dowe".to_string()),
+                    name_binding: None,
                     alt: "Dowe".to_string(),
-                    size: ButtonSize::Md,
+                    alt_binding: None,
+                    size: AvatarSize::Md,
+                    size_binding: None,
                     status: None,
                     bordered: false,
                 },

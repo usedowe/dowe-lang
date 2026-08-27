@@ -59,7 +59,7 @@ fn compiles_refactored_container_props() {
     children"#,
         r#"page loginPage
   Grid columns:{ xs:1 md:3 } rows:2 gap:"10px 20px" justify:"center" align:"end"
-    Box colSpan:{ md:2 } cover:{ xs:"/mobile.jpg" md:"/desktop.jpg" } overlay:true
+    Box colSpan:{ md:2 } cover:{ xs:"/mobile.jpg" md:"/desktop.jpg" } overlay:0.4
       Text
         "Hero"
     Card variant:"solid" scheme:"surface" rounded:"full" rowSpan:2 cover:"/images/card.jpg" overlay:0.6
@@ -103,7 +103,7 @@ fn compiles_refactored_container_props() {
     assert!(android.contains("DoweCoverBox"));
     assert!(android.contains("\"/desktop.jpg\""));
     assert!(android.contains("DoweOverlay.Solid(Color.Black.copy(alpha = 0.6f))"));
-    assert!(android.contains("all = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
+    assert!(android.contains("PaddingValues(start = doweResponsive(viewportWidth, xs = 16.dp, lg = 20.dp)"));
     assert!(android.contains("DoweGrid(modifier ="));
     assert!(android.contains("tracks = doweResponsive(viewportWidth, xs = listOf(1f), md = listOf(1f, 1f, 1f)) ?: listOf(1f)"));
     assert!(android.contains("horizontalGap = doweResponsive(viewportWidth, xs = 20.dp) ?: 0.dp"));

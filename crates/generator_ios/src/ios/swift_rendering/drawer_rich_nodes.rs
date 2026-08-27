@@ -114,12 +114,25 @@ fn render_swift_avatar(
     let shadow = swift_shadow_spec(&props.style.style)
         .map(|value| format!("Optional({value})"))
         .unwrap_or_else(|| "nil".to_string());
+    let dynamic_text = |value: &str, binding: Option<&dowe_components::PropBinding>| {
+        binding.map(|binding| {
+            if let Some(item) = context.item_value(&binding.path) {
+                let path = context.item_path(&binding.path).unwrap_or_else(|| binding.path.clone());
+                format!("state.text(\"{}\", item: {item})", escape_swift(&path))
+            } else {
+                format!("state.text(\"{}\")", escape_swift(&context.signal_path(&binding.path)))
+            }
+        }).unwrap_or_else(|| swift_string_literal(value))
+    };
+    let name = props.name_binding.as_ref().map(|binding| dynamic_text("", Some(binding))).unwrap_or_else(|| swift_optional_literal(props.name.as_deref()));
+    let alt = dynamic_text(&props.alt, props.alt_binding.as_ref());
+    let size = dynamic_text(props.size.as_str(), props.size_binding.as_ref());
     output.push_str(&format!(
         "{pad}DoweAvatar(source: {}, name: {}, alt: {}, size: {}, status: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, borderWidth: {border_width}, shadow: {shadow}, action: {}, hasIcon: {}) {{\n",
         swift_optional_literal(props.src.as_deref()),
-        swift_optional_literal(props.name.as_deref()),
-        swift_string_literal(&props.alt),
-        swift_string_literal(props.size.as_str()),
+        name,
+        alt,
+        size,
         swift_optional_literal(props.status.map(|value| value.as_str())),
         variant_container(&props.style),
         variant_content(&props.style),
@@ -131,7 +144,27 @@ fn render_swift_avatar(
         icon.is_some()
     ));
     if let Some(icon) = icon {
-        render_swift_side_icon(icon, indent + 4, output);
+        if let Some(name) = icon.props.icon_name.as_deref() {
+            let name = if let Some(item) = context.item_value(name) {
+                let path = context.item_path(name).unwrap_or_else(|| name.to_string());
+                format!("state.text(\"{}\", item: {item})", escape_swift(&path))
+            } else {
+                format!("state.text(\"{}\")", escape_swift(&context.signal_path(name)))
+            };
+            let color = icon
+                .props
+                .icon_fill
+                .or(icon.props.icon_stroke)
+                .map(color_ref)
+                .map(str::to_string)
+                .unwrap_or_else(|| swift_svg_color(&icon.props.style));
+            output.push_str(&format!(
+                "{pad}    DoweRuntimeSvgView(payload: DoweDynamicIconCatalog[{name}] ?? \"\", color: {color}, animated: false)\n"
+            ));
+            append_swift_modifiers(output, indent + 4, &swift_modifiers_for_svg(&icon.props));
+        } else {
+            render_swift_side_icon(icon, indent + 4, output);
+        }
     } else {
         output.push_str(&format!("{pad}    EmptyView()\n"));
     }

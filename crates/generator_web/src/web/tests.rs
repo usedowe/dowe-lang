@@ -4,7 +4,7 @@ use super::{
 };
 use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, AudioProps, AvatarGroupItem, AvatarGroupProps,
-    AvatarProps, AvatarStatus, BadgeProps, BannerProps, BarPosition, BarProps, BottomBarTab,
+    AvatarProps, AvatarSize, AvatarStatus, BadgeProps, BannerProps, BarPosition, BarProps, BottomBarTab,
     BorderWidth, BoxPosition, BrandProps, Breakpoint, ButtonSize, CameraFacing, CameraProps,
     CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant,
     ChatBoxMode, ChatBoxProps, CheckboxProps, ChipProps, CollapsibleProps, ColorFamily, ColorProps,
@@ -98,7 +98,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
     assert_javascript_syntax(&visualization);
     assert!(controls.len() <= 50_000);
     assert!(media.len() <= 40_000);
-    assert!(visualization.len() <= 55_000);
+    assert!(visualization.len() <= 56_000);
     assert!(controls.contains("onViewportResize"));
     assert!(controls.contains("onViewportScroll"));
 }

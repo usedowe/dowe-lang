@@ -279,21 +279,38 @@ fn lower_overlay_icon(
     node: &SourceNode,
     owner: BuiltinComponent,
 ) -> DoweResult<dowe_components::SideNavIcon> {
+    let child_contract = if owner == BuiltinComponent::Avatar {
+        "Svg or Icon"
+    } else {
+        "Svg"
+    };
     if !node.args.is_empty() || !node.props.is_empty() || node.children.len() != 1 {
         return Err(node_error(
             node,
-            format!("{} icon requires exactly one Svg child", owner.as_str()),
+            format!(
+                "{} icon requires exactly one {child_contract} child",
+                owner.as_str()
+            ),
         ));
     }
     let child = &node.children[0];
-    if child.name != "Svg" {
-        return Err(node_error(
-            child,
-            format!("{} icon requires exactly one Svg child", owner.as_str()),
-        ));
-    }
-    overlay_icon_component(lower_svg_node(child)?, owner)
-        .map_err(|error| component_error(node, error))
+    let icon_node = match child.name.as_str() {
+        "Svg" => lower_svg_node(child)?,
+        "Icon" if owner == BuiltinComponent::Avatar => {
+            icon_component_node(component_props(child, BuiltinComponent::Icon)?)
+                .map_err(|error| component_error(child, error))?
+        }
+        _ => {
+            return Err(node_error(
+                child,
+                format!(
+                    "{} icon requires exactly one {child_contract} child",
+                    owner.as_str()
+                ),
+            ));
+        }
+    };
+    overlay_icon_component(icon_node, owner).map_err(|error| component_error(node, error))
 }
 
 fn lower_region(node: &SourceNode, label: &str, allow_children: bool) -> DoweResult<Vec<ViewNode>> {

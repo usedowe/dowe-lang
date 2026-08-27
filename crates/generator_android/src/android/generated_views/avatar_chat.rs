@@ -51,8 +51,15 @@ private fun doweAvatarSize(size: String): Dp =
     when (size) {
         "xs" -> 24.dp
         "sm" -> 32.dp
+        "md" -> 40.dp
         "lg" -> 48.dp
         "xl" -> 64.dp
+        "2xl" -> 80.dp
+        "3xl" -> 96.dp
+        "4xl" -> 112.dp
+        "5xl" -> 128.dp
+        "6xl" -> 144.dp
+        "7xl" -> 160.dp
         else -> 40.dp
     }
 
@@ -60,8 +67,15 @@ private fun doweAvatarIndicatorSize(size: String): Dp =
     when (size) {
         "xs" -> 6.dp
         "sm" -> 8.dp
+        "md" -> 10.dp
         "lg" -> 12.dp
         "xl" -> 16.dp
+        "2xl" -> 20.dp
+        "3xl" -> 24.dp
+        "4xl" -> 28.dp
+        "5xl" -> 32.dp
+        "6xl" -> 36.dp
+        "7xl" -> 40.dp
         else -> 10.dp
     }
 
@@ -69,8 +83,15 @@ private fun doweAvatarTextSize(size: String): TextUnit =
     when (size) {
         "xs" -> 12.sp
         "sm" -> 14.sp
+        "md" -> 16.sp
         "lg" -> 18.sp
         "xl" -> 24.sp
+        "2xl" -> 28.sp
+        "3xl" -> 32.sp
+        "4xl" -> 36.sp
+        "5xl" -> 40.sp
+        "6xl" -> 44.sp
+        "7xl" -> 48.sp
         else -> 16.sp
     }
 

@@ -247,7 +247,7 @@ fn emits_view_motion_markup_and_css() {
     assert!(css.contains("scale(var(--dowe-scale)) scale(var(--dowe-gesture-scale))"));
     assert!(!css.contains("calc(var(--dowe-scale) *"));
     assert!(css.contains(
-        ":root{--dowe-rotate:0deg;--dowe-scale:1;--dowe-translate-x:0rem;--dowe-translate-y:0rem;--dowe-gesture-rotate:0deg;--dowe-gesture-scale:1;--dowe-gesture-x:0rem;--dowe-gesture-y:0rem;}"
+        ".has-transform{--dowe-rotate:0deg;--dowe-scale:1;--dowe-translate-x:0rem;--dowe-translate-y:0rem;--dowe-gesture-rotate:0deg;--dowe-gesture-scale:1;--dowe-gesture-x:0rem;--dowe-gesture-y:0rem;"
     ));
     assert!(css.contains("dowe-entrance-pending"));
     assert!(css.contains("@media (prefers-reduced-motion:reduce)"));
@@ -302,7 +302,7 @@ fn emits_button_size_and_variant_css() {
     assert!(page.content.contains("is-warning"));
     assert!(
         page.css_content
-            .contains(".button-lg{padding:0.75rem 1.25rem;min-height:2.75rem;}")
+            .contains(".button-lg{padding:0.75rem 1.25rem;height:2.75rem;}")
     );
     assert!(
         page.css_content

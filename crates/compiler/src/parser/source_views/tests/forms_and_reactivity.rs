@@ -485,6 +485,34 @@ fn parses_and_validates_numeric_show_condition() {
 }
 
 #[test]
+fn accepts_calculated_card_animation_from_each_item_paths() {
+    let tree = parse_page(
+        r#"page cardAnimationPage
+  const cardAnimations value:[{ id:"one" label:"One" animation:"slideUp" }]
+  each in:cardAnimations as:card key:card.id
+    Card variant:"solid" scheme:"surface" animation:card.animation
+      Text
+        "Card""#,
+    )
+    .expect("dynamic card animation");
+
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("scope");
+    };
+    let ViewNode::Each { children, .. } = &children[0] else {
+        panic!("each");
+    };
+    let ViewNode::Card { props, .. } = &children[0] else {
+        panic!("card");
+    };
+    assert_eq!(props.style.animation(), Some(ViewAnimation::None));
+    assert_eq!(
+        props.style.animation_binding.as_ref().map(|binding| binding.path.as_str()),
+        Some("card.animation")
+    );
+}
+
+#[test]
 fn parses_interactive_motion_props() {
     let tree = parse_page(
             r#"page motionPage

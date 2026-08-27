@@ -243,6 +243,29 @@ fn inherits_container_foreground_and_preserves_text_overrides() {
         "content.foregroundStyle(explicitColor ?? inheritedColor ?? DoweDesign.backgroundTitle)"
     ));
     assert!(views.contains(".environment(\\.doweTitleColor, DoweDesign.mutedTitle)"));
+    let mut colored_card_route = route();
+    colored_card_route.page_tree = ViewNode::Card {
+        props: VariantProps {
+            style: StyleProps {
+                text: Some(ResponsiveValue::scalar(ColorToken::White)),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![ViewNode::Title {
+            props: TextProps::default(),
+            value: "Colored card title".to_string(),
+        }],
+    };
+    let colored_card_views = swift_content(&generate_ios(
+        &[colored_card_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+    assert!(colored_card_views.contains(
+        ".environment(\\.doweTitleColor, doweResponsive(viewportWidth, xs: Color.white) ?? Color.clear)"
+    ));
     let card_override = views
         .find("Text(verbatim: \"Card override\")")
         .expect("Card override");
@@ -509,9 +532,10 @@ fn keeps_card_shadow_after_swiftui_card_shape() {
     let shadow = card_output
         .find(".background(DoweShadowSurface(shadow: DoweShadowSpec(color: DoweDesign.primary.opacity(0.28), blurRadius: doweResponsive(viewportWidth, xs: CGFloat(44)) ?? CGFloat(0), offsetY: doweResponsive(viewportWidth, xs: CGFloat(18)) ?? CGFloat(0)), cornerRadius: doweResponsive(viewportWidth, xs: CGFloat(8)) ?? DoweDesign.radius))")
         .expect("card shadow");
-    let animation = card_output
-        .find(".modifier(DoweAnimationModifier(preset: .fadeIn))")
-        .expect("card animation");
+    let animation = shadow
+        + card_output[shadow..]
+            .find(".modifier(DoweAnimationModifier(preset: .fadeIn))")
+            .expect("card animation");
 
     assert!(shadow > clip);
     assert!(animation > shadow);
@@ -639,8 +663,11 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
                     },
                     src: None,
                     name: Some("Dowe".to_string()),
+                    name_binding: None,
                     alt: "Dowe".to_string(),
-                    size: ButtonSize::Md,
+                    alt_binding: None,
+                    size: AvatarSize::Md,
+                    size_binding: None,
                     status: None,
                     bordered: true,
                 },

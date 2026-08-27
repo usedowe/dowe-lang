@@ -180,7 +180,7 @@ fn normalizes_button_visual_props() {
                 ScaleValue::from_half_steps(6)
             );
             assert_eq!(
-                props.style.sizing.min_h.expect("minH").entries[0].value,
+                props.style.sizing.h.expect("height").entries[0].value,
                 SizeValue::Scale(ScaleValue::from_half_steps(22))
             );
         }

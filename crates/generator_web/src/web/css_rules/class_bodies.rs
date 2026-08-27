@@ -47,6 +47,11 @@ fn class_body(class_name: &str) -> Option<String> {
     if let Some(token) = class_name.strip_prefix("bg-") {
         return Some(format!("background-color:var(--dowe-{token});"));
     }
+    if let Some(token) = class_name.strip_prefix("card-color-") {
+        return Some(format!(
+            "--dowe-content-text:var(--dowe-{token}) !important;--dowe-content-title:var(--dowe-{token}) !important;color:var(--dowe-{token}) !important;"
+        ));
+    }
     if let Some(token) = class_name.strip_prefix("color-") {
         return Some(format!(
             "--dowe-content-text:var(--dowe-{token});--dowe-content-title:var(--dowe-{token});color:var(--dowe-{token});"

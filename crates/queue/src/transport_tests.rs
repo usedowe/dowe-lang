@@ -22,7 +22,7 @@ async fn wss_transport_handshake_carries_authentication_headers() {
         .with_no_client_auth()
         .with_single_cert(
             vec![certificate.clone()],
-            PrivateKeyDer::Pkcs8(certified.key_pair.serialize_der().into()),
+            PrivateKeyDer::Pkcs8(certified.signing_key.serialize_der().into()),
         )
         .expect("server config");
     let mut roots = RootCertStore::empty();

@@ -289,6 +289,17 @@ fn validate_node_variant_references(
             validate_optional_action(path, actions, props.on_stop.as_deref())?;
             validate_optional_action(path, actions, props.on_error.as_deref())?;
         }
+        ViewNode::Avatar { props, .. } => {
+            if let Some(binding) = props.name_binding.as_ref() {
+                validate_typed_path(path, signals, locals, &binding.path, "name", ViewPathExpectation::String)?;
+            }
+            if let Some(binding) = props.alt_binding.as_ref() {
+                validate_typed_path(path, signals, locals, &binding.path, "alt", ViewPathExpectation::String)?;
+            }
+            if let Some(binding) = props.size_binding.as_ref() {
+                validate_typed_path(path, signals, locals, &binding.path, "size", ViewPathExpectation::String)?;
+            }
+        }
         ViewNode::Image { props } => {
             if let Some(src) = props.reactive_src.as_deref() {
                 validate_typed_path(

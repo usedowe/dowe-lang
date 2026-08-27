@@ -27,6 +27,7 @@ pub struct StyleProps {
     pub bg_binding: Option<PropBinding>,
     pub text: Option<ResponsiveValue<ColorToken>>,
     pub text_binding: Option<PropBinding>,
+    pub animation_binding: Option<PropBinding>,
     pub cover: Option<ResponsiveValue<CoverSource>>,
     pub overlay: Option<ResponsiveValue<OverlayPaint>>,
     pub background: Option<ResponsiveValue<SectionBackground>>,
@@ -111,6 +112,10 @@ pub struct PositionProps {
 impl StyleProps {
     pub fn animation(&self) -> Option<ViewAnimation> {
         self.motion().animation
+    }
+
+    pub fn set_animation_binding(&mut self, binding: Option<PropBinding>) {
+        self.animation_binding = binding;
     }
 
     pub fn set_animation(&mut self, animation: Option<ViewAnimation>) {

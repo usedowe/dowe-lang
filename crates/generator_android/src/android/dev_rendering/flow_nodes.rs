@@ -320,23 +320,42 @@ fn render_dev_android_flow_node(
                     .unwrap_or_else(|| context.signal_path(path));
                 format!("runtime.doweTextValue(\"{}\", {item})", escape_java(&path))
             });
-            let current_color = reactive_scheme
-                .as_ref()
-                .map(|scheme| dev_content_colors(
-                    &format!("runtime.doweButtonTextFamily({scheme})"),
-                    &format!("runtime.doweButtonTitleFamily({scheme})"),
+            let reactive_variant = props.reactive.variant.as_ref().map(|path| {
+                let item = context.active_item().unwrap_or("null");
+                let path = context
+                    .item_path(path)
+                    .unwrap_or_else(|| context.signal_path(path));
+                format!("runtime.doweTextValue(\"{}\", {item})", escape_java(&path))
+            });
+            let variant = reactive_variant.as_deref().unwrap_or("\"solid\"");
+            let scheme = reactive_scheme.as_deref().unwrap_or("\"primary\"");
+            let current_color = if reactive_scheme.is_some() || reactive_variant.is_some() {
+                Some(dev_content_colors(
+                    &format!("runtime.doweButtonContent({variant}, {scheme})"),
+                    &format!("runtime.doweButtonContent({variant}, {scheme})"),
                 ))
+            } else {
+                Some(dev_content_colors(
+                    dev_card_variant_content(props),
+                    dev_card_variant_title(props),
+                ))
+            }
                 .or_else(|| Some(dev_content_colors(
                     dev_card_variant_content(props),
                     dev_card_variant_title(props),
                 )));
-            let container = reactive_scheme
-                .as_ref()
-                .map(|scheme| format!("runtime.doweButtonFamily({scheme})"))
-                .unwrap_or_else(|| dev_card_variant_container(props).to_string());
+            let container = if reactive_scheme.is_some() || reactive_variant.is_some() {
+                format!("runtime.doweButtonContainer({variant}, {scheme})")
+            } else {
+                dev_card_variant_container(props).to_string()
+            };
+            let border = if props.reactive.variant.is_some() {
+                format!("runtime.doweButtonContent({variant}, {scheme})")
+            } else {
+                dev_card_border(props).to_string()
+            };
             output.push_str(&format!(
-                "        LinearLayout {view} = runtime.doweCard({container}, {});\n",
-                dev_card_border(props)
+                "        LinearLayout {view} = runtime.doweCard({container}, (\"outlined\".equals({variant}) ? {border} : null));\n"
             ));
             if let Some(path) = props.reactive.scheme.as_ref() {
                 output.push_str(&format!(
@@ -527,7 +546,12 @@ fn render_dev_android_flow_node(
             if props.icon_start.is_some() || props.icon_end.is_some() {
                 output.push_str(&format!("        LinearLayout {view} = doweContainer(true);\n        {view}.setGravity(Gravity.CENTER);\n"));
                 if let Some(size) = props.reactive.size.as_ref().map(|path| reactive_text(path)) {
-                    output.push_str(&format!("        {view}.setMinimumHeight(doweButtonMinHeight({size}));\n        {view}.setPadding(doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}), doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}));\n"));
+                    let width = if props.icon_only {
+                        format!("doweButtonMinHeight({size})")
+                    } else {
+                        "ViewGroup.LayoutParams.WRAP_CONTENT".to_string()
+                    };
+                    output.push_str(&format!("        {view}.setLayoutParams(new LinearLayout.LayoutParams({width}, doweButtonMinHeight({size})));\n        {view}.setPadding(doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}), doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}));\n"));
                 }
                 output.push_str(&format!("        {view}.setBackground(doweInputBackground({container}, {border}, {radius}));\n"));
                 if props.icon_only {
@@ -613,7 +637,7 @@ fn render_dev_android_flow_node(
                             radius
                         ));
             if let Some(size) = props.reactive.size.as_ref().map(|path| reactive_text(path)) {
-                output.push_str(&format!("        {view}.setMinHeight(doweButtonMinHeight({size}));\n        {view}.setMinimumHeight(doweButtonMinHeight({size}));\n        {view}.setPadding(doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}), doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}));\n"));
+                output.push_str(&format!("        {view}.setMinHeight(doweButtonMinHeight({size}));\n        {view}.setMinimumHeight(doweButtonMinHeight({size}));\n        {view}.getLayoutParams().height = doweButtonMinHeight({size});\n        {view}.setPadding(doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}), doweButtonHorizontalPadding({size}), doweButtonVerticalPadding({size}));\n"));
             }
             if let Some(action) = action {
                 output.push_str(&format!(

@@ -6,12 +6,25 @@ fn render_compose_avatar(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
+    let dynamic_text = |value: &str, binding: Option<&dowe_components::PropBinding>| {
+        binding.map(|binding| {
+            if let Some(item) = context.item_value(&binding.path) {
+                let path = context.item_path(&binding.path).unwrap_or_else(|| binding.path.clone());
+                format!("state.text(\"{}\", {})", escape_kotlin(&path), item)
+            } else {
+                format!("state.text(\"{}\")", escape_kotlin(&context.signal_path(&binding.path)))
+            }
+        }).unwrap_or_else(|| compose_string_literal(value))
+    };
+    let name = props.name_binding.as_ref().map(|binding| dynamic_text("", Some(binding))).unwrap_or_else(|| compose_optional_string(props.name.as_deref()));
+    let alt = dynamic_text(&props.alt, props.alt_binding.as_ref());
+    let size = dynamic_text(props.size.as_str(), props.size_binding.as_ref());
     output.push_str(&format!(
         "{pad}DoweAvatar(source = {}, name = {}, alt = {}, size = {}, status = {}, bordered = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, modifier = {}, onClick = {}, hasIcon = {}) {{\n",
         compose_optional_string(props.src.as_deref()),
-        compose_optional_string(props.name.as_deref()),
-        compose_string_literal(&props.alt),
-        compose_string_literal(props.size.as_str()),
+        name,
+        alt,
+        size,
         compose_optional_string(props.status.map(|value| value.as_str())),
         props.bordered,
         variant_container(&props.style),
@@ -26,7 +39,28 @@ fn render_compose_avatar(
         icon.is_some()
     ));
     if let Some(icon) = icon {
-        render_compose_side_icon(icon, indent + 4, output);
+        if let Some(name) = icon.props.icon_name.as_deref() {
+            let name = if let Some(item) = context.item_value(name) {
+                let path = context.item_path(name).unwrap_or_else(|| name.to_string());
+                format!("state.text(\"{}\", {item})", escape_kotlin(&path))
+            } else {
+                format!("state.text(\"{}\")", escape_kotlin(&context.signal_path(name)))
+            };
+            let color = icon
+                .props
+                .icon_fill
+                .or(icon.props.icon_stroke)
+                .map(color_ref)
+                .map(str::to_string)
+                .unwrap_or_else(|| compose_svg_color(&icon.props.style));
+            output.push_str(&format!(
+                "{pad}    DoweDynamicIcon(name = {name}, fallback = \"\", modifier = {}, color = {})\n",
+                modifier_for_style(&icon.props.style),
+                color
+            ));
+        } else {
+            render_compose_side_icon(icon, indent + 4, output);
+        }
     }
     output.push_str(&format!("{pad}}}\n"));
 }

@@ -73,31 +73,14 @@ fn card_variant_content(props: &VariantProps) -> &'static str {
             ColorFamily::Background => color_ref(ColorToken::BackgroundText),
             _ => color_ref(ColorToken::SurfaceText),
         },
-        ComponentVariant::Ghost
-            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            color_ref(family_text_color(color))
-        }
+        ComponentVariant::Ghost if matches!(color, ColorFamily::Background | ColorFamily::Surface) => color_ref(family_text_color(color)),
         _ => variant_content(props),
     }
 }
 
-fn card_variant_title(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Outlined => match color {
-            ColorFamily::Background => color_ref(ColorToken::BackgroundTitle),
-            _ => color_ref(ColorToken::SurfaceTitle),
-        },
-        ComponentVariant::Ghost
-            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            color_ref(family_text_color(color))
-        }
-        ComponentVariant::Solid => variant_title(props),
-        ComponentVariant::Line | ComponentVariant::Ghost => variant_content(props),
-    }
-}
+fn card_surface_container(props: &VariantProps) -> &'static str { variant_container(props) }
+fn card_surface_content(props: &VariantProps) -> &'static str { variant_content(props) }
+fn card_surface_title(props: &VariantProps) -> &'static str { variant_title(props) }
 
 fn table_variant_container(props: &VariantProps) -> &'static str {
     let color = props.color.unwrap_or(ColorFamily::Surface);
@@ -182,7 +165,12 @@ fn tabs_accent_token(value: ColorFamily) -> ColorToken {
 }
 
 fn color_ref(value: ColorToken) -> &'static str {
-    intern_generated_color_name(format!("DoweDesign.{}", swift_color_member(value)))
+    match value.as_str() {
+        "white" => "Color.white",
+        "black" => "Color.black",
+        "transparent" => "Color.clear",
+        _ => intern_generated_color_name(format!("DoweDesign.{}", swift_color_member(value))),
+    }
 }
 
 fn swift_color_member(value: ColorToken) -> &'static str {

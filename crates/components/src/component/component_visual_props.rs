@@ -202,12 +202,8 @@ fn normalize_icon_button_visual_props(props: &mut VariantProps) {
     }
 
     let control_size = ResponsiveValue::scalar(SizeValue::Scale(size.icon_button_control_size()));
-    if props.style.sizing.w.is_none() {
-        props.style.sizing.w = Some(control_size.clone());
-    }
-    if props.style.sizing.h.is_none() {
-        props.style.sizing.h = Some(control_size);
-    }
+    props.style.sizing.w = Some(control_size.clone());
+    props.style.sizing.h = Some(control_size);
 
     if let Some(icon) = props.icon_start.as_mut() {
         let icon_size = ResponsiveValue::scalar(SizeValue::Scale(size.icon_button_icon_size()));
@@ -238,8 +234,8 @@ fn apply_button_size_defaults(style: &mut StyleProps, size: ButtonSize) {
         apply_vertical_button_padding(&mut style.spacing, size.padding_y());
     }
 
-    if style.sizing.h.is_none() && style.sizing.min_h.is_none() {
-        style.sizing.min_h = Some(ResponsiveValue::scalar(SizeValue::Scale(size.min_height())));
+    if style.sizing.h.is_none() {
+        style.sizing.h = Some(ResponsiveValue::scalar(SizeValue::Scale(size.min_height())));
     }
 }
 

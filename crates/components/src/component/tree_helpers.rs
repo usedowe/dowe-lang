@@ -185,7 +185,9 @@ fn nav_menu_contains_children(item: &NavMenuItem) -> bool {
 }
 
 pub fn tree_has_dynamic_icon(node: &ViewNode) -> bool {
-    if matches!(node, ViewNode::Svg { props, .. } if props.icon_name.is_some()) {
+    if matches!(node, ViewNode::Svg { props, .. } if props.icon_name.is_some())
+        || matches!(node, ViewNode::Avatar { icon: Some(icon), .. } if icon.props.icon_name.is_some())
+    {
         return true;
     }
     node_child_groups(node)
@@ -296,7 +298,11 @@ pub fn dynamic_icon_names(node: &ViewNode) -> Option<BTreeSet<String>> {
                     );
                 }
             }
-            ViewNode::Svg { props, .. } => {
+            ViewNode::Svg { props, .. }
+            | ViewNode::Avatar {
+                icon: Some(SideNavIcon { props, .. }),
+                ..
+            } => {
                 let Some(binding) = props.icon_name.as_deref() else {
                     continue;
                 };

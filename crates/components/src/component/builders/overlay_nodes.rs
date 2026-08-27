@@ -4,19 +4,43 @@ pub fn avatar_component_node(
 ) -> ComponentResult<ViewNode> {
     let mut src = None;
     let mut name = None;
+    let mut name_binding = None;
     let mut alt = "Avatar".to_string();
-    let mut size = ButtonSize::Md;
+    let mut alt_binding = None;
+    let mut size = AvatarSize::Md;
+    let mut size_binding = None;
     let mut status = None;
     let mut bordered = false;
+    let mut prop_icon = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
             "src" => src = Some(parse_avatar_src(&prop.name, &prop.value)?),
-            "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
-            "alt" => alt = parse_required_string(&prop.name, &prop.value)?,
-            "size" => size = parse_button_size_prop(&prop.name, &prop.value)?,
+            "name" => match &prop.value {
+                PropValue::Binding(binding) => name_binding = Some(binding.clone()),
+                _ => name = Some(parse_required_string(&prop.name, &prop.value)?),
+            },
+            "alt" => match &prop.value {
+                PropValue::Binding(binding) => alt_binding = Some(binding.clone()),
+                _ => alt = parse_required_string(&prop.name, &prop.value)?,
+            },
+            "size" => match &prop.value {
+                PropValue::Binding(binding) => size_binding = Some(binding.clone()),
+                _ => size = parse_avatar_size(&prop.name, &prop.value)?,
+            },
             "status" => status = Some(parse_avatar_status(&prop.name, &prop.value)?),
             "bordered" => bordered = parse_static_bool(&prop.name, &prop.value)?,
+            "icon" => {
+                let name = parse_static_string(&prop.name, &prop.value)?;
+                let icon_node = icon_component_node(vec![ComponentProp {
+                    name: "name".to_string(),
+                    value: PropValue::String(name),
+                }])?;
+                prop_icon = match icon_node {
+                    ViewNode::Svg { props, paths } => Some(SideNavIcon { props, paths }),
+                    _ => unreachable!(),
+                };
+            }
             "color" => return Err(scheme_prop_error(BuiltinComponent::Avatar)),
             _ => style_props.push(prop),
         }
@@ -25,13 +49,27 @@ pub fn avatar_component_node(
     require_solid_variant(BuiltinComponent::Avatar, style.variant)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
+    let mut icon = icon.or(prop_icon);
+    if let Some(icon) = icon.as_mut() {
+        let icon_color = icon
+            .props
+            .icon_fill
+            .unwrap_or_else(|| style.color.expect("Avatar scheme").text_token());
+        if icon.props.icon_fill.is_none() && icon.props.icon_fill_binding.is_none() {
+            icon.props.icon_fill = Some(icon_color);
+        }
+        icon.props.style.text = Some(ResponsiveValue::scalar(icon_color));
+    }
     Ok(ViewNode::Avatar {
         props: AvatarProps {
             style,
             src,
             name,
+            name_binding,
             alt,
+            alt_binding,
             size,
+            size_binding,
             status,
             bordered,
         },

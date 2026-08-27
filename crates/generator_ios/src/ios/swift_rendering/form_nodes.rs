@@ -212,9 +212,15 @@ fn render_swift_form_node(
                 modifiers.push(format!(
                     ".padding(.vertical, doweButtonVerticalPadding({size}))"
                 ));
-                modifiers.push(format!(".frame(minHeight: doweButtonMinHeight({size}))"));
+                if props.icon_only {
+                    modifiers.push(format!(
+                        ".frame(width: doweButtonMinHeight({size}), height: doweButtonMinHeight({size}))"
+                    ));
+                } else {
+                    modifiers.push(format!(".frame(height: doweButtonMinHeight({size}))"));
+                }
             }
-            if flow.is_grid_item() && props.style.sizing.w.is_none() {
+            if flow.is_grid_item() && props.style.sizing.w.is_none() && !props.icon_only {
                 modifiers.push(".frame(maxWidth: .infinity, alignment: .center)".to_string());
             }
             modifiers.push(".contentShape(Rectangle())".to_string());

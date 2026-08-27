@@ -59,8 +59,9 @@ pub use model::{
 };
 pub use parser::{inspect_project_capabilities, validate_design_copilot_dowe};
 pub use pipeline::{
-    compile_dev, compile_dev_for_platforms, compile_dev_server, compile_dev_views_for_platforms,
-    compile_dev_web, compile_dev_with_seeders, compile_for_environment,
-    compile_for_server_environment, compile_for_web_environment, generate_dev_app_output,
+    compile_dev, compile_dev_for_platforms, compile_dev_server, compile_dev_server_with_seeders,
+    compile_dev_views_for_platforms, compile_dev_web, compile_dev_with_seeders,
+    compile_for_environment, compile_for_server_environment, compile_for_web_environment,
+    generate_dev_app_output,
 };
 pub use test_runner::{TestCaseResult, TestReport, TestStatus, run_project_tests};

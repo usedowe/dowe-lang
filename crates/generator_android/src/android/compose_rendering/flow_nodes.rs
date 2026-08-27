@@ -264,7 +264,12 @@ fn render_compose_flow_node(
         }
         ViewNode::Card { props, children } => {
             let current_font = props.style.font.as_ref().or(inherited_font);
-            let mut modifier = modifier_for_container_style(&props.style, flow);
+            let mut card_outer_style = props.style.clone();
+            let has_cover = card_outer_style.cover.is_some();
+            if has_cover {
+                card_outer_style.spacing = Default::default();
+            }
+            let mut modifier = modifier_for_container_style(&card_outer_style, flow);
             if props.style.element.on_click.is_some() {
                 modifier.push_str(&format!(
                     ".clickable(onClick = {})",
@@ -275,26 +280,59 @@ fn render_compose_flow_node(
                     )
                 ));
             }
+            let reactive_text = |path: &str, fallback: &str| {
+                context
+                    .item_value(path)
+                    .map(|item| format!("state.text(\\\"{}\\\", {item})", escape_kotlin(&context.item_path(path).expect("item path"))))
+                    .unwrap_or_else(|| format!("state.text(\\\"{}\\\", \\\"{fallback}\\\")", escape_kotlin(&context.signal_path(path))))
+            };
+            let variant = props
+                .reactive
+                .variant
+                .as_deref()
+                .map(|path| reactive_text(path, "solid"))
+                .unwrap_or_else(|| format!("\\\"{}\\\"", props.variant.unwrap_or(ComponentVariant::Solid).as_str()));
+            let scheme = props
+                .reactive
+                .scheme
+                .as_deref()
+                .map(|path| reactive_text(path, "primary"))
+                .unwrap_or_else(|| format!("\\\"{}\\\"", props.color.unwrap_or(ColorFamily::Primary).as_str()));
+            let is_reactive = props.reactive.variant.is_some() || props.reactive.scheme.is_some();
+            let card_content_color = props
+                .style
+                .text
+                .as_ref()
+                .map(compose_color_value)
+                .unwrap_or_else(|| if is_reactive { format!("doweCardContent({variant}, {scheme})") } else { card_surface_content(props).to_string() });
+            let card_title_color = props
+                .style
+                .text
+                .as_ref()
+                .map(compose_color_value)
+                .unwrap_or_else(|| if is_reactive { format!("doweCardTitle({variant}, {scheme})") } else { card_surface_title(props).to_string() });
+            let card_container = if is_reactive { format!("doweCardContainer({variant}, {scheme})") } else { card_surface_container(props).to_string() };
+            let card_border = if is_reactive { format!("if ({variant} == \\\"outlined\\\") BorderStroke(1.dp, {card_content_color}) else null") } else { compose_card_border(props) };
             output.push_str(&format!(
                         "{pad}Card(modifier = {}, shape = RoundedCornerShape({}), colors = CardDefaults.cardColors(containerColor = {}, contentColor = {}), border = {}, elevation = {}) {{\n",
                         modifier,
                         compose_card_radius(&props.style),
-                        card_variant_container(props),
-                        card_variant_content(props),
-                        compose_card_border(props),
+                        card_container,
+                        card_content_color,
+                        card_border,
                         "CardDefaults.cardElevation(defaultElevation = 0.dp)"
                     ));
             output.push_str(&format!(
-                "{pad}    CompositionLocalProvider(LocalDoweTitleColor provides {}) {{\n",
-                card_variant_title(props)
+                "{pad}    CompositionLocalProvider(LocalDoweTitleColor provides {card_title_color}) {{\n"
             ));
             if props.style.cover.is_some() {
                 output.push_str(&format!(
-                            "{pad}    DoweCoverBox(modifier = Modifier.fillMaxWidth(), source = {}, overlay = {}) {{\n",
+                            "{pad}    DoweCoverBox(modifier = Modifier.fillMaxWidth().fillMaxHeight(), source = {}, overlay = {}) {{\n",
                             compose_cover_value(props.style.cover.as_ref().expect("cover")),
                             compose_optional_overlay(props.style.overlay.as_ref())
                         ));
-                output.push_str(&format!("{pad}        Column {{\n"));
+                let content_padding = compose_content_padding(&props.style.spacing);
+                output.push_str(&format!("{pad}        Column(modifier = Modifier.fillMaxWidth().fillMaxHeight().padding({content_padding})) {{\n"));
                 for child in children {
                     render_compose_node_in_flow(
                         child,
@@ -561,7 +599,15 @@ fn render_compose_flow_node(
             let min_height = size
                 .as_ref()
                 .map(|size| format!("doweButtonMinHeight({size})"))
+                .or_else(|| {
+                    props
+                        .size
+                        .map(|size| format!("doweButtonMinHeight(\"{}\")", size.as_str()))
+                })
                 .unwrap_or_else(|| "0.dp".to_string());
+            if props.icon_only && (size.is_some() || props.size.is_some()) {
+                modifier.push_str(&format!(".width({min_height})"));
+            }
             let enabled = if loading.is_some() && disabled.is_some() {
                 let loading_value = loading.as_deref().unwrap_or("false");
                 let disabled_value = disabled.as_deref().unwrap_or("false");
@@ -589,7 +635,7 @@ fn render_compose_flow_node(
                 )
             };
             output.push_str(&format!(
-                        "{pad}Button(modifier = {}.defaultMinSize(minWidth = 0.dp, minHeight = {min_height}), shape = RoundedCornerShape({}), colors = {colors}, border = {}, contentPadding = {content_padding}, enabled = {enabled}, onClick = {}) {{\n",
+                        "{pad}Button(modifier = {}.height({min_height}), shape = RoundedCornerShape({}), colors = {colors}, border = {}, contentPadding = {content_padding}, enabled = {enabled}, onClick = {}) {{\n",
                         modifier,
                         radius,
                         border,

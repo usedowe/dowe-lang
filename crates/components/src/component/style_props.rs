@@ -62,7 +62,7 @@ fn parse_style_props(
                 style.bg = Some(parse_color_prop(&prop.name, &value)?);
                 style.bg_binding = binding;
             }
-            "color" if style_accepts_colors(mode) && !matches!(mode, StylePropMode::Card) => {
+            "color" if style_accepts_colors(mode) => {
                 style.text = Some(parse_color_prop(&prop.name, &value)?);
                 style.text_binding = binding;
             }
@@ -100,7 +100,8 @@ fn parse_style_props(
                 style.boxed = parse_static_bool(&prop.name, &value)?
             }
             "animation" if style_accepts_animation(mode) => {
-                style.set_animation(Some(parse_animation_prop(&prop.name, &value)?))
+                style.set_animation(Some(parse_animation_prop(&prop.name, &value)?));
+                style.set_animation_binding(binding);
             }
             "rotate" => {
                 style.motion_mut().rotate = Some(parse_rotation_prop(&prop.name, &value)?)

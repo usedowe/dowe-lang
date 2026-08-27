@@ -581,6 +581,36 @@ fn dev_activity_drawables_media() -> &'static str {
         return view;
     }
 
+    private int doweAvatarSize(String size) {
+        if ("xs".equals(size)) return 24;
+        if ("sm".equals(size)) return 32;
+        if ("md".equals(size)) return 40;
+        if ("lg".equals(size)) return 48;
+        if ("xl".equals(size)) return 64;
+        if ("2xl".equals(size)) return 80;
+        if ("3xl".equals(size)) return 96;
+        if ("4xl".equals(size)) return 112;
+        if ("5xl".equals(size)) return 128;
+        if ("6xl".equals(size)) return 144;
+        if ("7xl".equals(size)) return 160;
+        return 40;
+    }
+
+    private float doweAvatarTextSize(String size) {
+        if ("xs".equals(size)) return 12f;
+        if ("sm".equals(size)) return 14f;
+        if ("md".equals(size)) return 16f;
+        if ("lg".equals(size)) return 18f;
+        if ("xl".equals(size)) return 24f;
+        if ("2xl".equals(size)) return 28f;
+        if ("3xl".equals(size)) return 32f;
+        if ("4xl".equals(size)) return 36f;
+        if ("5xl".equals(size)) return 40f;
+        if ("6xl".equals(size)) return 44f;
+        if ("7xl".equals(size)) return 48f;
+        return 16f;
+    }
+
     private FrameLayout doweAvatarImage(String source, String alt, String fallback, int backgroundColor, int contentColor, float textSize, String font) {
         FrameLayout view = new FrameLayout(this);
         view.setBackground(doweBackground(backgroundColor, 999f));
@@ -707,17 +737,26 @@ fn dev_activity_drawables_media() -> &'static str {
                 connection.setRequestProperty("User-Agent", "Dowe/1.0");
                 connection.setRequestProperty("Accept", "image/*");
                 try {
-                    try (InputStream input = connection.getInputStream(); FileOutputStream output = new FileOutputStream(temporary)) {
+                    if (connection.getResponseCode() < 200 || connection.getResponseCode() >= 300) {
+                        return null;
+                    }
+                    java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                    try (InputStream input = connection.getInputStream()) {
                         byte[] buffer = new byte[16384];
                         int count;
                         while ((count = input.read(buffer)) != -1) {
-                            output.write(buffer, 0, count);
+                            bytes.write(buffer, 0, count);
                         }
                     }
-                    if (!temporary.renameTo(file)) {
+                    byte[] imageBytes = bytes.toByteArray();
+                    bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                    if (bitmap == null) {
                         return null;
                     }
-                    bitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+                    try (FileOutputStream output = new FileOutputStream(temporary)) {
+                        output.write(imageBytes);
+                    }
+                    temporary.renameTo(file);
                 } finally {
                     connection.disconnect();
                     temporary.delete();

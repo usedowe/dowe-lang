@@ -4,7 +4,7 @@ use crate::model::{
 };
 use crate::parser::source_parser::parse_source_file;
 use dowe_components::{
-    AvatarStatus, Breakpoint, ButtonSize, CameraFacing, CanvasBackground, CanvasFit,
+    AvatarSize, AvatarStatus, Breakpoint, ButtonSize, CameraFacing, CanvasBackground, CanvasFit,
     CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition,
     ChartPalette, ChartSize, ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant,
     CountdownSize, DividerOrientation, EmptyKind, GapSize, GapValue, ImageAspect, ImageLoading,
