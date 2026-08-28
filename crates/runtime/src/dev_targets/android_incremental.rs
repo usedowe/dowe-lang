@@ -130,6 +130,10 @@ pub(super) fn android_hot_module_version(
     toolchain: &str,
 ) -> String {
     let mut hash = Sha256::new();
+    update_digest(
+        &mut hash,
+        &dowe_components::VIEW_IR_SCHEMA_VERSION.to_le_bytes(),
+    );
     update_digest(&mut hash, toolchain.as_bytes());
     for source in sources {
         update_digest(&mut hash, source.relative_path.to_string_lossy().as_bytes());

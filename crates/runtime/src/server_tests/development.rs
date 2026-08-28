@@ -255,6 +255,14 @@ async fn serves_backend_views_and_websocket() {
         .and_then(|chunk| chunk.relative_path.strip_prefix("web").ok())
         .map(|path| format!("/{}", path.display()))
         .expect("translation chunk");
+    let design_chunk_paths = project
+        .web
+        .pages
+        .iter()
+        .flat_map(|page| page.css_chunks.iter())
+        .filter(|path| path.starts_with("chunks/design/") && path.ends_with(".css"))
+        .map(|path| format!("/{path}"))
+        .collect::<std::collections::BTreeSet<_>>();
     let servers = start_dev(project).await.expect("servers");
     let client = reqwest::Client::new();
     let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
@@ -335,6 +343,23 @@ async fn serves_backend_views_and_websocket() {
     assert!(content_type.contains("text/css"));
     assert!(css.contains(".card"));
     assert!(!css.contains(".p-96"));
+
+    for path in design_chunk_paths {
+        let chunk = client
+            .get(format!("{views}{path}"))
+            .send()
+            .await
+            .expect("design css chunk");
+        assert_eq!(chunk.status(), reqwest::StatusCode::OK, "{path}");
+        assert!(
+            chunk
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.contains("text/css")),
+            "{path}"
+        );
+    }
 
     let client_script = client
         .get(format!("{views}/_dowe/dev/client.js"))

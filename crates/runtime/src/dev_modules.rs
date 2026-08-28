@@ -44,6 +44,7 @@ impl DevModuleRevision {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct DevModuleManifest {
     version: u8,
+    ir_schema_version: u32,
     targets: BTreeMap<String, DevModuleManifestEntry>,
 }
 
@@ -55,6 +56,7 @@ struct DevModuleManifestEntry {
 
 pub(crate) fn web_module_version(project: &CompiledProject) -> String {
     let mut hash = Sha256::new();
+    hash.update(dowe_components::VIEW_IR_SCHEMA_VERSION.to_le_bytes());
     hash.update(
         project
             .web
@@ -160,8 +162,10 @@ fn publish_dev_module_with_revision(
     let mut manifest = fs::read(&manifest_path)
         .ok()
         .and_then(|contents| serde_json::from_slice::<DevModuleManifest>(&contents).ok())
+        .filter(|manifest| manifest.ir_schema_version == dowe_components::VIEW_IR_SCHEMA_VERSION)
         .unwrap_or_else(|| DevModuleManifest {
             version: 1,
+            ir_schema_version: dowe_components::VIEW_IR_SCHEMA_VERSION,
             targets: BTreeMap::new(),
         });
     let previous_path = manifest.targets.get(target).map(|entry| entry.path.clone());
@@ -262,6 +266,27 @@ mod tests {
                 .join(".dowe/dev/modules/.manifest.json.tmp")
                 .exists()
         );
+    }
+
+    #[test]
+    fn replaces_a_module_manifest_with_an_old_ir_schema() {
+        let temp = TempDir::new().expect("tempdir");
+        let source = temp.path().join("module.dex");
+        fs::write(&source, b"new dex").expect("source");
+        let manifest_path = temp.path().join(".dowe/dev/modules/manifest.json");
+        fs::create_dir_all(manifest_path.parent().expect("manifest parent")).expect("directory");
+        fs::write(
+            &manifest_path,
+            r#"{"version":1,"ir_schema_version":0,"targets":{"android":{"version":"old","path":"/_dowe/dev/modules/android/old.dex"}}}"#,
+        )
+        .expect("old manifest");
+
+        super::publish_dev_module(temp.path(), "ios", "new", "dylib", &source).expect("publish");
+
+        let manifest = fs::read_to_string(manifest_path).expect("manifest");
+        assert!(manifest.contains(r#""ir_schema_version":1"#));
+        assert!(manifest.contains(r#""ios":{"version":"new""#));
+        assert!(!manifest.contains("old.dex"));
     }
 
     #[test]

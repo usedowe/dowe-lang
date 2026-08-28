@@ -90,6 +90,7 @@ fn renders_layout_bars_markup_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
     assert!(router.contains("function hydrateScrollDockingAppBars(root)"));
     assert!(router.contains("const floating=(window.scrollY||0)<=100"));
@@ -206,6 +207,7 @@ fn renders_side_nav_markup_active_runtime_and_css() {
             translation_chunks: Vec::new(),
             default_locale: None,
             router_js: String::new(),
+            render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
         })
         .contains("toggleNavTreeSubmenu(\"sidenav\"")
     );
@@ -216,6 +218,7 @@ fn renders_side_nav_markup_active_runtime_and_css() {
             translation_chunks: Vec::new(),
             default_locale: None,
             router_js: String::new(),
+            render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
         })
         .contains(
             "event.stopPropagation();toggleNavTreeSubmenu(\"sidenav\",sideNavTrigger);},true)"
@@ -227,6 +230,7 @@ fn renders_side_nav_markup_active_runtime_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
     assert!(router.contains("const navTreeSubmenuMemory=new Map()"));
     assert!(router.contains("navTreeSubmenuMemory.set(memoryKey,open)"));
@@ -291,6 +295,7 @@ fn renders_rail_nav_icons_tooltips_labels_and_active_state() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(html.contains(r#"<nav class="railnav is-solid is-primary railnav-md""#));
@@ -332,6 +337,7 @@ fn renders_navigation_shell_markup_runtime_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(html.contains(r#"<div class="scaffold is-boxed">"#));

@@ -47,6 +47,7 @@ fn full_runtime_for_test() -> String {
             translation_chunks: Vec::new(),
             default_locale: None,
             router_js: String::new(),
+            render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
         }),
         super::controls_runtime_chunk().content,
         super::media_runtime_chunk().content,
@@ -87,6 +88,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     let core = super::router_js(&web);
     let controls = super::controls_runtime_chunk().content;
@@ -174,6 +176,7 @@ fn dynamic_icon_router_embeds_only_static_constant_names() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(router.contains("\"route-bold-duotone\""));

@@ -1,4 +1,7 @@
+pub const VIEW_IR_SCHEMA_VERSION: u32 = dowe_components::VIEW_IR_SCHEMA_VERSION;
+
 include!("android/artifacts.rs");
+include!("android/prop_consumption.rs");
 include!("android/generated_views.rs");
 include!("android/reactive_runtime.rs");
 include!("android/reactive_lowering.rs");

@@ -79,6 +79,31 @@ fn parse_variant_props(
     let mut swap_bind = None;
 
     for prop in props {
+        if matches!(
+            component,
+            BuiltinComponent::Button
+                | BuiltinComponent::Card
+                | BuiltinComponent::Input
+                | BuiltinComponent::Select
+                | BuiltinComponent::IconButton
+                | BuiltinComponent::Swap
+                | BuiltinComponent::Avatar
+                | BuiltinComponent::Badge
+                | BuiltinComponent::Chip
+                | BuiltinComponent::SideNav
+                | BuiltinComponent::RailNav
+                | BuiltinComponent::Sidebar
+                | BuiltinComponent::NavMenu
+                | BuiltinComponent::Tabs
+                | BuiltinComponent::Stepper
+                | BuiltinComponent::Fab
+        ) && matches!(
+            prop.name.as_str(),
+            "variant" | "scheme" | "size" | "rounded" | "loading" | "disabled"
+        ) && !view_prop_declared(component, &prop.name)
+        {
+            return Err(ComponentError::unknown_prop(component, &prop.name));
+        }
         let binding = prop.value.binding().cloned();
         let value = prop.value.binding_fallback().unwrap_or_else(|| prop.value.clone());
         match prop.name.as_str() {

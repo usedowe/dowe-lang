@@ -242,6 +242,7 @@ fn renders_reactive_button_loading_spinner_and_runtime_binding() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(html.contains(r#"data-dowe-button-loading hidden aria-hidden="true""#));
@@ -276,6 +277,7 @@ fn renders_reactive_button_disabled_visual_state() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(html.contains(r#"data-dowe-button-disabled="formInvalid""#));
@@ -302,6 +304,7 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(html.contains(r#"class="avatar-group"#));
@@ -360,6 +363,7 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(html.contains(r#"class="rich-text"#));
@@ -830,6 +834,7 @@ fn emits_form_validation_metadata_runtime_and_accessibility_hooks() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     let router = super::router_js(&web);
 

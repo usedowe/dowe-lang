@@ -7,6 +7,9 @@ fn parse_style_props(
     let mut scheme = None;
 
     for prop in props {
+        if common_style_prop_name(&prop.name) && !common_style_prop_declared(&prop.name) {
+            return Err(ComponentError::unknown_prop(component, &prop.name));
+        }
         let value = prop.value.binding_fallback().unwrap_or_else(|| prop.value.clone());
         let binding = prop.value.binding().cloned();
         match prop.name.as_str() {

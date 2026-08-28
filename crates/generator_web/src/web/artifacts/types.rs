@@ -5,6 +5,7 @@ pub struct WebOutput {
     pub translation_chunks: Vec<GeneratedTranslationChunk>,
     pub default_locale: Option<String>,
     pub router_js: String,
+    pub render_report: dowe_components::RenderReport,
 }
 
 impl WebOutput {

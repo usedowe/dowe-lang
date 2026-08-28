@@ -4,6 +4,87 @@ pub fn container_component_node(
     children: Vec<ViewNode>,
     allow_children: bool,
 ) -> ComponentResult<ViewNode> {
+    if matches!(
+        component,
+        BuiltinComponent::AppBar
+            | BuiltinComponent::Footer
+            | BuiltinComponent::BottomBar
+            | BuiltinComponent::NavMenu
+            | BuiltinComponent::SideNav
+            | BuiltinComponent::RailNav
+            | BuiltinComponent::Sidebar
+            | BuiltinComponent::Scaffold
+            | BuiltinComponent::Drawer
+    ) {
+        validate_component_props_from_inventory(component, &props, PropDomain::Navigation)?;
+        validate_component_props_from_inventory(component, &props, PropDomain::Style)?;
+    }
+
+    if matches!(
+        component,
+        BuiltinComponent::Tabs
+            | BuiltinComponent::Tab
+            | BuiltinComponent::Stepper
+            | BuiltinComponent::Step
+            | BuiltinComponent::Accordion
+            | BuiltinComponent::Carousel
+            | BuiltinComponent::Option
+            | BuiltinComponent::Table
+            | BuiltinComponent::Path
+    ) {
+        validate_component_props_from_inventory(component, &props, PropDomain::Structural)?;
+        validate_component_props_from_inventory(component, &props, PropDomain::Style)?;
+    }
+
+    if matches!(
+        component,
+        BuiltinComponent::Candlestick
+            | BuiltinComponent::ArcChart
+            | BuiltinComponent::AreaChart
+            | BuiltinComponent::BarChart
+            | BuiltinComponent::LineChart
+            | BuiltinComponent::PieChart
+    ) {
+        validate_component_props_from_inventory(component, &props, PropDomain::Chart)?;
+        validate_component_props_from_inventory(component, &props, PropDomain::Style)?;
+    }
+
+    if matches!(
+        component,
+        BuiltinComponent::Audio
+            | BuiltinComponent::Video
+            | BuiltinComponent::Iframe
+            | BuiltinComponent::Device
+            | BuiltinComponent::Image
+            | BuiltinComponent::Camera
+            | BuiltinComponent::Microphone
+    ) {
+        validate_component_props_from_inventory(component, &props, PropDomain::Media)?;
+        validate_component_props_from_inventory(component, &props, PropDomain::Style)?;
+    }
+
+    if matches!(
+        component,
+        BuiltinComponent::Input
+            | BuiltinComponent::Select
+            | BuiltinComponent::Checkbox
+            | BuiltinComponent::Toggle
+            | BuiltinComponent::RadioGroup
+            | BuiltinComponent::Date
+            | BuiltinComponent::DateRange
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
+            | BuiltinComponent::Textarea
+            | BuiltinComponent::Color
+            | BuiltinComponent::Dropzone
+            | BuiltinComponent::Slider
+    ) {
+        validate_component_props_from_inventory(component, &props, PropDomain::Form)?;
+        validate_component_props_from_inventory(component, &props, PropDomain::Variant)?;
+        validate_component_props_from_inventory(component, &props, PropDomain::Style)?;
+    }
+
     match component {
         BuiltinComponent::Box => {
             let props = parse_style_props(component, &props, StylePropMode::Box)?;

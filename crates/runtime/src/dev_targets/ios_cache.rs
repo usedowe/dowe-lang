@@ -11,6 +11,10 @@ pub(super) fn ios_app_cache_key(
     let mut files = ios_host_input_files(ios_root)?;
     files.sort();
     let mut digest = Sha256::new();
+    update_digest(
+        &mut digest,
+        &dowe_components::VIEW_IR_SCHEMA_VERSION.to_le_bytes(),
+    );
     update_digest(&mut digest, target.as_bytes());
     update_digest(&mut digest, toolchain_signature);
     for path in files {
@@ -29,7 +33,45 @@ pub(super) fn ios_app_cache_key(
 
 pub(super) fn cached_ios_app(project_root: &Path, cache_key: &str) -> Option<PathBuf> {
     let bundle = ios_cache_entry(project_root, cache_key).join("DoweIosApp.app");
-    bundle.join("DoweIosApp").is_file().then_some(bundle)
+    let executable = bundle.join("DoweIosApp");
+    let plist = bundle.join("Info.plist");
+    (executable.is_file() && ios_bundle_has_identifier(&plist)).then_some(bundle)
+}
+
+fn ios_bundle_has_identifier(plist: &Path) -> bool {
+    let Ok(contents) = fs::read_to_string(plist) else {
+        return false;
+    };
+    let Some(identifier_key) = contents.find("<key>CFBundleIdentifier</key>") else {
+        return false;
+    };
+    let Some(start) = contents[identifier_key..].find("<string>") else {
+        return false;
+    };
+    let start = identifier_key + start + "<string>".len();
+    let Some(end) = contents[start..].find("</string>") else {
+        return false;
+    };
+    if contents[start..start + end].trim().is_empty() {
+        return false;
+    }
+    if let Some(schema_key) = contents.find("<key>DoweIRSchemaVersion</key>") {
+        let Some(integer_start) = contents[schema_key..].find("<integer>") else {
+            return false;
+        };
+        let integer_start = schema_key + integer_start + "<integer>".len();
+        let Some(integer_end) = contents[integer_start..].find("</integer>") else {
+            return false;
+        };
+        if contents[integer_start..integer_start + integer_end]
+            .trim()
+            .parse::<u32>()
+            .is_err()
+        {
+            return false;
+        }
+    }
+    true
 }
 
 pub(super) fn publish_ios_app(
@@ -215,7 +257,11 @@ mod tests {
         let bundle = temp.path().join(".dowe/dev/ios/build/1/DoweIosApp.app");
         fs::create_dir_all(&bundle).expect("bundle");
         fs::write(bundle.join("DoweIosApp"), "binary").expect("binary");
-        fs::write(bundle.join("Info.plist"), "plist").expect("plist");
+        fs::write(
+            bundle.join("Info.plist"),
+            "<key>CFBundleIdentifier</key><string>dev.dowe.test</string>",
+        )
+        .expect("plist");
 
         assert!(cached_ios_app(temp.path(), "key").is_none());
 
@@ -239,7 +285,11 @@ mod tests {
         let bundle = temp.path().join(".dowe/dev/ios/build/1/DoweIosApp.app");
         fs::create_dir_all(&bundle).expect("bundle");
         fs::write(bundle.join("DoweIosApp"), "binary").expect("binary");
-        fs::write(bundle.join("Info.plist"), "plist").expect("plist");
+        fs::write(
+            bundle.join("Info.plist"),
+            "<key>CFBundleIdentifier</key><string>dev.dowe.test</string>",
+        )
+        .expect("plist");
 
         let published = publish_ios_app(temp.path(), "key", &bundle).expect("publish");
 
@@ -249,7 +299,7 @@ mod tests {
         );
         assert_eq!(
             fs::read_to_string(published.join("Info.plist")).expect("plist"),
-            "plist"
+            "<key>CFBundleIdentifier</key><string>dev.dowe.test</string>"
         );
         assert!(!bundle.exists());
     }

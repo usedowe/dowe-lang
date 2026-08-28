@@ -123,6 +123,7 @@ fn rejects_incompatible_persisted_view_store_shapes() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     let router = super::router_js(&web);
 
@@ -140,6 +141,7 @@ fn fills_request_path_placeholders_from_signal_names() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     let router = super::router_js(&web);
 
@@ -246,6 +248,7 @@ fn emits_init_and_reactive_splash_boundary() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(page.content.contains("data-dowe-splash=\\\"loading01\\\""));
@@ -282,6 +285,7 @@ fn emits_terminal_replace_redirect_steps() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(
@@ -480,6 +484,7 @@ fn creates_locale_chunks_and_browser_translation_runtime() {
         translation_chunks: first,
         default_locale: Some("en".to_string()),
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
     assert!(router.contains("navigator.languages"));
     assert!(router.contains("localeChunks"));
@@ -494,6 +499,7 @@ fn emits_portable_svg_import_runtime() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     let router = super::router_js(&web);
 
@@ -518,6 +524,7 @@ fn preserves_manifest_path_prefix_regex_in_minified_router() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
 
     assert!(router.contains(r#"path.replace(/^web\//,"")"#));
@@ -1152,6 +1159,7 @@ fn emits_web_manifest_and_html_artifacts() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     web.router_js = super::router_js(&web);
     let router_file_name = web.router_file_name();
@@ -1462,6 +1470,7 @@ fn incremental_artifacts_use_safe_names_when_prepared_names_are_empty() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: "export {}".to_string(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
 
     assert_eq!(web.design_file_name(), "design.css");
@@ -1523,6 +1532,7 @@ fn incremental_artifacts_publish_each_active_page_design_name() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: "export {}".to_string(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     let web = super::WebOutput {
         chunks: Vec::new(),
@@ -1530,6 +1540,7 @@ fn incremental_artifacts_publish_each_active_page_design_name() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: "export {}".to_string(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
 
     let update = super::web_artifact_update(&web, Some(&previous), "body{}".to_string());
@@ -1588,6 +1599,7 @@ fn incremental_design_preparation_repairs_reused_page_capability_styles() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     super::prepare_dev_design_asset(
         &mut initial,
@@ -1606,6 +1618,7 @@ fn incremental_design_preparation_repairs_reused_page_capability_styles() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: initial.router_js.clone(),
+        render_report: initial.render_report.clone(),
     };
     let mut web = previous.clone();
 

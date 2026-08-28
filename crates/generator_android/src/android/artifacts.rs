@@ -40,6 +40,7 @@ use std::sync::{Mutex, OnceLock};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AndroidOutput {
     pub files: Vec<AndroidArtifact>,
+    pub render_report: dowe_components::RenderReport,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -290,7 +291,50 @@ pub fn generate_android_with_app_translations_and_icons(
             }),
     );
     files.extend(android_translation_artifacts(translations));
-    AndroidOutput { files }
+    files.push(AndroidArtifact {
+        relative_path: PathBuf::from("apps/android/view-consumption.json"),
+        content: android_view_consumption_manifest(routes),
+        kind: AndroidArtifactKind::Manifest,
+        target: "android",
+    });
+    files.push(AndroidArtifact {
+        relative_path: PathBuf::from("apps/android/dev/view-consumption.json"),
+        content: android_view_consumption_manifest(routes),
+        kind: AndroidArtifactKind::Manifest,
+        target: "android",
+    });
+    AndroidOutput {
+        files,
+        render_report: render_report_for_routes(routes),
+    }
+}
+
+fn android_view_consumption_manifest(routes: &[ViewRoute]) -> String {
+    let mut entries = BTreeSet::new();
+    for route in routes {
+        for tree in [&route.layout_tree, &route.page_tree] {
+            for entry in consumed_props_for_tree(tree) {
+                let owner = entry
+                    .item
+                    .map(|item| format!("Item:{}", item.as_str()))
+                    .unwrap_or_else(|| entry.component.as_str().to_string());
+                entries.insert(format!(
+                    "{{\"component\":\"{}\",\"owner\":\"{}\",\"prop\":\"{}\",\"irField\":\"{}\"}}",
+                    entry.component.as_str(), owner, entry.prop, entry.ir_field.as_str()
+                ));
+            }
+        }
+    }
+    format!(
+        "{{\"schemaVersion\":{},\"target\":\"android-dev\",\"routes\":[{}],\"consumedProps\":[{}]}}\n",
+        dowe_components::VIEW_IR_SCHEMA_VERSION,
+        routes
+            .iter()
+            .map(|route| format!("\"{}\"", route.route_path))
+            .collect::<Vec<_>>()
+            .join(","),
+        entries.into_iter().collect::<Vec<_>>().join(",")
+    )
 }
 
 fn android_translation_artifacts(catalog: &TranslationCatalog) -> Vec<AndroidArtifact> {
@@ -551,6 +595,7 @@ fn android_manifest(
     <uses-permission android:name="android.permission.INTERNET" />
 {capture_permissions}
     <application android:theme="@style/AppTheme" android:label="{}" android:usesCleartextTraffic="true"{icon_attributes}>
+        <meta-data android:name="dev.dowe.ir.schema" android:value="{}" />
         <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize" android:supportsPictureInPicture="true" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -566,7 +611,8 @@ fn android_manifest(
     </application>
 </manifest>
 "#,
-        escape_android_xml(app_name)
+        escape_android_xml(app_name),
+        dowe_components::VIEW_IR_SCHEMA_VERSION
     )
 }
 
@@ -585,6 +631,7 @@ fn dev_manifest(
     <uses-permission android:name="android.permission.INTERNET" />
 {capture_permissions}
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="{}" android:usesCleartextTraffic="true"{icon_attributes}>
+        <meta-data android:name="dev.dowe.ir.schema" android:value="{}" />
         <activity android:name="dev.dowe.generated.DoweDevHostActivity" android:exported="true" android:windowSoftInputMode="adjustResize" android:supportsPictureInPicture="true" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -601,7 +648,8 @@ fn dev_manifest(
 </manifest>
 "#,
         app_bundle,
-        escape_android_xml(app_name)
+        escape_android_xml(app_name),
+        dowe_components::VIEW_IR_SCHEMA_VERSION
     )
 }
 

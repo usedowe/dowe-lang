@@ -10,6 +10,7 @@ fn render_dev_android_node(
     context: &ComposeReactiveContext,
     children_method: Option<&str>,
 ) {
+    register_compose_consumed_props(node, context);
     if let Some(show) = node_element_props(node).and_then(|props| props.show.as_ref()) {
         output.push_str(&format!(
             "        if ({}) {{\n",

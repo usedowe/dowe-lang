@@ -187,7 +187,26 @@ fn web_output_for(
         translation_chunks: translation_chunks.to_vec(),
         default_locale: translations.default_locale.clone(),
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
+    web.render_report = dowe_components::RenderReport::from_routes(
+        dowe_components::RenderTarget::Web,
+        web.pages
+            .iter()
+            .map(|page| dowe_components::RouteRenderReport {
+                route_path: page.route_path.clone(),
+                accepted: Vec::new(),
+                lowered: Vec::new(),
+                present: Vec::new(),
+                consumed: {
+                    let mut entries = dowe_generator_web::consumed_props_for_tree(&page.layout_tree);
+                    entries.extend(dowe_generator_web::consumed_props_for_tree(&page.page_tree));
+                    entries
+                },
+                emitted: Vec::new(),
+            })
+            .collect(),
+    );
     if previous.is_none() {
         web.router_js = router_js(&web);
         let router_file_name = web.router_file_name();

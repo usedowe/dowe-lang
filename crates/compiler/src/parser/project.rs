@@ -199,6 +199,10 @@ fn empty_web_output() -> WebOutput {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     }
 }
 

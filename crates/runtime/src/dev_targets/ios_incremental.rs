@@ -242,6 +242,10 @@ fn ios_hot_module_version(
     host_abi: &[u8],
 ) -> String {
     let mut hash = Sha256::new();
+    update_digest(
+        &mut hash,
+        &dowe_components::VIEW_IR_SCHEMA_VERSION.to_le_bytes(),
+    );
     update_digest(&mut hash, IOS_HOT_MODULE_VERSION_SCHEMA);
     update_digest(&mut hash, IOS_INCREMENTAL_MODULE_NAME.as_bytes());
     update_digest(&mut hash, target.as_bytes());
@@ -261,6 +265,10 @@ fn ios_hot_module_version(
 
 fn ios_incremental_cache_key(target: &str, toolchain_signature: &[u8], host_abi: &[u8]) -> String {
     let mut hash = Sha256::new();
+    update_digest(
+        &mut hash,
+        &dowe_components::VIEW_IR_SCHEMA_VERSION.to_le_bytes(),
+    );
     update_digest(&mut hash, IOS_INCREMENTAL_CACHE_SCHEMA);
     update_digest(&mut hash, IOS_INCREMENTAL_MODULE_NAME.as_bytes());
     update_digest(&mut hash, target.as_bytes());

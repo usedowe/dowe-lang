@@ -1,4 +1,7 @@
+pub const VIEW_IR_SCHEMA_VERSION: u32 = dowe_components::VIEW_IR_SCHEMA_VERSION;
+
 include!("ios/artifacts.rs");
+include!("ios/prop_consumption.rs");
 include!("ios/dynamic_icon_catalog.rs");
 include!("ios/generated_runtime.rs");
 include!("ios/reactive_runtime.rs");

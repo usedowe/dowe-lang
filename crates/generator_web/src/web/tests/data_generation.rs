@@ -22,6 +22,7 @@ fn renders_code_markup_theme_classes_and_copy_runtime() {
             translation_chunks: Vec::new(),
             default_locale: None,
             router_js: String::new(),
+            render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
         })
         .contains("navigator.clipboard")
     );
@@ -171,6 +172,7 @@ fn renders_table_markup_css_and_runtime() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
     assert!(router.contains("renderTable"));
     assert!(router.contains("tableCellValue"));
@@ -516,6 +518,7 @@ fn emits_show_visibility_markup_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
+        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
     assert!(router.contains("data-dowe-show"));
     assert!(router.contains("if(!scoped&&button.closest(\"[data-dowe-each-row]\"))continue"));

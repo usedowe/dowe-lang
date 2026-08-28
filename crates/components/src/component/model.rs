@@ -31,3 +31,7 @@ include!("model/style_bindings.rs");
 include!("model/variant_bindings.rs");
 include!("model/builtin_component.rs");
 include!("prop_contracts.rs");
+include!("ir_field.rs");
+include!("view_contract.rs");
+include!("prop_consumption.rs");
+include!("render_report.rs");

@@ -32,4 +32,5 @@ mod tests {
     include!("component/tests_navigation_and_tree.rs");
     include!("component/tests_tree_helpers.rs");
     include!("component/tests_form_validation.rs");
+    include!("component/tests_view_contract.rs");
 }

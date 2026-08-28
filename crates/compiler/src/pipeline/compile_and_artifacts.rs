@@ -473,6 +473,9 @@ fn write_web_artifacts(
     let web_root = project.root.join(".dowe/web");
     let mut update = web_artifact_update(&project.web, previous, design_css);
     update.expected_paths.insert(PathBuf::from("web/env.json"));
+    update
+        .expected_paths
+        .insert(PathBuf::from("web/view-consumption.json"));
     if include_inspector {
         update
             .expected_paths
@@ -494,6 +497,12 @@ fn write_web_artifacts(
         kind: "Manifest".to_string(),
         target: "web".to_string(),
     });
+    artifacts.push(GeneratedFile {
+        relative_path: PathBuf::from("web/view-consumption.json"),
+        content: render_report_manifest(&project.web.render_report),
+        kind: "Manifest".to_string(),
+        target: "web".to_string(),
+    });
     fs::create_dir_all(&web_root)?;
     for file in &artifacts {
         write_generated_file(&project.root, file)?;
@@ -501,7 +510,16 @@ fn write_web_artifacts(
     let expected = update
         .expected_paths
         .iter()
-        .map(|path| generated_output_path(&project.root, path))
+        .map(|path| {
+            path.strip_prefix("web/")
+                .map(|relative| web_root.join(relative))
+                .map_err(|_| {
+                    DoweError::new(format!(
+                        "web artifact path must be under web/: {}",
+                        path.display()
+                    ))
+                })
+        })
         .collect::<DoweResult<BTreeSet<_>>>()?;
     remove_obsolete_generated_files(&web_root, &expected)?;
     Ok(())
@@ -793,6 +811,32 @@ fn android_font_resource_name(asset_stem: &str) -> String {
     asset_stem.replace('-', "_")
 }
 
+fn render_report_manifest(report: &dowe_components::RenderReport) -> String {
+    let mut entries = BTreeSet::new();
+    for entry in &report.consumed_props {
+        let owner = entry
+            .item
+            .map(|item| format!("Item:{}", item.as_str()))
+            .unwrap_or_else(|| entry.component.as_str().to_string());
+        entries.insert(format!(
+            "{{\"component\":\"{}\",\"owner\":\"{}\",\"prop\":\"{}\",\"irField\":\"{}\"}}",
+            entry.component.as_str(), owner, entry.prop, entry.ir_field.as_str()
+        ));
+    }
+    format!(
+        "{{\"schemaVersion\":{},\"target\":\"{}\",\"routes\":[{}],\"consumedProps\":[{}]}}\n",
+        report.schema_version,
+        report.target.as_str(),
+        report
+            .routes
+            .iter()
+            .map(|route| format!("\"{}\"", route.route_path))
+            .collect::<Vec<_>>()
+            .join(","),
+        entries.into_iter().collect::<Vec<_>>().join(",")
+    )
+}
+
 fn build_app_outputs(
     routes: &ViewTargetRoutes,
     desktop_web: &WebOutput,
@@ -819,6 +863,12 @@ fn build_app_outputs(
                     target: file.target.to_string(),
                 }),
         );
+        files.push(GeneratedFile {
+            relative_path: PathBuf::from("apps/desktop/view-consumption.json"),
+            content: render_report_manifest(&desktop_web.render_report),
+            kind: "Manifest".to_string(),
+            target: "desktop".to_string(),
+        });
         files.extend(
             web_artifacts_for_target(
                 desktop_web,
@@ -994,7 +1044,8 @@ fn app_manifest(
     let ios_routes = route_paths_json(&routes.ios);
 
     format!(
-        r#"{{"app":{{"name":"{}","bundle":"{}"}},"targets":[{targets}],"webManifest":"web/manifest.json","desktopWebManifest":"apps/desktop/web/manifest.json","routesByTarget":{{"web":[{web_routes}],"desktop":[{desktop_routes}],"android":[{android_routes}],"ios":[{ios_routes}]}},"deepLinks":{{"scheme":"dowe-dev","host":"generated","initialPath":"{initial}","routes":[{route_values}]}},"externalPolicies":{{"desktop":["system","webview"],"android":["system","webview"],"ios":["system","webview"]}}}}"#,
+        r#"{{"schemaVersion":{},"app":{{"name":"{}","bundle":"{}"}},"targets":[{targets}],"webManifest":"web/manifest.json","desktopWebManifest":"apps/desktop/web/manifest.json","routesByTarget":{{"web":[{web_routes}],"desktop":[{desktop_routes}],"android":[{android_routes}],"ios":[{ios_routes}]}},"deepLinks":{{"scheme":"dowe-dev","host":"generated","initialPath":"{initial}","routes":[{route_values}]}},"externalPolicies":{{"desktop":["system","webview"],"android":["system","webview"],"ios":["system","webview"]}}}}"#,
+        dowe_components::VIEW_IR_SCHEMA_VERSION,
         escape_json_string(&app_config.name),
         escape_json_string(&app_config.bundle)
     )

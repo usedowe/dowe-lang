@@ -16,9 +16,24 @@ struct SwiftReactiveContext {
     items: Vec<(String, String)>,
     children_expression: Option<String>,
     node_expressions: BTreeMap<usize, String>,
+    consumed_props: std::rc::Rc<std::cell::RefCell<dowe_components::PropConsumptionRegistry>>,
 }
 
 impl SwiftReactiveContext {
+    fn register_consumed_prop(
+        &self,
+        component: dowe_components::BuiltinComponent,
+        prop: &'static str,
+        ir_field: &'static str,
+    ) {
+        dowe_components::register_consumed_prop(
+            &mut self.consumed_props.borrow_mut(),
+            component,
+            prop,
+            ir_field,
+        );
+    }
+
     fn with_scope(
         &self,
         constants: &[ViewConstant],

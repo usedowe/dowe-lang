@@ -29,6 +29,29 @@ fn generated_tree_preserves_unchanged_files_and_removes_obsolete_files() {
 }
 
 #[test]
+fn removes_obsolete_view_reports_for_every_target_tree() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    for target in ["web", "desktop", "android", "ios"] {
+        let tree = temp.path().join(format!(".dowe/{target}"));
+        let current = crate::model::GeneratedFile {
+            relative_path: std::path::PathBuf::from(format!("{target}/view-consumption.json")),
+            content: format!("{{\"target\":\"{target}\"}}"),
+            kind: "Manifest".to_string(),
+            target: target.to_string(),
+        };
+        super::sync_generated_tree(temp.path(), &tree, std::slice::from_ref(&current))
+            .expect("initial target sync");
+        let obsolete = tree.join("obsolete/view-consumption.json");
+        fs::create_dir_all(obsolete.parent().expect("obsolete parent")).expect("directory");
+        fs::write(&obsolete, "obsolete").expect("obsolete report");
+        super::sync_generated_tree(temp.path(), &tree, std::slice::from_ref(&current))
+            .expect("target resync");
+        assert!(!obsolete.exists(), "obsolete report for {target}");
+        assert!(tree.join("view-consumption.json").is_file());
+    }
+}
+
+#[test]
 fn selected_web_development_compile_skips_unselected_app_artifacts() {
     let temp = tempfile::tempdir().expect("tempdir");
     write_fixture_with_views(
@@ -81,6 +104,8 @@ fn selected_android_development_compile_writes_only_android_app_artifacts() {
             .all(|file| matches!(file.target.as_str(), "android" | "apps"))
     );
     assert!(temp.path().join(".dowe/apps/android").is_dir());
+    assert!(temp.path().join(".dowe/apps/android/view-consumption.json").is_file());
+    assert!(temp.path().join(".dowe/apps/android/dev/view-consumption.json").is_file());
     assert!(!temp.path().join(".dowe/apps/desktop").exists());
     assert!(!temp.path().join(".dowe/apps/ios").exists());
     assert!(!temp.path().join(".dowe/web").exists());
