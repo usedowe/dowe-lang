@@ -124,6 +124,7 @@ pub struct DevTargetPreferences {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct DevRunOptions {
     pub devices: DevTargetDeviceSelection,
+    pub studio_preview: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

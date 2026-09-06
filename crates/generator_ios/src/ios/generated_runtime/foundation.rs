@@ -23,6 +23,17 @@ extension EnvironmentValues {
     }
 }
 
+struct DowePageEntranceSuppressedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var dowePageEntranceSuppressed: Bool {
+        get { self[DowePageEntranceSuppressedKey.self] }
+        set { self[DowePageEntranceSuppressedKey.self] = newValue }
+    }
+}
+
 struct DoweTitleColorModifier: ViewModifier {
     @Environment(\.doweTitleColor) private var inheritedColor
     let explicitColor: Color?
@@ -378,6 +389,7 @@ enum DoweAnimationPreset: Equatable {
 
 struct DoweAnimationModifier: ViewModifier {
     let preset: DoweAnimationPreset
+    @Environment(\.dowePageEntranceSuppressed) private var pageEntranceSuppressed
     @State private var active = false
 
     func body(content: Content) -> some View {
@@ -391,17 +403,16 @@ struct DoweAnimationModifier: ViewModifier {
             }
     }
 
+    private var visible: Bool {
+        pageEntranceSuppressed || active || preset == .none
+    }
+
     private var opacity: Double {
-        switch preset {
-        case .none:
-            return 1
-        default:
-            return active ? 1 : 0
-        }
+        visible ? 1 : 0
     }
 
     private var offset: CGSize {
-        if active {
+        if visible {
             return .zero
         }
         switch preset {
@@ -419,7 +430,7 @@ struct DoweAnimationModifier: ViewModifier {
     }
 
     private var scale: CGFloat {
-        if preset == .scaleIn && !active {
+        if preset == .scaleIn && !visible {
             return CGFloat(0.96)
         }
         return CGFloat(1)

@@ -311,6 +311,7 @@ fn collect_dev_reactive(
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Title { .. }
         | ViewNode::Text { .. }
@@ -373,6 +374,7 @@ fn java_action_value(action: &ViewAction, context: &ComposeReactiveContext) -> S
                 .join(", ")
         ),
         ViewActionKind::Request(request) => java_request_value(request, context),
+        ViewActionKind::Invoke(invoke) => java_invoke_value(invoke, context),
         ViewActionKind::Assign(assign) => java_assign_value(assign, context),
         ViewActionKind::Reset(reset) => format!(
             "DoweAction.reset(\"{}\")",
@@ -394,6 +396,11 @@ fn java_function_statement(
             "DoweStep.request(\"{}\", {})",
             escape_java(result),
             java_request_value(action, context)
+        ),
+        dowe_components::ViewFunctionStatement::Invoke { result, action } => format!(
+            "DoweStep.invoke(\"{}\", {})",
+            escape_java(result),
+            java_invoke_value(action, context)
         ),
         dowe_components::ViewFunctionStatement::If { result, success, error } => format!(
             "DoweStep.branch(\"{}\", new DoweStep[] {{{}}}, new DoweStep[] {{{}}})",
@@ -428,6 +435,20 @@ fn java_function_statement(
             escape_java(path)
         ),
     }
+}
+
+fn java_invoke_value(action: &dowe_components::ViewInvokeAction, context: &ComposeReactiveContext) -> String {
+    format!(
+        "DoweAction.invoke(\"{}\", new Object[][] {{{}}}, {}, {}, {}, {}, {}, {})",
+        escape_java(&action.function),
+        action.args.iter().map(|arg| format!("new Object[] {{\"{}\", {}}}", escape_java(&arg.name), java_stdlib_value(&arg.value, context))).collect::<Vec<_>>().join(", "),
+        java_optional_path(action.update.as_deref(), context),
+        java_optional_path(action.reset.as_deref(), context),
+        java_optional_path(action.success_alert.as_deref(), context),
+        action.success_message.as_deref().map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string()),
+        java_optional_path(action.error_alert.as_deref(), context),
+        action.error_message.as_deref().map(|value| format!("\"{}\"", escape_java(value))).unwrap_or_else(|| "null".to_string())
+    )
 }
 
 fn java_assign_value(assign: &dowe_components::ViewAssignAction, context: &ComposeReactiveContext) -> String {

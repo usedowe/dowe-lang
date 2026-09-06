@@ -5,23 +5,23 @@ use crate::model::{
     DatabaseBinding, DatabaseEntity, DatabaseFieldType, DatabaseSeeder, DoweType, DoweTypeField,
     Endpoint, EndpointBehavior, EnvironmentConfig, EnvironmentVisibility, HttpActionJsonEndpoint,
     HttpBytesEndpoint, HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint,
-    HttpRedirectPolicy, HttpResponseMode, HttpReverseProxyEndpoint, OutboundHttpHeader,
-    OutboundHttpRequest, ResponseCookie, ResponseHeader, ReverseProxyStrategy, RtpConfig,
-    ServerAction, ServerBackgroundJob, ServerCallStatement, ServerConfig,
-    ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement, ServerFileStatement,
-    ServerFunctionAction, ServerFunctionParameter, ServerFunctionReturn, ServerInspectorBody,
-    ServerInspectorBodyField, ServerInspectorEdge, ServerInspectorEntity,
+    HttpRedirectPolicy, HttpResponseMode, HttpReverseProxyEndpoint, NativeIpcConfig,
+    NativeIpcFunction, OutboundHttpHeader, OutboundHttpRequest, ResponseCookie, ResponseHeader,
+    ReverseProxyStrategy, RtpConfig, ServerAction, ServerBackgroundJob, ServerCallStatement,
+    ServerConfig, ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement,
+    ServerFileStatement, ServerFunctionAction, ServerFunctionParameter, ServerFunctionReturn,
+    ServerInspectorBody, ServerInspectorBodyField, ServerInspectorEdge, ServerInspectorEntity,
     ServerInspectorEntityField, ServerInspectorHeader, ServerInspectorJob, ServerInspectorManifest,
     ServerInspectorNode, ServerInspectorParameter, ServerInspectorResource, ServerInspectorRoute,
     ServerInspectorService, ServerInspectorSource, ServerInspectorWebSocket, ServerJwtStatement,
     ServerKvStatement, ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware,
     ServerMiddlewareAction, ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerModel,
-    ServerModelEngine, ServerModelFormat, ServerModelKind, ServerPasswordStatement,
-    ServerQueueStatement, ServerSecret, ServerSpawnStatement, ServerStatement,
-    ServerStdlibStatement, ServerStoreStatement, ServerTransport, ServerTransportProtocol,
-    ServerVectorStatement, StoreConnection, StoreLiteral, TlsConfig, TlsDomainsSource, TlsMode,
-    WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute, WebSocketSendJsonStatement,
-    WebSocketSseBridgeStatement, normalize_http_header_name,
+    ServerModelEngine, ServerModelFormat, ServerModelKind, ServerNotificationStatement,
+    ServerPasswordStatement, ServerQueueStatement, ServerSecret, ServerSpawnStatement,
+    ServerStatement, ServerStdlibStatement, ServerStoreStatement, ServerTransport,
+    ServerTransportProtocol, ServerVectorStatement, StoreConnection, StoreLiteral, TlsConfig,
+    TlsDomainsSource, TlsMode, WebSocketHandlers, WebSocketJsonStatement, WebSocketRoute,
+    WebSocketSendJsonStatement, WebSocketSseBridgeStatement, normalize_http_header_name,
 };
 use crate::parser::source_ast::{
     SourceFile, SourceNode, SourceObjectEntry, SourceProp, SourceValue,
@@ -77,6 +77,7 @@ include!("source_server/file_actions.rs");
 include!("source_server/password_actions.rs");
 include!("source_server/validation.rs");
 include!("source_server/action_helpers.rs");
+include!("source_server/notifications.rs");
 include!("source_server/behavior.rs");
 include!("source_server/responses.rs");
 include!("source_server/props.rs");

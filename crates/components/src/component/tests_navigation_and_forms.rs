@@ -201,6 +201,7 @@ fn validates_stepper_entries_orientation_and_errors() {
     .expect("profile step");
     let node = stepper_component_node(
         vec![
+            binding_prop("bind", "selectedStep", PropValueKind::String),
             string_prop("scheme", "success"),
             string_prop("orientation", "vertical"),
         ],
@@ -212,6 +213,7 @@ fn validates_stepper_entries_orientation_and_errors() {
         panic!("stepper");
     };
     assert_eq!(props.variant, TabsVariant::Stepper);
+    assert_eq!(props.style.element.bind.as_deref(), Some("selectedStep"));
     assert_eq!(props.color, ColorFamily::Success);
     assert_eq!(props.position, TabsPosition::Start);
     assert_eq!(tabs.len(), 2);
@@ -306,6 +308,29 @@ fn validates_radio_group_orientation_props_and_defaults() {
             .expect_err("orientation"),
         ComponentError::invalid_prop("orientation", "vertical or horizontal")
     );
+}
+
+#[test]
+fn validates_radio_card_content_and_defaults() {
+    let option = radio_card_option_component(vec![
+        string_prop("value", "local"),
+        string_prop("title", "Local"),
+        string_prop("description", "Files on this computer"),
+        string_prop("icon", "laptop"),
+    ])
+    .expect("radio card option");
+    let node = radio_card_component_node(Vec::new(), vec![option]).expect("radio card");
+    match node {
+        ViewNode::RadioGroup { props, options } => {
+            assert_eq!(props.presentation, RadioGroupPresentation::Card);
+            assert_eq!(props.orientation, RadioGroupOrientation::Horizontal);
+            assert_eq!(props.style.variant, Some(ComponentVariant::Outlined));
+            assert_eq!(options[0].label, "Local");
+            assert_eq!(options[0].description.as_deref(), Some("Files on this computer"));
+            assert!(options[0].icon.is_some());
+        }
+        _ => panic!("radio card"),
+    }
 }
 
 #[test]

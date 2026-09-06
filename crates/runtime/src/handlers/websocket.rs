@@ -22,6 +22,9 @@ async fn handle_websocket(
     mut socket: WebSocket,
     project: Arc<CompiledProject>,
     handlers: WebSocketHandlers,
+    params: HashMap<String, String>,
+    request_context: HashMap<String, Value>,
+    headers: HeaderMap,
     cache_mode: CacheRuntimeMode,
 ) {
     crate::background_jobs::launch_task_statements(&project.root, &handlers.open, cache_mode);
@@ -51,6 +54,9 @@ async fn handle_websocket(
                     &project,
                     &handlers.message,
                     text.as_str(),
+                    &params,
+                    &request_context,
+                    &headers,
                     cache_mode,
                 )
                 .await
@@ -66,6 +72,9 @@ async fn handle_websocket(
                     &project,
                     &handlers.message,
                     &text,
+                    &params,
+                    &request_context,
+                    &headers,
                     cache_mode,
                 )
                 .await
@@ -89,10 +98,23 @@ pub(crate) fn websocket_response(
     upgrade: WebSocketUpgrade,
     project: Arc<CompiledProject>,
     handlers: WebSocketHandlers,
+    params: HashMap<String, String>,
+    request_context: HashMap<String, Value>,
+    headers: HeaderMap,
     cache_mode: CacheRuntimeMode,
 ) -> Response {
     upgrade
-        .on_upgrade(move |socket| handle_websocket(socket, project, handlers, cache_mode))
+        .on_upgrade(move |socket| {
+            handle_websocket(
+                socket,
+                project,
+                handlers,
+                params,
+                request_context,
+                headers,
+                cache_mode,
+            )
+        })
         .into_response()
 }
 
@@ -101,18 +123,20 @@ async fn execute_websocket_action(
     project: &CompiledProject,
     action: &dowe_compiler::ServerAction,
     text: &str,
+    params: &HashMap<String, String>,
+    request_context: &HashMap<String, Value>,
+    headers: &HeaderMap,
     cache_mode: CacheRuntimeMode,
 ) -> Result<(), ()> {
     let body = Bytes::from(text.to_string());
-    let params = HashMap::new();
     let mut context = StoreActionContext {
         project,
         root: &project.root,
         params: &params,
         body: &body,
         raw_query: None,
-        headers: None,
-        request_context: None,
+        headers: Some(headers),
+        request_context: Some(request_context),
         request_body: None,
         bindings: HashMap::new(),
         http_results: HashMap::new(),
@@ -134,7 +158,19 @@ async fn execute_websocket_action(
             }
             _ => {
                 if let Err(error) = context.execute_statement(statement).await {
-                    send_ws_error(socket, None, None, None, error.code, error.message).await?;
+                    let request_id = resolved_text(&context, "event.requestId", "unknown");
+                    let request_type = resolved_text(&context, "event.requestType", "");
+                    let model = resolved_text(&context, "event.model", "");
+                    send_ws_error(
+                        socket,
+                        Some(&request_id),
+                        Some(&request_type),
+                        Some(&model),
+                        error.code,
+                        error.message,
+                    )
+                    .await?;
+                    return Err(());
                 }
             }
         }
@@ -391,7 +427,7 @@ async fn send_ws_error(
         socket,
         "error",
         request_id.unwrap_or("unknown"),
-        request_type.unwrap_or("clarify"),
+        request_type.unwrap_or(""),
         model.unwrap_or(""),
         Value::Object(payload),
         None,
@@ -414,16 +450,41 @@ async fn send_ws_event(
         "requestId".to_string(),
         Value::String(request_id.to_string()),
     );
-    output.insert(
-        "requestType".to_string(),
-        Value::String(request_type.to_string()),
-    );
-    output.insert("model".to_string(), Value::String(model.to_string()));
+    if !request_type.is_empty() {
+        output.insert(
+            "requestType".to_string(),
+            Value::String(request_type.to_string()),
+        );
+    }
+    if !model.is_empty() {
+        output.insert("model".to_string(), Value::String(model.to_string()));
+    }
+    let payload = if request_type.is_empty() && model.is_empty() {
+        safe_client_payload(event, &payload)
+    } else {
+        payload
+    };
     output.insert("payload".to_string(), payload);
     if let Some(content) = content {
         output.insert("content".to_string(), Value::String(content));
     }
     send_ws_value(socket, Value::Object(output)).await
+}
+
+fn safe_client_payload(event: &str, payload: &Value) -> Value {
+    if event == "error" {
+        return payload
+            .get("error")
+            .filter(|value| value.is_object())
+            .cloned()
+            .map(|error| {
+                let mut output = Map::new();
+                output.insert("error".to_string(), error);
+                Value::Object(output)
+            })
+            .unwrap_or_else(|| Value::Object(Map::new()));
+    }
+    Value::Object(Map::new())
 }
 
 async fn send_ws_value(socket: &mut WebSocket, value: Value) -> Result<(), ()> {
@@ -437,4 +498,24 @@ fn done_payload() -> Value {
     let mut output = Map::new();
     output.insert("ok".to_string(), Value::Bool(true));
     Value::Object(output)
+}
+
+#[cfg(test)]
+mod websocket_tests {
+    use super::*;
+
+    #[test]
+    fn safe_client_payload_removes_provider_metadata() {
+        assert_eq!(
+            safe_client_payload("delta", &json!({ "model": "private/model", "choices": [] })),
+            json!({})
+        );
+        assert_eq!(
+            safe_client_payload(
+                "error",
+                &json!({ "model": "private/model", "error": { "code": "provider_error", "message": "Try again" } })
+            ),
+            json!({ "error": { "code": "provider_error", "message": "Try again" } })
+        );
+    }
 }

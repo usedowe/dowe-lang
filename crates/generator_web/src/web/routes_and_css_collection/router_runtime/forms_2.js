@@ -1,3 +1,6 @@
+function dispatchFormEvent(target, type) {
+  target?.dispatchEvent(new Event(type, { bubbles: true }));
+}
 function selectDateValue(root, value) {
   if (!doweDateInBounds(root, value)) return;
   const range = root.dataset.doweDateRange !== undefined;
@@ -26,6 +29,8 @@ function selectDateValue(root, value) {
     } else root.dataset.doweDateEndValue = nextEnd;
     if (bound) renderReactive(activeView);
     else renderDateRange(root, activeView?.state, scopeFor(root));
+    dispatchFormEvent(root, "input");
+    dispatchFormEvent(root, "change");
     if (nextStart && nextEnd) closeDatePicker(root);
     return;
   }
@@ -36,6 +41,8 @@ function selectDateValue(root, value) {
     root.dataset.doweDateValue = value;
     renderDateField(root, activeView?.state, scopeFor(root));
   }
+  dispatchFormEvent(root, "input");
+  dispatchFormEvent(root, "change");
   closeDatePicker(root);
 }
 function comboHost(control) {
@@ -317,7 +324,7 @@ function positionPhone(root) {
     rect.top > window.innerHeight - rect.bottom;
   popover.style.top = `${above ? Math.max(8, rect.top - height - 4) : Math.max(8, Math.min(window.innerHeight - height - 8, rect.bottom + 4))}px`;
 }
-function setPhoneCountry(root, item) {
+function setPhoneCountry(root, item, notify = false) {
   if (!root || !item) return;
   root.dataset.doweCountry = item.dataset.doweCountry || "";
   const flag = root.querySelector(".phone-country-trigger .phone-flag");
@@ -332,6 +339,7 @@ function setPhoneCountry(root, item) {
     country.classList.toggle("is-selected", selected);
     country.setAttribute("aria-selected", selected ? "true" : "false");
   }
+  if (notify) dispatchFormEvent(root, "change");
 }
 function updatePin(root, write = false, focusIndex = null) {
   const cells = Array.from(root.querySelectorAll("[data-dowe-pin-cell]"));
@@ -349,6 +357,7 @@ function updatePin(root, write = false, focusIndex = null) {
       Array.from(document.querySelectorAll("[data-dowe-pin]"))[rootIndex] ||
       root;
   }
+  if (write) dispatchFormEvent(root, "change");
   if (focusIndex != null)
     requestAnimationFrame(() =>
       Array.from(nextRoot.querySelectorAll("[data-dowe-pin-cell]"))[
@@ -356,13 +365,63 @@ function updatePin(root, write = false, focusIndex = null) {
       ]?.focus()
     );
 }
+function editorText(content) {
+  return content.innerText || content.textContent || "";
+}
+function escapeEditorHtml(value) {
+  return value.replace(/[&<>\"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&#39;" }[character]));
+}
+function highlightEditor(root) {
+  const content = root.querySelector("[data-dowe-editor-content]");
+  const highlight = root.querySelector("[data-dowe-editor-highlight]");
+  if (!content || !highlight) return;
+  const language = root.dataset.doweEditorLanguage || "dowe";
+  const keywords = language === "dowe"
+    ? "action|set|children|column|component|config|const|each|else|env|handler|if|import|init|layout|main|meta|middleware|page|request|reset|return|route|server|signal|type|views"
+    : "as|async|await|class|const|else|export|extends|from|function|if|import|interface|let|new|return|type|var";
+  const types = language === "dowe"
+    ? "Alert|AppBar|BottomBar|Box|Button|Brand|Banner|IconButton|Canvas|Card|Code|ComboBox|CsvField|Divider|DragDrop|Drawer|Editor|Flex|Footer|Grid|ImageCropper|Input|Option|Password|Path|Phone|Pin|Select|NavMenu|Scaffold|SideNav|RailNav|Sidebar|Svg|Table|Tabs|Stepper|Text|Textarea|Title|Video"
+    : "Array|Boolean|Date|Error|JSON|Map|Math|Number|Object|Promise|RegExp|Set|String|Symbol|WeakMap|WeakSet";
+  const source = editorText(content);
+  const pattern = new RegExp("(//[^\\n]*|#[^\\n]*|/\\*[\\s\\S]*?\\*/|\\\"(?:\\\\.|[^\\\"])*\\\"|'(?:\\\\.|[^'])*'|`(?:\\\\.|[^`])*`|\\b[A-Za-z_][A-Za-z0-9_]*(?=:)|\\b(?:" + keywords + ")\\b|\\b(?:" + types + ")\\b|\\b\\d+(?:\\.\\d+)?\\b)", "g");
+  const typePattern = new RegExp("^(?:" + types + ")$");
+  let result = "", last = 0, match;
+  while ((match = pattern.exec(source))) {
+    result += escapeEditorHtml(source.slice(last, match.index));
+    const token = match[0];
+    const kind = token.startsWith("//") || token.startsWith("#") || token.startsWith("/*") ? "comment" : token[0] === "\"" || token[0] === "'" || token[0] === "`" ? "string" : /^\d/.test(token) ? "number" : source[match.index + token.length] === ":" ? "attribute" : typePattern.test(token) ? "type" : "keyword";
+    result += `<span class="code-token-${kind}">${escapeEditorHtml(token)}</span>`;
+    last = match.index + token.length;
+  }
+  highlight.innerHTML = result + escapeEditorHtml(source.slice(last));
+  highlight.parentElement.scrollTop = content.scrollTop;
+  highlight.parentElement.scrollLeft = content.scrollLeft;
+}
+function renderEditors(root, state, scope) {
+  const editors = root.matches?.("[data-dowe-editor]")
+    ? [root]
+    : Array.from(root.querySelectorAll("[data-dowe-editor]"));
+  for (const editor of editors) {
+    const content = editor.querySelector("[data-dowe-editor-content]");
+    const hidden = editor.querySelector("[data-dowe-editor-hidden]");
+    const path = editor.dataset.doweBind;
+    if (content && path) {
+      const stateValue = readPath(state, path, scope);
+      const value = stateValue == null ? "" : String(stateValue);
+      if (editorText(content) !== value) content.textContent = value;
+      if (hidden) hidden.value = value;
+    }
+    if (content) highlightEditor(editor);
+  }
+}
 function hydrateAdvancedForms(root) {
   for (const input of root.querySelectorAll("[data-dowe-password-input]"))
     renderPasswordStrength(input);
   for (const editor of root.querySelectorAll("[data-dowe-editor]")) {
     const content = editor.querySelector("[data-dowe-editor-content]");
     const hidden = editor.querySelector("[data-dowe-editor-hidden]");
-    if (content && hidden) hidden.value = content.innerHTML;
+    if (content && hidden) hidden.value = editorText(content);
+    if (content) highlightEditor(editor);
   }
   for (const pin of root.querySelectorAll("[data-dowe-pin]")) updatePin(pin);
   for (const phone of root.querySelectorAll("[data-dowe-phone]")) {

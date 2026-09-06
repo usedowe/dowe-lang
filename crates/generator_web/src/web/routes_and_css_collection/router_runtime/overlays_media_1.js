@@ -199,6 +199,11 @@ function setActiveTab(root, id) {
     panel.classList.toggle("on-active", active);
     panel.hidden = !active;
   }
+  const bind = root.dataset.doweTabsBind;
+  if (bind && activeView) {
+    writePath(activeView.state, bind, id);
+    renderReactive(activeView);
+  }
 }
 function moveActiveTab(tab, step) {
   const list = tab.closest("[role='tablist']");

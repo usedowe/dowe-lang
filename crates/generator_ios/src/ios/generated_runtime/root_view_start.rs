@@ -4,8 +4,11 @@ fn swift_runtime_root_view_start() -> &'static str {
     @State private var rootEntry: DoweRouteEntry
     @State private var navigationPath: [DoweRouteEntry] = []
     @State private var routeRevision = 0
+    @State private var pageEntranceSuppressed = false
+    @State private var pageTransitionSequence = 0
     @State private var externalUrl: DoweExternalUrl?
     @State private var safeAreaInsets = EdgeInsets()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let routeChanged: (String) -> Void
 
     init(initialPath: String = DoweRoutes.initialPath, routeChanged: @escaping (String) -> Void = { _ in }) {

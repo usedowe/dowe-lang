@@ -50,6 +50,10 @@ fn map_classes(props: &MapProps) -> Vec<String> {
     classes
 }
 
+fn tree_classes(props: &dowe_components::TreeProps) -> Vec<String> {
+    variant_classes("tree", &props.style)
+}
+
 fn badge_classes(props: &BadgeProps) -> Vec<String> {
     let mut classes = vec!["badge".to_string()];
     append_style_classes(&mut classes, &props.style.style);

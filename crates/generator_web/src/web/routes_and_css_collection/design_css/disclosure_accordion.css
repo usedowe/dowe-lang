@@ -9,6 +9,20 @@
   opacity:.5;
   pointer-events:none;
 }
+.collapsible-content-inner {
+  border-left:1px solid color-mix(in srgb, currentColor 18%, transparent);
+  padding-left:.5rem;
+}
+.collapsible-content-inner .collapsible {
+  width:100%;
+}
+.collapsible .collapsible-content {
+  padding-right:0;
+}
+.collapsible .collapsible-content-inner {
+  padding-left:.5rem;
+  padding-right:0;
+}
 .collapsible-header {
   display:flex;
   width:100%;

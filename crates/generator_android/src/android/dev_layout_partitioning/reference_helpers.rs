@@ -17,6 +17,7 @@ fn dev_action_references_layout_bindings(
             dowe_components::ViewFunctionStatement::Assign(assign) => bindings.references_signal(&assign.target) || bindings.references_signal(&assign.source),
             dowe_components::ViewFunctionStatement::Reset(reset) => bindings.references_signal(&reset.target),
             dowe_components::ViewFunctionStatement::If { success, error, .. } => success.iter().chain(error).any(|step| matches!(step, dowe_components::ViewFunctionStatement::Assign(assign) if bindings.references_signal(&assign.target) || bindings.references_signal(&assign.source))),
+            dowe_components::ViewFunctionStatement::Invoke { .. } => false,
             dowe_components::ViewFunctionStatement::Toast(_) => false,
             dowe_components::ViewFunctionStatement::Redirect { .. } => false,
             dowe_components::ViewFunctionStatement::Validate { .. } => false,
@@ -31,6 +32,7 @@ fn dev_action_references_layout_bindings(
         .into_iter()
         .flatten()
         .any(|value| bindings.references_signal(value)),
+        ViewActionKind::Invoke(_) => false,
         ViewActionKind::Assign(assign) => {
             bindings.references_signal(&assign.target) || bindings.references_signal(&assign.source)
         }

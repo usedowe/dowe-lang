@@ -418,6 +418,14 @@ impl RouteBuildContext<'_> {
     ) -> DoweResult<Vec<SourceNode>> {
         let mut expanded = Vec::new();
         for node in nodes {
+            if node.name == "invoke"
+                && let Some(function) = node
+                    .prop("fn")
+                    .and_then(|prop| prop.value.as_required_string())
+                && imports.contains_key(&function)
+            {
+                used.insert(function.to_string());
+            }
             if COMPONENT_REGISTRY.get(&node.name).is_none() && node.name != "Pagination" {
                 if let Some(import) = imports.get(&node.name) {
                     reject_component_usage_shape(node)?;

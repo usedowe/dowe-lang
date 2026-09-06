@@ -1,12 +1,31 @@
 fn swift_runtime_editor_image_controls() -> &'static str {
-    r#"struct DoweEditorField: View {
+    r#"@MainActor private func doweEditorHighlight(_ source: String, language: String, contentColor: Color) -> Text {
+    let pattern = "(//[^\\n]*|#[^\\n]*|/\\*[\\s\\S]*?\\*/|\\\"(?:\\\\\\\\.|[^\\\"])*\\\"|'(?:\\\\\\\\.|[^'])*'|\\b(?:action|set|component|config|each|else|handler|if|import|layout|page|return|route|server|signal|type|views)\\b|\\b\\d+(?:\\.\\d+)?\\b)"
+    guard let regex = try? NSRegularExpression(pattern: pattern) else { return Text(source) }
+    let ns = source as NSString
+    var output = Text("")
+    var end = 0
+    for match in regex.matches(in: source, range: NSRange(location: 0, length: ns.length)) {
+        let prefix = ns.substring(with: NSRange(location: end, length: match.range.location - end))
+        let token = ns.substring(with: match.range)
+        output = output + Text(prefix)
+        let color = token.hasPrefix("//") || token.hasPrefix(String(UnicodeScalar(35))) || token.hasPrefix("/*") ? contentColor.opacity(0.55) : token.hasPrefix("\"") || token.hasPrefix("'") ? DoweDesign.success : Double(token) != nil ? DoweDesign.warning : DoweDesign.primary
+        output = output + Text(token).foregroundColor(color)
+        end = match.range.location + match.range.length
+    }
+    return output + Text(ns.substring(from: end))
+}
+
+struct DoweEditorField: View {
     let value: Binding<String>?
+    let language: String
     let initialValue: String
     let label: String?
     let placeholder: String
     let minHeight: CGFloat
     let hideToolbar: Bool
     let readOnly: Bool
+    let onSave: (() -> Void)?
     let backgroundColor: Color
     let contentColor: Color
     @State private var localValue: String?
@@ -55,13 +74,25 @@ fn swift_runtime_editor_image_controls() -> &'static str {
                 .background(contentColor.opacity(0.08))
             }
             ZStack(alignment: .topLeading) {
+                if let onSave {
+                    Button(action: onSave) { EmptyView() }
+                        .keyboardShortcut("s", modifiers: .command)
+                        .keyboardShortcut("s", modifiers: .control)
+                        .frame(width: CGFloat(0), height: CGFloat(0))
+                        .opacity(0)
+                }
                 if currentText.isEmpty && !placeholder.isEmpty {
                     Text(placeholder)
                         .foregroundStyle(contentColor.opacity(0.52))
                         .padding(CGFloat(8))
                 }
                 TextEditor(text: textBinding)
-                    .foregroundStyle(contentColor)
+                    .foregroundStyle(Color.clear)
+                    .overlay(alignment: .topLeading) {
+                        doweEditorHighlight(currentText, language: language, contentColor: contentColor)
+                            .font(.system(size: CGFloat(16), design: .monospaced))
+                            .allowsHitTesting(false)
+                    }
                     .frame(minHeight: minHeight)
                     .disabled(readOnly)
                     .scrollContentBackground(.hidden)

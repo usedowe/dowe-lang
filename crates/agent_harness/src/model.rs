@@ -28,8 +28,6 @@ pub struct HarnessManifest {
     pub spec_roots: Vec<String>,
     pub doc_roots: Vec<String>,
     pub source_roots: Vec<String>,
-    #[serde(default)]
-    pub managed_skills: Vec<String>,
     pub allowed_agent_write_roots: Vec<String>,
     pub disallowed_runtime_roots: Vec<String>,
     pub validation_commands: Vec<ValidationCommand>,
@@ -54,18 +52,6 @@ pub enum ValidationCommandKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct InitOptions {
     pub update_existing: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ManagedAgentSkill {
-    pub name: String,
-    pub files: Vec<ManagedAgentSkillFile>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ManagedAgentSkillFile {
-    pub path: String,
-    pub content: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

@@ -28,11 +28,66 @@
 .editor-toolbar-button:hover,.editor-toolbar-button.is-active {
   background:color-mix(in srgb,currentColor 12%,transparent);
 }
-.editor-content {
+.editor-stage {
+  position:relative;
   min-height:var(--dowe-editor-min-height,200px);
-  outline:0;
+  overflow:auto;
+}
+.editor-highlight,.editor-content {
+  box-sizing:border-box;
+  min-height:var(--dowe-editor-min-height,200px);
+  margin:0;
   padding:1rem;
+  font:inherit;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  font-size:.875rem;
   line-height:1.55;
+  tab-size:2;
+  white-space:pre;
+  overflow:visible;
+}
+.editor-highlight {
+  position:relative;
+  z-index:0;
+  pointer-events:none;
+  color:inherit;
+}
+.editor-content {
+  position:absolute;
+  inset:0;
+  width:100%;
+  outline:0;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
+  caret-color:var(--dowe-primary);
+  cursor:text;
+  user-select:text;
+  -webkit-user-select:text;
+  z-index:1;
+  background:transparent;
+  overflow:auto;
+  resize:none;
+}
+.editor-highlight .code-token-keyword {
+  color:var(--dowe-primary);
+}
+.editor-highlight .code-token-type {
+  color:var(--dowe-info);
+}
+.editor-highlight .code-token-string {
+  color:var(--dowe-success);
+}
+.editor-highlight .code-token-number {
+  color:var(--dowe-warning);
+}
+.editor-highlight .code-token-attribute {
+  color:var(--dowe-accent);
+}
+.editor-highlight .code-token-comment {
+  color:var(--dowe-muted);
+}
+.editor-highlight .code-token-punctuation {
+  color:var(--dowe-danger);
 }
 .editor-content:empty::before {
   content:attr(placeholder);

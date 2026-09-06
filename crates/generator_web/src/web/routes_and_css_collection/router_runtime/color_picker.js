@@ -237,6 +237,8 @@ function updateDoweColor(root, hue, saturation, brightness) {
     writePath(activeView.state, root.dataset.doweColorBind, value);
     renderReactive(activeView);
   } else renderDoweColor(root, null, null);
+  dispatchFormEvent(root, "input");
+  dispatchFormEvent(root, "change");
 }
 function updateDoweColorPointer(target, event) {
   const root = doweColorRoot(target);

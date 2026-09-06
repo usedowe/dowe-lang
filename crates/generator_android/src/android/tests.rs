@@ -5,36 +5,35 @@ use super::{
 };
 use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, Align, AudioProps, AvatarGroupItem,
-    AvatarGroupProps, AvatarProps, AvatarSize, AvatarStatus, BadgeProps, BannerProps, BarPosition, BarProps,
-    BorderWidth, BottomBarTab, BoxPosition, BrandProps, Breakpoint, ButtonSize, CameraFacing,
-    CameraProps, CarouselIndicatorType, CarouselOrientation, CarouselProps, CarouselSlide,
-    CarouselVariant, ChatBoxMode, ChatBoxProps, CheckboxProps, ChipProps, CollapsibleProps,
-    ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption, CommandEntry, CommandProps,
-    ComponentProp, ComponentVariant, CountdownProps, CountdownSize, CoverSource, CsvColumn,
-    CsvFieldProps, DateProps, DateRangeProps, DesignConfig, DividerOrientation, DividerProps,
-    DragDropDirection, DragDropProps, DragGroup, DragItem, DrawerPosition, DrawerProps,
-    DropdownProps, DropzoneProps, EditorProps, ElementProps, EmptyKind, EmptyProps, FabAction,
-    FlexItem,
-    FabProps, FontConfig, GapSize, GapValue, GridProps, GridTracks, ImageAspect, ImageCropperProps,
-    ImageCropperShape, ImageLoading, ImageObjectFit, ImageProps, Justify, LayoutProps, MapMarker,
-    MapMarkerIcon, MapProps, MapWaypoint, MarqueeOrientation, MarqueeProps, MarqueeSpeed,
-    MicrophoneProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, NavigationAction,
-    NavigationOperation, OverlayCornerPosition, OverlayEntry, OverlayItemProps, OverlayPaint,
-    OverlayPosition, PasswordProps, PhoneProps, PinKind, PinProps, PropValue,
-    RadioGroupOrientation, RadioGroupProps, RadioOption, RailNavItem, RailNavItemProps,
-    RailNavProps, ReactiveVariantProps, RecordProps, ResponsiveEntry, ResponsiveValue,
-    RichTextMark, RichTextMarkStyle, RoundedSize, ScaffoldProps, ScaleValue, SectionBackground,
-    SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps,
-    SideNavProps, SideNavSize, SidebarProps, SizeValue, SizingProps, SkeletonAnimation,
-    SkeletonProps, SkeletonVariant, SliderProps, SpacingProps, StyleExtras, StyleProps, SvgLineCap,
-    SvgLineJoin, SvgPath, SvgPathFill, SvgProps, SvgTransform, SvgViewBox, TabItem, TabsPosition,
-    TabsProps, TabsVariant, TextAlign, TextProps, TextSize, TextWeight, TextareaProps,
-    ThemeSelectProps, ToastKind, ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps,
-    ToggleProps, TooltipProps, TranslationCatalog, TranslationLocale, TranslationValue,
-    TypeWriterItem, TypeWriterProps, VariantProps, ViewAction, ViewActionKind, ViewAnimation,
-    ViewAssignAction, ViewFunctionStatement, ViewGesture, ViewIcon, ViewMotionStyle, ViewNode,
-    ViewRequestAction, ViewRequestMethod, ViewRotation, ViewRoute, ViewScale, ViewSection,
-    ViewSignal, ViewSignalValue, ViewToastAction, ViewTransition, ViewTranslation,
+    AvatarGroupProps, AvatarProps, AvatarSize, AvatarStatus, BadgeProps, BannerProps, BarPosition,
+    BarProps, BorderWidth, BottomBarTab, BoxPosition, BrandProps, Breakpoint, ButtonSize,
+    CameraFacing, CameraProps, CarouselIndicatorType, CarouselOrientation, CarouselProps,
+    CarouselSlide, CarouselVariant, ChatBoxMode, ChatBoxProps, CheckboxProps, ChipProps,
+    CollapsibleProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
+    CommandEntry, CommandProps, ComponentProp, ComponentVariant, CountdownProps, CountdownSize,
+    CoverSource, CsvColumn, CsvFieldProps, DateProps, DateRangeProps, DesignConfig,
+    DividerOrientation, DividerProps, DragDropDirection, DragDropProps, DragGroup, DragItem,
+    DrawerPosition, DrawerProps, DropdownProps, DropzoneProps, EditorProps, ElementProps,
+    EmptyKind, EmptyProps, FabAction, FabProps, FlexItem, FontConfig, GapSize, GapValue, GridProps,
+    GridTracks, ImageAspect, ImageCropperProps, ImageCropperShape, ImageLoading, ImageObjectFit,
+    ImageProps, Justify, LayoutProps, MapMarker, MapMarkerIcon, MapProps, MapWaypoint,
+    MarqueeOrientation, MarqueeProps, MarqueeSpeed, MicrophoneProps, ModalProps, NavMenuItem,
+    NavMenuItemProps, NavMenuProps, NavigationAction, NavigationOperation, OverlayCornerPosition,
+    OverlayEntry, OverlayItemProps, OverlayPaint, OverlayPosition, PasswordProps, PhoneProps,
+    PinKind, PinProps, PropValue, RadioGroupOrientation, RadioGroupPresentation, RadioGroupProps, RadioOption, RailNavItem,
+    RailNavItemProps, RailNavProps, ReactiveVariantProps, RecordProps, ResponsiveEntry,
+    ResponsiveValue, RichTextMark, RichTextMarkStyle, RoundedSize, ScaffoldProps, ScaleValue,
+    SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem,
+    SideNavItemProps, SideNavProps, SideNavSize, SidebarProps, SizeValue, SizingProps,
+    SkeletonAnimation, SkeletonProps, SkeletonVariant, SliderProps, SpacingProps, StyleExtras,
+    StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill, SvgProps, SvgTransform, SvgViewBox,
+    TabItem, TabsPosition, TabsProps, TabsVariant, TextAlign, TextProps, TextSize, TextWeight,
+    TextareaProps, ThemeSelectProps, ToastKind, ToastProps, ToggleGroupItem, ToggleGroupKind,
+    ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TranslationLocale,
+    TranslationValue, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction, ViewActionKind,
+    ViewAnimation, ViewAssignAction, ViewFunctionStatement, ViewGesture, ViewIcon, ViewMotionStyle,
+    ViewNode, ViewRequestAction, ViewRequestMethod, ViewRotation, ViewRoute, ViewScale,
+    ViewSection, ViewSignal, ViewSignalValue, ViewToastAction, ViewTransition, ViewTranslation,
     VisibilityCondition, icon_component_node, solar_control_icon, svg_spinner_control_icon,
 };
 use std::collections::BTreeMap;
@@ -104,13 +103,46 @@ include!("tests/core_generation.rs");
 include!("tests/dev_sharding.rs");
 include!("tests/navigation_generation.rs");
 include!("tests/component_data_generation.rs");
+include!("tests/diagram_interactions.rs");
 include!("tests/component_navigation_generation.rs");
 include!("tests/component_display_generation.rs");
 include!("tests/fixtures_routes_core.rs");
 include!("tests/fixtures_routes_navigation.rs");
 include!("tests/fixtures_routes_forms.rs");
 include!("tests/fixtures_components_media.rs");
+include!("tests/fixtures_tree.rs");
 include!("tests/fixtures_components_rich.rs");
 include!("tests/fixtures_components_shared.rs");
 include!("tests/fixtures_display.rs");
 include!("tests/stdlib_generation.rs");
+
+#[test]
+fn generates_real_android_notification_support() {
+    let output = generate_android(
+        &[route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let notifications = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweNotifications.kt"))
+        .expect("notification helper");
+    assert!(notifications.content.contains("NotificationManager"));
+    assert!(notifications.content.contains("requestPermission"));
+    assert!(notifications.content.contains("manager.notify"));
+    let manifest = output
+        .files
+        .iter()
+        .find(|file| {
+            file.relative_path
+                .ends_with("app/src/main/AndroidManifest.xml")
+        })
+        .expect("manifest");
+    assert!(
+        manifest
+            .content
+            .contains("android.permission.POST_NOTIFICATIONS")
+    );
+}

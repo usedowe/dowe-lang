@@ -9,12 +9,12 @@ use dowe_components::{
     ChartPalette, ChartSize, ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant,
     CountdownSize, DividerOrientation, EmptyKind, GapSize, GapValue, ImageAspect, ImageLoading,
     ImageObjectFit, MapMarkerIcon, MarqueeOrientation, MarqueeSpeed, NativeExternalMode,
-    NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayPosition, RichTextMarkStyle,
-    ScaleValue, SectionBackground, SkeletonAnimation, SkeletonVariant, SvgPathFill,
-    TableColumnAlign, TableSize, ToastKind, VideoAspect, ViewActionKind, ViewAnimation,
-    ViewFunctionStatement, ViewGesture, ViewIcon, ViewNode, ViewRotation, ViewScale,
-    ViewSignalScope, ViewSignalStorage, ViewTransition, ViewTranslation, VisibilityCondition,
-    WebTarget,
+    NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayPosition, RadioGroupOrientation,
+    RadioGroupPresentation, RichTextMarkStyle, ScaleValue, SectionBackground, SkeletonAnimation,
+    SkeletonVariant, SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect,
+    ViewActionKind, ViewAnimation, ViewFunctionStatement, ViewGesture, ViewIcon, ViewNode,
+    ViewRotation, ViewScale, ViewSignalScope, ViewSignalStorage, ViewTransition, ViewTranslation,
+    VisibilityCondition, WebTarget,
 };
 use std::fs;
 use std::path::Path;
@@ -26,6 +26,7 @@ include!("tests/forms_and_reactivity.rs");
 include!("tests/types_and_stores.rs");
 include!("tests/media_and_charts.rs");
 include!("tests/tables_and_bars.rs");
+include!("tests/tree.rs");
 include!("tests/navigation_and_shells.rs");
 include!("tests/display_and_motion.rs");
 include!("tests/media_and_forms.rs");

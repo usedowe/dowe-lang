@@ -1,5 +1,5 @@
 fn android_runtime_diagram() -> &'static str {
-    r#"private data class DoweDiagramNode(val id: String, val x: Float, val y: Float, val width: Float, val height: Float, val label: String, val row: Map<String, Any?>)
+    r#"private data class DoweDiagramNode(val id: String, val x: Float, val y: Float, val width: Float, val height: Float, val label: String)
 
 private fun doweDiagramNumber(row: Map<String, Any?>, key: String, fallback: Float): Float = (row[key] as? Number)?.toFloat() ?: row[key]?.toString()?.toFloatOrNull() ?: fallback
 private fun doweDiagramNodeWidth(row: Map<String, Any?>): Float = max(1f, doweDiagramNumber(row, "width", 160f))
@@ -26,7 +26,7 @@ private fun DoweDiagram(state: DoweReactiveState, nodesPath: String, edgesPath: 
     val edges = state.candles(edgesPath)
     val nodes = rows.mapNotNull { row ->
         val id = row["id"]?.toString() ?: return@mapNotNull null
-        DoweDiagramNode(id, doweDiagramNumber(row, "x", 0f), doweDiagramNumber(row, "y", 0f), doweDiagramNodeWidth(row), doweDiagramNodeHeight(row), row["label"]?.toString() ?: id, row)
+        DoweDiagramNode(id, doweDiagramNumber(row, "x", 0f), doweDiagramNumber(row, "y", 0f), doweDiagramNodeWidth(row), doweDiagramNodeHeight(row), row["label"]?.toString() ?: id)
     }.distinctBy { it.id }
 
     fun effectiveX(node: DoweDiagramNode): Float = if (dragId == node.id) dragX else node.x
@@ -87,19 +87,29 @@ private fun DoweDiagram(state: DoweReactiveState, nodesPath: String, edgesPath: 
         offsetY = centerY - anchorY * next
     }
 
-    fun updateNode(node: DoweDiagramNode, x: Float, y: Float) {
-        val updated = rows.map { row ->
-            if (row["id"]?.toString() == node.id) HashMap(row).apply { put("x", x); put("y", y) } else row
-        }
-        state.write(nodesPath, updated)
+    fun updateNode(node: DoweDiagramNode, x: Float, y: Float): Map<String, Any?>? {
+        if (!x.isFinite() || !y.isFinite()) return null
+        val current = (state.canvasValue(nodesPath) as? List<*>)?.toMutableList() ?: return null
+        val index = current.indexOfFirst { (it as? Map<*, *>)?.get("id")?.toString() == node.id }
+        if (index < 0) return null
+        val updated = HashMap(current[index] as Map<String, Any?>).apply { put("x", x); put("y", y) }
+        current[index] = updated
+        state.write(nodesPath, current)
+        return updated
     }
 
-    fun persistConnection(source: String, target: String) {
-        val updatedEdges = edges.toMutableList()
-        if (updatedEdges.none { it["source"]?.toString() == source && it["target"]?.toString() == target }) {
-            updatedEdges.add(mapOf("id" to "edge-" + System.currentTimeMillis(), "source" to source, "target" to target, "type" to "default", "label" to ""))
-            state.write(edgesPath, updatedEdges)
-        }
+    fun persistConnection(source: String, target: String): Boolean {
+        val currentNodes = state.candles(nodesPath)
+        if (source == target || currentNodes.none { it["id"]?.toString() == source } || currentNodes.none { it["id"]?.toString() == target }) return false
+        val updatedEdges = (state.canvasValue(edgesPath) as? List<*>)?.toMutableList() ?: mutableListOf<Any?>()
+        val edgeRows = updatedEdges.mapNotNull { it as? Map<*, *> }
+        if (edgeRows.any { it["source"]?.toString() == source && it["target"]?.toString() == target }) return false
+        val usedIds = edgeRows.mapNotNull { it["id"]?.toString() }.toSet()
+        var sequence = 1
+        while (usedIds.contains("edge-$sequence")) sequence++
+        updatedEdges.add(mapOf("id" to "edge-$sequence", "source" to source, "target" to target, "type" to "default", "label" to ""))
+        state.write(edgesPath, updatedEdges)
+        return true
     }
 
     fun nodeAt(x: Float, y: Float): DoweDiagramNode? = nodes.lastOrNull { node ->
@@ -213,6 +223,13 @@ private fun DoweDiagram(state: DoweReactiveState, nodesPath: String, edgesPath: 
                     .clip(RoundedCornerShape(10.dp))
                     .background(contentColor.copy(alpha = if (isSelected) 0.16f else 0.08f))
                     .border(if (isTarget) 2.dp else if (isSelected) 2.dp else 1.dp, contentColor.copy(alpha = if (isTarget || isSelected) 1f else 0.35f), RoundedCornerShape(10.dp))
+                    .clickable {
+                        val item = state.candles(nodesPath).firstOrNull { it["id"]?.toString() == node.id }
+                        if (item != null) {
+                            selectedKey = "node:" + node.id
+                            if (onNodeClick != null) actionScope.launch { state.run(onNodeClick, item) }
+                        }
+                    }
                     .pointerInput(node.id, nodesPath, scale) {
                         detectDragGestures(
                             onDragStart = {
@@ -236,19 +253,10 @@ private fun DoweDiagram(state: DoweReactiveState, nodesPath: String, edgesPath: 
                                     val x = dragX
                                     val y = dragY
                                     if (dragMoved) {
-                                        updateNode(node, x, y)
-                                        selectedKey = "node:" + node.id
-                                        if (onNodeDrag != null) {
-                                            val item = HashMap(node.row)
-                                            item["x"] = x
-                                            item["y"] = y
-                                            actionScope.launch { state.run(onNodeDrag, item) }
-                                        }
-                                    } else {
-                                        selectedKey = "node:" + node.id
-                                        if (onNodeClick != null) {
-                                            val item = HashMap(node.row)
-                                            actionScope.launch { state.run(onNodeClick, item) }
+                                        val item = updateNode(node, x, y)
+                                        if (item != null) {
+                                            selectedKey = "node:" + node.id
+                                            if (onNodeDrag != null) actionScope.launch { state.run(onNodeDrag, item) }
                                         }
                                     }
                                     dragId = null
@@ -294,8 +302,7 @@ private fun DoweDiagram(state: DoweReactiveState, nodesPath: String, edgesPath: 
                                 onDragEnd = {
                                     val source = connectFrom
                                     val target = nodeAt(connectX, connectY)?.takeIf { it.id != source }
-                                    if (source != null && target != null) {
-                                        persistConnection(source, target.id)
+                                    if (source != null && target != null && persistConnection(source, target.id)) {
                                         if (onConnect != null) {
                                             val item = mapOf("source" to source, "target" to target.id)
                                             actionScope.launch { state.run(onConnect, item) }

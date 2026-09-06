@@ -2,8 +2,8 @@ fn android_runtime_media_device_iframe() -> &'static str {
     r##"private data class DoweDeviceIcon(val profile: String, val viewBox: DoweSvgViewBox, val paths: List<DoweSvgPath>)
 
 @Composable
-private fun DoweDevicePreview(initialProfile: String, source: String, title: String, sandbox: List<String>?, autoplay: Boolean, icons: List<DoweDeviceIcon>, modifier: Modifier) {
-    var profile by remember { mutableStateOf(initialProfile) }
+private fun DoweDevicePreview(initialProfile: String, bind: String?, boundProfile: String, onProfileChange: (String) -> Unit, source: String, title: String, sandbox: List<String>?, autoplay: Boolean, hideControls: Boolean, icons: List<DoweDeviceIcon>, modifier: Modifier) {
+    var profile by remember { mutableStateOf(boundProfile.ifEmpty { initialProfile }) }
     val dimensions = when (profile) {
         "tablet" -> 768f to 1024f
         "laptop" -> 1440f to 900f
@@ -11,9 +11,9 @@ private fun DoweDevicePreview(initialProfile: String, source: String, title: Str
         else -> 390f to 844f
     }
     Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(modifier = Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!hideControls) Row(modifier = Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             icons.forEach { option ->
-                DoweDeviceIconButton(icon = option, selected = profile == option.profile, onClick = { profile = option.profile })
+                DoweDeviceIconButton(icon = option, selected = profile == option.profile, onClick = { profile = option.profile; onProfileChange(option.profile) })
             }
         }
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {

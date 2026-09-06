@@ -85,6 +85,11 @@ fn parse_variant_props(
                 | BuiltinComponent::Card
                 | BuiltinComponent::Input
                 | BuiltinComponent::Select
+                | BuiltinComponent::ComboBox
+                | BuiltinComponent::CsvField
+                | BuiltinComponent::DragDrop
+                | BuiltinComponent::Editor
+                | BuiltinComponent::ImageCropper
                 | BuiltinComponent::IconButton
                 | BuiltinComponent::Swap
                 | BuiltinComponent::Avatar
@@ -97,6 +102,15 @@ fn parse_variant_props(
                 | BuiltinComponent::Tabs
                 | BuiltinComponent::Stepper
                 | BuiltinComponent::Fab
+                | BuiltinComponent::Checkbox
+                | BuiltinComponent::Color
+                | BuiltinComponent::Date
+                | BuiltinComponent::DateRange
+                | BuiltinComponent::RadioGroup
+                | BuiltinComponent::RadioCard
+                | BuiltinComponent::Toggle
+                | BuiltinComponent::Slider
+                | BuiltinComponent::Dropzone
         ) && matches!(
             prop.name.as_str(),
             "variant" | "scheme" | "size" | "rounded" | "loading" | "disabled"
@@ -202,6 +216,8 @@ fn parse_variant_props(
                         | BuiltinComponent::ToggleTheme
                         | BuiltinComponent::SelectTheme
                         | BuiltinComponent::Fab
+                        | BuiltinComponent::CsvField
+                        | BuiltinComponent::ImageCropper
                 ) =>
             {
                 variant_props.size = Some(parse_button_size_prop(&prop.name, &value)?);
@@ -210,7 +226,24 @@ fn parse_variant_props(
             "size"
                 if matches!(
                     component,
-                    BuiltinComponent::Input | BuiltinComponent::Select
+                    BuiltinComponent::Input
+                        | BuiltinComponent::Select
+                        | BuiltinComponent::ComboBox
+                        | BuiltinComponent::DragDrop
+                        | BuiltinComponent::Editor
+                        | BuiltinComponent::Password
+                        | BuiltinComponent::Phone
+                        | BuiltinComponent::Pin
+                        | BuiltinComponent::Textarea
+                        | BuiltinComponent::Checkbox
+                        | BuiltinComponent::Color
+                        | BuiltinComponent::Date
+                        | BuiltinComponent::DateRange
+                        | BuiltinComponent::RadioGroup
+                        | BuiltinComponent::RadioCard
+                        | BuiltinComponent::Toggle
+                        | BuiltinComponent::Slider
+                        | BuiltinComponent::Dropzone
                 ) =>
             {
                 variant_props.size = Some(parse_control_size_prop(&prop.name, &value)?);
@@ -238,6 +271,7 @@ fn parse_variant_props(
                         | BuiltinComponent::Date
                         | BuiltinComponent::DateRange
                         | BuiltinComponent::RadioGroup
+                        | BuiltinComponent::RadioCard
                         | BuiltinComponent::Toggle
                         | BuiltinComponent::Slider
                         | BuiltinComponent::Dropzone
@@ -465,4 +499,3 @@ fn parse_banner_props(
         label,
     })
 }
-

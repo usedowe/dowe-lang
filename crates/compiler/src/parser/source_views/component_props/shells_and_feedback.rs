@@ -68,11 +68,13 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
         BuiltinComponent::NavMenu => {
             matches!(name, "variant" | "scheme" | "size" | "color")
         }
-        BuiltinComponent::Scaffold => matches!(name, "boxed"),
+        BuiltinComponent::Scaffold => {
+            matches!(name, "boxed" | "safeAreaTop" | "safeAreaBottom")
+        }
         BuiltinComponent::Splash => matches!(name, "bind"),
         BuiltinComponent::Tabs => matches!(name, "variant" | "scheme" | "position"),
         BuiltinComponent::Tab => matches!(name, "id" | "label"),
-        BuiltinComponent::Stepper => matches!(name, "scheme" | "orientation"),
+        BuiltinComponent::Stepper => matches!(name, "scheme" | "orientation" | "bind"),
         BuiltinComponent::Step => matches!(name, "id" | "label"),
         BuiltinComponent::Drawer => matches!(
             name,

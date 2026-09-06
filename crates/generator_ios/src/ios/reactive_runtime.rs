@@ -48,6 +48,26 @@ struct DoweRow: Identifiable {
     let value: [String: Any]
 }
 
+struct DoweTreeNode: Identifiable {
+    let id: String
+    let label: String
+    let path: String
+    let branch: Bool
+    let children: [DoweTreeNode]
+    let value: [String: Any]
+}
+
+struct DoweInvokeAction {
+    let function: String
+    let args: [DoweStdlibArg]
+    let update: String?
+    let reset: String?
+    let successAlert: String?
+    let successMessage: String?
+    let errorAlert: String?
+    let errorMessage: String?
+}
+
 struct DoweRequestAction {
     let method: String
     let path: String
@@ -69,6 +89,7 @@ struct DoweActionMetadata {
 
 enum DoweAction {
     case request(DoweRequestAction, DoweActionMetadata)
+    case invoke(DoweInvokeAction, DoweActionMetadata)
     case assign(String, String, DoweStdlibCall?, DoweActionMetadata)
     case reset(String, DoweActionMetadata)
     case sequence([DoweStep], DoweActionMetadata)
@@ -77,6 +98,7 @@ enum DoweAction {
 enum DoweStep {
     case validate(String)
     case request(String, DoweRequestAction)
+    case invoke(String, DoweInvokeAction)
     case branch(String, [DoweStep], [DoweStep])
     case assign(String, String, Any?, Bool, DoweStdlibCall?)
     case reset(String)
@@ -93,6 +115,17 @@ struct DoweToastState: Hashable {
     let scheme: String
     let variant: String
     let position: String
+}
+
+enum DoweNativeBridge {
+    static var handler: ((String, [String: Any]) async -> (Bool, Any?))?
+    static func install(_ handler: @escaping (String, [String: Any]) async -> (Bool, Any?)) {
+        self.handler = handler
+    }
+    static func invoke(_ function: String, args: [String: Any]) async -> (Bool, Any?) {
+        if let handler { return await handler(function, args) }
+        return (false, nil)
+    }
 }
 
 struct DoweStdlibCall {
@@ -486,6 +519,9 @@ final class DoweReactiveState: ObservableObject {
             return
         }
         let value = values[root] ?? NSNull()
+        for (id, candidate) in signals where candidate.scope == "global" && candidate.name == metadata.name {
+            values[id] = value
+        }
         Self.globalValues[metadata.name] = value
         guard metadata.storage == "local", JSONSerialization.isValidJSONObject(["value": value]) else {
             return
@@ -541,6 +577,50 @@ final class DoweReactiveState: ObservableObject {
             let id = row["id"].map { String(describing: $0) } ?? String(index)
             return DoweRow(id: id, value: row)
         }
+    }
+
+    func treeNodes(_ path: String) -> [DoweTreeNode] {
+        treeChildren(value(path)).compactMap(treeNode)
+    }
+
+    private func treeChildren(_ value: Any?) -> [Any] {
+        if let list = value as? [Any] {
+            return list
+        }
+        guard let map = value as? [String: Any] else {
+            return []
+        }
+        if let children = map["children"] as? [Any] {
+            return children
+        }
+        return (map["folders"] as? [Any] ?? []) + (map["files"] as? [Any] ?? [])
+    }
+
+    private func treeNode(_ value: Any) -> DoweTreeNode? {
+        guard let map = value as? [String: Any] else {
+            return nil
+        }
+        let rawId = map["id"] ?? map["path"] ?? map["name"] ?? map["label"]
+        guard let rawId else {
+            return nil
+        }
+        let id = String(describing: rawId)
+        guard !id.isEmpty else {
+            return nil
+        }
+        guard let rawLabel = map["name"] ?? map["label"] else {
+            return nil
+        }
+        let label = String(describing: rawLabel)
+        guard !label.isEmpty else {
+            return nil
+        }
+        let path = String(describing: map["path"] ?? id)
+        let children = treeChildren(value).compactMap(treeNode)
+        let kind = String(describing: map["type"] ?? map["kind"] ?? "").lowercased()
+        let explicitChildren = map["children"] is [Any] || map["folders"] is [Any] || map["files"] is [Any]
+        let branch = !children.isEmpty || explicitChildren || ["folder", "directory", "branch"].contains(kind)
+        return DoweTreeNode(id: id, label: label, path: path, branch: branch, children: children, value: map)
     }
 
     func candles(_ path: String) -> [[String: Any]] {
@@ -637,6 +717,8 @@ final class DoweReactiveState: ObservableObject {
             }
         case .request(let request, _):
             _ = await execute(request, item: item)
+        case .invoke(let invoke, _):
+            _ = await execute(invoke, item: item)
         case .sequence(let steps, _):
             _ = await runSteps(steps, item: item, results: [:])
         }
@@ -649,6 +731,9 @@ final class DoweReactiveState: ObservableObject {
             case .validate(let target):
                 if !validateForm(target, item: item) { return true }
             case .request(let result, let action):
+                let response = await execute(action, item: item)
+                results[result] = ["ok": response.0, "data": response.1 ?? NSNull()]
+            case .invoke(let result, let action):
                 let response = await execute(action, item: item)
                 results[result] = ["ok": response.0, "data": response.1 ?? NSNull()]
             case .branch(let result, let success, let error):
@@ -781,6 +866,12 @@ final class DoweReactiveState: ObservableObject {
         return current
     }
 
+    func appendChatMessage(_ path: String, text: String) {
+        var next = (value(path) as? [[String: Any]]) ?? []
+        next.append(["id": "local-\(Int(Date().timeIntervalSince1970 * 1000))-\(next.count)", "role": "user", "text": text, "own": true, "status": "sent"])
+        write(path, value: next)
+    }
+
     func write(_ path: String, value: Any) {
         let parts = path.split(separator: ".").map(String.init)
         guard let root = parts.first else {
@@ -818,9 +909,11 @@ final class DoweReactiveState: ObservableObject {
         case "str.upper": return text("value").uppercased()
         case "str.length": return text("value").unicodeScalars.count
         case "str.contains": return text("value").contains(text("needle"))
+        case "str.equals": return text("value") == text("other")
         case "str.startsWith": return text("value").hasPrefix(text("prefix"))
         case "str.endsWith": return text("value").hasSuffix(text("suffix"))
         case "str.replace": return text("value").replacingOccurrences(of: text("from"), with: text("to"))
+        case "str.truncate": return String(text("value").prefix(max(0, Int(number("max") ?? 0))))
         case "str.split": return stdlibSplit(text("value"), delimiter: text("delimiter"), limit: number("limit"))
         case "str.join": return list("values").map(stdlibText).joined(separator: text("delimiter"))
         case "math.add": return finite(number("left"), number("right"), +)
@@ -829,6 +922,10 @@ final class DoweReactiveState: ObservableObject {
         case "math.div":
             guard let right = number("right"), right != 0 else { return nil }
             return finite(number("left"), right, /)
+        case "math.gt": return compare(number("left"), number("right"), >)
+        case "math.gte": return compare(number("left"), number("right"), >=)
+        case "math.lt": return compare(number("left"), number("right"), <)
+        case "math.lte": return compare(number("left"), number("right"), <=)
         case "math.round": return number("value").map { Foundation.round($0) }
         case "math.floor": return number("value").map { Foundation.floor($0) }
         case "math.ceil": return number("value").map { Foundation.ceil($0) }
@@ -864,6 +961,13 @@ final class DoweReactiveState: ObservableObject {
         case "list.count": return list("values").count
         case "list.filterEquals": return list("values").filter { stdlibEqual(read($0, path: text("field")), args["value"] ?? nil) }
         case "list.filterContains": return list("values").filter { stdlibText(read($0, path: text("field"))).lowercased().contains(text("value").lowercased()) }
+        case "list.filterContainsAny":
+            let needles = list("needles").map(stdlibText).filter { !$0.isEmpty }.map { $0.lowercased() }
+            return list("values").filter { value in
+                let fieldText = stdlibText(read(value, path: text("field"))).lowercased()
+                return needles.contains { fieldText.contains($0) }
+            }
+        case "list.concat": return list("values") + list("other")
         case "list.mapField": return list("values").map { read($0, path: text("field")) as Any }
         case "list.sumBy": return list("values").compactMap { stdlibNumber(read($0, path: text("field"))) }.reduce(0, +)
         case "list.averageBy":
@@ -1095,10 +1199,31 @@ final class DoweReactiveState: ObservableObject {
         return current
     }
 
+    private func compare(_ left: Double?, _ right: Double?, _ op: (Double, Double) -> Bool) -> Bool? {
+        guard let left, let right else { return nil }
+        return op(left, right)
+    }
+
     private func finite(_ left: Double?, _ right: Double?, _ op: (Double, Double) -> Double) -> Double? {
         guard let left, let right else { return nil }
         let value = op(left, right)
         return value.isFinite ? value : nil
+    }
+
+    private func execute(_ action: DoweInvokeAction, item: [String: Any]?) async -> (Bool, Any?) {
+        var args: [String: Any] = [:]
+        for arg in action.args {
+            args[arg.name] = stdlibValue(arg.value, item: item) ?? NSNull()
+        }
+        let response = await DoweNativeBridge.invoke(action.function, args: args)
+        if response.0 {
+            if let update = action.update { write(update, value: response.1 ?? NSNull()) }
+            if let reset = action.reset, let current = value(reset, in: initial) { write(reset, value: current) }
+            setAlert(action.successAlert, type: "success", message: action.successMessage ?? "Invocation completed")
+        } else {
+            setAlert(action.errorAlert, type: "error", message: action.errorMessage ?? "Invocation failed")
+        }
+        return response
     }
 
     private func execute(_ action: DoweRequestAction, item: [String: Any]?) async -> (Bool, Any?) {
@@ -1181,7 +1306,11 @@ final class DoweReactiveState: ObservableObject {
 }
 
 fn runtime_swift_icons() -> String {
-    dowe_components::all_icon_names().iter().map(|value| format!("\"{}\"", value.replace('"', "\\\""))).collect::<Vec<_>>().join(", ")
+    dowe_components::all_icon_names()
+        .iter()
+        .map(|value| format!("\"{}\"", value.replace('"', "\\\"")))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn runtime_swift_values(component: dowe_components::BuiltinComponent, name: &str) -> String {

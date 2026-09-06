@@ -647,11 +647,37 @@ fn render_compose_radio_group(
     output: &mut String,
     context: &ComposeReactiveContext,
 ) {
+    if matches!(props.presentation, RadioGroupPresentation::Card) {
+        return render_compose_radio_card(props, options, indent, output, context);
+    }
     let pad = " ".repeat(indent);
     let (value, change) = compose_text_value_and_change(&props.style, "", context);
     output.push_str(&format!(
         "{pad}DoweRadioGroup(value = {value}, onValueChange = {change}, options = {}, size = {}, orientation = {}, name = {}, label = {}, helpText = {}, errorText = {}, modifier = {}, accentColor = {})\n",
         compose_radio_options(options),
+        compose_string_literal(props.size.as_str()),
+        compose_string_literal(props.orientation.as_str()),
+        compose_optional_string(props.name.as_deref()),
+        compose_optional_string(props.style.label.as_deref()),
+        compose_optional_string(props.info.as_deref()),
+        compose_optional_string(props.error.as_deref()),
+        modifier_for_style(&props.style.style),
+        compose_scheme_color(&props.style)
+    ));
+}
+
+fn render_compose_radio_card(
+    props: &RadioGroupProps,
+    options: &[RadioOption],
+    indent: usize,
+    output: &mut String,
+    context: &ComposeReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let (value, change) = compose_text_value_and_change(&props.style, "", context);
+    output.push_str(&format!(
+        "{pad}DoweRadioCard(value = {value}, onValueChange = {change}, options = {}, size = {}, orientation = {}, name = {}, label = {}, helpText = {}, errorText = {}, modifier = {}, accentColor = {})\n",
+        compose_radio_card_options(options),
         compose_string_literal(props.size.as_str()),
         compose_string_literal(props.orientation.as_str()),
         compose_optional_string(props.name.as_deref()),

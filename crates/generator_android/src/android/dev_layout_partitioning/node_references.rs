@@ -80,10 +80,23 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
             dev_style_references_layout_bindings(&props.style, bindings)
                 || bindings.references_signal(&props.scene)
                 || props
+                    .layer_bind
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .selected_layer
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || (props.draw_mode_binding && bindings.references_signal(&props.draw_mode))
+                || props
                     .on_pointer
                     .iter()
                     .chain(&props.on_key)
                     .chain(&props.on_motion)
+                    .chain(&props.on_layer_add)
+                    .chain(&props.on_layer_change)
+                    .chain(&props.on_layer_remove)
+                    .chain(&props.on_layer_select)
                     .any(|value| bindings.references_action(value))
         }
         ViewNode::Checkbox { props } => dev_variant_references_layout_bindings(&props.style, bindings),
@@ -205,6 +218,12 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
         ViewNode::Table { props } => {
             dev_variant_references_layout_bindings(&props.style, bindings)
                 || bindings.references_signal(&props.data)
+        }
+        ViewNode::Tree { props } => {
+            dev_variant_references_layout_bindings(&props.style, bindings)
+                || bindings.references_signal(&props.data)
+                || props.bind.as_deref().is_some_and(|value| bindings.references_signal(value))
+                || props.on_select.as_deref().is_some_and(|value| bindings.references_action(value))
         }
         ViewNode::Divider { props } => dev_style_references_layout_bindings(&props.style, bindings),
         ViewNode::Alert { props } => {
@@ -519,4 +538,3 @@ fn dev_node_references_layout_bindings(node: &ViewNode, bindings: &DevLayoutBind
         ViewNode::Children => false,
     }
 }
-

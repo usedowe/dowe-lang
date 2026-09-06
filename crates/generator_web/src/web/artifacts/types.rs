@@ -46,6 +46,12 @@ impl WebOutput {
         }
         if paths
             .iter()
+            .any(|path| path.starts_with("chunks/runtime/tree-"))
+        {
+            chunks.push(tree_runtime_chunk());
+        }
+        if paths
+            .iter()
             .any(|path| path.starts_with("chunks/runtime/media-"))
         {
             chunks.push(media_runtime_chunk());
@@ -55,6 +61,12 @@ impl WebOutput {
             .any(|path| path.starts_with("chunks/runtime/visualization-"))
         {
             chunks.push(visualization_runtime_chunk());
+        }
+        if paths
+            .iter()
+            .any(|path| path.starts_with("chunks/runtime/canvas-"))
+        {
+            chunks.push(canvas_runtime_chunk());
         }
         chunks
     }
@@ -228,4 +240,3 @@ pub enum WebArtifactKind {
     Manifest,
     Html,
 }
-

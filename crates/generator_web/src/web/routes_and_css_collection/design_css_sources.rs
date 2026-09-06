@@ -35,6 +35,7 @@ const DESIGN_VISUALIZATION_CSS: &[&str] = &[
 
 const DESIGN_DISCLOSURE_CSS: &[&str] = &[
     include_str!("design_css/disclosure_accordion.css"),
+    include_str!("design_css/disclosure_tree.css"),
     include_str!("design_css/disclosure_carousel_base.css"),
     include_str!("design_css/disclosure_carousel_variants.css"),
 ];

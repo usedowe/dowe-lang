@@ -46,6 +46,10 @@
             return new DoweAction("request", method, path, base, headers, body, update, reset, successAlert, successMessage, errorAlert, errorMessage, null, null, null, null, null);
         }
 
+        private static DoweAction invoke(String function, Object[][] args, String update, String reset, String successAlert, String successMessage, String errorAlert, String errorMessage) {
+            return new DoweAction("invoke", null, function, null, null, null, update, reset, successAlert, successMessage, errorAlert, errorMessage, null, null, "dowe", "invoke", args);
+        }
+
         private static DoweAction assign(String target, String source) {
             return new DoweAction("assign", null, null, null, null, null, null, null, null, null, null, null, target, source, null, null, null);
         }
@@ -89,6 +93,7 @@
         }
 
         private static DoweStep request(String result, DoweAction action) { return new DoweStep("request", result, action, null, null, null, null, null, false, null, null, null, null, null, null, null); }
+        private static DoweStep invoke(String result, DoweAction action) { return new DoweStep("invoke", result, action, null, null, null, null, null, false, null, null, null, null, null, null, null); }
         private static DoweStep validate(String target) { return new DoweStep("validate", null, null, null, null, target, null, null, false, null, null, null, null, null, null, null); }
         private static DoweStep branch(String result, DoweStep[] success, DoweStep[] error) { return new DoweStep("branch", result, null, success, error, null, null, null, false, null, null, null, null, null, null, null); }
         private static DoweStep assign(String target, String source, Object literal, boolean hasLiteral, DoweAction call) { return new DoweStep("assign", null, null, null, null, target, source, literal, hasLiteral, call, null, null, null, null, null, null); }

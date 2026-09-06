@@ -115,16 +115,27 @@ fn render_swift_avatar(
         .map(|value| format!("Optional({value})"))
         .unwrap_or_else(|| "nil".to_string());
     let dynamic_text = |value: &str, binding: Option<&dowe_components::PropBinding>| {
-        binding.map(|binding| {
-            if let Some(item) = context.item_value(&binding.path) {
-                let path = context.item_path(&binding.path).unwrap_or_else(|| binding.path.clone());
-                format!("state.text(\"{}\", item: {item})", escape_swift(&path))
-            } else {
-                format!("state.text(\"{}\")", escape_swift(&context.signal_path(&binding.path)))
-            }
-        }).unwrap_or_else(|| swift_string_literal(value))
+        binding
+            .map(|binding| {
+                if let Some(item) = context.item_value(&binding.path) {
+                    let path = context
+                        .item_path(&binding.path)
+                        .unwrap_or_else(|| binding.path.clone());
+                    format!("state.text(\"{}\", item: {item})", escape_swift(&path))
+                } else {
+                    format!(
+                        "state.text(\"{}\")",
+                        escape_swift(&context.signal_path(&binding.path))
+                    )
+                }
+            })
+            .unwrap_or_else(|| swift_string_literal(value))
     };
-    let name = props.name_binding.as_ref().map(|binding| dynamic_text("", Some(binding))).unwrap_or_else(|| swift_optional_literal(props.name.as_deref()));
+    let name = props
+        .name_binding
+        .as_ref()
+        .map(|binding| dynamic_text("", Some(binding)))
+        .unwrap_or_else(|| swift_optional_literal(props.name.as_deref()));
     let alt = dynamic_text(&props.alt, props.alt_binding.as_ref());
     let size = dynamic_text(props.size.as_str(), props.size_binding.as_ref());
     output.push_str(&format!(
@@ -149,7 +160,10 @@ fn render_swift_avatar(
                 let path = context.item_path(name).unwrap_or_else(|| name.to_string());
                 format!("state.text(\"{}\", item: {item})", escape_swift(&path))
             } else {
-                format!("state.text(\"{}\")", escape_swift(&context.signal_path(name)))
+                format!(
+                    "state.text(\"{}\")",
+                    escape_swift(&context.signal_path(name))
+                )
             };
             let color = icon
                 .props
@@ -214,7 +228,7 @@ fn render_swift_chat_box(
 ) {
     let pad = " ".repeat(indent);
     output.push_str(&format!(
-        "{pad}DoweChatBox(state: state, messagesPath: {}, mode: {}, currentUserId: {}, userName: {}, userAvatar: {}, userStatus: {}, assistantName: {}, assistantAvatar: {}, showHeader: {}, placeholder: {}, showAttachments: {}, showVoiceNote: {}, showCamera: {}, loading: {}, sending: {}, streaming: {}, hasMore: {}, onSend: {}, onLoadMore: {}, onStop: {}, onVoiceNote: {}, onFileAttach: {}, onCameraCapture: {}, backgroundColor: {}, contentColor: {}, borderColor: {})\n",
+        "{pad}DoweChatBox(state: state, messagesPath: {}, mode: {}, currentUserId: {}, userName: {}, userAvatar: {}, userStatus: {}, assistantName: {}, assistantAvatar: {}, showHeader: {}, placeholder: {}, showAttachments: {}, showVoiceNote: {}, showCamera: {}, loading: {}, sending: {}, streaming: {}, hasMore: {}, actionLabel: {}, actionVisible: {}, onAction: {}, onSend: {}, onLoadMore: {}, onStop: {}, onVoiceNote: {}, onFileAttach: {}, onCameraCapture: {}, backgroundColor: {}, contentColor: {}, borderColor: {})\n",
         swift_string_literal(&context.signal_path(&props.messages)),
         swift_string_literal(props.mode.as_str()),
         swift_string_literal(&props.current_user_id),
@@ -232,6 +246,9 @@ fn render_swift_chat_box(
         swift_optional_bool_signal(props.sending.as_deref(), context),
         swift_optional_bool_signal(props.streaming.as_deref(), context),
         swift_optional_bool_signal(props.has_more.as_deref(), context),
+        swift_string_literal(&props.action_label),
+        swift_optional_bool_signal(props.action_visible.as_deref(), context),
+        swift_optional_component_action(props.on_action.as_deref(), None, context),
         swift_chat_send_action(props.on_send.as_deref(), context),
         swift_optional_component_action(props.on_load_more.as_deref(), None, context),
         swift_optional_component_action(props.on_stop.as_deref(), None, context),
@@ -352,7 +369,8 @@ fn render_swift_rich_text(
         .map(|value| value.entries[0].value)
         .unwrap_or(TextSize::Md);
     let font_size = swift_text_size_expr(props.title, size);
-    let content_color = text_color(props).unwrap_or_else(|| "DoweDesign.backgroundText".to_string());
+    let content_color =
+        text_color(props).unwrap_or_else(|| "DoweDesign.backgroundText".to_string());
     output.push_str(&format!(
         "{pad}DoweRichText(marks: {}, font: {}, fontSize: {font_size}, contentColor: {content_color})\n",
         swift_rich_text_marks(marks),
@@ -448,7 +466,12 @@ fn render_swift_pagination(
     let binding = props
         .value
         .as_deref()
-        .map(|path| format!("state.binding(\"{}\")", escape_swift(&context.signal_path(path))))
+        .map(|path| {
+            format!(
+                "state.binding(\"{}\")",
+                escape_swift(&context.signal_path(path))
+            )
+        })
         .unwrap_or_else(|| format!(".constant({})", swift_string_literal(&props.selected)));
     let page_count = props
         .pagination

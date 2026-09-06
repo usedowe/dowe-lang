@@ -64,6 +64,10 @@ pub fn launch_task_with_args(
     if capture_task_launch(root, job, &args) {
         return;
     }
+    if job.inline {
+        launch_inline_task(root, job, args, cache_mode);
+        return;
+    }
     match spawn_worker(root, &job.id, &args, cache_mode) {
         Ok(child) => monitor_child(job.id.clone(), child, None),
         Err(error) => log_error(format!(
@@ -71,6 +75,57 @@ pub fn launch_task_with_args(
             job.id
         )),
     }
+}
+
+fn launch_inline_task(
+    root: &Path,
+    job: &ServerBackgroundJob,
+    args: serde_json::Value,
+    cache_mode: CacheRuntimeMode,
+) {
+    let root = root.to_path_buf();
+    let id = job.id.clone();
+    let action = job.action.clone();
+    tokio::spawn(async move {
+        let project = match tokio::task::spawn_blocking({
+            let root = root.clone();
+            move || {
+                std::thread::Builder::new()
+                    .name("dowe-inline-task-compiler".to_string())
+                    .stack_size(64 * 1024 * 1024)
+                    .spawn(move || compile_dev(&root))
+                    .map_err(|error| error.to_string())?
+                    .join()
+                    .map_err(|_| "inline task compiler panicked".to_string())
+            }
+        })
+        .await
+        {
+            Ok(Ok(Ok(mut project))) => {
+                project.local_databases = true;
+                project
+            }
+            Ok(Ok(Err(error))) => {
+                log_error(format!("Background task `{id}` failed to compile: {error}"));
+                return;
+            }
+            Ok(Err(error)) => {
+                log_error(format!(
+                    "Background task `{id}` compiler worker failed: {error}"
+                ));
+                return;
+            }
+            Err(error) => {
+                log_error(format!(
+                    "Background task `{id}` compiler worker failed: {error}"
+                ));
+                return;
+            }
+        };
+        if let Err(error) = execute_background_action(&project, &action, args, cache_mode).await {
+            log_error(format!("Background task `{id}` failed: {error}"));
+        }
+    });
 }
 
 pub fn launch_task_statements(root: &Path, action: &ServerAction, cache_mode: CacheRuntimeMode) {

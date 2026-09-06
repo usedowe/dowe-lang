@@ -19,7 +19,7 @@ use dowe_components::{
     ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps, NavigationAction, NavigationOperation,
     OverlayCornerPosition, OverlayEntry, OverlayItemProps, OverlayPaint, OverlayPosition,
     PasswordProps, PhoneProps, PinKind, PinProps, PropValue, RadioGroupOrientation,
-    RadioGroupProps, RadioOption, RailNavItem, RailNavItemProps, RailNavProps,
+    RadioGroupPresentation, RadioGroupProps, RadioOption, RailNavItem, RailNavItemProps, RailNavProps,
     ReactiveVariantProps, RecordProps, ResponsiveEntry, ResponsiveValue, RichTextMark,
     RichTextMarkStyle, RoundedSize, ScaffoldProps, ScaleValue, SectionBackground, SelectOption,
     SelectOptionEach, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps, SideNavSize,
@@ -50,8 +50,10 @@ fn full_runtime_for_test() -> String {
             render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
         }),
         super::controls_runtime_chunk().content,
+        super::tree_runtime_chunk().content,
         super::media_runtime_chunk().content,
         super::visualization_runtime_chunk().content,
+        super::canvas_runtime_chunk().content,
     ]
     .join("\n")
 }
@@ -81,6 +83,67 @@ fn assert_javascript_syntax(source: &str) {
 }
 
 #[test]
+fn speculative_route_css_does_not_activate_stylesheets() {
+    let runtime = include_str!("routes_and_css_collection/router_runtime/bootstrap_end.js");
+    let start = runtime.find("function preloadRouteCss(route)").unwrap();
+    let end = runtime[start..].find("function loadRouteCss(").unwrap() + start;
+    let source = format!(
+        r#"
+const assert = require("node:assert/strict");
+const links = [{{rel:"stylesheet", dataset:{{doweCss:"layout.css"}}}}];
+const versionedAsset = path => "http://localhost/" + path;
+const document = {{
+  querySelector(selector) {{
+    return links.find(link =>
+      selector.includes(`data-dowe-css="${{link.dataset.doweCss}}"`) ||
+      selector.includes(`data-dowe-css-preload="${{link.dataset.doweCssPreload}}"`)
+    );
+  }},
+  createElement() {{
+    return {{dataset:{{}}, addEventListener(name, callback) {{this[name] = callback;}},
+      remove() {{links.splice(links.indexOf(this), 1);}}}};
+  }},
+  head:{{appendChild(link) {{links.push(link);}}}}
+}};
+{}
+const route = {{cssChunks:["layout.css", "destination.css"]}};
+preloadRouteCss(route);
+preloadRouteCss(route);
+assert.equal(links.length, 2);
+assert.equal(links[0].rel, "stylesheet");
+assert.equal(links[1].rel, "preload");
+assert.equal(links[1].as, "style");
+assert.equal(links[1].href, "http://localhost/destination.css");
+assert.equal(links[1].dataset.doweCss, undefined);
+links[1].error();
+assert.equal(links.length, 1);
+preloadRouteCss(route);
+assert.equal(links.length, 2);
+assert.equal(links.filter(link => link.rel === "stylesheet").length, 1);
+"#,
+        &runtime[start..end]
+    );
+    let mut child = Command::new("node")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("node is required for CSS preloading regression test");
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(source.as_bytes())
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
 fn generated_runtime_javascript_has_valid_syntax() {
     let web = super::WebOutput {
         chunks: Vec::new(),
@@ -92,15 +155,23 @@ fn generated_runtime_javascript_has_valid_syntax() {
     };
     let core = super::router_js(&web);
     let controls = super::controls_runtime_chunk().content;
+    let tree = super::tree_runtime_chunk().content;
     let media = super::media_runtime_chunk().content;
     let visualization = super::visualization_runtime_chunk().content;
+    let canvas = super::canvas_runtime_chunk().content;
     assert_javascript_syntax(&core);
+    assert!(core.contains("/_dowe/dev/ipc"));
+    assert!(core.contains("127.0.0.1"));
     assert_javascript_syntax(&controls);
+    assert_javascript_syntax(&tree);
     assert_javascript_syntax(&media);
     assert_javascript_syntax(&visualization);
+    assert_javascript_syntax(&canvas);
+    assert!(canvas.len() <= 30_000, "canvas runtime: {} bytes", canvas.len());
     assert!(controls.len() <= 50_000);
+    assert!(tree.len() <= 12_000);
     assert!(media.len() <= 40_000);
-    assert!(visualization.len() <= 56_000);
+    assert!(visualization.len() <= 60_000, "visualization runtime: {} bytes", visualization.len());
     assert!(controls.contains("onViewportResize"));
     assert!(controls.contains("onViewportScroll"));
 }
@@ -342,12 +413,16 @@ fn style_capability_chunks_are_selected_and_content_addressed() {
 
 include!("tests/core_generation.rs");
 include!("tests/data_generation.rs");
+include!("tests/diagram_interactions.rs");
+include!("tests/draw_interactions.rs");
+include!("tests/canvas_capability.rs");
 include!("tests/navigation_generation.rs");
 include!("tests/component_display_generation.rs");
 include!("tests/fixtures_core.rs");
 include!("tests/fixtures_media_forms.rs");
 include!("tests/fixtures_navigation.rs");
 include!("tests/fixtures_data.rs");
+include!("tests/fixtures_tree.rs");
 include!("tests/fixtures_display_overlay.rs");
 include!("tests/fixtures_display_chat.rs");
 include!("tests/fixtures_rich_controls.rs");

@@ -145,9 +145,20 @@ fn parse_stepper_props(props: &[ComponentProp]) -> ComponentResult<TabsProps> {
     let mut color_explicit = false;
     let mut position = TabsPosition::Top;
     let mut style_props = Vec::new();
+    let mut bind = None;
 
     for prop in props {
         match prop.name.as_str() {
+            "bind" => {
+                bind = Some(
+                    prop.value
+                        .binding()
+                        .map(|binding| binding.path.clone())
+                        .ok_or_else(|| {
+                            ComponentError::invalid_prop("bind", "signal string path")
+                        })?,
+                );
+            }
             "scheme" => {
                 color = parse_family_prop(BuiltinComponent::Stepper, &prop.name, &prop.value)?;
                 color_explicit = true;
@@ -174,12 +185,15 @@ fn parse_stepper_props(props: &[ComponentProp]) -> ComponentResult<TabsProps> {
         }
     }
 
-    Ok(TabsProps {
-        style: parse_style_props(
+    let mut style = parse_style_props(
             BuiltinComponent::Stepper,
             &style_props,
             StylePropMode::Variant,
-        )?,
+        )?;
+    style.element.bind = bind;
+
+    Ok(TabsProps {
+        style,
         variant: TabsVariant::Stepper,
         color,
         position,
@@ -310,4 +324,3 @@ fn parse_text_props(
 
     Ok(text)
 }
-

@@ -218,6 +218,13 @@ fn collect_tabs_js_segments(
     segments: &mut Vec<JsSegment>,
     context: &ReactiveRenderContext,
 ) {
+    let mut extra = String::new();
+    if let Some(bind) = props.style.element.bind.as_deref() {
+        extra.push_str(&format!(
+            r#" data-dowe-tabs-bind="{}""#,
+            escape_attr(&context.signal_path(bind))
+        ));
+    }
     push_literal(
         segments,
         &format!(
@@ -225,7 +232,7 @@ fn collect_tabs_js_segments(
             attrs(
                 tabs_classes(props),
                 Some(&props.style.element),
-                None,
+                Some(&extra),
                 context
             )
         ),

@@ -7,13 +7,12 @@ mod workflow;
 pub use error::{HarnessError, HarnessResult};
 pub use model::{
     CheckReport, DetectedMode, Diagnostic, DiagnosticSeverity, FileRecord, HarnessManifest,
-    HarnessMode, InitOptions, InitReport, ManagedAgentSkill, ManagedAgentSkillFile, PlanOptions,
-    PlanReport, PlanState, StatusReport, TddState, ValidationReport,
+    HarnessMode, InitOptions, InitReport, PlanOptions, PlanReport, PlanState, StatusReport,
+    TddState, ValidationReport,
 };
 pub use workflow::{
-    check_harness, detect_mode, init_agent_project, init_agent_project_with_skills,
-    init_project_harness, plan_from_spec, read_manifest, read_plan_state, read_status,
-    transition_tdd_state, validate_plan, write_plan_state,
+    check_harness, detect_mode, init_project_harness, plan_from_spec, read_manifest,
+    read_plan_state, read_status, transition_tdd_state, validate_plan, write_plan_state,
 };
 
 #[cfg(test)]
@@ -21,7 +20,11 @@ pub(crate) use paths::{WriteMode, write_agent_file};
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::TempDir;
+
     include!("test_fixtures.rs");
-    include!("lib_tests_agent_init.rs");
     include!("lib_tests.rs");
 }

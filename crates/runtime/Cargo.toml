@@ -19,7 +19,9 @@ dowe_components = { path = "../components" }
 dowe_compiler = { path = "../compiler" }
 dowe_crypto = { path = "../crypto" }
 dowe_cache = { path = "../cache" }
+dowe_codegraph = { path = "../codegraph" }
 dowe_queue = { path = "../queue" }
+dowe_notifications = { path = "../notifications" }
 dowe_inference = { path = "../inference" }
 dowe_id = { path = "../id" }
 dowe_spawn = { path = "../spawn" }
@@ -27,6 +29,7 @@ dowe_stdlib = { path = "../stdlib" }
 dowe_database = { path = "../database" }
 dowe_vector = { path = "../vector" }
 futures-util.workspace = true
+jsonwebtoken.workspace = true
 notify.workspace = true
 reqwest.workspace = true
 rcgen.workspace = true
@@ -35,6 +38,8 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tokio.workspace = true
+tokio-tungstenite.workspace = true
+web-push-native.workspace = true
 tower-http.workspace = true
 tempfile = "3.23.0"
 
@@ -51,9 +56,6 @@ windows = { version = "0.62.2", features = [
     "Win32_System_LibraryLoader",
     "Win32_UI_WindowsAndMessaging",
 ] }
-
-[dev-dependencies]
-tokio-tungstenite.workspace = true
 
 [lib]
 path = "src/lib.rs"

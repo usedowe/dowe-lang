@@ -15,6 +15,7 @@ fn render_csv_field_html(
     );
     let uid = short_id("csv", &source);
     let mut button_classes = variant_classes("button", &props.style);
+    let reactive_attrs = reactive_variant_attrs(&props.style, context, "button-");
     button_classes.push(format!(
         "button-{}",
         props.style.size.unwrap_or(ButtonSize::Md).as_str()
@@ -44,7 +45,7 @@ fn render_csv_field_html(
         props.preview_rows, props.preview_page_size
     );
     let field = format!(
-        r#"<div{}><input id="{uid}" class="csv-field-input" type="file" accept=".csv,text/csv"{} hidden><button{} type="button" data-dowe-csv-trigger>{}{}</button><div class="csv-field-summary" data-dowe-csv-summary hidden></div>{preview}<div class="csv-field-modal" data-dowe-csv-modal hidden><div class="csv-field-dialog"><h2 class="csv-field-title">{}</h2><p class="csv-field-instructions">{}</p><div class="csv-field-columns">{columns_html}</div><div class="csv-field-error" data-dowe-csv-error{}>{}</div><div class="csv-field-actions"><button class="csv-field-action" type="button" data-dowe-csv-cancel>{}</button><button class="csv-field-action is-primary" type="button" data-dowe-csv-confirm>{}</button><button class="csv-field-action" type="button" data-dowe-csv-clear>{}</button></div></div></div></div>"#,
+        r#"<div{}><input id="{uid}" class="csv-field-input" type="file" accept=".csv,text/csv"{} hidden><button{}{} type="button" data-dowe-csv-trigger>{}{}</button><div class="csv-field-summary" data-dowe-csv-summary hidden></div>{preview}<div class="csv-field-modal" data-dowe-csv-modal hidden><div class="csv-field-dialog"><h2 class="csv-field-title">{}</h2><p class="csv-field-instructions">{}</p><div class="csv-field-columns">{columns_html}</div><div class="csv-field-error" data-dowe-csv-error{}>{}</div><div class="csv-field-actions"><button class="csv-field-action" type="button" data-dowe-csv-cancel>{}</button><button class="csv-field-action is-primary" type="button" data-dowe-csv-confirm>{}</button><button class="csv-field-action" type="button" data-dowe-csv-clear>{}</button></div></div></div></div>"#,
         attrs(
             vec!["csv-field".to_string()],
             Some(&props.style.element),
@@ -53,6 +54,7 @@ fn render_csv_field_html(
         ),
         if props.multiple { " multiple" } else { "" },
         class_attr(button_classes),
+        reactive_attrs,
         view_icon_svg(ViewIcon::Upload, "csv-field-icon"),
         escape_html(&props.button_text),
         escape_html(&props.modal_title),
@@ -75,4 +77,3 @@ fn render_csv_field_html(
         context,
     )
 }
-

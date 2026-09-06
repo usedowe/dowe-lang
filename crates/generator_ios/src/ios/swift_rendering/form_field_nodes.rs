@@ -163,11 +163,41 @@ fn render_swift_radio_group(
     output: &mut String,
     context: &SwiftReactiveContext,
 ) {
+    if matches!(props.presentation, RadioGroupPresentation::Card) {
+        return render_swift_radio_card(props, options, indent, output, context);
+    }
     let pad = " ".repeat(indent);
     let binding = swift_string_binding(&props.style, "", context);
     output.push_str(&format!(
         "{pad}DoweRadioGroupView(value: {binding}, options: {}, size: {}, orientation: {}, name: {}, label: {}, helpText: {}, errorText: {}, accentColor: {})\n",
         swift_radio_options(options),
+        swift_string_literal(props.size.as_str()),
+        swift_string_literal(props.orientation.as_str()),
+        swift_optional_literal(props.name.as_deref()),
+        swift_optional_literal(props.style.label.as_deref()),
+        swift_optional_literal(props.info.as_deref()),
+        swift_optional_literal(props.error.as_deref()),
+        swift_scheme_color(&props.style)
+    ));
+    append_swift_modifiers(
+        output,
+        indent,
+        &swift_modifiers_for_style(&props.style.style),
+    );
+}
+
+fn render_swift_radio_card(
+    props: &RadioGroupProps,
+    options: &[RadioOption],
+    indent: usize,
+    output: &mut String,
+    context: &SwiftReactiveContext,
+) {
+    let pad = " ".repeat(indent);
+    let binding = swift_string_binding(&props.style, "", context);
+    output.push_str(&format!(
+        "{pad}DoweRadioCardView(value: {binding}, options: {}, size: {}, orientation: {}, name: {}, label: {}, helpText: {}, errorText: {}, accentColor: {})\n",
+        swift_radio_card_options(options),
         swift_string_literal(props.size.as_str()),
         swift_string_literal(props.orientation.as_str()),
         swift_optional_literal(props.name.as_deref()),

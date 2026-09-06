@@ -10,7 +10,7 @@ fn dev_route_shard(
     let mut page_helpers = String::new();
     let mut output = dev_shard_header(app_bundle);
     output.push_str(&format!(
-        "@SuppressWarnings({{\"unchecked\", \"deprecation\"}})\nfinal class {class_name} {{\n    private {class_name}() {{}}\n\n    static void render(DoweDevActivity runtime, LinearLayout root) {{\n"
+        "@SuppressWarnings({{\"unchecked\", \"deprecation\"}})\nfinal class {class_name} {{\n    private {class_name}() {{}}\n\n    static void render(DoweDevActivity runtime, ViewGroup root) {{\n"
     ));
     if let Some(class_name) = &shared_layout {
         output.push_str(&format!(
@@ -210,7 +210,7 @@ fn dev_layout_shard(layout: &ViewNode, index: usize, app_bundle: &str) -> String
         None,
         None,
         &ComposeReactiveContext::default(),
-        Some("page.accept"),
+        Some("page.accept(runtime.doweCreatePageContainer({parent}))"),
     );
     output.push_str(&qualify_dev_shard_fragment(&body));
     output.push_str("    }\n\n    static void initialize(DoweDevActivity runtime) {\n");

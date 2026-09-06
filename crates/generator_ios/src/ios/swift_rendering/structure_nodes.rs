@@ -205,6 +205,11 @@ fn render_swift_structure_node(
                 "{pad}        VStack(alignment: {}, spacing: doweFlexStackSpacing({justify}, gap: {gap})) {{\n",
                 swift_horizontal_alignment(props.align.as_ref()),
             ));
+            if !children.is_empty() {
+                output.push_str(&format!(
+                    "{pad}            if let spacerGap = doweFlexLeadingSpacer({justify}, gap: {gap}) {{\n{pad}                Spacer(minLength: spacerGap)\n{pad}            }}\n"
+                ));
+            }
             for (index, child) in children.iter().enumerate() {
                 if index > 0 {
                     output.push_str(&format!(
@@ -220,6 +225,11 @@ fn render_swift_structure_node(
                     default_family,
                     context,
                 );
+            }
+            if !children.is_empty() {
+                output.push_str(&format!(
+                    "{pad}            if let spacerGap = doweFlexTrailingSpacer({justify}, gap: {gap}) {{\n{pad}                Spacer(minLength: spacerGap)\n{pad}            }}\n"
+                ));
             }
             output.push_str(&format!("{pad}        }}\n"));
             append_swift_modifiers(
@@ -238,6 +248,11 @@ fn render_swift_structure_node(
                     "{pad}        HStack(alignment: {}, spacing: doweFlexStackSpacing({justify}, gap: {gap})) {{\n",
                     swift_vertical_alignment(props.align.as_ref()),
                 ));
+                if !children.is_empty() {
+                    output.push_str(&format!(
+                        "{pad}            if let spacerGap = doweFlexLeadingSpacer({justify}, gap: {gap}) {{\n{pad}                Spacer(minLength: spacerGap)\n{pad}            }}\n"
+                    ));
+                }
             }
             for (index, child) in children.iter().enumerate() {
                 if index > 0 && !props.wrap {
@@ -254,6 +269,11 @@ fn render_swift_structure_node(
                     default_family,
                     context,
                 );
+            }
+            if !props.wrap && !children.is_empty() {
+                output.push_str(&format!(
+                    "{pad}            if let spacerGap = doweFlexTrailingSpacer({justify}, gap: {gap}) {{\n{pad}                Spacer(minLength: spacerGap)\n{pad}            }}\n"
+                ));
             }
             output.push_str(&format!("{pad}        }}\n"));
             append_swift_modifiers(output, indent + 8, &swift_modifiers_for_layout(props, flow));

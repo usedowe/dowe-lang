@@ -193,6 +193,7 @@ fn known_document_symbol(nodes: &[SourceNode], symbol: &str) -> bool {
                 | "kv"
                 | "emb"
                 | "request"
+                | "invoke"
                 | "ws"
                 | "agent"
                 | "str"

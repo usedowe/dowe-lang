@@ -108,6 +108,7 @@ pub fn slider_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
             "min" => min = parse_number_literal(&prop.name, &prop.value)?,
             "max" => max = parse_number_literal(&prop.name, &prop.value)?,
             "step" => step = Some(parse_positive_number_literal(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "hideLabel" => hide_label = parse_static_bool(&prop.name, &prop.value)?,
@@ -117,6 +118,7 @@ pub fn slider_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
     }
     validate_slider_range(&min, &max, &value)?;
     let mut style = parse_variant_props(BuiltinComponent::Slider, &style_props)?;
+    let size = style.size.unwrap_or(size);
     style.color.get_or_insert(ColorFamily::Primary);
     Ok(ViewNode::Slider {
         props: SliderProps {
@@ -147,6 +149,7 @@ pub fn dropzone_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
             "accept" => accept = Some(parse_required_string(&prop.name, &prop.value)?),
             "multiple" => multiple = parse_static_bool(&prop.name, &prop.value)?,
             "maxSize" => max_size = Some(parse_positive_u64(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
@@ -157,6 +160,7 @@ pub fn dropzone_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Dropzone, &style_props)?;
+    let size = style.size.unwrap_or(size);
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
     style
@@ -223,6 +227,7 @@ pub fn combo_box_component_node(
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::ComboBox)),
             _ => style_props.push(prop),
@@ -231,7 +236,9 @@ pub fn combo_box_component_node(
     let mut style = parse_variant_props(BuiltinComponent::ComboBox, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     style
         .placeholder
         .get_or_insert_with(|| "Select an option".to_string());
@@ -290,4 +297,3 @@ pub fn combo_option_component(props: Vec<ComponentProp>) -> ComponentResult<Comb
         disabled,
     })
 }
-

@@ -14,6 +14,7 @@ mod menus;
 mod queue_cli;
 mod server;
 mod spawn_cli;
+mod studio;
 mod test_cli;
 mod uninstall;
 mod upgrade;
@@ -24,9 +25,15 @@ mod version;
 use std::env;
 use usage::USAGE;
 
-#[tokio::main]
-async fn main() {
-    if let Err(error) = run().await {
+const TOKIO_WORKER_STACK_SIZE: usize = 16 * 1024 * 1024;
+
+fn main() {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_stack_size(TOKIO_WORKER_STACK_SIZE)
+        .build()
+        .expect("Dowe Tokio runtime");
+    if let Err(error) = runtime.block_on(run()) {
         eprintln!("ERROR {error}");
         std::process::exit(1);
     }
@@ -53,6 +60,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         Some("login") => login::run_login_command(&args[1..]),
         Some("icons") => icons::run_icons_command(&args[1..]),
         Some("dev") => dev::run_dev_command(&args[1..]).await,
+        Some("studio") => studio::run_studio_command(&args[1..]).await,
         Some("test") => test_cli::run_test_command(&args[1..]),
         Some("build") => build::run_build_command(&args[1..]).await,
         Some("deploy") => deploy::run_deploy_command(&args[1..]),
@@ -89,6 +97,7 @@ async fn run_root_menu() -> Result<(), Box<dyn std::error::Error>> {
         "login" => login::run_login_command(&[]),
         "icons" => icons::run_icons_command(&[]),
         "dev" => dev::run_dev_command(&[]).await,
+        "studio" => studio::run_studio_command(&[]).await,
         "test" => test_cli::run_test_command(&[]),
         "build" => build::run_build_command(&[]).await,
         "deploy" => deploy::run_deploy_command(&[]),

@@ -34,12 +34,13 @@ fn dev_activity_sources(
     output.push_str("    private static final int DOWE_IMAGE_CROPPER_REQUEST = 5108;\n    private static final int DOWE_CAMERA_REQUEST = 5109;\n    private static final int DOWE_MICROPHONE_PERMISSION_REQUEST = 5110;\n    private static final int DOWE_CAMERA_PERMISSION_REQUEST = 5111;\n    private String doweImageCropperKey;\n    private String doweImageCropperAspect;\n    private int doweImageCropperMinWidth;\n    private int doweImageCropperMinHeight;\n    private int doweImageCropperMaxWidth;\n    private int doweImageCropperMaxHeight;\n    private String doweCameraOnCapture;\n    private String doweCameraOnError;\n    private String doweCameraFacing;\n    private String doweCameraPendingOnStart;\n    private String doweCameraPendingOnCapture;\n    private String doweCameraPendingOnError;\n    private String doweCameraPendingFacing;\n    private MediaRecorder doweMicrophoneRecorder;\n    private File doweMicrophoneFile;\n    private long doweMicrophoneStarted;\n    private String doweMicrophoneOnStop;\n    private String doweMicrophoneOnError;\n    private String doweMicrophonePendingOnStart;\n    private String doweMicrophonePendingOnStop;\n    private String doweMicrophonePendingOnError;\n    private int doweMicrophonePendingMaxDuration;\n");
     output.push_str("    private String doweImageCropperShapeName;\n");
     output.push_str("    private DoweVideoLayout dowePictureInPictureVideo;\n    private boolean dowePictureInPictureRestoreFullscreen;\n    private static final int DOWE_DROPZONE_REQUEST = 5107;\n    private String doweDropzoneKey;\n    private long doweDropzoneMaxSize = -1L;\n    private boolean doweDropzoneMultiple;\n    private boolean dowePinnedAppBarDockOnScroll;\n    private int dowePinnedAppBarColor;\n    private int dowePinnedAppBarHeight;\n    private float dowePinnedAppBarDockProgress;\n    private View dowePinnedAppBarPlaceholder;\n    private View dowePinnedAppBarDivider;\n    private ValueAnimator dowePinnedAppBarAnimator;\n");
+    output.push_str("    private int doweSafeAreaTopColor = DOWE_BACKGROUND;\n    private int doweSafeAreaBottomColor = DOWE_BACKGROUND;\n");
     output.push_str(&format!(
-        "    private final Activity doweActivity;\n    private Intent doweIntent;\n    private LinearLayout root;\n    private ScrollView scrollView;\n    private int viewportWidth;\n    private String currentPath = \"{}\";\n    private String currentFragment = null;\n    private String doweMountedPath = null;\n    private String doweMountedLayout = null;\n    private boolean externalOpen = false;\n    private Runnable doweDrawerNavigationClose = null;
+        "    private final Activity doweActivity;\n    private Intent doweIntent;\n    private LinearLayout root;\n    private ScrollView scrollView;\n    private int viewportWidth;\n    private String currentPath = \"{}\";\n    private String currentFragment = null;\n    private boolean dowePageTransitioning = false;\n    private boolean dowePageEntranceSuppressed = false;\n    private int dowePageTransitionSequence = 0;\n    private View dowePageContainerView = null;\n    private String doweMountedPath = null;\n    private String doweMountedLayout = null;\n    private boolean externalOpen = false;\n    private Runnable doweDrawerNavigationClose = null;
     private PopupWindow doweActiveOverlay = null;
     private int doweOverlayRender = 0;
     private int doweOverlayClaimed = 0;
-    private final ArrayList<DoweRouteEntry> backStack = new ArrayList<>();\n    private final HashMap<String, Object> doweState = new HashMap<>();\n    private final HashMap<String, Object> doweInitial = new HashMap<>();\n    private final HashMap<String, Boolean> doweSideNavMemory = new HashMap<>();\n    private final HashMap<String, String[]> doweSignalMetadata = new HashMap<>();\n    private final HashMap<String, Object> doweGlobalState = new HashMap<>();\n    private final HashMap<String, String> doweGlobalStorage = new HashMap<>();\n    private final HashMap<String, DoweAction> doweActions = new HashMap<>();\n    private final HashMap<String, DoweFormFieldMetadata[]> doweForms = new HashMap<>();\n    private final HashMap<String, View> sectionViews = new HashMap<>();\n    private final HashSet<String> doweLoaded = new HashSet<>();\n    private final HashSet<String> doweTouchedValidations = new HashSet<>();\n    private final HashSet<String> doweTouchedForms = new HashSet<>();\n\n",
+    private final ArrayList<DoweRouteEntry> backStack = new ArrayList<>();\n    private final HashMap<String, Object> doweState = new HashMap<>();\n    private final HashMap<String, Object> doweInitial = new HashMap<>();\n    private final HashMap<String, Boolean> doweSideNavMemory = new HashMap<>();\n    private final HashMap<String, Boolean> doweTreeOpen = new HashMap<>();\n    private final HashMap<String, String> doweTreeSelected = new HashMap<>();\n    private final HashMap<String, String[]> doweSignalMetadata = new HashMap<>();\n    private final HashMap<String, Object> doweGlobalState = new HashMap<>();\n    private final HashMap<String, String> doweGlobalStorage = new HashMap<>();\n    private final HashMap<String, DoweAction> doweActions = new HashMap<>();\n    private final HashMap<String, DoweFormFieldMetadata[]> doweForms = new HashMap<>();\n    private final HashMap<String, View> sectionViews = new HashMap<>();\n    private final HashSet<String> doweLoaded = new HashSet<>();\n    private final HashSet<String> doweTouchedValidations = new HashSet<>();\n    private final HashSet<String> doweTouchedForms = new HashSet<>();\n\n",
         escape_java(routes_first_path(routes))
     ));
     output.push_str(
@@ -55,6 +56,7 @@ fn dev_activity_sources(
 
 "#,
     );
+    output.push_str(&dev_safe_area_color_methods(routes));
     output.push_str("    private static final class DoweEnvironment {\n");
     for (name, value) in environment {
         output.push_str(&format!(
@@ -101,6 +103,8 @@ fn dev_activity_sources(
             currentPath = preferredPath;
         }
         doweApplyIntentRoute();
+        doweUpdateSafeAreaColors();
+        doweApplySystemBarAppearance();
         doweActivity.setContentView(background);
         doweApplySystemInsets(scrollView);
         renderCurrentRoute();
@@ -109,6 +113,7 @@ fn dev_activity_sources(
     private void doweSetTheme(String name) {
         getSharedPreferences("dowe", 0).edit().putString("theme-preference", name).apply();
         doweApplyTheme(name);
+        doweUpdateSafeAreaColors();
         doweApplySystemBarAppearance();
         root.setBackgroundColor(DOWE_BACKGROUND);
         ((View) scrollView.getParent()).setBackgroundColor(DOWE_BACKGROUND);
@@ -124,9 +129,18 @@ fn dev_activity_sources(
     }
 
     public void handleIntent(Intent intent) {
+        String previousPath = currentPath;
         doweIntent = intent;
         doweApplyIntentRoute();
+        doweUpdateSafeAreaColors();
+        doweApplySystemBarAppearance();
+        if (!previousPath.equals(currentPath)) {
+            doweStartPageTransition();
+        }
         renderCurrentRoute();
+        if (!previousPath.equals(currentPath)) {
+            doweFinishPageTransition();
+        }
     }
 
     public void handleActivityResult(int requestCode, int resultCode, Intent data) {
@@ -418,20 +432,31 @@ fn dev_activity_sources(
         doweApplySystemBarAppearance();
     }
 
+    private float doweColorLuminance(int color) {
+        float red = Color.red(color) / 255f;
+        float green = Color.green(color) / 255f;
+        float blue = Color.blue(color) / 255f;
+        red = red <= 0.03928f ? red / 12.92f : (float) Math.pow((red + 0.055f) / 1.055f, 2.4);
+        green = green <= 0.03928f ? green / 12.92f : (float) Math.pow((green + 0.055f) / 1.055f, 2.4);
+        blue = blue <= 0.03928f ? blue / 12.92f : (float) Math.pow((blue + 0.055f) / 1.055f, 2.4);
+        return 0.2126f * red + 0.7152f * green + 0.0722f * blue;
+    }
+
     private void doweApplySystemBarAppearance() {
-        boolean useDarkIcons = Color.luminance(DOWE_BACKGROUND) > 0.179f;
+        boolean useDarkStatusIcons = doweColorLuminance(doweSafeAreaTopColor) > 0.179f;
+        boolean useDarkNavigationIcons = doweColorLuminance(doweSafeAreaBottomColor) > 0.179f;
         if (Build.VERSION.SDK_INT >= 30) {
-            int mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-            getWindow().getInsetsController().setSystemBarsAppearance(useDarkIcons ? mask : 0, mask);
+            int statusMask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS;
+            int navigationMask = android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            int appearance = (useDarkStatusIcons ? statusMask : 0) |
+                (useDarkNavigationIcons ? navigationMask : 0);
+            getWindow().getInsetsController().setSystemBarsAppearance(appearance, statusMask | navigationMask);
         } else {
             int visibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
                 View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
-            if (useDarkIcons) {
-                visibility |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
-                    View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            }
+            if (useDarkStatusIcons) visibility |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            if (useDarkNavigationIcons) visibility |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
             getWindow().getDecorView().setSystemUiVisibility(visibility);
         }
     }
@@ -465,12 +490,63 @@ fn dev_activity_sources(
         view.requestApplyInsets();
     }
 
+    private ViewGroup doweCreatePageContainer(ViewGroup parent) {
+        LinearLayout page = doweContainer(false);
+        page.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        page.setAlpha(dowePageTransitioning ? 0f : 1f);
+        doweAdd(parent, page);
+        dowePageContainerView = page;
+        return page;
+    }
+
+    private void doweStartPageTransition() {
+        dowePageTransitionSequence++;
+        dowePageEntranceSuppressed = true;
+        dowePageTransitioning = ValueAnimator.areAnimatorsEnabled();
+        if (root == null) {
+            return;
+        }
+        if (dowePageContainerView != null) {
+            dowePageContainerView.animate().cancel();
+        }
+        root.animate().cancel();
+    }
+
+    private void doweFinishPageTransition() {
+        View target = dowePageContainerView == null ? root : dowePageContainerView;
+        if (target == null) {
+            return;
+        }
+        int sequence = dowePageTransitionSequence;
+        target.post(() -> {
+            if (sequence != dowePageTransitionSequence || !target.isAttachedToWindow()) {
+                return;
+            }
+            if (!dowePageTransitioning || !ValueAnimator.areAnimatorsEnabled()) {
+                target.setAlpha(1f);
+                dowePageTransitioning = false;
+                return;
+            }
+            target.animate()
+                .alpha(1f)
+                .setDuration(__DOWE_PAGE_TRANSITION_DURATION_MS__)
+                .setInterpolator(new PathInterpolator(__DOWE_PAGE_TRANSITION_X1__f, __DOWE_PAGE_TRANSITION_Y1__f, __DOWE_PAGE_TRANSITION_X2__f, __DOWE_PAGE_TRANSITION_Y2__f))
+                .withEndAction(() -> {
+                    if (sequence == dowePageTransitionSequence) {
+                        dowePageTransitioning = false;
+                    }
+                })
+                .start();
+        });
+    }
+
     private void renderCurrentRoute() {
         renderCurrentRoute(true);
     }
 
     private void renderCurrentRoute(boolean scrollToFragment) {
         doweOverlayRender++;
+        dowePageContainerView = null;
         root.removeAllViews();
         View pinnedAppBar = ((ViewGroup) scrollView.getParent()).findViewWithTag("dowe-pinned-appbar");
         if (pinnedAppBar != null) {
@@ -504,23 +580,42 @@ fn dev_activity_sources(
 "#,
     );
 
-    for (index, (route, class_name)) in routes.iter().zip(&route_classes).enumerate() {
+    for (index, ((route, class_name), layout_index)) in routes
+        .iter()
+        .zip(&route_classes)
+        .zip(&route_layouts)
+        .enumerate()
+    {
         let branch = if index == 0 { "if" } else { "else if" };
+        let render_root = if layout_index.is_some() {
+            "root"
+        } else {
+            "doweCreatePageContainer(root)"
+        };
         output.push_str(&format!(
-            "        {branch} (\"{}\".equals(currentPath)) {{\n            {class_name}.render(this, root);\n        }}\n",
+            "        {branch} (\"{}\".equals(currentPath)) {{\n            {class_name}.render(this, {render_root});\n        }}\n",
             escape_java(&route.route_path)
         ));
     }
 
-    if let Some((route, class_name)) = routes.first().zip(route_classes.first()) {
+    if let Some(((route, class_name), layout_index)) = routes
+        .first()
+        .zip(route_classes.first())
+        .zip(route_layouts.first())
+    {
+        let render_root = if layout_index.is_some() {
+            "root"
+        } else {
+            "doweCreatePageContainer(root)"
+        };
         output.push_str(&format!(
-            "        else {{\n            currentPath = \"{}\";\n            {class_name}.render(this, root);\n        }}\n",
+            "        else {{\n            currentPath = \"{}\";\n            {class_name}.render(this, {render_root});\n        }}\n",
             escape_java(&route.route_path)
         ));
     }
 
     output.push_str(
-        "        if (doweActiveOverlay != null && doweActiveOverlay.isShowing() && doweOverlayClaimed != doweOverlayRender) {\n            doweActiveOverlay.dismiss();\n        }\n        doweAutoload();\n        if (scrollToFragment) {\n            if (currentFragment == null) {\n                scrollView.scrollTo(0, 0);\n            } else {\n                doweScrollToFragment();\n            }\n        }\n    }\n\n",
+        "        if (doweActiveOverlay != null && doweActiveOverlay.isShowing() && doweOverlayClaimed != doweOverlayRender) {\n            doweActiveOverlay.dismiss();\n        }\n        doweAutoload();\n        if (scrollToFragment) {\n            if (currentFragment == null) {\n                scrollView.scrollTo(0, 0);\n            } else {\n                doweScrollToFragment();\n            }\n        }\n        doweUpdateSafeAreaColors();\n        doweApplySystemBarAppearance();\n        doweApplySafeAreaColors();\n    }\n\n",
     );
 
     output.push_str("    private void doweInitializeState() {\n");
@@ -606,6 +701,16 @@ fn dev_activity_sources(
         "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__",
         SIDE_NAV_SUBMENU_ARROW_PATH,
     );
+    let easing = dowe_components::VIEW_PAGE_TRANSITION_EASING;
+    output = output
+        .replace(
+            "__DOWE_PAGE_TRANSITION_DURATION_MS__",
+            &dowe_components::VIEW_PAGE_TRANSITION_DURATION_MS.to_string(),
+        )
+        .replace("__DOWE_PAGE_TRANSITION_X1__", &easing.0.to_string())
+        .replace("__DOWE_PAGE_TRANSITION_Y1__", &easing.1.to_string())
+        .replace("__DOWE_PAGE_TRANSITION_X2__", &easing.2.to_string())
+        .replace("__DOWE_PAGE_TRANSITION_Y2__", &easing.3.to_string());
 
     let mut shards = routes
         .iter()
@@ -636,4 +741,21 @@ fn dev_activity_sources(
         core: expose_dev_activity_members(output),
         shards,
     }
+}
+
+fn dev_safe_area_color_methods(routes: &[ViewRoute]) -> String {
+    let mut output = String::from("    private void doweUpdateSafeAreaColors() {\n");
+    for route in routes {
+        let (top, bottom) = dowe_components::route_scaffold_safe_area_colors(route);
+        output.push_str(&format!(
+            "        if (\"{}\".equals(currentPath)) {{\n            doweSafeAreaTopColor = {};\n            doweSafeAreaBottomColor = {};\n            return;\n        }}\n",
+            escape_java(&route.route_path),
+            java_color(top),
+            java_color(bottom),
+        ));
+    }
+    output.push_str(
+        "        doweSafeAreaTopColor = DOWE_BACKGROUND;\n        doweSafeAreaBottomColor = DOWE_BACKGROUND;\n    }\n\n",
+    );
+    output
 }

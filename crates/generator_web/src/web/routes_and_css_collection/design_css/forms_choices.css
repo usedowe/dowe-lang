@@ -237,6 +237,135 @@
   width:.875rem;
   height:.875rem;
 }
+.radio-card-group {
+  display:flex;
+  align-items:stretch;
+  gap:.75rem 1rem;
+  justify-content:flex-start;
+}
+.radio-card-group.is-vertical {
+  flex-direction:column;
+}
+.radio-card-group.is-horizontal {
+  flex-direction:row;
+  flex-wrap:wrap;
+}
+.radio-card {
+  position:relative;
+  display:flex;
+  min-width:14rem;
+  min-height:7.5rem;
+  flex:1 1 14rem;
+  box-sizing:border-box;
+  flex-direction:column;
+  gap:.75rem;
+  border:1px solid color-mix(in srgb,currentColor 18%,transparent);
+  border-radius:var(--dowe-radius);
+  background:var(--dowe-surface);
+  color:var(--dowe-surfaceText);
+  cursor:pointer;
+  padding:1rem;
+  text-align:left;
+  transition:border-color 160ms ease,background-color 160ms ease,box-shadow 160ms ease;
+}
+.radio-card:hover {
+  border-color:color-mix(in srgb,currentColor 38%,transparent);
+}
+.radio-card:focus-within {
+  outline:2px solid color-mix(in srgb,currentColor 36%,transparent);
+  outline-offset:2px;
+}
+.radio-card:has(.radio-card-control:checked) {
+  border-color:currentColor;
+  background:color-mix(in srgb,currentColor 9%,var(--dowe-surface));
+  box-shadow:0 0 0 1px color-mix(in srgb,currentColor 18%,transparent);
+}
+.radio-card:has(.radio-card-control:disabled) {
+  cursor:not-allowed;
+  opacity:.56;
+}
+.radio-card-control {
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0 0 0 0);
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+.radio-card-content {
+  display:flex;
+  min-width:0;
+  flex:1;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:flex-end;
+  gap:.75rem;
+  padding-top:.25rem;
+}
+.radio-card-icon {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--dowe-muted);
+}
+.radio-card-icon svg {
+  width:1.25rem;
+  height:1.25rem;
+}
+.radio-card-copy {
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:.25rem;
+}
+.radio-card-title {
+  font-size:.9375rem;
+  line-height:1.25rem;
+  color:var(--dowe-surfaceText);
+}
+.radio-card-description {
+  color:var(--dowe-muted);
+  font-size:.8125rem;
+  line-height:1.125rem;
+}
+.radio-card-indicator {
+  position:absolute;
+  top:1rem;
+  right:1rem;
+  width:1.125rem;
+  height:1.125rem;
+  box-sizing:border-box;
+  border:1.5px solid var(--dowe-muted);
+  border-radius:9999px;
+  background:transparent;
+}
+.radio-card-control:checked ~ .radio-card-indicator {
+  border-color:currentColor;
+}
+.radio-card-control:checked ~ .radio-card-indicator::after {
+  content:"";
+  position:absolute;
+  inset:.25rem;
+  border-radius:9999px;
+  background:currentColor;
+}
+.radio-card.is-sm {
+  min-height:6.5rem;
+  padding:.75rem;
+}
+.radio-card.is-lg {
+  min-height:8.5rem;
+  padding:1.25rem;
+}
+.radio-card.is-primary { color:var(--dowe-primary); }
+.radio-card.is-secondary { color:var(--dowe-secondary); }
+.radio-card.is-accent { color:var(--dowe-accent); }
+.radio-card.is-muted { color:var(--dowe-muted); }
+.radio-card.is-success { color:var(--dowe-success); }
+.radio-card.is-info { color:var(--dowe-info); }
+.radio-card.is-warning { color:var(--dowe-warning); }
+.radio-card.is-danger { color:var(--dowe-danger); }
 .field-help {
   font-size:.8125rem;
   line-height:1.125rem;

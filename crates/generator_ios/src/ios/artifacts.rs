@@ -7,27 +7,28 @@ use dowe_components::{
     ComboOption, CommandEntry, CommandProps, ComponentVariant, CountdownProps, CoverSource,
     CsvColumn, DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation,
     DividerProps, DragGroup, DragItem, DrawerProps, DropdownProps, DropzoneProps, ElementProps,
-    EmptyProps, FabAction, FabProps, FlexDirection, FlexItem, FontConfig, FontFamily, FormValidationRuleKind,
-    GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
-    INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps, MapMarker, MapProps,
-    MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps, NavMenuProps,
-    NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayItemProps, OverlayPaint,
-    PieChartProps, PositionProps, RadioGroupProps, RadioOption, RailNavItem, RailNavProps,
-    RecordProps, ResponsiveValue, RichTextMark, RoundedSize, SIDE_NAV_SUBMENU_ARROW_PATH,
-    ScaffoldProps, ScaleValue, SectionBackground, SelectOption, SelectOptionEach, ShadowSize,
-    SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps, SideNavSize, SidebarProps, SizeValue,
-    SkeletonProps, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill,
-    SvgProps, SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableSize, TabsProps,
-    TabsVariant, TextAlign, TextProps, TextSize, TextWeight, ThemeSelectProps, ThemeToggleProps,
-    ToastProps, ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
-    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction, ViewActionKind,
-    ViewAnimation, ViewConstant, ViewForm, ViewFormFieldKind, ViewGesture, ViewNode,
-    ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
-    collect_route_font_families, collect_view_forms, compose_tree, empty_icon, fixed_box_nodes,
-    fixed_fab_nodes, form_control_min_height, form_control_text_size, node_child_groups,
-    node_element_props, phone_countries, phone_country_flag_icon, side_nav_memory_key,
-    side_nav_submenu_arrow_icon, solar_control_icon, text_template_bindings,
-    text_template_segments, text_spacing_em,
+    EmptyProps, FabAction, FabProps, FlexDirection, FlexItem, FontConfig, FontFamily,
+    FormValidationRuleKind, GapSize, GapValue, GridAlignment, GridProps, GridTracks,
+    INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps,
+    MapMarker, MapProps, MapWaypoint, MarqueeProps, ModalProps, NavMenuItem, NavMenuItemProps,
+    NavMenuProps, NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayItemProps,
+    OverlayPaint, PieChartProps, PositionProps, RadioGroupPresentation, RadioGroupProps,
+    RadioOption, RailNavItem,
+    RailNavProps, RecordProps, ResponsiveValue, RichTextMark, RoundedSize,
+    SIDE_NAV_SUBMENU_ARROW_PATH, ScaffoldProps, ScaleValue, SectionBackground, SelectOption,
+    SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps, SideNavProps,
+    SideNavSize, SidebarProps, SizeValue, SkeletonProps, SliderProps, StyleProps, SvgLineCap,
+    SvgLineJoin, SvgPath, SvgPathFill, SvgProps, SvgViewBox, TabItem, TableColumn,
+    TableColumnAlign, TableSize, TabsProps, TabsVariant, TextAlign, TextProps, TextSize,
+    TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem, ToggleGroupKind,
+    ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem,
+    TypeWriterProps, VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewConstant,
+    ViewForm, ViewFormFieldKind, ViewGesture, ViewNode, ViewRequestAction, ViewRoute, ViewSignal,
+    ViewSignalValue, ViewTransition, VisibilityCondition, collect_route_font_families,
+    collect_view_forms, compose_tree, empty_icon, fixed_box_nodes, fixed_fab_nodes,
+    form_control_min_height, form_control_text_size, node_child_groups, node_element_props,
+    phone_countries, phone_country_flag_icon, side_nav_memory_key, side_nav_submenu_arrow_icon,
+    solar_control_icon, text_spacing_em, text_template_bindings, text_template_segments,
     text_typography, view_icon,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -135,6 +136,18 @@ pub fn generate_ios_with_app_translations_and_icons(
             relative_path: PathBuf::from("apps/ios/DoweIosApp.swift"),
             content: ios_app(),
             kind: IosArtifactKind::Entrypoint,
+            target: "ios",
+        },
+        IosArtifact {
+            relative_path: PathBuf::from("apps/ios/DoweNotifications.swift"),
+            content: ios_notifications(),
+            kind: IosArtifactKind::GeneratedView,
+            target: "ios",
+        },
+        IosArtifact {
+            relative_path: PathBuf::from("apps/ios/Dowe.entitlements"),
+            content: ios_entitlements(),
+            kind: IosArtifactKind::Manifest,
             target: "ios",
         },
         IosArtifact {
@@ -258,7 +271,10 @@ fn ios_view_consumption_manifest(routes: &[ViewRoute]) -> String {
                     .unwrap_or_else(|| entry.component.as_str().to_string());
                 entries.insert(format!(
                     "{{\"component\":\"{}\",\"owner\":\"{}\",\"prop\":\"{}\",\"irField\":\"{}\"}}",
-                    entry.component.as_str(), owner, entry.prop, entry.ir_field.as_str()
+                    entry.component.as_str(),
+                    owner,
+                    entry.prop,
+                    entry.ir_field.as_str()
                 ));
             }
         }
@@ -578,15 +594,88 @@ enum DoweResponsiveModule {
 
 fn ios_app() -> String {
     r#"import SwiftUI
+import UIKit
+import UserNotifications
+
+final class DoweNotificationDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        if let route = response.notification.request.content.userInfo["route"] as? String,
+           route.hasPrefix("/"),
+           !route.contains("//"),
+           let url = URL(string: "dowe-dev://generated\(route)") {
+            DispatchQueue.main.async { UIApplication.shared.open(url) }
+        }
+        completionHandler()
+    }
+}
 
 @main
 struct DoweIosApp: App {
+    @UIApplicationDelegateAdaptor(DoweNotificationDelegate.self) private var notificationDelegate
+
     var body: some Scene {
         WindowGroup {
             DoweRootView()
         }
     }
 }
+"#
+    .to_string()
+}
+
+fn ios_notifications() -> String {
+    r#"import Foundation
+import UIKit
+import UserNotifications
+
+enum DoweNotifications {
+    static func requestPermission() async -> Bool {
+        let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])) ?? false
+        if granted {
+            await MainActor.run { UIApplication.shared.registerForRemoteNotifications() }
+        }
+        return granted
+    }
+
+    static func show(id: String, title: String, body: String, route: String? = nil) async throws {
+        guard !id.isEmpty, !title.isEmpty, !body.isEmpty else { throw DoweNotificationError.invalidPayload }
+        if let route, (!route.hasPrefix("/") || route.contains("//")) { throw DoweNotificationError.invalidRoute }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        if let route { content.userInfo = ["route": route] }
+        let request = UNNotificationRequest(
+            identifier: id,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+        )
+        try await UNUserNotificationCenter.current().add(request)
+    }
+}
+
+enum DoweNotificationError: Error {
+    case invalidPayload
+    case invalidRoute
+}
+"#
+    .to_string()
+}
+
+fn ios_entitlements() -> String {
+    r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>aps-environment</key>
+    <string>$(APS_ENVIRONMENT)</string>
+</dict>
+</plist>
 "#
     .to_string()
 }

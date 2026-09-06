@@ -46,6 +46,7 @@ pub fn color_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
     for prop in props {
         match prop.name.as_str() {
             "value" => value = parse_hex_color_prop(&prop.name, &prop.value)?,
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
@@ -59,6 +60,7 @@ pub fn color_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Color, &style_props)?;
+    let size = style.size.unwrap_or(size);
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
     style
@@ -92,6 +94,7 @@ pub fn date_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
     for prop in props {
         match prop.name.as_str() {
             "value" => value = Some(parse_date_literal(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
@@ -104,6 +107,7 @@ pub fn date_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNod
     }
     validate_date_bounds(min.as_deref(), max.as_deref())?;
     let mut style = parse_variant_props(BuiltinComponent::Date, &style_props)?;
+    let size = style.size.unwrap_or(size);
     style
         .placeholder
         .get_or_insert_with(|| "Select date".to_string());
@@ -151,6 +155,7 @@ pub fn date_range_component_node(props: Vec<ComponentProp>) -> ComponentResult<V
             }
             "startValue" => start_value = Some(parse_date_literal(&prop.name, &prop.value)?),
             "endValue" => end_value = Some(parse_date_literal(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
@@ -163,6 +168,7 @@ pub fn date_range_component_node(props: Vec<ComponentProp>) -> ComponentResult<V
     }
     validate_date_bounds(min.as_deref(), max.as_deref())?;
     let mut style = parse_variant_props(BuiltinComponent::DateRange, &style_props)?;
+    let size = style.size.unwrap_or(size);
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
     style
@@ -189,28 +195,59 @@ pub fn radio_group_component_node(
     props: Vec<ComponentProp>,
     options: Vec<RadioOption>,
 ) -> ComponentResult<ViewNode> {
+    radio_selection_component_node(
+        BuiltinComponent::RadioGroup,
+        props,
+        options,
+        RadioGroupPresentation::List,
+        RadioGroupOrientation::Vertical,
+    )
+}
+
+pub fn radio_card_component_node(
+    props: Vec<ComponentProp>,
+    options: Vec<RadioOption>,
+) -> ComponentResult<ViewNode> {
+    radio_selection_component_node(
+        BuiltinComponent::RadioCard,
+        props,
+        options,
+        RadioGroupPresentation::Card,
+        RadioGroupOrientation::Horizontal,
+    )
+}
+
+fn radio_selection_component_node(
+    component: BuiltinComponent,
+    props: Vec<ComponentProp>,
+    options: Vec<RadioOption>,
+    presentation: RadioGroupPresentation,
+    default_orientation: RadioGroupOrientation,
+) -> ComponentResult<ViewNode> {
     if options.is_empty() {
         return Err(ComponentError::invalid_prop_combination(
-            "RadioGroup requires at least one item",
+            format!("{} requires at least one item", component.as_str()),
         ));
     }
     let mut seen = BTreeSet::new();
     for option in &options {
         if !seen.insert(option.value.clone()) {
             return Err(ComponentError::invalid_prop_combination(format!(
-                "duplicate RadioGroup item value `{}`",
+                "duplicate {} item value `{}`",
+                component.as_str(),
                 option.value
             )));
         }
     }
     let mut size = ButtonSize::Md;
-    let mut orientation = RadioGroupOrientation::Vertical;
+    let mut orientation = default_orientation;
     let mut name = None;
     let mut info = None;
     let mut error = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "orientation" => {
                 let value = parse_required_string(&prop.name, &prop.value)?;
@@ -221,17 +258,22 @@ pub fn radio_group_component_node(
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "info" => info = Some(parse_required_string(&prop.name, &prop.value)?),
             "error" => error = Some(parse_required_string(&prop.name, &prop.value)?),
-            "color" => return Err(scheme_prop_error(BuiltinComponent::RadioGroup)),
+            "color" => return Err(scheme_prop_error(component)),
             _ => style_props.push(prop),
         }
     }
-    let mut style = parse_variant_props(BuiltinComponent::RadioGroup, &style_props)?;
+    let mut style = parse_variant_props(component, &style_props)?;
+    let size = style.size.unwrap_or(size);
     style.color.get_or_insert(ColorFamily::Primary);
+    if matches!(presentation, RadioGroupPresentation::Card) {
+        style.variant.get_or_insert(ComponentVariant::Outlined);
+    }
     Ok(ViewNode::RadioGroup {
         props: RadioGroupProps {
             style,
             size,
             orientation,
+            presentation,
             name,
             info,
             error,
@@ -261,6 +303,44 @@ pub fn radio_option_component(props: Vec<ComponentProp>) -> ComponentResult<Radi
         value: value
             .ok_or_else(|| ComponentError::invalid_prop("value", "static string or number"))?,
         label: label.ok_or_else(|| ComponentError::invalid_prop("label", "non-empty string"))?,
+        description: None,
+        icon: None,
+        disabled,
+    })
+}
+
+pub fn radio_card_option_component(props: Vec<ComponentProp>) -> ComponentResult<RadioOption> {
+    let mut value = None;
+    let mut title = None;
+    let mut description = None;
+    let mut icon = None;
+    let mut disabled = false;
+    for prop in props {
+        match prop.name.as_str() {
+            "value" => value = Some(parse_static_string_or_number(&prop.name, &prop.value)?),
+            "title" => title = Some(parse_required_string(&prop.name, &prop.value)?),
+            "description" => {
+                description = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
+            "icon" => {
+                let name = parse_required_string(&prop.name, &prop.value)?;
+                icon = Some(solar_control_icon(&name)?);
+            }
+            "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            _ => {
+                return Err(ComponentError::unknown_prop(
+                    BuiltinComponent::RadioCard,
+                    &prop.name,
+                ));
+            }
+        }
+    }
+    Ok(RadioOption {
+        value: value
+            .ok_or_else(|| ComponentError::invalid_prop("value", "static string or number"))?,
+        label: title.ok_or_else(|| ComponentError::invalid_prop("title", "non-empty string"))?,
+        description,
+        icon,
         disabled,
     })
 }
@@ -357,4 +437,3 @@ pub fn theme_select_component_node(props: Vec<ComponentProp>) -> ComponentResult
         },
     })
 }
-

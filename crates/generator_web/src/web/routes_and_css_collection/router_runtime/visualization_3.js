@@ -20,6 +20,8 @@ function drawCanvasCommand(
     ctx.translate(-x, -y);
   }
   ctx.lineWidth = Math.max(0, canvasNumber(command.strokeWidth, 1));
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.fillStyle = canvasPaint(command.fill, "transparent");
   ctx.strokeStyle = canvasPaint(command.stroke, "transparent");
   if (type === "rect") {
@@ -150,8 +152,11 @@ function renderCanvas(canvas, state, scope, time = performance.now()) {
     canvas.dataset.doweCanvasAutoplay === "true" && !prefersReducedMotion()
       ? Math.max(0, (time - (canvas.__doweCanvasStart || time)) / 1000)
       : 0;
-  const scene = readPath(state, canvas.dataset.doweCanvasScene, scope);
-  for (const command of Array.isArray(scene) ? scene : [])
+  const scene = readPath(state, canvasLayerPath(canvas) || canvas.dataset.doweCanvasScene, scope);
+  const commands = Array.isArray(scene) ? scene.slice() : [];
+  if (canvas.dataset.doweCanvasDraw === "true")
+    commands.push(...(canvas.__doweDrawStrokes || []));
+  for (const command of commands)
     drawCanvasCommand(
       ctx,
       canvas,
@@ -160,7 +165,16 @@ function renderCanvas(canvas, state, scope, time = performance.now()) {
       viewWidth,
       viewHeight
     );
+  drawCanvasSelection(ctx, canvas, state, scope);
   ctx.restore();
+}
+function scheduleDrawRender(canvas) {
+  if (canvas.__doweDrawFrame) return;
+  canvas.__doweDrawFrame = requestAnimationFrame(() => {
+    delete canvas.__doweDrawFrame;
+    const view = getActiveView();
+    if (view) renderCanvas(canvas, view.state, scopeFor(canvas), performance.now());
+  });
 }
 function renderCanvases(root, state, scope, time = performance.now()) {
   const scoped = !!scope;
@@ -285,7 +299,7 @@ function hydrateCanvasInput(canvas) {
     target.addEventListener(name, handler, options);
     listeners.push(() => target.removeEventListener(name, handler, options));
   };
-  if (canvas.dataset.doweCanvasOnPointer) {
+  if (canvas.dataset.doweCanvasOnPointer || canvas.dataset.doweCanvasDraw === "true") {
     const pointer = (event, kind) => {
       event.preventDefault();
       if (kind === "down") {
@@ -296,17 +310,34 @@ function hydrateCanvasInput(canvas) {
         canvasMotionPermission(canvas);
       }
       const item = canvasPointerItem(canvas, event, kind);
+      const drawing = canvas.dataset.doweCanvasDraw === "true";
+      const state = getActiveView()?.state;
+      const scope = scopeFor(canvas);
+      if (drawing && state) canvasDrawGesture(canvas, state, scope, item, kind);
       if (kind === "up" || kind === "cancel")
         canvas.__dowePointers.delete(event.pointerId);
       else canvas.__dowePointers.set(event.pointerId, item);
-      runAction(canvas.dataset.doweCanvasOnPointer, { item });
+      if (drawing) {
+        if (kind === "up" || kind === "cancel") {
+          const view = getActiveView();
+          if (view) renderCanvas(canvas, view.state, scopeFor(canvas), performance.now());
+        } else scheduleDrawRender(canvas);
+      }
+      if (drawing && !canvasLayerPath(canvas) && kind === "up" && canvas.dataset.doweCanvasOnPointer)
+        item.image = canvas.toDataURL("image/png");
+      if (canvas.dataset.doweCanvasOnPointer)
+        runAction(canvas.dataset.doweCanvasOnPointer, { item });
+
     };
     on(canvas, "pointerdown", event => pointer(event, "down"));
     on(canvas, "pointermove", event => pointer(event, "move"));
     on(canvas, "pointerup", event => pointer(event, "up"));
     on(canvas, "pointercancel", event => pointer(event, "cancel"));
+    on(canvas, "lostpointercapture", event => {
+      if (canvas.__doweDrawGesture?.id === event.pointerId) pointer(event, "cancel");
+    });
   }
-  if (canvas.dataset.doweCanvasOnKey) {
+  if (canvas.dataset.doweCanvasOnKey || canvasLayerPath(canvas)) {
     const key = (event, kind) => {
       if (
         ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", " "].includes(
@@ -326,7 +357,12 @@ function hydrateCanvasInput(canvas) {
         shift: !!event.shiftKey,
         timestamp: canvasTimestamp(canvas)
       };
-      runAction(canvas.dataset.doweCanvasOnKey, { item });
+      if (kind === "down" && (event.key === "Delete" || event.key === "Backspace")) {
+        const state = getActiveView()?.state;
+        if (state) canvasRemoveSelected(canvas, state, scopeFor(canvas));
+        event.preventDefault();
+      }
+      if (canvas.dataset.doweCanvasOnKey) runAction(canvas.dataset.doweCanvasOnKey, { item });
     };
     on(canvas, "keydown", event => key(event, "down"));
     on(canvas, "keyup", event => key(event, "up"));
@@ -358,6 +394,11 @@ function hydrateCanvasInput(canvas) {
       on(canvas, "pointerdown", () => canvasMotionPermission(canvas));
   }
   canvas.__doweInputCleanup = () => {
+    const gesture = canvas.__doweDrawGesture;
+    const state = gesture?.state;
+    if (gesture?.layer && state && canvasLayerPath(canvas))
+      canvasWriteLayers(canvas, state, canvasLayers(canvas, state, scopeFor(canvas)).filter(layer => canvasLayerId(layer) !== gesture.layer.id));
+    delete canvas.__doweDrawGesture;
     for (const remove of listeners) remove();
     canvas.__dowePointers.clear();
     delete canvas.__doweInputCleanup;
@@ -368,6 +409,8 @@ function closeCanvasFrames(view) {
     []) {
     if (canvas.__doweCanvasFrame)
       cancelAnimationFrame(canvas.__doweCanvasFrame);
+    if (canvas.__doweDrawFrame)
+      cancelAnimationFrame(canvas.__doweDrawFrame);
     if (canvas.__doweInputCleanup) canvas.__doweInputCleanup();
   }
 }

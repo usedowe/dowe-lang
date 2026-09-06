@@ -3,6 +3,8 @@ fn parses_advanced_form_components_and_structural_children() {
     let tree = parse_page(
         r#"page advancedPage
   signal form value:{ role:"editor" notes:"" password:"" phone:"" pin:"" bio:"" avatar:"" }
+  fn saveNotes
+    set form.notes value:form.notes
   Box
     ComboBox bind:form.role label:"Role" placeholder:"Choose" clearable:true
       comboOption value:"admin" label:"Admin" description:"Full access"
@@ -12,7 +14,7 @@ fn parses_advanced_form_components_and_structural_children() {
     DragDrop label:"Tasks" direction:"horizontal"
       dragGroup id:"todo" title:"Todo"
         dragItem id:"draft" label:"Draft" description:"Prepare"
-    Editor bind:form.notes label:"Notes" placeholder:"Write notes" minHeight:180
+    Editor bind:form.notes language:"dowe" label:"Notes" placeholder:"Write notes" minHeight:180 onSave:saveNotes
     ImageCropper bind:form.avatar label:"Avatar" shape:"circle"
     Password bind:form.password label:"Password" hideStrength:false
       validate rule:"required" message:"Enter your password."
@@ -55,7 +57,9 @@ fn parses_advanced_form_components_and_structural_children() {
         &children[3],
         ViewNode::Editor { props }
             if props.min_height == 180
+                && props.language == dowe_components::CodeLanguage::Dowe
                 && props.style.element.bind.as_deref() == Some("form.notes")
+                && props.on_save.as_deref() == Some("saveNotes")
     ));
     assert!(matches!(
         &children[4],
@@ -82,6 +86,18 @@ fn parses_advanced_form_components_and_structural_children() {
         &children[8],
         ViewNode::Textarea { props } if props.rows == 4 && props.max_length == Some(160)
     ));
+}
+
+#[test]
+fn rejects_unknown_editor_save_action() {
+    let error = parse_page(
+        r#"page editorPage
+  signal source value:""
+  Editor bind:source language:"dowe" onSave:missing"#,
+    )
+    .expect_err("unknown editor save action");
+
+    assert!(error.to_string().contains("unknown fn `missing`"));
 }
 
 #[test]
@@ -281,6 +297,89 @@ fn parses_reactive_button_visual_props_and_conditional_icon() {
         props.reactive.icon_start_when.as_deref(),
         Some("startIconVisible")
     );
+}
+
+#[test]
+fn parses_reactive_visual_props_and_events_for_form_controls() {
+    let tree = parse_page(
+        r#"page formPage
+  signal variantChoice value:"outlined"
+  signal schemeChoice value:"success"
+  signal sizeChoice value:"lg"
+  signal roundedChoice value:"full"
+  signal form value:{ email:"" role:"" notes:"" avatar:"" password:"" phone:"" pin:"" bio:"" accepted:false color:"" date:"" start:"" end:"" choice:"" slider:0 }
+  fn fieldChanged
+    set form.email value:form.email
+  Box
+    Input bind:form.email variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    Select bind:form.role variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+      Option value:"admin" label:"Admin"
+    ComboBox bind:form.role variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+      comboOption value:"admin" label:"Admin"
+    CsvField variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged
+      csvColumn name:"email" label:"Email"
+    DragDrop variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged
+      dragItem id:"draft" label:"Draft"
+    Editor bind:form.notes variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    ImageCropper bind:form.avatar variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged
+    Password bind:form.password variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    Phone bind:form.phone variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    Pin bind:form.pin variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    Textarea bind:form.bio variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    Checkbox bind:form.accepted variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged
+    Color bind:form.color variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    Date bind:form.date variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    DateRange start:form.start end:form.end variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    RadioGroup bind:form.choice variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged
+      item value:"basic" label:"Basic"
+    Toggle bind:form.accepted variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged
+    Slider bind:form.slider variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged onInput:fieldChanged
+    Dropzone variant:variantChoice scheme:schemeChoice size:sizeChoice rounded:roundedChoice onChange:fieldChanged"#,
+    )
+    .expect("reactive form controls");
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("scope");
+    };
+    let ViewNode::Box { children, .. } = &children[0] else {
+        panic!("box");
+    };
+    assert_eq!(children.len(), 19);
+
+    for node in children {
+        let style = match node {
+            ViewNode::Input { props } | ViewNode::Select { props, .. } => props,
+            ViewNode::Checkbox { props } => &props.style,
+            ViewNode::Color { props } => &props.style,
+            ViewNode::Date { props } => &props.style,
+            ViewNode::DateRange { props } => &props.style,
+            ViewNode::RadioGroup { props, .. } => &props.style,
+            ViewNode::Toggle { props } => &props.style,
+            ViewNode::Slider { props } => &props.style,
+            ViewNode::Dropzone { props } => &props.style,
+            ViewNode::ComboBox { props, .. } => &props.style,
+            ViewNode::CsvField { props, .. } => &props.style,
+            ViewNode::DragDrop { props, .. } => &props.style,
+            ViewNode::Editor { props } => &props.style,
+            ViewNode::ImageCropper { props } => &props.style,
+            ViewNode::Password { props } => &props.style,
+            ViewNode::Phone { props } => &props.style,
+            ViewNode::Pin { props } => &props.style,
+            ViewNode::Textarea { props } => &props.style,
+            _ => panic!("unexpected form node"),
+        };
+        assert_eq!(style.reactive.variant.as_deref(), Some("variantChoice"));
+        assert_eq!(style.reactive.scheme.as_deref(), Some("schemeChoice"));
+        assert_eq!(style.reactive.size.as_deref(), Some("sizeChoice"));
+        assert_eq!(style.reactive.rounded.as_deref(), Some("roundedChoice"));
+        let element = dowe_components::node_element_props(node).expect("element props");
+        assert_eq!(element.on_change.as_deref(), Some("fieldChanged"));
+        if matches!(
+            node,
+            ViewNode::Select { .. } | ViewNode::Date { .. } | ViewNode::DateRange { .. }
+        ) {
+            assert_eq!(element.on_input.as_deref(), Some("fieldChanged"));
+        }
+    }
 }
 
 #[test]

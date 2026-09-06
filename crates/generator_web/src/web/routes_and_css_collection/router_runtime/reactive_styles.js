@@ -3,7 +3,8 @@ function renderReactiveVariants(root, state, scope) {
   const variants = __DOWE_VARIANTS__, schemes = [...__DOWE_SCHEMES__, "background", "surface"], sizes = __DOWE_SIZES__, rounded = __DOWE_ROUNDED__;
   for (const element of root.querySelectorAll("[data-dowe-variant-binding]")) {
     if (!scoped && element.closest("[data-dowe-each-row]")) continue;
-    for (const [key, values, prefix, fallback] of [["doweVariant", variants, "is-", "solid"], ["doweScheme", schemes, "is-", "primary"], ["doweSize", sizes, "", "md"], ["doweRounded", rounded, "rounded-", "md"]]) {
+    const sizePrefix = element.dataset.doweVariantSizePrefix || "";
+    for (const [key, values, prefix, fallback] of [["doweVariant", variants, "is-", "solid"], ["doweScheme", schemes, "is-", "primary"], ["doweSize", sizes, sizePrefix, "md"], ["doweRounded", rounded, "rounded-", "md"]]) {
       const path = element.dataset[key];
       if (!path) continue;
       const value = String(readPath(state, path, scope) || fallback);

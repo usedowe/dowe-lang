@@ -311,6 +311,11 @@ mod tests {
             let bundle = temp.path().join(format!("build/{key}/DoweIosApp.app"));
             fs::create_dir_all(&bundle).expect("bundle");
             fs::write(bundle.join("DoweIosApp"), key).expect("binary");
+            fs::write(
+                bundle.join("Info.plist"),
+                "<key>CFBundleIdentifier</key><string>dev.dowe.test</string>",
+            )
+            .expect("plist");
             publish_ios_app(temp.path(), key, &bundle).expect("publish");
         }
         prune_ios_app_cache(temp.path(), "third").expect("prune");

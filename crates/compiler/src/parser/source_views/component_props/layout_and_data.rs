@@ -52,11 +52,14 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                         | "variant"
                         | "scheme"
                         | "size"
+                        | "rounded"
                         | "label"
                         | "placeholder"
                         | "labelFloating"
                         | "iconStart"
                         | "iconEnd"
+                        | "onChange"
+                        | "onInput"
                 )
             }
             BuiltinComponent::Code => {
@@ -84,11 +87,15 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                     "src" | "title" | "loading" | "allow" | "sandbox" | "allowFullscreen"
                 )
             }
-            BuiltinComponent::Device => matches!(name, "device"),
-            BuiltinComponent::Canvas => {
+            BuiltinComponent::Device => {
+                matches!(name, "device" | "bind" | "hideControls" | "hideButtons" | "studioInspector")
+            }
+            BuiltinComponent::Canvas | BuiltinComponent::Draw => {
                 matches!(
                     name,
                     "scene"
+                        | "bind"
+                        | "selected"
                         | "viewWidth"
                         | "viewHeight"
                         | "fit"
@@ -101,6 +108,12 @@ fn is_known_layout_and_data_prop(component: BuiltinComponent, name: &str) -> boo
                         | "onKey"
                         | "onMotion"
                         | "motionRate"
+                        | "onLayerAdd"
+                        | "onLayerChange"
+                        | "onLayerRemove"
+                        | "onLayerSelect"
+                        | "draw"
+                        | "drawMode"
                         | "bg"
                         | "color"
                         | "cover"

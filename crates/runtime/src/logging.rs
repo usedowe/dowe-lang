@@ -1,5 +1,6 @@
 use std::io::{self, IsTerminal, Write};
 use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 
 const LOADING_FRAMES: [&str; 4] = ["|", "/", "-", "\\"];
 
@@ -54,6 +55,26 @@ impl Drop for LoadingStatus {
 
 pub(crate) fn log_info(message: impl AsRef<str>) {
     log_stdout_line("INFO", message.as_ref());
+}
+
+pub fn start_dev_timer() {
+    *dev_timer().lock().expect("dev timer lock") = Some(Instant::now());
+}
+
+pub(crate) fn log_dev_info(message: impl AsRef<str>) {
+    let elapsed = dev_timer()
+        .lock()
+        .expect("dev timer lock")
+        .map(|started| started.elapsed().as_secs_f64());
+    match elapsed {
+        Some(seconds) => log_stdout_line("INFO", &format!("{seconds:.1}s {}", message.as_ref())),
+        None => log_info(message),
+    }
+}
+
+fn dev_timer() -> &'static Mutex<Option<Instant>> {
+    static TIMER: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
+    TIMER.get_or_init(|| Mutex::new(None))
 }
 
 pub(crate) fn log_error(message: impl AsRef<str>) {

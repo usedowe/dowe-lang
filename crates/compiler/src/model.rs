@@ -24,7 +24,10 @@ pub use views::*;
 
 #[cfg(test)]
 mod tests {
-    use super::{Endpoint, EndpointBehavior, HttpMethod, ServerAction, ServerConfig};
+    use super::{
+        Endpoint, EndpointBehavior, HttpMethod, ServerAction, ServerConfig, WebSocketHandlers,
+        WebSocketRoute,
+    };
 
     #[test]
     fn matches_dynamic_routes() {
@@ -56,6 +59,36 @@ mod tests {
             .expect("endpoint");
 
         assert_eq!(matched.params.get("id"), Some(&"123".to_string()));
+    }
+
+    #[test]
+    fn matches_curly_websocket_routes() {
+        let server = ServerConfig {
+            port: 8080,
+            databases: Vec::new(),
+            tls: None,
+            endpoints: Vec::new(),
+            websockets: vec![WebSocketRoute {
+                path: "/runs/{runId}/stream".to_string(),
+                handlers: WebSocketHandlers::default(),
+                middlewares: Vec::new(),
+            }],
+            transports: Vec::new(),
+            rtp: None,
+            models: Vec::new(),
+            init_action: ServerAction::empty(),
+            cors: super::CorsConfig::default(),
+            database_service: false,
+            cache_service: false,
+            vector_service: false,
+            queue_service: false,
+        };
+
+        let (_, params) = server
+            .find_websocket_match_for("/runs/{runId}/stream", "/runs/run_123/stream")
+            .expect("websocket");
+
+        assert_eq!(params.get("runId"), Some(&"run_123".to_string()));
     }
 
     #[test]

@@ -1,3 +1,28 @@
+fn dev_tree_icon_spec(name: &str, paths_name: &str, icon_name: &str) -> String {
+    let icon = solar_control_icon(name).expect("bundled Tree icon");
+    let mut output = format!(
+        "        ArrayList<DoweSvgPathEntry> {paths_name} = new ArrayList<>();\n"
+    );
+    for path in &icon.paths {
+        output.push_str(&format!(
+            "        {paths_name}.add(new DoweSvgPathEntry(\"{}\", {}, {}, {}, {}));\n",
+            escape_java(&path.data),
+            dev_svg_path_current_color(path.fill),
+            dev_svg_path_color(path.fill),
+            dev_svg_path_details(path.fill),
+            dev_svg_path_transform(path.transform.as_ref()),
+        ));
+    }
+    output.push_str(&format!(
+        "        DoweTreeIcon {icon_name} = new DoweTreeIcon({}f, {}f, {}f, {}f, {paths_name});\n",
+        icon.props.view_box.min_x,
+        icon.props.view_box.min_y,
+        icon.props.view_box.width,
+        icon.props.view_box.height,
+    ));
+    output
+}
+
 fn render_dev_android_display_rich_controls_node(
     node: &ViewNode,
     parent: &str,
@@ -292,6 +317,41 @@ fn render_dev_android_display_rich_controls_node(
                                         dev_variant_content(&props.style),
                                         dev_font_value(props.style.style.font.as_ref().or(inherited_font)),
                                     ));
+            apply_dev_android_style(&props.style.style, &view, false, output);
+            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+        }
+        ViewNode::Tree { props } => {
+            let view = next_dev_view(counter);
+            let border = if props.style.variant == Some(ComponentVariant::Outlined) {
+                format!("{}", dev_variant_content(&props.style))
+            } else {
+                "null".to_string()
+            };
+            let arrow_paths = format!("{view}TreeArrowPaths");
+            let folder_paths = format!("{view}TreeFolderPaths");
+            let file_paths = format!("{view}TreeFilePaths");
+            let arrow_icon = format!("{view}TreeArrow");
+            let folder_icon = format!("{view}TreeFolder");
+            let file_icon = format!("{view}TreeFile");
+            output.push_str(&dev_tree_icon_spec("alt-arrow-down", &arrow_paths, &arrow_icon));
+            output.push_str(&dev_tree_icon_spec("folder-with-files", &folder_paths, &folder_icon));
+            output.push_str(&dev_tree_icon_spec("file-text", &file_paths, &file_icon));
+            output.push_str(&format!(
+                "        LinearLayout {view} = doweTree(\"{}\", {}, {}, \"{}\", \"{}\", {}, {}, {}, {}, {}, {}, {}, {});\n",
+                escape_java(&context.signal_path(&props.data)),
+                props.bind.as_deref().map(|path| format!("\"{}\"", escape_java(&context.signal_path(path)))).unwrap_or_else(|| "null".to_string()),
+                props.default_open,
+                escape_java(&props.empty_label),
+                escape_java(&props.aria_label),
+                props.on_select.as_deref().and_then(|value| context.action_id(value)).map(|value| format!("\"{}\"", escape_java(&value))).unwrap_or_else(|| "null".to_string()),
+                dev_variant_container(&props.style),
+                dev_variant_content(&props.style),
+                border,
+                dev_style_radius(&props.style.style),
+                folder_icon,
+                file_icon,
+                arrow_icon,
+            ));
             apply_dev_android_style(&props.style.style, &view, false, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }

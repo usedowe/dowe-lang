@@ -468,6 +468,7 @@ fn media_display_form_route() -> ViewRoute {
                         },
                         size: ButtonSize::Md,
                         orientation: RadioGroupOrientation::Horizontal,
+                        presentation: RadioGroupPresentation::List,
                         name: Some("plan".to_string()),
                         info: None,
                         error: None,
@@ -475,6 +476,8 @@ fn media_display_form_route() -> ViewRoute {
                     options: vec![RadioOption {
                         value: "basic".to_string(),
                         label: "Basic".to_string(),
+                        description: None,
+                        icon: None,
                         disabled: false,
                     }],
                 },

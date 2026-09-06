@@ -137,6 +137,7 @@ pub struct RadioGroupProps {
     pub style: VariantProps,
     pub size: ButtonSize,
     pub orientation: RadioGroupOrientation,
+    pub presentation: RadioGroupPresentation,
     pub name: Option<String>,
     pub info: Option<String>,
     pub error: Option<String>,
@@ -146,6 +147,8 @@ pub struct RadioGroupProps {
 pub struct RadioOption {
     pub value: String,
     pub label: String,
+    pub description: Option<String>,
+    pub icon: Option<SideNavIcon>,
     pub disabled: bool,
 }
 
@@ -153,6 +156,12 @@ pub struct RadioOption {
 pub enum RadioGroupOrientation {
     Vertical,
     Horizontal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RadioGroupPresentation {
+    List,
+    Card,
 }
 
 impl RadioGroupOrientation {
@@ -344,11 +353,13 @@ impl DragDropDirection {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorProps {
     pub style: VariantProps,
+    pub language: CodeLanguage,
     pub value: Option<String>,
     pub min_height: u16,
     pub hide_toolbar: bool,
     pub disabled: bool,
     pub readonly: bool,
+    pub on_save: Option<String>,
     pub name: Option<String>,
     pub help_text: Option<String>,
     pub error_text: Option<String>,

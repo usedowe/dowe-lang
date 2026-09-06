@@ -44,6 +44,8 @@ fn collect_display_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
                 "chat-meta".to_string(),
                 "chat-box-typing".to_string(),
                 "chat-box-footer".to_string(),
+                "chat-box-action-row".to_string(),
+                "chat-box-action".to_string(),
                 "chat-box-input-wrap".to_string(),
                 "chat-box-input".to_string(),
                 "chat-box-tool".to_string(),
@@ -165,6 +167,24 @@ fn collect_display_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
             if !waypoints.is_empty() {
                 classes.insert("map-waypoint".to_string());
             }
+        }
+        ViewNode::Tree { props } => {
+            classes.extend(tree_classes(props));
+            classes.extend([
+                "tree-content".to_string(),
+                "tree-empty".to_string(),
+                "tree-node".to_string(),
+                "tree-row".to_string(),
+                "tree-toggle".to_string(),
+                "tree-toggle-placeholder".to_string(),
+                "tree-item".to_string(),
+                "tree-icon".to_string(),
+                "tree-label".to_string(),
+                "tree-indent".to_string(),
+                "tree-children".to_string(),
+                "tree-branch".to_string(),
+                "tree-leaf".to_string(),
+            ]);
         }
         ViewNode::Badge { props, children } => {
             classes.extend(badge_classes(props));

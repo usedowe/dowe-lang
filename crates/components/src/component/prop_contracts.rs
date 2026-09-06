@@ -158,6 +158,7 @@ pub fn component_prop_contract(
         "wide" if component == BuiltinComponent::SideNav => Some(boolean),
         "src" if component == BuiltinComponent::Image => Some(string),
         "animation" if component == BuiltinComponent::Card => Some(string),
+        "label" if component == BuiltinComponent::Collapsible => Some(string),
         "name" | "alt" if component == BuiltinComponent::Avatar => Some(string),
         "icon" if component == BuiltinComponent::Avatar => {
             Some(string.with_validator(PropValidator::IconName))
@@ -183,6 +184,10 @@ pub fn component_prop_contract(
         "data" if component == BuiltinComponent::Svg => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }
+        "data" if component == BuiltinComponent::Tree => {
+            Some(ComponentPropContract::new(PropValueKind::Any))
+        }
+        "bind" if component == BuiltinComponent::Tree => Some(string),
         "messages" if component == BuiltinComponent::ChatBox => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }
@@ -192,7 +197,7 @@ pub fn component_prop_contract(
             Some(boolean)
         }
         "start" | "end" if component == BuiltinComponent::DateRange => Some(string),
-        "bind" if component == BuiltinComponent::ToggleGroup => Some(string),
+        "bind" if matches!(component, BuiltinComponent::ToggleGroup | BuiltinComponent::Stepper) => Some(string),
         "data" | "series"
             if matches!(
                 component,
@@ -210,7 +215,11 @@ pub fn component_prop_contract(
         "nodes" | "edges" if component == BuiltinComponent::Diagram => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }
-        "scene" | "onPointer" | "onKey" | "onMotion" if component == BuiltinComponent::Canvas => {
+        "scene" | "onPointer" | "onKey" | "onMotion" | "draw" | "drawMode"
+            if matches!(component, BuiltinComponent::Canvas | BuiltinComponent::Draw) => {
+            Some(ComponentPropContract::new(PropValueKind::Any))
+        }
+        "bind" | "selected" if component == BuiltinComponent::Draw => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }
         _ => None,

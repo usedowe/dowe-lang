@@ -393,23 +393,41 @@ fn lower_carousel_node(node: &SourceNode, allow_children: bool) -> DoweResult<Vi
     carousel_component_node(props, slides).map_err(|error| component_error(node, error))
 }
 
-fn lower_radio_group_node(node: &SourceNode) -> DoweResult<ViewNode> {
-    let props = component_props(node, BuiltinComponent::RadioGroup)?;
+fn lower_radio_selection_node(
+    node: &SourceNode,
+    component: BuiltinComponent,
+) -> DoweResult<ViewNode> {
+    let props = component_props(node, component)?;
     let mut options = Vec::new();
     for child in &node.children {
         if child.name != "item" {
-            return Err(node_error(child, "RadioGroup only accepts item entries"));
+            return Err(node_error(
+                child,
+                format!("{} only accepts item entries", component.as_str()),
+            ));
         }
         if !child.args.is_empty() {
-            return Err(node_error(child, "RadioGroup item cannot declare args"));
+            return Err(node_error(
+                child,
+                format!("{} item cannot declare args", component.as_str()),
+            ));
         }
         reject_children(child)?;
-        options.push(
-            radio_option_component(radio_item_props(child)?)
-                .map_err(|error| component_error(child, error))?,
-        );
+        let item_props = radio_item_props(child, component)?;
+        let option = match component {
+            BuiltinComponent::RadioGroup => radio_option_component(item_props),
+            BuiltinComponent::RadioCard => radio_card_option_component(item_props),
+            _ => unreachable!(),
+        }
+        .map_err(|error| component_error(child, error))?;
+        options.push(option);
     }
-    radio_group_component_node(props, options).map_err(|error| component_error(node, error))
+    let result = match component {
+        BuiltinComponent::RadioGroup => radio_group_component_node(props, options),
+        BuiltinComponent::RadioCard => radio_card_component_node(props, options),
+        _ => unreachable!(),
+    };
+    result.map_err(|error| component_error(node, error))
 }
 
 fn lower_fab_node(node: &SourceNode) -> DoweResult<ViewNode> {
@@ -436,4 +454,3 @@ fn lower_fab_node(node: &SourceNode) -> DoweResult<ViewNode> {
     }
     fab_component_node(props, actions).map_err(|error| component_error(node, error))
 }
-

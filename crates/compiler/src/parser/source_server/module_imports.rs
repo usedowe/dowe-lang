@@ -5,6 +5,7 @@ fn server_imports(
     include_seeders: bool,
 ) -> DoweResult<ServerImports> {
     let mut imports = ServerImports::default();
+    let mut module_cache = HashMap::new();
     for import in &file.imports {
         let path = resolve_import(root, &file.path, import)?;
         if !include_seeders && seeder_import_names(file).contains(&import.local) {
@@ -26,6 +27,7 @@ fn server_imports(
             environment,
             &mut Vec::new(),
             include_seeders,
+            &mut module_cache,
         )?;
         imports
             .excluded_seeder_paths
@@ -123,6 +125,7 @@ fn parse_server_module(
     environment: &EnvironmentConfig,
     stack: &mut Vec<std::path::PathBuf>,
     include_seeders: bool,
+    module_cache: &mut HashMap<std::path::PathBuf, ServerImports>,
 ) -> DoweResult<ServerImports> {
     if stack.iter().any(|path| path == &file.path) {
         return Err(DoweError::at_path(
@@ -130,9 +133,20 @@ fn parse_server_module(
             "cyclic server module import detected",
         ));
     }
+    if let Some(cached) = module_cache.get(&file.path) {
+        return Ok(cached.clone());
+    }
     stack.push(file.path.clone());
     let surface = server_module_surface(file);
-    let imported = module_imports(root, file, environment, stack, surface, include_seeders)?;
+    let imported = module_imports(
+        root,
+        file,
+        environment,
+        stack,
+        surface,
+        include_seeders,
+        module_cache,
+    )?;
     let types = if include_seeders {
         TypeRegistry::parse_file(root, file)?
     } else {
@@ -255,6 +269,7 @@ fn parse_server_module(
         }
     }
     stack.pop();
+    module_cache.insert(file.path.clone(), imports.clone());
     Ok(imports)
 }
 
@@ -293,6 +308,7 @@ fn module_imports(
     stack: &mut Vec<std::path::PathBuf>,
     surface: ServerModuleSurface,
     include_seeders: bool,
+    module_cache: &mut HashMap<std::path::PathBuf, ServerImports>,
 ) -> DoweResult<ServerImports> {
     let mut imports = ServerImports::default();
     for import in &file.imports {
@@ -307,7 +323,14 @@ fn module_imports(
         let source = fs::read_to_string(&path)
             .map_err(|error| DoweError::at_path(&path, error.to_string()))?;
         let module_file = parse_source_file(root, &path, source)?;
-        let module = parse_server_module(root, &module_file, environment, stack, include_seeders)?;
+        let module = parse_server_module(
+            root,
+            &module_file,
+            environment,
+            stack,
+            include_seeders,
+            module_cache,
+        )?;
         imports
             .excluded_seeder_paths
             .extend(module.excluded_seeder_paths.iter().cloned());

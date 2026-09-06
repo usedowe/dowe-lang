@@ -65,6 +65,8 @@ pub struct AgentContext {
 #[serde(rename_all = "camelCase")]
 pub struct AgentRequest {
     pub request_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
     #[serde(rename = "requestType", alias = "request_type")]
     pub request_type: AgentRequestType,
     pub model: String,
@@ -179,6 +181,7 @@ pub struct AgentToolFunction {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AgentPrepareOptions {
+    pub provider: Option<String>,
     pub request_type: Option<AgentRequestType>,
     pub model: Option<String>,
     pub image_paths: Vec<PathBuf>,

@@ -24,6 +24,8 @@ fn compiles_reactive_button_props_across_targets() {
     assert!(body.contains("data-dowe-button-variant="));
     assert!(body.contains("data-dowe-button-icon-start-when="));
     assert!(body.contains("data-dowe-show-operator=\">\""));
+    assert!(body.contains("data-dowe-show-value=\"10\""));
+    assert!(!body.contains("data-dowe-show-value=\"10\" hidden"));
     assert!(body.contains("data-dowe-button-icon-start-operator=\">\""));
     assert!(body.contains("data-dowe-text="));
     assert!(body.contains(r#"code-token-type">Button</span>"#));

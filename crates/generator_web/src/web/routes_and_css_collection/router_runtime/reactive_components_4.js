@@ -1,19 +1,23 @@
-function renderEach(root, state) {
+function renderEach(root, state, parentScope = null) {
   for (const container of root.querySelectorAll("[data-dowe-each]")) {
     const template = container.querySelector(":scope>template");
     if (!template) continue;
-    for (const row of Array.from(
+    const rows = Array.from(
       container.querySelectorAll(":scope>[data-dowe-each-row]")
-    ))
-      row.remove();
-    const values = readPath(state, container.dataset.doweEach) || [];
+    );
+    const values = readPath(state, container.dataset.doweEach, parentScope) || [];
     const item = container.dataset.doweItem;
+    const reuseRows = rows.length === values.length;
+    if (!reuseRows) for (const row of rows) row.remove();
     values.forEach((value, index) => {
-      const row = document.createElement("div");
+      const row = reuseRows ? rows[index] : document.createElement("div");
       row.dataset.doweEachRow = "";
       row.dataset.doweEachIndex = String(index);
-      row.innerHTML = template.innerHTML;
-      row.__doweScope = { [item]: value };
+      if (!reuseRows) {
+        row.innerHTML = template.innerHTML;
+        container.appendChild(row);
+      }
+      row.__doweScope = { ...(parentScope || {}), [item]: value };
       for (const option of row.querySelectorAll(
         "[data-dowe-option-value-path]"
       )) {
@@ -32,7 +36,7 @@ function renderEach(root, state) {
         option.dataset.doweOptionLabel =
           optionLabel == null ? "" : String(optionLabel);
       }
-      container.appendChild(row);
+      renderEach(row, state, row.__doweScope);
       renderDynamic(row, state, row.__doweScope);
     });
   }
@@ -81,16 +85,54 @@ function renderReactive(view) {
   renderDynamic(view.root, view.state, null);
   const visualization = runtimeCapability("visualization");
   visualization?.renderCharts(view.root, view.state, null);
-  visualization?.renderCanvases(view.root, view.state, null);
+  renderCanvases(view.root, view.state, null);
   visualization?.renderCandlesticks(view.root, view.state, null);
   visualization?.renderDiagrams(view.root, view.state, null);
   hydrateCameras(view.root);
   hydrateMicrophones(view.root);
   hydrateScaffoldInsets(view.root);
   hydrateFormValidations(view.root);
+  const boundary = pageEntranceBoundary(view.root);
+  if (boundary?.dataset.dowePageEntranceSuppressed !== undefined)
+    clearPageEntranceAnimations(boundary);
+  const app = view.root.closest?.("#dowe-app");
+  if (app?.dataset.dowePageEntranceSuppressed !== undefined)
+    clearPageEntranceAnimations(view.root);
 }
-function prepareEntranceAnimations() {
-  document.documentElement.classList.add(entranceMotionClass);
+function pageEntranceBoundary(root) {
+  if (!root) return null;
+  if (root.matches?.('[data-dowe-boundary^="page:"]')) return root;
+  return root.querySelector('[data-dowe-boundary^="page:"]');
+}
+function clearPageEntranceAnimations(root) {
+  if (!root) return;
+  const nodes = [root, ...root.querySelectorAll("[class]")];
+  for (const node of nodes) {
+    for (const name of Array.from(node.classList))
+      if (name.startsWith("animate-")) node.classList.remove(name);
+  }
+}
+function suppressPageEntranceAnimations(root) {
+  const boundary = pageEntranceBoundary(root) || root;
+  if (!boundary) return;
+  boundary.dataset.dowePageEntranceSuppressed = "";
+  clearPageEntranceAnimations(boundary);
+  if (root.id === "dowe-app") {
+    root.dataset.dowePageEntranceSuppressed = "";
+    clearPageEntranceAnimations(root);
+  }
+}
+function preparePageTransitionFallback(root) {
+  const boundary = pageEntranceBoundary(root) || root;
+  if (!boundary) return null;
+  boundary.classList.add("dowe-page-enter");
+  return boundary;
+}
+function clearPageEntranceSuppression(root) {
+  const boundary = pageEntranceBoundary(root);
+  if (boundary) boundary.removeAttribute("data-dowe-page-entrance-suppressed");
+  const app = root?.matches?.("#dowe-app") ? root : root?.closest?.("#dowe-app");
+  if (app) app.removeAttribute("data-dowe-page-entrance-suppressed");
 }
 function releaseEntranceAnimations() {
   requestAnimationFrame(() =>
@@ -248,7 +290,9 @@ function deviceDimensions(profile) {
 }
 function renderDevice(root) {
   if (!root) return;
-  const profile = root.dataset.doweDeviceProfile || "mobile",
+  const bound = root.dataset.doweDeviceBind,
+    boundProfile = bound && activeView ? readPath(activeView.state, bound, scopeFor(root)) : null,
+    profile = boundProfile || root.dataset.doweDeviceProfile || "mobile",
     dimensions = deviceDimensions(profile),
     stage = root.querySelector("[data-dowe-device-stage]"),
     viewport = root.querySelector("[data-dowe-device-viewport]");

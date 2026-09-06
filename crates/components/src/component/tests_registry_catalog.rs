@@ -83,6 +83,10 @@ fn registry_finds_builtin_components() {
         Some(BuiltinComponent::Table)
     );
     assert_eq!(
+        COMPONENT_REGISTRY.get("Tree"),
+        Some(BuiltinComponent::Tree)
+    );
+    assert_eq!(
         COMPONENT_REGISTRY.get("Divider"),
         Some(BuiltinComponent::Divider)
     );

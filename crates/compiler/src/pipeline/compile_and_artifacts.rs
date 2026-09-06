@@ -9,7 +9,9 @@ use dowe_components::{
     DesignConfig, FontConfig, FontFamily, collect_route_font_families, font_catalog,
 };
 use dowe_generator_android::generate_android_with_app_translations_and_icons;
-use dowe_generator_desktop::generate_desktop_with_app;
+use dowe_generator_desktop::{
+    generate_desktop_with_app, generate_desktop_with_app_for_development,
+};
 use dowe_generator_ios::generate_ios_with_app_translations_and_icons;
 use dowe_generator_web::{
     WebOutput, inspector_manifest, prepare_design_asset, prepare_dev_design_asset,
@@ -244,6 +246,7 @@ pub(crate) fn compile_project(
             &parsed.translations,
             &icon_targets,
             selected_platforms.as_ref(),
+            environment == CompileEnvironment::Development,
         )
     } else {
         AppOutput { files: Vec::new() }
@@ -258,8 +261,10 @@ pub(crate) fn compile_project(
         translations: parsed.translations,
         backend: parsed.backend,
         desktop_server: parsed.desktop_server,
+        native_ipc: parsed.native_ipc,
         databases: parsed.databases,
         server_inspector: parsed.server_inspector,
+        studio_preview: false,
         local_databases: false,
         web: parsed.web,
         desktop_web: parsed.desktop_web,
@@ -358,6 +363,7 @@ pub(crate) fn complete_dev_app_outputs(
         &project.translations,
         &icon_targets,
         Some(selected_platforms),
+        true,
     );
     if project.apps.files.is_empty() {
         remove_output_directory(&project.root.join(".dowe/apps"))?;
@@ -398,6 +404,7 @@ pub fn generate_dev_app_output(
         &project.translations,
         &icon_targets,
         Some(&selected_platforms),
+        true,
     ))
 }
 
@@ -847,13 +854,23 @@ fn build_app_outputs(
     translations: &dowe_components::TranslationCatalog,
     icon_targets: &icon_artifacts::ProjectIconTargets,
     selected_platforms: Option<&BTreeSet<ViewPlatform>>,
+    development: bool,
 ) -> AppOutput {
     let mut files = Vec::new();
     let client_environment = environment_config.client_values();
 
     if platform_selected(selected_platforms, ViewPlatform::Desktop) {
-        files.extend(
+        let desktop_output = if development {
+            generate_desktop_with_app_for_development(
+                &routes.desktop,
+                &app_config.name,
+                &app_config.bundle,
+            )
+        } else {
             generate_desktop_with_app(&routes.desktop, &app_config.name, &app_config.bundle)
+        };
+        files.extend(
+            desktop_output
                 .files
                 .into_iter()
                 .map(|file| GeneratedFile {

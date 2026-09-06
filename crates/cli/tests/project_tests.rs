@@ -55,6 +55,23 @@ fn returns_failure_status_for_a_failing_assertion() {
 }
 
 #[test]
+fn init_creates_only_project_files() {
+    let temp = TempDir::new().expect("tempdir");
+
+    let output = dowe()
+        .args(["init", "--template", "blank"])
+        .current_dir(temp.path())
+        .output()
+        .expect("init command");
+
+    assert!(output.status.success());
+    assert!(temp.path().join("main.dowe").is_file());
+    assert!(!temp.path().join("AGENTS.md").exists());
+    assert!(!temp.path().join("CLAUDE.md").exists());
+    assert!(!temp.path().join(".agents").exists());
+}
+
+#[test]
 fn non_interactive_init_rejects_an_existing_dowe_project() {
     let temp = TempDir::new().expect("tempdir");
     fs::write(temp.path().join("main.dowe"), "existing main").expect("main");

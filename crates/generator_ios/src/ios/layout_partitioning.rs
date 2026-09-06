@@ -236,6 +236,7 @@ fn ios_collect_scope_bindings(node: &ViewNode, bindings: &mut IosLayoutBindings)
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Title { .. }
         | ViewNode::Text { .. }
@@ -353,10 +354,23 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
             ios_style_references_layout_bindings(&props.style, bindings)
                 || bindings.references_signal(&props.scene)
                 || props
+                    .layer_bind
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .selected_layer
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || (props.draw_mode_binding && bindings.references_signal(&props.draw_mode))
+                || props
                     .on_pointer
                     .iter()
                     .chain(&props.on_key)
                     .chain(&props.on_motion)
+                    .chain(&props.on_layer_add)
+                    .chain(&props.on_layer_change)
+                    .chain(&props.on_layer_remove)
+                    .chain(&props.on_layer_select)
                     .any(|value| bindings.references_action(value))
         }
         ViewNode::Diagram { props } => {
@@ -489,6 +503,12 @@ fn ios_node_references_layout_bindings(node: &ViewNode, bindings: &IosLayoutBind
         ViewNode::Table { props } => {
             ios_variant_references_layout_bindings(&props.style, bindings)
                 || bindings.references_signal(&props.data)
+        }
+        ViewNode::Tree { props } => {
+            ios_variant_references_layout_bindings(&props.style, bindings)
+                || bindings.references_signal(&props.data)
+                || props.bind.as_deref().is_some_and(|value| bindings.references_signal(value))
+                || props.on_select.as_deref().is_some_and(|value| bindings.references_action(value))
         }
         ViewNode::Divider { props } => ios_style_references_layout_bindings(&props.style, bindings),
         ViewNode::Alert { props } => {
@@ -823,6 +843,7 @@ fn ios_action_references_layout_bindings(
             dowe_components::ViewFunctionStatement::Assign(assign) => bindings.references_signal(&assign.target) || bindings.references_signal(&assign.source),
             dowe_components::ViewFunctionStatement::Reset(reset) => bindings.references_signal(&reset.target),
             dowe_components::ViewFunctionStatement::If { success, error, .. } => success.iter().chain(error).any(|step| matches!(step, dowe_components::ViewFunctionStatement::Assign(assign) if bindings.references_signal(&assign.target) || bindings.references_signal(&assign.source))),
+            dowe_components::ViewFunctionStatement::Invoke { .. } => false,
             dowe_components::ViewFunctionStatement::Toast(_) => false,
             dowe_components::ViewFunctionStatement::Redirect { .. } => false,
             dowe_components::ViewFunctionStatement::Validate { .. } => false,
@@ -837,6 +858,7 @@ fn ios_action_references_layout_bindings(
         .into_iter()
         .flatten()
         .any(|value| bindings.references_signal(value)),
+        ViewActionKind::Invoke(_) => false,
         ViewActionKind::Assign(assign) => {
             bindings.references_signal(&assign.target) || bindings.references_signal(&assign.source)
         }
@@ -1210,6 +1232,7 @@ fn ios_children_boundary(
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Title { .. }
         | ViewNode::Text { .. }

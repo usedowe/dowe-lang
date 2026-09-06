@@ -8,6 +8,33 @@ use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
 #[test]
+fn completions_offer_draw_erase_only_for_draw() {
+    for (component, expected) in [("Draw", true), ("Canvas", false)] {
+        let line = format!("  {component} drawMode:");
+        let document = LanguageDocument {
+            path: PathBuf::from("/project/views/pages/draw.dowe"),
+            source: format!("page drawPage\n{line}"),
+        };
+        let values = complete_document(Path::new("/project"), &document, 2, line.len() + 1);
+        for mode in ["pen", "rect", "circle"] {
+            assert!(
+                values
+                    .iter()
+                    .any(|item| item.label == format!("\"{mode}\""))
+            );
+        }
+        for mode in ["select", "erase"] {
+            assert_eq!(
+                values
+                    .iter()
+                    .any(|item| item.label == format!("\"{mode}\"")),
+                expected
+            );
+        }
+    }
+}
+
+#[test]
 fn formatter_normalizes_spacing_and_newline() {
     let source = "page loginPage   \n  Box   p:4\n    Text   size:\"md\"\n      Login";
     let formatted = format_document(
@@ -1153,6 +1180,21 @@ fn diagnostics_report_unquoted_static_config_strings() {
 }
 
 #[test]
+fn diagnostics_accept_card_color_style_prop() {
+    let document = LanguageDocument {
+        path: Path::new("/project/pages/card.dowe").to_path_buf(),
+        source: "page cardPage\n  Card:\n    cover:\"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80\"\n    overlay:0.62\n    rounded:\"lg\"\n    minH:72\n    color:\"white\"\n    Text\n      \"Office\"\n"
+            .to_string(),
+    };
+
+    let diagnostics = analyze_document(Path::new("/project"), &document);
+    assert!(
+        diagnostics.is_empty(),
+        "unexpected diagnostics: {diagnostics:?}"
+    );
+}
+
+#[test]
 fn diagnostics_accept_input_and_select_form_props() {
     let root = tempdir().expect("tempdir");
     fs::create_dir_all(root.path().join("pages")).expect("src");
@@ -1729,7 +1771,13 @@ fn completions_include_current_view_component_props() {
     assert!(text_props.iter().any(|item| item.label == "i18n"));
     assert!(!text_props.iter().any(|item| item.label == "text"));
 
-    for (line, column) in [(5, 8), (6, 10), (7, 9), (8, 9)] {
+    let card_props = complete_document(Path::new("/project"), &document, 5, 8);
+    assert!(card_props.iter().any(|item| item.label == "scheme"));
+    assert!(card_props.iter().any(|item| item.label == "color"));
+    assert!(card_props.iter().any(|item| item.label == "border"));
+    assert!(!card_props.iter().any(|item| item.label == "text"));
+
+    for (line, column) in [(6, 10), (7, 9), (8, 9)] {
         let props = complete_document(Path::new("/project"), &document, line, column);
         assert!(props.iter().any(|item| item.label == "scheme"));
         assert!(!props.iter().any(|item| item.label == "color"));
@@ -1750,7 +1798,6 @@ fn completions_include_current_view_component_props() {
     }
     let input_props = complete_document(Path::new("/project"), &document, 7, 9);
     assert!(input_props.iter().any(|item| item.label == "size"));
-    let card_props = complete_document(Path::new("/project"), &document, 5, 8);
     assert!(card_props.iter().any(|item| item.label == "animation"));
 
     let svg_props = complete_document(Path::new("/project"), &document, 9, 7);
@@ -2237,6 +2284,19 @@ fn completions_include_quoted_static_component_values() {
             .iter()
             .any(|item| item.label == "\"horizontal\"")
     );
+    let radio_card_document = LanguageDocument {
+        path: Path::new("/project/pages/radio-card.dowe").to_path_buf(),
+        source: "page radioCardPage\n  RadioCard \n    item \n".to_string(),
+    };
+    let radio_card_props = complete_document(Path::new("/project"), &radio_card_document, 2, 13);
+    assert!(
+        radio_card_props
+            .iter()
+            .any(|item| item.label == "orientation")
+    );
+    assert!(radio_card_props.iter().any(|item| item.label == "bind"));
+    let radio_card_item = complete_document(Path::new("/project"), &radio_card_document, 3, 10);
+    assert!(radio_card_item.iter().any(|item| item.label == "title"));
 }
 
 #[test]
@@ -2680,7 +2740,7 @@ fn completions_include_view_animation_values() {
 fn completions_include_code_component_props_and_languages() {
     let document = LanguageDocument {
         path: Path::new("/project/pages/login.dowe").to_path_buf(),
-        source: "page loginPage\n  Code \n  Code language:\n  Code scheme:\n".to_string(),
+        source: "page loginPage\n  Code \n  Code language:\n  Code scheme:\n  Editor \n  Editor language:\n".to_string(),
     };
 
     let base = complete_document(Path::new("/project"), &document, 1, 1);
@@ -2699,6 +2759,13 @@ fn completions_include_code_component_props_and_languages() {
     assert!(languages.iter().any(|item| item.label == "\"go\""));
     assert!(languages.iter().any(|item| item.label == "\"rust\""));
     assert!(languages.iter().any(|item| item.label == "\"python\""));
+
+    let editor_props = complete_document(Path::new("/project"), &document, 5, 10);
+    assert!(editor_props.iter().any(|item| item.label == "language"));
+    assert!(editor_props.iter().any(|item| item.label == "onSave"));
+
+    let editor_languages = complete_document(Path::new("/project"), &document, 6, 19);
+    assert!(editor_languages.iter().any(|item| item.label == "\"dowe\""));
 
     let schemes = complete_document(Path::new("/project"), &document, 4, 15);
     assert!(schemes.iter().any(|item| item.label == "\"surface\""));
@@ -2882,6 +2949,36 @@ fn completions_include_table_component_and_column_props() {
 }
 
 #[test]
+fn completions_include_tree_component_props_and_values() {
+    let document = LanguageDocument {
+        path: Path::new("/project/pages/tree.dowe").to_path_buf(),
+        source: "page treePage\n  signal files value:[]\n  Tree data:\n  Tree defaultOpen:\n  Tree variant:\n  Tree scheme:\n".to_string(),
+    };
+
+    let base = complete_document(Path::new("/project"), &document, 1, 1);
+    assert!(base.iter().any(|item| item.label == "Tree"));
+
+    let props = complete_document(Path::new("/project"), &document, 3, 9);
+    assert!(props.iter().any(|item| item.label == "data"));
+    assert!(props.iter().any(|item| item.label == "bind"));
+    assert!(props.iter().any(|item| item.label == "defaultOpen"));
+    assert!(props.iter().any(|item| item.label == "onSelect"));
+
+    let data = complete_document(Path::new("/project"), &document, 3, 14);
+    assert!(data.iter().any(|item| item.label == "files"));
+
+    let defaults = complete_document(Path::new("/project"), &document, 4, 20);
+    assert!(defaults.iter().any(|item| item.label == "true"));
+    assert!(defaults.iter().any(|item| item.label == "false"));
+
+    let variants = complete_document(Path::new("/project"), &document, 5, 17);
+    assert!(variants.iter().any(|item| item.label == "\"ghost\""));
+
+    let schemes = complete_document(Path::new("/project"), &document, 6, 16);
+    assert!(schemes.iter().any(|item| item.label == "\"surface\""));
+}
+
+#[test]
 fn every_builtin_view_component_and_prop_has_editor_documentation() {
     let components = [
         "Box",
@@ -2895,6 +2992,7 @@ fn every_builtin_view_component_and_prop_has_editor_documentation() {
         "Video",
         "Canvas",
         "Candlestick",
+        "Diagram",
         "ArcChart",
         "AreaChart",
         "BarChart",
@@ -2967,6 +3065,7 @@ fn every_builtin_view_component_and_prop_has_editor_documentation() {
         "Date",
         "DateRange",
         "RadioGroup",
+        "RadioCard",
         "Toggle",
         "Card",
         "Tabs",

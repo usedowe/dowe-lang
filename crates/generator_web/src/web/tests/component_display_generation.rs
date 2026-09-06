@@ -120,7 +120,11 @@ fn resolves_modal_and_alert_dialog_panels_like_card_surfaces() {
         "alert",
         &alert,
     );
-    assert!(alert_page.css_content.contains(".modal.is-solid.is-surface"));
+    assert!(
+        alert_page
+            .css_content
+            .contains(".modal.is-solid.is-surface")
+    );
     assert!(
         alert_page
             .css_content
@@ -242,7 +246,10 @@ fn renders_reactive_button_loading_spinner_and_runtime_binding() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(html.contains(r#"data-dowe-button-loading hidden aria-hidden="true""#));
@@ -253,6 +260,42 @@ fn renders_reactive_button_loading_spinner_and_runtime_binding() {
     assert!(css.contains(".button>[data-dowe-button-content]{display:inline-flex;"));
     assert!(router.contains("doweButtonLoading"));
     assert!(router.contains("aria-busy"));
+}
+
+#[test]
+fn renders_reactive_form_visual_props_and_input_events() {
+    let input = ViewNode::Input {
+        props: VariantProps {
+            size: Some(ButtonSize::Sm),
+            reactive: ReactiveVariantProps {
+                variant: Some("fieldVariant".to_string()),
+                scheme: Some("fieldScheme".to_string()),
+                size: Some("fieldSize".to_string()),
+                rounded: Some("fieldRounded".to_string()),
+                ..Default::default()
+            },
+            element: ElementProps {
+                on_change: Some("fieldChanged".to_string()),
+                on_input: Some("fieldInput".to_string()),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    };
+    let html = render_page_body(&ViewNode::Children, &input);
+    let router = full_runtime_for_test();
+
+    assert!(html.contains(r#"data-dowe-variant-binding="true""#));
+    assert!(html.contains(r#"data-dowe-variant-size-prefix="is-""#));
+    assert!(html.contains(r#"data-dowe-variant="fieldVariant""#));
+    assert!(html.contains(r#"data-dowe-scheme="fieldScheme""#));
+    assert!(html.contains(r#"data-dowe-size="fieldSize""#));
+    assert!(html.contains(r#"data-dowe-rounded="fieldRounded""#));
+    assert!(html.contains(r#"data-dowe-change="fieldChanged""#));
+    assert!(html.contains(r#"data-dowe-input="fieldInput""#));
+    assert!(router.contains("document.addEventListener(\"input\""));
+    assert!(router.contains("document.addEventListener(\"change\""));
+    assert!(router.contains("doweEditorDirty"));
 }
 
 #[test]
@@ -277,7 +320,10 @@ fn renders_reactive_button_disabled_visual_state() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(html.contains(r#"data-dowe-button-disabled="formInvalid""#));
@@ -304,7 +350,10 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(html.contains(r#"class="avatar-group"#));
@@ -317,6 +366,10 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
     assert!(html.contains(r#"class="chat-box"#));
     assert!(html.contains("is-conversation"));
     assert!(html.contains(r#"data-dowe-chatbox-messages="messages""#));
+    assert!(html.contains(r#"data-dowe-chatbox-action-visible="actionVisible""#));
+    assert!(html.contains(r#"class="chat-box-action-row""#));
+    assert!(html.contains("Continue"));
+    assert!(html.contains(r#"data-dowe-chatbox-on-action=""#));
     assert!(html.contains(r#"class="empty"#));
     assert!(html.contains("is-result"));
     assert!(html.contains(r#"class="empty-icon"><svg class="svg"#));
@@ -338,9 +391,18 @@ fn renders_display_chat_and_motion_components_markup_runtime_and_css() {
     assert!(page.css_content.contains(".chat-box"));
     assert!(page.css_content.contains(".empty"));
     assert!(css.contains(".marquee"));
+    assert!(css.contains(".chat-box-action"));
+    assert!(css.contains(".chat-choice"));
+    assert!(css.contains(".chat-message-questions"));
     assert!(css.contains(".typewriter"));
     assert!(router.contains("function renderAvatarGroups(root,state,scope)"));
     assert!(router.contains("function renderChatBoxes(root,state,scope)"));
+    assert!(router.contains("data-dowe-chatbox-action-row"));
+    assert!(router.contains("data-dowe-chatbox-choice"));
+    assert!(router.contains("selectChatBoxChoice"));
+    assert!(router.contains("chatAction"));
+    assert!(router.contains("function chatMessageIsSpanish(item)"));
+    assert!(router.contains("Supuestos de trabajo"));
     assert!(router.contains("function hydrateTypeWriters(root)"));
 }
 
@@ -363,7 +425,10 @@ fn renders_rich_control_map_components_markup_runtime_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(html.contains(r#"class="rich-text"#));
@@ -518,6 +583,42 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"class="radio is-muted is-lg""#));
     assert!(html.contains(r#"class="toggle-input is-secondary""#));
 
+    let card = ViewNode::RadioGroup {
+        props: RadioGroupProps {
+            style: VariantProps {
+                variant: Some(ComponentVariant::Outlined),
+                color: Some(ColorFamily::Primary),
+                element: ElementProps {
+                    bind: Some("workspace".to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            size: ButtonSize::Md,
+            orientation: RadioGroupOrientation::Horizontal,
+            presentation: RadioGroupPresentation::Card,
+            name: Some("workspace".to_string()),
+            info: None,
+            error: None,
+        },
+        options: vec![RadioOption {
+            value: "local".to_string(),
+            label: "Local".to_string(),
+            description: Some("Edit, run, and test files on your computer".to_string()),
+            icon: Some(solar_control_icon("laptop").expect("laptop icon")),
+            disabled: false,
+        }],
+    };
+    let card_html = render_page_body(&ViewNode::Children, &card);
+    assert!(card_html.contains(r#"class="radio-card-group is-outlined is-horizontal""#));
+    assert!(card_html.contains(r#"class="radio-card is-outlined is-primary is-md""#));
+    assert!(card_html.contains(r#"class="radio-card-control""#));
+    assert!(card_html.contains(r#"class="radio-card-icon""#));
+    assert!(card_html.contains("Edit, run, and test files on your computer"));
+    assert!(css.contains(".radio-card-group"));
+    assert!(css.contains(".radio-card-control:checked"));
+    assert!(css.contains(".radio-card-indicator"));
+
     assert!(page.css_content.contains(".media.is-solid.is-primary"));
     assert!(
         page.css_content
@@ -637,13 +738,32 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"data-dowe-drag-item="draft""#));
     assert!(html.contains(r#"class="editor"#));
     assert!(html.contains(r#"data-dowe-editor"#));
+    assert!(html.contains(r#"data-dowe-editor-language="dowe""#));
+    assert!(html.contains(r#"contenteditable="true""#));
+    assert!(html.contains(r#"data-dowe-editor-save="saveEditor""#));
+    assert!(html.contains("editor-highlight"));
     assert!(html.contains("image-cropper"));
     assert!(html.contains("is-circle"));
     assert!(html.contains(r#"data-dowe-image-cropper"#));
+    assert!(html.contains(r#"data-dowe-bind="profile.avatar""#));
+    assert!(html.contains(r#"data-dowe-cropper-change hidden"#));
+    assert!(html.contains(r#"image-cropper-empty-icon"#));
+    assert!(html.contains(r#"class="image-cropper-label""#));
     assert!(html.contains(r#"data-dowe-cropper-stage"#));
     assert!(html.contains(r#"data-dowe-cropper-zoom"#));
     assert!(html.contains("Apply"));
+    assert!(router.contains("dragDropInsertionTarget"));
+    assert!(router.contains("doweDirection"));
+    assert!(router.contains("is-drag-over"));
+    assert!(router.contains("doweAllowGroupTransfer"));
+    assert!(router.contains("clientX"));
     assert!(router.contains("cropperApply"));
+    assert!(router.contains("hasBinding"));
+    assert!(router.contains("!!bound&&!!state"));
+    assert!(router.contains("function cropperCommit"));
+    assert!(router.contains("function cropperClampOffset"));
+    assert!(router.contains("current.editing&&value===appliedValue"));
+    assert!(router.contains("change.hidden=!hasValue"));
     assert!(router.contains("toDataURL"));
     assert!(router.contains(r#"value.match(/^data:(image\/[^;]+)/)"#));
     assert!(!router.contains(r#"value.match(/^data:(image\\/[^;]+)/)"#));
@@ -698,8 +818,11 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(css.contains(".password-toggle .svg{width:1.25rem;height:1.25rem;}"));
     assert!(css.contains(".csv-field-modal"));
     assert!(css.contains(".drag-drop-item"));
+    assert!(css.contains(".drag-drop-list.is-drag-over"));
     assert!(css.contains(".pin-cell.control"));
     assert!(css.contains(".editor-toolbar"));
+    assert!(css.contains(".editor-highlight .code-token-keyword"));
+    assert!(css.contains(".editor-highlight .code-token-string"));
     assert!(css.contains(".password-strength"));
     assert!(css.contains(
         ".password-strength{display:flex;width:100%;flex-direction:column;gap:.35rem;padding:0;}"
@@ -711,6 +834,10 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
         ".textarea-field.is-floating:not(:focus-within) .textarea-control:placeholder-shown::placeholder{opacity:0;}"
     ));
     assert!(router.contains("function hydrateAdvancedForms(root)"));
+    assert!(router.contains("function highlightEditor(root)"));
+    assert!(router.contains("runtimeCall(\"controls\",\"highlightEditor\""));
+    assert!(router.contains("doweEditorSave"));
+    assert!(router.contains("target.innerText"));
     assert!(router.contains("function filterCombo(root)"));
     assert!(router.contains("function openCombo(control)"));
     assert!(router.contains("function positionCombo(control)"));
@@ -737,6 +864,25 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(css.contains(".pin-cell.control.is-md{flex-basis:2.75rem;width:2.75rem;min-width:2.75rem;height:2.5rem;min-height:2.5rem;}"));
     assert!(css.contains(".pin-cell.control.is-lg{flex-basis:3.25rem;width:3.25rem;min-width:3.25rem;height:3rem;min-height:3rem;}"));
     assert!(css.contains("font-size:var(--dowe-control-font-size);line-height:var(--dowe-control-line-height);font-weight:800"));
+}
+
+#[test]
+fn image_cropper_keeps_empty_preview_icon_when_initial_value_exists() {
+    let mut page_tree = advanced_form_tree();
+    let ViewNode::Box { children, .. } = &mut page_tree else {
+        panic!("advanced form root");
+    };
+    let Some(ViewNode::ImageCropper { props }) = children
+        .iter_mut()
+        .find(|node| matches!(node, ViewNode::ImageCropper { .. }))
+    else {
+        panic!("image cropper");
+    };
+    props.src = Some("data:image/png;base64,AAAA".to_string());
+
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+
+    assert!(html.contains(r#"<svg hidden class="image-cropper-empty-icon""#));
 }
 
 #[test]
@@ -834,7 +980,10 @@ fn emits_form_validation_metadata_runtime_and_accessibility_hooks() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
     let router = super::router_js(&web);
 
@@ -968,11 +1117,13 @@ fn advanced_form_tree() -> ViewNode {
             ViewNode::Editor {
                 props: EditorProps {
                     style: bound_style("profile.notes", "Notes", "Write notes"),
+                    language: dowe_components::CodeLanguage::Dowe,
                     value: None,
                     min_height: 180,
                     hide_toolbar: false,
                     disabled: false,
                     readonly: false,
+                    on_save: Some("saveEditor".to_string()),
                     name: None,
                     help_text: None,
                     error_text: None,

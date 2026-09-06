@@ -86,9 +86,11 @@ fn form_props_are_declared_for_form_components() {
         (BuiltinComponent::Checkbox, &["bind", "checked"]),
         (BuiltinComponent::Toggle, &["bind", "checked"]),
         (BuiltinComponent::RadioGroup, &["bind", "orientation"]),
+        (BuiltinComponent::RadioCard, &["bind", "orientation"]),
         (BuiltinComponent::Slider, &["bind", "min", "max", "step"]),
         (BuiltinComponent::Date, &["bind"]),
         (BuiltinComponent::DateRange, &["bind"]),
+        (BuiltinComponent::Editor, &["bind", "language", "onSave", "hideToolbar"]),
         (BuiltinComponent::Password, &["bind", "placeholder"]),
         (BuiltinComponent::Phone, &["bind", "country"]),
         (BuiltinComponent::Pin, &["bind", "length"]),
@@ -108,7 +110,7 @@ fn media_props_are_declared_for_media_components() {
         (BuiltinComponent::Audio, &["src", ][..]),
         (BuiltinComponent::Video, &["src", "poster", ]),
         (BuiltinComponent::Iframe, &["src", "title", "sandbox", "allow", "allowFullscreen"]),
-        (BuiltinComponent::Device, &["device", "zoom", "fit", "src"]),
+        (BuiltinComponent::Device, &["device", "bind", "hideControls", "hideButtons", "studioInspector", "zoom", "fit", "src"]),
         (BuiltinComponent::Image, &["src", "alt", "width", "height", "objectFit", "loading"]),
         (BuiltinComponent::Camera, &["facing", "resolution", "onCapture", "onError"]),
         (BuiltinComponent::Microphone, &["onError"]),
@@ -129,7 +131,8 @@ fn navigation_props_are_declared_for_navigation_components() {
         (BuiltinComponent::SideNav, &["variant", "scheme", "size", "wide"]),
         (BuiltinComponent::RailNav, &["variant", "scheme", "size"]),
         (BuiltinComponent::Sidebar, &["variant", "scheme", "size"]),
-                (BuiltinComponent::Drawer, &["bind", "position", "disableOverlayClose", "hideCloseButton"]),
+        (BuiltinComponent::Scaffold, &["safeAreaTop", "safeAreaBottom"]),
+        (BuiltinComponent::Drawer, &["bind", "position", "disableOverlayClose", "hideCloseButton"]),
     ] {
         for prop in props {
             assert!(view_prop_declared(component, prop), "{component:?}.{prop}");
@@ -158,7 +161,7 @@ fn structural_and_item_props_are_declared() {
     for (component, props) in [
         (BuiltinComponent::Tabs, &["position"][..]),
         (BuiltinComponent::Tab, &["id", "label", "i18n"]),
-        (BuiltinComponent::Stepper, &["position"]),
+        (BuiltinComponent::Stepper, &["position", "bind"]),
         (BuiltinComponent::Step, &["id", "label"]),
         (BuiltinComponent::Accordion, &["id", "title", "defaultOpen"]),
         (BuiltinComponent::Carousel, &["id", "title", "slidesPerView", "autoplay"]),
@@ -174,6 +177,27 @@ fn structural_and_item_props_are_declared() {
         for prop in props {
             assert!(view_prop_declared(component, prop), "{component:?}.{prop}");
         }
+    }
+}
+
+#[test]
+fn draw_layer_props_are_declared() {
+    for prop in [
+        "bind",
+        "selected",
+        "onLayerAdd",
+        "onLayerChange",
+        "onLayerRemove",
+        "onLayerSelect",
+    ] {
+        assert!(view_prop_declared(BuiltinComponent::Draw, prop), "Draw.{prop}");
+    }
+}
+
+#[test]
+fn tree_props_are_declared() {
+    for prop in ["data", "bind", "defaultOpen", "emptyLabel", "ariaLabel", "onSelect"] {
+        assert!(view_prop_declared(BuiltinComponent::Tree, prop), "Tree.{prop}");
     }
 }
 

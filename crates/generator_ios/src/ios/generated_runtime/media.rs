@@ -332,22 +332,22 @@ struct DoweDeviceIcon {
 }
 
 struct DoweDevicePreview: View {
-    let initialProfile: String
+    @Binding var profile: String
     let source: String
     let title: String
     let sandbox: [String]?
     let autoplay: Bool
+    let hideControls: Bool
     let icons: [DoweDeviceIcon]
-    @State private var profile: String
 
-    init(initialProfile: String, source: String, title: String, sandbox: [String]?, autoplay: Bool, icons: [DoweDeviceIcon]) {
-        self.initialProfile = initialProfile
+    init(profile: Binding<String>, source: String, title: String, sandbox: [String]?, autoplay: Bool, hideControls: Bool, icons: [DoweDeviceIcon]) {
+        self._profile = profile
         self.source = source
         self.title = title
         self.sandbox = sandbox
         self.autoplay = autoplay
+        self.hideControls = hideControls
         self.icons = icons
-        _profile = State(initialValue: initialProfile)
     }
 
     private var dimensions: CGSize {
@@ -361,7 +361,7 @@ struct DoweDevicePreview: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 4) {
+            if !hideControls { HStack(spacing: 4) {
                 ForEach(icons, id: \.profile) { option in
                     Button { profile = option.profile } label: {
                         DoweSvgView(viewBox: option.viewBox, color: profile == option.profile ? DoweDesign.primary : DoweDesign.backgroundText, paths: option.paths)
@@ -377,7 +377,7 @@ struct DoweDevicePreview: View {
                     .accessibilityAddTraits(profile == option.profile ? .isSelected : [])
                 }
             }
-            .padding(CGFloat(4))
+            .padding(CGFloat(4)) }
             GeometryReader { geometry in
                 let zoom = min(CGFloat(1), geometry.size.width / dimensions.width)
                 DoweIframeView(source: source, title: title, sandbox: sandbox, autoplay: autoplay)

@@ -4,6 +4,8 @@ pub struct ElementProps {
     pub font: Option<ResponsiveValue<FontFamily>>,
     pub bind: Option<String>,
     pub on_click: Option<String>,
+    pub on_change: Option<String>,
+    pub on_input: Option<String>,
     pub show: Option<VisibilityCondition>,
     pub form: Option<Box<FormControlValidation>>,
 }

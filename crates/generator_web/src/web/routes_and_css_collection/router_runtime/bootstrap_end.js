@@ -60,6 +60,18 @@ function loadCss(route, path, version = "") {
   document.head.insertBefore(link, next || null);
   return waitForCss(link, current);
 }
+function preloadRouteCss(route) {
+  for (const path of route.cssChunks) {
+    if (document.querySelector(`link[data-dowe-css="${path}"],link[data-dowe-css-preload="${path}"]`)) continue;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "style";
+    link.href = versionedAsset(path);
+    link.dataset.doweCssPreload = path;
+    link.addEventListener("error", () => link.remove(), { once: true });
+    document.head.appendChild(link);
+  }
+}
 function loadRouteCss(route, version = "") {
   return Promise.all(
     route.cssChunks.map((path) => loadCss(route, path, version)),
@@ -153,6 +165,13 @@ function wrapLayout(route, html) {
 }
 let activeView = null;
 const runtimeCapabilities = new Map();
+function tokenColor(name) {
+  return (
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--dowe-" + name)
+      .trim() || "currentColor"
+  );
+}
 window.__doweRegisterRuntimeCapability = (name, setup) => {
   runtimeCapabilities.set(
     name,
@@ -166,6 +185,7 @@ window.__doweRegisterRuntimeCapability = (name, setup) => {
       onViewportResize,
       onViewportScroll,
       prefersReducedMotion,
+      tokenColor,
       getActiveView: () => activeView,
     }),
   );
@@ -249,7 +269,12 @@ function persistSignalName(name, value) {
 function persistSignalRoot(root) {
   if (!activeView || !activeView.globalIds) return;
   const name = activeView.globalIds[root];
-  if (name) persistSignalName(name, activeView.state[root]);
+  if (!name) return;
+  const value = cloneValue(activeView.state[root]);
+  for (const [id, key] of Object.entries(activeView.globalIds)) {
+    if (key === name) activeView.state[id] = cloneValue(value);
+  }
+  persistSignalName(name, value);
 }
 const formTouched = {};
 function readPathRaw(state, path, scope) {

@@ -165,12 +165,14 @@ fn render_swift_media_data_node(
                     swift_svg_paths(&option.icon.paths),
                 )
             }).collect::<Vec<_>>().join(", ");
+            let binding = props.bind.as_deref().map(|path| format!("state.binding(\"{}\")", escape_swift(&context.signal_path(path)))).unwrap_or_else(|| format!(".constant({})", swift_string_literal(props.device.as_str())));
             output.push_str(&format!(
-                "{pad}DoweDevicePreview(initialProfile: {}, source: {}, title: {}, sandbox: {sandbox}, autoplay: {}, icons: [{icons}])\n",
-                swift_string_literal(props.device.as_str()),
+                "{pad}DoweDevicePreview(profile: {}, source: {}, title: {}, sandbox: {sandbox}, autoplay: {}, hideControls: {}, icons: [{icons}])\n",
+                binding,
                 swift_string_literal(&iframe.src),
                 swift_string_literal(&iframe.title),
                 iframe.allow.iter().any(|token| token == "autoplay"),
+                props.hide_controls,
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }
@@ -179,8 +181,19 @@ fn render_swift_media_data_node(
                 CanvasBackground::Transparent => "Color.clear".to_string(),
                 CanvasBackground::Color(color) => color_ref(color).to_string(),
             };
+            let draw_mode_path = props
+                .draw_mode_binding
+                .then(|| context.signal_path(&props.draw_mode));
+            let layer_bind = props
+                .layer_bind
+                .as_deref()
+                .map(|path| context.signal_path(path));
+            let selected_layer = props
+                .selected_layer
+                .as_deref()
+                .map(|path| context.signal_path(path));
             output.push_str(&format!(
-                "{pad}DoweCanvasView(state: state, scenePath: {}, viewWidth: CGFloat({}), viewHeight: CGFloat({}), fit: {}, fps: {}, autoplay: {}, pixelated: {}, backgroundColor: {}, label: {}, onPointer: {}, onKey: {}, onMotion: {}, motionRate: {})\n",
+                "{pad}DoweCanvasView(state: state, scenePath: {}, viewWidth: CGFloat({}), viewHeight: CGFloat({}), fit: {}, fps: {}, autoplay: {}, pixelated: {}, backgroundColor: {}, label: {}, onPointer: {}, onKey: {}, onMotion: {}, motionRate: {}, draw: {}, drawMode: {}, drawModePath: {}, layersPath: {}, selectedPath: {}, onLayerAdd: {}, onLayerChange: {}, onLayerRemove: {}, onLayerSelect: {})\n",
                 swift_string_literal(&context.signal_path(&props.scene)),
                 props.view_width,
                 props.view_height,
@@ -194,6 +207,15 @@ fn render_swift_media_data_node(
                 swift_optional_literal(props.on_key.as_deref().and_then(|value| context.action_id(value))),
                 swift_optional_literal(props.on_motion.as_deref().and_then(|value| context.action_id(value))),
                 props.motion_rate,
+                props.draw,
+                swift_string_literal(&props.draw_mode),
+                swift_optional_literal(draw_mode_path.as_deref()),
+                swift_optional_literal(layer_bind.as_deref()),
+                swift_optional_literal(selected_layer.as_deref()),
+                swift_optional_literal(props.on_layer_add.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_layer_change.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_layer_remove.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_layer_select.as_deref().and_then(|value| context.action_id(value))),
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }
@@ -276,6 +298,32 @@ fn render_swift_media_data_node(
                 props.dividers,
                 swift_string_literal(&props.empty_title),
                 swift_string_literal(&props.empty_description),
+                table_variant_container(&props.style),
+                table_variant_content(&props.style),
+                swift_card_radius(&props.style.style)
+            ));
+            append_swift_modifiers(
+                output,
+                indent,
+                &swift_modifiers_for_style(&props.style.style),
+            );
+        }
+        ViewNode::Tree { props } => {
+            let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
+                == ComponentVariant::Outlined
+            {
+                format!("Optional({})", table_variant_content(&props.style))
+            } else {
+                "nil".to_string()
+            };
+            output.push_str(&format!(
+                "{pad}DoweTreeView(state: state, dataPath: {}, bindPath: {}, defaultOpen: {}, emptyLabel: {}, ariaLabel: {}, onSelect: {}, backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {})\n",
+                swift_string_literal(&context.signal_path(&props.data)),
+                props.bind.as_deref().map(|path| format!("Optional({})", swift_string_literal(&context.signal_path(path)))).unwrap_or_else(|| "nil".to_string()),
+                props.default_open,
+                swift_string_literal(&props.empty_label),
+                swift_string_literal(&props.aria_label),
+                props.on_select.as_deref().and_then(|value| context.action_id(value)).map(|value| format!("Optional({})", swift_string_literal(&value))).unwrap_or_else(|| "nil".to_string()),
                 table_variant_container(&props.style),
                 table_variant_content(&props.style),
                 swift_card_radius(&props.style.style)

@@ -380,6 +380,12 @@ impl ViewTranslation {
     }
 }
 
+pub const VIEW_PAGE_TRANSITION_DURATION_MS: u64 = 280;
+pub const VIEW_PAGE_TRANSITION_DURATION_SECONDS: f64 =
+    VIEW_PAGE_TRANSITION_DURATION_MS as f64 / 1000.0;
+pub const VIEW_PAGE_TRANSITION_EASING_CSS: &str = "cubic-bezier(.22,.61,.36,1)";
+pub const VIEW_PAGE_TRANSITION_EASING: (f32, f32, f32, f32) = (0.22, 0.61, 0.36, 1.0);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewTransition {
     None,

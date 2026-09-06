@@ -18,6 +18,11 @@ final class DoweCanvasImageStore: ObservableObject {
     }
 }
 
+@MainActor
+final class DoweCanvasSelection: ObservableObject {
+    @Published var id = ""
+}
+
 struct DoweCanvasView: View {
     @ObservedObject var state: DoweReactiveState
     let scenePath: String
@@ -33,11 +38,21 @@ struct DoweCanvasView: View {
     let onKey: String?
     let onMotion: String?
     let motionRate: Int
+    let draw: Bool
+    let drawMode: String
+    let drawModePath: String?
+    let layersPath: String?
+    let selectedPath: String?
+    let onLayerAdd: String?
+    let onLayerChange: String?
+    let onLayerRemove: String?
+    let onLayerSelect: String?
     @State private var started = Date()
     @StateObject private var imageStore = DoweCanvasImageStore()
+    @StateObject private var selection = DoweCanvasSelection()
 
     private var commands: [[String: Any]] {
-        state.candles(scenePath).map(boundCommand)
+        state.candles(layersPath ?? scenePath).map(boundCommand)
     }
 
     private func boundCommand(_ command: [String: Any]) -> [String: Any] {
@@ -54,14 +69,16 @@ struct DoweCanvasView: View {
     }
 
     var body: some View {
-        ZStack {
+        let renderedCommands = commands
+        let selectedId = selectedPath.map { state.canvasValue($0) as? String ?? "" } ?? selection.id
+        return ZStack {
             TimelineView(.animation(minimumInterval: 1.0 / Double(max(1, fps)), paused: !autoplay || UIAccessibility.isReduceMotionEnabled)) { timeline in
                 Canvas { context, size in
-                    drawScene(context: &context, size: size, date: timeline.date)
+                    drawScene(context: &context, size: size, date: timeline.date, commands: renderedCommands, selectedId: selectedId)
                 }
             }
-            if onPointer != nil || onKey != nil || onMotion != nil {
-                DoweCanvasInputBridge(state: state, viewWidth: viewWidth, viewHeight: viewHeight, fit: fit, onPointer: onPointer, onKey: onKey, onMotion: onMotion, motionRate: motionRate)
+            if onPointer != nil || onKey != nil || onMotion != nil || draw || layersPath != nil {
+                DoweCanvasInputBridge(state: state, selection: selection, viewWidth: viewWidth, viewHeight: viewHeight, fit: fit, onPointer: onPointer, onKey: onKey, onMotion: onMotion, motionRate: motionRate, draw: draw, drawMode: drawMode, drawModePath: drawModePath, layersPath: layersPath, selectedPath: selectedPath, onLayerAdd: onLayerAdd, onLayerChange: onLayerChange, onLayerRemove: onLayerRemove, onLayerSelect: onLayerSelect)
                     .accessibilityHidden(true)
             }
         }
@@ -79,7 +96,7 @@ struct DoweCanvasView: View {
         }
     }
 
-    private func drawScene(context: inout GraphicsContext, size: CGSize, date: Date) {
+    private func drawScene(context: inout GraphicsContext, size: CGSize, date: Date, commands: [[String: Any]], selectedId: String) {
         let scaleX = size.width / max(CGFloat(1), viewWidth)
         let scaleY = size.height / max(CGFloat(1), viewHeight)
         let scale = fit == "cover" ? max(scaleX, scaleY) : min(scaleX, scaleY)
@@ -90,11 +107,11 @@ struct DoweCanvasView: View {
         context.scaleBy(x: sx, y: sy)
         let elapsed = autoplay && !UIAccessibility.isReduceMotionEnabled ? max(0, date.timeIntervalSince(started)) : 0
         for command in commands {
-            draw(command, elapsed: elapsed, context: &context)
+            draw(command, elapsed: elapsed, selected: !selectedId.isEmpty && command["id"] as? String == selectedId, context: &context)
         }
     }
 
-    private func draw(_ command: [String: Any], elapsed: TimeInterval, context: inout GraphicsContext) {
+    private func draw(_ command: [String: Any], elapsed: TimeInterval, selected: Bool, context: inout GraphicsContext) {
         guard let type = command["type"] as? String else { return }
         let motion = command["motion"] as? [String: Any] ?? [:]
         let x = number(command["x"])
@@ -148,8 +165,9 @@ struct DoweCanvasView: View {
             if let stroke { drawing.stroke(path, with: .color(stroke), lineWidth: strokeWidth) }
         case "text":
             let alignment: UnitPoint = command["align"] as? String == "center" ? .center : command["align"] as? String == "end" ? .trailing : .leading
-            let text = Text(String(describing: command["text"] ?? "")).font(.system(size: max(1, number(command["size"], fallback: 16)))).foregroundColor(fill ?? DoweDesign.backgroundText)
-            drawing.draw(text, at: CGPoint(x: x, y: y), anchor: alignment)
+            let size = max(1, number(command["size"], fallback: 16))
+            let text = Text(String(describing: command["text"] ?? "")).font(.system(size: size)).foregroundColor(fill ?? DoweDesign.backgroundText)
+            drawing.draw(text, at: CGPoint(x: x, y: y - size / 2), anchor: alignment)
         case "image":
             if let source = command["src"] as? String, let image = imageStore.images[source] {
                 let width = max(0, number(command["width"]))
@@ -159,6 +177,38 @@ struct DoweCanvasView: View {
             }
         default:
             break
+        }
+        if selected, let path = selectionPath(command) {
+            drawing.opacity = 1
+            drawing.stroke(path, with: .color(DoweDesign.primary), style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
+        }
+    }
+
+    private func selectionPath(_ command: [String: Any]) -> Path? {
+        let x = number(command["x"])
+        let y = number(command["y"])
+        let type = command["type"] as? String ?? ""
+        switch type {
+        case "circle":
+            let radius = max(0, number(command["radius"])) + 4
+            return Path(ellipseIn: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+        case "rect", "image":
+            return Path(CGRect(x: x, y: y, width: number(command["width"]), height: number(command["height"])).insetBy(dx: -4, dy: -4))
+        case "line", "polyline":
+            let points: [[String: Any]] = type == "line" ? [["x": number(command["x1"]), "y": number(command["y1"])], ["x": number(command["x2"]), "y": number(command["y2"])]] : command["points"] as? [[String: Any]] ?? []
+            guard let first = points.first else { return nil }
+            var bounds = CGRect(x: number(first["x"]), y: number(first["y"]), width: 0, height: 0)
+            for point in points.dropFirst() {
+                bounds = bounds.union(CGRect(x: number(point["x"]), y: number(point["y"]), width: 0, height: 0))
+            }
+            return Path(bounds.insetBy(dx: -4, dy: -4))
+        case "text":
+            let size = max(1, number(command["size"], fallback: 16))
+            let width = CGFloat(max(1, String(describing: command["text"] ?? "").utf16.count)) * size * 0.6
+            let align = command["align"] as? String ?? "start"
+            let left = align == "center" ? x - width / 2 : align == "end" ? x - width : x
+            return Path(CGRect(x: left, y: y - size, width: width, height: size).insetBy(dx: -4, dy: -4))
+        default: return nil
         }
     }
 
@@ -222,6 +272,7 @@ struct DoweCanvasView: View {
 
 struct DoweCanvasInputBridge: UIViewRepresentable {
     @ObservedObject var state: DoweReactiveState
+    let selection: DoweCanvasSelection
     let viewWidth: CGFloat
     let viewHeight: CGFloat
     let fit: String
@@ -229,18 +280,30 @@ struct DoweCanvasInputBridge: UIViewRepresentable {
     let onKey: String?
     let onMotion: String?
     let motionRate: Int
+    let draw: Bool
+    let drawMode: String
+    let drawModePath: String?
+    let layersPath: String?
+    let selectedPath: String?
+    let onLayerAdd: String?
+    let onLayerChange: String?
+    let onLayerRemove: String?
+    let onLayerSelect: String?
 
     func makeUIView(context: Context) -> DoweCanvasInputUIView {
-        DoweCanvasInputUIView(state: state, viewWidth: viewWidth, viewHeight: viewHeight, fit: fit, onPointer: onPointer, onKey: onKey, onMotion: onMotion, motionRate: motionRate)
+        let view = DoweCanvasInputUIView(state: state, viewWidth: viewWidth, viewHeight: viewHeight, fit: fit, onPointer: onPointer, onKey: onKey, onMotion: onMotion, motionRate: motionRate, draw: draw, drawMode: drawMode, drawModePath: drawModePath, layersPath: layersPath, selectedPath: selectedPath, onLayerAdd: onLayerAdd, onLayerChange: onLayerChange, onLayerRemove: onLayerRemove, onLayerSelect: onLayerSelect)
+        view.selection = selection
+        return view
     }
 
     func updateUIView(_ view: DoweCanvasInputUIView, context: Context) {
-        view.update(state: state, viewWidth: viewWidth, viewHeight: viewHeight, fit: fit, onPointer: onPointer, onKey: onKey, onMotion: onMotion, motionRate: motionRate)
+        view.update(state: state, viewWidth: viewWidth, viewHeight: viewHeight, fit: fit, onPointer: onPointer, onKey: onKey, onMotion: onMotion, motionRate: motionRate, draw: draw, drawMode: drawMode, drawModePath: drawModePath, layersPath: layersPath, selectedPath: selectedPath, onLayerAdd: onLayerAdd, onLayerChange: onLayerChange, onLayerRemove: onLayerRemove, onLayerSelect: onLayerSelect)
     }
 }
 
 @MainActor
 final class DoweCanvasInputUIView: UIView {
+    var selection = DoweCanvasSelection()
     private var state: DoweReactiveState
     private var viewWidth: CGFloat
     private var viewHeight: CGFloat
@@ -249,13 +312,27 @@ final class DoweCanvasInputUIView: UIView {
     private var onKey: String?
     private var onMotion: String?
     private var motionRate: Int
+    private var draw: Bool
+    private var drawMode: String
+    private var drawModePath: String?
+    private var layersPath: String?
+    private var selectedPath: String?
+    private var onLayerAdd: String?
+    private var onLayerChange: String?
+    private var onLayerRemove: String?
+    private var onLayerSelect: String?
     private let started = ProcessInfo.processInfo.systemUptime * 1000
     private var points: [ObjectIdentifier: CGPoint] = [:]
+    private var drawingLayerId: String?
+    private var drawingStart: CGPoint?
+    private var drawingPointer: ObjectIdentifier?
+    private var drawingMode: String?
+    private var nextLayerSequence = 1
     private let motion = CMMotionManager()
 
-    override var canBecomeFirstResponder: Bool { onKey != nil }
+    override var canBecomeFirstResponder: Bool { onKey != nil || layersPath != nil }
 
-    init(state: DoweReactiveState, viewWidth: CGFloat, viewHeight: CGFloat, fit: String, onPointer: String?, onKey: String?, onMotion: String?, motionRate: Int) {
+    init(state: DoweReactiveState, viewWidth: CGFloat, viewHeight: CGFloat, fit: String, onPointer: String?, onKey: String?, onMotion: String?, motionRate: Int, draw: Bool, drawMode: String, drawModePath: String?, layersPath: String?, selectedPath: String?, onLayerAdd: String?, onLayerChange: String?, onLayerRemove: String?, onLayerSelect: String?) {
         self.state = state
         self.viewWidth = viewWidth
         self.viewHeight = viewHeight
@@ -264,6 +341,15 @@ final class DoweCanvasInputUIView: UIView {
         self.onKey = onKey
         self.onMotion = onMotion
         self.motionRate = motionRate
+        self.draw = draw
+        self.drawMode = drawMode
+        self.drawModePath = drawModePath
+        self.layersPath = layersPath
+        self.selectedPath = selectedPath
+        self.onLayerAdd = onLayerAdd
+        self.onLayerChange = onLayerChange
+        self.onLayerRemove = onLayerRemove
+        self.onLayerSelect = onLayerSelect
         super.init(frame: .zero)
         isMultipleTouchEnabled = true
         backgroundColor = .clear
@@ -271,7 +357,7 @@ final class DoweCanvasInputUIView: UIView {
 
     required init?(coder: NSCoder) { nil }
 
-    func update(state: DoweReactiveState, viewWidth: CGFloat, viewHeight: CGFloat, fit: String, onPointer: String?, onKey: String?, onMotion: String?, motionRate: Int) {
+    func update(state: DoweReactiveState, viewWidth: CGFloat, viewHeight: CGFloat, fit: String, onPointer: String?, onKey: String?, onMotion: String?, motionRate: Int, draw: Bool, drawMode: String, drawModePath: String?, layersPath: String?, selectedPath: String?, onLayerAdd: String?, onLayerChange: String?, onLayerRemove: String?, onLayerSelect: String?) {
         self.state = state
         self.viewWidth = viewWidth
         self.viewHeight = viewHeight
@@ -281,40 +367,58 @@ final class DoweCanvasInputUIView: UIView {
         let restart = self.onMotion != onMotion || self.motionRate != motionRate
         self.onMotion = onMotion
         self.motionRate = motionRate
+        self.draw = draw
+        self.drawMode = drawMode
+        self.drawModePath = drawModePath
+        self.layersPath = layersPath
+        self.selectedPath = selectedPath
+        self.onLayerAdd = onLayerAdd
+        self.onLayerChange = onLayerChange
+        self.onLayerRemove = onLayerRemove
+        self.onLayerSelect = onLayerSelect
         if restart { stopMotion(); startMotion() }
     }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        if window == nil { stopMotion(); points.removeAll() } else { startMotion() }
+        if window == nil {
+            if let pointer = drawingPointer { updateLayer(at: .zero, kind: "cancel", pointer: pointer) }
+            stopMotion()
+            points.removeAll()
+        } else { startMotion() }
     }
 
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) { if onKey != nil { becomeFirstResponder() }; emitTouches(touches, kind: "down", event: event) }
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) { if onKey != nil || layersPath != nil { becomeFirstResponder() }; emitTouches(touches, kind: "down", event: event) }
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) { emitTouches(touches, kind: "move", event: event) }
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { emitTouches(touches, kind: "up", event: event) }
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { emitTouches(touches, kind: "cancel", event: event) }
 
     private func emitTouches(_ touches: Set<UITouch>, kind: String, event: UIEvent?) {
-        guard let action = onPointer else { return }
+        guard onPointer != nil || layersPath != nil else { return }
         let primary = event?.allTouches?.first
         for touch in touches {
             let id = ObjectIdentifier(touch)
             let raw = touch.location(in: self)
             let logical = logicalPoint(raw)
             let previous = points[id] ?? logical.point
+            if kind != "down" || logical.inside {
+                updateLayer(at: logical.point, kind: kind, pointer: id)
+            }
             let pointerType: String
             switch touch.type { case .pencil: pointerType = "pen"; case .indirectPointer: pointerType = "mouse"; default: pointerType = "touch" }
-            state.run(action, item: [
-                "source": "pointer", "kind": kind, "pointerType": pointerType, "id": id.hashValue,
-                "x": logical.point.x, "y": logical.point.y, "dx": logical.point.x - previous.x, "dy": logical.point.y - previous.y,
-                "inside": logical.inside, "buttons": kind == "up" || kind == "cancel" ? 0 : 1, "pressure": touch.maximumPossibleForce > 0 ? min(1, max(0, touch.force / touch.maximumPossibleForce)) : (kind == "up" || kind == "cancel" ? 0 : 1),
-                "primary": primary.map { touch === $0 } ?? false, "timestamp": timestamp()
-            ])
+            if let action = onPointer {
+                state.run(action, item: [
+                    "source": "pointer", "kind": kind, "pointerType": pointerType, "id": id.hashValue,
+                    "x": logical.point.x, "y": logical.point.y, "dx": logical.point.x - previous.x, "dy": logical.point.y - previous.y,
+                    "inside": logical.inside, "buttons": kind == "up" || kind == "cancel" ? 0 : 1, "pressure": touch.maximumPossibleForce > 0 ? min(1, max(0, touch.force / touch.maximumPossibleForce)) : (kind == "up" || kind == "cancel" ? 0 : 1),
+                    "primary": primary.map { touch === $0 } ?? false, "timestamp": timestamp()
+                ])
+            }
             if kind == "up" || kind == "cancel" { points.removeValue(forKey: id) } else { points[id] = logical.point }
         }
     }
 
-    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) { emitPresses(presses, kind: "down"); super.pressesBegan(presses, with: event) }
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) { removeSelectedIfNeeded(presses); emitPresses(presses, kind: "down"); super.pressesBegan(presses, with: event) }
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) { emitPresses(presses, kind: "up"); super.pressesEnded(presses, with: event) }
 
     private func emitPresses(_ presses: Set<UIPress>, kind: String) {
@@ -326,6 +430,169 @@ final class DoweCanvasInputUIView: UIView {
                 "source": "key", "kind": kind, "key": key.charactersIgnoringModifiers, "code": String(key.keyCode.rawValue), "repeat": false,
                 "alt": flags.contains(.alternate), "ctrl": flags.contains(.control), "meta": flags.contains(.command), "shift": flags.contains(.shift), "timestamp": timestamp()
             ])
+        }
+    }
+
+    private func activeDrawMode() -> String {
+        drawModePath.flatMap { state.canvasValue($0).map { String(describing: $0) } } ?? drawMode
+    }
+
+    private func layerRows() -> [[String: Any]] {
+        guard let layersPath else { return [] }
+        return state.canvasValue(layersPath) as? [[String: Any]] ?? []
+    }
+
+    private func layerId(_ layer: [String: Any]) -> String { layer["id"] as? String ?? "" }
+
+    private func layerHit(_ layer: [String: Any], point: CGPoint) -> Bool {
+        var layer = layer
+        for (field, path) in layer["bind"] as? [String: String] ?? [:] {
+            if let value = state.canvasValue(path) { layer[field] = value }
+        }
+        let x = number(layer["x"])
+        let y = number(layer["y"])
+        switch String(describing: layer["type"] ?? "") {
+        case "circle":
+            let radius = number(layer["radius"])
+            return hypot(point.x - x, point.y - y) <= radius + max(4, number(layer["strokeWidth"], fallback: 1))
+        case "rect", "image":
+            return point.x >= x && point.x <= x + number(layer["width"]) && point.y >= y && point.y <= y + number(layer["height"])
+        case "line":
+            return segmentDistance(point, start: CGPoint(x: number(layer["x1"]), y: number(layer["y1"])), end: CGPoint(x: number(layer["x2"]), y: number(layer["y2"]))) <= max(4, number(layer["strokeWidth"], fallback: 1))
+        case "polyline":
+            let points = (layer["points"] as? [[String: Any]] ?? []).map { CGPoint(x: number($0["x"]), y: number($0["y"])) }
+            let tolerance = max(6, number(layer["strokeWidth"], fallback: 1))
+            if points.count == 1, let first = points.first { return hypot(point.x - first.x, point.y - first.y) <= tolerance }
+            if layer["closed"] as? Bool == true, let first = points.first, let last = points.last,
+               segmentDistance(point, start: last, end: first) <= tolerance { return true }
+            return zip(points, points.dropFirst()).contains { segmentDistance(point, start: $0.0, end: $0.1) <= tolerance }
+        case "text":
+            let size = max(1, number(layer["size"], fallback: 16))
+            let width = CGFloat(max(1, String(describing: layer["text"] ?? "").utf16.count)) * size * 0.6
+            let align = layer["align"] as? String ?? "start"
+            let left = align == "center" ? x - width / 2 : align == "end" ? x - width : x
+            return point.x >= left && point.x <= left + width && point.y >= y - size && point.y <= y
+        default:
+            return false
+        }
+    }
+
+    private func segmentDistance(_ point: CGPoint, start: CGPoint, end: CGPoint) -> CGFloat {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = dx * dx + dy * dy
+        let t = length == 0 ? 0 : min(1, max(0, ((point.x - start.x) * dx + (point.y - start.y) * dy) / length))
+        return hypot(point.x - start.x - t * dx, point.y - start.y - t * dy)
+    }
+
+    private func selectedLayerId() -> String {
+        selectedPath.map { state.canvasValue($0) as? String ?? "" } ?? selection.id
+    }
+
+    private func selectLayer(_ id: String) {
+        if let selectedPath { state.write(selectedPath, value: id) } else { selection.id = id }
+    }
+
+    private func finishDrawing() {
+        drawingLayerId = nil
+        drawingStart = nil
+        drawingPointer = nil
+        drawingMode = nil
+    }
+
+    private func removeLayer(_ id: String) {
+        guard let layersPath else { return }
+        var rows = layerRows()
+        guard let index = rows.firstIndex(where: { layerId($0) == id }) else { return }
+        let removed = rows.remove(at: index)
+        state.write(layersPath, value: rows)
+        if selectedLayerId() == id { selectLayer("") }
+        if drawingLayerId == id { finishDrawing() }
+        runLayerEvent(onLayerRemove, event: "remove", layer: removed)
+    }
+
+    private func runLayerEvent(_ action: String?, event: String, layer: [String: Any]?) {
+        guard let action else { return }
+        state.run(action, item: ["event": event, "layer": layer ?? [:]])
+    }
+
+    private func updateLayer(at point: CGPoint, kind: String, pointer: ObjectIdentifier) {
+        guard let layersPath else { return }
+        var rows = layerRows()
+        if kind == "down" {
+            guard draw, drawingPointer == nil else { return }
+            let mode = activeDrawMode()
+            if mode == "select" || mode == "erase" {
+                let selected = rows.reversed().first { layerId($0).isEmpty == false && layerHit($0, point: point) }
+                let id = selected.map(layerId) ?? ""
+                if mode == "erase" {
+                    if !id.isEmpty { removeLayer(id) }
+                } else {
+                    selectLayer(id)
+                    runLayerEvent(onLayerSelect, event: "select", layer: selected)
+                }
+                return
+            }
+            let used = Set(rows.map(layerId))
+            while used.contains("layer-\(nextLayerSequence)") { nextLayerSequence += 1 }
+            let id = "layer-\(nextLayerSequence)"
+            nextLayerSequence += 1
+            let layer: [String: Any]
+            if mode == "rect" {
+                layer = ["id": id, "type": "rect", "x": point.x, "y": point.y, "width": 0, "height": 0, "fill": "transparent", "stroke": "primary", "strokeWidth": 3, "radius": 4]
+            } else if mode == "circle" {
+                layer = ["id": id, "type": "circle", "x": point.x, "y": point.y, "radius": 0, "fill": "transparent", "stroke": "primary", "strokeWidth": 3]
+            } else {
+                layer = ["id": id, "type": "polyline", "points": [["x": point.x, "y": point.y]], "stroke": "primary", "strokeWidth": 3, "closed": false]
+            }
+            rows.append(layer)
+            state.write(layersPath, value: rows)
+            drawingLayerId = id
+            drawingStart = point
+            drawingPointer = pointer
+            drawingMode = mode
+            return
+        }
+        guard drawingPointer == pointer else { return }
+        guard let drawingLayerId, let index = rows.firstIndex(where: { layerId($0) == drawingLayerId }), let start = drawingStart, let mode = drawingMode else { finishDrawing(); return }
+        var layer = rows[index]
+        if kind == "move" || kind == "up" {
+            if mode == "rect" {
+                layer["x"] = min(start.x, point.x); layer["y"] = min(start.y, point.y)
+                layer["width"] = abs(point.x - start.x); layer["height"] = abs(point.y - start.y)
+            } else if mode == "circle" {
+                layer["x"] = (start.x + point.x) / 2; layer["y"] = (start.y + point.y) / 2
+                layer["radius"] = hypot(point.x - start.x, point.y - start.y) / 2
+            } else {
+                var points = layer["points"] as? [[String: Any]] ?? []
+                if points.last.map({ number($0["x"]) != point.x || number($0["y"]) != point.y }) ?? true {
+                    points.append(["x": point.x, "y": point.y])
+                }
+                layer["points"] = points
+            }
+            rows[index] = layer
+            state.write(layersPath, value: rows)
+        }
+        if kind == "up" {
+            selectLayer(drawingLayerId)
+            finishDrawing()
+            runLayerEvent(onLayerAdd, event: "add", layer: layer)
+            runLayerEvent(onLayerChange, event: "change", layer: layer)
+        } else if kind == "cancel" {
+            rows.remove(at: index)
+            state.write(layersPath, value: rows)
+            finishDrawing()
+        }
+    }
+
+    private func removeSelectedIfNeeded(_ presses: Set<UIPress>) {
+        guard layersPath != nil else { return }
+        for press in presses {
+            guard let key = press.key else { continue }
+            let value = key.charactersIgnoringModifiers
+            guard key.keyCode == .keyboardDeleteOrBackspace || key.keyCode == .keyboardDeleteForward || value == "\u{8}" || value == "\u{7f}" || value.lowercased() == "delete" else { continue }
+            let selected = selectedLayerId()
+            if !selected.isEmpty { removeLayer(selected) }
         }
     }
 
@@ -363,6 +630,12 @@ final class DoweCanvasInputUIView: UIView {
 
     private func screenVector(x: Double, y: Double) -> (x: Double, y: Double) {
         switch window?.windowScene?.interfaceOrientation { case .landscapeLeft: return (-y, x); case .landscapeRight: return (y, -x); case .portraitUpsideDown: return (-x, -y); default: return (x, y) }
+    }
+
+    private func number(_ value: Any?, fallback: CGFloat = 0) -> CGFloat {
+        if let number = value as? NSNumber { return CGFloat(number.doubleValue) }
+        if let text = value as? String, let number = Double(text) { return CGFloat(number) }
+        return fallback
     }
 
     private func timestamp() -> Double { max(0, ProcessInfo.processInfo.systemUptime * 1000 - started) }

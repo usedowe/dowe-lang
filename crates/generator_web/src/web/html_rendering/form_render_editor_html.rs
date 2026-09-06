@@ -33,8 +33,9 @@ fn render_editor_html(props: &EditorProps, context: &ReactiveRenderContext) -> S
             )
         })
         .unwrap_or_default();
-    let extra = format!(
-        r#" data-dowe-editor style="--dowe-editor-min-height:{}px"{}{}{}"#,
+    let mut extra = format!(
+        r#" data-dowe-editor data-dowe-editor-language="{}" style="--dowe-editor-min-height:{}px"{}{}{}"#,
+        props.language.as_str(),
         props.min_height,
         bind_attr(props.style.element.bind.as_deref(), context),
         if props.disabled {
@@ -48,8 +49,15 @@ fn render_editor_html(props: &EditorProps, context: &ReactiveRenderContext) -> S
             ""
         }
     );
+    if let Some(action) = props.on_save.as_ref() {
+        extra.push_str(&format!(
+            r#" data-dowe-editor-save="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    extra.push_str(&reactive_variant_attrs(&props.style, context, "is-"));
     let body = format!(
-        r#"<div{}>{hidden}<div class="editor-toolbar">{toolbar}</div><div class="editor-content" contenteditable="{}" role="textbox" aria-multiline="true" data-dowe-editor-content placeholder="{}">{}</div></div>"#,
+        r#"<div{}>{hidden}<div class="editor-toolbar">{toolbar}</div><div class="editor-stage"><pre class="editor-highlight" aria-hidden="true"><code data-dowe-editor-highlight></code></pre><div class="editor-content" contenteditable="{}" spellcheck="false" autocapitalize="off" autocorrect="off" tabindex="0" role="textbox" aria-multiline="true" data-dowe-editor-content placeholder="{}">{}</div></div></div>"#,
         attrs(
             variant_classes("editor", &props.style),
             Some(&props.style.element),
@@ -72,4 +80,3 @@ fn render_editor_html(props: &EditorProps, context: &ReactiveRenderContext) -> S
         context,
     )
 }
-

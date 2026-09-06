@@ -1,4 +1,67 @@
 #[test]
+fn parses_native_ipc_function_registrations_without_desktop_server() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("server")).expect("server");
+    fs::write(
+        temp.path().join("server/settings.dowe"),
+        "fn readSettings return:\"string\"\n  return value:\"ready\"\n",
+    )
+    .expect("function");
+    let source = "import readSettings from \"@/server/settings\"\n\nmain\n  ipc functions:[readSettings]\n";
+    let file = parse_source_file(temp.path(), &temp.path().join("main.dowe"), source.to_string()).expect("source");
+    let server = parse_server_source(temp.path(), &file, &EnvironmentConfig::default()).expect("server");
+    assert!(server.desktop_server.is_none());
+    assert_eq!(server.native_ipc.functions[0].name, "readSettings");
+}
+
+#[test]
+fn registers_imported_databases_for_native_ipc() {
+    let root = TempDir::new().expect("root");
+    fs::write(
+        root.path().join("server-config.dowe"),
+        r#"database LocalDb provider:"dowe" host:"local" port:1 account:"app" secret:"secret" name:"apps" entities:[] seeders:[]"#,
+    )
+    .expect("database config");
+    fs::create_dir_all(root.path().join("server")).expect("server");
+    fs::write(
+        root.path().join("server/settings.dowe"),
+        "fn readSettings return:\"string\"\n  return value:\"ready\"\n",
+    )
+    .expect("function");
+    let main_path = root.path().join("main.dowe");
+    let main = parse_source_file(
+        root.path(),
+        &main_path,
+        r#"import LocalDb from "@/server-config"
+import readSettings from "@/server/settings"
+
+main
+  ipc functions:[readSettings] databases:[LocalDb]"#
+            .to_string(),
+    )
+    .expect("main");
+    let server = parse_server_source(root.path(), &main, &EnvironmentConfig::default())
+        .expect("server");
+    assert_eq!(server.native_ipc.databases[0].binding, "LocalDb");
+    assert_eq!(server.databases[0].connection.database, "apps");
+}
+
+#[test]
+fn rejects_duplicate_native_ipc_function_registrations() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::create_dir_all(temp.path().join("server")).expect("server");
+    fs::write(
+        temp.path().join("server/settings.dowe"),
+        "fn readSettings return:\"string\"\n  return value:\"ready\"\n",
+    )
+    .expect("function");
+    let source = "import readSettings from \"@/server/settings\"\n\nmain\n  ipc functions:[readSettings readSettings]\n";
+    let file = parse_source_file(temp.path(), &temp.path().join("main.dowe"), source.to_string()).expect("source");
+    let error = parse_server_source(temp.path(), &file, &EnvironmentConfig::default()).expect_err("duplicate");
+    assert!(error.message().contains("duplicate `functions` binding"));
+}
+
+#[test]
 fn parses_main_server_route() {
     let file = parse_source_file(
         Path::new("/project"),

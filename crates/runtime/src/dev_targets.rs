@@ -10,7 +10,7 @@ use crate::dev::{
     RunningExternalProcess,
 };
 use crate::error::{RuntimeError, RuntimeResult};
-use crate::logging::log_info;
+use crate::logging::log_dev_info;
 use dowe_compiler::{CompiledProject, GeneratedFile};
 use dowe_spawn::{KillTarget, ProcessControl, SpawnConfig, SpawnOptions, StreamMode, run, spawn};
 use std::fs;
@@ -78,11 +78,11 @@ pub(super) fn spawn_external(
 }
 
 pub(super) fn print_target_starting(target: DevTarget) {
-    log_info(target_starting_message(target));
+    log_dev_info(target_starting_message(target));
 }
 
 pub(super) fn print_target_started(target: DevTarget) {
-    log_info(target_started_message(target));
+    log_dev_info(target_started_message(target));
 }
 
 fn target_starting_message(target: DevTarget) -> String {

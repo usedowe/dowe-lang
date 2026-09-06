@@ -132,6 +132,7 @@ fn render_dev_android_node_body(
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::AvatarGroup { .. }
         | ViewNode::ChatBox { .. }
         | ViewNode::Empty { .. }

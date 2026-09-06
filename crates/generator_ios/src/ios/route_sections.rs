@@ -39,6 +39,7 @@ fn ios_route_expression_weight(node: &ViewNode) -> usize {
         ViewNode::SelectTheme { .. } => 16,
         ViewNode::Code { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::RichText { .. }
         | ViewNode::Map { .. }
         | ViewNode::Canvas { .. }

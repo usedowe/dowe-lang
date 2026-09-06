@@ -828,7 +828,7 @@ fn dev_activity_drawables_media() -> &'static str {
         }
     }
 
-    private FrameLayout doweDevice(String profile, String source, String title, boolean scripts, boolean autoplay, DoweDeviceOption[] options) {
+    private FrameLayout doweDevice(String profile, String source, String title, boolean scripts, boolean autoplay, boolean hideControls, DoweDeviceOption[] options) {
         FrameLayout container = new FrameLayout(this);
         LinearLayout column = new LinearLayout(this);
         column.setOrientation(LinearLayout.VERTICAL);
@@ -848,11 +848,11 @@ fn dev_activity_drawables_media() -> &'static str {
             button.addView(option.icon, new FrameLayout.LayoutParams(doweDp(24), doweDp(24), Gravity.CENTER));
             LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(doweDp(40), doweDp(40));
             buttonParams.setMargins(doweDp(2), doweDp(4), doweDp(2), doweDp(4));
-            toolbar.addView(button, buttonParams);
+            if (!hideControls) toolbar.addView(button, buttonParams);
             buttons[index] = button;
         }
         stage.addView(preview);
-        column.addView(toolbar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (!hideControls) column.addView(toolbar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         column.addView(stage, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         container.addView(column, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         stage.post(() -> doweSetDeviceProfile(stage, preview, profile, options, buttons));

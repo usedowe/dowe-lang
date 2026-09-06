@@ -272,6 +272,7 @@ pub fn collect_node_font_families(node: &ViewNode, fonts: &mut BTreeSet<FontFami
         }
         ViewNode::PieChart { props } => collect_style_font_families(&props.common.style.style, fonts),
         ViewNode::Table { props } => collect_style_font_families(&props.style.style, fonts),
+        ViewNode::Tree { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Divider { props } => collect_style_font_families(&props.style, fonts),
         ViewNode::Alert { props } => collect_style_font_families(&props.style.style, fonts),
         ViewNode::Svg { .. } => {}

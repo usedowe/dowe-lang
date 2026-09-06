@@ -33,6 +33,7 @@ pub fn csv_field_component_node(
                 preview_page_size = parse_u16_in_range(&prop.name, &prop.value, 1, 500)?
             }
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_button_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::CsvField)),
             _ => style_props.push(prop),
@@ -41,7 +42,9 @@ pub fn csv_field_component_node(
     let mut style = parse_variant_props(BuiltinComponent::CsvField, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     Ok(ViewNode::CsvField {
         props: CsvFieldProps {
             style,
@@ -119,12 +122,14 @@ pub fn drag_drop_component_node(
                 allow_group_transfer = parse_static_bool(&prop.name, &prop.value)?
             }
             "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::DragDrop)),
             _ => style_props.push(prop),
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::DragDrop, &style_props)?;
+    let size = style.size.unwrap_or(size);
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Muted);
     Ok(ViewNode::DragDrop {
@@ -192,4 +197,3 @@ pub fn drag_item_component(props: Vec<ComponentProp>) -> ComponentResult<DragIte
         disabled,
     })
 }
-

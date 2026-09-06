@@ -57,18 +57,18 @@ function hydrateScrollDockingAppBars(root) {
     });
   }
 }
-function hydrate(
+function prepareHydration(
   route,
   modules,
   preserveLayouts = false,
   preserveState = false
 ) {
   const root = reactiveRoot(route);
-  if (!root) return;
+  if (!root) return null;
   const previous = activeView;
   const visualization = runtimeCapability("visualization");
   visualization?.closeCandlestickStreams(previous);
-  visualization?.closeCanvasFrames(previous);
+  closeCanvasFrames(previous);
   closeCameraFrames(previous);
   closeMicrophoneFrames(previous);
   const constants = {};
@@ -113,7 +113,7 @@ function hydrate(
       }
     }
   }
-  activeView = {
+  const view = {
     root,
     constants,
     state,
@@ -124,16 +124,23 @@ function hydrate(
     globalIds,
     signalNames
   };
-  updateRuntimeActiveView(activeView);
-  renderReactive(activeView);
-  visualization?.hydrateCanvases(activeView);
+  activeView = view;
+  updateRuntimeActiveView(view);
+  renderReactive(view);
+  renderNavigationActive(root, route.path);
+  return { route, root, view, visualization, initializers, autoload };
+}
+function finishHydration(prepared) {
+  if (!prepared || activeView !== prepared.view) return;
+  const { route, root, view, visualization, initializers, autoload } = prepared;
+  hydrateCanvases(view);
   hydrateTranslations(root);
   hydrateVideos(root);
   hydrateAudios(root);
   hydrateRecords(root);
   hydrateCarousels(root);
-  visualization?.hydrateCandlesticks(activeView);
-  visualization?.hydrateDiagrams(activeView);
+  visualization?.hydrateCandlesticks(view);
+  visualization?.hydrateDiagrams(view);
   hydrateTypeWriters(root);
   hydrateRichTexts(root);
   hydrateCountdowns(root);
@@ -147,12 +154,21 @@ function hydrate(
   hydrateScrollDockingAppBars(root);
   hydrateAppBarMobileMenus(root);
   hydrateNavTreeSubmenus(root, "sidenav");
-  renderNavigationActive(root, route.path);
   releaseEntranceAnimations();
   void (async () => {
     for (const id of initializers) await runAction(id, null);
     for (const id of autoload) await runAction(id, null);
   })();
+}
+function hydrate(
+  route,
+  modules,
+  preserveLayouts = false,
+  preserveState = false
+) {
+  finishHydration(
+    prepareHydration(route, modules, preserveLayouts, preserveState),
+  );
 }
 function captureBoundState(root) {
   const values = {};

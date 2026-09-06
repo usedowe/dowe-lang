@@ -1,11 +1,12 @@
 pub use dowe_agent::{
-    AgentCodeGraphNodeSummary, AgentCodeGraphSummary, AgentContext, AgentDesktopEvent,
-    AgentDesktopEventKind, AgentHarnessSummary, AgentImageInput, AgentMessage, AgentMessageContent,
-    AgentMessagePart, AgentPrepareOptions, AgentPreparedRequest, AgentRequest,
-    AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
-    AgentToolDefinition, AgentToolFunction, DoweProjectInitReport, ImageUrl, ProjectContext,
-    PublicExampleResult, PublicExampleSearch, PublicSkill, PublicSkillDocument,
-    PublicSkillResourceDocument,
+    AgentAuthKind, AgentAuthStore, AgentCodeGraphNodeSummary, AgentCodeGraphSummary, AgentContext,
+    AgentCredential, AgentCredentialStatus, AgentDesktopEvent, AgentDesktopEventKind,
+    AgentHarnessSummary, AgentImageInput, AgentMessage, AgentMessageContent, AgentMessagePart,
+    AgentModelDefinition, AgentPrepareOptions, AgentPreparedRequest, AgentProviderDefinition,
+    AgentProviderInfo, AgentProviderProtocol, AgentRequest, AgentRequestMetadata, AgentRequestType,
+    AgentServerResponse, AgentSkillSummary, AgentToolDefinition, AgentToolFunction, ImageUrl,
+    ProjectContext, PublicExampleResult, PublicExampleSearch, PublicSkill, PublicSkillDocument,
+    PublicSkillResourceDocument, ResolvedProviderAuth,
 };
 pub use dowe_agent_harness::{
     CheckReport, DetectedMode, Diagnostic, HarnessManifest, HarnessMode, InitOptions, InitReport,
@@ -16,16 +17,24 @@ pub use dowe_codegraph::{
     CodeGraphMode, Diagnostic as CodeGraphDiagnostic, NodeExplanation, WrittenReports,
 };
 use dowe_compiler::{CompiledProject, DoweResult, compile_dev};
+pub use dowe_compiler::{NativeIpcConfig, NativeIpcFunction, NativeIpcTarget};
 pub use dowe_deploy::{
     BuildOptions, BuildReport, BuildTarget, DeployEnvironment, DeployOptions, DeployReport,
     DeploySurface, DeployTarget, available_build_targets, available_deploy_surfaces,
     deploy_targets_for_surface,
 };
 pub use dowe_icons::{GenerateIconOptions, IconReport, IconRounded, IconTarget};
+pub use dowe_notifications::{
+    Delivery, DeliveryStatus, Installation, NotificationError, NotificationIntent,
+    NotificationPayload, NotificationPlatform, NotificationProvider, NotificationResult,
+    NotificationStore, PlatformCapabilities, platform_capabilities,
+};
 pub use dowe_runtime::{
-    DevTarget, DevTargetSelection, HostOs, InitProjectOptions, ProjectTemplate, RunningDevSession,
-    RuntimeResult, available_dev_targets, available_project_templates, default_dev_targets,
-    has_dowe_project_marker, start_dev_session,
+    DevTarget, DevTargetSelection, HostOs, RunningDevSession, RuntimeResult, available_dev_targets,
+    available_project_templates, default_dev_targets, has_dowe_project_marker, start_dev_session,
+};
+pub use dowe_runtime::{
+    enqueue_notification, open_notification_store, register_notification_installation,
 };
 pub use dowe_spawn::{
     EnvMode, KillTarget, PtyOptions, Signal, SpawnConfig, SpawnEvent, SpawnOptions, SpawnOutput,
@@ -86,30 +95,28 @@ pub async fn send_agent_request(
     dowe_agent::send_agent_request(server_url, request).await
 }
 
+pub async fn send_native_agent_request(
+    request: &AgentRequest,
+    auth: &ResolvedProviderAuth,
+) -> dowe_agent::AgentResult<AgentServerResponse> {
+    dowe_agent::send_native_agent_request(request, auth).await
+}
+
+pub fn list_agent_providers(
+    auth_store: &AgentAuthStore,
+) -> dowe_agent::AgentResult<Vec<AgentProviderInfo>> {
+    dowe_agent::builtin_provider_info(auth_store)
+}
+
+pub fn list_agent_provider_models(id: &str) -> &'static [AgentModelDefinition] {
+    dowe_agent::provider_models(id)
+}
+
 pub fn init_agent_harness(
     root: impl AsRef<Path>,
     options: InitOptions,
 ) -> dowe_agent_harness::HarnessResult<InitReport> {
     dowe_agent_harness::init_project_harness(root, options)
-}
-
-pub fn init_external_agent_project(
-    root: impl AsRef<Path>,
-) -> dowe_agent_harness::HarnessResult<InitReport> {
-    dowe_agent::init_external_agent_project(root)
-}
-
-pub fn init_dowe_project(
-    root: impl AsRef<Path>,
-    options: InitProjectOptions,
-) -> dowe_agent::AgentResult<DoweProjectInitReport> {
-    dowe_agent::init_dowe_project(root, options)
-}
-
-pub fn update_external_agent_project(
-    root: impl AsRef<Path>,
-) -> dowe_agent_harness::HarnessResult<InitReport> {
-    dowe_agent::update_external_agent_project(root)
 }
 
 pub fn check_agent_harness(
@@ -189,11 +196,24 @@ pub async fn run_spawn(config: SpawnConfig) -> SpawnResult<SpawnOutput> {
     dowe_spawn::run_async(config).await
 }
 
+pub async fn invoke_native_function(
+    project: &CompiledProject,
+    target: NativeIpcTarget,
+    function: &str,
+    args: serde_json::Value,
+) -> RuntimeResult<serde_json::Value> {
+    dowe_runtime::invoke_native_function(project, target, function, args).await
+}
+
 pub async fn run_dev_targets(
     root: impl AsRef<Path>,
     selection: DevTargetSelection,
 ) -> RuntimeResult<()> {
     dowe_runtime::run_dev(root, selection).await
+}
+
+pub async fn run_studio(root: impl AsRef<Path>) -> RuntimeResult<()> {
+    dowe_runtime::run_studio(root).await
 }
 
 #[cfg(test)]

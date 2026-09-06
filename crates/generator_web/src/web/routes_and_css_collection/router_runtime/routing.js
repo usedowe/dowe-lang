@@ -1,18 +1,37 @@
 async function loadRouteModules(route, version = "") {
-  await Promise.all(
+  const runtime = Promise.all(
     (route.runtimeChunks || []).map((path) => loadChunk(path, version)),
   );
-  const modules = [];
-  for (const path of route.jsChunks)
-    modules.push(await loadChunk(path, version));
-  return modules;
+  const modules = Promise.all(
+    (route.jsChunks || []).map((path) => loadChunk(path, version)),
+  );
+  const [, loadedModules] = await Promise.all([runtime, modules]);
+  return loadedModules;
 }
-async function renderFull(route, version = "") {
-  const modules = await loadRouteModules(route, version);
+const routeModulePromises = new Map();
+function routeModuleCacheKey(route) {
+  return [route.path, ...(route.runtimeChunks || []), ...(route.jsChunks || [])].join("|");
+}
+function cachedRouteModules(route) {
+  const key = routeModuleCacheKey(route);
+  const existing = routeModulePromises.get(key);
+  if (existing) return existing;
+  const promise = loadRouteModules(route).catch((error) => {
+    routeModulePromises.delete(key);
+    throw error;
+  });
+  routeModulePromises.set(key, promise);
+  return promise;
+}
+function preloadRoute(route) {
+  preloadRouteCss(route);
+  return cachedRouteModules(route);
+}
+function renderFullFromModules(route, modules) {
   const page = modules[modules.length - 1];
   let html = wrapPage(route, page.render());
   for (let i = modules.length - 2; i >= 0; i--) html = modules[i].render(html);
-  return { html: wrapLayout(route, html), modules };
+  return wrapLayout(route, html);
 }
 function fragmentAppBarInset(target) {
   const scaffold = target.closest(".scaffold");
@@ -93,9 +112,71 @@ function updateHistory(route, fragment, replace, write) {
     location.hash = href;
   }
 }
-async function runPageTransition(update) {
-  if (!document.startViewTransition || prefersReducedMotion()) {
-    await update();
+function clearPageTransitionState() {
+  document.documentElement.classList.remove(
+    "page-transitioning",
+    "page-transition-fallback",
+  );
+  document.documentElement.removeAttribute("data-dowe-page-transition");
+  clearPageEntranceSuppression(document.getElementById("dowe-app"));
+}
+function waitForPageTransition(target) {
+  return new Promise((resolve) => {
+    const finish = (event) => {
+      if (
+        event &&
+        (event.target !== target ||
+          (event.propertyName && event.propertyName !== "opacity"))
+      )
+        return;
+      clearTimeout(timeout);
+      target.removeEventListener("transitionend", finish);
+      target.removeEventListener("transitioncancel", finish);
+      resolve();
+    };
+    const durationValue =
+      (getComputedStyle(target).transitionDuration || "0s").split(",")[0].trim();
+    const duration = durationValue.trim().endsWith("ms")
+      ? parseFloat(durationValue)
+      : parseFloat(durationValue) * 1000;
+    const timeout = setTimeout(finish, Math.max(50, duration + 50));
+    target.addEventListener("transitionend", finish);
+    target.addEventListener("transitioncancel", finish);
+  });
+}
+async function runCssPageTransition(update, afterReady = null) {
+  document.documentElement.classList.add(
+    "page-transitioning",
+    "page-transition-fallback",
+  );
+  document.documentElement.setAttribute("data-dowe-page-transition", "fade");
+  let target = null;
+  try {
+    target = await update();
+    if (!target) return;
+    target.classList.add("dowe-page-enter-active");
+    await waitForPageTransition(target);
+    if (afterReady) {
+      await nextAnimationFrame();
+      afterReady(target);
+    }
+  } finally {
+    target?.classList.remove("dowe-page-enter", "dowe-page-enter-active");
+    clearPageTransitionState();
+  }
+}
+function nextAnimationFrame() {
+  return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+async function runPageTransition(update, afterReady = null) {
+  if (prefersReducedMotion()) {
+    const target = await update();
+    afterReady?.(target);
+    clearPageEntranceSuppression(target);
+    return;
+  }
+  if (!document.startViewTransition) {
+    await runCssPageTransition(update, afterReady);
     return;
   }
   document.documentElement.classList.add("page-transitioning");
@@ -104,20 +185,33 @@ async function runPageTransition(update) {
   try {
     transition = document.startViewTransition(update);
   } catch (error) {
-    await update();
+    clearPageTransitionState();
+    await runCssPageTransition(update, afterReady);
     return;
   }
   try {
     await transition.finished.catch(() => {});
+    if (afterReady) {
+      await nextAnimationFrame();
+      afterReady();
+    }
   } finally {
-    document.documentElement.classList.remove("page-transitioning");
-    document.documentElement.removeAttribute("data-dowe-page-transition");
+    clearPageTransitionState();
   }
 }
-async function navigate(value, options = {}) {
+let navigationQueue = Promise.resolve();
+function navigate(value, options = {}) {
+  const task = navigationQueue.then(() => navigateRoute(value, options));
+  navigationQueue = task.catch(() => {});
+  return task;
+}
+async function navigateRoute(value, options = {}) {
   const destination = splitDestination(value);
-  await syncDevRoutes();
-  const route = routes[destination.path] || null;
+  let route = routes[destination.path] || null;
+  if (!route) {
+    await syncDevRoutes();
+    route = routes[destination.path] || null;
+  }
   if (!route) {
     if (options.writeHistory !== false) location.href = value;
     return;
@@ -140,38 +234,49 @@ async function navigate(value, options = {}) {
     return;
   }
   try {
-    await loadRouteCss(route);
-    prepareEntranceAnimations();
+    const [, modules] = await Promise.all([
+      loadRouteCss(route),
+      cachedRouteModules(route),
+    ]);
+    const pagePathChanged = !currentRoute || currentRoute.path !== route.path;
     const preserveLayouts = !!(
       currentRoute &&
       currentRoute.layoutChunks.join("|") === route.layoutChunks.join("|")
     );
-    let modules = null;
-    await runPageTransition(async () => {
+    let prepared = null;
+    const updateRoute = async () => {
       if (preserveLayouts) {
-        modules = await loadRouteModules(route);
         const page = modules[modules.length - 1];
         const boundary = document.querySelector(
           '[data-dowe-boundary^="page:"]',
         );
         if (boundary) boundary.outerHTML = wrapPage(route, page.render());
-        else {
-          const rendered = await renderFull(route);
-          app.innerHTML = rendered.html;
-          modules = rendered.modules;
-        }
+        else app.innerHTML = renderFullFromModules(route, modules);
       } else {
-        const rendered = await renderFull(route);
-        app.innerHTML = rendered.html;
-        modules = rendered.modules;
+        app.innerHTML = renderFullFromModules(route, modules);
       }
       app.dataset.doweRoute = route.path;
       currentRoute = route;
       currentFragment = destination.fragment;
       pruneCss(route);
-    });
+      if (pagePathChanged) {
+        suppressPageEntranceAnimations(preserveLayouts ? document.querySelector('[data-dowe-boundary^="page:"]') || app : app);
+        prepared = prepareHydration(route, modules, preserveLayouts);
+        const target = pageEntranceBoundary(app) || app;
+        if (document.documentElement.classList.contains("page-transition-fallback")) {
+          preparePageTransitionFallback(target);
+          await nextAnimationFrame();
+        }
+      }
+      return pageEntranceBoundary(app) || app;
+    };
+    if (pagePathChanged)
+      await runPageTransition(updateRoute, () => finishHydration(prepared));
+    else {
+      await updateRoute();
+      hydrate(route, modules, preserveLayouts);
+    }
     applyRouteMetadata(route);
-    hydrate(route, modules, preserveLayouts);
     updateHistory(
       route,
       currentFragment,
@@ -235,36 +340,37 @@ async function hotUpdate(version = "") {
   const boundState = captureBoundState(app);
   routes = nextRoutes;
   await refreshDesignCss(manifest.designCss, version);
+  const modulesPromise = loadRouteModules(route, version);
   await loadRouteCss(route, version);
-  prepareEntranceAnimations();
+  const modules = await modulesPromise;
   const preserveLayouts = !!(
     previousRoute &&
     previousRoute.layoutChunks.join("|") === route.layoutChunks.join("|")
   );
-  let modules = null;
+  let prepared = null;
   await runPageTransition(async () => {
     if (preserveLayouts) {
-      modules = await loadRouteModules(route, version);
       const page = modules[modules.length - 1];
       const boundary = document.querySelector('[data-dowe-boundary^="page:"]');
       if (boundary) boundary.outerHTML = wrapPage(route, page.render());
-      else {
-        const rendered = await renderFull(route, version);
-        app.innerHTML = rendered.html;
-        modules = rendered.modules;
-      }
+      else app.innerHTML = renderFullFromModules(route, modules);
     } else {
-      const rendered = await renderFull(route, version);
-      app.innerHTML = rendered.html;
-      modules = rendered.modules;
+      app.innerHTML = renderFullFromModules(route, modules);
     }
     app.dataset.doweRoute = route.path;
     currentRoute = route;
     pruneCss(route);
-  });
+    restoreBoundState(boundState);
+    suppressPageEntranceAnimations(preserveLayouts ? document.querySelector('[data-dowe-boundary^="page:"]') || app : app);
+    prepared = prepareHydration(route, modules, preserveLayouts, true);
+    const target = pageEntranceBoundary(app) || app;
+    if (document.documentElement.classList.contains("page-transition-fallback")) {
+      preparePageTransitionFallback(target);
+      await nextAnimationFrame();
+    }
+    return target;
+  }, () => finishHydration(prepared));
   applyRouteMetadata(route);
-  hydrate(route, modules, preserveLayouts, true);
-  restoreBoundState(boundState);
   if (previousRoute?.path !== route.path)
     updateHistory(route, currentFragment, true, true);
   scrollToFragment(currentFragment);

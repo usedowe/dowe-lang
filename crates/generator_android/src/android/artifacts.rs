@@ -1,37 +1,37 @@
 use dowe_components::{
     AccordionItem, AccordionProps, AlertDialogProps, Align, ArcChartProps, AudioProps,
-    AvatarGroupItem, AvatarGroupProps, AvatarProps, AvatarSize, BadgeProps, BarPosition, BarProps, BorderWidth,
-    BottomBarTab, BoxPosition, Breakpoint, ButtonSize, CameraProps, CanvasBackground,
+    AvatarGroupItem, AvatarGroupProps, AvatarProps, AvatarSize, BadgeProps, BarPosition, BarProps,
+    BorderWidth, BottomBarTab, BoxPosition, Breakpoint, ButtonSize, CameraProps, CanvasBackground,
     CarouselOrientation, CarouselProps, CarouselSlide, CarouselVariant, ChartCommonProps,
     ChatBoxProps, CheckboxProps, ChipProps, CodeTemplateSegment, CodeToken, CodeTokenKind,
     CollapsibleProps, ColorFamily, ColorProps, ColorToken, ComboBoxProps, ComboOption,
     CommandEntry, CommandProps, ComponentVariant, CountdownProps, CoverSource, CsvColumn,
     DateProps, DateRangeProps, DesignConfig, DesignTheme, DividerOrientation, DividerProps,
     DragGroup, DragItem, DrawerPosition, DrawerProps, DropdownProps, DropzoneProps, ElementProps,
-    EmptyProps, FabAction, FabProps, FlexDirection, FlexItem, FontConfig, FontFamily, FormValidationRuleKind,
-    GapSize, GapValue, GridAlignment, GridProps, GridTracks, INPUT_HORIZONTAL_PADDING,
-    INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps, MapMarker, MapProps,
-    MapWaypoint, MarqueeProps, MicrophoneProps, ModalProps, NavMenuItem, NavMenuItemProps,
-    NavMenuProps, NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayItemProps,
-    OverlayPaint, PhoneProps, PieChartProps, PositionProps, RadioGroupOrientation, RadioGroupProps,
-    RadioOption, RailNavItem, RailNavProps, RecordProps, ResponsiveValue, RichTextMark,
-    RoundedSize, SIDE_NAV_SUBMENU_ARROW_PATH, ScaffoldProps, ScaleValue, SectionBackground,
-    SelectOption, SelectOptionEach, ShadowSize, SideNavIcon, SideNavItem, SideNavItemProps,
-    SideNavProps, SideNavSize, SidebarProps, SizeValue, SkeletonProps, SliderProps, StyleProps,
-    SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill, SvgProps, SvgTransform, SvgViewBox, TabItem,
-    TableColumn,
-    TableColumnAlign, TableProps, TableSize, TabsProps, TabsVariant, TextAlign, TextProps,
-    TextSize, TextSpacing, TextWeight, ThemeSelectProps, ThemeToggleProps, ToastProps,
-    ToggleGroupItem, ToggleGroupKind, ToggleGroupProps, ToggleProps, TooltipProps,
-    TranslationCatalog, TypeWriterItem, TypeWriterProps, VariantProps, ViewAction, ViewActionKind,
-    ViewAnimation, ViewConstant, ViewForm, ViewFormFieldKind, ViewGesture, ViewNode,
-    ViewRequestAction, ViewRoute, ViewSignal, ViewSignalValue, ViewTransition, VisibilityCondition,
-    collect_route_font_families, collect_view_forms, compose_tree, empty_icon, fixed_box_nodes,
-    fixed_fab_nodes, form_control_min_height, form_control_text_size, node_child_groups,
-    node_element_props, phone_countries, phone_country, phone_country_flag_icon,
-    side_nav_memory_key, side_nav_submenu_arrow_icon, solar_control_icon,
-    text_template_bindings, text_template_segments,
-    text_spacing_em, text_typography, translation_resource_name, view_icon,
+    EmptyProps, FabAction, FabProps, FlexDirection, FlexItem, FontConfig, FontFamily,
+    FormValidationRuleKind, GapSize, GapValue, GridAlignment, GridProps, GridTracks,
+    INPUT_HORIZONTAL_PADDING, INPUT_MIN_HEIGHT, INPUT_TEXT_SIZE, ImageProps, Justify, LayoutProps,
+    MapMarker, MapProps, MapWaypoint, MarqueeProps, MicrophoneProps, ModalProps, NavMenuItem,
+    NavMenuItemProps, NavMenuProps, NavigationAction, OverlayCornerPosition, OverlayEntry,
+    OverlayItemProps, OverlayPaint, PhoneProps, PieChartProps, PositionProps,
+    RadioGroupOrientation, RadioGroupPresentation, RadioGroupProps, RadioOption, RailNavItem,
+    RailNavProps, RecordProps,
+    ResponsiveValue, RichTextMark, RoundedSize, SIDE_NAV_SUBMENU_ARROW_PATH, ScaffoldProps,
+    ScaleValue, SectionBackground, SelectOption, SelectOptionEach, ShadowSize, SideNavIcon,
+    SideNavItem, SideNavItemProps, SideNavProps, SideNavSize, SidebarProps, SizeValue,
+    SkeletonProps, SliderProps, StyleProps, SvgLineCap, SvgLineJoin, SvgPath, SvgPathFill,
+    SvgProps, SvgTransform, SvgViewBox, TabItem, TableColumn, TableColumnAlign, TableProps,
+    TableSize, TabsProps, TabsVariant, TextAlign, TextProps, TextSize, TextSpacing, TextWeight,
+    ThemeSelectProps, ThemeToggleProps, ToastProps, ToggleGroupItem, ToggleGroupKind,
+    ToggleGroupProps, ToggleProps, TooltipProps, TranslationCatalog, TypeWriterItem,
+    TypeWriterProps, VariantProps, ViewAction, ViewActionKind, ViewAnimation, ViewConstant,
+    ViewForm, ViewFormFieldKind, ViewGesture, ViewNode, ViewRequestAction, ViewRoute, ViewSignal,
+    ViewSignalValue, ViewTransition, VisibilityCondition, collect_route_font_families,
+    collect_view_forms, compose_tree, empty_icon, fixed_box_nodes, fixed_fab_nodes,
+    form_control_min_height, form_control_text_size, node_child_groups, node_element_props,
+    phone_countries, phone_country, phone_country_flag_icon, side_nav_memory_key,
+    side_nav_submenu_arrow_icon, solar_control_icon, text_spacing_em, text_template_bindings,
+    text_template_segments, text_typography, translation_resource_name, view_icon,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -195,6 +195,14 @@ pub fn generate_android_with_app_translations_and_icons(
         },
         AndroidArtifact {
             relative_path: PathBuf::from(
+                "apps/android/app/src/main/java/dev/dowe/generated/DoweNotifications.kt",
+            ),
+            content: android_notifications(),
+            kind: AndroidArtifactKind::ProjectFile,
+            target: "android",
+        },
+        AndroidArtifact {
+            relative_path: PathBuf::from(
                 "apps/android/app/src/main/java/dev/dowe/generated/GeneratedViews.kt",
             ),
             content: generated_views_index(),
@@ -320,7 +328,10 @@ fn android_view_consumption_manifest(routes: &[ViewRoute]) -> String {
                     .unwrap_or_else(|| entry.component.as_str().to_string());
                 entries.insert(format!(
                     "{{\"component\":\"{}\",\"owner\":\"{}\",\"prop\":\"{}\",\"irField\":\"{}\"}}",
-                    entry.component.as_str(), owner, entry.prop, entry.ir_field.as_str()
+                    entry.component.as_str(),
+                    owner,
+                    entry.prop,
+                    entry.ir_field.as_str()
                 ));
             }
         }
@@ -593,6 +604,7 @@ fn android_manifest(
     format!(
         r#"<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 {capture_permissions}
     <application android:theme="@style/AppTheme" android:label="{}" android:usesCleartextTraffic="true"{icon_attributes}>
         <meta-data android:name="dev.dowe.ir.schema" android:value="{}" />
@@ -629,6 +641,7 @@ fn dev_manifest(
         r#"<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="{}">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="36" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 {capture_permissions}
     <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="{}" android:usesCleartextTraffic="true"{icon_attributes}>
         <meta-data android:name="dev.dowe.ir.schema" android:value="{}" />
@@ -663,6 +676,73 @@ fn android_capture_permissions(uses_camera: bool, uses_microphone: bool) -> Stri
     .flatten()
     .collect::<Vec<_>>()
     .join("\n")
+}
+
+fn android_notifications() -> String {
+    r#"package dev.dowe.generated
+
+import android.Manifest
+import android.app.Activity
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import androidx.core.app.ActivityCompat
+
+object DoweNotifications {
+    private const val CHANNEL_ID = "dowe-default"
+    private const val PERMISSION_REQUEST_CODE = 4101
+
+    fun requestPermission(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ActivityCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    fun show(context: Context, id: String, title: String, body: String, route: String? = null) {
+        require(id.isNotBlank() && title.isNotBlank() && body.isNotBlank())
+        require(route == null || (route.startsWith("/") && !route.contains("//")))
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= 26) {
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "Dowe", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        val intent = Intent(context, MainActivity::class.java).apply {
+            route?.let { data = Uri.parse("dowe-dev://generated$it") }
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            id.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = android.app.Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+        manager.notify(id, id.hashCode(), notification)
+    }
+}
+"#
+    .to_string()
 }
 
 fn android_tree_has_camera(node: &ViewNode) -> bool {
@@ -728,11 +808,12 @@ class MainActivity : ComponentActivity() {
         restoreThemePreference()
         applyIntentRoute(intent)
         setContent {
-            val useDarkSystemBarIcons = DoweDesign.background.luminance() > 0.179f
+            val useDarkStatusBarIcons = doweSafeAreaTopColor(incomingPath).luminance() > 0.179f
+            val useDarkNavigationBarIcons = doweSafeAreaBottomColor(incomingPath).luminance() > 0.179f
             SideEffect {
                 WindowCompat.getInsetsController(window, window.decorView).apply {
-                    isAppearanceLightStatusBars = useDarkSystemBarIcons
-                    isAppearanceLightNavigationBars = useDarkSystemBarIcons
+                    isAppearanceLightStatusBars = useDarkStatusBarIcons
+                    isAppearanceLightNavigationBars = useDarkNavigationBarIcons
                 }
             }
             DoweApp(incomingPath, incomingFragment, incomingRequest)

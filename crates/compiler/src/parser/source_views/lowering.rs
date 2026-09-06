@@ -194,6 +194,10 @@ fn lower_remaining_view_node(
             reject_children(node)?;
             canvas_component_node(props).map_err(|error| component_error(node, error))
         }
+        BuiltinComponent::Draw => {
+            reject_children(node)?;
+            draw_component_node(props).map_err(|error| component_error(node, error))
+        }
         BuiltinComponent::Audio => {
             reject_children(node)?;
             audio_component_node(props).map_err(|error| component_error(node, error))
@@ -321,6 +325,10 @@ fn lower_remaining_view_node(
         }
         BuiltinComponent::Map => lower_map_node(node),
         BuiltinComponent::Accordion => lower_accordion_node(node, allow_children),
+        BuiltinComponent::Tree => {
+            reject_children(node)?;
+            tree_component_node(props).map_err(|error| component_error(node, error))
+        }
         BuiltinComponent::Carousel => lower_carousel_node(node, allow_children),
         BuiltinComponent::Checkbox => {
             let control =
@@ -340,7 +348,12 @@ fn lower_remaining_view_node(
             reject_children(node)?;
             date_range_component_node(props).map_err(|error| component_error(node, error))
         }
-        BuiltinComponent::RadioGroup => lower_radio_group_node(node),
+        BuiltinComponent::RadioGroup => {
+            lower_radio_selection_node(node, BuiltinComponent::RadioGroup)
+        }
+        BuiltinComponent::RadioCard => {
+            lower_radio_selection_node(node, BuiltinComponent::RadioCard)
+        }
         BuiltinComponent::Toggle => {
             reject_children(node)?;
             toggle_component_node(props).map_err(|error| component_error(node, error))

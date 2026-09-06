@@ -186,57 +186,35 @@ html.theme-transitioning[data-dowe-theme-transition='vertical']::view-transition
     transform:translateY(100%);
   }
 }
-html.page-transitioning[data-dowe-page-transition='fade']::view-transition-old(root) {
-  animation:dowe-page-fade-out .2s ease-out;
+[data-dowe-boundary^='page:'] {
+  view-transition-name:dowe-page;
 }
-html.page-transitioning[data-dowe-page-transition='fade']::view-transition-new(root) {
-  animation:dowe-page-fade-in .2s ease-in;
+html.page-transitioning::view-transition-group(root) {
+  animation:none;
 }
-@keyframes dowe-page-fade-out {
-  to {
-    opacity:0;
-  }
+html.page-transitioning::view-transition-old(root),html.page-transitioning::view-transition-new(root) {
+  animation:none;
+}
+html.page-transitioning::view-transition-group(dowe-page) {
+  animation:none;
+}
+html.page-transitioning::view-transition-old(dowe-page) {
+  animation:none;
+}
+html.page-transitioning[data-dowe-page-transition='fade']::view-transition-new(dowe-page) {
+  animation:dowe-page-fade-in __DOWE_PAGE_TRANSITION_DURATION__ __DOWE_PAGE_TRANSITION_EASING__ both;
 }
 @keyframes dowe-page-fade-in {
   from {
     opacity:0;
   }
 }
-html.page-transitioning[data-dowe-page-transition='slide']::view-transition-old(root) {
-  animation:dowe-page-slide-out .3s ease-out;
+.dowe-page-enter {
+  opacity:0;
+  transition:opacity __DOWE_PAGE_TRANSITION_DURATION__ __DOWE_PAGE_TRANSITION_EASING__;
 }
-html.page-transitioning[data-dowe-page-transition='slide']::view-transition-new(root) {
-  animation:dowe-page-slide-in .3s ease-out;
-}
-@keyframes dowe-page-slide-out {
-  to {
-    transform:translateX(-30%);
-    opacity:0;
-  }
-}
-@keyframes dowe-page-slide-in {
-  from {
-    transform:translateX(30%);
-    opacity:0;
-  }
-}
-html.page-transitioning[data-dowe-page-transition='scale']::view-transition-old(root) {
-  animation:dowe-page-scale-out .3s ease-out;
-}
-html.page-transitioning[data-dowe-page-transition='scale']::view-transition-new(root) {
-  animation:dowe-page-scale-in .3s ease-out;
-}
-@keyframes dowe-page-scale-out {
-  to {
-    transform:scale(.9);
-    opacity:0;
-  }
-}
-@keyframes dowe-page-scale-in {
-  from {
-    transform:scale(1.1);
-    opacity:0;
-  }
+.dowe-page-enter-active {
+  opacity:1;
 }
 .animate-fade-in { animation:dowe-fade-in 220ms ease-out both; }
 .animate-slide-up { animation:dowe-slide-up 220ms ease-out both; }

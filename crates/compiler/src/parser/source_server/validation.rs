@@ -137,7 +137,8 @@ fn validate_request_usage(
             ActionContext::HttpHandler {
                 request: Some("req"),
                 ..
-            }
+            } | ActionContext::Middleware
+                | ActionContext::WebSocket
         )
     {
         return Err(node_error(

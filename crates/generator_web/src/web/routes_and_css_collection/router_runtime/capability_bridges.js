@@ -1,6 +1,15 @@
 function renderDoweColors(...args) {
   return runtimeCall("controls", "renderDoweColors", args);
 }
+function renderCanvases(...args) {
+  return runtimeCall("canvas", "renderCanvases", args);
+}
+function closeCanvasFrames(...args) {
+  return runtimeCall("canvas", "closeCanvasFrames", args);
+}
+function hydrateCanvases(...args) {
+  return runtimeCall("canvas", "hydrateCanvases", args);
+}
 function cropperState(...args) {
   return runtimeCall("controls", "cropperState", args);
 }
@@ -111,6 +120,9 @@ function setPhoneCountry(...args) {
 }
 function updatePin(...args) {
   return runtimeCall("controls", "updatePin", args);
+}
+function highlightEditor(...args) {
+  return runtimeCall("controls", "highlightEditor", args);
 }
 function hydrateAdvancedForms(...args) {
   return runtimeCall("controls", "hydrateAdvancedForms", args);

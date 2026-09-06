@@ -2,6 +2,7 @@ include!("generated_views/foundation.rs");
 include!("generated_views/media_forms.rs");
 include!("generated_views/capture.rs");
 include!("generated_views/data_code_svg.rs");
+include!("generated_views/tree.rs");
 include!("generated_views/diagram.rs");
 include!("generated_views/canvas.rs");
 include!("generated_views/avatar_chat.rs");
@@ -19,6 +20,7 @@ fn generated_views(
     font_families: &BTreeSet<FontFamily>,
     design_config: &DesignConfig,
 ) -> String {
+    let tree_runtime = android_runtime_tree();
     let mut output = [
         android_runtime_foundation(),
         android_runtime_media_video(),
@@ -33,6 +35,7 @@ fn generated_views(
         android_runtime_media_upload(),
         android_runtime_capture(),
         android_runtime_data_code_svg(),
+        tree_runtime.as_str(),
         android_runtime_diagram(),
         android_runtime_canvas(),
         android_runtime_avatar_chat(),
@@ -58,19 +61,27 @@ fn generated_views(
         output.insert_str(0, &android_dynamic_icon_runtime());
     }
     replace_android_font_support(&mut output, font_config, font_families);
+    output.push_str(&compose_safe_area_color_methods(routes));
 
     if routes.first().is_some() {
         output.push_str(
             r#"    val context = LocalContext.current
+    val pageMotionEnabled = dowePageMotionEnabled(context)
     val initialPath = if (DoweRoutes.paths.contains(startPath)) startPath else DoweRoutes.initialPath
     val initialFragment = startFragment?.takeIf { DoweRoutes.sections[initialPath]?.contains(it) == true }
     var currentEntry by remember { mutableStateOf(DoweRouteEntry(initialPath, initialFragment)) }
     var routeRevision by remember { mutableIntStateOf(0) }
+    var pageEntranceSuppressed by remember { mutableStateOf(false) }
+    var pageTransitionSequence by remember { mutableIntStateOf(0) }
     var externalUrl by remember { mutableStateOf<String?>(null) }
     val backStack = remember { mutableStateListOf<DoweRouteEntry>() }
     val scrollState = rememberScrollState()
     val sectionRegistry = remember(currentEntry.path) { DoweSectionRegistry() }
     val targetSection = currentEntry.fragment?.let { sectionRegistry.positions[it] }
+    fun beginPageTransition() {
+        pageEntranceSuppressed = true
+        if (pageMotionEnabled) pageTransitionSequence += 1
+    }
     fun navigate(operation: String, target: String, fragment: String?) {
         val path = target.ifEmpty { currentEntry.path }
         if (!DoweRoutes.paths.contains(path)) {
@@ -78,9 +89,13 @@ fn generated_views(
         }
         val destination = DoweRouteEntry(path, fragment?.takeIf { DoweRoutes.sections[path]?.contains(it) == true })
         if (destination == currentEntry) {
-            if (operation == "replace") routeRevision += 1
+            if (operation == "replace") {
+                pageEntranceSuppressed = false
+                routeRevision += 1
+            }
             return
         }
+        if (destination.path != currentEntry.path) beginPageTransition()
         if (operation == "replace") {
             currentEntry = destination
         } else {
@@ -92,8 +107,11 @@ fn generated_views(
         if (externalUrl != null) {
             externalUrl = null
         } else if (backStack.isNotEmpty()) {
+            val previous = backStack.last()
+            if (previous.path != currentEntry.path) beginPageTransition()
             currentEntry = backStack.removeAt(backStack.lastIndex)
         } else if (currentEntry.path != DoweRoutes.initialPath || currentEntry.fragment != null) {
+            if (currentEntry.path != DoweRoutes.initialPath) beginPageTransition()
             currentEntry = DoweRouteEntry(DoweRoutes.initialPath, null)
         }
     }
@@ -120,7 +138,13 @@ fn generated_views(
     BackHandler(enabled = true) {
         goBack()
     }
+    doweApplySystemBarIconAppearance(currentEntry.path)
     Box(modifier = Modifier.fillMaxSize().background(DoweDesign.background)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Spacer(modifier = Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.safeDrawing).background(doweSafeAreaTopColor(currentEntry.path)))
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.fillMaxWidth().windowInsetsBottomHeight(WindowInsets.safeDrawing).background(doweSafeAreaBottomColor(currentEntry.path)))
+        }
         CompositionLocalProvider(LocalContentColor provides DoweDesign.backgroundText, LocalDoweTitleColor provides DoweDesign.backgroundTitle) {
         if (externalUrl != null) {
             AndroidView(
@@ -138,8 +162,22 @@ fn generated_views(
         } else {
             BoxWithConstraints(modifier = Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopStart) {
                 val viewportWidth = maxWidth
-                key(currentEntry.path, routeRevision) {
-                    DoweRouteDispatcher(currentEntry.path, viewportWidth, scrollState, sectionRegistry, ::navigate, ::goBack, ::openExternal)
+                CompositionLocalProvider(LocalDowePageEntranceSuppressed provides pageEntranceSuppressed) {
+                    AnimatedContent(
+                        targetState = currentEntry.path,
+                        transitionSpec = {
+                            if (pageMotionEnabled && pageTransitionSequence > 0) {
+                                fadeIn(animationSpec = tween(durationMillis = __DOWE_PAGE_TRANSITION_DURATION_MS, easing = CubicBezierEasing(__DOWE_PAGE_TRANSITION_X1_F, __DOWE_PAGE_TRANSITION_Y1_F, __DOWE_PAGE_TRANSITION_X2_F, __DOWE_PAGE_TRANSITION_Y2_F))) togetherWith ExitTransition.None
+                            } else {
+                                EnterTransition.None togetherWith ExitTransition.None
+                            }
+                        },
+                        label = "dowe-page-transition"
+                    ) { path ->
+                        key(path, routeRevision) {
+                            DoweRouteDispatcher(path, viewportWidth, scrollState, sectionRegistry, ::navigate, ::goBack, ::openExternal)
+                        }
+                    }
                 }
 "#,
         );
@@ -238,6 +276,16 @@ fn generated_views(
         output.push_str("}\n");
     }
 
+    let easing = dowe_components::VIEW_PAGE_TRANSITION_EASING;
+    let output = output
+        .replace(
+            "__DOWE_PAGE_TRANSITION_DURATION_MS",
+            &dowe_components::VIEW_PAGE_TRANSITION_DURATION_MS.to_string(),
+        )
+        .replace("__DOWE_PAGE_TRANSITION_X1_F", &format!("{}f", easing.0))
+        .replace("__DOWE_PAGE_TRANSITION_Y1_F", &format!("{}f", easing.1))
+        .replace("__DOWE_PAGE_TRANSITION_X2_F", &format!("{}f", easing.2))
+        .replace("__DOWE_PAGE_TRANSITION_Y2_F", &format!("{}f", easing.3));
     extract_compose_svg_path_helpers(output)
 }
 
@@ -257,6 +305,54 @@ fn android_dynamic_icon_runtime() -> String {
     format!(
         "\nprivate val DoweDynamicIconCatalog = mapOf(\n{entries}\n)\n\n@Composable\nprivate fun DoweDynamicIcon(name: String, fallback: String, modifier: Modifier, color: Color, animated: Boolean = false) {{\n    DoweRuntimeSvg(payload = DoweDynamicIconCatalog[name] ?: DoweDynamicIconCatalog[fallback] ?: \"\", modifier = modifier, color = color, animated = animated)\n}}\n"
     )
+}
+
+fn compose_safe_area_color_methods(routes: &[ViewRoute]) -> String {
+    let mut output =
+        String::from("\nfun doweSafeAreaTopColor(path: String): Color = when (path) {\n");
+    for route in routes {
+        let (top, _) = dowe_components::route_scaffold_safe_area_colors(route);
+        output.push_str(&format!(
+            "    \"{}\" -> {}\n",
+            escape_kotlin(&route.route_path),
+            color_ref(top)
+        ));
+    }
+    output.push_str("    else -> DoweDesign.background\n}\n\n");
+    output.push_str("fun doweSafeAreaBottomColor(path: String): Color = when (path) {\n");
+    for route in routes {
+        let (_, bottom) = dowe_components::route_scaffold_safe_area_colors(route);
+        output.push_str(&format!(
+            "    \"{}\" -> {}\n",
+            escape_kotlin(&route.route_path),
+            color_ref(bottom)
+        ));
+    }
+    output.push_str("    else -> DoweDesign.background\n}\n\n");
+    output.push_str(
+        r#"@Composable
+fun doweApplySystemBarIconAppearance(path: String) {
+    val activity = doweActivity(LocalContext.current)
+    val useDarkStatusBarIcons = doweSafeAreaTopColor(path).luminance() > 0.179f
+    val useDarkNavigationBarIcons = doweSafeAreaBottomColor(path).luminance() > 0.179f
+    SideEffect {
+        activity?.let { currentActivity ->
+            WindowCompat.getInsetsController(currentActivity.window, currentActivity.window.decorView).apply {
+                isAppearanceLightStatusBars = useDarkStatusBarIcons
+                isAppearanceLightNavigationBars = useDarkNavigationBarIcons
+            }
+        }
+    }
+}
+
+private fun doweActivity(context: Context): Activity? {
+    var current = context
+    while (current is ContextWrapper && current !is Activity) current = current.baseContext
+    return current as? Activity
+}
+"#,
+    );
+    output
 }
 
 fn compose_route_dispatcher(routes: &[ViewRoute]) -> String {

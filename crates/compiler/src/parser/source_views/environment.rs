@@ -52,7 +52,7 @@ fn collect_action_environment(kind: &ViewActionKind, names: &mut BTreeSet<String
                 names.insert(name.clone());
             }
         }
-        ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => {}
+        ViewActionKind::Invoke(_) | ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => {}
     }
 }
 
@@ -71,7 +71,8 @@ fn collect_statement_environment(
                 collect_statement_environment(success, names);
                 collect_statement_environment(error, names);
             }
-            ViewFunctionStatement::Assign(_)
+            ViewFunctionStatement::Invoke { .. }
+            | ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Validate { .. }
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Toast(_)

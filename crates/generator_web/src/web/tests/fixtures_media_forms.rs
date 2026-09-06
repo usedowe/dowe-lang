@@ -177,6 +177,7 @@ fn media_display_form_tree() -> ViewNode {
                     },
                     size: ButtonSize::Lg,
                     orientation: RadioGroupOrientation::Horizontal,
+                    presentation: RadioGroupPresentation::List,
                     name: Some("plan".to_string()),
                     info: Some("Choose one".to_string()),
                     error: None,
@@ -185,11 +186,15 @@ fn media_display_form_tree() -> ViewNode {
                     RadioOption {
                         value: "basic".to_string(),
                         label: "Basic".to_string(),
+                        description: None,
+                        icon: None,
                         disabled: false,
                     },
                     RadioOption {
                         value: "pro".to_string(),
                         label: "Pro".to_string(),
+                        description: None,
+                        icon: None,
                         disabled: true,
                     },
                 ],

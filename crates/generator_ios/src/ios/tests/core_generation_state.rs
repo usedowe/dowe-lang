@@ -37,6 +37,7 @@ fn generates_persistent_view_store_for_swiftui() {
             .contains("UserDefaults.standard.set(data, forKey: Self.storageKey(metadata.name))")
     );
     assert!(generated.contains("Self.compatibleSignalValue(stored, fallback)"));
+    assert!(generated.contains("candidate.scope == \"global\" && candidate.name == metadata.name"));
 }
 
 #[test]

@@ -18,4 +18,5 @@ include!("tests/functions.rs");
 include!("tests/module_validation.rs");
 include!("tests/integrations.rs");
 include!("tests/endpoints.rs");
+include!("tests/notifications.rs");
 include!("tests/helpers.rs");

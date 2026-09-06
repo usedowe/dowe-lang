@@ -222,12 +222,8 @@ function renderDiagram(diagram, state, scope) {
     nodes
   );
   diagram.__doweRenderNodes = nodes;
-  if (canvas.__doweNodes !== nodes) {
-    canvas.__doweNodes = nodes;
-    renderDiagramNodes(diagram, nodes);
-  } else {
-    syncDiagramNodes(diagram, nodes);
-  }
+  canvas.__doweNodes = nodes;
+  renderDiagramNodes(diagram, nodes);
   renderDiagramEdges(diagram, nodes, edges);
   const empty = diagram.querySelector(".diagram-empty");
   if (empty) empty.hidden = nodes.length > 0;
@@ -273,17 +269,6 @@ function renderDiagramNodes(diagram, nodes) {
     port.dataset.doweDiagramPort = id;
     element.appendChild(port);
     layer.appendChild(element);
-  }
-}
-function syncDiagramNodes(diagram, nodes) {
-  const byId = new Map(nodes.map(node => [String(node.id), node]));
-  for (const element of diagram.querySelectorAll(".diagram-node")) {
-    const node = byId.get(element.dataset.doweDiagramNodeId);
-    if (!node) continue;
-    element.style.left = diagramNumber(node.x) + "px";
-    element.style.top = diagramNumber(node.y) + "px";
-    element.style.width = diagramNodeWidth(node) + "px";
-    element.style.height = diagramNodeHeight(node) + "px";
   }
 }
 function renderDiagramEdges(diagram, nodes, edges) {
@@ -421,9 +406,18 @@ function renderDiagrams(root, state, scope) {
   }
 }
 function activeState() {
-  return typeof activeView !== "undefined" && activeView ? activeView.state : {};
+  return getActiveView()?.state || {};
+}
+function writeDiagramState(state, path, value) {
+  writePath(state, path, value);
+  const view = getActiveView();
+  if (view?.state === state) renderReactive(view);
 }
 function persistDiagramConnection(diagram, state, scope, source, target) {
+  const nodes = diagramNodeList(readPath(state, diagram.dataset.doweDiagramNodes, scope));
+  if (String(source) === String(target) ||
+      !nodes.some(node => String(node.id) === String(source)) ||
+      !nodes.some(node => String(node.id) === String(target))) return false;
   const path = diagram.dataset.doweDiagramEdges;
   const current = readPath(state, path, scope);
   const edges = Array.isArray(current) ? current.slice() : [];
@@ -435,31 +429,39 @@ function persistDiagramConnection(diagram, state, scope, source, target) {
         String(edge.target) === String(target)
     )
   )
-    return;
+    return false;
+  const usedIds = new Set(edges.filter(edge => edge && edge.id != null).map(edge => String(edge.id)));
+  let sequence = 1;
+  while (usedIds.has("edge-" + sequence)) sequence++;
   edges.push({
-    id: "edge-" + Date.now().toString(36),
+    id: "edge-" + sequence,
     source,
     target,
     type: "default",
     label: ""
   });
-  writePath(state, path, edges);
+  writeDiagramState(state, path, edges);
+  return true;
 }
 function commitDiagramNode(diagram, state, scope, position) {
-  if (!position) return;
+  if (!position) return null;
   const path = diagram.dataset.doweDiagramNodes;
-  const nodes = diagramNodeList(readPath(state, path, scope)).map(node =>
-    String(node.id) === String(position.id)
-      ? {
-          ...node,
-          x: diagramPosition(position.x, diagramNumber(node.x)),
-          y: diagramPosition(position.y, diagramNumber(node.y))
-        }
-      : node
-  );
-  writePath(state, path, nodes);
+  const current = readPath(state, path, scope);
+  if (!Array.isArray(current)) return null;
+  const index = current.findIndex(node => node && node.id != null && String(node.id) === String(position.id));
+  if (index < 0) return null;
+  const node = current[index];
+  const updated = {
+    ...node,
+    x: diagramPosition(position.x, diagramNumber(node.x)),
+    y: diagramPosition(position.y, diagramNumber(node.y))
+  };
+  const nodes = current.slice();
+  nodes[index] = updated;
+  writeDiagramState(state, path, nodes);
   diagram.__doweRenderNodes = null;
   diagram.querySelector(".diagram-canvas").__doweNodes = null;
+  return updated;
 }
 function selectDiagramItem(diagram, key, element) {
   diagram.__doweSelected = key;
@@ -744,17 +746,18 @@ function hydrateDiagramInteractions(diagram) {
         String(target.id) !== String(connection)
       ) {
         const { state, scope } = api();
-        persistDiagramConnection(
+        if (persistDiagramConnection(
           diagram,
           state,
           scope,
           String(connection),
           String(target.id)
-        );
-        runItemAction(diagram.dataset.doweDiagramOnConnect, {
-          source: String(connection),
-          target: String(target.id)
-        });
+        )) {
+          runItemAction(diagram.dataset.doweDiagramOnConnect, {
+            source: String(connection),
+            target: String(target.id)
+          });
+        }
         renderDiagram(diagram, state, scope);
       } else {
         const { state, scope } = api();
@@ -775,12 +778,9 @@ function hydrateDiagramInteractions(diagram) {
         const position = diagram.__doweDragPosition;
         diagram.__doweDragPosition = null;
         const { state, scope } = api();
-        commitDiagramNode(diagram, state, scope, position);
+        const node = commitDiagramNode(diagram, state, scope, position);
         diagram.__doweSuppressClick = true;
-        const node = diagramNodeList(
-          readPath(state, diagram.dataset.doweDiagramNodes, scope)
-        ).find(candidate => String(candidate.id) === String(drag.id));
-        runItemAction(diagram.dataset.doweDiagramOnNodeDrag, node);
+        if (node) runItemAction(diagram.dataset.doweDiagramOnNodeDrag, node);
         renderDiagram(diagram, state, scope);
       }
       return;

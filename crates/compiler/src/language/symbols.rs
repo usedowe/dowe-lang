@@ -49,8 +49,8 @@ fn symbol_kind(node: &SourceNode) -> Option<LanguageSymbolKind> {
             Some(LanguageSymbolKind::Method)
         }
         "const" | "signal" | "store" | "database" | "cache" | "vector" | "query" | "kv" | "emb"
-        | "request" | "ws" | "agent" | "str" | "math" | "parse" | "url" | "csv" | "sort"
-        | "list" | "json" | "date" | "id" | "queue" | "msg" | "let" => {
+        | "request" | "invoke" | "ws" | "agent" | "str" | "math" | "parse" | "url" | "csv"
+        | "sort" | "list" | "json" | "date" | "id" | "queue" | "msg" | "notify" | "let" => {
             Some(LanguageSymbolKind::Variable)
         }
         "fonts" | "env" | "variable" | "cors" | "design" | "theme" => {

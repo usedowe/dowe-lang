@@ -273,7 +273,11 @@ fn render_dev_android_overlay_node(
         }
         ViewNode::Children => {
             if let Some(method) = children_method {
-                output.push_str(&format!("        {method}({parent});\n"));
+                if method.contains("{parent}") {
+                    output.push_str(&format!("        {};\n", method.replace("{parent}", parent)));
+                } else {
+                    output.push_str(&format!("        {method}({parent});\n"));
+                }
             }
         }
         _ => {}
@@ -308,6 +312,11 @@ fn render_dev_android_chip(
         "        LinearLayout {view} = doweContainer(true);\n        {view}.setGravity(Gravity.CENTER_VERTICAL);\n        {view}.setPadding(doweDp({horizontal_padding}), 0, doweDp({horizontal_padding}), 0);\n        {view}.setMinimumHeight(doweDp({height}));\n        {view}.setBackground(doweBackground({}, DOWE_RADIUS));\n        doweWrapContentWidth({view});\n",
         dev_variant_container(&props.style)
     ));
+    if props.style.style.sizing.w.is_none() && props.style.style.sizing.w_binding.is_none() {
+        output.push_str(&format!(
+            "        {view}.setTag(DOWE_COMPACT_WIDTH_TAG, Boolean.TRUE);\n"
+        ));
+    }
     if let Some(icon) = start {
         let icon_view = render_dev_android_icon_view(icon, counter, output, Some(&content));
         output.push_str(&format!(

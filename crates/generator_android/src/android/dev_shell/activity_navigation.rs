@@ -10,6 +10,8 @@ fn dev_activity_navigation(first_path: &str) -> String {
         if (path.equals(currentPath)) {{
             if (Objects.equals(resolvedFragment, currentFragment)) {{
                 if ("replace".equals(operation)) {{
+                    dowePageEntranceSuppressed = false;
+                    dowePageTransitioning = false;
                     renderCurrentRoute();
                 }}
                 return;
@@ -25,6 +27,7 @@ fn dev_activity_navigation(first_path: &str) -> String {
             }}
             return;
         }}
+        doweStartPageTransition();
         if ("replace".equals(operation)) {{
             currentPath = path;
             currentFragment = resolvedFragment;
@@ -34,6 +37,7 @@ fn dev_activity_navigation(first_path: &str) -> String {
             currentFragment = resolvedFragment;
         }}
         renderCurrentRoute();
+        doweFinishPageTransition();
     }}
 
     private void doweBack() {{
@@ -42,13 +46,27 @@ fn dev_activity_navigation(first_path: &str) -> String {
             renderCurrentRoute();
         }} else if (!backStack.isEmpty()) {{
             DoweRouteEntry previous = backStack.remove(backStack.size() - 1);
+            boolean pageChanged = !previous.path.equals(currentPath);
+            if (pageChanged) {{
+                doweStartPageTransition();
+            }}
             currentPath = previous.path;
             currentFragment = previous.fragment;
             renderCurrentRoute();
+            if (pageChanged) {{
+                doweFinishPageTransition();
+            }}
         }} else if (!currentPath.equals("{}") || currentFragment != null) {{
+            boolean pageChanged = !currentPath.equals("{}");
+            if (pageChanged) {{
+                doweStartPageTransition();
+            }}
             currentPath = "{}";
             currentFragment = null;
             renderCurrentRoute();
+            if (pageChanged) {{
+                doweFinishPageTransition();
+            }}
         }}
     }}
 
@@ -93,6 +111,7 @@ fn dev_activity_navigation(first_path: &str) -> String {
 
     private boolean doweCanRoute(String path) {{
 "#,
+        escape_java(first_path),
         escape_java(first_path),
         escape_java(first_path)
     )

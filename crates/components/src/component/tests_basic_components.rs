@@ -43,30 +43,22 @@ fn validates_code_source_and_highlighting() {
                     .collect::<String>(),
                 props.source
             );
-            assert!(
-                props
-                    .tokens
-                    .iter()
-                    .any(|token| token.kind == CodeTokenKind::Keyword && token.text == "page")
-            );
-            assert!(
-                props
-                    .tokens
-                    .iter()
-                    .any(|token| token.kind == CodeTokenKind::Keyword && token.text == "meta")
-            );
-            assert!(
-                props
-                    .tokens
-                    .iter()
-                    .any(|token| token.kind == CodeTokenKind::Type && token.text == "Card")
-            );
-            assert!(
-                props
-                    .tokens
-                    .iter()
-                    .any(|token| token.kind == CodeTokenKind::Attribute && token.text == "scheme")
-            );
+            assert!(props
+                .tokens
+                .iter()
+                .any(|token| token.kind == CodeTokenKind::Keyword && token.text == "page"));
+            assert!(props
+                .tokens
+                .iter()
+                .any(|token| token.kind == CodeTokenKind::Keyword && token.text == "meta"));
+            assert!(props
+                .tokens
+                .iter()
+                .any(|token| token.kind == CodeTokenKind::Type && token.text == "Card"));
+            assert!(props
+                .tokens
+                .iter()
+                .any(|token| token.kind == CodeTokenKind::Attribute && token.text == "scheme"));
         }
         _ => panic!("code"),
     }
@@ -121,18 +113,14 @@ fn highlights_javascript_python_and_reactive_code_segments() {
                 .collect::<String>(),
             props.source
         );
-        assert!(
-            props
-                .tokens
-                .iter()
-                .any(|token| token.kind == CodeTokenKind::Keyword)
-        );
-        assert!(
-            props
-                .tokens
-                .iter()
-                .any(|token| token.kind == CodeTokenKind::Type)
-        );
+        assert!(props
+            .tokens
+            .iter()
+            .any(|token| token.kind == CodeTokenKind::Keyword));
+        assert!(props
+            .tokens
+            .iter()
+            .any(|token| token.kind == CodeTokenKind::Type));
     }
 
     let ViewNode::Code { props } = template else {
@@ -214,6 +202,16 @@ fn validates_iframe_source_policy_and_defaults() {
         panic!("iframe")
     };
     assert_eq!(props.src, "/examples/appbar-one");
+    let dynamic = iframe_node(vec![
+        string_prop("src", "@signal:previewUrl"),
+        string_prop("title", "Dynamic preview"),
+    ])
+    .expect("dynamic iframe");
+    let ViewNode::Iframe { props } = dynamic else {
+        panic!("iframe")
+    };
+    assert_eq!(props.src, "");
+    assert_eq!(props.reactive_src.as_deref(), Some("previewUrl"));
     assert_eq!(
         iframe_node(vec![
             string_prop("src", "http://example.com"),
@@ -251,8 +249,15 @@ fn validates_device_profile_and_iframe_child() {
         string_prop("title", "Preview"),
     ])
     .expect("iframe");
-    let node =
-        device_node(vec![string_prop("device", "laptop")], vec![iframe.clone()]).expect("device");
+    let node = device_node(
+        vec![
+            string_prop("device", "laptop"),
+            string_prop("bind", "activeDevice"),
+            boolean_prop("hideControls", true),
+        ],
+        vec![iframe.clone()],
+    )
+    .expect("device");
     let ViewNode::Device {
         props,
         iframe: nested,
@@ -261,6 +266,8 @@ fn validates_device_profile_and_iframe_child() {
         panic!("device")
     };
     assert_eq!(props.device, DeviceProfile::Laptop);
+    assert_eq!(props.bind.as_deref(), Some("activeDevice"));
+    assert!(props.hide_controls);
     assert_eq!(props.device.dimensions(), (1440, 900));
     assert_eq!(nested.title, "Preview");
     assert_eq!(
@@ -270,6 +277,19 @@ fn validates_device_profile_and_iframe_child() {
     );
     assert!(device_node(Vec::new(), Vec::new()).is_err());
     assert!(device_node(Vec::new(), vec![iframe.clone(), iframe]).is_err());
+}
+
+#[test]
+fn draw_modes_round_trip_and_reject_unknown_values() {
+    for name in ["pen", "rect", "circle", "select", "erase"] {
+        let mode = super::DrawMode::from_name(name).expect("draw mode");
+        assert_eq!(mode.as_str(), name);
+    }
+    assert_eq!(
+        super::DrawMode::from_name("erase"),
+        Some(super::DrawMode::Erase)
+    );
+    assert_eq!(super::DrawMode::from_name("eraser"), None);
 }
 
 #[test]
@@ -313,35 +333,27 @@ fn validates_canvas_props_and_defaults() {
     }
 
     assert!(canvas_component_node(vec![string_prop("label", "Missing scene")]).is_err());
-    assert!(
-        canvas_component_node(vec![
-            string_prop("scene", "scene"),
-            string_prop("label", "")
-        ])
-        .is_err()
-    );
-    assert!(
-        canvas_component_node(vec![
-            string_prop("scene", "scene"),
-            string_prop("label", "Scene"),
-            number_prop("fps", 121)
-        ])
-        .is_err()
-    );
-    assert!(
-        canvas_component_node(vec![
-            string_prop("scene", "scene"),
-            string_prop("label", "Scene"),
-            string_prop("fit", "center")
-        ])
-        .is_err()
-    );
-    assert!(
-        canvas_component_node(vec![
-            string_prop("scene", "scene"),
-            string_prop("label", "Scene"),
-            number_prop("motionRate", 61)
-        ])
-        .is_err()
-    );
+    assert!(canvas_component_node(vec![
+        string_prop("scene", "scene"),
+        string_prop("label", "")
+    ])
+    .is_err());
+    assert!(canvas_component_node(vec![
+        string_prop("scene", "scene"),
+        string_prop("label", "Scene"),
+        number_prop("fps", 121)
+    ])
+    .is_err());
+    assert!(canvas_component_node(vec![
+        string_prop("scene", "scene"),
+        string_prop("label", "Scene"),
+        string_prop("fit", "center")
+    ])
+    .is_err());
+    assert!(canvas_component_node(vec![
+        string_prop("scene", "scene"),
+        string_prop("label", "Scene"),
+        number_prop("motionRate", 61)
+    ])
+    .is_err());
 }

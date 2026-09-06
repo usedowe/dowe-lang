@@ -254,6 +254,7 @@ fn find_symbol(nodes: &[SourceNode], token: &str) -> Option<LanguageRange> {
                 | "kv"
                 | "emb"
                 | "request"
+                | "invoke"
                 | "ws"
                 | "agent"
                 | "str"

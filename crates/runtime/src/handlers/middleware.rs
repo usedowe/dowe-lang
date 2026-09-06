@@ -164,6 +164,7 @@ impl<'a> MiddlewareExecution<'a> {
                     self.body,
                     self.raw_query,
                     Some(self.headers),
+                    Some(self.request_context),
                     &statement.action,
                     args,
                     self.cache_mode,
@@ -286,6 +287,20 @@ impl<'a> MiddlewareExecution<'a> {
     fn resolve_reference(&self, reference: &str) -> Option<Value> {
         if let Some(value) = self.bindings.get(reference) {
             return Some(value.clone());
+        }
+        if reference == "req.params" {
+            return Some(Value::Object(
+                self.params
+                    .iter()
+                    .map(|(key, value)| (key.clone(), Value::String(value.clone())))
+                    .collect(),
+            ));
+        }
+        if let Some(path) = reference.strip_prefix("req.params.") {
+            return self
+                .params
+                .get(path)
+                .map(|value| Value::String(value.clone()));
         }
         if let Some(path) = reference.strip_prefix("req.context.") {
             return read_context_path(self.request_context, path).cloned();

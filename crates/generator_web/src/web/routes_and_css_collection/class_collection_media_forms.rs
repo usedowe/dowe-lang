@@ -1,3 +1,20 @@
+fn collect_reactive_form_classes(
+    classes: &mut BTreeSet<String>,
+    props: &VariantProps,
+    size_prefix: &str,
+) {
+    if props.reactive.size.is_some() {
+        for value in ["xs", "sm", "md", "lg", "xl"] {
+            classes.insert(format!("{size_prefix}{value}"));
+        }
+    }
+    if props.reactive.rounded.is_some() {
+        for value in ["xs", "sm", "md", "lg", "xl", "full"] {
+            classes.insert(format!("rounded-{value}"));
+        }
+    }
+}
+
 fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
     match node {
         ViewNode::Audio { props } => {
@@ -103,6 +120,8 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             }
         }
         ViewNode::Checkbox { props } => {
+            classes.extend(variant_classes("checkbox", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend(["checkbox".to_string(), "checkbox-input".to_string()]);
             classes.insert(format!(
                 "is-{}",
@@ -111,6 +130,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Color { props } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -138,6 +158,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Date { props } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -159,6 +180,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::DateRange { props } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -182,6 +204,30 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             ]);
         }
         ViewNode::RadioGroup { props, .. } => {
+            if matches!(props.presentation, RadioGroupPresentation::Card) {
+                classes.extend(variant_classes("radio-card-group", &props.style));
+                collect_reactive_form_classes(classes, &props.style, "is-");
+                classes.extend([
+                    "field".to_string(),
+                    "field-label".to_string(),
+                    "field-help".to_string(),
+                    "radio-card-group".to_string(),
+                    "radio-card".to_string(),
+                    "radio-card-control".to_string(),
+                    "radio-card-content".to_string(),
+                    "radio-card-icon".to_string(),
+                    "radio-card-copy".to_string(),
+                    "radio-card-title".to_string(),
+                    "radio-card-description".to_string(),
+                    "radio-card-indicator".to_string(),
+                    format!("is-{}", props.style.color.unwrap_or(ColorFamily::Primary).as_str()),
+                    format!("is-{}", props.size.as_str()),
+                    format!("is-{}", props.orientation.as_str()),
+                ]);
+                return;
+            }
+            classes.extend(variant_classes("radio-group", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -199,6 +245,8 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             ]);
         }
         ViewNode::Toggle { props } => {
+            classes.extend(variant_classes("toggle", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "toggle".to_string(),
                 "toggle-input".to_string(),
@@ -212,6 +260,8 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             ]);
         }
         ViewNode::Slider { props } => {
+            classes.extend(variant_classes("slider", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "slider-wrapper".to_string(),
                 "slider-info".to_string(),
@@ -224,6 +274,8 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
             ]);
         }
         ViewNode::Dropzone { props } => {
+            classes.extend(variant_classes("dropzone-input", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -259,6 +311,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Input { props } => {
             classes.extend(variant_classes("control", props));
+            collect_reactive_form_classes(classes, props, "is-");
             classes.insert("input".to_string());
         }
         ViewNode::SelectTheme { props } => {
@@ -273,6 +326,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Select { props, .. } => {
             classes.extend(variant_classes("control", props));
+            collect_reactive_form_classes(classes, props, "is-");
             classes.insert("select".to_string());
             classes.insert("select-control".to_string());
             classes.insert("select-popover".to_string());
@@ -280,6 +334,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::ComboBox { props, .. } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -305,6 +360,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::CsvField { props, .. } => {
             classes.extend(variant_classes("button", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "button-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -335,6 +391,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::DragDrop { props, .. } => {
             classes.extend(variant_classes("drag-drop", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -353,6 +410,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Editor { props } => {
             classes.extend(variant_classes("editor", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -364,6 +422,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::ImageCropper { props } => {
             classes.extend(variant_classes("image-cropper", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -392,6 +451,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Password { props } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -407,6 +467,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Phone { props } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -430,6 +491,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Pin { props } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),
@@ -440,6 +502,7 @@ fn collect_media_form_node_classes(node: &ViewNode, classes: &mut BTreeSet<Strin
         }
         ViewNode::Textarea { props } => {
             classes.extend(variant_classes("control", &props.style));
+            collect_reactive_form_classes(classes, &props.style, "is-");
             classes.extend([
                 "field".to_string(),
                 "field-label".to_string(),

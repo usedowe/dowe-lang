@@ -35,7 +35,8 @@ fn parse_server_config(
                     return Err(node_error(child, "duplicate `databases` registry"));
                 }
                 databases_seen = true;
-                databases = parse_server_database_registry(child, imports)?;
+                reject_unknown_props(child, &["databases"])?;
+                databases = parse_database_registry(child, imports)?;
             }
             "endpoints" => {
                 for name in endpoint_group_references(child)? {
@@ -221,11 +222,46 @@ fn parse_server_config(
     })
 }
 
-fn parse_server_database_registry(
+fn parse_native_ipc_functions(
+    node: &SourceNode,
+    imports: &ServerImports,
+) -> DoweResult<(Vec<NativeIpcFunction>, Vec<StoreConnection>)> {
+    reject_unknown_props(node, &["functions", "databases"])?;
+    if !node.args.is_empty() || !node.children.is_empty() {
+        return Err(node_error(node, "`ipc` accepts props only"));
+    }
+    let names = binding_array_prop(node, "functions")?;
+    if names.is_empty() {
+        return Err(node_error(node, "`ipc functions` must not be empty"));
+    }
+    let mut seen = HashSet::new();
+    let functions = names
+        .into_iter()
+        .map(|name| {
+            if !seen.insert(name.clone()) {
+                return Err(node_error(node, format!("duplicate IPC function `{name}`")));
+            }
+            let callable = imports.callables.get(&name).ok_or_else(|| {
+                node_error(node, format!("missing IPC function import `{name}`"))
+            })?;
+            Ok(NativeIpcFunction {
+                name,
+                action: callable.action.clone(),
+            })
+        })
+        .collect::<DoweResult<Vec<_>>>()?;
+    let databases = if node.prop("databases").is_some() {
+        parse_database_registry(node, imports)?
+    } else {
+        Vec::new()
+    };
+    Ok((functions, databases))
+}
+
+fn parse_database_registry(
     node: &SourceNode,
     imports: &ServerImports,
 ) -> DoweResult<Vec<StoreConnection>> {
-    reject_unknown_props(node, &["databases"])?;
     if !node.args.is_empty() || !node.children.is_empty() {
         return Err(node_error(node, "`databases` accepts a list of imported Database handles"));
     }

@@ -580,12 +580,13 @@ fn render_dev_android_display_media_data_node(
                 ));
             }
             output.push_str(&format!(
-                "        FrameLayout {view} = doweDevice(\"{}\", \"{}\", \"{}\", {}, {}, new DoweDeviceOption[] {{{}}});\n",
+                "        FrameLayout {view} = doweDevice(\"{}\", \"{}\", \"{}\", {}, {}, {}, new DoweDeviceOption[] {{{}}});\n",
                 props.device.as_str(),
                 escape_java(&iframe.src),
                 escape_java(&iframe.title),
                 scripts,
                 iframe.allow.iter().any(|token| token == "autoplay"),
+                props.hide_controls,
                 options.join(", "),
             ));
             apply_dev_android_style(&props.style, &view, true, output);
@@ -616,6 +617,28 @@ fn render_dev_android_display_media_data_node(
                 .and_then(|value| context.action_id(value))
                 .map(|value| format!("\"{}\"", escape_java(value)))
                 .unwrap_or_else(|| "null".to_string());
+            let layer_path = |value: Option<&String>| {
+                value
+                    .map(|value| format!("\"{}\"", escape_java(&context.signal_path(value))))
+                    .unwrap_or_else(|| "null".to_string())
+            };
+            let action = |value: Option<&String>| {
+                value
+                    .and_then(|value| context.action_id(value))
+                    .map(|value| format!("\"{}\"", escape_java(value)))
+                    .unwrap_or_else(|| "null".to_string())
+            };
+            let draw_mode_path = if props.draw_mode_binding {
+                layer_path(Some(&props.draw_mode))
+            } else {
+                "null".to_string()
+            };
+            let layers_path = layer_path(props.layer_bind.as_ref());
+            let selected_path = layer_path(props.selected_layer.as_ref());
+            let on_layer_add = action(props.on_layer_add.as_ref());
+            let on_layer_change = action(props.on_layer_change.as_ref());
+            let on_layer_remove = action(props.on_layer_remove.as_ref());
+            let on_layer_select = action(props.on_layer_select.as_ref());
             let background = match props.background {
                 CanvasBackground::Transparent => "Color.TRANSPARENT".to_string(),
                 CanvasBackground::Color(color) => java_color(color).to_string(),
@@ -633,7 +656,7 @@ fn render_dev_android_display_media_data_node(
                 .map(java_color)
                 .unwrap_or("DOWE_BACKGROUND_TEXT");
             output.push_str(&format!(
-                "        DoweCanvasView {view} = doweCanvas(\"{}\", {}f, {}f, \"{}\", {}, {}, {}, {}, \"{}\", {on_pointer}, {on_key}, {on_motion}, {}, {border_width}, {border_color}, {});\n",
+                "        DoweCanvasView {view} = doweCanvas(\"{}\", {}f, {}f, \"{}\", {}, {}, {}, {}, \"{}\", {on_pointer}, {on_key}, {on_motion}, {}, {}, \"{}\", {draw_mode_path}, {layers_path}, {selected_path}, {on_layer_add}, {on_layer_change}, {on_layer_remove}, {on_layer_select}, {border_width}, {border_color}, {});\n",
                 escape_java(&context.signal_path(&props.scene)),
                 props.view_width,
                 props.view_height,
@@ -644,6 +667,8 @@ fn render_dev_android_display_media_data_node(
                 background,
                 escape_java(&props.label),
                 props.motion_rate,
+                props.draw,
+                escape_java(&props.draw_mode),
                 dev_style_radius(&props.style),
             ));
             apply_dev_android_style(&props.style, &view, false, output);

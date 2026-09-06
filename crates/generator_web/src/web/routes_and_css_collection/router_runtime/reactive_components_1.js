@@ -419,14 +419,66 @@ function renderAvatarGroups(root, state, scope) {
     }
   }
 }
+function chatMessageIsSpanish(item) {
+  const explicit = typeof item.language === "string" ? item.language.toLowerCase() : "";
+  if (explicit === "es" || explicit === "es-es") return true;
+  const text = [
+    item.title,
+    item.message || item.text,
+    ...(Array.isArray(item.assumptions) ? item.assumptions : []),
+    item.nextStep,
+    ...(Array.isArray(item.questions) ? item.questions.map(question => question?.question) : [])
+  ].filter(value => typeof value === "string").join(" ").toLowerCase();
+  return ["hola", "¿", "¡", "quiero", "crear", "crea", "defin", "diseñ", "necesito", "puedes", " una ", " la ", " para ", "página", "pagina", "supuestos", "español", "ñ", "á", "é", "í", "ó", "ú"].some(marker => text.includes(marker));
+}
+function chatMessageStatusLabel(status, spanish) {
+  if (!spanish) return status;
+  return {
+    Planning: "Planificando",
+    Selected: "Seleccionado",
+    "Ready for review": "Listo para revisar",
+    "Try again": "Inténtalo de nuevo",
+    error: "Error"
+  }[status] || status;
+}
 function chatMessageHtml(root, item) {
   const current = root.dataset.doweChatboxCurrentUser || "";
-  const text = item.message || item.text || "";
+  const messageId = String(item.id || "");
+  const text = typeof (item.message || item.text) === "string" ? item.message || item.text : "";
   const own =
     item.own === true ||
     item.isOwn === true ||
     (item.userId && String(item.userId) === current);
   const name = item.name || item.userName || "";
-  const status = item.status || "";
-  return `<div class="chat-message${own ? " is-own" : ""}"><div class="chat-bubble">${htmlEscape(text)}</div><div class="chat-meta">${name ? `<span>${htmlEscape(name)}</span>` : ""}${status ? `<span>${htmlEscape(status)}</span>` : ""}</div></div>`;
+  const spanish = chatMessageIsSpanish(item);
+  const status = chatMessageStatusLabel(item.status || "", spanish);
+  const title = typeof item.title === "string" ? item.title : "";
+  const image = typeof item.image === "string" && item.image.startsWith("data:image/")
+    ? `<img class="chat-message-image" src="${htmlEscape(item.image)}" alt="UI sketch">`
+    : "";
+  const questions = Array.isArray(item.questions) ? item.questions.slice(0, 5) : [];
+  const questionHtml = questions.map((question, index) => {
+    const questionId = String(question?.id || `question-${index + 1}`);
+    const label = typeof question?.question === "string" ? question.question : "";
+    const selected = typeof question?.selected === "string" ? question.selected : "";
+    const options = Array.isArray(question?.options)
+      ? question.options.filter(option => typeof option === "string" && option.trim()).slice(0, 4)
+      : [];
+    const optionsHtml = options.length
+      ? `<div class="chat-choice-list">${options.map(option => `<button type="button" class="chat-choice${selected === option ? " is-selected" : ""}" data-dowe-chatbox-choice data-dowe-chatbox-choice-message="${htmlEscape(messageId)}" data-dowe-chatbox-choice-question="${htmlEscape(questionId)}" data-dowe-chatbox-choice-value="${htmlEscape(option)}"${selected ? " disabled" : ""}>${htmlEscape(option)}</button>`).join("")}</div>`
+      : `<span class="chat-question-hint">${spanish ? "Escribe tu respuesta abajo." : "Write your answer below."}</span>`;
+    return `<div class="chat-question"><strong>${htmlEscape(label)}</strong>${optionsHtml}</div>`;
+  }).join("");
+  const assumptions = Array.isArray(item.assumptions)
+    ? item.assumptions.filter(value => typeof value === "string" && value.trim()).slice(0, 4)
+    : [];
+  const assumptionsHtml = assumptions.length
+    ? `<div class="chat-message-assumptions"><span>${spanish ? "Supuestos de trabajo" : "Working assumptions"}</span><ul>${assumptions.map(value => `<li>${htmlEscape(value)}</li>`).join("")}</ul></div>`
+    : "";
+  const nextStep = typeof item.nextStep === "string" && item.nextStep.trim()
+    ? `<div class="chat-message-next"><span>${spanish ? "Siguiente" : "Next"}</span>${htmlEscape(item.nextStep)}</div>`
+    : "";
+  const structured = `${title ? `<strong class="chat-message-title">${htmlEscape(title)}</strong>` : ""}${text ? `<p class="chat-message-text">${htmlEscape(text)}</p>` : ""}${questions.length ? `<div class="chat-message-questions">${questionHtml}</div>` : ""}${assumptionsHtml}${nextStep}`;
+  const messageClass = item.type === "planning" || questions.length ? " is-planning" : "";
+  return `<div class="chat-message${own ? " is-own" : ""}${messageClass}"><div class="chat-bubble">${image}${structured}</div><div class="chat-meta">${name ? `<span>${htmlEscape(name)}</span>` : ""}${status ? `<span>${htmlEscape(status)}</span>` : ""}</div></div>`;
 }

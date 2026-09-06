@@ -19,12 +19,15 @@ fn render_checkbox_html(props: &CheckboxProps, context: &ReactiveRenderContext) 
             .map(|label| format!(r#"<span class="label-md">{}</span>"#, escape_html(label)))
             .unwrap_or_default(),
     );
+    let reactive_attrs = reactive_variant_attrs(&props.style, context, "is-");
+    let mut classes = variant_classes("checkbox", &props.style);
+    classes.push("checkbox".to_string());
     let body = format!(
         "<label{}>{}</label>",
         attrs(
-            vec!["checkbox".to_string()],
+            classes,
             Some(&props.style.element),
-            None,
+            Some(reactive_attrs.as_str()),
             context
         ),
         input
@@ -270,8 +273,11 @@ fn render_slider_html(props: &SliderProps, context: &ReactiveRenderContext) -> S
             escape_html(&props.value)
         )
     };
+    let reactive_attrs = reactive_variant_attrs(&props.style, context, "is-");
+    let mut input_classes = variant_classes("slider", &props.style);
+    input_classes.push(format!("is-{}", props.size.as_str()));
     let input = format!(
-        r#"<input type="range"{}{}{}{}{}{} class="slider is-{} is-{}" style="--dowe-slider-progress:{}%" data-dowe-slider{}>"#,
+        r#"<input type="range"{}{}{}{}{}{} class="{}" style="--dowe-slider-progress:{}%" data-dowe-slider{}{}>"#,
         format!(r#" min="{}""#, escape_attr(&props.min)),
         format!(r#" max="{}""#, escape_attr(&props.max)),
         props
@@ -286,15 +292,15 @@ fn render_slider_html(props: &SliderProps, context: &ReactiveRenderContext) -> S
             .map(|name| format!(r#" name="{}""#, escape_attr(name)))
             .unwrap_or_default(),
         bind_attr(props.style.element.bind.as_deref(), context),
-        props.size.as_str(),
-        props.style.color.unwrap_or(ColorFamily::Primary).as_str(),
+        class_attr(input_classes),
         progress,
         props
             .style
             .label
             .as_deref()
             .map(|label| format!(r#" data-dowe-slider-label="{}""#, escape_attr(label)))
-            .unwrap_or_default()
+            .unwrap_or_default(),
+        reactive_attrs
     );
     format!(
         "<div{}>{info}{input}</div>",
@@ -354,6 +360,7 @@ fn render_dropzone_html(props: &DropzoneProps, context: &ReactiveRenderContext) 
         ),
         format!("is-{}", props.size.as_str()),
     ];
+    let reactive_attrs = reactive_variant_attrs(&props.style, context, "is-");
     if props.disabled {
         input_classes.push("is-disabled".to_string());
     }
@@ -366,7 +373,7 @@ fn render_dropzone_html(props: &DropzoneProps, context: &ReactiveRenderContext) 
         .unwrap_or_default();
     let input = format!(
         r#"<label{} for="{uid}" data-dowe-dropzone{max}><input id="{uid}" type="file" hidden{}{}{}{}><div class="dropzone-content">{}<span class="dropzone-placeholder">{}</span></div></label>"#,
-        class_attr(input_classes),
+        format!("{}{}", class_attr(input_classes), reactive_attrs),
         props
             .accept
             .as_deref()

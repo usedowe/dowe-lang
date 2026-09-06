@@ -1,9 +1,11 @@
 pub fn editor_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    let mut language = CodeLanguage::Dowe;
     let mut value = None;
     let mut min_height = 200;
     let mut hide_toolbar = false;
     let mut disabled = false;
     let mut readonly = false;
+    let mut on_save = None;
     let mut name = None;
     let mut help_text = None;
     let mut error_text = None;
@@ -11,14 +13,25 @@ pub fn editor_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
+            "language" => {
+                let value = parse_required_string(&prop.name, &prop.value)?;
+                language = CodeLanguage::from_name(&value).ok_or_else(|| {
+                    ComponentError::invalid_prop(
+                        "language",
+                        "dowe, typescript, javascript, go, rust or python",
+                    )
+                })?;
+            }
             "value" => value = Some(parse_required_string(&prop.name, &prop.value)?),
             "minHeight" => min_height = parse_u16_in_range(&prop.name, &prop.value, 80, 2000)?,
             "hideToolbar" => hide_toolbar = parse_static_bool(&prop.name, &prop.value)?,
             "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
             "readonly" => readonly = parse_static_bool(&prop.name, &prop.value)?,
+            "onSave" => on_save = Some(parse_required_string(&prop.name, &prop.value)?),
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::Editor)),
             _ => style_props.push(prop),
@@ -27,15 +40,19 @@ pub fn editor_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
     let mut style = parse_variant_props(BuiltinComponent::Editor, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     Ok(ViewNode::Editor {
         props: EditorProps {
             style,
+            language,
             value,
             min_height,
             hide_toolbar,
             disabled,
             readonly,
+            on_save,
             name,
             help_text,
             error_text,
@@ -78,6 +95,7 @@ pub fn image_cropper_component_node(props: Vec<ComponentProp>) -> ComponentResul
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_button_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::ImageCropper)),
             _ => style_props.push(prop),
@@ -87,7 +105,9 @@ pub fn image_cropper_component_node(props: Vec<ComponentProp>) -> ComponentResul
     let mut style = parse_variant_props(BuiltinComponent::ImageCropper, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Solid);
     style.color.get_or_insert(ColorFamily::Primary);
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     style
         .placeholder
         .get_or_insert_with(|| "Upload".to_string());
@@ -136,13 +156,16 @@ pub fn password_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::Password)),
             _ => style_props.push(prop),
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Password, &style_props)?;
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     Ok(ViewNode::Password {
         props: PasswordProps {
             style,
@@ -191,6 +214,7 @@ pub fn phone_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::Phone)),
             _ => style_props.push(prop),
@@ -199,7 +223,9 @@ pub fn phone_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNo
     let mut style = parse_variant_props(BuiltinComponent::Phone, &style_props)?;
     style.variant.get_or_insert(ComponentVariant::Outlined);
     style.color.get_or_insert(ColorFamily::Primary);
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     style
         .placeholder
         .get_or_insert_with(|| "Enter phone number".to_string());
@@ -238,13 +264,16 @@ pub fn pin_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::Pin)),
             _ => style_props.push(prop),
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Pin, &style_props)?;
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     Ok(ViewNode::Pin {
         props: PinProps {
             style,
@@ -285,13 +314,16 @@ pub fn textarea_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
             "name" => name = Some(parse_required_string(&prop.name, &prop.value)?),
             "helpText" => help_text = Some(parse_required_string(&prop.name, &prop.value)?),
             "errorText" => error_text = Some(parse_required_string(&prop.name, &prop.value)?),
+            "size" if reactive_reference(&prop.value).is_some() => style_props.push(prop),
             "size" => size = parse_control_size_prop(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::Textarea)),
             _ => style_props.push(prop),
         }
     }
     let mut style = parse_variant_props(BuiltinComponent::Textarea, &style_props)?;
-    style.size = Some(size);
+    if style.size.is_none() {
+        style.size = Some(size);
+    }
     Ok(ViewNode::Textarea {
         props: TextareaProps {
             style,
@@ -308,4 +340,3 @@ pub fn textarea_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
         },
     })
 }
-

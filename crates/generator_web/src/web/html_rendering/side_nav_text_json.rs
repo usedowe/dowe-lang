@@ -320,6 +320,8 @@ fn render_text_html(
     }
     let content = if dynamic.is_empty() {
         escape_html(value)
+    } else if let Some(initial) = context.initial_text(value) {
+        escape_html(&initial)
     } else {
         String::new()
     };
@@ -544,6 +546,7 @@ fn action_json(action: &ViewAction, context: &ReactiveRenderContext) -> String {
             action.is_init()
         ),
         ViewActionKind::Request(request) => request_action_json(action, request, context),
+        ViewActionKind::Invoke(invoke) => invoke_action_json(action, invoke, context),
         ViewActionKind::Assign(assign) => assign_action_json(action, assign, context),
         ViewActionKind::Reset(reset) => reset_action_json(action, reset, context),
     }
@@ -558,6 +561,18 @@ fn statement_json(statement: &dowe_components::ViewFunctionStatement, context: &
         dowe_components::ViewFunctionStatement::Request { result, action } => format!(
             r#"{{"kind":"request","result":"{}","method":"{}","path":"{}","baseEnv":{},"headers":{},"body":{}}}"#,
             escape_json(result), action.method.as_str(), escape_json(&action.path), json_optional_string(action.base_env.as_deref()), request_headers_json(action, context), json_optional_path(action.body.as_deref(), context)
+        ),
+        dowe_components::ViewFunctionStatement::Invoke { result, action } => format!(
+            r#"{{"kind":"invoke","result":"{}","function":"{}","args":{},"update":{},"reset":{},"successAlert":{},"successMessage":{},"errorAlert":{},"errorMessage":{}}}"#,
+            escape_json(result),
+            escape_json(&action.function),
+            invoke_args_json(&action.args, context),
+            json_optional_path(action.update.as_deref(), context),
+            json_optional_path(action.reset.as_deref(), context),
+            json_optional_path(action.success_alert.as_deref(), context),
+            json_optional_string(action.success_message.as_deref()),
+            json_optional_path(action.error_alert.as_deref(), context),
+            json_optional_string(action.error_message.as_deref())
         ),
         dowe_components::ViewFunctionStatement::If { result, success, error } => format!(
             r#"{{"kind":"if","result":"{}","success":[{}],"error":[{}]}}"#,
@@ -582,6 +597,39 @@ fn statement_json(statement: &dowe_components::ViewFunctionStatement, context: &
             escape_json(path)
         ),
     }
+}
+
+fn invoke_action_json(
+    view_action: &ViewAction,
+    action: &dowe_components::ViewInvokeAction,
+    context: &ReactiveRenderContext,
+) -> String {
+    format!(
+        r#"{{"id":"{}","name":"{}","params":{},"returnType":{},"kind":"invoke","function":"{}","args":{},"update":{},"reset":{},"successAlert":{},"successMessage":{},"errorAlert":{},"errorMessage":{},"autoload":{}}}"#,
+        escape_json(&view_action.id),
+        escape_json(&view_action.name),
+        function_params_json(view_action),
+        function_return_json(view_action),
+        escape_json(&action.function),
+        invoke_args_json(&action.args, context),
+        json_optional_path(action.update.as_deref(), context),
+        json_optional_path(action.reset.as_deref(), context),
+        json_optional_path(action.success_alert.as_deref(), context),
+        json_optional_string(action.success_message.as_deref()),
+        json_optional_path(action.error_alert.as_deref(), context),
+        json_optional_string(action.error_message.as_deref()),
+        action.autoload
+    )
+}
+
+fn invoke_args_json(args: &[dowe_components::StdlibArgument], context: &ReactiveRenderContext) -> String {
+    format!(
+        "[{}]",
+        args.iter()
+            .map(|arg| format!(r#"{{"name":"{}","value":{}}}"#, escape_json(&arg.name), stdlib_value_json(&arg.value, context)))
+            .collect::<Vec<_>>()
+            .join(",")
+    )
 }
 
 fn request_action_json(

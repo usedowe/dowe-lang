@@ -121,67 +121,67 @@ fn example_records() -> &'static [ExampleRecord] {
             id: "dashboard-layout",
             title: "Application sidebar layout",
             description: "A Scaffold with AppBar, Sidebar, SideNav, and routed content insertion.",
-            source_path: "skill-data/examples/fullstack/views/layouts/app-layout.dowe",
+            source_path: "dowe-agent://examples/fullstack/views/layouts/app-layout.dowe",
             skill: "views",
             tags: &["dashboard", "layout", "navigation", "sidebar"],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/fullstack/views/layouts/app-layout.dowe"
+                "/src/embedded/examples/fullstack/views/layouts/app-layout.dowe"
             )),
         },
         ExampleRecord {
             id: "dashboard-page",
             title: "Section-based responsive page",
             description: "Ordered Sections with a responsive form and record Grid.",
-            source_path: "skill-data/examples/fullstack/views/pages/blogs-page.dowe",
+            source_path: "dowe-agent://examples/fullstack/views/pages/blogs-page.dowe",
             skill: "views",
             tags: &["card", "dashboard", "grid", "responsive", "section"],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/fullstack/views/pages/blogs-page.dowe"
+                "/src/embedded/examples/fullstack/views/pages/blogs-page.dowe"
             )),
         },
         ExampleRecord {
             id: "form-controls",
             title: "Form and catalog page",
             description: "Signals, form controls, requests, Sections, Cards, and a responsive Grid.",
-            source_path: "skill-data/examples/fullstack/views/pages/blogs-page.dowe",
+            source_path: "dowe-agent://examples/fullstack/views/pages/blogs-page.dowe",
             skill: "views",
             tags: &["button", "form", "input", "request", "textarea"],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/fullstack/views/pages/blogs-page.dowe"
+                "/src/embedded/examples/fullstack/views/pages/blogs-page.dowe"
             )),
         },
         ExampleRecord {
             id: "fullstack-actions",
             title: "Sequential fullstack view functions",
             description: "Signals, request result bindings, state updates, reset, and toast feedback.",
-            source_path: "skill-data/examples/fullstack/views/pages/blogs-page.dowe",
+            source_path: "dowe-agent://examples/fullstack/views/pages/blogs-page.dowe",
             skill: "views",
             tags: &["form", "fullstack", "request", "signal", "toast"],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/fullstack/views/pages/blogs-page.dowe"
+                "/src/embedded/examples/fullstack/views/pages/blogs-page.dowe"
             )),
         },
         ExampleRecord {
             id: "server-routes",
             title: "Grouped server routes",
             description: "Imported handlers and middleware inside an endpoint path group.",
-            source_path: "skill-data/examples/fullstack/server/endpoints.dowe",
+            source_path: "dowe-agent://examples/fullstack/server/endpoints.dowe",
             skill: "server",
             tags: &["api", "endpoint", "handler", "middleware", "server"],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/fullstack/server/endpoints.dowe"
+                "/src/embedded/examples/fullstack/server/endpoints.dowe"
             )),
         },
         ExampleRecord {
             id: "reference-layout",
             title: "Reference-driven responsive shell",
             description: "A Scaffold-owned AppBar, static reused navigation, responsive controls, and Drawer overlay.",
-            source_path: "skill-data/examples/reference-ui/views/layouts/reference-layout.dowe",
+            source_path: "dowe-agent://examples/reference-ui/views/layouts/reference-layout.dowe",
             skill: "views",
             tags: &[
                 "appbar",
@@ -193,14 +193,14 @@ fn example_records() -> &'static [ExampleRecord] {
             ],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/reference-ui/views/layouts/reference-layout.dowe"
+                "/src/embedded/examples/reference-ui/views/layouts/reference-layout.dowe"
             )),
         },
         ExampleRecord {
             id: "reference-collections",
             title: "Reference collections and backend states",
             description: "Immutable and backend-driven collections rendered with each plus loading, empty, and error states.",
-            source_path: "skill-data/examples/reference-ui/views/pages/reference-page.dowe",
+            source_path: "dowe-agent://examples/reference-ui/views/pages/reference-page.dowe",
             skill: "views",
             tags: &[
                 "const",
@@ -212,14 +212,14 @@ fn example_records() -> &'static [ExampleRecord] {
             ],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/reference-ui/views/pages/reference-page.dowe"
+                "/src/embedded/examples/reference-ui/views/pages/reference-page.dowe"
             )),
         },
         ExampleRecord {
             id: "static-navigation-component",
             title: "Reusable static navigation",
             description: "A caller-independent NavMenu extracted for reuse in desktop and Drawer locations.",
-            source_path: "skill-data/examples/reference-ui/views/components/site-navigation.dowe",
+            source_path: "dowe-agent://examples/reference-ui/views/components/site-navigation.dowe",
             skill: "views",
             tags: &[
                 "component",
@@ -230,7 +230,7 @@ fn example_records() -> &'static [ExampleRecord] {
             ],
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/examples/reference-ui/views/components/site-navigation.dowe"
+                "/src/embedded/examples/reference-ui/views/components/site-navigation.dowe"
             )),
         },
     ]

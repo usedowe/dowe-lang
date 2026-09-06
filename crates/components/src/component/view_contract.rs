@@ -89,6 +89,7 @@ pub fn validate_component_props_from_inventory(
                     | BuiltinComponent::Stepper
                     | BuiltinComponent::Step
                     | BuiltinComponent::Accordion
+                    | BuiltinComponent::Tree
                     | BuiltinComponent::Carousel
                     | BuiltinComponent::Option
                     | BuiltinComponent::Table
@@ -121,9 +122,15 @@ pub fn validate_component_props_from_inventory(
                 component,
                 BuiltinComponent::Input
                     | BuiltinComponent::Select
+                    | BuiltinComponent::ComboBox
+                    | BuiltinComponent::CsvField
+                    | BuiltinComponent::DragDrop
+                    | BuiltinComponent::Editor
+                    | BuiltinComponent::ImageCropper
                     | BuiltinComponent::Checkbox
                     | BuiltinComponent::Toggle
                     | BuiltinComponent::RadioGroup
+                    | BuiltinComponent::RadioCard
                     | BuiltinComponent::Slider
                     | BuiltinComponent::Date
                     | BuiltinComponent::DateRange

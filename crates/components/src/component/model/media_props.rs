@@ -60,6 +60,7 @@ pub struct MicrophoneProps {
 pub struct IframeProps {
     pub style: StyleProps,
     pub src: String,
+    pub reactive_src: Option<String>,
     pub title: String,
     pub loading: IframeLoading,
     pub allow: Vec<String>,
@@ -71,6 +72,9 @@ pub struct IframeProps {
 pub struct DeviceProps {
     pub style: StyleProps,
     pub device: DeviceProfile,
+    pub bind: Option<String>,
+    pub hide_controls: bool,
+    pub studio_inspector: bool,
     pub options: Vec<DeviceOption>,
 }
 
@@ -148,7 +152,10 @@ impl IframeLoading {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CanvasProps {
     pub style: StyleProps,
+    pub is_draw: bool,
     pub scene: String,
+    pub layer_bind: Option<String>,
+    pub selected_layer: Option<String>,
     pub view_width: u16,
     pub view_height: u16,
     pub fit: CanvasFit,
@@ -161,6 +168,45 @@ pub struct CanvasProps {
     pub on_key: Option<String>,
     pub on_motion: Option<String>,
     pub motion_rate: u8,
+    pub draw: bool,
+    pub draw_mode: String,
+    pub draw_mode_binding: bool,
+    pub on_layer_add: Option<String>,
+    pub on_layer_change: Option<String>,
+    pub on_layer_remove: Option<String>,
+    pub on_layer_select: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DrawMode {
+    Pen,
+    Rect,
+    Circle,
+    Select,
+    Erase,
+}
+
+impl DrawMode {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "pen" => Some(Self::Pen),
+            "rect" => Some(Self::Rect),
+            "circle" => Some(Self::Circle),
+            "select" => Some(Self::Select),
+            "erase" => Some(Self::Erase),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pen => "pen",
+            Self::Rect => "rect",
+            Self::Circle => "circle",
+            Self::Select => "select",
+            Self::Erase => "erase",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

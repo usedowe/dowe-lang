@@ -217,26 +217,35 @@ private fun doweBadgeAlignment(position: String): Alignment =
     }
 
 @Composable
-private fun DoweChip(text: String, size: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, onClose: (() -> Unit)?, start: (@Composable () -> Unit)?, end: (@Composable () -> Unit)?) {
+private fun DoweChip(text: String, size: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, compact: Boolean, onClose: (() -> Unit)?, start: (@Composable () -> Unit)?, end: (@Composable () -> Unit)?) {
     val shape = RoundedCornerShape(DoweDesign.radius)
-    Row(
-        modifier = modifier
-            .height(doweChipHeight(size))
-            .clip(shape)
-            .background(backgroundColor)
-            .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
-            .padding(horizontal = doweChipPadding(size)),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        CompositionLocalProvider(LocalContentColor provides contentColor) {
-            start?.invoke()
-            Text(text = text, color = contentColor, fontSize = doweChipTextSize(size), fontWeight = FontWeight.Medium, maxLines = 1)
-            end?.invoke()
-            if (onClose != null) {
-                Text(text = "x", modifier = Modifier.clickable(onClick = onClose), color = contentColor.copy(alpha = 0.72f), fontSize = doweChipTextSize(size), fontWeight = FontWeight.Bold)
+    val surface: @Composable (Modifier) -> Unit = { surfaceModifier ->
+        Row(
+            modifier = surfaceModifier
+                .height(doweChipHeight(size))
+                .clip(shape)
+                .background(backgroundColor)
+                .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
+                .padding(horizontal = doweChipPadding(size)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                start?.invoke()
+                Text(text = text, color = contentColor, fontSize = doweChipTextSize(size), fontWeight = FontWeight.Medium, maxLines = 1)
+                end?.invoke()
+                if (onClose != null) {
+                    Text(text = "x", modifier = Modifier.clickable(onClick = onClose), color = contentColor.copy(alpha = 0.72f), fontSize = doweChipTextSize(size), fontWeight = FontWeight.Bold)
+                }
             }
         }
+    }
+    if (compact) {
+        Box(modifier = Modifier.doweGridCompactWidth(), contentAlignment = Alignment.CenterStart) {
+            surface(modifier)
+        }
+    } else {
+        surface(modifier)
     }
 }
 

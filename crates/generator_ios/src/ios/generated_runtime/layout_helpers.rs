@@ -185,11 +185,43 @@ func doweColumnFrameAlignment(_ value: DoweAlign?) -> Alignment {
 }
 
 func doweFlexStackSpacing(_ justify: DoweJustify?, gap: CGFloat?) -> CGFloat {
-    justify == .between ? CGFloat(0) : gap ?? CGFloat(0)
+    if justify == .around || justify == .evenly {
+        return CGFloat(0)
+    }
+    return justify == .between ? CGFloat(0) : gap ?? CGFloat(0)
+}
+
+func doweFlexLeadingSpacer(_ justify: DoweJustify?, gap: CGFloat?) -> CGFloat? {
+    if justify == .end || justify == .endSafe || justify == .center || justify == .centerSafe {
+        return CGFloat(0)
+    }
+    if justify == .around {
+        return (gap ?? CGFloat(0)) / CGFloat(2)
+    }
+    if justify == .evenly {
+        return gap ?? CGFloat(0)
+    }
+    return nil
+}
+
+func doweFlexTrailingSpacer(_ justify: DoweJustify?, gap: CGFloat?) -> CGFloat? {
+    if justify == .center || justify == .centerSafe {
+        return CGFloat(0)
+    }
+    if justify == .around {
+        return (gap ?? CGFloat(0)) / CGFloat(2)
+    }
+    if justify == .evenly {
+        return gap ?? CGFloat(0)
+    }
+    return nil
 }
 
 func doweFlexBetweenSpacer(_ justify: DoweJustify?, gap: CGFloat?) -> CGFloat? {
-    justify == .between ? gap ?? CGFloat(0) : nil
+    if justify == .between || justify == .around || justify == .evenly {
+        return gap ?? CGFloat(0)
+    }
+    return nil
 }
 
 struct DoweFlowLayout: Layout {
@@ -269,17 +301,17 @@ struct DoweFlowLayout: Layout {
                 let distributed = free / CGFloat(row.count + 1)
                 lineGap += distributed
                 start = distributed
-            } else if justify == .center {
+            } else if justify == .center || justify == .centerSafe {
                 start = free / 2
-            } else if justify == .end {
+            } else if justify == .end || justify == .endSafe {
                 start = free
             }
             var x = bounds.minX + start
             for (subview, size) in row {
                 var offset: CGFloat = 0
-                if align == .center {
+                if align == .center || align == .centerSafe {
                     offset = (lineHeight - size.height) / 2
-                } else if align == .end {
+                } else if align == .end || align == .endSafe {
                     offset = lineHeight - size.height
                 }
                 subview.place(at: CGPoint(x: x, y: y + offset), proposal: ProposedViewSize(size))

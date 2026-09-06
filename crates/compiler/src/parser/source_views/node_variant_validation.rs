@@ -1,3 +1,23 @@
+fn resolve_each_collection(
+    collection: &str,
+    signals: &HashMap<String, ViewSignalValue>,
+    locals: &HashMap<String, Option<ViewSignalValue>>,
+) -> Option<ViewSignalValue> {
+    let mut value = signals
+        .get(collection.split('.').next()?)
+        .cloned()
+        .or_else(|| locals.get(collection.split('.').next()?).and_then(Clone::clone))?;
+    for field in collection.split('.').skip(1) {
+        let ViewSignalValue::Object(fields) = value else {
+            return None;
+        };
+        value = fields
+            .into_iter()
+            .find_map(|(name, field_value)| (name == field).then_some(field_value))?;
+    }
+    Some(value)
+}
+
 fn validate_node_variant_references(
     path: &Path,
     node: &ViewNode,
@@ -36,12 +56,12 @@ fn validate_node_variant_references(
             key,
             children,
         } => {
-            let Some(collection_type) = signals.get(collection) else {
-                return Err(DoweError::at_path(
+            let collection_type = resolve_each_collection(collection, signals, locals).ok_or_else(|| {
+                DoweError::at_path(
                     path,
                     format!("unknown view value `{collection}` in `collection`"),
-                ));
-            };
+                )
+            })?;
             let ViewSignalValue::Array(items) = collection_type else {
                 return Err(DoweError::at_path(
                     path,
@@ -112,6 +132,21 @@ fn validate_node_variant_references(
                     "description",
                     ViewPathExpectation::String,
                 )?;
+            }
+        }
+        ViewNode::Collapsible { props, children } => {
+            if let Some(binding) = props.label.strip_prefix("@signal:") {
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    binding,
+                    "label",
+                    ViewPathExpectation::String,
+                )?;
+            }
+            for child in children {
+                validate_node_references(path, child, signals, writable_signals, actions, locals)?;
             }
         }
         ViewNode::Title { props, value } | ViewNode::Text { props, value } => {
@@ -279,6 +314,9 @@ fn validate_node_variant_references(
             validate_optional_action(path, actions, props.on_key.as_deref())?;
             validate_optional_action(path, actions, props.on_motion.as_deref())?;
         }
+        ViewNode::Editor { props } => {
+            validate_optional_action(path, actions, props.on_save.as_deref())?;
+        }
         ViewNode::Camera { props } => {
             validate_optional_action(path, actions, props.on_start.as_deref())?;
             validate_optional_action(path, actions, props.on_capture.as_deref())?;
@@ -312,6 +350,18 @@ fn validate_node_variant_references(
                 )?;
             }
         }
+        ViewNode::Iframe { props } => {
+            if let Some(src) = props.reactive_src.as_deref() {
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    src,
+                    "src",
+                    ViewPathExpectation::String,
+                )?;
+            }
+        }
         ViewNode::ArcChart { props } => {
             validate_category_chart_common(path, signals, &props.common, "ArcChart")?;
         }
@@ -329,6 +379,26 @@ fn validate_node_variant_references(
         }
         ViewNode::Table { props } => {
             validate_table_data(path, signals, &props.data, &props.columns)?;
+        }
+        ViewNode::Tree { props } => {
+            validate_tree_data(path, signals, &props.data)?;
+            if let Some(bind) = props.bind.as_deref() {
+                if signals.contains_key(path_root(bind)) && !writable_signals.contains(path_root(bind)) {
+                    return Err(DoweError::at_path(
+                        path,
+                        format!("constant path `{bind}` cannot be used in `Tree bind`"),
+                    ));
+                }
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    bind,
+                    "Tree bind",
+                    ViewPathExpectation::String,
+                )?;
+            }
+            validate_optional_action(path, actions, props.on_select.as_deref())?;
         }
         ViewNode::SideNav { items, .. } => {
             validate_side_nav_actions(path, items, actions)?;

@@ -130,9 +130,13 @@ fn database_bindings(
     imports: &ServerImports,
     backend: &ServerConfig,
     desktop_server: Option<&ServerConfig>,
+    ipc: &NativeIpcConfig,
 ) -> DoweResult<Vec<DatabaseBinding>> {
     let mut connections = Vec::<StoreConnection>::new();
     for connection in &backend.databases {
+        collect_database_connection(connection, &mut connections);
+    }
+    for connection in &ipc.databases {
         collect_database_connection(connection, &mut connections);
     }
     for binding in imports.config_bindings.values() {

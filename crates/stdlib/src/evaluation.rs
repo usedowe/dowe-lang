@@ -3,6 +3,7 @@ use crate::model::{StdlibCall, StdlibResult, StdlibValue};
 use crate::svg::{convert_svg, convert_svg_data};
 use crate::{StdlibError, StdlibSurface, validate_call};
 use serde_json::{Map, Number, Value};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
 pub fn evaluate<F>(call: &StdlibCall, mut resolve: F) -> StdlibResult<Value>
@@ -22,10 +23,23 @@ where
         ("json", function) => eval_json(function, &args),
         ("date", function) => eval_date(function, &args),
         ("id", function) => eval_id(function, &args),
+        ("hash", function) => eval_hash(function, &args),
         _ => Err(StdlibError::unsupported(format!(
             "unsupported stdlib function `{}`",
             call.name()
         ))),
+    }
+}
+
+fn eval_hash(function: &str, args: &EvaluatedArgs) -> StdlibResult<Value> {
+    match function {
+        "sha256" => {
+            let digest = Sha256::digest(args.string("value")?.as_bytes());
+            Ok(Value::String(
+                digest.iter().map(|byte| format!("{byte:02x}")).collect(),
+            ))
+        }
+        _ => Err(StdlibError::unsupported("unsupported hash function")),
     }
 }
 
@@ -141,6 +155,7 @@ fn eval_str(function: &str, args: &EvaluatedArgs) -> StdlibResult<Value> {
         "contains" => Ok(Value::Bool(
             args.string("value")?.contains(&args.string("needle")?),
         )),
+        "equals" => Ok(Value::Bool(args.string("value")? == args.string("other")?)),
         "startsWith" => Ok(Value::Bool(
             args.string("value")?.starts_with(&args.string("prefix")?),
         )),
@@ -151,6 +166,11 @@ fn eval_str(function: &str, args: &EvaluatedArgs) -> StdlibResult<Value> {
             args.string("value")?
                 .replace(&args.string("from")?, &args.string("to")?),
         )),
+        "truncate" => {
+            let value = args.string("value")?;
+            let max = non_negative_usize(args.number("max")?)?;
+            Ok(Value::String(value.chars().take(max).collect()))
+        }
         "split" => {
             let value = args.string("value")?;
             let delimiter = args.string("delimiter")?;
@@ -205,6 +225,10 @@ fn eval_math(function: &str, args: &EvaluatedArgs) -> StdlibResult<Value> {
                 json_number(args.number("left")? / right)
             }
         }
+        "gt" => Ok(Value::Bool(args.number("left")? > args.number("right")?)),
+        "gte" => Ok(Value::Bool(args.number("left")? >= args.number("right")?)),
+        "lt" => Ok(Value::Bool(args.number("left")? < args.number("right")?)),
+        "lte" => Ok(Value::Bool(args.number("left")? <= args.number("right")?)),
         "round" => json_number(args.number("value")?.round()),
         "floor" => json_number(args.number("value")?.floor()),
         "ceil" => json_number(args.number("value")?.ceil()),
@@ -410,6 +434,31 @@ fn eval_list(function: &str, args: &EvaluatedArgs) -> StdlibResult<Value> {
                     })
                     .collect(),
             ))
+        }
+        "filterContainsAny" => {
+            let field = args.string("field")?;
+            let needles = args
+                .array("needles")?
+                .iter()
+                .map(json_text)
+                .filter(|needle| !needle.is_empty())
+                .map(|needle| needle.to_lowercase())
+                .collect::<Vec<_>>();
+            Ok(Value::Array(
+                args.array("values")?
+                    .into_iter()
+                    .filter(|item| {
+                        let value = read_path(item, &field).map(json_text).unwrap_or_default();
+                        let value = value.to_lowercase();
+                        needles.iter().any(|needle| value.contains(needle))
+                    })
+                    .collect(),
+            ))
+        }
+        "concat" => {
+            let mut values = args.array("values")?;
+            values.extend(args.array("other")?);
+            Ok(Value::Array(values))
         }
         "mapField" => {
             let field = args.string("field")?;

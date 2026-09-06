@@ -18,6 +18,7 @@ pub use database_migrations::{
 pub use dev_changes::{DevChangeScope, classify_dev_changes};
 pub use dev_compiler::{DevCompilerSession, DevCompilerSessionStats};
 pub use dowe_database_query::SelectQuery;
+pub use dowe_generator_web::web_artifacts_for_target;
 pub use error::{DoweError, DoweResult};
 pub use language::{
     LanguageCodeAction, LanguageCompletion, LanguageCompletionKind, LanguageDiagnostic,
@@ -35,17 +36,18 @@ pub use model::{
     EnvironmentVisibility, GeneratedChunk, GeneratedFile, HttpActionJsonEndpoint,
     HttpBytesEndpoint, HttpConnectionValue, HttpHeaderValue, HttpMethod, HttpProxyEndpoint,
     HttpRedirectPolicy, HttpResponseMode, HttpReverseProxyEndpoint, KvActionJsonEndpoint,
-    MatchedEndpoint, OutboundHttpHeader, OutboundHttpRequest, ProjectCapabilities,
-    ProjectServerConfig, QueueActionJsonEndpoint, QueueConnection, QueueConnectionValue,
-    QueueProvider, ResponseCookie, ResponseHeader, ReverseProxyStrategy, RtpConfig, ServerAction,
-    ServerBackgroundJob, ServerCallStatement, ServerConfig, ServerCryptoAesCtrStatement,
-    ServerCryptoCencAesCtrStatement, ServerFileStatement, ServerFunctionAction,
-    ServerFunctionParameter, ServerFunctionReturn, ServerInspectorEdge, ServerInspectorEntity,
-    ServerInspectorEntityField, ServerInspectorJob, ServerInspectorManifest, ServerInspectorNode,
-    ServerInspectorResource, ServerInspectorRoute, ServerInspectorService, ServerInspectorSource,
-    ServerInspectorWebSocket, ServerJwtStatement, ServerKvStatement, ServerLog, ServerLogLevel,
-    ServerLogValue, ServerMiddleware, ServerMiddlewareAction, ServerMiddlewareResponseBody,
-    ServerMiddlewareStatement, ServerModel, ServerModelEngine, ServerModelFormat, ServerModelKind,
+    MatchedEndpoint, NativeIpcConfig, NativeIpcFunction, NativeIpcTarget, OutboundHttpHeader,
+    OutboundHttpRequest, ProjectCapabilities, ProjectServerConfig, QueueActionJsonEndpoint,
+    QueueConnection, QueueConnectionValue, QueueProvider, ResponseCookie, ResponseHeader,
+    ReverseProxyStrategy, RtpConfig, ServerAction, ServerBackgroundJob, ServerCallStatement,
+    ServerConfig, ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement,
+    ServerFileStatement, ServerFunctionAction, ServerFunctionParameter, ServerFunctionReturn,
+    ServerInspectorEdge, ServerInspectorEntity, ServerInspectorEntityField, ServerInspectorJob,
+    ServerInspectorManifest, ServerInspectorNode, ServerInspectorResource, ServerInspectorRoute,
+    ServerInspectorService, ServerInspectorSource, ServerInspectorWebSocket, ServerJwtStatement,
+    ServerKvStatement, ServerLog, ServerLogLevel, ServerLogValue, ServerMiddleware,
+    ServerMiddlewareAction, ServerMiddlewareResponseBody, ServerMiddlewareStatement, ServerModel,
+    ServerModelEngine, ServerModelFormat, ServerModelKind, ServerNotificationStatement,
     ServerPasswordStatement, ServerQueueStatement, ServerSecret, ServerSpawnStatement,
     ServerStatement, ServerStdlibStatement, ServerStoreStatement, ServerTaskTiming,
     ServerTransport, ServerTransportProtocol, ServerVectorStatement, StoreActionJsonEndpoint,

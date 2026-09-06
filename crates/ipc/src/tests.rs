@@ -1,12 +1,11 @@
 use super::{
     AgentPrepareOptions, AgentRequestType, BuildOptions, BuildTarget, CodeGraphBuildOptions,
     DeployOptions, DeploySurface, DeployTarget, DevTarget, DevTargetSelection, GenerateIconOptions,
-    HostOs, IconRounded, IconTarget, InitOptions, InitProjectOptions, ProjectTemplate, SpawnConfig,
-    SpawnEvent, build_codegraph, build_project, deploy_project, generate_project_icons,
-    get_agent_public_skill, get_agent_public_skill_resource, handle_agent_mcp_message,
-    init_agent_harness, init_dowe_project, init_external_agent_project, list_agent_public_skills,
-    prepare_agent_project_context, prepare_agent_request, run_spawn, search_agent_public_examples,
-    update_external_agent_project,
+    HostOs, IconRounded, IconTarget, InitOptions, SpawnConfig, SpawnEvent, build_codegraph,
+    build_project, deploy_project, generate_project_icons, get_agent_public_skill,
+    get_agent_public_skill_resource, handle_agent_mcp_message, init_agent_harness,
+    list_agent_public_skills, prepare_agent_project_context, prepare_agent_request, run_spawn,
+    search_agent_public_examples,
 };
 use std::fs;
 use tempfile::TempDir;
@@ -47,79 +46,6 @@ fn initializes_agent_harness_through_ipc_wrapper() {
     assert!(encoded.contains(".agents/AGENTS.md"));
     assert!(temp.path().join(".agents/manifest.json").exists());
     assert!(!temp.path().join("agents").exists());
-}
-
-#[test]
-fn initializes_external_agent_project_through_ipc_wrapper() {
-    let temp = TempDir::new().expect("tempdir");
-
-    let report = init_external_agent_project(temp.path()).expect("init");
-
-    assert!(report.created.iter().any(|file| file.path == "AGENTS.md"));
-    assert!(report.created.iter().any(|file| file.path == "CLAUDE.md"));
-    assert!(temp.path().join("AGENTS.md").is_file());
-    assert!(temp.path().join("CLAUDE.md").is_file());
-    assert!(temp.path().join(".agents/manifest.json").is_file());
-    assert!(
-        temp.path()
-            .join(".agents/skills/dowe-core/SKILL.md")
-            .is_file()
-    );
-}
-
-#[test]
-fn initializes_complete_dowe_project_through_ipc_wrapper() {
-    let temp = TempDir::new().expect("tempdir");
-
-    let report = init_dowe_project(
-        temp.path(),
-        InitProjectOptions::new(ProjectTemplate::Crud).with_i18n(true),
-    )
-    .expect("init");
-
-    assert_eq!(report.project.template(), ProjectTemplate::Crud);
-    assert!(report.project.i18n_enabled());
-    assert!(temp.path().join("main.dowe").is_file());
-    assert!(temp.path().join("i18n/es.dowe").is_file());
-    assert!(temp.path().join(".agents/manifest.json").is_file());
-}
-
-#[test]
-fn reinstalls_complete_dowe_project_through_ipc_wrapper() {
-    let temp = TempDir::new().expect("tempdir");
-    init_dowe_project(temp.path(), InitProjectOptions::new(ProjectTemplate::Blank)).expect("init");
-    fs::write(temp.path().join("main.dowe"), "stale main").expect("main");
-
-    let report = init_dowe_project(
-        temp.path(),
-        InitProjectOptions::new(ProjectTemplate::Blank).with_reinstall(true),
-    )
-    .expect("reinstall");
-
-    assert!(report.project.reinstalled());
-    assert_ne!(
-        fs::read_to_string(temp.path().join("main.dowe")).expect("main"),
-        "stale main"
-    );
-}
-
-#[test]
-fn updates_external_agent_project_through_ipc_wrapper() {
-    let temp = TempDir::new().expect("tempdir");
-    init_external_agent_project(temp.path()).expect("init");
-    fs::write(
-        temp.path().join(".agents/skills/dowe-core/SKILL.md"),
-        "stale",
-    )
-    .expect("stale");
-
-    update_external_agent_project(temp.path()).expect("update");
-
-    assert!(
-        fs::read_to_string(temp.path().join(".agents/skills/dowe-core/SKILL.md"))
-            .expect("updated")
-            .starts_with("---\nname: dowe-core\n")
-    );
 }
 
 #[test]
@@ -182,7 +108,7 @@ fn exposes_public_agent_bridge_through_ipc() {
         .expect("mcp")
         .expect("response");
 
-    assert_eq!(skills.len(), 5);
+    assert_eq!(skills.len(), 6);
     assert_eq!(views.id, "views");
     assert_eq!(styles.path, "references/styles.md");
     assert_eq!(examples.results[0].id, "dashboard-layout");

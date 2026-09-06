@@ -26,9 +26,10 @@ fn render_drag_drop_html(
             .collect::<String>()
     };
     let extra = format!(
-        r#" data-dowe-drag-drop data-dowe-direction="{}" data-dowe-allow-group-transfer="{}""#,
+        r#" data-dowe-drag-drop data-dowe-direction="{}" data-dowe-allow-group-transfer="{}"{}"#,
         props.direction.as_str(),
-        props.allow_group_transfer
+        props.allow_group_transfer,
+        reactive_variant_attrs(&props.style, context, "is-")
     );
     let surface = format!(
         r#"<div{}>{}</div>"#,
@@ -37,4 +38,3 @@ fn render_drag_drop_html(
     );
     render_field_block(&props.style, None, None, &surface, context)
 }
-

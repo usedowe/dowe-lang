@@ -218,7 +218,8 @@ fn dev_children_boundary(
         | ViewNode::ToggleGroup { .. }
         | ViewNode::Countdown { .. }
         | ViewNode::Map { .. }
-        | ViewNode::TypeWriter { .. } => DevChildrenBoundary::default(),
+        | ViewNode::TypeWriter { .. }
+        | ViewNode::Tree { .. } => DevChildrenBoundary::default(),
     }
 }
 

@@ -36,6 +36,8 @@ fn writes_source_language_artifacts() {
     assert!(views.contains(r#""Box""#));
     assert!(views.contains(r#""Alert""#));
     assert!(views.contains("BottomBar tab href label Icon featured"));
+    assert!(views.contains("Scaffold safeAreaTop:\\\"surface\\\" safeAreaBottom:\\\"primary\\\""));
+    assert!(views.contains("omitted safe-area colors default to background"));
     assert!(views.contains(r#""Svg""#));
     assert!(views.contains(r#""Path""#));
     assert!(views.contains(r#""Code""#));
@@ -504,4 +506,3 @@ main
             .contains("quoted static string literal")
     );
 }
-

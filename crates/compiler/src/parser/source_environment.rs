@@ -22,11 +22,21 @@ pub(crate) fn parse_environment_files_for(
     let local_path = root.join(environment.file_name());
     let examples = parse_optional_file(&example_path)?;
     let locals = parse_optional_file(&local_path)?;
-    let names = examples
+    let mut names = examples
         .keys()
         .chain(locals.keys())
         .cloned()
         .collect::<BTreeSet<_>>();
+    if environment == CompileEnvironment::Development {
+        for name in [
+            "BACKEND_URL",
+            "SERVER_URL",
+            "BACKEND_DESKTOP_URL",
+            "SERVER_DESKTOP_URL",
+        ] {
+            names.insert(name.to_string());
+        }
+    }
     let variables = names
         .into_iter()
         .map(|name| {

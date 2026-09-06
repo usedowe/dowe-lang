@@ -1,5 +1,6 @@
 fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> String {
     let mut input = String::new();
+    let reactive_attrs = reactive_variant_attrs(props, context, "is-");
     let has_validation = has_form_validation_contract(&props.element);
     if let Some(icon) = props.icon_start.as_ref() {
         input.push_str(r#"<span class="control-icon icon-start">"#);
@@ -32,7 +33,7 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
             attrs(
                 input_control_classes(props),
                 Some(&props.element),
-                None,
+                Some(reactive_attrs.as_str()),
                 context
             ),
             input
@@ -42,12 +43,12 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
         }
         return format!(
             r#"<label{}><span class="field-label">{}</span>{}</label>"#,
-            attrs(
-                vec!["field".to_string()],
-                Some(&props.element),
-                None,
-                context,
-            ),
+                attrs(
+                    vec!["field".to_string()],
+                    Some(&props.element),
+                    Some(reactive_attrs.as_str()),
+                    context,
+                ),
             escape_html(props.label.as_deref().unwrap_or_default()),
             control
         );
@@ -57,7 +58,12 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
         classes.push("is-floating".to_string());
         let body = format!(
             "<label{}>{}{}</label>",
-            attrs(classes, Some(&props.element), None, context),
+            attrs(
+                classes,
+                Some(&props.element),
+                Some(reactive_attrs.as_str()),
+                context,
+            ),
             floating_label_html(props),
             input
         );
@@ -72,7 +78,7 @@ fn render_input_html(props: &VariantProps, context: &ReactiveRenderContext) -> S
         attrs(
             input_control_classes(props),
             Some(&props.element),
-            None,
+            Some(reactive_attrs.as_str()),
             context
         ),
         input
@@ -112,6 +118,39 @@ fn input_control_classes(props: &VariantProps) -> Vec<String> {
     classes
 }
 
+fn reactive_variant_attrs(
+    props: &VariantProps,
+    context: &ReactiveRenderContext,
+    size_prefix: &str,
+) -> String {
+    let bindings = [
+        ("variant", props.reactive.variant.as_deref()),
+        ("scheme", props.reactive.scheme.as_deref()),
+        ("size", props.reactive.size.as_deref()),
+        ("rounded", props.reactive.rounded.as_deref()),
+    ];
+    if bindings.iter().all(|(_, path)| path.is_none()) {
+        return String::new();
+    }
+    let mut output = String::from(r#" data-dowe-variant-binding="true""#);
+    if !size_prefix.is_empty() {
+        output.push_str(&format!(
+            r#" data-dowe-variant-size-prefix="{}""#,
+            escape_attr(size_prefix)
+        ));
+    }
+    for (name, path) in bindings {
+        if let Some(path) = path {
+            output.push_str(&format!(
+                r#" data-dowe-{}="{}""#,
+                name,
+                escape_attr(&context.signal_path(path))
+            ));
+        }
+    }
+    output
+}
+
 fn render_select_html(
     props: &VariantProps,
     options: &[SelectOption],
@@ -140,7 +179,7 @@ fn render_select_html_with_attrs(
     }
     let placeholder = props.placeholder.as_deref().unwrap_or("Select an option");
     let extra = format!(
-        r#" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-dowe-select{} data-dowe-placeholder="{}"{}{}{}"#,
+        r#" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-dowe-select{} data-dowe-placeholder="{}"{}{}{}{}"#,
         if has_validation {
             " data-dowe-validation-control"
         } else {
@@ -148,6 +187,7 @@ fn render_select_html_with_attrs(
         },
         escape_attr(placeholder),
         bind_attr(props.element.bind.as_deref(), context),
+        reactive_variant_attrs(props, context, "is-"),
         extra_attrs,
         props
             .label
@@ -234,4 +274,3 @@ fn render_select_option_html(option: &SelectOption) -> String {
         description
     )
 }
-

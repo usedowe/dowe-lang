@@ -1,4 +1,31 @@
 #[test]
+fn emits_smooth_page_fade_transition_css() {
+    let css = super::design_css();
+
+    assert!(css.contains(
+        "html.page-transitioning::view-transition-group(root){animation:none;}"
+    ));
+    assert!(css.contains(
+        "html.page-transitioning::view-transition-old(root),html.page-transitioning::view-transition-new(root){animation:none;}"
+    ));
+    assert!(css.contains(
+        "html.page-transitioning::view-transition-group(dowe-page){animation:none;}"
+    ));
+    assert!(css.contains(
+        "html.page-transitioning::view-transition-old(dowe-page){animation:none;}"
+    ));
+    assert!(!css.contains("dowe-page-fade-out"));
+    assert!(!css.contains("dowe-page-slide-out"));
+    assert!(!css.contains("dowe-page-scale-out"));
+    assert!(css.contains(
+        "html.page-transitioning[data-dowe-page-transition='fade']::view-transition-new(dowe-page){animation:dowe-page-fade-in 280ms cubic-bezier(.22,.61,.36,1) both;}"
+    ));
+    assert!(css.contains(
+        ".dowe-page-enter{opacity:0;transition:opacity 280ms cubic-bezier(.22,.61,.36,1);}.dowe-page-enter-active{opacity:1;}"
+    ));
+}
+
+#[test]
 fn renders_layout_bars_markup_and_css() {
     let root = Path::new("/project");
     let page_tree = ViewNode::Box {
@@ -342,6 +369,7 @@ fn renders_navigation_shell_markup_runtime_and_css() {
 
     assert!(html.contains(r#"<div class="scaffold is-boxed">"#));
     assert!(html.contains(r#"<div class="scaffold-body">"#));
+    assert!(html.contains("--dowe-scaffold-top-inset"));
     assert!(html.contains(r#"<aside class="scaffold-start">"#));
     assert!(html.contains(r#"<main class="scaffold-main">"#));
     assert!(html.contains(r#"<aside class="scaffold-end">"#));
@@ -479,6 +507,7 @@ fn renders_responsive_stepper_markup_and_css() {
     };
     props.variant = TabsVariant::Stepper;
     props.position = TabsPosition::Top;
+    props.style.element.bind = Some("selectedStep".to_string());
     let page = build_page_chunk(
         root,
         Path::new("/project/src/pages/stepper.dowe"),
@@ -486,8 +515,10 @@ fn renders_responsive_stepper_markup_and_css() {
         &page_tree,
     );
     let html = render_page_body(&ViewNode::Children, &page_tree);
+    let router = full_runtime_for_test();
 
     assert!(html.contains(r#"class="tabs is-top stepper" data-dowe-tabs"#));
+    assert!(html.contains(r#"data-dowe-tabs-bind="selectedStep""#));
     assert!(html.contains(r#"class="tabs-list is-stepper is-primary" role="tablist""#));
     assert!(html.contains(r#"class="step-indicator" aria-hidden="true">1</span>"#));
     assert!(html.contains(r#"aria-current="step""#));
@@ -497,6 +528,7 @@ fn renders_responsive_stepper_markup_and_css() {
     );
     assert!(page.css_content.contains("overflow-x:auto"));
     assert!(page.css_content.contains("scroll-snap-type:x proximity"));
+    assert!(router.contains("writePath(activeView.state,bind,id)"));
 }
 
 #[test]

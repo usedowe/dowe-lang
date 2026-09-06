@@ -63,10 +63,22 @@ fn code_template_segments(
             segments.push(CodeTemplateSegment::Static { text, tokens });
         }
         let tail = &rest[start + 1..];
-        let end = tail.find('}').ok_or_else(|| ComponentError::invalid_prop("template", "balanced {signal.path} placeholders"))?;
+        let end = tail.find('}').ok_or_else(|| {
+            ComponentError::invalid_prop("template", "balanced {signal.path} placeholders")
+        })?;
         let path = &tail[..end];
-        if path.is_empty() || !path.split('.').all(|part| !part.is_empty() && part.chars().all(|value| value.is_ascii_alphanumeric() || value == '_')) {
-            return Err(ComponentError::invalid_prop("template", "{signal.path} placeholders"));
+        if path.is_empty()
+            || !path.split('.').all(|part| {
+                !part.is_empty()
+                    && part
+                        .chars()
+                        .all(|value| value.is_ascii_alphanumeric() || value == '_')
+            })
+        {
+            return Err(ComponentError::invalid_prop(
+                "template",
+                "{signal.path} placeholders",
+            ));
         }
         segments.push(CodeTemplateSegment::Binding(path.to_string()));
         rest = &tail[end + 1..];
@@ -125,9 +137,8 @@ pub fn camera_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
         match prop.name.as_str() {
             "facing" => {
                 let value = parse_required_string(&prop.name, &prop.value)?;
-                facing = CameraFacing::from_name(&value).ok_or_else(|| {
-                    ComponentError::invalid_prop("facing", "user or environment")
-                })?;
+                facing = CameraFacing::from_name(&value)
+                    .ok_or_else(|| ComponentError::invalid_prop("facing", "user or environment"))?;
             }
             "label" => label = parse_required_string(&prop.name, &prop.value)?,
             "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
@@ -190,6 +201,7 @@ pub fn microphone_component_node(props: Vec<ComponentProp>) -> ComponentResult<V
 
 pub fn iframe_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut src = None;
+    let mut reactive_src = None;
     let mut title = None;
     let mut loading = IframeLoading::Lazy;
     let mut allow = Vec::new();
@@ -198,15 +210,30 @@ pub fn iframe_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "src" => src = Some(parse_iframe_src(&prop.name, &prop.value)?),
+            "src" => {
+                if let Some(path) = reactive_reference(&prop.value) {
+                    reactive_src = Some(path);
+                } else {
+                    src = Some(parse_iframe_src(&prop.name, &prop.value)?);
+                }
+            }
             "title" => title = Some(parse_required_string(&prop.name, &prop.value)?),
             "loading" => {
                 let value = parse_required_string(&prop.name, &prop.value)?;
                 loading = IframeLoading::from_name(&value)
                     .ok_or_else(|| ComponentError::invalid_prop("loading", "lazy or eager"))?;
             }
-            "allow" => allow = parse_iframe_tokens(&prop.name, &prop.value, IFRAME_ALLOW_TOKENS, true)?,
-            "sandbox" => sandbox = Some(parse_iframe_tokens(&prop.name, &prop.value, IFRAME_SANDBOX_TOKENS, false)?),
+            "allow" => {
+                allow = parse_iframe_tokens(&prop.name, &prop.value, IFRAME_ALLOW_TOKENS, true)?
+            }
+            "sandbox" => {
+                sandbox = Some(parse_iframe_tokens(
+                    &prop.name,
+                    &prop.value,
+                    IFRAME_SANDBOX_TOKENS,
+                    false,
+                )?)
+            }
             "allowFullscreen" => allow_fullscreen = parse_static_bool(&prop.name, &prop.value)?,
             _ => style_props.push(prop),
         }
@@ -214,10 +241,19 @@ pub fn iframe_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
     Ok(ViewNode::Iframe {
         props: IframeProps {
             style: parse_style_props(BuiltinComponent::Iframe, &style_props, StylePropMode::Box)?,
-            src: src.ok_or_else(|| {
-                ComponentError::invalid_prop("src", "https URL or internal route")
-            })?,
-            title: title.ok_or_else(|| ComponentError::invalid_prop("title", "non-empty string"))?,
+            src: match (src, reactive_src.as_ref()) {
+                (Some(src), _) => src,
+                (None, Some(_)) => String::new(),
+                (None, None) => {
+                    return Err(ComponentError::invalid_prop(
+                        "src",
+                        "https URL, internal route or Signal path",
+                    ));
+                }
+            },
+            reactive_src,
+            title: title
+                .ok_or_else(|| ComponentError::invalid_prop("title", "non-empty string"))?,
             loading,
             allow,
             sandbox,
@@ -231,18 +267,29 @@ pub fn device_node(
     children: Vec<ViewNode>,
 ) -> ComponentResult<ViewNode> {
     let mut device = DeviceProfile::Mobile;
+    let mut bind = None;
+    let mut hide_controls = false;
+    let mut studio_inspector = false;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
             "device" => {
                 let value = parse_required_string(&prop.name, &prop.value)?;
                 device = DeviceProfile::from_name(&value).ok_or_else(|| {
-                    ComponentError::invalid_prop(
-                        "device",
-                        "mobile, tablet, laptop or monitor",
-                    )
+                    ComponentError::invalid_prop("device", "mobile, tablet, laptop or monitor")
                 })?;
             }
+            "bind" => {
+                bind = Some(parse_signal_path(
+                    &prop.name,
+                    &prop.value,
+                    "signal string path",
+                )?)
+            }
+            "hideControls" | "hideButtons" => {
+                hide_controls = parse_static_bool(&prop.name, &prop.value)?
+            }
+            "studioInspector" => studio_inspector = parse_static_bool(&prop.name, &prop.value)?,
             _ => style_props.push(prop),
         }
     }
@@ -260,6 +307,9 @@ pub fn device_node(
         props: DeviceProps {
             style: parse_style_props(BuiltinComponent::Device, &style_props, StylePropMode::Box)?,
             device,
+            bind,
+            hide_controls,
+            studio_inspector,
             options: [
                 (DeviceProfile::Mobile, "i-phone"),
                 (DeviceProfile::Tablet, "tablet"),
@@ -268,12 +318,10 @@ pub fn device_node(
             ]
             .into_iter()
             .map(|(profile, name)| {
-                let node = icon_component_node(vec![
-                    ComponentProp {
-                        name: "name".to_string(),
-                        value: PropValue::String(format!("{name}-outline")),
-                    },
-                ])?;
+                let node = icon_component_node(vec![ComponentProp {
+                    name: "name".to_string(),
+                    value: PropValue::String(format!("{name}-outline")),
+                }])?;
                 let ViewNode::Svg { props, paths } = node else {
                     unreachable!()
                 };

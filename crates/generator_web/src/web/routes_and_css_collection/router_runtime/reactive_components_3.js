@@ -378,6 +378,34 @@ function renderReactiveImages(root, state, scope) {
     image.src = value == null ? "" : String(value);
   }
 }
+function renderReactiveIframes(root, state, scope) {
+  const scoped = !!scope;
+  const validSource = value => {
+    if (/^https:\/\//.test(value)) return !/\s/.test(value);
+    if (/^http:\/\//.test(value)) {
+      try {
+        const url = new URL(value);
+        if (
+          !/\s/.test(value) &&
+          !url.username &&
+          !url.password &&
+          ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+        )
+          return true;
+      } catch (error) {}
+      return false;
+    }
+    if (!value.startsWith("/") || value.startsWith("//") || value.includes("://") || value.includes("\\\\") || /\s/.test(value)) return false;
+    const path = value.split(/[?#]/)[0];
+    return !path.split("/").some(segment => segment === "." || segment === "..");
+  };
+  for (const iframe of root.querySelectorAll("[data-dowe-iframe-src]")) {
+    if (!scoped && iframe.closest("[data-dowe-each-row]")) continue;
+    const value = readPath(state, iframe.dataset.doweIframeSrc, scope);
+    const source = value == null ? "" : String(value);
+    iframe.src = validSource(source) ? source : "";
+  }
+}
 function renderSplashes(root, state, scope) {
   const scoped = !!scope;
   for (const boundary of root.querySelectorAll("[data-dowe-splash]")) {
@@ -394,17 +422,19 @@ function renderDynamic(root, state, scope) {
   renderSplashes(root, state, scope);
   renderReactiveButtons(root, state, scope);
   renderReactiveSideNavs(root, state, scope);
+  runtimeCall("tree", "renderTrees", [root, state, scope]);
   renderRuntimeSvgs(root, state, scope);
   renderReactiveImages(root, state, scope);
+  renderReactiveIframes(root, state, scope);
   renderReactiveAvatars(root, state, scope);
   runtimeCall("styles", "renderStyles", [root, state, scope]);
   for (const element of root.querySelectorAll("[data-dowe-text]")) {
-    if (!scoped && element.closest("[data-dowe-each-row]")) continue;
+    if (element.closest("[data-dowe-each-row]") !== root.closest("[data-dowe-each-row]")) continue;
     const value = readPath(state, element.dataset.doweText, scope);
     element.textContent = value == null ? "" : String(value);
   }
   for (const element of root.querySelectorAll("[data-dowe-template]")) {
-    if (!scoped && element.closest("[data-dowe-each-row]")) continue;
+    if (element.closest("[data-dowe-each-row]") !== root.closest("[data-dowe-each-row]")) continue;
     element.textContent = element.dataset.doweTemplate.replace(/\{([^{}]+)\}/g, (_, path) => {
       const value = readPath(state, path, scope);
       return value == null ? "" : String(value);
@@ -431,6 +461,7 @@ function renderDynamic(root, state, scope) {
         value != null && String(value) !== ""
       );
   }
+  runtimeCall("controls", "renderEditors", [root, state, scope]);
   for (const swap of root.querySelectorAll("[data-dowe-swap]")) {
     const active = !!readPath(state, swap.dataset.doweSwapBind, scope);
     swap.querySelector("[data-dowe-swap-on]")?.toggleAttribute("hidden", !active);

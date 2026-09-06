@@ -128,6 +128,9 @@ pub fn chat_box_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
     let mut sending = None;
     let mut streaming = None;
     let mut has_more = None;
+    let mut action_label = "Continue".to_string();
+    let mut action_visible = None;
+    let mut on_action = None;
     let mut on_send = None;
     let mut on_load_more = None;
     let mut on_stop = None;
@@ -186,6 +189,15 @@ pub fn chat_box_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
                     "signal bool path",
                 )?)
             }
+            "actionLabel" => action_label = parse_static_string(&prop.name, &prop.value)?,
+            "actionVisible" => {
+                action_visible = Some(parse_signal_path(
+                    &prop.name,
+                    &prop.value,
+                    "signal bool path",
+                )?)
+            }
+            "onAction" => on_action = Some(parse_required_string(&prop.name, &prop.value)?),
             "onSend" => on_send = Some(parse_required_string(&prop.name, &prop.value)?),
             "onLoadMore" => on_load_more = Some(parse_required_string(&prop.name, &prop.value)?),
             "onStop" => on_stop = Some(parse_required_string(&prop.name, &prop.value)?),
@@ -224,6 +236,9 @@ pub fn chat_box_component_node(props: Vec<ComponentProp>) -> ComponentResult<Vie
             sending,
             streaming,
             has_more,
+            action_label,
+            action_visible,
+            on_action,
             on_send,
             on_load_more,
             on_stop,

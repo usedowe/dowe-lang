@@ -88,6 +88,7 @@ fn parse_function_statements(nodes: &[SourceNode]) -> DoweResult<Vec<ViewFunctio
         match node.name.as_str() {
             "validate" => statements.push(parse_validate_statement(node)?),
             "request" => statements.push(parse_request_statement(node)?),
+            "invoke" => statements.push(parse_invoke_statement(node)?),
             "set" => statements.push(ViewFunctionStatement::Assign(parse_set_action(node)?)),
             "reset" => statements.push(ViewFunctionStatement::Reset(parse_reset_action(node)?)),
             "toast" => statements.push(ViewFunctionStatement::Toast(parse_toast_statement(node)?)),
@@ -118,7 +119,7 @@ fn parse_function_statements(nodes: &[SourceNode]) -> DoweResult<Vec<ViewFunctio
             _ => {
                 return Err(node_error(
                     node,
-                    "view function statements must be `validate`, `request`, `if`, `set`, `reset`, `toast`, or `redirect`",
+                    "view function statements must be `validate`, `request`, `invoke`, `if`, `set`, `reset`, `toast`, or `redirect`",
                 ));
             }
         }
@@ -160,6 +161,86 @@ fn parse_redirect_statement(node: &SourceNode) -> DoweResult<ViewFunctionStateme
         return Err(node_error(node, "`redirect` path must start with `/`"));
     }
     Ok(ViewFunctionStatement::Redirect { path })
+}
+
+fn required_bareword_prop(node: &SourceNode, name: &str) -> DoweResult<String> {
+    node.prop(name)
+        .map(|prop| match &prop.value {
+            SourceValue::Bareword(value) => Ok(value.clone()),
+            _ => Err(prop_error(prop, format!("`{name}` must be a name"))),
+        })
+        .transpose()?
+        .ok_or_else(|| node_error(node, format!("missing `{name}`")))
+}
+
+fn parse_invoke_statement(node: &SourceNode) -> DoweResult<ViewFunctionStatement> {
+    if node.args.len() != 1 || !node.children.is_empty() {
+        return Err(node_error(
+            node,
+            "`invoke` must use `invoke result fn:name args:{ ... }`",
+        ));
+    }
+    let result = node.args[0]
+        .as_required_string()
+        .ok_or_else(|| node_error(node, "`invoke` result must be a name"))?;
+    if result.contains('.') {
+        return Err(node_error(node, "`invoke` result must be one name"));
+    }
+    for prop in &node.props {
+        if !matches!(
+            prop.name.as_str(),
+            "fn" | "args" | "autoload" | "update" | "reset" | "successAlert" | "successMessage" | "errorAlert" | "errorMessage"
+        ) {
+            return Err(prop_error(
+                prop,
+                format!("`invoke` does not support `{}`", prop.name),
+            ));
+        }
+    }
+    let function = required_bareword_prop(node, "fn")?;
+    if function.contains('.') || function.is_empty() {
+        return Err(node_error(node, "`invoke fn` must be an imported function name"));
+    }
+    let args = match node.prop("args") {
+        Some(prop) => match &prop.value {
+            SourceValue::Object(entries) => entries
+                .iter()
+                .map(|entry| match entry {
+                    SourceObjectEntry::KeyValue { key, value } => {
+                        let prop = SourceProp {
+                            name: key.clone(),
+                            value: value.clone(),
+                            location: node.location.clone(),
+                        };
+                        Ok(StdlibArgument {
+                            name: key.clone(),
+                            value: stdlib_value(&prop)?,
+                        })
+                    }
+                    SourceObjectEntry::Spread(value) => Err(node_error(
+                        node,
+                        format!("`invoke args` does not support spread `{value}`"),
+                    )),
+                })
+                .collect::<DoweResult<Vec<_>>>()?,
+            _ => return Err(node_error(node, "`invoke args` must be an object")),
+        },
+        None => Vec::new(),
+    };
+    Ok(ViewFunctionStatement::Invoke {
+        result,
+        action: ViewInvokeAction {
+            function,
+            args,
+            update: optional_prop_string(node, "update")?,
+            reset: optional_prop_string(node, "reset")?,
+            success_alert: optional_prop_string(node, "successAlert")?,
+            success_message: optional_prop_string(node, "successMessage")?,
+            error_alert: optional_prop_string(node, "errorAlert")?,
+            error_message: optional_prop_string(node, "errorMessage")?,
+            autoload: optional_prop_bool(node, "autoload")?.unwrap_or(false),
+        },
+    })
 }
 
 fn parse_request_statement(node: &SourceNode) -> DoweResult<ViewFunctionStatement> {

@@ -146,6 +146,36 @@ fn swift_radio_options(options: &[RadioOption]) -> String {
     format!("[{values}]")
 }
 
+fn swift_radio_card_options(options: &[RadioOption]) -> String {
+    let values = options
+        .iter()
+        .map(|option| {
+            let (icon_view_box, icon_paths) = option
+                .icon
+                .as_ref()
+                .map(|icon| {
+                    (
+                        swift_svg_view_box(&icon.props.view_box),
+                        swift_svg_paths(&icon.paths),
+                    )
+                })
+                .map(|(view_box, paths)| (view_box, paths))
+                .unwrap_or_else(|| ("nil".to_string(), "nil".to_string()));
+            format!(
+                "DoweRadioCardOption(value: {}, title: {}, description: {}, iconViewBox: {}, iconPaths: {}, disabled: {})",
+                swift_string_literal(&option.value),
+                swift_string_literal(&option.label),
+                swift_optional_literal(option.description.as_deref()),
+                icon_view_box,
+                icon_paths,
+                option.disabled
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("[{values}]")
+}
+
 fn swift_table_columns(columns: &[TableColumn]) -> String {
     let values = columns
         .iter()

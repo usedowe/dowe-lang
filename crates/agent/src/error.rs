@@ -33,3 +33,9 @@ impl From<std::io::Error> for AgentError {
         Self::new(error.to_string())
     }
 }
+
+impl From<serde_json::Error> for AgentError {
+    fn from(error: serde_json::Error) -> Self {
+        Self::new(error.to_string())
+    }
+}

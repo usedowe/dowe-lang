@@ -7,7 +7,7 @@
 **AI can generate code. Dowe generates the system.**
 
 [![Status](https://img.shields.io/badge/status-early_access-6BC670?style=flat-square)](https://dowe.dev)
-![Version](https://img.shields.io/badge/version-1.0.24-1F3A5F?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.25-1F3A5F?style=flat-square)
 ![Toolchain](https://img.shields.io/badge/toolchain-Rust-B7410E?style=flat-square&logo=rust&logoColor=white)
 ![Source](https://img.shields.io/badge/source-.dowe-6C5CE7?style=flat-square)
 
@@ -158,7 +158,7 @@ Run `dowe dev` without flags to select available targets interactively.
 | `dowe test` | Discover and run native `.dowe` literal tests. |
 | `dowe deploy` | Produce static, Docker, or Cloudflare distributions. |
 | `dowe icons` | Generate versioned web, desktop, Android, and iOS icon sets. |
-| `dowe agent` | Install or update public authoring guidance for coding agents. |
+| `dowe agent` | Start the interactive Dowe coding agent with embedded authoring skills and direct provider authentication. |
 | `dowe codegraph` | Inspect ownership, dependencies, modularity, and duplication. |
 | `dowe database` | Manage Dowe Database instances and data. |
 | `dowe cache` | Manage Dowe Cache instances and key-value data. |
@@ -176,7 +176,7 @@ This directory is a Cargo workspace. The main responsibilities are grouped as fo
 | Data | `database`, `cache`, and `vector` |
 | Targets | `generator_web`, `generator_desktop`, `generator_android`, and `generator_ios` |
 | Tooling | `cli`, `deploy`, `icons`, `minifier`, and `ipc` |
-| Agent support | `agent`, `agent_harness`, `codegraph`, and `skill-data` |
+| Agent support | `agent`, `agent_harness`, and `codegraph` |
 | Packaged assets | `assets/fonts` and `assets/icons` |
 
 Core behavior belongs in shared crates. CLI and IPC entrypoints remain thin adapters over the same

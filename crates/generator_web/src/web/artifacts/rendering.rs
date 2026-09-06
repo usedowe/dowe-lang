@@ -151,3 +151,7 @@ fn theme_bootstrap_script() -> &'static str {
     r#"<script>!function(){document.documentElement.classList.add("dowe-entrance-pending");try{var k="theme-preference",t=localStorage.getItem(k);if(!t){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";localStorage.setItem(k,t)}if(t&&t!=="light")document.documentElement.setAttribute("data-dowe-theme",t);else document.documentElement.removeAttribute("data-dowe-theme")}catch(e){}}();</script>"#
 }
 
+fn scaffold_bootstrap_script() -> &'static str {
+    r#"<script>!function(e){if(!e)return;let t=0;for(const n of e.querySelectorAll(".appbar.position-fixed"))n.closest(".scaffold")===e&&n.getClientRects().length&&(t=Math.max(t,n.getBoundingClientRect().bottom));e.style.setProperty("--dowe-scaffold-top-inset",Math.max(0,Math.ceil(t))+"px")}(document.currentScript.parentElement);</script>"#
+}
+

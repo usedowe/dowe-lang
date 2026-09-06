@@ -88,7 +88,7 @@ impl<'a> StoreActionContext<'a> {
                     .into_json()
                     .ok_or_else(StoreActionError::missing_http)?;
                 self.bindings
-                    .insert(statement.binding.clone(), agent_chat_body(source));
+                    .insert(statement.binding.clone(), agent_chat_body(source)?);
             }
             ServerStatement::AiChat(statement) => {
                 let prompt = self
@@ -130,6 +130,7 @@ impl<'a> StoreActionContext<'a> {
             ServerStatement::Kv(statement) => self.execute_kv(statement).await?,
             ServerStatement::Vector(statement) => self.execute_vector(statement).await?,
             ServerStatement::Queue(statement) => self.execute_queue(statement).await?,
+            ServerStatement::Notification(statement) => self.execute_notification(statement)?,
             ServerStatement::File(statement) => self.execute_file(statement).await?,
             ServerStatement::Password(statement) => self.execute_password(statement).await?,
             ServerStatement::Call(statement) => {
@@ -143,6 +144,7 @@ impl<'a> StoreActionContext<'a> {
                     self.body,
                     self.raw_query,
                     self.headers,
+                    self.request_context,
                     &statement.action,
                     args,
                     self.cache_mode,
@@ -689,6 +691,7 @@ async fn execute_reusable_action(
     body: &Bytes,
     raw_query: Option<&str>,
     headers: Option<&HeaderMap>,
+    request_context: Option<&HashMap<String, Value>>,
     action: &ServerFunctionAction,
     args: Value,
     cache_mode: CacheRuntimeMode,
@@ -702,7 +705,7 @@ async fn execute_reusable_action(
         body,
         raw_query,
         headers,
-        request_context: None,
+        request_context,
         request_body: None,
         bindings,
         http_results: HashMap::new(),

@@ -94,7 +94,7 @@ fn generates_swiftui_diagram_with_viewport_and_connection_runtime() {
     assert!(views.contains("func diagramControlButton(_ label: String, action: @escaping () -> Void)"));
     assert!(views.contains("MagnificationGesture()"));
     assert!(views.contains("SpatialTapGesture(coordinateSpace: .named(\"doweDiagramCanvas\"))"));
-    assert!(views.contains("state.run(onNodeClick, item: node)"));
+    assert!(views.contains("if let item = nodeById(id), let onNodeClick { state.run(onNodeClick, item: item) }"));
     assert!(views.contains("state.run(onConnect, item: [\"source\": id, \"target\": targetId])"));
 }
 
@@ -180,6 +180,25 @@ fn generates_swiftui_table_with_columns_and_scheme() {
     assert!(views.contains("DoweDesign.surfaceText.opacity(0.12)"));
     assert!(views.contains("DoweDesign.surfaceText.opacity(0.28)"));
     assert!(views.contains("state.rows(dataPath)"));
+}
+
+#[test]
+fn generates_swiftui_tree_with_native_state_and_selection() {
+    let output = generate_ios(
+        &[tree_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    assert!(views.contains("struct DoweTreeView: View"));
+    assert!(views.contains("DoweTreeView(state: state, dataPath: \"fileTree\""));
+    assert!(views.contains("state.treeNodes(dataPath)"));
+    assert!(views.contains("toggleNode(node.id, open: open)"));
+    assert!(views.contains("state.run(onSelect, item: node.value)"));
+    assert!(views.contains("accessibilityLabel(ariaLabel)"));
+    assert!(views.contains("folder-with-files"));
+    assert!(views.contains("file-text"));
 }
 
 #[test]

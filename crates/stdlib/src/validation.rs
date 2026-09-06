@@ -9,6 +9,11 @@ pub fn validate_call(call: &StdlibCall, surface: StdlibSurface) -> StdlibResult<
             call.name()
         )));
     };
+    if matches!(surface, StdlibSurface::Views) && call.namespace == "hash" {
+        return Err(StdlibError::unsupported(
+            "SHA-256 hashing is available only on the server",
+        ));
+    }
     if matches!(surface, StdlibSurface::Views) && call.namespace == "id" {
         return Err(StdlibError::unsupported(
             "ULID generation is available only on the server",

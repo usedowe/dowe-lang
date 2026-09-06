@@ -73,6 +73,48 @@ fn selected_web_development_compile_skips_unselected_app_artifacts() {
 }
 
 #[test]
+fn desktop_development_host_is_inspectable_but_live_host_is_not() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        "layout AuthLayout\n  Box\n    children",
+        "page loginPage\n  Text\n    \"Home\"",
+    );
+
+    let development = super::compile_dev_for_platforms(
+        temp.path(),
+        [crate::model::ViewPlatform::Desktop],
+    )
+    .expect("desktop development compile");
+    let development_host = development
+        .apps
+        .files
+        .iter()
+        .find(|file| file.relative_path == Path::new("apps/desktop/macos/DoweMacOSApp.swift"))
+        .expect("development macos host");
+    assert!(development_host.content.contains("if #available(macOS 13.3, *)"));
+    assert!(development_host.content.contains("webView.isInspectable = true"));
+    assert!(development_host.content.contains("developerExtrasEnabled"));
+    assert!(development_host.content.contains("_inspector"));
+    assert!(development_host
+        .content
+        .contains("NSEvent.addLocalMonitorForEvents"));
+
+    let live = super::compile_for_environment(temp.path(), crate::model::CompileEnvironment::Live)
+        .expect("live desktop compile");
+    let live_host = live
+        .apps
+        .files
+        .iter()
+        .find(|file| file.relative_path == Path::new("apps/desktop/macos/DoweMacOSApp.swift"))
+        .expect("live macos host");
+    assert!(!live_host.content.contains("isInspectable"));
+    assert!(!live_host.content.contains("developerExtrasEnabled"));
+    assert!(!live_host.content.contains("_inspector"));
+    assert!(!live_host.content.contains("NSEvent"));
+}
+
+#[test]
 fn selected_android_development_compile_writes_only_android_app_artifacts() {
     let temp = tempfile::tempdir().expect("tempdir");
     write_fixture_with_views(

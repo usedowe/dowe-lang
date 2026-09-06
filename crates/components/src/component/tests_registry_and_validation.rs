@@ -15,7 +15,8 @@ use super::{
     CodeTokenKind, ColorFamily, ColorToken, ComponentError, ComponentProp, ComponentVariant,
     ContainerSize, DeviceProfile, DividerOrientation, EmptyKind, FabProps, FlexDirection, FlexItem,
     FontFamily, GapSize, GapValue, GridAlignment, GridTracks, IframeLoading, NativeExternalMode,
-    NavigationAction, OverlayCornerPosition, OverlayPaint, PropValue, RadioGroupOrientation,
+    NavigationAction, OverlayCornerPosition, OverlayPaint, PropBinding, PropValue, PropValueKind,
+    RadioGroupOrientation, RadioGroupPresentation,
     ResponsivePropEntry, ResponsiveValue, RichTextMark, RichTextMarkStyle, RoundedSize,
     SVG_LOGOS, SVG_SPINNERS,
     ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap, SvgLineJoin, SvgPathFill,
@@ -30,11 +31,13 @@ use super::{
     fixed_fab_nodes, font_catalog, form_control_min_height, form_control_text_size,
     icon_component_node, iframe_node, input_node, integrated_design_theme,
     line_chart_component_node, phone_countries, pie_chart_component_node,
-    radio_group_component_node, radio_option_component, rich_text_component_node,
+    radio_card_component_node, radio_card_option_component, radio_group_component_node,
+    radio_option_component, rich_text_component_node,
     runtime_icon_catalog, runtime_icon_catalog_for_names, runtime_icon_catalog_shared,
     section_content_spacing, select_node, select_option_component, stepper_component_node,
     stepper_step_component, svg_component_node, svg_path_component, table_column_component,
     table_node, tabs_component_node, tabs_tab_component, text_binding_path, text_component_node,
+    tree_component_node,
     text_node, text_spacing_em, text_typography, text_weight_number, validate_solar_icon_catalog,
     validate_svg_logo_catalog, validate_svg_spinner_catalog, validate_view_tree, video_node,
 };
@@ -42,6 +45,7 @@ use super::{
 include!("tests_registry_catalog.rs");
 include!("tests_basic_components.rs");
 include!("tests_data_components.rs");
+include!("tests_tree_component.rs");
 include!("tests_navigation_and_forms.rs");
 include!("tests_layout_and_styles.rs");
 include!("tests_action_components.rs");

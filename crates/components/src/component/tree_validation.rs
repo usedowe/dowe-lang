@@ -398,6 +398,7 @@ fn validate_view_tree_with_parent(
         | ViewNode::RadioGroup { .. }
         | ViewNode::Toggle { .. }
         | ViewNode::Skeleton { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::AlertDialog { .. }
         | ViewNode::Toast { .. }
         | ViewNode::Command { .. }

@@ -1,7 +1,7 @@
 use crate::{StdlibReturnKind, StdlibSignature};
 
 const NAMESPACES: &[&str] = &[
-    "str", "math", "parse", "url", "csv", "sort", "list", "json", "date", "id",
+    "str", "math", "parse", "url", "csv", "sort", "list", "json", "date", "id", "hash",
 ];
 
 pub fn namespaces() -> &'static [&'static str] {
@@ -39,15 +39,17 @@ pub fn functions(namespace: &str) -> &'static [&'static str] {
             "upper",
             "length",
             "contains",
+            "equals",
             "startsWith",
             "endsWith",
             "replace",
+            "truncate",
             "split",
             "join",
         ],
         "math" => &[
-            "add", "sub", "mul", "div", "round", "floor", "ceil", "abs", "min", "max", "sum",
-            "average",
+            "add", "sub", "mul", "div", "gt", "gte", "lt", "lte", "round", "floor", "ceil", "abs",
+            "min", "max", "sum", "average",
         ],
         "parse" => &["int", "float", "bool", "json", "string", "svg"],
         "url" => &["encode", "decode", "parse", "queryGet", "querySet"],
@@ -61,6 +63,8 @@ pub fn functions(namespace: &str) -> &'static [&'static str] {
             "count",
             "filterEquals",
             "filterContains",
+            "filterContainsAny",
+            "concat",
             "mapField",
             "sumBy",
             "averageBy",
@@ -68,12 +72,21 @@ pub fn functions(namespace: &str) -> &'static [&'static str] {
         "json" => &["get", "set", "pick", "omit", "merge", "stringify", "parse"],
         "date" => &["now", "formatIso", "addDays", "diffDays"],
         "id" => &["ulid"],
+        "hash" => &["sha256"],
         _ => &[],
     }
 }
 
 pub fn signature(namespace: &str, function: &str) -> Option<StdlibSignature> {
     let signature = match (namespace, function) {
+        ("hash", "sha256") => sig(
+            namespace,
+            function,
+            &["value"],
+            &[],
+            StdlibReturnKind::String,
+            "Compute a SHA-256 digest for server-owned text.",
+        ),
         ("str", "trim") => sig(
             namespace,
             function,
@@ -114,6 +127,14 @@ pub fn signature(namespace: &str, function: &str) -> Option<StdlibSignature> {
             StdlibReturnKind::Bool,
             "Check whether text contains a fragment.",
         ),
+        ("str", "equals") => sig(
+            namespace,
+            function,
+            &["value", "other"],
+            &[],
+            StdlibReturnKind::Bool,
+            "Compare two strings exactly.",
+        ),
         ("str", "startsWith") => sig(
             namespace,
             function,
@@ -129,6 +150,14 @@ pub fn signature(namespace: &str, function: &str) -> Option<StdlibSignature> {
             &[],
             StdlibReturnKind::Bool,
             "Check whether text ends with a suffix.",
+        ),
+        ("str", "truncate") => sig(
+            namespace,
+            function,
+            &["value", "max"],
+            &[],
+            StdlibReturnKind::String,
+            "Truncate text to a bounded number of Unicode scalar values.",
         ),
         ("str", "replace") => sig(
             namespace,
@@ -185,6 +214,38 @@ pub fn signature(namespace: &str, function: &str) -> Option<StdlibSignature> {
             &[],
             StdlibReturnKind::Number,
             "Divide two finite numbers.",
+        ),
+        ("math", "gt") => sig(
+            namespace,
+            function,
+            &["left", "right"],
+            &[],
+            StdlibReturnKind::Bool,
+            "Compare two finite numbers.",
+        ),
+        ("math", "gte") => sig(
+            namespace,
+            function,
+            &["left", "right"],
+            &[],
+            StdlibReturnKind::Bool,
+            "Compare two finite numbers inclusively.",
+        ),
+        ("math", "lt") => sig(
+            namespace,
+            function,
+            &["left", "right"],
+            &[],
+            StdlibReturnKind::Bool,
+            "Compare two finite numbers.",
+        ),
+        ("math", "lte") => sig(
+            namespace,
+            function,
+            &["left", "right"],
+            &[],
+            StdlibReturnKind::Bool,
+            "Compare two finite numbers inclusively.",
         ),
         ("math", "round") => sig(
             namespace,
@@ -433,6 +494,22 @@ pub fn signature(namespace: &str, function: &str) -> Option<StdlibSignature> {
             &[],
             StdlibReturnKind::Array,
             "Filter objects by text containment.",
+        ),
+        ("list", "filterContainsAny") => sig(
+            namespace,
+            function,
+            &["values", "field", "needles"],
+            &[],
+            StdlibReturnKind::Array,
+            "Filter object rows when a field contains any bounded text needle.",
+        ),
+        ("list", "concat") => sig(
+            namespace,
+            function,
+            &["values", "other"],
+            &[],
+            StdlibReturnKind::Array,
+            "Concatenate two arrays without mutating either source.",
         ),
         ("list", "mapField") => sig(
             namespace,

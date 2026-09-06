@@ -1,14 +1,108 @@
+function setChatBoxAttachment(root, image) {
+  if (!root) return;
+  root.__doweChatAttachment = typeof image === "string" && image.startsWith("data:image/") ? image : "";
+  const attachment = root.querySelector("[data-dowe-chatbox-attachment]");
+  const preview = root.querySelector("[data-dowe-chatbox-attachment-preview]");
+  if (preview && root.__doweChatAttachment) preview.src = root.__doweChatAttachment;
+  if (attachment) attachment.hidden = !root.__doweChatAttachment;
+}
+window.addEventListener("dowe:chat-attach", event => {
+  const image = event.detail?.image;
+  if (typeof image !== "string") return;
+  const box = document.querySelector("[data-dowe-chatbox]");
+  if (box) setChatBoxAttachment(box, image);
+});
+function appendChatBoxMessage(root, text, image) {
+  const view = activeView;
+  if (!view || (!text && !image)) return;
+  const path = root.dataset.doweChatboxMessages;
+  const messages = readPath(view.state, path, scopeFor(root));
+  const next = Array.isArray(messages) ? messages.slice() : [];
+  next.push({
+    id: `local-${Date.now()}-${next.length}`,
+    role: "user",
+    text,
+    ...(image ? { image } : {}),
+    own: true,
+    status: "sent"
+  });
+  writePath(view.state, path, next);
+  renderChatBoxes(root, view.state, scopeFor(root));
+}
+function selectChatBoxChoice(root, choice) {
+  if (!root || !choice || !activeView) return;
+  const sendingPath = root.dataset.doweChatboxSending;
+  if (sendingPath && readPath(activeView.state, sendingPath, scopeFor(root))) return;
+  const path = root.dataset.doweChatboxMessages;
+  const values = readPath(activeView.state, path, scopeFor(root));
+  const next = Array.isArray(values) ? values.map(item => item && typeof item === "object" ? { ...item } : item) : [];
+  const message = next.find(item => item && String(item.id || "") === choice.dataset.doweChatboxChoiceMessage);
+  if (!message || message.choiceSubmitted || !Array.isArray(message.questions)) return;
+  const question = message.questions.find(item => item && String(item.id || "") === choice.dataset.doweChatboxChoiceQuestion);
+  const value = choice.dataset.doweChatboxChoiceValue || "";
+  const options = question && Array.isArray(question.options) ? question.options : [];
+  if (!question || !value || !options.includes(value) || question.selected) return;
+  question.selected = value;
+  const choiceQuestions = message.questions.filter(item => Array.isArray(item?.options) && item.options.length > 0);
+  const complete = choiceQuestions.length > 0 && choiceQuestions.every(item => item.selected);
+  let answer = "";
+  if (complete) {
+    message.choiceSubmitted = true;
+    answer = choiceQuestions.map(item => `${item.question || "Selected option"}: ${item.selected}`).join("\\n");
+    next.push({
+      id: `local-${Date.now()}-${next.length}`,
+      role: "user",
+      text: answer,
+      own: true,
+      status: "Selected"
+    });
+  }
+  writePath(activeView.state, path, next);
+  renderChatBoxes(root, activeView.state, scopeFor(root));
+  const action = root.dataset.doweChatboxOnSend;
+  if (complete && action) runAction(action, { ...scopeFor(root), item: { value: answer } });
+}
 function renderChatBoxes(root, state, scope) {
   const scoped = !!scope;
-  for (const box of root.querySelectorAll("[data-dowe-chatbox]")) {
+  const boxes = root.matches?.("[data-dowe-chatbox]")
+    ? [root, ...root.querySelectorAll("[data-dowe-chatbox]")]
+    : [...root.querySelectorAll("[data-dowe-chatbox]")];
+  for (const box of boxes) {
     if (!scoped && box.closest("[data-dowe-each-row]")) continue;
+    const values = readPath(state, box.dataset.doweChatboxMessages, scope);
+    const messages = Array.isArray(values) ? values : [];
     const list = box.querySelector("[data-dowe-chatbox-list]");
     if (list) {
-      const values = readPath(state, box.dataset.doweChatboxMessages, scope);
-      const messages = Array.isArray(values) ? values : [];
       list.innerHTML = messages
         .map(item => chatMessageHtml(box, item || {}))
         .join("");
+    }
+    const pendingChoice = messages.some(item => !item?.choiceSubmitted && Array.isArray(item?.questions) && item.questions.some(question => Array.isArray(question?.options) && question.options.length > 0 && !question.selected));
+    const inputWrap = box.querySelector("[data-dowe-chatbox-input-wrap]");
+    if (inputWrap) inputWrap.hidden = pendingChoice;
+    const actionRow = box.querySelector("[data-dowe-chatbox-action-row]");
+    if (actionRow) {
+      const languageMessage = [...messages].reverse().find(item => item && item.role !== "user" && item.own !== true);
+      const spanish = languageMessage ? chatMessageIsSpanish(languageMessage) : false;
+      const visiblePath = actionRow.dataset.doweChatboxActionVisible;
+      const visible = visiblePath
+        ? !!readPath(state, visiblePath, scope)
+        : true;
+      actionRow.hidden = !visible || pendingChoice;
+      const actionButton = actionRow.querySelector("[data-dowe-chatbox-action]");
+      if (actionButton) {
+        if (!actionButton.dataset.doweChatboxDefaultLabel) actionButton.dataset.doweChatboxDefaultLabel = actionButton.textContent || "";
+        const defaultLabel = actionButton.dataset.doweChatboxDefaultLabel;
+        const localizedLabel = {
+          "Accept plan and continue": "Aceptar plan y continuar",
+          Continue: "Continuar"
+        }[defaultLabel] || defaultLabel;
+        actionButton.textContent = spanish ? localizedLabel : defaultLabel;
+        const sendingPath = box.dataset.doweChatboxSending;
+        actionButton.disabled = sendingPath
+          ? !!readPath(state, sendingPath, scope)
+          : false;
+      }
     }
     const typing = box.querySelector("[data-dowe-chatbox-typing]");
     if (typing) {

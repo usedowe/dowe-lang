@@ -1,4 +1,4 @@
-use dowe_components::BuiltinComponent;
+use dowe_components::{BuiltinComponent, RadioGroupPresentation};
 
 fn text_line_css(value: TextSize) -> &'static str {
     text_typography(false, value).line_height
@@ -72,7 +72,10 @@ fn page_file_name(page: &ViewPage) -> String {
 #[derive(Clone, Default)]
 struct ReactiveRenderContext {
     constants: Vec<(String, String)>,
+    constant_values: Vec<(String, ViewSignalValue)>,
+    scope_values: Vec<(String, ViewSignalValue)>,
     signals: Vec<(String, String)>,
+    signal_initial_values: Vec<(String, ViewSignalValue)>,
     actions: Vec<(String, String)>,
     consumed_props: std::rc::Rc<std::cell::RefCell<dowe_components::PropConsumptionRegistry>>,
 }
@@ -91,7 +94,6 @@ impl ReactiveRenderContext {
             ir_field,
         );
     }
-
 }
 
 impl ReactiveRenderContext {
@@ -107,10 +109,20 @@ impl ReactiveRenderContext {
                 .iter()
                 .map(|constant| (constant.name.clone(), constant.id.clone())),
         );
+        context.constant_values.extend(
+            constants
+                .iter()
+                .map(|constant| (constant.name.clone(), constant.value.clone())),
+        );
         context.signals.extend(
             signals
                 .iter()
                 .map(|signal| (signal.name.clone(), signal.id.clone())),
+        );
+        context.signal_initial_values.extend(
+            signals
+                .iter()
+                .map(|signal| (signal.name.clone(), signal.initial.clone())),
         );
         context.actions.extend(
             actions
@@ -150,6 +162,82 @@ impl ReactiveRenderContext {
             .map(|(_, id)| id.clone())
             .unwrap_or_else(|| value.to_string())
     }
+
+    fn constant_array_values(&self, value: &str) -> Option<&Vec<ViewSignalValue>> {
+        if value.contains('.') {
+            return None;
+        }
+        self.constant_values
+            .iter()
+            .rev()
+            .find(|(name, _)| name == value)
+            .and_then(|(_, value)| match value {
+                ViewSignalValue::Array(values) => Some(values),
+                _ => None,
+            })
+    }
+
+    fn with_scope_value(&self, name: &str, value: &ViewSignalValue) -> Self {
+        let mut context = self.clone();
+        context.scope_values.push((name.to_string(), value.clone()));
+        context
+    }
+
+    fn initial_value(&self, value: &str) -> Option<&ViewSignalValue> {
+        let (root, suffix) = value
+            .split_once('.')
+            .map(|(root, suffix)| (root, Some(suffix)))
+            .unwrap_or((value, None));
+        let initial = self
+            .scope_values
+            .iter()
+            .rev()
+            .find(|(name, _)| name == root)
+            .or_else(|| {
+                self.signal_initial_values
+                    .iter()
+                    .rev()
+                    .find(|(name, _)| name == root)
+            })
+            .or_else(|| {
+                self.constant_values
+                    .iter()
+                    .rev()
+                    .find(|(name, _)| name == root)
+            })
+            .map(|(_, initial)| initial)?;
+        let Some(suffix) = suffix else {
+            return Some(initial);
+        };
+        let mut current = initial;
+        for segment in suffix.split('.') {
+            let ViewSignalValue::Object(entries) = current else {
+                return None;
+            };
+            let entry = entries.iter().find(|(name, _)| name == segment)?;
+            current = &entry.1;
+        }
+        Some(current)
+    }
+
+    fn initial_text(&self, value: &str) -> Option<String> {
+        let mut output = String::new();
+        for (literal, binding) in text_template_segments(value) {
+            output.push_str(&literal);
+            if let Some(binding) = binding {
+                let value = self.initial_value(&binding)?;
+                output.push_str(match value {
+                    ViewSignalValue::Null => "null",
+                    ViewSignalValue::Bool(value) => {
+                        if *value { "true" } else { "false" }
+                    }
+                    ViewSignalValue::Number(value) | ViewSignalValue::String(value) => value,
+                    ViewSignalValue::Array(_) | ViewSignalValue::Object(_) => return None,
+                });
+            }
+        }
+        Some(output)
+    }
 }
 
 fn render_html_with_inspector(
@@ -174,11 +262,15 @@ fn render_html_with_context(
     with_view_inspector_node(|| render_html_node_with_context(node, children_html, context))
 }
 
-pub fn render_report_for_desktop_routes(routes: &[dowe_components::ViewRoute]) -> dowe_components::RenderReport {
+pub fn render_report_for_desktop_routes(
+    routes: &[dowe_components::ViewRoute],
+) -> dowe_components::RenderReport {
     render_report_for_target(routes, dowe_components::RenderTarget::Desktop)
 }
 
-pub fn render_report_for_routes(routes: &[dowe_components::ViewRoute]) -> dowe_components::RenderReport {
+pub fn render_report_for_routes(
+    routes: &[dowe_components::ViewRoute],
+) -> dowe_components::RenderReport {
     render_report_for_target(routes, dowe_components::RenderTarget::Web)
 }
 
@@ -238,10 +330,37 @@ pub fn consumed_props_for_node(node: &ViewNode) -> Vec<dowe_components::Consumed
 }
 
 fn register_rendered_node_props(node: &ViewNode, context: &ReactiveRenderContext) {
-    if let Some(component) = form_component(node)
-        && dowe_components::node_element_props(node).and_then(|props| props.bind.as_deref()).is_some()
-    {
-        context.register_consumed_prop(component, "bind", "ElementProps.bind");
+    if let Some(component) = form_component(node) {
+        let element = dowe_components::node_element_props(node);
+        if element.and_then(|props| props.bind.as_deref()).is_some() {
+            context.register_consumed_prop(component, "bind", "ElementProps.bind");
+        }
+        if let Some(props) = form_variant_props(node) {
+            if props.variant.is_some()
+                || props.variant_binding.is_some()
+                || props.reactive.variant.is_some()
+            {
+                context.register_consumed_prop(component, "variant", "VariantProps.variant");
+            }
+            if props.color.is_some() || props.color_binding.is_some() || props.reactive.scheme.is_some() {
+                context.register_consumed_prop(component, "scheme", "VariantProps.color");
+            }
+            if props.size.is_some() || props.size_binding.is_some() || props.reactive.size.is_some() {
+                context.register_consumed_prop(component, "size", "VariantProps.size");
+            }
+            if props.style.rounded.is_some()
+                || props.style.rounded_binding.is_some()
+                || props.reactive.rounded.is_some()
+            {
+                context.register_consumed_prop(component, "rounded", "VariantProps.style.rounded");
+            }
+        }
+        if element.and_then(|props| props.on_change.as_ref()).is_some() {
+            context.register_consumed_prop(component, "onChange", "ElementProps.on_change");
+        }
+        if element.and_then(|props| props.on_input.as_ref()).is_some() {
+            context.register_consumed_prop(component, "onInput", "ElementProps.on_input");
+        }
     }
     match node {
         ViewNode::Box { props, .. } | ViewNode::Section { props, .. } => {
@@ -252,149 +371,639 @@ fn register_rendered_node_props(node: &ViewNode, context: &ReactiveRenderContext
                 context.register_consumed_prop(BuiltinComponent::Box, "color", "StyleProps.text");
             }
             if props.rounded.is_some() || props.rounded_binding.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Box, "rounded", "StyleProps.rounded");
+                context.register_consumed_prop(
+                    BuiltinComponent::Box,
+                    "rounded",
+                    "StyleProps.rounded",
+                );
             }
             if props.spacing.p.is_some() || props.spacing.p_binding.is_some() {
                 context.register_consumed_prop(BuiltinComponent::Box, "p", "SpacingProps.p");
             }
         }
-        ViewNode::Candlestick { .. } => register_chart_consumed_props(BuiltinComponent::Candlestick, context),
-        ViewNode::ArcChart { .. } => register_chart_consumed_props(BuiltinComponent::ArcChart, context),
-        ViewNode::AreaChart { .. } => register_chart_consumed_props(BuiltinComponent::AreaChart, context),
-        ViewNode::BarChart { .. } => register_chart_consumed_props(BuiltinComponent::BarChart, context),
-        ViewNode::LineChart { .. } => register_chart_consumed_props(BuiltinComponent::LineChart, context),
-        ViewNode::PieChart { .. } => register_chart_consumed_props(BuiltinComponent::PieChart, context),
-        ViewNode::Tabs { .. } => {
-            register_structural_consumed_props(BuiltinComponent::Tabs, context, &[("position", "TabsProps.position")]);
-            register_structural_item_consumed_props(BuiltinComponent::Tabs, dowe_components::ViewItemKind::Tab, context, &[("id", "TabItem.id"), ("label", "TabItem.label"), ("i18n", "TabItem.i18n")]);
+        ViewNode::Candlestick { .. } => {
+            register_chart_consumed_props(BuiltinComponent::Candlestick, context)
+        }
+        ViewNode::ArcChart { .. } => {
+            register_chart_consumed_props(BuiltinComponent::ArcChart, context)
+        }
+        ViewNode::AreaChart { .. } => {
+            register_chart_consumed_props(BuiltinComponent::AreaChart, context)
+        }
+        ViewNode::BarChart { .. } => {
+            register_chart_consumed_props(BuiltinComponent::BarChart, context)
+        }
+        ViewNode::LineChart { .. } => {
+            register_chart_consumed_props(BuiltinComponent::LineChart, context)
+        }
+        ViewNode::PieChart { .. } => {
+            register_chart_consumed_props(BuiltinComponent::PieChart, context)
+        }
+        ViewNode::Tabs { props, .. } => {
+            let component = if props.variant == dowe_components::TabsVariant::Stepper {
+                BuiltinComponent::Stepper
+            } else {
+                BuiltinComponent::Tabs
+            };
+            register_structural_consumed_props(
+                component,
+                context,
+                &[("position", "TabsProps.position")],
+            );
+            if props.style.element.bind.is_some() {
+                context.register_consumed_prop(component, "bind", "ElementProps.bind");
+            }
+            register_structural_item_consumed_props(
+                component,
+                dowe_components::ViewItemKind::Tab,
+                context,
+                &[
+                    ("id", "TabItem.id"),
+                    ("label", "TabItem.label"),
+                    ("i18n", "TabItem.i18n"),
+                ],
+            );
         }
         ViewNode::Accordion { .. } => {
-            register_structural_item_consumed_props(BuiltinComponent::Accordion, dowe_components::ViewItemKind::Accordion, context, &[("id", "AccordionItem.id"), ("label", "AccordionItem.label"), ("disabled", "AccordionItem.disabled"), ("defaultOpen", "AccordionItem.default_open")]);
+            register_structural_item_consumed_props(
+                BuiltinComponent::Accordion,
+                dowe_components::ViewItemKind::Accordion,
+                context,
+                &[
+                    ("id", "AccordionItem.id"),
+                    ("label", "AccordionItem.label"),
+                    ("disabled", "AccordionItem.disabled"),
+                    ("defaultOpen", "AccordionItem.default_open"),
+                ],
+            );
         }
-        ViewNode::Carousel { .. } => register_structural_consumed_props(BuiltinComponent::Carousel, context, &[("slidesPerView", "CarouselProps.slides_per_view"), ("autoplay", "CarouselProps.autoplay"), ("orientation", "CarouselProps.orientation")]),
-        ViewNode::Table { .. } => register_structural_item_consumed_props(BuiltinComponent::Table, dowe_components::ViewItemKind::TableColumn, context, &[("field", "TableColumn.field"), ("label", "TableColumn.label"), ("align", "TableColumn.align")]),
+        ViewNode::Carousel { .. } => register_structural_consumed_props(
+            BuiltinComponent::Carousel,
+            context,
+            &[
+                ("slidesPerView", "CarouselProps.slides_per_view"),
+                ("autoplay", "CarouselProps.autoplay"),
+                ("orientation", "CarouselProps.orientation"),
+            ],
+        ),
+        ViewNode::Table { .. } => register_structural_item_consumed_props(
+            BuiltinComponent::Table,
+            dowe_components::ViewItemKind::TableColumn,
+            context,
+            &[
+                ("field", "TableColumn.field"),
+                ("label", "TableColumn.label"),
+                ("align", "TableColumn.align"),
+            ],
+        ),
+        ViewNode::Tree { .. } => register_structural_consumed_props(
+            BuiltinComponent::Tree,
+            context,
+            &[
+                ("data", "TreeProps.data"),
+                ("bind", "TreeProps.bind"),
+                ("defaultOpen", "TreeProps.default_open"),
+                ("emptyLabel", "TreeProps.empty_label"),
+                ("ariaLabel", "TreeProps.aria_label"),
+                ("onSelect", "TreeProps.on_select"),
+                ("variant", "VariantProps.variant"),
+                ("scheme", "VariantProps.color"),
+            ],
+        ),
         ViewNode::NavMenu { .. } => {
-            context.register_consumed_prop(BuiltinComponent::NavMenu, "variant", "NavMenuProps.style.variant");
-            context.register_consumed_prop(BuiltinComponent::NavMenu, "scheme", "NavMenuProps.style.color");
+            context.register_consumed_prop(
+                BuiltinComponent::NavMenu,
+                "variant",
+                "NavMenuProps.style.variant",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::NavMenu,
+                "scheme",
+                "NavMenuProps.style.color",
+            );
             context.register_consumed_prop(BuiltinComponent::NavMenu, "size", "NavMenuProps.size");
-            register_structural_item_consumed_props(BuiltinComponent::NavMenu, dowe_components::ViewItemKind::NavMenu, context, &[("label", "NavMenuItemProps.label"), ("i18n", "NavMenuItemProps.i18n"), ("description", "NavMenuItemProps.description"), ("href", "NavMenuItemProps.navigation")]);
+            register_structural_item_consumed_props(
+                BuiltinComponent::NavMenu,
+                dowe_components::ViewItemKind::NavMenu,
+                context,
+                &[
+                    ("label", "NavMenuItemProps.label"),
+                    ("i18n", "NavMenuItemProps.i18n"),
+                    ("description", "NavMenuItemProps.description"),
+                    ("href", "NavMenuItemProps.navigation"),
+                ],
+            );
         }
         ViewNode::SideNav { .. } => {
-            for (prop, field) in [("variant", "SideNavProps.style.variant"), ("scheme", "SideNavProps.style.color"), ("size", "SideNavProps.size"), ("wide", "SideNavProps.wide")] { context.register_consumed_prop(BuiltinComponent::SideNav, prop, field); }
-            register_structural_item_consumed_props(BuiltinComponent::SideNav, dowe_components::ViewItemKind::SideNav, context, &[("label", "SideNavItemProps.label"), ("i18n", "SideNavItemProps.i18n"), ("description", "SideNavItemProps.description"), ("href", "SideNavItemProps.navigation")]);
+            for (prop, field) in [
+                ("variant", "SideNavProps.style.variant"),
+                ("scheme", "SideNavProps.style.color"),
+                ("size", "SideNavProps.size"),
+                ("wide", "SideNavProps.wide"),
+            ] {
+                context.register_consumed_prop(BuiltinComponent::SideNav, prop, field);
+            }
+            register_structural_item_consumed_props(
+                BuiltinComponent::SideNav,
+                dowe_components::ViewItemKind::SideNav,
+                context,
+                &[
+                    ("label", "SideNavItemProps.label"),
+                    ("i18n", "SideNavItemProps.i18n"),
+                    ("description", "SideNavItemProps.description"),
+                    ("href", "SideNavItemProps.navigation"),
+                ],
+            );
         }
         ViewNode::RailNav { .. } => {
-            for (prop, field) in [("variant", "RailNavProps.style.variant"), ("scheme", "RailNavProps.style.color"), ("size", "RailNavProps.size")] { context.register_consumed_prop(BuiltinComponent::RailNav, prop, field); }
-            register_structural_item_consumed_props(BuiltinComponent::RailNav, dowe_components::ViewItemKind::RailNav, context, &[("label", "RailNavItemProps.label"), ("i18n", "RailNavItemProps.i18n"), ("href", "RailNavItemProps.navigation")]);
+            for (prop, field) in [
+                ("variant", "RailNavProps.style.variant"),
+                ("scheme", "RailNavProps.style.color"),
+                ("size", "RailNavProps.size"),
+            ] {
+                context.register_consumed_prop(BuiltinComponent::RailNav, prop, field);
+            }
+            register_structural_item_consumed_props(
+                BuiltinComponent::RailNav,
+                dowe_components::ViewItemKind::RailNav,
+                context,
+                &[
+                    ("label", "RailNavItemProps.label"),
+                    ("i18n", "RailNavItemProps.i18n"),
+                    ("href", "RailNavItemProps.navigation"),
+                ],
+            );
         }
         ViewNode::BottomBar { .. } => {
-            for (prop, field) in [("floating", "BarProps.floating"), ("bordered", "BarProps.bordered"), ("blurred", "BarProps.blurred"), ("boxed", "BarProps.boxed")] { context.register_consumed_prop(BuiltinComponent::BottomBar, prop, field); }
-            register_structural_item_consumed_props(BuiltinComponent::BottomBar, dowe_components::ViewItemKind::BottomBar, context, &[("label", "BottomBarTab.label"), ("href", "BottomBarTab.navigation")]);
+            for (prop, field) in [
+                ("floating", "BarProps.floating"),
+                ("bordered", "BarProps.bordered"),
+                ("blurred", "BarProps.blurred"),
+                ("boxed", "BarProps.boxed"),
+            ] {
+                context.register_consumed_prop(BuiltinComponent::BottomBar, prop, field);
+            }
+            register_structural_item_consumed_props(
+                BuiltinComponent::BottomBar,
+                dowe_components::ViewItemKind::BottomBar,
+                context,
+                &[
+                    ("label", "BottomBarTab.label"),
+                    ("href", "BottomBarTab.navigation"),
+                ],
+            );
         }
-        ViewNode::Svg { .. } => register_structural_consumed_props(BuiltinComponent::Svg, context, &[("viewBox", "SvgProps.view_box"), ("data", "SvgProps.data")]),
-        ViewNode::Modal { .. } => register_structural_consumed_props(BuiltinComponent::Modal, context, &[("bind", "ModalProps.open")]),
-        ViewNode::AlertDialog { .. } => register_structural_consumed_props(BuiltinComponent::AlertDialog, context, &[("bind", "AlertDialogProps.open")]),
-        ViewNode::Command { .. } => register_structural_consumed_props(BuiltinComponent::Command, context, &[("bind", "CommandProps.open")]),
-        ViewNode::Toast { .. } => register_structural_consumed_props(BuiltinComponent::Toast, context, &[("source", "ToastProps.source")]),
-        ViewNode::AppBar { .. } => register_structural_consumed_props(BuiltinComponent::AppBar, context, &[("position", "BarProps.position"), ("floating", "BarProps.floating"), ("bordered", "BarProps.bordered"), ("blurred", "BarProps.blurred"), ("hideOnScroll", "BarProps.hide_on_scroll"), ("dockOnScroll", "BarProps.dock_on_scroll")]),
-        ViewNode::Footer { .. } => register_structural_consumed_props(BuiltinComponent::Footer, context, &[("bordered", "BarProps.bordered"), ("blurred", "BarProps.blurred"), ("boxed", "BarProps.boxed")]),
-        ViewNode::Sidebar { .. } => register_structural_consumed_props(BuiltinComponent::Sidebar, context, &[("variant", "SidebarProps.style.variant"), ("scheme", "SidebarProps.style.color"), ("size", "SidebarProps.style.size")]),
-        ViewNode::Drawer { .. } => register_structural_consumed_props(BuiltinComponent::Drawer, context, &[("bind", "DrawerProps.open"), ("position", "DrawerProps.position"), ("disableOverlayClose", "DrawerProps.disable_overlay_close"), ("hideCloseButton", "DrawerProps.hide_close_button")]),
+        ViewNode::Svg { .. } => register_structural_consumed_props(
+            BuiltinComponent::Svg,
+            context,
+            &[("viewBox", "SvgProps.view_box"), ("data", "SvgProps.data")],
+        ),
+        ViewNode::Canvas { props } => {
+            let consumed = if props.is_draw {
+                &[
+                    ("scene", "CanvasProps.scene"),
+                    ("bind", "CanvasProps.layer_bind"),
+                    ("selected", "CanvasProps.selected_layer"),
+                    ("draw", "CanvasProps.draw"),
+                    ("drawMode", "CanvasProps.draw_mode"),
+                    ("onPointer", "CanvasProps.on_pointer"),
+                    ("onKey", "CanvasProps.on_key"),
+                    ("onMotion", "CanvasProps.on_motion"),
+                    ("onLayerAdd", "CanvasProps.on_layer_add"),
+                    ("onLayerChange", "CanvasProps.on_layer_change"),
+                    ("onLayerRemove", "CanvasProps.on_layer_remove"),
+                    ("onLayerSelect", "CanvasProps.on_layer_select"),
+                ][..]
+            } else {
+                &[
+                    ("scene", "CanvasProps.scene"),
+                    ("draw", "CanvasProps.draw"),
+                    ("drawMode", "CanvasProps.draw_mode"),
+                    ("onPointer", "CanvasProps.on_pointer"),
+                    ("onKey", "CanvasProps.on_key"),
+                    ("onMotion", "CanvasProps.on_motion"),
+                ][..]
+            };
+            register_structural_consumed_props(
+                if props.is_draw { BuiltinComponent::Draw } else { BuiltinComponent::Canvas },
+                context,
+                consumed,
+            )
+        }
+        ViewNode::Modal { .. } => register_structural_consumed_props(
+            BuiltinComponent::Modal,
+            context,
+            &[("bind", "ModalProps.open")],
+        ),
+        ViewNode::AlertDialog { .. } => register_structural_consumed_props(
+            BuiltinComponent::AlertDialog,
+            context,
+            &[("bind", "AlertDialogProps.open")],
+        ),
+        ViewNode::Command { .. } => register_structural_consumed_props(
+            BuiltinComponent::Command,
+            context,
+            &[("bind", "CommandProps.open")],
+        ),
+        ViewNode::Toast { .. } => register_structural_consumed_props(
+            BuiltinComponent::Toast,
+            context,
+            &[("source", "ToastProps.source")],
+        ),
+        ViewNode::AppBar { .. } => register_structural_consumed_props(
+            BuiltinComponent::AppBar,
+            context,
+            &[
+                ("position", "BarProps.position"),
+                ("floating", "BarProps.floating"),
+                ("bordered", "BarProps.bordered"),
+                ("blurred", "BarProps.blurred"),
+                ("hideOnScroll", "BarProps.hide_on_scroll"),
+                ("dockOnScroll", "BarProps.dock_on_scroll"),
+            ],
+        ),
+        ViewNode::Footer { .. } => register_structural_consumed_props(
+            BuiltinComponent::Footer,
+            context,
+            &[
+                ("bordered", "BarProps.bordered"),
+                ("blurred", "BarProps.blurred"),
+                ("boxed", "BarProps.boxed"),
+            ],
+        ),
+        ViewNode::Sidebar { .. } => register_structural_consumed_props(
+            BuiltinComponent::Sidebar,
+            context,
+            &[
+                ("variant", "SidebarProps.style.variant"),
+                ("scheme", "SidebarProps.style.color"),
+                ("size", "SidebarProps.style.size"),
+            ],
+        ),
+        ViewNode::Scaffold { .. } => register_structural_consumed_props(
+            BuiltinComponent::Scaffold,
+            context,
+            &[
+                ("safeAreaTop", "ScaffoldProps.safe_area_top"),
+                ("safeAreaBottom", "ScaffoldProps.safe_area_bottom"),
+            ],
+        ),
+        ViewNode::Drawer { .. } => register_structural_consumed_props(
+            BuiltinComponent::Drawer,
+            context,
+            &[
+                ("bind", "DrawerProps.open"),
+                ("position", "DrawerProps.position"),
+                ("disableOverlayClose", "DrawerProps.disable_overlay_close"),
+                ("hideCloseButton", "DrawerProps.hide_close_button"),
+            ],
+        ),
         ViewNode::Audio { .. } => {
             context.register_consumed_prop(BuiltinComponent::Audio, "src", "AudioProps.src");
         }
         ViewNode::Video { .. } => {
             context.register_consumed_prop(BuiltinComponent::Video, "src", "VideoProps.src");
             context.register_consumed_prop(BuiltinComponent::Video, "poster", "VideoProps.poster");
-            context.register_consumed_prop(BuiltinComponent::Video, "autoplay", "VideoProps.autoplay");
+            context.register_consumed_prop(
+                BuiltinComponent::Video,
+                "autoplay",
+                "VideoProps.autoplay",
+            );
         }
         ViewNode::Iframe { .. } => {
             context.register_consumed_prop(BuiltinComponent::Iframe, "src", "IframeProps.src");
-            context.register_consumed_prop(BuiltinComponent::Iframe, "sandbox", "IframeProps.sandbox");
+            context.register_consumed_prop(
+                BuiltinComponent::Iframe,
+                "sandbox",
+                "IframeProps.sandbox",
+            );
             context.register_consumed_prop(BuiltinComponent::Iframe, "allow", "IframeProps.allow");
         }
         ViewNode::Device { .. } => {
-            context.register_consumed_prop(BuiltinComponent::Device, "device", "DeviceProps.device");
+            context.register_consumed_prop(
+                BuiltinComponent::Device,
+                "device",
+                "DeviceProps.device",
+            );
+            context.register_consumed_prop(BuiltinComponent::Device, "bind", "DeviceProps.bind");
+            context.register_consumed_prop(
+                BuiltinComponent::Device,
+                "hideControls",
+                "DeviceProps.hide_controls",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::Device,
+                "hideButtons",
+                "DeviceProps.hide_controls",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::Device,
+                "studioInspector",
+                "DeviceProps.studio_inspector",
+            );
             context.register_consumed_prop(BuiltinComponent::Device, "zoom", "DeviceProps.options");
             context.register_consumed_prop(BuiltinComponent::Device, "fit", "DeviceProps.options");
         }
         ViewNode::Camera { .. } => {
-            context.register_consumed_prop(BuiltinComponent::Camera, "facing", "CameraProps.facing");
-            context.register_consumed_prop(BuiltinComponent::Camera, "onCapture", "CameraProps.on_capture");
-            context.register_consumed_prop(BuiltinComponent::Camera, "onError", "CameraProps.on_error");
+            context.register_consumed_prop(
+                BuiltinComponent::Camera,
+                "facing",
+                "CameraProps.facing",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::Camera,
+                "onCapture",
+                "CameraProps.on_capture",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::Camera,
+                "onError",
+                "CameraProps.on_error",
+            );
         }
         ViewNode::Microphone { .. } => {
-            context.register_consumed_prop(BuiltinComponent::Microphone, "onError", "MicrophoneProps.on_error");
+            context.register_consumed_prop(
+                BuiltinComponent::Microphone,
+                "onError",
+                "MicrophoneProps.on_error",
+            );
         }
-        ViewNode::Date { .. } => {
+        ViewNode::Editor { props } => {
+            context.register_consumed_prop(
+                BuiltinComponent::Editor,
+                "language",
+                "EditorProps.language",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::Editor,
+                "hideToolbar",
+                "EditorProps.hide_toolbar",
+            );
+            if props.on_save.is_some() {
+                context.register_consumed_prop(
+                    BuiltinComponent::Editor,
+                    "onSave",
+                    "EditorProps.on_save",
+                );
+            }
         }
+        ViewNode::Date { .. } => {}
         ViewNode::DateRange { .. } => {
-            context.register_consumed_prop(BuiltinComponent::DateRange, "start", "DateRangeProps.start");
-            context.register_consumed_prop(BuiltinComponent::DateRange, "end", "DateRangeProps.end");
+            context.register_consumed_prop(
+                BuiltinComponent::DateRange,
+                "start",
+                "DateRangeProps.start",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::DateRange,
+                "end",
+                "DateRangeProps.end",
+            );
         }
-        ViewNode::Password { .. } => {
-        }
+        ViewNode::Password { .. } => {}
         ViewNode::Phone { .. } => {
-            context.register_consumed_prop(BuiltinComponent::Phone, "country", "PhoneProps.country");
+            context.register_consumed_prop(
+                BuiltinComponent::Phone,
+                "country",
+                "PhoneProps.country",
+            );
         }
         ViewNode::Pin { .. } => {
             context.register_consumed_prop(BuiltinComponent::Pin, "length", "PinProps.length");
         }
-        ViewNode::Textarea { .. } => {
-        }
-        ViewNode::Color { .. } => {
-        }
+        ViewNode::Textarea { .. } => {}
+        ViewNode::Color { .. } => {}
         ViewNode::Dropzone { .. } => {
-            context.register_consumed_prop(BuiltinComponent::Dropzone, "multiple", "DropzoneProps.multiple");
-            context.register_consumed_prop(BuiltinComponent::Dropzone, "accept", "DropzoneProps.accept");
+            context.register_consumed_prop(
+                BuiltinComponent::Dropzone,
+                "multiple",
+                "DropzoneProps.multiple",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::Dropzone,
+                "accept",
+                "DropzoneProps.accept",
+            );
         }
         ViewNode::Checkbox { .. } => {
-            context.register_consumed_prop(BuiltinComponent::Checkbox, "checked", "CheckboxProps.checked");
+            context.register_consumed_prop(
+                BuiltinComponent::Checkbox,
+                "checked",
+                "CheckboxProps.checked",
+            );
         }
         ViewNode::Toggle { .. } => {
-            context.register_consumed_prop(BuiltinComponent::Toggle, "checked", "ToggleProps.checked");
+            context.register_consumed_prop(
+                BuiltinComponent::Toggle,
+                "checked",
+                "ToggleProps.checked",
+            );
         }
         ViewNode::RadioGroup { .. } => {
-            context.register_consumed_prop(BuiltinComponent::RadioGroup, "orientation", "RadioGroupProps.orientation");
+            let component = match node {
+                ViewNode::RadioGroup { props, .. } if matches!(props.presentation, RadioGroupPresentation::Card) => {
+                    BuiltinComponent::RadioCard
+                }
+                _ => BuiltinComponent::RadioGroup,
+            };
+            context.register_consumed_prop(component, "orientation", "RadioGroupProps.orientation");
         }
         ViewNode::Slider { .. } => {
             context.register_consumed_prop(BuiltinComponent::Slider, "min", "SliderProps.min");
             context.register_consumed_prop(BuiltinComponent::Slider, "max", "SliderProps.max");
             context.register_consumed_prop(BuiltinComponent::Slider, "step", "SliderProps.step");
         }
-        ViewNode::Avatar { .. } => register_structural_consumed_props(BuiltinComponent::Avatar, context, &[("name", "AvatarProps.name"), ("alt", "AvatarProps.alt"), ("icon", "SideNavIcon.props")]),
-        ViewNode::AvatarGroup { .. } => register_structural_consumed_props(BuiltinComponent::AvatarGroup, context, &[("items", "AvatarGroupProps.items"), ("size", "AvatarGroupProps.size")]),
-        ViewNode::Badge { .. } => register_structural_consumed_props(BuiltinComponent::Badge, context, &[("variant", "VariantProps.variant"), ("scheme", "VariantProps.color")]),
-        ViewNode::Chip { .. } => register_structural_consumed_props(BuiltinComponent::Chip, context, &[("variant", "VariantProps.variant"), ("scheme", "VariantProps.color"), ("size", "VariantProps.size"), ("rounded", "VariantProps.style.rounded")]),
-        ViewNode::ChatBox { .. } => register_structural_consumed_props(BuiltinComponent::ChatBox, context, &[("messages", "ChatBoxProps.messages"), ("loading", "ChatBoxProps.loading"), ("sending", "ChatBoxProps.sending"), ("streaming", "ChatBoxProps.streaming"), ("hasMore", "ChatBoxProps.has_more")]),
-        ViewNode::Empty { .. } => register_structural_consumed_props(BuiltinComponent::Empty, context, &[("title", "EmptyProps.title"), ("description", "EmptyProps.description"), ("actionLabel", "EmptyProps.action_label")]),
-        ViewNode::Marquee { .. } => register_structural_consumed_props(BuiltinComponent::Marquee, context, &[("speed", "MarqueeProps.speed"), ("pauseOnHover", "MarqueeProps.pause_on_hover"), ("reverse", "MarqueeProps.reverse"), ("orientation", "MarqueeProps.orientation"), ("fade", "MarqueeProps.fade"), ("fadeColor", "MarqueeProps.fade_color"), ("gap", "MarqueeProps.gap")]),
-        ViewNode::TypeWriter { .. } => register_structural_consumed_props(BuiltinComponent::TypeWriter, context, &[("typeSpeed", "TypeWriterProps.type_speed"), ("deleteSpeed", "TypeWriterProps.delete_speed"), ("afterTyped", "TypeWriterProps.after_typed"), ("afterDeleted", "TypeWriterProps.after_deleted"), ("repeat", "TypeWriterProps.repeat")]),
-        ViewNode::RichText { .. } => register_structural_consumed_props(BuiltinComponent::RichText, context, &[("text", "RichTextMark.text"), ("style", "RichTextMark.style"), ("color", "RichTextMark.color")]),
-        ViewNode::Record { .. } => register_structural_consumed_props(BuiltinComponent::Record, context, &[("name", "RecordProps.name"), ("url", "RecordProps.url"), ("disabled", "RecordProps.disabled"), ("maxDuration", "RecordProps.max_duration")]),
-        ViewNode::ToggleGroup { .. } => register_structural_consumed_props(BuiltinComponent::ToggleGroup, context, &[("value", "ToggleGroupProps.value"), ("selected", "ToggleGroupProps.selected"), ("multiple", "ToggleGroupProps.multiple"), ("wide", "ToggleGroupProps.wide"), ("vertical", "ToggleGroupProps.vertical"), ("disabled", "ToggleGroupProps.disabled"), ("ariaLabel", "ToggleGroupProps.aria_label")]),
-        ViewNode::Collapsible { .. } => register_structural_consumed_props(BuiltinComponent::Collapsible, context, &[("label", "CollapsibleProps.label"), ("defaultOpen", "CollapsibleProps.default_open"), ("disabled", "CollapsibleProps.disabled")]),
-        ViewNode::Countdown { .. } => register_structural_consumed_props(BuiltinComponent::Countdown, context, &[("target", "CountdownProps.target"), ("showDays", "CountdownProps.show_days"), ("showHours", "CountdownProps.show_hours"), ("showMinutes", "CountdownProps.show_minutes"), ("showSeconds", "CountdownProps.show_seconds"), ("size", "CountdownProps.size"), ("onComplete", "CountdownProps.on_complete")]),
-        ViewNode::Map { .. } => register_structural_consumed_props(BuiltinComponent::Map, context, &[("centerLat", "MapProps.center_lat"), ("centerLng", "MapProps.center_lng"), ("zoom", "MapProps.zoom"), ("height", "MapProps.height"), ("width", "MapProps.width"), ("showControls", "MapProps.show_controls"), ("showScale", "MapProps.show_scale"), ("interactive", "MapProps.interactive"), ("onLocation", "MapProps.on_location"), ("onLocationError", "MapProps.on_location_error"), ("onRoute", "MapProps.on_route")]),
+        ViewNode::Avatar { .. } => register_structural_consumed_props(
+            BuiltinComponent::Avatar,
+            context,
+            &[
+                ("name", "AvatarProps.name"),
+                ("alt", "AvatarProps.alt"),
+                ("icon", "SideNavIcon.props"),
+            ],
+        ),
+        ViewNode::AvatarGroup { .. } => register_structural_consumed_props(
+            BuiltinComponent::AvatarGroup,
+            context,
+            &[
+                ("items", "AvatarGroupProps.items"),
+                ("size", "AvatarGroupProps.size"),
+            ],
+        ),
+        ViewNode::Badge { .. } => register_structural_consumed_props(
+            BuiltinComponent::Badge,
+            context,
+            &[
+                ("variant", "VariantProps.variant"),
+                ("scheme", "VariantProps.color"),
+            ],
+        ),
+        ViewNode::Chip { .. } => register_structural_consumed_props(
+            BuiltinComponent::Chip,
+            context,
+            &[
+                ("variant", "VariantProps.variant"),
+                ("scheme", "VariantProps.color"),
+                ("size", "VariantProps.size"),
+                ("rounded", "VariantProps.style.rounded"),
+            ],
+        ),
+        ViewNode::ChatBox { .. } => register_structural_consumed_props(
+            BuiltinComponent::ChatBox,
+            context,
+            &[
+                ("messages", "ChatBoxProps.messages"),
+                ("actionLabel", "ChatBoxProps.action_label"),
+                ("actionVisible", "ChatBoxProps.action_visible"),
+                ("loading", "ChatBoxProps.loading"),
+                ("sending", "ChatBoxProps.sending"),
+                ("streaming", "ChatBoxProps.streaming"),
+                ("hasMore", "ChatBoxProps.has_more"),
+            ],
+        ),
+        ViewNode::Empty { .. } => register_structural_consumed_props(
+            BuiltinComponent::Empty,
+            context,
+            &[
+                ("title", "EmptyProps.title"),
+                ("description", "EmptyProps.description"),
+                ("actionLabel", "EmptyProps.action_label"),
+            ],
+        ),
+        ViewNode::Marquee { .. } => register_structural_consumed_props(
+            BuiltinComponent::Marquee,
+            context,
+            &[
+                ("speed", "MarqueeProps.speed"),
+                ("pauseOnHover", "MarqueeProps.pause_on_hover"),
+                ("reverse", "MarqueeProps.reverse"),
+                ("orientation", "MarqueeProps.orientation"),
+                ("fade", "MarqueeProps.fade"),
+                ("fadeColor", "MarqueeProps.fade_color"),
+                ("gap", "MarqueeProps.gap"),
+            ],
+        ),
+        ViewNode::TypeWriter { .. } => register_structural_consumed_props(
+            BuiltinComponent::TypeWriter,
+            context,
+            &[
+                ("typeSpeed", "TypeWriterProps.type_speed"),
+                ("deleteSpeed", "TypeWriterProps.delete_speed"),
+                ("afterTyped", "TypeWriterProps.after_typed"),
+                ("afterDeleted", "TypeWriterProps.after_deleted"),
+                ("repeat", "TypeWriterProps.repeat"),
+            ],
+        ),
+        ViewNode::RichText { .. } => register_structural_consumed_props(
+            BuiltinComponent::RichText,
+            context,
+            &[
+                ("text", "RichTextMark.text"),
+                ("style", "RichTextMark.style"),
+                ("color", "RichTextMark.color"),
+            ],
+        ),
+        ViewNode::Record { .. } => register_structural_consumed_props(
+            BuiltinComponent::Record,
+            context,
+            &[
+                ("name", "RecordProps.name"),
+                ("url", "RecordProps.url"),
+                ("disabled", "RecordProps.disabled"),
+                ("maxDuration", "RecordProps.max_duration"),
+            ],
+        ),
+        ViewNode::ToggleGroup { .. } => register_structural_consumed_props(
+            BuiltinComponent::ToggleGroup,
+            context,
+            &[
+                ("value", "ToggleGroupProps.value"),
+                ("selected", "ToggleGroupProps.selected"),
+                ("multiple", "ToggleGroupProps.multiple"),
+                ("wide", "ToggleGroupProps.wide"),
+                ("vertical", "ToggleGroupProps.vertical"),
+                ("disabled", "ToggleGroupProps.disabled"),
+                ("ariaLabel", "ToggleGroupProps.aria_label"),
+            ],
+        ),
+        ViewNode::Collapsible { .. } => register_structural_consumed_props(
+            BuiltinComponent::Collapsible,
+            context,
+            &[
+                ("label", "CollapsibleProps.label"),
+                ("defaultOpen", "CollapsibleProps.default_open"),
+                ("disabled", "CollapsibleProps.disabled"),
+            ],
+        ),
+        ViewNode::Countdown { .. } => register_structural_consumed_props(
+            BuiltinComponent::Countdown,
+            context,
+            &[
+                ("target", "CountdownProps.target"),
+                ("showDays", "CountdownProps.show_days"),
+                ("showHours", "CountdownProps.show_hours"),
+                ("showMinutes", "CountdownProps.show_minutes"),
+                ("showSeconds", "CountdownProps.show_seconds"),
+                ("size", "CountdownProps.size"),
+                ("onComplete", "CountdownProps.on_complete"),
+            ],
+        ),
+        ViewNode::Map { .. } => register_structural_consumed_props(
+            BuiltinComponent::Map,
+            context,
+            &[
+                ("centerLat", "MapProps.center_lat"),
+                ("centerLng", "MapProps.center_lng"),
+                ("zoom", "MapProps.zoom"),
+                ("height", "MapProps.height"),
+                ("width", "MapProps.width"),
+                ("showControls", "MapProps.show_controls"),
+                ("showScale", "MapProps.show_scale"),
+                ("interactive", "MapProps.interactive"),
+                ("onLocation", "MapProps.on_location"),
+                ("onLocationError", "MapProps.on_location_error"),
+                ("onRoute", "MapProps.on_route"),
+            ],
+        ),
         ViewNode::Image { props: _ } => {
             context.register_consumed_prop(BuiltinComponent::Image, "src", "ImageProps.src");
             context.register_consumed_prop(BuiltinComponent::Image, "alt", "ImageProps.alt");
-            context.register_consumed_prop(BuiltinComponent::Image, "objectFit", "ImageProps.object_fit");
-            context.register_consumed_prop(BuiltinComponent::Image, "loading", "ImageProps.loading");
+            context.register_consumed_prop(
+                BuiltinComponent::Image,
+                "objectFit",
+                "ImageProps.object_fit",
+            );
+            context.register_consumed_prop(
+                BuiltinComponent::Image,
+                "loading",
+                "ImageProps.loading",
+            );
         }
         ViewNode::Text { props, .. } | ViewNode::Title { props, .. } => {
             if props.size.is_some() || props.size_binding.is_some() {
                 context.register_consumed_prop(BuiltinComponent::Text, "size", "TextProps.size");
             }
             if props.weight.is_some() || props.weight_binding.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Text, "weight", "TextProps.weight");
+                context.register_consumed_prop(
+                    BuiltinComponent::Text,
+                    "weight",
+                    "TextProps.weight",
+                );
             }
             if props.letter_spacing.is_some() || props.letter_spacing_binding.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Text, "spacing", "TextProps.letter_spacing");
+                context.register_consumed_prop(
+                    BuiltinComponent::Text,
+                    "spacing",
+                    "TextProps.letter_spacing",
+                );
             }
         }
         ViewNode::Input { props } | ViewNode::Select { props, .. } => {
-            let component = if matches!(node, ViewNode::Input { .. }) { BuiltinComponent::Input } else { BuiltinComponent::Select };
+            let component = if matches!(node, ViewNode::Input { .. }) {
+                BuiltinComponent::Input
+            } else {
+                BuiltinComponent::Select
+            };
             if props.color.is_some() || props.color_binding.is_some() {
                 context.register_consumed_prop(component, "scheme", "VariantProps.color");
             }
@@ -411,7 +1020,11 @@ fn register_rendered_node_props(node: &ViewNode, context: &ReactiveRenderContext
                 context.register_consumed_prop(component, "label", "VariantProps.label");
             }
             if props.placeholder.is_some() {
-                context.register_consumed_prop(component, "placeholder", "VariantProps.placeholder");
+                context.register_consumed_prop(
+                    component,
+                    "placeholder",
+                    "VariantProps.placeholder",
+                );
             }
             if props.i18n.is_some() {
                 context.register_consumed_prop(component, "i18n", "VariantProps.i18n");
@@ -419,22 +1032,46 @@ fn register_rendered_node_props(node: &ViewNode, context: &ReactiveRenderContext
         }
         ViewNode::Button { props, .. } => {
             if props.color.is_some() || props.color_binding.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Button, "scheme", "VariantProps.color");
+                context.register_consumed_prop(
+                    BuiltinComponent::Button,
+                    "scheme",
+                    "VariantProps.color",
+                );
             }
             if props.variant.is_some() || props.variant_binding.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Button, "variant", "VariantProps.variant");
+                context.register_consumed_prop(
+                    BuiltinComponent::Button,
+                    "variant",
+                    "VariantProps.variant",
+                );
             }
             if props.size.is_some() || props.size_binding.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Button, "size", "VariantProps.size");
+                context.register_consumed_prop(
+                    BuiltinComponent::Button,
+                    "size",
+                    "VariantProps.size",
+                );
             }
             if props.style.rounded.is_some() || props.style.rounded_binding.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Button, "rounded", "VariantProps.style.rounded");
+                context.register_consumed_prop(
+                    BuiltinComponent::Button,
+                    "rounded",
+                    "VariantProps.style.rounded",
+                );
             }
             if props.reactive.loading.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Button, "loading", "VariantProps.reactive.loading");
+                context.register_consumed_prop(
+                    BuiltinComponent::Button,
+                    "loading",
+                    "VariantProps.reactive.loading",
+                );
             }
             if props.reactive.disabled.is_some() {
-                context.register_consumed_prop(BuiltinComponent::Button, "disabled", "VariantProps.reactive.disabled");
+                context.register_consumed_prop(
+                    BuiltinComponent::Button,
+                    "disabled",
+                    "VariantProps.reactive.disabled",
+                );
             }
         }
         _ => {}
@@ -464,16 +1101,65 @@ fn register_structural_consumed_props(
 }
 
 fn register_chart_consumed_props(component: BuiltinComponent, context: &ReactiveRenderContext) {
-    for (prop, field) in [("data", "ChartCommonProps.data"), ("series", "ChartCommonProps.series"), ("size", "ChartCommonProps.size"), ("palette", "ChartCommonProps.palette"), ("loading", "ChartCommonProps.loading")] {
+    for (prop, field) in [
+        ("data", "ChartCommonProps.data"),
+        ("series", "ChartCommonProps.series"),
+        ("size", "ChartCommonProps.size"),
+        ("palette", "ChartCommonProps.palette"),
+        ("loading", "ChartCommonProps.loading"),
+    ] {
         context.register_consumed_prop(component, prop, field);
     }
     let fields = match component {
-        BuiltinComponent::Candlestick => vec![("stream", "CandlestickProps.stream"), ("upColor", "CandlestickProps.up_color"), ("downColor", "CandlestickProps.down_color"), ("maxPoints", "CandlestickProps.max_points")],
-        BuiltinComponent::ArcChart => vec![("centerText", "ArcChartProps.center_text"), ("centerValue", "ArcChartProps.center_value"), ("thickness", "ArcChartProps.thickness"), ("gap", "ArcChartProps.gap"), ("startAngle", "ArcChartProps.start_angle"), ("endAngle", "ArcChartProps.end_angle"), ("showGlow", "ArcChartProps.show_glow")],
-        BuiltinComponent::AreaChart => vec![("curve", "AreaChartProps.curve"), ("strokeWidth", "AreaChartProps.stroke_width"), ("fillOpacity", "AreaChartProps.fill_opacity"), ("stacked", "AreaChartProps.stacked"), ("showPoints", "AreaChartProps.show_points"), ("showGlow", "AreaChartProps.show_glow")],
-        BuiltinComponent::BarChart => vec![("grouped", "BarChartProps.grouped"), ("stacked", "BarChartProps.stacked"), ("showValues", "BarChartProps.show_values"), ("barRadius", "BarChartProps.bar_radius"), ("showGlow", "BarChartProps.show_glow")],
-        BuiltinComponent::LineChart => vec![("curve", "LineChartProps.curve"), ("strokeWidth", "LineChartProps.stroke_width"), ("pointRadius", "LineChartProps.point_radius"), ("showGradientFill", "LineChartProps.show_gradient_fill"), ("showGlow", "LineChartProps.show_glow")],
-        BuiltinComponent::PieChart => vec![("donut", "PieChartProps.donut"), ("donutWidth", "PieChartProps.donut_width"), ("centerLabel", "PieChartProps.center_label"), ("centerValue", "PieChartProps.center_value"), ("startAngle", "PieChartProps.start_angle"), ("padAngle", "PieChartProps.pad_angle"), ("hideLabels", "PieChartProps.hide_labels"), ("hideValues", "PieChartProps.hide_values"), ("hidePercentages", "PieChartProps.hide_percentages"), ("showGlow", "PieChartProps.show_glow")],
+        BuiltinComponent::Candlestick => vec![
+            ("stream", "CandlestickProps.stream"),
+            ("upColor", "CandlestickProps.up_color"),
+            ("downColor", "CandlestickProps.down_color"),
+            ("maxPoints", "CandlestickProps.max_points"),
+        ],
+        BuiltinComponent::ArcChart => vec![
+            ("centerText", "ArcChartProps.center_text"),
+            ("centerValue", "ArcChartProps.center_value"),
+            ("thickness", "ArcChartProps.thickness"),
+            ("gap", "ArcChartProps.gap"),
+            ("startAngle", "ArcChartProps.start_angle"),
+            ("endAngle", "ArcChartProps.end_angle"),
+            ("showGlow", "ArcChartProps.show_glow"),
+        ],
+        BuiltinComponent::AreaChart => vec![
+            ("curve", "AreaChartProps.curve"),
+            ("strokeWidth", "AreaChartProps.stroke_width"),
+            ("fillOpacity", "AreaChartProps.fill_opacity"),
+            ("stacked", "AreaChartProps.stacked"),
+            ("showPoints", "AreaChartProps.show_points"),
+            ("showGlow", "AreaChartProps.show_glow"),
+        ],
+        BuiltinComponent::BarChart => vec![
+            ("grouped", "BarChartProps.grouped"),
+            ("stacked", "BarChartProps.stacked"),
+            ("showValues", "BarChartProps.show_values"),
+            ("barRadius", "BarChartProps.bar_radius"),
+            ("showGlow", "BarChartProps.show_glow"),
+        ],
+        BuiltinComponent::LineChart => vec![
+            ("curve", "LineChartProps.curve"),
+            ("strokeWidth", "LineChartProps.stroke_width"),
+            ("pointRadius", "LineChartProps.point_radius"),
+            ("showGradientFill", "LineChartProps.show_gradient_fill"),
+            ("showGlow", "LineChartProps.show_glow"),
+        ],
+        BuiltinComponent::PieChart => vec![
+            ("donut", "PieChartProps.donut"),
+            ("donutWidth", "PieChartProps.donut_width"),
+            ("centerLabel", "PieChartProps.center_label"),
+            ("centerValue", "PieChartProps.center_value"),
+            ("startAngle", "PieChartProps.start_angle"),
+            ("padAngle", "PieChartProps.pad_angle"),
+            ("hideLabels", "PieChartProps.hide_labels"),
+            ("hideValues", "PieChartProps.hide_values"),
+            ("hidePercentages", "PieChartProps.hide_percentages"),
+            ("showGlow", "PieChartProps.show_glow"),
+        ],
         _ => Vec::new(),
     };
     for (prop, field) in fields {
@@ -487,7 +1173,14 @@ fn form_component(node: &ViewNode) -> Option<BuiltinComponent> {
         ViewNode::Select { .. } => Some(BuiltinComponent::Select),
         ViewNode::Checkbox { .. } => Some(BuiltinComponent::Checkbox),
         ViewNode::Toggle { .. } => Some(BuiltinComponent::Toggle),
-        ViewNode::RadioGroup { .. } => Some(BuiltinComponent::RadioGroup),
+        ViewNode::RadioGroup { props, .. } => Some(if matches!(
+            props.presentation,
+            RadioGroupPresentation::Card
+        ) {
+            BuiltinComponent::RadioCard
+        } else {
+            BuiltinComponent::RadioGroup
+        }),
         ViewNode::Slider { .. } => Some(BuiltinComponent::Slider),
         ViewNode::Date { .. } => Some(BuiltinComponent::Date),
         ViewNode::DateRange { .. } => Some(BuiltinComponent::DateRange),
@@ -497,6 +1190,35 @@ fn form_component(node: &ViewNode) -> Option<BuiltinComponent> {
         ViewNode::Textarea { .. } => Some(BuiltinComponent::Textarea),
         ViewNode::Color { .. } => Some(BuiltinComponent::Color),
         ViewNode::Dropzone { .. } => Some(BuiltinComponent::Dropzone),
+        ViewNode::ComboBox { .. } => Some(BuiltinComponent::ComboBox),
+        ViewNode::CsvField { .. } => Some(BuiltinComponent::CsvField),
+        ViewNode::DragDrop { .. } => Some(BuiltinComponent::DragDrop),
+        ViewNode::Editor { .. } => Some(BuiltinComponent::Editor),
+        ViewNode::ImageCropper { .. } => Some(BuiltinComponent::ImageCropper),
+        _ => None,
+    }
+}
+
+fn form_variant_props(node: &ViewNode) -> Option<&VariantProps> {
+    match node {
+        ViewNode::Input { props } | ViewNode::Select { props, .. } => Some(props),
+        ViewNode::Checkbox { props } => Some(&props.style),
+        ViewNode::Color { props } => Some(&props.style),
+        ViewNode::Date { props } => Some(&props.style),
+        ViewNode::DateRange { props } => Some(&props.style),
+        ViewNode::RadioGroup { props, .. } => Some(&props.style),
+        ViewNode::Toggle { props } => Some(&props.style),
+        ViewNode::Slider { props } => Some(&props.style),
+        ViewNode::Dropzone { props } => Some(&props.style),
+        ViewNode::ComboBox { props, .. } => Some(&props.style),
+        ViewNode::CsvField { props, .. } => Some(&props.style),
+        ViewNode::DragDrop { props, .. } => Some(&props.style),
+        ViewNode::Editor { props } => Some(&props.style),
+        ViewNode::ImageCropper { props } => Some(&props.style),
+        ViewNode::Password { props } => Some(&props.style),
+        ViewNode::Phone { props } => Some(&props.style),
+        ViewNode::Pin { props } => Some(&props.style),
+        ViewNode::Textarea { props } => Some(&props.style),
         _ => None,
     }
 }
@@ -729,6 +1451,7 @@ fn render_html_node_with_context(
         ViewNode::LineChart { props } => render_line_chart_html(props, context),
         ViewNode::PieChart { props } => render_pie_chart_html(props, context),
         ViewNode::Table { props } => render_table_html(props, context),
+        ViewNode::Tree { props } => render_tree_html(props, context),
         ViewNode::Divider { props } => render_divider_html(props, context),
         ViewNode::Title { props, value } => render_text_html(
             "title",
@@ -889,11 +1612,7 @@ fn render_html_node_with_context(
             children_html,
             context,
         ),
-        ViewNode::BottomBar {
-            props,
-            tabs,
-            ..
-        } => render_bottom_bar_html(props, tabs, context),
+        ViewNode::BottomBar { props, tabs, .. } => render_bottom_bar_html(props, tabs, context),
         ViewNode::SideNav { props, items } => {
             render_side_nav_html("sidenav", props, items, context)
         }
@@ -935,16 +1654,37 @@ fn render_html_node_with_context(
             key,
             children,
         } => {
-            let children = children
+            let template = children
                 .iter()
                 .map(|child| render_html_with_context(child, children_html, context))
                 .collect::<String>();
+            let rows = context
+                .constant_array_values(collection)
+                .map(|values| {
+                    values
+                        .iter()
+                        .enumerate()
+                        .map(|(index, value)| {
+                            let row_context = context.with_scope_value(item, value);
+                            let row_children = children
+                                .iter()
+                                .map(|child| {
+                                    render_html_with_context(child, children_html, &row_context)
+                                })
+                                .collect::<String>();
+                            format!(
+                                r#"<div data-dowe-each-row data-dowe-each-index="{index}">{row_children}</div>"#
+                            )
+                        })
+                        .collect::<String>()
+                })
+                .unwrap_or_default();
             format!(
-                r#"<div data-dowe-each="{}" data-dowe-item="{}" data-dowe-key="{}"><template>{}</template></div>"#,
+                r#"<div data-dowe-each="{}" data-dowe-item="{}" data-dowe-key="{}"><template>{}</template>{rows}</div>"#,
                 escape_attr(&context.signal_path(collection)),
                 escape_attr(item),
                 escape_attr(key),
-                children
+                template
             )
         }
         ViewNode::Children => children_html.unwrap_or_default().to_string(),

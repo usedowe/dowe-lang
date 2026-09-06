@@ -292,6 +292,7 @@ fn render_scaffold_html(
         children_html,
         context,
     ));
+    html.push_str(&scaffold_bootstrap_script());
     html.push_str("<div class=\"scaffold-body\">");
     if !start.is_empty() {
         html.push_str("<aside class=\"scaffold-start\"><div class=\"scaffold-content\">");

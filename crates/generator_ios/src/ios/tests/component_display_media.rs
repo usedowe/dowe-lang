@@ -147,6 +147,45 @@ fn generates_swiftui_media_display_form_components() {
     let views = swift_content(&output);
 
     assert!(views.contains("struct DoweAudioView: View"));
+
+    let mut card_route = media_display_form_route();
+    card_route.page_tree = ViewNode::RadioGroup {
+        props: RadioGroupProps {
+            style: VariantProps {
+                variant: Some(ComponentVariant::Outlined),
+                color: Some(ColorFamily::Primary),
+                element: ElementProps {
+                    bind: Some("workspace".to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            size: ButtonSize::Md,
+            orientation: RadioGroupOrientation::Horizontal,
+            presentation: RadioGroupPresentation::Card,
+            name: Some("workspace".to_string()),
+            info: None,
+            error: None,
+        },
+        options: vec![RadioOption {
+            value: "local".to_string(),
+            label: "Local".to_string(),
+            description: Some("Edit files on your computer".to_string()),
+            icon: Some(solar_control_icon("laptop").expect("laptop icon")),
+            disabled: false,
+        }],
+    };
+    let card_output = generate_ios(
+        &[card_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let card_views = swift_content(&card_output);
+    assert!(card_views.contains("DoweRadioCardView("));
+    assert!(card_views.contains("DoweRadioCardOption("));
+    assert!(card_views.contains("Edit files on your computer"));
+    assert!(card_views.contains("accessibilityAddTraits(selected ? .isSelected"));
     assert!(views.contains("DoweAudioView(source:"));
     assert!(views.contains("@State private var player: AVPlayer"));
     assert!(views.contains("ForEach(0..<50"));
@@ -341,7 +380,12 @@ fn generates_swiftui_advanced_form_components() {
     assert!(views.contains("struct DoweDragGroup: Identifiable"));
     assert!(views.contains("DoweDragDrop(label: \"Tasks\""));
     assert!(views.contains("DoweDragItem(id: \"draft\", label: \"Draft\""));
-    assert!(views.contains("DoweEditorField(value: state.binding(\"profile.notes\")"));
+    let editor_call = views
+        .lines()
+        .find(|line| line.contains("DoweEditorField(value: state.binding(\"profile.notes\")"))
+        .expect("editor call");
+    assert!(editor_call.find("language:").unwrap() < editor_call.find("initialValue:").unwrap());
+    assert!(views.contains("onSave: { state.run(\"save-editor\") }"));
     assert!(views.contains("DoweImageCropper(value: state.binding(\"profile.avatar\")"));
     assert!(views.contains("fileImporter(isPresented: $pickerPresented"));
     assert!(views.contains("doweCropImage("));
@@ -479,4 +523,25 @@ fn generates_swiftui_advanced_form_components() {
     assert!(textarea.contains("if visiblePlaceholder"));
     assert!(textarea.contains(".focused($focused)"));
 }
-
+#[test]
+fn draw_ios_preserves_selection_and_gesture_contracts() {
+    let runtime = super::swift_runtime_canvas();
+    for expected in [
+        "@StateObject private var selection = DoweCanvasSelection()",
+        "let renderedCommands = commands",
+        "selectedId: selectedId",
+        "selectionPath(command)",
+        "private var drawingPointer: ObjectIdentifier?",
+        "private var drawingMode: String?",
+        "private var nextLayerSequence = 1",
+        "guard drawingPointer == pointer else { return }",
+        "if kind != \"down\" || logical.inside",
+        "points.append([\"x\": point.x, \"y\": point.y])",
+        "segmentDistance(point, start:",
+        "case \"text\":",
+        "layer ?? [:]",
+    ] {
+        assert!(runtime.contains(expected), "missing Draw contract: {expected}");
+    }
+}
+include!("draw_interactions.rs");

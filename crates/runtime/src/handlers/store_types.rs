@@ -77,6 +77,38 @@ impl StoreActionError {
         }
     }
 
+    fn invalid_skill_profile() -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code: "invalid_skill_profile",
+            message: "The requested Studio skill profile is not allowlisted",
+        }
+    }
+
+    fn invalid_skill_context() -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code: "invalid_skill_context",
+            message: "The resolved Studio skill context is missing",
+        }
+    }
+
+    fn invalid_context_pack() -> Self {
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            code: "invalid_context_pack",
+            message: "The Studio workspace context must be a bounded object",
+        }
+    }
+
+    fn context_pack_too_large() -> Self {
+        Self {
+            status: StatusCode::PAYLOAD_TOO_LARGE,
+            code: "context_pack_too_large",
+            message: "The Studio workspace context exceeds its size limit",
+        }
+    }
+
     fn not_found(message: &'static str) -> Self {
         Self {
             status: StatusCode::NOT_FOUND,
@@ -114,6 +146,22 @@ impl StoreActionError {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             code: "queue_error",
             message: "Queue operation failed",
+        }
+    }
+
+    fn notification() -> Self {
+        Self {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            code: "notification_error",
+            message: "Notification operation failed",
+        }
+    }
+
+    fn notification_unauthorized() -> Self {
+        Self {
+            status: StatusCode::UNAUTHORIZED,
+            code: "notification_unauthorized",
+            message: "Notification user does not match the authenticated subject",
         }
     }
 
@@ -318,13 +366,13 @@ impl StoreActionError {
                 message: "Queue authorization failed",
             },
             QueueError::QueueNotFound(_) => Self::not_found("Queue not found"),
-            QueueError::InvalidName(_) | QueueError::InvalidTopic(_) | QueueError::InvalidRequest(_) => {
-                Self {
-                    status: StatusCode::BAD_REQUEST,
-                    code: "queue_invalid_request",
-                    message: "Queue request is invalid",
-                }
-            }
+            QueueError::InvalidName(_)
+            | QueueError::InvalidTopic(_)
+            | QueueError::InvalidRequest(_) => Self {
+                status: StatusCode::BAD_REQUEST,
+                code: "queue_invalid_request",
+                message: "Queue request is invalid",
+            },
             QueueError::Remote(_) => Self {
                 status: StatusCode::BAD_GATEWAY,
                 code: "queue_remote",

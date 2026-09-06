@@ -155,6 +155,104 @@ async fn serves_queue_handlers_with_local_durable_direct_publish() {
 }
 
 #[tokio::test]
+async fn serves_notification_actions_with_a_durable_intent() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 0);
+    fs::create_dir_all(temp.path().join("middlewares")).expect("middlewares");
+    fs::write(
+        temp.path().join(".env"),
+        "JWT_SECRET=01234567890123456789012345678901\n",
+    )
+    .expect("env");
+    fs::write(
+        temp.path().join("main.dowe"),
+        r#"import requireBearer from "@/middlewares/auth"
+
+main
+  server port:0
+    route "/api/notify" middleware:[requireBearer]
+      handler
+        notify sent category:"process" user:req.context.auth.subject title:"Ready" body:"The export finished" route:"/reports/latest" data:{ exportId:"export-1" }
+        return json:sent"#,
+    )
+    .expect("server");
+    fs::write(
+        temp.path().join("middlewares/auth.dowe"),
+        r#"middleware requireBearer params:{}
+  bearer token value:req.header.Authorization
+  jwt verified secret:env.JWT_SECRET algorithm:"HS256" token:token
+  if verified.valid
+    next context:{ auth:{ subject:verified.claims.sub } }
+  return status:401 json:{ ok:false error:"Unauthorized" }"#,
+    )
+    .expect("middleware");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: false,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+    let backend = format!("http://{}", servers.backend_addr.expect("backend addr"));
+    let token = sign_jws_hs256(
+        &json!({"sub":"user-1","exp":4102444800u64}),
+        "01234567890123456789012345678901",
+    )
+    .expect("token");
+    unsafe {
+        std::env::set_var(
+            "DOWE_NOTIFICATION_JWT_SECRET",
+            "01234567890123456789012345678901",
+        );
+    }
+    let registration = reqwest::Client::new()
+        .post(format!("{backend}/_dowe/notifications/installations"))
+        .bearer_auth(&token)
+        .json(&json!({
+            "id":"web-1",
+            "platform":"web",
+            "provider":"web-push",
+            "token":"{\"endpoint\":\"https://push.example/1\",\"keys\":{\"p256dh\":\"key\",\"auth\":\"auth\"}}"
+        }))
+        .send()
+        .await
+        .expect("registration");
+    assert_eq!(registration.status(), reqwest::StatusCode::CREATED);
+    let registration = registration
+        .json::<serde_json::Value>()
+        .await
+        .expect("registration json");
+    assert_eq!(registration["user"], "user-1");
+    let revoked = reqwest::Client::new()
+        .delete(format!("{backend}/_dowe/notifications/installations/web-1"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .expect("revoke");
+    assert_eq!(revoked.status(), reqwest::StatusCode::NO_CONTENT);
+    let response = reqwest::Client::new()
+        .get(format!("{backend}/api/notify"))
+        .bearer_auth(token)
+        .send()
+        .await
+        .expect("notify")
+        .json::<serde_json::Value>()
+        .await
+        .expect("notify json");
+    assert_eq!(response["ok"], true);
+    assert_eq!(response["deliveries"], 0);
+    assert!(temp.path().join(".dowe/notifications").exists());
+    unsafe {
+        std::env::remove_var("DOWE_NOTIFICATION_JWT_SECRET");
+    }
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
 async fn production_vector_host_local_uses_embedded_storage() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);

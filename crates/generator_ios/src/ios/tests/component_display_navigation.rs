@@ -35,6 +35,18 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     assert!(views.contains("if destination == currentEntry"));
     assert!(views.contains("routeRevision += 1"));
     assert!(views.contains(".id(routeRevision)"));
+    assert!(views.contains(".transition(.asymmetric(insertion: .opacity, removal: .identity))"));
+    assert!(views.contains(".animation(reduceMotion || pageTransitionSequence == 0 ? nil : .timingCurve(0.22, 0.61, 0.36, 1, duration: 0.28), value: pageTransitionSequence)"));
+    assert!(views.contains("@Environment(\\.accessibilityReduceMotion) private var reduceMotion"));
+    assert!(views.contains("@State private var pageEntranceSuppressed = false"));
+    assert!(views.contains("@State private var pageTransitionSequence = 0"));
+    assert!(views.contains("pageEntranceSuppressed = false\n                routeRevision += 1"));
+    assert!(views.contains(".environment(\\.dowePageEntranceSuppressed, pageEntranceSuppressed)"));
+    assert!(views.contains("@Environment(\\.dowePageEntranceSuppressed) private var pageEntranceSuppressed"));
+    assert!(views.contains("pageEntranceSuppressed || active || preset == .none"));
+    assert!(!views.contains("DispatchQueue.main.asyncAfter(deadline: .now() + 0.28)"));
+    assert!(views.contains("pageEntranceSuppressed = true"));
+    assert!(!views.contains(".transition(.opacity)\n            }\n            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22)"));
     assert!(views.contains(r#"{ navigate("push", "/signup", "join") }"#));
     assert!(views.contains(r#"{ navigate("replace", "", "hero") }"#));
     assert!(views.contains("{ goBack() }"));
@@ -56,12 +68,45 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     assert!(routing.content.contains(r#""/signup": ["join"]"#));
 }
 
+#[test]
+fn generates_independent_swiftui_safe_area_colors() {
+    let mut route = navigation_shell_route();
+    if let ViewNode::Scaffold { props, .. } = &mut route.page_tree {
+        props.safe_area_top = Some(ColorToken::Surface);
+        props.safe_area_bottom = Some(ColorToken::Primary);
+    } else {
+        panic!("scaffold");
+    }
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    assert!(views.contains("case \"/\": return DoweDesign.surface"));
+    assert!(views.contains("case \"/\": return DoweDesign.primary"));
+    assert!(views.contains("topInset: safeAreaInsets.top"));
+    assert!(views.contains("bottomInset: safeAreaInsets.bottom"));
+}
+
 fn advanced_form_route() -> ViewRoute {
     ViewRoute {
         id: "advanced".to_string(),
         route_path: "/advanced".to_string(),
         layout_tree: ViewNode::Children,
-        page_tree: advanced_form_tree(),
+        page_tree: ViewNode::Scope {
+            constants: Vec::new(),
+            signals: Vec::new(),
+            actions: vec![ViewAction {
+                id: "save-editor".to_string(),
+                name: "saveEditor".to_string(),
+                params: Vec::new(),
+                return_type: None,
+                kind: ViewActionKind::Sequence(Vec::new()),
+            }],
+            children: vec![advanced_form_tree()],
+        },
         sections: Vec::new(),
         navigation_actions: Vec::new(),
     }
@@ -144,11 +189,13 @@ fn advanced_form_tree() -> ViewNode {
             ViewNode::Editor {
                 props: EditorProps {
                     style: bound_style("profile.notes", "Notes", "Write notes"),
+                    language: dowe_components::CodeLanguage::Dowe,
                     value: None,
                     min_height: 180,
                     hide_toolbar: false,
                     disabled: false,
                     readonly: false,
+                    on_save: Some("saveEditor".to_string()),
                     name: None,
                     help_text: None,
                     error_text: None,
@@ -274,4 +321,3 @@ fn advanced_style(
         ..Default::default()
     }
 }
-

@@ -84,12 +84,14 @@ fn preserves_explicit_border_width_and_color_over_variant_defaults() {
         &tree,
     );
 
-    assert!(page
-        .css_content
-        .contains(".border-3{border-width:3px !important;border-style:solid !important;}"));
-    assert!(page
-        .css_content
-        .contains(".border-color-danger{border-color:var(--dowe-danger) !important;}"));
+    assert!(
+        page.css_content
+            .contains(".border-3{border-width:3px !important;border-style:solid !important;}")
+    );
+    assert!(
+        page.css_content
+            .contains(".border-color-danger{border-color:var(--dowe-danger) !important;}")
+    );
     assert!(page.css_content.contains(".card.is-solid.is-primary"));
 }
 
@@ -110,9 +112,10 @@ fn defaults_border_color_to_primary_when_border_color_is_omitted() {
     );
 
     assert!(page.content.contains("border-1 border-color-primary"));
-    assert!(page
-        .css_content
-        .contains(".border-color-primary{border-color:var(--dowe-primary) !important;}"));
+    assert!(
+        page.css_content
+            .contains(".border-color-primary{border-color:var(--dowe-primary) !important;}")
+    );
 }
 
 #[test]
@@ -123,7 +126,10 @@ fn rejects_incompatible_persisted_view_store_shapes() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
     let router = super::router_js(&web);
 
@@ -141,7 +147,10 @@ fn fills_request_path_placeholders_from_signal_names() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
     let router = super::router_js(&web);
 
@@ -169,6 +178,48 @@ fn emits_constants_outside_web_signal_state() {
     );
     assert!(page.content.contains(r#""constants":[{"id":"plans01""#));
     assert!(page.content.contains(r#""signals":[]"#));
+}
+
+#[test]
+fn renders_constant_each_rows_in_initial_html_and_route_render() {
+    let tree = ViewNode::Scope {
+        constants: vec![ViewConstant {
+            id: "items01".to_string(),
+            name: "items".to_string(),
+            value: ViewSignalValue::Array(vec![
+                ViewSignalValue::Object(vec![(
+                    "label".to_string(),
+                    ViewSignalValue::String("First".to_string()),
+                )]),
+                ViewSignalValue::Object(vec![(
+                    "label".to_string(),
+                    ViewSignalValue::String("Second".to_string()),
+                )]),
+            ]),
+        }],
+        signals: Vec::new(),
+        actions: Vec::new(),
+        children: vec![ViewNode::Each {
+            item: "item".to_string(),
+            collection: "items".to_string(),
+            key: "item.label".to_string(),
+            children: vec![text("{item.label}")],
+        }],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/items.dowe"),
+        "page items",
+        &tree,
+    );
+    let html = render_page_body(&ViewNode::Children, &tree);
+
+    assert_eq!(html.matches("data-dowe-each-row").count(), 2);
+    assert!(html.contains(">First</p>"));
+    assert!(html.contains(">Second</p>"));
+    assert_eq!(page.content.matches("data-dowe-each-row").count(), 2);
+    assert!(page.content.contains("data-dowe-template"));
+    assert!(page.content.contains("First"));
 }
 
 #[test]
@@ -248,7 +299,10 @@ fn emits_init_and_reactive_splash_boundary() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(page.content.contains("data-dowe-splash=\\\"loading01\\\""));
@@ -285,7 +339,10 @@ fn emits_terminal_replace_redirect_steps() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(
@@ -484,7 +541,10 @@ fn creates_locale_chunks_and_browser_translation_runtime() {
         translation_chunks: first,
         default_locale: Some("en".to_string()),
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
     assert!(router.contains("navigator.languages"));
     assert!(router.contains("localeChunks"));
@@ -499,7 +559,10 @@ fn emits_portable_svg_import_runtime() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
     let router = super::router_js(&web);
 
@@ -524,7 +587,10 @@ fn preserves_manifest_path_prefix_regex_in_minified_router() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(router.contains(r#"path.replace(/^web\//,"")"#));
@@ -890,6 +956,78 @@ fn renders_flex_defaults_with_full_width_and_auto_height() {
 }
 
 #[test]
+fn renders_flex_end_inside_cover_card() {
+    let flex = ViewNode::Flex {
+        props: dowe_components::LayoutProps {
+            direction: ResponsiveValue::scalar(dowe_components::FlexDirection::Column),
+            justify: Some(ResponsiveValue::scalar(dowe_components::Justify::End)),
+            gap: Some(ResponsiveValue::scalar(GapValue::Single(GapSize::Scale(
+                ScaleValue::from_half_steps(4),
+            )))),
+            style: StyleProps {
+                sizing: dowe_components::SizingProps {
+                    min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(120),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![text("Foreground")],
+    };
+    let card = ViewNode::Card {
+        props: VariantProps {
+            style: StyleProps {
+                cover: Some(ResponsiveValue::scalar(CoverSource(
+                    "https://images.example/card.jpg".to_string(),
+                ))),
+                overlay: Some(ResponsiveValue::scalar(OverlayPaint::BlackOpacity(
+                    "0.62".to_string(),
+                ))),
+                text: Some(ResponsiveValue::scalar(ColorToken::White)),
+                rounded: Some(ResponsiveValue::scalar(RoundedSize::Lg)),
+                sizing: dowe_components::SizingProps {
+                    min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(144),
+                    ))),
+                    ..Default::default()
+                },
+                spacing: dowe_components::SpacingProps {
+                    p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![flex],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &card,
+    );
+    let html = render_page_body(&ViewNode::Children, &card);
+
+    assert!(html.contains("has-cover"));
+    assert!(html.contains("has-overlay"));
+    assert!(html.contains("min-h-60 direction-column justify-end gap-2"));
+    assert!(
+        page.css_content
+            .contains(".justify-end{justify-content:flex-end;}")
+    );
+    assert!(page.css_content.contains(".min-h-60{min-height:15rem;}"));
+    assert!(
+        page.css_content
+            .contains("background-image:url(\"https://images.example/card.jpg\")")
+    );
+    assert!(page.css_content.contains("rgba(0,0,0,0.62)"));
+}
+
+#[test]
 fn renders_responsive_section_centering_on_the_body() {
     let page_tree = ViewNode::Section {
         props: StyleProps {
@@ -1159,7 +1297,10 @@ fn emits_web_manifest_and_html_artifacts() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
     web.router_js = super::router_js(&web);
     let router_file_name = web.router_file_name();
@@ -1203,6 +1344,17 @@ fn emits_web_manifest_and_html_artifacts() {
         artifacts
             .iter()
             .any(|artifact| artifact.relative_path == Path::new("web/manifest.json"))
+    );
+    let service_worker = artifacts
+        .iter()
+        .find(|artifact| artifact.relative_path == Path::new("web/sw.js"))
+        .expect("notification service worker");
+    assert!(service_worker.content.contains("showNotification"));
+    assert!(service_worker.content.contains("notificationclick"));
+    assert!(
+        service_worker
+            .content
+            .contains("payload.category !== \"process\"")
     );
     assert!(
         artifacts
@@ -1322,9 +1474,14 @@ fn emits_web_manifest_and_html_artifacts() {
     );
     assert!(
         web.router_js
-            .contains("hydrate(route,modules,preserveLayouts,true)")
+            .contains("prepareHydration(route,modules,preserveLayouts,true)")
     );
     assert!(web.router_js.contains("previous.state[signal.id]"));
+    assert!(
+        web.router_js
+            .contains("Object.entries(activeView.globalIds)")
+    );
+    assert!(web.router_js.contains("key===name"));
     assert!(
         web.router_js
             .contains("const boundState=captureBoundState(app)")
@@ -1332,15 +1489,102 @@ fn emits_web_manifest_and_html_artifacts() {
     assert!(web.router_js.contains("restoreBoundState(boundState)"));
     assert!(
         web.router_js
-            .contains("function prepareEntranceAnimations()")
+            .contains("function releaseEntranceAnimations()")
     );
     assert!(
         web.router_js
-            .contains("function releaseEntranceAnimations()")
+            .contains("function pageEntranceBoundary(root)")
+    );
+    assert!(
+        web.router_js
+            .contains("function clearPageEntranceAnimations(root)")
+    );
+    assert!(
+        web.router_js
+            .contains("function preparePageTransitionFallback(root)")
+    );
+    assert!(
+        web.router_js
+            .contains("function runCssPageTransition(update,afterReady=null)")
+    );
+    assert!(web.router_js.contains("page-transition-fallback"));
+    assert!(
+        web.router_js
+            .contains("function waitForPageTransition(target)")
+    );
+    assert!(web.router_js.contains("function nextAnimationFrame()"));
+    assert!(
+        web.router_js
+            .contains("function suppressPageEntranceAnimations(root)")
+    );
+    assert!(
+        !web.router_js
+            .contains("function prepareEntranceAnimations()")
     );
     assert!(web.router_js.contains(
         "requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove(entranceMotionClass)))"
     ));
+    assert!(
+        web.router_js
+            .contains("let navigationQueue=Promise.resolve()")
+    );
+    assert!(
+        web.router_js
+            .contains("const routeModulePromises=new Map()")
+    );
+    assert!(web.router_js.contains("const runtime=Promise.all"));
+    assert!(web.router_js.contains("const modules=Promise.all"));
+    assert!(
+        web.router_js
+            .contains("await Promise.all([runtime,modules])")
+    );
+    assert!(web.router_js.contains("function preloadRoute(route)"));
+    assert!(web.router_js.contains(
+        "function prepareHydration(route,modules,preserveLayouts=false,preserveState=false)"
+    ));
+    assert!(web.router_js.contains("function finishHydration(prepared)"));
+    assert!(
+        web.router_js
+            .contains("function preloadNavigationTarget(anchor)")
+    );
+    assert!(web.router_js.contains("addEventListener(\"pointerover\""));
+    assert!(web.router_js.contains("afterReady(target)"));
+    assert!(web.router_js.contains("afterReady()"));
+    assert!(web.router_js.contains("cachedRouteModules(route)"));
+    assert!(
+        web.router_js
+            .contains("function navigateRoute(value,options={})")
+    );
+    assert!(
+        web.router_js
+            .contains("await Promise.all([loadRouteCss(route),cachedRouteModules(route),])")
+    );
+    assert!(web.router_js.contains("function preloadRouteCss(route)"));
+    assert!(
+        web.router_js
+            .contains("link.rel=\"preload\";link.as=\"style\"")
+    );
+    assert!(
+        web.router_js
+            .contains("preloadRouteCss(route);return cachedRouteModules(route)")
+    );
+    assert!(
+        !web.router_js
+            .contains("const modules=await preloadRoute(route)")
+    );
+    assert!(web.router_js.contains("suppressPageEntranceAnimations"));
+    assert!(
+        web.router_js
+            .contains("hydrate(route,modules,preserveLayouts)")
+    );
+    assert!(
+        web.router_js
+            .contains("runPageTransition(updateRoute,()=>finishHydration(prepared))")
+    );
+    assert!(
+        web.router_js
+            .contains("else{await updateRoute();hydrate(route,modules,preserveLayouts);}")
+    );
     assert!(
         web.router_js
             .contains("compatibleSignalValue(previous.state[signal.id]")
@@ -1362,9 +1606,9 @@ fn emits_web_manifest_and_html_artifacts() {
     );
     assert!(
         web.router_js
-            .contains("await syncDevRoutes();const route=routes[destination.path]")
+            .contains("if(!route){await syncDevRoutes();route=routes[destination.path]")
     );
-    assert_eq!(web.router_js.matches("await loadRouteCss(route").count(), 2);
+    assert_eq!(web.router_js.matches("await loadRouteCss(route").count(), 1);
     assert_eq!(web.router_js.matches("pruneCss(route)").count(), 3);
     assert!(web.router_js.contains("function pruneCss(route)"));
     assert!(
@@ -1437,7 +1681,10 @@ fn emits_web_manifest_and_html_artifacts() {
     );
     assert_eq!(web.router_js, previous_router);
     assert!(web.router_js.contains("async function startRouter()"));
-    assert!(web.router_js.contains("await syncDevRoutes()"));
+    assert!(
+        web.router_js
+            .contains("if(!currentRoute){await syncDevRoutes()")
+    );
 }
 
 #[test]
@@ -1470,7 +1717,10 @@ fn incremental_artifacts_use_safe_names_when_prepared_names_are_empty() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: "export {}".to_string(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
 
     assert_eq!(web.design_file_name(), "design.css");
@@ -1532,7 +1782,10 @@ fn incremental_artifacts_publish_each_active_page_design_name() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: "export {}".to_string(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
     let web = super::WebOutput {
         chunks: Vec::new(),
@@ -1540,7 +1793,10 @@ fn incremental_artifacts_publish_each_active_page_design_name() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: "export {}".to_string(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
 
     let update = super::web_artifact_update(&web, Some(&previous), "body{}".to_string());
@@ -1599,7 +1855,10 @@ fn incremental_design_preparation_repairs_reused_page_capability_styles() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     };
     super::prepare_dev_design_asset(
         &mut initial,
@@ -1941,6 +2200,7 @@ fn emits_reset_and_font_css() {
     assert!(css.contains("--dowe-font-inter"));
     assert!(css.contains("@font-face{font-family:\"Dowe Inter\""));
     assert!(css.contains("src:url(\"/fonts/inter/inter-regular.ttf\") format(\"truetype\")"));
+    assert!(css.contains("font-display:optional"));
 }
 
 #[test]

@@ -96,7 +96,16 @@ fn compose_design_base_css(
     append_css(&mut css, &[DESIGN_RESET_CSS]);
     append_visibility_base_css(&mut css);
     append_css(&mut css, &[DESIGN_FOUNDATION_CSS]);
-    append_css(&mut css, &[DESIGN_MOTION_CSS]);
+    let motion_css = DESIGN_MOTION_CSS
+        .replace(
+            "__DOWE_PAGE_TRANSITION_DURATION__",
+            &format!("{}ms", dowe_components::VIEW_PAGE_TRANSITION_DURATION_MS),
+        )
+        .replace(
+            "__DOWE_PAGE_TRANSITION_EASING__",
+            dowe_components::VIEW_PAGE_TRANSITION_EASING_CSS,
+        );
+    append_css(&mut css, &[&motion_css]);
     append_responsive_visibility_css(&mut css);
     if include_section_center_rules {
         append_responsive_section_center_css(&mut css);
@@ -213,7 +222,7 @@ fn append_font_faces(css: &mut String, fonts: &BTreeSet<FontFamily>) {
         if entry.package_assets {
             for weight in entry.weights {
                 css.push_str(&format!(
-                    "@font-face{{font-family:\"Dowe {}\";font-style:normal;font-weight:{};src:url(\"/fonts/{}/{}.ttf\") format(\"truetype\");font-display:swap;}}",
+                    "@font-face{{font-family:\"Dowe {}\";font-style:normal;font-weight:{};src:url(\"/fonts/{}/{}.ttf\") format(\"truetype\");font-display:optional;}}",
                     entry.display_name,
                     weight.numeric_weight,
                     font.as_str(),
@@ -222,7 +231,7 @@ fn append_font_faces(css: &mut String, fonts: &BTreeSet<FontFamily>) {
             }
         } else if *font != FontFamily::System {
             css.push_str(&format!(
-                "@font-face{{font-family:\"Dowe {}\";font-style:normal;font-weight:300 800;src:local(\"{}\");font-display:swap;}}",
+                "@font-face{{font-family:\"Dowe {}\";font-style:normal;font-weight:300 800;src:local(\"{}\");font-display:optional;}}",
                 entry.display_name, entry.display_name
             ));
         }

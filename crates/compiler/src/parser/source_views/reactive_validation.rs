@@ -217,6 +217,9 @@ fn validate_action_references(
                 }
             }
         }
+        ViewActionKind::Invoke(invoke) => {
+            validate_invoke_action(path, readable_values, signals, invoke)?;
+        }
         ViewActionKind::Assign(assign) => {
             validate_signal_path(path, signals, &assign.target, "target")?;
             if assign.target.contains('.') {
@@ -308,6 +311,15 @@ fn validate_function_statements(
                 validate_request_base_env(path, environment, action.base_env.as_deref())?;
                 validate_optional_body_name(path, readable_values, action.body.as_deref())?;
             }
+            ViewFunctionStatement::Invoke { result, action } => {
+                if !results.insert(result.clone()) {
+                    return Err(DoweError::at_path(
+                        path,
+                        format!("duplicate request result `{result}`"),
+                    ));
+                }
+                validate_invoke_action(path, readable_values, signals, action)?;
+            }
             ViewFunctionStatement::If {
                 result,
                 success,
@@ -368,6 +380,49 @@ fn validate_function_statements(
     Ok(())
 }
 
+fn validate_invoke_action(
+    path: &Path,
+    readable_values: &HashSet<String>,
+    signals: &HashSet<String>,
+    action: &ViewInvokeAction,
+) -> DoweResult<()> {
+    validate_optional_signal_name(path, signals, action.update.as_deref(), "update")?;
+    validate_optional_signal_name(path, signals, action.reset.as_deref(), "reset")?;
+    validate_optional_signal_name(path, signals, action.success_alert.as_deref(), "successAlert")?;
+    validate_optional_signal_name(path, signals, action.error_alert.as_deref(), "errorAlert")?;
+    let mut references = Vec::new();
+    for arg in &action.args {
+        collect_stdlib_value_references(&arg.value, &mut references);
+    }
+    for reference in references {
+        let source_root = path_root(&reference);
+        if !readable_values.contains(source_root) && source_root != "item" {
+            return Err(DoweError::at_path(
+                path,
+                format!("unknown invoke argument source `{reference}`"),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn collect_stdlib_value_references(value: &StdlibValue, output: &mut Vec<String>) {
+    match value {
+        StdlibValue::Reference(value) => output.push(value.clone()),
+        StdlibValue::Array(values) => {
+            for value in values {
+                collect_stdlib_value_references(value, output);
+            }
+        }
+        StdlibValue::Object(entries) => {
+            for (_, value) in entries {
+                collect_stdlib_value_references(value, output);
+            }
+        }
+        StdlibValue::Null | StdlibValue::Bool(_) | StdlibValue::Number(_) | StdlibValue::String(_) => {}
+    }
+}
+
 fn validate_function_signature(
     path: &Path,
     action: &ViewAction,
@@ -401,14 +456,14 @@ fn validate_function_signature(
         ViewActionKind::Sequence(statements) => {
             if statements
                 .iter()
-                .any(|statement| matches!(statement, ViewFunctionStatement::Request { .. }))
+                .any(|statement| matches!(statement, ViewFunctionStatement::Request { .. } | ViewFunctionStatement::Invoke { .. }))
             {
                 ViewSignalValue::Bool(false)
             } else {
                 ViewSignalValue::Null
             }
         }
-        ViewActionKind::Request(_) => ViewSignalValue::Bool(false),
+        ViewActionKind::Request(_) | ViewActionKind::Invoke(_) => ViewSignalValue::Bool(false),
         ViewActionKind::Assign(assign) => signal_path_value(
             path,
             readable_types,

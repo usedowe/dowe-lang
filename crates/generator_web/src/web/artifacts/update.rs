@@ -138,6 +138,17 @@ pub fn web_artifact_update(
         target: "web",
     });
 
+    let service_worker_path = PathBuf::from("web/sw.js");
+    expected_paths.insert(service_worker_path.clone());
+    if previous.is_none() {
+        files.push(WebArtifact {
+            relative_path: service_worker_path,
+            content: notification_service_worker(),
+            kind: WebArtifactKind::Chunk,
+            target: "web",
+        });
+    }
+
     let previous_pages = previous
         .into_iter()
         .flat_map(|output| output.pages.iter())
@@ -187,4 +198,3 @@ fn prepared_router_file_name(web: &WebOutput) -> &str {
         .filter(|file_name| !file_name.is_empty())
         .unwrap_or("router.js")
 }
-

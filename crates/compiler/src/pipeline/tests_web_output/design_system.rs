@@ -210,6 +210,75 @@ fn copies_project_assets_to_android_bundle() {
 }
 
 #[test]
+fn compiles_flex_end_inside_cover_card_for_all_view_targets() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture_with_views(
+        temp.path(),
+        r#"layout AuthLayout
+  Box
+    children"#,
+        r#"page loginPage
+  Card:
+    cover:"https://images.example/card.jpg"
+    overlay:0.62
+    rounded:"lg"
+    minH:72
+    color:"white"
+    Flex direction:"column" justify:"end" gap:2 minH:60
+      Text size:"xs" weight:"bold" spacing:"widest"
+        "COVER CARD"
+      Title size:"3xl"
+        "Foreground stays legible"
+      Text size:"sm"
+        "The image is centered and covers the card without changing child order.""#,
+    );
+
+    let project = compile_dev(temp.path()).expect("project");
+    let body = &project.web.pages[0].body_html;
+    assert!(body.contains("has-cover"));
+    assert!(body.contains("has-overlay"));
+    assert!(body.contains("min-h-60 direction-column justify-end gap-2"));
+    let css = fs::read_to_string(
+        temp.path()
+            .join(".dowe/web")
+            .join(generated_css_chunk(
+                &project.web.pages[0].css_chunks,
+                "chunks/pages/",
+            )),
+    )
+    .expect("web css");
+    assert!(css.contains(".justify-end{justify-content:flex-end;}"));
+    assert!(css.contains(".min-h-60{min-height:15rem;}"));
+    assert!(css.contains("background-image:url(\"https://images.example/card.jpg\")"));
+
+    let android = fs::read_to_string(
+        temp.path()
+            .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
+    )
+    .expect("android compose");
+    assert!(android.contains(
+        "verticalArrangement = doweVerticalArrangement(doweResponsive(viewportWidth, xs = DoweJustify.End), doweResponsive(viewportWidth, xs = 8.dp))"
+    ));
+    assert!(android.contains(
+        "val intrinsicConstraints = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)"
+    ));
+    let android_dev = android_dev_output(temp.path());
+    assert!(android_dev.contains("DoweFlexLayout"));
+    assert!(android_dev.contains("DOWE_JUSTIFY_END"));
+    assert!(android_dev.contains(
+        "Math.max(verticalPadding + childrenHeight + gapTotal, getSuggestedMinimumHeight())"
+    ));
+    assert!(android_dev.contains(
+        "int intrinsicHeightSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)"
+    ));
+
+    let ios = ios_swift_output(temp.path());
+    assert!(ios.contains("DoweCoverImage(source:"));
+    assert!(ios.contains("DoweJustify.end"));
+    assert!(ios.contains("doweFlexLeadingSpacer("));
+}
+
+#[test]
 fn compiles_design_system_components_and_responsive_props() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture_with_views(

@@ -29,11 +29,15 @@ fn render_compose_node_in_flow(
     }
 }
 
-pub fn render_report_for_dev_routes(routes: &[dowe_components::ViewRoute]) -> dowe_components::RenderReport {
+pub fn render_report_for_dev_routes(
+    routes: &[dowe_components::ViewRoute],
+) -> dowe_components::RenderReport {
     render_report_for_target(routes, dowe_components::RenderTarget::AndroidDev)
 }
 
-pub fn render_report_for_routes(routes: &[dowe_components::ViewRoute]) -> dowe_components::RenderReport {
+pub fn render_report_for_routes(
+    routes: &[dowe_components::ViewRoute],
+) -> dowe_components::RenderReport {
     render_report_for_target(routes, dowe_components::RenderTarget::Android)
 }
 
@@ -93,163 +97,769 @@ pub fn consumed_props_for_node(node: &ViewNode) -> Vec<dowe_components::Consumed
 }
 
 fn register_compose_consumed_props(node: &ViewNode, context: &ComposeReactiveContext) {
-    if let Some(component) = compose_form_component(node)
-        && dowe_components::node_element_props(node)
-            .and_then(|props| props.bind.as_deref())
-            .is_some()
-    {
-        context.register_consumed_prop(component, "bind", "ElementProps.bind");
+    if let Some(component) = compose_form_component(node) {
+        let element = dowe_components::node_element_props(node);
+        if element.and_then(|props| props.bind.as_deref()).is_some() {
+            context.register_consumed_prop(component, "bind", "ElementProps.bind");
+        }
+        if let Some(props) = compose_form_variant_props(node) {
+            if props.variant.is_some()
+                || props.variant_binding.is_some()
+                || props.reactive.variant.is_some()
+            {
+                context.register_consumed_prop(component, "variant", "VariantProps.variant");
+            }
+            if props.color.is_some() || props.color_binding.is_some() || props.reactive.scheme.is_some() {
+                context.register_consumed_prop(component, "scheme", "VariantProps.color");
+            }
+            if props.size.is_some() || props.size_binding.is_some() || props.reactive.size.is_some() {
+                context.register_consumed_prop(component, "size", "VariantProps.size");
+            }
+            if props.style.rounded.is_some()
+                || props.style.rounded_binding.is_some()
+                || props.reactive.rounded.is_some()
+            {
+                context.register_consumed_prop(component, "rounded", "VariantProps.style.rounded");
+            }
+        }
+        if element.and_then(|props| props.on_change.as_ref()).is_some() {
+            context.register_consumed_prop(component, "onChange", "ElementProps.on_change");
+        }
+        if element.and_then(|props| props.on_input.as_ref()).is_some() {
+            context.register_consumed_prop(component, "onInput", "ElementProps.on_input");
+        }
     }
     match node {
         ViewNode::Box { props, .. } | ViewNode::Section { props, .. } => {
             if props.bg.is_some() || props.bg_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Box, "bg", "StyleProps.bg");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Box,
+                    "bg",
+                    "StyleProps.bg",
+                );
             }
             if props.text.is_some() || props.text_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Box, "color", "StyleProps.text");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Box,
+                    "color",
+                    "StyleProps.text",
+                );
             }
             if props.rounded.is_some() || props.rounded_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Box, "rounded", "StyleProps.rounded");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Box,
+                    "rounded",
+                    "StyleProps.rounded",
+                );
             }
             if props.spacing.p.is_some() || props.spacing.p_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Box, "p", "SpacingProps.p");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Box,
+                    "p",
+                    "SpacingProps.p",
+                );
             }
         }
-        ViewNode::Candlestick { .. } => register_compose_chart_consumed_props(dowe_components::BuiltinComponent::Candlestick, context),
-        ViewNode::ArcChart { .. } => register_compose_chart_consumed_props(dowe_components::BuiltinComponent::ArcChart, context),
-        ViewNode::AreaChart { .. } => register_compose_chart_consumed_props(dowe_components::BuiltinComponent::AreaChart, context),
-        ViewNode::BarChart { .. } => register_compose_chart_consumed_props(dowe_components::BuiltinComponent::BarChart, context),
-        ViewNode::LineChart { .. } => register_compose_chart_consumed_props(dowe_components::BuiltinComponent::LineChart, context),
-        ViewNode::PieChart { .. } => register_compose_chart_consumed_props(dowe_components::BuiltinComponent::PieChart, context),
-        ViewNode::Tabs { .. } => {
-            register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Tabs, context, &[("position", "TabsProps.position")]);
-            register_compose_structural_item_consumed_props(dowe_components::BuiltinComponent::Tabs, dowe_components::ViewItemKind::Tab, context, &[("id", "TabItem.id"), ("label", "TabItem.label"), ("i18n", "TabItem.i18n")]);
+        ViewNode::Candlestick { .. } => register_compose_chart_consumed_props(
+            dowe_components::BuiltinComponent::Candlestick,
+            context,
+        ),
+        ViewNode::ArcChart { .. } => register_compose_chart_consumed_props(
+            dowe_components::BuiltinComponent::ArcChart,
+            context,
+        ),
+        ViewNode::AreaChart { .. } => register_compose_chart_consumed_props(
+            dowe_components::BuiltinComponent::AreaChart,
+            context,
+        ),
+        ViewNode::BarChart { .. } => register_compose_chart_consumed_props(
+            dowe_components::BuiltinComponent::BarChart,
+            context,
+        ),
+        ViewNode::LineChart { .. } => register_compose_chart_consumed_props(
+            dowe_components::BuiltinComponent::LineChart,
+            context,
+        ),
+        ViewNode::PieChart { .. } => register_compose_chart_consumed_props(
+            dowe_components::BuiltinComponent::PieChart,
+            context,
+        ),
+        ViewNode::Tabs { props, .. } => {
+            let component = if props.variant == dowe_components::TabsVariant::Stepper {
+                dowe_components::BuiltinComponent::Stepper
+            } else {
+                dowe_components::BuiltinComponent::Tabs
+            };
+            register_compose_structural_consumed_props(
+                component,
+                context,
+                &[("position", "TabsProps.position")],
+            );
+            if props.style.element.bind.is_some() {
+                context.register_consumed_prop(component, "bind", "ElementProps.bind");
+            }
+            register_compose_structural_item_consumed_props(
+                component,
+                dowe_components::ViewItemKind::Tab,
+                context,
+                &[
+                    ("id", "TabItem.id"),
+                    ("label", "TabItem.label"),
+                    ("i18n", "TabItem.i18n"),
+                ],
+            );
         }
-        ViewNode::Accordion { .. } => register_compose_structural_item_consumed_props(dowe_components::BuiltinComponent::Accordion, dowe_components::ViewItemKind::Accordion, context, &[("id", "AccordionItem.id"), ("label", "AccordionItem.label"), ("disabled", "AccordionItem.disabled"), ("defaultOpen", "AccordionItem.default_open")]),
-        ViewNode::Carousel { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Carousel, context, &[("slidesPerView", "CarouselProps.slides_per_view"), ("autoplay", "CarouselProps.autoplay"), ("orientation", "CarouselProps.orientation")]),
-        ViewNode::Table { .. } => register_compose_structural_item_consumed_props(dowe_components::BuiltinComponent::Table, dowe_components::ViewItemKind::TableColumn, context, &[("field", "TableColumn.field"), ("label", "TableColumn.label"), ("align", "TableColumn.align")]),
+        ViewNode::Accordion { .. } => register_compose_structural_item_consumed_props(
+            dowe_components::BuiltinComponent::Accordion,
+            dowe_components::ViewItemKind::Accordion,
+            context,
+            &[
+                ("id", "AccordionItem.id"),
+                ("label", "AccordionItem.label"),
+                ("disabled", "AccordionItem.disabled"),
+                ("defaultOpen", "AccordionItem.default_open"),
+            ],
+        ),
+        ViewNode::Carousel { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Carousel,
+            context,
+            &[
+                ("slidesPerView", "CarouselProps.slides_per_view"),
+                ("autoplay", "CarouselProps.autoplay"),
+                ("orientation", "CarouselProps.orientation"),
+            ],
+        ),
+        ViewNode::Table { .. } => register_compose_structural_item_consumed_props(
+            dowe_components::BuiltinComponent::Table,
+            dowe_components::ViewItemKind::TableColumn,
+            context,
+            &[
+                ("field", "TableColumn.field"),
+                ("label", "TableColumn.label"),
+                ("align", "TableColumn.align"),
+            ],
+        ),
+        ViewNode::Tree { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Tree,
+            context,
+            &[
+                ("data", "TreeProps.data"),
+                ("bind", "TreeProps.bind"),
+                ("defaultOpen", "TreeProps.default_open"),
+                ("emptyLabel", "TreeProps.empty_label"),
+                ("ariaLabel", "TreeProps.aria_label"),
+                ("onSelect", "TreeProps.on_select"),
+                ("variant", "VariantProps.variant"),
+                ("scheme", "VariantProps.color"),
+            ],
+        ),
         ViewNode::NavMenu { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::NavMenu, "variant", "NavMenuProps.style.variant");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::NavMenu, "scheme", "NavMenuProps.style.color");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::NavMenu, "size", "NavMenuProps.size");
-            register_compose_structural_item_consumed_props(dowe_components::BuiltinComponent::NavMenu, dowe_components::ViewItemKind::NavMenu, context, &[("label", "NavMenuItemProps.label"), ("i18n", "NavMenuItemProps.i18n"), ("description", "NavMenuItemProps.description"), ("href", "NavMenuItemProps.navigation")]);
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::NavMenu,
+                "variant",
+                "NavMenuProps.style.variant",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::NavMenu,
+                "scheme",
+                "NavMenuProps.style.color",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::NavMenu,
+                "size",
+                "NavMenuProps.size",
+            );
+            register_compose_structural_item_consumed_props(
+                dowe_components::BuiltinComponent::NavMenu,
+                dowe_components::ViewItemKind::NavMenu,
+                context,
+                &[
+                    ("label", "NavMenuItemProps.label"),
+                    ("i18n", "NavMenuItemProps.i18n"),
+                    ("description", "NavMenuItemProps.description"),
+                    ("href", "NavMenuItemProps.navigation"),
+                ],
+            );
         }
         ViewNode::SideNav { .. } => {
-            for (prop, field) in [("variant", "SideNavProps.style.variant"), ("scheme", "SideNavProps.style.color"), ("size", "SideNavProps.size"), ("wide", "SideNavProps.wide")] { context.register_consumed_prop(dowe_components::BuiltinComponent::SideNav, prop, field); }
-            register_compose_structural_item_consumed_props(dowe_components::BuiltinComponent::SideNav, dowe_components::ViewItemKind::SideNav, context, &[("label", "SideNavItemProps.label"), ("i18n", "SideNavItemProps.i18n"), ("description", "SideNavItemProps.description"), ("href", "SideNavItemProps.navigation")]);
+            for (prop, field) in [
+                ("variant", "SideNavProps.style.variant"),
+                ("scheme", "SideNavProps.style.color"),
+                ("size", "SideNavProps.size"),
+                ("wide", "SideNavProps.wide"),
+            ] {
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::SideNav,
+                    prop,
+                    field,
+                );
+            }
+            register_compose_structural_item_consumed_props(
+                dowe_components::BuiltinComponent::SideNav,
+                dowe_components::ViewItemKind::SideNav,
+                context,
+                &[
+                    ("label", "SideNavItemProps.label"),
+                    ("i18n", "SideNavItemProps.i18n"),
+                    ("description", "SideNavItemProps.description"),
+                    ("href", "SideNavItemProps.navigation"),
+                ],
+            );
         }
         ViewNode::RailNav { .. } => {
-            for (prop, field) in [("variant", "RailNavProps.style.variant"), ("scheme", "RailNavProps.style.color"), ("size", "RailNavProps.size")] { context.register_consumed_prop(dowe_components::BuiltinComponent::RailNav, prop, field); }
-            register_compose_structural_item_consumed_props(dowe_components::BuiltinComponent::RailNav, dowe_components::ViewItemKind::RailNav, context, &[("label", "RailNavItemProps.label"), ("i18n", "RailNavItemProps.i18n"), ("href", "RailNavItemProps.navigation")]);
+            for (prop, field) in [
+                ("variant", "RailNavProps.style.variant"),
+                ("scheme", "RailNavProps.style.color"),
+                ("size", "RailNavProps.size"),
+            ] {
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::RailNav,
+                    prop,
+                    field,
+                );
+            }
+            register_compose_structural_item_consumed_props(
+                dowe_components::BuiltinComponent::RailNav,
+                dowe_components::ViewItemKind::RailNav,
+                context,
+                &[
+                    ("label", "RailNavItemProps.label"),
+                    ("i18n", "RailNavItemProps.i18n"),
+                    ("href", "RailNavItemProps.navigation"),
+                ],
+            );
         }
         ViewNode::BottomBar { .. } => {
-            for (prop, field) in [("floating", "BarProps.floating"), ("bordered", "BarProps.bordered"), ("blurred", "BarProps.blurred"), ("boxed", "BarProps.boxed")] { context.register_consumed_prop(dowe_components::BuiltinComponent::BottomBar, prop, field); }
-            register_compose_structural_item_consumed_props(dowe_components::BuiltinComponent::BottomBar, dowe_components::ViewItemKind::BottomBar, context, &[("label", "BottomBarTab.label"), ("href", "BottomBarTab.navigation")]);
+            for (prop, field) in [
+                ("floating", "BarProps.floating"),
+                ("bordered", "BarProps.bordered"),
+                ("blurred", "BarProps.blurred"),
+                ("boxed", "BarProps.boxed"),
+            ] {
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::BottomBar,
+                    prop,
+                    field,
+                );
+            }
+            register_compose_structural_item_consumed_props(
+                dowe_components::BuiltinComponent::BottomBar,
+                dowe_components::ViewItemKind::BottomBar,
+                context,
+                &[
+                    ("label", "BottomBarTab.label"),
+                    ("href", "BottomBarTab.navigation"),
+                ],
+            );
         }
-        ViewNode::Svg { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Svg, context, &[("viewBox", "SvgProps.view_box"), ("data", "SvgProps.data")]),
-        ViewNode::Modal { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Modal, context, &[("bind", "ModalProps.open")]),
-        ViewNode::AlertDialog { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::AlertDialog, context, &[("bind", "AlertDialogProps.open")]),
-        ViewNode::Command { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Command, context, &[("bind", "CommandProps.open")]),
-        ViewNode::Toast { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Toast, context, &[("source", "ToastProps.source")]),
-        ViewNode::AppBar { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::AppBar, context, &[("position", "BarProps.position"), ("floating", "BarProps.floating"), ("bordered", "BarProps.bordered"), ("blurred", "BarProps.blurred"), ("hideOnScroll", "BarProps.hide_on_scroll"), ("dockOnScroll", "BarProps.dock_on_scroll")]),
-        ViewNode::Footer { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Footer, context, &[("bordered", "BarProps.bordered"), ("blurred", "BarProps.blurred"), ("boxed", "BarProps.boxed")]),
-        ViewNode::Sidebar { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Sidebar, context, &[("variant", "SidebarProps.style.variant"), ("scheme", "SidebarProps.style.color"), ("size", "SidebarProps.style.size")]),
-        ViewNode::Drawer { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Drawer, context, &[("bind", "DrawerProps.open"), ("position", "DrawerProps.position"), ("disableOverlayClose", "DrawerProps.disable_overlay_close"), ("hideCloseButton", "DrawerProps.hide_close_button")]),
+        ViewNode::Svg { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Svg,
+            context,
+            &[("viewBox", "SvgProps.view_box"), ("data", "SvgProps.data")],
+        ),
+        ViewNode::Canvas { props } => {
+            let consumed = if props.is_draw {
+                &[
+                    ("scene", "CanvasProps.scene"),
+                    ("bind", "CanvasProps.layer_bind"),
+                    ("selected", "CanvasProps.selected_layer"),
+                    ("draw", "CanvasProps.draw"),
+                    ("drawMode", "CanvasProps.draw_mode"),
+                    ("onPointer", "CanvasProps.on_pointer"),
+                    ("onKey", "CanvasProps.on_key"),
+                    ("onMotion", "CanvasProps.on_motion"),
+                    ("onLayerAdd", "CanvasProps.on_layer_add"),
+                    ("onLayerChange", "CanvasProps.on_layer_change"),
+                    ("onLayerRemove", "CanvasProps.on_layer_remove"),
+                    ("onLayerSelect", "CanvasProps.on_layer_select"),
+                ][..]
+            } else {
+                &[
+                    ("scene", "CanvasProps.scene"),
+                    ("draw", "CanvasProps.draw"),
+                    ("drawMode", "CanvasProps.draw_mode"),
+                    ("onPointer", "CanvasProps.on_pointer"),
+                    ("onKey", "CanvasProps.on_key"),
+                    ("onMotion", "CanvasProps.on_motion"),
+                ][..]
+            };
+            register_compose_structural_consumed_props(
+                if props.is_draw { dowe_components::BuiltinComponent::Draw } else { dowe_components::BuiltinComponent::Canvas },
+                context,
+                consumed,
+            )
+        }
+        ViewNode::Modal { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Modal,
+            context,
+            &[("bind", "ModalProps.open")],
+        ),
+        ViewNode::AlertDialog { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::AlertDialog,
+            context,
+            &[("bind", "AlertDialogProps.open")],
+        ),
+        ViewNode::Command { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Command,
+            context,
+            &[("bind", "CommandProps.open")],
+        ),
+        ViewNode::Toast { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Toast,
+            context,
+            &[("source", "ToastProps.source")],
+        ),
+        ViewNode::AppBar { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::AppBar,
+            context,
+            &[
+                ("position", "BarProps.position"),
+                ("floating", "BarProps.floating"),
+                ("bordered", "BarProps.bordered"),
+                ("blurred", "BarProps.blurred"),
+                ("hideOnScroll", "BarProps.hide_on_scroll"),
+                ("dockOnScroll", "BarProps.dock_on_scroll"),
+            ],
+        ),
+        ViewNode::Footer { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Footer,
+            context,
+            &[
+                ("bordered", "BarProps.bordered"),
+                ("blurred", "BarProps.blurred"),
+                ("boxed", "BarProps.boxed"),
+            ],
+        ),
+        ViewNode::Sidebar { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Sidebar,
+            context,
+            &[
+                ("variant", "SidebarProps.style.variant"),
+                ("scheme", "SidebarProps.style.color"),
+                ("size", "SidebarProps.style.size"),
+            ],
+        ),
+        ViewNode::Scaffold { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Scaffold,
+            context,
+            &[
+                ("safeAreaTop", "ScaffoldProps.safe_area_top"),
+                ("safeAreaBottom", "ScaffoldProps.safe_area_bottom"),
+            ],
+        ),
+        ViewNode::Drawer { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Drawer,
+            context,
+            &[
+                ("bind", "DrawerProps.open"),
+                ("position", "DrawerProps.position"),
+                ("disableOverlayClose", "DrawerProps.disable_overlay_close"),
+                ("hideCloseButton", "DrawerProps.hide_close_button"),
+            ],
+        ),
         ViewNode::Audio { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Audio, "src", "AudioProps.src");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Audio,
+                "src",
+                "AudioProps.src",
+            );
         }
         ViewNode::Video { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Video, "src", "VideoProps.src");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Video, "poster", "VideoProps.poster");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Video, "autoplay", "VideoProps.autoplay");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Video,
+                "src",
+                "VideoProps.src",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Video,
+                "poster",
+                "VideoProps.poster",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Video,
+                "autoplay",
+                "VideoProps.autoplay",
+            );
         }
         ViewNode::Iframe { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Iframe, "src", "IframeProps.src");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Iframe, "sandbox", "IframeProps.sandbox");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Iframe, "allow", "IframeProps.allow");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Iframe,
+                "src",
+                "IframeProps.src",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Iframe,
+                "sandbox",
+                "IframeProps.sandbox",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Iframe,
+                "allow",
+                "IframeProps.allow",
+            );
         }
         ViewNode::Device { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Device, "device", "DeviceProps.device");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Device, "zoom", "DeviceProps.options");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Device, "fit", "DeviceProps.options");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Device,
+                "device",
+                "DeviceProps.device",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Device,
+                "bind",
+                "DeviceProps.bind",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Device,
+                "hideControls",
+                "DeviceProps.hide_controls",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Device,
+                "hideButtons",
+                "DeviceProps.hide_controls",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Device,
+                "zoom",
+                "DeviceProps.options",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Device,
+                "fit",
+                "DeviceProps.options",
+            );
         }
         ViewNode::Camera { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Camera, "facing", "CameraProps.facing");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Camera, "onCapture", "CameraProps.on_capture");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Camera, "onError", "CameraProps.on_error");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Camera,
+                "facing",
+                "CameraProps.facing",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Camera,
+                "onCapture",
+                "CameraProps.on_capture",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Camera,
+                "onError",
+                "CameraProps.on_error",
+            );
         }
         ViewNode::Microphone { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Microphone, "onError", "MicrophoneProps.on_error");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Microphone,
+                "onError",
+                "MicrophoneProps.on_error",
+            );
         }
-        ViewNode::Date { .. } => {
+        ViewNode::Editor { props } => {
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Editor,
+                "language",
+                "EditorProps.language",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Editor,
+                "hideToolbar",
+                "EditorProps.hide_toolbar",
+            );
+            if props.on_save.is_some() {
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Editor,
+                    "onSave",
+                    "EditorProps.on_save",
+                );
+            }
         }
+        ViewNode::Date { .. } => {}
         ViewNode::DateRange { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::DateRange, "start", "DateRangeProps.start");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::DateRange, "end", "DateRangeProps.end");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::DateRange,
+                "start",
+                "DateRangeProps.start",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::DateRange,
+                "end",
+                "DateRangeProps.end",
+            );
         }
-        ViewNode::Password { .. } => {
-        }
+        ViewNode::Password { .. } => {}
         ViewNode::Phone { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Phone, "country", "PhoneProps.country");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Phone,
+                "country",
+                "PhoneProps.country",
+            );
         }
         ViewNode::Pin { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Pin, "length", "PinProps.length");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Pin,
+                "length",
+                "PinProps.length",
+            );
         }
-        ViewNode::Textarea { .. } => {
-        }
-        ViewNode::Color { .. } => {
-        }
+        ViewNode::Textarea { .. } => {}
+        ViewNode::Color { .. } => {}
         ViewNode::Dropzone { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Dropzone, "multiple", "DropzoneProps.multiple");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Dropzone, "accept", "DropzoneProps.accept");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Dropzone,
+                "multiple",
+                "DropzoneProps.multiple",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Dropzone,
+                "accept",
+                "DropzoneProps.accept",
+            );
         }
         ViewNode::Checkbox { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Checkbox, "checked", "CheckboxProps.checked");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Checkbox,
+                "checked",
+                "CheckboxProps.checked",
+            );
         }
         ViewNode::Toggle { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Toggle, "checked", "ToggleProps.checked");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Toggle,
+                "checked",
+                "ToggleProps.checked",
+            );
         }
-        ViewNode::RadioGroup { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::RadioGroup, "orientation", "RadioGroupProps.orientation");
+        ViewNode::RadioGroup { props, .. } => {
+            context.register_consumed_prop(
+                if matches!(props.presentation, dowe_components::RadioGroupPresentation::Card) {
+                    dowe_components::BuiltinComponent::RadioCard
+                } else {
+                    dowe_components::BuiltinComponent::RadioGroup
+                },
+                "orientation",
+                "RadioGroupProps.orientation",
+            );
         }
         ViewNode::Slider { .. } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Slider, "min", "SliderProps.min");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Slider, "max", "SliderProps.max");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Slider, "step", "SliderProps.step");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Slider,
+                "min",
+                "SliderProps.min",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Slider,
+                "max",
+                "SliderProps.max",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Slider,
+                "step",
+                "SliderProps.step",
+            );
         }
-        ViewNode::Avatar { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Avatar, context, &[("name", "AvatarProps.name"), ("alt", "AvatarProps.alt"), ("icon", "SideNavIcon.props")]),
-        ViewNode::AvatarGroup { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::AvatarGroup, context, &[("items", "AvatarGroupProps.items"), ("size", "AvatarGroupProps.size")]),
-        ViewNode::Badge { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Badge, context, &[("variant", "VariantProps.variant"), ("scheme", "VariantProps.color")]),
-        ViewNode::Chip { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Chip, context, &[("variant", "VariantProps.variant"), ("scheme", "VariantProps.color"), ("size", "VariantProps.size"), ("rounded", "VariantProps.style.rounded")]),
-        ViewNode::ChatBox { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::ChatBox, context, &[("messages", "ChatBoxProps.messages"), ("loading", "ChatBoxProps.loading"), ("sending", "ChatBoxProps.sending"), ("streaming", "ChatBoxProps.streaming"), ("hasMore", "ChatBoxProps.has_more")]),
-        ViewNode::Empty { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Empty, context, &[("title", "EmptyProps.title"), ("description", "EmptyProps.description"), ("actionLabel", "EmptyProps.action_label")]),
-        ViewNode::Marquee { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Marquee, context, &[("speed", "MarqueeProps.speed"), ("pauseOnHover", "MarqueeProps.pause_on_hover"), ("reverse", "MarqueeProps.reverse"), ("orientation", "MarqueeProps.orientation"), ("fade", "MarqueeProps.fade"), ("fadeColor", "MarqueeProps.fade_color"), ("gap", "MarqueeProps.gap")]),
-        ViewNode::TypeWriter { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::TypeWriter, context, &[("typeSpeed", "TypeWriterProps.type_speed"), ("deleteSpeed", "TypeWriterProps.delete_speed"), ("afterTyped", "TypeWriterProps.after_typed"), ("afterDeleted", "TypeWriterProps.after_deleted"), ("repeat", "TypeWriterProps.repeat")]),
-        ViewNode::RichText { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::RichText, context, &[("text", "RichTextMark.text"), ("style", "RichTextMark.style"), ("color", "RichTextMark.color")]),
-        ViewNode::Record { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Record, context, &[("name", "RecordProps.name"), ("url", "RecordProps.url"), ("disabled", "RecordProps.disabled"), ("maxDuration", "RecordProps.max_duration")]),
-        ViewNode::ToggleGroup { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::ToggleGroup, context, &[("value", "ToggleGroupProps.value"), ("selected", "ToggleGroupProps.selected"), ("multiple", "ToggleGroupProps.multiple"), ("wide", "ToggleGroupProps.wide"), ("vertical", "ToggleGroupProps.vertical"), ("disabled", "ToggleGroupProps.disabled"), ("ariaLabel", "ToggleGroupProps.aria_label")]),
-        ViewNode::Collapsible { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Collapsible, context, &[("label", "CollapsibleProps.label"), ("defaultOpen", "CollapsibleProps.default_open"), ("disabled", "CollapsibleProps.disabled")]),
-        ViewNode::Countdown { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Countdown, context, &[("target", "CountdownProps.target"), ("showDays", "CountdownProps.show_days"), ("showHours", "CountdownProps.show_hours"), ("showMinutes", "CountdownProps.show_minutes"), ("showSeconds", "CountdownProps.show_seconds"), ("size", "CountdownProps.size"), ("onComplete", "CountdownProps.on_complete")]),
-        ViewNode::Map { .. } => register_compose_structural_consumed_props(dowe_components::BuiltinComponent::Map, context, &[("centerLat", "MapProps.center_lat"), ("centerLng", "MapProps.center_lng"), ("zoom", "MapProps.zoom"), ("height", "MapProps.height"), ("width", "MapProps.width"), ("showControls", "MapProps.show_controls"), ("showScale", "MapProps.show_scale"), ("interactive", "MapProps.interactive"), ("onLocation", "MapProps.on_location"), ("onLocationError", "MapProps.on_location_error"), ("onRoute", "MapProps.on_route")]),
+        ViewNode::Avatar { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Avatar,
+            context,
+            &[
+                ("name", "AvatarProps.name"),
+                ("alt", "AvatarProps.alt"),
+                ("icon", "SideNavIcon.props"),
+            ],
+        ),
+        ViewNode::AvatarGroup { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::AvatarGroup,
+            context,
+            &[
+                ("items", "AvatarGroupProps.items"),
+                ("size", "AvatarGroupProps.size"),
+            ],
+        ),
+        ViewNode::Badge { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Badge,
+            context,
+            &[
+                ("variant", "VariantProps.variant"),
+                ("scheme", "VariantProps.color"),
+            ],
+        ),
+        ViewNode::Chip { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Chip,
+            context,
+            &[
+                ("variant", "VariantProps.variant"),
+                ("scheme", "VariantProps.color"),
+                ("size", "VariantProps.size"),
+                ("rounded", "VariantProps.style.rounded"),
+            ],
+        ),
+        ViewNode::ChatBox { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::ChatBox,
+            context,
+            &[
+                ("messages", "ChatBoxProps.messages"),
+                ("actionLabel", "ChatBoxProps.action_label"),
+                ("actionVisible", "ChatBoxProps.action_visible"),
+                ("loading", "ChatBoxProps.loading"),
+                ("sending", "ChatBoxProps.sending"),
+                ("streaming", "ChatBoxProps.streaming"),
+                ("hasMore", "ChatBoxProps.has_more"),
+            ],
+        ),
+        ViewNode::Empty { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Empty,
+            context,
+            &[
+                ("title", "EmptyProps.title"),
+                ("description", "EmptyProps.description"),
+                ("actionLabel", "EmptyProps.action_label"),
+            ],
+        ),
+        ViewNode::Marquee { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Marquee,
+            context,
+            &[
+                ("speed", "MarqueeProps.speed"),
+                ("pauseOnHover", "MarqueeProps.pause_on_hover"),
+                ("reverse", "MarqueeProps.reverse"),
+                ("orientation", "MarqueeProps.orientation"),
+                ("fade", "MarqueeProps.fade"),
+                ("fadeColor", "MarqueeProps.fade_color"),
+                ("gap", "MarqueeProps.gap"),
+            ],
+        ),
+        ViewNode::TypeWriter { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::TypeWriter,
+            context,
+            &[
+                ("typeSpeed", "TypeWriterProps.type_speed"),
+                ("deleteSpeed", "TypeWriterProps.delete_speed"),
+                ("afterTyped", "TypeWriterProps.after_typed"),
+                ("afterDeleted", "TypeWriterProps.after_deleted"),
+                ("repeat", "TypeWriterProps.repeat"),
+            ],
+        ),
+        ViewNode::RichText { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::RichText,
+            context,
+            &[
+                ("text", "RichTextMark.text"),
+                ("style", "RichTextMark.style"),
+                ("color", "RichTextMark.color"),
+            ],
+        ),
+        ViewNode::Record { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Record,
+            context,
+            &[
+                ("name", "RecordProps.name"),
+                ("url", "RecordProps.url"),
+                ("disabled", "RecordProps.disabled"),
+                ("maxDuration", "RecordProps.max_duration"),
+            ],
+        ),
+        ViewNode::ToggleGroup { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::ToggleGroup,
+            context,
+            &[
+                ("value", "ToggleGroupProps.value"),
+                ("selected", "ToggleGroupProps.selected"),
+                ("multiple", "ToggleGroupProps.multiple"),
+                ("wide", "ToggleGroupProps.wide"),
+                ("vertical", "ToggleGroupProps.vertical"),
+                ("disabled", "ToggleGroupProps.disabled"),
+                ("ariaLabel", "ToggleGroupProps.aria_label"),
+            ],
+        ),
+        ViewNode::Collapsible { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Collapsible,
+            context,
+            &[
+                ("label", "CollapsibleProps.label"),
+                ("defaultOpen", "CollapsibleProps.default_open"),
+                ("disabled", "CollapsibleProps.disabled"),
+            ],
+        ),
+        ViewNode::Countdown { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Countdown,
+            context,
+            &[
+                ("target", "CountdownProps.target"),
+                ("showDays", "CountdownProps.show_days"),
+                ("showHours", "CountdownProps.show_hours"),
+                ("showMinutes", "CountdownProps.show_minutes"),
+                ("showSeconds", "CountdownProps.show_seconds"),
+                ("size", "CountdownProps.size"),
+                ("onComplete", "CountdownProps.on_complete"),
+            ],
+        ),
+        ViewNode::Map { .. } => register_compose_structural_consumed_props(
+            dowe_components::BuiltinComponent::Map,
+            context,
+            &[
+                ("centerLat", "MapProps.center_lat"),
+                ("centerLng", "MapProps.center_lng"),
+                ("zoom", "MapProps.zoom"),
+                ("height", "MapProps.height"),
+                ("width", "MapProps.width"),
+                ("showControls", "MapProps.show_controls"),
+                ("showScale", "MapProps.show_scale"),
+                ("interactive", "MapProps.interactive"),
+                ("onLocation", "MapProps.on_location"),
+                ("onLocationError", "MapProps.on_location_error"),
+                ("onRoute", "MapProps.on_route"),
+            ],
+        ),
         ViewNode::Image { props: _ } => {
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Image, "src", "ImageProps.src");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Image, "alt", "ImageProps.alt");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Image, "objectFit", "ImageProps.object_fit");
-            context.register_consumed_prop(dowe_components::BuiltinComponent::Image, "loading", "ImageProps.loading");
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Image,
+                "src",
+                "ImageProps.src",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Image,
+                "alt",
+                "ImageProps.alt",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Image,
+                "objectFit",
+                "ImageProps.object_fit",
+            );
+            context.register_consumed_prop(
+                dowe_components::BuiltinComponent::Image,
+                "loading",
+                "ImageProps.loading",
+            );
         }
         ViewNode::Text { props, .. } | ViewNode::Title { props, .. } => {
             if props.size.is_some() || props.size_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Text, "size", "TextProps.size");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Text,
+                    "size",
+                    "TextProps.size",
+                );
             }
             if props.weight.is_some() || props.weight_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Text, "weight", "TextProps.weight");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Text,
+                    "weight",
+                    "TextProps.weight",
+                );
             }
             if props.letter_spacing.is_some() || props.letter_spacing_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Text, "spacing", "TextProps.letter_spacing");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Text,
+                    "spacing",
+                    "TextProps.letter_spacing",
+                );
             }
         }
         ViewNode::Input { props } | ViewNode::Select { props, .. } => {
-            let component = if matches!(node, ViewNode::Input { .. }) { dowe_components::BuiltinComponent::Input } else { dowe_components::BuiltinComponent::Select };
+            let component = if matches!(node, ViewNode::Input { .. }) {
+                dowe_components::BuiltinComponent::Input
+            } else {
+                dowe_components::BuiltinComponent::Select
+            };
             if props.color.is_some() || props.color_binding.is_some() {
                 context.register_consumed_prop(component, "scheme", "VariantProps.color");
             }
@@ -266,7 +876,11 @@ fn register_compose_consumed_props(node: &ViewNode, context: &ComposeReactiveCon
                 context.register_consumed_prop(component, "label", "VariantProps.label");
             }
             if props.placeholder.is_some() {
-                context.register_consumed_prop(component, "placeholder", "VariantProps.placeholder");
+                context.register_consumed_prop(
+                    component,
+                    "placeholder",
+                    "VariantProps.placeholder",
+                );
             }
             if props.i18n.is_some() {
                 context.register_consumed_prop(component, "i18n", "VariantProps.i18n");
@@ -274,22 +888,46 @@ fn register_compose_consumed_props(node: &ViewNode, context: &ComposeReactiveCon
         }
         ViewNode::Button { props, .. } => {
             if props.color.is_some() || props.color_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Button, "scheme", "VariantProps.color");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Button,
+                    "scheme",
+                    "VariantProps.color",
+                );
             }
             if props.variant.is_some() || props.variant_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Button, "variant", "VariantProps.variant");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Button,
+                    "variant",
+                    "VariantProps.variant",
+                );
             }
             if props.size.is_some() || props.size_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Button, "size", "VariantProps.size");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Button,
+                    "size",
+                    "VariantProps.size",
+                );
             }
             if props.style.rounded.is_some() || props.style.rounded_binding.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Button, "rounded", "VariantProps.style.rounded");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Button,
+                    "rounded",
+                    "VariantProps.style.rounded",
+                );
             }
             if props.reactive.loading.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Button, "loading", "VariantProps.reactive.loading");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Button,
+                    "loading",
+                    "VariantProps.reactive.loading",
+                );
             }
             if props.reactive.disabled.is_some() {
-                context.register_consumed_prop(dowe_components::BuiltinComponent::Button, "disabled", "VariantProps.reactive.disabled");
+                context.register_consumed_prop(
+                    dowe_components::BuiltinComponent::Button,
+                    "disabled",
+                    "VariantProps.reactive.disabled",
+                );
             }
         }
         _ => {}
@@ -318,17 +956,69 @@ fn register_compose_structural_consumed_props(
     }
 }
 
-fn register_compose_chart_consumed_props(component: dowe_components::BuiltinComponent, context: &ComposeReactiveContext) {
-    for (prop, field) in [("data", "ChartCommonProps.data"), ("series", "ChartCommonProps.series"), ("size", "ChartCommonProps.size"), ("palette", "ChartCommonProps.palette"), ("loading", "ChartCommonProps.loading")] {
+fn register_compose_chart_consumed_props(
+    component: dowe_components::BuiltinComponent,
+    context: &ComposeReactiveContext,
+) {
+    for (prop, field) in [
+        ("data", "ChartCommonProps.data"),
+        ("series", "ChartCommonProps.series"),
+        ("size", "ChartCommonProps.size"),
+        ("palette", "ChartCommonProps.palette"),
+        ("loading", "ChartCommonProps.loading"),
+    ] {
         context.register_consumed_prop(component, prop, field);
     }
     let fields = match component {
-        dowe_components::BuiltinComponent::Candlestick => vec![("stream", "CandlestickProps.stream"), ("upColor", "CandlestickProps.up_color"), ("downColor", "CandlestickProps.down_color"), ("maxPoints", "CandlestickProps.max_points")],
-        dowe_components::BuiltinComponent::ArcChart => vec![("centerText", "ArcChartProps.center_text"), ("centerValue", "ArcChartProps.center_value"), ("thickness", "ArcChartProps.thickness"), ("gap", "ArcChartProps.gap"), ("startAngle", "ArcChartProps.start_angle"), ("endAngle", "ArcChartProps.end_angle"), ("showGlow", "ArcChartProps.show_glow")],
-        dowe_components::BuiltinComponent::AreaChart => vec![("curve", "AreaChartProps.curve"), ("strokeWidth", "AreaChartProps.stroke_width"), ("fillOpacity", "AreaChartProps.fill_opacity"), ("stacked", "AreaChartProps.stacked"), ("showPoints", "AreaChartProps.show_points"), ("showGlow", "AreaChartProps.show_glow")],
-        dowe_components::BuiltinComponent::BarChart => vec![("grouped", "BarChartProps.grouped"), ("stacked", "BarChartProps.stacked"), ("showValues", "BarChartProps.show_values"), ("barRadius", "BarChartProps.bar_radius"), ("showGlow", "BarChartProps.show_glow")],
-        dowe_components::BuiltinComponent::LineChart => vec![("curve", "LineChartProps.curve"), ("strokeWidth", "LineChartProps.stroke_width"), ("pointRadius", "LineChartProps.point_radius"), ("showGradientFill", "LineChartProps.show_gradient_fill"), ("showGlow", "LineChartProps.show_glow")],
-        dowe_components::BuiltinComponent::PieChart => vec![("donut", "PieChartProps.donut"), ("donutWidth", "PieChartProps.donut_width"), ("centerLabel", "PieChartProps.center_label"), ("centerValue", "PieChartProps.center_value"), ("startAngle", "PieChartProps.start_angle"), ("padAngle", "PieChartProps.pad_angle"), ("hideLabels", "PieChartProps.hide_labels"), ("hideValues", "PieChartProps.hide_values"), ("hidePercentages", "PieChartProps.hide_percentages"), ("showGlow", "PieChartProps.show_glow")],
+        dowe_components::BuiltinComponent::Candlestick => vec![
+            ("stream", "CandlestickProps.stream"),
+            ("upColor", "CandlestickProps.up_color"),
+            ("downColor", "CandlestickProps.down_color"),
+            ("maxPoints", "CandlestickProps.max_points"),
+        ],
+        dowe_components::BuiltinComponent::ArcChart => vec![
+            ("centerText", "ArcChartProps.center_text"),
+            ("centerValue", "ArcChartProps.center_value"),
+            ("thickness", "ArcChartProps.thickness"),
+            ("gap", "ArcChartProps.gap"),
+            ("startAngle", "ArcChartProps.start_angle"),
+            ("endAngle", "ArcChartProps.end_angle"),
+            ("showGlow", "ArcChartProps.show_glow"),
+        ],
+        dowe_components::BuiltinComponent::AreaChart => vec![
+            ("curve", "AreaChartProps.curve"),
+            ("strokeWidth", "AreaChartProps.stroke_width"),
+            ("fillOpacity", "AreaChartProps.fill_opacity"),
+            ("stacked", "AreaChartProps.stacked"),
+            ("showPoints", "AreaChartProps.show_points"),
+            ("showGlow", "AreaChartProps.show_glow"),
+        ],
+        dowe_components::BuiltinComponent::BarChart => vec![
+            ("grouped", "BarChartProps.grouped"),
+            ("stacked", "BarChartProps.stacked"),
+            ("showValues", "BarChartProps.show_values"),
+            ("barRadius", "BarChartProps.bar_radius"),
+            ("showGlow", "BarChartProps.show_glow"),
+        ],
+        dowe_components::BuiltinComponent::LineChart => vec![
+            ("curve", "LineChartProps.curve"),
+            ("strokeWidth", "LineChartProps.stroke_width"),
+            ("pointRadius", "LineChartProps.point_radius"),
+            ("showGradientFill", "LineChartProps.show_gradient_fill"),
+            ("showGlow", "LineChartProps.show_glow"),
+        ],
+        dowe_components::BuiltinComponent::PieChart => vec![
+            ("donut", "PieChartProps.donut"),
+            ("donutWidth", "PieChartProps.donut_width"),
+            ("centerLabel", "PieChartProps.center_label"),
+            ("centerValue", "PieChartProps.center_value"),
+            ("startAngle", "PieChartProps.start_angle"),
+            ("padAngle", "PieChartProps.pad_angle"),
+            ("hideLabels", "PieChartProps.hide_labels"),
+            ("hideValues", "PieChartProps.hide_values"),
+            ("hidePercentages", "PieChartProps.hide_percentages"),
+            ("showGlow", "PieChartProps.show_glow"),
+        ],
         _ => Vec::new(),
     };
     for (prop, field) in fields {
@@ -342,7 +1032,13 @@ fn compose_form_component(node: &ViewNode) -> Option<dowe_components::BuiltinCom
         ViewNode::Select { .. } => Some(dowe_components::BuiltinComponent::Select),
         ViewNode::Checkbox { .. } => Some(dowe_components::BuiltinComponent::Checkbox),
         ViewNode::Toggle { .. } => Some(dowe_components::BuiltinComponent::Toggle),
-        ViewNode::RadioGroup { .. } => Some(dowe_components::BuiltinComponent::RadioGroup),
+        ViewNode::RadioGroup { props, .. } => Some(
+            if matches!(props.presentation, dowe_components::RadioGroupPresentation::Card) {
+                dowe_components::BuiltinComponent::RadioCard
+            } else {
+                dowe_components::BuiltinComponent::RadioGroup
+            },
+        ),
         ViewNode::Slider { .. } => Some(dowe_components::BuiltinComponent::Slider),
         ViewNode::Date { .. } => Some(dowe_components::BuiltinComponent::Date),
         ViewNode::DateRange { .. } => Some(dowe_components::BuiltinComponent::DateRange),
@@ -352,6 +1048,35 @@ fn compose_form_component(node: &ViewNode) -> Option<dowe_components::BuiltinCom
         ViewNode::Textarea { .. } => Some(dowe_components::BuiltinComponent::Textarea),
         ViewNode::Color { .. } => Some(dowe_components::BuiltinComponent::Color),
         ViewNode::Dropzone { .. } => Some(dowe_components::BuiltinComponent::Dropzone),
+        ViewNode::ComboBox { .. } => Some(dowe_components::BuiltinComponent::ComboBox),
+        ViewNode::CsvField { .. } => Some(dowe_components::BuiltinComponent::CsvField),
+        ViewNode::DragDrop { .. } => Some(dowe_components::BuiltinComponent::DragDrop),
+        ViewNode::Editor { .. } => Some(dowe_components::BuiltinComponent::Editor),
+        ViewNode::ImageCropper { .. } => Some(dowe_components::BuiltinComponent::ImageCropper),
+        _ => None,
+    }
+}
+
+fn compose_form_variant_props(node: &ViewNode) -> Option<&dowe_components::VariantProps> {
+    match node {
+        ViewNode::Input { props } | ViewNode::Select { props, .. } => Some(props),
+        ViewNode::Checkbox { props } => Some(&props.style),
+        ViewNode::Color { props } => Some(&props.style),
+        ViewNode::Date { props } => Some(&props.style),
+        ViewNode::DateRange { props } => Some(&props.style),
+        ViewNode::RadioGroup { props, .. } => Some(&props.style),
+        ViewNode::Toggle { props } => Some(&props.style),
+        ViewNode::Slider { props } => Some(&props.style),
+        ViewNode::Dropzone { props } => Some(&props.style),
+        ViewNode::ComboBox { props, .. } => Some(&props.style),
+        ViewNode::CsvField { props, .. } => Some(&props.style),
+        ViewNode::DragDrop { props, .. } => Some(&props.style),
+        ViewNode::Editor { props } => Some(&props.style),
+        ViewNode::ImageCropper { props } => Some(&props.style),
+        ViewNode::Password { props } => Some(&props.style),
+        ViewNode::Phone { props } => Some(&props.style),
+        ViewNode::Pin { props } => Some(&props.style),
+        ViewNode::Textarea { props } => Some(&props.style),
         _ => None,
     }
 }
@@ -476,6 +1201,7 @@ fn render_compose_node_body(
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::AvatarGroup { .. }
         | ViewNode::ChatBox { .. }
         | ViewNode::Empty { .. }

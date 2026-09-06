@@ -311,6 +311,19 @@ fn parses_each_over_an_immutable_view_constant() {
 }
 
 #[test]
+fn accepts_nested_each_collections_from_each_item_paths() {
+    parse_page(
+        r#"page treePage
+  signal tree value:{ folders:[{ id:"views" folders:[{ id:"pages" }] }] }
+  each in:tree.folders as:folder key:folder.id
+    each in:folder.folders as:subfolder key:subfolder.id
+      Text
+        "{subfolder.id}""#,
+    )
+    .expect("nested each collections");
+}
+
+#[test]
 fn accepts_image_source_from_a_constant_each_item_path() {
     let tree = parse_page(
         r#"page imageCatalogPage

@@ -16,6 +16,14 @@ fn generates_swiftui_display_chat_and_motion_components() {
     ));
     assert!(views.contains("DoweAvatarGroup(items: doweAvatarGroupItems(state.rows(\"people\")"));
     assert!(views.contains("DoweChatBox(state: state, messagesPath: \"messages\""));
+    assert!(views.contains("actionLabel: \"Continue\""));
+    assert!(views.contains("struct DoweChatQuestion: Identifiable"));
+    assert!(views.contains("private func doweChatIsSpanish"));
+    assert!(views.contains("Supuestos de trabajo"));
+    assert!(views.contains("Choose an option above to continue."));
+    assert!(views.contains("private func chooseOption"));
+    assert!(views.contains("actionVisible: state.bool(\"actionVisible\")"));
+    assert!(views.contains("if actionVisible, let onAction, !sending, !pendingChoice"));
     assert!(views.contains("DoweEmpty(kind: \"result\""));
     assert!(views.contains("iconViewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24))"));
     assert!(views.contains("iconPaths: [DoweSvgPathData("));
@@ -109,9 +117,11 @@ fn generates_full_scene_background_without_unsafe_content() {
     );
     let views = swift_content(&output);
 
-    assert!(views.contains(".background(DoweDesign.background.ignoresSafeArea())"));
+    assert!(views.contains("DoweSafeAreaBackground(\n                topColor: doweSafeAreaTopColor(currentEntry.path),"));
     assert!(views.contains("struct DoweSafeAreaReporter: UIViewRepresentable"));
     assert!(views.contains("final class DoweSafeAreaReportingView: UIView"));
+    assert!(views.contains("private func doweSafeAreaTopColor(_ path: String) -> Color"));
+    assert!(views.contains("private func doweSafeAreaBottomColor(_ path: String) -> Color"));
     assert!(views.contains("@State private var safeAreaInsets = EdgeInsets()"));
     assert!(views.contains("DoweSafeAreaReporter { insets in"));
     assert!(views.contains(
@@ -405,4 +415,3 @@ fn generates_labeled_input_and_select_fields() {
     assert!(views.contains("if selectedOption != nil || !floating || expanded"));
     assert!(views.contains("Text(description).font(.caption)"));
 }
-

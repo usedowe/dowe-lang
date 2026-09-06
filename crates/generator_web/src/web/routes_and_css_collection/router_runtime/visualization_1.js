@@ -13,13 +13,6 @@ function isCandle(value) {
 function candleList(value) {
   return Array.isArray(value) ? value.filter(isCandle) : [];
 }
-function tokenColor(name) {
-  return (
-    getComputedStyle(document.documentElement)
-      .getPropertyValue("--dowe-" + name)
-      .trim() || "currentColor"
-  );
-}
 const chartPalettes = {
   default: [
     "primary",

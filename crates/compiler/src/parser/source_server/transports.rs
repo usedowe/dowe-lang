@@ -156,7 +156,6 @@ fn parse_websocket(
     let mut handlers = WebSocketHandlers::default();
 
     for child in &node.children {
-        let imports = ServerImports::default();
         let action = parse_action(
             child,
             ActionContext::WebSocket,
@@ -179,4 +178,3 @@ fn parse_websocket(
         middlewares,
     })
 }
-

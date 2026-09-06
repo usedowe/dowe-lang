@@ -22,6 +22,24 @@ struct DoweExternalWebView: UIViewControllerRepresentable {
     }
 }
 
+struct DoweSafeAreaBackground: View {
+    let topColor: Color
+    let bottomColor: Color
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(spacing: CGFloat(0)) {
+                topColor.frame(width: geometry.size.width, height: topInset)
+                DoweDesign.background.frame(maxWidth: .infinity, maxHeight: .infinity)
+                bottomColor.frame(width: geometry.size.width, height: bottomInset)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
+        }
+    }
+}
+
 struct DoweSafeAreaReporter: UIViewRepresentable {
     let onChange: (EdgeInsets) -> Void
 

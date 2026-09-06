@@ -168,6 +168,13 @@ private fun DoweAvatarGroup(items: List<DoweAvatarGroupItem>, size: String, maxC
     }
 }
 
+private data class DoweChatQuestion(
+    val id: String,
+    val question: String,
+    val options: List<String>,
+    val selected: String?
+)
+
 private data class DoweChatMessage(
     val id: String,
     val role: String,
@@ -175,8 +182,47 @@ private data class DoweChatMessage(
     val name: String?,
     val avatar: String?,
     val text: String,
-    val status: String?
+    val status: String?,
+    val title: String?,
+    val questions: List<DoweChatQuestion>,
+    val assumptions: List<String>,
+    val nextStep: String?
 )
+
+private fun doweChatQuestions(value: Any?): List<DoweChatQuestion> =
+    (value as? List<*>)?.take(5)?.mapIndexedNotNull { index, item ->
+        val row = item as? Map<*, *> ?: return@mapIndexedNotNull null
+        val options = (row["options"] as? List<*>)
+            ?.mapNotNull { option -> option?.toString()?.trim()?.takeIf { it.isNotEmpty() } }
+            ?.distinct()
+            ?.take(4)
+            ?: emptyList()
+        DoweChatQuestion(
+            id = row["id"]?.toString() ?: "question-${index + 1}",
+            question = row["question"]?.toString() ?: "",
+            options = options,
+            selected = row["selected"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        )
+    } ?: emptyList()
+
+private fun doweChatIsSpanish(message: DoweChatMessage): Boolean {
+    val text = (listOfNotNull(message.title, message.text, message.nextStep) + message.assumptions + message.questions.map { it.question })
+        .joinToString(" ")
+        .lowercase()
+    return listOf("hola", "¿", "¡", "quiero", "crear", "crea", "defin", "diseñ", "necesito", "puedes", " una ", " la ", " para ", "página", "pagina", "supuestos", "español", "ñ", "á", "é", "í", "ó", "ú")
+        .any { marker -> text.contains(marker) }
+}
+
+private fun doweChatStatus(status: String?, spanish: Boolean): String? {
+    if (!spanish || status == null) return status
+    return mapOf(
+        "Planning" to "Planificando",
+        "Selected" to "Seleccionado",
+        "Ready for review" to "Listo para revisar",
+        "Try again" to "Inténtalo de nuevo",
+        "error" to "Error"
+    )[status] ?: status
+}
 
 private fun doweChatMessages(rows: List<Map<String, Any?>>): List<DoweChatMessage> =
     rows.mapIndexed { index, row ->
@@ -187,14 +233,36 @@ private fun doweChatMessages(rows: List<Map<String, Any?>>): List<DoweChatMessag
             name = row["name"]?.toString(),
             avatar = row["avatar"]?.toString(),
             text = (row["text"] ?: row["content"] ?: row["message"])?.toString() ?: "",
-            status = row["status"]?.toString()
+            status = row["status"]?.toString(),
+            title = row["title"]?.toString(),
+            questions = doweChatQuestions(row["questions"]),
+            assumptions = (row["assumptions"] as? List<*>)
+                ?.mapNotNull { assumption -> assumption?.toString()?.trim()?.takeIf { it.isNotEmpty() } }
+                ?.take(4)
+                ?: emptyList(),
+            nextStep = row["nextStep"]?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         )
     }
 
 @Composable
-private fun DoweChatBox(state: DoweReactiveState, messagesPath: String, mode: String, currentUserId: String, userName: String, userAvatar: String?, userStatus: String, assistantName: String, assistantAvatar: String?, showHeader: Boolean, placeholder: String, showAttachments: Boolean, showVoiceNote: Boolean, showCamera: Boolean, loading: Boolean, sending: Boolean, streaming: Boolean, hasMore: Boolean, onSend: ((String) -> Unit)?, onLoadMore: (() -> Unit)?, onStop: (() -> Unit)?, onVoiceNote: (() -> Unit)?, onFileAttach: (() -> Unit)?, onCameraCapture: (() -> Unit)?, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier) {
+private fun DoweChatBox(state: DoweReactiveState, messagesPath: String, mode: String, currentUserId: String, userName: String, userAvatar: String?, userStatus: String, assistantName: String, assistantAvatar: String?, showHeader: Boolean, placeholder: String, showAttachments: Boolean, showVoiceNote: Boolean, showCamera: Boolean, loading: Boolean, sending: Boolean, streaming: Boolean, hasMore: Boolean, actionLabel: String, actionVisible: Boolean, onAction: (() -> Unit)?, onSend: ((String) -> Unit)?, onLoadMore: (() -> Unit)?, onStop: (() -> Unit)?, onVoiceNote: (() -> Unit)?, onFileAttach: (() -> Unit)?, onCameraCapture: (() -> Unit)?, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier) {
     var draft by remember { mutableStateOf("") }
+    var selectedChoices by remember { mutableStateOf(setOf<String>()) }
+    var submittedChoiceMessages by remember { mutableStateOf(setOf<String>()) }
     val messages = doweChatMessages(state.rows(messagesPath).map { it.value })
+    val pendingChoice = messages.any { message ->
+        message.id !in submittedChoiceMessages && message.questions.any { question ->
+            question.options.isNotEmpty() && question.options.none { option ->
+                selectedChoices.contains("${message.id}:${question.id}:$option")
+            } && question.selected.isNullOrEmpty()
+        }
+    }
+    val actionSpanish = messages.lastOrNull { message -> message.role != "user" }?.let { message -> doweChatIsSpanish(message) } == true
+    val displayActionLabel = if (actionSpanish) {
+        mapOf("Accept plan and continue" to "Aceptar plan y continuar", "Continue" to "Continuar")[actionLabel] ?: actionLabel
+    } else {
+        actionLabel
+    }
     val shape = RoundedCornerShape(DoweDesign.radius)
     Column(
         modifier = modifier
@@ -220,21 +288,87 @@ private fun DoweChatBox(state: DoweReactiveState, messagesPath: String, mode: St
         Column(modifier = Modifier.fillMaxWidth().weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             messages.forEach { message ->
                 val own = message.userId == currentUserId || message.role == "user"
+                val spanish = doweChatIsSpanish(message)
+                val status = doweChatStatus(message.status, spanish)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
-                    Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
-                        Text(
-                            text = message.text,
-                            modifier = Modifier
-                                .widthIn(max = 280.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (own) contentColor else contentColor.copy(alpha = 0.08f))
-                                .padding(horizontal = 12.dp, vertical = 9.dp),
-                            color = if (own) backgroundColor else contentColor,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp
-                        )
-                        if (!message.status.isNullOrEmpty()) {
-                            Text(text = message.status, color = contentColor.copy(alpha = 0.52f), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 320.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (own) contentColor else contentColor.copy(alpha = 0.08f))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalAlignment = if (own) Alignment.End else Alignment.Start,
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        if (!message.title.isNullOrEmpty()) {
+                            Text(text = message.title, color = if (own) backgroundColor else contentColor, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        if (message.text.isNotEmpty()) {
+                            Text(text = message.text, color = if (own) backgroundColor else contentColor, fontSize = 14.sp, lineHeight = 20.sp)
+                        }
+                        message.questions.forEach { question ->
+                            val selectedOption = question.options.firstOrNull { option -> selectedChoices.contains("${message.id}:${question.id}:$option") } ?: question.selected
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (own) backgroundColor.copy(alpha = 0.12f) else contentColor.copy(alpha = 0.06f))
+                                    .padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                Text(text = question.question, color = if (own) backgroundColor else contentColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, lineHeight = 18.sp)
+                                if (question.options.isEmpty()) {
+                                    Text(text = if (spanish) "Escribe tu respuesta abajo." else "Write your answer below.", color = if (own) backgroundColor.copy(alpha = 0.68f) else contentColor.copy(alpha = 0.64f), fontSize = 11.sp)
+                                } else {
+                                    question.options.forEach { option ->
+                                        val selected = selectedOption == option
+                                        Text(
+                                            text = option,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(9.dp))
+                                                .background(if (selected) contentColor else Color.Transparent)
+                                                .border(1.dp, if (selected) contentColor else contentColor.copy(alpha = 0.28f), RoundedCornerShape(9.dp))
+                                                .clickable {
+                                                    val key = "${message.id}:${question.id}:$option"
+                                                    if (!sending && selectedOption == null) {
+                                                        val nextSelected = selectedChoices + key
+                                                        selectedChoices = nextSelected
+                                                        val choiceQuestions = message.questions.filter { it.options.isNotEmpty() }
+                                                        val complete = choiceQuestions.all { item -> item.selected != null || item.options.any { candidate -> nextSelected.contains("${message.id}:${item.id}:$candidate") } }
+                                                        if (complete && !submittedChoiceMessages.contains(message.id)) {
+                                                            submittedChoiceMessages = submittedChoiceMessages + message.id
+                                                            val answer = choiceQuestions.joinToString("\\n") { item ->
+                                                                val selectedValue = item.options.firstOrNull { candidate -> nextSelected.contains("${message.id}:${item.id}:$candidate") } ?: item.selected.orEmpty()
+                                                                "${item.question}: $selectedValue"
+                                                            }
+                                                            state.appendChatMessage(messagesPath, answer)
+                                                            onSend?.invoke(answer)
+                                                        }
+                                                    }
+                                                }
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            color = if (selected) backgroundColor else if (own) backgroundColor else contentColor,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (message.assumptions.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(text = if (spanish) "Supuestos de trabajo" else "Working assumptions", color = if (own) backgroundColor.copy(alpha = 0.68f) else contentColor.copy(alpha = 0.64f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                message.assumptions.forEach { assumption ->
+                                    Text(text = "• $assumption", color = if (own) backgroundColor.copy(alpha = 0.84f) else contentColor.copy(alpha = 0.84f), fontSize = 11.sp, lineHeight = 15.sp)
+                                }
+                            }
+                        }
+                        if (!message.nextStep.isNullOrEmpty()) {
+                            Text(text = "${if (spanish) "Siguiente" else "Next"}: ${message.nextStep}", color = if (own) backgroundColor.copy(alpha = 0.84f) else contentColor.copy(alpha = 0.84f), fontSize = 11.sp, lineHeight = 15.sp)
+                        }
+                        if (!status.isNullOrEmpty()) {
+                            Text(text = status, color = if (own) backgroundColor.copy(alpha = 0.58f) else contentColor.copy(alpha = 0.52f), fontSize = 10.sp)
                         }
                     }
                 }
@@ -243,52 +377,72 @@ private fun DoweChatBox(state: DoweReactiveState, messagesPath: String, mode: St
                 Text(text = if (streaming) "..." else "Typing...", color = contentColor.copy(alpha = 0.64f), fontSize = 13.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp))
             }
         }
-        Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (showVoiceNote && onVoiceNote != null) {
-                Text(text = "Mic", modifier = Modifier.clickable(onClick = onVoiceNote), color = contentColor.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            }
-            if (showAttachments && onFileAttach != null) {
-                Text(text = "+", modifier = Modifier.clickable(onClick = onFileAttach), color = contentColor.copy(alpha = 0.72f), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
-            if (showCamera && onCameraCapture != null) {
-                Text(text = "Cam", modifier = Modifier.clickable(onClick = onCameraCapture), color = contentColor.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            }
-            BasicTextField(
-                value = draft,
-                onValueChange = { draft = it },
-                textStyle = TextStyle(color = contentColor, fontSize = 14.sp),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 40.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(contentColor.copy(alpha = 0.08f))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                decorationBox = { inner ->
-                    if (draft.isEmpty()) {
-                        Text(text = placeholder, color = contentColor.copy(alpha = 0.48f), fontSize = 14.sp)
-                    }
-                    inner()
-                }
-            )
-            val canSend = draft.trim().isNotEmpty() && onSend != null && !sending
+        if (actionVisible && onAction != null && !sending && !pendingChoice) {
             Text(
-                text = if (streaming && onStop != null) "Stop" else "Send",
+                text = displayActionLabel,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(if (canSend || streaming) contentColor else contentColor.copy(alpha = 0.16f))
-                    .clickable {
-                        if (streaming && onStop != null) {
-                            onStop()
-                        } else if (canSend) {
-                            onSend?.invoke(draft)
-                            draft = ""
-                        }
-                    }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                color = if (canSend || streaming) backgroundColor else contentColor.copy(alpha = 0.48f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(contentColor)
+                    .clickable(onClick = onAction)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                color = backgroundColor,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center
             )
+        }
+        if (pendingChoice) {
+            Text(text = "Choose an option above to continue.", color = contentColor.copy(alpha = 0.64f), fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(top = 12.dp), textAlign = TextAlign.Center)
+        } else {
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (showVoiceNote && onVoiceNote != null) {
+                    Text(text = "Mic", modifier = Modifier.clickable(onClick = onVoiceNote), color = contentColor.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+                if (showAttachments && onFileAttach != null) {
+                    Text(text = "+", modifier = Modifier.clickable(onClick = onFileAttach), color = contentColor.copy(alpha = 0.72f), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                if (showCamera && onCameraCapture != null) {
+                    Text(text = "Cam", modifier = Modifier.clickable(onClick = onCameraCapture), color = contentColor.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+                BasicTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    textStyle = TextStyle(color = contentColor, fontSize = 14.sp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 40.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(contentColor.copy(alpha = 0.08f))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    decorationBox = { inner ->
+                        if (draft.isEmpty()) {
+                            Text(text = placeholder, color = contentColor.copy(alpha = 0.48f), fontSize = 14.sp)
+                        }
+                        inner()
+                    }
+                )
+                val canSend = draft.trim().isNotEmpty() && onSend != null && !sending
+                Text(
+                    text = if (streaming && onStop != null) "Stop" else "Send",
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(if (canSend || streaming) contentColor else contentColor.copy(alpha = 0.16f))
+                        .clickable {
+                            if (streaming && onStop != null) {
+                                onStop()
+                            } else if (canSend) {
+                                state.appendChatMessage(messagesPath, draft)
+                                onSend?.invoke(draft)
+                                draft = ""
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    color = if (canSend || streaming) backgroundColor else contentColor.copy(alpha = 0.48f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

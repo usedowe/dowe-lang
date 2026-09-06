@@ -37,8 +37,10 @@ fn parse_style_props(
                         | BuiltinComponent::Color
                         | BuiltinComponent::Date
                         | BuiltinComponent::RadioGroup
+                        | BuiltinComponent::RadioCard
                         | BuiltinComponent::Toggle
                         | BuiltinComponent::Swap
+                        | BuiltinComponent::Stepper
                 ) =>
             {
                 style.element.bind = Some(parse_required_string(&prop.name, &value)?)
@@ -57,6 +59,16 @@ fn parse_style_props(
                 ) =>
             {
                 style.element.on_click = Some(parse_required_string(&prop.name, &value)?)
+            }
+            "onChange"
+                if form_component_accepts_change(component) =>
+            {
+                style.element.on_change = Some(parse_required_string(&prop.name, &value)?)
+            }
+            "onInput"
+                if form_component_accepts_input(component) =>
+            {
+                style.element.on_input = Some(parse_required_string(&prop.name, &value)?)
             }
             "scheme" if matches!(mode, StylePropMode::Box | StylePropMode::Section) => {
                 scheme = Some(parse_family_prop(component, &prop.name, &value)?);
@@ -239,6 +251,50 @@ fn parse_style_props(
     Ok(style)
 }
 
+fn form_component_accepts_change(component: BuiltinComponent) -> bool {
+    matches!(
+        component,
+        BuiltinComponent::Input
+            | BuiltinComponent::Select
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::CsvField
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
+            | BuiltinComponent::Textarea
+            | BuiltinComponent::Checkbox
+            | BuiltinComponent::Color
+            | BuiltinComponent::Date
+            | BuiltinComponent::DateRange
+            | BuiltinComponent::RadioGroup
+            | BuiltinComponent::RadioCard
+            | BuiltinComponent::Toggle
+            | BuiltinComponent::Slider
+            | BuiltinComponent::Dropzone
+    )
+}
+
+fn form_component_accepts_input(component: BuiltinComponent) -> bool {
+    matches!(
+        component,
+        BuiltinComponent::Input
+            | BuiltinComponent::Select
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::Editor
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
+            | BuiltinComponent::Textarea
+            | BuiltinComponent::Color
+            | BuiltinComponent::Date
+            | BuiltinComponent::DateRange
+            | BuiltinComponent::Slider
+    )
+}
+
 fn reactive_reference(value: &PropValue) -> Option<String> {
     match value {
         PropValue::String(value) => value.strip_prefix("@signal:").map(str::to_string),
@@ -280,4 +336,3 @@ fn style_accepts_animation(mode: StylePropMode) -> bool {
     let _ = mode;
     true
 }
-

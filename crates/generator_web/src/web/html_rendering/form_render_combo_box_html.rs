@@ -51,7 +51,7 @@ fn render_combo_box_html(
         })
         .unwrap_or_default();
     let extra = format!(
-        r#" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-dowe-combo-box data-dowe-placeholder="{}" data-dowe-value="{}" data-dowe-empty-text="{}" data-dowe-loading-text="{}" data-dowe-loading-more-text="{}"{}{}"#,
+        r#" type="button" role="combobox" aria-haspopup="listbox" aria-expanded="false" data-dowe-combo-box data-dowe-placeholder="{}" data-dowe-value="{}" data-dowe-empty-text="{}" data-dowe-loading-text="{}" data-dowe-loading-more-text="{}"{}{}{}"#,
         escape_attr(
             props
                 .style
@@ -64,6 +64,7 @@ fn render_combo_box_html(
         escape_attr(&props.loading_text),
         escape_attr(&props.loading_more_text),
         bind_attr(props.style.element.bind.as_deref(), context),
+        reactive_variant_attrs(&props.style, context, "is-"),
         if props.disabled { " disabled" } else { "" }
     );
     let options_html = options
@@ -89,4 +90,3 @@ fn render_combo_box_html(
         context,
     )
 }
-

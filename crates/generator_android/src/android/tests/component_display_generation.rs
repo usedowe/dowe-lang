@@ -160,6 +160,26 @@ fn generates_compose_and_dev_display_overlay_components() {
             .content
             .contains("DoweChip(text = \"Filter\", size = \"sm\"")
     );
+    assert!(views.content.contains("private fun DoweChip(text: String, size: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, modifier: Modifier, compact: Boolean"));
+    assert!(
+        views
+            .content
+            .contains("private object DoweGridCompactWidthModifier : ParentDataModifier")
+    );
+    assert!(views.content.contains(
+        "val compactWidth = (measurable.parentData as? DoweGridItemData)?.compactWidth == true"
+    ));
+    assert!(views.content.contains(
+        "Box(modifier = Modifier.doweGridCompactWidth(), contentAlignment = Alignment.CenterStart)"
+    ));
+    assert!(views.content.contains("surface(modifier)"));
+    assert!(
+        views
+            .content
+            .contains("DoweChip(text = \"Filter\", size = \"sm\"")
+    );
+    assert!(views.content.contains("modifier = Modifier.doweShadow"));
+    assert!(views.content.contains("compact = true, onClose ="));
     assert!(views.content.contains("start = {"));
     assert!(views.content.contains("end = {"));
     assert!(
@@ -246,9 +266,9 @@ fn generates_compose_and_dev_display_overlay_components() {
     );
 
     let dev = dev_java_source(&output);
-    assert!(dev
-        .content
-        .contains(", doweResponsiveInt(viewportWidth, 44, null, null, null, null), DOWE_ACCENT, 999f, 0.28f);"));
+    assert!(dev.content.contains(
+        ", doweResponsiveInt(viewportWidth, 44, null, null, null, null), DOWE_ACCENT, 999f, 0.28f);"
+    ));
     assert!(
         dev.content
             .contains(".setLayoutParams(new LinearLayout.LayoutParams(doweDp(48), doweDp(48)));")
@@ -269,6 +289,18 @@ fn generates_compose_and_dev_display_overlay_components() {
     assert!(dev.content.contains("setTranslationX(v.getWidth() / 2f)"));
     assert!(dev.content.contains("setTranslationY(v.getHeight() / 2f)"));
     assert!(dev.content.contains("doweText(\"Search\""));
+    assert!(dev.content.contains("DOWE_COMPACT_WIDTH_TAG = 0x7f0d0016"));
+    assert!(
+        dev.content
+            .contains("setTag(DOWE_COMPACT_WIDTH_TAG, Boolean.TRUE)")
+    );
+    assert!(dev.content.contains(
+        "MeasureSpec.makeMeasureSpec(cellWidth, compactWidth ? MeasureSpec.AT_MOST : MeasureSpec.EXACTLY)"
+    ));
+    assert!(
+        dev.content
+            .contains("align == DOWE_ALIGN_STRETCH && !compactWidth")
+    );
     assert!(dev.content.contains("doweText(\"Docs\""));
     assert!(dev.content.contains("doweDp(14)"));
     assert!(dev.content.contains("if (doweBool(\"modal01\"))"));
@@ -296,10 +328,7 @@ fn generates_compose_and_dev_display_overlay_components() {
             .contains("doweNavigate(\"push\", \"/docs\", null);")
     );
     assert!(dev.content.contains("setText(\"Menu\");"));
-    assert!(
-        dev.content
-            .contains("setTextColor(DOWE_PRIMARY_TEXT);")
-    );
+    assert!(dev.content.contains("setTextColor(DOWE_PRIMARY_TEXT);"));
     assert!(
         dev.content
             .contains("setBackground(doweInputBackground(DOWE_PRIMARY, null, DOWE_RADIUS));")
@@ -360,9 +389,11 @@ fn generates_android_overlay_surface_action_and_close_parity() {
             .content
             .contains(".width(28.dp)\n                            .height(28.dp)")
     );
-    assert!(views.content.contains(
-        "Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))"
-    ));
+    assert!(
+        views
+            .content
+            .contains("Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))")
+    );
     assert!(views.content.contains(
         "val toastWidth = (viewportWidth - 32.dp).coerceAtLeast(1.dp).coerceAtMost(420.dp)"
     ));
@@ -370,9 +401,8 @@ fn generates_android_overlay_surface_action_and_close_parity() {
 
     let dev = dev_java_source(&output);
     assert!(
-        dev.content.contains(
-            ".setBackground(doweInputBackground(DOWE_WARNING, null, DOWE_RADIUS));"
-        )
+        dev.content
+            .contains(".setBackground(doweInputBackground(DOWE_WARNING, null, DOWE_RADIUS));")
     );
     assert!(
         dev.content
@@ -590,6 +620,22 @@ fn generates_compose_and_dev_display_chat_and_motion_components() {
             .content
             .contains("DoweChatBox(state = state, messagesPath = \"messages\"")
     );
+    assert!(views.content.contains("actionLabel = \"Continue\""));
+    assert!(views.content.contains("DoweChatQuestion"));
+    assert!(views.content.contains("private fun doweChatIsSpanish"));
+    assert!(views.content.contains("Supuestos de trabajo"));
+    assert!(views.content.contains("Choose an option above to continue."));
+    assert!(views.content.contains("question.options.forEach"));
+    assert!(
+        views
+            .content
+            .contains("actionVisible = state.bool(\"actionVisible\")")
+    );
+    assert!(
+        views
+            .content
+            .contains("if (actionVisible && onAction != null && !sending && !pendingChoice)")
+    );
     assert!(views.content.contains("DoweEmpty(kind = \"result\""));
     assert!(
         views
@@ -797,8 +843,14 @@ fn generates_compose_and_dev_rich_control_map_components() {
     assert!(dev.content.contains("doweText(\"voice\""));
     assert!(dev.content.contains("doweTextValue(\"mode\", null)"));
     assert!(dev.content.contains("doweTextValue(\"mode\", null)"));
-    assert!(dev.content.contains("doweWrite(\"mode\", \"list\"); renderCurrentRoute(false);"));
-    assert!(dev.content.contains("doweWrite(\"mode\", \"map\"); renderCurrentRoute(false);"));
+    assert!(
+        dev.content
+            .contains("doweWrite(\"mode\", \"list\"); renderCurrentRoute(false);")
+    );
+    assert!(
+        dev.content
+            .contains("doweWrite(\"mode\", \"map\"); renderCurrentRoute(false);")
+    );
     assert!(dev.content.contains(".equals(view"));
     assert!(dev.content.contains("Active) { doweWrite"));
     assert!(dev.content.contains("doweText(\"Details\""));
@@ -915,16 +967,18 @@ fn generates_portable_grid_controls_and_variant_colors() {
     assert!(dev.content.contains(
         "setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))"
     ));
-    assert!(dev.content.contains("doweCard(DOWE_MUTED, (\"outlined\".equals(\"solid\") ? null : null))"));
-    assert!(dev.content.contains("doweCard(Color.TRANSPARENT, (\"outlined\".equals(\"solid\") ? DOWE_SURFACE : null))"));
+    assert!(
+        dev.content
+            .contains("doweCard(DOWE_MUTED, (\"outlined\".equals(\"solid\") ? null : null))")
+    );
+    assert!(dev.content.contains(
+        "doweCard(Color.TRANSPARENT, (\"outlined\".equals(\"solid\") ? DOWE_SURFACE : null))"
+    ));
     assert!(dev.content.contains(
         "setBackground(doweInputBackground(Color.TRANSPARENT, DOWE_PRIMARY, DOWE_RADIUS))"
     ));
     assert!(dev.content.contains("setBackgroundTintList(null)"));
-    assert!(
-        dev.content
-            .contains("doweText(\"Surface\", DOWE_SURFACE")
-    );
+    assert!(dev.content.contains("doweText(\"Surface\", DOWE_SURFACE"));
 }
 
 #[test]
@@ -1024,11 +1078,14 @@ fn generates_labeled_input_and_select_fields() {
     let dev = dev_java_source(&output);
     if !dev.content.contains(r#"doweControlLabel("Email""#) {
         let i = dev.content.find("Email").unwrap_or(0);
-        panic!("LBL: {}", &dev.content[i.saturating_sub(200)..i+200]);
+        panic!("LBL: {}", &dev.content[i.saturating_sub(200)..i + 200]);
     }
     assert!(dev.content.contains(r#".setHint("Email address")"#));
     assert!(dev.content.contains("doweFloatingInput("));
-    assert!(dev.content.contains(r#""Name", "Full name", DOWE_BACKGROUND_TEXT"#));
+    assert!(
+        dev.content
+            .contains(r#""Name", "Full name", DOWE_BACKGROUND_TEXT"#)
+    );
     let dev_floating_input = dev
         .content
         .find("= doweFloatingInput(")
@@ -1179,6 +1236,51 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(dev.content.contains("doweAudio(\""));
     assert!(dev.content.contains("class DoweAudioWaveView"));
     assert!(dev.content.contains("DOWE_AUDIO_WAVEFORM"));
+
+    let mut card_route = media_display_form_route();
+    card_route.page_tree = ViewNode::RadioGroup {
+        props: RadioGroupProps {
+            style: VariantProps {
+                variant: Some(ComponentVariant::Outlined),
+                color: Some(ColorFamily::Primary),
+                element: ElementProps {
+                    bind: Some("workspace".to_string()),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            size: ButtonSize::Md,
+            orientation: RadioGroupOrientation::Horizontal,
+            presentation: RadioGroupPresentation::Card,
+            name: Some("workspace".to_string()),
+            info: None,
+            error: None,
+        },
+        options: vec![RadioOption {
+            value: "local".to_string(),
+            label: "Local".to_string(),
+            description: Some("Edit files on your computer".to_string()),
+            icon: Some(solar_control_icon("laptop").expect("laptop icon")),
+            disabled: false,
+        }],
+    };
+    let card_output = generate_android(
+        &[card_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let card_views = card_output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("card views");
+    let card_dev = dev_java_source(&card_output);
+    assert!(card_views.content.contains("DoweRadioCard("));
+    assert!(card_views.content.contains("DoweRadioCardOption("));
+    assert!(card_views.content.contains("Edit files on your computer"));
+    assert!(card_dev.content.contains("setBackground(doweInputBackground"));
+    assert!(card_dev.content.contains("doweWrite(\"workspace\", \"local\")"));
     assert!(views.content.contains("private fun DoweImage("));
     assert!(
         views
@@ -1620,6 +1722,11 @@ fn generates_compose_advanced_form_components() {
     assert!(
         views
             .content
+            .contains("onSave = { actionScope.launch { state.run(\"save-editor\") } }")
+    );
+    assert!(
+        views
+            .content
             .contains("DoweImageCropper(value = state.text(\"profile.avatar\")")
     );
     assert!(
@@ -1892,16 +1999,22 @@ fn generates_compose_advanced_form_components() {
 fn generates_unique_dev_pin_cell_arrays_for_multiple_fields() {
     let mut route = advanced_form_route();
     let duplicate = match &route.page_tree {
-        ViewNode::Box { children, .. } => children
-            .iter()
-            .find(|node| matches!(node, ViewNode::Pin { .. }))
-            .cloned()
-            .expect("pin field"),
-        _ => panic!("advanced form container"),
+        ViewNode::Scope { children, .. } => match &children[0] {
+            ViewNode::Box { children, .. } => children
+                .iter()
+                .find(|node| matches!(node, ViewNode::Pin { .. }))
+                .cloned()
+                .expect("pin field"),
+            _ => panic!("advanced form container"),
+        },
+        _ => panic!("advanced form scope"),
     };
     match &mut route.page_tree {
-        ViewNode::Box { children, .. } => children.push(duplicate),
-        _ => panic!("advanced form container"),
+        ViewNode::Scope { children, .. } => match &mut children[0] {
+            ViewNode::Box { children, .. } => children.push(duplicate),
+            _ => panic!("advanced form container"),
+        },
+        _ => panic!("advanced form scope"),
     }
     let output = generate_android(
         &[route],
@@ -2439,7 +2552,18 @@ fn advanced_form_route() -> ViewRoute {
         id: "advanced".to_string(),
         route_path: "/advanced".to_string(),
         layout_tree: ViewNode::Children,
-        page_tree: advanced_form_tree(),
+        page_tree: ViewNode::Scope {
+            constants: Vec::new(),
+            signals: Vec::new(),
+            actions: vec![ViewAction {
+                id: "save-editor".to_string(),
+                name: "saveEditor".to_string(),
+                params: Vec::new(),
+                return_type: None,
+                kind: ViewActionKind::Sequence(Vec::new()),
+            }],
+            children: vec![advanced_form_tree()],
+        },
         sections: Vec::new(),
         navigation_actions: Vec::new(),
     }
@@ -2522,11 +2646,13 @@ fn advanced_form_tree() -> ViewNode {
             ViewNode::Editor {
                 props: EditorProps {
                     style: bound_style("profile.notes", "Notes", "Write notes"),
+                    language: dowe_components::CodeLanguage::Dowe,
                     value: None,
                     min_height: 180,
                     hide_toolbar: false,
                     disabled: false,
                     readonly: false,
+                    on_save: Some("saveEditor".to_string()),
                     name: None,
                     help_text: None,
                     error_text: None,
@@ -2747,13 +2873,25 @@ fn generates_android_view_motion() {
     assert!(
         views
             .content
-            .contains("if (operation == \"replace\") routeRevision += 1")
+            .contains("if (operation == \"replace\") {\n                pageEntranceSuppressed = false\n                routeRevision += 1")
     );
     assert!(
         views
             .content
-            .contains("key(currentEntry.path, routeRevision)")
+            .contains("val pageMotionEnabled = dowePageMotionEnabled(context)")
     );
+    assert!(views.content.contains("var pageEntranceSuppressed by remember { mutableStateOf(false) }"));
+    assert!(views.content.contains("var pageTransitionSequence by remember { mutableIntStateOf(0) }"));
+    assert!(views.content.contains("pageEntranceSuppressed = false\n                routeRevision += 1"));
+    assert!(views.content.contains("AnimatedContent("));
+    assert!(views.content.contains("targetState = currentEntry.path"));
+    assert!(views.content.contains("fadeIn(animationSpec = tween(durationMillis = 280, easing = CubicBezierEasing(0.22f, 0.61f, 0.36f, 1f))) togetherWith ExitTransition.None"));
+    assert!(views.content.contains("dowe-page-transition"));
+    assert!(views.content.contains("CompositionLocalProvider(LocalDowePageEntranceSuppressed provides pageEntranceSuppressed)"));
+    assert!(views.content.contains("val pageEntranceSuppressed = LocalDowePageEntranceSuppressed.current"));
+    assert!(views.content.contains("targetValue = if (pageEntranceSuppressed || preset == DoweAnimationPreset.None || active) 1f else 0f"));
+    assert!(views.content.contains("key(path, routeRevision)"));
+    assert!(!views.content.contains("fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(160))"));
 
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("baseScaleX * 0.94f"));

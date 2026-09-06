@@ -43,16 +43,18 @@ fn dev_activity_grid_layout() -> &'static str {
             int available = Math.max(0, MeasureSpec.getSize(widthSpec) - getPaddingLeft() - getPaddingRight());
             int rowCount = (getChildCount() + tracks.length - 1) / tracks.length;
             int[] intrinsicRowHeights = new int[rowCount];
+            int intrinsicHeightSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
             for (int index = 0; index < getChildCount(); index++) {
                 View child = getChildAt(index);
                 ViewGroup.LayoutParams childParams = child.getLayoutParams();
                 int childWidth = childParams == null ? ViewGroup.LayoutParams.WRAP_CONTENT : childParams.width;
                 int childHeight = childParams == null ? ViewGroup.LayoutParams.WRAP_CONTENT : childParams.height;
                 int cellWidth = trackWidth(available, index % tracks.length);
+                boolean compactWidth = Boolean.TRUE.equals(child.getTag(DOWE_COMPACT_WIDTH_TAG));
                 int childWidthSpec = childWidth >= 0
                     ? MeasureSpec.makeMeasureSpec(Math.min(childWidth, cellWidth), MeasureSpec.EXACTLY)
-                    : MeasureSpec.makeMeasureSpec(cellWidth, MeasureSpec.EXACTLY);
-                int childHeightSpec = getChildMeasureSpec(heightSpec, getPaddingTop() + getPaddingBottom(), childHeight);
+                    : MeasureSpec.makeMeasureSpec(cellWidth, compactWidth ? MeasureSpec.AT_MOST : MeasureSpec.EXACTLY);
+                int childHeightSpec = getChildMeasureSpec(intrinsicHeightSpec, getPaddingTop() + getPaddingBottom(), childHeight);
                 child.measure(childWidthSpec, childHeightSpec);
                 int row = index / tracks.length;
                 intrinsicRowHeights[row] = Math.max(intrinsicRowHeights[row], child.getMeasuredHeight());
@@ -81,9 +83,10 @@ fn dev_activity_grid_layout() -> &'static str {
                     }
                     int cellWidth = trackWidth(available, index % tracks.length);
                     int childWidth = childParams == null ? ViewGroup.LayoutParams.WRAP_CONTENT : childParams.width;
+                    boolean compactWidth = Boolean.TRUE.equals(child.getTag(DOWE_COMPACT_WIDTH_TAG));
                     int childWidthSpec = childWidth >= 0
                         ? MeasureSpec.makeMeasureSpec(Math.min(childWidth, cellWidth), MeasureSpec.EXACTLY)
-                        : MeasureSpec.makeMeasureSpec(cellWidth, MeasureSpec.EXACTLY);
+                        : MeasureSpec.makeMeasureSpec(cellWidth, compactWidth ? MeasureSpec.AT_MOST : MeasureSpec.EXACTLY);
                     child.measure(
                         childWidthSpec,
                         MeasureSpec.makeMeasureSpec(rowHeights[index / tracks.length], MeasureSpec.EXACTLY)

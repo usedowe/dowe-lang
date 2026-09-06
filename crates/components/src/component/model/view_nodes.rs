@@ -316,6 +316,9 @@ pub enum ViewNode {
         props: AccordionProps,
         items: Vec<AccordionItem>,
     },
+    Tree {
+        props: TreeProps,
+    },
     Carousel {
         props: CarouselProps,
         slides: Vec<CarouselSlide>,

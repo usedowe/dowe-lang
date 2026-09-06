@@ -1,10 +1,11 @@
 use crate::{RuntimeError, RuntimeResult};
+use base64::Engine as _;
 use std::path::Path;
 use std::sync::mpsc;
 use webview2_com::{
     CoTaskMemPWSTR, CreateCoreWebView2ControllerCompletedHandler,
     CreateCoreWebView2EnvironmentCompletedHandler,
-    Microsoft::Web::WebView2::Win32::CreateCoreWebView2Environment,
+    Microsoft::Web::WebView2::Win32::CreateCoreWebView2Environment, WebMessageReceivedEventHandler,
 };
 use windows::Win32::Foundation::{E_POINTER, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::UpdateWindow;
@@ -16,21 +17,21 @@ use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, GetMessageW, MSG, PostQuitMessage, RegisterClassW, SW_SHOW, ShowWindow,
     TranslateMessage, WM_CLOSE, WM_DESTROY, WNDCLASSW, WS_OVERLAPPEDWINDOW,
 };
-use windows::core::{Error as WindowsError, PCWSTR, Result as WindowsResult, w};
+use windows::core::{Error as WindowsError, PCWSTR, PWSTR, Result as WindowsResult, w};
 
-pub(super) fn run(name: &str, entry: &Path) -> RuntimeResult<()> {
-    run_uri(name, &file_uri(entry))
+pub(super) fn run(name: &str, entry: &Path, enable_devtools: bool) -> RuntimeResult<()> {
+    run_uri(name, &file_uri(entry), enable_devtools)
 }
 
-pub(super) fn run_uri(name: &str, uri: &str) -> RuntimeResult<()> {
-    run_webview(name, uri).map_err(|error| {
+pub(super) fn run_uri(name: &str, uri: &str, enable_devtools: bool) -> RuntimeResult<()> {
+    run_webview(name, uri, enable_devtools).map_err(|error| {
         RuntimeError::new(format!(
             "Dowe could not start the Windows WebView2 runtime: {error}"
         ))
     })
 }
 
-fn run_webview(name: &str, uri: &str) -> WindowsResult<()> {
+fn run_webview(name: &str, uri: &str, enable_devtools: bool) -> WindowsResult<()> {
     unsafe { FreeConsole() }.ok();
     unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok()? };
     let class = w!("DoweDesktopWindow");
@@ -73,6 +74,11 @@ fn run_webview(name: &str, uri: &str) -> WindowsResult<()> {
         controller.SetIsVisible(true)?;
     }
     let webview = unsafe { controller.CoreWebView2()? };
+    install_notification_bridge(&webview)?;
+    unsafe {
+        let settings = webview.Settings()?;
+        settings.SetAreDevToolsEnabled(enable_devtools)?;
+    }
     let uri = CoTaskMemPWSTR::from(uri);
     unsafe {
         webview.Navigate(*uri.as_ref().as_pcwstr())?;
@@ -82,6 +88,85 @@ fn run_webview(name: &str, uri: &str) -> WindowsResult<()> {
     message_loop()?;
     unsafe { controller.Close()? };
     Ok(())
+}
+
+fn install_notification_bridge(
+    webview: &webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2,
+) -> WindowsResult<()> {
+    let handler = WebMessageReceivedEventHandler::create(Box::new(|_, args| {
+        if let Some(args) = args {
+            let mut message = PWSTR::null();
+            if unsafe { args.WebMessageAsJson(&mut message) }.is_ok() {
+                let message = CoTaskMemPWSTR::from(message);
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(&message.to_string()) {
+                    handle_notification_message(&value);
+                }
+            }
+        }
+        Ok(())
+    }));
+    let mut token = 0;
+    unsafe { webview.add_WebMessageReceived(&handler, &mut token) }
+}
+
+fn handle_notification_message(value: &serde_json::Value) {
+    if value
+        .get("requestPermission")
+        .and_then(serde_json::Value::as_bool)
+        == Some(true)
+    {
+        return;
+    }
+    let Some(id) = value.get("id").and_then(serde_json::Value::as_str) else {
+        return;
+    };
+    let Some(title) = value.get("title").and_then(serde_json::Value::as_str) else {
+        return;
+    };
+    let Some(body) = value.get("body").and_then(serde_json::Value::as_str) else {
+        return;
+    };
+    if id.is_empty() || title.is_empty() || body.is_empty() {
+        return;
+    }
+    let route = value.get("route").and_then(serde_json::Value::as_str);
+    let _ = show_windows_notification(id, title, body, route);
+}
+
+fn show_windows_notification(
+    id: &str,
+    title: &str,
+    body: &str,
+    route: Option<&str>,
+) -> std::io::Result<()> {
+    let script = windows_notification_script(id, title, body, route);
+    std::process::Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-WindowStyle",
+            "Hidden",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
+        .spawn()
+        .map(|_| ())
+}
+
+fn windows_notification_script(id: &str, title: &str, body: &str, route: Option<&str>) -> String {
+    let id = powershell_base64(id);
+    let title = powershell_base64(title);
+    let body = powershell_base64(body);
+    let route = powershell_base64(route.unwrap_or(""));
+    format!(
+        "$e=[Text.Encoding]::UTF8;$id=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{id}'));$title=$e.GetString([Convert]::FromBase64String('{title}'));$body=$e.GetString([Convert]::FromBase64String('{body}'));$route=$e.GetString([Convert]::FromBase64String('{route}'));$xml=New-Object Windows.Data.Xml.Dom.XmlDocument;$xml.LoadXml(\"<toast><visual><binding template='ToastGeneric'><text>$([System.Security.SecurityElement]::Escape($title))</text><text>$([System.Security.SecurityElement]::Escape($body))</text></binding></visual></toast>\");$toast=[Windows.UI.Notifications.ToastNotification]::new($xml);$toast.Tag=$id;[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Dowe').Show($toast)",
+    )
+}
+
+fn powershell_base64(value: &str) -> String {
+    base64::engine::general_purpose::STANDARD.encode(value.as_bytes())
 }
 
 fn create_environment()

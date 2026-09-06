@@ -123,6 +123,7 @@ fn collect_redirect_navigation_actions(
             }
             ViewFunctionStatement::Request { .. }
             | ViewFunctionStatement::Validate { .. }
+            | ViewFunctionStatement::Invoke { .. }
             | ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Toast(_) => {}

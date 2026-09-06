@@ -191,12 +191,25 @@ fn collect_variant_rules<'a>(
                 }
             }
         }
-        ViewNode::Checkbox { .. } => {}
-        ViewNode::Color { props } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::Date { props } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::DateRange { props } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::RadioGroup { .. } => {}
-        ViewNode::Toggle { .. } => {}
+        ViewNode::Checkbox { props } => {
+            push_form_variant_rules(variants, "checkbox", &props.style)
+        }
+        ViewNode::Color { props } => push_form_variant_rules(variants, "control", &props.style),
+        ViewNode::Date { props } => push_form_variant_rules(variants, "control", &props.style),
+        ViewNode::DateRange { props } => {
+            push_form_variant_rules(variants, "control", &props.style)
+        }
+        ViewNode::RadioGroup { props, .. } => {
+            let base = if matches!(props.presentation, RadioGroupPresentation::Card) {
+                "radio-card-group"
+            } else {
+                "radio-group"
+            };
+            push_form_variant_rules(variants, base, &props.style)
+        }
+        ViewNode::Toggle { props } => {
+            push_form_variant_rules(variants, "toggle", &props.style)
+        }
         ViewNode::Button { props, children } => {
             if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
                 for variant in [
@@ -247,32 +260,44 @@ fn collect_variant_rules<'a>(
             }
         }
         ViewNode::Input { props } => {
-            push_variant_rule(variants, "control", props);
+            push_form_variant_rules(variants, "control", props);
         }
         ViewNode::Select { props, .. } => {
-            push_variant_rule(variants, "control", props);
+            push_form_variant_rules(variants, "control", props);
         }
-        ViewNode::ComboBox { props, .. } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::Password { props } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::Phone { props } => push_variant_rule(variants, "control", &props.style),
-        ViewNode::Textarea { props } => push_variant_rule(variants, "control", &props.style),
+        ViewNode::ComboBox { props, .. } => {
+            push_form_variant_rules(variants, "control", &props.style)
+        }
+        ViewNode::Password { props } => {
+            push_form_variant_rules(variants, "control", &props.style)
+        }
+        ViewNode::Phone { props } => {
+            push_form_variant_rules(variants, "control", &props.style)
+        }
+        ViewNode::Textarea { props } => {
+            push_form_variant_rules(variants, "control", &props.style)
+        }
         ViewNode::CsvField { props, .. } => {
-            push_variant_rule(variants, "button", &props.style);
+            push_form_variant_rules(variants, "button", &props.style);
         }
         ViewNode::DragDrop { props, .. } => {
-            push_variant_rule(variants, "drag-drop", &props.style);
+            push_form_variant_rules(variants, "drag-drop", &props.style);
         }
         ViewNode::Editor { props } => {
-            push_variant_rule(variants, "editor", &props.style);
+            push_form_variant_rules(variants, "editor", &props.style);
         }
         ViewNode::ImageCropper { props } => {
-            push_variant_rule(variants, "image-cropper", &props.style);
+            push_form_variant_rules(variants, "image-cropper", &props.style);
         }
         ViewNode::Pin { props } => {
-            push_variant_rule(variants, "control", &props.style);
+            push_form_variant_rules(variants, "control", &props.style);
         }
-        ViewNode::Slider { .. } => {}
-        ViewNode::Dropzone { props } => push_variant_rule(variants, "dropzone-input", &props.style),
+        ViewNode::Slider { props } => {
+            push_form_variant_rules(variants, "slider", &props.style)
+        }
+        ViewNode::Dropzone { props } => {
+            push_form_variant_rules(variants, "dropzone-input", &props.style)
+        }
         ViewNode::Code { props } => {
             push_variant_rule(variants, "code-block", &props.style);
         }
@@ -305,6 +330,9 @@ fn collect_variant_rules<'a>(
         }
         ViewNode::Table { props } => {
             push_variant_rule(variants, "table", &props.style);
+        }
+        ViewNode::Tree { props } => {
+            push_variant_rule(variants, "tree", &props.style);
         }
         ViewNode::Divider { .. } => {}
         ViewNode::Alert { props } => {
@@ -442,6 +470,38 @@ fn collect_variant_rules<'a>(
     }
 }
 
+fn push_form_variant_rules(
+    variants: &mut Vec<(&'static str, ColorFamily, ComponentVariant)>,
+    base: &'static str,
+    props: &VariantProps,
+) {
+    if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
+        for variant in [
+            ComponentVariant::Solid,
+            ComponentVariant::Outlined,
+            ComponentVariant::Ghost,
+        ] {
+            for color in [
+                ColorFamily::Primary,
+                ColorFamily::Secondary,
+                ColorFamily::Accent,
+                ColorFamily::Muted,
+                ColorFamily::Success,
+                ColorFamily::Info,
+                ColorFamily::Warning,
+                ColorFamily::Danger,
+            ] {
+                let mut reactive_props = props.clone();
+                reactive_props.variant = Some(variant);
+                reactive_props.color = Some(color);
+                push_variant_rule(variants, base, &reactive_props);
+            }
+        }
+    } else {
+        push_variant_rule(variants, base, props);
+    }
+}
+
 fn collect_action_toast_variant_rules(
     action: &ViewAction,
     variants: &mut Vec<(&'static str, ColorFamily, ComponentVariant)>,
@@ -484,6 +544,7 @@ fn collect_statement_toast_variant_rules(
             }
             ViewFunctionStatement::Request { .. }
             | ViewFunctionStatement::Validate { .. }
+            | ViewFunctionStatement::Invoke { .. }
             | ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Redirect { .. } => {}
@@ -669,6 +730,7 @@ fn collect_tabs_variant_rules(node: &ViewNode, variants: &mut Vec<(ColorFamily, 
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Alert { .. }
         | ViewNode::Avatar { .. }

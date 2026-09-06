@@ -56,7 +56,7 @@ fn parses_nav_menu_items_submenus_and_megamenu_content() {
 fn parses_scaffold_regions_with_required_main() {
     let tree = parse_page(
         r#"page shellPage
-  Scaffold boxed:true
+  Scaffold boxed:true safeAreaTop:"surface" safeAreaBottom:"primary"
     appBar
       AppBar
         center
@@ -93,6 +93,8 @@ fn parses_scaffold_regions_with_required_main() {
         panic!("scaffold");
     };
     assert!(props.boxed);
+    assert_eq!(props.safe_area_top, Some(dowe_components::ColorToken::Surface));
+    assert_eq!(props.safe_area_bottom, Some(dowe_components::ColorToken::Primary));
     assert_eq!(app_bar.len(), 1);
     assert_eq!(start.len(), 1);
     assert_eq!(main.len(), 1);
@@ -285,7 +287,7 @@ fn rejects_invalid_tabs_structure() {
 fn parses_stepper_and_rejects_invalid_structure() {
     let tree = parse_page(
         r#"page onboardingPage
-  Stepper scheme:"primary" orientation:"horizontal"
+  Stepper bind:selectedStep scheme:"primary" orientation:"horizontal"
     step id:"account" label:"Account"
       Text
         "Account content"
@@ -300,6 +302,7 @@ fn parses_stepper_and_rejects_invalid_structure() {
     };
     assert_eq!(props.variant, dowe_components::TabsVariant::Stepper);
     assert_eq!(props.position, dowe_components::TabsPosition::Top);
+    assert_eq!(props.style.element.bind.as_deref(), Some("selectedStep"));
     assert_eq!(tabs.len(), 2);
 
     let child = parse_page(

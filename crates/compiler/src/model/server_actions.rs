@@ -135,6 +135,7 @@ pub enum ServerStatement {
     Kv(ServerKvStatement),
     Vector(ServerVectorStatement),
     Queue(ServerQueueStatement),
+    Notification(ServerNotificationStatement),
     File(ServerFileStatement),
     Password(ServerPasswordStatement),
     Call(ServerCallStatement),
@@ -196,6 +197,7 @@ pub struct ServerBackgroundJob {
     pub action: Box<ServerFunctionAction>,
     pub schedule: Option<String>,
     pub timing: ServerTaskTiming,
+    pub inline: bool,
     pub source_path: PathBuf,
     pub source_line: usize,
 }
@@ -432,4 +434,11 @@ pub enum ServerQueueStatement {
         queue: StoreLiteral,
         payload: StoreLiteral,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerNotificationStatement {
+    pub binding: String,
+    pub user: StoreLiteral,
+    pub payload: StoreLiteral,
 }

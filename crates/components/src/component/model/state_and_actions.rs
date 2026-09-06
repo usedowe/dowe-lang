@@ -98,6 +98,7 @@ pub struct ViewFunctionReturn {
 pub enum ViewActionKind {
     Sequence(Vec<ViewFunctionStatement>),
     Request(ViewRequestAction),
+    Invoke(ViewInvokeAction),
     Assign(ViewAssignAction),
     Reset(ViewResetAction),
 }
@@ -110,6 +111,10 @@ pub enum ViewFunctionStatement {
     Request {
         result: String,
         action: ViewRequestAction,
+    },
+    Invoke {
+        result: String,
+        action: ViewInvokeAction,
     },
     If {
         result: String,
@@ -142,6 +147,19 @@ pub struct ViewRequestAction {
     pub base_env: Option<String>,
     pub headers: Vec<ViewRequestHeader>,
     pub body: Option<String>,
+    pub update: Option<String>,
+    pub reset: Option<String>,
+    pub success_alert: Option<String>,
+    pub success_message: Option<String>,
+    pub error_alert: Option<String>,
+    pub error_message: Option<String>,
+    pub autoload: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ViewInvokeAction {
+    pub function: String,
+    pub args: Vec<StdlibArgument>,
     pub update: Option<String>,
     pub reset: Option<String>,
     pub success_alert: Option<String>,

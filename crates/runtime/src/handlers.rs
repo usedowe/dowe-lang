@@ -31,9 +31,9 @@ use dowe_compiler::{
     ServerConfig, ServerCryptoAesCtrStatement, ServerCryptoCencAesCtrStatement,
     ServerFileStatement, ServerFunctionAction, ServerJwtStatement, ServerKvStatement,
     ServerMiddleware, ServerMiddlewareResponseBody, ServerMiddlewareStatement,
-    ServerPasswordStatement, ServerQueueStatement, ServerSecret, ServerSpawnStatement,
-    ServerStatement, ServerStoreStatement, ServerVectorStatement, StoreActionJsonEndpoint,
-    StoreConnection, StoreFilter, StoreLiteral, StoreTransactionEndpoint,
+    ServerNotificationStatement, ServerPasswordStatement, ServerQueueStatement, ServerSecret,
+    ServerSpawnStatement, ServerStatement, ServerStoreStatement, ServerVectorStatement,
+    StoreActionJsonEndpoint, StoreConnection, StoreFilter, StoreLiteral, StoreTransactionEndpoint,
     StoreTransactionOperation, VectorActionJsonEndpoint, VectorConnection, VectorConnectionValue,
     ViewPage, WebOutput, WebSocketHandlers, WebSocketSendJsonStatement,
     WebSocketSseBridgeStatement, normalize_cors_method, normalize_http_header_name,
@@ -46,6 +46,7 @@ use dowe_database::{
     D1Client, Database, DatabaseTransactionInsert, DoweDatabaseClient, PostgresClient, StoreRecord,
     StoreValue, init_database, open_database,
 };
+use dowe_notifications::{NotificationPayload, NotificationStore};
 use dowe_queue::{
     DoweQueue, QueueClient, QueueConfig, QueueError, QueueProvider as RuntimeQueueProvider,
     open_namespace as open_queue_namespace,
@@ -74,6 +75,7 @@ include!("handlers/store_helpers.rs");
 include!("handlers/web_assets.rs");
 include!("handlers/server_inspector.rs");
 include!("handlers/store_context_execute.rs");
+include!("handlers/store_context_notifications.rs");
 include!("handlers/store_context_store.rs");
 include!("handlers/store_context_kv.rs");
 include!("handlers/store_context_session.rs");
@@ -81,6 +83,32 @@ include!("handlers/store_context_vector.rs");
 include!("handlers/store_context_queue.rs");
 include!("handlers/store_context_file.rs");
 include!("handlers/store_context_resolve.rs");
+
+pub(crate) async fn execute_native_ipc_action(
+    project: &CompiledProject,
+    action: &ServerFunctionAction,
+    args: Value,
+) -> crate::RuntimeResult<Value> {
+    let mut local_project = project.clone();
+    local_project.local_databases = true;
+    let params = HashMap::new();
+    let body = Bytes::new();
+    execute_reusable_action(
+        &local_project,
+        &local_project.root,
+        &params,
+        &body,
+        None,
+        None,
+        None,
+        action,
+        args,
+        CacheRuntimeMode::Local,
+    )
+    .await
+    .map(|output| output.value)
+    .map_err(|error| crate::RuntimeError::new(format!("{}: {}", error.code, error.message)))
+}
 
 pub(crate) async fn execute_background_action(
     project: &CompiledProject,
@@ -95,6 +123,7 @@ pub(crate) async fn execute_background_action(
         &project.root,
         &params,
         &body,
+        None,
         None,
         None,
         action,

@@ -316,6 +316,7 @@ fn code_types(language: CodeLanguage) -> &'static [&'static str] {
             "Sidebar",
             "Svg",
             "Table",
+            "Tree",
             "Tabs",
             "Stepper",
             "Text",

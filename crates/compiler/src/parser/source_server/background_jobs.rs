@@ -7,6 +7,7 @@ fn parse_task(
     bindings: &HashMap<String, DoweType>,
 ) -> DoweResult<ServerBackgroundJob> {
     let timing = parse_task_timing(node, context)?;
+    let inline = parse_task_mode(node, false)?;
     if node.prop("fn").is_none() {
         if !node.args.is_empty() {
             return Err(node_error(
@@ -29,6 +30,7 @@ fn parse_task(
             action: Box::new(action),
             schedule: None,
             timing,
+            inline,
             source_path: node.location.relative_path.clone(),
             source_line: node.location.line,
         });
@@ -117,13 +119,14 @@ fn parse_target_background_job(
     reject_unknown_props(
         node,
         if cron {
-            &["args", "fn", "schedule"]
+            &["args", "fn", "schedule", "mode"]
         } else {
-            &["args", "after", "fn"]
+            &["args", "after", "fn", "mode"]
         },
     )?;
     let args = parse_background_args(node, context, bindings, cron)?;
     validate_server_function_args(node, &args, &callable.action.params, bindings)?;
+    let inline = parse_task_mode(node, cron)?;
     let schedule = if cron {
         let prop = node
             .prop("schedule")
@@ -143,16 +146,34 @@ fn parse_target_background_job(
         action: Box::new(callable.action.clone()),
         schedule,
         timing,
+        inline,
         source_path: node.location.relative_path.clone(),
         source_line: node.location.line,
     })
+}
+
+fn parse_task_mode(node: &SourceNode, cron: bool) -> DoweResult<bool> {
+    let Some(prop) = node.prop("mode") else {
+        return Ok(false);
+    };
+    let SourceValue::String(value) = &prop.value else {
+        return Err(prop_error(prop, "`mode` must be `process` or `inline`"));
+    };
+    if cron && value == "inline" {
+        return Err(prop_error(prop, "cron jobs must use process mode"));
+    }
+    match value.as_str() {
+        "process" => Ok(false),
+        "inline" => Ok(true),
+        _ => Err(prop_error(prop, "`mode` must be `process` or `inline`")),
+    }
 }
 
 fn parse_task_timing(
     node: &SourceNode,
     context: ActionContext,
 ) -> DoweResult<crate::model::ServerTaskTiming> {
-    reject_unknown_props(node, &["args", "after", "fn"])?;
+    reject_unknown_props(node, &["args", "after", "fn", "mode"])?;
     let Some(prop) = node.prop("after") else {
         return Ok(crate::model::ServerTaskTiming::Immediate);
     };

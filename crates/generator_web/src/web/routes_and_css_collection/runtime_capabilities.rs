@@ -9,6 +9,10 @@ const CONTROLS_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/forms_3.js"),
 ];
 
+const TREE_RUNTIME_MODULES: &[&str] = &[include_str!("router_runtime/tree.js")];
+
+const TREE_RUNTIME_EXPORTS: &[&str] = &["renderTrees"];
+
 const MEDIA_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/overlays_media_1.js"),
     include_str!("router_runtime/overlays_media_2.js"),
@@ -19,9 +23,20 @@ const MEDIA_RUNTIME_MODULES: &[&str] = &[
 const VISUALIZATION_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/visualization_1.js"),
     include_str!("router_runtime/visualization_2.js"),
-    include_str!("router_runtime/visualization_3.js"),
     include_str!("router_runtime/visualization_4.js"),
     include_str!("router_runtime/visualization_5.js"),
+];
+
+const CANVAS_RUNTIME_MODULES: &[&str] = &[
+    include_str!("router_runtime/canvas_render.js"),
+    include_str!("router_runtime/visualization_3.js"),
+    include_str!("router_runtime/canvas_layers.js"),
+];
+
+const CANVAS_RUNTIME_EXPORTS: &[&str] = &[
+    "renderCanvases",
+    "closeCanvasFrames",
+    "hydrateCanvases",
 ];
 
 const CONTROLS_RUNTIME_EXPORTS: &[&str] = &[
@@ -63,7 +78,9 @@ const CONTROLS_RUNTIME_EXPORTS: &[&str] = &[
     "positionPhone",
     "setPhoneCountry",
     "updatePin",
+    "highlightEditor",
     "hydrateAdvancedForms",
+    "renderEditors",
     "handleCsvFile",
 ];
 
@@ -121,11 +138,17 @@ pub fn runtime_chunks_for_trees(
     if features.controls {
         chunks.push(controls_runtime_chunk());
     }
+    if features.tree {
+        chunks.push(tree_runtime_chunk());
+    }
     if features.media {
         chunks.push(media_runtime_chunk());
     }
     if features.visualization {
         chunks.push(visualization_runtime_chunk());
+    }
+    if features.canvas {
+        chunks.push(canvas_runtime_chunk());
     }
     chunks
 }
@@ -148,6 +171,13 @@ fn controls_runtime_chunk() -> GeneratedRuntimeChunk {
         .clone()
 }
 
+fn tree_runtime_chunk() -> GeneratedRuntimeChunk {
+    static CHUNK: std::sync::OnceLock<GeneratedRuntimeChunk> = std::sync::OnceLock::new();
+    CHUNK
+        .get_or_init(|| capability_runtime_chunk("tree", TREE_RUNTIME_MODULES, TREE_RUNTIME_EXPORTS))
+        .clone()
+}
+
 fn media_runtime_chunk() -> GeneratedRuntimeChunk {
     static CHUNK: std::sync::OnceLock<GeneratedRuntimeChunk> = std::sync::OnceLock::new();
     CHUNK
@@ -163,7 +193,7 @@ fn capability_runtime_chunk(
     exported_functions: &[&str],
 ) -> GeneratedRuntimeChunk {
     let mut source = format!(
-        r#"window.__doweRegisterRuntimeCapability("{name}",api=>{{const{{readPath,writePath,runAction,scopeFor,renderReactive,touchFormValidation,onViewportResize,onViewportScroll}}=api;let activeView=null;"#,
+        r#"window.__doweRegisterRuntimeCapability("{name}",api=>{{const{{readPath,writePath,runAction,scopeFor,renderReactive,touchFormValidation,onViewportResize,onViewportScroll,getActiveView,prefersReducedMotion,tokenColor}}=api;let activeView=null;"#,
     );
     source.reserve(modules.iter().map(|module| module.len()).sum());
     for module in modules {
@@ -204,7 +234,7 @@ fn visualization_runtime_chunk() -> GeneratedRuntimeChunk {
     CHUNK
         .get_or_init(|| {
             let mut source = String::from(
-                r#"window.__doweRegisterRuntimeCapability("visualization",api=>{const{readPath,writePath,runAction,scopeFor,renderReactive,getActiveView,prefersReducedMotion}=api;"#,
+                r#"window.__doweRegisterRuntimeCapability("visualization",api=>{const{readPath,writePath,runAction,scopeFor,renderReactive,getActiveView,prefersReducedMotion,tokenColor}=api;"#,
             );
             source.reserve(
                 VISUALIZATION_RUNTIME_MODULES
@@ -217,19 +247,26 @@ fn visualization_runtime_chunk() -> GeneratedRuntimeChunk {
                 source.push('\n');
             }
             source.push_str(
-                "return{renderCharts,renderCanvases,renderCandlesticks,closeCandlestickStreams,closeCanvasFrames,hydrateCanvases,hydrateCandlesticks,renderDiagrams,hydrateDiagrams};});",
+                "return{renderCharts,renderCandlesticks,closeCandlestickStreams,hydrateCandlesticks,renderDiagrams,hydrateDiagrams};});",
             );
             GeneratedRuntimeChunk::new("visualization", minify_js(&source))
         })
         .clone()
 }
 
+fn canvas_runtime_chunk() -> GeneratedRuntimeChunk {
+    static CHUNK: std::sync::OnceLock<GeneratedRuntimeChunk> = std::sync::OnceLock::new();
+    CHUNK.get_or_init(|| capability_runtime_chunk("canvas", CANVAS_RUNTIME_MODULES, CANVAS_RUNTIME_EXPORTS)).clone()
+}
+
 #[derive(Default)]
 struct RuntimeFeatures {
     styles: bool,
     controls: bool,
+    tree: bool,
     media: bool,
     visualization: bool,
+    canvas: bool,
 }
 
 fn runtime_features<'a>(roots: impl IntoIterator<Item = &'a ViewNode>) -> RuntimeFeatures {
@@ -238,9 +275,11 @@ fn runtime_features<'a>(roots: impl IntoIterator<Item = &'a ViewNode>) -> Runtim
     while let Some(node) = pending.pop() {
         features.styles |= node_uses_style_bindings(node);
         features.controls |= node_uses_controls(node);
+        features.tree |= node_uses_tree(node);
         features.media |= node_uses_media(node);
         features.media |= node_actions_use_media(node);
         features.visualization |= node_uses_visualization(node);
+        features.canvas |= matches!(node, ViewNode::Canvas { .. });
         for group in dowe_components::node_child_groups(node) {
             pending.extend(group);
         }
@@ -258,7 +297,7 @@ fn node_actions_use_media(tree: &ViewNode) -> bool {
 fn action_uses_media(action: &ViewAction) -> bool {
     match &action.kind {
         ViewActionKind::Sequence(statements) => statements_use_media(statements),
-        ViewActionKind::Request(_) | ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => false,
+        ViewActionKind::Request(_) | ViewActionKind::Invoke(_) | ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => false,
     }
 }
 
@@ -270,6 +309,7 @@ fn statements_use_media(statements: &[ViewFunctionStatement]) -> bool {
         }
         ViewFunctionStatement::Validate { .. }
         | ViewFunctionStatement::Request { .. }
+        | ViewFunctionStatement::Invoke { .. }
         | ViewFunctionStatement::Assign(_)
         | ViewFunctionStatement::Reset(_)
         | ViewFunctionStatement::Redirect { .. } => false,
@@ -296,8 +336,7 @@ fn node_uses_style_bindings(node: &ViewNode) -> bool {
 fn node_uses_visualization(tree: &ViewNode) -> bool {
     matches!(
         tree,
-        ViewNode::Canvas { .. }
-            | ViewNode::Diagram { .. }
+        ViewNode::Diagram { .. }
             | ViewNode::Candlestick { .. }
             | ViewNode::ArcChart { .. }
             | ViewNode::AreaChart { .. }
@@ -323,6 +362,10 @@ fn node_uses_controls(tree: &ViewNode) -> bool {
             | ViewNode::Date { .. }
             | ViewNode::DateRange { .. }
     )
+}
+
+fn node_uses_tree(node: &ViewNode) -> bool {
+    matches!(node, ViewNode::Tree { .. })
 }
 
 fn node_uses_media(tree: &ViewNode) -> bool {

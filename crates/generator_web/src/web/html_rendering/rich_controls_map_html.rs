@@ -105,10 +105,15 @@ fn render_toggle_group_html(
     if let Some(label) = props.aria_label.as_ref() {
         extra.push_str(&format!(r#" aria-label="{}""#, escape_attr(label)));
     }
+    let selected = props
+        .value
+        .as_deref()
+        .and_then(|path| context.initial_value(path).and_then(initial_string))
+        .unwrap_or_else(|| props.selected.clone());
     let buttons = items
         .iter()
         .map(|item| {
-            let active = props.selected.split(',').any(|value| value == item.id);
+            let active = selected.split(',').any(|value| value == item.id);
             let variant = props.style.variant.unwrap_or(ComponentVariant::Solid).as_str();
             let family = props.style.color.unwrap_or(ColorFamily::Muted);
             let color = family.as_str();
@@ -268,6 +273,11 @@ fn render_collapsible_html(
         r#" data-dowe-collapsible data-dowe-collapsible-open="{}""#,
         props.default_open
     );
+    let label = props
+        .label
+        .strip_prefix("@signal:")
+        .map(|path| format!(r#"<span data-dowe-text="{}"></span>"#, escape_attr(&context.signal_path(path))))
+        .unwrap_or_else(|| escape_html(&props.label));
     format!(
         r#"<div{}><button class="collapsible-header" type="button" aria-expanded="{}" data-dowe-collapsible-trigger{}><span class="collapsible-label">{}</span><span class="collapsible-arrow" aria-hidden="true">{}</span></button><div class="collapsible-content" data-dowe-collapsible-content{}><div class="collapsible-content-inner">{}</div></div></div>"#,
         attrs(
@@ -278,7 +288,7 @@ fn render_collapsible_html(
         ),
         props.default_open,
         if props.disabled { " disabled" } else { "" },
-        escape_html(&props.label),
+        label,
         arrow_html,
         if props.default_open { "" } else { " hidden" },
         body

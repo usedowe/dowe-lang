@@ -54,7 +54,15 @@ pub(crate) fn validate_server_module_source(
     file: &SourceFile,
     environment: &EnvironmentConfig,
 ) -> DoweResult<()> {
-    parse_server_module(root, file, environment, &mut Vec::new(), true).map(|_| ())
+    parse_server_module(
+        root,
+        file,
+        environment,
+        &mut Vec::new(),
+        true,
+        &mut HashMap::new(),
+    )
+    .map(|_| ())
 }
 
 fn parse_server_nodes(
@@ -79,12 +87,21 @@ fn parse_server_nodes(
         .map(|node| parse_server_config(node, imports, types, environment, ServerTarget::Server))
         .transpose()?
         .unwrap_or_default();
-    let desktop_server = child_named(main, "desktop")
+    let desktop = child_named(main, "desktop");
+    let desktop_server = desktop
         .and_then(|desktop| child_named(desktop, "server"))
         .map(|node| parse_server_config(node, imports, types, environment, ServerTarget::Desktop))
         .transpose()?;
+    let (ipc_functions, ipc_databases) = child_named(main, "ipc")
+        .map(|node| parse_native_ipc_functions(node, imports))
+        .transpose()?
+        .unwrap_or_default();
+    let native_ipc = NativeIpcConfig {
+        functions: ipc_functions,
+        databases: ipc_databases,
+    };
 
-    let databases = database_bindings(imports, &backend, desktop_server.as_ref())?;
+    let databases = database_bindings(imports, &backend, desktop_server.as_ref(), &native_ipc)?;
     let inspector = build_server_inspector(
         path,
         nodes,
@@ -96,6 +113,7 @@ fn parse_server_nodes(
     Ok(ServerRoot {
         backend,
         desktop_server,
+        native_ipc,
         databases,
         inspector,
     })
@@ -105,6 +123,7 @@ fn parse_server_nodes(
 pub struct ServerRoot {
     pub backend: ServerConfig,
     pub desktop_server: Option<ServerConfig>,
+    pub native_ipc: NativeIpcConfig,
     pub databases: Vec<DatabaseBinding>,
     pub inspector: ServerInspectorManifest,
 }
@@ -132,7 +151,7 @@ enum ServerTarget {
     Desktop,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct ServerImports {
     handlers: HashMap<String, ServerHandler>,
     middlewares: HashMap<String, ServerMiddleware>,

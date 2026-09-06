@@ -9,7 +9,7 @@ static ENV_LOCK: Mutex<()> = Mutex::new(());
 fn compiles_the_self_contained_fullstack_example() {
     let _guard = ENV_LOCK.lock().expect("env lock");
     let temp = TempDir::new().expect("tempdir");
-    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../skill-data/examples/fullstack");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/embedded/examples/fullstack");
     copy_tree(&source, temp.path());
     fs::copy(temp.path().join(".env.example"), temp.path().join(".env")).expect("env");
 
@@ -43,8 +43,7 @@ fn compiles_the_self_contained_fullstack_example() {
 fn compiles_the_reference_ui_example() {
     let _guard = ENV_LOCK.lock().expect("env lock");
     let temp = TempDir::new().expect("tempdir");
-    let source =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../skill-data/examples/reference-ui");
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/embedded/examples/reference-ui");
     copy_tree(&source, temp.path());
     fs::copy(temp.path().join(".env.example"), temp.path().join(".env")).expect("env");
 

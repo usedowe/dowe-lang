@@ -178,6 +178,11 @@
   border-radius:var(--dowe-radius);
   padding:.5rem;
 }
+.drag-drop-list.is-drag-over {
+  border-color:var(--dowe-primary);
+  outline:2px dashed var(--dowe-primary);
+  outline-offset:3px;
+}
 .drag-drop-empty {
   display:flex;
   min-height:3rem;

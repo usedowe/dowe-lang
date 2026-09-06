@@ -12,7 +12,9 @@ dowe_compiler = { path = "../compiler" }
 dowe_deploy = { path = "../deploy" }
 dowe_icons = { path = "../icons" }
 dowe_runtime = { path = "../runtime" }
+dowe_notifications = { path = "../notifications" }
 dowe_spawn = { path = "../spawn" }
+serde_json.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

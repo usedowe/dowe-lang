@@ -182,17 +182,54 @@ fn render_canvas_html(props: &CanvasProps, context: &ReactiveRenderContext) -> S
         props.autoplay,
         background,
     );
+    if props.draw {
+        let mode = if props.draw_mode_binding {
+            context.signal_path(&props.draw_mode)
+        } else {
+            props.draw_mode.clone()
+        };
+        extra.push_str(&format!(r#" data-dowe-canvas-draw="true" data-dowe-canvas-draw-mode="{}"{}"#, escape_attr(&mode), if props.draw_mode_binding { " data-dowe-canvas-draw-mode-binding=\"true\"" } else { "" }));
+    }
+    if let Some(path) = props.layer_bind.as_deref() {
+        extra.push_str(&format!(
+            r#" data-dowe-canvas-layer-bind="{}""#,
+            escape_attr(&context.signal_path(path))
+        ));
+    }
+    if let Some(path) = props.selected_layer.as_deref() {
+        extra.push_str(&format!(
+            r#" data-dowe-canvas-selected="{}""#,
+            escape_attr(&context.signal_path(path))
+        ));
+    }
+    for (attribute, action) in [
+        ("data-dowe-canvas-on-layer-add", props.on_layer_add.as_deref()),
+        ("data-dowe-canvas-on-layer-change", props.on_layer_change.as_deref()),
+        ("data-dowe-canvas-on-layer-remove", props.on_layer_remove.as_deref()),
+        ("data-dowe-canvas-on-layer-select", props.on_layer_select.as_deref()),
+    ] {
+        if let Some(action) = action {
+            extra.push_str(&format!(
+                r#" {attribute}="{}""#,
+                escape_attr(&context.action_id(action))
+            ));
+        }
+    }
     if let Some(action) = props.on_pointer.as_deref() {
         extra.push_str(&format!(
             r#" data-dowe-canvas-on-pointer="{}""#,
             escape_attr(&context.action_id(action))
         ));
     }
-    if let Some(action) = props.on_key.as_deref() {
+    if props.on_key.is_some() || props.layer_bind.is_some() {
+        if let Some(action) = props.on_key.as_deref() {
         extra.push_str(&format!(
             r#" data-dowe-canvas-on-key="{}" tabindex="0""#,
             escape_attr(&context.action_id(action))
         ));
+        } else {
+            extra.push_str(r#" tabindex="0""#);
+        }
     }
     if let Some(action) = props.on_motion.as_deref() {
         extra.push_str(&format!(
@@ -426,12 +463,19 @@ fn render_tabs_html(
     children_html: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
+    let mut extra = String::new();
+    if let Some(bind) = props.style.element.bind.as_deref() {
+        extra.push_str(&format!(
+            r#" data-dowe-tabs-bind="{}""#,
+            escape_attr(&context.signal_path(bind))
+        ));
+    }
     let mut html = format!(
         "<div{} data-dowe-tabs>",
         attrs(
             tabs_classes(props),
             Some(&props.style.element),
-            None,
+            Some(&extra),
             context
         )
     );

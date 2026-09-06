@@ -120,6 +120,36 @@ fn compose_radio_options(options: &[RadioOption]) -> String {
     format!("listOf({values})")
 }
 
+fn compose_radio_card_options(options: &[RadioOption]) -> String {
+    let values = options
+        .iter()
+        .map(|option| {
+            let (icon_view_box, icon_paths) = option
+                .icon
+                .as_ref()
+                .map(|icon| {
+                    (
+                        compose_svg_view_box(&icon.props.view_box),
+                        compose_svg_paths(&icon.paths),
+                    )
+                })
+                .map(|(view_box, paths)| (format!("{view_box}"), format!("{paths}")))
+                .unwrap_or_else(|| ("null".to_string(), "null".to_string()));
+            format!(
+                "DoweRadioCardOption(value = {}, title = {}, description = {}, iconViewBox = {}, iconPaths = {}, disabled = {})",
+                compose_string_literal(&option.value),
+                compose_string_literal(&option.label),
+                compose_optional_string(option.description.as_deref()),
+                icon_view_box,
+                icon_paths,
+                option.disabled
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("listOf({values})")
+}
+
 fn compose_table_columns(columns: &[TableColumn]) -> String {
     let values = columns
         .iter()

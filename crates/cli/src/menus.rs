@@ -110,26 +110,6 @@ pub(crate) fn prompt_d1_migrations_output() -> Result<String, Box<dyn std::error
         .interact_text()?)
 }
 
-pub(crate) fn prompt_agent_command() -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let commands = agent_commands();
-    let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Dowe agent")
-        .items(&commands)
-        .default(0)
-        .interact_opt()?;
-
-    Ok(selection.map(|index| commands[index].to_string()))
-}
-
-pub(crate) fn prompt_agent_prompt() -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let prompt = Input::<String>::with_theme(&ColorfulTheme::default())
-        .with_prompt("Describe what Dowe should build")
-        .allow_empty(false)
-        .interact_text()?;
-
-    Ok(Some(prompt))
-}
-
 pub(crate) fn prompt_agent_example_query() -> Result<Option<String>, Box<dyn std::error::Error>> {
     let query = Input::<String>::with_theme(&ColorfulTheme::default())
         .with_prompt("Search Dowe examples")
@@ -463,10 +443,6 @@ pub(crate) fn root_commands() -> [&'static str; 18] {
     ]
 }
 
-pub(crate) fn agent_commands() -> [&'static str; 2] {
-    ["init", "update"]
-}
-
 pub(crate) fn harness_commands() -> [&'static str; 3] {
     ["init", "check", "status"]
 }
@@ -494,7 +470,7 @@ pub(crate) fn database_commands() -> [&'static str; 11] {
 #[cfg(test)]
 mod tests {
     use super::{
-        agent_commands, codegraph_commands, database_commands, deploy_target_default_index,
+        codegraph_commands, database_commands, deploy_target_default_index,
         dev_target_default_states, harness_commands, root_commands, should_prompt_simulator_quit,
     };
     use dowe_deploy::{DeploySurface, DeployTarget, deploy_targets_for_surface};
@@ -575,11 +551,6 @@ mod tests {
             0
         );
         assert_eq!(deploy_target_default_index(&targets, None), 0);
-    }
-
-    #[test]
-    fn agent_menu_contains_recommended_external_agent_workflows() {
-        assert_eq!(agent_commands(), ["init", "update"]);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 const DOWE_ICON_SVG="__DOWE_INSPECTOR_ICON_SVG__";
 const SERVER_INSPECTOR_URL="__DOWE_SERVER_INSPECTOR_URL__";
 const BRAND={navy:"#1f3a5f",green:"#6bc670",ink:"#102a15",panel:"#10243b",panelSoft:"#173452",line:"#33506f",muted:"#b8c7d8",white:"#f8fbff"};
-const state={enabled:false,hidden:false,panelOpen:false,detailsOpen:false,selected:null,selectedElement:null,manifest:null,overlay:null,tooltip:null,panel:null,button:null,activeTab:"inspect",runtimeRegistered:false,runtimeView:null,routeQuery:"",focusRoutes:false,viewportBadge:null,drag:{active:false,moved:false,suppressClick:false,offsetX:0,offsetY:0,startX:0,startY:0}};
+const state={enabled:false,hidden:false,panelOpen:false,detailsOpen:false,selected:null,selectedElement:null,manifest:null,overlay:null,tooltip:null,panel:null,button:null,activeTab:"inspect",runtimeRegistered:false,runtimeView:null,routeQuery:"",focusRoutes:false,viewportBadge:null,studioEmbedded:false,studioPanel:null,drag:{active:false,moved:false,suppressClick:false,offsetX:0,offsetY:0,startX:0,startY:0}};
 function nodeAt(target){return target instanceof Element?target.closest("[data-dowe-node]"):null;}
 function metadata(node){return state.manifest?.nodes?.find(item=>item.id===node?.dataset.doweNode)||null;}
 function reference(item){return item?item.path+":"+item.startLine+"-"+item.endLine:"";}
@@ -316,6 +316,7 @@ function ensureUi(){
   state.button.addEventListener("pointercancel",endButtonDrag);
   document.body.append(state.button);
   restoreButtonPosition();
+  if(state.studioEmbedded)state.button.style.display="none";
   state.overlay=document.createElement("div");
   style(state.overlay,{position:"fixed",zIndex:"2147483644",pointerEvents:"none",border:"2px solid "+BRAND.green,background:"#6bc67022",display:"none",boxSizing:"border-box"});
   document.body.append(state.overlay);
@@ -327,6 +328,7 @@ function ensureUi(){
   state.panel.tabIndex=-1;
   style(state.panel,{position:"fixed",zIndex:"2147483645",display:"none",boxSizing:"border-box",width:"min(470px,calc(100vw - 24px))",maxHeight:"min(78vh,680px)",overflow:"auto",padding:"13px",border:"1px solid "+BRAND.line,borderRadius:"12px",background:BRAND.panel,color:BRAND.white,font:"13px/1.45 system-ui",boxShadow:"0 14px 44px #102a1588"});
   document.body.append(state.panel);
+  if(state.studioEmbedded)state.panel.style.display="none";
   document.addEventListener("mousemove",event=>{if(!state.enabled||state.hidden)return;const node=nodeAt(event.target);if(!node){clearHover();return;}showHover(node,event.clientX,event.clientY);});
   document.addEventListener("click",event=>{if(!state.enabled||state.hidden)return;const node=nodeAt(event.target);if(!node||event.target.closest("#dowe-inspector-ui,#dowe-inspector-panel"))return;event.preventDefault();event.stopPropagation();select(node);},true);
   document.addEventListener("keydown",event=>{
@@ -352,6 +354,7 @@ function showHover(node,x,y){
 function showSelected(node){
   const item=metadata(node);
   if(!item)return;
+  postDoweStudio("studio:view:hover",{node:item});
   state.selected=item;
   state.selectedElement=node;
   state.detailsOpen=false;
@@ -359,6 +362,7 @@ function showSelected(node){
   persistPanelOpen();
   renderPanel(item);
   fetch("/_dowe/dev/inspector-selection",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({node:item})}).catch(()=>{});
+  postDoweStudio("studio:view:selected",{node:item});
 }
 function select(node){
   showSelected(node);
@@ -413,5 +417,44 @@ async function loadManifest(){
     if(state.hidden)hideDevtools();else if(state.panelOpen)renderPanel(state.selected);
   }catch(error){}
 }
+function studioText(parent,label,value){const row=document.createElement("div");style(row,{padding:"7px 0",borderBottom:"1px solid #33506f"});const title=document.createElement("div");title.textContent=label;style(title,{color:"#b8c7d8",fontSize:"11px",fontWeight:"700",textTransform:"uppercase"});const text=document.createElement("div");text.textContent=value||"—";style(text,{color:"#f8fbff",overflowWrap:"anywhere"});row.append(title,text);parent.append(row);}
+function studioInspectorPanel(){
+  const device=document.querySelector("[data-dowe-studio-inspector]");
+  const frame=device?.querySelector("iframe");
+  if(!device||!frame)return;
+  if(state.studioPanel)return;
+  ensureUi();
+  state.hidden=true;
+  state.panelOpen=false;
+  state.button.style.display="none";
+  state.panel.style.display="none";
+  const panel=document.createElement("aside");
+  panel.id="dowe-studio-inspector";
+  style(panel,{position:"fixed",right:"16px",bottom:"16px",zIndex:"2147483643",width:"min(360px,calc(100vw - 32px))",maxHeight:"min(55vh,480px)",overflow:"auto",padding:"16px",border:"1px solid #33506f",borderRadius:"14px",background:"#10243b",color:"#f8fbff",font:"13px/1.45 system-ui",boxShadow:"0 14px 44px #102a1588"});
+  const heading=document.createElement("strong");heading.textContent="Dowe Studio Inspector";style(heading,{display:"block",fontSize:"15px",marginBottom:"8px"});panel.append(heading);
+  const status=document.createElement("div");status.textContent="Connecting to preview…";style(status,{color:"#b8c7d8",marginBottom:"6px"});panel.append(status);
+  state.studioPanel=panel;
+  document.body.append(panel);
+  const nonce=crypto.randomUUID?.()||String(Date.now())+Math.random();
+  const sendHello=()=>{try{frame.contentWindow.postMessage({channel:"dowe-studio",version:1,type:"studio:hello",nonce,studio:true},new URL(frame.src,location.href).origin);}catch(error){}};
+  frame.addEventListener("load",sendHello);
+  window.addEventListener("message",event=>{
+    const message=event.data;
+    if(!message||message.channel!=="dowe-studio"||event.source!==frame.contentWindow)return;
+    if(message.type==="studio:ready"){status.textContent="Preview connected";return;}
+    if(message.type!=="studio:view:selected"||!message.payload?.node)return;
+    const node=message.payload.node;
+    panel.replaceChildren(heading,status);
+    status.textContent="Preview connected";
+    studioText(panel,"Component",node.kind);
+    studioText(panel,"Source",String(node.path||"")+":"+String(node.startLine||""));
+    if(Array.isArray(node.props)&&node.props.length)studioText(panel,"Props",node.props.map(item=>item.name+": "+item.value).join("\n"));
+    if(Array.isArray(node.usages)&&node.usages.length)studioText(panel,"Usage",node.usages.map(item=>item.path+":"+item.line).join("\n"));
+  });
+  sendHello();
+}
+window.addEventListener("message",event=>{const message=event.data;if(message?.channel==="dowe-studio"&&message.type==="studio:hello"&&event.source===window.parent&&message.studio===true){state.studioEmbedded=true;ensureUi();state.enabled=true;state.button.style.display="none";state.panel.style.display="none";}});
 window.__doweInspectorRefresh=loadManifest;
 loadManifest();
+setTimeout(studioInspectorPanel,0);
+new MutationObserver(()=>studioInspectorPanel()).observe(document.body,{childList:true,subtree:true});

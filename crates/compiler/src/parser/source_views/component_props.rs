@@ -16,25 +16,31 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
             "variant" | "scheme" | "size" | "rounded",
             SourceValue::Bareword(path),
         ) => PropValue::String(format!("@signal:{path}")),
-        (BuiltinComponent::Button | BuiltinComponent::Swap, "loading", SourceValue::Bareword(path)) => {
-            PropValue::String(format!("@signal:{path}"))
-        }
-        (BuiltinComponent::Button | BuiltinComponent::Swap, "disabled", SourceValue::Bareword(path)) => {
-            PropValue::String(format!("@signal:{path}"))
-        }
+        (
+            BuiltinComponent::Button | BuiltinComponent::Swap,
+            "loading",
+            SourceValue::Bareword(path),
+        ) => PropValue::String(format!("@signal:{path}")),
+        (
+            BuiltinComponent::Button | BuiltinComponent::Swap,
+            "disabled",
+            SourceValue::Bareword(path),
+        ) => PropValue::String(format!("@signal:{path}")),
         (
             BuiltinComponent::SideNav,
             "variant" | "scheme" | "size" | "wide",
             SourceValue::Bareword(path),
         ) => PropValue::String(format!("@signal:{path}")),
-        (BuiltinComponent::Image, "src", SourceValue::Bareword(path)) => {
-            PropValue::String(format!("@signal:{path}"))
-        }
+        (
+            BuiltinComponent::Image | BuiltinComponent::Iframe,
+            "src",
+            SourceValue::Bareword(path),
+        ) => PropValue::String(format!("@signal:{path}")),
         (
             BuiltinComponent::Drawer
-                | BuiltinComponent::Modal
-                | BuiltinComponent::AlertDialog
-                | BuiltinComponent::Command,
+            | BuiltinComponent::Modal
+            | BuiltinComponent::AlertDialog
+            | BuiltinComponent::Command,
             "bind",
             SourceValue::Bareword(path),
         ) => PropValue::String(path.clone()),
@@ -45,17 +51,49 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
             PropValue::Binding(
                 dowe_components::PropBinding::new(
                     path.clone(),
-                    if matches!(prop.name.as_str(), "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "w" | "h" | "minW" | "minH" | "maxW" | "maxH" | "border") {
+                    if matches!(
+                        prop.name.as_str(),
+                        "p" | "px"
+                            | "py"
+                            | "pl"
+                            | "pr"
+                            | "pt"
+                            | "pb"
+                            | "w"
+                            | "h"
+                            | "minW"
+                            | "minH"
+                            | "maxW"
+                            | "maxH"
+                            | "border"
+                    ) {
                         dowe_components::PropValueKind::Number
                     } else {
                         dowe_components::PropValueKind::String
                     },
                 )
-                .with_fallback(if matches!(prop.name.as_str(), "p" | "px" | "py" | "pl" | "pr" | "pt" | "pb" | "w" | "h" | "minW" | "minH" | "maxW" | "maxH" | "border") {
-                    PropValue::Number("8".to_string())
-                } else {
-                    PropValue::String(String::new())
-                }),
+                .with_fallback(
+                    if matches!(
+                        prop.name.as_str(),
+                        "p" | "px"
+                            | "py"
+                            | "pl"
+                            | "pr"
+                            | "pt"
+                            | "pb"
+                            | "w"
+                            | "h"
+                            | "minW"
+                            | "minH"
+                            | "maxW"
+                            | "maxH"
+                            | "border"
+                    ) {
+                        PropValue::Number("8".to_string())
+                    } else {
+                        PropValue::String(String::new())
+                    },
+                ),
             )
         }
         (BuiltinComponent::Icon, "name", SourceValue::Bareword(path)) => {
@@ -64,23 +102,17 @@ fn component_prop(component: BuiltinComponent, prop: &SourceProp) -> DoweResult<
         (BuiltinComponent::Button, "iconStart" | "iconEnd", SourceValue::Object(entries)) => {
             PropValue::String(parse_conditional_icon(prop, entries)?)
         }
-        (BuiltinComponent::Card, "animation", SourceValue::Bareword(path)) => {
-            PropValue::Binding(
-                dowe_components::PropBinding::new(
-                    path.clone(),
-                    dowe_components::PropValueKind::String,
-                )
+        (BuiltinComponent::Card, "animation", SourceValue::Bareword(path)) => PropValue::Binding(
+            dowe_components::PropBinding::new(path.clone(), dowe_components::PropValueKind::String)
                 .with_fallback(PropValue::String("none".to_string())),
-            )
-        }
-        (_, "show", SourceValue::Bareword(path)) => {
-            PropValue::String(format!("@signal:{path}"))
-        }
+        ),
+        (_, "show", SourceValue::Bareword(path)) => PropValue::String(format!("@signal:{path}")),
         (_, "show", SourceValue::Object(entries)) if show_condition_entries(entries) => {
             PropValue::String(parse_show_condition(prop, entries)?)
         }
         (_, _, SourceValue::Bareword(path))
-            if dowe_components::accepts_reactive_prop(component, &prop.name) => {
+            if dowe_components::accepts_reactive_prop(component, &prop.name) =>
+        {
             let contract = dowe_components::component_prop_contract(component, &prop.name)
                 .expect("reactive component prop contract");
             PropValue::Binding(
@@ -102,10 +134,7 @@ fn show_condition_entries(entries: &[SourceObjectEntry]) -> bool {
     })
 }
 
-fn parse_show_condition(
-    prop: &SourceProp,
-    entries: &[SourceObjectEntry],
-) -> DoweResult<String> {
+fn parse_show_condition(prop: &SourceProp, entries: &[SourceObjectEntry]) -> DoweResult<String> {
     if entries.iter().any(|entry| matches!(entry, SourceObjectEntry::KeyValue { key, .. } if matches!(key.as_str(), "eq" | "equals"))) {
         let mut path = None;
         let mut value = None;
@@ -252,6 +281,23 @@ fn validate_component_prop_source(
             ComponentError::invalid_prop("source", "signal object path").to_string(),
         ));
     }
+    if component == BuiltinComponent::Draw
+        && matches!(prop.name.as_str(), "bind" | "selected")
+        && !matches!(&prop.value, SourceValue::Bareword(_))
+    {
+        return Err(prop_error(
+            prop,
+            ComponentError::invalid_prop(
+                &prop.name,
+                if prop.name == "bind" {
+                    "signal array path"
+                } else {
+                    "signal string path"
+                },
+            )
+            .to_string(),
+        ));
+    }
     if component == BuiltinComponent::AvatarGroup
         && prop.name == "items"
         && !matches!(&prop.value, SourceValue::Bareword(_))
@@ -318,6 +364,15 @@ fn validate_component_prop_source(
             ComponentError::invalid_prop("value", "signal string path").to_string(),
         ));
     }
+    if component == BuiltinComponent::Tree
+        && matches!(prop.name.as_str(), "data" | "bind")
+        && !matches!(&prop.value, SourceValue::Bareword(_))
+    {
+        return Err(prop_error(
+            prop,
+            ComponentError::invalid_prop(&prop.name, "signal or constant path").to_string(),
+        ));
+    }
     if !is_known_component_prop(component, &prop.name)
         || allows_bare_component_reference(component, prop)
         || matches!(&prop.value, SourceValue::Bareword(_))
@@ -346,43 +401,68 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             SourceValue::Bareword(_),
         ) => true,
         (BuiltinComponent::Card, "animation", SourceValue::Bareword(_)) => true,
-        (
-            BuiltinComponent::Avatar,
-            "icon",
-            SourceValue::Bareword(_),
-        )
-        | (
-            BuiltinComponent::Icon,
-            "fill" | "stroke",
-            SourceValue::Bareword(_),
-        )
+        (BuiltinComponent::Avatar, "icon", SourceValue::Bareword(_))
+        | (BuiltinComponent::Icon, "fill" | "stroke", SourceValue::Bareword(_))
         | (BuiltinComponent::Icon, "name", SourceValue::Bareword(_)) => true,
-        (BuiltinComponent::Button | BuiltinComponent::Swap, "loading" | "disabled", SourceValue::Bareword(_)) => true,
+        (
+            BuiltinComponent::Button | BuiltinComponent::Swap,
+            "loading" | "disabled",
+            SourceValue::Bareword(_),
+        ) => true,
         (
             BuiltinComponent::SideNav,
             "variant" | "scheme" | "size" | "wide",
             SourceValue::Bareword(_),
         ) => true,
-        (BuiltinComponent::Image, "src", SourceValue::Bareword(_)) => true,
+        (BuiltinComponent::Image | BuiltinComponent::Iframe, "src", SourceValue::Bareword(_)) => {
+            true
+        }
         (BuiltinComponent::Button, "iconStart" | "iconEnd", SourceValue::Object(_)) => true,
         (
             BuiltinComponent::Input
             | BuiltinComponent::Select
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::CsvField
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
             | BuiltinComponent::Slider
             | BuiltinComponent::Checkbox
             | BuiltinComponent::Color
             | BuiltinComponent::Date
             | BuiltinComponent::RadioGroup
+            | BuiltinComponent::RadioCard
             | BuiltinComponent::Toggle
-            | BuiltinComponent::ComboBox
-            | BuiltinComponent::Editor
-            | BuiltinComponent::ImageCropper
             | BuiltinComponent::Password
             | BuiltinComponent::Phone
             | BuiltinComponent::Pin
             | BuiltinComponent::Textarea
             | BuiltinComponent::Swap,
             "bind",
+            SourceValue::Bareword(_),
+        )
+        | (
+            BuiltinComponent::Input
+            | BuiltinComponent::Select
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::CsvField
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
+            | BuiltinComponent::Password
+            | BuiltinComponent::Phone
+            | BuiltinComponent::Pin
+            | BuiltinComponent::Textarea
+            | BuiltinComponent::Checkbox
+            | BuiltinComponent::Color
+            | BuiltinComponent::Date
+            | BuiltinComponent::DateRange
+            | BuiltinComponent::RadioGroup
+            | BuiltinComponent::RadioCard
+            | BuiltinComponent::Toggle
+            | BuiltinComponent::Slider
+            | BuiltinComponent::Dropzone,
+            "onChange" | "onInput",
             SourceValue::Bareword(_),
         )
         | (BuiltinComponent::DateRange, "start" | "end", SourceValue::Bareword(_))
@@ -394,8 +474,18 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             SourceValue::Bareword(_),
         )
         | (
-            BuiltinComponent::Canvas,
-            "scene" | "onPointer" | "onKey" | "onMotion",
+            BuiltinComponent::Canvas | BuiltinComponent::Draw,
+            "scene"
+                | "bind"
+                | "selected"
+                | "onPointer"
+                | "onKey"
+                | "onMotion"
+                | "drawMode"
+                | "onLayerAdd"
+                | "onLayerChange"
+                | "onLayerRemove"
+                | "onLayerSelect",
             SourceValue::Bareword(_),
         )
         | (
@@ -447,6 +537,8 @@ fn allows_bare_component_reference(component: BuiltinComponent, prop: &SourcePro
             SourceValue::Bareword(_),
         )
         | (BuiltinComponent::ToggleGroup, "onChange", SourceValue::Bareword(_))
+        | (BuiltinComponent::Tree, "data" | "bind" | "onSelect", SourceValue::Bareword(_))
+        | (BuiltinComponent::Editor, "onSave", SourceValue::Bareword(_))
         | (BuiltinComponent::Countdown, "onComplete", SourceValue::Bareword(_))
         | (
             BuiltinComponent::Map,

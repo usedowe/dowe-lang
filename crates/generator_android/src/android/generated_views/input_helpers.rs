@@ -343,13 +343,40 @@ private fun DoweDragItemView(item: DoweDragItem, contentColor: Color) {
 }
 
 @Composable
-private fun DoweEditorField(value: String, onValueChange: (String) -> Unit, label: String?, placeholder: String, minHeight: Dp, hideToolbar: Boolean, readOnly: Boolean, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
-    Column(modifier = modifier.clip(RoundedCornerShape(16.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.18f), RoundedCornerShape(16.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+private fun DoweEditorTokens(source: String, language: String, contentColor: Color): AnnotatedString {
+    val keywords = if (language == "dowe") "action|set|component|config|each|else|handler|if|import|layout|page|return|route|server|signal|type|views" else "as|async|await|class|const|else|export|from|function|if|import|interface|let|new|return|type|var"
+    val pattern = Regex("(//[^\\n]*|#[^\\n]*|/\\*[\\s\\S]*?\\*/|\\\"(?:\\\\.|[^\\\"])*\\\"|'(?:\\\\.|[^'])*'|\\b(?:$keywords)\\b|\\b\\d+(?:\\.\\d+)?\\b)")
+    return buildAnnotatedString {
+        var end = 0
+        pattern.findAll(source).forEach { match ->
+            append(source.substring(end, match.range.first))
+            val token = match.value
+            val color = when {
+                token.startsWith("//") || token.startsWith(35.toChar().toString()) || token.startsWith("/*") -> contentColor.copy(alpha = 0.55f)
+                token.startsWith("\"") || token.startsWith("'") -> DoweDesign.success
+                token.firstOrNull()?.isDigit() == true -> DoweDesign.warning
+                else -> DoweDesign.primary
+            }
+            withStyle(SpanStyle(color = color)) { append(token) }
+            end = match.range.last + 1
+        }
+        append(source.substring(end))
+    }
+}
+
+@Composable
+private fun DoweEditorField(value: String, onValueChange: (String) -> Unit, language: String, label: String?, placeholder: String, minHeight: Dp, hideToolbar: Boolean, readOnly: Boolean, onSave: (() -> Unit)?, modifier: Modifier, backgroundColor: Color, contentColor: Color) {
+    Column(modifier = modifier.onPreviewKeyEvent { event ->
+        if (onSave != null && event.type == KeyEventType.KeyDown && event.key == Key.S && (event.nativeKeyEvent.isCtrlPressed || event.nativeKeyEvent.isMetaPressed)) {
+            onSave()
+            true
+        } else false
+    }.clip(RoundedCornerShape(16.dp)).background(backgroundColor).border(1.dp, contentColor.copy(alpha = 0.18f), RoundedCornerShape(16.dp)), verticalArrangement = Arrangement.spacedBy(0.dp)) {
         if (label != null) Text(text = label, modifier = Modifier.padding(12.dp, 10.dp, 12.dp, 0.dp), fontWeight = FontWeight.SemiBold, color = contentColor)
         if (!hideToolbar) Row(modifier = Modifier.fillMaxWidth().background(contentColor.copy(alpha = 0.08f)).padding(6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             listOf("B", "I", "U", "List").forEach { Text(it, modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(contentColor.copy(alpha = 0.08f)).padding(horizontal = 8.dp, vertical = 5.dp), fontWeight = FontWeight.Bold, color = contentColor) }
         }
-        BasicTextField(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).padding(12.dp), textStyle = TextStyle(color = contentColor), decorationBox = { inner -> Box { if (value.isEmpty() && placeholder.isNotEmpty()) Text(placeholder, color = contentColor.copy(alpha = 0.52f)); inner() } })
+        BasicTextField(value = value, onValueChange = { if (!readOnly) onValueChange(it) }, modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).padding(12.dp), textStyle = TextStyle(color = Color.Transparent, fontFamily = FontFamily.Monospace), decorationBox = { inner -> Box { if (value.isEmpty() && placeholder.isNotEmpty()) Text(placeholder, color = contentColor.copy(alpha = 0.52f)); Text(DoweEditorTokens(value, language, contentColor), fontFamily = FontFamily.Monospace); inner() } })
     }
 }
 

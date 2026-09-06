@@ -176,7 +176,12 @@ pub fn collapsible_component_node(
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
-            "label" => label = Some(parse_required_string(&prop.name, &prop.value)?),
+            "label" => {
+                label = Some(match &prop.value {
+                    PropValue::Binding(binding) => format!("@signal:{}", binding.path),
+                    _ => parse_required_string(&prop.name, &prop.value)?,
+                });
+            }
             "defaultOpen" => default_open = parse_static_bool(&prop.name, &prop.value)?,
             "disabled" => disabled = parse_static_bool(&prop.name, &prop.value)?,
             "color" => return Err(scheme_prop_error(BuiltinComponent::Collapsible)),

@@ -418,6 +418,14 @@ private fun DoweCoverBox(modifier: Modifier = Modifier, source: String?, overlay
     }
 }
 
+private data class DoweGridItemData(val compactWidth: Boolean)
+
+private object DoweGridCompactWidthModifier : ParentDataModifier {
+    override fun Density.modifyParentData(parentData: Any?): Any? = DoweGridItemData(compactWidth = true)
+}
+
+private fun Modifier.doweGridCompactWidth(): Modifier = then(DoweGridCompactWidthModifier)
+
 @Composable
 private fun DoweGrid(modifier: Modifier = Modifier, tracks: List<Float>, horizontalGap: Dp, verticalGap: Dp, horizontalAlignment: Alignment.Horizontal, verticalAlignment: Alignment.Vertical, horizontalStretch: Boolean, fillHeight: Boolean, verticalStretch: Boolean, content: @Composable () -> Unit) {
     val density = LocalDensity.current
@@ -429,8 +437,11 @@ private fun DoweGrid(modifier: Modifier = Modifier, tracks: List<Float>, horizon
         val availableWidth = (constraints.maxWidth - horizontal * (columnCount - 1)).coerceAtLeast(0)
         val totalWeight = weights.sum().coerceAtLeast(1f)
         val cellWidths = weights.map { (availableWidth * it / totalWeight).toInt() }
+        val intrinsicConstraints = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
         val placeables = measurables.mapIndexed { index, measurable ->
-            measurable.measure(constraints.copy(minWidth = if (horizontalStretch) cellWidths[index % columnCount] else 0, maxWidth = cellWidths[index % columnCount]))
+            val compactWidth = (measurable.parentData as? DoweGridItemData)?.compactWidth == true
+            val cellWidth = cellWidths[index % columnCount]
+            measurable.measure(intrinsicConstraints.copy(minWidth = if (horizontalStretch && !compactWidth) cellWidth else 0, maxWidth = cellWidth))
         }
         val intrinsicRowHeights = placeables.chunked(columnCount).map { row -> row.maxOfOrNull { it.height } ?: 0 }
         val intrinsicHeight = intrinsicRowHeights.sum() + vertical * (intrinsicRowHeights.size - 1).coerceAtLeast(0)
@@ -448,9 +459,11 @@ private fun DoweGrid(modifier: Modifier = Modifier, tracks: List<Float>, horizon
         val laidOutPlaceables = if (verticalStretch) {
             measurables.mapIndexed { index, measurable ->
                 val rowHeight = rowHeights[index / columnCount]
+                val compactWidth = (measurable.parentData as? DoweGridItemData)?.compactWidth == true
+                val cellWidth = cellWidths[index % columnCount]
                 val stretched = measurable.measure(constraints.copy(
-                    minWidth = if (horizontalStretch) cellWidths[index % columnCount] else 0,
-                    maxWidth = cellWidths[index % columnCount],
+                    minWidth = if (horizontalStretch && !compactWidth) cellWidth else 0,
+                    maxWidth = cellWidth,
                     minHeight = 0,
                     maxHeight = rowHeight
                 ))

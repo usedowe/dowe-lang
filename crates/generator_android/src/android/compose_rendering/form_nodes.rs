@@ -172,13 +172,21 @@ fn render_compose_form_node(
                 props.value.as_deref().unwrap_or_default(),
                 context,
             );
+            let save = props
+                .on_save
+                .as_deref()
+                .and_then(|name| context.action_id(name))
+                .map(|id| format!("{{ actionScope.launch {{ state.run(\"{}\") }} }}", escape_kotlin(id)))
+                .unwrap_or_else(|| "null".to_string());
             output.push_str(&format!(
-                "{pad}DoweEditorField(value = {value}, onValueChange = {change}, label = {}, placeholder = {}, minHeight = {}.dp, hideToolbar = {}, readOnly = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                "{pad}DoweEditorField(value = {value}, onValueChange = {change}, language = {}, label = {}, placeholder = {}, minHeight = {}.dp, hideToolbar = {}, readOnly = {}, onSave = {}, modifier = {}, backgroundColor = {}, contentColor = {})\n",
+                compose_string_literal(props.language.as_str()),
                 compose_optional_string(props.style.label.as_deref()),
                 compose_string_literal(props.style.placeholder.as_deref().unwrap_or_default()),
                 props.min_height,
                 props.hide_toolbar,
                 props.readonly || props.disabled,
+                save,
                 modifier_for_style(&props.style.style),
                 variant_container(&props.style),
                 variant_content(&props.style)

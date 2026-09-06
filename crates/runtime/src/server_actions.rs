@@ -34,6 +34,7 @@ pub(crate) fn execute_server_action_with_resolver(
             ServerStatement::Kv(_) => {}
             ServerStatement::Vector(_) => {}
             ServerStatement::Queue(_) => {}
+            ServerStatement::Notification(_) => {}
             ServerStatement::File(_) => {}
             ServerStatement::Password(_) => {}
             ServerStatement::Call(_) => {}

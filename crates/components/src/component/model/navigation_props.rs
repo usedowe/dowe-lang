@@ -28,6 +28,8 @@ pub struct NavMenuProps {
 pub struct ScaffoldProps {
     pub style: StyleProps,
     pub boxed: bool,
+    pub safe_area_top: Option<ColorToken>,
+    pub safe_area_bottom: Option<ColorToken>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

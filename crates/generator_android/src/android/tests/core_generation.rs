@@ -1,4 +1,12 @@
 #[test]
+fn accepts_view_group_roots_in_dev_route_shards() {
+    for layout_index in [None, Some(0)] {
+        let source = super::dev_route_shard(&route(), layout_index, "DoweDevRouteTest", "dev.test");
+        assert!(source.contains("static void render(DoweDevActivity runtime, ViewGroup root)"));
+    }
+}
+
+#[test]
 fn generates_persistent_view_store_for_compose_and_dev_shell() {
     let mut persistent = route();
     persistent.page_tree = ViewNode::Scope {
@@ -40,6 +48,7 @@ fn generates_persistent_view_store_for_compose_and_dev_shell() {
     ));
     assert!(generated.contains("getSharedPreferences(\"dowe_view_state\""));
     assert!(generated.contains("compatibleSignalValue(stored, initial[id])"));
+    assert!(generated.contains("candidate.scope == \"global\" && candidate.name == metadata.name"));
 }
 
 #[test]
@@ -1023,14 +1032,14 @@ fn generates_compose_box_and_text() {
     );
     assert!(
         dev.content
-            .contains("boolean useDarkIcons = Color.luminance(DOWE_BACKGROUND) > 0.179f")
+            .contains("boolean useDarkStatusIcons = doweColorLuminance(doweSafeAreaTopColor) > 0.179f")
     );
     assert!(dev.content.contains(
-        "getWindow().getInsetsController().setSystemBarsAppearance(useDarkIcons ? mask : 0, mask)"
+        "getWindow().getInsetsController().setSystemBarsAppearance(appearance, statusMask | navigationMask)"
     ));
     assert!(
         dev.content
-            .contains("doweApplyTheme(name);\n        doweApplySystemBarAppearance();")
+            .contains("doweApplyTheme(name);\n        doweUpdateSafeAreaColors();\n        doweApplySystemBarAppearance();")
     );
     assert!(dev.content.contains("view.setOnApplyWindowInsetsListener"));
     assert!(dev.content.contains("scrollView.setClipToPadding(true);"));
@@ -1038,6 +1047,16 @@ fn generates_compose_box_and_text() {
         "scrollView.setOnScrollChangeListener((view, scrollX, scrollY, oldScrollX, oldScrollY) -> doweUpdatePinnedAppBarDock(scrollY > doweDp(100), true));"
     ));
     assert!(dev.content.contains("scrollView.addView(root"));
+    assert!(dev.content.contains("private boolean dowePageTransitioning = false;"));
+    assert!(dev.content.contains("private void doweStartPageTransition()"));
+    assert!(dev.content.contains("private void doweFinishPageTransition()"));
+    assert!(dev.content.contains("setDuration(280)"));
+    assert!(dev.content.contains("new PathInterpolator(0.22f, 0.61f, 0.36f, 1f)"));
+    assert!(dev.content.contains("if (dowePageEntranceSuppressed)"));
+    assert!(dev.content.contains("doweStartPageTransition();"));
+    assert!(dev.content.contains("doweFinishPageTransition();"));
+    assert!(dev.content.contains("withEndAction(() ->"));
+    assert!(dev.content.contains("dowePageTransitioning = false;"));
     assert!(dev.content.contains(
             "new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)"
         ));
@@ -1057,7 +1076,7 @@ fn generates_compose_box_and_text() {
             .contains("DoweDevLayout0.render(this, root, pageRoot -> renderPage(this, pageRoot));")
     );
     assert!(dev.content.contains("final class DoweDevLayout0"));
-    assert!(dev.content.contains("page.accept(view0);"));
+    assert!(dev.content.contains("page.accept(doweCreatePageContainer("));
     assert!(dev.content.contains("private static void renderPage("));
     assert!(dev.content.contains("doweFontName(null)"));
     assert!(
@@ -1112,17 +1131,17 @@ fn generates_compose_box_and_text() {
     assert!(
         main_activity
             .content
-            .contains("val useDarkSystemBarIcons = DoweDesign.background.luminance() > 0.179f")
+            .contains("val useDarkStatusBarIcons = doweSafeAreaTopColor(incomingPath).luminance() > 0.179f")
     );
     assert!(
         main_activity
             .content
-            .contains("isAppearanceLightStatusBars = useDarkSystemBarIcons")
+            .contains("isAppearanceLightStatusBars = useDarkStatusBarIcons")
     );
     assert!(
         main_activity
             .content
-            .contains("isAppearanceLightNavigationBars = useDarkSystemBarIcons")
+            .contains("isAppearanceLightNavigationBars = useDarkNavigationBarIcons")
     );
     assert!(
         main_activity
@@ -1561,6 +1580,72 @@ fn preserves_explicit_rounded_values_across_android_renderers() {
         "doweRound(view1, doweResponsiveFloat(viewportWidth, 999f, null, null, null, null))"
     ));
     assert!(dev.content.contains("view.setClipToOutline(true)"));
+}
+
+#[test]
+fn generates_android_card_cover_and_foreground_layers_for_dev_launcher() {
+    let mut cover_route = route();
+    cover_route.layout_tree = ViewNode::Children;
+    cover_route.page_tree = ViewNode::Card {
+        props: VariantProps {
+            style: StyleProps {
+                cover: Some(ResponsiveValue::scalar(CoverSource("/assets/card.webp".to_string()))),
+                overlay: Some(ResponsiveValue::scalar(OverlayPaint::BlackOpacity("0.62".to_string()))),
+                text: Some(ResponsiveValue::scalar(ColorToken::White)),
+                spacing: SpacingProps {
+                    p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                    ..Default::default()
+                },
+                sizing: SizingProps {
+                    min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(144),
+                    ))),
+                    ..Default::default()
+                },
+                rounded: Some(ResponsiveValue::scalar(RoundedSize::Lg)),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![ViewNode::Flex {
+            props: LayoutProps {
+                direction: ResponsiveValue::scalar(dowe_components::FlexDirection::Column),
+                justify: Some(ResponsiveValue::scalar(Justify::End)),
+                gap: Some(ResponsiveValue::scalar(GapValue::Single(GapSize::Scale(
+                    ScaleValue::from_half_steps(4),
+                )))),
+                style: StyleProps {
+                    sizing: SizingProps {
+                        min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                            ScaleValue::from_half_steps(120),
+                        ))),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![text("Readable")],
+        }],
+    };
+    let output = generate_android(
+        &[cover_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let generated = all_android_source(&output);
+    assert!(generated.contains("FrameLayout view0 = new FrameLayout(this)"));
+    assert!(generated.contains("runtime.doweImage"));
+    assert!(generated.contains("CoverOverlay.setBackgroundColor"));
+    assert!(generated.contains("Content = doweContainer(false)"));
+    assert!(generated.contains("ContentLeft = 0"));
+    assert!(generated.contains("runtime.DOWE_JUSTIFY_END"));
+    assert!(generated.contains("MinHeight = runtime.doweResponsiveInt(viewportWidth, 240"));
+    assert!(generated.contains("Math.max(verticalPadding + childrenHeight + gapTotal, getSuggestedMinimumHeight())"));
+    assert!(generated.contains("int intrinsicHeightSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)"));
+    assert!(generated.contains("val intrinsicConstraints = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)"));
+    assert!(generated.contains("runtime.doweText(\"Readable\", runtime.doweResponsiveInt(viewportWidth, Color.WHITE"));
 }
 
 #[test]
@@ -2053,6 +2138,14 @@ fn keeps_layouts_composed_when_page_reads_layout_state() {
     );
     let dev = dev_java_source(&output);
 
+    assert!(
+        dev.content
+            .contains("ViewGroup doweCreatePageContainer(ViewGroup parent)")
+    );
+    assert!(
+        dev.content
+            .contains(".render(this, doweCreatePageContainer(root));")
+    );
     assert!(!dev.content.contains("final class DoweDevLayout0"));
     assert!(!dev.content.contains("private static void renderPage("));
     assert!(

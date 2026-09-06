@@ -58,6 +58,8 @@ fn navigation_shell_route() -> ViewRoute {
             props: ScaffoldProps {
                 style: StyleProps::default(),
                 boxed: true,
+                safe_area_top: None,
+                safe_area_bottom: None,
             },
             app_bar: vec![ViewNode::NavMenu {
                 props: NavMenuProps {

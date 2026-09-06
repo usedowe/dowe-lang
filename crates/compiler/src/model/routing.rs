@@ -9,9 +9,7 @@ pub(super) fn match_route(pattern: &str, path: &str) -> Option<HashMap<String, S
     }
 
     let mut params = HashMap::new();
-    let splat = pattern_segments
-        .last()
-        .and_then(|segment| segment.strip_prefix('*'));
+    let splat = pattern_segments.last().and_then(route_splat_name);
     let fixed_pattern_len = if splat.is_some() {
         pattern_segments.len().saturating_sub(1)
     } else {
@@ -31,7 +29,7 @@ pub(super) fn match_route(pattern: &str, path: &str) -> Option<HashMap<String, S
         .take(fixed_pattern_len)
         .zip(path_segments.iter())
     {
-        if let Some(param_name) = pattern_segment.strip_prefix(':') {
+        if let Some(param_name) = route_parameter_name(pattern_segment) {
             params.insert(param_name.to_string(), (*path_segment).to_string());
         } else if pattern_segment != path_segment {
             return None;
@@ -46,4 +44,26 @@ pub(super) fn match_route(pattern: &str, path: &str) -> Option<HashMap<String, S
     }
 
     Some(params)
+}
+
+fn route_parameter_name(segment: &str) -> Option<&str> {
+    segment
+        .strip_prefix(':')
+        .or_else(|| {
+            segment
+                .strip_prefix('{')
+                .and_then(|value| value.strip_suffix('}'))
+        })
+        .filter(|name| !name.is_empty() && !name.starts_with('*'))
+}
+
+fn route_splat_name<'a>(segment: &&'a str) -> Option<&'a str> {
+    segment
+        .strip_prefix('*')
+        .or_else(|| {
+            segment
+                .strip_prefix("{*")
+                .and_then(|value| value.strip_suffix('}'))
+        })
+        .filter(|name| !name.is_empty())
 }

@@ -107,11 +107,17 @@ async fn handle_watch_changes(
     } else {
         None
     };
-    let compiled =
-        compile_watch_project(compiler, paths.clone(), compile_server, previous_project).await;
+    let compiled = compile_watch_project(
+        compiler,
+        paths.clone(),
+        compile_server,
+        previous_project.clone(),
+    )
+    .await;
 
     match compiled {
         Ok(mut project) => {
+            Arc::make_mut(&mut project).studio_preview = previous_project.studio_preview;
             if compile_server {
                 Arc::make_mut(&mut project).local_databases = true;
                 if let Err(error) = crate::database_bootstrap::prepare_databases(&project).await {
@@ -131,9 +137,11 @@ async fn handle_watch_changes(
                 next.backend = current.backend.clone();
                 next.desktop_server = current.desktop_server.clone();
                 next.databases = current.databases.clone();
+                next.native_ipc = current.native_ipc.clone();
                 next.server_inspector = current.server_inspector.clone();
                 next.local_databases = current.local_databases;
             }
+            apply_active_development_bindings(&mut project, &previous_project, selection);
             let server_init_action = (compile_server && selection.contains(DevTarget::Server))
                 .then(|| project.backend.init_action.clone());
 
@@ -200,6 +208,57 @@ async fn handle_watch_changes(
                 paths,
             );
         }
+    }
+}
+
+fn apply_active_development_bindings(
+    project: &mut Arc<CompiledProject>,
+    current: &CompiledProject,
+    selection: &DevTargetSelection,
+) {
+    let next = Arc::make_mut(project);
+    if selection.contains(DevTarget::Server) {
+        next.backend.port = current.backend.port;
+        if let Some(inspector) = &mut next.server_inspector {
+            inspector.port = current.backend.port;
+        }
+        preserve_environment_value(next, current, "BACKEND_URL");
+        preserve_environment_value(next, current, "SERVER_URL");
+    }
+    if selection.contains(DevTarget::Desktop) {
+        if let (Some(next_server), Some(current_server)) =
+            (&mut next.desktop_server, &current.desktop_server)
+        {
+            next_server.port = current_server.port;
+        }
+        preserve_environment_value(next, current, "BACKEND_DESKTOP_URL");
+        preserve_environment_value(next, current, "SERVER_DESKTOP_URL");
+    }
+}
+
+fn preserve_environment_value(
+    project: &mut CompiledProject,
+    current: &CompiledProject,
+    name: &str,
+) {
+    let Some(active) = current
+        .environment_config
+        .variables
+        .iter()
+        .find(|variable| variable.name == name)
+        .cloned()
+    else {
+        return;
+    };
+    if let Some(variable) = project
+        .environment_config
+        .variables
+        .iter_mut()
+        .find(|variable| variable.name == name)
+    {
+        *variable = active;
+    } else {
+        project.environment_config.variables.push(active);
     }
 }
 
@@ -305,6 +364,7 @@ mod tests {
         let current = state.project.read().await;
         assert!(current.web.pages[0].body_html.contains("Changed"));
         assert_eq!(current.backend.endpoints.len(), 1);
+        assert_eq!(current.native_ipc.functions[0].name, "nativeTest");
         assert!(current.server_inspector.is_some());
         assert!(temp.path().join(".dowe/server/inspector.json").exists());
         assert!(current.apps.files.is_empty());
@@ -568,10 +628,17 @@ views viewRoutes
         } else {
             ""
         };
+        fs::create_dir_all(root.join("server")).expect("server directory");
+        fs::write(
+            root.join("server/native.dowe"),
+            "fn nativeTest return:\"string\"\n  return value:\"ready\"\n",
+        )
+        .expect("native function");
         fs::write(
             root.join("main.dowe"),
             format!(
                 r#"import viewRoutes from "@/routes/view"
+import nativeTest from "@/server/native"
 
 main
   views:viewRoutes
@@ -580,7 +647,8 @@ main
       response text:"OK"
 {second_route}
     init
-      log "Server inicializado""#
+      log "Server inicializado"
+  ipc functions:[nativeTest]"#
             ),
         )
         .expect("server");

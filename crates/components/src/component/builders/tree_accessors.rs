@@ -74,6 +74,7 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
             .iter()
             .find_map(|marker| marker.label.clone().or_else(|| marker.popup.clone())),
         ViewNode::Accordion { items, .. } => items.iter().find_map(|item| Some(item.label.clone())),
+        ViewNode::Tree { props } => Some(props.empty_label.clone()),
         ViewNode::Carousel { props, slides } => props.title.clone().or_else(|| {
             slides
                 .iter()
@@ -284,6 +285,7 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         ViewNode::LineChart { props } => Some(&props.common.style.element),
         ViewNode::PieChart { props } => Some(&props.common.style.element),
         ViewNode::Table { props } => Some(&props.style.element),
+        ViewNode::Tree { props } => Some(&props.style.element),
         ViewNode::Divider { props } => Some(&props.style.element),
         ViewNode::Alert { props } => Some(&props.style.element),
         ViewNode::Svg { props, .. } => Some(&props.style.element),
@@ -372,6 +374,7 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Alert { .. }
         | ViewNode::Audio { .. }

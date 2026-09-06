@@ -3,6 +3,9 @@ fn is_known_selection_and_text_prop(component: BuiltinComponent, name: &str) -> 
             BuiltinComponent::Accordion => {
                 matches!(name, "variant" | "scheme" | "multiple" | "color")
             }
+            BuiltinComponent::Tree => {
+                matches!(name, "data" | "bind" | "defaultOpen" | "emptyLabel" | "ariaLabel" | "onSelect" | "variant" | "scheme" | "color")
+            }
             BuiltinComponent::Carousel => matches!(
                 name,
                 "autoplay"
@@ -26,7 +29,7 @@ fn is_known_selection_and_text_prop(component: BuiltinComponent, name: &str) -> 
             BuiltinComponent::Checkbox => {
                 matches!(
                     name,
-                    "bind" | "checked" | "label" | "name" | "disabled" | "scheme" | "color"
+                    "bind" | "checked" | "label" | "name" | "disabled" | "variant" | "scheme" | "size" | "rounded" | "onChange" | "color"
                 )
             }
             BuiltinComponent::Color => matches!(
@@ -45,6 +48,9 @@ fn is_known_selection_and_text_prop(component: BuiltinComponent, name: &str) -> 
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "color"
             ),
@@ -60,6 +66,9 @@ fn is_known_selection_and_text_prop(component: BuiltinComponent, name: &str) -> 
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "min"
                     | "max"
@@ -79,14 +88,17 @@ fn is_known_selection_and_text_prop(component: BuiltinComponent, name: &str) -> 
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "min"
                     | "max"
                     | "color"
             ),
-            BuiltinComponent::RadioGroup => matches!(
+            BuiltinComponent::RadioGroup | BuiltinComponent::RadioCard => matches!(
                 name,
-                "bind" | "label" | "name" | "info" | "error" | "scheme" | "size" | "color"
+                "bind" | "label" | "name" | "info" | "error" | "variant" | "scheme" | "size" | "rounded" | "onChange" | "color"
             ),
             BuiltinComponent::Toggle => matches!(
                 name,
@@ -98,6 +110,10 @@ fn is_known_selection_and_text_prop(component: BuiltinComponent, name: &str) -> 
                     | "name"
                     | "disabled"
                     | "scheme"
+                    | "variant"
+                    | "size"
+                    | "rounded"
+                    | "onChange"
                     | "color"
             ),
             BuiltinComponent::Camera => matches!(

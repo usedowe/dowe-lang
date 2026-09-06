@@ -30,10 +30,72 @@ mod tests {
             Value::String("Ada".to_string())
         );
 
+        let truncated = call(
+            "str",
+            "truncate",
+            vec![
+                ("value", string("🙂 Dowe")),
+                ("max", StdlibValue::Number("3".to_string())),
+            ],
+        );
+        assert_eq!(
+            evaluate(&truncated, |_| None).unwrap(),
+            Value::String("🙂 D".to_string())
+        );
+
         let parsed = call("parse", "int", vec![("value", string("42"))]);
         assert_eq!(
             evaluate(&parsed, |_| None).unwrap(),
             Value::Number(Number::from(42))
+        );
+
+        let greater = call(
+            "math",
+            "gte",
+            vec![
+                ("left", StdlibValue::Number("2".to_string())),
+                ("right", StdlibValue::Number("2".to_string())),
+            ],
+        );
+        assert_eq!(evaluate(&greater, |_| None).unwrap(), Value::Bool(true));
+
+        let matching = call(
+            "list",
+            "filterContainsAny",
+            vec![
+                (
+                    "values",
+                    StdlibValue::Array(vec![StdlibValue::Object(vec![(
+                        "content".to_string(),
+                        string("landing page"),
+                    )])]),
+                ),
+                ("field", string("content")),
+                ("needles", StdlibValue::Array(vec![string("page")])),
+            ],
+        );
+        assert_eq!(
+            evaluate(&matching, |_| None)
+                .unwrap()
+                .as_array()
+                .map(Vec::len),
+            Some(1)
+        );
+
+        let joined = call(
+            "list",
+            "concat",
+            vec![
+                ("values", StdlibValue::Array(vec![string("a")])),
+                ("other", StdlibValue::Array(vec![string("b")])),
+            ],
+        );
+        assert_eq!(
+            evaluate(&joined, |_| None).unwrap(),
+            Value::Array(vec![
+                Value::String("a".to_string()),
+                Value::String("b".to_string())
+            ])
         );
 
         let sum = call(
@@ -56,6 +118,13 @@ mod tests {
 
     #[test]
     fn parses_csv_with_header() {
+        let equal = call(
+            "str",
+            "equals",
+            vec![("value", string("1.0.25")), ("other", string("1.0.25"))],
+        );
+        assert_eq!(evaluate(&equal, |_| None).unwrap(), Value::Bool(true));
+
         let parsed = call(
             "csv",
             "parse",
@@ -206,6 +275,19 @@ mod tests {
             evaluate(&date, |_| None).unwrap(),
             Value::String("2026-07-02T00:00:00Z".to_string())
         );
+    }
+
+    #[test]
+    fn hashes_receipts_and_stays_server_only() {
+        let call = call("hash", "sha256", vec![("value", string("receipt"))]);
+        let value = evaluate(&call, |_| None).expect("hash");
+        assert_eq!(
+            value,
+            Value::String(
+                "6f32860910ca0fb2a20c7fda143666b09dbf8db5238195c90a586fb542ff0cad".to_string()
+            )
+        );
+        assert!(validate_call(&call, StdlibSurface::Views).is_err());
     }
 
     #[test]

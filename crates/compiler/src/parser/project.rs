@@ -1,8 +1,8 @@
 use crate::error::{DoweError, DoweResult};
 use crate::model::{
     AppConfig, CompileEnvironment, CompiledProject, DatabaseBinding, EnvironmentConfig,
-    ProjectCapabilities, ServerConfig, ServerInspectorManifest, ViewPlatform, ViewTargetRoutes,
-    WebOutput,
+    NativeIpcConfig, ProjectCapabilities, ServerConfig, ServerInspectorManifest, ViewNode,
+    ViewPlatform, ViewTargetRoutes, WebOutput,
 };
 use crate::parser::source_config::parse_app;
 use crate::parser::source_config::parse_project_config_for;
@@ -26,6 +26,7 @@ pub struct ParsedProject {
     pub translations: TranslationCatalog,
     pub backend: ServerConfig,
     pub desktop_server: Option<ServerConfig>,
+    pub native_ipc: NativeIpcConfig,
     pub databases: Vec<DatabaseBinding>,
     pub server_inspector: Option<ServerInspectorManifest>,
     pub web: WebOutput,
@@ -103,15 +104,22 @@ pub(crate) fn parse_project_for(
             environment_config.expose_to_client(&name);
         }
     }
-    let server_root = (compile_server && has_server_configuration(&server))
-        .then(|| {
-            if include_seeders {
-                parse_server_source(root, &server, &environment_config)
-            } else {
-                parse_server_source_without_seeders(root, &server, &environment_config)
-            }
-        })
-        .transpose()?;
+    let server_root = ((compile_server
+        || (environment == CompileEnvironment::Development
+            && has_native_ipc_configuration(&server)))
+        && has_server_configuration(&server))
+    .then(|| {
+        if include_seeders {
+            parse_server_source(root, &server, &environment_config)
+        } else {
+            parse_server_source_without_seeders(root, &server, &environment_config)
+        }
+    })
+    .transpose()?;
+
+    if let (Some(views), Some(server)) = (&views, &server_root) {
+        validate_native_view_invocations(&server.native_ipc, &views.routes)?;
+    }
 
     let databases = server_root
         .as_ref()
@@ -131,7 +139,13 @@ pub(crate) fn parse_project_for(
             .as_ref()
             .map(|server| server.backend.clone())
             .unwrap_or_default(),
-        desktop_server: server_root.and_then(|server| server.desktop_server),
+        desktop_server: server_root
+            .as_ref()
+            .and_then(|server| server.desktop_server.clone()),
+        native_ipc: server_root
+            .as_ref()
+            .map(|server| server.native_ipc.clone())
+            .unwrap_or_default(),
         databases,
         server_inspector,
         web: views
@@ -146,6 +160,78 @@ pub(crate) fn parse_project_for(
     })
 }
 
+fn validate_native_view_invocations(
+    ipc: &crate::model::NativeIpcConfig,
+    routes: &ViewTargetRoutes,
+) -> DoweResult<()> {
+    fn statement_function(statement: &dowe_components::ViewFunctionStatement) -> Option<&str> {
+        match statement {
+            dowe_components::ViewFunctionStatement::Invoke { action, .. } => Some(&action.function),
+            dowe_components::ViewFunctionStatement::If { success, error, .. } => {
+                success.iter().chain(error).find_map(statement_function)
+            }
+            _ => None,
+        }
+    }
+    fn visit(node: &ViewNode, ipc: &crate::model::NativeIpcConfig, path: &Path) -> DoweResult<()> {
+        if let ViewNode::Scope {
+            actions, children, ..
+        } = node
+        {
+            for action in actions {
+                let function = match &action.kind {
+                    dowe_components::ViewActionKind::Invoke(invoke) => {
+                        Some(invoke.function.as_str())
+                    }
+                    dowe_components::ViewActionKind::Sequence(statements) => {
+                        statements.iter().find_map(statement_function)
+                    }
+                    _ => None,
+                };
+                if let Some(function) = function
+                    && !ipc
+                        .functions
+                        .iter()
+                        .any(|registered| registered.name == function)
+                {
+                    return Err(DoweError::at_path(
+                        path,
+                        format!("View invokes unregistered native IPC function `{function}`"),
+                    ));
+                }
+            }
+            for child in children {
+                visit(child, ipc, path)?;
+            }
+        } else {
+            for group in dowe_components::node_child_groups(node) {
+                for child in group {
+                    visit(child, ipc, path)?;
+                }
+            }
+        }
+        Ok(())
+    }
+    for route in routes
+        .web
+        .iter()
+        .chain(&routes.desktop)
+        .chain(&routes.android)
+        .chain(&routes.ios)
+    {
+        visit(&route.layout_tree, ipc, Path::new("main.dowe"))?;
+        visit(&route.page_tree, ipc, Path::new("main.dowe"))?
+    }
+    Ok(())
+}
+
+fn has_native_ipc_configuration(file: &crate::parser::source_ast::SourceFile) -> bool {
+    file.nodes
+        .iter()
+        .find(|node| node.name == "main")
+        .is_some_and(|main| main.children.iter().any(|node| node.name == "ipc"))
+}
+
 fn has_server_configuration(file: &crate::parser::source_ast::SourceFile) -> bool {
     file.nodes
         .iter()
@@ -156,6 +242,7 @@ fn has_server_configuration(file: &crate::parser::source_ast::SourceFile) -> boo
                     node.name == "desktop"
                         && node.children.iter().any(|child| child.name == "server")
                 })
+                || main.children.iter().any(|node| node.name == "ipc")
         })
 }
 

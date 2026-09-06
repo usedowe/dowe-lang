@@ -182,6 +182,33 @@
     }
 
     #[test]
+    fn parses_radio_card_items_with_card_content() {
+        let tree = parse_page(
+            r##"page radioCardPage
+  signal workspace value:"local"
+  RadioCard bind:workspace label:"Workspace" orientation:"horizontal"
+    item value:"local" title:"Local" description:"Files on this computer" icon:"laptop"
+    item value:"remote" title:"Remote" description:"Files on a connected machine" icon:"global" disabled:true"##,
+        )
+        .expect("radio card");
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope");
+        };
+        let ViewNode::RadioGroup { props, options } = &children[0] else {
+            panic!("radio card");
+        };
+        assert_eq!(props.presentation, RadioGroupPresentation::Card);
+        assert_eq!(props.orientation, RadioGroupOrientation::Horizontal);
+        assert_eq!(options[0].label, "Local");
+        assert_eq!(
+            options[0].description.as_deref(),
+            Some("Files on this computer")
+        );
+        assert!(options[0].icon.is_some());
+        assert!(options[1].disabled);
+    }
+
+    #[test]
     fn parses_theme_fab_slider_and_dropzone_components() {
         let tree = parse_page(
             r##"page controlsPage

@@ -173,12 +173,18 @@ fn render_compose_display_node(
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
+            let bound_profile = props.bind.as_deref().map(|path| format!("state.text(\"{}\")", escape_kotlin(&context.signal_path(path)))).unwrap_or_else(|| compose_string_literal(props.device.as_str()));
+            let bind_path = props.bind.as_deref().map(|path| compose_string_literal(&context.signal_path(path))).unwrap_or_else(|| "null".to_string());
             output.push_str(&format!(
-                "{pad}DoweDevicePreview(initialProfile = {}, source = {}, title = {}, sandbox = {sandbox}, autoplay = {}, icons = listOf({icons}), modifier = {})\n",
+                "{pad}DoweDevicePreview(initialProfile = {}, bind = {}, boundProfile = {}, onProfileChange = {}, source = {}, title = {}, sandbox = {sandbox}, autoplay = {}, hideControls = {}, icons = listOf({icons}), modifier = {})\n", 
                 compose_string_literal(props.device.as_str()),
+                bind_path,
+                bound_profile,
+                props.bind.as_deref().map(|path| format!("{{ value -> state.write(\"{}\", value) }}", escape_kotlin(&context.signal_path(path)))).unwrap_or_else(|| "{ _ -> }".to_string()),
                 compose_string_literal(&iframe.src),
                 compose_string_literal(&iframe.title),
                 iframe.allow.iter().any(|token| token == "autoplay"),
+                props.hide_controls,
                 modifier_for_style(&props.style),
             ));
         }
@@ -187,8 +193,19 @@ fn render_compose_display_node(
                 CanvasBackground::Transparent => "Color.Transparent".to_string(),
                 CanvasBackground::Color(color) => color_ref(color).to_string(),
             };
+            let draw_mode_path = props
+                .draw_mode_binding
+                .then(|| context.signal_path(&props.draw_mode));
+            let layer_bind = props
+                .layer_bind
+                .as_deref()
+                .map(|path| context.signal_path(path));
+            let selected_layer = props
+                .selected_layer
+                .as_deref()
+                .map(|path| context.signal_path(path));
             output.push_str(&format!(
-                "{pad}DoweCanvas(state = state, scenePath = {}, viewWidth = {}f, viewHeight = {}f, fit = {}, fps = {}, autoplay = {}, pixelated = {}, backgroundColor = {}, label = {}, onPointer = {}, onKey = {}, onMotion = {}, motionRate = {}, modifier = {})\n",
+                "{pad}DoweCanvas(state = state, scenePath = {}, viewWidth = {}f, viewHeight = {}f, fit = {}, fps = {}, autoplay = {}, pixelated = {}, backgroundColor = {}, label = {}, onPointer = {}, onKey = {}, onMotion = {}, motionRate = {}, draw = {}, drawMode = {}, drawModePath = {}, layersPath = {}, selectedPath = {}, onLayerAdd = {}, onLayerChange = {}, onLayerRemove = {}, onLayerSelect = {}, modifier = {})\n",
                 compose_string_literal(&context.signal_path(&props.scene)),
                 props.view_width,
                 props.view_height,
@@ -202,6 +219,15 @@ fn render_compose_display_node(
                 compose_optional_string(props.on_key.as_deref().and_then(|value| context.action_id(value))),
                 compose_optional_string(props.on_motion.as_deref().and_then(|value| context.action_id(value))),
                 props.motion_rate,
+                props.draw,
+                compose_string_literal(&props.draw_mode),
+                compose_optional_string(draw_mode_path.as_deref()),
+                compose_optional_string(layer_bind.as_deref()),
+                compose_optional_string(selected_layer.as_deref()),
+                compose_optional_string(props.on_layer_add.as_deref().and_then(|value| context.action_id(value))),
+                compose_optional_string(props.on_layer_change.as_deref().and_then(|value| context.action_id(value))),
+                compose_optional_string(props.on_layer_remove.as_deref().and_then(|value| context.action_id(value))),
+                compose_optional_string(props.on_layer_select.as_deref().and_then(|value| context.action_id(value))),
                 modifier_for_style(&props.style),
             ));
         }
@@ -301,6 +327,28 @@ fn render_compose_display_node(
                         table_variant_container(&props.style),
                         table_variant_content(&props.style),
                     ));
+        }
+        ViewNode::Tree { props } => {
+            let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
+                == ComponentVariant::Outlined
+            {
+                table_variant_content(&props.style)
+            } else {
+                "null"
+            };
+            output.push_str(&format!(
+                "{pad}DoweTree(state = state, dataPath = {}, bindPath = {}, defaultOpen = {}, emptyLabel = {}, ariaLabel = {}, onSelect = {}, modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border}, radius = {})\n",
+                compose_string_literal(&context.signal_path(&props.data)),
+                props.bind.as_deref().map(|path| compose_string_literal(&context.signal_path(path))).unwrap_or_else(|| "null".to_string()),
+                props.default_open,
+                compose_string_literal(&props.empty_label),
+                compose_string_literal(&props.aria_label),
+                props.on_select.as_deref().and_then(|value| context.action_id(value)).map(|value| compose_string_literal(&value)).unwrap_or_else(|| "null".to_string()),
+                modifier_for_style(&props.style.style),
+                table_variant_container(&props.style),
+                table_variant_content(&props.style),
+                compose_card_radius(&props.style.style),
+            ));
         }
         ViewNode::AvatarGroup { props, items } => {
             render_compose_avatar_group(props, items, indent, output, context)

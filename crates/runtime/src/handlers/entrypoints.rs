@@ -36,12 +36,11 @@ pub async fn backend_declared_websocket_handler(
     path: String,
 ) -> Response {
     let project = state.project.read().await;
-    let Some(route) = project.backend.find_websocket(&path) else {
+    let Some((route, params)) = project.backend.find_websocket_match_for(&path, uri.path()) else {
         return StatusCode::NOT_FOUND.into_response();
     };
-    let params = std::collections::HashMap::new();
     let body = Bytes::new();
-    if let MiddlewareFlow::Respond(response) = execute_middlewares(
+    let middleware_context = match execute_middlewares(
         &project,
         &project.root,
         &route.middlewares,
@@ -53,9 +52,19 @@ pub async fn backend_declared_websocket_handler(
     )
     .await
     {
-        return response;
-    }
-    websocket_response(upgrade, project.clone(), route.handlers, state.cache_mode)
+        MiddlewareFlow::Respond(response) => return response,
+        MiddlewareFlow::Continue(context) => context,
+    };
+    let _ = path;
+    websocket_response(
+        upgrade,
+        project.clone(),
+        route.handlers,
+        params,
+        middleware_context,
+        headers,
+        state.cache_mode,
+    )
 }
 
 pub async fn desktop_handler(
@@ -99,12 +108,11 @@ pub async fn desktop_declared_websocket_handler(
     let Some(server) = &project.desktop_server else {
         return StatusCode::NOT_FOUND.into_response();
     };
-    let Some(route) = server.find_websocket(&path) else {
+    let Some((route, params)) = server.find_websocket_match_for(&path, uri.path()) else {
         return StatusCode::NOT_FOUND.into_response();
     };
-    let params = std::collections::HashMap::new();
     let body = Bytes::new();
-    if let MiddlewareFlow::Respond(response) = execute_middlewares(
+    let middleware_context = match execute_middlewares(
         &project,
         &project.root,
         &route.middlewares,
@@ -116,9 +124,19 @@ pub async fn desktop_declared_websocket_handler(
     )
     .await
     {
-        return response;
-    }
-    websocket_response(upgrade, project.clone(), route.handlers, state.cache_mode)
+        MiddlewareFlow::Respond(response) => return response,
+        MiddlewareFlow::Continue(context) => context,
+    };
+    let _ = path;
+    websocket_response(
+        upgrade,
+        project.clone(),
+        route.handlers,
+        params,
+        middleware_context,
+        headers,
+        state.cache_mode,
+    )
 }
 
 pub(crate) async fn server_response(
@@ -409,13 +427,20 @@ pub async fn views_handler(
     }
 
     let project = state.project.read().await;
-    let inspector_enabled = project
-        .web
-        .chunks
-        .iter()
-        .any(|chunk| chunk.inspector.is_some());
+    let web = if project.web.pages.is_empty() {
+        &project.desktop_web
+    } else {
+        &project.web
+    };
+    let inspector_enabled = web.chunks.iter().any(|chunk| chunk.inspector.is_some());
 
     if uri.path() == "/_dowe/dev/client.js" {
+        if project.studio_preview {
+            return studio_preview_client_response();
+        }
+        if project.app_config.bundle == "dev.dowe.studio" {
+            return studio_host_client_response();
+        }
         let server_inspector_url = project.server_inspector.as_ref().and_then(|_| {
             state
                 .dev_origins
@@ -440,9 +465,6 @@ pub async fn views_handler(
     }
 
     if uri.path() == "/_dowe/dev/inspector.json" {
-        if !inspector_enabled {
-            return StatusCode::NOT_FOUND.into_response();
-        }
         return generated_json_response(&project, "web/inspector.json");
     }
 
@@ -450,24 +472,32 @@ pub async fn views_handler(
         return response;
     }
 
-    let design_file_name = uri.path().strip_prefix('/').filter(|file_name| {
-        project.web.has_design_file_name(file_name)
-    });
+    let design_file_name = uri
+        .path()
+        .strip_prefix('/')
+        .filter(|file_name| web.has_design_file_name(file_name));
     if design_file_name.is_some() {
-        return cacheable_design_css_response(
+        return cacheable_dev_design_css_response(
             &project,
-            &format!("web/{}", project.web.design_file_name()),
+            web,
+            &format!("web/{}", web.design_file_name()),
             &headers,
             "no-store",
         );
     }
 
     if let Some(relative_path) = design_css_chunk_relative_path(uri.path()) {
-        return cacheable_design_css_response(&project, &relative_path, &headers, "no-store");
+        return cacheable_dev_design_css_response(
+            &project,
+            web,
+            &relative_path,
+            &headers,
+            "no-store",
+        );
     }
 
-    if uri.path() == "/router.js" || uri.path() == format!("/{}", project.web.router_file_name()) {
-        return javascript_response(project.web.router_js.clone());
+    if uri.path() == "/router.js" || uri.path() == format!("/{}", web.router_file_name()) {
+        return javascript_response(web.router_js.clone());
     }
 
     if uri.path() == "/env.json" {
@@ -475,7 +505,7 @@ pub async fn views_handler(
     }
 
     if uri.path() == "/manifest.json" {
-        return generated_json_response(&project, "web/manifest.json");
+        return generated_web_manifest_response(&project, web);
     }
 
     if let Some(response) = font_response(&project, uri.path()) {
@@ -486,16 +516,11 @@ pub async fn views_handler(
         return response;
     }
 
-    if let Some(response) = chunk_response(&project.web, uri.path(), &headers, "no-store") {
+    if let Some(response) = chunk_response(web, uri.path(), &headers, "no-store") {
         return response;
     }
 
-    if let Some(page) = project
-        .web
-        .pages
-        .iter()
-        .find(|page| page.route_path == uri.path())
-    {
+    if let Some(page) = web.pages.iter().find(|page| page.route_path == uri.path()) {
         return render_page(page);
     }
 

@@ -12,8 +12,8 @@ pub use dev_selection::{
     validate_dev_target_selection_for_project,
 };
 pub use dev_session::{
-    RunningDevSession, run_dev, run_dev_with_options, start_dev_session,
-    start_dev_session_with_options,
+    RunningDevSession, run_dev, run_dev_with_options, run_studio, start_dev_session,
+    start_dev_session_with_options, start_studio_session,
 };
 
 pub(crate) use dev_session::{

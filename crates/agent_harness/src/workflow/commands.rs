@@ -8,7 +8,6 @@ use crate::paths::{
     WriteMode, WriteOutcome, safe_project_relative_path, slash_path, write_agent_file,
     write_dowe_evidence,
 };
-use crate::templates::default_manifest;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -23,7 +22,7 @@ pub fn check_harness(root: impl AsRef<Path>) -> HarnessResult<CheckReport> {
                 "project_harness_missing",
                 ".agents",
                 "Project harness is missing.",
-                "Run `dowe agent init` in a Dowe project.",
+                "Run `dowe agent harness init` in a Dowe project.",
             ));
             return Ok(report);
         }
@@ -45,7 +44,7 @@ pub fn check_harness(root: impl AsRef<Path>) -> HarnessResult<CheckReport> {
                 "manifest_invalid",
                 ".agents/manifest.json",
                 error.to_string(),
-                "Run `dowe agent init` or fix the manifest.",
+                "Run `dowe agent harness init` or fix the manifest.",
             ));
             return Ok(report);
         }
@@ -58,7 +57,7 @@ pub fn check_harness(root: impl AsRef<Path>) -> HarnessResult<CheckReport> {
             "tdd_harness_missing",
             ".agents/harnesses/tdd.md",
             "TDD harness is missing.",
-            "Run `dowe agent init`.",
+            "Run `dowe agent harness init`.",
         ));
     }
 

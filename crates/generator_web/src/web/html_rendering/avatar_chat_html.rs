@@ -31,13 +31,22 @@ fn render_avatar_html(
         .unwrap_or_default();
     let (tag, mut tag_attrs, close) = avatar_tags(props, context);
     if let Some(binding) = props.size_binding.as_ref() {
-        tag_attrs.push_str(&format!(r#" data-dowe-avatar-size="{}""#, escape_attr(&context.signal_path(&binding.path))));
+        tag_attrs.push_str(&format!(
+            r#" data-dowe-avatar-size="{}""#,
+            escape_attr(&context.signal_path(&binding.path))
+        ));
     }
     if let Some(binding) = props.name_binding.as_ref() {
-        tag_attrs.push_str(&format!(r#" data-dowe-avatar-name="{}""#, escape_attr(&context.signal_path(&binding.path))));
+        tag_attrs.push_str(&format!(
+            r#" data-dowe-avatar-name="{}""#,
+            escape_attr(&context.signal_path(&binding.path))
+        ));
     }
     if let Some(binding) = props.alt_binding.as_ref() {
-        tag_attrs.push_str(&format!(r#" data-dowe-avatar-alt="{}""#, escape_attr(&context.signal_path(&binding.path))));
+        tag_attrs.push_str(&format!(
+            r#" data-dowe-avatar-alt="{}""#,
+            escape_attr(&context.signal_path(&binding.path))
+        ));
     }
     format!("<{tag}{tag_attrs}>{status}{content}</{close}>")
 }
@@ -221,7 +230,7 @@ fn render_chat_box_html(props: &ChatBoxProps, context: &ReactiveRenderContext) -
     } else {
         String::new()
     };
-    let footer = render_chat_box_footer_html(props);
+    let footer = render_chat_box_footer_html(props, context);
     format!(
         r#"<section{}>{}<div class="chat-box-body" data-dowe-chatbox-body><div class="chat-box-messages" data-dowe-chatbox-list></div><div class="chat-box-typing" data-dowe-chatbox-typing hidden><span></span><span></span><span></span></div></div>{}</section>"#,
         attrs(
@@ -265,7 +274,7 @@ fn render_chat_box_header_html(props: &ChatBoxProps) -> String {
     )
 }
 
-fn render_chat_box_footer_html(props: &ChatBoxProps) -> String {
+fn render_chat_box_footer_html(props: &ChatBoxProps, context: &ReactiveRenderContext) -> String {
     let mut actions = String::new();
     if props.show_voice_note {
         actions.push_str(r#"<button type="button" class="chat-box-tool" data-dowe-chatbox-voice aria-label="Voice note">◉</button>"#);
@@ -276,8 +285,25 @@ fn render_chat_box_footer_html(props: &ChatBoxProps) -> String {
     if props.show_camera {
         actions.push_str(r#"<button type="button" class="chat-box-tool" data-dowe-chatbox-camera aria-label="Camera">▣</button>"#);
     }
+    let action = props.on_action.as_deref().map(|on_action| {
+        let visible = props
+            .action_visible
+            .as_deref()
+            .map(|path| {
+                format!(
+                    r#" data-dowe-chatbox-action-visible="{}""#,
+                    escape_attr(&context.signal_path(path))
+                )
+            })
+            .unwrap_or_default();
+        format!(
+            r#"<div class="chat-box-action-row" data-dowe-chatbox-action-row hidden{visible}><button type="button" class="chat-box-action" data-dowe-chatbox-action data-dowe-chatbox-on-action="{}">{}</button></div>"#,
+            escape_attr(&context.action_id(on_action)),
+            escape_html(&props.action_label)
+        )
+    }).unwrap_or_default();
     format!(
-        r#"<footer class="chat-box-footer"><div class="chat-box-input-wrap">{actions}<textarea class="chat-box-input" rows="1" placeholder="{}" data-dowe-chatbox-input></textarea><button type="button" class="chat-box-send" data-dowe-chatbox-send aria-label="Send">➤</button><button type="button" class="chat-box-stop" data-dowe-chatbox-stop aria-label="Stop" hidden>■</button></div></footer>"#,
+        r#"<footer class="chat-box-footer"><div class="chat-box-attachment" data-dowe-chatbox-attachment hidden><img data-dowe-chatbox-attachment-preview alt="Attached sketch"><button type="button" data-dowe-chatbox-attachment-remove aria-label="Remove attachment">×</button></div>{action}<div class="chat-box-input-wrap" data-dowe-chatbox-input-wrap>{actions}<textarea class="chat-box-input" rows="1" placeholder="{}" data-dowe-chatbox-input></textarea><button type="button" class="chat-box-send" data-dowe-chatbox-send aria-label="Send">➤</button><button type="button" class="chat-box-stop" data-dowe-chatbox-stop aria-label="Stop" hidden>■</button></div></footer>"#,
         escape_attr(&props.placeholder)
     )
 }

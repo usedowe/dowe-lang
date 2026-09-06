@@ -201,10 +201,20 @@ fn rejects_unknown_environment_variable() {
     write_blog_fixture(temp.path());
     fs::write(temp.path().join(".env.example"), "INTERNAL_TOKEN=\n").expect("env example");
     fs::write(temp.path().join(".env"), "INTERNAL_TOKEN=secret\n").expect("env");
+    fs::write(
+        temp.path().join("pages/login.dowe"),
+        r#"page loginPage
+  fn load
+    request result method:"GET" route:"/status" base:env.DOWE_UNKNOWN_URL
+  Box
+    Button onClick:load
+      "Load""#,
+    )
+    .expect("page");
 
     let error = compile_dev(temp.path()).expect_err("error");
 
-    assert!(error.to_string().contains("BACKEND_URL"));
+    assert!(error.to_string().contains("DOWE_UNKNOWN_URL"));
     assert!(error.to_string().contains("unknown environment variable"));
 }
 

@@ -1,0 +1,116 @@
+.tree {
+  display:flex;
+  width:100%;
+  min-width:0;
+  flex-direction:column;
+  overflow:auto;
+  padding:.25rem 0;
+}
+.tree-content {
+  display:flex;
+  width:100%;
+  min-width:0;
+  flex-direction:column;
+}
+.tree-node,.tree-children {
+  width:100%;
+  min-width:0;
+}
+.tree-children {
+  display:flex;
+  flex-direction:column;
+}
+.tree-row {
+  display:flex;
+  width:100%;
+  min-width:0;
+  min-height:1.75rem;
+  align-items:center;
+  border-radius:calc(var(--dowe-radius) * .65);
+  transition:background-color 160ms ease,color 160ms ease;
+}
+.tree-indent {
+  display:inline-block;
+  width:1rem;
+  min-width:1rem;
+  height:1.75rem;
+  border-inline-start:1px solid color-mix(in srgb,currentColor 16%,transparent);
+}
+.tree-toggle,.tree-toggle-placeholder {
+  display:inline-flex;
+  width:1.25rem;
+  min-width:1.25rem;
+  height:1.75rem;
+  align-items:center;
+  justify-content:center;
+}
+.tree-toggle {
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+}
+.tree-toggle:focus-visible,.tree-item:focus-visible {
+  outline:2px solid currentColor;
+  outline-offset:-2px;
+}
+.tree-toggle > .svg {
+  width:1rem;
+  height:1rem;
+  transform:rotate(-90deg);
+  transition:transform 160ms ease;
+}
+.tree-toggle[aria-expanded="true"] > .svg {
+  transform:rotate(0deg);
+}
+.tree-item {
+  display:flex;
+  min-width:0;
+  min-height:1.75rem;
+  flex:1 1 auto;
+  align-items:center;
+  gap:.375rem;
+  padding:.125rem .5rem;
+  border:0;
+  border-radius:calc(var(--dowe-radius) * .65);
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+  font:inherit;
+  text-align:start;
+}
+.tree-item.tree-branch {
+  font-weight:600;
+}
+.tree-row:hover,.tree-row:focus-within {
+  background-color:color-mix(in srgb,currentColor 7%,transparent);
+}
+.tree-row.is-selected {
+  background-color:color-mix(in srgb,currentColor 14%,transparent);
+  color:inherit;
+}
+.tree-icon {
+  display:inline-flex;
+  width:1rem;
+  min-width:1rem;
+  height:1rem;
+  align-items:center;
+  justify-content:center;
+}
+.tree-icon > .svg {
+  width:100%;
+  height:100%;
+}
+.tree-label {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tree-empty {
+  padding:.75rem 1rem;
+  color:color-mix(in srgb,currentColor 64%,transparent);
+  font-size:.875rem;
+  line-height:1.25rem;
+}

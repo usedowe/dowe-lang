@@ -12,6 +12,31 @@ fn escape_json_string(value: &str) -> String {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NativeIpcFunction {
+    pub name: String,
+    pub action: ServerFunctionAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct NativeIpcConfig {
+    pub functions: Vec<NativeIpcFunction>,
+    pub databases: Vec<StoreConnection>,
+}
+
+impl NativeIpcConfig {
+    pub fn find(&self, _target: NativeIpcTarget, name: &str) -> Option<&NativeIpcFunction> {
+        self.functions.iter().find(|function| function.name == name)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeIpcTarget {
+    Desktop,
+    Android,
+    Ios,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompiledProject {
     pub root: PathBuf,
     pub capabilities: ProjectCapabilities,
@@ -22,8 +47,10 @@ pub struct CompiledProject {
     pub translations: TranslationCatalog,
     pub backend: ServerConfig,
     pub desktop_server: Option<ServerConfig>,
+    pub native_ipc: NativeIpcConfig,
     pub databases: Vec<DatabaseBinding>,
     pub server_inspector: Option<ServerInspectorManifest>,
+    pub studio_preview: bool,
     pub local_databases: bool,
     pub web: WebOutput,
     pub desktop_web: WebOutput,

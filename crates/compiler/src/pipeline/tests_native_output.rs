@@ -368,18 +368,28 @@ fn compiles_navigation_actions_sections_and_deep_link_metadata() {
     assert!(router.contains("history.replaceState"));
     assert!(router.contains("popstate"));
     assert!(router.contains("scrollToFragment"));
+    assert!(router.contains("suppressPageEntranceAnimations"));
+    assert!(router.contains("runCssPageTransition"));
+    assert!(router.contains("await Promise.all([loadRouteCss(route),cachedRouteModules(route),])"));
     assert!(android_routing.contains("dowe-dev://generated/signup"));
     assert!(android_pages.contains("private data class DoweRouteEntry"));
     assert!(android_pages.contains(r#"{ navigate("replace", "", "hero") }"#));
     assert!(android_pages.contains(r#"{ navigate("push", "/signup", "join") }"#));
+    assert!(android_pages.contains("ExitTransition.None"));
+    assert!(android_pages.contains("durationMillis = 280"));
     assert!(
         android_dev
             .contains("setOnClickListener(v -> doweNavigate(\"replace\", currentPath, \"hero\"))")
     );
+    assert!(android_dev.contains("doweStartPageTransition();"));
+    assert!(android_dev.contains("setDuration(280)"));
     assert!(ios_routing.contains("dowe-dev://generated/signup"));
     assert!(ios_pages.contains("struct DoweRouteEntry: Hashable"));
     assert!(ios_pages.contains("@State private var navigationPath: [DoweRouteEntry] = []"));
     assert!(ios_pages.contains("routeContent(currentEntry, viewportWidth:"));
+    assert!(ios_pages.contains(".transition(.asymmetric(insertion: .opacity, removal: .identity)"));
+    assert!(ios_pages.contains("duration: 0.28"));
+    assert!(ios_pages.contains("pageEntranceSuppressed"));
     assert!(ios_pages.contains(".simultaneousGesture(backSwipeGesture)"));
     assert!(ios_pages.contains(r#"{ navigate("replace", "", "hero") }"#));
     assert!(ios_pages.contains(r#"{ navigate("push", "/signup", "join") }"#));
@@ -597,10 +607,16 @@ fn compiles_canvas_with_cross_target_scene_runtime() {
   signal scene value:[{ type:"rect" x:0 y:0 width:320 height:180 fill:"surface" },{ type:"circle" x:48 y:90 radius:18 fill:"primary" bind:{ x:"input.x" y:"input.y" } },{ type:"text" x:160 y:28 text:"Canvas" fill:"surfaceText" size:18 align:"center" }]
   fn capture
     set input value:item
+  signal layers value:[{ id:"circle" type:"circle" x:100 y:80 radius:24 fill:"primary" }]
+  signal selected value:""
+  signal mode value:"select"
+  fn recordLayer
+    set input value:item
   Box
     Text
       "Canvas demo"
-    Canvas scene:scene viewWidth:320 viewHeight:180 fit:"contain" fps:60 autoplay:true background:"background" pixelated:true label:"Animated Canvas" onPointer:capture onKey:capture onMotion:capture motionRate:30 w:"full" h:48 rounded:"md" border:1"#,
+    Canvas scene:scene viewWidth:320 viewHeight:180 fit:"contain" fps:60 autoplay:true background:"background" pixelated:true label:"Animated Canvas" onPointer:capture onKey:capture onMotion:capture motionRate:30 w:"full" h:48 rounded:"md" border:1
+    Draw bind:layers selected:selected viewWidth:320 viewHeight:180 label:"Layer editor" draw:true drawMode:mode onLayerAdd:recordLayer onLayerChange:recordLayer onLayerRemove:recordLayer onLayerSelect:recordLayer w:"full" h:48"#,
     );
 
     let project = compile_dev(temp.path()).expect("project");
@@ -608,20 +624,20 @@ fn compiles_canvas_with_cross_target_scene_runtime() {
     let runtime_path = project.web.pages[0]
         .runtime_chunks
         .iter()
-        .find(|path| path.contains("visualization-"))
-        .expect("visualization route dependency");
+        .find(|path| path.contains("canvas-"))
+        .expect("canvas route dependency");
     assert!(body.contains("data-dowe-canvas"));
     assert!(body.contains("data-dowe-canvas-scene="));
     assert!(body.contains("aria-label=\"Animated Canvas\""));
-    let visualization = project
+    let canvas = project
         .web
         .runtime_chunks()
         .into_iter()
-        .find(|chunk| chunk.name == "visualization")
-        .expect("visualization runtime");
-    assert!(visualization.content.contains("drawCanvasCommand"));
-    assert!(visualization.content.contains("devicePixelRatio"));
-    assert!(visualization.content.contains("closeCanvasFrames"));
+        .find(|chunk| chunk.name == "canvas")
+        .expect("canvas runtime");
+    assert!(canvas.content.contains("drawCanvasCommand"));
+    assert!(canvas.content.contains("devicePixelRatio"));
+    assert!(canvas.content.contains("closeCanvasFrames"));
     assert!(
         project.web.pages[0]
             .html_document
@@ -635,8 +651,13 @@ fn compiles_canvas_with_cross_target_scene_runtime() {
     assert!(body.contains("data-dowe-canvas-on-pointer="));
     assert!(body.contains("data-dowe-canvas-on-key="));
     assert!(body.contains("data-dowe-canvas-on-motion="));
-    assert!(visualization.content.contains("boundCanvasCommand"));
-    assert!(visualization.content.contains("canvasLogicalPoint"));
+    assert!(body.contains("data-dowe-canvas-layer-bind="));
+    assert!(body.contains("data-dowe-canvas-selected="));
+    assert!(body.contains("data-dowe-canvas-on-layer-add="));
+    assert!(canvas.content.contains("boundCanvasCommand"));
+    assert!(canvas.content.contains("canvasLogicalPoint"));
+    assert!(canvas.content.contains("canvasRemoveSelected"));
+    assert!(canvas.content.contains("canvasTopLayerAt"));
 
     let android = fs::read_to_string(
         temp.path()
@@ -647,14 +668,19 @@ fn compiles_canvas_with_cross_target_scene_runtime() {
     assert!(android.contains("doweDrawCanvasCommand"));
     assert!(android.contains("DoweCanvas(state = state, scenePath = \""));
     assert!(android.contains("doweBoundCanvasCommand"));
-    assert!(android.contains("pointerInput(onPointer"));
+    assert!(android.contains(
+        "pointerInput(state, draw, layersPath, selectedPath, drawModePath, onPointer, viewWidth, viewHeight, fit)"
+    ));
     assert!(android.contains("Sensor.TYPE_ROTATION_VECTOR"));
+    assert!(android.contains("layersPath = \""));
+    assert!(android.contains("onLayerRemove = \""));
 
     let android_dev = android_dev_output(temp.path());
     assert!(android_dev.contains("private DoweCanvasView doweCanvas("));
     assert!(android_dev.contains("doweDrawCanvasCommand"));
     assert!(android_dev.contains("onTouchEvent(MotionEvent event)"));
     assert!(android_dev.contains("doweStartCanvasSensors"));
+    assert!(android_dev.contains("doweUpdateCanvasLayer"));
 
     let ios = ios_swift_output(temp.path());
     assert!(ios.contains("struct DoweCanvasView: View"));
@@ -666,6 +692,8 @@ fn compiles_canvas_with_cross_target_scene_runtime() {
     assert!(ios.contains("DoweCanvasInputBridge"));
     assert!(ios.contains("CMMotionManager"));
     assert!(ios.contains("boundCommand"));
+    assert!(ios.contains("layersPath: \""));
+    assert!(ios.contains("removeSelectedIfNeeded"));
     let ios_info =
         fs::read_to_string(temp.path().join(".dowe/apps/ios/Info.plist")).expect("ios info");
     assert!(ios_info.contains("NSMotionUsageDescription"));

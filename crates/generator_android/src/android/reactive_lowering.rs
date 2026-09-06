@@ -442,6 +442,7 @@ fn collect_compose_reactive(
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Title { .. }
         | ViewNode::Text { .. }
@@ -515,6 +516,7 @@ fn compose_action_value(action: &ViewAction, context: &ComposeReactiveContext) -
             compose_function_metadata(action)
         ),
         ViewActionKind::Request(request) => compose_request_value(request, context, action),
+        ViewActionKind::Invoke(invoke) => compose_invoke_value(invoke, context, action),
         ViewActionKind::Assign(assign) => compose_assign_value(assign, context, action),
         ViewActionKind::Reset(reset) => format!(
             "DoweAction.Reset(\"{}\", {})",
@@ -527,9 +529,13 @@ fn compose_action_value(action: &ViewAction, context: &ComposeReactiveContext) -
 fn action_autoloads(action: &ViewAction) -> bool {
     match &action.kind {
         ViewActionKind::Request(request) => request.autoload,
+        ViewActionKind::Invoke(invoke) => invoke.autoload,
         ViewActionKind::Sequence(statements) => matches!(
             statements.first(),
             Some(dowe_components::ViewFunctionStatement::Request { action, .. }) if action.autoload
+        ) || matches!(
+            statements.first(),
+            Some(dowe_components::ViewFunctionStatement::Invoke { action, .. }) if action.autoload
         ),
         ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => false,
     }
@@ -548,6 +554,11 @@ fn compose_function_statement(
             "DoweStep.Request(\"{}\", {})",
             escape_kotlin(result),
             compose_request_action_value(action, context)
+        ),
+        dowe_components::ViewFunctionStatement::Invoke { result, action } => format!(
+            "DoweStep.Invoke(\"{}\", {})",
+            escape_kotlin(result),
+            compose_invoke_action_value(action, context)
         ),
         dowe_components::ViewFunctionStatement::If { result, success, error } => format!(
             "DoweStep.Branch(\"{}\", listOf({}), listOf({}))",
@@ -663,6 +674,35 @@ fn compose_stdlib_value(
                 .join(", ")
         ),
     }
+}
+
+fn compose_invoke_value(
+    action: &dowe_components::ViewInvokeAction,
+    context: &ComposeReactiveContext,
+    view_action: &ViewAction,
+) -> String {
+    format!(
+        "DoweAction.Invoke({}, {})",
+        compose_invoke_action_value(action, context),
+        compose_function_metadata(view_action)
+    )
+}
+
+fn compose_invoke_action_value(
+    action: &dowe_components::ViewInvokeAction,
+    context: &ComposeReactiveContext,
+) -> String {
+    format!(
+        "DoweInvokeAction(\"{}\", listOf({}), {}, {}, {}, {}, {}, {})",
+        escape_kotlin(&action.function),
+        action.args.iter().map(|arg| format!("DoweStdlibArg(\"{}\", {})", escape_kotlin(&arg.name), compose_stdlib_value(&arg.value, context))).collect::<Vec<_>>().join(", "),
+        compose_optional_path(action.update.as_deref(), context),
+        compose_optional_path(action.reset.as_deref(), context),
+        compose_optional_path(action.success_alert.as_deref(), context),
+        compose_optional_string(action.success_message.as_deref()),
+        compose_optional_path(action.error_alert.as_deref(), context),
+        compose_optional_string(action.error_message.as_deref())
+    )
 }
 
 fn compose_request_value(

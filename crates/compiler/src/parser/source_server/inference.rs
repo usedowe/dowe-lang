@@ -43,6 +43,41 @@ fn infer_store_statement(
     }
 }
 
+fn infer_notification_statement(
+    statement: &ServerNotificationStatement,
+    bindings: &mut HashMap<String, DoweType>,
+) {
+    bindings.insert(
+        statement.binding.clone(),
+        DoweType::Object(vec![
+            DoweTypeField {
+                name: "ok".to_string(),
+                value: DoweType::Bool,
+                optional: false,
+            },
+            DoweTypeField {
+                name: "id".to_string(),
+                value: DoweType::String,
+                optional: false,
+            },
+            DoweTypeField {
+                name: "deliveries".to_string(),
+                value: DoweType::Number,
+                optional: false,
+            },
+        ]),
+    );
+}
+
+fn validate_notification_statement_references(
+    node: &SourceNode,
+    statement: &ServerNotificationStatement,
+    bindings: &HashMap<String, DoweType>,
+) -> DoweResult<()> {
+    validate_store_literal_references(node, &statement.user, bindings)?;
+    validate_store_literal_references(node, &statement.payload, bindings)
+}
+
 fn infer_request_json_statement(
     statement: &ServerStatement,
     bindings: &mut HashMap<String, DoweType>,
@@ -86,10 +121,7 @@ fn infer_agent_chat_statement(
     bindings.insert(statement.binding.clone(), DoweType::Unknown);
 }
 
-fn infer_ai_chat_statement(
-    statement: &AiChatStatement,
-    bindings: &mut HashMap<String, DoweType>,
-) {
+fn infer_ai_chat_statement(statement: &AiChatStatement, bindings: &mut HashMap<String, DoweType>) {
     bindings.insert(statement.binding.clone(), DoweType::Unknown);
 }
 

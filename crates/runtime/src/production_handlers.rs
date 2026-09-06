@@ -51,27 +51,35 @@ pub async fn production_declared_websocket_handler(
     path: String,
 ) -> Response {
     let project = state.project.read().await;
-    let Some(route) = project.backend.find_websocket(&path) else {
+    let Some((route, params)) = project.backend.find_websocket_match_for(&path, uri.path()) else {
         return StatusCode::NOT_FOUND.into_response();
     };
-    let params = std::collections::HashMap::new();
     let body = Bytes::new();
-    if let crate::handlers::MiddlewareFlow::Respond(response) =
-        crate::handlers::execute_middlewares(
-            &project,
-            &project.root,
-            &route.middlewares,
-            &headers,
-            &params,
-            &body,
-            uri.query(),
-            state.cache_mode,
-        )
-        .await
+    let middleware_context = match crate::handlers::execute_middlewares(
+        &project,
+        &project.root,
+        &route.middlewares,
+        &headers,
+        &params,
+        &body,
+        uri.query(),
+        state.cache_mode,
+    )
+    .await
     {
-        return response;
-    }
-    websocket_response(upgrade, project.clone(), route.handlers, state.cache_mode)
+        crate::handlers::MiddlewareFlow::Respond(response) => return response,
+        crate::handlers::MiddlewareFlow::Continue(context) => context,
+    };
+    let _ = path;
+    websocket_response(
+        upgrade,
+        project.clone(),
+        route.handlers,
+        params,
+        middleware_context,
+        headers,
+        state.cache_mode,
+    )
 }
 
 fn production_static_response(

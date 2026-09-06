@@ -523,6 +523,7 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Alert { .. }
         | ViewNode::Avatar { .. }

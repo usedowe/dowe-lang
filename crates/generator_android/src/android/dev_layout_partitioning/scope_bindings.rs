@@ -156,6 +156,7 @@ fn dev_collect_scope_bindings(node: &ViewNode, bindings: &mut DevLayoutBindings)
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Title { .. }
         | ViewNode::Text { .. }

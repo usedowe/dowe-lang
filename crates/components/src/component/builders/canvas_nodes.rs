@@ -1,5 +1,18 @@
 pub fn canvas_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    canvas_component_node_for(BuiltinComponent::Canvas, props)
+}
+
+pub fn draw_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewNode> {
+    canvas_component_node_for(BuiltinComponent::Draw, props)
+}
+
+fn canvas_component_node_for(
+    component: BuiltinComponent,
+    props: Vec<ComponentProp>,
+) -> ComponentResult<ViewNode> {
     let mut scene = None;
+    let mut layer_bind = None;
+    let mut selected_layer = None;
     let mut view_width = 320;
     let mut view_height = 180;
     let mut fit = CanvasFit::Contain;
@@ -12,11 +25,24 @@ pub fn canvas_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
     let mut on_key = None;
     let mut on_motion = None;
     let mut motion_rate = 30;
+    let mut draw = false;
+    let mut draw_mode = DrawMode::Pen.as_str().to_string();
+    let mut draw_mode_binding = false;
+    let mut on_layer_add = None;
+    let mut on_layer_change = None;
+    let mut on_layer_remove = None;
+    let mut on_layer_select = None;
     let mut style_props = Vec::new();
 
     for prop in props {
         match prop.name.as_str() {
             "scene" => scene = Some(parse_reference_path(&prop.name, &prop.value)?),
+            "bind" if component == BuiltinComponent::Draw => {
+                layer_bind = Some(parse_reference_path(&prop.name, &prop.value)?)
+            }
+            "selected" if component == BuiltinComponent::Draw => {
+                selected_layer = Some(parse_signal_path(&prop.name, &prop.value, "signal string path")?)
+            }
             "viewWidth" => view_width = parse_positive_u16(&prop.name, &prop.value)?,
             "viewHeight" => view_height = parse_positive_u16(&prop.name, &prop.value)?,
             "fit" => fit = parse_canvas_fit(&prop.name, &prop.value)?,
@@ -29,8 +55,57 @@ pub fn canvas_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
             "onKey" => on_key = Some(parse_signal_path(&prop.name, &prop.value, "signal path")?),
             "onMotion" => on_motion = Some(parse_signal_path(&prop.name, &prop.value, "signal path")?),
             "motionRate" => motion_rate = parse_canvas_motion_rate(&prop.name, &prop.value)?,
+            "draw" => draw = parse_static_bool(&prop.name, &prop.value)?,
+            "drawMode" => match &prop.value {
+                PropValue::Binding(binding) => {
+                    if !is_reference_path(&binding.path) {
+                        return Err(ComponentError::invalid_prop(&prop.name, "pen, rect, circle or signal string path"));
+                    }
+                    draw_mode = binding.path.clone();
+                    draw_mode_binding = true;
+                }
+                _ => draw_mode = parse_draw_mode(&prop.name, &prop.value, component)?.as_str().to_string(),
+            },
+            "onLayerAdd" if component == BuiltinComponent::Draw => {
+                on_layer_add = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
+            "onLayerChange" if component == BuiltinComponent::Draw => {
+                on_layer_change = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
+            "onLayerRemove" if component == BuiltinComponent::Draw => {
+                on_layer_remove = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
+            "onLayerSelect" if component == BuiltinComponent::Draw => {
+                on_layer_select = Some(parse_required_string(&prop.name, &prop.value)?)
+            }
             _ => style_props.push(prop),
         }
+    }
+
+    let scene = scene.or_else(|| layer_bind.clone()).ok_or_else(|| {
+        ComponentError::invalid_prop("scene", "signal array path or Draw bind signal array path")
+    })?;
+    if component != BuiltinComponent::Draw
+        && (layer_bind.is_some()
+            || selected_layer.is_some()
+            || on_layer_add.is_some()
+            || on_layer_change.is_some()
+            || on_layer_remove.is_some()
+            || on_layer_select.is_some())
+    {
+        return Err(ComponentError::invalid_prop_combination(
+            "layer props are only supported by Draw",
+        ));
+    }
+    if let Some(layer_bind) = layer_bind.as_deref() {
+        if layer_bind != scene {
+            return Err(ComponentError::invalid_prop_combination(
+                "Draw scene and bind must reference the same Signal array",
+            ));
+        }
+    }
+    if component == BuiltinComponent::Draw && layer_bind.is_some() {
+        draw = true;
     }
 
     let mut style = parse_style_props(BuiltinComponent::Canvas, &style_props, StylePropMode::Box)?;
@@ -46,7 +121,10 @@ pub fn canvas_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
     Ok(ViewNode::Canvas {
         props: CanvasProps {
             style,
-            scene: scene.ok_or_else(|| ComponentError::invalid_prop("scene", "signal array path"))?,
+            is_draw: component == BuiltinComponent::Draw,
+            scene,
+            layer_bind,
+            selected_layer,
             view_width,
             view_height,
             fit,
@@ -59,8 +137,38 @@ pub fn canvas_component_node(props: Vec<ComponentProp>) -> ComponentResult<ViewN
             on_key,
             on_motion,
             motion_rate,
+            draw,
+            draw_mode,
+            draw_mode_binding,
+            on_layer_add,
+            on_layer_change,
+            on_layer_remove,
+            on_layer_select,
         },
     })
+}
+
+fn parse_draw_mode(
+    name: &str,
+    value: &PropValue,
+    component: BuiltinComponent,
+) -> ComponentResult<DrawMode> {
+    let value = parse_required_string(name, value)?;
+    DrawMode::from_name(&value)
+        .filter(|mode| {
+            component == BuiltinComponent::Draw
+                || !matches!(mode, DrawMode::Select | DrawMode::Erase)
+        })
+        .ok_or_else(|| {
+            ComponentError::invalid_prop(
+                name,
+                if component == BuiltinComponent::Draw {
+                    "pen, rect, circle, select or erase"
+                } else {
+                    "pen, rect or circle"
+                },
+            )
+        })
 }
 
 fn parse_canvas_motion_rate(name: &str, value: &PropValue) -> ComponentResult<u8> {

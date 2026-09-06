@@ -40,14 +40,15 @@ fn render_toggle_html(props: &ToggleProps, context: &ReactiveRenderContext) -> S
         if props.checked { " checked" } else { "" },
         if props.disabled { " disabled" } else { "" }
     );
+    let classes = variant_classes("toggle", &props.style);
+    let reactive_attrs = reactive_variant_attrs(&props.style, context, "is-");
     format!(
         "<label{}>{left}{input}{right}{label}</label>",
         attrs(
-            vec!["toggle".to_string()],
+            classes,
             Some(&props.style.element),
-            None,
+            Some(reactive_attrs.as_str()),
             context
         )
     )
 }
-

@@ -29,6 +29,95 @@ async fn views_server_advances_when_the_preferred_port_is_occupied() {
 }
 
 #[tokio::test]
+async fn backend_server_uses_first_available_development_port_and_public_urls() {
+    let preferred = match TcpListener::bind("127.0.0.1:7754").await {
+        Ok(listener) => Some(listener),
+        Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => None,
+        Err(error) => panic!("preferred port: {error}"),
+    };
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 8081);
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: true,
+            views: true,
+            desktop: false,
+        },
+    )
+    .await
+    .expect("servers");
+
+    let backend_addr = servers.backend_addr.expect("backend addr");
+    if preferred.is_some() {
+        assert!(backend_addr.port() > 7754);
+    } else {
+        assert!(backend_addr.port() >= 7754);
+    }
+    assert_ne!(backend_addr.port(), 8081);
+    let views = format!("http://{}", servers.views_addr.expect("views addr"));
+    let public_env = reqwest::get(format!("{views}/env.json"))
+        .await
+        .expect("env")
+        .text()
+        .await
+        .expect("env text");
+    assert!(public_env.contains(&format!(r#""BACKEND_URL":"http://{backend_addr}""#)));
+    assert!(public_env.contains(&format!(r#""SERVER_URL":"http://{backend_addr}""#)));
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
+async fn desktop_server_uses_first_available_development_port_and_public_url() {
+    let preferred = match TcpListener::bind("127.0.0.1:7854").await {
+        Ok(listener) => Some(listener),
+        Err(error) if error.kind() == std::io::ErrorKind::AddrInUse => None,
+        Err(error) => panic!("preferred port: {error}"),
+    };
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path(), 8081);
+    let mut main = fs::read_to_string(temp.path().join("main.dowe")).expect("main");
+    main.push_str(
+        r#"
+  desktop
+    server port:8181
+      route "/desktop/status"
+        response text:"Desktop OK""#,
+    );
+    fs::write(temp.path().join("main.dowe"), main).expect("main");
+    let project = compile_dev(temp.path()).expect("project");
+    let servers = start_dev_servers(
+        project,
+        DevServerTargets {
+            backend: false,
+            views: true,
+            desktop: true,
+        },
+    )
+    .await
+    .expect("servers");
+
+    let desktop_addr = servers.desktop_addr.expect("desktop addr");
+    if preferred.is_some() {
+        assert!(desktop_addr.port() > 7854);
+    } else {
+        assert!(desktop_addr.port() >= 7854);
+    }
+    assert_ne!(desktop_addr.port(), 8181);
+    let views = format!("http://{}", servers.views_addr.expect("views addr"));
+    let public_env = reqwest::get(format!("{views}/env.json"))
+        .await
+        .expect("env")
+        .text()
+        .await
+        .expect("env text");
+    assert!(public_env.contains(&format!(r#""BACKEND_DESKTOP_URL":"http://{desktop_addr}""#)));
+    assert!(public_env.contains(&format!(r#""SERVER_DESKTOP_URL":"http://{desktop_addr}""#)));
+    servers.shutdown().await.expect("shutdown");
+}
+
+#[tokio::test]
 async fn server_inspector_is_available_only_on_the_development_backend() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path(), 0);
@@ -372,6 +461,9 @@ async fn serves_backend_views_and_websocket() {
     assert!(client_script.contains("/_dowe/dev/ws"));
     assert!(client_script.contains("location.reload"));
     assert!(client_script.contains("window.__doweHotUpdate"));
+    assert!(client_script.contains(
+        "message.type===\"reload\"&&(message.target===\"web\"||message.target===\"desktop\")){queueHotUpdate"
+    ));
     assert!(client_script.contains("module_update"));
 
     let manifest = client
@@ -444,7 +536,9 @@ async fn serves_backend_views_and_websocket() {
         .text()
         .await
         .expect("env text");
-    assert!(public_env.contains(r#""BACKEND_URL":"https://runtime.example.com""#));
+    let backend_addr = servers.backend_addr.expect("backend addr");
+    assert!(public_env.contains(&format!(r#""BACKEND_URL":"http://{backend_addr}""#)));
+    assert!(public_env.contains(&format!(r#""SERVER_URL":"http://{backend_addr}""#)));
     assert!(!public_env.contains("INTERNAL_TOKEN"));
 
     let translation = client
@@ -463,12 +557,9 @@ async fn serves_backend_views_and_websocket() {
     assert!(content_type.contains("application/javascript"));
     assert!(translation.contains("Dowe construye sistemas."));
 
-    let (mut websocket, _) = connect_async(format!(
-        "ws://{}/ws",
-        servers.backend_addr.expect("backend addr")
-    ))
-    .await
-    .expect("websocket");
+    let (mut websocket, _) = connect_async(format!("ws://{backend_addr}/ws"))
+        .await
+        .expect("websocket");
     websocket
         .send(Message::Text("hello".into()))
         .await

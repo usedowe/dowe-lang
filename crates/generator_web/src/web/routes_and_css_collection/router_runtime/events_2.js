@@ -54,37 +54,82 @@ document.addEventListener("click", event => {
   )
     closeDatePickers();
 });
+function dragDropListFromTarget(target) {
+  return target?.closest && target.closest(".drag-drop-list");
+}
+function dragDropRootFromList(list) {
+  return list?.closest && list.closest("[data-dowe-drag-drop]");
+}
+function dragDropClearIndicators() {
+  document
+    .querySelectorAll(".drag-drop-list.is-drag-over")
+    .forEach(list => list.classList.remove("is-drag-over"));
+}
+function dragDropCanTransfer(item, list) {
+  const root = dragDropRootFromList(list);
+  if (!root) return false;
+  const sourceGroup = item.closest("[data-dowe-drag-group]");
+  const targetGroup = list.closest("[data-dowe-drag-group]");
+  if (!sourceGroup || !targetGroup || sourceGroup === targetGroup) return true;
+  return root.dataset.doweAllowGroupTransfer === "true";
+}
+function dragDropInsertionTarget(list, dragging, event) {
+  const root = dragDropRootFromList(list);
+  const horizontal = root?.dataset.doweDirection === "horizontal";
+  const coordinate = horizontal ? event.clientX : event.clientY;
+  return Array.from(
+    list.querySelectorAll(".drag-drop-item:not(.is-dragging)")
+  ).find(item => {
+    const box = item.getBoundingClientRect();
+    const midpoint = horizontal
+      ? box.left + box.width / 2
+      : box.top + box.height / 2;
+    return coordinate < midpoint;
+  });
+}
 document.addEventListener("dragstart", event => {
   const item =
     event.target?.closest && event.target.closest("[data-dowe-drag-item]");
-  if (!item || item.disabled) return;
+  if (
+    !item ||
+    item.disabled ||
+    item.closest("[data-dowe-drag-drop]")?.classList.contains("is-disabled")
+  )
+    return;
   item.classList.add("is-dragging");
   event.dataTransfer?.setData("text/plain", item.dataset.doweDragItem || "");
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
 });
 document.addEventListener("dragend", event => {
   const item =
     event.target?.closest && event.target.closest("[data-dowe-drag-item]");
   if (item) item.classList.remove("is-dragging");
+  dragDropClearIndicators();
 });
 document.addEventListener("dragover", event => {
-  const list = event.target?.closest && event.target.closest(".drag-drop-list");
+  const list = dragDropListFromTarget(event.target);
   if (!list) return;
-  event.preventDefault();
   const dragging = document.querySelector(".drag-drop-item.is-dragging");
-  if (!dragging) return;
-  const after = Array.from(
-    list.querySelectorAll(".drag-drop-item:not(.is-dragging)")
-  ).find(
-    item =>
-      event.clientY <
-      item.getBoundingClientRect().top + item.getBoundingClientRect().height / 2
-  );
+  if (!dragging || !dragDropCanTransfer(dragging, list)) return;
+  event.preventDefault();
+  list.classList.add("is-drag-over");
+  const after = dragDropInsertionTarget(list, dragging, event);
   if (after) list.insertBefore(dragging, after);
   else list.appendChild(dragging);
 });
+document.addEventListener("dragleave", event => {
+  const list = dragDropListFromTarget(event.target);
+  if (list && !list.contains(event.relatedTarget))
+    list.classList.remove("is-drag-over");
+});
 document.addEventListener("drop", event => {
-  const list = event.target?.closest && event.target.closest(".drag-drop-list");
-  if (list) event.preventDefault();
+  const list = dragDropListFromTarget(event.target);
+  const dragging = document.querySelector(".drag-drop-item.is-dragging");
+  if (list && dragging && dragDropCanTransfer(dragging, list)) {
+    event.preventDefault();
+    dispatchFormEvent(dragDropRootFromList(list), "change");
+  }
+  dragDropClearIndicators();
 });
 document.addEventListener(
   "click",
@@ -209,6 +254,8 @@ document.addEventListener("click", event => {
         control.dataset.doweValue = value;
         renderSelect(control, activeView ? activeView.state : null, null);
       }
+      dispatchFormEvent(control, "input");
+      dispatchFormEvent(control, "change");
       closeSelect(control);
       if (control.dataset.doweThemeSelect !== undefined && value)
         applyDoweTheme(value, true);

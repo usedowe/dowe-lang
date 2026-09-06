@@ -19,6 +19,7 @@
     private static final int DOWE_VARIANT_TAG = 0x7f0d0013;
     private static final int DOWE_SCHEME_TAG = 0x7f0d0014;
     private static final int DOWE_SIZE_TAG = 0x7f0d0015;
+    private static final int DOWE_COMPACT_WIDTH_TAG = 0x7f0d0016;
 
     private static final class DoweSvgImportMatrix {
         private final double a;

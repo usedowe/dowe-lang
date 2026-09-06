@@ -51,10 +51,11 @@ fn render_pin_html(props: &PinProps, context: &ReactiveRenderContext) -> String 
         })
         .unwrap_or_default();
     let extra = format!(
-        r#" data-dowe-pin data-dowe-pin-length="{}" data-dowe-pin-type="{}"{}"#,
+        r#" data-dowe-pin data-dowe-pin-length="{}" data-dowe-pin-type="{}"{}{}"#,
         props.length,
         props.kind.as_str(),
-        bind_attr(props.style.element.bind.as_deref(), context)
+        bind_attr(props.style.element.bind.as_deref(), context),
+        reactive_variant_attrs(&props.style, context, "is-")
     );
     let body = format!(
         r#"<div{}>{hidden}<div class="pin-cells">{inputs}</div></div>"#,
@@ -73,4 +74,3 @@ fn render_pin_html(props: &PinProps, context: &ReactiveRenderContext) -> String 
         context,
     )
 }
-

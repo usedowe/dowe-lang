@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 pub fn encode_image_paths(paths: &[PathBuf]) -> AgentResult<Vec<AgentImageInput>> {
     paths
         .iter()
-        .map(|path| encode_image(path))
+        .map(encode_image)
         .collect::<AgentResult<Vec<_>>>()
 }
 

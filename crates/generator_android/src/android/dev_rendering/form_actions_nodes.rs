@@ -562,38 +562,111 @@ fn render_dev_android_form_actions_node(
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::RadioGroup { props, options } => {
-            let view = next_dev_view(counter);
-            let value = dev_bound_text(&props.style, "", context);
-            let orientation = if props.orientation == RadioGroupOrientation::Horizontal {
-                "HORIZONTAL"
+            if matches!(props.presentation, RadioGroupPresentation::Card) {
+                let view = next_dev_view(counter);
+                let value = dev_bound_text(&props.style, "", context);
+                let orientation = if props.orientation == RadioGroupOrientation::Horizontal {
+                    "HORIZONTAL"
+                } else {
+                    "VERTICAL"
+                };
+                let container = dev_card_variant_container(&props.style);
+                let content = dev_card_variant_content(&props.style);
+                let title_color = dev_card_variant_title(&props.style);
+                output.push_str(&format!(
+                    "        LinearLayout {view} = doweContainer(false);\n        {view}.setOrientation(LinearLayout.{orientation});\n"
+                ));
+                if let Some(label) = props.style.label.as_deref() {
+                    let label_view = next_dev_view(counter);
+                    output.push_str(&format!(
+                        "        TextView {label_view} = doweControlLabel(\"{}\", {}, {});\n        doweAdd({view}, {label_view});\n",
+                        escape_java(label),
+                        dev_scheme_color(&props.style),
+                        dev_font_value(props.style.style.font.as_ref().or(inherited_font))
+                    ));
+                }
+                for option in options {
+                    let item = next_dev_view(counter);
+                    let copy = next_dev_view(counter);
+                    let title = next_dev_view(counter);
+                    let description_view = option.description.as_ref().map(|_| next_dev_view(counter));
+                    let indicator = next_dev_view(counter);
+                    let selected = format!("{value}.equals(\"{}\")", escape_java(&option.value));
+                    output.push_str(&format!(
+                        "        FrameLayout {item} = new FrameLayout(this);\n        {item}.setPadding(doweDp(16), doweDp(14), doweDp(44), doweDp(14));\n        {item}.setBackground(doweInputBackground({selected} ? doweAlpha({container}, 0.08f) : {container}, {selected} ? {content} : doweAlpha({content}, 0.18f), DOWE_RADIUS));\n        {item}.setClickable(true);\n        {item}.setFocusable(true);\n        LinearLayout {copy} = doweContainer(false);\n",
+                    ));
+                    if let Some(icon) = option.icon.as_ref() {
+                        let icon_view = render_dev_android_icon_view(icon, counter, output, Some(content));
+                        output.push_str(&format!(
+                            "        {copy}.setOrientation(LinearLayout.HORIZONTAL);\n        doweAdd({copy}, {icon_view}, 8, true);\n"
+                        ));
+                    }
+                    output.push_str(&format!(
+                        "        TextView {title} = doweText(\"{}\", {}, 14f, 600, 0f, 1.2f, null);\n        doweAdd({copy}, {title});\n",
+                        escape_java(&option.label),
+                        title_color
+                    ));
+                    if let Some(description) = option.description.as_deref() {
+                        let description_view = description_view
+                            .as_deref()
+                            .expect("radio card description view");
+                        output.push_str(&format!(
+                            "        TextView {description_view} = doweText(\"{}\", {}, 12f, 400, 0f, 1.2f, null);\n        doweAdd({copy}, {description_view}, 4, false);\n",
+                            escape_java(description),
+                            content
+                        ));
+                    }
+                    output.push_str(&format!(
+                        "        {item}.addView({copy}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        TextView {indicator} = doweText({selected} ? \"●\" : \"○\", {content}, 18f, 400, 0f, 1f, null);\n        {indicator}.setGravity(Gravity.CENTER);\n        {item}.addView({indicator}, new FrameLayout.LayoutParams(doweDp(24), doweDp(24), Gravity.TOP | Gravity.RIGHT));\n        {item}.setEnabled({});\n",
+                        !option.disabled
+                    ));
+                    if let Some(path) = props.style.element.bind.as_ref()
+                        && !option.disabled
+                    {
+                        output.push_str(&format!(
+                            "        {item}.setOnClickListener(v -> {{ doweWrite(\"{}\", \"{}\"); renderCurrentRoute(false); }});\n",
+                            escape_java(&context.signal_path(path)),
+                            escape_java(&option.value)
+                        ));
+                    }
+                    output.push_str(&format!("        doweAdd({view}, {item}, 8, true);\n"));
+                }
+                apply_dev_android_style(&props.style.style, &view, false, output);
+                output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             } else {
-                "VERTICAL"
-            };
-            output.push_str(&format!(
-                                        "        android.widget.RadioGroup {view} = new android.widget.RadioGroup(this);\n        {view}.setOrientation(android.widget.RadioGroup.{orientation});\n"
-                                    ));
-            if let Some(label) = props.style.label.as_deref() {
-                let label_view = next_dev_view(counter);
+                let view = next_dev_view(counter);
+                let value = dev_bound_text(&props.style, "", context);
+                let orientation = if props.orientation == RadioGroupOrientation::Horizontal {
+                    "HORIZONTAL"
+                } else {
+                    "VERTICAL"
+                };
                 output.push_str(&format!(
-                                            "        TextView {label_view} = doweControlLabel(\"{}\", {}, {});\n        doweAdd({view}, {label_view});\n",
-                                            escape_java(label),
-                                            dev_scheme_color(&props.style),
-                                            dev_font_value(props.style.style.font.as_ref().or(inherited_font))
+                                            "        android.widget.RadioGroup {view} = new android.widget.RadioGroup(this);\n        {view}.setOrientation(android.widget.RadioGroup.{orientation});\n"
                                         ));
+                if let Some(label) = props.style.label.as_deref() {
+                    let label_view = next_dev_view(counter);
+                    output.push_str(&format!(
+                                                "        TextView {label_view} = doweControlLabel(\"{}\", {}, {});\n        doweAdd({view}, {label_view});\n",
+                                                escape_java(label),
+                                                dev_scheme_color(&props.style),
+                                                dev_font_value(props.style.style.font.as_ref().or(inherited_font))
+                                            ));
+                }
+                for option in options {
+                    let item = next_dev_view(counter);
+                    output.push_str(&format!(
+                                                "        android.widget.RadioButton {item} = new android.widget.RadioButton(this);\n        {item}.setText(\"{}\");\n        {item}.setTextColor({});\n        {item}.setButtonTintList(ColorStateList.valueOf({}));\n        {item}.setChecked({value}.equals(\"{}\"));\n        {item}.setEnabled({});\n        doweAdd({view}, {item});\n",
+                                                escape_java(&option.label),
+                                                dev_scheme_color(&props.style),
+                                                dev_scheme_color(&props.style),
+                                                escape_java(&option.value),
+                                                !option.disabled
+                                            ));
+                }
+                apply_dev_android_style(&props.style.style, &view, false, output);
+                output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
             }
-            for option in options {
-                let item = next_dev_view(counter);
-                output.push_str(&format!(
-                                            "        android.widget.RadioButton {item} = new android.widget.RadioButton(this);\n        {item}.setText(\"{}\");\n        {item}.setTextColor({});\n        {item}.setButtonTintList(ColorStateList.valueOf({}));\n        {item}.setChecked({value}.equals(\"{}\"));\n        {item}.setEnabled({});\n        doweAdd({view}, {item});\n",
-                                            escape_java(&option.label),
-                                            dev_scheme_color(&props.style),
-                                            dev_scheme_color(&props.style),
-                                            escape_java(&option.value),
-                                            !option.disabled
-                                        ));
-            }
-            apply_dev_android_style(&props.style.style, &view, false, output);
-            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         ViewNode::Toggle { props } => {
             let view = next_dev_view(counter);

@@ -126,20 +126,36 @@ fn render_iframe_html(props: &IframeProps, context: &ReactiveRenderContext) -> S
     } else {
         ""
     };
+    let source = if props.reactive_src.is_some() {
+        ""
+    } else {
+        &props.src
+    };
+    let reactive_source = props
+        .reactive_src
+        .as_deref()
+        .map(|path| {
+            format!(
+                r#" data-dowe-iframe-src="{}""#,
+                escape_attr(&context.signal_path(path))
+            )
+        })
+        .unwrap_or_default();
     format!(
-        r#"<iframe{} src="{}" title="{}" loading="{}" referrerpolicy="strict-origin-when-cross-origin"{}{}{}></iframe>"#,
+        r#"<iframe{} src="{}" title="{}" loading="{}" referrerpolicy="strict-origin-when-cross-origin"{}{}{}{}></iframe>"#,
         attrs(
             iframe_classes(props),
             Some(&props.style.element),
             None,
             context
         ),
-        escape_attr(&props.src),
+        escape_attr(source),
         escape_attr(&props.title),
         props.loading.as_str(),
         allow,
         sandbox,
         fullscreen,
+        reactive_source,
     )
 }
 
@@ -164,15 +180,28 @@ fn render_device_html(
         })
         .collect::<String>();
     let (width, height) = props.device.dimensions();
+    let bind = props
+        .bind
+        .as_ref()
+        .map(|path| {
+            format!(
+                r#" data-dowe-device-bind="{}""#,
+                escape_attr(&context.signal_path(path))
+            )
+        })
+        .unwrap_or_default();
     let mut nested = iframe.clone();
     nested.style.sizing.w = None;
     nested.style.sizing.h = None;
     let mut device_classes = vec!["device".to_string()];
     append_style_classes(&mut device_classes, &props.style);
     format!(
-        r#"<div{} data-dowe-device data-dowe-device-profile="{}"><div class="device-toolbar" role="group" aria-label="Device preview">{}</div><div class="device-stage" data-dowe-device-stage><div class="device-viewport" data-dowe-device-viewport style="width:{}px;height:{}px;">{}</div></div></div>"#,
+        r#"<div{} data-dowe-device data-dowe-device-profile="{}"{}{}><div class="device-toolbar" role="group" aria-label="Device preview"{}>{}</div><div class="device-stage" data-dowe-device-stage><div class="device-viewport" data-dowe-device-viewport style="width:{}px;height:{}px;">{}</div></div></div>"#,
         attrs(device_classes, Some(&props.style.element), None, context),
         props.device.as_str(),
+        bind,
+        if props.studio_inspector { " data-dowe-studio-inspector" } else { "" },
+        if props.hide_controls { " hidden" } else { "" },
         controls,
         width,
         height,
@@ -191,4 +220,3 @@ fn render_divider_html(props: &DividerProps, context: &ReactiveRenderContext) ->
         )
     )
 }
-

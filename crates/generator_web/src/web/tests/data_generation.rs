@@ -179,6 +179,40 @@ fn renders_table_markup_css_and_runtime() {
 }
 
 #[test]
+fn renders_tree_markup_css_and_runtime() {
+    let tree = tree_tree();
+    let html = render_page_body(&ViewNode::Children, &tree);
+    assert!(html.contains(r#"class="tree is-ghost is-surface""#));
+    assert!(html.contains(r#"role="tree""#));
+    assert!(html.contains(r#"aria-label="Application files""#));
+    assert!(html.contains(r#"data-dowe-tree-data="fileTree""#));
+    assert!(html.contains(r#"data-dowe-tree-bind="selectedFile""#));
+    assert!(html.contains(r#"data-dowe-tree-on-select="selectFile""#));
+    assert!(html.contains(r#"data-dowe-tree-content"#));
+    assert!(html.contains("data-dowe-tree-icon=\"folder\""));
+    assert!(html.contains("data-dowe-tree-icon=\"file\""));
+
+    let chunk = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/tree.dowe"),
+        "page treePage",
+        &tree,
+    );
+    assert!(chunk.css_content.contains(".tree.is-ghost.is-surface"));
+    assert!(super::design_css().contains(".tree-row"));
+    let runtime_chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &tree);
+    assert_eq!(runtime_chunks.iter().map(|chunk| chunk.name).collect::<Vec<_>>(), ["tree"]);
+    let runtime = super::tree_runtime_chunk().content;
+    assert!(runtime.contains("function renderTrees"));
+    assert!(runtime.contains("function updateTreeSelection"));
+    assert!(runtime.contains("doweTreeRenderedData"));
+    assert!(runtime.contains("function treeNode"));
+    assert!(runtime.contains("data-dowe-tree-toggle"));
+    assert!(runtime.contains("wrapper.dataset.doweTreeNode=\"\""));
+    assert_javascript_syntax(&runtime);
+}
+
+#[test]
 fn renders_divider_markup_orientation_and_scheme_css() {
     let tree = divider_tree();
     let html = render_page_body(&ViewNode::Children, &tree);
@@ -350,6 +384,9 @@ fn emits_centered_proportional_icon_button_css() {
     assert!(css.contains(
         ".device-toggle{border:1px solid var(--dowe-backgroundText);color:var(--dowe-backgroundText);"
     ));
+    assert!(css.contains(
+        ".device[data-dowe-studio-inspector] .device-viewport>.iframe{pointer-events:auto}"
+    ));
 }
 
 #[test]
@@ -504,7 +541,10 @@ fn emits_show_visibility_markup_and_css() {
     );
 
     assert!(page.content.contains("show-false md:show-true"));
-    assert!(page.content.contains(r#"data-dowe-show=\"ready01\""#));
+    assert!(
+        page.content
+            .contains(r#"data-dowe-show=\"ready01\" hidden"#)
+    );
     assert!(!page.css_content.contains(".show-false:not([hidden])"));
     assert!(!page.css_content.contains(".md\\:show-true"));
     let design_css = show_design_css();
@@ -521,6 +561,7 @@ fn emits_show_visibility_markup_and_css() {
         render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     });
     assert!(router.contains("data-dowe-show"));
+    assert!(router.contains("element.hidden=!visible"));
     assert!(router.contains("if(!scoped&&button.closest(\"[data-dowe-each-row]\"))continue"));
 }
 

@@ -1,3 +1,65 @@
+function developmentNativeInvoke(functionName, args) {
+  return fetch("/_dowe/dev/ipc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: `dowe-ipc-${Date.now()}-${Math.random()}`,
+      function: functionName,
+      args
+    })
+  }).then(response => {
+    if (!response.ok) throw new Error(`Native IPC request failed: ${response.status}`);
+    return response.json();
+  });
+}
+function nativeInvoke(functionName, args) {
+  if (location.protocol === "http:" || location.protocol === "https:")
+    return developmentNativeInvoke(functionName, args);
+  const bridge = window.__DOWE_IPC__ || window.doweNative;
+  if (bridge && typeof bridge.invoke === "function") return bridge.invoke(functionName, args);
+  if (window.chrome?.webview?.postMessage) {
+    return new Promise((resolve, reject) => {
+      const id = `dowe-ipc-${Date.now()}-${Math.random()}`;
+      const listener = event => {
+        if (!event.detail || event.detail.id !== id) return;
+        window.removeEventListener("dowe:ipc-response", listener);
+        resolve(event.detail.response || { ok: false, data: null });
+      };
+      window.addEventListener("dowe:ipc-response", listener);
+      window.chrome.webview.postMessage({ id, function: functionName, args });
+      setTimeout(() => {
+        window.removeEventListener("dowe:ipc-response", listener);
+        reject(new Error("Native IPC timeout"));
+      }, 30000);
+    });
+  }
+  if (window.webkit?.messageHandlers?.doweIpc) {
+    return new Promise((resolve, reject) => {
+      const id = `dowe-ipc-${Date.now()}-${Math.random()}`;
+      const listener = event => {
+        if (!event.detail || event.detail.id !== id) return;
+        window.removeEventListener("dowe:ipc-response", listener);
+        resolve(event.detail.response || { ok: false, data: null });
+      };
+      window.addEventListener("dowe:ipc-response", listener);
+      window.webkit.messageHandlers.doweIpc.postMessage({ id, function: functionName, args });
+      setTimeout(() => {
+        window.removeEventListener("dowe:ipc-response", listener);
+        reject(new Error("Native IPC timeout"));
+      }, 30000);
+    });
+  }
+  return Promise.reject(new Error("Native IPC unavailable"));
+}
+
+if (window.parent === window) {
+  window.addEventListener("message", event => {
+    const message = event.data;
+    if (!message || message.channel !== "dowe-studio") return;
+    nativeInvoke("studioEvent", { event: JSON.stringify(message) }).catch(() => {});
+  });
+}
+
 async function runSteps(steps, scope) {
   const view = activeView;
   for (const step of steps) {
@@ -35,6 +97,70 @@ async function runSteps(steps, scope) {
     if (step.kind === "redirect") {
       await navigate(step.path, { replace: true });
       return true;
+    }
+    if (step.kind === "invoke") {
+      let result;
+      try {
+        const args = {};
+        for (const arg of step.args || []) args[arg.name] = stdValue(arg.value, view.state, scope);
+        if (step.function === "notificationTest") {
+          try {
+            const permission = await window.doweNotifications?.requestPermission();
+            const permissionGranted = permission?.native === true
+              ? permission.ok !== false
+              : permission?.permission === "granted";
+            if (!permissionGranted) throw new Error(`Notification permission is ${permission?.permission || "unavailable"}`);
+            const notification = await window.doweNotifications.show({
+              id: args.id || `dowe-test-${Date.now()}`,
+              title: args.title || "Dowe notification test",
+              body: args.body || "Local notifications are working",
+              category: args.category || "process",
+              route: args.route || location.pathname,
+              data: args.data || {}
+            });
+            result = { ok: notification?.ok !== false, data: notification, error: "" };
+          } catch (error) {
+            result = { ok: false, data: null, error: String(error?.message || error || "Notification failed") };
+          }
+          scope = { ...(scope || {}), [step.result]: result };
+          if (result.ok) {
+            if (step.update) writePath(view.state, step.update, cloneValue(result.data));
+            setAlert(view.state, step.successAlert, "success", step.successMessage || "Notification shown");
+          } else {
+            setAlert(view.state, step.errorAlert, "error", result.error || step.errorMessage || "Notification failed");
+          }
+          continue;
+        }
+        if (step.function === "studioSketch") {
+          if (typeof args.image === "string" && args.image)
+            window.dispatchEvent(new CustomEvent("dowe:chat-attach", { detail: { image: args.image } }));
+          result = { ok: true, data: true, error: "" };
+          scope = { ...(scope || {}), [step.result]: result };
+          continue;
+        }
+        const payload = await nativeInvoke(step.function, args);
+        result = {
+          ok: payload && payload.ok !== false,
+          data: payload && payload.data !== undefined ? payload.data : payload,
+          error: payload && payload.error ? String(payload.error) : ""
+        };
+        if (result.ok) {
+          if (step.update) writePath(view.state, step.update, cloneValue(result.data));
+          if (step.reset) writePath(view.state, step.reset, cloneValue(view.initial[step.reset]));
+          setAlert(view.state, step.successAlert, "success", step.successMessage || "Invocation completed");
+        } else {
+          setAlert(view.state, step.errorAlert, "error", step.errorMessage || "Invocation failed");
+        }
+      } catch (error) {
+        result = {
+          ok: false,
+          data: null,
+          error: String(error?.message || error || "Invocation failed")
+        };
+        setAlert(view.state, step.errorAlert, "error", step.errorMessage || "Invocation failed");
+      }
+      scope = { ...(scope || {}), [step.result]: result };
+      continue;
     }
     if (step.kind === "request") {
       let result;
@@ -153,6 +279,7 @@ async function runAction(id, scope) {
   const action = view.actions[id];
   if (!action) return;
   if (action.kind === "sequence") await runSteps(action.steps, scope);
+  else if (action.kind === "invoke") await runSteps([{ ...action, result: action.name }], scope);
   else if (action.kind === "assign") await runSteps([action], scope);
   else if (action.kind === "reset") await runSteps([action], scope);
   else if (action.kind === "request") await runLegacyRequest(action, scope);

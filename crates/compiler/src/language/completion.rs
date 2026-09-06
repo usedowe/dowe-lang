@@ -448,6 +448,8 @@ fn base_completions() -> Vec<LanguageCompletion> {
         "const",
         "signal",
         "request",
+        "invoke",
+        "ipc",
         "set",
         "reset",
         "redirect",
@@ -806,6 +808,10 @@ pub(super) fn component_value_completions(
     }
 
     match (component, prop) {
+        (BuiltinComponent::Draw, "drawMode") => {
+            Some(quoted_values(["pen", "rect", "circle", "select", "erase"]))
+        }
+        (BuiltinComponent::Canvas, "drawMode") => Some(quoted_values(["pen", "rect", "circle"])),
         (
             BuiltinComponent::Box
             | BuiltinComponent::Section
@@ -852,6 +858,7 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::LineChart
             | BuiltinComponent::PieChart
             | BuiltinComponent::Table
+            | BuiltinComponent::Tree
             | BuiltinComponent::AppBar
             | BuiltinComponent::Footer
             | BuiltinComponent::BottomBar
@@ -962,7 +969,9 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::Collapsible
             | BuiltinComponent::Countdown
             | BuiltinComponent::RadioGroup
-            | BuiltinComponent::SelectTheme,
+            | BuiltinComponent::RadioCard
+            | BuiltinComponent::SelectTheme
+            | BuiltinComponent::Tree,
             "scheme",
         ) => Some(quoted_values(
             ColorFamily::all().iter().map(|value| value.as_str()),
@@ -1029,6 +1038,7 @@ pub(super) fn component_value_completions(
             | BuiltinComponent::Select
             | BuiltinComponent::Slider
             | BuiltinComponent::RadioGroup
+            | BuiltinComponent::RadioCard
             | BuiltinComponent::Dropzone
             | BuiltinComponent::ComboBox
             | BuiltinComponent::DragDrop
@@ -1052,7 +1062,7 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::DragDrop, "direction") => {
             Some(quoted_values(["horizontal", "vertical"]))
         }
-        (BuiltinComponent::RadioGroup, "orientation") => {
+        (BuiltinComponent::RadioGroup | BuiltinComponent::RadioCard, "orientation") => {
             Some(quoted_values(["vertical", "horizontal"]))
         }
         (BuiltinComponent::Image, "aspect") => Some(quoted_values(
@@ -1114,7 +1124,7 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::AreaChart | BuiltinComponent::LineChart, "curve") => Some(
             quoted_values(ChartCurve::all().iter().map(|value| value.as_str())),
         ),
-        (BuiltinComponent::Code, "language") => Some(quoted_values(
+        (BuiltinComponent::Code | BuiltinComponent::Editor, "language") => Some(quoted_values(
             CodeLanguage::all().iter().map(|value| value.as_str()),
         )),
         (BuiltinComponent::Video, "aspect") => Some(quoted_values(
@@ -1142,8 +1152,10 @@ pub(super) fn component_value_completions(
         (BuiltinComponent::AppBar, "position") => Some(quoted_values(
             BarPosition::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Canvas, "fit") => Some(quoted_values(["contain", "cover", "stretch"])),
-        (BuiltinComponent::Canvas, "background") => Some(quoted_values(
+        (BuiltinComponent::Canvas | BuiltinComponent::Draw, "fit") => {
+            Some(quoted_values(["contain", "cover", "stretch"]))
+        }
+        (BuiltinComponent::Canvas | BuiltinComponent::Draw, "background") => Some(quoted_values(
             ColorToken::all()
                 .iter()
                 .map(|value| value.as_str())
@@ -1220,6 +1232,7 @@ pub(super) fn component_value_completions(
             Some(boolean_values())
         }
         (BuiltinComponent::Section, "boxed") => Some(boolean_values()),
+        (BuiltinComponent::Tree, "defaultOpen") => Some(boolean_values()),
         (BuiltinComponent::RichText, "title") => Some(boolean_values()),
         (BuiltinComponent::Title | BuiltinComponent::Text | BuiltinComponent::RichText, "size") => {
             Some(quoted_values(
@@ -1451,7 +1464,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Section" => SECTION_PROPS.to_vec(),
         "Flex" => LAYOUT_PROPS.to_vec(),
         "Grid" => GRID_PROPS.to_vec(),
-        "Card" => combined_props(&["flex"], VARIANT_PROPS),
+        "Card" => combined_props(&["flex", "color", "border"], VARIANT_PROPS),
         "AppBar" => APP_BAR_PROPS.to_vec(),
         "BottomBar" => FLOATING_BAR_PROPS.to_vec(),
         "Footer" => BAR_PROPS.to_vec(),
@@ -1491,6 +1504,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "marker" => MAP_MARKER_PROPS.to_vec(),
         "waypoint" => MAP_WAYPOINT_PROPS.to_vec(),
         "RadioGroup" => RADIO_GROUP_PROPS.to_vec(),
+        "RadioCard" => RADIO_GROUP_PROPS.to_vec(),
         "item" => ITEM_PROPS.to_vec(),
         "submenu" | "megamenu" => NAV_MENU_ENTRY_PROPS.to_vec(),
         "group" => COMMAND_GROUP_PROPS.to_vec(),
@@ -1521,6 +1535,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Iframe" => IFRAME_PROPS.to_vec(),
         "Device" => DEVICE_PROPS.to_vec(),
         "Canvas" => CANVAS_PROPS.to_vec(),
+        "Draw" => DRAW_PROPS.to_vec(),
         "Candlestick" => CANDLESTICK_PROPS.to_vec(),
         "Diagram" => DIAGRAM_PROPS.to_vec(),
         "ArcChart" => ARC_CHART_PROPS.to_vec(),
@@ -1529,6 +1544,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "LineChart" => LINE_CHART_PROPS.to_vec(),
         "PieChart" => PIE_CHART_PROPS.to_vec(),
         "Table" => TABLE_PROPS.to_vec(),
+        "Tree" => TREE_PROPS.to_vec(),
         "column" => COLUMN_PROPS.to_vec(),
         "Divider" => DIVIDER_PROPS.to_vec(),
         "Button" => BUTTON_PROPS.to_vec(),
@@ -1962,8 +1978,27 @@ const NAV_MENU_PROPS: &[&str] = &[
     "w", "h", "minW", "minH", "maxW", "maxH", "rounded", "border",
 ];
 const SCAFFOLD_PROPS: &[&str] = &[
-    "boxed", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "maxW", "maxH", "rounded", "border",
+    "boxed",
+    "safeAreaTop",
+    "safeAreaBottom",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
+    "border",
 ];
 const TABS_PROPS: &[&str] = &[
     "variant", "scheme", "position", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb",
@@ -2670,6 +2705,7 @@ const ITEM_PROPS: &[&str] = &[
     "value",
     "text",
     "label",
+    "title",
     "i18n",
     "description",
     "descriptionI18n",
@@ -2948,6 +2984,8 @@ const DRAG_ITEM_PROPS: &[&str] = &["id", "label", "description", "disabled"];
 const EDITOR_PROPS: &[&str] = &[
     "bind",
     "value",
+    "language",
+    "onSave",
     "placeholder",
     "label",
     "helpText",
@@ -3288,10 +3326,32 @@ const IFRAME_PROPS: &[&str] = &[
     "border",
 ];
 const DEVICE_PROPS: &[&str] = &[
-    "device", "id", "show", "font", "p", "px", "py", "pl", "pr", "pt", "pb", "w", "h", "minW",
-    "minH", "maxW", "maxH", "rounded", "border",
+    "device",
+    "bind",
+    "hideControls",
+    "hideButtons",
+    "studioInspector",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
+    "border",
 ];
 const CANVAS_PROPS: &[&str] = &[
+    "drawMode",
     "scene",
     "viewWidth",
     "viewHeight",
@@ -3305,6 +3365,47 @@ const CANVAS_PROPS: &[&str] = &[
     "onKey",
     "onMotion",
     "motionRate",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
+    "border",
+];
+const DRAW_PROPS: &[&str] = &[
+    "bind",
+    "selected",
+    "scene",
+    "viewWidth",
+    "viewHeight",
+    "fit",
+    "fps",
+    "autoplay",
+    "background",
+    "pixelated",
+    "label",
+    "draw",
+    "drawMode",
+    "onPointer",
+    "onKey",
+    "onMotion",
+    "motionRate",
+    "onLayerAdd",
+    "onLayerChange",
+    "onLayerRemove",
+    "onLayerSelect",
     "id",
     "show",
     "font",
@@ -3568,6 +3669,34 @@ const TABLE_PROPS: &[&str] = &[
     "dividers",
     "emptyTitle",
     "emptyDescription",
+    "id",
+    "show",
+    "font",
+    "p",
+    "px",
+    "py",
+    "pl",
+    "pr",
+    "pt",
+    "pb",
+    "w",
+    "h",
+    "minW",
+    "minH",
+    "maxW",
+    "maxH",
+    "rounded",
+    "border",
+];
+const TREE_PROPS: &[&str] = &[
+    "data",
+    "bind",
+    "defaultOpen",
+    "emptyLabel",
+    "ariaLabel",
+    "onSelect",
+    "variant",
+    "scheme",
     "id",
     "show",
     "font",

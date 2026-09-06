@@ -41,6 +41,44 @@ main
 }
 
 #[test]
+fn allows_imported_server_function_calls_inside_websockets() {
+    let temp = TempDir::new().expect("tempdir");
+    let root = temp.path();
+    fs::create_dir_all(root.join("server/services")).expect("services");
+    fs::write(
+        root.join("main.dowe"),
+        r#"import resolveSkill from "@/server/services/skills"
+
+main
+  server port:0
+    websocket "/events"
+      message ws
+        ws event source:"json"
+        resolveSkill plan args:{ profile:"views" }
+        send ws json:plan"#,
+    )
+    .expect("main");
+    fs::write(
+        root.join("server/services/skills.dowe"),
+        r#"type SkillPlan
+  valid:bool
+
+fn resolveSkill params:{ profile:string } return:"SkillPlan"
+  return value:{ valid:true }"#,
+    )
+    .expect("service");
+
+    let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
+    let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
+    let server = parse_server_source(root, &file, &EnvironmentConfig::default()).expect("server");
+    let websocket = &server.backend.websockets[0];
+    assert!(matches!(
+        &websocket.handlers.message.statements[1],
+        ServerStatement::Call(call) if call.target == "resolveSkill"
+    ));
+}
+
+#[test]
 fn rejects_invalid_server_function_call_shape() {
     let temp = TempDir::new().expect("tempdir");
     let root = temp.path();
@@ -634,6 +672,38 @@ fn parses_inline_task_with_dynamic_args_and_local_bindings() {
         job.action.statements.as_slice(),
         [ServerStatement::Stdlib(_), ServerStatement::Log(_)]
     ));
+}
+
+#[test]
+fn parses_inline_named_task_mode() {
+    let temp = TempDir::new().expect("tempdir");
+    let root = temp.path();
+    fs::create_dir_all(root.join("server/tasks")).expect("tasks");
+    fs::write(
+        root.join("server/tasks/cleanup.dowe"),
+        r#"fn runCleanup
+  return value:{ ok:true }"#,
+    )
+    .expect("function");
+    fs::write(
+        root.join("main.dowe"),
+        r#"import runCleanup from "@/server/tasks/cleanup"
+
+main
+  server port:0
+    route "/run"
+      handler
+        task fn:runCleanup mode:"inline"
+        return text:"OK""#,
+    )
+    .expect("main");
+    let source = fs::read_to_string(root.join("main.dowe")).expect("main source");
+    let file = parse_source_file(root, &root.join("main.dowe"), source).expect("source");
+    let server = parse_server_source(root, &file, &EnvironmentConfig::default()).expect("server");
+    let ServerStatement::Task(job) = &server.backend.endpoints[0].action.statements[0] else {
+        panic!("named task");
+    };
+    assert!(job.inline);
 }
 
 #[test]

@@ -62,16 +62,80 @@ pub(crate) fn cacheable_design_css_response(
     request_headers: &HeaderMap,
     cache_control: &'static str,
 ) -> Response {
-    let path = project.root.join(".dowe").join(relative_path);
-    match fs::read_to_string(path) {
-        Ok(css) => cacheable_text_response(
+    let paths = [
+        project.root.join(".dowe").join(relative_path),
+        project.root.join(".dowe/apps/desktop").join(relative_path),
+    ];
+    match paths.iter().find_map(|path| fs::read_to_string(path).ok()) {
+        Some(css) => cacheable_text_response(
             css,
             "text/css; charset=utf-8",
             request_headers,
             cache_control,
         ),
-        Err(_) => StatusCode::NOT_FOUND.into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
     }
+}
+
+pub(crate) fn cacheable_dev_design_css_response(
+    project: &CompiledProject,
+    web: &WebOutput,
+    relative_path: &str,
+    request_headers: &HeaderMap,
+    cache_control: &'static str,
+) -> Response {
+    let response = cacheable_design_css_response(
+        project,
+        relative_path,
+        request_headers,
+        cache_control,
+    );
+    if response.status() != StatusCode::NOT_FOUND {
+        return response;
+    }
+    dev_web_artifact_response(project, web, relative_path, request_headers, cache_control)
+        .unwrap_or_else(|| StatusCode::NOT_FOUND.into_response())
+}
+
+pub(crate) fn dev_web_artifact_response(
+    project: &CompiledProject,
+    web: &WebOutput,
+    relative_path: &str,
+    request_headers: &HeaderMap,
+    cache_control: &'static str,
+) -> Option<Response> {
+    let relative_path = Path::new(relative_path);
+    if relative_path.is_absolute()
+        || relative_path
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return None;
+    }
+    let artifact = dowe_compiler::web_artifacts_for_target(
+        web,
+        &project.font_config,
+        &project.design_config,
+        Path::new(""),
+        "web",
+    )
+    .into_iter()
+    .find(|artifact| artifact.relative_path == relative_path)?;
+    let content_type = if relative_path.extension().and_then(|value| value.to_str()) == Some("css") {
+        "text/css; charset=utf-8"
+    } else if relative_path.extension().and_then(|value| value.to_str()) == Some("json") {
+        "application/json; charset=utf-8"
+    } else if relative_path.extension().and_then(|value| value.to_str()) == Some("js") {
+        "application/javascript; charset=utf-8"
+    } else {
+        "text/html; charset=utf-8"
+    };
+    Some(cacheable_text_response(
+        artifact.content,
+        content_type,
+        request_headers,
+        cache_control,
+    ))
 }
 
 pub(crate) fn design_css_chunk_relative_path(path: &str) -> Option<String> {
@@ -274,6 +338,51 @@ fn dev_client_response(inspector_enabled: bool, server_inspector_url: Option<&st
     javascript_response(dev_client_script(inspector_enabled, server_inspector_url))
 }
 
+pub(crate) fn studio_host_client_response() -> Response {
+    let mut script = dev_client_script(false, None);
+    script.push('\n');
+    script.push_str(include_str!("../studio_inspector_client.js"));
+    javascript_response(script)
+}
+
+pub(crate) fn studio_preview_client_response() -> Response {
+    javascript_response(studio_preview_client_script())
+}
+
+fn studio_preview_client_script() -> String {
+    let mut script = dev_client_script(false, None);
+    script.push_str(
+        r##"
+const DOWE_STUDIO_PREVIEW=true;
+let doweStudioPreviewOrigin=null;
+let doweStudioPreviewNonce=null;
+let doweStudioPreviewManifest=null;
+let doweStudioPreviewHover="";
+let doweStudioPreviewActiveNode=null;
+let doweStudioPreviewManifestAttempts=0;
+let doweStudioPreviewOverlay=null;
+let doweStudioPreviewTooltip=null;
+function postDoweStudioPreview(type,payload){if(window.parent===window||!doweStudioPreviewNonce)return;const message={channel:"dowe-studio",version:1,nonce:doweStudioPreviewNonce,type,payload};try{window.parent.postMessage(message,doweStudioPreviewOrigin||"*");}catch(error){}}
+function studioPreviewNode(target){return target instanceof Element?target.closest("[data-dowe-node]"):null;}
+function studioPreviewMetadata(node){if(!node)return null;return doweStudioPreviewManifest?.nodes?.find(item=>item.id===node.dataset.doweNode)||{id:node.dataset.doweNode,kind:"Component",path:"",startLine:0,endLine:0};}
+function studioPreviewStyle(element,values){for(const [name,value] of Object.entries(values))element.style[name]=value;}
+function studioPreviewEnsureUi(){if(doweStudioPreviewOverlay)return;doweStudioPreviewOverlay=document.createElement("div");studioPreviewStyle(doweStudioPreviewOverlay,{position:"fixed",zIndex:"2147483646",pointerEvents:"none",display:"none",boxSizing:"border-box",border:"2px solid #6bc670",background:"#6bc67022"});document.body.append(doweStudioPreviewOverlay);doweStudioPreviewTooltip=document.createElement("div");studioPreviewStyle(doweStudioPreviewTooltip,{position:"fixed",zIndex:"2147483647",pointerEvents:"none",display:"none",maxWidth:"420px",padding:"6px 8px",borderRadius:"6px",background:"#1f3a5f",color:"#f8fbff",font:"12px/1.35 system-ui",boxShadow:"0 6px 20px #0005"});document.body.append(doweStudioPreviewTooltip);}
+function studioPreviewClearHover(){doweStudioPreviewHover="";doweStudioPreviewActiveNode=null;if(doweStudioPreviewOverlay)doweStudioPreviewOverlay.style.display="none";if(doweStudioPreviewTooltip)doweStudioPreviewTooltip.style.display="none";}
+function studioPreviewShowHover(node,item,x,y){doweStudioPreviewActiveNode=node;studioPreviewEnsureUi();const box=node.getBoundingClientRect();studioPreviewStyle(doweStudioPreviewOverlay,{display:"block",left:String(box.left)+"px",top:String(box.top)+"px",width:String(box.width)+"px",height:String(box.height)+"px"});doweStudioPreviewTooltip.textContent=String(item.kind||"Component")+" · "+String(item.path||"")+":"+String(item.startLine||"");const left=Math.min(Math.max(8,x+12),Math.max(8,window.innerWidth-430));const top=Math.min(Math.max(8,y+12),Math.max(8,window.innerHeight-48));studioPreviewStyle(doweStudioPreviewTooltip,{display:"block",left:String(left)+"px",top:String(top)+"px"});if(item.id!==doweStudioPreviewHover){doweStudioPreviewHover=item.id;postDoweStudioPreview("studio:view:hover",{node:item});}}
+function studioPreviewBuilderPayload(event){const value=event.dataTransfer?.getData("application/x-dowe-builder")||event.dataTransfer?.getData("text/plain")||"";if(!value)return null;try{const payload=JSON.parse(value);if(!payload||typeof payload.component!=="string"||!/^[A-Z][A-Za-z0-9]*$/.test(payload.component))return null;return {component:payload.component,props:payload.props&&typeof payload.props==="object"?payload.props:{}};}catch(error){return /^[A-Z][A-Za-z0-9]*$/.test(value)?{component:value,props:{}}:null;}}
+function studioPreviewBuilderTarget(target){const node=studioPreviewNode(target);return node?studioPreviewMetadata(node):null;}
+window.addEventListener("message",event=>{const message=event.data;if(!message||message.channel!=="dowe-studio"||event.source!==window.parent)return;if(message.type==="studio:hello"&&typeof message.nonce==="string"){doweStudioPreviewNonce=message.nonce;doweStudioPreviewOrigin=event.origin&&event.origin!=="null"?event.origin:null;studioPreviewEnsureUi();postDoweStudioPreview("studio:ready",{nonce:doweStudioPreviewNonce});}});
+function studioPreviewLoadManifest(){fetch("/_dowe/dev/inspector.json",{cache:"no-store"}).then(response=>response.ok?response.json():null).then(manifest=>{if(manifest?.nodes){doweStudioPreviewManifest=manifest;if(doweStudioPreviewActiveNode){const node=doweStudioPreviewActiveNode;const item=studioPreviewMetadata(node);if(item){doweStudioPreviewHover="";const box=node.getBoundingClientRect();studioPreviewShowHover(node,item,box.left,box.top);}}}else if(doweStudioPreviewManifestAttempts++<20){setTimeout(studioPreviewLoadManifest,500);}}).catch(()=>{if(doweStudioPreviewManifestAttempts++<20)setTimeout(studioPreviewLoadManifest,500);});}studioPreviewLoadManifest();
+document.addEventListener("mousemove",event=>{const node=studioPreviewNode(event.target);const item=studioPreviewMetadata(node);if(!item){studioPreviewClearHover();return;}studioPreviewShowHover(node,item,event.clientX,event.clientY);},true);
+document.addEventListener("dragover",event=>{if(!doweStudioPreviewNonce)return;const payload=studioPreviewBuilderPayload(event);const node=studioPreviewNode(event.target);const item=studioPreviewBuilderTarget(event.target);if(!payload||!node||!item)return;event.preventDefault();event.dataTransfer.dropEffect="copy";studioPreviewShowHover(node,item,event.clientX,event.clientY);postDoweStudioPreview("studio:builder:dragover",{node:item,payload});},true);
+document.addEventListener("drop",event=>{if(!doweStudioPreviewNonce)return;const payload=studioPreviewBuilderPayload(event);const item=studioPreviewBuilderTarget(event.target);if(!payload||!item)return;event.preventDefault();event.stopPropagation();postDoweStudioPreview("studio:builder:drop",{node:item,payload,relation:"child"});},true);
+window.addEventListener("blur",studioPreviewClearHover);
+document.addEventListener("click",event=>{if(!doweStudioPreviewNonce)return;const node=studioPreviewNode(event.target);const item=studioPreviewMetadata(node);if(!item)return;studioPreviewShowHover(node,item,event.clientX,event.clientY);event.preventDefault();event.stopPropagation();postDoweStudioPreview("studio:view:selected",{node:item});},true);
+"##,
+    );
+    script
+}
+
 pub(crate) fn javascript_response(content: String) -> Response {
     web_text_response(
         content,
@@ -352,6 +461,32 @@ fn content_etag(content: &[u8]) -> String {
         .map(|byte| format!("{byte:02x}"))
         .collect::<String>();
     format!(r#"W/"{digest}""#)
+}
+
+pub(crate) fn generated_web_manifest_response(
+    project: &CompiledProject,
+    web: &WebOutput,
+) -> Response {
+    let path = project.root.join(".dowe/web/manifest.json");
+    match fs::read_to_string(path) {
+        Ok(content) => (
+            StatusCode::OK,
+            [
+                (CONTENT_TYPE, "application/json; charset=utf-8"),
+                (CACHE_CONTROL, "no-store"),
+            ],
+            content,
+        )
+            .into_response(),
+        Err(_) => dev_web_artifact_response(
+            project,
+            web,
+            "web/manifest.json",
+            &HeaderMap::new(),
+            "no-store",
+        )
+        .unwrap_or_else(|| StatusCode::NOT_FOUND.into_response()),
+    }
 }
 
 pub(crate) fn generated_json_response(project: &CompiledProject, relative_path: &str) -> Response {
@@ -440,7 +575,7 @@ fn dev_client_script(inspector_enabled: bool, server_inspector_url: Option<&str>
         ""
     };
     let hmr = format!(
-        r#"const protocol=location.protocol==="https:"?"wss":"ws";let active=true;let hmrQueue=Promise.resolve();function queueHotUpdate(version){{hmrQueue=hmrQueue.then(async()=>{{if(typeof window.__doweHotUpdate==="function"){{try{{await window.__doweHotUpdate(version||"");{refresh}return;}}catch(error){{}}}}location.reload();}}).catch(()=>{{}});}}function connect(){{if(!active)return;const socket=new WebSocket(`${{protocol}}://${{location.host}}/_dowe/dev/ws`);socket.onmessage=async(event)=>{{try{{const message=JSON.parse(event.data);if(message.type==="module_update"&&message.target==="web"){{queueHotUpdate(message.version||"");return;}}if(message.type==="reload"&&(message.target==="web"||message.target==="desktop"))location.reload();if(message.type==="shutdown")active=false;}}catch(error){{}}}};socket.onclose=()=>{{if(active)setTimeout(connect,250);}};}}connect();"#
+        r#"const DOWE_STUDIO_CHANNEL="dowe-studio";let doweStudioOrigin=null;let doweStudioNonce=null;function postDoweStudio(type,payload){{if(window.parent===window)return;const message={{channel:DOWE_STUDIO_CHANNEL,version:1,type,payload}};try{{window.parent.postMessage(message,doweStudioOrigin||"*");}}catch(error){{}}}}window.addEventListener("message",event=>{{const message=event.data;if(!message||message.channel!==DOWE_STUDIO_CHANNEL||event.source!==window.parent)return;if(message.type==="studio:hello"&&typeof message.nonce==="string"){{doweStudioNonce=message.nonce;doweStudioOrigin=event.origin&&event.origin!=="null"?event.origin:null;postDoweStudio("studio:ready",{{nonce:doweStudioNonce}});}}}});const protocol=location.protocol==="https:"?"wss":"ws";let active=true;let hmrQueue=Promise.resolve();function queueHotUpdate(version){{hmrQueue=hmrQueue.then(async()=>{{if(typeof window.__doweHotUpdate==="function"){{try{{await window.__doweHotUpdate(version||"");{refresh}return;}}catch(error){{}}}}location.reload();}}).catch(()=>{{}});}}function connect(){{if(!active)return;const socket=new WebSocket(`${{protocol}}://${{location.host}}/_dowe/dev/ws`);socket.onmessage=async(event)=>{{try{{const message=JSON.parse(event.data);postDoweStudio("studio:dev:event",message);if(message.type==="module_update"&&message.target==="web"){{queueHotUpdate(message.version||"");return;}}if(message.type==="reload"&&(message.target==="web"||message.target==="desktop")){{queueHotUpdate(message.version||"");return;}}if(message.type==="shutdown")active=false;}}catch(error){{}}}};socket.onclose=()=>{{if(active)setTimeout(connect,250);}};}}connect();"#
     );
     if inspector_enabled {
         let icon = serde_json::to_string(include_str!("../dowe_inspector_icon.svg"))
@@ -463,6 +598,7 @@ fn dev_client_script(inspector_enabled: bool, server_inspector_url: Option<&str>
 mod project_asset_tests {
     use super::{
         asset_content_type, dev_client_script, safe_inspector_source_path, safe_project_asset_path,
+        studio_preview_client_script,
     };
     use std::fs;
     use std::path::Path;
@@ -505,7 +641,43 @@ mod project_asset_tests {
         assert!(inspector.contains("Routes"));
         assert!(inspector.contains("Show details"));
         assert!(inspector.contains("loadManifest();"));
+        assert!(inspector.contains("DOWE_STUDIO_CHANNEL"));
+        assert!(inspector.contains("studio:dev:event"));
         assert!(!inspector.contains("inspectorPreview"));
+        let studio_preview = studio_preview_client_script();
+        assert!(studio_preview.contains("DOWE_STUDIO_PREVIEW"));
+        assert!(studio_preview.contains("studio:view:hover"));
+        assert!(studio_preview.contains("studio:view:selected"));
+        assert!(studio_preview.contains("studio:builder:dragover"));
+        assert!(studio_preview.contains("studio:builder:drop"));
+        assert!(studio_preview.contains("application/x-dowe-builder"));
+        assert!(studio_preview.contains("studioPreviewShowHover"));
+        assert!(studio_preview.contains("if(!node)return null"));
+        assert!(studio_preview.contains("studioPreviewLoadManifest"));
+        assert!(studio_preview.contains("document.addEventListener(\"mousemove\",event=>{const node"));
+        assert!(studio_preview.contains("nonce:doweStudioPreviewNonce"));
+        assert!(!studio_preview.contains("Dowe Devtools"));
+        let studio_host = include_str!("../studio_inspector_client.js");
+        assert!(studio_host.contains("Dowe Studio Inspector"));
+        assert!(studio_host.contains("Pasa el cursor"));
+        assert!(studio_host.contains("studioInspectorSendToChat"));
+        assert!(studio_host.contains("Send to chat"));
+        assert!(studio_host.contains("sendButton.onclick"));
+        assert!(!studio_host.contains("studioInspectorSendToChat(message.payload.node)"));
+        assert!(studio_host.contains("data-dowe-studio-builder-item"));
+        assert!(studio_host.contains("application/x-dowe-builder"));
+        assert!(studio_host.contains("studio:builder:drop"));
+        assert!(studio_host.contains("studioInspectorStageBuilderDrop"));
+        assert!(studio_host.contains("studioInspector.selected"));
+        assert!(studio_host.contains("functionName,args"));
+        assert!(studio_host.contains("stageStudioChanges"));
+        assert!(studio_host.contains("changePlan"));
+        assert!(studio_host.contains("Builder change review"));
+        assert!(studio_host.contains("#studio-chat"));
+        assert!(studio_host.contains("applyStudioChanges"));
+        assert!(studio_host.contains("rejectStudioChanges"));
+        assert!(studio_host.contains("studio:view:hover"));
+        assert!(!studio_host.contains("Dowe Devtools"));
         assert!(!inspector.contains("<iframe"));
         assert!(dev_client_script(true, None).contains("const SERVER_INSPECTOR_URL=null;"));
         assert!(!dev_client_script(false, None).contains("Dowe inspect"));

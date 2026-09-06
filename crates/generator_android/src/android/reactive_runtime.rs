@@ -37,6 +37,19 @@ private object DowePropCatalog {
 
 private data class DoweRow(val id: String, val value: Map<String, Any?>)
 
+private data class DoweTreeNode(val id: String, val label: String, val path: String, val branch: Boolean, val children: List<DoweTreeNode>, val value: Map<String, Any?>)
+
+private data class DoweInvokeAction(
+    val function: String,
+    val args: List<DoweStdlibArg>,
+    val update: String?,
+    val reset: String?,
+    val successAlert: String?,
+    val successMessage: String?,
+    val errorAlert: String?,
+    val errorMessage: String?
+)
+
 private data class DoweRequestAction(
     val method: String,
     val path: String,
@@ -58,6 +71,7 @@ private data class DoweActionMetadata(
 
 private sealed class DoweAction {
     data class Request(val action: DoweRequestAction, val metadata: DoweActionMetadata) : DoweAction()
+    data class Invoke(val action: DoweInvokeAction, val metadata: DoweActionMetadata) : DoweAction()
     data class Assign(val target: String, val source: String, val call: DoweStdlibCall?, val metadata: DoweActionMetadata) : DoweAction()
     data class Reset(val target: String, val metadata: DoweActionMetadata) : DoweAction()
     data class Sequence(val steps: List<DoweStep>, val metadata: DoweActionMetadata) : DoweAction()
@@ -66,6 +80,7 @@ private sealed class DoweAction {
 private sealed class DoweStep {
     data class Validate(val target: String) : DoweStep()
     data class Request(val result: String, val action: DoweRequestAction) : DoweStep()
+    data class Invoke(val result: String, val action: DoweInvokeAction) : DoweStep()
     data class Branch(val result: String, val success: List<DoweStep>, val error: List<DoweStep>) : DoweStep()
     data class Assign(val target: String, val source: String, val literal: Any?, val hasLiteral: Boolean, val call: DoweStdlibCall?) : DoweStep()
     data class Reset(val target: String) : DoweStep()
@@ -74,6 +89,14 @@ private sealed class DoweStep {
 }
 
 private data class DoweToastState(val id: Long, val kind: String, val title: String, val message: String, val duration: Int, val scheme: String, val variant: String, val position: String)
+
+internal object DoweNativeBridge {
+    var handler: (suspend (String, Map<String, Any?>) -> Pair<Boolean, Any?>)? = null
+    fun install(handler: suspend (String, Map<String, Any?>) -> Pair<Boolean, Any?>) {
+        this.handler = handler
+    }
+    suspend fun invoke(function: String, args: Map<String, Any?>): Pair<Boolean, Any?> = handler?.invoke(function, args) ?: Pair(false, null)
+}
 
 private data class DoweStdlibCall(val namespace: String, val function: String, val args: List<DoweStdlibArg>)
 private data class DoweStdlibArg(val name: String, val value: DoweStdlibValue)
@@ -323,6 +346,9 @@ private class DoweReactiveState(
         val metadata = signals[root] ?: return
         if (metadata.scope != "global") return
         val value = values[root]
+        for ((id, candidate) in signals) {
+            if (candidate.scope == "global" && candidate.name == metadata.name) values[id] = value
+        }
         globalValues[metadata.name] = value
         if (metadata.storage == "local") {
             preferences.edit().putString(storageKey(metadata.name), JSONObject().put("value", doweJsonValue(value)).toString()).apply()
@@ -345,6 +371,34 @@ private class DoweReactiveState(
             val row = value as? Map<String, Any?> ?: return@mapIndexedNotNull null
             DoweRow(row["id"]?.toString() ?: index.toString(), row)
         } ?: emptyList()
+
+    fun treeNodes(path: String): List<DoweTreeNode> = treeChildren(read(path)).mapNotNull(::treeNode)
+
+    private fun treeChildren(value: Any?): List<Any?> {
+        val list = value as? List<*>
+        if (list != null) return list
+        val map = value as? Map<*, *> ?: return emptyList()
+        val children = map["children"] as? List<*>
+        return children ?: ((map["folders"] as? List<*>).orEmpty() + (map["files"] as? List<*>).orEmpty())
+    }
+
+    private fun treeNode(value: Any?): DoweTreeNode? {
+        val map = value as? Map<*, *> ?: return null
+        val rawId = map["id"] ?: map["path"] ?: map["name"] ?: map["label"] ?: return null
+        val id = rawId.toString()
+        if (id.isEmpty()) return null
+        val rawLabel = map["name"] ?: map["label"] ?: return null
+        val label = rawLabel.toString()
+        if (label.isEmpty()) return null
+        val path = (map["path"] ?: id).toString()
+        val childValues = treeChildren(value)
+        val children = childValues.mapNotNull(::treeNode)
+        val kind = (map["type"] ?: map["kind"] ?: "").toString().lowercase()
+        val explicitChildren = map["children"] is List<*> || map["folders"] is List<*> || map["files"] is List<*>
+        val branch = children.isNotEmpty() || explicitChildren || kind in setOf("folder", "directory", "branch")
+        val typed = map.entries.associate { entry -> entry.key.toString() to entry.value }
+        return DoweTreeNode(id, label, path, branch, children, typed)
+    }
 
     fun candles(path: String): List<Map<String, Any?>> =
         (read(path) as? List<*>)?.mapNotNull { it as? Map<String, Any?> } ?: emptyList()
@@ -371,6 +425,12 @@ private class DoweReactiveState(
             }
         }
         write(path, if (maxPoints > 0 && rows.size > maxPoints) rows.takeLast(maxPoints) else rows)
+    }
+
+    fun appendChatMessage(path: String, text: String) {
+        val next = rows(path).map { it.value }.toMutableList()
+        next.add(mapOf("id" to "local-${System.currentTimeMillis()}-${next.size}", "role" to "user", "text" to text, "own" to true, "status" to "sent"))
+        write(path, next)
     }
 
     fun write(path: String, value: Any?) {
@@ -407,6 +467,7 @@ private class DoweReactiveState(
             }
             is DoweAction.Reset -> initial[action.target]?.let { write(action.target, it) }
             is DoweAction.Request -> execute(action.action, item)
+            is DoweAction.Invoke -> execute(action.action, item)
             is DoweAction.Sequence -> runSteps(action.steps, item, mutableMapOf())
             null -> {}
         }
@@ -422,6 +483,10 @@ private class DoweReactiveState(
                 is DoweStep.Validate -> if (!validateForm(step.target, item)) return true
                 is DoweStep.Request -> {
                     val result = request(step.action, item)
+                    results[step.result] = mapOf("ok" to result.first, "data" to result.second)
+                }
+                is DoweStep.Invoke -> {
+                    val result = invoke(step.action, item)
                     results[step.result] = mapOf("ok" to result.first, "data" to result.second)
                 }
                 is DoweStep.Branch -> {
@@ -538,15 +603,21 @@ private class DoweReactiveState(
             "str.upper" -> text("value").uppercase()
             "str.length" -> text("value").codePointCount(0, text("value").length)
             "str.contains" -> text("value").contains(text("needle"))
+            "str.equals" -> text("value") == text("other")
             "str.startsWith" -> text("value").startsWith(text("prefix"))
             "str.endsWith" -> text("value").endsWith(text("suffix"))
             "str.replace" -> text("value").replace(text("from"), text("to"))
+            "str.truncate" -> text("value").take(maxOf(0, number("max")?.toInt() ?: 0))
             "str.split" -> text("value").split(text("delimiter")).let { values -> args["limit"]?.let { values.take(maxOf(0, stdlibNumber(it)?.toInt() ?: 0)) } ?: values }
             "str.join" -> list("values").joinToString(text("delimiter")) { stdlibText(it) }
             "math.add" -> finite(number("left"), number("right")) { left, right -> left + right }
             "math.sub" -> finite(number("left"), number("right")) { left, right -> left - right }
             "math.mul" -> finite(number("left"), number("right")) { left, right -> left * right }
             "math.div" -> finite(number("left"), number("right")) { left, right -> if (right == 0.0) null else left / right }
+            "math.gt" -> finiteCompare(number("left"), number("right")) { left, right -> left > right }
+            "math.gte" -> finiteCompare(number("left"), number("right")) { left, right -> left >= right }
+            "math.lt" -> finiteCompare(number("left"), number("right")) { left, right -> left < right }
+            "math.lte" -> finiteCompare(number("left"), number("right")) { left, right -> left <= right }
             "math.round" -> number("value")?.let { kotlin.math.round(it) }
             "math.floor" -> number("value")?.let { kotlin.math.floor(it) }
             "math.ceil" -> number("value")?.let { kotlin.math.ceil(it) }
@@ -578,6 +649,14 @@ private class DoweReactiveState(
             "list.count" -> list("values").size
             "list.filterEquals" -> list("values").filter { stdlibRead(it, text("field")) == args["value"] }
             "list.filterContains" -> list("values").filter { stdlibText(stdlibRead(it, text("field"))).lowercase().contains(text("value").lowercase()) }
+            "list.filterContainsAny" -> {
+                val needles = list("needles").map(::stdlibText).filter { it.isNotEmpty() }.map { it.lowercase() }
+                list("values").filter { item ->
+                    val value = stdlibText(stdlibRead(item, text("field"))).lowercase()
+                    needles.any { needle -> value.contains(needle) }
+                }
+            }
+            "list.concat" -> list("values") + list("other")
             "list.mapField" -> list("values").map { stdlibRead(it, text("field")) }
             "list.sumBy" -> list("values").mapNotNull { stdlibNumber(stdlibRead(it, text("field"))) }.sum()
             "list.averageBy" -> list("values").mapNotNull { stdlibNumber(stdlibRead(it, text("field"))) }.takeIf { it.isNotEmpty() }?.average()
@@ -772,6 +851,10 @@ private class DoweReactiveState(
         return result?.takeIf { it.isFinite() }
     }
 
+    private fun finiteCompare(left: Double?, right: Double?, op: (Double, Double) -> Boolean): Boolean? {
+        return if (left == null || right == null) null else op(left, right)
+    }
+
     private suspend fun execute(action: DoweRequestAction, item: Map<String, Any?>?) {
         val result = request(action, item)
         if (result.first) {
@@ -780,6 +863,26 @@ private class DoweReactiveState(
             setAlert(action.successAlert, "success", action.successMessage ?: "Request completed")
         } else {
             setAlert(action.errorAlert, "error", action.errorMessage ?: "Request failed")
+        }
+    }
+
+    private suspend fun execute(action: DoweInvokeAction, item: Map<String, Any?>?) {
+        val result = invoke(action, item)
+        if (result.first) {
+            action.update?.let { write(it, result.second) }
+            action.reset?.let { initial[it]?.let { value -> write(it, value) } }
+            setAlert(action.successAlert, "success", action.successMessage ?: "Invocation completed")
+        } else {
+            setAlert(action.errorAlert, "error", action.errorMessage ?: "Invocation failed")
+        }
+    }
+
+    private suspend fun invoke(action: DoweInvokeAction, item: Map<String, Any?>?): Pair<Boolean, Any?> = withContext(Dispatchers.IO) {
+        try {
+            val args = action.args.associate { it.name to stdlibValue(it.value, item) }
+            DoweNativeBridge.invoke(action.function, args)
+        } catch (error: Exception) {
+            Pair(false, null)
         }
     }
 
@@ -891,7 +994,11 @@ private fun doweNativeValue(value: Any?): Any? =
 }
 
 fn runtime_kotlin_icons() -> String {
-    dowe_components::all_icon_names().iter().map(|value| format!("\"{}\"", value.replace('"', "\\\""))).collect::<Vec<_>>().join(", ")
+    dowe_components::all_icon_names()
+        .iter()
+        .map(|value| format!("\"{}\"", value.replace('"', "\\\"")))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn runtime_kotlin_values(component: dowe_components::BuiltinComponent, name: &str) -> String {

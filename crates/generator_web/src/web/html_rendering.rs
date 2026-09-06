@@ -2,6 +2,7 @@ include!("html_rendering/foundation.rs");
 include!("html_rendering/js_segments.rs");
 include!("html_rendering/navigation_bar_html.rs");
 include!("html_rendering/data_table_html.rs");
+include!("html_rendering/tree_html.rs");
 include!("html_rendering/navigation_menu_html.rs");
 include!("html_rendering/media_html.rs");
 include!("html_rendering/form_action_html.rs");

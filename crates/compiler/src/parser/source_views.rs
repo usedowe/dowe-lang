@@ -9,7 +9,7 @@ use crate::parser::source_ast::{
 use crate::parser::source_i18n::validate_view_i18n_keys;
 use crate::parser::source_imports::resolve_import;
 use crate::parser::source_parser::parse_source_file;
-use crate::parser::source_stdlib::parse_stdlib_call;
+use crate::parser::source_stdlib::{parse_stdlib_call, stdlib_value};
 use crate::parser::source_types::{TypeRegistry, is_shared_type_path, validate_source_value_type};
 use crate::parser::source_values::parse_value;
 use dowe_components::{
@@ -18,7 +18,7 @@ use dowe_components::{
     NavigationOperation, OverlayCornerPosition, PropScalar, PropValue, ResponsivePropEntry,
     StdlibArgument, StdlibCall, StdlibValue, ToggleGroupKind, VIEW_META_NAMES, ViewAction,
     ViewActionKind, ViewAssignAction, ViewConstant, ViewFunctionParameter, ViewFunctionReturn,
-    ViewFunctionStatement, ViewMetadata, ViewNavigationAction, ViewRequestAction,
+    ViewFunctionStatement, ViewInvokeAction, ViewMetadata, ViewNavigationAction, ViewRequestAction,
     ViewRequestHeader, ViewRequestHeaderValue, ViewRequestMethod, ViewResetAction, ViewSection,
     ViewSignal, ViewSignalScope, ViewSignalStorage, ViewSignalValue, ViewToastAction,
     VisibilityCondition, accordion_component_node, accordion_item_component,
@@ -34,27 +34,28 @@ use dowe_components::{
     container_component_node, countdown_component_node, csv_column_component,
     csv_field_component_node, date_component_node, date_range_component_node, device_node,
     diagram_component_node, divider_node, drag_drop_component_node, drag_group_component,
-    drag_item_component, drawer_component_node, dropdown_component_node, dropzone_component_node,
-    editor_component_node, empty_component_node, fab_action_component, fab_component_node,
-    first_text, form_validation_rule, icon_component_node, iframe_node, image_component_node,
-    image_cropper_component_node, input_node, line_chart_component_node, map_component_node,
-    map_marker_component, map_waypoint_component, marquee_component_node,
+    drag_item_component, draw_component_node, drawer_component_node, dropdown_component_node,
+    dropzone_component_node, editor_component_node, empty_component_node, fab_action_component,
+    fab_component_node, first_text, form_validation_rule, icon_component_node, iframe_node,
+    image_component_node, image_cropper_component_node, input_node, line_chart_component_node,
+    map_component_node, map_marker_component, map_waypoint_component, marquee_component_node,
     microphone_component_node, modal_component_node, nav_menu_component_node,
     nav_menu_item_component, nav_menu_megamenu_component, nav_menu_submenu_component,
     navigation_action, node_child_groups, node_child_groups_mut, node_element_props,
     overlay_icon_component, overlay_item_component, password_component_node, phone_component_node,
-    pie_chart_component_node, pin_component_node, radio_group_component_node,
-    radio_option_component, rail_nav_component_node, rail_nav_item_component,
-    record_component_node, rich_text_component_node, rich_text_mark_component,
-    scaffold_component_node, select_node_with_each, select_option_component,
-    side_nav_component_node, side_nav_header_component, side_nav_icon_component,
-    side_nav_item_component, side_nav_submenu_component, sidebar_component_node,
-    skeleton_component_node, slider_component_node, stepper_component_node, stepper_step_component,
-    svg_component_node, svg_path_component, table_column_component, table_node,
-    tabs_component_node, tabs_tab_component, text_binding_path, text_component_node, text_node,
-    textarea_component_node, theme_select_component_node, theme_toggle_component_node,
-    toast_component_node, toggle_component_node, toggle_group_component_node,
-    toggle_group_item_component, tooltip_component_node, type_writer_component_node,
+    pie_chart_component_node, pin_component_node, radio_card_component_node,
+    radio_card_option_component, radio_group_component_node, radio_option_component,
+    rail_nav_component_node, rail_nav_item_component, record_component_node,
+    rich_text_component_node, rich_text_mark_component, scaffold_component_node,
+    select_node_with_each, select_option_component, side_nav_component_node,
+    side_nav_header_component, side_nav_icon_component, side_nav_item_component,
+    side_nav_submenu_component, sidebar_component_node, skeleton_component_node,
+    slider_component_node, stepper_component_node, stepper_step_component, svg_component_node,
+    svg_path_component, table_column_component, table_node, tabs_component_node,
+    tabs_tab_component, text_binding_path, text_component_node, text_node, textarea_component_node,
+    theme_select_component_node, theme_toggle_component_node, toast_component_node,
+    toggle_component_node, toggle_group_component_node, toggle_group_item_component,
+    tooltip_component_node, tree_component_node, type_writer_component_node,
     type_writer_item_component, validate_view_tree, video_node,
 };
 use dowe_generator_web::{build_translation_chunks, render_page_document, router_js};

@@ -11,6 +11,7 @@ include!("generated_runtime/slider.rs");
 include!("generated_runtime/toggle.rs");
 include!("generated_runtime/content_controls.rs");
 include!("generated_runtime/data_display.rs");
+include!("generated_runtime/tree.rs");
 include!("generated_runtime/diagram_runtime.rs");
 include!("generated_runtime/canvas_runtime.rs");
 include!("generated_runtime/avatar_chat.rs");
@@ -42,6 +43,7 @@ fn generated_views(
     font_families: &BTreeSet<FontFamily>,
     design_config: &DesignConfig,
 ) -> String {
+    let tree_runtime = swift_runtime_tree();
     let content_controls = swift_runtime_content_controls();
     let mut output = [
         swift_runtime_foundation(),
@@ -49,6 +51,7 @@ fn generated_views(
         swift_runtime_capture(),
         content_controls.as_str(),
         swift_runtime_data_display(),
+        tree_runtime.as_str(),
         swift_runtime_diagram(),
         swift_runtime_canvas(),
         swift_runtime_avatar_chat(),
@@ -87,9 +90,58 @@ fn generated_views(
         SIDE_NAV_SUBMENU_ARROW_PATH,
     );
     if routes.first().is_some() {
-        output.push_str("        GeometryReader { geometry in\n            routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))\n                .id(routeRevision)\n                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)\n            DoweSafeAreaReporter { insets in\n                if !doweInsetsEqual(safeAreaInsets, insets) {\n                    safeAreaInsets = insets\n                }\n            }\n            .frame(width: CGFloat(0), height: CGFloat(0))\n            .allowsHitTesting(false)\n        }\n        .ignoresSafeArea()\n        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background.ignoresSafeArea())\n        .foregroundStyle(DoweDesign.backgroundText)\n        .simultaneousGesture(backSwipeGesture)\n        .sheet(item: $externalUrl) { item in\n            DoweExternalWebView(url: item.url)\n        }\n        .onOpenURL { url in\n            applyDeepLink(url)\n        }\n");
-        output.push_str("        .environment(\\.doweTitleColor, DoweDesign.backgroundTitle)\n");
-        output.push_str("        .onChange(of: currentEntry.path) { _, path in\n            routeChanged(path)\n        }\n");
+        let page_transition_duration =
+            dowe_components::VIEW_PAGE_TRANSITION_DURATION_SECONDS.to_string();
+        let easing = dowe_components::VIEW_PAGE_TRANSITION_EASING;
+        let page_transition_runtime = r#"        GeometryReader { geometry in
+            ZStack {
+                routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))
+                    .id(routeRevision)
+                    .transition(.asymmetric(insertion: .opacity, removal: .identity))
+                    .environment(\.dowePageEntranceSuppressed, pageEntranceSuppressed)
+            }
+            .animation(reduceMotion || pageTransitionSequence == 0 ? nil : .timingCurve(__DOWE_PAGE_TRANSITION_X1__, __DOWE_PAGE_TRANSITION_Y1__, __DOWE_PAGE_TRANSITION_X2__, __DOWE_PAGE_TRANSITION_Y2__, duration: __DOWE_PAGE_TRANSITION_DURATION__), value: pageTransitionSequence)
+                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)
+                .clipped()
+                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)
+            DoweSafeAreaReporter { insets in
+                if !doweInsetsEqual(safeAreaInsets, insets) {
+                    safeAreaInsets = insets
+                }
+            }
+            .frame(width: CGFloat(0), height: CGFloat(0))
+            .allowsHitTesting(false)
+        }
+        .ignoresSafeArea()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(
+            DoweSafeAreaBackground(
+                topColor: doweSafeAreaTopColor(currentEntry.path),
+                bottomColor: doweSafeAreaBottomColor(currentEntry.path),
+                topInset: safeAreaInsets.top,
+                bottomInset: safeAreaInsets.bottom
+            )
+            .ignoresSafeArea()
+        )
+        .foregroundStyle(DoweDesign.backgroundText)
+        .simultaneousGesture(backSwipeGesture)
+        .sheet(item: $externalUrl) { item in
+            DoweExternalWebView(url: item.url)
+        }
+        .onOpenURL { url in
+            applyDeepLink(url)
+        }
+        .environment(\.doweTitleColor, DoweDesign.backgroundTitle)
+        .onChange(of: currentEntry.path) { _, path in
+            routeChanged(path)
+        }
+"#
+        .replace("__DOWE_PAGE_TRANSITION_DURATION__", &page_transition_duration)
+        .replace("__DOWE_PAGE_TRANSITION_X1__", &easing.0.to_string())
+        .replace("__DOWE_PAGE_TRANSITION_Y1__", &easing.1.to_string())
+        .replace("__DOWE_PAGE_TRANSITION_X2__", &easing.2.to_string())
+        .replace("__DOWE_PAGE_TRANSITION_Y2__", &easing.3.to_string());
+        output.push_str(&page_transition_runtime);
     } else {
         output.push_str("        EmptyView()\n");
     }
@@ -97,7 +149,11 @@ fn generated_views(
     output.push_str(
         r#"    }
 
-    private var currentEntry: DoweRouteEntry {
+"#,
+    );
+    output.push_str(&swift_safe_area_color_methods(routes));
+    output.push_str(
+        r#"    private var currentEntry: DoweRouteEntry {
         navigationPath.last ?? rootEntry
     }
 
@@ -133,7 +189,14 @@ fn generated_views(
     }
 
     output.push_str(
-        r#"    private func navigate(_ operation: String, _ target: String, _ fragment: String?) {
+        r#"    private func beginPageTransition() {
+        pageEntranceSuppressed = true
+        if !reduceMotion {
+            pageTransitionSequence += 1
+        }
+    }
+
+    private func navigate(_ operation: String, _ target: String, _ fragment: String?) {
         let path = target.isEmpty ? currentEntry.path : target
         guard DoweRoutes.paths.contains(path) else {
             return
@@ -144,10 +207,15 @@ fn generated_views(
         let destination = DoweRouteEntry(path: path, fragment: resolvedFragment)
         if destination == currentEntry {
             if operation == "replace" {
+                pageEntranceSuppressed = false
                 routeRevision += 1
             }
             return
         }
+        if destination.path != currentEntry.path {
+            beginPageTransition()
+        }
+        routeRevision += 1
         if operation == "replace" {
             if navigationPath.isEmpty {
                 rootEntry = destination
@@ -163,8 +231,15 @@ fn generated_views(
         if externalUrl != nil {
             externalUrl = nil
         } else if !navigationPath.isEmpty {
+            let previous = navigationPath.last!
+            if previous.path != currentEntry.path {
+                beginPageTransition()
+            }
             navigationPath.removeLast()
         } else if currentEntry.path != DoweRoutes.initialPath || currentEntry.fragment != nil {
+            if currentEntry.path != DoweRoutes.initialPath {
+                beginPageTransition()
+            }
             rootEntry = DoweRouteEntry(path: DoweRoutes.initialPath, fragment: nil)
         }
     }
@@ -214,6 +289,34 @@ func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool {
     );
     output.push_str(&swift_reactive_runtime());
 
+    output
+}
+
+fn swift_safe_area_color_methods(routes: &[ViewRoute]) -> String {
+    let mut output = String::from(
+        "    private func doweSafeAreaTopColor(_ path: String) -> Color {\n        switch path {\n",
+    );
+    for route in routes {
+        let (top, _) = dowe_components::route_scaffold_safe_area_colors(route);
+        output.push_str(&format!(
+            "        case \"{}\": return {}\n",
+            escape_swift(&route.route_path),
+            color_ref(top)
+        ));
+    }
+    output.push_str("        default: return DoweDesign.background\n        }\n    }\n\n");
+    output.push_str(
+        "    private func doweSafeAreaBottomColor(_ path: String) -> Color {\n        switch path {\n",
+    );
+    for route in routes {
+        let (_, bottom) = dowe_components::route_scaffold_safe_area_colors(route);
+        output.push_str(&format!(
+            "        case \"{}\": return {}\n",
+            escape_swift(&route.route_path),
+            color_ref(bottom)
+        ));
+    }
+    output.push_str("        default: return DoweDesign.background\n        }\n    }\n\n");
     output
 }
 

@@ -258,6 +258,7 @@ fn inspector_action(
 ) -> dowe_generator_web::ViewInspectorAction {
     let (kind, detail) = match &action.kind {
         dowe_components::ViewActionKind::Sequence(_) => ("sequence", String::new()),
+        dowe_components::ViewActionKind::Invoke(invoke) => ("invoke", invoke.function.clone()),
         dowe_components::ViewActionKind::Request(request) => (
             "request",
             format!("{} {}", request.method.as_str(), request.path),

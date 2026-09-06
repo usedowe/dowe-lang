@@ -7,15 +7,24 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
     let uid = short_id("cropper", source);
     let value = props.src.as_deref().unwrap_or_default();
     let size = props.style.size.unwrap_or(ButtonSize::Md).as_str();
+    let empty_icon = view_icon_svg(ViewIcon::Upload, "image-cropper-empty-icon");
+    let empty_icon = if value.is_empty() {
+        empty_icon
+    } else {
+        empty_icon.replacen("<svg ", "<svg hidden ", 1)
+    };
     let image = if value.is_empty() {
-        view_icon_svg(ViewIcon::Upload, "image-cropper-empty-icon")
+        empty_icon
     } else {
         format!(
-            r#"<img class="image-cropper-image" src="{}" alt="{}">"#,
+            r#"<img class="image-cropper-image" src="{}" alt="{}">{}"#,
             escape_attr(value),
-            escape_attr(&props.alt)
+            escape_attr(&props.alt),
+            empty_icon
         )
     };
+    let label_hidden = if value.is_empty() { "" } else { " hidden" };
+    let change_hidden = if value.is_empty() { " hidden" } else { "" };
     let hidden = props
         .name
         .as_deref()
@@ -51,8 +60,13 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
             .unwrap_or_default(),
         bind_attr(props.style.element.bind.as_deref(), context)
     );
+    let extra = format!(
+        "{}{}",
+        extra,
+        reactive_variant_attrs(&props.style, context, "is-")
+    );
     let body = format!(
-        r#"<div{}>{hidden}<input id="{uid}" class="image-cropper-input" type="file" accept="{}" hidden{}><button class="image-cropper-trigger is-{} is-{}" type="button" aria-label="{}" data-dowe-cropper-trigger{}>{image}<span class="image-cropper-label">{}</span></button><div class="image-cropper-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-change{}>{}</button><button type="button" class="image-cropper-action" data-dowe-cropper-remove{}{}>{}</button></div><span class="image-cropper-runtime-error" data-dowe-cropper-runtime-error hidden></span><div class="image-cropper-modal" data-dowe-cropper-modal hidden><div class="image-cropper-dialog" role="dialog" aria-modal="true" aria-label="Adjust image"><div class="image-cropper-dialog-header"><strong>Adjust image</strong><button type="button" class="image-cropper-dialog-close" aria-label="Cancel" data-dowe-cropper-cancel>×</button></div><div class="image-cropper-stage" data-dowe-cropper-stage><canvas class="image-cropper-canvas" data-dowe-cropper-canvas></canvas><div class="image-cropper-grid is-{}" aria-hidden="true"><span></span><span></span></div><div class="image-cropper-box is-{}" data-dowe-cropper-box aria-label="Crop frame"></div></div><div class="image-cropper-zoom"><span>Zoom</span><input type="range" min="1" max="3" step="0.01" value="1" aria-label="Zoom" data-dowe-cropper-zoom></div><div class="image-cropper-modal-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-reset>Reset</button><span class="image-cropper-action-spacer"></span><button type="button" class="image-cropper-action" data-dowe-cropper-cancel>Cancel</button><button type="button" class="image-cropper-action is-primary" data-dowe-cropper-apply>Apply</button></div></div></div></div>"#,
+        r#"<div{}>{hidden}<input id="{uid}" class="image-cropper-input" type="file" accept="{}" hidden{}><button class="image-cropper-trigger is-{} is-{}" type="button" aria-label="{}" data-dowe-cropper-trigger{}>{image}<span class="image-cropper-label"{}>{}</span></button><div class="image-cropper-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-change{}{}>{}</button><button type="button" class="image-cropper-action" data-dowe-cropper-remove{}{}>{}</button></div><span class="image-cropper-runtime-error" data-dowe-cropper-runtime-error hidden></span><div class="image-cropper-modal" data-dowe-cropper-modal hidden><div class="image-cropper-dialog" role="dialog" aria-modal="true" aria-label="Adjust image"><div class="image-cropper-dialog-header"><strong>Adjust image</strong><button type="button" class="image-cropper-dialog-close" aria-label="Cancel" data-dowe-cropper-cancel>×</button></div><div class="image-cropper-stage" data-dowe-cropper-stage><canvas class="image-cropper-canvas" data-dowe-cropper-canvas></canvas><div class="image-cropper-grid is-{}" aria-hidden="true"><span></span><span></span></div><div class="image-cropper-box is-{}" data-dowe-cropper-box aria-label="Crop frame"></div></div><div class="image-cropper-zoom"><span>Zoom</span><input type="range" min="1" max="3" step="0.01" value="1" aria-label="Zoom" data-dowe-cropper-zoom></div><div class="image-cropper-modal-actions"><button type="button" class="image-cropper-action" data-dowe-cropper-reset>Reset</button><span class="image-cropper-action-spacer"></span><button type="button" class="image-cropper-action" data-dowe-cropper-cancel>Cancel</button><button type="button" class="image-cropper-action is-primary" data-dowe-cropper-apply>Apply</button></div></div></div></div>"#,
         attrs(
             variant_classes("image-cropper", &props.style),
             Some(&props.style.element),
@@ -65,8 +79,10 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
         size,
         escape_attr(&props.alt),
         if props.disabled { " disabled" } else { "" },
+        label_hidden,
         escape_html(props.style.placeholder.as_deref().unwrap_or("Upload")),
         if props.disabled { " disabled" } else { "" },
+        change_hidden,
         escape_html("Change"),
         if value.is_empty() { " hidden" } else { "" },
         if props.disabled { " disabled" } else { "" },
@@ -82,4 +98,3 @@ fn render_image_cropper_html(props: &ImageCropperProps, context: &ReactiveRender
         context,
     )
 }
-

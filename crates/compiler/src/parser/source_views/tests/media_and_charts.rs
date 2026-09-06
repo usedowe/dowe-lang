@@ -284,6 +284,84 @@ fn parses_canvas_component_and_validates_scene_signal() {
 }
 
 #[test]
+fn parses_draw_erase_defaults_and_mode_binding() {
+    for (component, source_prop, mode, expected, binding, draw) in [
+        ("Draw", "bind", "drawMode:\"erase\"", "erase", false, true),
+        ("Draw", "bind", "", "pen", false, true),
+        ("Draw", "scene", "", "pen", false, false),
+        ("Canvas", "scene", "", "pen", false, false),
+        ("Draw", "bind", "drawMode:mode", "mode", true, true),
+    ] {
+        let source = format!(
+            "page drawPage\n  signal layers value:[]\n  signal mode value:\"erase\"\n  {component} {source_prop}:layers {mode} label:\"Editor\""
+        );
+        let tree = parse_page(&source).expect("valid draw mode");
+        let ViewNode::Scope { children, .. } = tree else {
+            panic!("scope")
+        };
+        let ViewNode::Canvas { props } = &children[0] else {
+            panic!("canvas")
+        };
+        assert_eq!(props.draw_mode, expected);
+        assert_eq!(props.draw_mode_binding, binding);
+        assert_eq!(props.draw, draw);
+        assert_eq!(
+            props.layer_bind.as_deref(),
+            (source_prop == "bind").then_some("layers")
+        );
+    }
+    for mode in ["select", "erase"] {
+        let source = format!(
+            "page canvasPage\n  signal layers value:[]\n  Canvas scene:layers drawMode:\"{mode}\" label:\"Canvas\""
+        );
+        let error = parse_page(&source).expect_err("Draw-only mode");
+        assert!(error.to_string().contains("expected pen, rect or circle"));
+    }
+}
+
+#[test]
+fn parses_draw_with_bound_layers_and_layer_events() {
+    let tree = parse_page(
+        r#"page drawPage
+  signal layers value:[{ id:"circle-1" type:"circle" x:80 y:60 radius:20 fill:"primary" }]
+  signal selected value:""
+  fn addLayer
+    set selected value:""
+  fn changeLayer
+    set selected value:""
+  fn removeLayer
+    set selected value:""
+  fn selectLayer
+    set selected value:""
+  Draw bind:layers selected:selected draw:true drawMode:"select" label:"Layer editor" onLayerAdd:addLayer onLayerChange:changeLayer onLayerRemove:removeLayer onLayerSelect:selectLayer"#,
+    )
+    .expect("draw tree");
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("scope");
+    };
+    let ViewNode::Canvas { props } = &children[0] else {
+        panic!("draw canvas");
+    };
+    assert_eq!(props.scene, "layers");
+    assert_eq!(props.layer_bind.as_deref(), Some("layers"));
+    assert_eq!(props.selected_layer.as_deref(), Some("selected"));
+    assert_eq!(props.draw_mode, "select");
+    assert!(props.draw);
+    assert_eq!(props.on_layer_add.as_deref(), Some("addLayer"));
+    assert_eq!(props.on_layer_change.as_deref(), Some("changeLayer"));
+    assert_eq!(props.on_layer_remove.as_deref(), Some("removeLayer"));
+    assert_eq!(props.on_layer_select.as_deref(), Some("selectLayer"));
+
+    let error = parse_page(
+        r#"page drawPage
+  signal layers value:[]
+  Draw bind:"layers" label:"Invalid layer binding""#,
+    )
+    .expect_err("quoted bind");
+    assert!(error.to_string().contains("signal array path"));
+}
+
+#[test]
 fn parses_candlestick_component_with_typed_data_and_stream() {
     let tree = parse_page(
             r#"type Candle

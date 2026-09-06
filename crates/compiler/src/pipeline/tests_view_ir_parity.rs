@@ -29,6 +29,9 @@ fn assert_consumption_is_declared(
         .filter(|line| !line.trim().is_empty())
         .collect::<std::collections::BTreeSet<_>>();
     for entry in entries {
+        if entry.item.is_some() {
+            continue;
+        }
         let owner = entry.component.as_str();
         let key = format!("{owner}|{}|{}", entry.prop, entry.ir_field.as_str());
         assert!(declared.contains(key.as_str()), "undeclared target consumption: {key}");
@@ -55,12 +58,21 @@ fn assert_identical_generator_consumption(node: &dowe_components::ViewNode) {
     );
     let mut registry = dowe_components::PropConsumptionRegistry::default();
     for entry in web {
-        dowe_components::register_consumed_prop(
-            &mut registry,
-            entry.component,
-            entry.prop,
-            entry.ir_field,
-        );
+        match entry.item {
+            Some(item) => dowe_components::register_consumed_item(
+                &mut registry,
+                entry.component,
+                item,
+                entry.prop,
+                entry.ir_field,
+            ),
+            None => dowe_components::register_consumed_prop(
+                &mut registry,
+                entry.component,
+                entry.prop,
+                entry.ir_field,
+            ),
+        }
     }
     assert!(registry.validate().is_ok());
 }
@@ -121,6 +133,42 @@ fn generators_preserve_form_bindings_across_targets() {
     checkbox.style.element.bind = Some("accepted".to_string());
     let checkbox_node = dowe_components::ViewNode::Checkbox { props: checkbox };
     assert_identical_generator_consumption(&checkbox_node);
+
+    let mut reactive_input = dowe_components::VariantProps::default();
+    reactive_input.reactive.variant = Some("variantChoice".to_string());
+    reactive_input.reactive.scheme = Some("schemeChoice".to_string());
+    reactive_input.reactive.size = Some("sizeChoice".to_string());
+    reactive_input.reactive.rounded = Some("roundedChoice".to_string());
+    reactive_input.element.on_change = Some("fieldChanged".to_string());
+    reactive_input.element.on_input = Some("fieldInput".to_string());
+    assert_identical_generator_consumption(&dowe_components::ViewNode::Input {
+        props: reactive_input,
+    });
+}
+
+#[test]
+fn generators_preserve_stepper_bindings_across_targets() {
+    let mut props = dowe_components::TabsProps {
+        style: dowe_components::StyleProps::default(),
+        variant: dowe_components::TabsVariant::Stepper,
+        color: dowe_components::ColorFamily::Primary,
+        position: dowe_components::TabsPosition::Top,
+        variant_explicit: true,
+        color_explicit: true,
+    };
+    props.style.element.bind = Some("selectedStep".to_string());
+    let node = dowe_components::ViewNode::Tabs {
+        props,
+        tabs: Vec::new(),
+    };
+
+    let entries = dowe_generator_web::consumed_props_for_node(&node);
+    assert_identical_generator_consumption(&node);
+    assert!(entries.iter().any(|entry| {
+        entry.component == dowe_components::BuiltinComponent::Stepper
+            && entry.prop == "bind"
+            && entry.ir_field == "ElementProps.bind"
+    }));
 }
 
 #[test]

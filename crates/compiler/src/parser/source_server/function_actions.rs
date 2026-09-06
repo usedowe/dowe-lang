@@ -60,12 +60,19 @@ fn parse_server_function_action(
                 }
             }
             "queue" | "msg" => {
-                let statement = parse_queue_statement(child, Some(environment))?.ok_or_else(|| {
-                    node_error(child, "invalid Queue connection or publication declaration")
-                })?;
+                let statement =
+                    parse_queue_statement(child, Some(environment))?.ok_or_else(|| {
+                        node_error(child, "invalid Queue connection or publication declaration")
+                    })?;
                 validate_queue_statement_references(child, &statement, &inferred_bindings)?;
                 infer_queue_statement(&statement, &mut inferred_bindings);
                 statements.push(ServerStatement::Queue(statement));
+            }
+            "notify" => {
+                let statement = parse_notification_statement(child)?;
+                validate_notification_statement_references(child, &statement, &inferred_bindings)?;
+                infer_notification_statement(&statement, &mut inferred_bindings);
+                statements.push(ServerStatement::Notification(statement));
             }
             "spawn" => {
                 let statement = parse_spawn_declaration(child)?;

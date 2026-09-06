@@ -132,12 +132,12 @@ fn generates_compose_and_dev_layout_bars() {
     assert!(dev.content.contains("background.addView(appBar, params)"));
     assert!(
         dev.content
-            .contains("safeArea.setBackgroundColor(DOWE_BACKGROUND)")
+            .contains("safeArea.setBackgroundColor(doweSafeAreaTopColor)")
     );
     assert!(dev.content.contains("dowe-pinned-appbar-safe-area"));
     assert!(
         dev.content
-            .contains("bottomSafeArea.setBackgroundColor(DOWE_BACKGROUND)")
+            .contains("bottomSafeArea.setBackgroundColor(doweSafeAreaBottomColor)")
     );
     assert!(dev.content.contains("dowe-pinned-appbar-bottom-safe-area"));
     assert!(dev.content.contains("doweRelayoutPinnedAppBar();"));
@@ -644,6 +644,65 @@ fn generates_compose_and_dev_navigation_shell_components() {
         "LinearLayout view3 = doweContainer(true);\n        view3.setGravity(Gravity.CENTER_VERTICAL);\n        view3.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        doweWrapContentWidth(view3);"
     ));
     assert!(dev.content.contains("doweAdd(view2, view3);"));
+}
+
+#[test]
+fn generates_independent_native_safe_area_colors() {
+    let mut route = navigation_shell_route();
+    if let ViewNode::Scaffold { props, .. } = &mut route.page_tree {
+        props.safe_area_top = Some(ColorToken::Surface);
+        props.safe_area_bottom = Some(ColorToken::Primary);
+    } else {
+        panic!("scaffold");
+    }
+    let output = generate_android(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains("windowInsetsTopHeight(WindowInsets.safeDrawing).background(doweSafeAreaTopColor(currentEntry.path))"));
+    assert!(views.content.contains("windowInsetsBottomHeight(WindowInsets.safeDrawing).background(doweSafeAreaBottomColor(currentEntry.path))"));
+    assert!(views.content.contains("doweApplySystemBarIconAppearance(currentEntry.path)"));
+    assert!(views.content.contains("WindowCompat.getInsetsController(currentActivity.window, currentActivity.window.decorView)"));
+    assert!(views.content.contains("\"/\" -> DoweDesign.surface"));
+    assert!(views.content.contains("\"/\" -> DoweDesign.primary"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("doweSafeAreaTopColor = DOWE_SURFACE;"));
+    assert!(
+        dev.content
+            .contains("doweSafeAreaBottomColor = DOWE_PRIMARY;")
+    );
+    assert!(
+        dev.content
+            .contains("doweColorLuminance(doweSafeAreaTopColor)")
+    );
+    assert!(
+        dev.content
+            .contains("doweColorLuminance(doweSafeAreaBottomColor)")
+    );
+    assert!(dev.content.contains("doweApplySafeAreaColors();"));
+    let main_activity = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("MainActivity.kt"))
+        .expect("main activity");
+    assert!(
+        main_activity
+            .content
+            .contains("doweSafeAreaTopColor(incomingPath)")
+    );
+    assert!(
+        main_activity
+            .content
+            .contains("doweSafeAreaBottomColor(incomingPath)")
+    );
 }
 
 #[test]

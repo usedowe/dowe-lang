@@ -71,6 +71,18 @@ fn attrs(
             escape_attr(&context.action_id(action))
         ));
     }
+    if let Some(action) = element.and_then(|element| element.on_change.as_ref()) {
+        output.push_str(&format!(
+            r#" data-dowe-change="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
+    if let Some(action) = element.and_then(|element| element.on_input.as_ref()) {
+        output.push_str(&format!(
+            r#" data-dowe-input="{}""#,
+            escape_attr(&context.action_id(action))
+        ));
+    }
     if let Some(show) = element.and_then(|element| element.show.as_ref()) {
         match show {
             VisibilityCondition::Signal(path) => output.push_str(&format!(
@@ -92,6 +104,11 @@ fn attrs(
             )),
             VisibilityCondition::Static(_) => {}
         }
+        if !matches!(show, VisibilityCondition::Static(_))
+            && initial_visibility(show, context) != Some(true)
+        {
+            output.push_str(" hidden");
+        }
     }
     if let Some(extra) = extra {
         output.push_str(extra);
@@ -104,6 +121,58 @@ fn class_attr(classes: Vec<String>) -> String {
         String::new()
     } else {
         format!(r#" class="{}""#, classes.join(" "))
+    }
+}
+
+fn initial_visibility(
+    show: &VisibilityCondition,
+    context: &ReactiveRenderContext,
+) -> Option<bool> {
+    match show {
+        VisibilityCondition::Static(_) => None,
+        VisibilityCondition::Signal(path) => context.initial_value(path).map(initial_truthy),
+        VisibilityCondition::NumberComparison { path, comparison } => context
+            .initial_value(path)
+            .and_then(initial_number)
+            .and_then(|value| comparison.value.parse::<f64>().ok().map(|target| (value, target)))
+            .map(|(value, target)| match comparison.operator {
+                dowe_components::NumberComparisonOperator::GreaterThan => value > target,
+                dowe_components::NumberComparisonOperator::GreaterThanOrEqual => value >= target,
+                dowe_components::NumberComparisonOperator::LessThan => value < target,
+                dowe_components::NumberComparisonOperator::LessThanOrEqual => value <= target,
+            }),
+        VisibilityCondition::StringEquality { path, value } => context
+            .initial_value(path)
+            .and_then(initial_string)
+            .map(|current| current.as_str() == value),
+    }
+}
+
+fn initial_truthy(value: &ViewSignalValue) -> bool {
+    match value {
+        ViewSignalValue::Null => false,
+        ViewSignalValue::Bool(value) => *value,
+        ViewSignalValue::Number(value) => value.parse::<f64>().map(|value| value != 0.0).unwrap_or(false),
+        ViewSignalValue::String(value) => !value.is_empty(),
+        ViewSignalValue::Array(_) | ViewSignalValue::Object(_) => true,
+    }
+}
+
+fn initial_number(value: &ViewSignalValue) -> Option<f64> {
+    match value {
+        ViewSignalValue::Number(value) => value.parse().ok(),
+        ViewSignalValue::String(value) => value.parse().ok(),
+        _ => None,
+    }
+}
+
+fn initial_string(value: &ViewSignalValue) -> Option<String> {
+    match value {
+        ViewSignalValue::String(value) => Some(value.clone()),
+        ViewSignalValue::Bool(value) => Some(value.to_string()),
+        ViewSignalValue::Number(value) => Some(value.clone()),
+        ViewSignalValue::Null => Some("null".to_string()),
+        ViewSignalValue::Array(_) | ViewSignalValue::Object(_) => None,
     }
 }
 

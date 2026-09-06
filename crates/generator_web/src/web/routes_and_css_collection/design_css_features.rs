@@ -108,7 +108,10 @@ impl DesignCssFeatures {
         );
         self.disclosure |= matches!(
             node,
-            ViewNode::Accordion { .. } | ViewNode::Carousel { .. } | ViewNode::Collapsible { .. }
+            ViewNode::Accordion { .. }
+                | ViewNode::Carousel { .. }
+                | ViewNode::Collapsible { .. }
+                | ViewNode::Tree { .. }
         );
         self.feedback |= matches!(
             node,
@@ -151,7 +154,7 @@ impl DesignCssFeatures {
 fn action_contains_toast(action: &ViewAction) -> bool {
     match &action.kind {
         ViewActionKind::Sequence(statements) => statements_contain_toast(statements),
-        ViewActionKind::Request(_) | ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => false,
+        ViewActionKind::Request(_) | ViewActionKind::Invoke(_) | ViewActionKind::Assign(_) | ViewActionKind::Reset(_) => false,
     }
 }
 
@@ -163,6 +166,7 @@ fn statements_contain_toast(statements: &[ViewFunctionStatement]) -> bool {
         }
         ViewFunctionStatement::Validate { .. }
         | ViewFunctionStatement::Request { .. }
+        | ViewFunctionStatement::Invoke { .. }
         | ViewFunctionStatement::Assign(_)
         | ViewFunctionStatement::Reset(_)
         | ViewFunctionStatement::Redirect { .. } => false,

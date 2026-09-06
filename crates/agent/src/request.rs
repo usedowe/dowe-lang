@@ -5,6 +5,7 @@ use crate::model::{
     AgentContext, AgentPrepareOptions, AgentPreparedRequest, AgentRequest, AgentRequestType,
 };
 use crate::prompts::messages_for;
+use crate::provider::{provider_default_model, provider_exists};
 use crate::skills::generation_skill_summaries_for;
 use crate::tools::agent_tool_definitions;
 use serde_json::json;
@@ -20,12 +21,24 @@ pub fn prepare_agent_request(
     let root = root.as_ref();
     let images = encode_image_paths(&options.image_paths)?;
     let language = infer_language(prompt);
+    let provider = options.provider.clone();
+    if let Some(provider) = provider.as_deref()
+        && !provider_exists(provider)
+    {
+        return Err(crate::error::AgentError::new(format!(
+            "unknown agent provider `{provider}`"
+        )));
+    }
     let request_type = options
         .request_type
         .unwrap_or_else(|| infer_request_type(prompt, !images.is_empty()));
-    let model = options
-        .model
-        .unwrap_or_else(|| request_type.default_model().to_string());
+    let model = match options.model {
+        Some(model) => model,
+        None => match provider.as_deref() {
+            Some(provider) => provider_default_model(provider)?.to_string(),
+            None => request_type.default_model().to_string(),
+        },
+    };
     let skills = generation_skill_summaries_for(prompt);
     let codegraph = if matches!(
         request_type,
@@ -59,6 +72,9 @@ pub fn prepare_agent_request(
     );
     metadata.insert("dowe_skill_count".to_string(), skills.len().to_string());
     metadata.insert("dowe_image_count".to_string(), images.len().to_string());
+    if let Some(provider) = provider.as_ref() {
+        metadata.insert("dowe_provider".to_string(), provider.clone());
+    }
 
     let mut extra = BTreeMap::new();
     extra.insert(
@@ -73,6 +89,7 @@ pub fn prepare_agent_request(
 
     let request = AgentRequest {
         request_id,
+        provider,
         request_type,
         model,
         messages,

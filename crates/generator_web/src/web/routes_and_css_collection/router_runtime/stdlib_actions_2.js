@@ -166,12 +166,16 @@ function evalStdlib(call, state, scope) {
       return Array.from(stdString(a.value)).length;
     case "str.contains":
       return stdString(a.value).includes(stdString(a.needle));
+    case "str.equals":
+      return stdString(a.value) === stdString(a.other);
     case "str.startsWith":
       return stdString(a.value).startsWith(stdString(a.prefix));
     case "str.endsWith":
       return stdString(a.value).endsWith(stdString(a.suffix));
     case "str.replace":
       return stdString(a.value).split(stdString(a.from)).join(stdString(a.to));
+    case "str.truncate":
+      return Array.from(stdString(a.value)).slice(0, Math.max(0, Number(a.max))).join("");
     case "str.split":
       return stdString(a.value)
         .split(stdString(a.delimiter))
@@ -197,6 +201,22 @@ function evalStdlib(call, state, scope) {
       const left = stdNumber(a.left),
         right = stdNumber(a.right);
       return left == null || right == null || right === 0 ? null : left / right;
+    }
+    case "math.gt": {
+      const left = stdNumber(a.left), right = stdNumber(a.right);
+      return left == null || right == null ? null : left > right;
+    }
+    case "math.gte": {
+      const left = stdNumber(a.left), right = stdNumber(a.right);
+      return left == null || right == null ? null : left >= right;
+    }
+    case "math.lt": {
+      const left = stdNumber(a.left), right = stdNumber(a.right);
+      return left == null || right == null ? null : left < right;
+    }
+    case "math.lte": {
+      const left = stdNumber(a.left), right = stdNumber(a.right);
+      return left == null || right == null ? null : left <= right;
     }
     case "math.round": {
       const value = stdNumber(a.value);
@@ -336,6 +356,18 @@ function evalStdlib(call, state, scope) {
           .toLowerCase()
           .includes(stdString(a.value).toLowerCase())
       );
+    case "list.filterContainsAny": {
+      const needles = stdArray(a.needles)
+        .map(stdText)
+        .filter(Boolean)
+        .map(value => value.toLowerCase());
+      return stdArray(a.values).filter(item => {
+        const value = stdText(stdRead(item, stdString(a.field))).toLowerCase();
+        return needles.some(needle => value.includes(needle));
+      });
+    }
+    case "list.concat":
+      return [...stdArray(a.values), ...stdArray(a.other)];
     case "list.mapField":
       return stdArray(a.values).map(
         item => stdRead(item, stdString(a.field)) ?? null

@@ -1,138 +1,22 @@
 use dowe_agent::{
-    get_public_skill, get_public_skill_resource, handle_mcp_message, init_dowe_project,
-    init_external_agent_project, project_context, public_skills, search_public_examples,
-    summarize_codegraph_for, update_external_agent_project,
+    get_public_skill, get_public_skill_resource, handle_mcp_message, project_context,
+    public_skills, search_public_examples, summarize_codegraph_for,
 };
 use dowe_agent_harness::{InitOptions, init_project_harness};
 use dowe_components::BuiltinComponent;
-use dowe_runtime::{InitProjectOptions, ProjectTemplate};
 use serde_json::Value;
 use std::fs;
 use tempfile::TempDir;
 
 const VIEW_COMPONENT_REFERENCE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../skill-data/dowe-views/references/components.md"
+    "/src/embedded/dowe-views/references/components.md"
 ));
 
 const VIEW_BLOCK_INDEX: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../skill-data/dowe-views/references/blocks/index.json"
+    "/src/embedded/dowe-views/references/blocks/index.json"
 ));
-
-#[test]
-fn initializes_template_and_agent_bundle_as_one_project() {
-    let temp = TempDir::new().expect("tempdir");
-
-    let report = init_dowe_project(temp.path(), InitProjectOptions::new(ProjectTemplate::Blank))
-        .expect("init");
-
-    assert_eq!(report.project.template(), ProjectTemplate::Blank);
-    assert!(temp.path().join("main.dowe").is_file());
-    assert!(temp.path().join("AGENTS.md").is_file());
-    assert!(temp.path().join("CLAUDE.md").is_file());
-    assert!(temp.path().join(".agents/manifest.json").is_file());
-    assert_eq!(
-        fs::read_dir(temp.path().join(".agents/skills"))
-            .expect("skills")
-            .count(),
-        5
-    );
-    dowe_compiler::compile_dev(temp.path()).expect("compile");
-}
-
-#[test]
-fn every_dowe_project_template_includes_the_managed_agent_bundle() {
-    for options in [
-        InitProjectOptions::new(ProjectTemplate::Blank),
-        InitProjectOptions::new(ProjectTemplate::Crud),
-    ] {
-        let temp = TempDir::new().expect("tempdir");
-
-        init_dowe_project(temp.path(), options).expect("init");
-
-        assert!(temp.path().join("AGENTS.md").is_file());
-        assert!(temp.path().join("CLAUDE.md").is_file());
-        assert!(temp.path().join(".agents/manifest.json").is_file());
-        assert_eq!(
-            fs::read_dir(temp.path().join(".agents/skills"))
-                .expect("skills")
-                .count(),
-            5
-        );
-    }
-}
-
-#[test]
-fn project_initialization_rejects_all_conflicts_before_writing() {
-    let temp = TempDir::new().expect("tempdir");
-    fs::write(temp.path().join("AGENTS.md"), "user-owned").expect("agents");
-
-    let error = init_dowe_project(temp.path(), InitProjectOptions::new(ProjectTemplate::Blank))
-        .expect_err("conflict");
-
-    assert!(error.to_string().contains("AGENTS.md"));
-    assert!(!temp.path().join("main.dowe").exists());
-    assert!(!temp.path().join(".agents").exists());
-}
-
-#[test]
-fn confirmed_reinstall_replaces_managed_project_and_agent_files() {
-    let temp = TempDir::new().expect("tempdir");
-    init_dowe_project(temp.path(), InitProjectOptions::new(ProjectTemplate::Blank)).expect("init");
-    fs::write(temp.path().join("main.dowe"), "stale main").expect("main");
-    fs::write(temp.path().join("AGENTS.md"), "stale agents").expect("agents");
-    fs::write(temp.path().join("notes.md"), "keep").expect("notes");
-
-    let report = init_dowe_project(
-        temp.path(),
-        InitProjectOptions::new(ProjectTemplate::Blank).with_reinstall(true),
-    )
-    .expect("reinstall");
-
-    assert!(report.project.reinstalled());
-    assert_ne!(
-        fs::read_to_string(temp.path().join("main.dowe")).expect("main"),
-        "stale main"
-    );
-    assert_ne!(
-        fs::read_to_string(temp.path().join("AGENTS.md")).expect("agents"),
-        "stale agents"
-    );
-    assert_eq!(
-        fs::read_to_string(temp.path().join("notes.md")).expect("notes"),
-        "keep"
-    );
-}
-
-#[cfg(unix)]
-#[test]
-fn confirmed_reinstall_rejects_agent_symlinks_before_replacing_project_files() {
-    use std::os::unix::fs::symlink;
-
-    let temp = TempDir::new().expect("tempdir");
-    let outside = TempDir::new().expect("outside");
-    let outside_agents = outside.path().join("AGENTS.md");
-    fs::write(temp.path().join("main.dowe"), "existing main").expect("main");
-    fs::write(&outside_agents, "outside agents").expect("outside agents");
-    symlink(&outside_agents, temp.path().join("AGENTS.md")).expect("symlink");
-
-    let error = init_dowe_project(
-        temp.path(),
-        InitProjectOptions::new(ProjectTemplate::Blank).with_reinstall(true),
-    )
-    .expect_err("error");
-
-    assert!(error.to_string().contains("AGENTS.md"));
-    assert_eq!(
-        fs::read_to_string(temp.path().join("main.dowe")).expect("main"),
-        "existing main"
-    );
-    assert_eq!(
-        fs::read_to_string(&outside_agents).expect("outside agents"),
-        "outside agents"
-    );
-}
 
 #[test]
 fn lists_public_authoring_skills_without_workspace_skills() {
@@ -143,9 +27,24 @@ fn lists_public_authoring_skills_without_workspace_skills() {
         .collect::<Vec<_>>();
     let encoded = serde_json::to_string(&skills).expect("skills");
 
-    assert_eq!(ids, ["core", "server", "domain-modeling", "theme", "views"]);
+    assert_eq!(
+        ids,
+        [
+            "core",
+            "server",
+            "native-ipc",
+            "domain-modeling",
+            "theme",
+            "views"
+        ]
+    );
     assert!(skills.iter().all(|skill| skill.name.starts_with("dowe-")));
     assert!(skills.iter().all(|skill| skill.scope == "dowe-authoring"));
+    assert!(
+        skills
+            .iter()
+            .all(|skill| skill.path.starts_with("dowe-agent://skills/"))
+    );
     assert!(skills.iter().all(|skill| {
         skill
             .resources
@@ -348,7 +247,7 @@ fn public_skills_group_related_entities_into_bounded_modules() {
 #[test]
 fn fullstack_skill_example_separates_frontend_and_backend_source() {
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../skill-data/examples/fullstack");
+        .join("src/embedded/examples/fullstack");
 
     assert!(root.join("views/types/blog.dowe").is_file());
     assert!(!root.join("types").exists());
@@ -364,98 +263,6 @@ fn fullstack_skill_example_separates_frontend_and_backend_source() {
             "unexpected fullstack root entry {name}"
         );
     }
-}
-
-#[test]
-fn installs_and_updates_compiled_public_skills() {
-    let temp = TempDir::new().expect("tempdir");
-
-    init_external_agent_project(temp.path()).expect("init");
-
-    let installed = temp.path().join(".agents/skills/dowe-views");
-    let installed_skill = fs::read_to_string(installed.join("SKILL.md")).expect("skill");
-    assert_eq!(
-        installed_skill.trim_end(),
-        get_public_skill("views", false)
-            .expect("public skill")
-            .content
-    );
-    let installed_views =
-        fs::read_to_string(installed.join("references/views.md")).expect("views reference");
-    assert!(installed_views.contains(r#""{blog.title}""#));
-    assert!(installed_views.contains(r#"`"blog.title"` is literal text"#));
-    let installed_server =
-        fs::read_to_string(temp.path().join(".agents/skills/dowe-server/SKILL.md"))
-            .expect("server skill");
-    assert!(installed_server.contains("load the companion `dowe-views` skill"));
-    let installed_components = fs::read_to_string(installed.join("references/components.md"))
-        .expect("components reference");
-    assert_eq!(installed_components, VIEW_COMPONENT_REFERENCE);
-    for resource in [
-        "references/views.md",
-        "references/composition.md",
-        "references/blocks/index.json",
-        "references/reference-ui.md",
-        "references/components.md",
-        "references/styles.md",
-        "references/canvas.md",
-        "scripts/visual_qa.py",
-        "scripts/visual_qa_blueprint.py",
-        "scripts/visual_qa_png.py",
-    ] {
-        assert!(installed.join(resource).is_file(), "missing {resource}");
-    }
-    assert_eq!(
-        fs::read_dir(temp.path().join(".agents/skills"))
-            .expect("skills")
-            .count(),
-        5
-    );
-    let manifest: Value = serde_json::from_str(
-        &fs::read_to_string(temp.path().join(".agents/manifest.json")).expect("manifest"),
-    )
-    .expect("manifest json");
-    assert_eq!(manifest["doweVersion"], env!("CARGO_PKG_VERSION"));
-    assert_eq!(
-        manifest["managedSkills"],
-        serde_json::json!([
-            "dowe-core",
-            "dowe-domain-modeling",
-            "dowe-server",
-            "dowe-theme",
-            "dowe-views"
-        ])
-    );
-
-    fs::create_dir_all(temp.path().join(".agents/skills/project-domain")).expect("project skill");
-    fs::write(
-        temp.path().join(".agents/skills/project-domain/SKILL.md"),
-        "project-owned",
-    )
-    .expect("project skill");
-    fs::write(installed.join("SKILL.md"), "stale").expect("stale");
-
-    update_external_agent_project(temp.path()).expect("update");
-
-    assert!(
-        fs::read_to_string(installed.join("SKILL.md"))
-            .expect("updated")
-            .starts_with("---\nname: dowe-views\n")
-    );
-    assert_eq!(
-        fs::read_to_string(temp.path().join(".agents/skills/project-domain/SKILL.md"))
-            .expect("project skill"),
-        "project-owned"
-    );
-}
-
-#[test]
-fn update_requires_an_initialized_agent_project() {
-    let temp = TempDir::new().expect("tempdir");
-
-    let error = update_external_agent_project(temp.path()).expect_err("missing init");
-
-    assert!(error.to_string().contains("dowe agent init"));
 }
 
 #[test]
@@ -794,7 +601,7 @@ fn view_skill_keeps_horizontal_and_vertical_shell_navigation_separate() {
         .expect("reference UI resource");
     let example = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../skill-data/examples/reference-ui/views/components/site-navigation.dowe"
+        "/src/embedded/examples/reference-ui/views/components/site-navigation.dowe"
     ));
 
     assert!(
@@ -1057,7 +864,7 @@ fn searches_curated_examples_deterministically() {
         result
             .results
             .iter()
-            .all(|example| example.source_path.starts_with("skill-data/examples/"))
+            .all(|example| example.source_path.starts_with("dowe-agent://examples/"))
     );
     assert!(
         result
@@ -1155,7 +962,7 @@ fn builds_compact_project_context_without_private_skill_content() {
             .markers
             .contains(&".agents/manifest.json".to_string())
     );
-    assert_eq!(context.skills.len(), 5);
+    assert_eq!(context.skills.len(), 6);
     assert!(!encoded.contains("PRIVATE_WORKSPACE_SKILL"));
     assert!(!encoded.contains("agents/skills/private"));
     assert!(!encoded.contains("\"Home\""));

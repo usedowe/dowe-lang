@@ -167,6 +167,7 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::RadioGroup { .. }
         | ViewNode::Toggle { .. }
         | ViewNode::Skeleton { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::AlertDialog { .. }
         | ViewNode::Toast { .. }
         | ViewNode::Command { .. }
@@ -333,4 +334,23 @@ pub fn dynamic_icon_names(node: &ViewNode) -> Option<BTreeSet<String>> {
 
 fn is_text_like(node: &ViewNode) -> bool {
     matches!(node, ViewNode::Text { .. } | ViewNode::Title { .. })
+}
+
+pub fn route_scaffold_safe_area_colors(route: &ViewRoute) -> (ColorToken, ColorToken) {
+    find_scaffold_safe_area_colors(&route.layout_tree)
+        .or_else(|| find_scaffold_safe_area_colors(&route.page_tree))
+        .unwrap_or((ColorToken::Background, ColorToken::Background))
+}
+
+fn find_scaffold_safe_area_colors(node: &ViewNode) -> Option<(ColorToken, ColorToken)> {
+    if let ViewNode::Scaffold { props, .. } = node {
+        return Some((
+            props.safe_area_top.unwrap_or(ColorToken::Background),
+            props.safe_area_bottom.unwrap_or(ColorToken::Background),
+        ));
+    }
+    node_child_groups(node)
+        .into_iter()
+        .flatten()
+        .find_map(find_scaffold_safe_area_colors)
 }

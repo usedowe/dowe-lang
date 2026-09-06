@@ -191,18 +191,34 @@ fn carousel_slide_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
         .collect()
 }
 
-fn radio_item_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
+fn radio_item_props(
+    node: &SourceNode,
+    component: BuiltinComponent,
+) -> DoweResult<Vec<ComponentProp>> {
     node.props
         .iter()
         .map(|prop| {
-            if !matches!(prop.name.as_str(), "value" | "label" | "disabled") {
+            let allowed = match component {
+                BuiltinComponent::RadioGroup => {
+                    matches!(prop.name.as_str(), "value" | "label" | "disabled")
+                }
+                BuiltinComponent::RadioCard => matches!(
+                    prop.name.as_str(),
+                    "value" | "title" | "description" | "icon" | "disabled"
+                ),
+                _ => false,
+            };
+            if !allowed {
                 return Err(node_error(
                     node,
-                    ComponentError::unknown_prop(BuiltinComponent::RadioGroup, &prop.name)
+                    ComponentError::unknown_prop(component, &prop.name)
                         .to_string(),
                 ));
             }
-            if matches!(prop.name.as_str(), "value" | "label")
+            if matches!(
+                prop.name.as_str(),
+                "value" | "label" | "title" | "description" | "icon"
+            )
                 && static_value_has_bareword(&prop.value)
             {
                 return Err(quoted_static_string_error(prop));
@@ -396,4 +412,3 @@ fn command_group_props(node: &SourceNode) -> DoweResult<Vec<ComponentProp>> {
         })
         .collect()
 }
-

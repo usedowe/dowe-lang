@@ -89,6 +89,77 @@
         return doweDp(40);
     }
 
+    private static final class DoweTreeNode {
+        final String id;
+        final String label;
+        final String path;
+        final boolean branch;
+        final ArrayList<DoweTreeNode> children;
+        final Map<String, Object> value;
+
+        DoweTreeNode(String id, String label, String path, boolean branch, ArrayList<DoweTreeNode> children, Map<String, Object> value) {
+            this.id = id;
+            this.label = label;
+            this.path = path;
+            this.branch = branch;
+            this.children = children;
+            this.value = value;
+        }
+    }
+
+    private ArrayList<DoweTreeNode> doweTreeNodes(String path) {
+        return doweTreeChildren(doweRead(path, null));
+    }
+
+    private ArrayList<DoweTreeNode> doweTreeChildren(Object value) {
+        ArrayList<DoweTreeNode> result = new ArrayList<>();
+        if (value instanceof List) {
+            for (Object item : (List<?>) value) {
+                DoweTreeNode node = doweTreeNode(item);
+                if (node != null) result.add(node);
+            }
+            return result;
+        }
+        if (!(value instanceof Map)) return result;
+        Map<?, ?> map = (Map<?, ?>) value;
+        Object children = map.get("children");
+        if (children instanceof List) {
+            return doweTreeChildren(children);
+        }
+        Object folders = map.get("folders");
+        if (folders instanceof List) result.addAll(doweTreeChildren(folders));
+        Object files = map.get("files");
+        if (files instanceof List) result.addAll(doweTreeChildren(files));
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private DoweTreeNode doweTreeNode(Object value) {
+        if (!(value instanceof Map)) return null;
+        Map<?, ?> source = (Map<?, ?>) value;
+        Object rawId = source.get("id");
+        if (rawId == null) rawId = source.get("path");
+        if (rawId == null) rawId = source.get("name");
+        if (rawId == null) rawId = source.get("label");
+        if (rawId == null) return null;
+        String id = String.valueOf(rawId);
+        if (id.isEmpty()) return null;
+        Object rawLabel = source.get("name");
+        if (rawLabel == null) rawLabel = source.get("label");
+        if (rawLabel == null) return null;
+        String label = String.valueOf(rawLabel);
+        if (label.isEmpty()) return null;
+        Object rawPath = source.get("path");
+        String nodePath = rawPath == null ? id : String.valueOf(rawPath);
+        ArrayList<DoweTreeNode> children = doweTreeChildren(value);
+        String kind = String.valueOf(source.get("type") == null ? source.get("kind") == null ? "" : source.get("kind") : source.get("type")).toLowerCase(Locale.ROOT);
+        boolean explicitChildren = source.get("children") instanceof List || source.get("folders") instanceof List || source.get("files") instanceof List;
+        boolean branch = !children.isEmpty() || explicitChildren || "folder".equals(kind) || "directory".equals(kind) || "branch".equals(kind);
+        Map<String, Object> typed = new HashMap<>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) typed.put(String.valueOf(entry.getKey()), entry.getValue());
+        return new DoweTreeNode(id, label, nodePath, branch, children, typed);
+    }
+
     private ArrayList<Map<String, Object>> doweRows(String path) {
         ArrayList<Map<String, Object>> result = new ArrayList<>();
         Object value = doweRead(path, null);

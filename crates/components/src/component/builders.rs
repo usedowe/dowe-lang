@@ -20,4 +20,5 @@ include!("builders/overlay_parse_helpers.rs");
 include!("builders/navigation_entry_nodes.rs");
 include!("builders/container_dispatch.rs");
 include!("builders/tree_accessors.rs");
+include!("builders/tree_nodes.rs");
 include!("builders/svg_alert_nodes.rs");

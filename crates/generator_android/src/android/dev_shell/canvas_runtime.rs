@@ -1,12 +1,14 @@
 fn dev_activity_canvas_runtime() -> &'static str {
-    r#"    private String doweFocusedCanvasKeyAction;
+    concat!(
+        r#"    private String doweFocusedCanvasKeyAction;
+    private final Map<String, Object[]> doweDetachedCanvases = new HashMap<>();
 
-    private DoweCanvasView doweCanvas(String scenePath, float viewWidth, float viewHeight, String fit, int fps, boolean autoplay, boolean pixelated, int backgroundColor, String label, String onPointer, String onKey, String onMotion, int motionRate, Integer borderWidth, int borderColor, float borderRadius) {
-        DoweCanvasView view = new DoweCanvasView(this, scenePath, viewWidth, viewHeight, fit, fps, autoplay, pixelated, backgroundColor, onPointer, onKey, onMotion, motionRate, borderWidth, borderColor, borderRadius);
+    private DoweCanvasView doweCanvas(String scenePath, float viewWidth, float viewHeight, String fit, int fps, boolean autoplay, boolean pixelated, int backgroundColor, String label, String onPointer, String onKey, String onMotion, int motionRate, boolean draw, String drawMode, String drawModePath, String layersPath, String selectedPath, String onLayerAdd, String onLayerChange, String onLayerRemove, String onLayerSelect, Integer borderWidth, int borderColor, float borderRadius) {
+        DoweCanvasView view = new DoweCanvasView(this, scenePath, viewWidth, viewHeight, fit, fps, autoplay, pixelated, backgroundColor, onPointer, onKey, onMotion, motionRate, draw, drawMode, drawModePath, layersPath, selectedPath, onLayerAdd, onLayerChange, onLayerRemove, onLayerSelect, borderWidth, borderColor, borderRadius);
         view.setContentDescription(label);
         view.setMinimumHeight(doweDp(180));
         view.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(180)));
-        if (onKey != null && onKey.equals(doweFocusedCanvasKeyAction)) view.post(view::requestFocus);
+        if ((onKey != null || layersPath != null) && (onKey == null || onKey.equals(doweFocusedCanvasKeyAction))) view.post(view::requestFocus);
         return view;
     }
 
@@ -23,6 +25,15 @@ fn dev_activity_canvas_runtime() -> &'static str {
         private final String onKey;
         private final String onMotion;
         private final int motionRate;
+        private final boolean draw;
+        private final String drawMode;
+        private final String drawModePath;
+        private final String layersPath;
+        private final String selectedPath;
+        private final String onLayerAdd;
+        private final String onLayerChange;
+        private final String onLayerRemove;
+        private final String onLayerSelect;
         private final Integer borderWidth;
         private final int borderColor;
         private final float borderRadius;
@@ -35,8 +46,15 @@ fn dev_activity_canvas_runtime() -> &'static str {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Map<String, Bitmap> images = new HashMap<>();
         private final Runnable frame = new Runnable() { public void run() { invalidate(); postDelayed(this, Math.max(8L, 1000L / Math.max(1, fps))); } };
+        private String drawingLayerId;
+        private PointF drawingStart;
+        private Integer drawingPointerId;
+        private String drawingMode;
+        private String selectedLayerId;
+        private long layerSequence;
+        private final String mountedPath = currentPath;
 
-        DoweCanvasView(Context context, String scenePath, float viewWidth, float viewHeight, String fit, int fps, boolean autoplay, boolean pixelated, int backgroundColor, String onPointer, String onKey, String onMotion, int motionRate, Integer borderWidth, int borderColor, float borderRadius) {
+        DoweCanvasView(Context context, String scenePath, float viewWidth, float viewHeight, String fit, int fps, boolean autoplay, boolean pixelated, int backgroundColor, String onPointer, String onKey, String onMotion, int motionRate, boolean draw, String drawMode, String drawModePath, String layersPath, String selectedPath, String onLayerAdd, String onLayerChange, String onLayerRemove, String onLayerSelect, Integer borderWidth, int borderColor, float borderRadius) {
             super(context);
             this.scenePath = scenePath;
             this.viewWidth = viewWidth;
@@ -50,12 +68,26 @@ fn dev_activity_canvas_runtime() -> &'static str {
             this.onKey = onKey;
             this.onMotion = onMotion;
             this.motionRate = motionRate;
+            this.draw = draw;
+            this.drawMode = drawMode;
+            this.drawModePath = drawModePath;
+            this.layersPath = layersPath;
+            this.selectedPath = selectedPath;
+            this.onLayerAdd = onLayerAdd;
+            this.onLayerChange = onLayerChange;
+            this.onLayerRemove = onLayerRemove;
+            this.onLayerSelect = onLayerSelect;
             this.borderWidth = borderWidth;
             this.borderColor = borderColor;
             this.borderRadius = borderRadius;
-            setFocusable(onKey != null);
-            setFocusableInTouchMode(onKey != null);
-            for (Map<String, Object> command : doweRows(scenePath)) {
+            Object[] previous = doweDetachedCanvases.remove(layersPath == null ? scenePath : layersPath);
+            if (previous != null && ((Number) previous[0]).intValue() == doweOverlayRender && mountedPath.equals(previous[3])) {
+                layerSequence = ((Number) previous[1]).longValue();
+                selectedLayerId = (String) previous[2];
+            }
+            setFocusable(onKey != null || layersPath != null);
+            setFocusableInTouchMode(onKey != null || layersPath != null);
+            for (Map<String, Object> command : doweRows(layersPath == null ? scenePath : layersPath)) {
                 if ("image".equals(String.valueOf(command.get("type"))) && command.get("src") != null) doweLoadCanvasImage(String.valueOf(command.get("src")));
             }
             if (autoplay) post(frame);
@@ -81,6 +113,8 @@ fn dev_activity_canvas_runtime() -> &'static str {
 
         @Override
         protected void onDetachedFromWindow() {
+            doweCancelCanvasLayer();
+            doweDetachedCanvases.put(layersPath == null ? scenePath : layersPath, new Object[] { doweOverlayRender, layerSequence, selectedLayerId, mountedPath });
             removeCallbacks(frame);
             if (sensorManager != null && sensorListener != null) sensorManager.unregisterListener(sensorListener);
             doweReleaseCanvasGesture();
@@ -95,7 +129,7 @@ fn dev_activity_canvas_runtime() -> &'static str {
 
         @Override
         public boolean onTouchEvent(MotionEvent event) {
-            if (onPointer == null) return super.onTouchEvent(event);
+            if (onPointer == null && !draw) return super.onTouchEvent(event);
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 gestureParent = getParent();
                 if (gestureParent != null) gestureParent.requestDisallowInterceptTouchEvent(true);
@@ -106,25 +140,29 @@ fn dev_activity_canvas_runtime() -> &'static str {
                 requestFocus();
             }
             int masked = event.getActionMasked();
+            if (masked == MotionEvent.ACTION_CANCEL) { doweCancelCanvasLayer(); drawingPointerId = null; }
+            if (masked == MotionEvent.ACTION_DOWN) drawingPointerId = doweCanvasInside(event.getX(event.getActionIndex()), event.getY(event.getActionIndex())) ? event.getPointerId(event.getActionIndex()) : null;
             String kind = masked == MotionEvent.ACTION_DOWN || masked == MotionEvent.ACTION_POINTER_DOWN ? "down" : masked == MotionEvent.ACTION_UP || masked == MotionEvent.ACTION_POINTER_UP ? "up" : masked == MotionEvent.ACTION_CANCEL ? "cancel" : "move";
-            int start = masked == MotionEvent.ACTION_MOVE ? 0 : event.getActionIndex();
-            int end = masked == MotionEvent.ACTION_MOVE ? event.getPointerCount() : start + 1;
+            int start = masked == MotionEvent.ACTION_MOVE || masked == MotionEvent.ACTION_CANCEL ? 0 : event.getActionIndex();
+            int end = masked == MotionEvent.ACTION_MOVE || masked == MotionEvent.ACTION_CANCEL ? event.getPointerCount() : start + 1;
             for (int index = start; index < end; index++) {
                 int id = event.getPointerId(index);
                 PointF point = doweCanvasLogicalPoint(event.getX(index), event.getY(index));
                 PointF previous = pointers.get(id);
+                if (draw && layersPath != null && drawingPointerId != null && drawingPointerId == id) doweUpdateCanvasLayer(point, kind);
+                if ("up".equals(kind) && drawingPointerId != null && drawingPointerId == id) drawingPointerId = null;
                 Map<String, Object> item = new HashMap<>();
                 item.put("source", "pointer"); item.put("kind", kind); item.put("pointerType", event.getToolType(index) == MotionEvent.TOOL_TYPE_MOUSE ? "mouse" : event.getToolType(index) == MotionEvent.TOOL_TYPE_STYLUS ? "pen" : "touch"); item.put("id", id);
                 item.put("x", point.x); item.put("y", point.y); item.put("dx", previous == null ? 0f : point.x - previous.x); item.put("dy", previous == null ? 0f : point.y - previous.y);
                 item.put("inside", doweCanvasInside(event.getX(index), event.getY(index))); item.put("buttons", event.getButtonState()); item.put("pressure", Math.max(0f, Math.min(1f, event.getPressure(index)))); item.put("primary", id == event.getPointerId(0)); item.put("timestamp", SystemClock.uptimeMillis() - inputStarted);
-                doweRunCanvasAction(onPointer, item);
+                if (onPointer != null) doweRunCanvasAction(onPointer, item);
                 if ("up".equals(kind) || "cancel".equals(kind)) pointers.remove(id); else pointers.put(id, point);
             }
             return true;
         }
 
         @Override
-        public boolean onKeyDown(int keyCode, KeyEvent event) { if (onKey == null) return super.onKeyDown(keyCode, event); doweCanvasKey("down", event); return true; }
+        public boolean onKeyDown(int keyCode, KeyEvent event) { if (layersPath != null && (keyCode == KeyEvent.KEYCODE_DEL || keyCode == KeyEvent.KEYCODE_FORWARD_DEL)) doweRemoveSelectedLayer(); if (onKey == null) return layersPath != null || super.onKeyDown(keyCode, event); doweCanvasKey("down", event); return true; }
 
         @Override
         public boolean onKeyUp(int keyCode, KeyEvent event) { if (onKey == null) return super.onKeyUp(keyCode, event); doweCanvasKey("up", event); return true; }
@@ -135,21 +173,9 @@ fn dev_activity_canvas_runtime() -> &'static str {
             doweRunCanvasAction(onKey, item);
         }
 
-        private void doweRunCanvasAction(String id, Map<String, Object> item) {
-            DoweAction action = doweActions.get(id);
-            if (action == null) return;
-            if ("assign".equals(action.kind)) {
-                doweWrite(action.target, action.stdlibNamespace == null ? doweRead(action.source, item) : doweStdlib(action, item));
-                invalidate();
-                return;
-            }
-            if ("reset".equals(action.kind)) {
-                doweWrite(action.target, doweInitial.get(action.target));
-                invalidate();
-                return;
-            }
-            doweRunAction(id, item);
-        }
+"#,
+        include_str!("canvas_layers.java"),
+        r#"
 
         private void doweStartCanvasSensors() {
             sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -171,12 +197,17 @@ fn dev_activity_canvas_runtime() -> &'static str {
         }
 
         private PointF doweCanvasLogicalPoint(float px, float py) {
-            float sx = getWidth() / Math.max(1f, viewWidth), sy = getHeight() / Math.max(1f, viewHeight), left = 0f, top = 0f;
-            if (!"stretch".equals(fit)) { float scale = "cover".equals(fit) ? Math.max(sx, sy) : Math.min(sx, sy); sx = scale; sy = scale; left = (getWidth() - viewWidth * scale) / 2f; top = (getHeight() - viewHeight * scale) / 2f; }
-            return new PointF(Math.max(0f, Math.min(viewWidth, (px - left) / Math.max(0.0001f, sx))), Math.max(0f, Math.min(viewHeight, (py - top) / Math.max(0.0001f, sy))));
+            PointF point = doweCanvasRawPoint(px, py);
+            return new PointF(Math.max(0f, Math.min(viewWidth, point.x)), Math.max(0f, Math.min(viewHeight, point.y)));
         }
 
-        private boolean doweCanvasInside(float px, float py) { PointF point = doweCanvasLogicalPoint(px, py); return point.x > 0f && point.x < viewWidth && point.y > 0f && point.y < viewHeight; }
+        private PointF doweCanvasRawPoint(float px, float py) {
+            float sx = getWidth() / Math.max(1f, viewWidth), sy = getHeight() / Math.max(1f, viewHeight), left = 0f, top = 0f;
+            if (!"stretch".equals(fit)) { float scale = "cover".equals(fit) ? Math.max(sx, sy) : Math.min(sx, sy); sx = scale; sy = scale; left = (getWidth() - viewWidth * scale) / 2f; top = (getHeight() - viewHeight * scale) / 2f; }
+            return new PointF((px - left) / Math.max(0.0001f, sx), (py - top) / Math.max(0.0001f, sy));
+        }
+
+        private boolean doweCanvasInside(float px, float py) { PointF point = doweCanvasRawPoint(px, py); return point.x >= 0f && point.x <= viewWidth && point.y >= 0f && point.y <= viewHeight; }
 
         @Override
         protected void onDraw(Canvas canvas) {
@@ -192,7 +223,13 @@ fn dev_activity_canvas_runtime() -> &'static str {
             canvas.translate((getWidth() - viewWidth * sx) / 2f, (getHeight() - viewHeight * sy) / 2f);
             canvas.scale(sx, sy);
             float elapsed = autoplay ? (System.nanoTime() - started) / 1000000000f : 0f;
-            for (Map<String, Object> command : doweRows(scenePath)) doweDrawCanvasCommand(canvas, doweBoundCanvasCommand(command), elapsed);
+            for (Map<String, Object> command : doweRows(layersPath == null ? scenePath : layersPath)) doweDrawCanvasCommand(canvas, doweBoundCanvasCommand(command), elapsed);
+            String selected = doweSelectedCanvasLayer();
+            if (!selected.isEmpty()) for (Map<String, Object> layer : doweRows(layersPath == null ? scenePath : layersPath)) if (selected.equals(doweCanvasLayerId(layer))) {
+                android.graphics.RectF bounds = doweCanvasLayerBounds(doweBoundCanvasCommand(layer));
+                if (bounds != null) { bounds.inset(-3f, -3f); paint.setColor(DOWE_PRIMARY); paint.setAlpha(255); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(2f); canvas.drawRect(bounds, paint); }
+                break;
+            }
             canvas.restore();
             doweDrawCanvasBorder(canvas);
         }
@@ -377,4 +414,5 @@ fn dev_activity_canvas_runtime() -> &'static str {
     }
 
 "#
+    )
 }

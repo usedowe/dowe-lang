@@ -556,6 +556,7 @@ fn parse_family_prop(
             | BuiltinComponent::Dropdown
             | BuiltinComponent::Command
             | BuiltinComponent::Accordion
+            | BuiltinComponent::Tree
             | BuiltinComponent::Collapsible
             | BuiltinComponent::Countdown
             | BuiltinComponent::Dropzone

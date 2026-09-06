@@ -364,6 +364,73 @@ fn generates_space_between_flex_with_adaptive_spacers() {
 }
 
 #[test]
+fn preserves_flex_end_inside_ios_cover_card() {
+    let mut covered = route();
+    covered.layout_tree = ViewNode::Children;
+    covered.page_tree = ViewNode::Card {
+        props: VariantProps {
+            style: StyleProps {
+                cover: Some(ResponsiveValue::scalar(CoverSource(
+                    "https://images.example/card.jpg".to_string(),
+                ))),
+                overlay: Some(ResponsiveValue::scalar(OverlayPaint::BlackOpacity(
+                    "0.62".to_string(),
+                ))),
+                text: Some(ResponsiveValue::scalar(ColorToken::White)),
+                rounded: Some(ResponsiveValue::scalar(RoundedSize::Lg)),
+                spacing: SpacingProps {
+                    p: Some(ResponsiveValue::scalar(ScaleValue::from_half_steps(8))),
+                    ..Default::default()
+                },
+                sizing: SizingProps {
+                    min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                        ScaleValue::from_half_steps(144),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        children: vec![ViewNode::Flex {
+            props: dowe_components::LayoutProps {
+                direction: ResponsiveValue::scalar(dowe_components::FlexDirection::Column),
+                justify: Some(ResponsiveValue::scalar(dowe_components::Justify::End)),
+                gap: Some(ResponsiveValue::scalar(GapValue::Single(GapSize::Scale(
+                    ScaleValue::from_half_steps(4),
+                )))),
+                style: StyleProps {
+                    sizing: SizingProps {
+                        min_h: Some(ResponsiveValue::scalar(SizeValue::Scale(
+                            ScaleValue::from_half_steps(120),
+                        ))),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            children: vec![text("Foreground")],
+        }],
+    };
+
+    let views = swift_content(&generate_ios(
+        &[covered],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+    let card = views
+        .find("DoweCoverImage(source:")
+        .and_then(|start| views.get(start..))
+        .expect("cover card");
+    assert!(card.contains("DoweJustify.end"));
+    assert!(card.contains("doweFlexLeadingSpacer("));
+    assert!(card.contains("DoweSize.fixed(CGFloat(240))"));
+    assert!(views.contains("if justify == .end || justify == .endSafe || justify == .center || justify == .centerSafe"));
+}
+
+#[test]
 fn generates_wrapped_flex_flow_layout() {
     let mut flex_route = route();
     flex_route.layout_tree = ViewNode::Children;

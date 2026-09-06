@@ -51,9 +51,10 @@ fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> Str
         escape_html(&props.loading_text)
     );
     let extra = format!(
-        r#" data-dowe-phone data-dowe-country="{}" data-dowe-priority-countries="{}""#,
+        r#" data-dowe-phone data-dowe-country="{}" data-dowe-priority-countries="{}"{}"#,
         escape_attr(country.code),
-        escape_attr(&priority)
+        escape_attr(&priority),
+        reactive_variant_attrs(&props.style, context, "is-")
     );
     let mut control_classes = variant_classes("control", &props.style);
     control_classes.push("phone".to_string());
@@ -92,4 +93,3 @@ fn render_phone_html(props: &PhoneProps, context: &ReactiveRenderContext) -> Str
         context,
     )
 }
-

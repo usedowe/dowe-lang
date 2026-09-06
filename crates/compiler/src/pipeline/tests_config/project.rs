@@ -129,6 +129,35 @@ fn web_compilation_ignores_server_configuration() {
 }
 
 #[test]
+fn compiles_native_ipc_registry_for_web_dev_bridge() {
+    let temp = TempDir::new().expect("tempdir");
+    write_fixture(temp.path());
+    fs::create_dir_all(temp.path().join("server")).expect("server");
+    fs::write(
+        temp.path().join("server/desktop.dowe"),
+        r#"fn startPreview params:{ root:string } return:"string"
+  return value:args.root"#,
+    )
+    .expect("desktop function");
+    let main = fs::read_to_string(temp.path().join("main.dowe")).expect("main");
+    fs::write(
+        temp.path().join("main.dowe"),
+        main.replace(
+            "import viewRoutes from \"@/routes/view\"",
+            "import viewRoutes from \"@/routes/view\"\nimport startPreview from \"@/server/desktop\"",
+        )
+        .replace("  views:viewRoutes", "  views:viewRoutes\n  ipc functions:[startPreview]"),
+    )
+    .expect("main with IPC");
+
+    let project = compile_for_web_environment(temp.path(), CompileEnvironment::Development)
+        .expect("web project");
+
+    assert_eq!(project.native_ipc.functions.len(), 1);
+    assert_eq!(project.native_ipc.functions[0].name, "startPreview");
+}
+
+#[test]
 fn rejects_component_prop_on_view_routes() {
     let temp = TempDir::new().expect("tempdir");
     write_fixture(temp.path());

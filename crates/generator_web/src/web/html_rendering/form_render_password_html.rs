@@ -48,7 +48,12 @@ fn render_password_html(props: &PasswordProps, context: &ReactiveRenderContext) 
     }
     let control = format!(
         "<span{}>{}{input}</span>",
-        attrs(classes, Some(&props.style.element), None, context),
+        attrs(
+            classes,
+            Some(&props.style.element),
+            Some(&reactive_variant_attrs(&props.style, context, "is-")),
+            context,
+        ),
         floating_label_html(&props.style)
     );
     let body = format!("{control}{}", render_password_strength(props));
@@ -60,4 +65,3 @@ fn render_password_html(props: &PasswordProps, context: &ReactiveRenderContext) 
         context,
     )
 }
-

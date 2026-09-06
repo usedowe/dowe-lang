@@ -292,6 +292,103 @@ fn table_field_value<'a>(
     Ok(current)
 }
 
+fn validate_tree_data(
+    path: &Path,
+    signals: &HashMap<String, ViewSignalValue>,
+    data: &str,
+) -> DoweResult<()> {
+    let root = path_root(data);
+    let Some(value) = signals.get(root) else {
+        return Err(DoweError::at_path(
+            path,
+            format!("unknown view value `{root}` in `data`"),
+        ));
+    };
+    match value {
+        ViewSignalValue::Object(fields) => {
+            let has_children = fields.iter().any(|(name, _)| {
+                matches!(name.as_str(), "children" | "folders" | "files")
+            });
+            if !has_children {
+                return Err(DoweError::at_path(
+                    path,
+                    "Tree data object must include `children`, `folders` or `files`",
+                ));
+            }
+            validate_tree_collection_field(path, fields, "children")?;
+            validate_tree_collection_field(path, fields, "folders")?;
+            validate_tree_collection_field(path, fields, "files")?;
+        }
+        ViewSignalValue::Array(items) => {
+            for item in items {
+                validate_tree_node(path, item)?;
+            }
+        }
+        _ => {
+            return Err(DoweError::at_path(
+                path,
+                format!("view value `{root}` in `data` must be a Tree object or array"),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_tree_collection_field(
+    path: &Path,
+    fields: &[(String, ViewSignalValue)],
+    name: &str,
+) -> DoweResult<()> {
+    let Some((_, value)) = fields.iter().find(|(field, _)| field == name) else {
+        return Ok(());
+    };
+    let ViewSignalValue::Array(items) = value else {
+        return Err(DoweError::at_path(
+            path,
+            format!("Tree field `{name}` must be an array"),
+        ));
+    };
+    for item in items {
+        validate_tree_node(path, item)?;
+    }
+    Ok(())
+}
+
+fn validate_tree_node(path: &Path, value: &ViewSignalValue) -> DoweResult<()> {
+    let ViewSignalValue::Object(fields) = value else {
+        return Err(DoweError::at_path(path, "Tree nodes must be objects"));
+    };
+    let id = fields.iter().find(|(name, _)| name == "id").map(|(_, value)| value);
+    if !matches!(id, Some(ViewSignalValue::String(_) | ViewSignalValue::Number(_))) {
+        return Err(DoweError::at_path(
+            path,
+            "Tree nodes must include a string or number `id`",
+        ));
+    }
+    let label = fields
+        .iter()
+        .find(|(name, _)| matches!(name.as_str(), "name" | "label"))
+        .map(|(_, value)| value);
+    if !matches!(label, Some(ViewSignalValue::String(_))) {
+        return Err(DoweError::at_path(
+            path,
+            "Tree nodes must include a string `name` or `label`",
+        ));
+    }
+    if let Some((_, value)) = fields.iter().find(|(name, _)| name == "path")
+        && !matches!(value, ViewSignalValue::String(_) | ViewSignalValue::Number(_))
+    {
+        return Err(DoweError::at_path(
+            path,
+            "Tree node field `path` must be a string or number",
+        ));
+    }
+    validate_tree_collection_field(path, fields, "children")?;
+    validate_tree_collection_field(path, fields, "folders")?;
+    validate_tree_collection_field(path, fields, "files")?;
+    Ok(())
+}
+
 fn validate_candlestick_item(path: &Path, item: &ViewSignalValue) -> DoweResult<()> {
     let ViewSignalValue::Object(fields) = item else {
         return Err(DoweError::at_path(

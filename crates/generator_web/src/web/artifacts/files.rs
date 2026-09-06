@@ -83,6 +83,13 @@ pub fn web_artifacts_for_target(
         target,
     });
 
+    artifacts.push(WebArtifact {
+        relative_path: prefixed_path(prefix, Path::new("web/sw.js")),
+        content: notification_service_worker(),
+        kind: WebArtifactKind::Chunk,
+        target,
+    });
+
     if let Some(page) = web.pages.first() {
         artifacts.push(WebArtifact {
             relative_path: prefixed_path(prefix, Path::new("web/index.html")),
@@ -105,6 +112,35 @@ pub fn web_artifacts_for_target(
     }
 
     artifacts
+}
+
+fn notification_service_worker() -> String {
+    r#"self.addEventListener("push", event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (_) {}
+  if (!payload || typeof payload.id !== "string" || !payload.id || typeof payload.title !== "string" || !payload.title || typeof payload.body !== "string" || !payload.body) return;
+  if (payload.category !== "process" && payload.category !== "chat") return;
+  if (payload.route != null && (typeof payload.route !== "string" || !payload.route.startsWith("/") || payload.route.startsWith("//"))) return;
+  const title = payload.title;
+  const options = {
+    body: typeof payload.body === "string" ? payload.body : "",
+    tag: typeof payload.tag === "string" ? payload.tag : payload.id,
+    data: payload
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const route = event.notification.data && event.notification.data.route;
+  if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) return;
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(clients => {
+    const active = clients.find(client => "focus" in client);
+    if (active) { active.navigate(route); return active.focus(); }
+    return self.clients.openWindow(route);
+  }));
+});
+"#
+    .to_string()
 }
 
 fn prefixed_path(prefix: &Path, path: &Path) -> PathBuf {
@@ -196,4 +232,3 @@ fn static_route_href(href: &str, asset_prefix: &str) -> String {
         format!("{file}#{fragment}")
     }
 }
-

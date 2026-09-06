@@ -42,6 +42,7 @@ fn render_dev_android_display_node(
             children_method,
         ),
         ViewNode::AvatarGroup { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::ChatBox { .. }
         | ViewNode::Collapsible { .. }
         | ViewNode::Countdown { .. }

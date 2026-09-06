@@ -23,6 +23,9 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "label"
                     | "placeholder"
@@ -58,6 +61,8 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
                     | "color"
             ),
             BuiltinComponent::CsvColumn => matches!(name, "name" | "label"),
@@ -70,6 +75,8 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
                     | "color"
             ),
             BuiltinComponent::DragGroup => matches!(name, "id" | "title"),
@@ -88,9 +95,13 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "hideToolbar"
                     | "disabled"
                     | "readonly"
+                    | "onSave"
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "color"
             ),
@@ -114,6 +125,8 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
                     | "name"
                     | "color"
             ),
@@ -135,6 +148,9 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "color"
             ),
@@ -157,6 +173,9 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "color"
             ),
@@ -172,6 +191,9 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "color"
             ),
@@ -193,6 +215,9 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "name"
                     | "color"
             ),
@@ -286,8 +311,12 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "label"
                     | "name"
                     | "hideLabel"
+                    | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
+                    | "onInput"
                     | "color"
             ),
             BuiltinComponent::Dropzone => matches!(
@@ -304,6 +333,8 @@ fn is_known_form_and_action_prop(component: BuiltinComponent, name: &str) -> boo
                     | "variant"
                     | "scheme"
                     | "size"
+                    | "rounded"
+                    | "onChange"
                     | "color"
             ),
         _ => false,

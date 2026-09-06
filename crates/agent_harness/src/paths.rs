@@ -47,20 +47,6 @@ pub(crate) fn write_agent_file(
     }
 }
 
-pub(crate) fn validate_agent_file_path(root: &Path, relative_path: &Path) -> HarnessResult<()> {
-    ensure_safe_relative(relative_path, "path must stay under .agents")?;
-    let agent_root = root.join(".agents");
-    if agent_root.exists() {
-        reject_symlink(&agent_root, ".agents")?;
-    }
-    let path = agent_root.join(relative_path);
-    reject_symlink_ancestors(&path, &agent_root, ".agents")?;
-    if path.exists() {
-        reject_symlink(&path, ".agents")?;
-    }
-    Ok(())
-}
-
 pub(crate) fn create_agent_dir(root: &Path, relative_path: &Path) -> HarnessResult<WriteOutcome> {
     let path = safe_agent_path(root, relative_path)?;
     let logical = format!(".agents/{}", slash_path(relative_path));
@@ -72,44 +58,6 @@ pub(crate) fn create_agent_dir(root: &Path, relative_path: &Path) -> HarnessResu
 
     fs::create_dir_all(&path).map_err(|error| HarnessError::at_path(&path, error.to_string()))?;
     Ok(WriteOutcome::Created(FileRecord { path: logical }))
-}
-
-pub(crate) fn validate_root_instruction_files(root: &Path) -> HarnessResult<()> {
-    if root.exists() {
-        reject_symlink(root, "project root")?;
-    }
-    for name in ["AGENTS.md", "CLAUDE.md"] {
-        let path = root.join(name);
-        if path.exists() {
-            reject_symlink(&path, name)?;
-        }
-    }
-    Ok(())
-}
-
-pub(crate) fn write_root_instruction_file(
-    root: &Path,
-    name: &str,
-    content: &str,
-    mode: WriteMode,
-) -> HarnessResult<WriteOutcome> {
-    validate_root_instruction_files(root)?;
-    let path = root.join(name);
-    if path.exists() && mode == WriteMode::Preserve {
-        return Ok(WriteOutcome::Preserved(FileRecord {
-            path: name.to_string(),
-        }));
-    }
-    let existed = path.exists();
-    fs::write(&path, content).map_err(|error| HarnessError::at_path(&path, error.to_string()))?;
-    let record = FileRecord {
-        path: name.to_string(),
-    };
-    if existed {
-        Ok(WriteOutcome::Overwritten(record))
-    } else {
-        Ok(WriteOutcome::Created(record))
-    }
 }
 
 pub(crate) fn write_dowe_evidence(

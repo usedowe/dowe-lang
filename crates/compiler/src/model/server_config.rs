@@ -58,10 +58,30 @@ impl ServerConfig {
     }
 
     pub fn find_websocket(&self, path: &str) -> Option<WebSocketRoute> {
+        self.find_websocket_match(path)
+            .map(|(websocket, _)| websocket)
+    }
+
+    pub fn find_websocket_match(
+        &self,
+        path: &str,
+    ) -> Option<(WebSocketRoute, HashMap<String, String>)> {
+        self.websockets.iter().find_map(|websocket| {
+            match_route(&websocket.path, path).map(|params| (websocket.clone(), params))
+        })
+    }
+
+    pub fn find_websocket_match_for(
+        &self,
+        pattern: &str,
+        path: &str,
+    ) -> Option<(WebSocketRoute, HashMap<String, String>)> {
         self.websockets
             .iter()
-            .find(|websocket| websocket.path.as_str() == path)
-            .cloned()
+            .find(|websocket| websocket.path == pattern)
+            .and_then(|websocket| {
+                match_route(&websocket.path, path).map(|params| (websocket.clone(), params))
+            })
     }
 }
 

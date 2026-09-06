@@ -5,6 +5,13 @@ fn string_prop(name: &str, value: &str) -> ComponentProp {
     }
 }
 
+fn binding_prop(name: &str, path: &str, kind: PropValueKind) -> ComponentProp {
+    ComponentProp {
+        name: name.to_string(),
+        value: PropValue::Binding(PropBinding::new(path, kind)),
+    }
+}
+
 fn number_prop(name: &str, value: i32) -> ComponentProp {
     number_string_prop(name, &value.to_string())
 }

@@ -26,14 +26,19 @@ fn swift_runtime_diagram() -> &'static str {
     @State private var connectPoint: CGPoint?
     @State private var panStart: CGSize?
     @State private var lastMagnification: CGFloat = 1
+    @GestureState private var nodeGestureActive = false
+    @GestureState private var connectionGestureActive = false
 
-    private var nodes: [[String: Any]] { state.candles(nodesPath) }
+    private var nodes: [[String: Any]] { (state.canvasValue(nodesPath) as? [Any] ?? []).compactMap { $0 as? [String: Any] }.filter { $0["id"] != nil } }
     private var edges: [[String: Any]] { state.candles(edgesPath) }
     private func number(_ value: Any?, _ fallback: CGFloat = 0) -> CGFloat { if let value = value as? NSNumber { return CGFloat(truncating: value) }; return CGFloat(Double(String(describing: value ?? "")) ?? Double(fallback)) }
     private func nodeWidth(_ node: [String: Any]) -> CGFloat { max(1, number(node["width"], 160)) }
     private func nodeHeight(_ node: [String: Any]) -> CGFloat { max(1, number(node["height"], 56)) }
     private func nodeId(_ node: [String: Any]) -> String { String(describing: node["id"] ?? "") }
-    private func nodeCenter(_ node: [String: Any]) -> CGPoint { CGPoint(x: number(node["x"]) + nodeWidth(node) / 2, y: number(node["y"]) + nodeHeight(node) / 2) }
+    private func nodeCenter(_ node: [String: Any]) -> CGPoint {
+        let position = effectivePosition(node)
+        return CGPoint(x: position.x + nodeWidth(node) / 2, y: position.y + nodeHeight(node) / 2)
+    }
     private func effectivePosition(_ node: [String: Any]) -> CGPoint {
         let id = nodeId(node)
         if dragNode == id { return CGPoint(x: dragOrigin.x + dragTranslation.width / scale, y: dragOrigin.y + dragTranslation.height / scale) }
@@ -44,7 +49,7 @@ fn swift_runtime_diagram() -> &'static str {
     private func borderPoint(_ node: [String: Any], toward: CGPoint) -> CGPoint {
         let center = nodeCenter(node)
         let dx = toward.x - center.x, dy = toward.y - center.y
-        if dx == 0 && dy == 0 { return CGPoint(x: center.x, y: number(node["y"])) }
+        if dx == 0 && dy == 0 { return CGPoint(x: center.x, y: effectivePosition(node).y) }
         let sx = dx == 0 ? CGFloat.infinity : nodeWidth(node) / 2 / abs(dx)
         let sy = dy == 0 ? CGFloat.infinity : nodeHeight(node) / 2 / abs(dy)
         let factor = min(sx, sy)
@@ -118,18 +123,28 @@ fn swift_runtime_diagram() -> &'static str {
         scale = next
         offset = CGSize(width: center.x - anchor.x * next, height: center.y - anchor.y * next)
     }
-    private func moveNode(_ node: [String: Any], to point: CGPoint) {
-        var updated = nodes
-        guard let index = updated.firstIndex(where: { nodeId($0) == nodeId(node) }) else { return }
-        updated[index]["x"] = point.x
-        updated[index]["y"] = point.y
+    private func moveNode(_ node: [String: Any], to point: CGPoint) -> [String: Any]? {
+        guard point.x.isFinite, point.y.isFinite,
+              var updated = state.canvasValue(nodesPath) as? [Any],
+              let index = updated.firstIndex(where: { ($0 as? [String: Any]).map { nodeId($0) == nodeId(node) } ?? false }),
+              var item = updated[index] as? [String: Any] else { return nil }
+        item["x"] = point.x
+        item["y"] = point.y
+        updated[index] = item
         state.write(nodesPath, value: updated)
+        return item
     }
-    private func persistConnection(source: String, target: String) {
-        var updated = edges
-        if updated.contains(where: { String(describing: $0["source"] ?? "") == source && String(describing: $0["target"] ?? "") == target }) { return }
-        updated.append(["id": "edge-\(UUID().uuidString)", "source": source, "target": target, "type": "default", "label": ""])
+    private func persistConnection(source: String, target: String) -> Bool {
+        guard source != target, nodeById(source) != nil, nodeById(target) != nil else { return false }
+        var updated = state.canvasValue(edgesPath) as? [Any] ?? []
+        let edgeRows = updated.compactMap { $0 as? [String: Any] }
+        if edgeRows.contains(where: { String(describing: $0["source"] ?? "") == source && String(describing: $0["target"] ?? "") == target }) { return false }
+        let usedIds = Set(edgeRows.compactMap { $0["id"].map { String(describing: $0) } })
+        var sequence = 1
+        while usedIds.contains("edge-\(sequence)") { sequence += 1 }
+        updated.append(["id": "edge-\(sequence)", "source": source, "target": target, "type": "default", "label": ""])
         state.write(edgesPath, value: updated)
+        return true
     }
     private func distanceToSegment(_ point: CGPoint, _ a: CGPoint, _ b: CGPoint) -> CGFloat {
         let abx = b.x - a.x, aby = b.y - a.y
@@ -234,6 +249,7 @@ fn swift_runtime_diagram() -> &'static str {
                             .frame(width: 24, height: height)
                             .highPriorityGesture(
                                 DragGesture(coordinateSpace: .named("doweDiagramCanvas"))
+                                    .updating($connectionGestureActive) { _, active, _ in active = true }
                                     .onChanged { value in
                                         connectFrom = id
                                         connectPoint = graphPoint(from: value.location)
@@ -242,8 +258,7 @@ fn swift_runtime_diagram() -> &'static str {
                                         let point = graphPoint(from: value.location)
                                         if let target = hitNode(at: point), nodeId(target) != id {
                                             let targetId = nodeId(target)
-                                            persistConnection(source: id, target: targetId)
-                                            if let onConnect { state.run(onConnect, item: ["source": id, "target": targetId]) }
+                                            if persistConnection(source: id, target: targetId), let onConnect { state.run(onConnect, item: ["source": id, "target": targetId]) }
                                         }
                                         connectFrom = nil
                                         connectPoint = nil
@@ -254,6 +269,7 @@ fn swift_runtime_diagram() -> &'static str {
                     .position(x: offset.width + (position.x + nodeWidth(node) / 2) * scale, y: offset.height + (position.y + nodeHeight(node) / 2) * scale)
                     .gesture(
                         DragGesture()
+                            .updating($nodeGestureActive) { _, active, _ in active = true }
                             .onChanged { value in
                                 if dragNode == nil {
                                     dragNode = id
@@ -270,19 +286,15 @@ fn swift_runtime_diagram() -> &'static str {
                                 if hypot(value.translation.width, value.translation.height) > 4 {
                                     selectedKey = "node:" + id
                                     let point = CGPoint(x: dragOrigin.x + value.translation.width / scale, y: dragOrigin.y + value.translation.height / scale)
-                                    moveNode(node, to: point)
-                                    if let onNodeDrag {
-                                        var item = node
-                                        item["x"] = point.x
-                                        item["y"] = point.y
-                                        state.run(onNodeDrag, item: item)
-                                    }
-                                } else {
-                                    selectedKey = "node:" + id
-                                    if let onNodeClick { state.run(onNodeClick, item: node) }
+                                    guard let item = moveNode(node, to: point) else { return }
+                                    if let onNodeDrag { state.run(onNodeDrag, item: item) }
                                 }
                             }
                     )
+                    .onTapGesture {
+                        selectedKey = "node:" + id;
+                        if let item = nodeById(id), let onNodeClick { state.run(onNodeClick, item: item) }
+                    }
                 }
                 if nodes.isEmpty { Text(emptyLabel).foregroundStyle(contentColor.opacity(0.64)) }
                 if minimap && !nodes.isEmpty { minimapView(geometry.size) }
@@ -300,6 +312,12 @@ fn swift_runtime_diagram() -> &'static str {
                     }
                     .onEnded { _ in lastMagnification = 1 }
             )
+            .onChange(of: nodeGestureActive) { _, active in
+                if !active { dragNode = nil; dragTranslation = .zero }
+            }
+            .onChange(of: connectionGestureActive) { _, active in
+                if !active { connectFrom = nil; connectPoint = nil }
+            }
             .onAppear { fitIfNeeded(geometry.size) }
             .onChange(of: nodes.count) { _, _ in fitIfNeeded(geometry.size) }
         }
@@ -311,10 +329,11 @@ fn swift_runtime_diagram() -> &'static str {
         guard !nodes.isEmpty else { return nil }
         var minX = CGFloat.infinity, minY = CGFloat.infinity, maxX = -CGFloat.infinity, maxY = -CGFloat.infinity
         for node in nodes {
-            minX = min(minX, number(node["x"]))
-            minY = min(minY, number(node["y"]))
-            maxX = max(maxX, number(node["x"]) + nodeWidth(node))
-            maxY = max(maxY, number(node["y"]) + nodeHeight(node))
+            let position = effectivePosition(node)
+            minX = min(minX, position.x)
+            minY = min(minY, position.y)
+            maxX = max(maxX, position.x + nodeWidth(node))
+            maxY = max(maxY, position.y + nodeHeight(node))
         }
         let fit = min(104 / max(1, maxX - minX), 64 / max(1, maxY - minY))
         return (fit, minX, minY)
@@ -324,8 +343,8 @@ fn swift_runtime_diagram() -> &'static str {
         Canvas { context, _ in
             guard let projection = minimapProjection else { return }
             for node in nodes {
-                let x = (number(node["x"]) - projection.minX) * projection.fit + 8
-                let y = (number(node["y"]) - projection.minY) * projection.fit + 8
+                let x = (effectivePosition(node).x - projection.minX) * projection.fit + 8
+                let y = (effectivePosition(node).y - projection.minY) * projection.fit + 8
                 let rect = CGRect(x: x, y: y, width: max(3, nodeWidth(node) * projection.fit), height: max(2, nodeHeight(node) * projection.fit))
                 context.fill(Path(roundedRect: rect, cornerRadius: 2), with: .color(contentColor.opacity(0.45)))
             }

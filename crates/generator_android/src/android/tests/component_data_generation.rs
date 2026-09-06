@@ -194,6 +194,36 @@ fn generates_android_table_for_compose_and_dev_runtime() {
 }
 
 #[test]
+fn generates_android_tree_for_compose_and_dev_runtime() {
+    let output = generate_android(
+        &[tree_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains("private fun DoweTree("));
+    assert!(views.content.contains("DoweTree(state = state, dataPath = \"fileTree\", bindPath = \"selectedFile\""));
+    assert!(views.content.contains("state.treeNodes(dataPath)"));
+    assert!(views.content.contains("openIds[node.id] = !open"));
+    assert!(views.content.contains("state.run(action, node.value)"));
+    assert!(views.content.contains("folder-with-files"));
+    assert!(views.content.contains("file-text"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("private LinearLayout doweTree("));
+    assert!(dev.content.contains("LinearLayout view0 = doweTree(\"fileTree\", \"selectedFile\""));
+    assert!(dev.content.contains("private static final class DoweTreeNode"));
+    assert!(dev.content.contains("tree.open.put(node.id, nextOpen)"));
+    assert!(dev.content.contains("doweRunAction(tree.onSelect, node.value)"));
+    assert!(dev.content.contains("renderCurrentRoute(false);"));
+}
+
+#[test]
 fn generates_android_divider_with_native_view() {
     let output = generate_android(
         &[divider_route()],
@@ -368,7 +398,7 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     assert_eq!(dev.content.matches("final class DoweDevRoute").count(), 2);
     assert_eq!(
         dev.content
-            .matches("static void render(DoweDevActivity this, LinearLayout root)")
+            .matches("static void render(DoweDevActivity this, ViewGroup root)")
             .count(),
         2
     );

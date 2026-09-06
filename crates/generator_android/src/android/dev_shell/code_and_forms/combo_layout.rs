@@ -28,12 +28,12 @@ fn dev_activity_code_and_forms_combo_layout() -> &'static str {
         dowePinnedAppBarPlaceholder = placeholder;
         View safeArea = new View(this);
         safeArea.setTag("dowe-pinned-appbar-safe-area");
-        safeArea.setBackgroundColor(DOWE_BACKGROUND);
+        safeArea.setBackgroundColor(doweSafeAreaTopColor);
         FrameLayout.LayoutParams safeAreaParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, scrollView.getPaddingTop(), Gravity.TOP | Gravity.START);
         background.addView(safeArea, safeAreaParams);
         View bottomSafeArea = new View(this);
         bottomSafeArea.setTag("dowe-pinned-appbar-bottom-safe-area");
-        bottomSafeArea.setBackgroundColor(DOWE_BACKGROUND);
+        bottomSafeArea.setBackgroundColor(doweSafeAreaBottomColor);
         FrameLayout.LayoutParams bottomSafeAreaParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, scrollView.getPaddingBottom(), Gravity.BOTTOM | Gravity.START);
         background.addView(bottomSafeArea, bottomSafeAreaParams);
         appBar.setTag("dowe-pinned-appbar");
@@ -47,6 +47,43 @@ fn dev_activity_code_and_forms_combo_layout() -> &'static str {
         background.addView(divider, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, doweDp(1), Gravity.TOP | Gravity.START));
         dowePinnedAppBarDivider = divider;
         scrollView.post(this::doweRelayoutPinnedAppBar);
+    }
+
+    private void doweApplySafeAreaColors() {
+        if (scrollView == null || scrollView.getParent() == null) {
+            return;
+        }
+        ViewGroup background = (ViewGroup) scrollView.getParent();
+        View safeArea = background.findViewWithTag("dowe-pinned-appbar-safe-area");
+        if (safeArea == null) {
+            safeArea = new View(this);
+            safeArea.setTag("dowe-pinned-appbar-safe-area");
+            background.addView(safeArea, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, scrollView.getPaddingTop(), Gravity.TOP | Gravity.START));
+        }
+        safeArea.setBackgroundColor(doweSafeAreaTopColor);
+        if (safeArea.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) safeArea.getLayoutParams();
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            params.height = scrollView.getPaddingTop();
+            params.gravity = Gravity.TOP | Gravity.START;
+            params.setMargins(0, 0, 0, 0);
+            safeArea.setLayoutParams(params);
+        }
+        View bottomSafeArea = background.findViewWithTag("dowe-pinned-appbar-bottom-safe-area");
+        if (bottomSafeArea == null) {
+            bottomSafeArea = new View(this);
+            bottomSafeArea.setTag("dowe-pinned-appbar-bottom-safe-area");
+            background.addView(bottomSafeArea, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, scrollView.getPaddingBottom(), Gravity.BOTTOM | Gravity.START));
+        }
+        bottomSafeArea.setBackgroundColor(doweSafeAreaBottomColor);
+        if (bottomSafeArea.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) bottomSafeArea.getLayoutParams();
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            params.height = scrollView.getPaddingBottom();
+            params.gravity = Gravity.BOTTOM | Gravity.START;
+            params.setMargins(0, 0, 0, 0);
+            bottomSafeArea.setLayoutParams(params);
+        }
     }
 
     private void doweUpdatePinnedAppBarDock(boolean docked, boolean animate) {
@@ -151,6 +188,7 @@ fn dev_activity_code_and_forms_combo_layout() -> &'static str {
             bottomSafeAreaParams.height = bottomInset;
             bottomSafeArea.setLayoutParams(bottomSafeAreaParams);
         }
+        doweApplySafeAreaColors();
     }
 
     private LinearLayout.LayoutParams doweLinearLayoutParams(ViewGroup.LayoutParams current) {

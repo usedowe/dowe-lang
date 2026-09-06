@@ -2,7 +2,7 @@ use super::{DevRunOptions, DevTarget, DevTargetDeviceSelection, DevTargetSelecti
 use crate::dev_targets::{cancel_active_external_commands, start_external_target};
 use crate::dev_watch::run_watch_loop;
 use crate::error::{RuntimeError, RuntimeResult};
-use crate::logging::{LoadingStatus, log_info};
+use crate::logging::{LoadingStatus, log_dev_info, log_info};
 use crate::server::{DevServerTargets, RunningDevServers};
 use dowe_compiler::{CompiledProject, DevCompilerSession, ViewPlatform};
 use dowe_spawn::{ChildProcess, ProcessControl, SpawnConfig, run};
@@ -58,6 +58,44 @@ impl ExternalTargetStartup {
 
 pub async fn run_dev(root: impl AsRef<Path>, selection: DevTargetSelection) -> RuntimeResult<()> {
     run_dev_with_options(root, selection, DevRunOptions::default()).await
+}
+
+pub async fn run_studio(root: impl AsRef<Path>) -> RuntimeResult<()> {
+    let session = start_studio_session(root).await?;
+    if let Some(addr) = session.servers.views_addr {
+        log_info(format!("Studio preview available at http://{addr}"));
+    }
+    session.wait().await
+}
+
+pub async fn start_studio_session(root: impl AsRef<Path>) -> RuntimeResult<RunningDevSession> {
+    let root = root.as_ref().to_path_buf();
+    let host = super::HostOs::current();
+    let available = super::available_dev_targets_for_project(&root, host)?;
+    let mut targets = vec![DevTarget::Web];
+    if available.contains(&DevTarget::Server) {
+        targets.push(DevTarget::Server);
+    }
+    let selection = DevTargetSelection::new(targets, host)?;
+    let platforms = selected_view_platforms(&selection);
+    let compile_server = selection.contains(DevTarget::Server);
+    let (compiler, project) = std::thread::Builder::new()
+        .name("dowe-studio-compile".to_string())
+        .stack_size(64 * 1024 * 1024)
+        .spawn(move || -> RuntimeResult<_> {
+            let mut compiler =
+                DevCompilerSession::new(&root, platforms).map_err(RuntimeError::from)?;
+            let project = compiler
+                .compile_initial(compile_server)
+                .map_err(RuntimeError::from)?;
+            Ok((compiler, project))
+        })
+        .map_err(|error| RuntimeError::new(error.to_string()))?
+        .join()
+        .map_err(|_| RuntimeError::new("Studio compile thread panicked"))??;
+    let mut options = DevRunOptions::default();
+    options.studio_preview = true;
+    start_dev_session_with_compiler_options(project, selection, options, compiler).await
 }
 
 pub async fn run_dev_with_options(
@@ -148,6 +186,7 @@ async fn start_dev_session_with_compiler_options(
         }
     }
     project.local_databases = true;
+    project.studio_preview = options.studio_preview;
     let mut project = Arc::new(project);
     let server_targets = dev_server_targets(&selection);
     let servers =
@@ -155,12 +194,17 @@ async fn start_dev_session_with_compiler_options(
             Ok(servers) => servers,
             Err(error) => return Err(error),
         };
+    project = {
+        let state = servers.runtime_state();
+        let current = state.project.read().await;
+        current.clone()
+    };
     if project.apps.files.is_empty()
         && (selection.contains(DevTarget::Desktop)
             || selection.contains(DevTarget::Android)
             || selection.contains(DevTarget::Ios))
     {
-        log_info("Native app artifacts generating in parallel");
+        log_dev_info("Native app artifacts generating in parallel");
         let compiler_for_apps = compiler.clone();
         let project_for_apps = project.clone();
         let app_result = std::thread::Builder::new()
@@ -178,7 +222,7 @@ async fn start_dev_session_with_compiler_options(
         match app_result {
             Ok(completed) => {
                 project = Arc::new(completed);
-                log_info("Native app artifacts ready");
+                log_dev_info("Native app artifacts ready");
                 let state = servers.runtime_state();
                 *state.project.write().await = project.clone();
             }
@@ -387,6 +431,23 @@ impl RunningDevSession {
         let server_result = servers.shutdown().await;
         external_result?;
         server_result
+    }
+
+    pub fn spawn_watch(
+        &self,
+    ) -> (
+        oneshot::Sender<()>,
+        tokio::task::JoinHandle<RuntimeResult<()>>,
+    ) {
+        let (stop_sender, stop_receiver) = oneshot::channel();
+        let handle = tokio::spawn(run_watch_loop(
+            self.root.clone(),
+            self.targets.clone(),
+            self.servers.runtime_state(),
+            self.compiler.clone(),
+            stop_receiver,
+        ));
+        (stop_sender, handle)
     }
 
     pub async fn wait(self) -> RuntimeResult<()> {

@@ -10,6 +10,7 @@ const ROUTER_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/stdlib_actions_1.js"),
     include_str!("router_runtime/stdlib_actions_2.js"),
     include_str!("router_runtime/stdlib_actions_3.js"),
+    include_str!("router_runtime/notifications.js"),
     include_str!("router_runtime/routing.js"),
     include_str!("router_runtime/events_1.js"),
     include_str!("router_runtime/events_2.js"),

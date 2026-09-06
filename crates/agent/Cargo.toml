@@ -9,14 +9,17 @@ base64.workspace = true
 dowe_agent_harness = { path = "../agent_harness" }
 dowe_codegraph = { path = "../codegraph" }
 dowe_runtime = { path = "../runtime" }
+rand_core.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tempfile = "3.23.0"
+sha2.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 dowe_compiler = { path = "../compiler" }
 dowe_components = { path = "../components" }
+tempfile = "3.23.0"
 
 [lib]
 path = "src/lib.rs"

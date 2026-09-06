@@ -4,15 +4,15 @@ use dowe_stdlib::{StdlibReturnKind, StdlibSignature};
 
 #[rustfmt::skip]
 pub(super) const VIEW_COMPONENTS: &[&str] = &[
-    "Box", "Section", "Flex", "Grid", "Input", "Select", "Option", "Code", "Video", "Iframe", "Device", "Canvas",
-    "Candlestick", "ArcChart", "AreaChart", "BarChart", "LineChart", "PieChart", "Table", "Divider",
+    "Box", "Section", "Flex", "Grid", "Input", "Select", "Option", "Code", "Video", "Iframe", "Device", "Canvas", "Draw",
+    "Candlestick", "Diagram", "ArcChart", "AreaChart", "BarChart", "LineChart", "PieChart", "Table", "Divider",
     "Button", "Brand", "Banner", "ToggleTheme", "SelectTheme", "Fab", "fabAction", "Slider", "Dropzone", "ComboBox",
     "comboOption", "CsvField", "csvColumn", "DragDrop", "dragGroup", "dragItem", "Editor", "ImageCropper",
     "Password", "Phone", "Pin", "Textarea", "Alert", "Icon", "Svg", "Path", "AppBar", "Footer",
     "BottomBar", "NavMenu", "SideNav", "RailNav", "Sidebar", "Scaffold", "Splash", "Drawer", "Avatar", "Badge", "Chip",
     "Skeleton", "Modal", "AlertDialog", "Tooltip", "Toast", "Dropdown", "Command", "AvatarGroup", "ChatBox",
     "Empty", "Marquee", "TypeWriter", "RichText", "Record", "ToggleGroup", "Collapsible", "Countdown", "Map",
-    "Audio", "Camera", "Microphone", "Image", "Accordion", "Carousel", "Checkbox", "Color", "Date", "DateRange", "RadioGroup", "Toggle",
+    "Audio", "Camera", "Microphone", "Image", "Accordion", "Tree", "Carousel", "Checkbox", "Color", "Date", "DateRange", "RadioGroup", "RadioCard", "Toggle",
     "Card", "Tabs", "tab", "Stepper", "step", "Title", "Text",
 ];
 
@@ -32,6 +32,11 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
         name: "server",
         signature: "server port:<number> [endpoints:<symbol|array>] [databases:<symbol|array>]",
         description: "Declares a Rust-backed Dowe server target with optional imported endpoint groups and Database handles registered for project operations.",
+    },
+    ServerDocumentation {
+        name: "ipc",
+        signature: "ipc functions:[<imported-function> ...] [databases:<symbol|array>]",
+        description: "Registers imported Dowe functions and local Database handles for native View invocation on desktop, Android, or iOS without creating an HTTP listener.",
     },
     ServerDocumentation {
         name: "databases",
@@ -97,6 +102,16 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
         name: "fn",
         signature: "fn <name> [params:{ name:Type }] [return:\"Type\"]",
         description: "Declares a reusable typed server function; invoke an imported function with `<name> <result> args:{ ... }`.",
+    },
+    ServerDocumentation {
+        name: "invoke",
+        signature: "invoke <result> fn:<name> [args:{ ... }]",
+        description: "Invokes a function registered in a native IPC target; development Web uses the local Dowe IPC bridge and production Web remains HTTP-only.",
+    },
+    ServerDocumentation {
+        name: "notify",
+        signature: "notify <result> user:<value> title:<value> body:<value> [id:<value>] [category:<value>] [route:<value>] [data:<object>] [tag:<value>]",
+        description: "Persists a validated notification intent for the authenticated user's active installations. Use process or chat categories and internal routes only; provider delivery is durable and observable.",
     },
     ServerDocumentation {
         name: "database",
@@ -423,10 +438,10 @@ pub(super) fn component_prop_documentation(component: &str, prop: &str) -> Optio
         let value_type = prop_type(component, prop);
         let description = if component == "Icon" && prop == "name" {
             "Selects a member of the shared Solar, country-flag, SVG Spinner, or SVG Logos catalog. A bare path must resolve to a string; Signal changes update the icon and invalid runtime values use the validated initial icon."
-        } else if component == "Image" && prop == "src" {
-            "Accepts a quoted packaged asset or HTTPS URL, or a bare path resolving to a string constant, Signal, or each-item value. The compiler validates the path and string type before lowering it for every target."
+        } else if (component == "Image" || component == "Iframe") && prop == "src" {
+            "Accepts a quoted packaged asset, HTTPS URL, or internal route, or a bare path resolving to a string constant, Signal, or each-item value. The compiler validates the path and string type before lowering it for every target."
         } else {
-            prop_description(prop)
+            prop_description(component, prop)
         };
         format!(
             "### `{component}.{prop}`\n\n**Type:** `{value_type}`\n\n{}",
@@ -467,7 +482,7 @@ pub(super) fn theme_documentation(owner: &str, token: &str, root_theme: bool) ->
                 .to_string(),
         ),
         ("design", "design", _) => Some(
-            "## `design`\n\n```dowe\ndesign defaultTheme:\"light\"\n  Button variant:\"outlined\"\n  Input variant:\"outlined\" scheme:\"primary\"\n  Text font:\"manrope\"\n  Title font:\"syne\"\n  theme name:\"light\"\n```\n\nConfigures the default named color theme and static visual defaults that Dowe injects into the shared view model. The precedence is explicit usage prop, then the matching `design` entry, then the built-in component default. Built-in defaults intentionally add no border or shadow unless the project configures those props. The normalized defaults are shared by web, desktop, Android, and iOS output.\n\n**Accepted props**\n\n- `defaultTheme`: declared theme name used initially\n\n**Accepted children**\n\n- `Button`, `IconButton`, `Card`, `Drawer`, `Toast`, `Section`, `Accordion`, `Checkbox`, `Input`, `Date`, `Password`, `Select`, `Pin`, `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip`, `Tabs`\n- `Chip`, `SideNav`, `Sidebar`, `NavMenu`, `Avatar`, and `Ui` for existing shared visual defaults\n- `Text` for the default text font\n- `Title` for the default title font\n- `theme` for named color tokens"
+            "## `design`\n\n```dowe\ndesign defaultTheme:\"light\"\n  Button variant:\"outlined\"\n  Input variant:\"outlined\" scheme:\"primary\"\n  Text font:\"manrope\"\n  Title font:\"syne\"\n  theme name:\"light\"\n```\n\nConfigures the default named color theme and static visual defaults that Dowe injects into the shared view model. The precedence is explicit usage prop, then the matching `design` entry, then the built-in component default. Built-in defaults intentionally add no border or shadow unless the project configures those props. The normalized defaults are shared by web, desktop, Android, and iOS output.\n\n**Accepted props**\n\n- `defaultTheme`: declared theme name used initially\n\n**Accepted children**\n\n- `Button`, `IconButton`, `Card`, `Drawer`, `Toast`, `Section`, `Accordion`, `Tree`, `Checkbox`, `Input`, `Date`, `Password`, `Select`, `Pin`, `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip`, `Tabs`\n- `Chip`, `SideNav`, `Sidebar`, `NavMenu`, `Avatar`, and `Ui` for existing shared visual defaults\n- `Text` for the default text font\n- `Title` for the default title font\n- `theme` for named color tokens"
                 .to_string(),
         ),
         ("Tabs", "Tabs", _) => Some(
@@ -582,15 +597,18 @@ fn component_description(name: &str) -> &'static str {
         | "Tabs" | "tab" | "Stepper" | "step" | "Drawer" => {
             "Built-in cross-platform navigation and application-shell component."
         }
+        "Draw" => {
+            "Built-in cross-platform editable drawing surface with Signal-backed layers, selection, deletion, and layer events."
+        }
         "Input" | "Select" | "Option" | "Slider" | "Dropzone" | "ComboBox" | "comboOption"
         | "CsvField" | "csvColumn" | "DragDrop" | "dragGroup" | "dragItem" | "Editor"
         | "ImageCropper" | "Password" | "Phone" | "Pin" | "Textarea" | "Checkbox" | "Color"
-        | "Date" | "DateRange" | "RadioGroup" | "Toggle" | "ToggleGroup" => {
+        | "Date" | "DateRange" | "RadioGroup" | "RadioCard" | "Toggle" | "ToggleGroup" => {
             "Built-in cross-platform form and interaction component."
         }
         "Code" | "Video" | "Iframe" | "Device" | "Audio" | "Camera" | "Microphone" | "Image"
         | "Canvas" | "Icon" | "Svg" | "Path" | "Candlestick" | "ArcChart" | "AreaChart"
-        | "BarChart" | "LineChart" | "PieChart" | "Table" => {
+        | "BarChart" | "LineChart" | "PieChart" | "Table" | "Tree" => {
             "Built-in cross-platform media or data-display component."
         }
         _ => "Built-in Dowe Views component lowered to web, desktop, Android, and iOS targets.",
@@ -692,7 +710,7 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
             ("group", "(group of command entries)"),
         ],
         "AvatarGroup" => &[("item", "(static entry; optional with the items prop)")],
-        "TypeWriter" | "ToggleGroup" | "Accordion" | "RadioGroup" => {
+        "TypeWriter" | "ToggleGroup" | "Accordion" | "RadioGroup" | "RadioCard" => {
             &[("item", "(one or more entries)")]
         }
         "RichText" => &[("mark", "(one or more rich-text runs)")],
@@ -718,9 +736,12 @@ fn prop_type(component: &str, prop: &str) -> String {
     if component == "Button" && matches!(prop, "loading" | "disabled") {
         return "boolean Signal or View Store path".to_string();
     }
-    if component == "Image" && prop == "src" {
-        return "quoted packaged or HTTPS source, or string constant, Signal, or each-item path"
+    if (component == "Image" || component == "Iframe") && prop == "src" {
+        return "quoted packaged, HTTPS, or internal route source, or string constant, Signal, or each-item path"
             .to_string();
+    }
+    if component == "Tree" && prop == "data" {
+        return "Signal or constant object or array path".to_string();
     }
     if let Some(values) = BuiltinComponent::from_name(component)
         .and_then(|component| component_value_completions(component, prop))
@@ -790,7 +811,24 @@ fn prop_type(component: &str, prop: &str) -> String {
     }
 }
 
-fn prop_description(prop: &str) -> &'static str {
+fn prop_description(component: &str, prop: &str) -> &'static str {
+    if component == "Tree" {
+        return match prop {
+            "defaultOpen" => {
+                "Sets the initial expanded state for branches that have not been toggled."
+            }
+            "emptyLabel" => "Sets the visible copy used when the Tree has no valid nodes.",
+            "ariaLabel" => "Names the Tree surface for assistive technology.",
+            "onSelect" => {
+                "References a fn that runs for selected leaves with the original node in item scope."
+            }
+            _ => prop_description_generic(prop),
+        };
+    }
+    prop_description_generic(prop)
+}
+
+fn prop_description_generic(prop: &str) -> &'static str {
     match prop {
         name if name.starts_with("on") => {
             "References a visible Dowe fn executed by this component event."

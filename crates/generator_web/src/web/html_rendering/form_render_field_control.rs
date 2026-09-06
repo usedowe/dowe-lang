@@ -31,12 +31,17 @@ fn render_field_control(
     if error_text.is_some() {
         classes.push("is-error".to_string());
     }
+    let reactive_attrs = reactive_variant_attrs(props, context, "is-");
     let control = format!(
         "<span{}>{}{}</span>",
-        attrs(classes, Some(&props.element), None, context),
+        attrs(
+            classes,
+            Some(&props.element),
+            Some(reactive_attrs.as_str()),
+            context,
+        ),
         floating_label_html(props),
         control_html
     );
     render_field_block(props, help_text, error_text, &control, context)
 }
-

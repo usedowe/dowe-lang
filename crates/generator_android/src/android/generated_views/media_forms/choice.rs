@@ -66,6 +66,58 @@ private fun DoweRadioGroupOption(option: DoweRadioOption, selected: Boolean, siz
     }
 }
 
+private data class DoweRadioCardOption(val value: String, val title: String, val description: String?, val iconViewBox: DoweSvgViewBox?, val iconPaths: List<DoweSvgPath>?, val disabled: Boolean)
+
+@Composable
+private fun DoweRadioCard(value: String, onValueChange: (String) -> Unit, options: List<DoweRadioCardOption>, size: String, orientation: String, name: String?, label: String?, helpText: String?, errorText: String?, modifier: Modifier, accentColor: Color) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (label != null) {
+            Text(label, fontWeight = FontWeight.SemiBold, color = accentColor)
+        }
+        if (orientation == "horizontal") {
+            Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                options.forEach { option ->
+                    DoweRadioCardOptionView(option = option, selected = value == option.value, size = size, accentColor = accentColor, modifier = Modifier.widthIn(min = 160.dp)) { onValueChange(option.value) }
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                options.forEach { option ->
+                    DoweRadioCardOptionView(option = option, selected = value == option.value, size = size, accentColor = accentColor, modifier = Modifier.fillMaxWidth()) { onValueChange(option.value) }
+                }
+            }
+        }
+        if (errorText != null || helpText != null) {
+            Text(errorText ?: helpText.orEmpty(), fontSize = 12.sp, color = accentColor.copy(alpha = 0.7f))
+        }
+    }
+}
+
+@Composable
+private fun DoweRadioCardOptionView(option: DoweRadioCardOption, selected: Boolean, size: String, accentColor: Color, modifier: Modifier, onSelect: () -> Unit) {
+    val cardColor = if (selected) accentColor.copy(alpha = 0.1f) else DoweDesign.surface
+    Box(modifier = modifier.clip(RoundedCornerShape(12.dp)).background(cardColor).border(1.dp, if (selected) accentColor else DoweDesign.muted.copy(alpha = 0.24f), RoundedCornerShape(12.dp)).clickable(enabled = !option.disabled) { onSelect() }.padding(16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val iconViewBox = option.iconViewBox
+            val iconPaths = option.iconPaths
+            if (iconViewBox != null && iconPaths != null) {
+                DoweSvg(viewBox = iconViewBox, modifier = Modifier.size(20.dp), color = DoweDesign.muted, paths = iconPaths)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(option.title, color = DoweDesign.surfaceText)
+                if (option.description != null) {
+                    Text(option.description, color = DoweDesign.muted, fontSize = 12.sp)
+                }
+            }
+        }
+        Box(modifier = Modifier.align(Alignment.TopEnd).size(doweRadioSize(size)).clip(RoundedCornerShape(999.dp)).border(1.5.dp, if (selected) accentColor else DoweDesign.muted, RoundedCornerShape(999.dp)), contentAlignment = Alignment.Center) {
+            if (selected) {
+                Box(modifier = Modifier.size(doweRadioDotSize(size)).clip(RoundedCornerShape(999.dp)).background(accentColor))
+            }
+        }
+    }
+}
+
 @Composable
 private fun DoweToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit, enabled: Boolean, label: String?, labelLeft: String?, labelRight: String?, name: String?, modifier: Modifier, accentColor: Color) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

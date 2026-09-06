@@ -129,6 +129,8 @@ fn container_foreground_tree() -> ViewNode {
                         ..Default::default()
                     },
                     boxed: false,
+                    safe_area_top: None,
+                    safe_area_bottom: None,
                 },
                 app_bar: Vec::new(),
                 start: Vec::new(),

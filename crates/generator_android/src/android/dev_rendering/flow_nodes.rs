@@ -329,7 +329,9 @@ fn render_dev_android_flow_node(
             });
             let variant = reactive_variant.as_deref().unwrap_or("\"solid\"");
             let scheme = reactive_scheme.as_deref().unwrap_or("\"primary\"");
-            let current_color = if reactive_scheme.is_some() || reactive_variant.is_some() {
+            let current_color = if props.style.text.is_some() {
+                dev_inherited_color(&props.style, inherited_color.as_deref())
+            } else if reactive_scheme.is_some() || reactive_variant.is_some() {
                 Some(dev_content_colors(
                     &format!("runtime.doweButtonContent({variant}, {scheme})"),
                     &format!("runtime.doweButtonContent({variant}, {scheme})"),
@@ -339,11 +341,7 @@ fn render_dev_android_flow_node(
                     dev_card_variant_content(props),
                     dev_card_variant_title(props),
                 ))
-            }
-                .or_else(|| Some(dev_content_colors(
-                    dev_card_variant_content(props),
-                    dev_card_variant_title(props),
-                )));
+            };
             let container = if reactive_scheme.is_some() || reactive_variant.is_some() {
                 format!("runtime.doweButtonContainer({variant}, {scheme})")
             } else {
@@ -354,16 +352,27 @@ fn render_dev_android_flow_node(
             } else {
                 dev_card_border(props).to_string()
             };
-            output.push_str(&format!(
-                "        LinearLayout {view} = runtime.doweCard({container}, (\"outlined\".equals({variant}) ? {border} : null));\n"
-            ));
+            let has_cover = props.style.cover.is_some();
+            if has_cover {
+                output.push_str(&format!(
+                    "        FrameLayout {view} = new FrameLayout(this);\n"
+                ));
+            } else {
+                output.push_str(&format!(
+                    "        LinearLayout {view} = runtime.doweCard({container}, (\"outlined\".equals({variant}) ? {border} : null));\n"
+                ));
+            }
             if let Some(path) = props.reactive.scheme.as_ref() {
                 output.push_str(&format!(
                     "        {view}.setTag(DOWE_SCHEME_TAG, \"{}\");\n",
                     escape_java(path)
                 ));
             }
-            apply_dev_android_style(&props.style, &view, false, output);
+            let mut card_style = props.style.clone();
+            if has_cover {
+                card_style.spacing = Default::default();
+            }
+            apply_dev_android_style(&card_style, &view, false, output);
             if let Some(border) = props.style.border.as_ref() {
                 let border_color = props
                     .style
@@ -376,6 +385,36 @@ fn render_dev_android_flow_node(
                     dev_style_radius(&props.style)
                 ));
             }
+            let child_parent = if has_cover {
+                let source = dev_responsive_string_value(
+                    props.style.cover.as_ref().expect("cover"),
+                    |value| format!("\"{}\"", escape_java(&value.0)),
+                );
+                let image = format!("{view}CoverImage");
+                let overlay = format!("{view}CoverOverlay");
+                let content = format!("{view}Content");
+                output.push_str(&format!(
+                    "        FrameLayout {image} = runtime.doweImage({source}, \"\", \"auto\", \"cover\", {container}, null);\n        {view}.addView({image}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        View {overlay} = new View(this);\n"
+                ));
+                if let Some(value) = props.style.overlay.as_ref() {
+                    output.push_str(&format!(
+                        "        {overlay}.setBackgroundColor({});\n",
+                        dev_overlay_value(value)
+                    ));
+                }
+                output.push_str(&format!(
+                    "        {view}.addView({overlay}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n        LinearLayout {content} = doweContainer(false);\n"
+                ));
+                let mut content_style = StyleProps::default();
+                content_style.spacing = props.style.spacing.clone();
+                apply_dev_android_style(&content_style, &content, false, output);
+                output.push_str(&format!(
+                    "        {view}.addView({content}, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));\n"
+                ));
+                content
+            } else {
+                view.clone()
+            };
             apply_dev_android_click(&props.style, &view, context, output);
             apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
             apply_dev_android_flex_item(&props.style, parent, &view, output);
@@ -383,7 +422,7 @@ fn render_dev_android_flow_node(
             for child in children {
                 render_dev_android_node(
                     child,
-                    &view,
+                    &child_parent,
                     None,
                     false,
                     counter,
@@ -795,6 +834,18 @@ fn render_dev_android_positioned_box(
         dev_box_offset(props.position().right.as_ref()),
         dev_box_offset(props.position().bottom.as_ref()),
     ));
+}
+
+fn dev_overlay_value(value: &ResponsiveValue<OverlayPaint>) -> String {
+    dev_responsive_value(value, |paint| match paint {
+        OverlayPaint::BlackOpacity(opacity) => format!(
+            "doweAlpha(Color.BLACK, {}f)",
+            opacity
+        ),
+        OverlayPaint::Color(color) => java_color(*color).to_string(),
+        OverlayPaint::Rgba(rgba) => format!("Color.parseColor(\"{}\")", escape_java(rgba)),
+        OverlayPaint::LinearGradient(_) => "Color.TRANSPARENT".to_string(),
+    })
 }
 
 fn render_dev_android_fixed_box(

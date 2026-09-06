@@ -46,8 +46,10 @@ fn dev_activity_diagram_view() -> &'static str {
         private float offsetY = 0f;
         private boolean fitted = false;
         private int mode = MODE_IDLE;
-        private Integer dragIndex = null;
-        private Integer connectIndex = null;
+        private String dragId = null;
+        private float dragX = 0f;
+        private float dragY = 0f;
+        private String connectId = null;
         private boolean dragMoved = false;
         private float downX = 0f;
         private float downY = 0f;
@@ -148,8 +150,12 @@ fn dev_activity_diagram_view() -> &'static str {
                     Map<String, Object> row = (Map<String, Object>) entry;
                     Object id = row.get("id");
                     if (id == null || findNode(id.toString()) != null) continue;
-                    nodes.add(row);
+                    nodes.add(new HashMap<>(row));
                 }
+            }
+            if (dragId != null && dragMoved) {
+                Map<String, Object> preview = findNode(dragId);
+                if (preview != null) { preview.put("x", dragX); preview.put("y", dragY); }
             }
             if (!fitted && fitView && !nodes.isEmpty() && getWidth() > 0 && getHeight() > 0) {
                 fitted = true;
@@ -205,9 +211,24 @@ fn dev_activity_diagram_view() -> &'static str {
             invalidate();
         }
 
-        private void writeNodes() {
-            ArrayList<Object> output = new ArrayList<>(nodes);
-            doweWrite(nodesPath, output);
+        private Map<String, Object> writeDraggedNode() {
+            if (dragId == null || !Float.isFinite(dragX) || !Float.isFinite(dragY)) return null;
+            Object current = doweRead(nodesPath, null);
+            if (!(current instanceof List)) return null;
+            ArrayList<Object> output = new ArrayList<>((List<?>) current);
+            for (int index = 0; index < output.size(); index++) {
+                Object entry = output.get(index);
+                if (!(entry instanceof Map)) continue;
+                Map<String, Object> row = (Map<String, Object>) entry;
+                if (row.get("id") == null || !dragId.equals(String.valueOf(row.get("id")))) continue;
+                Map<String, Object> updated = new HashMap<>(row);
+                updated.put("x", dragX);
+                updated.put("y", dragY);
+                output.set(index, updated);
+                doweWrite(nodesPath, output);
+                return updated;
+            }
+            return null;
         }
 
         private int hitNode(float screenX, float screenY) {
@@ -321,8 +342,8 @@ fn dev_activity_diagram_view() -> &'static str {
                 if (label != null && !String.valueOf(label).isEmpty())
                     canvas.drawText(String.valueOf(label), labelPoint.x, labelPoint.y - doweDp(6), edgeTextPaint);
             }
-            if (connectIndex != null && connectIndex < nodes.size()) {
-                Map<String, Object> source = nodes.get(connectIndex);
+            if (connectId != null && findNode(connectId) != null) {
+                Map<String, Object> source = findNode(connectId);
                 PointF from = borderPoint(source, connectX, connectY);
                 float fromX = toScreenX(from.x), fromY = toScreenY(from.y);
                 float toX = toScreenX(connectX), toY = toScreenY(connectY);
@@ -339,8 +360,8 @@ fn dev_activity_diagram_view() -> &'static str {
                 float width = nodeWidth(node) * scale;
                 float height = nodeHeight(node) * scale;
                 boolean isSelected = selectedKey != null && selectedKey.equals("node:" + String.valueOf(node.get("id")));
-                Map<String, Object> connectTarget = connectIndex == null ? null : hitNodeAtGraph(connectX, connectY);
-                boolean isTarget = connectIndex != null && connectTarget != null && connectTarget != node && String.valueOf(connectTarget.get("id")).equals(String.valueOf(node.get("id")));
+                Map<String, Object> connectTarget = connectId == null ? null : hitNodeAtGraph(connectX, connectY);
+                boolean isTarget = connectId != null && !connectId.equals(String.valueOf(node.get("id"))) && connectTarget != null && String.valueOf(connectTarget.get("id")).equals(String.valueOf(node.get("id")));
                 nodePaint.setPathEffect(isTarget ? new android.graphics.DashPathEffect(new float[]{doweDp(5), doweDp(3)}, 0f) : null);
                 nodePaint.setStyle(android.graphics.Paint.Style.FILL);
                 nodePaint.setColor(contentColor);
@@ -441,13 +462,30 @@ fn dev_activity_diagram_view() -> &'static str {
             invalidate();
         }
 
-        private void persistConnection(Object source, Object target) {
-            ArrayList<Map<String, Object>> edges = new ArrayList<>(diagramEdges());
-            for (Map<String, Object> edge : edges) {
-                if (String.valueOf(source).equals(String.valueOf(edge.get("source"))) && String.valueOf(target).equals(String.valueOf(edge.get("target")))) return;
+        private boolean hasCurrentNode(Object id) {
+            Object current = doweRead(nodesPath, null);
+            if (!(current instanceof List)) return false;
+            for (Object entry : (List<?>) current) {
+                if (entry instanceof Map && ((Map<?, ?>) entry).get("id") != null && String.valueOf(id).equals(String.valueOf(((Map<?, ?>) entry).get("id")))) return true;
             }
+            return false;
+        }
+
+        private boolean persistConnection(Object source, Object target) {
+            if (source == null || target == null || String.valueOf(source).equals(String.valueOf(target)) || !hasCurrentNode(source) || !hasCurrentNode(target)) return false;
+            Object current = doweRead(edgesPath, null);
+            ArrayList<Object> edges = current instanceof List ? new ArrayList<>((List<?>) current) : new ArrayList<>();
+            java.util.Set<String> usedIds = new java.util.HashSet<>();
+            for (Object entry : edges) {
+                if (!(entry instanceof Map)) continue;
+                Map<?, ?> row = (Map<?, ?>) entry;
+                if (String.valueOf(source).equals(String.valueOf(row.get("source"))) && String.valueOf(target).equals(String.valueOf(row.get("target")))) return false;
+                if (row.get("id") != null) usedIds.add(String.valueOf(row.get("id")));
+            }
+            int sequence = 1;
+            while (usedIds.contains("edge-" + sequence)) sequence++;
             Map<String, Object> edge = new HashMap<>();
-            edge.put("id", "edge-" + System.currentTimeMillis());
+            edge.put("id", "edge-" + sequence);
             edge.put("source", source);
             edge.put("target", target);
             edge.put("type", "default");
@@ -455,6 +493,7 @@ fn dev_activity_diagram_view() -> &'static str {
             edges.add(edge);
             doweWrite(edgesPath, edges);
             invalidate();
+            return true;
         }
 
         private String hitEdge(float graphX, float graphY) {
@@ -487,8 +526,8 @@ fn dev_activity_diagram_view() -> &'static str {
 
         private void resetMode() {
             mode = MODE_IDLE;
-            dragIndex = null;
-            connectIndex = null;
+            dragId = null;
+            connectId = null;
             dragMoved = false;
             controlTarget = -1;
         }
@@ -498,6 +537,8 @@ fn dev_activity_diagram_view() -> &'static str {
             scaleDetector.onTouchEvent(event);
             if (scaleDetector.isInProgress()) {
                 resetMode();
+                refreshNodes();
+                invalidate();
                 return true;
             }
             int action = event.getActionMasked();
@@ -505,6 +546,7 @@ fn dev_activity_diagram_view() -> &'static str {
                 downX = lastX = event.getX();
                 downY = lastY = event.getY();
                 resetMode();
+                refreshNodes();
                 if (minimap && !nodes.isEmpty() && minimapRect().contains(event.getX(), event.getY())) {
                     mode = MODE_MINIMAP;
                     moveViewportToMinimap(event.getX(), event.getY());
@@ -517,13 +559,15 @@ fn dev_activity_diagram_view() -> &'static str {
                         Map<String, Object> node = nodes.get(hit);
                         float right = toScreenX(number(node, "x", 0f)) + nodeWidth(node) * scale;
                         if (event.getX() >= right - doweDp(18)) {
-                            connectIndex = hit;
+                            connectId = String.valueOf(node.get("id"));
                             PointF center = nodeCenter(node);
                             connectX = center.x + nodeWidth(node) / 2f;
                             connectY = center.y;
                             mode = MODE_CONNECT;
                         } else {
-                            dragIndex = hit;
+                            dragId = String.valueOf(node.get("id"));
+                            dragX = number(node, "x", 0f);
+                            dragY = number(node, "y", 0f);
                             mode = MODE_DRAG;
                         }
                     } else if (panOnDrag) {
@@ -534,29 +578,27 @@ fn dev_activity_diagram_view() -> &'static str {
                 return true;
             }
             if (action == MotionEvent.ACTION_MOVE) {
+                float deltaX = event.getX() - lastX;
+                float deltaY = event.getY() - lastY;
                 lastX = event.getX();
                 lastY = event.getY();
                 if (mode == MODE_MINIMAP) {
                     moveViewportToMinimap(event.getX(), event.getY());
-                } else if (mode == MODE_CONNECT && connectIndex != null) {
+                } else if (mode == MODE_CONNECT && connectId != null) {
                     connectX = toGraphX(event.getX());
                     connectY = toGraphY(event.getY());
                     invalidate();
-                } else if (mode == MODE_DRAG && dragIndex != null) {
+                } else if (mode == MODE_DRAG && dragId != null) {
+                    dragX += deltaX / scale;
+                    dragY += deltaY / scale;
                     if (Math.hypot(event.getX() - downX, event.getY() - downY) > doweDp(6)) dragMoved = true;
                     if (dragMoved) {
-                        Map<String, Object> node = nodes.get(dragIndex);
-                        node.put("x", number(node, "x", 0f) + (event.getX() - lastX) / scale);
-                        node.put("y", number(node, "y", 0f) + (event.getY() - lastY) / scale);
-                        lastX = event.getX();
-                        lastY = event.getY();
+                        refreshNodes();
                         invalidate();
                     }
                 } else if (mode == MODE_PAN) {
-                    offsetX += event.getX() - lastX;
-                    offsetY += event.getY() - lastY;
-                    lastX = event.getX();
-                    lastY = event.getY();
+                    offsetX += deltaX;
+                    offsetY += deltaY;
                     invalidate();
                 }
                 return true;
@@ -564,37 +606,42 @@ fn dev_activity_diagram_view() -> &'static str {
             if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                 if (action == MotionEvent.ACTION_CANCEL) {
                     resetMode();
+                    refreshNodes();
                     invalidate();
                     return true;
                 }
+                lastX = event.getX();
+                lastY = event.getY();
                 if (mode == MODE_CONTROL && controlTarget >= 0) {
                     if (controlTarget == 0) zoomAtCenter(1.2f);
                     else if (controlTarget == 1) zoomAtCenter(1f / 1.2f);
                     else { applyFitView(); invalidate(); }
-                } else if (mode == MODE_CONNECT && connectIndex != null) {
-                    Map<String, Object> source = nodes.get(connectIndex);
-                    Map<String, Object> target = hitNodeAtGraph(connectX, connectY);
-                    if (target != null && String.valueOf(source.get("id")).equals(String.valueOf(target.get("id")))) target = null;
+                } else if (mode == MODE_CONNECT && connectId != null) {
+                    Map<String, Object> target = hitNodeAtGraph(toGraphX(event.getX()), toGraphY(event.getY()));
+                    if (target != null && connectId.equals(String.valueOf(target.get("id")))) target = null;
                     if (target != null) {
-                        Object sourceId = source.get("id");
+                        Object sourceId = connectId;
                         Object targetId = target.get("id");
-                        persistConnection(sourceId, targetId);
-                        if (connectAction != null && actionSink != null) {
+                        if (persistConnection(sourceId, targetId) && connectAction != null && actionSink != null) {
                             Map<String, Object> item = new HashMap<>();
                             item.put("source", sourceId);
                             item.put("target", targetId);
                             actionSink.run(connectAction, item);
                         }
                     }
-                } else if (mode == MODE_DRAG && dragIndex != null) {
-                    Map<String, Object> node = nodes.get(dragIndex);
+                } else if (mode == MODE_DRAG && dragId != null) {
                     if (dragMoved) {
-                        selectedKey = "node:" + String.valueOf(node.get("id"));
-                        writeNodes();
-                        if (nodeDragAction != null && actionSink != null) actionSink.run(nodeDragAction, new HashMap<>(node));
+                        Map<String, Object> item = writeDraggedNode();
+                        if (item != null) {
+                            selectedKey = "node:" + dragId;
+                            if (nodeDragAction != null && actionSink != null) actionSink.run(nodeDragAction, item);
+                        }
                     } else if (isTapSlop()) {
-                        selectedKey = "node:" + String.valueOf(node.get("id"));
-                        if (nodeClickAction != null && actionSink != null) actionSink.run(nodeClickAction, new HashMap<>(node));
+                        Map<String, Object> node = findNode(dragId);
+                        if (node != null && hasCurrentNode(dragId)) {
+                            selectedKey = "node:" + dragId;
+                            if (nodeClickAction != null && actionSink != null) actionSink.run(nodeClickAction, new HashMap<>(node));
+                        }
                     }
                 } else if ((mode == MODE_IDLE || mode == MODE_PAN) && isTapSlop()) {
                     String edge = hitEdge(toGraphX(event.getX()), toGraphY(event.getY()));

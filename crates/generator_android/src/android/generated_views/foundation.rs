@@ -14,11 +14,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.CubicBezierEasing
@@ -55,6 +59,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -74,6 +80,7 @@ import android.Manifest
 import android.animation.ValueAnimator
 import android.app.PictureInPictureParams
 import android.content.ContextWrapper
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.media.MediaPlayer
@@ -114,6 +121,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
@@ -164,11 +172,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.ParentDataModifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.input.key.KeyEventType
@@ -185,6 +195,7 @@ import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -205,9 +216,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
@@ -255,6 +269,7 @@ import org.json.JSONObject
 __DOWE_DESIGN__
 
 val LocalDoweTitleColor = compositionLocalOf { DoweDesign.backgroundTitle }
+val LocalDowePageEntranceSuppressed = compositionLocalOf { false }
 
 @Composable
 private fun doweDockingAppBarModifier(modifier: Modifier, scrollState: ScrollState, backgroundColor: Color): Modifier {
@@ -440,6 +455,9 @@ private enum class DoweGesturePreset {
     Tilt
 }
 
+private fun dowePageMotionEnabled(context: android.content.Context): Boolean =
+    try { android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f } catch (error: Exception) { true }
+
 private enum class DoweTransitionPreset {
     None,
     Quick,
@@ -490,17 +508,18 @@ private fun Modifier.doweSection(registry: DoweSectionRegistry, id: String): Mod
 
 @Composable
 private fun Modifier.doweAnimation(preset: DoweAnimationPreset): Modifier {
+    val pageEntranceSuppressed = LocalDowePageEntranceSuppressed.current
     var active by remember(preset) { mutableStateOf(preset == DoweAnimationPreset.None) }
     LaunchedEffect(preset) {
         active = true
     }
     val alpha by animateFloatAsState(
-        targetValue = if (preset == DoweAnimationPreset.None || active) 1f else 0f,
-        animationSpec = tween(durationMillis = 220)
+        targetValue = if (pageEntranceSuppressed || preset == DoweAnimationPreset.None || active) 1f else 0f,
+        animationSpec = if (pageEntranceSuppressed) snap() else tween(durationMillis = 220)
     )
     val progress by animateFloatAsState(
-        targetValue = if (preset == DoweAnimationPreset.None || active) 1f else 0f,
-        animationSpec = tween(durationMillis = 220)
+        targetValue = if (pageEntranceSuppressed || preset == DoweAnimationPreset.None || active) 1f else 0f,
+        animationSpec = if (pageEntranceSuppressed) snap() else tween(durationMillis = 220)
     )
     return this.graphicsLayer {
         this.alpha = alpha

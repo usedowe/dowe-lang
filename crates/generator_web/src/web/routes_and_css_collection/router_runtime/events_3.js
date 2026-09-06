@@ -3,30 +3,56 @@ document.addEventListener("click", event => {
   if (!target || !target.closest) return;
   const send = target.closest("[data-dowe-chatbox-send]");
   const stop = target.closest("[data-dowe-chatbox-stop]");
+  const chatAction = target.closest("[data-dowe-chatbox-action]");
+  const choice = target.closest("[data-dowe-chatbox-choice]");
   const voice = target.closest("[data-dowe-chatbox-voice]");
   const file = target.closest("[data-dowe-chatbox-file]");
   const camera = target.closest("[data-dowe-chatbox-camera]");
-  const button = send || stop || voice || file || camera;
+  const removeAttachment = target.closest("[data-dowe-chatbox-attachment-remove]");
+  const button = send || stop || chatAction || choice || voice || file || camera || removeAttachment;
   if (!button) return;
   const root = button.closest("[data-dowe-chatbox]");
   if (!root) return;
   event.preventDefault();
+  if (choice) {
+    selectChatBoxChoice(root, choice);
+    return;
+  }
+  if (removeAttachment) {
+    root.__doweChatAttachment = "";
+    const attachment = root.querySelector("[data-dowe-chatbox-attachment]");
+    if (attachment) attachment.hidden = true;
+    return;
+  }
   const action = send
     ? root.dataset.doweChatboxOnSend
     : stop
       ? root.dataset.doweChatboxOnStop
-      : voice
-        ? root.dataset.doweChatboxOnVoiceNote
-        : file
-          ? root.dataset.doweChatboxOnFileAttach
-          : root.dataset.doweChatboxOnCameraCapture;
+      : chatAction
+        ? chatAction.dataset.doweChatboxOnAction
+        : voice
+          ? root.dataset.doweChatboxOnVoiceNote
+          : file
+            ? root.dataset.doweChatboxOnFileAttach
+            : root.dataset.doweChatboxOnCameraCapture;
+  if (chatAction) {
+    if (!chatAction.disabled && action) runAction(action, scopeFor(root));
+    return;
+  }
   if (send) {
     const input = root.querySelector("[data-dowe-chatbox-input]");
-    const value = input ? input.value : "";
+    const value = input ? input.value.trim() : "";
+    const image = root.__doweChatAttachment || "";
+    if (value || image) appendChatBoxMessage(root, value, image);
     window.dispatchEvent(
-      new CustomEvent("dowe:chatbox-send", { detail: { value, root } })
+      new CustomEvent("dowe:chatbox-send", { detail: { value, image, root } })
     );
+    root.__doweChatAttachment = "";
+    const attachment = root.querySelector("[data-dowe-chatbox-attachment]");
+    if (attachment) attachment.hidden = true;
     if (input) input.value = "";
+    if (action) runAction(action, { ...scopeFor(root), item: { value, image } });
+    return;
   }
   if (action) runAction(action, scopeFor(root));
 });
@@ -174,6 +200,28 @@ document.addEventListener("click", event => {
       }, 1500);
     });
 });
+function preloadNavigationTarget(anchor) {
+  if (!anchor || anchor.hasAttribute("download")) return;
+  const raw = anchor.dataset.doweHref || anchor.getAttribute("href");
+  if (!raw) return;
+  const url = new URL(raw, location.href);
+  if (url.protocol === "https:" && url.origin !== location.origin) return;
+  if (url.origin !== location.origin && url.protocol !== "file:") return;
+  const destination = splitDestination(raw);
+  const route = routes[destination.path];
+  if (route) void preloadRoute(route).catch(() => {});
+}
+document.addEventListener("pointerover", event => {
+  const anchor = event.target?.closest?.("a[href]");
+  if (!anchor || event.relatedTarget?.closest?.("a[href]") === anchor) return;
+  preloadNavigationTarget(anchor);
+});
+document.addEventListener("focusin", event => {
+  preloadNavigationTarget(event.target?.closest?.("a[href]"));
+});
+document.addEventListener("pointerdown", event => {
+  preloadNavigationTarget(event.target?.closest?.("a[href]"));
+});
 document.addEventListener("click", event => {
   const historyButton =
     event.target.closest && event.target.closest("[data-dowe-history='back']");
@@ -200,9 +248,14 @@ document.addEventListener("click", event => {
   event.preventDefault();
   const device = option.closest("[data-dowe-device]");
   if (!device) return;
-  device.dataset.doweDeviceProfile =
-    option.dataset.doweDeviceOption || "mobile";
-  renderDevice(device);
+  const profile = option.dataset.doweDeviceOption || "mobile";
+  device.dataset.doweDeviceProfile = profile;
+  if (device.dataset.doweDeviceBind && activeView) {
+    writePath(activeView.state, device.dataset.doweDeviceBind, profile);
+    renderReactive(activeView);
+  } else {
+    renderDevice(device);
+  }
 });
 new MutationObserver(() => {
   hydrateDevices(document);
@@ -307,17 +360,30 @@ document.addEventListener(
 onViewportResize(() => hydrateDevices(document));
 requestAnimationFrame(() => hydrateDevices(document));
 async function startRouter() {
-  await syncDevRoutes();
   currentRoute =
     routes[startupDestination.path] ||
     routes[currentRoute?.path] ||
     Object.values(routes)[0] ||
     null;
+  if (!currentRoute) {
+    await syncDevRoutes();
+    currentRoute =
+      routes[startupDestination.path] ||
+      routes[currentRoute?.path] ||
+      Object.values(routes)[0] ||
+      null;
+  }
   if (currentFragment) scrollToFragment(currentFragment);
   if (currentRoute) {
-    applyRouteMetadata(currentRoute);
-    loadRouteModules(currentRoute)
-      .then(modules => hydrate(currentRoute, modules))
+    const route = currentRoute;
+    applyRouteMetadata(route);
+    cachedRouteModules(route)
+      .then(modules => {
+        const prepared = prepareHydration(route, modules);
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => finishHydration(prepared)),
+        );
+      })
       .catch(() => releaseEntranceAnimations());
   } else releaseEntranceAnimations();
 }

@@ -6,7 +6,10 @@ fn emits_portable_view_standard_library_for_web() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     for fragment in [
@@ -22,4 +25,7 @@ fn emits_portable_view_standard_library_for_web() {
             "missing web stdlib fragment: {fragment}"
         );
     }
+    assert!(router.contains("doweNotifications"));
+    assert!(router.contains("chrome?.webview"));
+    assert!(router.contains("permissionDenied"));
 }

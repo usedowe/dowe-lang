@@ -15,6 +15,10 @@ mod init;
 mod init_templates;
 mod logging;
 mod model_runtime;
+mod native_directory;
+mod native_ipc;
+mod notification_dispatch;
+mod notifications;
 mod production_access;
 mod production_handlers;
 mod rtp;
@@ -22,6 +26,7 @@ mod server;
 mod server_actions;
 #[cfg(test)]
 mod server_tests;
+mod studio;
 mod tls;
 mod tls_domains;
 mod tls_redirect;
@@ -39,13 +44,18 @@ pub use dev::{
     available_dev_targets_for_project, available_ios_simulators, default_dev_targets,
     default_dev_targets_for_project, dev_target_selection_path, load_dev_target_preferences,
     load_dev_target_preferences_for_project, load_dev_target_selection, run_dev,
-    run_dev_with_options, save_dev_target_preferences, save_dev_target_selection,
+    run_dev_with_options, run_studio, save_dev_target_preferences, save_dev_target_selection,
     start_dev_session, start_dev_session_with_options, validate_dev_target_selection_for_project,
 };
 pub use dev_events::{DevEvent, DevEventBus, DevEventType};
 pub use dowe_inference::{
     EnergyVad, ModelError, SILERO_8KHZ_FRAME_SAMPLES, SILERO_16KHZ_FRAME_SAMPLES, SpeechEvent,
     SpeechSegmenter, VadEngine, expected_silero_frame_size, validate_silero_frame,
+};
+pub use dowe_notifications::{
+    Delivery, DeliveryStatus, Installation, NotificationError, NotificationIntent,
+    NotificationPayload, NotificationPlatform, NotificationProvider, NotificationResult,
+    NotificationStore, PlatformCapabilities, platform_capabilities,
 };
 pub use dowe_spawn::{
     ChildProcess, EnvMode, KillTarget, ProcessControl, PtyOptions, Signal, SpawnConfig, SpawnEvent,
@@ -56,7 +66,18 @@ pub use init::{
     InitProjectOptions, InitProjectReport, ProjectTemplate, available_project_templates,
     has_dowe_project_marker, init_project,
 };
+pub use logging::start_dev_timer;
 pub use model_runtime::{LoadedModelRuntime, LoadedVadModel};
+pub use native_ipc::invoke_native_function;
+pub use notification_dispatch::{
+    ApnsConfig, FcmConfig, LinuxDispatcherConfig, LinuxReceiverConfig, NotificationDispatchReport,
+    NotificationDispatcherConfig, WebPushConfig, WnsConfig, dispatch_pending_notifications,
+    present_linux_notification, run_linux_notification_receiver,
+};
+pub use notifications::{
+    enqueue_notification, open_notification_store,
+    register_authenticated_notification_installation, register_notification_installation,
+};
 pub use production_access::ProductionAccess;
 pub use rtp::RtpPortPool;
 pub use server::{
@@ -64,6 +85,7 @@ pub use server::{
     serve_production, serve_production_with_access, start_dev, start_dev_servers, start_production,
     start_production_with_access,
 };
+pub use studio::{start_preview, stop_preview};
 
 #[cfg(test)]
 mod tests {

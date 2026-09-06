@@ -387,6 +387,7 @@ fn collect_texts<'a>(node: &'a ViewNode, output: &mut Vec<&'a str>) {
         | ViewNode::LineChart { .. }
         | ViewNode::PieChart { .. }
         | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Divider { .. }
         | ViewNode::Skeleton { .. }
         | ViewNode::TypeWriter { .. }

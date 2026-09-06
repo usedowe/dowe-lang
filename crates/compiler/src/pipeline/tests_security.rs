@@ -281,6 +281,7 @@ fn assert_log(statement: &ServerStatement, level: ServerLogLevel, values: &[Serv
         ServerStatement::Kv(_) => panic!("expected log statement"),
         ServerStatement::Vector(_) => panic!("expected log statement"),
         ServerStatement::Queue(_) => panic!("expected log statement"),
+        ServerStatement::Notification(_) => panic!("expected log statement"),
         ServerStatement::File(_) => panic!("expected log statement"),
         ServerStatement::Password(_) => panic!("expected log statement"),
         ServerStatement::Call(_) | ServerStatement::Task(_) | ServerStatement::Cron(_) => {

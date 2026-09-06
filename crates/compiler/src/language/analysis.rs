@@ -361,6 +361,7 @@ fn validate_server_shape(root: &Path, file: &SourceFile) -> DoweResult<()> {
         || main.children.iter().any(|node| {
             node.name == "desktop" && node.children.iter().any(|child| child.name == "server")
         })
+        || main.children.iter().any(|node| node.name == "ipc")
     {
         parse_server_source(root, file, &environment)?;
     }

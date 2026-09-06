@@ -83,6 +83,7 @@ fn collect_custom_rules(node: &ViewNode, rules: &mut Vec<String>) {
         }
         ViewNode::Countdown { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Map { props, .. } => collect_style_custom_rules(&props.style.style, rules),
+        ViewNode::Tree { props } => collect_style_custom_rules(&props.style.style, rules),
         ViewNode::Badge { props, children } => {
             collect_style_custom_rules(&props.style.style, rules);
             for child in children {

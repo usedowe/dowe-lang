@@ -83,7 +83,10 @@ fn generates_android_code_with_copy_and_theme_tokens() {
     assert!(dev.content.contains("ClipboardManager clipboard"));
     assert!(dev.content.contains("view.setClipChildren(true);"));
     assert!(dev.content.contains("doweRound(view, DOWE_RADIUS);"));
-    assert!(dev.content.contains("divider.setBackgroundColor(doweAlpha(contentColor, 0.24f));"));
+    assert!(
+        dev.content
+            .contains("divider.setBackgroundColor(doweAlpha(contentColor, 0.24f));")
+    );
     assert!(dev.content.contains("scroll.setFillViewport(true);"));
     assert!(
         dev.content
@@ -112,10 +115,22 @@ fn generates_android_video_with_native_hls_player() {
     assert!(views.content.contains("icons.fullscreen"));
     assert!(views.content.contains("enterPictureInPictureMode"));
     assert!(views.content.contains("doweVideoPictureInPictureOverlay"));
-    assert!(views.content.contains("doweHandleVideoPictureInPictureMode"));
+    assert!(
+        views
+            .content
+            .contains("doweHandleVideoPictureInPictureMode")
+    );
     assert!(views.content.contains("Dialog("));
-    assert!(views.content.contains("doweLoadImageBitmap(context, poster)"));
-    assert!(views.content.contains("contentAlignment = Alignment.Center"));
+    assert!(
+        views
+            .content
+            .contains("doweLoadImageBitmap(context, poster)")
+    );
+    assert!(
+        views
+            .content
+            .contains("contentAlignment = Alignment.Center")
+    );
     assert!(
         views
             .content
@@ -126,7 +141,10 @@ fn generates_android_video_with_native_hls_player() {
     let app_manifest = output
         .files
         .iter()
-        .find(|file| file.relative_path.ends_with("app/src/main/AndroidManifest.xml"))
+        .find(|file| {
+            file.relative_path
+                .ends_with("app/src/main/AndroidManifest.xml")
+        })
         .expect("app manifest");
     assert!(
         app_manifest
@@ -166,17 +184,33 @@ fn generates_android_video_with_native_hls_player() {
 
 #[test]
 fn generates_android_iframe_with_hardened_webview() {
-    let output = generate_android(&[iframe_route()], &FontConfig::default(), &DesignConfig::default(), &[]);
-    let views = output.files.iter().find(|file| file.relative_path.ends_with("DowePages.kt")).expect("views");
+    let output = generate_android(
+        &[iframe_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
     assert!(views.content.contains("private fun DoweIframe("));
     assert!(views.content.contains("WebView(context)"));
     assert!(views.content.contains("settings.allowFileAccess = false"));
-    assert!(views.content.contains("sandbox = listOf(\"scripts\", \"same-origin\")"));
+    assert!(
+        views
+            .content
+            .contains("sandbox = listOf(\"scripts\", \"same-origin\")")
+    );
     assert!(views.content.contains("autoplay = true"));
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("private FrameLayout doweIframe("));
     assert!(dev.content.contains("setAllowFileAccess(false)"));
-    assert!(dev.content.contains("doweIframe(\"https://example.com/embed\""));
+    assert!(
+        dev.content
+            .contains("doweIframe(\"https://example.com/embed\"")
+    );
 }
 
 #[test]
@@ -193,33 +227,154 @@ fn generates_android_canvas_for_compose_and_dev_runtime() {
         .find(|file| file.relative_path.ends_with("DowePages.kt"))
         .expect("views");
     assert!(views.content.contains("private fun DoweCanvas("));
+    for contract in [
+        "rememberUpdatedState(drawMode)",
+        "points.size == 1 && doweCanvasSegmentDistance(point, points.first(), points.first()) <= max(6f, stroke)",
+        "var layerSequence",
+        "drawingPointer == change.id.value",
+        "finally {",
+        "doweCanvasLayerHit",
+        "doweCanvasLayerBounds",
+        "kind == \"move\" || kind == \"up\"",
+    ] {
+        assert!(
+            views.content.contains(contract),
+            "missing Compose Draw contract: {contract}"
+        );
+    }
     assert!(views.content.contains(
         "DoweCanvas(state = state, scenePath = \"scene\", viewWidth = 640f, viewHeight = 360f, fit = \"cover\", fps = 30, autoplay = false, pixelated = true"
     ));
-    assert!(views.content.contains(
-        "filterQuality = if (pixelated) FilterQuality.None else FilterQuality.Low"
-    ));
+    assert!(
+        views
+            .content
+            .contains("filterQuality = if (pixelated) FilterQuality.None else FilterQuality.Low")
+    );
     assert!(views.content.contains(
         ".border(doweResponsive(viewportWidth, xs = 1.dp) ?: 0.dp, DoweDesign.primary, RoundedCornerShape(doweResponsive(viewportWidth, xs = 8.dp) ?: DoweDesign.radius))"
     ));
 
     let dev = dev_java_source(&output);
     assert!(dev.content.contains("private DoweCanvasView doweCanvas("));
-    assert!(dev.content.contains("private int doweCanvasColor(Object value)"));
+    for contract in [
+        "long layerSequence",
+        "drawingPointerId == id",
+        "doweCancelCanvasLayer()",
+        "doweCanvasLayerBounds",
+        "doweCanvasSegmentDistance",
+        "doweRefreshCanvasPage",
+        "drawingMode = doweActiveCanvasDrawMode()",
+    ] {
+        assert!(
+            dev.content.contains(contract),
+            "missing launcher Draw contract: {contract}"
+        );
+    }
+    assert!(
+        dev.content
+            .contains("private int doweCanvasColor(Object value)")
+    );
     assert!(dev.content.contains("doweLoadCanvasImage"));
-    assert!(dev.content.contains("requestDisallowInterceptTouchEvent(true)"));
-    assert!(dev.content.contains("doweReleaseCanvasGesture();\n            pointers.clear();"));
+    assert!(
+        dev.content
+            .contains("requestDisallowInterceptTouchEvent(true)")
+    );
+    assert!(
+        dev.content
+            .contains("doweReleaseCanvasGesture();\n            pointers.clear();")
+    );
     assert!(dev.content.contains("doweFocusedCanvasKeyAction"));
     assert!(dev.content.contains("void doweRunCanvasAction("));
     assert!(dev.content.contains("doweRunCanvasAction(onMotion, item)"));
     assert!(!dev.content.contains("doweRunAction(onMotion, item)"));
-    assert!(dev.content.contains("canvas.drawBitmap(bitmap, source, destination, paint)"));
+    assert!(
+        dev.content
+            .contains("canvas.drawBitmap(bitmap, source, destination, paint)")
+    );
     assert!(dev.content.contains(
-        "DoweCanvasView view0 = doweCanvas(\"scene\", 640f, 360f, \"cover\", 30, false, true, DOWE_BACKGROUND, \"Animated scene\", null, null, null, 30, doweResponsiveInt(viewportWidth, 1, null, null, null, null), DOWE_PRIMARY, doweFloat(doweResponsiveFloat(viewportWidth, 8f, null, null, null, null), DOWE_RADIUS))"
+        "DoweCanvasView view0 = doweCanvas(\"scene\", 640f, 360f, \"cover\", 30, false, true, DOWE_BACKGROUND, \"Animated scene\", null, null, null, 30, false, \"pen\""
+    ));
+    assert!(dev.content.contains(
+        "null, null, null, null, null, null, null, doweResponsiveInt(viewportWidth, 1, null, null, null, null)"
     ));
     assert!(dev.content.contains("doweDrawCanvasBorder(canvas);"));
     assert!(dev.content.contains("paint.setFilterBitmap(!pixelated);"));
     assert!(dev.content.contains("doweAdd(root, view0);"));
+}
+
+#[test]
+#[ignore = "requires a JDK; run explicitly for Draw runtime validation"]
+fn draw_android_launcher_executes_layer_contract() {
+    let runtime = super::dev_activity_canvas_runtime();
+    let methods = [
+        "private String doweActiveCanvasDrawMode(",
+        "private ArrayList<Map<String, Object>> doweCanvasLayers(",
+        "private String doweCanvasLayerId(",
+        "private boolean doweCanvasLayerHit(",
+        "private void doweCanvasLayerEvent(",
+        "private void doweRunCanvasAction(",
+        "private void doweUpdateCanvasLayer(",
+        "private void doweRemoveSelectedLayer(",
+        "private String doweSelectedCanvasLayer(",
+        "private void doweCancelCanvasLayer(",
+        "private List<PointF> doweCanvasLayerPoints(",
+        "private float doweCanvasSegmentDistance(",
+        "private android.graphics.RectF doweCanvasLayerBounds(",
+        "private float doweCanvasNumber(",
+        "public boolean onTouchEvent(",
+        "private PointF doweCanvasLogicalPoint(",
+        "private PointF doweCanvasRawPoint(",
+        "private boolean doweCanvasInside(",
+    ]
+    .map(|signature| diagram_java_method(runtime, signature))
+    .join("\n");
+    let source = include_str!("canvas_harness.java").replace(
+        "__DOWE_METHODS__",
+        &methods.replace("android.graphics.RectF", "RectF"),
+    );
+    let directory = std::env::temp_dir().join(format!("dowe-canvas-java-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let file = directory.join("CanvasHarness.java");
+    std::fs::write(&file, source).unwrap();
+    let compiled = std::process::Command::new("javac")
+        .arg(&file)
+        .output()
+        .expect("JDK javac");
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let executed = std::process::Command::new("java")
+        .arg("-cp")
+        .arg(&directory)
+        .arg("CanvasHarness")
+        .output()
+        .expect("JDK java");
+    std::fs::remove_dir_all(directory).unwrap();
+    assert!(
+        executed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&executed.stderr)
+    );
+}
+
+#[test]
+#[ignore = "writes generated Android native validation artifacts"]
+fn draw_android_native_validation_artifacts() {
+    let output = generate_android(
+        &[canvas_route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let directory =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.dowe/android-draw-native");
+    for file in output.files {
+        let path = directory.join(file.relative_path);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, file.content).unwrap();
+    }
 }
 
 #[test]
@@ -288,22 +443,31 @@ fn generates_android_charts_with_canvas_runtime() {
     assert!(views.content.contains("aspectRatio(1f)"));
     assert!(views.content.contains("DoweChartLegend"));
     assert!(views.content.contains("doweDrawArcChart(categories, palette, contentColor, backgroundColor, thickness, gap, startAngle, endAngle.toFloat()"));
-    assert!(views.content.contains("backgroundColor.copy(alpha = 0.94f), RoundedCornerShape(999.dp)"));
-    assert!(views.content.contains("drawRoundRect(clampedLeft - horizontalPadding"));
+    assert!(
+        views
+            .content
+            .contains("backgroundColor.copy(alpha = 0.94f), RoundedCornerShape(999.dp)")
+    );
+    assert!(
+        views
+            .content
+            .contains("drawRoundRect(clampedLeft - horizontalPadding")
+    );
     assert!(views.content.contains("centerText = \"Share\""));
     assert!(views.content.contains("showInlineLabels = true"));
-    assert!(views.content.contains(
-        "DoweChart(state = state, chartType = \"arc\", dataPath = \"segments\""
-    ));
-    assert!(views.content.contains(
-        "DoweChart(state = state, chartType = \"line\", dataPath = \"points\""
-    ));
+    assert!(
+        views
+            .content
+            .contains("DoweChart(state = state, chartType = \"arc\", dataPath = \"segments\"")
+    );
+    assert!(
+        views
+            .content
+            .contains("DoweChart(state = state, chartType = \"line\", dataPath = \"points\"")
+    );
 
     let dev = dev_java_source(&output);
-    assert!(
-        dev.content
-            .contains("private DoweChartView doweChart(")
-    );
+    assert!(dev.content.contains("private DoweChartView doweChart("));
     assert!(dev.content.contains("DoweChartView"));
     assert!(dev.content.contains("doweDrawPieChart"));
     assert!(dev.content.contains("int donutWidth"));

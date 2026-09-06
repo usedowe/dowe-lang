@@ -374,10 +374,18 @@ pub fn scaffold_component_node(
         return Err(ComponentError::children_outside_layout());
     }
     let mut boxed = false;
+    let mut safe_area_top = None;
+    let mut safe_area_bottom = None;
     let mut style_props = Vec::new();
     for prop in props {
         match prop.name.as_str() {
             "boxed" => boxed = parse_static_bool(&prop.name, &prop.value)?,
+            "safeAreaTop" => {
+                safe_area_top = Some(parse_single_color_token(&prop.name, &prop.value)?)
+            }
+            "safeAreaBottom" => {
+                safe_area_bottom = Some(parse_single_color_token(&prop.name, &prop.value)?)
+            }
             _ => style_props.push(prop),
         }
     }
@@ -389,6 +397,8 @@ pub fn scaffold_component_node(
                 StylePropMode::Variant,
             )?,
             boxed,
+            safe_area_top,
+            safe_area_bottom,
         },
         app_bar,
         start,

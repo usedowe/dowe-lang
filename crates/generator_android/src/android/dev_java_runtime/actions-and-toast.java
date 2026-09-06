@@ -26,6 +26,11 @@
             doweRunSteps(action.steps, 0, item, new HashMap<>(), completion);
             return;
         }
+        if ("invoke".equals(action.kind)) {
+            doweSetAlert(action.errorAlert, "error", action.errorMessage == null ? "Invocation failed" : action.errorMessage);
+            completion.run();
+            return;
+        }
         doweRequest(action, item, (successful, responseData) -> {
             if (successful) {
                 if (action.update != null) doweWrite(action.update, responseData);
@@ -57,6 +62,11 @@
                 results.put(step.result, doweObject("ok", ok, "data", data));
                 doweRunSteps(steps, index + 1, item, results, completion);
             });
+            return;
+        }
+        if ("invoke".equals(step.kind)) {
+            results.put(step.result, doweObject("ok", false, "data", null));
+            doweRunSteps(steps, index + 1, item, results, completion);
             return;
         }
         if ("branch".equals(step.kind)) {

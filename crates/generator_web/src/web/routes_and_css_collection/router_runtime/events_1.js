@@ -12,6 +12,20 @@ document.addEventListener("click", event => {
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") closeCombos();
 });
+document.addEventListener("keydown", event => {
+  const editor = event.target?.closest?.("[data-dowe-editor]");
+  if (
+    !editor ||
+    event.isComposing ||
+    (!event.ctrlKey && !event.metaKey) ||
+    event.key.toLowerCase() !== "s"
+  )
+    return;
+  const action = editor.dataset.doweEditorSave;
+  if (!action) return;
+  event.preventDefault();
+  void runAction(action, scopeFor(editor));
+});
 document.addEventListener("input", event => {
   const target = event.target;
   if (target?.dataset?.doweCropperZoom === undefined) return;
@@ -144,9 +158,11 @@ document.addEventListener("input", event => {
   if (target.dataset.doweEditorContent !== undefined) {
     const root = target.closest("[data-dowe-editor]");
     const hidden = root?.querySelector("[data-dowe-editor-hidden]");
-    if (hidden) hidden.value = target.innerHTML;
+    const value = target.innerText || target.textContent || "";
+    if (hidden) hidden.value = value;
+    if (root) highlightEditor(root);
     if (root?.dataset.doweBind && activeView)
-      writePath(activeView.state, root.dataset.doweBind, target.innerHTML);
+      writePath(activeView.state, root.dataset.doweBind, value);
     return;
   }
   if (target.dataset.dowePinCell !== undefined) {

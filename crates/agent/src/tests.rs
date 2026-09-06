@@ -11,6 +11,23 @@ fn basic_ui_prompt_asks_for_clarification_with_minimax() {
 }
 
 #[test]
+fn provider_selection_uses_native_provider_model_defaults() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let prepared = prepare_agent_request(
+        temp.path(),
+        "implement the API",
+        AgentPrepareOptions {
+            provider: Some("openai".to_string()),
+            ..AgentPrepareOptions::default()
+        },
+    )
+    .expect("prepared");
+
+    assert_eq!(prepared.request.provider.as_deref(), Some("openai"));
+    assert_eq!(prepared.request.model, "gpt-5.5");
+}
+
+#[test]
 fn image_prompt_uses_vision_model() {
     let request_type = infer_request_type("create this dashboard", true);
 

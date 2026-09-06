@@ -27,6 +27,7 @@ pub fn container_component_node(
             | BuiltinComponent::Stepper
             | BuiltinComponent::Step
             | BuiltinComponent::Accordion
+            | BuiltinComponent::Tree
             | BuiltinComponent::Carousel
             | BuiltinComponent::Option
             | BuiltinComponent::Table
@@ -67,9 +68,15 @@ pub fn container_component_node(
         component,
         BuiltinComponent::Input
             | BuiltinComponent::Select
+            | BuiltinComponent::ComboBox
+            | BuiltinComponent::CsvField
+            | BuiltinComponent::DragDrop
+            | BuiltinComponent::Editor
+            | BuiltinComponent::ImageCropper
             | BuiltinComponent::Checkbox
             | BuiltinComponent::Toggle
             | BuiltinComponent::RadioGroup
+            | BuiltinComponent::RadioCard
             | BuiltinComponent::Date
             | BuiltinComponent::DateRange
             | BuiltinComponent::Password
@@ -229,11 +236,18 @@ pub fn container_component_node(
         BuiltinComponent::Accordion => Err(ComponentError::invalid_prop_combination(
             "Accordion requires item entries",
         )),
+        BuiltinComponent::Tree => {
+            reject_children_placeholder(component, &children, allow_children)?;
+            tree_component_node(props)
+        }
         BuiltinComponent::Carousel => Err(ComponentError::invalid_prop_combination(
             "Carousel requires slide entries",
         )),
         BuiltinComponent::RadioGroup => Err(ComponentError::invalid_prop_combination(
             "RadioGroup requires item entries",
+        )),
+        BuiltinComponent::RadioCard => Err(ComponentError::invalid_prop_combination(
+            "RadioCard requires item entries",
         )),
         BuiltinComponent::Audio => {
             if children.is_empty() {
@@ -491,6 +505,13 @@ pub fn container_component_node(
         BuiltinComponent::Canvas => {
             if children.is_empty() {
                 canvas_component_node(props)
+            } else {
+                Err(ComponentError::children_not_allowed(component))
+            }
+        }
+        BuiltinComponent::Draw => {
+            if children.is_empty() {
+                draw_component_node(props)
             } else {
                 Err(ComponentError::children_not_allowed(component))
             }

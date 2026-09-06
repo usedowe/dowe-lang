@@ -1,5 +1,4 @@
 use crate::error::{AgentError, AgentResult};
-use dowe_agent_harness::{ManagedAgentSkill, ManagedAgentSkillFile};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,7 +38,7 @@ pub fn public_skills() -> Vec<PublicSkill> {
             name: record.name.to_string(),
             description: record.description.to_string(),
             scope: "dowe-authoring".to_string(),
-            path: format!("skill-data/{}/SKILL.md", record.name),
+            path: format!("dowe-agent://skills/{}/SKILL.md", record.name),
             resources: record
                 .resources
                 .iter()
@@ -97,31 +96,6 @@ pub fn get_public_skill_resource(id: &str, path: &str) -> AgentResult<PublicSkil
     })
 }
 
-pub(crate) fn managed_agent_skills() -> Vec<ManagedAgentSkill> {
-    skill_records()
-        .iter()
-        .map(|record| {
-            let mut files = vec![ManagedAgentSkillFile {
-                path: "SKILL.md".to_string(),
-                content: record.content.to_string(),
-            }];
-            files.extend(
-                record
-                    .resources
-                    .iter()
-                    .map(|resource| ManagedAgentSkillFile {
-                        path: resource.path.to_string(),
-                        content: resource.content.to_string(),
-                    }),
-            );
-            ManagedAgentSkill {
-                name: record.name.to_string(),
-                files,
-            }
-        })
-        .collect()
-}
-
 fn normalize_skill_id(id: &str) -> AgentResult<&str> {
     let id = id.trim();
     if id.is_empty() || id.len() > 64 {
@@ -153,28 +127,28 @@ fn skill_records() -> &'static [SkillRecord] {
             description: "Author Dowe project structure, root configuration, and workflows.",
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/dowe-core/SKILL.md"
+                "/src/embedded/dowe-core/SKILL.md"
             )),
             resources: &[
                 SkillResource {
                     path: "references/main.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-core/references/main.md"
+                        "/src/embedded/dowe-core/references/main.md"
                     )),
                 },
                 SkillResource {
                     path: "references/workflow.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-core/references/workflow.md"
+                        "/src/embedded/dowe-core/references/workflow.md"
                     )),
                 },
                 SkillResource {
                     path: "references/standard-library.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-core/references/standard-library.md"
+                        "/src/embedded/dowe-core/references/standard-library.md"
                     )),
                 },
             ],
@@ -185,31 +159,47 @@ fn skill_records() -> &'static [SkillRecord] {
             description: "Author Dowe APIs, handlers, middleware, persistence, and server runtime behavior.",
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/dowe-server/SKILL.md"
+                "/src/embedded/dowe-server/SKILL.md"
             )),
             resources: &[
                 SkillResource {
                     path: "references/server.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-server/references/server.md"
+                        "/src/embedded/dowe-server/references/server.md"
                     )),
                 },
                 SkillResource {
                     path: "references/data.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-server/references/data.md"
+                        "/src/embedded/dowe-server/references/data.md"
                     )),
                 },
                 SkillResource {
                     path: "references/runtime.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-server/references/runtime.md"
+                        "/src/embedded/dowe-server/references/runtime.md"
                     )),
                 },
             ],
+        },
+        SkillRecord {
+            id: "native-ipc",
+            name: "dowe-native-ipc",
+            description: "Author shared native IPC registrations, View invocations, and Desktop, Android, and iOS host bridges.",
+            content: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/embedded/dowe-native-ipc/SKILL.md"
+            )),
+            resources: &[SkillResource {
+                path: "references/ipc.md",
+                content: include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/src/embedded/dowe-native-ipc/references/ipc.md"
+                )),
+            }],
         },
         SkillRecord {
             id: "domain-modeling",
@@ -217,42 +207,42 @@ fn skill_records() -> &'static [SkillRecord] {
             description: "Turn business descriptions into Dowe modules, entities, workflows, permissions, APIs, seeders, and views.",
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/dowe-domain-modeling/SKILL.md"
+                "/src/embedded/dowe-domain-modeling/SKILL.md"
             )),
             resources: &[
                 SkillResource {
                     path: "references/workflow.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-domain-modeling/references/workflow.md"
+                        "/src/embedded/dowe-domain-modeling/references/workflow.md"
                     )),
                 },
                 SkillResource {
                     path: "references/pos.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-domain-modeling/references/pos.md"
+                        "/src/embedded/dowe-domain-modeling/references/pos.md"
                     )),
                 },
                 SkillResource {
                     path: "references/crm.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-domain-modeling/references/crm.md"
+                        "/src/embedded/dowe-domain-modeling/references/crm.md"
                     )),
                 },
                 SkillResource {
                     path: "references/ecommerce.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-domain-modeling/references/ecommerce.md"
+                        "/src/embedded/dowe-domain-modeling/references/ecommerce.md"
                     )),
                 },
                 SkillResource {
                     path: "references/reservations.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-domain-modeling/references/reservations.md"
+                        "/src/embedded/dowe-domain-modeling/references/reservations.md"
                     )),
                 },
             ],
@@ -263,13 +253,13 @@ fn skill_records() -> &'static [SkillRecord] {
             description: "Author semantic Dowe themes and cross-platform visual tokens.",
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/dowe-theme/SKILL.md"
+                "/src/embedded/dowe-theme/SKILL.md"
             )),
             resources: &[SkillResource {
                 path: "references/theme.md",
                 content: include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
-                    "/../../skill-data/dowe-theme/references/theme.md"
+                    "/src/embedded/dowe-theme/references/theme.md"
                 )),
             }],
         },
@@ -279,84 +269,84 @@ fn skill_records() -> &'static [SkillRecord] {
             description: "Author Dowe views, routes, layouts, pages, Dowe-native reference-driven UI, visual fidelity without screenshot crops, state, requests, and components.",
             content: include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/../../skill-data/dowe-views/SKILL.md"
+                "/src/embedded/dowe-views/SKILL.md"
             )),
             resources: &[
                 SkillResource {
                     path: "references/views.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/views.md"
+                        "/src/embedded/dowe-views/references/views.md"
                     )),
                 },
                 SkillResource {
                     path: "references/composition.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/composition.md"
+                        "/src/embedded/dowe-views/references/composition.md"
                     )),
                 },
                 SkillResource {
                     path: "references/blocks/index.json",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/blocks/index.json"
+                        "/src/embedded/dowe-views/references/blocks/index.json"
                     )),
                 },
                 SkillResource {
                     path: "references/reference-ui.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/reference-ui.md"
+                        "/src/embedded/dowe-views/references/reference-ui.md"
                     )),
                 },
                 SkillResource {
                     path: "references/components.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/components.md"
+                        "/src/embedded/dowe-views/references/components.md"
                     )),
                 },
                 SkillResource {
                     path: "references/styles.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/styles.md"
+                        "/src/embedded/dowe-views/references/styles.md"
                     )),
                 },
                 SkillResource {
                     path: "references/canvas.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/canvas.md"
+                        "/src/embedded/dowe-views/references/canvas.md"
                     )),
                 },
                 SkillResource {
                     path: "references/table.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/references/table.md"
+                        "/src/embedded/dowe-views/references/table.md"
                     )),
                 },
                 SkillResource {
                     path: "scripts/visual_qa.py",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/scripts/visual_qa.py"
+                        "/src/embedded/dowe-views/scripts/visual_qa.py"
                     )),
                 },
                 SkillResource {
                     path: "scripts/visual_qa_blueprint.py",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/scripts/visual_qa_blueprint.py"
+                        "/src/embedded/dowe-views/scripts/visual_qa_blueprint.py"
                     )),
                 },
                 SkillResource {
                     path: "scripts/visual_qa_png.py",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/../../skill-data/dowe-views/scripts/visual_qa_png.py"
+                        "/src/embedded/dowe-views/scripts/visual_qa_png.py"
                     )),
                 },
             ],

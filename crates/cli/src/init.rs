@@ -1,7 +1,8 @@
 use crate::menus;
 use crate::usage::USAGE;
-use dowe_agent::{DoweProjectInitReport, init_dowe_project};
-use dowe_runtime::{InitProjectOptions, ProjectTemplate, has_dowe_project_marker};
+use dowe_runtime::{
+    InitProjectOptions, InitProjectReport, ProjectTemplate, has_dowe_project_marker, init_project,
+};
 use std::env;
 
 pub(crate) fn run_init_command(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
@@ -41,7 +42,7 @@ pub(crate) fn run_init_command(args: &[String]) -> Result<(), Box<dyn std::error
     }
     .with_reinstall(reinstall);
 
-    let report = init_dowe_project(root, options)?;
+    let report = init_project(root, options)?;
     print_init_report(&report);
     Ok(())
 }
@@ -104,32 +105,31 @@ fn resolve_template_name(value: &str) -> Result<ProjectTemplate, Box<dyn std::er
     }
 }
 
-fn print_init_report(report: &DoweProjectInitReport) {
-    let action = if report.project.reinstalled() {
+fn print_init_report(report: &InitProjectReport) {
+    let action = if report.reinstalled() {
         "Reinstalled"
     } else {
         "Initialized"
     };
-    if report.project.i18n_enabled() {
+    if report.i18n_enabled() {
         println!(
             "{action} Dowe project with `{}` template and i18n.",
-            report.project.template()
+            report.template()
         );
     } else {
         println!(
             "{action} Dowe project with `{}` template.",
-            report.project.template()
+            report.template()
         );
     }
     println!(
-        "{} {} project files and {} agent files.",
-        if report.project.reinstalled() {
+        "{} {} project files.",
+        if report.reinstalled() {
             "Replaced"
         } else {
             "Created"
         },
-        report.project.created().len(),
-        report.agent.created.len()
+        report.created().len()
     );
     println!("Next: dowe dev --target server --target web");
 }

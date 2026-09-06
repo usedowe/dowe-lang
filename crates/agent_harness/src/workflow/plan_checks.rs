@@ -8,7 +8,7 @@ fn validate_manifest(manifest: &HarnessManifest, report: &mut CheckReport) {
                 manifest.dowe_version,
                 env!("CARGO_PKG_VERSION")
             ),
-            "Install the intended Dowe version, verify `dowe version`, then run `dowe agent update`.",
+            "Use the intended Dowe binary and regenerate the project harness if its schema changes.",
         ));
     }
     if manifest.schema_version != "1" {
@@ -198,7 +198,10 @@ fn ensure_documentation_target_exists(root: &Path, target: &str) -> HarnessResul
     }
     let full = root.join(path);
     if !full.exists() {
-        return Err(HarnessError::at_path(&full, "documentation target does not exist"));
+        return Err(HarnessError::at_path(
+            &full,
+            "documentation target does not exist",
+        ));
     }
     Ok(())
 }
@@ -242,4 +245,3 @@ fn relative_project_file(root: &Path, relative: &str) -> HarnessResult<PathBuf> 
     }
     Ok(full)
 }
-

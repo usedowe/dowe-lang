@@ -331,6 +331,9 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         ViewNode::Table { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
         }
+        ViewNode::Tree { props } => {
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+        }
         ViewNode::Alert { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
         }
@@ -415,6 +418,7 @@ fn apply_design_defaults_to_statements(
             }
             ViewFunctionStatement::Request { .. }
             | ViewFunctionStatement::Validate { .. }
+            | ViewFunctionStatement::Invoke { .. }
             | ViewFunctionStatement::Assign(_)
             | ViewFunctionStatement::Reset(_)
             | ViewFunctionStatement::Redirect { .. } => {}

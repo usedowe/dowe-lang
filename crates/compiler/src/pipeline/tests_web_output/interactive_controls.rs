@@ -65,6 +65,8 @@ fn compiles_theme_fab_slider_and_dropzone_across_targets() {
     .expect("css");
     assert!(css.contains("html.theme-transitioning"));
     assert!(css.contains("html.page-transitioning"));
+    assert!(css.contains("view-transition-name:dowe-page"));
+    assert!(css.contains("::view-transition-old(dowe-page)"));
     assert!(!css.is_empty());
     assert!(css.contains("select"));
     assert!(!css.contains(".theme-select-input"));

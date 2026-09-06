@@ -71,6 +71,7 @@ fn collect_classes(node: &ViewNode, classes: &mut BTreeSet<String>) {
         | ViewNode::Collapsible { .. }
         | ViewNode::Countdown { .. }
         | ViewNode::Map { .. }
+        | ViewNode::Tree { .. }
         | ViewNode::Badge { .. }
         | ViewNode::Chip { .. }
         | ViewNode::Skeleton { .. } => collect_display_node_classes(node, classes),

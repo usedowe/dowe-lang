@@ -4,11 +4,12 @@ use dowe_runtime::{
     DevRunOptions, DevTarget, DevTargetSelection, HostOs, RuntimeError,
     available_dev_targets_for_project, default_dev_targets_for_project,
     load_dev_target_preferences_for_project, run_dev_with_options, save_dev_target_preferences,
-    validate_dev_target_selection_for_project,
+    start_dev_timer, validate_dev_target_selection_for_project,
 };
 use std::env;
 
 pub(crate) async fn run_dev_command(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+    start_dev_timer();
     let host = HostOs::current();
     let root = env::current_dir()?;
     let available_targets = available_dev_targets_for_project(&root, host)?;
@@ -58,7 +59,15 @@ pub(crate) async fn run_dev_command(args: &[String]) -> Result<(), Box<dyn std::
         Default::default()
     };
 
-    run_dev_with_options(root, selection, DevRunOptions { devices }).await?;
+    run_dev_with_options(
+        root,
+        selection,
+        DevRunOptions {
+            devices,
+            studio_preview: false,
+        },
+    )
+    .await?;
     Ok(())
 }
 

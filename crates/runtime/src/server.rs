@@ -6,15 +6,20 @@ use crate::handlers::{
     server_inspector_index, server_inspector_manifest, server_inspector_selection,
     server_inspector_source, views_handler,
 };
-use crate::logging::log_info;
+use crate::logging::{log_dev_info, log_info};
 use crate::production_handlers::{production_declared_websocket_handler, production_handler};
 use crate::{DevEventBus, DevEventType, ProductionAccess};
-use axum::extract::{Path as AxumPath, State, WebSocketUpgrade};
-use axum::http::HeaderMap;
-use axum::response::Response;
-use axum::routing::get;
+use axum::extract::{Json, Path as AxumPath, State, WebSocketUpgrade};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{delete, get, post};
 use axum::{Router, middleware};
-use dowe_compiler::{CompiledProject, ServerAction, ServerTransport, ServerTransportProtocol};
+use dowe_compiler::{
+    CompiledProject, EnvironmentValueSource, EnvironmentVariable, EnvironmentVisibility,
+    NativeIpcTarget, ServerAction, ServerTransport, ServerTransportProtocol,
+};
+use serde::Deserialize;
+use serde_json::{Value, json};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
@@ -25,6 +30,8 @@ use tokio::task::JoinHandle;
 use tower_http::compression::CompressionLayer;
 
 const VIEWS_DEV_PORT: u16 = 7654;
+const BACKEND_DEV_PORT: u16 = 7754;
+const DESKTOP_DEV_PORT: u16 = 7854;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DevServerTargets {
@@ -96,46 +103,65 @@ pub(crate) async fn start_dev_servers_shared(
     project: Arc<CompiledProject>,
     targets: DevServerTargets,
 ) -> RuntimeResult<RunningDevServers> {
-    crate::database_bootstrap::prepare_databases(&project).await?;
+    let mut project = match Arc::try_unwrap(project) {
+        Ok(project) => project,
+        Err(project) => clone_compiled_project(project)?,
+    };
+    project.local_databases = true;
     if targets.backend {
-        log_info("Backend server starting");
+        log_dev_info("Backend server starting");
     }
     if targets.views {
-        log_info("Views server starting");
+        log_dev_info("Views server starting");
     }
     if targets.desktop && project.desktop_server.is_some() {
-        log_info("Desktop server starting");
+        log_dev_info("Desktop server starting");
     }
 
     let backend_listener = if targets.backend {
-        let backend_addr = SocketAddr::from((Ipv4Addr::LOCALHOST, project.backend.port));
-        Some(
-            TcpListener::bind(backend_addr)
-                .await
-                .map_err(|error| bind_error(backend_addr, error))?,
-        )
+        Some(bind_development_listener(BACKEND_DEV_PORT, "backend").await?)
     } else {
         None
     };
     let views_listener = if targets.views {
-        Some(bind_views_listener().await?)
+        Some(bind_development_listener(VIEWS_DEV_PORT, "views").await?)
     } else {
         None
     };
-    let desktop_listener = if targets.desktop {
-        if let Some(server) = project.desktop_server.as_ref() {
-            let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, server.port));
-            Some(
-                TcpListener::bind(addr)
-                    .await
-                    .map_err(|error| bind_error(addr, error))?,
-            )
+    let desktop_listener = if targets.desktop && project.desktop_server.is_some() {
+        Some(bind_development_listener(DESKTOP_DEV_PORT, "desktop").await?)
+    } else {
+        None
+    };
+
+    if let Some(listener) = &backend_listener {
+        let addr = listener.local_addr()?;
+        project.backend.port = addr.port();
+        let scheme = if project.backend.tls.is_some() {
+            "https"
         } else {
-            None
+            "http"
+        };
+        apply_development_url(&mut project, "BACKEND_URL", format!("{scheme}://{addr}"));
+        apply_development_url(&mut project, "SERVER_URL", format!("{scheme}://{addr}"));
+        if let Some(inspector) = &mut project.server_inspector {
+            inspector.port = addr.port();
         }
-    } else {
-        None
-    };
+    }
+    if let Some(listener) = &desktop_listener {
+        let addr = listener.local_addr()?;
+        if let Some(server) = &mut project.desktop_server {
+            server.port = addr.port();
+        }
+        apply_development_url(
+            &mut project,
+            "BACKEND_DESKTOP_URL",
+            format!("http://{addr}"),
+        );
+        apply_development_url(&mut project, "SERVER_DESKTOP_URL", format!("http://{addr}"));
+    }
+    let project = Arc::new(project);
+    crate::database_bootstrap::prepare_databases(&project).await?;
 
     let mut background_jobs = Vec::new();
     if targets.backend {
@@ -156,6 +182,10 @@ pub(crate) async fn start_dev_servers_shared(
             crate::handlers::CacheRuntimeMode::Local,
         ));
     }
+    background_jobs.push(start_notification_dispatcher(
+        project.root.clone(),
+        notification_namespace(&project.root),
+    ));
 
     let mut backend = None;
     let mut backend_addr = None;
@@ -240,7 +270,7 @@ pub(crate) async fn start_dev_servers_shared(
             "http"
         };
         state.dev_origins.push(format!("{scheme}://{addr}"));
-        log_info(format!("Backend server started at {scheme}://{addr}"));
+        log_dev_info(format!("Backend server started at {scheme}://{addr}"));
         if state.project.read().await.server_inspector.is_some() {
             log_info(format!(
                 "Server inspector available at {scheme}://{addr}/_dowe/dev/server/"
@@ -266,7 +296,7 @@ pub(crate) async fn start_dev_servers_shared(
         let router = views_router(state.clone());
         let (shutdown, signal) = oneshot::channel();
         let handle = spawn_server(listener, router, signal);
-        log_info(format!("Views server started at http://{addr}"));
+        log_dev_info(format!("Views server started at http://{addr}"));
         views_addr = Some(addr);
         views = Some(RunningServer {
             shutdown: Some(shutdown),
@@ -278,7 +308,7 @@ pub(crate) async fn start_dev_servers_shared(
         let router = desktop_router(state.clone(), desktop_websocket_paths);
         let (shutdown, signal) = oneshot::channel();
         let handle = spawn_server(listener, router, signal);
-        log_info(format!("Desktop server started at http://{addr}"));
+        log_dev_info(format!("Desktop server started at http://{addr}"));
         desktop_addr = Some(addr);
         desktop = Some(RunningServer {
             shutdown: Some(shutdown),
@@ -310,8 +340,8 @@ pub(crate) async fn start_dev_servers_shared(
     })
 }
 
-async fn bind_views_listener() -> RuntimeResult<TcpListener> {
-    for port in VIEWS_DEV_PORT..=u16::MAX {
+async fn bind_development_listener(start_port: u16, label: &str) -> RuntimeResult<TcpListener> {
+    for port in start_port..=u16::MAX {
         let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, port));
         match TcpListener::bind(addr).await {
             Ok(listener) => return Ok(listener),
@@ -319,10 +349,43 @@ async fn bind_views_listener() -> RuntimeResult<TcpListener> {
             Err(error) => return Err(bind_error(addr, error)),
         }
     }
-    let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, VIEWS_DEV_PORT));
+    let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, start_port));
     Err(RuntimeError::new(format!(
-        "no available views development port at or above {VIEWS_DEV_PORT} on {addr}"
+        "no available {label} development port at or above {start_port} on {addr}"
     )))
+}
+
+fn clone_compiled_project(project: Arc<CompiledProject>) -> RuntimeResult<CompiledProject> {
+    std::thread::Builder::new()
+        .name("dowe-dev-project-clone".to_string())
+        .stack_size(64 * 1024 * 1024)
+        .spawn(move || (*project).clone())
+        .map_err(|error| RuntimeError::new(error.to_string()))?
+        .join()
+        .map_err(|_| RuntimeError::new("development project clone thread panicked"))
+}
+
+fn apply_development_url(project: &mut CompiledProject, name: &str, value: String) {
+    if let Some(variable) = project
+        .environment_config
+        .variables
+        .iter_mut()
+        .find(|variable| variable.name == name)
+    {
+        variable.visibility = EnvironmentVisibility::Client;
+        variable.resolved_source = EnvironmentValueSource::DotEnv;
+        variable.resolved_value = Some(value);
+        return;
+    }
+    project
+        .environment_config
+        .variables
+        .push(EnvironmentVariable {
+            name: name.to_string(),
+            visibility: EnvironmentVisibility::Client,
+            resolved_source: EnvironmentValueSource::DotEnv,
+            resolved_value: Some(value),
+        });
 }
 
 pub async fn serve_dev(project: CompiledProject) -> RuntimeResult<()> {
@@ -361,11 +424,15 @@ pub async fn start_production_with_access(
         .await
         .map_err(|error| bind_error(addr, error))?;
     crate::server_actions::execute_server_action(&project.backend.init_action);
-    let background_jobs = start_init_background_jobs(
+    let mut background_jobs = start_init_background_jobs(
         &project.root,
         &project.backend.init_action,
         crate::handlers::CacheRuntimeMode::Production,
     );
+    background_jobs.push(start_notification_dispatcher(
+        project.root.clone(),
+        notification_namespace(&project.root),
+    ));
     let addr = listener.local_addr()?;
     let backend_websocket_paths = project
         .backend
@@ -720,6 +787,34 @@ fn spawn_udp_transport(
     })
 }
 
+fn notification_namespace(root: &std::path::Path) -> String {
+    root.file_name()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("default")
+        .to_string()
+}
+
+fn start_notification_dispatcher(root: std::path::PathBuf, namespace: String) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        if std::env::var("DOWE_NOTIFICATIONS_DISPATCHER")
+            .ok()
+            .is_some_and(|value| matches!(value.as_str(), "0" | "false" | "off"))
+        {
+            return;
+        }
+        let worker = format!("dowe-{}", std::process::id());
+        loop {
+            if let Ok(store) = dowe_notifications::NotificationStore::open(&root, &namespace)
+                && let Ok(config) = crate::NotificationDispatcherConfig::from_env()
+            {
+                let _ = crate::dispatch_pending_notifications(&store, &config, &worker, 32).await;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+    })
+}
+
 fn spawn_tcp_transport(
     listener: TcpListener,
     transport: ServerTransport,
@@ -815,6 +910,14 @@ fn backend_router(
     project_root: std::path::PathBuf,
 ) -> Router {
     let mut router = Router::new()
+        .route(
+            "/_dowe/notifications/installations",
+            post(notification_installation_handler),
+        )
+        .route(
+            "/_dowe/notifications/installations/{id}",
+            delete(notification_revoke_handler),
+        )
         .route("/_dowe/dev/ws", get(dev_websocket_handler))
         .route("/_dowe/dev/server", get(server_inspector_index))
         .route("/_dowe/dev/server/", get(server_inspector_index))
@@ -873,8 +976,174 @@ fn backend_router(
 fn views_router(state: DevRuntimeState) -> Router {
     Router::new()
         .route("/_dowe/dev/ws", get(dev_websocket_handler))
+        .route("/_dowe/dev/ipc", post(dev_native_ipc_handler))
         .fallback(views_handler)
         .with_state(state)
+}
+
+#[derive(Debug, Deserialize)]
+struct NotificationInstallationRequest {
+    id: String,
+    platform: dowe_notifications::NotificationPlatform,
+    provider: dowe_notifications::NotificationProvider,
+    token: String,
+    #[serde(default)]
+    preferences: std::collections::BTreeMap<String, bool>,
+}
+
+async fn notification_installation_handler(
+    State(state): State<DevRuntimeState>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Response {
+    let Some(subject) = notification_auth_subject(&headers) else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error":"authentication_required"})),
+        )
+            .into_response();
+    };
+    let request = match serde_json::from_slice::<NotificationInstallationRequest>(&body) {
+        Ok(request) => request,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"error":"invalid_installation", "message":error.to_string()})),
+            )
+                .into_response();
+        }
+    };
+    let project = state.project.read().await.clone();
+    let namespace = notification_namespace(&project.root);
+    let environment = match state.cache_mode {
+        crate::handlers::CacheRuntimeMode::Local => "development",
+        crate::handlers::CacheRuntimeMode::Production => "production",
+    };
+    let tenant = headers
+        .get("x-dowe-tenant")
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("default")
+        .to_string();
+    let installation = dowe_notifications::Installation {
+        id: request.id,
+        app: namespace.clone(),
+        environment: std::env::var("DOWE_NOTIFICATION_ENVIRONMENT")
+            .unwrap_or_else(|_| environment.to_string()),
+        tenant,
+        user: subject,
+        platform: request.platform,
+        provider: request.provider,
+        token: request.token,
+        registration_version: 0,
+        active: true,
+        preferences: request.preferences,
+        updated_at: unix_seconds(),
+    };
+    let store = match dowe_notifications::NotificationStore::open(&project.root, &namespace) {
+        Ok(store) => store,
+        Err(error) => return notification_error_response(error),
+    };
+    let subject = installation.user.clone();
+    match crate::register_notification_installation(&store, &subject, installation) {
+        Ok(installation) => (StatusCode::CREATED, Json(json!(installation))).into_response(),
+        Err(error) => notification_error_response(error),
+    }
+}
+
+async fn notification_revoke_handler(
+    State(state): State<DevRuntimeState>,
+    AxumPath(id): AxumPath<String>,
+    headers: HeaderMap,
+) -> Response {
+    let Some(subject) = notification_auth_subject(&headers) else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error":"authentication_required"})),
+        )
+            .into_response();
+    };
+    let project = state.project.read().await.clone();
+    let namespace = notification_namespace(&project.root);
+    let store = match dowe_notifications::NotificationStore::open(&project.root, &namespace) {
+        Ok(store) => store,
+        Err(error) => return notification_error_response(error),
+    };
+    let installation = match store.installation(&id) {
+        Ok(value) => value,
+        Err(error) => return notification_error_response(error),
+    };
+    if installation.user != subject {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"installation_owner_mismatch"})),
+        )
+            .into_response();
+    }
+    match store.revoke(&id) {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(error) => notification_error_response(error),
+    }
+}
+
+fn notification_auth_subject(headers: &HeaderMap) -> Option<String> {
+    let secret = std::env::var("DOWE_NOTIFICATION_JWT_SECRET").ok()?;
+    let authorization = headers.get("authorization")?.to_str().ok()?;
+    let token = authorization.strip_prefix("Bearer ")?;
+    let claims = dowe_crypto::verify_jws_hs256(
+        token,
+        &secret,
+        &dowe_crypto::JwtValidationOptions::default(),
+    )
+    .ok()?;
+    claims
+        .get("sub")?
+        .as_str()
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn notification_error_response(error: dowe_notifications::NotificationError) -> Response {
+    let status = match error {
+        dowe_notifications::NotificationError::Unauthorized => StatusCode::FORBIDDEN,
+        dowe_notifications::NotificationError::NotFound => StatusCode::NOT_FOUND,
+        dowe_notifications::NotificationError::InvalidPayload(_)
+        | dowe_notifications::NotificationError::PayloadTooLarge(_)
+        | dowe_notifications::NotificationError::IdempotencyConflict => StatusCode::BAD_REQUEST,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    (status, Json(json!({"error":error.to_string()}))).into_response()
+}
+
+fn unix_seconds() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_secs())
+}
+
+#[derive(Debug, Deserialize)]
+struct DevNativeIpcRequest {
+    function: String,
+    #[serde(default)]
+    args: Value,
+}
+
+async fn dev_native_ipc_handler(
+    State(state): State<DevRuntimeState>,
+    Json(request): Json<DevNativeIpcRequest>,
+) -> Json<Value> {
+    let project = state.project.read().await.clone();
+    match crate::invoke_native_function(
+        &project,
+        NativeIpcTarget::Desktop,
+        &request.function,
+        request.args,
+    )
+    .await
+    {
+        Ok(value) => Json(json!({ "ok": true, "data": value })),
+        Err(error) => Json(json!({ "ok": false, "data": null, "error": error.to_string() })),
+    }
 }
 
 fn desktop_router(state: DevRuntimeState, websocket_paths: Vec<String>) -> Router {
@@ -909,7 +1178,15 @@ fn production_router(
     project_root: std::path::PathBuf,
     access: Option<ProductionAccess>,
 ) -> Router {
-    let mut router = Router::new();
+    let mut router = Router::new()
+        .route(
+            "/_dowe/notifications/installations",
+            post(notification_installation_handler),
+        )
+        .route(
+            "/_dowe/notifications/installations/{id}",
+            delete(notification_revoke_handler),
+        );
     if cache_service {
         router = router.route("/v1/caches/{name}", get(cache_service_handler));
     }

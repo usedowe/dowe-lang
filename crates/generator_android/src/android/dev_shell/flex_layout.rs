@@ -82,8 +82,8 @@ fn dev_activity_flex_layout() -> &'static str {
                     maxHeight = Math.max(maxHeight, child.getMeasuredHeight());
                 }
             }
-            int desiredWidth = horizontalPadding + fixedWidth + gapTotal;
-            int desiredHeight = verticalPadding + maxHeight;
+            int desiredWidth = Math.max(horizontalPadding + fixedWidth + gapTotal, getSuggestedMinimumWidth());
+            int desiredHeight = Math.max(verticalPadding + maxHeight, getSuggestedMinimumHeight());
             setMeasuredDimension(resolveSize(desiredWidth, widthSpec), resolveSize(desiredHeight, heightSpec));
         }
 
@@ -156,7 +156,9 @@ fn dev_activity_flex_layout() -> &'static str {
             }
             contentWidth = Math.max(contentWidth, lineWidth);
             contentHeight += lineHeight;
-            setMeasuredDimension(resolveSize(horizontalPadding + contentWidth, widthSpec), resolveSize(verticalPadding + contentHeight, heightSpec));
+            int desiredWidth = Math.max(horizontalPadding + contentWidth, getSuggestedMinimumWidth());
+            int desiredHeight = Math.max(verticalPadding + contentHeight, getSuggestedMinimumHeight());
+            setMeasuredDimension(resolveSize(desiredWidth, widthSpec), resolveSize(desiredHeight, heightSpec));
         }
 
         private void doweLayoutWrappedRow(int left, int top, int right, int bottom) {
@@ -219,7 +221,8 @@ fn dev_activity_flex_layout() -> &'static str {
                     totalWeight += weight;
                     continue;
                 }
-                int width = align == DOWE_ALIGN_STRETCH && params.width == ViewGroup.LayoutParams.WRAP_CONTENT
+                boolean compactWidth = Boolean.TRUE.equals(child.getTag(DOWE_COMPACT_WIDTH_TAG));
+                int width = align == DOWE_ALIGN_STRETCH && !compactWidth && params.width == ViewGroup.LayoutParams.WRAP_CONTENT
                     ? ViewGroup.LayoutParams.MATCH_PARENT : params.width;
                 child.measure(
                     getChildMeasureSpec(widthSpec, horizontalPadding, width),
@@ -242,7 +245,8 @@ fn dev_activity_flex_layout() -> &'static str {
                     continue;
                 }
                 ViewGroup.LayoutParams params = doweChildParams(child);
-                int width = align == DOWE_ALIGN_STRETCH && params.width == ViewGroup.LayoutParams.WRAP_CONTENT
+                boolean compactWidth = Boolean.TRUE.equals(child.getTag(DOWE_COMPACT_WIDTH_TAG));
+                int width = align == DOWE_ALIGN_STRETCH && !compactWidth && params.width == ViewGroup.LayoutParams.WRAP_CONTENT
                     ? ViewGroup.LayoutParams.MATCH_PARENT : params.width;
                 int height = totalWeight > 0f
                     ? Math.round(remainingHeight * (weight / totalWeight)) : 0;
@@ -253,9 +257,11 @@ fn dev_activity_flex_layout() -> &'static str {
                 childrenHeight += child.getMeasuredHeight();
                 maxWidth = Math.max(maxWidth, child.getMeasuredWidth());
             }
+            int desiredWidth = Math.max(horizontalPadding + maxWidth, getSuggestedMinimumWidth());
+            int desiredHeight = Math.max(verticalPadding + childrenHeight + gapTotal, getSuggestedMinimumHeight());
             setMeasuredDimension(
-                resolveSize(horizontalPadding + maxWidth, widthSpec),
-                resolveSize(verticalPadding + childrenHeight + gapTotal, heightSpec)
+                resolveSize(desiredWidth, widthSpec),
+                resolveSize(desiredHeight, heightSpec)
             );
         }
 
