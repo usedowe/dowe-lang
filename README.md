@@ -14,7 +14,7 @@
 [Website](https://dowe.dev) · [Quick start](#quick-start) · [Architecture](#how-dowe-works) · [Development](#developing-dowe)
 
 <a href="https://cdn.dowe.dev/dowe.mp4">
-  <img src=".github/assets/dowe-demo.jpg" alt="Dowe running the same application on web, Android, and iOS" width="900">
+  <img src="https://cdn.dowe.dev/dowe-demo.jpg" alt="Dowe running the same application on web, Android, and iOS" width="900">
 </a>
 
 [**▶ Watch the Dowe demo**](https://cdn.dowe.dev/dowe.mp4)
