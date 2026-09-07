@@ -1,6 +1,7 @@
 use crate::config::{KillTarget, Signal};
 use crate::error::SpawnResult;
-use std::collections::BTreeSet;
+use crate::process_identity::{self, ProcessIdentity};
+use std::collections::{BTreeMap, BTreeSet};
 use std::process::Child;
 
 #[cfg(unix)]
@@ -12,28 +13,62 @@ use std::os::windows::process::CommandExt;
 #[cfg(any(windows, not(any(unix, windows))))]
 use crate::error::{SpawnError, SpawnPhase};
 
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+#[path = "platform_tests.rs"]
+mod tests;
+
 #[derive(Debug)]
 pub struct ProcessTree {
     root_pid: Option<u32>,
-    descendants: BTreeSet<u32>,
+    root_identity: Option<ProcessIdentity>,
+    descendants: BTreeMap<u32, ProcessIdentity>,
     enabled: bool,
+    #[cfg(windows)]
+    job: Option<crate::windows_job::WindowsJob>,
 }
 
 impl ProcessTree {
     pub fn new(root_pid: Option<u32>, kill_target: &KillTarget) -> Self {
         Self {
             root_pid,
-            descendants: BTreeSet::new(),
+            root_identity: root_pid
+                .and_then(process_identity::inspect)
+                .map(|(identity, _)| identity),
+            descendants: BTreeMap::new(),
             enabled: matches!(kill_target, KillTarget::Group),
+            #[cfg(windows)]
+            job: None,
         }
+    }
+
+    #[cfg(windows)]
+    pub fn own_suspended(&mut self, child: &Child, cleanup: bool) -> std::io::Result<()> {
+        if self.enabled {
+            self.job = Some(crate::windows_job::WindowsJob::assign_suspended(
+                child, cleanup,
+            )?);
+        }
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    pub(crate) fn with_job(mut self, job: crate::windows_job::WindowsJob) -> Self {
+        self.job = Some(job);
+        self
     }
 
     pub fn capture(&mut self) {
         if !self.enabled {
             return;
         }
-        let mut pending = self.descendants.iter().copied().collect::<Vec<_>>();
-        if let Some(root_pid) = self.root_pid {
+        self.descendants
+            .retain(|pid, identity| identity.matches(*pid));
+        let mut pending = self.descendants.keys().copied().collect::<Vec<_>>();
+        if let Some(root_pid) = self.root_pid
+            && self
+                .root_identity
+                .is_some_and(|identity| identity.matches(root_pid))
+        {
             pending.push(root_pid);
         }
         let mut visited = BTreeSet::new();
@@ -45,7 +80,13 @@ impl ProcessTree {
                 if Some(child_pid) == self.root_pid {
                     continue;
                 }
-                self.descendants.insert(child_pid);
+                let Some((identity, current_parent)) = process_identity::inspect(child_pid) else {
+                    continue;
+                };
+                if current_parent != parent_pid {
+                    continue;
+                }
+                self.descendants.insert(child_pid, identity);
                 if !visited.contains(&child_pid) {
                     pending.push(child_pid);
                 }
@@ -53,12 +94,39 @@ impl ProcessTree {
         }
     }
 
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    pub(crate) fn terminate_owned_group(&self, signal: Signal) {
+        let Some(root) = self.root_pid else {
+            return;
+        };
+        let member = |pid, identity: ProcessIdentity| {
+            identity.matches(pid) && unsafe { libc::getpgid(pid as i32) } == root as i32
+        };
+        if self
+            .root_identity
+            .is_some_and(|identity| member(root, identity))
+            || self
+                .descendants
+                .iter()
+                .any(|(pid, identity)| member(*pid, *identity))
+        {
+            let _ = terminate_pid(root, &KillTarget::Group, signal);
+        }
+    }
+
     pub fn terminate(&self, signal: Signal) {
+        #[cfg(windows)]
+        if let Some(job) = &self.job {
+            job.signal(signal, self.root_pid);
+            return;
+        }
         if !self.enabled {
             return;
         }
-        for pid in self.descendants.iter().rev() {
-            let _ = terminate_pid(*pid, &KillTarget::Process, signal.clone());
+        for (pid, identity) in self.descendants.iter().rev() {
+            if identity.matches(*pid) {
+                let _ = terminate_pid(*pid, &KillTarget::Process, signal.clone());
+            }
         }
     }
 }
@@ -145,7 +213,10 @@ pub fn configure_command_platform(
             ));
         }
         if matches!(kill_target, KillTarget::Group) {
-            command.creation_flags(0x00000200);
+            use windows_sys::Win32::System::Threading::{
+                CREATE_NEW_PROCESS_GROUP, CREATE_SUSPENDED,
+            };
+            command.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
         }
         Ok(())
     }
@@ -189,6 +260,13 @@ pub fn terminate_child(
 
     #[cfg(not(unix))]
     {
+        #[cfg(windows)]
+        if matches!(kill_target, KillTarget::Group) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "Windows groups must be terminated through their owned job",
+            ));
+        }
         let _ = kill_target;
         let _ = signal;
         child.kill()

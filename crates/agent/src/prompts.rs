@@ -16,7 +16,20 @@ pub fn messages_for(
 ) -> Vec<AgentMessage> {
     let system = AgentMessage {
         role: "system".to_string(),
-        content: AgentMessageContent::Text(system_prompt(request_type).to_string()),
+        content: AgentMessageContent::Text(if request_type == AgentRequestType::Conversation {
+            let guidance = skills
+                .iter()
+                .map(|skill| format!("{}: {}", skill.name, skill.context))
+                .collect::<Vec<_>>()
+                .join("\n\n");
+            format!(
+                "{}\n\nDowe authoring guidance:\n{}",
+                system_prompt(request_type),
+                guidance
+            )
+        } else {
+            system_prompt(request_type).to_string()
+        }),
     };
     let user_text = user_prompt(
         request_type,
@@ -49,6 +62,9 @@ pub fn messages_for(
 
 fn system_prompt(request_type: AgentRequestType) -> &'static str {
     match request_type {
+        AgentRequestType::Conversation => {
+            "You are Dowe Agent, a helpful conversational assistant for Dowe projects. Reply naturally in the user's language. Use readable Markdown when helpful. Respond to greetings normally; ask focused clarifying questions only when needed. Do not wrap responses in JSON unless the user asks for JSON. Use the conversation history to understand follow-up messages. You can explain, plan, and propose code, but this conversation has no executable local tools: do not claim you inspected files, ran commands, or applied changes."
+        }
         AgentRequestType::Clarify => {
             "You are Dowe Agent. Ask concise clarifying questions in the user's language. Return JSON only."
         }
@@ -74,6 +90,7 @@ fn user_prompt(
     needs_reference_image: bool,
 ) -> String {
     let context = match request_type {
+        AgentRequestType::Conversation => return prompt.to_string(),
         AgentRequestType::Clarify => json!({
             "userPrompt": prompt,
             "language": language,

@@ -583,7 +583,7 @@ fn render_dev_android_flow_node(
                 })
                 .or_else(|| dev_android_navigation_action(props.navigation.as_ref()));
             if props.icon_start.is_some() || props.icon_end.is_some() {
-                output.push_str(&format!("        LinearLayout {view} = doweContainer(true);\n        {view}.setGravity(Gravity.CENTER);\n"));
+                output.push_str(&format!("        LinearLayout {view} = doweContainer(true);\n        {view}.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {view}.setGravity(Gravity.CENTER);\n"));
                 if let Some(size) = props.reactive.size.as_ref().map(|path| reactive_text(path)) {
                     let width = if props.icon_only {
                         format!("doweButtonMinHeight({size})")
@@ -662,6 +662,7 @@ fn render_dev_android_flow_node(
                 apply_dev_android_style(&button_style, &view, false, output);
                 apply_dev_android_shadow_with_radius(&props.style, &view, &radius, output);
                 apply_dev_android_inline_width(&props.style, &view, parent_horizontal, output);
+                output.push_str(&format!("        {view}.setTag(DOWE_COMPACT_WIDTH_TAG, {view}.getLayoutParams().width == ViewGroup.LayoutParams.WRAP_CONTENT);\n"));
                 output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
                 return;
             }
@@ -695,6 +696,7 @@ fn render_dev_android_flow_node(
             }
             apply_dev_android_style(&button_style, &view, false, output);
             apply_dev_android_shadow_with_radius(&props.style, &view, &radius, output);
+            output.push_str(&format!("        {view}.setTag(DOWE_COMPACT_WIDTH_TAG, {view}.getLayoutParams().width == ViewGroup.LayoutParams.WRAP_CONTENT);\n"));
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
         }
         _ => {}

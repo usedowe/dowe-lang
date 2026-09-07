@@ -125,6 +125,7 @@
     --dowe-component-display: inline-flex;
     display: var(--dowe-show, var(--dowe-component-display));
     flex: 0 0 auto;
+    width: fit-content;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;

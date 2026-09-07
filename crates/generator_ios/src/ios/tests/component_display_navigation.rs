@@ -19,7 +19,7 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     assert!(views.contains("@State private var navigationPath: [DoweRouteEntry] = []"));
     assert!(views.contains("@State private var routeRevision = 0"));
     assert!(views.contains(
-        "routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))"
+        "routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height)"
     ));
     assert!(views.contains(".simultaneousGesture(backSwipeGesture)"));
     assert!(!views.contains("NavigationStack(path: $navigationPath)"));

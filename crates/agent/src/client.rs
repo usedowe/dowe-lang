@@ -18,6 +18,11 @@ pub async fn send_agent_request(
     server_url: &str,
     request: &AgentRequest,
 ) -> AgentResult<AgentServerResponse> {
+    if request.extra.contains_key("thinkingLevel") {
+        return Err(AgentError::new(
+            "thinking selection requires a native provider request",
+        ));
+    }
     let url = format!("{}/api/v1/agent", server_url.trim_end_matches('/'));
     let response = reqwest::Client::new()
         .post(url)
@@ -43,9 +48,21 @@ pub async fn send_agent_request(
         .map_err(|error| AgentError::new(error.to_string()))
 }
 
+#[path = "client_stream.rs"]
+mod streaming;
+pub use streaming::NativeRequestEvent;
+
 pub async fn send_native_agent_request(
     request: &AgentRequest,
     auth: &ResolvedProviderAuth,
+) -> AgentResult<AgentServerResponse> {
+    send_native_agent_request_observed(request, auth, &mut |_| Ok(())).await
+}
+
+pub async fn send_native_agent_request_observed(
+    request: &AgentRequest,
+    auth: &ResolvedProviderAuth,
+    progress: &mut impl FnMut(&NativeRequestEvent) -> AgentResult<()>,
 ) -> AgentResult<AgentServerResponse> {
     let provider_id = request
         .provider
@@ -58,7 +75,7 @@ pub async fn send_native_agent_request(
     let model = normalize_model_id(provider_id, &request.model).to_string();
     let mut native_request = request.clone();
     native_request.stream = request.stream || provider_id == "openai-codex";
-    let (url, mut headers, body) = build_provider_request(
+    let (url, headers, body) = build_provider_request(
         &definition,
         protocol,
         &base_url,
@@ -66,8 +83,20 @@ pub async fn send_native_agent_request(
         &native_request,
         auth,
     )?;
-    let response_body = send_with_retry(&url, &mut headers, body, auth.secret.as_deref()).await?;
-    let payload = if native_request.stream && protocol != AgentProviderProtocol::BedrockConverse {
+    let response_body = streaming::send_observed(
+        &url,
+        &headers,
+        body,
+        auth,
+        &native_request,
+        protocol,
+        progress,
+    )
+    .await?;
+    let payload = if native_request.stream
+        && protocol != AgentProviderProtocol::BedrockConverse
+        && !response_body.trim_start().starts_with('{')
+    {
         parse_stream_payload(protocol, &response_body)?
     } else {
         serde_json::from_str(&response_body).map_err(|_error| {
@@ -94,20 +123,70 @@ fn build_provider_request(
     request: &AgentRequest,
     auth: &ResolvedProviderAuth,
 ) -> AgentResult<(String, HeaderMap, Value)> {
+    crate::validate_agent_model(definition.id, model)?;
     let url = provider_url(definition, protocol, base_url, model, request.stream, auth)?;
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    headers.insert("accept", HeaderValue::from_static("application/json"));
+    headers.insert(
+        "accept",
+        HeaderValue::from_static(
+            if request.stream && protocol != AgentProviderProtocol::BedrockConverse {
+                "text/event-stream"
+            } else {
+                "application/json"
+            },
+        ),
+    );
     headers.insert("user-agent", HeaderValue::from_static("dowe-agent/1.0"));
     apply_auth_headers(definition, protocol, &mut headers, auth)?;
-    if definition.id == "openai-codex" && request.stream {
+    if definition.id == "github-copilot" {
+        for (name, value) in [
+            ("user-agent", "GitHubCopilotChat/0.35.0"),
+            ("editor-version", "vscode/1.107.0"),
+            ("editor-plugin-version", "copilot-chat/0.35.0"),
+            ("copilot-integration-id", "vscode-chat"),
+            ("openai-intent", "conversation-edits"),
+        ] {
+            insert_header(&mut headers, name, value.into())?;
+        }
+        insert_header(
+            &mut headers,
+            "x-initiator",
+            if request
+                .extra
+                .get("dowe_harness_turns")
+                .and_then(Value::as_array)
+                .and_then(|turns| turns.last())
+                .map_or_else(
+                    || {
+                        request
+                            .messages
+                            .last()
+                            .is_some_and(|message| message.role != "user")
+                    },
+                    |turn| turn.pointer("/message/role").and_then(Value::as_str) != Some("user"),
+                )
+            {
+                "agent"
+            } else {
+                "user"
+            }
+            .into(),
+        )?;
+        if request.messages.iter().any(|message| matches!(&message.content, AgentMessageContent::Parts(parts) if parts.iter().any(|part| matches!(part, AgentMessagePart::ImageUrl { .. }))))
+            || request.extra.get("dowe_harness_turns").and_then(Value::as_array).is_some_and(|turns| turns.iter().any(|turn| turn.pointer("/message/content").and_then(Value::as_array).is_some_and(|parts| parts.iter().any(|part| part["type"] == "image_url"))))
+        {
+            insert_header(&mut headers, "copilot-vision-request", "true".into())?;
+        }
+    }
+    if definition.id == "openai-codex" {
         headers.insert(ACCEPT, HeaderValue::from_static("text/event-stream"));
         if let Some(session_id) = request.extra.get("session_id").and_then(Value::as_str) {
             insert_header(&mut headers, "session-id", session_id.to_string())?;
             insert_header(&mut headers, "x-client-request-id", session_id.to_string())?;
         }
     }
-    let body = match protocol {
+    let mut body = match protocol {
         AgentProviderProtocol::OpenAiCompletions => {
             openai_completions_body(model, request, definition.id == "openrouter")?
         }
@@ -122,6 +201,12 @@ fn build_provider_request(
         AgentProviderProtocol::BedrockConverse => bedrock_body(request)?,
         AgentProviderProtocol::PiMessages => pi_messages_body(model, request)?,
     };
+    crate::native_harness::apply_harness_turns(protocol, request, &mut body)?;
+    if let Some(level) = request.extra.get("thinkingLevel") {
+        let level = serde_json::from_value(level.clone())
+            .map_err(|_| AgentError::new("invalid thinking level"))?;
+        crate::inference::apply_thinking(definition.id, model, level, &mut body)?;
+    }
     Ok((url, headers, body))
 }
 
@@ -137,9 +222,15 @@ fn provider_url(
     let url = match protocol {
         AgentProviderProtocol::OpenAiCompletions | AgentProviderProtocol::MistralConversations => {
             if definition.id == "cloudflare-ai-gateway" {
-                format!("{base}/openai/v1/chat/completions")
-            } else if matches!(definition.id, "vercel-ai-gateway" | "mistral") {
-                format!("{base}/v1/chat/completions")
+                format!("{base}/compat/chat/completions")
+            } else if matches!(
+                definition.id,
+                "fireworks" | "opencode" | "opencode-go" | "vercel-ai-gateway" | "mistral"
+            ) {
+                format!(
+                    "{}/v1/chat/completions",
+                    base.strip_suffix("/v1").unwrap_or(base)
+                )
             } else {
                 format!("{base}/chat/completions")
             }
@@ -147,6 +238,10 @@ fn provider_url(
         AgentProviderProtocol::OpenAiResponses => {
             if definition.id == "openai-codex" {
                 format!("{base}/codex/responses")
+            } else if definition.id == "cloudflare-ai-gateway" {
+                format!("{base}/openai/responses")
+            } else if matches!(definition.id, "opencode" | "opencode-go") {
+                format!("{}/v1/responses", base.strip_suffix("/v1").unwrap_or(base))
             } else {
                 format!("{base}/responses")
             }
@@ -154,24 +249,35 @@ fn provider_url(
         AgentProviderProtocol::AnthropicMessages => {
             if definition.id == "cloudflare-ai-gateway" {
                 format!("{base}/anthropic/v1/messages")
-            } else if definition.id == "openrouter" && base.ends_with("/v1") {
-                format!("{}/v1/messages", base.trim_end_matches("/v1"))
             } else {
-                format!("{base}/v1/messages")
+                format!("{}/v1/messages", base.strip_suffix("/v1").unwrap_or(base))
             }
         }
         AgentProviderProtocol::GoogleGenerativeAi => {
-            let mut value = format!("{base}/models/{model}:streamGenerateContent");
-            if !stream {
-                value = format!("{base}/models/{model}:generateContent");
-            }
-            if let Some(key) = auth.secret.as_deref() {
-                value.push_str("?key=");
-                value.push_str(&percent_encode_query(key));
-            }
-            value
+            let base = if definition.id == "opencode" {
+                format!("{}/v1", base.strip_suffix("/v1").unwrap_or(base))
+            } else {
+                base.to_string()
+            };
+            let action = if stream {
+                "streamGenerateContent?alt=sse"
+            } else {
+                "generateContent"
+            };
+            format!("{base}/models/{}:{action}", percent_encode_query(model))
         }
         AgentProviderProtocol::GoogleVertex => {
+            let action = if stream {
+                "streamGenerateContent?alt=sse"
+            } else {
+                "generateContent"
+            };
+            if auth.kind == AgentAuthKind::ApiKey && auth.secret.is_some() {
+                return Ok(format!(
+                    "{base}/v1/publishers/google/models/{}:{action}",
+                    percent_encode_query(model)
+                ));
+            }
             let location = auth
                 .env
                 .get("GOOGLE_CLOUD_LOCATION")
@@ -186,17 +292,26 @@ fn provider_url(
                 .cloned()
                 .or_else(|| std::env::var("GOOGLE_CLOUD_PROJECT").ok())
                 .ok_or_else(|| AgentError::new("Google Vertex AI requires GOOGLE_CLOUD_PROJECT"))?;
-            let action = if stream {
-                "streamGenerateContent"
+            if location.is_empty()
+                || !location
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || ch == '-')
+            {
+                return Err(AgentError::new("invalid Google Vertex location"));
+            }
+            let host = if location == "global" {
+                "aiplatform.googleapis.com".to_string()
             } else {
-                "generateContent"
+                format!("{location}-aiplatform.googleapis.com")
             };
             format!(
-                "https://{location}-aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/publishers/google/models/{model}:{action}"
+                "https://{host}/v1/projects/{}/locations/{location}/publishers/google/models/{}:{action}",
+                percent_encode_query(&project),
+                percent_encode_query(model)
             )
         }
         AgentProviderProtocol::BedrockConverse => {
-            let encoded_model = model.replace('/', "%2F");
+            let encoded_model = percent_encode_query(model);
             format!("{base}/model/{encoded_model}/converse")
         }
         AgentProviderProtocol::PiMessages => format!("{base}/messages"),
@@ -239,6 +354,9 @@ fn apply_auth_headers(
             definition.id
         ))
     })?;
+    if definition.id == "cloudflare-ai-gateway" {
+        insert_header(headers, "cf-aig-authorization", format!("Bearer {secret}"))?;
+    }
     match protocol {
         AgentProviderProtocol::AnthropicMessages => {
             if definition.id == "github-copilot"
@@ -247,14 +365,20 @@ fn apply_auth_headers(
                 || (definition.id == "anthropic" && auth.source == "ANTHROPIC_AUTH_TOKEN")
             {
                 insert_header(headers, AUTHORIZATION.as_str(), format!("Bearer {secret}"))?;
-            } else {
+            } else if definition.id != "cloudflare-ai-gateway" {
                 insert_header(headers, "x-api-key", secret.to_string())?;
             }
             insert_header(headers, "anthropic-version", "2023-06-01".to_string())?;
         }
-        AgentProviderProtocol::GoogleGenerativeAi => {}
+        AgentProviderProtocol::GoogleGenerativeAi => {
+            insert_header(headers, "x-goog-api-key", secret.to_string())?;
+        }
         AgentProviderProtocol::GoogleVertex => {
-            insert_header(headers, AUTHORIZATION.as_str(), format!("Bearer {secret}"))?;
+            if auth.kind == AgentAuthKind::ApiKey {
+                insert_header(headers, "x-goog-api-key", secret.to_string())?;
+            } else {
+                insert_header(headers, AUTHORIZATION.as_str(), format!("Bearer {secret}"))?;
+            }
         }
         AgentProviderProtocol::BedrockConverse | AgentProviderProtocol::PiMessages => {
             insert_header(headers, AUTHORIZATION.as_str(), format!("Bearer {secret}"))?;
@@ -294,7 +418,34 @@ fn openai_completions_body(
     let object = body
         .as_object_mut()
         .ok_or_else(|| AgentError::new("could not build OpenAI request"))?;
-    insert_common_request_fields(object, request, "max_completion_tokens");
+    let provider = request.provider.as_deref().unwrap_or_default();
+    let limit = if matches!(
+        provider,
+        "ant-ling"
+            | "baseten"
+            | "deepseek"
+            | "moonshotai"
+            | "moonshotai-cn"
+            | "nvidia"
+            | "together"
+            | "zai"
+            | "zai-coding-cn"
+            | "opencode"
+            | "opencode-go"
+            | "cloudflare-ai-gateway"
+            | "mistral"
+    ) {
+        "max_tokens"
+    } else {
+        "max_completion_tokens"
+    };
+    insert_common_request_fields(object, request, limit);
+    if !matches!(provider, "openai" | "mistral") {
+        object.remove("prompt_cache_key");
+    }
+    if request.stream && provider != "mistral" {
+        object.insert("stream_options".into(), json!({"include_usage":true}));
+    }
     if !request.tools.is_empty() {
         object.insert("tools".to_string(), serde_json::to_value(&request.tools)?);
     }
@@ -321,13 +472,15 @@ fn openai_responses_body(model: &str, request: &AgentRequest, codex: bool) -> Ag
         "model": model,
         "instructions": instructions.join("\n\n"),
         "input": input,
-        "stream": request.stream,
+        "stream": codex || request.stream,
         "store": false,
     });
     let object = body
         .as_object_mut()
         .ok_or_else(|| AgentError::new("could not build OpenAI Responses request"))?;
-    insert_common_request_fields(object, request, "max_output_tokens");
+    if !codex {
+        insert_common_request_fields(object, request, "max_output_tokens");
+    }
     if !request.tools.is_empty() {
         object.insert("tools".to_string(), responses_tools(&request.tools)?);
     }
@@ -495,7 +648,10 @@ fn insert_common_request_fields(
     max_tokens_name: &str,
 ) {
     for (name, value) in &request.extra {
-        if name == "max_completion_tokens" {
+        if matches!(
+            name.as_str(),
+            "max_completion_tokens" | "thinkingLevel" | "dowe_harness_turns"
+        ) {
             continue;
         }
         if name == "session_id" {
@@ -509,7 +665,7 @@ fn insert_common_request_fields(
     }
 }
 
-fn responses_message(message: &AgentMessage) -> Value {
+pub(crate) fn responses_message(message: &AgentMessage) -> Value {
     let content = match &message.content {
         AgentMessageContent::Text(text) => Value::String(text.clone()),
         AgentMessageContent::Parts(parts) => Value::Array(
@@ -527,7 +683,7 @@ fn responses_message(message: &AgentMessage) -> Value {
     json!({"role": message.role, "content": content})
 }
 
-fn anthropic_message(message: &AgentMessage) -> AgentResult<Value> {
+pub(crate) fn anthropic_message(message: &AgentMessage) -> AgentResult<Value> {
     Ok(json!({
         "role": if message.role == "assistant" { "assistant" } else { "user" },
         "content": anthropic_content(&message.content)?,
@@ -559,7 +715,7 @@ fn anthropic_part(part: &AgentMessagePart) -> AgentResult<Value> {
     }
 }
 
-fn google_parts(message: &AgentMessage) -> AgentResult<Vec<Value>> {
+pub(crate) fn google_parts(message: &AgentMessage) -> AgentResult<Vec<Value>> {
     match &message.content {
         AgentMessageContent::Text(text) => Ok(vec![json!({"text": text})]),
         AgentMessageContent::Parts(parts) => parts
@@ -575,16 +731,21 @@ fn google_parts(message: &AgentMessage) -> AgentResult<Vec<Value>> {
     }
 }
 
-fn bedrock_parts(message: &AgentMessage) -> AgentResult<Vec<Value>> {
+pub(crate) fn bedrock_parts(message: &AgentMessage) -> AgentResult<Vec<Value>> {
     match &message.content {
         AgentMessageContent::Text(text) => Ok(vec![json!({"text": text})]),
         AgentMessageContent::Parts(parts) => parts
             .iter()
             .map(|part| match part {
                 AgentMessagePart::Text { text } => Ok(json!({"text": text})),
-                AgentMessagePart::ImageUrl { .. } => Err(AgentError::new(
-                    "Bedrock native requests currently support text input only",
-                )),
+                AgentMessagePart::ImageUrl { image_url } => {
+                    let (media_type, data) = parse_data_url(&image_url.url)?;
+                    let format = media_type
+                        .strip_prefix("image/")
+                        .filter(|format| matches!(*format, "png" | "jpeg" | "gif" | "webp"))
+                        .ok_or_else(|| AgentError::new("unsupported Bedrock image format"))?;
+                    Ok(json!({"image":{"format":format,"source":{"bytes":data}}}))
+                }
             })
             .collect(),
     }
@@ -676,56 +837,16 @@ fn parse_data_url(value: &str) -> AgentResult<(String, String)> {
     Ok((mime_type.to_string(), data.to_string()))
 }
 
-async fn send_with_retry(
-    url: &str,
-    headers: &mut HeaderMap,
-    body: Value,
-    secret: Option<&str>,
-) -> AgentResult<String> {
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(120))
-        .build()
-        .map_err(|error| AgentError::new(error.to_string()))?;
-    for attempt in 0..=2 {
-        let response = client
-            .post(url)
-            .headers(headers.clone())
-            .json(&body)
-            .send()
-            .await
-            .map_err(|error| AgentError::new(redact_secret(&error.to_string(), secret)))?;
-        let status = response.status();
-        let retry_after = response
-            .headers()
-            .get("retry-after")
-            .and_then(|value| value.to_str().ok())
-            .and_then(|value| value.parse::<u64>().ok())
-            .map(|seconds| seconds.min(30));
-        let text = response
-            .text()
-            .await
-            .map_err(|error| AgentError::new(redact_secret(&error.to_string(), secret)))?;
-        if status.is_success() {
-            return Ok(text);
-        }
-        if attempt < 2 && is_retryable(status) {
-            let delay = retry_after.unwrap_or(1_u64 << attempt).min(30);
-            tokio::time::sleep(Duration::from_secs(delay)).await;
-            continue;
-        }
-        return Err(AgentError::new(format!(
-            "provider request returned {}: {}",
-            status_text(status),
-            redact_secret(&text, secret)
-        )));
-    }
-    Err(AgentError::new(
-        "provider request retry loop ended unexpectedly",
-    ))
-}
-
 fn parse_stream_payload(protocol: AgentProviderProtocol, body: &str) -> AgentResult<Value> {
     let events = parse_sse_events(body)?;
+    if events
+        .iter()
+        .any(|(name, payload)| crate::conversation::response_failed(name.as_deref(), payload))
+    {
+        return Err(AgentError::new(
+            "the provider returned an unsuccessful stream",
+        ));
+    }
     match protocol {
         AgentProviderProtocol::AnthropicMessages => aggregate_anthropic(events),
         AgentProviderProtocol::GoogleGenerativeAi | AgentProviderProtocol::GoogleVertex => {
@@ -778,7 +899,15 @@ fn aggregate_openai(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> 
     let mut finish_reason = None;
     let mut tool_calls: BTreeMap<usize, (String, String, String)> = BTreeMap::new();
     let mut final_payload = None;
+    let mut usage = None;
+    let mut service_tier = None;
     for (_, event) in events {
+        if let Some(tier) = event.get("service_tier") {
+            service_tier = Some(tier.clone());
+        }
+        if event.get("usage").is_some_and(Value::is_object) {
+            usage = event.get("usage").cloned();
+        }
         id = id.or_else(|| event.get("id").and_then(Value::as_str).map(str::to_string));
         model = model.or_else(|| {
             event
@@ -794,11 +923,10 @@ fn aggregate_openai(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> 
                     .map(str::to_string)
                     .or(finish_reason);
                 let delta = choice.get("delta").or_else(|| choice.get("message"));
-                if let Some(content) = delta
-                    .and_then(|value| value.get("content"))
-                    .and_then(Value::as_str)
-                {
-                    text.push_str(content);
+                if let Some(content) = delta.and_then(|value| value.get("content")) {
+                    let mut blocks = Vec::new();
+                    crate::conversation::text_blocks(content, &mut blocks);
+                    text.push_str(&blocks.concat());
                 }
                 if let Some(calls) = delta
                     .and_then(|value| value.get("tool_calls"))
@@ -845,11 +973,18 @@ fn aggregate_openai(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> 
     {
         return Ok(payload);
     }
-    Ok(json!({
+    let mut payload = json!({
         "id": id,
         "model": model,
         "choices": [{"index": 0, "message": message, "finish_reason": finish_reason.unwrap_or_else(|| "stop".to_string())}]
-    }))
+    });
+    if let Some(usage) = usage {
+        payload["usage"] = usage;
+    }
+    if let Some(tier) = service_tier {
+        payload["service_tier"] = tier;
+    }
+    Ok(payload)
 }
 
 fn aggregate_responses(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> {
@@ -862,7 +997,15 @@ fn aggregate_responses(events: Vec<(Option<String>, Value)>) -> AgentResult<Valu
         {
             text.push_str(delta);
         }
-        if event.get("output_text").is_some() || event.get("status").is_some() {
+        let kind = event_name
+            .as_deref()
+            .or_else(|| event.get("type").and_then(Value::as_str));
+        if matches!(
+            kind,
+            Some("response.completed" | "response.incomplete" | "response.failed")
+        ) {
+            final_payload = event.get("response").cloned();
+        } else if event.get("output_text").is_some() || event.get("status").is_some() {
             final_payload = Some(event);
         }
     }
@@ -881,7 +1024,20 @@ fn aggregate_anthropic(events: Vec<(Option<String>, Value)>) -> AgentResult<Valu
     let mut model = None;
     let mut stop_reason = None;
     let mut tools: BTreeMap<usize, (String, String, String)> = BTreeMap::new();
+    let mut usage = serde_json::Map::new();
     for (event_name, event) in events {
+        if event.get("type").and_then(Value::as_str) == Some("message")
+            && event.get("content").is_some()
+        {
+            return Ok(event);
+        }
+        if let Some(snapshot) = event
+            .pointer("/message/usage")
+            .or_else(|| event.get("usage"))
+            .and_then(Value::as_object)
+        {
+            usage.extend(snapshot.clone());
+        }
         let kind = event_name
             .as_deref()
             .or_else(|| event.get("type").and_then(Value::as_str));
@@ -959,19 +1115,28 @@ fn aggregate_anthropic(events: Vec<(Option<String>, Value)>) -> AgentResult<Valu
         let arguments = serde_json::from_str::<Value>(&input).unwrap_or_else(|_| json!({}));
         content.push(json!({"type": "tool_use", "id": id, "name": name, "input": arguments}));
     }
-    Ok(json!({
+    let mut payload = json!({
         "id": id,
         "model": model,
         "role": "assistant",
         "content": content,
         "stop_reason": stop_reason.unwrap_or_else(|| "end_turn".to_string())
-    }))
+    });
+    if !usage.is_empty() {
+        payload["usage"] = Value::Object(usage);
+    }
+    Ok(payload)
 }
 
 fn aggregate_google(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> {
     let mut text = String::new();
+    let mut thoughts = String::new();
     let mut function_calls = Vec::new();
+    let mut usage = None;
     for (_, event) in events {
+        if event.get("usageMetadata").is_some() {
+            usage = event.get("usageMetadata").cloned();
+        }
         if let Some(parts) = event
             .get("candidates")
             .and_then(|value| value.get(0))
@@ -981,7 +1146,11 @@ fn aggregate_google(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> 
         {
             for part in parts {
                 if let Some(value) = part.get("text").and_then(Value::as_str) {
-                    text.push_str(value);
+                    if part.get("thought").and_then(Value::as_bool) == Some(true) {
+                        thoughts.push_str(value);
+                    } else {
+                        text.push_str(value);
+                    }
                 }
                 if let Some(call) = part.get("functionCall") {
                     function_calls.push(call.clone());
@@ -989,15 +1158,21 @@ fn aggregate_google(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> 
             }
         }
     }
-    let mut payload =
-        json!({"candidates": [{"content": {"role": "model", "parts": [{"text": text}]}}]});
-    if !function_calls.is_empty() {
-        payload["candidates"][0]["content"]["parts"] = Value::Array(
-            function_calls
-                .into_iter()
-                .map(|call| json!({"functionCall": call}))
-                .collect(),
-        );
+    let mut parts = Vec::new();
+    if !thoughts.is_empty() {
+        parts.push(json!({"thought": true, "text": thoughts}));
+    }
+    if !text.is_empty() || function_calls.is_empty() {
+        parts.push(json!({"text": text}));
+    }
+    parts.extend(
+        function_calls
+            .into_iter()
+            .map(|call| json!({"functionCall": call})),
+    );
+    let mut payload = json!({"candidates": [{"content": {"role": "model", "parts": parts}}]});
+    if let Some(usage) = usage {
+        payload["usageMetadata"] = usage;
     }
     Ok(payload)
 }
@@ -1070,6 +1245,12 @@ mod tests {
     use crate::provider::AgentAuthKind;
     use base64::Engine;
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+
+    include!("client_inference_tests.rs");
+    include!("client_codex_tests.rs");
+    include!("client_conversation_tests.rs");
+    include!("client_provider_tests.rs");
+    include!("client_provider_http_tests.rs");
 
     fn request(provider: &str, model: &str, stream: bool) -> AgentRequest {
         AgentRequest {

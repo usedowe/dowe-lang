@@ -39,6 +39,15 @@ pub fn prepare_agent_request(
             None => request_type.default_model().to_string(),
         },
     };
+    if let Some(provider) = provider.as_deref() {
+        crate::validate_agent_model(provider, &model)?;
+    }
+    if let Some(level) = options.thinking_level {
+        let provider = provider
+            .as_deref()
+            .ok_or_else(|| crate::AgentError::new("thinking requires an explicit provider"))?;
+        crate::validate_thinking(provider, &model, level)?;
+    }
     let skills = generation_skill_summaries_for(prompt);
     let codegraph = if matches!(
         request_type,
@@ -77,10 +86,15 @@ pub fn prepare_agent_request(
     }
 
     let mut extra = BTreeMap::new();
-    extra.insert(
-        "temperature".to_string(),
-        json!(temperature_for(request_type)),
-    );
+    if let Some(level) = options.thinking_level {
+        extra.insert("thinkingLevel".to_string(), serde_json::to_value(level)?);
+    }
+    if request_type != AgentRequestType::Conversation {
+        extra.insert(
+            "temperature".to_string(),
+            json!(temperature_for(request_type)),
+        );
+    }
     extra.insert(
         "max_completion_tokens".to_string(),
         json!(max_completion_tokens_for(request_type)),
@@ -96,7 +110,11 @@ pub fn prepare_agent_request(
         stream: options.stream,
         tools,
         metadata: Some(metadata),
-        response_format: Some(json!({ "type": "json_object" })),
+        response_format: if request_type == AgentRequestType::Conversation {
+            None
+        } else {
+            Some(json!({ "type": "json_object" }))
+        },
         extra,
     };
     let context = AgentContext {
@@ -215,7 +233,7 @@ fn next_request_id() -> String {
 
 fn temperature_for(request_type: AgentRequestType) -> f32 {
     match request_type {
-        AgentRequestType::Clarify => 0.2,
+        AgentRequestType::Conversation | AgentRequestType::Clarify => 0.2,
         AgentRequestType::SpecPlan | AgentRequestType::VisionUi => 0.1,
         AgentRequestType::Implementation => 0.15,
     }
@@ -223,6 +241,7 @@ fn temperature_for(request_type: AgentRequestType) -> f32 {
 
 fn max_completion_tokens_for(request_type: AgentRequestType) -> usize {
     match request_type {
+        AgentRequestType::Conversation => 4096,
         AgentRequestType::Clarify => 800,
         AgentRequestType::VisionUi => 1200,
         AgentRequestType::SpecPlan => 2200,

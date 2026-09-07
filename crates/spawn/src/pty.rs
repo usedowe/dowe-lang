@@ -7,12 +7,9 @@ use crate::platform::{ProcessTree, portable_status_parts, terminate_pid};
 use crate::validation::apply_pty_environment;
 use portable_pty::{CommandBuilder, MasterPty, PtySize, native_pty_system};
 use std::io::{Read, Write};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
-
-static NEXT_ID: AtomicU64 = AtomicU64::new(10_000);
 
 pub struct PtySpawn {
     pub spawn_id: u64,
@@ -22,8 +19,15 @@ pub struct PtySpawn {
     pub result_rx: mpsc::Receiver<SpawnResult<SpawnOutput>>,
 }
 
-pub fn spawn_pty(config: SpawnConfig) -> SpawnResult<PtySpawn> {
-    let spawn_id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+pub(crate) struct PtyHandles {
+    pub child: Box<dyn portable_pty::Child + Send + Sync>,
+    pub master: Box<dyn MasterPty + Send>,
+    pub reader: Box<dyn Read + Send>,
+    pub writer: Box<dyn Write + Send>,
+    pub process_tree: ProcessTree,
+}
+
+fn open_portable(config: &SpawnConfig) -> SpawnResult<PtyHandles> {
     let pty_options = config.options.pty.clone().unwrap_or_default();
     let pty_system = native_pty_system();
     let pair = pty_system
@@ -49,12 +53,39 @@ pub fn spawn_pty(config: SpawnConfig) -> SpawnResult<PtySpawn> {
         command.cwd(cwd);
     }
 
-    apply_pty_environment(&mut command, &config)?;
+    apply_pty_environment(&mut command, config)?;
 
     let child = pair
         .slave
         .spawn_command(command)
         .map_err(|error| SpawnError::new(&config.command, SpawnPhase::Start, error.to_string()))?;
+    let process_tree = ProcessTree::new(child.process_id(), &config.options.kill_target);
+    Ok(PtyHandles {
+        child,
+        master: pair.master,
+        reader,
+        writer,
+        process_tree,
+    })
+}
+
+pub fn spawn_pty(config: SpawnConfig) -> SpawnResult<PtySpawn> {
+    let spawn_id = crate::next_spawn_id();
+    #[cfg(windows)]
+    let handles = if config.options.kill_target == KillTarget::Group {
+        crate::windows_conpty::open(&config)?
+    } else {
+        open_portable(&config)?
+    };
+    #[cfg(not(windows))]
+    let handles = open_portable(&config)?;
+    let PtyHandles {
+        child,
+        master,
+        reader,
+        writer,
+        process_tree,
+    } = handles;
     let system_pid = child.process_id();
     let capture = Arc::new(Mutex::new(CaptureState::default()));
     let (event_tx, event_rx) = mpsc::channel();
@@ -80,7 +111,8 @@ pub fn spawn_pty(config: SpawnConfig) -> SpawnResult<PtySpawn> {
             spawn_id,
             config,
             child,
-            pair.master,
+            process_tree,
+            master,
             writer,
             reader_thread,
             capture,
@@ -135,6 +167,7 @@ fn supervise_pty(
     spawn_id: u64,
     config: SpawnConfig,
     mut child: Box<dyn portable_pty::Child + Send + Sync>,
+    mut process_tree: ProcessTree,
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     reader_thread: thread::JoinHandle<()>,
@@ -145,7 +178,6 @@ fn supervise_pty(
 ) {
     let started_at = Instant::now();
     let system_pid = child.process_id();
-    let mut process_tree = ProcessTree::new(system_pid, &config.options.kill_target);
     let mut timed_out = false;
     let mut canceled = false;
     let mut termination_started_at = None;
@@ -196,6 +228,9 @@ fn supervise_pty(
             terminate_pty_child(child.as_mut(), &config, Signal::Kill, &mut process_tree);
         }
 
+        if config.options.cleanup_descendants_on_exit {
+            process_tree.capture();
+        }
         match child.try_wait() {
             Ok(Some(status)) => break Ok(status),
             Ok(None) => thread::sleep(Duration::from_millis(10)),
@@ -209,7 +244,7 @@ fn supervise_pty(
         }
     };
 
-    if termination_started_at.is_some()
+    if (termination_started_at.is_some() || config.options.cleanup_descendants_on_exit)
         && matches!(config.options.kill_target, KillTarget::Group)
         && let Some(system_pid) = system_pid
     {
@@ -332,6 +367,11 @@ fn terminate_pty_child(
     process_tree: &mut ProcessTree,
 ) {
     process_tree.capture();
+    #[cfg(windows)]
+    if config.options.kill_target == KillTarget::Group {
+        process_tree.terminate(signal);
+        return;
+    }
     if let Some(pid) = child.process_id()
         && terminate_pid(pid, &config.options.kill_target, signal.clone()).is_ok()
     {

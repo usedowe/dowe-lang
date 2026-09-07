@@ -48,7 +48,7 @@ fn generates_swiftui_layout_bars() {
     );
     assert_eq!(
         views
-            .matches(".frame(maxWidth: .infinity, minHeight: CGFloat(48), alignment: .center)")
+            .matches(".frame(minWidth: CGFloat(0), maxWidth: .infinity, minHeight: CGFloat(48), alignment: .center)")
             .count(),
         3
     );

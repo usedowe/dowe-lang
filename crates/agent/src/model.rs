@@ -9,6 +9,7 @@ pub const MINIMAX_M3: &str = "minimax/minimax-m3";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentRequestType {
+    Conversation,
     Clarify,
     SpecPlan,
     VisionUi,
@@ -18,13 +19,14 @@ pub enum AgentRequestType {
 impl AgentRequestType {
     pub fn default_model(self) -> &'static str {
         match self {
-            Self::Clarify | Self::Implementation => MINIMAX_M3,
+            Self::Conversation | Self::Clarify | Self::Implementation => MINIMAX_M3,
             Self::SpecPlan | Self::VisionUi => OPENAI_GPT_55,
         }
     }
 
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::Conversation => "conversation",
             Self::Clarify => "clarify",
             Self::SpecPlan => "spec_plan",
             Self::VisionUi => "vision_ui",
@@ -34,6 +36,7 @@ impl AgentRequestType {
 
     pub fn parse(value: &str) -> Option<Self> {
         match value {
+            "conversation" | "chat" => Some(Self::Conversation),
             "clarify" | "clarification" | "questions" => Some(Self::Clarify),
             "spec_plan" | "plan" | "planning" | "spec" => Some(Self::SpecPlan),
             "vision_ui" | "vision" | "ui_image" | "image" => Some(Self::VisionUi),
@@ -184,6 +187,7 @@ pub struct AgentPrepareOptions {
     pub provider: Option<String>,
     pub request_type: Option<AgentRequestType>,
     pub model: Option<String>,
+    pub thinking_level: Option<crate::ThinkingLevel>,
     pub image_paths: Vec<PathBuf>,
     pub stream: bool,
 }

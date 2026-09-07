@@ -24,6 +24,23 @@ pub fn validate_config(config: &SpawnConfig) -> SpawnResult<()> {
         ));
     }
 
+    if config.options.cleanup_descendants_on_exit {
+        if config.options.kill_target != crate::KillTarget::Group {
+            return Err(error(
+                config,
+                SpawnPhase::Validation,
+                "descendant cleanup requires Group kill target",
+            ));
+        }
+        if !cfg!(any(target_os = "macos", target_os = "linux", windows)) {
+            return Err(error(
+                config,
+                SpawnPhase::Validation,
+                "descendant cleanup requires macOS/Linux or Windows Group",
+            ));
+        }
+    }
+
     validate_environment_map(config, &config.options.env)?;
     for key in &config.options.env_remove {
         validate_environment_name(config, key)?;

@@ -585,7 +585,7 @@ fn render_compose_flow_node(
                 &button_style,
                 &format!("RoundedCornerShape({radius})"),
             );
-            let mut modifier = button_modifier;
+            let mut modifier = format!("{button_modifier}.doweGridCompactWidth()");
             if props.icon_only {
                 modifier.push_str(&format!(
                     ".semantics {{ contentDescription = \"{}\" }}",

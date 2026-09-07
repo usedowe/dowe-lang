@@ -3,9 +3,10 @@ use serde_json::{Value, json};
 
 pub fn agent_tool_definitions(request_type: AgentRequestType) -> Vec<AgentToolDefinition> {
     match request_type {
-        AgentRequestType::Clarify | AgentRequestType::SpecPlan | AgentRequestType::VisionUi => {
-            Vec::new()
-        }
+        AgentRequestType::Conversation
+        | AgentRequestType::Clarify
+        | AgentRequestType::SpecPlan
+        | AgentRequestType::VisionUi => Vec::new(),
         AgentRequestType::Implementation => vec![
             function_tool(
                 "read_file",

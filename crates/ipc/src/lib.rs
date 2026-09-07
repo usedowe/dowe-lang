@@ -1,12 +1,14 @@
 pub use dowe_agent::{
     AgentAuthKind, AgentAuthStore, AgentCodeGraphNodeSummary, AgentCodeGraphSummary, AgentContext,
-    AgentCredential, AgentCredentialStatus, AgentDesktopEvent, AgentDesktopEventKind,
-    AgentHarnessSummary, AgentImageInput, AgentMessage, AgentMessageContent, AgentMessagePart,
-    AgentModelDefinition, AgentPrepareOptions, AgentPreparedRequest, AgentProviderDefinition,
-    AgentProviderInfo, AgentProviderProtocol, AgentRequest, AgentRequestMetadata, AgentRequestType,
-    AgentServerResponse, AgentSkillSummary, AgentToolDefinition, AgentToolFunction, ImageUrl,
-    ProjectContext, PublicExampleResult, PublicExampleSearch, PublicSkill, PublicSkillDocument,
-    PublicSkillResourceDocument, ResolvedProviderAuth,
+    AgentConversation, AgentCredential, AgentCredentialStatus, AgentDesktopEvent,
+    AgentDesktopEventKind, AgentHarnessSummary, AgentImageInput, AgentMessage, AgentMessageContent,
+    AgentMessagePart, AgentModelDefinition, AgentModelDetails, AgentPrepareOptions,
+    AgentPreparedRequest, AgentProviderDefinition, AgentProviderInfo, AgentProviderProtocol,
+    AgentRequest, AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
+    AgentToolDefinition, AgentToolFunction, AgentUsage, AgentUsageTotals, ImageUrl, ProjectContext,
+    PublicExampleResult, PublicExampleSearch, PublicSkill, PublicSkillDocument,
+    PublicSkillResourceDocument, ResolvedProviderAuth, ThinkingLevel, agent_model_details,
+    agent_response_text, agent_response_usage,
 };
 pub use dowe_agent_harness::{
     CheckReport, DetectedMode, Diagnostic, HarnessManifest, HarnessMode, InitOptions, InitReport,

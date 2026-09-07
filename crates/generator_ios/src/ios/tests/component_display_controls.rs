@@ -125,22 +125,20 @@ fn generates_full_scene_background_without_unsafe_content() {
     assert!(views.contains("@State private var safeAreaInsets = EdgeInsets()"));
     assert!(views.contains("DoweSafeAreaReporter { insets in"));
     assert!(views.contains(
-        "routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))"
+        "routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height)"
     ));
     assert!(views.contains(
-        ".frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)"
+        ".frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)\n                .clipped()\n            DoweSafeAreaReporter"
     ));
-    assert!(views.contains(
-        ".frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)\n                .clipped()\n                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)"
+    let root = views.split("struct DoweRootView: View {").nth(1).unwrap();
+    let root_body = root.split("private func doweSafeAreaTopColor").next().unwrap();
+    assert!(!root_body.contains(".offset("));
+    assert_eq!(root_body.matches(".ignoresSafeArea()").count(), 1);
+    assert!(root_body.contains(
+        "            )\n            .ignoresSafeArea()\n        )\n        .foregroundStyle"
     ));
-    assert!(views.contains(".offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)"));
-    assert!(views.contains("        .ignoresSafeArea()\n        .frame(maxWidth: .infinity"));
-    assert!(views.contains(
-        "func doweSafeAreaWidth(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat"
-    ));
-    assert!(views.contains(
-        "func doweSafeAreaHeight(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat"
-    ));
+    assert!(!views.contains("func doweSafeAreaWidth("));
+    assert!(!views.contains("func doweSafeAreaHeight("));
     assert!(views.contains("func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool"));
     assert!(views.contains(
         "private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat) -> some View"

@@ -92,10 +92,6 @@ pub struct ResolvedProviderAuth {
 
 const OPENAI_CODEX_MODELS: &[AgentModelDefinition] = &[
     AgentModelDefinition {
-        id: "gpt-5.3-codex",
-        name: "GPT-5.3 Codex",
-    },
-    AgentModelDefinition {
         id: "gpt-5.3-codex-spark",
         name: "GPT-5.3 Codex Spark",
     },
@@ -257,7 +253,7 @@ pub fn provider_definition(id: &str) -> Option<AgentProviderDefinition> {
                 "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}",
             ),
             "gpt-4o",
-            AgentProviderProtocol::OpenAiCompletions,
+            AgentProviderProtocol::OpenAiResponses,
             true,
             false,
         ),
@@ -320,7 +316,7 @@ pub fn provider_definition(id: &str) -> Option<AgentProviderDefinition> {
             "google-vertex",
             "Google Vertex AI",
             &["GOOGLE_CLOUD_API_KEY"],
-            &["GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION"],
+            &[],
             Some("https://{location}-aiplatform.googleapis.com"),
             "gemini-2.5-flash",
             AgentProviderProtocol::GoogleVertex,
@@ -443,7 +439,7 @@ pub fn provider_definition(id: &str) -> Option<AgentProviderDefinition> {
             &[],
             &[],
             Some("https://chatgpt.com/backend-api"),
-            "gpt-5.3-codex",
+            "gpt-5.5",
             AgentProviderProtocol::OpenAiResponses,
             false,
             true,
@@ -669,7 +665,12 @@ pub fn resolve_provider_auth(
         .as_ref()
         .map(|credential| credential.env().clone())
         .unwrap_or_default();
-    for name in definition.required_env {
+    let optional_env: &[&str] = match definition.id {
+        "amazon-bedrock" => &["AWS_REGION", "AWS_DEFAULT_REGION"],
+        "google-vertex" => &["GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION"],
+        _ => &[],
+    };
+    for name in definition.required_env.iter().chain(optional_env) {
         if let Some(value) = env::var(name).ok().filter(|value| !value.is_empty()) {
             scoped_env.entry((*name).to_string()).or_insert(value);
         }
@@ -746,7 +747,38 @@ pub fn provider_base_url(
     if definition.id == "azure-openai-responses" {
         return env_value(&auth.env, "AZURE_OPENAI_BASE_URL")
             .or_else(|| env::var("AZURE_OPENAI_BASE_URL").ok())
-            .ok_or_else(|| AgentError::new("Azure OpenAI requires AZURE_OPENAI_BASE_URL"));
+            .ok_or_else(|| AgentError::new("Azure OpenAI requires AZURE_OPENAI_BASE_URL"))
+            .and_then(|base| {
+                let mut url = reqwest::Url::parse(&base)
+                    .map_err(|_| AgentError::new("invalid Azure OpenAI base URL"))?;
+                let host = url.host_str().unwrap_or_default();
+                if [
+                    ".openai.azure.com",
+                    ".cognitiveservices.azure.com",
+                    ".ai.azure.com",
+                ]
+                .iter()
+                .any(|suffix| host.ends_with(suffix))
+                    && matches!(
+                        url.path().trim_end_matches('/'),
+                        "" | "/openai" | "/openai/v1/responses"
+                    )
+                {
+                    url.set_path("/openai/v1");
+                    url.set_query(None);
+                }
+                Ok(url.to_string().trim_end_matches('/').to_string())
+            });
+    }
+    if definition.id == "google-vertex" {
+        if auth.kind == AgentAuthKind::ApiKey && auth.secret.is_some() {
+            return Ok("https://aiplatform.googleapis.com".to_string());
+        }
+        if auth.kind == AgentAuthKind::Ambient {
+            return Err(AgentError::new(
+                "Google Vertex ADC is not implemented; configure GOOGLE_CLOUD_API_KEY for Vertex Express",
+            ));
+        }
     }
     let base = definition
         .base_url
@@ -756,6 +788,13 @@ pub fn provider_base_url(
         && let Some(region) = env_value(&auth.env, "AWS_REGION")
             .or_else(|| env_value(&auth.env, "AWS_DEFAULT_REGION"))
     {
+        if region.is_empty()
+            || !region
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '-')
+        {
+            return Err(AgentError::new("invalid AWS region"));
+        }
         value = value.replace("us-east-1", &region);
     }
     for (name, replacement) in &auth.env {
@@ -764,6 +803,10 @@ pub fn provider_base_url(
     if let Some(location) = env_value(&auth.env, "GOOGLE_CLOUD_LOCATION") {
         value = value.replace("{location}", &location);
     }
+    value = value.replace(
+        "global-aiplatform.googleapis.com",
+        "aiplatform.googleapis.com",
+    );
     if value.contains("{CLOUDFLARE_") || value.contains("{location}") {
         return Err(AgentError::new(format!(
             "provider `{}` is missing required endpoint configuration",
@@ -777,7 +820,7 @@ pub fn protocol_for_model(
     definition: &AgentProviderDefinition,
     model: &str,
 ) -> AgentProviderProtocol {
-    let lower = model.to_ascii_lowercase();
+    let lower = normalize_model_id(definition.id, model).to_ascii_lowercase();
     match definition.id {
         "openrouter" => {
             if lower.starts_with("anthropic/") {
@@ -789,20 +832,52 @@ pub fn protocol_for_model(
         "cloudflare-ai-gateway" => {
             if lower.starts_with("claude") {
                 AgentProviderProtocol::AnthropicMessages
+            } else if lower.starts_with("gpt-")
+                || lower.starts_with("o1")
+                || lower.starts_with("o3")
+                || lower.starts_with("o4")
+            {
+                AgentProviderProtocol::OpenAiResponses
             } else {
                 AgentProviderProtocol::OpenAiCompletions
             }
         }
         "fireworks" => {
-            if lower.contains("claude") || lower.contains("accounts/fireworks/models") {
+            let name = lower.rsplit('/').next().unwrap_or_default();
+            if name.starts_with("glm-") || name.starts_with("kimi-k3") {
+                AgentProviderProtocol::OpenAiCompletions
+            } else {
+                definition.protocol
+            }
+        }
+        "vercel-ai-gateway" => AgentProviderProtocol::AnthropicMessages,
+        "github-copilot" => {
+            if lower.starts_with("claude") {
                 AgentProviderProtocol::AnthropicMessages
+            } else if lower.starts_with("gpt-5")
+                || lower.starts_with("grok-")
+                || lower.starts_with("mai-")
+            {
+                AgentProviderProtocol::OpenAiResponses
             } else {
                 AgentProviderProtocol::OpenAiCompletions
             }
         }
-        "opencode" | "opencode-go" | "vercel-ai-gateway" => {
-            if lower.contains("claude") || lower.contains("minimax") || lower.contains("qwen") {
+        "opencode" | "opencode-go" => {
+            if lower.starts_with("claude")
+                || (definition.id == "opencode"
+                    && matches!(lower.as_str(), "qwen3.5-plus" | "qwen3.6-plus"))
+                || (definition.id == "opencode-go"
+                    && matches!(lower.as_str(), "minimax-m3" | "qwen3.8-flash"))
+            {
                 AgentProviderProtocol::AnthropicMessages
+            } else if lower.starts_with("gpt-")
+                || lower.starts_with("grok-")
+                || lower.starts_with("muse-")
+            {
+                AgentProviderProtocol::OpenAiResponses
+            } else if definition.id == "opencode" && lower.starts_with("gemini-") {
+                AgentProviderProtocol::GoogleGenerativeAi
             } else {
                 AgentProviderProtocol::OpenAiCompletions
             }
@@ -906,6 +981,23 @@ pub fn provider_exists(id: &str) -> bool {
     provider_definition(id).is_some()
 }
 
+pub(crate) fn retired_model_replacement(provider: &str, model: &str) -> Option<&'static str> {
+    if provider == "openai-codex" && normalize_model_id(provider, model) == "gpt-5.3-codex" {
+        Some("gpt-5.5")
+    } else {
+        None
+    }
+}
+
+pub fn validate_agent_model(provider: &str, model: &str) -> AgentResult<()> {
+    if let Some(replacement) = retired_model_replacement(provider, model) {
+        return Err(AgentError::new(format!(
+            "model `{model}` is no longer supported by Codex with a ChatGPT account; select `{replacement}` with /model"
+        )));
+    }
+    Ok(())
+}
+
 pub fn provider_models(id: &str) -> &'static [AgentModelDefinition] {
     match id {
         "openai-codex" => OPENAI_CODEX_MODELS,
@@ -928,8 +1020,14 @@ mod tests {
         assert_eq!(builtin_provider_ids().len(), 40);
         assert_eq!(builtin_provider_ids()[0], "amazon-bedrock");
         assert_eq!(builtin_provider_ids()[39], "zai-coding-cn");
-        assert_eq!(provider_models("openai-codex").len(), 9);
-        assert_eq!(provider_models("openai-codex")[0].id, "gpt-5.3-codex");
+        assert_eq!(provider_models("openai-codex").len(), 8);
+        assert_eq!(provider_models("openai-codex")[0].id, "gpt-5.3-codex-spark");
+        assert_eq!(provider_default_model("openai-codex").unwrap(), "gpt-5.5");
+        assert!(
+            !provider_models("openai-codex")
+                .iter()
+                .any(|model| model.id == "gpt-5.3-codex")
+        );
     }
 
     #[test]

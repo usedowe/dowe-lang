@@ -42,6 +42,7 @@ include!("tests/core_generation.rs");
 include!("tests/data_generation.rs");
 include!("tests/diagram_interactions.rs");
 include!("tests/navigation_generation.rs");
+include!("tests/bar_width.rs");
 include!("tests/component_display_generation.rs");
 include!("tests/fixtures_routes_core.rs");
 include!("tests/fixtures_routes_navigation.rs");

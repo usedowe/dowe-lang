@@ -1,14 +1,42 @@
 use super::{
     AgentPrepareOptions, AgentRequestType, BuildOptions, BuildTarget, CodeGraphBuildOptions,
     DeployOptions, DeploySurface, DeployTarget, DevTarget, DevTargetSelection, GenerateIconOptions,
-    HostOs, IconRounded, IconTarget, InitOptions, SpawnConfig, SpawnEvent, build_codegraph,
-    build_project, deploy_project, generate_project_icons, get_agent_public_skill,
-    get_agent_public_skill_resource, handle_agent_mcp_message, init_agent_harness,
-    list_agent_public_skills, prepare_agent_project_context, prepare_agent_request, run_spawn,
-    search_agent_public_examples,
+    HostOs, IconRounded, IconTarget, InitOptions, SpawnConfig, SpawnEvent, ThinkingLevel,
+    agent_model_details, agent_response_usage, build_codegraph, build_project, deploy_project,
+    generate_project_icons, get_agent_public_skill, get_agent_public_skill_resource,
+    handle_agent_mcp_message, init_agent_harness, list_agent_public_skills,
+    prepare_agent_project_context, prepare_agent_request, run_spawn, search_agent_public_examples,
 };
 use std::fs;
 use tempfile::TempDir;
+
+#[test]
+fn agent_conversation_uses_the_shared_contract_without_changing_inference() {
+    let root = TempDir::new().unwrap();
+    let mut conversation = super::AgentConversation::default();
+    let first = conversation
+        .prepare(root.path(), "hola", AgentPrepareOptions::default())
+        .unwrap()
+        .request;
+    assert_eq!(first.request_type, AgentRequestType::Conversation);
+    let payload = serde_json::json!({"output_text":"¡Hola!"});
+    assert_eq!(super::agent_response_text(&payload).unwrap(), "¡Hola!");
+    let response = super::AgentServerResponse {
+        request_id: first.request_id.clone(),
+        request_type: first.request_type,
+        model: first.model.clone(),
+        payload,
+    };
+    conversation.record_response(&first, &response).unwrap();
+    let next = conversation
+        .prepare(root.path(), "seguimos", AgentPrepareOptions::default())
+        .unwrap()
+        .request;
+    assert_eq!(next.messages.len(), 4);
+    let structured =
+        prepare_agent_request(root.path(), "hola", AgentPrepareOptions::default()).unwrap();
+    assert_eq!(structured.request.request_type, AgentRequestType::Clarify);
+}
 
 #[test]
 fn serializes_spawn_events_for_ipc() {
@@ -91,6 +119,67 @@ fn prepares_agent_request_through_ipc_wrapper() {
     assert_eq!(prepared.request.request_type, AgentRequestType::SpecPlan);
     assert!(encoded.contains("requestType"));
     assert!(encoded.contains("openai/gpt-5.5"));
+}
+
+#[test]
+fn agent_codex_default_and_retirement_are_shared_with_ipc() {
+    let temp = TempDir::new().unwrap();
+    let options = AgentPrepareOptions {
+        provider: Some("openai-codex".into()),
+        ..Default::default()
+    };
+    assert_eq!(
+        prepare_agent_request(temp.path(), "hola", options.clone())
+            .unwrap()
+            .request
+            .model,
+        "gpt-5.5"
+    );
+    let error = prepare_agent_request(
+        temp.path(),
+        "hola",
+        AgentPrepareOptions {
+            model: Some("gpt-5.3-codex".into()),
+            ..options
+        },
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("no longer supported"));
+    assert!(error.to_string().contains("gpt-5.5"));
+}
+
+#[test]
+fn agent_thinking_and_usage_use_shared_contracts() {
+    let temp = TempDir::new().unwrap();
+    let options = AgentPrepareOptions {
+        provider: Some("openai-codex".into()),
+        model: Some("gpt-5.5".into()),
+        thinking_level: Some(ThinkingLevel::High),
+        ..Default::default()
+    };
+    let prepared = prepare_agent_request(temp.path(), "hello", options.clone()).unwrap();
+    assert_eq!(
+        serde_json::to_value(&prepared.request).unwrap()["thinkingLevel"],
+        "high"
+    );
+    let invalid = AgentPrepareOptions {
+        model: Some("custom".into()),
+        ..options
+    };
+    assert!(prepare_agent_request(temp.path(), "hello", invalid).is_err());
+    let payload = serde_json::json!({"usage":{"input_tokens":100,"output_tokens":20}});
+    assert_eq!(
+        agent_response_usage("openai-codex", "gpt-5.5", &payload)
+            .unwrap()
+            .context_tokens(),
+        120
+    );
+    assert_eq!(
+        agent_model_details("openai-codex", "gpt-5.5")
+            .unwrap()
+            .context_window,
+        Some(272000)
+    );
 }
 
 #[test]

@@ -28,6 +28,13 @@ use usage::USAGE;
 const TOKIO_WORKER_STACK_SIZE: usize = 16 * 1024 * 1024;
 
 fn main() {
+    if env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("--dowe-spawn-supervisor")) {
+        std::process::exit(if dowe_runtime::run_spawn_supervisor().is_ok() {
+            0
+        } else {
+            1
+        });
+    }
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_stack_size(TOKIO_WORKER_STACK_SIZE)

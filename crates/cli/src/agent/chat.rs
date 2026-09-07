@@ -2,11 +2,13 @@ use crate::menus::is_interactive_terminal;
 use crate::usage::USAGE;
 use dialoguer::{Input, Password, Select, theme::ColorfulTheme};
 use dowe_agent::{
-    AgentAuthStore, AgentCredential, AgentDesktopEvent, AgentDesktopEventKind, AgentPrepareOptions,
-    AgentProviderInfo, AgentRequestType, ResolvedProviderAuth, builtin_provider_info,
-    default_llm_server_url, login_openai_codex, prepare_agent_request, provider_default_model,
-    provider_definition, provider_exists, provider_models, refresh_openai_codex_credential,
-    resolve_provider_auth, send_agent_request, send_native_agent_request, token_needs_refresh,
+    AgentAuthStore, AgentConversation, AgentCredential, AgentDesktopEvent, AgentDesktopEventKind,
+    AgentPreferencesStore, AgentPrepareOptions, AgentProviderInfo, AgentRequestType,
+    AgentUsageTotals, ResolvedProviderAuth, ThinkingLevel, agent_model_details,
+    agent_response_text, builtin_provider_info, default_llm_server_url, login_openai_codex,
+    normalize_model_id, prepare_agent_request, provider_default_model, provider_definition,
+    provider_exists, provider_models, refresh_openai_codex_credential, resolve_provider_auth,
+    send_agent_request, send_native_agent_request, token_needs_refresh,
 };
 use serde_json::{Value, json};
 use std::env;
@@ -31,6 +33,16 @@ pub(super) fn run_agent_providers_command(
     Ok(())
 }
 
+pub(super) async fn run_agent_chat_or_session(
+    args: &[String],
+) -> Result<(), Box<dyn std::error::Error>> {
+    if parse_agent_args(args, false)?.prompt.trim().is_empty() {
+        run_agent_session_with_args(args).await
+    } else {
+        run_agent_chat_command(args).await
+    }
+}
+
 pub(super) async fn run_agent_session() -> Result<(), Box<dyn std::error::Error>> {
     run_agent_session_with_args(&[]).await
 }
@@ -41,22 +53,41 @@ pub(super) async fn run_agent_session_with_args(
     let mut parsed = parse_agent_args(args, false)?;
     parsed.options.stream = true;
     let store = AgentAuthStore::from_default_path()?;
-    let mut provider = parsed.provider.clone().or_else(|| {
-        parsed
-            .options
-            .model
-            .as_deref()
-            .and_then(infer_provider_from_model)
-    });
-    let mut model = parsed.options.model.clone();
+    let preferences = open_preferences()?;
+    let mut provider = preferred_request_provider(&parsed, &store, &preferences)?;
+    let (mut model, mut thinking) = restore_selection(
+        provider.as_deref(),
+        parsed.options.model.as_deref(),
+        &preferences,
+    )?;
+    let mut usage = AgentUsageTotals::default();
+    let mut conversation = AgentConversation::default();
+    let mut native: Option<super::native::NativeSession> = None;
+    let native_enabled = !parsed.uses_legacy_server
+        && parsed.options.request_type == Some(AgentRequestType::Conversation);
     let mut api_key = parsed.api_key.clone();
 
-    println!("Dowe Agent");
-    println!("Skills are embedded in the Dowe binary. Type /exit to leave.");
+    if !parsed.json_output {
+        println!("Dowe Agent");
+        println!("Skills are embedded in the Dowe binary. Type /exit to leave.");
+    }
 
     loop {
-        let Some(prompt) = read_agent_prompt()? else {
-            println!();
+        let effective_model = model.clone().or_else(|| {
+            provider
+                .as_deref()
+                .and_then(|p| provider_default_model(p).ok().map(str::to_string))
+        });
+        let footer = super::footer::Footer {
+            provider: provider.as_deref(),
+            model: effective_model.as_deref(),
+            thinking,
+            usage: &usage,
+        };
+        let Some(prompt) = read_agent_prompt(&footer, parsed.json_output)? else {
+            if !parsed.json_output {
+                println!();
+            }
             return Ok(());
         };
         let command = prompt.trim();
@@ -66,11 +97,23 @@ pub(super) async fn run_agent_session_with_args(
         if command.is_empty() {
             continue;
         }
+        if command == "/new" {
+            if let Some(native) = &mut native {
+                native.reset()?;
+            }
+            conversation.reset();
+            usage = AgentUsageTotals::default();
+            eprintln!("Started a new conversation.");
+            continue;
+        }
         if command == "/login" {
-            let (selected, selected_key) = configure_provider(&store, None).await?;
-            provider = Some(selected);
-            api_key = selected_key;
-            model = None;
+            let Some(configured) = configure_provider(&store, None).await? else {
+                continue;
+            };
+            provider = Some(configured.provider);
+            api_key = configured.api_key;
+            (model, thinking) = restore_selection(provider.as_deref(), None, &preferences)?;
+            usage.clear_context();
             continue;
         }
         if command == "/logout" {
@@ -83,20 +126,121 @@ pub(super) async fn run_agent_session_with_args(
             continue;
         }
         if command == "/provider" {
-            let selected = select_provider(&store, false)?;
+            let Some(selected) = select_provider(&store, false)? else {
+                continue;
+            };
+            preferences.select_provider(&selected)?;
             provider = Some(selected);
             api_key = None;
-            model = None;
+            (model, thinking) = restore_selection(provider.as_deref(), None, &preferences)?;
+            usage.clear_context();
             continue;
         }
         if command == "/model" {
-            let selected_provider = provider
+            if provider.is_none() {
+                let Some(selected) = select_provider(&store, false)? else {
+                    continue;
+                };
+                preferences.select_provider(&selected)?;
+                provider = Some(selected);
+            }
+            let selected_provider = provider.as_deref().expect("selected provider");
+            if let Some(selected) = select_model(selected_provider, model.as_deref())? {
+                if let Err(error) = preferences.select_model(selected_provider, &selected) {
+                    eprintln!("{error}");
+                    continue;
+                }
+                (model, thinking) = restore_selection(provider.as_deref(), None, &preferences)?;
+                usage.clear_context();
+            }
+            continue;
+        }
+        if command == "/thinking" {
+            if parsed.uses_legacy_server {
+                eprintln!("Thinking selection is only available for native provider requests.");
+                continue;
+            }
+            let Some(selected_provider) = provider.as_deref() else {
+                eprintln!("Select a provider with /provider first.");
+                continue;
+            };
+            let selected_model = model
                 .as_deref()
-                .ok_or_else(|| "Select a provider before selecting a model".to_string())?;
-            model = Some(select_model(selected_provider, model.as_deref())?);
+                .unwrap_or(provider_default_model(selected_provider)?);
+            let Some(details) = agent_model_details(selected_provider, selected_model) else {
+                eprintln!(
+                    "Thinking selection is not available for {selected_provider}/{selected_model}."
+                );
+                continue;
+            };
+            let levels = details.thinking_levels;
+            if let Some(index) = Select::with_theme(&ColorfulTheme::default())
+                .with_prompt("Select thinking level")
+                .items(
+                    levels
+                        .iter()
+                        .map(|level| level.as_str())
+                        .collect::<Vec<_>>(),
+                )
+                .default(
+                    thinking
+                        .and_then(|level| levels.iter().position(|candidate| *candidate == level))
+                        .unwrap_or(0),
+                )
+                .interact_opt()?
+            {
+                preferences.select_thinking(selected_provider, selected_model, levels[index])?;
+                thinking = Some(levels[index]);
+            }
             continue;
         }
 
+        if native_enabled
+            && matches!(
+                command.split_whitespace().next(),
+                Some(
+                    "/session"
+                        | "/sessions"
+                        | "/resume"
+                        | "/delete-session"
+                        | "/memory"
+                        | "/models"
+                        | "/shell"
+                        | "/budget"
+                        | "/env"
+                        | "/evaluate"
+                        | "/processes"
+                        | "/watch"
+                        | "/inspect"
+                        | "/recover"
+                        | "/capabilities"
+                )
+            )
+        {
+            if native.is_none() {
+                native = Some(super::native::NativeSession::open()?);
+            }
+            match native.as_mut().expect("native session").local_command(
+                command,
+                parsed.json_output,
+                parsed.api_key.as_deref(),
+            ) {
+                Ok(false) => {
+                    return Err("approval_required: pending operation was not executed".into());
+                }
+                Err(error) => eprintln!("{}", super::markdown::terminal_text(&error.to_string())),
+                Ok(true)
+                    if matches!(
+                        command.split_whitespace().next(),
+                        Some("/resume" | "/recover")
+                    ) =>
+                {
+                    usage = native.as_ref().expect("native session").usage();
+                }
+                _ => {}
+            }
+            continue;
+        }
         let selected_provider = match provider.clone() {
             Some(provider) => provider,
             None => {
@@ -104,22 +248,94 @@ pub(super) async fn run_agent_session_with_args(
                     provider = Some(configured.clone());
                     configured
                 } else {
-                    let (selected, selected_key) = configure_provider(&store, None).await?;
-                    api_key = selected_key;
-                    provider = Some(selected.clone());
-                    selected
+                    let Some(configured) = configure_provider(&store, None).await? else {
+                        continue;
+                    };
+                    api_key = configured.api_key;
+                    provider = Some(configured.provider.clone());
+                    configured.provider
                 }
             }
         };
-        let auth =
-            ensure_provider_auth(&store, &selected_provider, api_key.as_deref(), true).await?;
+        if native_enabled {
+            if native.is_none() {
+                native = Some(super::native::NativeSession::open()?);
+            }
+            let selection = dowe_agent::native_harness::ModelSelection {
+                provider: selected_provider.clone(),
+                model: model
+                    .clone()
+                    .unwrap_or(provider_default_model(&selected_provider)?.into()),
+                thinking,
+            };
+            native.as_mut().expect("native session").image_paths =
+                parsed.options.image_paths.clone();
+            let work = native.as_mut().expect("native session").run(
+                command,
+                selection,
+                parsed.explicit_model,
+                api_key.clone(),
+                parsed.json_output,
+                &mut usage,
+            );
+            let result = tokio::select! {
+                result = work => result,
+                _ = tokio::signal::ctrl_c() => Err(dowe_agent::AgentError::new("Agent task canceled; interrupted operations are not replayed")),
+            };
+            if matches!(
+                result,
+                Ok(dowe_agent::native_harness::HarnessOutcome::Completed)
+            ) {
+                parsed.options.image_paths.clear();
+            }
+            if matches!(
+                result,
+                Ok(dowe_agent::native_harness::HarnessOutcome::ApprovalRequired)
+            ) && (parsed.json_output || !is_interactive_terminal())
+            {
+                return Err("approval_required: pending operation was not executed".into());
+            }
+            if let Err(error) = result {
+                eprintln!("{}", super::markdown::terminal_text(&error.to_string()));
+                eprintln!(
+                    "Request failed. Use /model, /provider or /login to adjust the session, then try again."
+                );
+            }
+            continue;
+        }
+        let Some(auth) =
+            ensure_provider_auth(&store, &selected_provider, api_key.as_deref(), true).await?
+        else {
+            continue;
+        };
         let mut request = parsed.clone();
         request.prompt = command.to_string();
         request.provider = Some(selected_provider.clone());
         request.api_key = api_key.clone();
-        request.options.provider = Some(selected_provider);
+        request.options.provider = Some(selected_provider.clone());
         request.options.model = model.clone();
-        send_parsed_request(request, Some(auth)).await?;
+        request.options.thinking_level = if parsed.uses_legacy_server {
+            None
+        } else {
+            thinking
+        };
+        match send_parsed_request(request, Some(auth), &mut conversation).await {
+            Ok(event) if event.event == AgentDesktopEventKind::ResponseReceived => {
+                usage.record(&selected_provider, &event.model, &event.payload);
+                if event.request_type == AgentRequestType::Conversation {
+                    parsed.options.image_paths.clear();
+                }
+            }
+            result => {
+                usage.clear_context();
+                if let Err(error) = result {
+                    eprintln!("{error}");
+                }
+                eprintln!(
+                    "Request failed. Use /model, /provider or /login to adjust the session, then try again."
+                );
+            }
+        }
     }
 }
 
@@ -131,20 +347,96 @@ pub(super) async fn run_agent_chat_command(
         None
     } else {
         let store = AgentAuthStore::from_default_path()?;
-        let provider = resolve_request_provider(&parsed, &store)?;
+        let preferences = open_preferences()?;
+        let provider = resolve_request_provider(&parsed, &store, &preferences)?;
         parsed.provider = Some(provider.clone());
         parsed.options.provider = Some(provider.clone());
-        Some(ensure_provider_auth(&store, &provider, parsed.api_key.as_deref(), true).await?)
+        let (model, thinking) = restore_selection(
+            Some(&provider),
+            parsed.options.model.as_deref(),
+            &preferences,
+        )?;
+        parsed.options.model = model;
+        parsed.options.thinking_level = thinking;
+        dowe_agent::validate_agent_model(
+            &provider,
+            parsed
+                .options
+                .model
+                .as_deref()
+                .unwrap_or(provider_default_model(&provider)?),
+        )?;
+        if parsed.options.request_type == Some(AgentRequestType::Conversation) {
+            None
+        } else {
+            let Some(auth) =
+                ensure_provider_auth(&store, &provider, parsed.api_key.as_deref(), true).await?
+            else {
+                return Ok(());
+            };
+            Some(auth)
+        }
     };
-    send_parsed_request(parsed, auth).await
+    if !parsed.uses_legacy_server
+        && parsed.options.request_type == Some(AgentRequestType::Conversation)
+    {
+        let provider = parsed.provider.as_deref().ok_or("provider missing")?;
+        let selection = dowe_agent::native_harness::ModelSelection {
+            provider: provider.into(),
+            model: parsed
+                .options
+                .model
+                .clone()
+                .unwrap_or(provider_default_model(provider)?.into()),
+            thinking: parsed.options.thinking_level,
+        };
+        let mut native = super::native::NativeSession::open()?;
+        native.image_paths = parsed.options.image_paths.clone();
+        let outcome = native
+            .run(
+                &parsed.prompt,
+                selection,
+                parsed.explicit_model,
+                parsed.api_key.clone(),
+                parsed.json_output,
+                &mut AgentUsageTotals::default(),
+            )
+            .await?;
+        if !matches!(
+            outcome,
+            dowe_agent::native_harness::HarnessOutcome::Completed
+        ) {
+            return Err(
+                "Agent paused without completing the task; inspect its session events".into(),
+            );
+        }
+        return Ok(());
+    }
+    let event = send_parsed_request(parsed, auth, &mut AgentConversation::default()).await?;
+    if event.event == AgentDesktopEventKind::Error {
+        return Err(event
+            .payload
+            .pointer("/error/message")
+            .and_then(Value::as_str)
+            .unwrap_or("agent request failed")
+            .to_string()
+            .into());
+    }
+    Ok(())
 }
 
 async fn send_parsed_request(
     parsed: ParsedAgentChatArgs,
     auth: Option<ResolvedProviderAuth>,
-) -> Result<(), Box<dyn std::error::Error>> {
+    conversation: &mut AgentConversation,
+) -> Result<AgentDesktopEvent, Box<dyn std::error::Error>> {
     let root = env::current_dir()?;
-    let prepared = prepare_agent_request(root, &parsed.prompt, parsed.options)?;
+    let conversational = parsed.options.request_type == Some(AgentRequestType::Conversation);
+    let prepared = if conversational {
+        conversation.prepare(root, &parsed.prompt, parsed.options)?
+    } else {
+        prepare_agent_request(root, &parsed.prompt, parsed.options)?
+    };
     let request = prepared.request;
     let prepared_payload = json!({
         "requestId": request.request_id,
@@ -190,9 +482,20 @@ async fn send_parsed_request(
                 }),
             };
             print_agent_event(&event, parsed.json_output)?;
-            return Err(error.into());
+            return Ok(event);
         }
     };
+    if conversational && let Err(error) = conversation.record_response(&request, &response) {
+        let event = AgentDesktopEvent {
+            event: AgentDesktopEventKind::Error,
+            request_id: request.request_id,
+            request_type: request.request_type,
+            model: request.model,
+            payload: json!({"error":{"code":"invalid_conversation_response","message":error.to_string()}}),
+        };
+        print_agent_event(&event, parsed.json_output)?;
+        return Ok(event);
+    }
     let event = AgentDesktopEvent {
         event: AgentDesktopEventKind::ResponseReceived,
         request_id: response.request_id,
@@ -200,7 +503,8 @@ async fn send_parsed_request(
         model: response.model,
         payload: response.payload,
     };
-    print_agent_event(&event, parsed.json_output)
+    print_agent_event(&event, parsed.json_output)?;
+    Ok(event)
 }
 
 fn parse_agent_args(
@@ -274,7 +578,12 @@ fn parse_agent_args(
     }
 
     options.provider = provider.clone();
+    if !uses_legacy_server && options.request_type.is_none() {
+        options.request_type = Some(AgentRequestType::Conversation);
+    }
+    let explicit_model = options.model.is_some();
     Ok(ParsedAgentChatArgs {
+        explicit_model,
         prompt,
         provider,
         api_key,
@@ -296,12 +605,34 @@ fn required_value<'a>(
         .ok_or_else(|| format!("{name} requires a value").into())
 }
 
+fn open_preferences() -> Result<AgentPreferencesStore, Box<dyn std::error::Error>> {
+    let preferences = AgentPreferencesStore::from_default_path()?;
+    if let Some(model) = preferences.migrate_retired_model()? {
+        eprintln!(
+            "Updated saved Codex model: gpt-5.3-codex is no longer supported with ChatGPT accounts; using {model}. Change it with /model."
+        );
+    }
+    Ok(preferences)
+}
+
 fn resolve_request_provider(
     parsed: &ParsedAgentChatArgs,
     store: &AgentAuthStore,
+    preferences: &AgentPreferencesStore,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    preferred_request_provider(parsed, store, preferences)?
+        .ok_or_else(|| {
+            "no agent provider is configured; run `dowe agent` interactively or pass --provider and --api-key".into()
+        })
+}
+
+fn preferred_request_provider(
+    parsed: &ParsedAgentChatArgs,
+    store: &AgentAuthStore,
+    preferences: &AgentPreferencesStore,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
     if let Some(provider) = parsed.provider.as_deref() {
-        return Ok(provider.to_string());
+        return Ok(Some(provider.to_string()));
     }
     if let Some(provider) = parsed
         .options
@@ -309,29 +640,66 @@ fn resolve_request_provider(
         .as_deref()
         .and_then(infer_provider_from_model)
     {
-        return Ok(provider);
+        return Ok(Some(provider));
     }
-    first_configured_provider(store)?.ok_or_else(|| {
-        "no agent provider is configured; run `dowe agent` interactively or pass --provider and --api-key"
-            .into()
-    })
+    if let Some(provider) = preferences.provider()? {
+        return Ok(Some(provider));
+    }
+    first_configured_provider(store)
+}
+
+fn restore_selection(
+    provider: Option<&str>,
+    explicit_model: Option<&str>,
+    preferences: &AgentPreferencesStore,
+) -> Result<(Option<String>, Option<ThinkingLevel>), Box<dyn std::error::Error>> {
+    let saved = preferences.read()?;
+    let same_provider = saved.provider.as_deref() == provider;
+    let model = explicit_model.map(str::to_string).or_else(|| {
+        if same_provider {
+            saved.model.clone()
+        } else {
+            None
+        }
+    });
+    let thinking = if let Some(provider) = provider.filter(|_| same_provider) {
+        let actual = model
+            .as_deref()
+            .unwrap_or(provider_default_model(provider)?);
+        let saved_model = saved
+            .model
+            .as_deref()
+            .unwrap_or(provider_default_model(provider)?);
+        if normalize_model_id(provider, actual) == normalize_model_id(provider, saved_model) {
+            saved.thinking_level
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    Ok((model, thinking))
 }
 
 fn first_configured_provider(
     store: &AgentAuthStore,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    Ok(builtin_provider_info(store)?
-        .into_iter()
-        .find(|provider| provider.configured)
-        .map(|provider| provider.id))
+    let providers = builtin_provider_info(store)?;
+    Ok(providers
+        .iter()
+        .find(|provider| {
+            provider.configured && provider.source.as_deref() == Some("stored credential")
+        })
+        .or_else(|| providers.iter().find(|provider| provider.configured))
+        .map(|provider| provider.id.clone()))
 }
 
-async fn ensure_provider_auth(
+pub(super) async fn ensure_provider_auth(
     store: &AgentAuthStore,
     provider: &str,
     explicit_api_key: Option<&str>,
     allow_interactive: bool,
-) -> Result<ResolvedProviderAuth, Box<dyn std::error::Error>> {
+) -> Result<Option<ResolvedProviderAuth>, Box<dyn std::error::Error>> {
     if provider == "openai-codex"
         && explicit_api_key.is_none()
         && let Some(credential) = store.read(provider)?
@@ -343,13 +711,20 @@ async fn ensure_provider_auth(
     let definition = provider_definition(provider)
         .ok_or_else(|| format!("unknown agent provider `{provider}`"))?;
     match resolve_provider_auth(&definition, store, explicit_api_key, None)? {
-        Some(auth) => Ok(auth),
+        Some(auth) => Ok(Some(auth)),
         None if allow_interactive && is_interactive_terminal() => {
-            let (selected, _) = configure_provider(store, Some(provider)).await?;
-            if selected != provider {
-                return Err(format!("configured `{selected}` instead of `{provider}`").into());
+            let Some(configured) = configure_provider(store, Some(provider)).await? else {
+                return Ok(None);
+            };
+            if configured.provider != provider {
+                return Err(format!(
+                    "configured `{}` instead of `{provider}`",
+                    configured.provider
+                )
+                .into());
             }
             resolve_provider_auth(&definition, store, explicit_api_key, None)?
+                .map(Some)
                 .ok_or_else(|| format!("provider `{provider}` is still not configured").into())
         }
         None => Err(format!(
@@ -360,19 +735,35 @@ async fn ensure_provider_auth(
     }
 }
 
+struct ConfiguredProvider {
+    provider: String,
+    api_key: Option<String>,
+}
+
 async fn configure_provider(
     store: &AgentAuthStore,
     requested: Option<&str>,
-) -> Result<(String, Option<String>), Box<dyn std::error::Error>> {
-    let method = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt("Select authentication method")
-        .items(["Sign in with an account", "Sign in with an API key"])
-        .default(0)
-        .interact()?;
-    let account = method == 0;
-    let provider = match requested {
-        Some(provider) => provider.to_string(),
-        None => select_provider(store, account)?,
+) -> Result<Option<ConfiguredProvider>, Box<dyn std::error::Error>> {
+    let mut previous_method = 0;
+    let (account, provider) = loop {
+        let Some(method) = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("Select authentication method")
+            .items(["Sign in with an account", "Sign in with an API key"])
+            .default(previous_method)
+            .interact_opt()?
+        else {
+            return Ok(None);
+        };
+        previous_method = method;
+        let account = method == 0;
+        let provider = match requested {
+            Some(provider) => provider.to_string(),
+            None => match select_provider(store, account)? {
+                Some(provider) => provider,
+                None => continue,
+            },
+        };
+        break (account, provider);
     };
     let definition =
         provider_definition(&provider).ok_or_else(|| format!("unknown provider `{provider}`"))?;
@@ -414,8 +805,12 @@ async fn configure_provider(
         AgentCredential::OAuth { .. } => None,
     };
     store.save(&provider, &credential)?;
+    AgentPreferencesStore::from_default_path()?.select_provider(&provider)?;
     eprintln!("Configured {}.", definition.name);
-    Ok((provider, display_key))
+    Ok(Some(ConfiguredProvider {
+        provider,
+        api_key: display_key,
+    }))
 }
 
 fn prompt_api_key(
@@ -446,20 +841,22 @@ fn prompt_api_key(
     })
 }
 
-fn select_model(
+pub(super) fn select_model(
     provider: &str,
     current: Option<&str>,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let models = provider_models(provider);
     let default = current
         .map(str::to_string)
         .unwrap_or(provider_default_model(provider)?.to_string());
     if models.is_empty() {
-        return Ok(Input::<String>::with_theme(&ColorfulTheme::default())
-            .with_prompt("Model")
-            .default(default)
-            .allow_empty(false)
-            .interact_text()?);
+        return Ok(Some(
+            Input::<String>::with_theme(&ColorfulTheme::default())
+                .with_prompt("Model")
+                .default(default)
+                .allow_empty(false)
+                .interact_text()?,
+        ));
     }
     let mut items = models
         .iter()
@@ -471,25 +868,30 @@ fn select_model(
         .iter()
         .position(|model| model.id == default)
         .unwrap_or(custom_index);
-    let index = Select::with_theme(&ColorfulTheme::default())
+    let Some(index) = Select::with_theme(&ColorfulTheme::default())
         .with_prompt(format!("Select {provider} model"))
         .items(&items)
         .default(default_index)
-        .interact()?;
+        .interact_opt()?
+    else {
+        return Ok(None);
+    };
     if index == custom_index {
-        return Ok(Input::<String>::with_theme(&ColorfulTheme::default())
-            .with_prompt("Model")
-            .default(default)
-            .allow_empty(false)
-            .interact_text()?);
+        return Ok(Some(
+            Input::<String>::with_theme(&ColorfulTheme::default())
+                .with_prompt("Model")
+                .default(default)
+                .allow_empty(false)
+                .interact_text()?,
+        ));
     }
-    Ok(models[index].id.to_string())
+    Ok(Some(models[index].id.to_string()))
 }
 
-fn select_provider(
+pub(super) fn select_provider(
     store: &AgentAuthStore,
     account: bool,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let providers = builtin_provider_info(store)?
         .into_iter()
         .filter(|provider| !account || provider.supports_account)
@@ -502,8 +904,8 @@ fn select_provider(
         .with_prompt("Select provider to configure")
         .items(&items)
         .default(0)
-        .interact()?;
-    Ok(providers[index].id.clone())
+        .interact_opt()?;
+    Ok(index.map(|index| providers[index].id.clone()))
 }
 
 fn provider_label(provider: &AgentProviderInfo) -> String {
@@ -530,70 +932,39 @@ fn print_agent_event(
     }
 
     match event.event {
-        AgentDesktopEventKind::RequestPrepared => {
-            println!(
-                "agent request {} provider={} model={} type={:?}",
-                event.request_id,
-                event
-                    .payload
-                    .get("provider")
-                    .and_then(Value::as_str)
-                    .unwrap_or("legacy"),
-                event.model,
-                event.request_type
-            );
-            if event
-                .payload
-                .get("needsReferenceImage")
-                .and_then(Value::as_bool)
-                .unwrap_or(false)
-            {
-                println!("reference image recommended: pass --image <path> for UI work");
-            }
+        AgentDesktopEventKind::RequestPrepared => {}
+        AgentDesktopEventKind::ResponseReceived => {
+            print_agent_payload(&event.payload, event.request_type)?
         }
-        AgentDesktopEventKind::ResponseReceived => print_agent_payload(&event.payload)?,
-        AgentDesktopEventKind::Error => eprintln!("{}", event.payload),
+        AgentDesktopEventKind::Error => {
+            let message = event
+                .payload
+                .pointer("/error/message")
+                .and_then(Value::as_str)
+                .unwrap_or("Agent request failed.");
+            eprintln!("Error: {}", super::markdown::terminal_text(message));
+        }
     }
     Ok(())
 }
 
-fn print_agent_payload(payload: &Value) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(content) = payload
-        .get("choices")
-        .and_then(|choices| choices.get(0))
-        .and_then(|choice| choice.get("message"))
-        .and_then(|message| message.get("content"))
-        .and_then(Value::as_str)
-    {
-        println!("{content}");
-    } else if let Some(content) = payload.get("output_text").and_then(Value::as_str) {
-        println!("{content}");
-    } else if let Some(content) = payload
-        .get("content")
-        .and_then(Value::as_array)
-        .and_then(|content| content.iter().find_map(|part| part.get("text")))
-        .and_then(Value::as_str)
-    {
-        println!("{content}");
-    } else if let Some(content) = payload
-        .get("candidates")
-        .and_then(|candidates| candidates.get(0))
-        .and_then(|candidate| candidate.get("content"))
-        .and_then(|content| content.get("parts"))
-        .and_then(|parts| parts.get(0))
-        .and_then(|part| part.get("text"))
-        .and_then(Value::as_str)
-    {
-        println!("{content}");
-    } else {
-        println!("{}", serde_json::to_string_pretty(payload)?);
-    }
-
+fn print_agent_payload(
+    payload: &Value,
+    request_type: AgentRequestType,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let content = match agent_response_text(payload) {
+        Ok(text) => text,
+        Err(error) if request_type == AgentRequestType::Conversation => return Err(error.into()),
+        Err(_) => serde_json::to_string_pretty(payload)?,
+    };
+    let color = is_interactive_terminal() && dialoguer::console::colors_enabled();
+    println!("\n{}\n", super::markdown::render_markdown(&content, color));
     Ok(())
 }
 
 #[derive(Clone)]
 struct ParsedAgentChatArgs {
+    explicit_model: bool,
     prompt: String,
     provider: Option<String>,
     api_key: Option<String>,
@@ -603,9 +974,101 @@ struct ParsedAgentChatArgs {
     options: AgentPrepareOptions,
 }
 
-fn read_agent_prompt() -> Result<Option<String>, Box<dyn std::error::Error>> {
-    print!("\ndowe> ");
-    io::stdout().flush()?;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn native_cli_defaults_to_conversation_without_changing_structured_modes() {
+        for args in [
+            vec![],
+            vec!["hola".into()],
+            vec!["--json".into(), "hola".into()],
+        ] {
+            let parsed = parse_agent_args(&args, false).unwrap();
+            assert_eq!(
+                parsed.options.request_type,
+                Some(AgentRequestType::Conversation)
+            );
+        }
+        let structured = parse_agent_args(
+            &["--request-type".into(), "clarify".into(), "hola".into()],
+            true,
+        )
+        .unwrap();
+        assert_eq!(
+            structured.options.request_type,
+            Some(AgentRequestType::Clarify)
+        );
+        let legacy = parse_agent_args(
+            &[
+                "--server".into(),
+                "http://localhost:1234".into(),
+                "hola".into(),
+            ],
+            true,
+        )
+        .unwrap();
+        assert!(legacy.uses_legacy_server);
+        assert_eq!(legacy.options.request_type, None);
+    }
+
+    #[test]
+    fn agent_provider_precedence_keeps_explicit_overrides_temporary() {
+        let home = tempfile::tempdir().unwrap();
+        let auth = AgentAuthStore::new(home.path().join("auth.json"));
+        let preferences = AgentPreferencesStore::new(home.path().join("preferences.json"));
+        auth.save("anthropic", &AgentCredential::api_key("test-key"))
+            .unwrap();
+        let parsed = parse_agent_args(&[], false).unwrap();
+        assert_eq!(
+            preferred_request_provider(&parsed, &auth, &preferences)
+                .unwrap()
+                .as_deref(),
+            Some("anthropic")
+        );
+        preferences.select_provider("openai-codex").unwrap();
+        assert_eq!(
+            preferred_request_provider(&parsed, &auth, &preferences)
+                .unwrap()
+                .as_deref(),
+            Some("openai-codex")
+        );
+        for (args, expected) in [
+            (vec!["--provider", "google"], "google"),
+            (vec!["--model", "anthropic/claude-test"], "anthropic"),
+            (
+                vec!["--provider", "google", "--model", "anthropic/claude-test"],
+                "google",
+            ),
+        ] {
+            let args = args.into_iter().map(str::to_string).collect::<Vec<_>>();
+            let parsed = parse_agent_args(&args, false).unwrap();
+            assert_eq!(
+                preferred_request_provider(&parsed, &auth, &preferences)
+                    .unwrap()
+                    .as_deref(),
+                Some(expected)
+            );
+            assert_eq!(
+                preferences.provider().unwrap().as_deref(),
+                Some("openai-codex")
+            );
+        }
+    }
+}
+
+fn read_agent_prompt(
+    footer: &super::footer::Footer<'_>,
+    json_output: bool,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
+    if !json_output && is_interactive_terminal() {
+        return Ok(super::prompt::read_interactive_prompt(footer)?);
+    }
+    if !json_output {
+        print!("\ndowe> ");
+        io::stdout().flush()?;
+    }
     let mut prompt = String::new();
     if io::stdin().read_line(&mut prompt)? == 0 {
         return Ok(None);

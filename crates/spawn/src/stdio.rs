@@ -9,12 +9,9 @@ use crate::platform::{
 use crate::validation::apply_environment;
 use std::io::{Read, Write};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
-
-static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 pub struct StdioSpawn {
     pub spawn_id: u64,
@@ -25,7 +22,7 @@ pub struct StdioSpawn {
 }
 
 pub fn spawn_stdio(config: SpawnConfig) -> SpawnResult<StdioSpawn> {
-    let spawn_id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+    let spawn_id = crate::next_spawn_id();
     let mut command = Command::new(&config.command);
     command.args(&config.args);
 
@@ -47,6 +44,20 @@ pub fn spawn_stdio(config: SpawnConfig) -> SpawnResult<StdioSpawn> {
         .spawn()
         .map_err(|error| SpawnError::new(&config.command, SpawnPhase::Start, error.to_string()))?;
     let system_pid = Some(child.id());
+    #[allow(unused_mut)]
+    let mut process_tree = ProcessTree::new(system_pid, &config.options.kill_target);
+    #[cfg(windows)]
+    if let Err(error) =
+        process_tree.own_suspended(&child, config.options.cleanup_descendants_on_exit)
+    {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(SpawnError::new(
+            &config.command,
+            SpawnPhase::Start,
+            format!("cannot establish Windows job ownership: {error}"),
+        ));
+    }
     let stdin = child.stdin.take();
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
@@ -90,6 +101,7 @@ pub fn spawn_stdio(config: SpawnConfig) -> SpawnResult<StdioSpawn> {
             spawn_id,
             config,
             child,
+            process_tree,
             stdin,
             stream_threads,
             capture,
@@ -166,6 +178,7 @@ fn supervise_stdio(
     spawn_id: u64,
     config: SpawnConfig,
     mut child: Child,
+    mut process_tree: ProcessTree,
     mut stdin: Option<ChildStdin>,
     stream_threads: Vec<thread::JoinHandle<()>>,
     capture: Arc<Mutex<CaptureState>>,
@@ -175,7 +188,6 @@ fn supervise_stdio(
 ) {
     let started_at = Instant::now();
     let system_pid = child.id();
-    let mut process_tree = ProcessTree::new(Some(system_pid), &config.options.kill_target);
     let mut timed_out = false;
     let mut canceled = false;
     let mut termination_started_at = None;
@@ -224,6 +236,9 @@ fn supervise_stdio(
             terminate_stdio_child(&mut child, &config, Signal::Kill, &mut process_tree);
         }
 
+        if config.options.cleanup_descendants_on_exit {
+            process_tree.capture();
+        }
         match child.try_wait() {
             Ok(Some(status)) => break Ok(status),
             Ok(None) => thread::sleep(Duration::from_millis(10)),
@@ -237,7 +252,9 @@ fn supervise_stdio(
         }
     };
 
-    if termination_started_at.is_some() && matches!(config.options.kill_target, KillTarget::Group) {
+    if (termination_started_at.is_some() || config.options.cleanup_descendants_on_exit)
+        && matches!(config.options.kill_target, KillTarget::Group)
+    {
         process_tree.capture();
         let _ = terminate_pid(system_pid, &config.options.kill_target, Signal::Kill);
         process_tree.terminate(Signal::Kill);

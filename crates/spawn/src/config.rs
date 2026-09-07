@@ -39,6 +39,8 @@ pub struct SpawnOptions {
     pub pty: Option<PtyOptions>,
     pub timeout_ms: Option<u64>,
     pub kill_target: KillTarget,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cleanup_descendants_on_exit: bool,
     pub kill_grace_ms: Option<u64>,
     pub uid: Option<u32>,
     pub gid: Option<u32>,
@@ -58,6 +60,7 @@ impl Default for SpawnOptions {
             pty: None,
             timeout_ms: None,
             kill_target: KillTarget::Process,
+            cleanup_descendants_on_exit: false,
             kill_grace_ms: Some(500),
             uid: None,
             gid: None,

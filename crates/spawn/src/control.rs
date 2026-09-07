@@ -1,6 +1,6 @@
 use crate::config::Signal;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum ControlMessage {
     Input(Vec<u8>),
     CloseStdin,

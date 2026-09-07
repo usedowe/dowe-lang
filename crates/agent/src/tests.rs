@@ -2,6 +2,38 @@ use super::*;
 use std::fs;
 
 #[test]
+fn conversation_requests_use_natural_text_without_forcing_json() {
+    let root = tempfile::tempdir().unwrap();
+    let request_type = AgentRequestType::parse("conversation").expect("conversation request type");
+    let prepared = prepare_agent_request(
+        root.path(),
+        "hola",
+        AgentPrepareOptions {
+            request_type: Some(request_type),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        prepared.request.messages.last().unwrap().content,
+        AgentMessageContent::Text("hola".into())
+    );
+    assert!(prepared.request.response_format.is_none());
+    assert!(prepared.request.tools.is_empty());
+    assert_eq!(prepared.request.extra["max_completion_tokens"], 4096);
+    assert!(!prepared.request.extra.contains_key("temperature"));
+    let AgentMessageContent::Text(system) = &prepared.request.messages[0].content else {
+        panic!("system text")
+    };
+    assert!(!system.contains("Return JSON only"));
+    assert!(system.contains("language"));
+    assert_eq!(
+        serde_json::to_value(prepared.request).unwrap()["requestType"],
+        "conversation"
+    );
+}
+
+#[test]
 fn basic_ui_prompt_asks_for_clarification_with_minimax() {
     let request_type = infer_request_type("crea el dashboard", false);
 

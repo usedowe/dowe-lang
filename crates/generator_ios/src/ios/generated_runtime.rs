@@ -95,15 +95,14 @@ fn generated_views(
         let easing = dowe_components::VIEW_PAGE_TRANSITION_EASING;
         let page_transition_runtime = r#"        GeometryReader { geometry in
             ZStack {
-                routeContent(currentEntry, viewportWidth: doweSafeAreaWidth(geometry, safeAreaInsets), viewportHeight: doweSafeAreaHeight(geometry, safeAreaInsets))
+                routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height)
                     .id(routeRevision)
                     .transition(.asymmetric(insertion: .opacity, removal: .identity))
                     .environment(\.dowePageEntranceSuppressed, pageEntranceSuppressed)
             }
             .animation(reduceMotion || pageTransitionSequence == 0 ? nil : .timingCurve(__DOWE_PAGE_TRANSITION_X1__, __DOWE_PAGE_TRANSITION_Y1__, __DOWE_PAGE_TRANSITION_X2__, __DOWE_PAGE_TRANSITION_Y2__, duration: __DOWE_PAGE_TRANSITION_DURATION__), value: pageTransitionSequence)
-                .frame(width: doweSafeAreaWidth(geometry, safeAreaInsets), height: doweSafeAreaHeight(geometry, safeAreaInsets), alignment: .topLeading)
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
                 .clipped()
-                .offset(x: safeAreaInsets.leading, y: safeAreaInsets.top)
             DoweSafeAreaReporter { insets in
                 if !doweInsetsEqual(safeAreaInsets, insets) {
                     safeAreaInsets = insets
@@ -112,7 +111,6 @@ fn generated_views(
             .frame(width: CGFloat(0), height: CGFloat(0))
             .allowsHitTesting(false)
         }
-        .ignoresSafeArea()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
             DoweSafeAreaBackground(
@@ -271,14 +269,6 @@ func doweScroll(_ proxy: ScrollViewProxy, _ fragment: String?) {
     withAnimation(.easeInOut(duration: 0.28)) {
         proxy.scrollTo(fragment, anchor: .top)
     }
-}
-
-func doweSafeAreaWidth(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat {
-    max(CGFloat(0), geometry.size.width - insets.leading - insets.trailing)
-}
-
-func doweSafeAreaHeight(_ geometry: GeometryProxy, _ insets: EdgeInsets) -> CGFloat {
-    max(CGFloat(0), geometry.size.height - insets.top - insets.bottom)
 }
 
 func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool {

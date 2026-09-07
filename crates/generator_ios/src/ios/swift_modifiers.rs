@@ -326,7 +326,7 @@ fn swift_modifiers_for_bar(props: &BarProps, flow: NativeFlow) -> Vec<String> {
     let mut modifiers = Vec::new();
     if flow.is_block() && props.style.style.sizing.w.is_none() {
         modifiers.push(
-            ".frame(maxWidth: .infinity, minHeight: CGFloat(48), alignment: .center)".to_string(),
+            ".frame(minWidth: CGFloat(0), maxWidth: .infinity, minHeight: CGFloat(48), alignment: .center)".to_string(),
         );
     } else {
         modifiers.push(".frame(minHeight: CGFloat(48), alignment: .center)".to_string());

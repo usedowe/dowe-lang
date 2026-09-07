@@ -59,7 +59,8 @@ pub use dowe_notifications::{
 };
 pub use dowe_spawn::{
     ChildProcess, EnvMode, KillTarget, ProcessControl, PtyOptions, Signal, SpawnConfig, SpawnEvent,
-    SpawnOptions, SpawnOutput, SpawnResult, StreamMode, run_async as spawn_process, spawn,
+    SpawnOptions, SpawnOutput, SpawnResult, StreamMode, SupervisorCommand,
+    run_async as spawn_process, run_spawn_supervisor, spawn, spawn_supervised,
 };
 pub use error::{RuntimeError, RuntimeResult};
 pub use init::{

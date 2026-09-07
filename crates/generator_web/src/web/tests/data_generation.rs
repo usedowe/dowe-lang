@@ -354,6 +354,7 @@ fn keeps_button_content_on_one_line_without_flex_shrink() {
     assert!(css.contains(
         ".button{--dowe-component-display:inline-flex;display:var(--dowe-show,var(--dowe-component-display));flex:0 0 auto;"
     ));
+    assert!(css.contains("flex:0 0 auto;width:fit-content;"));
     assert!(css.contains(
         "font:inherit;text-decoration:none;white-space:nowrap;user-select:none;-webkit-user-select:none;}"
     ));

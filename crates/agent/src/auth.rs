@@ -145,36 +145,36 @@ impl AgentAuthStore {
     }
 
     fn write(&self, credentials: BTreeMap<String, AgentCredential>) -> AgentResult<()> {
-        let parent = self
-            .path
-            .parent()
-            .ok_or_else(|| AgentError::new("auth path has no parent directory"))?;
-        fs::create_dir_all(parent)
-            .map_err(|error| AgentError::at_path(parent, error.to_string()))?;
-        set_private_directory(parent)?;
-
-        let data = serde_json::to_vec_pretty(&credentials)
-            .map_err(|error| AgentError::new(format!("could not serialize auth file: {error}")))?;
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or_default();
-        let temporary = parent.join(format!(".auth-{}-{timestamp}.tmp", std::process::id()));
-        let mut file = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&temporary)
-            .map_err(|error| AgentError::at_path(&temporary, error.to_string()))?;
-        set_private_file(&file)?;
-        file.write_all(&data)
-            .and_then(|_| file.sync_all())
-            .map_err(|error| AgentError::at_path(&temporary, error.to_string()))?;
-        drop(file);
-        fs::rename(&temporary, &self.path)
-            .map_err(|error| AgentError::at_path(&self.path, error.to_string()))?;
-        set_private_path(&self.path)?;
-        Ok(())
+        write_private_json(&self.path, &credentials)
     }
+}
+
+pub(super) fn write_private_json(path: &Path, value: &impl Serialize) -> AgentResult<()> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| AgentError::new("agent file path has no parent directory"))?;
+    fs::create_dir_all(parent).map_err(|error| AgentError::at_path(parent, error.to_string()))?;
+    set_private_directory(parent)?;
+    let data = serde_json::to_vec_pretty(value)
+        .map_err(|error| AgentError::new(format!("could not serialize agent file: {error}")))?;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default();
+    let temporary = parent.join(format!(".agent-{}-{timestamp}.tmp", std::process::id()));
+    let mut file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&temporary)
+        .map_err(|error| AgentError::at_path(&temporary, error.to_string()))?;
+    set_private_file(&file)?;
+    file.write_all(&data)
+        .and_then(|_| file.sync_all())
+        .map_err(|error| AgentError::at_path(&temporary, error.to_string()))?;
+    drop(file);
+    fs::rename(&temporary, path).map_err(|error| AgentError::at_path(path, error.to_string()))?;
+    set_private_path(path)?;
+    Ok(())
 }
 
 pub fn default_auth_path() -> AgentResult<PathBuf> {
@@ -241,12 +241,12 @@ pub fn expand_credential_value(
     Some(output)
 }
 
-struct AuthFileLock {
+pub(super) struct AuthFileLock {
     path: PathBuf,
 }
 
 impl AuthFileLock {
-    fn acquire(path: &Path) -> AgentResult<Self> {
+    pub(super) fn acquire(path: &Path) -> AgentResult<Self> {
         let parent = path
             .parent()
             .ok_or_else(|| AgentError::new("auth lock path has no parent directory"))?;
