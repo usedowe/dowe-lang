@@ -27,8 +27,27 @@ fn fixture_capabilities(home: &std::path::Path) {
     store.save_config(&config).unwrap();
 }
 
+struct TerminalChild {
+    process: ChildProcess,
+    pending: std::cell::RefCell<Vec<u8>>,
+}
+
+impl TerminalChild {
+    fn wait(self) -> dowe_spawn::SpawnResult<dowe_spawn::SpawnOutput> {
+        self.process.wait()
+    }
+}
+
+impl std::ops::Deref for TerminalChild {
+    type Target = ChildProcess;
+
+    fn deref(&self) -> &Self::Target {
+        &self.process
+    }
+}
+
 struct Session {
-    child: ChildProcess,
+    child: TerminalChild,
     home: TempDir,
 }
 
@@ -64,11 +83,14 @@ impl Session {
             ..Default::default()
         };
         let session = Self {
-            child: dowe_spawn::spawn(
-                SpawnConfig::new(env!("CARGO_BIN_EXE_dowe"), args.iter().copied())
-                    .with_options(options),
-            )
-            .expect("spawn agent"),
+            child: TerminalChild {
+                process: dowe_spawn::spawn(
+                    SpawnConfig::new(env!("CARGO_BIN_EXE_dowe"), args.iter().copied())
+                        .with_options(options),
+                )
+                .expect("spawn agent"),
+                pending: Default::default(),
+            },
             home,
         };
         session.until("dowe>");
@@ -82,24 +104,9 @@ impl Session {
     }
 
     fn until(&self, expected: &str) -> String {
-        let deadline = Instant::now() + Duration::from_secs(5);
-        let mut output = String::new();
-        while Instant::now() < deadline {
-            match self.child.recv_event_timeout(Duration::from_millis(100)) {
-                Ok(SpawnEvent::Terminal { bytes, .. }) => {
-                    output.push_str(&String::from_utf8_lossy(&bytes));
-                    if output.contains(expected) {
-                        return output;
-                    }
-                }
-                Ok(SpawnEvent::Exit { output: result, .. }) => {
-                    panic!("early exit {result:?}: {output}")
-                }
-                Ok(SpawnEvent::Error { error, .. }) => panic!("terminal error: {error}"),
-                _ => {}
-            }
-        }
-        panic!("missing {expected:?}: {output:?}");
+        collect_until(&mut self.child.pending.borrow_mut(), expected, |timeout| {
+            self.child.recv_event_timeout(timeout).ok()
+        })
     }
 
     fn stop(self) -> TempDir {
@@ -112,6 +119,98 @@ impl Session {
         let home = self.stop();
         assert!(!home.path().join(".dowe/agent/auth.json").exists());
     }
+}
+
+fn collect_until(
+    pending: &mut Vec<u8>,
+    expected: &str,
+    mut receive: impl FnMut(Duration) -> Option<SpawnEvent>,
+) -> String {
+    assert!(!expected.is_empty());
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        // Match bytes before decoding: split UTF-8 and later markers stay intact.
+        if let Some(start) = pending
+            .windows(expected.len())
+            .position(|v| v == expected.as_bytes())
+        {
+            let consumed: Vec<_> = pending.drain(..start + expected.len()).collect();
+            return String::from_utf8_lossy(&consumed).into_owned();
+        }
+        assert!(
+            Instant::now() < deadline,
+            "missing {expected:?}: {:?}",
+            String::from_utf8_lossy(pending)
+        );
+        match receive(Duration::from_millis(100)) {
+            Some(SpawnEvent::Terminal { bytes, .. }) => pending.extend_from_slice(&bytes),
+            Some(SpawnEvent::Exit { output: result, .. }) => {
+                panic!("early exit {result:?}: {:?}", String::from_utf8_lossy(pending))
+            }
+            Some(SpawnEvent::Error { error, .. }) => panic!("terminal error: {error}"),
+            _ => {}
+        }
+    }
+}
+
+#[test]
+fn collector_returns_on_match_without_polling_continuous_output_or_exit() {
+    for immediate_exit in [false, true] {
+        let mut polls = 0;
+        let output = collect_until(&mut Vec::new(), "marker", |_| {
+            polls += 1;
+            if polls == 1 {
+                return Some(SpawnEvent::Terminal {
+                    spawn_id: 0,
+                    bytes: b"marker".to_vec(),
+                });
+            }
+            assert!(
+                !immediate_exit,
+                "collector polled past marker into immediate exit"
+            );
+            assert!(polls <= 2, "collector kept polling continuous output");
+            Some(SpawnEvent::Terminal {
+                spawn_id: 0,
+                bytes: b"later marker".to_vec(),
+            })
+        });
+        assert_eq!(output, "marker");
+        assert_eq!(polls, 1);
+    }
+}
+
+#[test]
+fn collector_decodes_utf8_split_across_events() {
+    let mut chunks = [vec![0xe7], vec![0x95, 0x8c, 0xf0], vec![0x9f, 0x99, 0x82]].into_iter();
+    let output = collect_until(&mut Vec::new(), "界🙂", |_| {
+        Some(SpawnEvent::Terminal {
+            spawn_id: 0,
+            bytes: chunks.next().expect("matched before next read"),
+        })
+    });
+    assert_eq!(output, "界🙂");
+}
+
+#[test]
+fn collector_preserves_later_markers_and_partial_utf8_between_calls() {
+    let mut pending = b"first second \xe7".to_vec();
+    assert_eq!(
+        collect_until(&mut pending, "first", |_| panic!("buffered")),
+        "first"
+    );
+    assert_eq!(
+        collect_until(&mut pending, "second", |_| panic!("buffered")),
+        " second"
+    );
+    let output = collect_until(&mut pending, "界", |_| {
+        Some(SpawnEvent::Terminal {
+            spawn_id: 0,
+            bytes: vec![0x95, 0x8c],
+        })
+    });
+    assert_eq!(output, " 界");
+    assert!(pending.is_empty());
 }
 
 #[test]
@@ -367,8 +466,16 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
     for color in [true, false] {
         let session = Session::start(color);
         session.send("/");
-        let output = session.until("/quit");
+        let mut output = session.until("/quit");
+        if !output.rsplit("/quit").next().unwrap().contains("ctx") {
+            output.push_str(&session.until("ctx"));
+        }
+        let plain = dialoguer::console::strip_ansi_codes(&output);
+        assert!(plain.contains("╭─"), "{output:?}");
+        assert!(plain.contains("│ dowe> /"), "{output:?}");
+        assert!(plain.contains("╰─"), "{output:?}");
         if color {
+            assert!(output.contains("\u{1b}[36m╭─"), "{output:?}");
             assert!(output.contains("\u{1b}[32m❯"), "{output:?}");
             assert!(output.contains("\u{1b}[36m/login"), "{output:?}");
         } else {
@@ -377,6 +484,14 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
         }
         session.send("\u{7f}");
         session.until("dowe>");
+        session.child.resize_pty(6, 18).unwrap();
+        session.send("界🙂");
+        let narrow = session.until("界🙂");
+        assert!(!narrow.contains("╭─"), "{narrow:?}");
+        session.child.resize_pty(60, 120).unwrap();
+        session.send("\u{7f}\u{7f}");
+        let restored = session.until("╰─");
+        assert!(restored.contains("│ dowe>"), "{restored:?}");
         session.finish();
     }
 }

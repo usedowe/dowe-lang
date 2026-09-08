@@ -118,25 +118,43 @@ impl Prompt {
     }
 }
 
+pub(crate) fn input_outline(width: usize, label: &str) -> [String; 2] {
+    let label = truncate_str(label, width.saturating_sub(4), "");
+    [
+        format!(
+            "╭─{label}{}╮",
+            "─".repeat(width.saturating_sub(3 + measure_text_width(&label)))
+        ),
+        format!("╰{}╯", "─".repeat(width.saturating_sub(2))),
+    ]
+}
+
 pub(super) fn read_interactive_prompt(
     footer: &super::footer::Footer<'_>,
 ) -> io::Result<Option<String>> {
     let term = Term::stdout();
     let mut prompt = Prompt::default();
     let mut lines = 0;
-    let mut footer_visible = false;
+    let mut footer_rows = 0;
+    let mut anchor = term.size();
     term.write_line("")?;
     loop {
-        if footer_visible {
-            clear_footer(&term)?;
+        let size = term.size();
+        if size == anchor {
+            clear_footer(&term, footer_rows)?;
+            term.clear_line()?;
+            term.clear_last_lines(lines)?;
+        } else {
+            term.write_line("")?;
+            anchor = size;
         }
-        term.clear_line()?;
-        term.clear_last_lines(lines)?;
-        let width = usize::from(term.size().1).saturating_sub(1).max(1);
+        let width = usize::from(size.1).saturating_sub(1);
+        let outlined = width >= 16 && size.0 >= 8;
+        let below = usize::from(size.0.saturating_sub(2)).min(if outlined { 3 } else { 2 });
         let matches = prompt.matches();
         lines = matches
             .len()
-            .min(usize::from(term.size().0).saturating_sub(4));
+            .min(usize::from(size.0).saturating_sub(if outlined { 6 } else { 4 }));
         let first = if lines == 0 {
             0
         } else {
@@ -150,23 +168,54 @@ pub(super) fn read_interactive_prompt(
             };
             term.write_line(&truncate_str(&line, width, ""))?;
         }
-        let prefix = truncate_str("dowe> ", width.saturating_sub(1), "");
+        let borders = input_outline(width, "");
+        if outlined {
+            term.write_line(&style(&borders[0]).cyan().to_string())?;
+            lines += 1;
+        }
+        let prefix = truncate_str(
+            if outlined { "│ dowe> " } else { "dowe> " },
+            width.saturating_sub(1),
+            "",
+        );
         let prefix_width = measure_text_width(&prefix);
-        let (text, cursor) = prompt.viewport(width.saturating_sub(prefix_width));
-        term.write_str(&format!("{}{text}", style(prefix).dim()))?;
-        term.write_line("")?;
+        let inner = width.saturating_sub(prefix_width + if outlined { 2 } else { 0 });
+        let (text, cursor) = prompt.viewport(inner);
+        term.write_str(&format!("{}{text}", style(prefix).cyan()))?;
+        if outlined {
+            term.write_str(&format!(
+                "{}{}",
+                " ".repeat(inner.saturating_sub(measure_text_width(&text)) + 1),
+                style("│").cyan()
+            ))?;
+        }
         let footer_lines = footer.lines(width);
-        term.write_line(&footer_lines[0])?;
-        term.write_str(&footer_lines[1])?;
-        term.move_cursor_up(2)?;
+        let tail: Vec<_> = if outlined {
+            vec![
+                style(&borders[1]).cyan().to_string(),
+                footer_lines[0].clone(),
+                footer_lines[1].clone(),
+            ]
+        } else {
+            footer_lines.to_vec()
+        };
+        for line in tail.iter().take(below) {
+            term.write_line("")?;
+            term.write_str(line)?;
+        }
+        term.move_cursor_up(below)?;
         term.write_str("\r")?;
         term.move_cursor_right(prefix_width + cursor)?;
-        footer_visible = true;
+        footer_rows = below;
         let key = term.read_key()?;
         if let Some(result) = prompt.handle(key) {
-            clear_footer(&term)?;
-            term.clear_line()?;
-            term.clear_last_lines(lines)?;
+            if term.size() == anchor {
+                clear_footer(&term, footer_rows)?;
+                term.clear_line()?;
+                term.clear_last_lines(lines)?;
+            } else {
+                term.write_line("")?;
+            }
             term.write_line(&format!(
                 "{} {}",
                 style("dowe>").dim(),
@@ -177,12 +226,12 @@ pub(super) fn read_interactive_prompt(
     }
 }
 
-fn clear_footer(term: &Term) -> io::Result<()> {
-    term.move_cursor_down(1)?;
-    term.clear_line()?;
-    term.move_cursor_down(1)?;
-    term.clear_line()?;
-    term.move_cursor_up(2)
+fn clear_footer(term: &Term, rows: usize) -> io::Result<()> {
+    for _ in 0..rows {
+        term.move_cursor_down(1)?;
+        term.clear_line()?;
+    }
+    term.move_cursor_up(rows)
 }
 
 #[cfg(test)]
@@ -260,6 +309,18 @@ mod tests {
         assert_eq!(prompt.handle(Key::Char('\u{4}')), None);
         assert_eq!(prompt.handle(Key::CtrlC), Some(None));
         assert_eq!(typed("").handle(Key::Char('\u{4}')), Some(None));
+    }
+
+    #[test]
+    fn outline_bounds_unicode_labels_and_empty_viewports() {
+        for width in 16..120 {
+            for label in ["", " ⠋ Working… ", "界🙂".repeat(100).as_str()] {
+                for border in input_outline(width, label) {
+                    assert_eq!(measure_text_width(&border), width);
+                }
+            }
+        }
+        assert_eq!(typed("界🙂").viewport(0), (String::new(), 0));
     }
 
     #[test]

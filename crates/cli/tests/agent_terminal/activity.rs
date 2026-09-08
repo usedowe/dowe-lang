@@ -1,3 +1,13 @@
+impl Session {
+    // Frame assertions need the footer, not merely an earlier activity marker.
+    fn until_activity_frame(&self, expected: &str) -> String {
+        let mut output = self.until(expected);
+        output.push_str(&self.until("ctx"));
+        output.push_str(&self.until("\n"));
+        output
+    }
+}
+
 // Small terminal model: interpret cursor/erase operations, wrapping, scrolling,
 // and width reflow instead of treating repaint bytes as an append-only log.
 struct ActivityScreen {
@@ -130,7 +140,10 @@ impl ActivityScreen {
             "Activity collapsed"
         };
         let activity = visible.rfind(header).expect(&visible);
-        let input = visible.rfind("dowe> Working…").expect(&visible);
+        let input = visible.rfind("╭─").expect(&visible);
+        assert!(visible[input..].contains("Working…"), "{visible}");
+        assert!(visible[input..].contains("│ dowe>"), "{visible}");
+        assert!(visible[input..].contains("╰─"), "{visible}");
         assert!(activity < input, "{visible}");
         assert_eq!(
             visible[activity..input].lines().count(),
@@ -155,11 +168,11 @@ fn agent_activity_navigates_while_shell_runs_and_restores_prompt() {
     screen.feed(&session.until("Approve this exact operation once?"));
     assert!(screen.visible().contains("Prior assistant marker"));
     session.send("y\r");
-    screen.feed(&session.until("Ctrl+O"));
+    screen.feed(&session.until_activity_frame("Ctrl+O"));
     screen.busy(false);
     assert!(screen.visible().contains("Prior assistant marker"));
     session.send("\u{f}");
-    screen.feed(&session.until("Activity expanded"));
+    screen.feed(&session.until_activity_frame("Activity expanded"));
     screen.busy(true);
     // Expansion can naturally scroll older lines, but cannot replace their history.
     assert!(screen.text().contains("Prior assistant marker"));
@@ -169,8 +182,10 @@ fn agent_activity_navigates_while_shell_runs_and_restores_prompt() {
     session.until("older");
     session.send("\u{1b}[6~\u{f}");
     session.until("Activity collapsed");
-    session.until("Final activity answer");
-    session.until("dowe>");
+    let completed = session.until("Final activity answer");
+    if !completed.contains("dowe>") {
+        session.until("dowe>");
+    }
     let _home = session.stop();
     assert_eq!(server.join().unwrap().len(), 2);
 }
@@ -225,7 +240,7 @@ fn agent_activity_retains_pipe_output_across_live_navigation() {
     session.send("\u{1b}[6~");
     session.until("retained-pipe-marker");
     session.send("\u{f}");
-    let redraw = session.until("Activity expanded");
+    let redraw = session.until_activity_frame("Activity expanded");
     assert!(redraw.contains("retained-pipe-marker"), "{redraw}");
     session.send("\u{1b}[5~");
     session.until("older");
@@ -294,9 +309,11 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
             },
         )
         .unwrap();
-    let session = Session::start_at(home, false, &["agent"]);
+    let session = Session::start_at(home, true, &["agent"]);
     session.send("Stream fixture\r");
-    let preview = session.until("Live provider marker");
+    let preview = session.until_activity_frame("Live provider marker");
+    assert!(preview.contains("\u{1b}[36m╭─"), "{preview:?}");
+    assert!(preview.contains("\u{1b}[2mActivity"), "{preview:?}");
     let mut screen = ActivityScreen::new(120, 60);
     screen.feed(&preview);
     assert!(screen.visible().contains("dowe> Stream fixture"));
@@ -305,9 +322,21 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     session.send("not-a-queued-prompt");
     assert!(!preview.contains("[preview]"));
     assert!(!preview.contains("\u{1b}[?1049h"), "{preview}");
-    assert!(preview.contains("dowe> Working…"), "{preview}");
+    assert!(preview.contains("Working…"), "{preview}");
+    let frames = ['⠋', '⠙', '⠹', '⠸'];
+    let current = frames
+        .iter()
+        .position(|ch| screen.visible().contains(*ch))
+        .unwrap();
+    let animated = session.until_activity_frame(&format!(
+        "{} Working…",
+        frames[(current + 1) % frames.len()]
+    ));
+    screen.feed(&animated);
+    screen.busy(false);
+    assert_eq!(screen.text().matches("Activity collapsed").count(), 1);
     session.send("\u{f}");
-    let expanded = session.until("Live provider marker");
+    let expanded = session.until_activity_frame("Live provider marker");
     assert!(expanded.contains("Activity expanded"));
     screen.feed(&expanded);
     screen.busy(true);
@@ -315,19 +344,19 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     session.send("\u{1b}[5~");
     screen.feed(&session.until("older"));
     session.send("\u{1b}[6~\u{f}");
-    screen.feed(&session.until("Activity collapsed"));
+    screen.feed(&session.until_activity_frame("Activity collapsed"));
     screen.busy(false);
     // Reflow both dimensions while expanded physical row counts would be stale.
     session.send("\u{f}");
-    screen.feed(&session.until("Activity expanded"));
+    screen.feed(&session.until_activity_frame("Activity expanded"));
     session.child.resize_pty(12, 50).unwrap();
     screen.resize(50, 12);
-    screen.feed(&session.until("Activity expanded"));
+    screen.feed(&session.until_activity_frame("Activity expanded"));
     assert!(screen.text().contains("dowe> Stream fixture"));
-    assert!(screen.visible().contains("dowe> Working…"));
+    assert!(screen.visible().contains("Working…"));
     session.child.resize_pty(60, 120).unwrap();
     screen.resize(120, 60);
-    screen.feed(&session.until("Activity expanded"));
+    screen.feed(&session.until_activity_frame("Activity expanded"));
     finish.send(()).unwrap();
     let final_text = session.until("ctx");
     screen.feed(&final_text);
@@ -359,7 +388,7 @@ fn agent_activity_cancel_restores_input_without_another_request() {
     session.until("Approve this exact operation once?");
     session.send("y\r");
     let mut screen = ActivityScreen::new(120, 60);
-    screen.feed(&session.until("Ctrl+O"));
+    screen.feed(&session.until_activity_frame("Ctrl+O"));
     screen.busy(false);
     session.send("\u{3}");
     let canceled = session.until("ctx");

@@ -3,7 +3,7 @@ use std::{
     future::Future,
     io::Write,
     sync::{Arc, Mutex, MutexGuard},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crossterm::{
@@ -37,9 +37,9 @@ mod tests {
             }
         }
         state.expanded = false;
-        assert_eq!(state.frame((120, 60), true)[6], "dowe> Working…");
+        assert!(state.frame((120, 60), true)[6].contains("╭─ ⠋ Working…"));
         state.expanded = true;
-        assert_eq!(state.frame((120, 60), true)[24], "dowe> Working…");
+        assert!(state.frame((120, 60), true)[24].contains("╭─ ⠋ Working…"));
         assert!(!state.frame((120, 60), false).join("\n").contains("Working"));
     }
 
@@ -50,7 +50,7 @@ mod tests {
         {
             let mut state = activity.state();
             state.paint(&mut bytes, (120, 60), true).unwrap();
-            assert_eq!(state.owned, 9);
+            assert_eq!(state.owned, 11);
             bytes.clear();
             state.clear_owned(&mut bytes, (40, 8)).unwrap();
             assert_eq!(bytes, b"\r\n", "resize must not rewind or erase stale rows");
@@ -136,6 +136,8 @@ struct State {
     anchor: Option<(u16, u16)>,
     pending: bool,
     footer: [String; 2],
+    spinner: usize,
+    animated_at: Instant,
 }
 
 impl State {
@@ -199,7 +201,13 @@ impl State {
     fn frame(&self, (cols, rows): (u16, u16), busy: bool) -> Vec<String> {
         // Leave room for the sentinel and at least one conversation row.
         let available = rows.saturating_sub(2) as usize;
-        let chrome = if busy { 3.min(available) } else { 0 };
+        let width = cols.saturating_sub(1) as usize;
+        let outlined = width >= 16 && rows >= 8;
+        let chrome = if busy {
+            (if outlined { 5 } else { 3 }).min(available)
+        } else {
+            0
+        };
         let height = if self.expanded { 24 } else { 6 }.min(available - chrome);
         let end = self.lines.len().saturating_sub(self.offset);
         let start = end.saturating_sub(height.saturating_sub(2));
@@ -230,14 +238,28 @@ impl State {
                     .map(String::as_str)
                     .unwrap_or("")
             };
-            frame.push(text.to_string());
+            frame.push(if index == 0 || index == height - 1 {
+                dialoguer::console::style(text).dim().for_stderr().to_string()
+            } else {
+                text.to_string()
+            });
         }
         if busy {
+            let label = format!(" {} Working… ", ['⠋', '⠙', '⠹', '⠸'][self.spinner]);
+            let input = if outlined {
+                let [top, bottom] = crate::agent::prompt::input_outline(width, &label);
+                vec![top, format!("│ dowe> {}│", " ".repeat(width - 9)), bottom]
+            } else {
+                vec!["Working…".to_string()]
+            };
             frame.extend(
-                ["dowe> Working…", &self.footer[0], &self.footer[1]]
+                input
                     .into_iter()
-                    .take(chrome)
-                    .map(str::to_string),
+                    .map(|line| dialoguer::console::style(line).cyan().for_stderr().to_string())
+                    .chain(self.footer.iter().map(|line| {
+                        dialoguer::console::style(line).dim().for_stderr().to_string()
+                    }))
+                    .take(chrome),
             );
         }
         frame
@@ -327,6 +349,8 @@ impl Activity {
             anchor: None,
             pending: false,
             footer: Default::default(),
+            spinner: 0,
+            animated_at: Instant::now(),
         })));
         activity.state().enter()?;
         Ok(activity)
@@ -467,6 +491,11 @@ impl Activity {
                 }
                 _ => {}
             }
+        }
+        if state.animated_at.elapsed() >= Duration::from_millis(120) {
+            state.spinner = (state.spinner + 1) % 4;
+            state.animated_at = Instant::now();
+            state.dirty = true;
         }
         state.render()?;
         Ok(())
