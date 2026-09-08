@@ -93,15 +93,37 @@ fn draw_ios_swift_check(source: &str, native: bool) {
     let mut command = std::process::Command::new("xcrun");
     command.arg("swiftc").arg(&file);
     if native {
-        let sdk = std::process::Command::new("xcrun")
+        let sdk = match std::process::Command::new("xcrun")
             .args(["--sdk", "iphonesimulator", "--show-sdk-path"])
             .output()
-            .unwrap();
-        assert!(sdk.status.success(), "iOS simulator SDK unavailable");
+        {
+            Ok(sdk) if sdk.status.success() => {
+                let path = String::from_utf8_lossy(&sdk.stdout).trim().to_owned();
+                if path.is_empty() {
+                    eprintln!("skipping native iOS Swift typecheck: iOS simulator SDK unavailable");
+                    std::fs::remove_dir_all(&directory).unwrap();
+                    return;
+                }
+                path
+            }
+            Ok(sdk) => {
+                eprintln!(
+                    "skipping native iOS Swift typecheck: iOS simulator SDK unavailable ({})",
+                    String::from_utf8_lossy(&sdk.stderr).trim()
+                );
+                std::fs::remove_dir_all(&directory).unwrap();
+                return;
+            }
+            Err(error) => {
+                eprintln!("skipping native iOS Swift typecheck: xcrun unavailable ({error})");
+                std::fs::remove_dir_all(&directory).unwrap();
+                return;
+            }
+        };
         command.args([
             "-typecheck",
             "-sdk",
-            String::from_utf8_lossy(&sdk.stdout).trim(),
+            &sdk,
             "-target",
             "arm64-apple-ios18.0-simulator",
         ]);

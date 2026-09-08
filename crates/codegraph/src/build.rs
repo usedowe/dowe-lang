@@ -329,7 +329,7 @@ fn crate_nodes(
         crate::model::CodeGraphMode::Dowe => vec![
             PathBuf::from("crates"),
             PathBuf::from("dowe-lang/crates"),
-            PathBuf::from("dowe-lsp/crates"),
+            PathBuf::from("dowe-language-server/crates"),
         ],
         crate::model::CodeGraphMode::Project => vec![PathBuf::from("crates")],
     };
@@ -437,11 +437,11 @@ fn owner_for(relative: &str) -> Option<String> {
         parts.next();
         return parts.next().map(|name| format!("dowe-lang/crates/{name}"));
     }
-    if relative.starts_with("dowe-lsp/crates/") {
+    if relative.starts_with("dowe-language-server/crates/") {
         let mut parts = relative.split('/');
         parts.next();
         parts.next();
-        return parts.next().map(|name| format!("dowe-lsp/crates/{name}"));
+        return parts.next().map(|name| format!("dowe-language-server/crates/{name}"));
     }
     if relative.starts_with("docs/") {
         Some("docs".to_string())

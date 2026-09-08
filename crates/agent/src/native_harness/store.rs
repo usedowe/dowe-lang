@@ -142,7 +142,7 @@ impl HarnessStore {
 
     pub(super) fn lease_session(&self, id: &str) -> AgentResult<AuthFileLock> {
         let path = self.session_path(id)?.with_extension("task.lock");
-        AuthFileLock::acquire(&path).map_err(|_| {
+        AuthFileLock::acquire_nowait(&path).map_err(|_| {
             AgentError::new(
                 "session already has an active task; wait for its owner instead of replaying work",
             )

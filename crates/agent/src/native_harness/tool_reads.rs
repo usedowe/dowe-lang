@@ -40,7 +40,10 @@ fn page_size() -> usize {
 
 impl HarnessTools {
     pub fn restore_loaded_skills(&mut self, turns: &[super::HarnessTurn]) {
-        self.loaded.clear();
+        self.loaded
+            .lock()
+            .expect("loaded skills lock poisoned")
+            .clear();
         for result in turns
             .iter()
             .flat_map(|turn| &turn.results)
@@ -50,12 +53,22 @@ impl HarnessTools {
                 result.output["hash"].as_str(),
                 result.output["offset"].as_u64(),
             ) {
-                self.loaded.insert(format!("{hash}:{offset}"));
+                self.loaded
+                    .lock()
+                    .expect("loaded skills lock poisoned")
+                    .insert(format!("{hash}:{offset}"));
             }
         }
     }
 
-    pub fn execute_read(&mut self, call: &ToolCall) -> AgentResult<Value> {
+    pub fn execute_read(&self, call: &ToolCall) -> AgentResult<Value> {
+        if call.name == "get_skill" {
+            return self.execute_skill(call);
+        }
+        self.execute_parallel_read(call)
+    }
+
+    pub fn execute_parallel_read(&self, call: &ToolCall) -> AgentResult<Value> {
         match call.name.as_str() {
             "read_file" => {
                 let args: ReadArgs = serde_json::from_value(call.arguments.clone())?;
@@ -102,6 +115,12 @@ impl HarnessTools {
                     json!({"path":args.path,"matches":matches,"next_offset":page["next_offset"],"truncated":page["truncated"]}),
                 )
             }
+            _ => Err(AgentError::new("not a read-only tool")),
+        }
+    }
+
+    pub fn execute_skill(&self, call: &ToolCall) -> AgentResult<Value> {
+        match call.name.as_str() {
             "get_skill" => {
                 let args: SkillArgs = serde_json::from_value(call.arguments.clone())?;
                 if args.offset == 0 {
@@ -116,7 +135,12 @@ impl HarnessTools {
                     (unit.content, unit.hash, unit.dependencies)
                 };
                 let key = format!("{hash}:{}", args.offset);
-                if self.loaded.contains(&key) {
+                if self
+                    .loaded
+                    .lock()
+                    .map_err(|_| AgentError::new("loaded skills lock poisoned"))?
+                    .contains(&key)
+                {
                     return Ok(json!({"id":args.id,"hash":hash,"status":"already_loaded"}));
                 }
                 let lines: Vec<_> = content.lines().skip(args.offset - 1).collect();
@@ -136,12 +160,15 @@ impl HarnessTools {
                 if count == 0 && !lines.is_empty() {
                     return Err(AgentError::new("skill line exceeds output budget"));
                 }
-                self.loaded.insert(key);
+                self.loaded
+                    .lock()
+                    .map_err(|_| AgentError::new("loaded skills lock poisoned"))?
+                    .insert(key);
                 Ok(
                     json!({"id":args.id,"hash":hash,"offset":args.offset,"content":page,"dependencies":dependencies,"next_offset":args.offset + count,"truncated":count < lines.len()}),
                 )
             }
-            _ => Err(AgentError::new("not a read-only tool")),
+            _ => Err(AgentError::new("not a skill tool")),
         }
     }
 
@@ -178,6 +205,7 @@ impl HarnessTools {
         if role == HarnessRole::Execute {
             let common = json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"content":{"type":"string"}});
             tools.push(definition("write_file", "Propose a Dowe application file write. Host requires exact-change approval; sensitive files require local editing.", common, &["path", "skill", "reason", "content"]));
+            tools.push(definition("write_asset", "Propose an approved bounded binary asset write using explicit base64. The host exposes only path, size, and SHA-256 metadata.", json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"content_base64":{"type":"string","description":"Standard base64 bytes; never use this tool for text"}}), &["path", "skill", "reason", "content_base64"]));
             tools.push(definition("edit_file", "Propose one exact unique replacement in a Dowe application file. Requires approval and unchanged base.", json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"old_text":{"type":"string"},"new_text":{"type":"string"}}), &["path", "skill", "reason", "old_text", "new_text"]));
             tools.push(definition("shell", "Request a general shell command for the Dowe application. Every call requires user approval. Check for existing watchers; no hidden background processes. No credentials in arguments.", json!({"command":{"type":"string"},"cwd":{"type":"string"},"reason":{"type":"string"},"pty":{"type":"boolean","description":"Explicitly approved local interactive input; terminal transcript is not sent to the model"},"resource":{"type":"string","description":"Stable application/target ownership key for a watcher, e.g. dev:web. Inspect existing processes; do not start a duplicate."}}), &["command", "cwd", "reason"]));
         }

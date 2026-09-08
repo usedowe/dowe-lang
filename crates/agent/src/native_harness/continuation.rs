@@ -10,7 +10,7 @@ pub(super) fn provider_continuation(payload: &Value) -> Vec<Value> {
             .filter(|item| item["type"] == "reasoning" && item["encrypted_content"].is_string())
             .map(|item| {
                 let mut value =
-                    json!({"type":"reasoning","encrypted_content":item["encrypted_content"]});
+                    json!({"type":"reasoning","summary":[],"encrypted_content":item["encrypted_content"]});
                 if let Some(id) = item.get("id") {
                     value["id"] = id.clone();
                 }
@@ -97,6 +97,38 @@ pub(super) fn request_turns(turns: &[HarnessTurn], scope: &str) -> AgentResult<V
 mod tests {
     use super::*;
     use crate::native_harness::{ToolCall, ToolResult};
+
+    #[test]
+    fn openai_reasoning_continuation_includes_required_summary() {
+        let payload = json!({
+            "output": [
+                {
+                    "type": "reasoning",
+                    "id": "rs_123",
+                    "summary": [{"type": "summary_text", "text": "ignored"}],
+                    "encrypted_content": "opaque"
+                },
+                {"type": "message", "id": "msg_123"}
+            ]
+        });
+
+        assert_eq!(
+            provider_continuation(&payload),
+            vec![json!({
+                "type": "reasoning",
+                "summary": [],
+                "encrypted_content": "opaque",
+                "id": "rs_123"
+            })]
+        );
+        let legacy = json!({
+            "content": [{"type": "thinking", "thinking": "private", "signature": "opaque"}]
+        });
+        assert_eq!(
+            provider_continuation(&legacy),
+            legacy["content"].as_array().unwrap().clone()
+        );
+    }
 
     #[test]
     fn private_thinking_is_live_provider_state_not_durable_or_cross_model_context() {

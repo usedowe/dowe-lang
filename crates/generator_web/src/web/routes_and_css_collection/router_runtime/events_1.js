@@ -34,6 +34,16 @@ document.addEventListener("input", event => {
   cropperState(root).zoom = Math.max(1, Math.min(3, Number(target.value) || 1));
   cropperDraw(root);
 });
+document.addEventListener("change", event => {
+  const target = event.target;
+  const action = target?.dataset?.doweChange;
+  if (action) void runAction(action, scopeFor(target));
+});
+document.addEventListener("input", event => {
+  const target = event.target;
+  const action = target?.dataset?.doweInput;
+  if (action) void runAction(action, scopeFor(target));
+});
 document.addEventListener("keydown", event => {
   if (event.key !== "Escape") return;
   const modal = event.target?.closest?.("[data-dowe-cropper-modal]");
@@ -160,7 +170,10 @@ document.addEventListener("input", event => {
     const hidden = root?.querySelector("[data-dowe-editor-hidden]");
     const value = target.innerText || target.textContent || "";
     if (hidden) hidden.value = value;
-    if (root) highlightEditor(root);
+    if (root) {
+      doweEditorDirty(root, true);
+      highlightEditor(root);
+    }
     if (root?.dataset.doweBind && activeView)
       writePath(activeView.state, root.dataset.doweBind, value);
     return;

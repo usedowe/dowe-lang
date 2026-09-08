@@ -280,14 +280,21 @@ fn skill_records() -> &'static [SkillRecord] {
                     )),
                 },
                 SkillResource {
-                    path: "references/composition.md",
+                    path: "references/layouts.md",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/src/embedded/dowe-views/references/composition.md"
+                        "/src/embedded/dowe-views/references/layouts.md"
                     )),
                 },
                 SkillResource {
-                    path: "references/blocks/index.json",
+                    path: "references/composition.md",
+                        content: include_str!(concat!(
+                            env!("CARGO_MANIFEST_DIR"),
+                            "/src/embedded/dowe-views/references/composition.md"
+                        )),
+                    },
+                    SkillResource {
+                        path: "references/blocks/index.json",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/src/embedded/dowe-views/references/blocks/index.json"

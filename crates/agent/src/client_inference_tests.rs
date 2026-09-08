@@ -184,6 +184,50 @@ async fn thinking_and_usage_round_trip_through_http() {
 }
 
 #[test]
+fn responses_done_event_preserves_terminal_text_without_output_text_on_completion() {
+    let payload = aggregate_responses(vec![
+        (
+            Some("response.output_text.done".into()),
+            json!({"type":"response.output_text.done","text":"terminal text"}),
+        ),
+        (
+            Some("response.completed".into()),
+            json!({"type":"response.completed","response":{"status":"completed"}}),
+        ),
+    ])
+    .unwrap();
+    assert_eq!(payload["output_text"], "terminal text");
+}
+
+#[test]
+fn responses_output_item_done_preserves_function_call_without_text() {
+    let payload = aggregate_responses(vec![
+        (
+            Some("response.output_item.done".into()),
+            json!({
+                "type": "response.output_item.done",
+                "item": {
+                    "type": "function_call",
+                    "call_id": "call-read",
+                    "name": "read_file",
+                    "arguments": "{\"path\":\"main.dowe\"}"
+                }
+            }),
+        ),
+        (
+            Some("response.completed".into()),
+            json!({"type":"response.completed","response":{"status":"completed"}}),
+        ),
+    ])
+    .unwrap();
+    assert_eq!(payload["output"][0]["type"], "function_call");
+    let turn = crate::native_harness::response_turn(&payload).unwrap();
+    assert_eq!(turn.calls.len(), 1);
+    assert_eq!(turn.calls[0].name, "read_file");
+    assert_eq!(turn.calls[0].arguments["path"], "main.dowe");
+}
+
+#[test]
 fn terminal_usage_survives_stream_aggregation_without_chunk_summing() {
     let plain = aggregate_openai(vec![(
         None,

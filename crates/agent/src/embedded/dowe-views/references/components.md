@@ -1,5 +1,9 @@
 # Built-in view component catalog
 
+## Default-first output (hard rule)
+
+Generated pages and components omit theme-resolved defaults. Do not emit `variant:"outlined"`, `scheme`, `rounded`, or `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` by default. Availability and screenshot measurements are not reasons. Retain a prop only for required contract/content/accessibility/binding/behavior, an explicit user-requested non-default, or a proven exception after rendering the default-first tree.
+
 Dowe lowers this catalog from one target-neutral component tree to web, desktop, Android, and iOS.
 Use the semantic component that owns the behavior instead of rebuilding it from generic containers.
 Compiler diagnostics remain the final authority for exact props, values, binding types, and target
@@ -205,6 +209,7 @@ the `Sidebar body` and `Drawer body`.
 | --- | --- |
 | `Button` | Text action or navigation control. Use one direct quoted or complete braced text child, reference a view function with `onClick`, and bind `loading` or `disabled` to boolean Signal paths when the action is pending or invalid. Loading reuses the bundled `svg-spinners:3-dots-move` Icon; both states block duplicate actions, and `disabled:true` preserves the authored scheme and variant at `0.5` opacity across web, desktop, Android, and iOS. Labels and icons are not selectable. The full control defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
 | `IconButton` | Accessible icon-only action. Supply quoted `label` and Solar `icon`; use `onClick` or supported navigation props. Its full square surface defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
+| `Swap` | Visual swap/transition surface; its optional `variant`, `scheme`, `size`, and `rounded` props are non-default choices and are omitted by default. |
 | `ToggleTheme` | Control that switches between configured themes without duplicating theme state in page source. |
 | `SelectTheme` | Theme selector for the configured named theme catalog. |
 | `Fab` | Primary floating action with optional direct `fabAction` secondary actions. Place shell-level floating behavior in Scaffold overlays. Its primary trigger defaults to press feedback at scale `0.94`; `gesture:"none"` opts out. |
@@ -212,6 +217,22 @@ the `Sidebar body` and `Drawer body`.
 | `Record` | Recording control driven by named start, pause, resume, cancel, and confirm functions where supported. |
 | `ToggleGroup` | One-of-many or multi-choice control with direct `item` entries, a bound state Signal, and a named change function. |
 | `Pagination` | Binds the current page with `bind`, accepts a static count or numeric Signal in `total`, and uses `pageSize` plus optional `onChange`; the portable subset supports at most 25 pages. |
+
+## Compact prop coverage
+
+The following props are authoritative for less frequently used families; do not infer additional props from platform APIs:
+
+- `ToggleGroup`: `bind`, `value`, `selected`, `multiple`, `wide`, `vertical`, `disabled`, `ariaLabel`.
+- `Draw`: `scene`, `bind`, `selected`, `draw`, `drawMode`, `onLayerAdd`, `onLayerChange`, `onLayerRemove`, `onLayerSelect`, `onPointer`, `onKey`, `onMotion`.
+- `Audio`: `src`, `title` (source name; Rust may alias it as `subtitle`).
+- `Device`: `device`, `bind`, `hideControls`, `hideButtons`, `studioInspector`, `zoom`, `fit`, `src`.
+- `Camera`: `facing`, `resolution`, `onCapture`, `onError`.
+- `Record`: `name`, `url`, `disabled`, `maxDuration`.
+- `Collapsible`: `label`, `defaultOpen`, `disabled`.
+- `Countdown`: `target`, `showDays`, `showHours`, `showMinutes`, `showSeconds`, `size`, `onComplete`.
+- `Map`: `centerLat`, `centerLng`, `zoom`, `height`, `width`, `showControls`, `showScale`, `interactive`, `onLocation`, `onLocationError`, `onRoute`.
+- `Marquee`: `speed`, `pauseOnHover`, `reverse`, `orientation`, `fade`, `fadeColor`, `gap`.
+- `TypeWriter`: `typeSpeed`, `deleteSpeed`, `afterTyped`, `afterDeleted`, `repeat`.
 
 ## Forms
 
@@ -320,8 +341,8 @@ fn submit
 | `Device` | Responsive preview frame that contains exactly one Iframe and selects a supported device profile. |
 | `Canvas` | Custom drawing or pointer surface for visuals that semantic components cannot express; keep its commands and data target-neutral. |
 | `Draw` | Interactive Canvas alias for bounded pen, rectangle, and circle input; use `draw:true`, a `drawMode`, and a named pointer handler when the user must author a sketch. |
-| `Audio` | Portable audio playback for a supported static source. Use `src`, optional `subtitle` and `avatarSrc`, and `variant`/`scheme`; Dowe owns the play/pause control, 50-bar seekable waveform, remaining-time footer, and web/Android/iOS interaction parity. |
-| `Camera` | Portable still-photo capture. Use `facing`, `label`, `disabled`, and named lifecycle functions; capture results include a target-local `url`, `mimeType`, dimensions, and `facing`. |
+| `Audio` | Portable audio playback for a supported static source. Use source prop `src` and optional source prop `title`; the Rust field may alias this as `subtitle`, but Dowe source uses `title`. |
+| `Camera` | Portable still-photo capture. Supported props are `facing`, `resolution`, `onCapture`, and `onError`; capture results include a target-local `url`, `mimeType`, dimensions, and `facing`. |
 | `Microphone` | Portable audio recording. Use `label`, optional positive `maxDuration`, `disabled`, and named lifecycle functions; stop results include a target-local `url`, `mimeType`, and `durationMs`. |
 | `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, or whose bare `src` resolves to a typed string constant, Signal, or current `each` item field. Use `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. Web download and fullscreen actions are hidden by default; set `hideControls:false` to enable both. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
 | `Icon` | Bundled vector selected by quoted `name` or a string Signal, constant, or current `each` item path. Names use Solar variants, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. Web, native targets, and the Android development launcher update from the shared catalog; invalid runtime values fall back to the validated initial icon. |

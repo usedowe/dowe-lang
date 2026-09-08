@@ -27,10 +27,7 @@ fn is_known_shell_and_feedback_prop(component: BuiltinComponent, name: &str) -> 
             )
         }
         BuiltinComponent::Icon => {
-            matches!(
-                name,
-                "name" | "fill" | "stroke" | "id" | "show" | "w" | "h"
-            )
+            matches!(name, "name" | "fill" | "stroke" | "id" | "show" | "w" | "h")
         }
         BuiltinComponent::Path => matches!(name, "d" | "fill" | "fillRule" | "transform"),
         BuiltinComponent::AppBar => {

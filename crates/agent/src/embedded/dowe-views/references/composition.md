@@ -63,7 +63,7 @@ layout SiteLayout
             item label:"Services" href:"/#services"
     main
       children
-      Footer boxed:true variant:"solid" scheme:"surface"
+      Footer boxed:true
         start
           Text weight:"bold"
             "SOLTECH"
@@ -449,7 +449,7 @@ inside semantic components and place only their wrappers on the layer plane.
 ```text
 Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"primary" shadow:"xl" shadowColor:"primary" p:{ xs:5 md:8 }
   Flex direction:"column" align:"center" justify:"center" gap:4 minH:{ xs:64 md:80 }
-    Card variant:"solid" scheme:"surface" p:8 rounded:"xl" rotate:-3 animation:"scaleIn"
+    Card p:8 rounded:"xl" rotate:-3 animation:"scaleIn"
       Grid columns:1 gap:3
         Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:14 h:14
         Title size:"2xl"
@@ -460,7 +460,7 @@ Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"
     Chip variant:"solid" scheme:"primary" shadow:"md" shadowColor:"primary"
       "LIVE"
   Box position:"absolute" left:4 bottom:4
-    Card variant:"solid" scheme:"background" p:4 shadow:"lg"
+    Card scheme:"background" p:4 shadow:"lg"
       Flex align:"center" gap:3
         Title size:"2xl"
           "+32%"

@@ -989,6 +989,8 @@ fn aggregate_openai(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> 
 
 fn aggregate_responses(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> {
     let mut text = String::new();
+    let mut terminal_text = None;
+    let mut output_items = Vec::new();
     let mut final_payload = None;
     for (event_name, event) in events {
         if (event_name.as_deref() == Some("response.output_text.delta")
@@ -1000,6 +1002,14 @@ fn aggregate_responses(events: Vec<(Option<String>, Value)>) -> AgentResult<Valu
         let kind = event_name
             .as_deref()
             .or_else(|| event.get("type").and_then(Value::as_str));
+        if kind == Some("response.output_text.done") {
+            terminal_text = event.get("text").and_then(Value::as_str).map(str::to_owned);
+        }
+        if kind == Some("response.output_item.done")
+            && let Some(item) = event.get("item")
+        {
+            output_items.push(item.clone());
+        }
         if matches!(
             kind,
             Some("response.completed" | "response.incomplete" | "response.failed")
@@ -1009,13 +1019,35 @@ fn aggregate_responses(events: Vec<(Option<String>, Value)>) -> AgentResult<Valu
             final_payload = Some(event);
         }
     }
+    if let Some(terminal_text) = terminal_text {
+        text = terminal_text;
+    }
     if let Some(mut payload) = final_payload {
+        if !output_items.is_empty() {
+            let output = payload
+                .get_mut("output")
+                .and_then(Value::as_array_mut)
+                .map(|output| {
+                    for item in &output_items {
+                        if !output.iter().any(|existing| existing == item) {
+                            output.push(item.clone());
+                        }
+                    }
+                    output.clone()
+                })
+                .unwrap_or_else(|| output_items.clone());
+            payload["output"] = Value::Array(output);
+        }
         if payload.get("output_text").is_none() && !text.is_empty() {
             payload["output_text"] = Value::String(text);
         }
         return Ok(payload);
     }
-    Ok(json!({"output_text": text}))
+    let mut payload = json!({"output_text": text});
+    if !output_items.is_empty() {
+        payload["output"] = Value::Array(output_items);
+    }
+    Ok(payload)
 }
 
 fn aggregate_anthropic(events: Vec<(Option<String>, Value)>) -> AgentResult<Value> {

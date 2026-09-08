@@ -1,21 +1,26 @@
 use super::{DevRunOptions, DevTarget, DevTargetDeviceSelection, DevTargetSelection};
-use crate::dev_targets::{cancel_active_external_commands, start_external_target};
+
 use crate::dev_watch::run_watch_loop;
 use crate::error::{RuntimeError, RuntimeResult};
-use crate::logging::{LoadingStatus, log_dev_info, log_info};
-use crate::server::{DevServerTargets, RunningDevServers};
-use dowe_compiler::{CompiledProject, DevCompilerSession, ViewPlatform};
-use dowe_spawn::{ChildProcess, ProcessControl, SpawnConfig, run};
-use futures_util::stream::{FuturesUnordered, StreamExt};
-use std::collections::BTreeSet;
+use crate::logging::log_dev_info;
+use crate::server::RunningDevServers;
+use dowe_compiler::{CompiledProject, DevCompilerSession};
+use dowe_spawn::{ChildProcess, SpawnConfig};
+
 use std::fs;
-use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use tokio::time::Duration;
 
-const LOADING_TICK_INTERVAL: Duration = Duration::from_millis(120);
+mod cleanup;
+mod external_targets;
+mod startup;
+mod wait;
+
+use cleanup::{
+    cancel_external_processes, first_error, run_external_cleanups,
+    wait_cancelled_external_processes, wait_external_processes,
+};
 
 pub struct RunningDevSession {
     pub root: PathBuf,
@@ -56,103 +61,8 @@ impl ExternalTargetStartup {
     }
 }
 
-pub async fn run_dev(root: impl AsRef<Path>, selection: DevTargetSelection) -> RuntimeResult<()> {
-    run_dev_with_options(root, selection, DevRunOptions::default()).await
-}
-
-pub async fn run_studio(root: impl AsRef<Path>) -> RuntimeResult<()> {
-    let session = start_studio_session(root).await?;
-    if let Some(addr) = session.servers.views_addr {
-        log_info(format!("Studio preview available at http://{addr}"));
-    }
-    session.wait().await
-}
-
-pub async fn start_studio_session(root: impl AsRef<Path>) -> RuntimeResult<RunningDevSession> {
-    let root = root.as_ref().to_path_buf();
-    let host = super::HostOs::current();
-    let available = super::available_dev_targets_for_project(&root, host)?;
-    let mut targets = vec![DevTarget::Web];
-    if available.contains(&DevTarget::Server) {
-        targets.push(DevTarget::Server);
-    }
-    let selection = DevTargetSelection::new(targets, host)?;
-    let platforms = selected_view_platforms(&selection);
-    let compile_server = selection.contains(DevTarget::Server);
-    let (compiler, project) = std::thread::Builder::new()
-        .name("dowe-studio-compile".to_string())
-        .stack_size(64 * 1024 * 1024)
-        .spawn(move || -> RuntimeResult<_> {
-            let mut compiler =
-                DevCompilerSession::new(&root, platforms).map_err(RuntimeError::from)?;
-            let project = compiler
-                .compile_initial(compile_server)
-                .map_err(RuntimeError::from)?;
-            Ok((compiler, project))
-        })
-        .map_err(|error| RuntimeError::new(error.to_string()))?
-        .join()
-        .map_err(|_| RuntimeError::new("Studio compile thread panicked"))??;
-    let mut options = DevRunOptions::default();
-    options.studio_preview = true;
-    start_dev_session_with_compiler_options(project, selection, options, compiler).await
-}
-
-pub async fn run_dev_with_options(
-    root: impl AsRef<Path>,
-    selection: DevTargetSelection,
-    options: DevRunOptions,
-) -> RuntimeResult<()> {
-    let root = root.as_ref().to_path_buf();
-    let platforms = selected_view_platforms(&selection);
-    let compile_server =
-        selection.contains(DevTarget::Server) || selection.contains(DevTarget::Desktop);
-    let defer_apps = selection.contains(DevTarget::Desktop)
-        || selection.contains(DevTarget::Android)
-        || selection.contains(DevTarget::Ios);
-    let (compiler, mut project) = std::thread::Builder::new()
-        .name("dowe-initial-compile".to_string())
-        .stack_size(64 * 1024 * 1024)
-        .spawn(move || -> RuntimeResult<_> {
-            let mut compiler =
-                DevCompilerSession::new(&root, platforms).map_err(RuntimeError::from)?;
-            let project = if defer_apps {
-                compiler.compile_initial_web(compile_server)
-            } else {
-                compiler.compile_initial(compile_server)
-            }
-            .map_err(RuntimeError::from)?;
-            Ok((compiler, project))
-        })
-        .map_err(|error| RuntimeError::new(error.to_string()))?
-        .join()
-        .map_err(|_| RuntimeError::new("initial compile thread panicked"))??;
-    if !selection.contains(DevTarget::Server) {
-        project.server_inspector = None;
-        let inspector_root = project.root.join(".dowe/server");
-        if inspector_root.exists() {
-            fs::remove_dir_all(&inspector_root)
-                .map_err(|error| RuntimeError::new(error.to_string()))?;
-        }
-    }
-    let session =
-        start_dev_session_with_compiler_options(project, selection, options, compiler).await?;
-    session.wait().await
-}
-
-pub(crate) fn selected_view_platforms(selection: &DevTargetSelection) -> Vec<ViewPlatform> {
-    selection
-        .targets()
-        .iter()
-        .filter_map(|target| match target {
-            DevTarget::Server => None,
-            DevTarget::Web => Some(ViewPlatform::Web),
-            DevTarget::Desktop => Some(ViewPlatform::Desktop),
-            DevTarget::Android => Some(ViewPlatform::Android),
-            DevTarget::Ios => Some(ViewPlatform::Ios),
-        })
-        .collect()
-}
+pub(crate) use startup::{dev_server_targets, selected_view_platforms};
+pub use startup::{run_dev, run_dev_with_options, run_studio, start_studio_session};
 
 pub async fn start_dev_session(
     project: CompiledProject,
@@ -249,7 +159,7 @@ async fn start_dev_session_with_compiler_options(
         .views_addr
         .map(|addr| format!("http://{addr}"));
 
-    match start_external_targets(
+    match external_targets::start(
         project.clone(),
         &selection,
         desktop_origin,
@@ -271,123 +181,6 @@ async fn start_dev_session_with_compiler_options(
     }
 
     Ok(session)
-}
-
-pub(crate) fn dev_server_targets(selection: &DevTargetSelection) -> DevServerTargets {
-    DevServerTargets {
-        backend: selection.contains(DevTarget::Server),
-        views: selection.contains(DevTarget::Web)
-            || selection.contains(DevTarget::Desktop)
-            || selection.contains(DevTarget::Android)
-            || selection.contains(DevTarget::Ios),
-        desktop: selection.contains(DevTarget::Desktop),
-    }
-}
-
-async fn start_external_targets(
-    project: Arc<CompiledProject>,
-    selection: &DevTargetSelection,
-    desktop_origin: Option<String>,
-    dev_origin: Option<String>,
-    devices: &DevTargetDeviceSelection,
-) -> Result<ExternalTargetStartup, (RuntimeError, ExternalTargetStartup)> {
-    let targets = [DevTarget::Desktop, DevTarget::Android, DevTarget::Ios]
-        .into_iter()
-        .filter(|target| selection.contains(*target))
-        .collect::<Vec<_>>();
-    if targets.is_empty() {
-        return Ok(ExternalTargetStartup::default());
-    }
-
-    let mut pending = targets.iter().copied().collect::<BTreeSet<_>>();
-    let loading_status = LoadingStatus::start(loading_status_message(pending.iter().copied()));
-    let animate_loading = loading_status.is_interactive();
-    let mut tasks = FuturesUnordered::new();
-    for target in targets {
-        let project = project.clone();
-        let desktop_origin = desktop_origin.clone();
-        let dev_origin = dev_origin.clone();
-        let devices = devices.clone();
-        tasks.push(tokio::task::spawn_blocking(move || {
-            (
-                target,
-                start_external_target(
-                    &project,
-                    target,
-                    desktop_origin.as_deref(),
-                    dev_origin.as_deref(),
-                    &devices,
-                ),
-            )
-        }));
-    }
-
-    let mut loading_tick = Box::pin(tokio::time::sleep(LOADING_TICK_INTERVAL));
-    let mut shutdown_signal = Box::pin(tokio::signal::ctrl_c());
-    let mut startup = ExternalTargetStartup::default();
-    let mut first_error = None;
-    let mut cancelling = false;
-
-    while !tasks.is_empty() {
-        tokio::select! {
-            signal = &mut shutdown_signal, if !cancelling => {
-                cancel_active_external_commands();
-                if let Err(error) = signal
-                    && first_error.is_none()
-                {
-                    first_error = Some(RuntimeError::from(error));
-                } else if first_error.is_none() {
-                    first_error = Some(RuntimeError::new("development session cancelled"));
-                }
-                cancelling = true;
-            }
-            result = tasks.next() => {
-                let Some(result) = result else {
-                    break;
-                };
-                match result {
-                    Ok((target, Ok(target_startup))) => {
-                        pending.remove(&target);
-                        startup.extend(target_startup);
-                        if !pending.is_empty() {
-                            loading_status.update(loading_status_message(pending.iter().copied()));
-                        }
-                    }
-                    Ok((target, Err(error))) => {
-                        pending.remove(&target);
-                        if !pending.is_empty() {
-                            loading_status.update(loading_status_message(pending.iter().copied()));
-                        }
-                        record_external_startup_failure(
-                            &mut first_error,
-                            &mut cancelling,
-                            error,
-                            cancel_active_external_commands,
-                        );
-                    }
-                    Err(error) => {
-                        record_external_startup_failure(
-                            &mut first_error,
-                            &mut cancelling,
-                            RuntimeError::from(error),
-                            cancel_active_external_commands,
-                        );
-                    }
-                }
-            }
-            _ = &mut loading_tick, if animate_loading && !pending.is_empty() => {
-                loading_status.tick();
-                loading_tick.as_mut().reset(tokio::time::Instant::now() + LOADING_TICK_INTERVAL);
-            }
-        }
-    }
-
-    loading_status.finish();
-    if let Some(error) = first_error {
-        Err((error, startup))
-    } else {
-        Ok(startup)
-    }
 }
 
 pub(crate) fn record_external_startup_failure(
@@ -477,9 +270,9 @@ impl RunningDevSession {
             let external_result = wait_cancelled_external_processes(&mut external_processes);
             first_error(server_result, external_result)
         } else if !external_processes.is_empty() {
-            wait_external_processes_with_signal(external_processes, external_cleanups).await
+            wait::processes_with_signal(external_processes, external_cleanups).await
         } else if !external_cleanups.is_empty() {
-            wait_external_cleanups_with_signal(external_cleanups).await
+            wait::cleanups_with_signal(external_cleanups).await
         } else {
             wait_external_processes(&mut external_processes)
         };
@@ -495,112 +288,4 @@ impl RunningDevSession {
 
         result
     }
-}
-
-fn first_error(first: RuntimeResult<()>, second: RuntimeResult<()>) -> RuntimeResult<()> {
-    match (first, second) {
-        (Err(error), _) => Err(error),
-        (_, Err(error)) => Err(error),
-        _ => Ok(()),
-    }
-}
-
-fn cancel_external_processes(processes: &[RunningExternalProcess]) {
-    for process in processes {
-        let _ = process.child.cancel();
-    }
-}
-
-fn cancel_external_controls(controls: &[ProcessControl]) {
-    for control in controls {
-        let _ = control.cancel();
-    }
-}
-
-fn run_external_cleanups(cleanups: &[RunningExternalCleanup]) {
-    for cleanup in cleanups {
-        let _target = cleanup.target;
-        let _ = run(cleanup.config.clone());
-    }
-}
-
-async fn wait_external_processes_with_signal(
-    mut processes: Vec<RunningExternalProcess>,
-    cleanups: Vec<RunningExternalCleanup>,
-) -> RuntimeResult<()> {
-    let controls = processes
-        .iter()
-        .map(|process| process.child.controller())
-        .collect::<Vec<_>>();
-    let mut wait_handle =
-        tokio::task::spawn_blocking(move || wait_external_processes(&mut processes));
-    let result = tokio::select! {
-        signal = tokio::signal::ctrl_c() => {
-            signal.map_err(RuntimeError::from)?;
-            cancel_external_controls(&controls);
-            wait_handle.await.map_err(RuntimeError::from)?
-        }
-        result = &mut wait_handle => result.map_err(RuntimeError::from)?,
-    };
-    run_external_cleanups(&cleanups);
-    result
-}
-
-async fn wait_external_cleanups_with_signal(
-    cleanups: Vec<RunningExternalCleanup>,
-) -> RuntimeResult<()> {
-    tokio::signal::ctrl_c().await.map_err(RuntimeError::from)?;
-    run_external_cleanups(&cleanups);
-    Ok(())
-}
-
-fn wait_external_processes(processes: &mut Vec<RunningExternalProcess>) -> RuntimeResult<()> {
-    let mut first_error = None;
-    let processes = std::mem::take(processes);
-
-    for process in processes {
-        match process.child.wait() {
-            Ok(output) if output.success => {}
-            Ok(output) => {
-                if first_error.is_none() {
-                    first_error = Some(RuntimeError::new(format!(
-                        "{} exited with status {:?}",
-                        process.target.label(),
-                        output.exit_code
-                    )));
-                }
-            }
-            Err(error) => {
-                if first_error.is_none() {
-                    first_error = Some(RuntimeError::new(format!(
-                        "{} failed: {error}",
-                        process.target.label()
-                    )));
-                }
-            }
-        }
-    }
-
-    if let Some(error) = first_error {
-        Err(error)
-    } else {
-        Ok(())
-    }
-}
-
-fn wait_cancelled_external_processes(
-    processes: &mut Vec<RunningExternalProcess>,
-) -> RuntimeResult<()> {
-    let mut first_error = None;
-    for process in std::mem::take(processes) {
-        if let Err(error) = process.child.wait()
-            && first_error.is_none()
-        {
-            first_error = Some(RuntimeError::new(format!(
-                "{} failed to stop: {error}",
-                process.target.label()
-            )));
-        }
-    }
-    first_error.map_or(Ok(()), Err)
 }

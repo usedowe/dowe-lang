@@ -1,6 +1,8 @@
 use crate::{AgentError, AgentResult};
 use std::fs::{self, File, OpenOptions};
 use std::path::Path;
+use std::thread;
+use std::time::{Duration, Instant};
 
 pub(super) struct DataLock {
     _file: File,
@@ -8,6 +10,14 @@ pub(super) struct DataLock {
 
 impl DataLock {
     pub fn acquire(path: &Path) -> AgentResult<Self> {
+        Self::acquire_with_retry(path, true)
+    }
+
+    pub fn acquire_nowait(path: &Path) -> AgentResult<Self> {
+        Self::acquire_with_retry(path, false)
+    }
+
+    fn acquire_with_retry(path: &Path, retry: bool) -> AgentResult<Self> {
         if fs::symlink_metadata(path).is_ok_and(|metadata| metadata.file_type().is_symlink()) {
             return Err(AgentError::new("agent lock cannot be a symlink"));
         }
@@ -23,10 +33,20 @@ impl DataLock {
             options.mode(0o600);
         }
         let file = options.open(path)?;
-        file.try_lock().map_err(|_| {
-            AgentError::new("agent data is busy; retry without replaying operations")
-        })?;
-        Ok(Self { _file: file })
+        let deadline = Instant::now() + Duration::from_millis(100);
+        loop {
+            match file.try_lock() {
+                Ok(()) => return Ok(Self { _file: file }),
+                Err(std::fs::TryLockError::WouldBlock) if retry && Instant::now() < deadline => {
+                    thread::sleep(Duration::from_millis(5));
+                }
+                Err(_) => {
+                    return Err(AgentError::new(
+                        "agent data is busy; retry without replaying operations",
+                    ));
+                }
+            }
+        }
     }
 }
 

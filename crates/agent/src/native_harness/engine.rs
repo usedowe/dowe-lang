@@ -114,6 +114,9 @@ pub async fn run_harness_turn(
     let usage_start = session.events.len();
     let mut usage = AgentUsageTotals::default();
     let mut charged_estimate = 0_u64;
+    // Retrying is safe only before any tool result exists; otherwise a
+    // repeated request could duplicate an observed side effect.
+    let mut has_tool_result = false;
     for round in 0..config.max_rounds {
         if exhausted(config, &usage, charged_estimate, started) {
             emit(
@@ -191,31 +194,46 @@ pub async fn run_harness_turn(
             host,
             json!({"event":"request_prepared","requestType":"conversation","requestId":request.request_id,"session":session.id,"role":role,"provider":selected.provider,"model":selected.model,"round":round,"estimated_input_tokens":estimate}),
         )?;
-        let remaining = config
-            .duration_seconds
-            .saturating_sub(started.elapsed().as_secs());
-        let response = match tokio::time::timeout(
-            Duration::from_secs(remaining),
-            transport::send(host, &request, store, session),
-        )
-        .await
-        {
-            Ok(Ok(response)) => response,
-            failed => {
-                let error = match failed {
-                    Ok(Err(error)) => error,
-                    _ => AgentError::new("task duration exhausted during provider request"),
-                };
-                if round == 0 {
-                    session.turns.pop();
+        let mut retry = 0_u8;
+        let response = loop {
+            let remaining =
+                Duration::from_secs(config.duration_seconds).saturating_sub(started.elapsed());
+            let result =
+                tokio::time::timeout(remaining, transport::send(host, &request, store, session))
+                    .await;
+            match result {
+                Ok(Ok(response)) => break response,
+                Ok(Err(error))
+                    if !has_tool_result
+                        && retry < transport::MAX_TRANSIENT_RETRIES
+                        && let Some(classification) =
+                            transport::transient_failure_classification(&error) =>
+                {
+                    retry += 1;
+                    // Persist only a stable classification, never provider error text.
+                    emit(
+                        store,
+                        session,
+                        host,
+                        json!({"event":"provider_retry","requestType":"conversation","requestId":request.request_id,"provider":selected.provider,"model":selected.model,"attempt":retry + 1,"maxAttempts":transport::MAX_TRANSIENT_RETRIES + 1,"classification":classification}),
+                    )?;
                 }
-                emit(
-                    store,
-                    session,
-                    host,
-                    json!({"event":"error","requestType":"conversation","requestId":request.request_id,"model":selected.model,"payload":{"error":{"code":"provider_request_failed","message":tools.redactor.text(&error.to_string())}}}),
-                )?;
-                return Err(AgentError::new(tools.redactor.text(&error.to_string())));
+                failed => {
+                    let error = match failed {
+                        Ok(Err(error)) => error,
+                        _ => AgentError::new("task duration exhausted during provider request"),
+                    };
+                    if round == 0 {
+                        session.turns.pop();
+                    }
+                    emit(
+                        store,
+                        session,
+                        host,
+                        json!({"event":"error","requestType":"conversation","requestId":request.request_id,"model":selected.model,"payload":{"error":{"code":"provider_request_failed","message":tools.redactor.text(&error.to_string())}}}),
+                    )?;
+                    return Err(AgentError::new(tools.redactor.text(&error.to_string())));
+                }
             }
         };
         if response.request_id != request.request_id
@@ -235,12 +253,22 @@ pub async fn run_harness_turn(
         if !turn.continuation.is_empty() || turn.calls.iter().any(|call| call.signature.is_some()) {
             turn.continuation_scope = Some(format!("{}/{}", selected.provider, selected.model));
         }
+        // Learn asset encodings before projecting the response, but retain the
+        // original calls for execution so approval/apply still receives the
+        // exact decoded bytes.
+        let calls = turn.calls.clone();
+        for call in &calls {
+            if call.name == "write_asset"
+                && let Some(content) = call.arguments["content_base64"].as_str()
+            {
+                tools.redactor.add(content);
+            }
+        }
         let continuation = std::mem::take(&mut turn.continuation);
         let mut projection = serde_json::to_value(&turn)?;
         tools.redactor.value(&mut projection);
         turn = serde_json::from_value(projection)?;
         turn.continuation = continuation;
-        let calls = turn.calls.clone();
         let text = turn.message.as_ref().map(|message| &message.content);
         emit(
             store,
@@ -258,37 +286,61 @@ pub async fn run_harness_turn(
         let mut results = Vec::new();
         let mut approval_required = false;
         let mut canceled = false;
-        for call in calls {
-            let output = if canceled || approval_required {
-                Ok(
-                    json!({"status":"not_executed","reason":if canceled {"task_canceled"} else {"approval_required"}}),
-                )
-            } else if exhausted(config, &usage, charged_estimate, started) {
-                Ok(json!({"status":"not_executed","reason":"budget_exhausted"}))
+        let mut call_index = 0;
+        while call_index < calls.len() {
+            let batch_start = call_index;
+            let mut batch_end = batch_start + 1;
+            while batch_end < calls.len()
+                && is_parallel_read(&calls[batch_end])
+                && is_parallel_read(&calls[batch_end - 1])
+            {
+                batch_end += 1;
+            }
+            let parallel_outputs = if batch_end - batch_start > 1
+                && !canceled
+                && !approval_required
+                && !exhausted(config, &usage, charged_estimate, started)
+            {
+                Some(execute_read_batch(&tools, &calls[batch_start..batch_end]))
             } else {
-                match tools.prepare(&call, role) {
-                    Ok(Some(approval)) => {
-                        emit(
-                            store,
-                            session,
-                            host,
-                            json!({"event":"approval_required","approval":approval}),
-                        )?;
-                        match host.approve(&approval).await? {
-                            Some(true) if exhausted(config, &usage, charged_estimate, started) => {
-                                tools.reject(approval)?;
-                                Ok(json!({"status":"not_executed","reason":"budget_exhausted"}))
-                            }
-                            Some(true) => {
-                                session.interrupted = true;
-                                emit(
-                                    store,
-                                    session,
-                                    host,
-                                    json!({"event":"operation_started","call_id":call.id,"approval_id":approval.id}),
-                                )?;
-                                let output = if call.name == "shell" {
-                                    tokio::time::timeout(
+                None
+            };
+            for index in batch_start..batch_end {
+                let call = calls[index].clone();
+                let output = if let Some(outputs) = &parallel_outputs {
+                    outputs[index - batch_start].clone()
+                } else if canceled || approval_required {
+                    Ok(
+                        json!({"status":"not_executed","reason":if canceled {"task_canceled"} else {"approval_required"}}),
+                    )
+                } else if exhausted(config, &usage, charged_estimate, started) {
+                    Ok(json!({"status":"not_executed","reason":"budget_exhausted"}))
+                } else {
+                    match tools.prepare(&call, role) {
+                        Ok(Some(approval)) => {
+                            emit(
+                                store,
+                                session,
+                                host,
+                                json!({"event":"approval_required","approval":approval}),
+                            )?;
+                            match host.approve(&approval).await? {
+                                Some(true)
+                                    if exhausted(config, &usage, charged_estimate, started) =>
+                                {
+                                    tools.reject(approval)?;
+                                    Ok(json!({"status":"not_executed","reason":"budget_exhausted"}))
+                                }
+                                Some(true) => {
+                                    session.interrupted = true;
+                                    emit(
+                                        store,
+                                        session,
+                                        host,
+                                        json!({"event":"operation_started","call_id":call.id,"approval_id":approval.id}),
+                                    )?;
+                                    let output = if call.name == "shell" {
+                                        tokio::time::timeout(
                                         Duration::from_secs(
                                             config
                                                 .duration_seconds
@@ -309,56 +361,61 @@ pub async fn run_harness_turn(
                                             "task duration exhausted; shell cancellation requested",
                                         ))
                                     })
-                                } else {
-                                    tools.apply_write(approval)
-                                };
-                                emit(
-                                    store,
-                                    session,
-                                    host,
-                                    json!({"event":"operation_finished","call_id":call.id,"result":output.as_ref().ok(),"failed":output.is_err()}),
-                                )?;
-                                output
-                            }
-                            decision => {
-                                tools.reject(approval)?;
-                                if decision.is_none() {
-                                    approval_required = true;
+                                    } else {
+                                        tools.apply_write(approval)
+                                    };
+                                    emit(
+                                        store,
+                                        session,
+                                        host,
+                                        json!({"event":"operation_finished","call_id":call.id,"result":output.as_ref().ok(),"failed":output.is_err()}),
+                                    )?;
+                                    output
                                 }
-                                Ok(
-                                    json!({"status":"not_executed","reason":if decision.is_none() {"approval_required"} else {"user_rejected"}}),
-                                )
+                                decision => {
+                                    tools.reject(approval)?;
+                                    if decision.is_none() {
+                                        approval_required = true;
+                                    }
+                                    Ok(
+                                        json!({"status":"not_executed","reason":if decision.is_none() {"approval_required"} else {"user_rejected"}}),
+                                    )
+                                }
                             }
                         }
+                        Ok(None) if is_parallel_read(&call) => tools.execute_read(&call),
+                        Ok(None) => tools.execute_skill(&call),
+                        Err(error) => Err(error),
                     }
-                    Ok(None) => tools.execute_read(&call),
-                    Err(error) => Err(error),
-                }
-            };
-            let failed = output.is_err();
-            let mut output = output
-                .unwrap_or_else(|error| json!({"error":tools.redactor.text(&error.to_string())}));
-            canceled |= output["canceled"] == true;
-            tools.redactor.value(&mut output);
-            output = super::privacy::bounded_value(output, config.max_output_bytes);
-            let result = ToolResult {
-                id: call.id,
-                name: call.name,
-                failed,
-                output,
-            };
-            emit(
-                store,
-                session,
-                host,
-                json!({"event":"tool_result","result":result}),
-            )?;
-            results.push(result);
+                };
+                let failed = output.is_err();
+                let mut output = output.unwrap_or_else(
+                    |error| json!({"error":tools.redactor.text(&error.to_string())}),
+                );
+                canceled |= output["canceled"] == true;
+                tools.redactor.value(&mut output);
+                output = super::privacy::bounded_value(output, config.max_output_bytes);
+                let result = ToolResult {
+                    id: call.id,
+                    name: call.name,
+                    failed,
+                    output,
+                };
+                emit(
+                    store,
+                    session,
+                    host,
+                    json!({"event":"tool_result","result":result}),
+                )?;
+                results.push(result);
+            }
+            call_index = batch_end;
         }
         session.turns.push(HarnessTurn {
             results,
             ..Default::default()
         });
+        has_tool_result = true;
         session.interrupted = false;
         store.save_session(session)?;
         if canceled {
@@ -381,6 +438,27 @@ pub async fn run_harness_turn(
         json!({"event":"budget_exhausted","reason":"tool_rounds"}),
     )?;
     Ok(HarnessOutcome::BudgetExhausted)
+}
+
+fn is_parallel_read(call: &super::ToolCall) -> bool {
+    matches!(call.name.as_str(), "read_file" | "list_files" | "search")
+}
+
+fn execute_read_batch(tools: &HarnessTools, calls: &[super::ToolCall]) -> Vec<AgentResult<Value>> {
+    std::thread::scope(|scope| {
+        let workers = calls
+            .iter()
+            .map(|call| scope.spawn(|| tools.execute_parallel_read(call)))
+            .collect::<Vec<_>>();
+        workers
+            .into_iter()
+            .map(|worker| {
+                worker
+                    .join()
+                    .unwrap_or_else(|_| Err(AgentError::new("read tool worker panicked")))
+            })
+            .collect()
+    })
 }
 
 fn exhausted(

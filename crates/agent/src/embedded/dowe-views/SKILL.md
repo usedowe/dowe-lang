@@ -6,6 +6,10 @@ description: Use for Dowe view modules, routes, layouts, pages, UI composition, 
 
 # Dowe views authoring
 
+## Default-first output (hard rule)
+
+Generated pages and components omit theme-resolved defaults. Never emit `variant:"outlined"`, `scheme`, `rounded`, or padding props (`p`, `px`, `py`, `pt`, `pb`, `pl`, `pr`) by default. Availability and screenshot measurements are not reasons to emit them. Keep a prop only for required contract/content/accessibility/binding/behavior, an explicit user-requested non-default, or a proven exception after rendering the default-first tree. This rule applies to source, examples, and reusable fragments; reconcile older examples before copying them.
+
 Dowe views are target-neutral source compiled to web, desktop, Android, and iOS outputs. For calls from a View to a native host, load the companion `dowe-native-ipc` skill; do not model native calls as HTTP requests or duplicate platform logic in View source. Reuse one route graph and one source behavior model across targets.
 Keep every new frontend module under `views/`; only root `main.dowe` and `theme.dowe` sit outside it.
 

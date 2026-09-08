@@ -50,6 +50,9 @@ function cropperSetPreview(root, value) {
     alt = root.dataset.doweAlt || "Image preview",
     existing = trigger?.querySelector(".image-cropper-image");
   if (!trigger) return;
+  const hasValue = !!value;
+  const change = root.querySelector("[data-dowe-cropper-change]");
+  if (change) change.hidden=!hasValue;
   if (value) {
     const image = existing || document.createElement("img");
     image.className = "image-cropper-image";
@@ -64,18 +67,20 @@ function cropperSetPreview(root, value) {
 }
 function renderCropper(root, state, scope) {
   if (!root) return;
-  const bound = root.dataset.doweBind;
-  const boundValue = bound && state ? readPath(state, bound, scope) : undefined;
+  const bound = root.dataset.doweBind,
+    hasBinding=!!bound&&!!state;
+  const boundValue = hasBinding ? readPath(state, bound, scope) : undefined;
   const value =
     boundValue == null || String(boundValue) === ""
       ? root.dataset.doweCropperValue || ""
       : String(boundValue);
   if (root.__doweAppliedValue === undefined) root.__doweAppliedValue = value;
+  const current = cropperState(root), appliedValue = root.__doweAppliedValue;
+  if (current.editing&&value===appliedValue) return;
   root.dataset.doweCropperValue = value;
   const hidden = root.querySelector("[data-dowe-cropper-hidden]");
   if (hidden) hidden.value = value;
   cropperSetPreview(root, value);
-  const current = cropperState(root);
   if (value && current.source !== value && !current.image) {
     current.source = value;
     const image = new Image();
@@ -166,6 +171,29 @@ function cropperCancel(root) {
   const state = cropperState(root);
   state.dragging = false;
 }
+function cropperClampOffset(root) {
+  const state = cropperState(root);
+  if (!state.image) return;
+  const frame = cropperFrame(root),
+    scale = state.baseScale * state.zoom,
+    width = state.image.naturalWidth * scale,
+    height = state.image.naturalHeight * scale;
+  state.offsetX = Math.max(frame.width - width, Math.min(0, state.offsetX));
+  state.offsetY = Math.max(frame.height - height, Math.min(0, state.offsetY));
+}
+function cropperCommit(root, value) {
+  if (!root) return;
+  root.dataset.doweCropperValue = value;
+  root.__doweAppliedValue = value;
+  const hidden = root.querySelector("[data-dowe-cropper-hidden]");
+  if (hidden) hidden.value = value;
+  cropperSetPreview(root, value);
+  cropperCancel(root);
+  if (root.dataset.doweBind && activeView) {
+    writePath(activeView.state, root.dataset.doweBind, value);
+    renderReactive(activeView);
+  }
+}
 function cropperApply(root) {
   const state = cropperState(root),
     stage = root.querySelector("[data-dowe-cropper-stage]"),
@@ -225,16 +253,7 @@ function cropperApply(root) {
       outputHeight
     );
     const value = output.toDataURL(state.mime || "image/png");
-    root.dataset.doweCropperValue = value;
-    root.__doweAppliedValue = value;
-    const hidden = root.querySelector("[data-dowe-cropper-hidden]");
-    if (hidden) hidden.value = value;
-    cropperSetPreview(root, value);
-    cropperCancel(root);
-    if (root.dataset.doweBind && activeView) {
-      writePath(activeView.state, root.dataset.doweBind, value);
-      renderReactive(activeView);
-    }
+    cropperCommit(root, value)
   } catch (error) {
     cropperError(root, "The image cannot be cropped in this browser.");
   }

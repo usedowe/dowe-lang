@@ -1,6 +1,5 @@
 use super::*;
 use dowe_agent::{NativeRequestEvent, native_harness::RedactedTextStream};
-use std::io::Write;
 
 impl TerminalHost<'_> {
     pub(super) async fn send_provider(
@@ -17,11 +16,13 @@ impl TerminalHost<'_> {
         } else {
             None
         };
+        let activity_pause = self.activity.suspend()?;
         let auth =
             super::super::chat::ensure_provider_auth(&self.auth, provider, key, !self.json_output)
                 .await
                 .map_err(|error| AgentError::new(error.to_string()))?
                 .ok_or_else(|| AgentError::new("provider authentication canceled"))?;
+        drop(activity_pause);
         let mut redactor = Redactor::for_project(&self.root);
         for secret in self.secrets() {
             redactor.add(&secret);
@@ -38,16 +39,13 @@ impl TerminalHost<'_> {
             .and_then(|metadata| metadata.get("harness_role"))
             .map(String::as_str)
             .unwrap_or("execute");
-        let mut showed_preview = false;
         let response = dowe_agent::send_native_agent_request_observed(&native, &auth, &mut |event| {
             match event {
                 NativeRequestEvent::TextDelta { text } => if let Some(text) = preview.push(text) {
                     if self.json_output {
                         println!("{}", json!({"event":"response_delta","role":role,"provider":provider,"model":request.model,"text":text}));
-                    } else if crate::menus::is_interactive_terminal() {
-                        if !showed_preview { eprintln!("[preview]"); showed_preview = true; }
-                        eprint!("{}", super::super::markdown::terminal_text(&text));
-                        std::io::stderr().flush().map_err(|e| AgentError::new(e.to_string()))?;
+                    } else if self.activity.enabled() {
+                        self.activity.stream("preview", &text);
                     }
                 },
                 NativeRequestEvent::RequestStarted { attempt } | NativeRequestEvent::RequestAttempt { attempt, .. } => {
@@ -66,9 +64,6 @@ impl TerminalHost<'_> {
             }
             Ok(())
         }).await;
-        if showed_preview {
-            eprintln!();
-        }
         for event in &mut self.request_events {
             event["accounted"] = json!(true);
             {

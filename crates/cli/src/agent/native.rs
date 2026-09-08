@@ -297,6 +297,19 @@ impl NativeSession {
         usage: &mut AgentUsageTotals,
     ) -> AgentResult<HarnessOutcome> {
         let auth = AgentAuthStore::from_default_path()?;
+        let activity = activity::Activity::new(json_output)?;
+        if activity.enabled() {
+            let width = crossterm::terminal::size()?.0.saturating_sub(1) as usize;
+            activity.footer(
+                super::footer::Footer {
+                    provider: Some(&active.provider),
+                    model: Some(&active.model),
+                    thinking: active.thinking,
+                    usage,
+                }
+                .lines(width),
+            );
+        }
         let mut host = TerminalHost {
             auth,
             api_key,
@@ -305,18 +318,20 @@ impl NativeSession {
             usage,
             root: self.store.root().to_path_buf(),
             request_events: Vec::new(),
+            activity: activity.clone(),
         };
         let explicit = explicit.then_some(&active);
         if prompt == "/compact" {
-            compact_harness_session(
-                &self.store,
-                &mut self.session,
-                &self.config,
-                &active,
-                explicit,
-                &mut host,
-            )
-            .await?;
+            activity
+                .drive(compact_harness_session(
+                    &self.store,
+                    &mut self.session,
+                    &self.config,
+                    &active,
+                    explicit,
+                    &mut host,
+                ))
+                .await?;
             return Ok(HarnessOutcome::Completed);
         }
         if matches!(prompt, "/plan" | "/review") {
@@ -329,20 +344,21 @@ impl NativeSession {
         } else {
             (HarnessRole::Execute, prompt)
         };
-        run_harness_turn(
-            &self.store,
-            &mut self.session,
-            &self.config,
-            dowe_agent::native_harness::HarnessTask {
-                role,
-                active: &active,
-                explicit,
-                prompt,
-                image_paths: &self.image_paths,
-            },
-            &mut host,
-        )
-        .await
+        activity
+            .drive(run_harness_turn(
+                &self.store,
+                &mut self.session,
+                &self.config,
+                dowe_agent::native_harness::HarnessTask {
+                    role,
+                    active: &active,
+                    explicit,
+                    prompt,
+                    image_paths: &self.image_paths,
+                },
+                &mut host,
+            ))
+            .await
     }
 }
 
@@ -354,8 +370,10 @@ struct TerminalHost<'a> {
     usage: &'a mut AgentUsageTotals,
     root: std::path::PathBuf,
     request_events: Vec<Value>,
+    activity: activity::Activity,
 }
 
+mod activity;
 mod capabilities;
 mod lifecycle;
 mod provider;
@@ -375,7 +393,7 @@ impl HarnessHost for TerminalHost<'_> {
                 "JSON mode cannot open an interactive terminal",
             ));
         }
-        terminal::open()
+        terminal::open(self.activity.suspend()?)
     }
     async fn send(&mut self, request: &AgentRequest) -> AgentResult<AgentServerResponse> {
         self.send_provider(request).await
@@ -389,6 +407,7 @@ impl HarnessHost for TerminalHost<'_> {
         if self.json_output || !crate::menus::is_interactive_terminal() {
             return Ok(None);
         }
+        let _activity = self.activity.suspend()?;
         let mut redactor = Redactor::default();
         for secret in self.secrets() {
             redactor.add(&secret);
@@ -412,6 +431,26 @@ impl HarnessHost for TerminalHost<'_> {
             println!("{event}");
             return Ok(());
         }
+        if self.activity.event(event) {
+            return Ok(());
+        }
+        if !matches!(
+            event["event"].as_str(),
+            Some(
+                "response_received"
+                    | "request_prepared"
+                    | "context_compacted"
+                    | "shell_output"
+                    | "tool_result"
+                    | "task_canceled"
+                    | "memory_candidates"
+                    | "memory_candidate_error"
+                    | "budget_exhausted"
+            )
+        ) {
+            return Ok(());
+        }
+        let _activity = self.activity.transcript()?;
         match event["event"].as_str() {
             Some("response_received") => {
                 if let Some(text) = event["text"].as_str() {
@@ -438,7 +477,9 @@ impl HarnessHost for TerminalHost<'_> {
                 }
             }
             Some("tool_result") => {
-                eprintln!("{}", super::markdown::terminal_text(&event.to_string()))
+                for line in activity::tool_result(event) {
+                    eprintln!("{line}");
+                }
             }
             Some("task_canceled") => eprintln!("Task canceled; no further provider request."),
             Some("memory_candidates") => eprintln!(

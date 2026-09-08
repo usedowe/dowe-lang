@@ -1,10 +1,13 @@
 use super::{HarnessConfig, HarnessRole, Redactor, ToolCall, digest, identifier, skill_unit};
 use crate::{AgentError, AgentResult, AgentToolDefinition, AgentToolFunction};
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Mutex;
 
 #[derive(Debug, Serialize)]
 pub struct Approval {
@@ -16,6 +19,10 @@ pub struct Approval {
     before: Option<String>,
     #[serde(skip)]
     after: Option<String>,
+    #[serde(skip)]
+    before_bytes: Option<Vec<u8>>,
+    #[serde(skip)]
+    after_bytes: Option<Vec<u8>>,
 }
 
 pub struct HarnessTools {
@@ -24,7 +31,7 @@ pub struct HarnessTools {
     config: HarnessConfig,
     supervisor: Option<dowe_runtime::SupervisorCommand>,
     pending: BTreeMap<String, String>,
-    loaded: BTreeSet<String>,
+    loaded: Mutex<BTreeSet<String>>,
     pub redactor: Redactor,
 }
 
@@ -42,6 +49,14 @@ struct EditArgs {
     path: String,
     old_text: String,
     new_text: String,
+    skill: String,
+    reason: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AssetArgs {
+    path: String,
+    content_base64: String,
     skill: String,
     reason: String,
 }
@@ -70,7 +85,7 @@ impl HarnessTools {
             config,
             supervisor: None,
             pending: BTreeMap::new(),
-            loaded: BTreeSet::new(),
+            loaded: Mutex::new(BTreeSet::new()),
         })
     }
 
@@ -191,14 +206,61 @@ impl HarnessTools {
     }
 
     pub fn prepare(&mut self, call: &ToolCall, role: HarnessRole) -> AgentResult<Option<Approval>> {
-        if matches!(call.name.as_str(), "write_file" | "edit_file" | "shell")
-            && role != HarnessRole::Execute
+        if matches!(
+            call.name.as_str(),
+            "write_file" | "edit_file" | "write_asset" | "shell"
+        ) && role != HarnessRole::Execute
         {
             return Err(AgentError::new(
                 "this role cannot mutate files or execute shell",
             ));
         }
         let (before, after, details) = match call.name.as_str() {
+            "write_asset" => {
+                let args: AssetArgs = serde_json::from_value(call.arguments.clone())?;
+                skill_unit(&args.skill)?;
+                let resolved = self.path(&args.path)?;
+                self.asset_scope(&resolved, &args.skill)?;
+                if args.reason.trim().is_empty() || args.reason.len() > 1024 {
+                    return Err(AgentError::new("write reason exceeds limits"));
+                }
+                const MAX_ASSET_BYTES: usize = 8 * 1024 * 1024;
+                let bytes = BASE64
+                    .decode(args.content_base64.as_bytes())
+                    .map_err(|_| AgentError::new("write_asset content must be valid base64"))?;
+                if bytes.len() > MAX_ASSET_BYTES {
+                    return Err(AgentError::new("write_asset content exceeds 8 MiB"));
+                }
+                // The model supplied encoding must not survive into persisted turns or replay payloads.
+                self.redactor.add(&args.content_base64);
+                let before_bytes = if resolved.exists() {
+                    let bytes = fs::read(&resolved)?;
+                    if bytes.len() > MAX_ASSET_BYTES {
+                        return Err(AgentError::new("write_asset base exceeds 8 MiB"));
+                    }
+                    Some(bytes)
+                } else {
+                    None
+                };
+                let mut public_call = call.clone();
+                public_call.arguments["content_base64"] = json!("[omitted: binary asset]");
+                let approval = Approval {
+                    id: identifier(),
+                    session: self.session.clone(),
+                    call: public_call,
+                    details: json!({"path":args.path,"reason":args.reason,"skill":args.skill,
+                        "byte_count":bytes.len(),"sha256":digest(&bytes),
+                        "before_byte_count":before_bytes.as_ref().map(Vec::len),
+                        "before_sha256":before_bytes.as_ref().map(|value| digest(value))}),
+                    before: None,
+                    after: None,
+                    before_bytes,
+                    after_bytes: Some(bytes),
+                };
+                self.pending
+                    .insert(approval.id.clone(), Self::approval_digest(&approval)?);
+                return Ok(Some(approval));
+            }
             "write_file" | "edit_file" => {
                 let (path, skill, reason, content, edit) = if call.name == "write_file" {
                     let args: WriteArgs = serde_json::from_value(call.arguments.clone())?;
@@ -302,6 +364,8 @@ impl HarnessTools {
             details,
             before,
             after,
+            before_bytes: None,
+            after_bytes: None,
         };
         self.pending
             .insert(approval.id.clone(), Self::approval_digest(&approval)?);
@@ -336,6 +400,9 @@ impl HarnessTools {
 
     pub fn apply_write(&mut self, approval: Approval) -> AgentResult<Value> {
         self.consume(&approval)?;
+        if approval.call.name == "write_asset" {
+            return self.apply_asset(approval);
+        }
         let path = self.path(
             approval.call.arguments["path"]
                 .as_str()
@@ -394,6 +461,55 @@ impl HarnessTools {
         .into_iter()
         .filter_map(|name| std::env::var(name).ok().map(|value| (name.into(), value)))
         .collect()
+    }
+
+    fn apply_asset(&self, approval: Approval) -> AgentResult<Value> {
+        let path = self.path(
+            approval.call.arguments["path"]
+                .as_str()
+                .ok_or_else(|| AgentError::new("write path missing"))?,
+        )?;
+        let actual = path.exists().then(|| fs::read(&path)).transpose()?;
+        if actual != approval.before_bytes {
+            return Err(AgentError::new("write_asset base changed after approval"));
+        }
+        let bytes = approval
+            .after_bytes
+            .ok_or_else(|| AgentError::new("not an asset approval"))?;
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let temporary = path.with_file_name(format!(".dowe-agent-{}.tmp", identifier()));
+        use std::io::Write;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
+        if let Ok(metadata) = fs::metadata(&path) {
+            file.set_permissions(metadata.permissions())?;
+        }
+        file.write_all(&bytes)?;
+        file.sync_all()?;
+        if path.exists().then(|| fs::read(&path)).transpose()? != actual {
+            fs::remove_file(&temporary)?;
+            return Err(AgentError::new("write_asset base changed during apply"));
+        }
+        fs::rename(temporary, &path)?;
+        Ok(
+            json!({"status":"applied","path":approval.call.arguments["path"],"byte_count":bytes.len(),"sha256":digest(&bytes)}),
+        )
+    }
+
+    fn asset_scope(&self, path: &Path, skill: &str) -> AgentResult<()> {
+        let relative = path
+            .strip_prefix(&self.root)
+            .map_err(|_| AgentError::new("foreign path"))?;
+        if !skill.starts_with("views/") || !relative.starts_with(Path::new("public/assets")) {
+            return Err(AgentError::new(
+                "asset purpose is not covered by the selected Dowe skill",
+            ));
+        }
+        Ok(())
     }
 
     fn write_scope(&self, path: &Path, skill: &str) -> AgentResult<()> {

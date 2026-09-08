@@ -3,12 +3,17 @@ use dowe_agent::native_harness::{HarnessTerminal, TerminalInput};
 use dowe_agent::{AgentError, AgentResult};
 use std::io::Write;
 
-pub(super) fn open() -> AgentResult<Box<dyn HarnessTerminal>> {
+pub(super) fn open(
+    activity: super::activity::terminal::Suspension,
+) -> AgentResult<Box<dyn HarnessTerminal>> {
     if !crate::menus::is_interactive_terminal() {
         return Err(AgentError::new("interactive shell requires a TTY"));
     }
     crossterm::terminal::enable_raw_mode().map_err(|error| AgentError::new(error.to_string()))?;
-    let terminal = Terminal { initial: true };
+    let terminal = Terminal {
+        initial: true,
+        _activity: activity,
+    };
     for _ in 0..64 {
         if !crossterm::event::poll(std::time::Duration::ZERO)
             .map_err(|e| AgentError::new(e.to_string()))?
@@ -22,6 +27,7 @@ pub(super) fn open() -> AgentResult<Box<dyn HarnessTerminal>> {
 
 struct Terminal {
     initial: bool,
+    _activity: super::activity::terminal::Suspension,
 }
 impl Drop for Terminal {
     fn drop(&mut self) {

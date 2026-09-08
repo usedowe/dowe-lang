@@ -365,6 +365,9 @@ function updatePin(root, write = false, focusIndex = null) {
       ]?.focus()
     );
 }
+function doweEditorDirty(root, dirty) {
+  if (root) root.dataset.doweEditorDirty = dirty === false ? "false" : "true";
+}
 function editorText(content) {
   return content.innerText || content.textContent || "";
 }

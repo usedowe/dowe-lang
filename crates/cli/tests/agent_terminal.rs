@@ -8,6 +8,7 @@ use tempfile::TempDir;
 
 include!("agent_terminal/conversation.rs");
 include!("agent_terminal/native_harness.rs");
+include!("agent_terminal/activity.rs");
 include!("agent_terminal/capabilities.rs");
 include!("agent_terminal/supervision.rs");
 

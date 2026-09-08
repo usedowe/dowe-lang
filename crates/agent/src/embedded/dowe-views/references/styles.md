@@ -1,5 +1,9 @@
 # Style and design-system reference
 
+## Default-first output (hard rule)
+
+Generated pages and components omit theme-resolved defaults. Do not emit `variant:"outlined"`, `scheme`, `rounded`, or `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr` by default. Availability and screenshot measurements are not reasons. Retain a prop only for required contract/content/accessibility/binding/behavior, an explicit user-requested non-default, or a proven exception after rendering the default-first tree. Examples must teach omission, not restatement of defaults.
+
 Dowe validates every design token and style prop while lowering source; invalid tokens, props,
 breakpoints, and dynamic design expressions fail before target generation. Configure repeated
 visual props once in `theme.dowe` `design`; write a local visual prop only when one instance
@@ -410,7 +414,7 @@ those semantic components.
 ```text
 Box position:"relative" cover:"/assets/images/hero.jpg" minH:"vh-32" rounded:"xl"
   Box position:"absolute" top:{ xs:4 md:6 } right:{ xs:4 md:6 }
-    Card variant:"solid" scheme:"surface" p:4
+    Card p:4
       Text weight:"bold"
         "Audience proof"
 ```
@@ -541,13 +545,13 @@ page chipMotionPage
     set selected value:"mobile"
 
   Flex direction:"column" align:"center" gap:3 animation:"fadeIn"
-    Chip variant:"solid" scheme:"warning" size:"sm" rotate:-7 transition:"spring" gesture:"lift" onClick:selectMobile
+    Chip scheme:"warning" size:"sm" rotate:-7 transition:"spring" gesture:"lift" onClick:selectMobile
       "Mobile Apps"
-    Chip variant:"solid" scheme:"muted" size:"sm" rotate:4 transition:"smooth" gesture:"press"
+    Chip scheme:"muted" size:"sm" rotate:4 transition:"smooth" gesture:"press"
       "Web Sites"
-    Chip variant:"solid" scheme:"success" size:"sm" rotate:-4 transition:"quick" gesture:"grow"
+    Chip scheme:"success" size:"sm" rotate:-4 transition:"quick" gesture:"grow"
       "Software"
-    Chip variant:"solid" scheme:"muted" size:"sm" rotate:8 gesture:"tilt"
+    Chip scheme:"muted" size:"sm" rotate:8 gesture:"tilt"
       "UI/UX Design"
 ```
 

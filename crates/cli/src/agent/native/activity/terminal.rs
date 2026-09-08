@@ -1,0 +1,497 @@
+use std::{
+    collections::VecDeque,
+    future::Future,
+    io::Write,
+    sync::{Arc, Mutex, MutexGuard},
+    time::Duration,
+};
+
+use crossterm::{
+    cursor,
+    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
+    execute, terminal,
+};
+use dowe_agent::{AgentError, AgentResult};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inline_frames_bound_cells_and_keep_busy_chrome_below_activity() {
+        let activity = Activity::new(true).unwrap();
+        activity.footer(["fixture directory".into(), "fixture model".into()]);
+        activity.push(["界".repeat(200)]);
+        let mut state = activity.state();
+        for cols in [0, 1, 2, 8, 80, 120] {
+            for rows in [0, 1, 2, 3, 5, 12, 60] {
+                for expanded in [false, true] {
+                    state.expanded = expanded;
+                    let frame = state.frame((cols, rows), true);
+                    assert!(frame.len() <= rows.saturating_sub(2) as usize);
+                    assert!(frame.iter().all(|line| {
+                        dialoguer::console::measure_text_width(line)
+                            <= cols.saturating_sub(1) as usize
+                    }));
+                }
+            }
+        }
+        state.expanded = false;
+        assert_eq!(state.frame((120, 60), true)[6], "dowe> Working…");
+        state.expanded = true;
+        assert_eq!(state.frame((120, 60), true)[24], "dowe> Working…");
+        assert!(!state.frame((120, 60), false).join("\n").contains("Working"));
+    }
+
+    #[test]
+    fn inline_ownership_is_invalidated_on_resize_and_snapshot_includes_last_push() {
+        let activity = Activity::new(true).unwrap();
+        let mut bytes = Vec::new();
+        {
+            let mut state = activity.state();
+            state.paint(&mut bytes, (120, 60), true).unwrap();
+            assert_eq!(state.owned, 9);
+            bytes.clear();
+            state.clear_owned(&mut bytes, (40, 8)).unwrap();
+            assert_eq!(bytes, b"\r\n", "resize must not rewind or erase stale rows");
+            assert_eq!(state.owned, 0);
+        }
+        activity.push(["last synchronous result".into()]);
+        let mut state = activity.state();
+        // A ready future can finish before the next timer repaint.
+        assert!(state.pending);
+        bytes.clear();
+        state.paint(&mut bytes, (120, 60), false).unwrap();
+        let snapshot = String::from_utf8(bytes).unwrap();
+        assert!(snapshot.contains("last synchronous result"));
+        assert!(!snapshot.contains("Working"));
+        assert_eq!(state.owned, 0);
+    }
+
+    #[test]
+    fn stream_chunks_coalesce_without_control_injection_or_unbounded_lines() {
+        let activity = Activity::new(true).unwrap();
+        activity.stream("preview", "first");
+        activity.stream("preview", " second\n");
+        activity.stream("stdout", "\u{1b}[2Jpipe");
+        {
+            let state = activity.state();
+            assert_eq!(state.lines.len(), 2);
+            assert_eq!(state.lines[0], "preview: first second");
+            assert!(!state.lines[1].chars().any(char::is_control));
+        }
+        activity.stream("stdout", &"x".repeat(100_000));
+        let state = activity.state();
+        assert_eq!(state.lines.len(), 2);
+        assert!(state.lines[1].len() <= super::super::LINE_BYTES);
+        assert!(state.omitted);
+    }
+
+    #[test]
+    fn retention_is_bounded_and_nested_suspensions_relinquish_input() {
+        let activity = Activity::new(true).unwrap();
+        for _ in 0..200 {
+            activity.push(["x".repeat(2000)]);
+        }
+        {
+            let state = activity.state();
+            assert_eq!(state.lines.len(), 128);
+            assert!(state.omitted);
+            assert!(
+                state
+                    .lines
+                    .iter()
+                    .all(|line| line.len() <= super::super::LINE_BYTES)
+            );
+        }
+        let first = activity.suspend().unwrap();
+        let second = activity.suspend().unwrap();
+        assert_eq!(activity.state().suspended, 2);
+        assert!(!activity.state().active);
+        drop(second);
+        assert_eq!(activity.state().suspended, 1);
+        drop(first);
+        assert_eq!(activity.state().suspended, 0);
+        assert!(!activity.state().active);
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct Activity(Arc<Mutex<State>>);
+
+struct State {
+    enabled: bool,
+    active: bool,
+    suspended: usize,
+    expanded: bool,
+    offset: usize,
+    older: bool,
+    omitted: bool,
+    dirty: bool,
+    lines: VecDeque<String>,
+    stream: String,
+    stream_open: bool,
+    error: Option<String>,
+    owned: u16,
+    anchor: Option<(u16, u16)>,
+    pending: bool,
+    footer: [String; 2],
+}
+
+impl State {
+    fn enter(&mut self) -> std::io::Result<()> {
+        if self.enabled && self.suspended == 0 && !self.active {
+            terminal::enable_raw_mode()?;
+            self.active = true;
+            execute!(std::io::stderr(), cursor::Hide)?;
+            self.dirty = true;
+        }
+        Ok(())
+    }
+
+    fn leave(&mut self) -> std::io::Result<()> {
+        if !self.active {
+            return Ok(());
+        }
+        self.active = false;
+        let output =
+            terminal::size().and_then(|size| self.clear_owned(&mut std::io::stderr().lock(), size));
+        let cursor = execute!(std::io::stderr(), cursor::Show);
+        let raw = terminal::disable_raw_mode();
+        output.and(cursor).and(raw)
+    }
+
+    fn render(&mut self) -> std::io::Result<()> {
+        if !self.active || !self.dirty {
+            return Ok(());
+        }
+        let mut frame = Vec::new();
+        self.paint(&mut frame, terminal::size()?, true)?;
+        let mut output = std::io::stderr().lock();
+        output.write_all(&frame)?;
+        output.flush()?;
+        self.dirty = false;
+        Ok(())
+    }
+
+    // The cursor rests on a blank sentinel below the owned rows, never inside
+    // transcript text. Reflow invalidates physical row counts: abandon, don't erase.
+    fn clear_owned(&mut self, output: &mut impl Write, size: (u16, u16)) -> std::io::Result<()> {
+        if self.anchor != Some(size) {
+            self.owned = 0;
+            self.anchor = None;
+        }
+        if self.owned > 0 {
+            execute!(output, cursor::MoveUp(self.owned))?;
+            for _ in 0..self.owned {
+                execute!(output, terminal::Clear(terminal::ClearType::CurrentLine))?;
+                write!(output, "\r\n")?;
+            }
+            execute!(output, cursor::MoveUp(self.owned))?;
+        } else if self.anchor.is_none() {
+            write!(output, "\r\n")?;
+        }
+        self.owned = 0;
+        self.anchor = Some(size);
+        Ok(())
+    }
+
+    fn frame(&self, (cols, rows): (u16, u16), busy: bool) -> Vec<String> {
+        // Leave room for the sentinel and at least one conversation row.
+        let available = rows.saturating_sub(2) as usize;
+        let chrome = if busy { 3.min(available) } else { 0 };
+        let height = if self.expanded { 24 } else { 6 }.min(available - chrome);
+        let end = self.lines.len().saturating_sub(self.offset);
+        let start = end.saturating_sub(height.saturating_sub(2));
+        let header = format!(
+            "Activity {} · {}{}",
+            if self.expanded {
+                "expanded"
+            } else {
+                "collapsed"
+            },
+            if self.older { "older" } else { "latest" },
+            if self.omitted {
+                " · some activity omitted"
+            } else {
+                ""
+            }
+        );
+        let mut frame = Vec::new();
+        for index in 0..height {
+            let text = if index == 0 {
+                header.as_str()
+            } else if index == height - 1 {
+                "Ctrl+O expand/collapse · PgUp/PgDn scroll · Ctrl+C cancel"
+            } else {
+                self.lines
+                    .get(start + index - 1)
+                    .filter(|_| start + index - 1 < end)
+                    .map(String::as_str)
+                    .unwrap_or("")
+            };
+            frame.push(text.to_string());
+        }
+        if busy {
+            frame.extend(
+                ["dowe> Working…", &self.footer[0], &self.footer[1]]
+                    .into_iter()
+                    .take(chrome)
+                    .map(str::to_string),
+            );
+        }
+        frame
+            .into_iter()
+            .map(|text| {
+                dialoguer::console::truncate_str(
+                    &text,
+                    cols.saturating_sub(1) as usize,
+                    if cols > 1 { "…" } else { "" },
+                )
+                .into_owned()
+            })
+            .collect()
+    }
+
+    fn paint(
+        &mut self,
+        output: &mut impl Write,
+        size: (u16, u16),
+        busy: bool,
+    ) -> std::io::Result<()> {
+        self.clear_owned(output, size)?;
+        let frame = self.frame(size, busy);
+        for text in &frame {
+            write!(output, "{text}\r\n")?;
+        }
+        self.owned = if busy { frame.len() as u16 } else { 0 };
+        Ok(())
+    }
+
+    fn snapshot(&mut self) -> std::io::Result<()> {
+        if self.active && self.pending {
+            // Final receipts must not disappear merely because the live view was scrolled.
+            self.offset = 0;
+            self.older = false;
+            let mut frame = Vec::new();
+            self.paint(&mut frame, terminal::size()?, false)?;
+            let mut output = std::io::stderr().lock();
+            output.write_all(&frame)?;
+            output.flush()?;
+            self.pending = false;
+            self.anchor = None;
+        }
+        Ok(())
+    }
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        let _ = self.snapshot();
+        let _ = self.leave();
+    }
+}
+
+pub(crate) struct Suspension(Activity);
+
+impl Drop for Suspension {
+    fn drop(&mut self) {
+        let mut state = self.0.state();
+        state.suspended -= 1;
+        if let Err(error) = state.enter() {
+            state.error = Some(error.to_string());
+        }
+    }
+}
+
+impl Activity {
+    fn state(&self) -> MutexGuard<'_, State> {
+        self.0.lock().unwrap_or_else(|error| error.into_inner())
+    }
+
+    pub(crate) fn new(json: bool) -> AgentResult<Self> {
+        let activity = Self(Arc::new(Mutex::new(State {
+            enabled: !json && crate::menus::is_interactive_terminal(),
+            active: false,
+            suspended: 0,
+            expanded: false,
+            offset: 0,
+            older: false,
+            omitted: false,
+            dirty: true,
+            lines: VecDeque::new(),
+            stream: String::new(),
+            stream_open: false,
+            error: None,
+            owned: 0,
+            anchor: None,
+            pending: false,
+            footer: Default::default(),
+        })));
+        activity.state().enter()?;
+        Ok(activity)
+    }
+
+    pub(crate) fn footer(&self, lines: [String; 2]) {
+        let mut state = self.state();
+        state.footer =
+            lines.map(|line| super::safe_text(&dialoguer::console::strip_ansi_codes(&line), 2048));
+        state.dirty = true;
+    }
+
+    pub(crate) fn transcript(&self) -> AgentResult<Suspension> {
+        self.state().snapshot()?;
+        self.suspend()
+    }
+
+    fn finalize(&self) -> AgentResult<()> {
+        let mut state = self.state();
+        let snapshot = state.snapshot();
+        let cleanup = state.leave();
+        snapshot.and(cleanup)?;
+        Ok(())
+    }
+
+    pub(crate) fn enabled(&self) -> bool {
+        self.state().enabled
+    }
+
+    pub(crate) fn suspend(&self) -> AgentResult<Suspension> {
+        let mut state = self.state();
+        state.leave()?;
+        state.anchor = None;
+        state.suspended += 1;
+        Ok(Suspension(self.clone()))
+    }
+
+    pub(crate) fn push(&self, lines: impl IntoIterator<Item = String>) {
+        let mut state = self.state();
+        state.stream_open = false;
+        for line in lines.into_iter().take(128) {
+            if state.lines.len() == 128 {
+                state.lines.pop_front();
+                state.omitted = true;
+            }
+            state
+                .lines
+                .push_back(super::safe_text(&line, super::LINE_BYTES));
+            if state.offset > 0 {
+                state.offset = (state.offset + 1).min(state.lines.len().saturating_sub(1));
+            }
+        }
+        state.pending = true;
+        state.dirty = true;
+    }
+
+    pub(crate) fn stream(&self, label: &str, text: &str) {
+        let mut state = self.state();
+        let label = super::safe_text(label, 80);
+        if state.stream != label {
+            state.stream = label;
+            state.stream_open = false;
+        }
+        for ch in text.chars().take(32768) {
+            if ch == '\n' {
+                state.stream_open = false;
+                continue;
+            }
+            if ch.is_control() || matches!(ch, '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}') {
+                continue;
+            }
+            if !state.stream_open {
+                if state.lines.len() == 128 {
+                    state.lines.pop_front();
+                    state.omitted = true;
+                }
+                let prefix = format!("{}: ", state.stream);
+                state.lines.push_back(prefix);
+                state.stream_open = true;
+                if state.offset > 0 {
+                    state.offset = (state.offset + 1).min(state.lines.len().saturating_sub(1));
+                }
+            }
+            let line = state.lines.back_mut().expect("open stream line");
+            if line.len() + ch.len_utf8() <= super::LINE_BYTES {
+                line.push(ch);
+            } else {
+                state.omitted = true;
+            }
+        }
+        state.omitted |= text.len() > 32768;
+        state.pending = true;
+        state.dirty = true;
+    }
+
+    fn tick(&self) -> AgentResult<()> {
+        let mut state = self.state();
+        if let Some(error) = state.error.take() {
+            return Err(AgentError::new(error));
+        }
+        if !state.active {
+            return Ok(());
+        }
+        for _ in 0..64 {
+            if !event::poll(Duration::ZERO)? {
+                break;
+            }
+            match event::read()? {
+                Event::Resize(..) => {
+                    state.anchor = None;
+                    state.owned = 0;
+                    state.dirty = true;
+                }
+                Event::Key(key) if key.kind != KeyEventKind::Release => {
+                    match key.code {
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Err(AgentError::new(
+                                "Agent task canceled; interrupted operations are not replayed",
+                            ));
+                        }
+                        KeyCode::Char('o') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            state.expanded = !state.expanded;
+                            state.offset = 0;
+                            state.older = false;
+                        }
+                        KeyCode::PageUp => {
+                            state.offset =
+                                (state.offset + 4).min(state.lines.len().saturating_sub(1));
+                            state.older = true;
+                        }
+                        KeyCode::PageDown => {
+                            state.offset = state.offset.saturating_sub(4);
+                            state.older = state.offset > 0;
+                        }
+                        _ => continue,
+                    }
+                    state.dirty = true;
+                }
+                _ => {}
+            }
+        }
+        state.render()?;
+        Ok(())
+    }
+
+    pub(crate) async fn drive<T>(
+        &self,
+        work: impl Future<Output = AgentResult<T>>,
+    ) -> AgentResult<T> {
+        tokio::pin!(work);
+        let mut ticker = tokio::time::interval(Duration::from_millis(40));
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        loop {
+            tokio::select! {
+                result = &mut work => {
+                    let cleanup = self.finalize();
+                    return result.and_then(|value| cleanup.map(|()| value));
+                }
+                _ = ticker.tick() => {
+                    if let Err(error) = self.tick() {
+                        let _ = self.finalize();
+                        return Err(error);
+                    }
+                }
+            }
+        }
+    }
+}

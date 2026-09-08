@@ -1,5 +1,45 @@
 use super::*;
 
+pub(super) const MAX_TRANSIENT_RETRIES: u8 = 2;
+
+/// AgentError is string-based, so retry only a small explicit set of
+/// transport signatures. Timeout, budget, protocol, validation,
+/// authentication, and configuration errors are never retried.
+pub(super) fn transient_failure_classification(error: &AgentError) -> Option<&'static str> {
+    let message = error.to_string().to_ascii_lowercase();
+    if [
+        "timeout",
+        "timed out",
+        "deadline",
+        "budget",
+        "protocol",
+        "validation",
+        "invalid",
+        "auth",
+        "unauthorized",
+        "forbidden",
+        "credential",
+        "configuration",
+        "config",
+    ]
+    .iter()
+    .any(|term| message.contains(term))
+    {
+        return None;
+    }
+    [
+        ("connection reset", "connection_reset"),
+        ("connection refused", "connection_refused"),
+        ("connection aborted", "connection_aborted"),
+        ("broken pipe", "broken_pipe"),
+        ("network unreachable", "network_unreachable"),
+        ("temporarily unavailable", "temporarily_unavailable"),
+        ("service unavailable", "service_unavailable"),
+    ]
+    .iter()
+    .find_map(|(term, classification)| message.contains(term).then_some(*classification))
+}
+
 pub(super) async fn send(
     host: &mut impl HarnessHost,
     request: &AgentRequest,

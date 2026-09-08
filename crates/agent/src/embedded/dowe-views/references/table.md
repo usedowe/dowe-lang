@@ -52,13 +52,9 @@ page InvoiceTablePage
         "Invoice ledger"
       Table:
         data:invoices
-        variant:"solid"
-        scheme:"surface"
-        size:"md"
         striped:true
         bordered:true
         dividers:true
-        rounded:"md"
         column field:"invoice" label:"Invoice" width:"0.9fr"
         column field:"customer" label:"Customer" width:"1.5fr"
         column field:"issued" label:"Issued" width:"1fr"
@@ -178,12 +174,8 @@ page MembersPage
       Table:
         show:{ when:loadState lt:1 }
         data:members
-        variant:"solid"
-        scheme:"surface"
-        size:"md"
         striped:true
         dividers:true
-        rounded:"md"
         emptyTitle:"No members found"
         emptyDescription:"Invite a teammate or change the search to see results."
         column field:"name" label:"Name" width:"1.4fr"
@@ -221,7 +213,7 @@ Flex direction:"column" gap:0
   each in:members as:member key:member.id
     Grid columns:{ xs:3 md:7 } gap:3 align:"center" p:3 border:1 borderColor:"muted"
       Flex align:"center" gap:3
-        Avatar alt:"Team member avatar" variant:"solid" scheme:"muted" size:"md"
+        Avatar alt:"Team member avatar" scheme:"muted"
         Grid columns:1 gap:0
           Text size:"sm" weight:"bold"
             "{member.name}"

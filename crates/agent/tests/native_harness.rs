@@ -24,6 +24,25 @@ fn catalog_is_granular_versioned_and_preserves_public_bundles() {
     let selected = select_units("ajusta el tema", &["theme.dowe".into()]);
     assert!(selected.contains(&"theme".to_string()));
     assert!(!selected.iter().any(|id| id.starts_with("server/")));
+    let views = dowe_agent::get_public_skill("views", true).unwrap();
+    assert!(views.content.contains("references/layouts.md"));
+    assert!(views.content.contains("Swap"));
+    assert!(views.content.contains("Default-first output"));
+    assert!(views.content.contains("`px`"));
+    for forbidden_example in [
+        "data:invoices\n        variant:\"solid\"",
+        "data:members\n        variant:\"solid\"",
+        "Avatar alt:\"Team member avatar\" variant:\"solid\"",
+        "Footer boxed:true variant:\"solid\" scheme:\"surface\"",
+        "Card variant:\"solid\" scheme:\"surface\" p:4",
+        "Chip variant:\"solid\" scheme:\"warning\" size:\"sm\"",
+    ] {
+        assert!(
+            !views.content.contains(forbidden_example),
+            "default-emitting example remains: {forbidden_example}"
+        );
+    }
+    assert!(dowe_agent::get_public_skill_resource("views", "references/layouts.md").is_ok());
     for bundle in dowe_agent::public_skills() {
         assert!(
             !dowe_agent::get_public_skill(&bundle.id, true)
