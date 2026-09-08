@@ -1,6 +1,6 @@
 use dialoguer::{Confirm, Input, Select, theme::ColorfulTheme};
 use dowe_agent::native_harness::{
-    Approval, HarnessConfig, HarnessHost, HarnessOutcome, HarnessRole, HarnessSession,
+    Approval, ClarificationQuestion, HarnessConfig, HarnessHost, HarnessOutcome, HarnessRole, HarnessSession,
     HarnessStore, ModelSelection, Redactor, compact_harness_session, run_harness_turn,
 };
 use dowe_agent::{
@@ -8,12 +8,35 @@ use dowe_agent::{
 };
 use serde_json::{Value, json};
 
+#[derive(Default)]
+struct PromptQueue {
+    entries: std::collections::VecDeque<QueuedPrompt>,
+}
+struct QueuedPrompt { text: String, enqueued_at: std::time::Instant }
+impl PromptQueue {
+    const LIMIT: usize = 8;
+    fn enqueue(&mut self, text: &str) -> AgentResult<usize> {
+        let text = text.trim();
+        if text.is_empty() || text.len() > 8192 { return Err(AgentError::new("queued prompt must be 1..8192 bytes")); }
+        if self.entries.len() >= Self::LIMIT { return Err(AgentError::new("prompt queue is full (limit 8)")); }
+        self.entries.push_back(QueuedPrompt { text: text.into(), enqueued_at: std::time::Instant::now() });
+        Ok(self.entries.len())
+    }
+    fn clear(&mut self) { self.entries.clear(); }
+    fn len(&self) -> usize { self.entries.len() }
+    fn summary(&self) -> Vec<serde_json::Value> {
+        self.entries.iter().enumerate().map(|(index, entry)| json!({"position":index + 1,"prompt":entry.text,"queued_ms":entry.enqueued_at.elapsed().as_millis()})).collect()
+    }
+    fn pop(&mut self) -> Option<String> { self.entries.pop_front().map(|entry| entry.text) }
+}
+
 pub(super) struct NativeSession {
     store: HarnessStore,
     session: HarnessSession,
     config: HarnessConfig,
     pub(super) image_paths: Vec<std::path::PathBuf>,
     watchers: dowe_agent::native_harness::HarnessWatchers,
+        queue: PromptQueue,
 }
 
 impl NativeSession {
@@ -27,8 +50,11 @@ impl NativeSession {
             config,
             image_paths: Vec::new(),
             watchers: Default::default(),
+                queue: Default::default(),
         })
     }
+
+    pub(super) fn take_queued(&mut self) -> Option<String> { self.queue.pop() }
 
     pub(super) fn usage(&self) -> AgentUsageTotals {
         self.session.usage()
@@ -37,6 +63,7 @@ impl NativeSession {
     pub(super) fn reset(&mut self) -> AgentResult<()> {
         self.close_watchers()?;
         self.session = self.store.create_session()?;
+        self.queue.clear();
         Ok(())
     }
 
@@ -52,7 +79,16 @@ impl NativeSession {
         }
         let (command, argument) = prompt.split_once(' ').unwrap_or((prompt, ""));
         let mut result = match command {
-            "/watch" => self.watch_command(argument, json_output, &redactor)?,
+            "/queue" => {
+                    let (operation, value) = argument.split_once(' ').unwrap_or((argument, ""));
+                    match operation {
+                        "add" => json!({"queued":self.queue.enqueue(value)?,"position":self.queue.len()}),
+                        "clear" => { let count = self.queue.len(); self.queue.clear(); json!({"cleared":count}) }
+                        "list" | "" => json!({"queued":self.queue.summary(),"limit":PromptQueue::LIMIT}),
+                        _ => return Err("Use /queue add <prompt>|list|clear".into()),
+                    }
+                }
+                "/watch" => self.watch_command(argument, json_output, &redactor)?,
             "/inspect" => self.inspect_command(argument)?,
             "/recover" => self.recover_command(argument, json_output, &redactor)?,
             "/capabilities" => self.capability_command(argument)?,
@@ -403,6 +439,25 @@ impl HarnessHost for TerminalHost<'_> {
         std::mem::take(&mut self.request_events)
     }
 
+    async fn ask_clarification(&mut self, question: &ClarificationQuestion) -> AgentResult<Option<String>> {
+        if self.json_output || !crate::menus::is_interactive_terminal() { return Ok(None); }
+        let _activity = self.activity.suspend()?;
+        let answer = if question.options.is_empty() {
+            Input::<String>::with_theme(&ColorfulTheme::default())
+                .with_prompt(super::markdown::terminal_text(&question.text))
+                .interact_text()
+                .map_err(|error| AgentError::new(error.to_string()))?
+        } else {
+            let Some(index) = Select::with_theme(&ColorfulTheme::default())
+                .with_prompt(super::markdown::terminal_text(&question.text))
+                .items(&question.options)
+                .interact_opt()
+                .map_err(|error| AgentError::new(error.to_string()))? else { return Ok(None); };
+            question.options[index].clone()
+        };
+        Ok(Some(answer))
+    }
+
     async fn approve(&mut self, approval: &Approval) -> AgentResult<Option<bool>> {
         if self.json_output || !crate::menus::is_interactive_terminal() {
             return Ok(None);
@@ -498,6 +553,21 @@ impl HarnessHost for TerminalHost<'_> {
 
     fn secrets(&self) -> Vec<String> {
         credential_secrets(&self.auth, self.api_key.as_deref())
+    }
+}
+
+#[cfg(test)]
+mod queue_tests {
+    use super::PromptQueue;
+    #[test]
+    fn queue_is_fifo_and_bounded() {
+        let mut queue = PromptQueue::default();
+        for index in 0..8 { assert_eq!(queue.enqueue(&format!("p{index}")).unwrap(), index + 1); }
+        assert!(queue.enqueue("overflow").is_err());
+        assert_eq!(queue.pop().unwrap(), "p0");
+        assert_eq!(queue.pop().unwrap(), "p1");
+        queue.clear();
+        assert_eq!(queue.len(), 0);
     }
 }
 

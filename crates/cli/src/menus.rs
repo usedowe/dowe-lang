@@ -41,6 +41,38 @@ pub(crate) fn prompt_init_template() -> Result<Option<ProjectTemplate>, Box<dyn 
     Ok(selection.map(|index| templates[index]))
 }
 
+pub(crate) fn prompt_init_app_name() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt("App name")
+        .allow_empty(false)
+        .interact_text()?)
+}
+
+pub(crate) fn prompt_init_bundle() -> Result<String, Box<dyn std::error::Error>> {
+    Ok(Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt("App bundle")
+        .allow_empty(false)
+        .interact_text()?)
+}
+
+pub(crate) fn prompt_init_destination() -> Result<Option<bool>, Box<dyn std::error::Error>> {
+    let choices = ["Current directory", "New subfolder"];
+    Ok(Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Install project in")
+        .items(&choices)
+        .default(0)
+        .interact_opt()?
+        .map(|index| index == 1))
+}
+
+pub(crate) fn prompt_init_icon_source() -> Result<Option<String>, Box<dyn std::error::Error>> {
+    let source = Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt("Icon SVG path (optional)")
+        .allow_empty(true)
+        .interact_text()?;
+    Ok((!source.trim().is_empty()).then_some(source))
+}
+
 pub(crate) fn prompt_init_i18n() -> Result<Option<bool>, Box<dyn std::error::Error>> {
     Ok(Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt("Enable i18n")

@@ -100,6 +100,34 @@ fn every_project_template_generates_grouped_theme_colors() {
 }
 
 #[test]
+fn custom_app_identity_is_written_to_main_for_each_template() {
+    for template in [ProjectTemplate::Blank, ProjectTemplate::Crud] {
+        let temp = TempDir::new().expect("tempdir");
+        init_project(
+            temp.path(),
+            InitProjectOptions::new(template).with_app_identity("My App", "com.example.myapp"),
+        )
+        .expect("init");
+        let main = fs::read_to_string(temp.path().join("main.dowe")).expect("main");
+        assert!(main.contains("app name:\"My App\" bundle:\"com.example.myapp\""));
+        assert!(main.contains(
+            "main\n  app name:\"My App\" bundle:\"com.example.myapp\"\n  views:"
+        ));
+    }
+}
+
+#[test]
+fn custom_app_identity_rejects_partial_values() {
+    let temp = TempDir::new().expect("tempdir");
+    let error = init_project(
+        temp.path(),
+        InitProjectOptions::new(ProjectTemplate::Blank).with_app_identity("", "com.example.app"),
+    )
+    .expect_err("invalid identity");
+    assert!(error.to_string().contains("must both be non-empty"));
+}
+
+#[test]
 fn blank_template_writes_hello_page_and_endpoint() {
     let temp = TempDir::new().expect("tempdir");
     let report =
@@ -346,7 +374,7 @@ fn crud_generates_a_modal_editorial_dashboard() {
 fn every_template_separates_view_and_server_modules() {
     for options in materialized_options() {
         let temp = TempDir::new().expect("tempdir");
-        init_project(temp.path(), options).expect("init");
+        init_project(temp.path(), options.clone()).expect("init");
 
         for forbidden in [
             "routes",
@@ -377,7 +405,7 @@ fn every_template_separates_view_and_server_modules() {
 fn i18n_generates_complete_english_and_spanish_catalogs() {
     for options in materialized_options() {
         let temp = TempDir::new().expect("tempdir");
-        let report = init_project(temp.path(), options.with_i18n(true)).expect("init");
+        let report = init_project(temp.path(), options.clone().with_i18n(true)).expect("init");
 
         let en = fs::read_to_string(temp.path().join("i18n/en.dowe")).expect("english catalog");
         let es = fs::read_to_string(temp.path().join("i18n/es.dowe")).expect("spanish catalog");

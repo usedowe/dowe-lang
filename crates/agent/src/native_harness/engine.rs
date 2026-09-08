@@ -35,6 +35,13 @@ pub trait HarnessHost {
         &mut self,
         approval: &Approval,
     ) -> impl std::future::Future<Output = AgentResult<Option<bool>>>;
+    fn ask_clarification(
+        &mut self,
+        question: &crate::ClarificationQuestion,
+    ) -> impl std::future::Future<Output = AgentResult<Option<String>>> {
+        let _ = question;
+        async { Ok(None) }
+    }
     fn event(&mut self, event: &Value) -> AgentResult<()>;
     fn secrets(&self) -> Vec<String> {
         Vec::new()
@@ -48,6 +55,7 @@ pub enum HarnessOutcome {
     ApprovalRequired,
     BudgetExhausted,
     Canceled,
+    ClarificationRequired,
 }
 
 pub async fn run_harness_turn(
@@ -281,10 +289,35 @@ pub async fn run_harness_turn(
         session.interrupted = !calls.is_empty();
         store.save_session(session)?;
         if calls.is_empty() {
+            emit(
+                store,
+                session,
+                host,
+                json!({"event":"task_state","status":"done"}),
+            )?;
             return Ok(HarnessOutcome::Completed);
         }
         let mut results = Vec::new();
         let mut approval_required = false;
+        for call in &calls {
+            if call.name != "ask_user" && call.name != "question" { continue; }
+            let value = call.arguments.get("question").cloned().unwrap_or_else(|| call.arguments.clone());
+            let question: crate::ClarificationQuestion = serde_json::from_value(value)
+                .map_err(|_| AgentError::new("malformed clarification question"))?;
+            question.validate()?;
+            emit(store, session, host, json!({"event":"clarification_required","call_id":call.id,"question":question}))?;
+            session.interrupted = true;
+            store.save_session(session)?;
+            let Some(answer) = host.ask_clarification(&question).await? else {
+                emit(store, session, host, json!({"event":"task_state","status":"blocked","reason":"clarification_required"}))?;
+                return Ok(HarnessOutcome::ClarificationRequired);
+            };
+            if answer.trim().is_empty() || answer.len() > 1024 { return Err(AgentError::new("clarification answer exceeds limits")); }
+            let result = ToolResult { id: call.id.clone(), name: call.name.clone(), failed: false, output: json!({"answer":tools.redactor.text(&answer)}) };
+            emit(store, session, host, json!({"event":"tool_result","result":result}))?;
+            results.push(result);
+        }
+        let calls = calls.into_iter().filter(|call| call.name != "ask_user" && call.name != "question").collect::<Vec<_>>();
         let mut canceled = false;
         let mut call_index = 0;
         while call_index < calls.len() {
@@ -428,6 +461,12 @@ pub async fn run_harness_turn(
             return Ok(HarnessOutcome::Canceled);
         }
         if approval_required {
+            emit(
+                store,
+                session,
+                host,
+                json!({"event":"task_state","status":"awaiting_approval"}),
+            )?;
             return Ok(HarnessOutcome::ApprovalRequired);
         }
     }

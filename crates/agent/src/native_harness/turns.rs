@@ -150,5 +150,11 @@ fn parse_call(value: &Value, id_key: &str, inner: &str, arguments: &str) -> Agen
     if !arguments.is_object() {
         return Err(AgentError::new("tool arguments must be an object"));
     }
-    Ok(ToolCall::new(id, name, arguments))
+    if name == "ask_user" || name == "question" {
+            let question = arguments.get("question").cloned().unwrap_or_else(|| arguments.clone());
+            let question: crate::ClarificationQuestion = serde_json::from_value(question)
+                .map_err(|_| AgentError::new("malformed clarification question"))?;
+            question.validate()?;
+        }
+        Ok(ToolCall::new(id, name, arguments))
 }

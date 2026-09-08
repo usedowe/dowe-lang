@@ -20,6 +20,7 @@ const COMMANDS: &[&str] = &[
     "/evaluate",
     "/processes",
     "/watch",
+        "/queue",
     "/inspect",
     "/recover",
     "/capabilities",

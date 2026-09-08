@@ -37,10 +37,53 @@ mod tests {
             }
         }
         state.expanded = false;
-        assert!(state.frame((120, 60), true)[6].contains("╭─ ⠋ Working…"));
+        assert!(state.frame((120, 60), true).iter().any(|line| line.contains("Working…")));
+        assert!(state.frame((120, 60), true).iter().any(|line| line.contains("Agents")));
         state.expanded = true;
-        assert!(state.frame((120, 60), true)[24].contains("╭─ ⠋ Working…"));
+        assert!(state.frame((120, 60), true).iter().any(|line| line.contains("Working…")));
         assert!(!state.frame((120, 60), false).join("\n").contains("Working"));
+    }
+
+    #[test]
+    fn workspace_state_uses_monotonic_elapsed_time_and_native_transitions() {
+        let activity = Activity::new(true).unwrap();
+        activity.workspace_event(&serde_json::json!({"event":"request_prepared","role":"execute","model":"safe/model"}));
+        let state = activity.state();
+        let first = state.workspace_lines().join(" ");
+        assert!(first.contains("in_progress") && first.contains("safe/model"));
+        drop(state);
+        std::thread::sleep(Duration::from_millis(2));
+        let state = activity.state();
+        assert!(state.workspace_lines().join(" ").contains("0s"));
+        drop(state);
+        activity.workspace_event(&serde_json::json!({"event":"approval_required"}));
+        assert!(activity.state().workspace_lines().join(" ").contains("awaiting_approval"));
+    }
+
+    #[test]
+    fn workspace_cards_are_bounded_on_tiny_terminals() {
+        let activity = Activity::new(true).unwrap();
+        activity.workspace_event(&serde_json::json!({"event":"request_prepared","role":"execute","model":"m"}));
+        let state = activity.state();
+        for size in [(0, 0), (4, 4), (20, 8)] {
+            let frame = state.frame(size, true);
+            assert!(frame.len() <= size.1.saturating_sub(2) as usize);
+            assert!(frame.iter().all(|line| dialoguer::console::measure_text_width(line) <= size.0.saturating_sub(1) as usize));
+        }
+    }
+
+    #[test]
+    fn collapsed_cards_leave_tool_activity_visible() {
+        let activity = Activity::new(true).unwrap();
+        activity.workspace_event(&serde_json::json!({"event":"request_prepared","role":"execute","model":"m"}));
+        activity.push(["retained-pipe-marker".into()]);
+        let state = activity.state();
+        let frame = state.frame((120, 20), true);
+        assert!(frame.iter().any(|line| line.contains("Agents")));
+        assert!(frame.iter().any(|line| line.contains("Todos")));
+        assert!(frame.iter().any(|line| line.contains("Activity collapsed")));
+        assert!(frame.iter().any(|line| line.contains("retained-pipe-marker")));
+        assert!(frame.iter().any(|line| line.contains("Ctrl+O")));
     }
 
     #[test]
@@ -136,6 +179,13 @@ struct State {
     anchor: Option<(u16, u16)>,
     pending: bool,
     footer: [String; 2],
+    agent_name: String,
+    agent_role: String,
+    agent_model: String,
+    task_title: String,
+    task_status: String,
+    started_at: Option<Instant>,
+    queue: Vec<String>,
     spinner: usize,
     animated_at: Instant,
 }
@@ -198,6 +248,32 @@ impl State {
         Ok(())
     }
 
+    fn workspace_lines(&self) -> Vec<String> {
+        let elapsed = self
+            .started_at
+            .map(|started| format!("{}s", started.elapsed().as_secs()))
+            .unwrap_or_else(|| "0s".into());
+        vec![
+            "╭─ Agents ─────────────────────────────────────────╮".into(),
+            format!("│ {} · {} / {} · {} · {}", self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed),
+            "╰───────────────────────────────────────────────────╯".into(),
+            "╭─ Todos ──────────────────────────────────────────╮".into(),
+            format!("│ 1. {} [{}]", self.task_title, self.task_status),
+            "╰───────────────────────────────────────────────────╯".into(),
+        ]
+    }
+
+    fn compact_workspace_lines(&self) -> Vec<String> {
+        let elapsed = self
+            .started_at
+            .map(|started| format!("{}s", started.elapsed().as_secs()))
+            .unwrap_or_else(|| "0s".into());
+        vec![
+            format!("╭─ Agents: {} · {} / {} · {} · {} ╮", self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed),
+            format!("╰─ Todos: 1. {} [{}]{} ╯", self.task_title, self.task_status, if self.queue.is_empty() { String::new() } else { format!(" · Queue: {}", self.queue.len()) }),
+        ]
+    }
+
     fn frame(&self, (cols, rows): (u16, u16), busy: bool) -> Vec<String> {
         // Leave room for the sentinel and at least one conversation row.
         let available = rows.saturating_sub(2) as usize;
@@ -209,8 +285,22 @@ impl State {
             0
         };
         let height = if self.expanded { 24 } else { 6 }.min(available - chrome);
+        let cards = if busy {
+            let cards = if self.expanded {
+                self.workspace_lines()
+            } else {
+                self.compact_workspace_lines()
+            };
+            cards
+                .into_iter()
+                .take(height.saturating_sub(3))
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        };
+        let activity_height = height.saturating_sub(cards.len());
         let end = self.lines.len().saturating_sub(self.offset);
-        let start = end.saturating_sub(height.saturating_sub(2));
+        let start = end.saturating_sub(activity_height.saturating_sub(2));
         let header = format!(
             "Activity {} · {}{}",
             if self.expanded {
@@ -225,11 +315,11 @@ impl State {
                 ""
             }
         );
-        let mut frame = Vec::new();
-        for index in 0..height {
+        let mut frame = cards;
+        for index in 0..activity_height {
             let text = if index == 0 {
                 header.as_str()
-            } else if index == height - 1 {
+            } else if index == activity_height - 1 {
                 "Ctrl+O expand/collapse · PgUp/PgDn scroll · Ctrl+C cancel"
             } else {
                 self.lines
@@ -238,7 +328,7 @@ impl State {
                     .map(String::as_str)
                     .unwrap_or("")
             };
-            frame.push(if index == 0 || index == height - 1 {
+            frame.push(if index == 0 || index == activity_height - 1 {
                 dialoguer::console::style(text).dim().for_stderr().to_string()
             } else {
                 text.to_string()
@@ -349,11 +439,42 @@ impl Activity {
             anchor: None,
             pending: false,
             footer: Default::default(),
+            agent_name: "Dowe Agent".into(),
+            agent_role: "execute".into(),
+            agent_model: "?".into(),
+            task_title: "Current request".into(),
+            task_status: "idle".into(),
+            started_at: None,
+            queue: Vec::new(),
             spinner: 0,
             animated_at: Instant::now(),
         })));
         activity.state().enter()?;
         Ok(activity)
+    }
+
+    pub(crate) fn workspace_event(&self, event: &serde_json::Value) {
+        let mut state = self.state();
+        match event["event"].as_str() {
+            Some("request_prepared") => {
+                state.agent_name = "Dowe Agent".into();
+                state.agent_role = super::safe_text(event["role"].as_str().unwrap_or("execute"), 32);
+                state.agent_model = super::safe_text(event["model"].as_str().unwrap_or("?"), 80);
+                state.task_status = "in_progress".into();
+                state.started_at = Some(Instant::now());
+            }
+            Some("response_received") => state.task_status = "responding".into(),
+            Some("approval_required") => state.task_status = "awaiting_approval".into(),
+            Some("operation_started") => state.task_status = "executing_tool".into(),
+            Some("tool_result") => state.task_status = "in_progress".into(),
+            Some("task_canceled") => state.task_status = "canceled".into(),
+            Some("task_state") => {
+                state.task_status = super::safe_text(event["status"].as_str().unwrap_or("blocked"), 32);
+            }
+            Some("error" | "budget_exhausted") => state.task_status = "blocked".into(),
+            _ => return,
+        }
+        state.dirty = true;
     }
 
     pub(crate) fn footer(&self, lines: [String; 2]) {

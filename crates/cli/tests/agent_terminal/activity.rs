@@ -147,7 +147,7 @@ impl ActivityScreen {
         assert!(activity < input, "{visible}");
         assert_eq!(
             visible[activity..input].lines().count(),
-            if expanded { 24 } else { 6 }
+            if expanded { 18 } else { 4 }
         );
         assert!(visible[input..].contains("test-model"), "{visible}");
     }

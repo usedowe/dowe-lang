@@ -168,6 +168,19 @@ pub struct ImageUrl {
     pub url: String,
 }
 
+#[cfg(test)]
+mod clarification_tests {
+    use super::ClarificationQuestion;
+
+    #[test]
+    fn clarification_validation_is_bounded_and_rejects_controls() {
+        let valid = ClarificationQuestion { id: "scope".into(), text: "Which scope?".into(), options: vec!["one".into()] };
+        assert!(valid.validate().is_ok());
+        assert!(ClarificationQuestion { id: "".into(), ..valid.clone() }.validate().is_err());
+        assert!(ClarificationQuestion { text: "bad\u{1b}[2J".into(), ..valid }.validate().is_err());
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AgentToolDefinition {
     #[serde(rename = "type")]
@@ -180,6 +193,28 @@ pub struct AgentToolFunction {
     pub name: String,
     pub description: String,
     pub parameters: Value,
+}
+
+/// A bounded, host-owned clarification request. This is data, not an executable tool.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClarificationQuestion {
+    pub id: String,
+    pub text: String,
+    #[serde(default)]
+    pub options: Vec<String>,
+}
+
+impl ClarificationQuestion {
+    pub fn validate(&self) -> crate::AgentResult<()> {
+        if self.id.is_empty() || self.id.len() > 64 || self.id.chars().any(char::is_control) || self.text.trim().is_empty() || self.text.len() > 1024 || self.text.chars().any(char::is_control) {
+            return Err(crate::AgentError::new("clarification question has an invalid id or bounded text"));
+        }
+        if self.options.len() > 8 || self.options.iter().any(|option| option.is_empty() || option.len() > 256 || option.chars().any(char::is_control)) {
+            return Err(crate::AgentError::new("clarification question options exceed limits"));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

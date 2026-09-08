@@ -2,6 +2,7 @@ use crate::menus;
 use crate::usage::USAGE;
 use dowe_icons::{GenerateIconOptions, IconRounded, IconTarget, generate_project_icons};
 use std::env;
+use std::path::Path;
 use std::str::FromStr;
 
 pub(crate) fn run_icons_command(args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
@@ -38,15 +39,25 @@ pub(crate) fn run_icons_command(args: &[String]) -> Result<(), Box<dyn std::erro
         };
         (source, background, rounded, targets)
     };
+    generate_and_report(&env::current_dir()?, &source, background, rounded, targets)?;
+    Ok(())
+}
+
+pub(crate) fn generate_and_report(
+    root: &Path,
+    source: &str,
+    background: String,
+    rounded: IconRounded,
+    targets: Vec<IconTarget>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let report = generate_project_icons(
-        GenerateIconOptions::new(env::current_dir()?, source, background, rounded)
-            .with_targets(targets),
+        GenerateIconOptions::new(root, source, background, rounded).with_targets(targets),
     )?;
     for target in &report.targets {
         let count = report
             .files
             .iter()
-            .filter(|path| path.starts_with(std::path::Path::new("icons").join(target.as_str())))
+            .filter(|path| path.starts_with(Path::new("icons").join(target.as_str())))
             .count();
         println!(
             "Generated {count} {} icon files in icons/{}",

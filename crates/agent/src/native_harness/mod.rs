@@ -17,6 +17,7 @@ mod tools;
 mod turns;
 
 pub use capabilities::{ModelCapabilities, builtin_model_capabilities};
+    pub use crate::ClarificationQuestion;
 pub use capability_catalog::{
     BuiltinCapabilityRecord, CAPABILITY_CATALOG_VERSION, CapabilityEvidence,
     builtin_capability_catalog, builtin_capability_evidence,

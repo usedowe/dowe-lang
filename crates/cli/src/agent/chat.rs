@@ -84,7 +84,11 @@ pub(super) async fn run_agent_session_with_args(
             thinking,
             usage: &usage,
         };
-        let Some(prompt) = read_agent_prompt(&footer, parsed.json_output)? else {
+        let queued = native.as_mut().and_then(|session| session.take_queued());
+            let Some(prompt) = (match queued {
+                Some(prompt) => Some(prompt),
+                None => read_agent_prompt(&footer, parsed.json_output)?,
+            }) else {
             if !parsed.json_output {
                 println!();
             }
@@ -211,7 +215,8 @@ pub(super) async fn run_agent_session_with_args(
                         | "/evaluate"
                         | "/processes"
                         | "/watch"
-                        | "/inspect"
+                        | "/queue"
+                            | "/inspect"
                         | "/recover"
                         | "/capabilities"
                 )

@@ -177,6 +177,12 @@ impl HarnessTools {
             return vec![];
         }
         let mut tools = vec![
+                definition(
+                    "ask_user",
+                    "Ask one bounded contextual question. Host interaction only; this never executes a tool or grants permission.",
+                    json!({"id":{"type":"string","maxLength":64},"text":{"type":"string","maxLength":1024},"options":{"type":"array","maxItems":8,"items":{"type":"string","maxLength":256}}}),
+                    &["id", "text"],
+                ),
             definition(
                 "get_skill",
                 "Load one fixed Dowe skill unit or declared bundle resource before authoring. Follow dependencies. Page large resources by offset.",

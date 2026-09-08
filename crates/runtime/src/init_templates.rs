@@ -753,7 +753,49 @@ pub(crate) fn files_for_options(options: InitProjectOptions) -> Vec<TemplateFile
         ProjectTemplate::Blank => (BLANK_FILES, BLANK_TRANSLATIONS),
         ProjectTemplate::Crud => (CRUD_FILES, CRUD_TRANSLATIONS),
     };
-    files_with_translations(base.to_vec(), options, translations)
+    let files = base
+        .iter()
+        .cloned()
+        .map(|file| customize_main_file(file, &options))
+        .collect();
+    files_with_translations(files, options, translations)
+}
+
+fn customize_main_file(file: TemplateFile, options: &InitProjectOptions) -> TemplateFile {
+    let (Some(app_name), Some(bundle)) = (options.app_name(), options.bundle()) else {
+        return file;
+    };
+    if file.path() != "main.dowe" {
+        return file;
+    }
+    let identity = format!(
+        "app name:\"{}\" bundle:\"{}\"",
+        escape_string(app_name),
+        escape_string(bundle)
+    );
+    let content = file
+        .content()
+        .lines()
+        .map(|line| {
+            if line.trim_start().starts_with("app name:") {
+                let indentation = &line[..line.len() - line.trim_start().len()];
+                format!("{indentation}{identity}")
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let content = if file.content().ends_with('\n') {
+        format!("{content}\n")
+    } else {
+        content
+    };
+    TemplateFile::owned(file.path(), content)
+}
+
+fn escape_string(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 fn files_with_translations(

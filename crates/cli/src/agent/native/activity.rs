@@ -8,6 +8,7 @@ impl Activity {
         if !self.enabled() {
             return false;
         }
+        self.workspace_event(event);
         match event["event"].as_str() {
             Some("shell_output") => {
                 if let Some(text) = event["text"].as_str() {

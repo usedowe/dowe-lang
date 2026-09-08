@@ -124,14 +124,14 @@ fn agent_conversation_json_session_replays_successes_and_new_resets_history() {
         .lines()
         .map(|line| serde_json::from_str(line).expect("only JSON events"))
         .collect();
-    assert_eq!(events.len(), 12, "{stdout}");
-    for index in [1, 4, 7, 10] {
+    assert_eq!(events.len(), 15, "{stdout}");
+    for index in [1, 5, 8, 12] {
         assert_eq!(events[index]["event"], "request_attempt");
         assert_eq!(events[index]["attempt"], 0);
         assert_eq!(events[index]["requestId"], events[index - 1]["requestId"]);
     }
-    assert_eq!(events[4]["status"], 400);
-    assert!(events[4]["usage"].is_null());
+    assert_eq!(events[5]["status"], 400);
+    assert!(events[5]["usage"].is_null());
     assert_eq!(events[0]["requestType"], "conversation");
     assert_eq!(
         events[2]["payload"],
@@ -139,8 +139,8 @@ fn agent_conversation_json_session_replays_successes_and_new_resets_history() {
     );
     assert_eq!(events[2]["role"], "execute");
     assert!(!stdout.contains("hidden reasoning"));
-    assert_eq!(events[5]["event"], "error");
-    assert_eq!(events[8]["event"], "response_received");
+    assert_eq!(events[6]["event"], "error");
+    assert_eq!(events[9]["event"], "response_received");
     assert!(!stdout.contains(['\u{1b}', '\r']));
     let requests = server.join().unwrap();
     assert_eq!(
@@ -169,7 +169,7 @@ fn agent_conversation_json_session_replays_successes_and_new_resets_history() {
     );
     assert!(requests.iter().all(|request| {
         request["tools"].as_array().is_some_and(|tools| {
-            tools.len() == 7 && tools.iter().any(|tool| tool["name"] == "shell")
+            tools.len() == 9 && tools.iter().any(|tool| tool["name"] == "shell")
         }) && request.get("response_format").is_none()
             && request.get("dowe_harness_turns").is_none()
     }));

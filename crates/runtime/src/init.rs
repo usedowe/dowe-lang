@@ -19,11 +19,13 @@ pub(crate) struct TemplateFile {
     content: Cow<'static, str>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InitProjectOptions {
     template: ProjectTemplate,
     i18n: bool,
     reinstall: bool,
+    app_name: Option<String>,
+    bundle: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -110,6 +112,8 @@ impl InitProjectOptions {
             template,
             i18n: false,
             reinstall: false,
+            app_name: None,
+            bundle: None,
         }
     }
 
@@ -135,8 +139,32 @@ impl InitProjectOptions {
         self.reinstall
     }
 
+    pub fn with_app_identity(
+        mut self,
+        app_name: impl Into<String>,
+        bundle: impl Into<String>,
+    ) -> Self {
+        self.app_name = Some(app_name.into());
+        self.bundle = Some(bundle.into());
+        self
+    }
+
+    pub fn app_name(&self) -> Option<&str> {
+        self.app_name.as_deref()
+    }
+
+    pub fn bundle(&self) -> Option<&str> {
+        self.bundle.as_deref()
+    }
+
     fn validate(&self) -> RuntimeResult<()> {
-        Ok(())
+        match (&self.app_name, &self.bundle) {
+            (Some(app_name), Some(bundle)) if !app_name.is_empty() && !bundle.is_empty() => Ok(()),
+            (None, None) => Ok(()),
+            _ => Err(RuntimeError::new(
+                "custom init app name and bundle must both be non-empty",
+            )),
+        }
     }
 }
 
@@ -186,7 +214,7 @@ pub fn init_project(
     options: InitProjectOptions,
 ) -> RuntimeResult<InitProjectReport> {
     options.validate()?;
-    let files = files_for_options(options);
+    let files = files_for_options(options.clone());
     write_project_files(root.as_ref(), options, &files)
 }
 

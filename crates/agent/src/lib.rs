@@ -42,7 +42,7 @@ pub use model::{
     AgentContext, AgentDesktopEvent, AgentDesktopEventKind, AgentImageInput, AgentMessage,
     AgentMessageContent, AgentMessagePart, AgentPrepareOptions, AgentPreparedRequest, AgentRequest,
     AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
-    AgentToolDefinition, AgentToolFunction, ImageUrl, MINIMAX_M3, OPENAI_GPT_55,
+    AgentToolDefinition, AgentToolFunction, ClarificationQuestion, ImageUrl, MINIMAX_M3, OPENAI_GPT_55,
 };
 pub use oauth::{login_openai_codex, refresh_openai_codex_credential, token_needs_refresh};
 pub use preferences::{AgentPreferences, AgentPreferencesStore};
