@@ -18,6 +18,54 @@ mod tests {
     use super::*;
 
     #[test]
+    fn busy_input_edits_and_enqueues_fifo_with_validation() {
+        let activity = Activity::new(true).unwrap();
+        let mut state = activity.state();
+        for ch in "first".chars() {
+            state.input.handle(KeyCode::Char(ch));
+        }
+        state.input.handle(KeyCode::Left);
+        state.input.handle(KeyCode::Backspace);
+        assert_eq!(state.input.value(), "firt");
+        state.submit_input();
+        for index in 0..7 {
+            state.pending.push_back(format!("p{index}"));
+        }
+        assert_eq!(state.pending.iter().collect::<Vec<_>>(), vec!["firt", "p0", "p1", "p2", "p3", "p4", "p5", "p6"]);
+        assert!(state.input.value().is_empty());
+        state.input.handle(KeyCode::Char('x'));
+        state.submit_input();
+        assert_eq!(state.input_status.as_deref(), Some("queue full (limit 8)"));
+    }
+
+    #[test]
+    fn collapsed_activity_hides_tool_details_but_expanded_activity_keeps_them() {
+        let activity = Activity::new(true).unwrap();
+        activity.push([
+            "shell [one] · completed".into(),
+            "  result: output".into(),
+        ]);
+        let mut state = activity.state();
+        let collapsed = state.frame((120, 20), false).join("\n");
+        assert!(collapsed.contains("shell [one] · completed"));
+        assert!(!collapsed.contains("result: output"));
+        state.expanded = true;
+        let expanded = state.frame((120, 20), false).join("\n");
+        assert!(expanded.contains("shell [one] · completed"));
+        assert!(expanded.contains("result: output"));
+    }
+
+    #[test]
+    fn busy_input_keeps_pending_entries_when_turn_is_canceled() {
+        let activity = Activity::new(true).unwrap();
+        {
+            let mut state = activity.state();
+            state.pending.extend(["first".into(), "second".into()]);
+        }
+        assert_eq!(activity.take_pending(), ["first", "second"]);
+    }
+
+    #[test]
     fn inline_frames_bound_cells_and_keep_busy_chrome_below_activity() {
         let activity = Activity::new(true).unwrap();
         activity.footer(["fixture directory".into(), "fixture model".into()]);
@@ -102,7 +150,7 @@ mod tests {
         activity.push(["last synchronous result".into()]);
         let mut state = activity.state();
         // A ready future can finish before the next timer repaint.
-        assert!(state.pending);
+        assert!(state.snapshot_pending);
         bytes.clear();
         state.paint(&mut bytes, (120, 60), false).unwrap();
         let snapshot = String::from_utf8(bytes).unwrap();
@@ -177,7 +225,7 @@ struct State {
     error: Option<String>,
     owned: u16,
     anchor: Option<(u16, u16)>,
-    pending: bool,
+    snapshot_pending: bool,
     footer: [String; 2],
     agent_name: String,
     agent_role: String,
@@ -185,9 +233,63 @@ struct State {
     task_title: String,
     task_status: String,
     started_at: Option<Instant>,
-    queue: Vec<String>,
+    input: EditableLine,
+    pending: VecDeque<String>,
+    input_status: Option<String>,
     spinner: usize,
     animated_at: Instant,
+}
+
+#[derive(Default)]
+struct EditableLine {
+    text: Vec<char>,
+    cursor: usize,
+}
+
+impl EditableLine {
+    fn value(&self) -> String {
+        self.text.iter().collect()
+    }
+
+    fn handle(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::Left => self.cursor = self.cursor.saturating_sub(1),
+            KeyCode::Right => self.cursor = (self.cursor + 1).min(self.text.len()),
+            KeyCode::Home => self.cursor = 0,
+            KeyCode::End => self.cursor = self.text.len(),
+            KeyCode::Backspace if self.cursor > 0 => {
+                self.cursor -= 1;
+                self.text.remove(self.cursor);
+            }
+            KeyCode::Delete if self.cursor < self.text.len() => {
+                self.text.remove(self.cursor);
+            }
+            KeyCode::Char(ch) if !ch.is_control() && self.value().len() + ch.len_utf8() <= 8192 => {
+                self.text.insert(self.cursor, ch);
+                self.cursor += 1;
+            }
+            _ => {}
+        }
+    }
+}
+
+fn style_activity_line(line: &str) -> String {
+    let style = dialoguer::console::style(line);
+    if line.starts_with("  ") {
+        style.dim().for_stderr().to_string()
+    } else if line.ends_with(" · failed") {
+        style.red().bold().for_stderr().to_string()
+    } else if line.ends_with(" · canceled") {
+        style.magenta().bold().for_stderr().to_string()
+    } else if line.ends_with(" · rejected") || line.ends_with(" · not executed") {
+        style.yellow().bold().for_stderr().to_string()
+    } else if line.starts_with("request · ") {
+        style.green().bold().for_stderr().to_string()
+    } else if line.contains(" [") && line.contains("] · ") {
+        style.cyan().bold().for_stderr().to_string()
+    } else {
+        line.to_string()
+    }
 }
 
 impl State {
@@ -270,7 +372,7 @@ impl State {
             .unwrap_or_else(|| "0s".into());
         vec![
             format!("╭─ Agents: {} · {} / {} · {} · {} ╮", self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed),
-            format!("╰─ Todos: 1. {} [{}]{} ╯", self.task_title, self.task_status, if self.queue.is_empty() { String::new() } else { format!(" · Queue: {}", self.queue.len()) }),
+            format!("╰─ Todos: 1. {} [{}]{} ╯", self.task_title, self.task_status, if self.pending.is_empty() { String::new() } else { format!(" · Queue: {}", self.pending.len()) }),
         ]
     }
 
@@ -299,7 +401,13 @@ impl State {
             Vec::new()
         };
         let activity_height = height.saturating_sub(cards.len());
-        let end = self.lines.len().saturating_sub(self.offset);
+        let activity_lines: Vec<&str> = self
+            .lines
+            .iter()
+            .filter(|line| self.expanded || !line.starts_with("  "))
+            .map(String::as_str)
+            .collect();
+        let end = activity_lines.len().saturating_sub(self.offset);
         let start = end.saturating_sub(activity_height.saturating_sub(2));
         let header = format!(
             "Activity {} · {}{}",
@@ -322,23 +430,42 @@ impl State {
             } else if index == activity_height - 1 {
                 "Ctrl+O expand/collapse · PgUp/PgDn scroll · Ctrl+C cancel"
             } else {
-                self.lines
+                activity_lines
                     .get(start + index - 1)
+                    .copied()
                     .filter(|_| start + index - 1 < end)
-                    .map(String::as_str)
                     .unwrap_or("")
             };
             frame.push(if index == 0 || index == activity_height - 1 {
                 dialoguer::console::style(text).dim().for_stderr().to_string()
             } else {
-                text.to_string()
+                style_activity_line(text)
             });
         }
         if busy {
             let label = format!(" {} Working… ", ['⠋', '⠙', '⠹', '⠸'][self.spinner]);
             let input = if outlined {
                 let [top, bottom] = crate::agent::prompt::input_outline(width, &label);
-                vec![top, format!("│ dowe> {}│", " ".repeat(width - 9)), bottom]
+                let display = format!(
+                    "{}{}",
+                    self.input.value(),
+                    self.input_status
+                        .as_deref()
+                        .map(|status| format!(" · {status}"))
+                        .unwrap_or_default()
+                );
+                let used = dialoguer::console::measure_text_width(&display);
+                vec![
+                    top,
+                    format!(
+                        "{} {} {}{}│",
+                        dialoguer::console::style("│").cyan(),
+                        dialoguer::console::style(">").cyan().bold(),
+                        display,
+                        " ".repeat(width.saturating_sub(4 + used))
+                    ),
+                    bottom,
+                ]
             } else {
                 vec!["Working…".to_string()]
             };
@@ -380,8 +507,22 @@ impl State {
         Ok(())
     }
 
+    fn submit_input(&mut self) {
+        let value = self.input.value();
+        let text = value.trim();
+        if text.is_empty() || text.len() > 8192 {
+            self.input_status = Some("input must be 1..8192 bytes".into());
+        } else if self.pending.len() >= 8 {
+            self.input_status = Some("queue full (limit 8)".into());
+        } else {
+            self.pending.push_back(text.into());
+            self.input = EditableLine::default();
+            self.input_status = Some(format!("queued {}/8", self.pending.len()));
+        }
+    }
+
     fn snapshot(&mut self) -> std::io::Result<()> {
-        if self.active && self.pending {
+        if self.active && self.snapshot_pending {
             // Final receipts must not disappear merely because the live view was scrolled.
             self.offset = 0;
             self.older = false;
@@ -390,7 +531,7 @@ impl State {
             let mut output = std::io::stderr().lock();
             output.write_all(&frame)?;
             output.flush()?;
-            self.pending = false;
+            self.snapshot_pending = false;
             self.anchor = None;
         }
         Ok(())
@@ -437,7 +578,7 @@ impl Activity {
             error: None,
             owned: 0,
             anchor: None,
-            pending: false,
+            snapshot_pending: false,
             footer: Default::default(),
             agent_name: "Dowe Agent".into(),
             agent_role: "execute".into(),
@@ -445,7 +586,9 @@ impl Activity {
             task_title: "Current request".into(),
             task_status: "idle".into(),
             started_at: None,
-            queue: Vec::new(),
+            input: EditableLine::default(),
+            pending: VecDeque::new(),
+            input_status: None,
             spinner: 0,
             animated_at: Instant::now(),
         })));
@@ -501,6 +644,10 @@ impl Activity {
         self.state().enabled
     }
 
+    pub(crate) fn take_pending(&self) -> Vec<String> {
+        self.state().pending.drain(..).collect()
+    }
+
     pub(crate) fn suspend(&self) -> AgentResult<Suspension> {
         let mut state = self.state();
         state.leave()?;
@@ -524,7 +671,7 @@ impl Activity {
                 state.offset = (state.offset + 1).min(state.lines.len().saturating_sub(1));
             }
         }
-        state.pending = true;
+        state.snapshot_pending = true;
         state.dirty = true;
     }
 
@@ -563,7 +710,7 @@ impl Activity {
             }
         }
         state.omitted |= text.len() > 32768;
-        state.pending = true;
+        state.snapshot_pending = true;
         state.dirty = true;
     }
 
@@ -597,6 +744,7 @@ impl Activity {
                             state.offset = 0;
                             state.older = false;
                         }
+                        KeyCode::Enter => state.submit_input(),
                         KeyCode::PageUp => {
                             state.offset =
                                 (state.offset + 4).min(state.lines.len().saturating_sub(1));
@@ -606,7 +754,10 @@ impl Activity {
                             state.offset = state.offset.saturating_sub(4);
                             state.older = state.offset > 0;
                         }
-                        _ => continue,
+                        code => {
+                            state.input.handle(code);
+                            state.input_status = None;
+                        }
                     }
                     state.dirty = true;
                 }

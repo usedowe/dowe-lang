@@ -172,50 +172,105 @@ impl HarnessTools {
         }
     }
 
-    pub fn definitions(role: HarnessRole) -> Vec<AgentToolDefinition> {
-        if role == HarnessRole::Compact {
-            return vec![];
-        }
+    pub fn definitions(role: HarnessRole, images: bool) -> Vec<AgentToolDefinition> {
+        Self::definitions_for_capabilities(role, images, false)
+    }
+
+    pub fn definitions_for_capabilities(role: HarnessRole, images: bool, image_generation: bool) -> Vec<AgentToolDefinition> {
+        if role == HarnessRole::Compact { return vec![]; }
         let mut tools = vec![
-                definition(
-                    "ask_user",
-                    "Ask one bounded contextual question. Host interaction only; this never executes a tool or grants permission.",
-                    json!({"id":{"type":"string","maxLength":64},"text":{"type":"string","maxLength":1024},"options":{"type":"array","maxItems":8,"items":{"type":"string","maxLength":256}}}),
-                    &["id", "text"],
-                ),
-            definition(
-                "get_skill",
-                "Load one fixed Dowe skill unit or declared bundle resource before authoring. Follow dependencies. Page large resources by offset.",
-                json!({"id":{"type":"string"},"resource":{"type":"string"},"offset":{"type":"integer","minimum":1}}),
-                &["id"],
-            ),
-            definition(
-                "read_file",
-                "Read a bounded application text file page. Environment values are hidden.",
-                json!({"path":{"type":"string"},"offset":{"type":"integer","minimum":1},"limit":{"type":"integer","minimum":1,"maximum":1000}}),
-                &["path"],
-            ),
-            definition(
-                "list_files",
-                "List a single application directory, excluding private/generated paths. Use offset to page.",
-                json!({"path":{"type":"string"},"offset":{"type":"integer","minimum":0}}),
-                &["path"],
-            ),
-            definition(
-                "search",
-                "Search literal text within one bounded file page. Use next_offset to continue.",
-                json!({"path":{"type":"string"},"query":{"type":"string"},"offset":{"type":"integer","minimum":1}}),
-                &["path", "query"],
-            ),
+            definition("ask_user", "Ask one bounded contextual question. Host interaction only; this never executes a tool or grants permission.", json!({"id":{"type":"string","maxLength":64},"text":{"type":"string","maxLength":1024},"options":{"type":"array","maxItems":8,"items":{"type":"string","maxLength":256}}}), &["id", "text"]),
+            definition("get_skill", "Load one fixed Dowe skill unit or declared bundle resource before authoring. Follow dependencies. Page large resources by offset.", json!({"id":{"type":"string"},"resource":{"type":"string"},"offset":{"type":"integer","minimum":1}}), &["id"]),
+            definition("read_file", "Read a bounded application text file page. Environment values are hidden.", json!({"path":{"type":"string"},"offset":{"type":"integer","minimum":1},"limit":{"type":"integer","minimum":1,"maximum":1000}}), &["path"]),
+            definition("list_files", "List a single application directory, excluding private/generated paths. Use offset to page.", json!({"path":{"type":"string"},"offset":{"type":"integer","minimum":0}}), &["path"]),
+            definition("search", "Search literal text within one bounded file page.", json!({"path":{"type":"string"},"query":{"type":"string"},"offset":{"type":"integer","minimum":1}}), &["path", "query"]),
         ];
         if role == HarnessRole::Execute {
             let common = json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"content":{"type":"string"}});
-            tools.push(definition("write_file", "Propose a Dowe application file write. Host requires exact-change approval; sensitive files require local editing.", common, &["path", "skill", "reason", "content"]));
-            tools.push(definition("write_asset", "Propose an approved bounded binary asset write using explicit base64. The host exposes only path, size, and SHA-256 metadata.", json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"content_base64":{"type":"string","description":"Standard base64 bytes; never use this tool for text"}}), &["path", "skill", "reason", "content_base64"]));
-            tools.push(definition("edit_file", "Propose one exact unique replacement in a Dowe application file. Requires approval and unchanged base.", json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"old_text":{"type":"string"},"new_text":{"type":"string"}}), &["path", "skill", "reason", "old_text", "new_text"]));
-            tools.push(definition("shell", "Request a general shell command for the Dowe application. Every call requires user approval. Check for existing watchers; no hidden background processes. No credentials in arguments.", json!({"command":{"type":"string"},"cwd":{"type":"string"},"reason":{"type":"string"},"pty":{"type":"boolean","description":"Explicitly approved local interactive input; terminal transcript is not sent to the model"},"resource":{"type":"string","description":"Stable application/target ownership key for a watcher, e.g. dev:web. Inspect existing processes; do not start a duplicate."}}), &["command", "cwd", "reason"]));
+            tools.push(definition("write_file", "Propose a Dowe application file write.", common, &["path", "skill", "reason", "content"]));
+                tools.push(definition("propose_instruction_update", "Propose a complete root AGENTS.md or .agents/AGENTS.md update after the user clearly requests an instruction change. Summarize the instruction first; host approval remains required and this tool never grants it.", json!({"path":{"type":"string","enum":["AGENTS.md",".agents/AGENTS.md"]},"content":{"type":"string","maxLength":65536},"reason":{"type":"string","maxLength":1024}}), &["path", "content", "reason"]));
+            tools.push(definition("write_asset", "Propose an approved bounded binary asset write using explicit base64.", json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"content_base64":{"type":"string"}}), &["path", "skill", "reason", "content_base64"]));
+            tools.push(definition("edit_file", "Propose one exact unique replacement in a Dowe application file.", json!({"path":{"type":"string"},"skill":{"type":"string"},"reason":{"type":"string"},"old_text":{"type":"string"},"new_text":{"type":"string"}}), &["path", "skill", "reason", "old_text", "new_text"]));
+            tools.push(definition("shell", "Request a general shell command; every call requires approval.", json!({"command":{"type":"string"},"cwd":{"type":"string"},"reason":{"type":"string"},"pty":{"type":"boolean"},"resource":{"type":"string"}}), &["command", "cwd", "reason"]));
+            if images { tools.push(definition("capture_web_screenshot", "Capture a bounded PNG from an already-running loopback web URL.", json!({"url":{"type":"string"},"reason":{"type":"string"}}), &["url", "reason"])); }
+            if image_generation { tools.push(definition("generate_image", "Generate independent illustrations, photos, textures, or device artwork only; use Dowe components, Icon, Svg, or Brand for logos, controls, and UI-shaped regions. Requires exact approval before writing under public/assets. reference_image_path is unsupported in v1.", json!({"prompt":{"type":"string","minLength":1,"maxLength":4096},"destination":{"type":"string"},"reason":{"type":"string","minLength":1,"maxLength":1024},"reference_image_path":{"type":"string"}}), &["prompt", "destination", "reason"])); }
         }
         tools
+    }
+
+}
+
+    #[cfg(test)]
+mod image_generation_contract_tests {
+    use super::*;
+
+    #[test]
+    fn schema_does_not_advertise_overwrite_and_reference_rejection_is_explicit() {
+        let definition = HarnessTools::definitions_for_capabilities(
+            HarnessRole::Execute,
+            false,
+            true,
+        )
+        .into_iter()
+        .find(|tool| tool.function.name == "generate_image")
+        .expect("generate_image definition");
+        let properties = &definition.function.parameters["properties"];
+        assert!(properties.get("overwrite").is_none());
+        assert!(properties.get("reference_image_path").is_some());
+        assert!(definition
+            .function
+            .description
+            .contains("reference_image_path is unsupported in v1"));
+
+        let root = tempfile::tempdir().expect("temporary project root");
+        let mut tools = HarnessTools::new(
+            root.path(),
+            "image-contract",
+            HarnessConfig::default(),
+        )
+        .expect("harness tools");
+        let error = tools
+            .prepare(
+                &ToolCall::new(
+                    "reference",
+                    "generate_image",
+                    json!({
+                        "prompt": "a textured background",
+                        "destination": "assets/background.png",
+                        "reason": "test unsupported reference",
+                        "reference_image_path": "assets/reference.png"
+                    }),
+                ),
+                HarnessRole::Execute,
+            )
+            .expect_err("reference images must remain rejected");
+        assert!(error
+            .to_string()
+            .contains("reference_image_path is not supported"));
+    }
+}
+
+#[cfg(test)]
+mod codegraph_contract_tests {
+    use super::*;
+
+    #[test]
+    fn codegraph_advertises_only_bounded_read_tools() {
+        let names = HarnessTools::definitions_for_capabilities(HarnessRole::Codegraph, true, true)
+            .into_iter()
+            .map(|tool| tool.function.name)
+            .collect::<Vec<_>>();
+        assert!(names.iter().all(|name| matches!(name.as_str(), "ask_user" | "get_skill" | "read_file" | "list_files" | "search")));
+    }
+
+    #[test]
+    fn codegraph_rejects_mutating_and_execution_calls() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools = HarnessTools::new(root.path(), "codegraph", HarnessConfig::default()).unwrap();
+        for name in ["write_file", "edit_file", "write_asset", "propose_instruction_update", "shell", "generate_image", "capture_web_screenshot"] {
+            let call = ToolCall::new("codegraph", name, json!({}));
+            assert!(tools.prepare(&call, HarnessRole::Codegraph).is_err(), "accepted {name}");
+        }
     }
 }
 

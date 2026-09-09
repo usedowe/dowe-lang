@@ -69,7 +69,6 @@ async fn native_protocols_round_trip_through_local_http_with_images_tools_and_us
         ("minimax", anthropic),
         ("google", google),
         ("google-vertex", google),
-        ("mistral", completion),
         ("openai", responses),
         ("amazon-bedrock", bedrock),
     ] {
@@ -102,8 +101,7 @@ async fn native_protocols_round_trip_through_local_http_with_images_tools_and_us
         )
         .unwrap();
         match protocol {
-            AgentProviderProtocol::OpenAiCompletions
-            | AgentProviderProtocol::MistralConversations => {
+            AgentProviderProtocol::OpenAiCompletions => {
                 assert_eq!(
                     body["messages"][0]["content"][1]["image_url"]["url"],
                     "data:image/png;base64,aGVsbG8="
@@ -138,7 +136,9 @@ async fn native_protocols_round_trip_through_local_http_with_images_tools_and_us
                 );
                 assert!(body["toolConfig"]["tools"][0]["toolSpec"].is_object());
             }
-            AgentProviderProtocol::PiMessages => unreachable!(),
+            AgentProviderProtocol::MistralConversations | AgentProviderProtocol::PiMessages => {
+                unreachable!()
+            }
         }
         let parsed_url = reqwest::Url::parse(&url).unwrap();
         let path = format!(

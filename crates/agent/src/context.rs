@@ -1,5 +1,5 @@
 use crate::error::AgentResult;
-use dowe_codegraph::{BuildOptions, CodeGraphMode, NodeKind, build_codegraph};
+use dowe_codegraph::{CodeGraphMode, CodeGraphQuery, GraphFreshness, NodeKind, ensure_persistent_codegraph, query_persistent_codegraph};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -11,13 +11,21 @@ pub struct AgentCodeGraphSummary {
     pub node_count: usize,
     pub edge_count: usize,
     pub relevant_nodes: Vec<AgentCodeGraphNodeSummary>,
+        pub navigation: Vec<AgentCodeGraphNodeSummary>,
+        pub impact: Vec<AgentCodeGraphNodeSummary>,
+        pub navigation_edges: Vec<String>,
+        pub edge_policy: String,
     pub error: Option<String>,
+        pub freshness: String,
+        pub revision: u64,
+        pub stale: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentCodeGraphNodeSummary {
     pub kind: String,
+        pub language: String,
     pub path: Option<String>,
     pub name: String,
     pub owner: Option<String>,
@@ -44,9 +52,16 @@ fn summarize_codegraph_inner(
     query: Option<&str>,
     max_nodes: usize,
 ) -> AgentResult<AgentCodeGraphSummary> {
-    match build_codegraph(root, BuildOptions::default()) {
-        Ok(graph) => {
-            let mode = match graph.mode {
+    match ensure_persistent_codegraph(root) {
+        Ok(snapshot) => {
+            let freshness = format!("{:?}", snapshot.freshness).to_ascii_lowercase();
+                let stale = matches!(snapshot.freshness, GraphFreshness::Stale | GraphFreshness::Error);
+                let graph = snapshot.graph;
+                let navigation = query_persistent_codegraph(root, CodeGraphQuery { text: query.unwrap_or_default().to_string(), limit: max_nodes, depth: 2 }).ok();
+                let navigation_nodes = navigation.as_ref().map(|r| r.nodes.clone()).unwrap_or_default();
+                let navigation_edges = navigation.as_ref().map(|r| r.incoming.iter().chain(r.outgoing.iter()).map(|e| format!("{} -> {} ({:?})", e.from, e.to, e.kind)).collect::<Vec<_>>()).unwrap_or_default();
+                let impact_nodes = navigation.as_ref().map(|r| r.impact.clone()).unwrap_or_default();
+                let mode = match graph.mode {
                 CodeGraphMode::Dowe => "dowe",
                 CodeGraphMode::Project => "project",
             }
@@ -72,6 +87,7 @@ fn summarize_codegraph_inner(
                             score,
                             AgentCodeGraphNodeSummary {
                                 kind: format!("{:?}", node.kind).to_ascii_lowercase(),
+                                    language: node.language.clone(),
                                 path: node.path.clone(),
                                 name: node.name.clone(),
                                 owner: node.owner.clone(),
@@ -109,7 +125,14 @@ fn summarize_codegraph_inner(
                 node_count: graph.nodes.len(),
                 edge_count: graph.edges.len(),
                 relevant_nodes: nodes,
-                error: None,
+                    navigation: navigation_nodes.into_iter().map(node_summary).take(max_nodes).collect(),
+                    impact: impact_nodes.into_iter().map(node_summary).take(max_nodes).collect(),
+                    navigation_edges: navigation_edges.into_iter().take(max_nodes * 2).collect(),
+                    edge_policy: "derived_only_existing_extractors".to_string(),
+                error: snapshot.error,
+                    freshness,
+                    revision: snapshot.manifest.revision,
+                    stale,
             })
         }
         Err(error) => Ok(AgentCodeGraphSummary {
@@ -117,12 +140,23 @@ fn summarize_codegraph_inner(
             node_count: 0,
             edge_count: 0,
             relevant_nodes: Vec::new(),
+                navigation: Vec::new(),
+                impact: Vec::new(),
+                navigation_edges: Vec::new(),
+                edge_policy: "derived_only_existing_extractors".to_string(),
             error: Some(error.to_string()),
+                freshness: "error".to_string(),
+                revision: 0,
+                stale: true,
         }),
     }
 }
 
-fn search_terms(query: &str) -> Vec<String> {
+fn node_summary(node: dowe_codegraph::Node) -> AgentCodeGraphNodeSummary {
+        AgentCodeGraphNodeSummary { kind: format!("{:?}", node.kind).to_ascii_lowercase(), language: node.language, path: node.path, name: node.name, owner: node.owner, total_lines: node.metrics.map(|m| m.total_lines) }
+    }
+
+    fn search_terms(query: &str) -> Vec<String> {
     const STOP_WORDS: &[&str] = &[
         "and",
         "the",

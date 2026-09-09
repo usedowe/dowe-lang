@@ -28,7 +28,6 @@ const COMMANDS: &[&str] = &[
     "/review",
     "/compact",
     "/exit",
-    "/quit",
 ];
 
 #[derive(Default)]
@@ -175,14 +174,19 @@ pub(super) fn read_interactive_prompt(
             lines += 1;
         }
         let prefix = truncate_str(
-            if outlined { "│ dowe> " } else { "dowe> " },
+            if outlined { "│ > " } else { "> " },
             width.saturating_sub(1),
             "",
         );
         let prefix_width = measure_text_width(&prefix);
         let inner = width.saturating_sub(prefix_width + if outlined { 2 } else { 0 });
         let (text, cursor) = prompt.viewport(inner);
-        term.write_str(&format!("{}{text}", style(prefix).cyan()))?;
+        let styled_prefix = if outlined {
+            format!("{} {} ", style("│").cyan(), style(">").cyan().bold())
+        } else {
+            format!("{} ", style(">").cyan().bold())
+        };
+        term.write_str(&format!("{styled_prefix}{text}"))?;
         if outlined {
             term.write_str(&format!(
                 "{}{}",
@@ -219,7 +223,7 @@ pub(super) fn read_interactive_prompt(
             }
             term.write_line(&format!(
                 "{} {}",
-                style("dowe>").dim(),
+                style("dowe >").cyan().bold(),
                 result.as_deref().unwrap_or_default()
             ))?;
             return Ok(result);
@@ -279,6 +283,13 @@ mod tests {
                 Some(Some(command.to_string()))
             );
         }
+    }
+
+    #[test]
+    fn exit_aliases_are_not_supported_commands() {
+        assert_eq!(typed("/quit").matches(), Vec::<&str>::new());
+        assert_eq!(typed(":q").matches(), Vec::<&str>::new());
+        assert_eq!(typed("/exit").matches(), ["/exit"]);
     }
 
     #[test]

@@ -169,7 +169,8 @@ fn agent_conversation_json_session_replays_successes_and_new_resets_history() {
     );
     assert!(requests.iter().all(|request| {
         request["tools"].as_array().is_some_and(|tools| {
-            tools.len() == 9 && tools.iter().any(|tool| tool["name"] == "shell")
+            tools.iter().any(|tool| tool["name"] == "shell")
+                    && tools.iter().any(|tool| tool["name"] == "propose_instruction_update")
         }) && request.get("response_format").is_none()
             && request.get("dowe_harness_turns").is_none()
     }));

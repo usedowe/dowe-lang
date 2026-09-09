@@ -1,12 +1,14 @@
 mod auth;
 mod authoring;
 mod client;
+pub mod codegraph_enrichment;
 mod context;
 mod conversation;
 mod error;
 mod examples;
 mod images;
 mod inference;
+mod instructions;
 mod mcp;
 mod model;
 pub mod native_harness;
@@ -26,7 +28,7 @@ pub use authoring::{
     get_public_skill_resource, public_skills,
 };
 pub use client::{
-    NativeRequestEvent, send_agent_request, send_native_agent_request,
+    GeneratedImage, NativeRequestEvent, build_openai_image_request, parse_openai_image_response, send_agent_request, send_openai_image_generation, send_native_agent_request,
     send_native_agent_request_observed,
 };
 pub use context::{
@@ -37,6 +39,7 @@ pub use error::{AgentError, AgentResult};
 pub use examples::{PublicExampleResult, PublicExampleSearch, search_public_examples};
 pub use images::{encode_image, encode_image_paths};
 pub use inference::{AgentModelDetails, ThinkingLevel, agent_model_details, validate_thinking};
+    pub use instructions::{ProjectInstructionFile, ProjectInstructionIssue, ProjectInstructions, load_project_instructions};
 pub use mcp::handle_mcp_message;
 pub use model::{
     AgentContext, AgentDesktopEvent, AgentDesktopEventKind, AgentImageInput, AgentMessage,
@@ -46,7 +49,7 @@ pub use model::{
 };
 pub use oauth::{login_openai_codex, refresh_openai_codex_credential, token_needs_refresh};
 pub use preferences::{AgentPreferences, AgentPreferencesStore};
-pub use project::{AgentHarnessSummary, ProjectContext, project_context};
+pub use project::{AgentHarnessSummary, ProjectContext, is_dowe_project, project_context};
 pub use provider::{
     AgentAuthKind, AgentModelDefinition, AgentProviderDefinition, AgentProviderInfo,
     AgentProviderProtocol, ResolvedProviderAuth, auth_file_has_provider, builtin_provider_ids,

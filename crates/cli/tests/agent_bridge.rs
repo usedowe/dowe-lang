@@ -16,9 +16,9 @@ fn lists_pi_compatible_providers_without_credentials() {
     let providers: Value = serde_json::from_slice(&output.stdout).expect("providers json");
 
     assert!(output.status.success());
-    assert_eq!(providers.as_array().expect("provider list").len(), 40);
+    assert_eq!(providers.as_array().expect("provider list").len(), 27);
     assert_eq!(providers[0]["id"], "amazon-bedrock");
-    assert_eq!(providers[22]["id"], "openai");
+    assert_eq!(providers[15]["id"], "openai");
 }
 
 #[test]

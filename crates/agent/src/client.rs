@@ -8,6 +8,7 @@ use crate::provider::{
     AgentAuthKind, AgentProviderDefinition, AgentProviderProtocol, ResolvedProviderAuth,
     normalize_model_id, protocol_for_model, provider_base_url, provider_definition,
 };
+use base64::Engine;
 use reqwest::StatusCode;
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
 use serde_json::{Value, json};
@@ -51,6 +52,115 @@ pub async fn send_agent_request(
 #[path = "client_stream.rs"]
 mod streaming;
 pub use streaming::NativeRequestEvent;
+
+pub const MAX_GENERATED_IMAGE_BYTES: usize = 8 * 1024 * 1024;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GeneratedImage {
+    pub bytes: Vec<u8>,
+    pub mime_type: String,
+    pub provider: String,
+    pub model: String,
+    pub prompt: String,
+}
+
+pub fn build_openai_image_request(model: &str, prompt: &str) -> AgentResult<Value> {
+    if model != "gpt-image-1" || prompt.trim().is_empty() || prompt.len() > 4096 {
+        return Err(AgentError::new(
+            "OpenAI image generation requires gpt-image-1 and a bounded prompt",
+        ));
+    }
+    Ok(json!({"model": model, "prompt": prompt, "n": 1, "response_format": "b64_json"}))
+}
+
+pub fn parse_openai_image_response(
+    payload: &Value,
+    model: &str,
+    prompt: &str,
+) -> AgentResult<GeneratedImage> {
+    let data = payload
+        .get("data")
+        .and_then(Value::as_array)
+        .ok_or_else(|| AgentError::new("OpenAI Images response has no data array"))?;
+    if data.len() != 1 {
+        return Err(AgentError::new(
+            "OpenAI Images response must contain exactly one image",
+        ));
+    }
+    let item = data[0]
+        .as_object()
+        .ok_or_else(|| AgentError::new("OpenAI Images output is malformed"))?;
+    let encoded = item.get("b64_json").and_then(Value::as_str).ok_or_else(|| AgentError::new("OpenAI Images response must contain bounded base64 image bytes; URLs are unsupported"))?;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|_| AgentError::new("OpenAI Images output is not valid base64"))?;
+    if bytes.is_empty() || bytes.len() > MAX_GENERATED_IMAGE_BYTES {
+        return Err(AgentError::new("generated image is empty or exceeds 8 MiB"));
+    }
+    let mime_type = if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        "image/png"
+    } else if bytes.starts_with(b"\xff\xd8\xff") {
+        "image/jpeg"
+    } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        "image/webp"
+    } else {
+        return Err(AgentError::new(
+            "generated image must be PNG, JPEG, or WebP",
+        ));
+    };
+    Ok(GeneratedImage {
+        bytes,
+        mime_type: mime_type.into(),
+        provider: "openai".into(),
+        model: model.into(),
+        prompt: prompt.into(),
+    })
+}
+
+pub async fn send_openai_image_generation(
+    auth: &ResolvedProviderAuth,
+    model: &str,
+    prompt: &str,
+) -> AgentResult<GeneratedImage> {
+    let definition = provider_definition("openai")
+        .ok_or_else(|| AgentError::new("OpenAI provider is unavailable"))?;
+    let base = provider_base_url(&definition, auth)?;
+    if auth.kind != AgentAuthKind::ApiKey {
+        return Err(AgentError::new(
+            "OpenAI Images requires an API key credential",
+        ));
+    }
+    let secret = auth
+        .secret
+        .as_deref()
+        .ok_or_else(|| AgentError::new("OpenAI requires an API key"))?;
+    let response = reqwest::Client::new()
+        .post(format!("{}/images/generations", base.trim_end_matches('/')))
+        .bearer_auth(secret)
+        .json(&build_openai_image_request(model, prompt)?)
+        .send()
+        .await
+        .map_err(|error| AgentError::new(error.to_string()))?;
+    let status = response.status();
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|error| AgentError::new(error.to_string()))?;
+    if bytes.len() > 12 * 1024 * 1024 {
+        return Err(AgentError::new(
+            "OpenAI Images response exceeds bounded response size",
+        ));
+    }
+    let payload: Value = serde_json::from_slice(&bytes)
+        .map_err(|_| AgentError::new("OpenAI Images response is invalid JSON"))?;
+    if !status.is_success() {
+        return Err(AgentError::new(format!(
+            "OpenAI Images request failed with {}",
+            status
+        )));
+    }
+    parse_openai_image_response(&payload, model, prompt)
+}
 
 pub async fn send_native_agent_request(
     request: &AgentRequest,
@@ -225,7 +335,7 @@ fn provider_url(
                 format!("{base}/compat/chat/completions")
             } else if matches!(
                 definition.id,
-                "fireworks" | "opencode" | "opencode-go" | "vercel-ai-gateway" | "mistral"
+                "fireworks" | "opencode" | "opencode-go" | "vercel-ai-gateway"
             ) {
                 format!(
                     "{}/v1/chat/completions",
@@ -421,29 +531,23 @@ fn openai_completions_body(
     let provider = request.provider.as_deref().unwrap_or_default();
     let limit = if matches!(
         provider,
-        "ant-ling"
-            | "baseten"
-            | "deepseek"
-            | "moonshotai"
-            | "moonshotai-cn"
+        "deepseek"
             | "nvidia"
-            | "together"
             | "zai"
             | "zai-coding-cn"
             | "opencode"
             | "opencode-go"
             | "cloudflare-ai-gateway"
-            | "mistral"
     ) {
         "max_tokens"
     } else {
         "max_completion_tokens"
     };
     insert_common_request_fields(object, request, limit);
-    if !matches!(provider, "openai" | "mistral") {
+    if provider != "openai" {
         object.remove("prompt_cache_key");
     }
-    if request.stream && provider != "mistral" {
+    if request.stream {
         object.insert("stream_options".into(), json!({"include_usage":true}));
     }
     if !request.tools.is_empty() {
@@ -1309,6 +1413,31 @@ mod tests {
             env: BTreeMap::new(),
             source: "test".to_string(),
         }
+    }
+
+    #[test]
+    fn openai_image_fixture_is_bounded_and_url_only_output_is_rejected() {
+        let png = base64::engine::general_purpose::STANDARD.encode(b"\x89PNG\r\n\x1a\nfixture");
+        let image = parse_openai_image_response(
+            &json!({"data":[{"b64_json":png}]}),
+            "gpt-image-1",
+            "a blue circle",
+        )
+        .unwrap();
+        assert_eq!(image.mime_type, "image/png");
+        assert_eq!(image.provider, "openai");
+        assert!(
+            parse_openai_image_response(
+                &json!({"data":[{"url":"https://example.test/image.png"}]}),
+                "gpt-image-1",
+                "prompt"
+            )
+            .is_err()
+        );
+        assert!(parse_openai_image_response(&json!({"data":[]}), "gpt-image-1", "prompt").is_err());
+        let request = build_openai_image_request("gpt-image-1", "prompt").unwrap();
+        assert_eq!(request["n"], 1);
+        assert_eq!(request["response_format"], "b64_json");
     }
 
     #[test]

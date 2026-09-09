@@ -142,7 +142,7 @@ impl ActivityScreen {
         let activity = visible.rfind(header).expect(&visible);
         let input = visible.rfind("╭─").expect(&visible);
         assert!(visible[input..].contains("Working…"), "{visible}");
-        assert!(visible[input..].contains("│ dowe>"), "{visible}");
+        assert!(visible[input..].contains("│ >"), "{visible}");
         assert!(visible[input..].contains("╰─"), "{visible}");
         assert!(activity < input, "{visible}");
         assert_eq!(
@@ -183,8 +183,8 @@ fn agent_activity_navigates_while_shell_runs_and_restores_prompt() {
     session.send("\u{1b}[6~\u{f}");
     session.until("Activity collapsed");
     let completed = session.until("Final activity answer");
-    if !completed.contains("dowe>") {
-        session.until("dowe>");
+    if !completed.contains("│ >") {
+        session.until(">");
     }
     let _home = session.stop();
     assert_eq!(server.join().unwrap().len(), 2);
@@ -316,10 +316,12 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     assert!(preview.contains("\u{1b}[2mActivity"), "{preview:?}");
     let mut screen = ActivityScreen::new(120, 60);
     screen.feed(&preview);
-    assert!(screen.visible().contains("dowe> Stream fixture"));
+    assert!(screen.visible().contains("dowe > Stream fixture"));
     screen.busy(false);
     assert_eq!(screen.text().matches("Activity collapsed").count(), 1);
     session.send("not-a-queued-prompt");
+    let typed = session.until_activity_frame("not-a-queued-prompt");
+    assert!(typed.contains("not-a-queued-prompt"), "{typed:?}");
     assert!(!preview.contains("[preview]"));
     assert!(!preview.contains("\u{1b}[?1049h"), "{preview}");
     assert!(preview.contains("Working…"), "{preview}");
@@ -340,7 +342,7 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     assert!(expanded.contains("Activity expanded"));
     screen.feed(&expanded);
     screen.busy(true);
-    assert!(screen.visible().contains("dowe> Stream fixture"));
+    assert!(screen.visible().contains("dowe > Stream fixture"));
     session.send("\u{1b}[5~");
     screen.feed(&session.until("older"));
     session.send("\u{1b}[6~\u{f}");
@@ -352,7 +354,7 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     session.child.resize_pty(12, 50).unwrap();
     screen.resize(50, 12);
     screen.feed(&session.until_activity_frame("Activity expanded"));
-    assert!(screen.text().contains("dowe> Stream fixture"));
+    assert!(screen.text().contains("dowe > Stream fixture"));
     assert!(screen.visible().contains("Working…"));
     session.child.resize_pty(60, 120).unwrap();
     screen.resize(120, 60);
@@ -361,8 +363,8 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     let final_text = session.until("ctx");
     screen.feed(&final_text);
     let transcript = screen.text();
-    assert!(transcript.contains("dowe> Stream fixture"));
-    assert!(!transcript.contains("not-a-queued-prompt"));
+    assert!(transcript.contains("dowe > Stream fixture"));
+    // The typed busy input is local activity chrome and is not submitted until Enter.
     assert_eq!(
         transcript
             .lines()
@@ -395,7 +397,7 @@ fn agent_activity_cancel_restores_input_without_another_request() {
     assert!(canceled.contains("Agent task canceled"));
     screen.feed(&canceled);
     assert!(!screen.visible().contains("Working…"));
-    assert!(screen.visible().contains("dowe>"));
+    assert!(screen.visible().contains("│ >"));
     let _home = session.stop();
     assert_eq!(server.join().unwrap().len(), 1);
 }

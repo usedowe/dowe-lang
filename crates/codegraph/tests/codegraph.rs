@@ -162,6 +162,16 @@ fn builds_project_graph_with_agents() {
 }
 
 #[test]
+fn persists_root_level_detectable_language_file() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::write(temp.path().join("main.py"), "print(1)\n").expect("python");
+    let graph = build_codegraph(temp.path(), BuildOptions::default()).expect("graph");
+    assert!(graph.nodes.iter().any(|node| node.path.as_deref() == Some("main.py") && node.language == "python"));
+    let snapshot = dowe_codegraph::ensure_persistent_codegraph(temp.path()).expect("persistent graph");
+    assert_eq!(snapshot.manifest.fingerprints.get("main.py").map(String::as_str), Some(snapshot.graph.nodes.iter().find(|node| node.path.as_deref() == Some("main.py")).unwrap().fingerprint.as_str()));
+}
+
+#[test]
 fn reports_modular_warning_and_error_thresholds() {
     let temp = TempDir::new().expect("tempdir");
     write_workspace(&temp);

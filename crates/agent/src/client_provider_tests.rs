@@ -58,40 +58,17 @@ fn copilot_headers_describe_images_and_request_initiator() {
 }
 
 #[test]
-fn mistral_keeps_its_cache_contract_without_openai_stream_options() {
-    let mut request = request("mistral", "codestral-latest", true);
-    request
-        .extra
-        .insert("session_id".into(), json!("session-1"));
-    request
-        .extra
-        .insert("max_completion_tokens".into(), json!(4096));
-    let body = mistral_body(&request.model, &request).unwrap();
-    assert_eq!(body["max_tokens"], 4096);
-    assert_eq!(body["prompt_cache_key"], "session-1");
-    assert!(body.get("stream_options").is_none());
-    assert!(body.get("max_completion_tokens").is_none());
-}
-
-#[test]
 fn completion_profiles_use_supported_limits_cache_and_usage_fields() {
     for provider in [
-        "ant-ling",
-        "baseten",
         "deepseek",
-        "moonshotai",
-        "moonshotai-cn",
         "nvidia",
-        "together",
         "zai",
         "zai-coding-cn",
         "opencode",
         "opencode-go",
         "cloudflare-ai-gateway",
         "groq",
-        "cerebras",
         "openrouter",
-        "xiaomi",
     ] {
         let mut request = request(provider, "test-model", true);
         request
@@ -102,7 +79,7 @@ fn completion_profiles_use_supported_limits_cache_and_usage_fields() {
             .insert("session_id".into(), json!("conversation-1"));
         let body =
             openai_completions_body("test-model", &request, provider == "openrouter").unwrap();
-        let modern_limit = matches!(provider, "groq" | "cerebras" | "openrouter" | "xiaomi");
+        let modern_limit = provider == "groq" || provider == "openrouter";
         assert_eq!(
             body[if modern_limit {
                 "max_completion_tokens"
@@ -407,19 +384,8 @@ fn bedrock_images_use_converse_json_bytes_and_encoded_model_ids() {
 }
 
 #[test]
-fn mistral_stream_text_blocks_do_not_leak_thinking_or_drop_usage() {
-    let body = concat!(
-        "data: {\"choices\":[{\"delta\":{\"content\":[{\"type\":\"thinking\",\"thinking\":[{\"text\":\"hidden\"}]},{\"type\":\"text\",\"text\":\"Hel\"}]}}]}\r\n\r\n",
-        "data: {\"choices\":[{\"delta\":{\"content\":[{\"type\":\"text\",\"text\":\"lo\"}]},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2}}"
-    );
-    let payload = parse_stream_payload(AgentProviderProtocol::MistralConversations, body).unwrap();
-    assert_eq!(crate::agent_response_text(&payload).unwrap(), "Hello");
-    assert_eq!(payload["usage"]["prompt_tokens"], 10);
-}
-
-#[test]
 fn every_catalog_provider_builds_a_text_request_without_network_or_real_auth() {
-    assert_eq!(crate::builtin_provider_ids().len(), 40);
+    assert_eq!(crate::builtin_provider_ids().len(), 27);
     for provider in crate::builtin_provider_ids() {
         let definition = provider_definition(provider).unwrap();
         let mut credential = if *provider == "openai-codex" {

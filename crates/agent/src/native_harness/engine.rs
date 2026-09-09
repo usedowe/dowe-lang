@@ -1,13 +1,16 @@
 use super::request::build_request;
+use crate::codegraph_enrichment::{SemanticEnrichment, SemanticStatus, enrich_codegraph};
+use dowe_codegraph::ensure_persistent_codegraph;
 use super::{
     Approval, HarnessConfig, HarnessRole, HarnessSession, HarnessStore, HarnessTools, HarnessTurn,
     ModelSelection, ToolResult, response_turn,
 };
 use crate::{
     AgentError, AgentMessage, AgentMessageContent, AgentPrepareOptions, AgentRequest,
-    AgentRequestType, AgentResult, AgentServerResponse, AgentUsageTotals, agent_model_details,
-    prepare_agent_request,
+    AgentRequestType, AgentResult, AgentServerResponse, AgentUsageTotals, GeneratedImage,
+    agent_model_details, prepare_agent_request,
 };
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::time::{Duration, Instant};
@@ -35,6 +38,14 @@ pub trait HarnessHost {
         &mut self,
         approval: &Approval,
     ) -> impl std::future::Future<Output = AgentResult<Option<bool>>>;
+    fn generate_image(
+        &mut self,
+        selection: &ModelSelection,
+        approval: &Approval,
+    ) -> impl std::future::Future<Output = AgentResult<GeneratedImage>> {
+        let _ = (selection, approval);
+        async { Err(AgentError::new("image generation provider is unavailable")) }
+    }
     fn ask_clarification(
         &mut self,
         question: &crate::ClarificationQuestion,
@@ -80,6 +91,15 @@ pub async fn run_harness_turn(
         ));
     }
     let selected = config.resolve(role, explicit, active)?;
+        let semantic = if matches!(role, HarnessRole::Execute | HarnessRole::Plan | HarnessRole::Review) {
+            match ensure_persistent_codegraph(store.root()) {
+                Ok(snapshot) => enrich_codegraph(store.root(), &config.resolve(HarnessRole::Codegraph, None, active)?, &snapshot).await,
+                Err(_) => SemanticEnrichment { status: SemanticStatus::Unavailable, provider: None, model: None, context: "[]".into(), cache_warning: None },
+            }
+        } else {
+            SemanticEnrichment { status: SemanticStatus::Disabled, provider: None, model: None, context: "[]".into(), cache_warning: None }
+        };
+    let image_selection = config.resolve(HarnessRole::ImageGeneration, None, active)?;
     let historical_images = role == HarnessRole::Execute && session.turns.iter().skip(session.context_start).any(|turn| {
         turn.message.as_ref().is_some_and(|message| matches!(&message.content, AgentMessageContent::Parts(parts) if parts.iter().any(|part| matches!(part, crate::AgentMessagePart::ImageUrl { .. }))))
     });
@@ -125,6 +145,7 @@ pub async fn run_harness_turn(
     // Retrying is safe only before any tool result exists; otherwise a
     // repeated request could duplicate an observed side effect.
     let mut has_tool_result = false;
+    let mut generated_image_for_continuation: Option<GeneratedImage> = None;
     for round in 0..config.max_rounds {
         if exhausted(config, &usage, charged_estimate, started) {
             emit(
@@ -135,7 +156,27 @@ pub async fn run_harness_turn(
             )?;
             return Ok(HarnessOutcome::BudgetExhausted);
         }
-        let mut request = build_request(store, session, config, role, &selected, &prompt)?;
+        let mut request = build_request(store, session, config, role, &selected, &prompt, Some(&semantic))?;
+        if let Some(image) = &generated_image_for_continuation {
+            request.messages.push(AgentMessage {
+                role: "user".into(),
+                content: AgentMessageContent::Parts(vec![
+                    crate::AgentMessagePart::Text {
+                        text: "Generated image asset (inspect it before continuing):".into(),
+                    },
+                    crate::AgentMessagePart::ImageUrl {
+                        image_url: crate::ImageUrl {
+                            url: format!(
+                                "data:{};base64,{}",
+                                image.mime_type,
+                                base64::engine::general_purpose::STANDARD.encode(&image.bytes)
+                            ),
+                        },
+                    },
+                ]),
+            });
+            generated_image_for_continuation = None;
+        }
         let limit = config.context_limit.or_else(|| {
             agent_model_details(&selected.provider, &selected.model)
                 .and_then(|details| details.context_window)
@@ -173,7 +214,7 @@ pub async fn run_harness_turn(
             })??;
             charged_estimate = charged_estimate.saturating_add(compact_charge);
             tools.restore_loaded_skills(&session.turns[session.context_start..]);
-            request = build_request(store, session, config, role, &selected, &prompt)?;
+            request = build_request(store, session, config, role, &selected, &prompt, Some(&semantic))?;
             estimate = super::task::estimate_request(&request)?;
             if estimate + 6144 >= limit {
                 return Err(AgentError::new(
@@ -298,26 +339,58 @@ pub async fn run_harness_turn(
             return Ok(HarnessOutcome::Completed);
         }
         let mut results = Vec::new();
+        let mut screenshot_message = None;
         let mut approval_required = false;
         for call in &calls {
-            if call.name != "ask_user" && call.name != "question" { continue; }
-            let value = call.arguments.get("question").cloned().unwrap_or_else(|| call.arguments.clone());
+            if call.name != "ask_user" && call.name != "question" {
+                continue;
+            }
+            let value = call
+                .arguments
+                .get("question")
+                .cloned()
+                .unwrap_or_else(|| call.arguments.clone());
             let question: crate::ClarificationQuestion = serde_json::from_value(value)
                 .map_err(|_| AgentError::new("malformed clarification question"))?;
             question.validate()?;
-            emit(store, session, host, json!({"event":"clarification_required","call_id":call.id,"question":question}))?;
+            emit(
+                store,
+                session,
+                host,
+                json!({"event":"clarification_required","call_id":call.id,"question":question}),
+            )?;
             session.interrupted = true;
             store.save_session(session)?;
             let Some(answer) = host.ask_clarification(&question).await? else {
-                emit(store, session, host, json!({"event":"task_state","status":"blocked","reason":"clarification_required"}))?;
+                emit(
+                    store,
+                    session,
+                    host,
+                    json!({"event":"task_state","status":"blocked","reason":"clarification_required"}),
+                )?;
                 return Ok(HarnessOutcome::ClarificationRequired);
             };
-            if answer.trim().is_empty() || answer.len() > 1024 { return Err(AgentError::new("clarification answer exceeds limits")); }
-            let result = ToolResult { id: call.id.clone(), name: call.name.clone(), failed: false, output: json!({"answer":tools.redactor.text(&answer)}) };
-            emit(store, session, host, json!({"event":"tool_result","result":result}))?;
+            if answer.trim().is_empty() || answer.len() > 1024 {
+                return Err(AgentError::new("clarification answer exceeds limits"));
+            }
+            let result = ToolResult {
+                id: call.id.clone(),
+                name: call.name.clone(),
+                failed: false,
+                output: json!({"answer":tools.redactor.text(&answer)}),
+            };
+            emit(
+                store,
+                session,
+                host,
+                json!({"event":"tool_result","result":result}),
+            )?;
             results.push(result);
         }
-        let calls = calls.into_iter().filter(|call| call.name != "ask_user" && call.name != "question").collect::<Vec<_>>();
+        let calls = calls
+            .into_iter()
+            .filter(|call| call.name != "ask_user" && call.name != "question")
+            .collect::<Vec<_>>();
         let mut canceled = false;
         let mut call_index = 0;
         while call_index < calls.len() {
@@ -395,7 +468,37 @@ pub async fn run_harness_turn(
                                         ))
                                     })
                                     } else {
-                                        tools.apply_write(approval)
+                                        if call.name == "generate_image" {
+                                            let generated = host
+                                                .generate_image(&image_selection, &approval)
+                                                .await;
+                                            match generated {
+                                                Ok(image) => {
+                                                    let output = tools.apply_generated_image(
+                                                        approval,
+                                                        image.clone(),
+                                                    );
+                                                    if output.is_ok() {
+                                                        generated_image_for_continuation =
+                                                            Some(image);
+                                                    }
+                                                    output
+                                                }
+                                                Err(error) => {
+                                                    tools.reject(approval)?;
+                                                    Err(error)
+                                                }
+                                            }
+                                        } else if call.name == "capture_web_screenshot" {
+                                            let output = tools.capture_web_screenshot(approval);
+                                            if let Ok(value) = &output {
+                                                screenshot_message =
+                                                    Some(tools.screenshot_image(value)?);
+                                            }
+                                            output
+                                        } else {
+                                            tools.apply_write(approval)
+                                        }
                                     };
                                     emit(
                                         store,
@@ -448,6 +551,12 @@ pub async fn run_harness_turn(
             results,
             ..Default::default()
         });
+        if let Some(message) = screenshot_message {
+            session.turns.push(HarnessTurn {
+                message: Some(message),
+                ..Default::default()
+            });
+        }
         has_tool_result = true;
         session.interrupted = false;
         store.save_session(session)?;

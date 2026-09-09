@@ -95,7 +95,7 @@ pub(super) async fn run_agent_session_with_args(
             return Ok(());
         };
         let command = prompt.trim();
-        if matches!(command, "/exit" | "/quit" | ":q") {
+        if is_exit_command(command) {
             return Ok(());
         }
         if command.is_empty() {
@@ -1019,6 +1019,13 @@ mod tests {
     }
 
     #[test]
+    fn only_exit_is_an_interactive_exit_command() {
+        assert!(is_exit_command("/exit"));
+        assert!(!is_exit_command("/quit"));
+        assert!(!is_exit_command(":q"));
+    }
+
+    #[test]
     fn agent_provider_precedence_keeps_explicit_overrides_temporary() {
         let home = tempfile::tempdir().unwrap();
         let auth = AgentAuthStore::new(home.path().join("auth.json"));
@@ -1063,6 +1070,10 @@ mod tests {
     }
 }
 
+fn is_exit_command(command: &str) -> bool {
+    command == "/exit"
+}
+
 fn read_agent_prompt(
     footer: &super::footer::Footer<'_>,
     json_output: bool,
@@ -1071,7 +1082,7 @@ fn read_agent_prompt(
         return Ok(super::prompt::read_interactive_prompt(footer)?);
     }
     if !json_output {
-        print!("\ndowe> ");
+        print!("\n> ");
         io::stdout().flush()?;
     }
     let mut prompt = String::new();

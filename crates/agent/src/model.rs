@@ -62,6 +62,7 @@ pub struct AgentContext {
     pub skills: Vec<AgentSkillSummary>,
     pub codegraph: Option<crate::context::AgentCodeGraphSummary>,
     pub images: Vec<AgentImageInput>,
+    pub project_instructions: crate::ProjectInstructions,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

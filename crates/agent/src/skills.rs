@@ -5,6 +5,16 @@ pub fn generation_skill_summaries() -> Vec<AgentSkillSummary> {
 }
 
 pub fn generation_skill_summaries_for(prompt: &str) -> Vec<AgentSkillSummary> {
+    generation_skill_summaries_for_mode(prompt, true)
+}
+
+pub fn generation_skill_summaries_for_mode(
+    prompt: &str,
+    dowe_mode: bool,
+) -> Vec<AgentSkillSummary> {
+    if !dowe_mode {
+        return Vec::new();
+    }
     let lower = prompt.to_ascii_lowercase();
     let terms = lower
         .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
@@ -107,7 +117,7 @@ fn generation_skills() -> &'static [GenerationSkill] {
         GenerationSkill {
             name: "dowe-ui-reference",
             description: "Convert UI reference images into Dowe view structures.",
-            context: "For UI work, prefer a reference image. Map layout to Scaffold, AppBar, Sidebar, Box, Flex, Grid, Card, Text, Title, Button, Input, Table, Tabs, and related Dowe components. Identify whether the image changes layout or only visual tokens.",
+            context: crate::prompts::SCREENSHOT_UI_POLICY,
         },
         GenerationSkill {
             name: "dowe-server-logic",

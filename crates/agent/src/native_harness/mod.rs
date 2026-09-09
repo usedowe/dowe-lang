@@ -13,10 +13,11 @@ mod request;
 mod store;
 mod task;
 mod text_stream;
+    mod visual_capture;
 mod tools;
 mod turns;
 
-pub use capabilities::{ModelCapabilities, builtin_model_capabilities};
+pub use capabilities::{ModelCapabilities, builtin_image_generation_capability, builtin_model_capabilities};
     pub use crate::ClarificationQuestion;
 pub use capability_catalog::{
     BuiltinCapabilityRecord, CAPABILITY_CATALOG_VERSION, CapabilityEvidence,
@@ -29,6 +30,7 @@ pub use environment::set_local_environment_value;
 pub use evaluation::{EVALUATION_CATEGORIES, EvaluationReport, EvaluationSample, evaluate_samples};
 pub use privacy::Redactor;
 pub(crate) use protocol::apply_harness_turns;
+    pub use protocol::apply_harness_turns_for_test;
 pub use store::{HarnessSession, HarnessStore, MemoryObservation, MemoryValidity};
 pub use task::HarnessTask;
 pub use text_stream::RedactedTextStream;
@@ -37,6 +39,7 @@ pub use tools::{
     TerminalInput,
 };
 pub use turns::{HarnessTurn, ToolCall, ToolResult, response_turn};
+    pub use visual_capture::validate_screenshot_png;
 
 pub(crate) fn digest(value: &[u8]) -> String {
     use sha2::{Digest, Sha256};

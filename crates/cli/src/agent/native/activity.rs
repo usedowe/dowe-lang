@@ -17,7 +17,7 @@ impl Activity {
             }
             Some("tool_result") => self.push(tool_result(event)),
             Some("request_prepared" | "context_compacted") => self.push([format!(
-                "{} · {} / {}",
+                "request · {} / {} · {}",
                 safe_text(event["role"].as_str().unwrap_or("?"), 80),
                 safe_text(event["provider"].as_str().unwrap_or("?"), 80),
                 safe_text(event["model"].as_str().unwrap_or("?"), 80),

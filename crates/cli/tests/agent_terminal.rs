@@ -93,7 +93,7 @@ impl Session {
             },
             home,
         };
-        session.until("dowe>");
+        session.until(">");
         session
     }
 
@@ -222,7 +222,7 @@ fn agent_restores_selected_provider_across_sessions() {
         session.send("\u{1b}[B");
     }
     session.send("\r");
-    session.until("dowe>");
+    session.until(">");
     let home = session.stop();
     let preferences = home.path().join(".dowe/agent/preferences.json");
     let saved = std::fs::read_to_string(&preferences).expect("saved preferences");
@@ -234,11 +234,11 @@ fn agent_restores_selected_provider_across_sessions() {
     session.send("/model\r");
     session.until("Select openai-codex model");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.send("/login\r");
     session.until("Sign in with an API key");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     assert_eq!(std::fs::read_to_string(&preferences).unwrap(), saved);
     session.finish();
 }
@@ -334,7 +334,7 @@ fn agent_migrates_retired_codex_selection_on_startup() {
     assert!(!menu.contains("GPT-5.3 Codex • gpt-5.3-codex\r"));
     assert!(menu.contains("gpt-5.3-codex-spark"));
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.finish();
 }
 
@@ -397,7 +397,7 @@ fn agent_provider_errors_keep_session_open_but_fail_one_shot() {
     session.send("/provider\r");
     session.until("Select provider to configure");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     let home = session.stop();
     assert_eq!(std::fs::read(&path).unwrap(), before);
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_dowe"))
@@ -466,24 +466,27 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
     for color in [true, false] {
         let session = Session::start(color);
         session.send("/");
-        let mut output = session.until("/quit");
-        if !output.rsplit("/quit").next().unwrap().contains("ctx") {
+        let mut output = session.until("/exit");
+        if !output.rsplit("/exit").next().unwrap().contains("ctx") {
             output.push_str(&session.until("ctx"));
         }
+        assert!(!output.contains("/quit"), "{output:?}");
+        assert!(!output.contains(":q"), "{output:?}");
         let plain = dialoguer::console::strip_ansi_codes(&output);
         assert!(plain.contains("╭─"), "{output:?}");
-        assert!(plain.contains("│ dowe> /"), "{output:?}");
+        assert!(plain.contains("│ > /"), "{output:?}");
         assert!(plain.contains("╰─"), "{output:?}");
         if color {
             assert!(output.contains("\u{1b}[36m╭─"), "{output:?}");
             assert!(output.contains("\u{1b}[32m❯"), "{output:?}");
             assert!(output.contains("\u{1b}[36m/login"), "{output:?}");
+                assert!(output.contains("\u{1b}[1m"), "{output:?}");
         } else {
             assert!(!output.contains("\u{1b}[32m"));
             assert!(!output.contains("\u{1b}[36m"));
         }
         session.send("\u{7f}");
-        session.until("dowe>");
+        session.until(">");
         session.child.resize_pty(6, 18).unwrap();
         session.send("界🙂");
         let narrow = session.until("界🙂");
@@ -491,7 +494,8 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
         session.child.resize_pty(60, 120).unwrap();
         session.send("\u{7f}\u{7f}");
         let restored = session.until("╰─");
-        assert!(restored.contains("│ dowe>"), "{restored:?}");
+        let restored_plain = dialoguer::console::strip_ansi_codes(&restored);
+        assert!(restored_plain.contains("│ >"), "{restored:?}");
         session.finish();
     }
 }
@@ -507,11 +511,11 @@ fn agent_escape_returns_to_parent_menu_without_mutating_session() {
     let method = session.until("Sign in with an API key");
     assert!(method.contains("❯ Sign in with an API key"), "{method:?}");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.send("/provider\r");
     session.until("Select provider to configure");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.finish();
 }
 
@@ -524,15 +528,15 @@ fn agent_escape_leaves_model_selection_without_authenticating() {
         session.send("\u{1b}[B");
     }
     session.send("\r");
-    session.until("dowe>");
+    session.until(">");
     session.send("/provider\r");
     session.until("Select provider to configure");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.send("/model\r");
     session.until("Enter another model id");
     session.send("\r");
-    session.until("dowe>");
+    session.until(">");
     session.send("/model\r");
     let before = session.until("Enter another model id");
     assert!(before.contains("Select openai-codex model"));
@@ -542,15 +546,15 @@ fn agent_escape_leaves_model_selection_without_authenticating() {
         .expect("selected model")
         .to_string();
     session.send("\u{1b}[B\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.send("/model\r");
     let after = session.until("Enter another model id");
     assert!(after.contains(&selected), "{after:?}");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.send("hello\r");
     session.until("Select authentication method");
     session.send("\u{1b}");
-    session.until("dowe>");
+    session.until(">");
     session.finish();
 }

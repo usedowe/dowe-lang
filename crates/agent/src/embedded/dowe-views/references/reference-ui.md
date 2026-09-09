@@ -329,6 +329,22 @@ Use `Image` only for an independently obtained original photograph, illustration
 authentic screenshot explicitly supplied or requested by the user. Never use the reference, a
 crop, slice, rasterization, or recomposition derived from it as a project asset.
 
+For integrated image generation, keep every screenshot or UI-shaped region in the semantic Dowe tree.
+Use `Icon`, `Svg`, `Brand`, and Dowe components for logos, controls, icons, and UI; use `Image` or
+generated assets only for independent illustrations, photographs, textures, or device artwork. A
+generated image must not flatten the UI tree. `generate_image` is Execute-only, uses OpenAI
+`gpt-image-1` v1, requires approval, writes bounded output under approved `public/assets`, and
+returns the image to the agent. Configure it with `/models image_generation inherit` or an explicit
+`/models image_generation provider/model`. The `images` vision-input capability is distinct from
+`image_generation`. v1 has no remote URL outputs or reference-image generation and rejects
+`reference_image_path`. Python, Node, and Playwright are not runtime requirements; account and
+billing availability remain provider-side.
+
+Screenshot capture is only bounded validation evidence: it needs an already-running loopback HTTP URL
+and installed browser, writes under `.dowe/visual-qa`, validates PNG signature/IHDR and dimensions,
+and does not claim subrequest network isolation or perform visual comparison by itself. If capture is
+unavailable, report visual QA as not run.
+
 Classify the media role before choosing the component. When an original asset fills and crops with
 a Section, Card, or neutral media panel as background geometry, use that owner's `cover` prop; do
 not stretch a child `Image` to simulate the same background. Use `Image` when the original is a

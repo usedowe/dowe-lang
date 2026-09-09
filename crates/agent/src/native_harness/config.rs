@@ -10,12 +10,39 @@ pub enum HarnessRole {
     Execute,
     Compact,
     Review,
+        ImageGeneration,
+    Codegraph,
 }
 
 impl HarnessRole {
     pub fn parse(value: &str) -> AgentResult<Self> {
         serde_json::from_value(serde_json::Value::String(value.into()))
-            .map_err(|_| AgentError::new("role must be plan, execute, compact or review"))
+            .map_err(|_| AgentError::new("role must be plan, execute, compact, review, image_generation or codegraph"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn codegraph_role_parses_and_serializes_as_snake_case() {
+        assert_eq!(HarnessRole::parse("codegraph").unwrap(), HarnessRole::Codegraph);
+        assert_eq!(serde_json::to_string(&HarnessRole::Codegraph).unwrap(), "\"codegraph\"");
+        assert_eq!(HarnessRole::parse("image_generation").unwrap(), HarnessRole::ImageGeneration);
+    }
+
+    #[test]
+    fn codegraph_resolves_configured_selection_then_active_fallback() {
+        let active = ModelSelection::new("openai", "gpt-5.5");
+        let configured = ModelSelection::new("openai-codex", "gpt-5.3-codex-spark");
+        let mut config = HarnessConfig::default();
+        config.roles.insert(HarnessRole::Codegraph, configured.clone());
+
+        assert_eq!(config.resolve(HarnessRole::Codegraph, None, &active).unwrap(), configured);
+
+        config.roles.remove(&HarnessRole::Codegraph);
+        assert_eq!(config.resolve(HarnessRole::Codegraph, None, &active).unwrap(), active);
     }
 }
 

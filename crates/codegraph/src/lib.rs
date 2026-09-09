@@ -7,11 +7,16 @@ mod metrics;
 mod mode;
 mod model;
 mod paths;
+mod persistence;
 mod reports;
 mod waivers;
 
 pub use error::{CodeGraphError, CodeGraphResult};
 pub use model::*;
+pub use persistence::{
+    CodeGraphQuery, CodeGraphSnapshot, GraphFreshness, GraphManifest, GraphQueryResult,
+    ensure_persistent_codegraph, refresh_persistent_codegraph, query_persistent_codegraph,
+};
 
 pub fn detect_codegraph_mode(root: impl AsRef<std::path::Path>) -> CodeGraphResult<CodeGraphMode> {
     mode::detect_codegraph_mode(root.as_ref())

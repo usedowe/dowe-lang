@@ -1,5 +1,6 @@
 use super::{HarnessConfig, HarnessRole, Redactor, ToolCall, digest, identifier, skill_unit};
-use crate::{AgentError, AgentResult, AgentToolDefinition, AgentToolFunction};
+use crate::instructions::MAX_INSTRUCTION_FILE_BYTES;
+use crate::{AgentError, AgentResult, AgentToolDefinition, AgentToolFunction, GeneratedImage};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use serde::{Deserialize, Serialize};
@@ -16,21 +17,21 @@ pub struct Approval {
     pub call: ToolCall,
     pub details: Value,
     #[serde(skip)]
-    before: Option<String>,
+    pub(crate) before: Option<String>,
     #[serde(skip)]
-    after: Option<String>,
+    pub(crate) after: Option<String>,
     #[serde(skip)]
-    before_bytes: Option<Vec<u8>>,
+    pub(crate) before_bytes: Option<Vec<u8>>,
     #[serde(skip)]
-    after_bytes: Option<Vec<u8>>,
+    pub(crate) after_bytes: Option<Vec<u8>>,
 }
 
 pub struct HarnessTools {
-    root: PathBuf,
-    session: String,
+    pub(crate) root: PathBuf,
+    pub(crate) session: String,
     config: HarnessConfig,
     supervisor: Option<dowe_runtime::SupervisorCommand>,
-    pending: BTreeMap<String, String>,
+    pub(crate) pending: BTreeMap<String, String>,
     loaded: Mutex<BTreeSet<String>>,
     pub redactor: Redactor,
 }
@@ -58,6 +59,22 @@ struct AssetArgs {
     path: String,
     content_base64: String,
     skill: String,
+    reason: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GenerateImageArgs {
+    prompt: String,
+    destination: String,
+    reason: String,
+    #[serde(default)]
+    reference_image_path: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct InstructionArgs {
+    path: String,
+    content: String,
     reason: String,
 }
 #[derive(Deserialize)]
@@ -208,7 +225,7 @@ impl HarnessTools {
     pub fn prepare(&mut self, call: &ToolCall, role: HarnessRole) -> AgentResult<Option<Approval>> {
         if matches!(
             call.name.as_str(),
-            "write_file" | "edit_file" | "write_asset" | "shell"
+            "write_file" | "edit_file" | "write_asset" | "generate_image" | "shell" | "propose_instruction_update"
         ) && role != HarnessRole::Execute
         {
             return Err(AgentError::new(
@@ -216,6 +233,53 @@ impl HarnessTools {
             ));
         }
         let (before, after, details) = match call.name.as_str() {
+            "generate_image" => {
+                if role != HarnessRole::Execute {
+                    return Err(AgentError::new(
+                        "image generation is available only to the Execute role",
+                    ));
+                }
+                let args: GenerateImageArgs = serde_json::from_value(call.arguments.clone())?;
+                if args.prompt.trim().is_empty()
+                    || args.prompt.len() > 4096
+                    || args.reason.trim().is_empty()
+                    || args.reason.len() > 1024
+                {
+                    return Err(AgentError::new(
+                        "generate_image prompt/reason exceeds limits",
+                    ));
+                }
+                if args.reference_image_path.is_some() {
+                    return Err(AgentError::new(
+                        "generate_image reference_image_path is not supported in v1",
+                    ));
+                }
+                let resolved = self.path(&args.destination)?;
+                self.asset_scope(&resolved, "views/generated")?;
+                let before_bytes = resolved.exists().then(|| fs::read(&resolved)).transpose()?;
+                if before_bytes
+                    .as_ref()
+                    .is_some_and(|bytes| bytes.len() > 8 * 1024 * 1024)
+                {
+                    return Err(AgentError::new(
+                        "generate_image destination base exceeds 8 MiB",
+                    ));
+                }
+                let details = json!({"prompt":args.prompt,"destination":args.destination,"reason":args.reason,"reference_image_path":args.reference_image_path,"before_byte_count":before_bytes.as_ref().map(Vec::len),"before_sha256":before_bytes.as_ref().map(|value| digest(value)),"approval":"provider bytes remain in memory until this exact approval is accepted"});
+                let approval = Approval {
+                    id: identifier(),
+                    session: self.session.clone(),
+                    call: call.clone(),
+                    details,
+                    before: None,
+                    after: None,
+                    before_bytes,
+                    after_bytes: None,
+                };
+                self.pending
+                    .insert(approval.id.clone(), Self::approval_digest(&approval)?);
+                return Ok(Some(approval));
+            }
             "write_asset" => {
                 let args: AssetArgs = serde_json::from_value(call.arguments.clone())?;
                 skill_unit(&args.skill)?;
@@ -261,7 +325,33 @@ impl HarnessTools {
                     .insert(approval.id.clone(), Self::approval_digest(&approval)?);
                 return Ok(Some(approval));
             }
-            "write_file" | "edit_file" => {
+            "propose_instruction_update" => {
+                    let args: InstructionArgs = serde_json::from_value(call.arguments.clone())?;
+                    let (path, before) = self.instruction_base(&args.path)?;
+                    if args.reason.trim().is_empty()
+                        || args.reason.len() > 1024
+                        || args.content.len() > MAX_INSTRUCTION_FILE_BYTES
+                        || args.content.chars().any(|character| {
+                            character.is_control() && !matches!(character, '\n' | '\r' | '\t')
+                        })
+                    {
+                        return Err(AgentError::new(
+                            "instruction path, reason or content exceeds safety limits",
+                        ));
+                    }
+                    if self.redactor.text(&args.content) != args.content
+                        || before
+                            .as_ref()
+                            .is_some_and(|text| self.redactor.text(text) != *text)
+                    {
+                        return Err(AgentError::new(
+                            "instruction content contains a redactor-detected secret",
+                        ));
+                    }
+                    let details = json!({"path":path,"reason":args.reason,"before":before.as_deref().unwrap_or(""),"after":args.content,"approval":"host approval is required; this tool never grants approval"});
+                    (before, Some(args.content), details)
+                }
+                "write_file" | "edit_file" => {
                 let (path, skill, reason, content, edit) = if call.name == "write_file" {
                     let args: WriteArgs = serde_json::from_value(call.arguments.clone())?;
                     (args.path, args.skill, args.reason, args.content, None)
@@ -355,6 +445,7 @@ impl HarnessTools {
                 (None, None, details)
             }
             "read_file" | "list_files" | "search" | "get_skill" => return Ok(None),
+            "capture_web_screenshot" => return Ok(Some(self.prepare_screenshot(call, role)?)),
             _ => return Err(AgentError::new("unknown harness tool")),
         };
         let approval = Approval {
@@ -372,7 +463,7 @@ impl HarnessTools {
         Ok(Some(approval))
     }
 
-    fn approval_digest(approval: &Approval) -> AgentResult<String> {
+    pub(crate) fn approval_digest(approval: &Approval) -> AgentResult<String> {
         Ok(digest(&serde_json::to_vec(&(
             approval.id.as_str(),
             approval.session.as_str(),
@@ -383,7 +474,7 @@ impl HarnessTools {
         ))?))
     }
 
-    fn consume(&mut self, approval: &Approval) -> AgentResult<()> {
+    pub(crate) fn consume(&mut self, approval: &Approval) -> AgentResult<()> {
         let expected = self
             .pending
             .remove(&approval.id)
@@ -398,16 +489,65 @@ impl HarnessTools {
         self.consume(&approval)
     }
 
+    pub fn apply_generated_image(
+        &mut self,
+        approval: Approval,
+        image: GeneratedImage,
+    ) -> AgentResult<Value> {
+        if image.bytes.is_empty() || image.bytes.len() > 8 * 1024 * 1024 {
+            return Err(AgentError::new("generated image is empty or exceeds 8 MiB"));
+        }
+        self.consume(&approval)?;
+        let path = self.path(
+            approval.call.arguments["destination"]
+                .as_str()
+                .ok_or_else(|| AgentError::new("generation destination missing"))?,
+        )?;
+        let actual = path.exists().then(|| fs::read(&path)).transpose()?;
+        if actual != approval.before_bytes {
+            return Err(AgentError::new(
+                "generate_image base changed after approval",
+            ));
+        }
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let temporary = path.with_file_name(format!(".dowe-agent-{}.tmp", identifier()));
+        use std::io::Write;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
+        file.write_all(&image.bytes)?;
+        file.sync_all()?;
+        if path.exists().then(|| fs::read(&path)).transpose()? != actual {
+            fs::remove_file(&temporary)?;
+            return Err(AgentError::new("generate_image base changed during apply"));
+        }
+        fs::rename(temporary, &path)?;
+        Ok(
+            json!({"status":"applied","path":approval.call.arguments["destination"],"mime_type":image.mime_type,"byte_count":image.bytes.len(),"sha256":digest(&image.bytes)}),
+        )
+    }
+
     pub fn apply_write(&mut self, approval: Approval) -> AgentResult<Value> {
         self.consume(&approval)?;
         if approval.call.name == "write_asset" {
             return self.apply_asset(approval);
         }
-        let path = self.path(
-            approval.call.arguments["path"]
-                .as_str()
-                .ok_or_else(|| AgentError::new("write path missing"))?,
-        )?;
+        let path = if approval.call.name == "propose_instruction_update" {
+            self.instruction_path(
+                approval.call.arguments["path"]
+                    .as_str()
+                    .ok_or_else(|| AgentError::new("instruction path missing"))?,
+            )?
+        } else {
+            self.path(
+                approval.call.arguments["path"]
+                    .as_str()
+                    .ok_or_else(|| AgentError::new("write path missing"))?,
+            )?
+        };
         let actual = if path.exists() {
             Some(fs::read_to_string(&path)?)
         } else {
@@ -448,7 +588,54 @@ impl HarnessTools {
         )
     }
 
-    fn shell_env(&self) -> BTreeMap<String, String> {
+    fn instruction_path(&self, value: &str) -> AgentResult<PathBuf> {
+            if value != "AGENTS.md" && value != ".agents/AGENTS.md" {
+                return Err(AgentError::new(
+                    "instruction path must be AGENTS.md or .agents/AGENTS.md",
+                ));
+            }
+            let path = self.root.join(value);
+            let mut current = self.root.clone();
+            for component in Path::new(value).components() {
+                current.push(component);
+                if let Ok(metadata) = fs::symlink_metadata(&current) {
+                    if metadata.file_type().is_symlink() {
+                        return Err(AgentError::new("instruction paths cannot traverse symlinks"));
+                    }
+                    if component != Path::new(value).components().next_back().unwrap()
+                        && !metadata.is_dir()
+                    {
+                        return Err(AgentError::new("instruction parent must be a directory"));
+                    }
+                }
+            }
+            if let Ok(metadata) = fs::symlink_metadata(&path) {
+                if metadata.file_type().is_symlink() || !metadata.is_file() {
+                    return Err(AgentError::new("instruction target must be a regular file"));
+                }
+            }
+            Ok(path)
+        }
+
+        fn instruction_base(&self, value: &str) -> AgentResult<(String, Option<String>)> {
+            let path = self.instruction_path(value)?;
+            let before = match fs::symlink_metadata(&path) {
+                Ok(metadata) => {
+                    if metadata.len() > MAX_INSTRUCTION_FILE_BYTES as u64 {
+                        return Err(AgentError::new("existing instruction exceeds the byte limit"));
+                    }
+                    let bytes = fs::read(&path)?;
+                    Some(String::from_utf8(bytes).map_err(|_| {
+                        AgentError::new("existing instruction is not valid UTF-8")
+                    })?)
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                Err(error) => return Err(error.into()),
+            };
+            Ok((value.into(), before))
+        }
+
+        fn shell_env(&self) -> BTreeMap<String, String> {
         [
             "PATH",
             "HOME",
@@ -546,6 +733,41 @@ impl HarnessTools {
             ));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod instruction_tests {
+    use super::*;
+
+    fn call(path: &str) -> ToolCall {
+        ToolCall::new(
+            "instruction",
+            "propose_instruction_update",
+            json!({"path":path,"content":"# Local rules\n","reason":"User requested local guidance"}),
+        )
+    }
+
+    #[test]
+    fn instruction_tool_accepts_only_the_two_exact_paths() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools = HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        assert!(tools.prepare(&call("AGENTS.md"), HarnessRole::Execute).unwrap().is_some());
+        assert!(tools.prepare(&call(".agents/AGENTS.md"), HarnessRole::Execute).unwrap().is_some());
+        for path in ["agents.md", "nested/AGENTS.md", "AGENTS.md/child", "../AGENTS.md"] {
+            assert!(tools.prepare(&call(path), HarnessRole::Execute).is_err(), "accepted {path}");
+        }
+    }
+
+    #[test]
+    fn instruction_apply_rejects_a_changed_base() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools = HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        fs::write(root.path().join("AGENTS.md"), "before\n").unwrap();
+        let approval = tools.prepare(&call("AGENTS.md"), HarnessRole::Execute).unwrap().unwrap();
+        fs::write(root.path().join("AGENTS.md"), "changed\n").unwrap();
+        let error = tools.apply_write(approval).unwrap_err();
+        assert!(error.to_string().contains("base changed"));
     }
 }
 

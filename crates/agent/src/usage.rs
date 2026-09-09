@@ -290,16 +290,6 @@ mod tests {
                 100,
             ),
             (
-                "mistral",
-                json!({"usage":{"prompt_tokens":50,"completion_tokens":20}}),
-                70,
-            ),
-            (
-                "radius",
-                json!({"message":{"usage":{"input":10,"output":20,"cacheRead":30,"cacheWrite":40,"cost":{"total":0.2}}}}),
-                100,
-            ),
-            (
                 "deepseek",
                 json!({"usage":{"prompt_tokens":50,"completion_tokens":20,"prompt_tokens_details":{"cached_tokens":10}}}),
                 70,

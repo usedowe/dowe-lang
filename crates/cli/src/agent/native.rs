@@ -1,33 +1,52 @@
 use dialoguer::{Confirm, Input, Select, theme::ColorfulTheme};
 use dowe_agent::native_harness::{
-    Approval, ClarificationQuestion, HarnessConfig, HarnessHost, HarnessOutcome, HarnessRole, HarnessSession,
-    HarnessStore, ModelSelection, Redactor, compact_harness_session, run_harness_turn,
+    Approval, ClarificationQuestion, HarnessConfig, HarnessHost, HarnessOutcome, HarnessRole,
+    HarnessSession, HarnessStore, ModelSelection, Redactor, compact_harness_session,
+    run_harness_turn,
 };
 use dowe_agent::{
     AgentAuthStore, AgentError, AgentRequest, AgentResult, AgentServerResponse, AgentUsageTotals,
 };
 use serde_json::{Value, json};
 
+mod formatting;
+
 #[derive(Default)]
 struct PromptQueue {
     entries: std::collections::VecDeque<QueuedPrompt>,
 }
-struct QueuedPrompt { text: String, enqueued_at: std::time::Instant }
+struct QueuedPrompt {
+    text: String,
+    enqueued_at: std::time::Instant,
+}
 impl PromptQueue {
     const LIMIT: usize = 8;
     fn enqueue(&mut self, text: &str) -> AgentResult<usize> {
         let text = text.trim();
-        if text.is_empty() || text.len() > 8192 { return Err(AgentError::new("queued prompt must be 1..8192 bytes")); }
-        if self.entries.len() >= Self::LIMIT { return Err(AgentError::new("prompt queue is full (limit 8)")); }
-        self.entries.push_back(QueuedPrompt { text: text.into(), enqueued_at: std::time::Instant::now() });
+        if text.is_empty() || text.len() > 8192 {
+            return Err(AgentError::new("queued prompt must be 1..8192 bytes"));
+        }
+        if self.entries.len() >= Self::LIMIT {
+            return Err(AgentError::new("prompt queue is full (limit 8)"));
+        }
+        self.entries.push_back(QueuedPrompt {
+            text: text.into(),
+            enqueued_at: std::time::Instant::now(),
+        });
         Ok(self.entries.len())
     }
-    fn clear(&mut self) { self.entries.clear(); }
-    fn len(&self) -> usize { self.entries.len() }
+    fn clear(&mut self) {
+        self.entries.clear();
+    }
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
     fn summary(&self) -> Vec<serde_json::Value> {
         self.entries.iter().enumerate().map(|(index, entry)| json!({"position":index + 1,"prompt":entry.text,"queued_ms":entry.enqueued_at.elapsed().as_millis()})).collect()
     }
-    fn pop(&mut self) -> Option<String> { self.entries.pop_front().map(|entry| entry.text) }
+    fn pop(&mut self) -> Option<String> {
+        self.entries.pop_front().map(|entry| entry.text)
+    }
 }
 
 pub(super) struct NativeSession {
@@ -36,7 +55,7 @@ pub(super) struct NativeSession {
     config: HarnessConfig,
     pub(super) image_paths: Vec<std::path::PathBuf>,
     watchers: dowe_agent::native_harness::HarnessWatchers,
-        queue: PromptQueue,
+    queue: PromptQueue,
 }
 
 impl NativeSession {
@@ -50,11 +69,21 @@ impl NativeSession {
             config,
             image_paths: Vec::new(),
             watchers: Default::default(),
-                queue: Default::default(),
+            queue: Default::default(),
         })
     }
 
-    pub(super) fn take_queued(&mut self) -> Option<String> { self.queue.pop() }
+    pub(super) fn take_queued(&mut self) -> Option<String> {
+        self.queue.pop()
+    }
+
+    fn transfer_activity_queue(&mut self, activity: &activity::Activity) {
+        for prompt in activity.take_pending() {
+            if let Err(error) = self.queue.enqueue(&prompt) {
+                eprintln!("Input not queued: {error}");
+            }
+        }
+    }
 
     pub(super) fn usage(&self) -> AgentUsageTotals {
         self.session.usage()
@@ -80,15 +109,23 @@ impl NativeSession {
         let (command, argument) = prompt.split_once(' ').unwrap_or((prompt, ""));
         let mut result = match command {
             "/queue" => {
-                    let (operation, value) = argument.split_once(' ').unwrap_or((argument, ""));
-                    match operation {
-                        "add" => json!({"queued":self.queue.enqueue(value)?,"position":self.queue.len()}),
-                        "clear" => { let count = self.queue.len(); self.queue.clear(); json!({"cleared":count}) }
-                        "list" | "" => json!({"queued":self.queue.summary(),"limit":PromptQueue::LIMIT}),
-                        _ => return Err("Use /queue add <prompt>|list|clear".into()),
+                let (operation, value) = argument.split_once(' ').unwrap_or((argument, ""));
+                match operation {
+                    "add" => {
+                        json!({"queued":self.queue.enqueue(value)?,"position":self.queue.len()})
                     }
+                    "clear" => {
+                        let count = self.queue.len();
+                        self.queue.clear();
+                        json!({"cleared":count})
+                    }
+                    "list" | "" => {
+                        json!({"queued":self.queue.summary(),"limit":PromptQueue::LIMIT})
+                    }
+                    _ => return Err("Use /queue add <prompt>|list|clear".into()),
                 }
-                "/watch" => self.watch_command(argument, json_output, &redactor)?,
+            }
+            "/watch" => self.watch_command(argument, json_output, &redactor)?,
             "/inspect" => self.inspect_command(argument)?,
             "/recover" => self.recover_command(argument, json_output, &redactor)?,
             "/capabilities" => self.capability_command(argument)?,
@@ -239,6 +276,7 @@ impl NativeSession {
                             model.split_once('/').ok_or("Expected provider/model")?;
                         let selection = ModelSelection::new(provider, model);
                         selection.validate()?;
+                        if role == HarnessRole::ImageGeneration { self.config.require_image_generation_capability(&selection, role)?; }
                         self.config.roles.insert(role, selection);
                     }
                     self.store.save_config(&self.config)?;
@@ -282,14 +320,14 @@ impl NativeSession {
         } else {
             eprintln!(
                 "{}",
-                super::markdown::terminal_text(&serde_json::to_string_pretty(&result)?)
+                super::markdown::terminal_text(&formatting::format_value(&result))
             );
         }
         Ok(continue_session)
     }
 
     fn select_role_model(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let roles = ["plan", "execute", "compact", "review"];
+        let roles = ["plan", "execute", "compact", "review", "image_generation", "codegraph"];
         let Some(index) = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Model role")
             .items(roles)
@@ -317,6 +355,7 @@ impl NativeSession {
             };
             let selection = ModelSelection::new(&provider, &model);
             selection.validate()?;
+            if role == HarnessRole::ImageGeneration { self.config.require_image_generation_capability(&selection, role)?; }
             self.config.roles.insert(role, selection);
         }
         self.store.save_config(&self.config)?;
@@ -358,7 +397,7 @@ impl NativeSession {
         };
         let explicit = explicit.then_some(&active);
         if prompt == "/compact" {
-            activity
+            let result = activity
                 .drive(compact_harness_session(
                     &self.store,
                     &mut self.session,
@@ -367,7 +406,9 @@ impl NativeSession {
                     explicit,
                     &mut host,
                 ))
-                .await?;
+                .await;
+            self.transfer_activity_queue(&activity);
+            result?;
             return Ok(HarnessOutcome::Completed);
         }
         if matches!(prompt, "/plan" | "/review") {
@@ -380,7 +421,7 @@ impl NativeSession {
         } else {
             (HarnessRole::Execute, prompt)
         };
-        activity
+        let result = activity
             .drive(run_harness_turn(
                 &self.store,
                 &mut self.session,
@@ -394,7 +435,9 @@ impl NativeSession {
                 },
                 &mut host,
             ))
-            .await
+            .await;
+        self.transfer_activity_queue(&activity);
+        result
     }
 }
 
@@ -435,12 +478,53 @@ impl HarnessHost for TerminalHost<'_> {
         self.send_provider(request).await
     }
 
+    async fn generate_image(
+        &mut self,
+        selection: &ModelSelection,
+        _approval: &Approval,
+    ) -> AgentResult<dowe_agent::GeneratedImage> {
+        let key = if selection.provider == self.key_provider {
+            self.api_key.as_deref()
+        } else {
+            None
+        };
+        let pause = self.activity.suspend()?;
+        let auth = super::chat::ensure_provider_auth(
+            &self.auth,
+            &selection.provider,
+            key,
+            !self.json_output,
+        )
+        .await
+        .map_err(|error| AgentError::new(error.to_string()))?
+        .ok_or_else(|| AgentError::new("provider authentication canceled"))?;
+        drop(pause);
+        if selection.provider != "openai" {
+            return Err(AgentError::new(
+                "image generation currently supports only OpenAI",
+            ));
+        }
+        dowe_agent::send_openai_image_generation(
+            &auth,
+            &selection.model,
+            _approval.call.arguments["prompt"]
+                .as_str()
+                .ok_or_else(|| AgentError::new("generation prompt missing"))?,
+        )
+        .await
+    }
+
     fn take_request_events(&mut self) -> Vec<Value> {
         std::mem::take(&mut self.request_events)
     }
 
-    async fn ask_clarification(&mut self, question: &ClarificationQuestion) -> AgentResult<Option<String>> {
-        if self.json_output || !crate::menus::is_interactive_terminal() { return Ok(None); }
+    async fn ask_clarification(
+        &mut self,
+        question: &ClarificationQuestion,
+    ) -> AgentResult<Option<String>> {
+        if self.json_output || !crate::menus::is_interactive_terminal() {
+            return Ok(None);
+        }
         let _activity = self.activity.suspend()?;
         let answer = if question.options.is_empty() {
             Input::<String>::with_theme(&ColorfulTheme::default())
@@ -452,7 +536,10 @@ impl HarnessHost for TerminalHost<'_> {
                 .with_prompt(super::markdown::terminal_text(&question.text))
                 .items(&question.options)
                 .interact_opt()
-                .map_err(|error| AgentError::new(error.to_string()))? else { return Ok(None); };
+                .map_err(|error| AgentError::new(error.to_string()))?
+            else {
+                return Ok(None);
+            };
             question.options[index].clone()
         };
         Ok(Some(answer))
@@ -562,7 +649,9 @@ mod queue_tests {
     #[test]
     fn queue_is_fifo_and_bounded() {
         let mut queue = PromptQueue::default();
-        for index in 0..8 { assert_eq!(queue.enqueue(&format!("p{index}")).unwrap(), index + 1); }
+        for index in 0..8 {
+            assert_eq!(queue.enqueue(&format!("p{index}")).unwrap(), index + 1);
+        }
         assert!(queue.enqueue("overflow").is_err());
         assert_eq!(queue.pop().unwrap(), "p0");
         assert_eq!(queue.pop().unwrap(), "p1");

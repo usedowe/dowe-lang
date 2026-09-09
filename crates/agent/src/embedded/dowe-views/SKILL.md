@@ -127,6 +127,21 @@ theme or color changes.
    `assets/**` tree under `/assets/**`. Verify the file exists with the exact case before authoring
    the URL. Keep the same root-relative URL in the shared source for web, desktop, Android, and iOS;
    target packaging resolves the local file separately.
+**Integrated image-generation boundary:** Treat screenshot and UI-shaped regions as semantic Dowe
+composition, never as flattened generated artwork. Use `Icon`, `Svg`, `Brand`, and the appropriate
+components for logos, controls, icons, navigation, and UI. Use `Image` or generated assets only for
+independent illustrations, photographs, textures, or device artwork; generated imagery must not
+replace the UI tree. The integrated `generate_image` tool is Execute-only, uses OpenAI `gpt-image-1`
+in v1, requires approval, writes bounded output under approved `public/assets`, and returns the
+image to the agent for continuation. `/models image_generation inherit` inherits the active model;
+`/models image_generation provider/model` selects one explicitly. `images` is vision input, distinct
+from `image_generation`. v1 rejects `reference_image_path` and does not produce remote URL outputs
+or reference-image generations. Python, Node, and Playwright are not runtime requirements. Account
+and billing availability remain provider-side. Screenshot capture is limited to an already-running
+loopback HTTP URL and an installed browser; it writes bounded evidence under `.dowe/visual-qa`,
+validates only bounded PNG signature/IHDR dimensions, and does not claim subrequest network
+isolation or perform visual comparison. Report visual QA as not run when capture is unavailable.
+
 8. Create or reuse a layout whenever the reference has shared chrome. AppBar and Footer never
    belong in a page, and a one-page site still uses a layout-backed route group.
    Treat `AppBar` as the shell's semantic navigation bar: keep exactly one `AppBar` directly under

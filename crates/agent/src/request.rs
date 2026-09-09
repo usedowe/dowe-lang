@@ -1,12 +1,14 @@
 use crate::context::summarize_codegraph_for;
+use crate::is_dowe_project;
 use crate::error::AgentResult;
 use crate::images::encode_image_paths;
+use crate::instructions::load_project_instructions;
 use crate::model::{
     AgentContext, AgentPrepareOptions, AgentPreparedRequest, AgentRequest, AgentRequestType,
 };
-use crate::prompts::messages_for;
+use crate::prompts::messages_for_mode;
 use crate::provider::{provider_default_model, provider_exists};
-use crate::skills::generation_skill_summaries_for;
+use crate::skills::generation_skill_summaries_for_mode;
 use crate::tools::agent_tool_definitions;
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -48,17 +50,16 @@ pub fn prepare_agent_request(
             .ok_or_else(|| crate::AgentError::new("thinking requires an explicit provider"))?;
         crate::validate_thinking(provider, &model, level)?;
     }
-    let skills = generation_skill_summaries_for(prompt);
-    let codegraph = if matches!(
-        request_type,
-        AgentRequestType::SpecPlan | AgentRequestType::Implementation
-    ) {
+    let dowe_mode = is_dowe_project(root);
+        let skills = generation_skill_summaries_for_mode(prompt, dowe_mode);
+        let project_instructions = load_project_instructions(root)?;
+    let codegraph = if dowe_mode && request_type != AgentRequestType::Conversation {
         Some(summarize_codegraph_for(root, prompt, 16)?)
     } else {
         None
     };
     let needs_reference_image = is_ui_request(prompt) && images.is_empty();
-    let messages = messages_for(
+    let messages = messages_for_mode(
         request_type,
         prompt,
         &language,
@@ -66,6 +67,8 @@ pub fn prepare_agent_request(
         &codegraph,
         &images,
         needs_reference_image,
+        &project_instructions,
+        dowe_mode,
     );
     let tools = agent_tool_definitions(request_type);
     let request_id = next_request_id();
@@ -81,6 +84,14 @@ pub fn prepare_agent_request(
     );
     metadata.insert("dowe_skill_count".to_string(), skills.len().to_string());
     metadata.insert("dowe_image_count".to_string(), images.len().to_string());
+    metadata.insert(
+        "dowe_instruction_file_count".to_string(),
+        project_instructions.files.len().to_string(),
+    );
+    metadata.insert(
+        "dowe_instruction_issue_count".to_string(),
+        project_instructions.issues.len().to_string(),
+    );
     if let Some(provider) = provider.as_ref() {
         metadata.insert("dowe_provider".to_string(), provider.clone());
     }
@@ -124,6 +135,7 @@ pub fn prepare_agent_request(
         skills,
         codegraph,
         images,
+        project_instructions,
     };
 
     Ok(AgentPreparedRequest { request, context })

@@ -57,6 +57,7 @@ pub struct Node {
     pub kind: NodeKind,
     pub path: Option<String>,
     pub name: String,
+    pub language: String,
     pub owner: Option<String>,
     pub fingerprint: String,
     pub metrics: Option<FileMetrics>,

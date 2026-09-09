@@ -1,7 +1,7 @@
-use crate::authoring::{PublicSkill, public_skills};
-use crate::context::{AgentCodeGraphSummary, summarize_codegraph};
+use crate::authoring::{public_skills, PublicSkill};
+use crate::context::{summarize_codegraph, AgentCodeGraphSummary};
 use crate::error::{AgentError, AgentResult};
-use dowe_agent_harness::{DetectedMode, read_status};
+use dowe_agent_harness::{read_status, DetectedMode};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -28,6 +28,11 @@ pub struct AgentHarnessSummary {
     pub mode: String,
     pub plan_count: usize,
     pub error: Option<String>,
+}
+
+/// A Dowe agent mode is enabled only by a regular, non-symlink root main.dowe.
+pub fn is_dowe_project(root: impl AsRef<Path>) -> bool {
+    fs::symlink_metadata(root.as_ref().join("main.dowe")).is_ok_and(|metadata| metadata.is_file())
 }
 
 pub fn project_context(root: impl AsRef<Path>) -> AgentResult<ProjectContext> {

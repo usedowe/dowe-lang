@@ -102,8 +102,14 @@ pub(crate) fn apply_harness_turns(
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
+#[doc(hidden)]
+#[doc(hidden)]
+    pub fn apply_harness_turns_for_test(protocol: AgentProviderProtocol, request: &AgentRequest, body: &mut Value) -> AgentResult<()> {
+        apply_harness_turns(protocol, request, body)
+    }
+
+    #[cfg(test)]
+    mod tests {
     use super::super::{ToolCall, ToolResult};
     use super::*;
     use crate::{AgentPrepareOptions, prepare_agent_request};
