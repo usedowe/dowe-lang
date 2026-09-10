@@ -3,3 +3,5 @@ target
 .DS_Store
 .env
 *.af~lock~
+.agents/memory.json
+.agents/memory.lock

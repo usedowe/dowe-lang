@@ -1,0 +1,1275 @@
+[
+  {
+    "id": "file:Cargo.toml",
+    "kind": "file",
+    "path": "Cargo.toml",
+    "name": "Cargo.toml",
+    "language": "toml",
+    "owner": null,
+    "fingerprint": "eb97a18b4ce560b2",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent.rs",
+    "kind": "file",
+    "path": "src/agent.rs",
+    "name": "agent.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "190d2703ee2d4e55",
+    "metrics": {
+      "totalLines": 25,
+      "codeLines": 23,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 0,
+      "imports": 1
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/chat.rs",
+    "kind": "file",
+    "path": "src/agent/chat.rs",
+    "name": "chat.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "ae4ae6f81a117db0",
+    "metrics": {
+      "totalLines": 1097,
+      "codeLines": 1058,
+      "functions": 19,
+      "types": 2,
+      "publicItems": 0,
+      "inlineTests": 3,
+      "responsibilities": 5,
+      "imports": 9
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/context.rs",
+    "kind": "file",
+    "path": "src/agent/context.rs",
+    "name": "context.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "440ae51835126646",
+    "metrics": {
+      "totalLines": 33,
+      "codeLines": 31,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 1,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/examples.rs",
+    "kind": "file",
+    "path": "src/agent/examples.rs",
+    "name": "examples.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "023b9f6cc4dbf5a9",
+    "metrics": {
+      "totalLines": 53,
+      "codeLines": 51,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 0,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/footer.rs",
+    "kind": "file",
+    "path": "src/agent/footer.rs",
+    "name": "footer.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "b2aafd894a9aecd7",
+    "metrics": {
+      "totalLines": 158,
+      "codeLines": 152,
+      "functions": 4,
+      "types": 0,
+      "publicItems": 5,
+      "inlineTests": 2,
+      "responsibilities": 2,
+      "imports": 5
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/harness.rs",
+    "kind": "file",
+    "path": "src/agent/harness.rs",
+    "name": "harness.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "8a359abb7871dfa8",
+    "metrics": {
+      "totalLines": 105,
+      "codeLines": 99,
+      "functions": 2,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 3,
+      "imports": 5
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/markdown.rs",
+    "kind": "file",
+    "path": "src/agent/markdown.rs",
+    "name": "markdown.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "75e94d73129ff992",
+    "metrics": {
+      "totalLines": 230,
+      "codeLines": 219,
+      "functions": 7,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 2,
+      "responsibilities": 2,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/mcp.rs",
+    "kind": "file",
+    "path": "src/agent/mcp.rs",
+    "name": "mcp.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "b5e8b886769c8e66",
+    "metrics": {
+      "totalLines": 21,
+      "codeLines": 20,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 1,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native.rs",
+    "kind": "file",
+    "path": "src/agent/native.rs",
+    "name": "native.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "092c24ee26166f04",
+    "metrics": {
+      "totalLines": 637,
+      "codeLines": 614,
+      "functions": 15,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 6,
+      "imports": 5
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/activity.rs",
+    "kind": "file",
+    "path": "src/agent/native/activity.rs",
+    "name": "activity.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "dad76c31fb47540c",
+    "metrics": {
+      "totalLines": 183,
+      "codeLines": 172,
+      "functions": 6,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 3,
+      "responsibilities": 1,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/activity/terminal.rs",
+    "kind": "file",
+    "path": "src/agent/native/activity/terminal.rs",
+    "name": "terminal.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "4575fb101fc3f00a",
+    "metrics": {
+      "totalLines": 798,
+      "codeLines": 749,
+      "functions": 37,
+      "types": 2,
+      "publicItems": 0,
+      "inlineTests": 10,
+      "responsibilities": 4,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/capabilities.rs",
+    "kind": "file",
+    "path": "src/agent/native/capabilities.rs",
+    "name": "capabilities.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "9a14825e570edaa6",
+    "metrics": {
+      "totalLines": 73,
+      "codeLines": 72,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 2,
+      "imports": 2
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/formatting.rs",
+    "kind": "file",
+    "path": "src/agent/native/formatting.rs",
+    "name": "formatting.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "142576f9b0b7b095",
+    "metrics": {
+      "totalLines": 107,
+      "codeLines": 98,
+      "functions": 5,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 2,
+      "responsibilities": 2,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/lifecycle.rs",
+    "kind": "file",
+    "path": "src/agent/native/lifecycle.rs",
+    "name": "lifecycle.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "9c0320d99e9a3e13",
+    "metrics": {
+      "totalLines": 16,
+      "codeLines": 15,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 1,
+      "imports": 2
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/provider.rs",
+    "kind": "file",
+    "path": "src/agent/native/provider.rs",
+    "name": "provider.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "05031c92cba36661",
+    "metrics": {
+      "totalLines": 79,
+      "codeLines": 78,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 0,
+      "imports": 2
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/recovery.rs",
+    "kind": "file",
+    "path": "src/agent/native/recovery.rs",
+    "name": "recovery.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "88b35c8fb6c450f8",
+    "metrics": {
+      "totalLines": 57,
+      "codeLines": 56,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 1,
+      "imports": 2
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/terminal.rs",
+    "kind": "file",
+    "path": "src/agent/native/terminal.rs",
+    "name": "terminal.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "381e382e7f344ac3",
+    "metrics": {
+      "totalLines": 97,
+      "codeLines": 94,
+      "functions": 3,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 2,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/native/watchers.rs",
+    "kind": "file",
+    "path": "src/agent/native/watchers.rs",
+    "name": "watchers.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "30cfc50527aa2866",
+    "metrics": {
+      "totalLines": 105,
+      "codeLines": 104,
+      "functions": 2,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 0,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/agent/prompt.rs",
+    "kind": "file",
+    "path": "src/agent/prompt.rs",
+    "name": "prompt.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "6391cac746cd0adf",
+    "metrics": {
+      "totalLines": 347,
+      "codeLines": 328,
+      "functions": 15,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 7,
+      "responsibilities": 2,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/ai.rs",
+    "kind": "file",
+    "path": "src/ai.rs",
+    "name": "ai.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "3704a66bf838b2ed",
+    "metrics": {
+      "totalLines": 85,
+      "codeLines": 79,
+      "functions": 5,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 4,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/build.rs",
+    "kind": "file",
+    "path": "src/build.rs",
+    "name": "build.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "8d2e81bcdb13df20",
+    "metrics": {
+      "totalLines": 73,
+      "codeLines": 70,
+      "functions": 1,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 1,
+      "responsibilities": 2,
+      "imports": 5
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/cache_cli.rs",
+    "kind": "file",
+    "path": "src/cache_cli.rs",
+    "name": "cache_cli.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "1bd71f61166838e6",
+    "metrics": {
+      "totalLines": 314,
+      "codeLines": 296,
+      "functions": 11,
+      "types": 5,
+      "publicItems": 0,
+      "inlineTests": 3,
+      "responsibilities": 2,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/codegraph.rs",
+    "kind": "file",
+    "path": "src/codegraph.rs",
+    "name": "codegraph.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "3e1fc0159924838b",
+    "metrics": {
+      "totalLines": 96,
+      "codeLines": 92,
+      "functions": 1,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 4,
+      "imports": 5
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/d1_cli.rs",
+    "kind": "file",
+    "path": "src/d1_cli.rs",
+    "name": "d1_cli.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "63462b007f6950a1",
+    "metrics": {
+      "totalLines": 44,
+      "codeLines": 40,
+      "functions": 2,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 1,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/database_cli.rs",
+    "kind": "file",
+    "path": "src/database_cli.rs",
+    "name": "database_cli.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "70a3c4ff94a6f418",
+    "metrics": {
+      "totalLines": 319,
+      "codeLines": 305,
+      "functions": 10,
+      "types": 2,
+      "publicItems": 0,
+      "inlineTests": 6,
+      "responsibilities": 2,
+      "imports": 6
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/deploy.rs",
+    "kind": "file",
+    "path": "src/deploy.rs",
+    "name": "deploy.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "e8fdb26813385e30",
+    "metrics": {
+      "totalLines": 567,
+      "codeLines": 532,
+      "functions": 23,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 12,
+      "responsibilities": 1,
+      "imports": 13
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/dev.rs",
+    "kind": "file",
+    "path": "src/dev.rs",
+    "name": "dev.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "8dd84b3c670d391b",
+    "metrics": {
+      "totalLines": 146,
+      "codeLines": 130,
+      "functions": 5,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 4,
+      "responsibilities": 2,
+      "imports": 6
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/icons.rs",
+    "kind": "file",
+    "path": "src/icons.rs",
+    "name": "icons.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "56c15a1b19301af6",
+    "metrics": {
+      "totalLines": 155,
+      "codeLines": 145,
+      "functions": 6,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 2,
+      "responsibilities": 2,
+      "imports": 8
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/init.rs",
+    "kind": "file",
+    "path": "src/init.rs",
+    "name": "init.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "24c816f6c83b6cfb",
+    "metrics": {
+      "totalLines": 286,
+      "codeLines": 263,
+      "functions": 15,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 8,
+      "responsibilities": 3,
+      "imports": 10
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/login.rs",
+    "kind": "file",
+    "path": "src/login.rs",
+    "name": "login.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "bd9eeb0ecf442993",
+    "metrics": {
+      "totalLines": 15,
+      "codeLines": 13,
+      "functions": 1,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 0,
+      "imports": 1
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/main.rs",
+    "kind": "file",
+    "path": "src/main.rs",
+    "name": "main.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "0f25da0c57bb3673",
+    "metrics": {
+      "totalLines": 124,
+      "codeLines": 116,
+      "functions": 3,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 3,
+      "imports": 2
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/menus.rs",
+    "kind": "file",
+    "path": "src/menus.rs",
+    "name": "menus.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "4ed1bdadcc25fd25",
+    "metrics": {
+      "totalLines": 661,
+      "codeLines": 592,
+      "functions": 47,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 9,
+      "responsibilities": 2,
+      "imports": 8
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/queue_cli.rs",
+    "kind": "file",
+    "path": "src/queue_cli.rs",
+    "name": "queue_cli.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "c1a0091c8f197442",
+    "metrics": {
+      "totalLines": 274,
+      "codeLines": 260,
+      "functions": 11,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 3,
+      "responsibilities": 4,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/server.rs",
+    "kind": "file",
+    "path": "src/server.rs",
+    "name": "server.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "81c559bf2cbe9875",
+    "metrics": {
+      "totalLines": 390,
+      "codeLines": 366,
+      "functions": 12,
+      "types": 2,
+      "publicItems": 0,
+      "inlineTests": 8,
+      "responsibilities": 4,
+      "imports": 11
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/spawn_cli.rs",
+    "kind": "file",
+    "path": "src/spawn_cli.rs",
+    "name": "spawn_cli.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "6cf4da9953eae1c1",
+    "metrics": {
+      "totalLines": 99,
+      "codeLines": 92,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 0,
+      "responsibilities": 4,
+      "imports": 5
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/studio.rs",
+    "kind": "file",
+    "path": "src/studio.rs",
+    "name": "studio.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "23c17c3d4381f533",
+    "metrics": {
+      "totalLines": 46,
+      "codeLines": 40,
+      "functions": 4,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 3,
+      "responsibilities": 1,
+      "imports": 6
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/test_cli.rs",
+    "kind": "file",
+    "path": "src/test_cli.rs",
+    "name": "test_cli.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "2557b8cd6444130b",
+    "metrics": {
+      "totalLines": 63,
+      "codeLines": 58,
+      "functions": 3,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 1,
+      "responsibilities": 0,
+      "imports": 5
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/uninstall.rs",
+    "kind": "file",
+    "path": "src/uninstall.rs",
+    "name": "uninstall.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "0763798e7d093562",
+    "metrics": {
+      "totalLines": 311,
+      "codeLines": 286,
+      "functions": 15,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 4,
+      "responsibilities": 3,
+      "imports": 11
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/upgrade.rs",
+    "kind": "file",
+    "path": "src/upgrade.rs",
+    "name": "upgrade.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "795fd04a7673d9d3",
+    "metrics": {
+      "totalLines": 235,
+      "codeLines": 210,
+      "functions": 17,
+      "types": 2,
+      "publicItems": 0,
+      "inlineTests": 5,
+      "responsibilities": 3,
+      "imports": 10
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/usage.rs",
+    "kind": "file",
+    "path": "src/usage.rs",
+    "name": "usage.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "5f87f13074a1c946",
+    "metrics": {
+      "totalLines": 1,
+      "codeLines": 1,
+      "functions": 0,
+      "types": 0,
+      "publicItems": 1,
+      "inlineTests": 0,
+      "responsibilities": 3,
+      "imports": 0
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/vector_cli.rs",
+    "kind": "file",
+    "path": "src/vector_cli.rs",
+    "name": "vector_cli.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "876b180a31769230",
+    "metrics": {
+      "totalLines": 263,
+      "codeLines": 251,
+      "functions": 9,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 2,
+      "responsibilities": 3,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:src/version.rs",
+    "kind": "file",
+    "path": "src/version.rs",
+    "name": "version.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "51c5173b900630b3",
+    "metrics": {
+      "totalLines": 24,
+      "codeLines": 19,
+      "functions": 3,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 1,
+      "responsibilities": 0,
+      "imports": 2
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/agent_bridge.rs",
+    "kind": "file",
+    "path": "tests/agent_bridge.rs",
+    "name": "agent_bridge.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "d5148d1efdf8e018",
+    "metrics": {
+      "totalLines": 163,
+      "codeLines": 149,
+      "functions": 8,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 7,
+      "responsibilities": 4,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/agent_terminal.rs",
+    "kind": "file",
+    "path": "tests/agent_terminal.rs",
+    "name": "agent_terminal.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "e17d324bc70bd017",
+    "metrics": {
+      "totalLines": 560,
+      "codeLines": 532,
+      "functions": 22,
+      "types": 3,
+      "publicItems": 0,
+      "inlineTests": 12,
+      "responsibilities": 4,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/agent_terminal/activity.rs",
+    "kind": "file",
+    "path": "tests/agent_terminal/activity.rs",
+    "name": "activity.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "cbffcc5e76893291",
+    "metrics": {
+      "totalLines": 403,
+      "codeLines": 383,
+      "functions": 14,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 5,
+      "responsibilities": 4,
+      "imports": 1
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/agent_terminal/capabilities.rs",
+    "kind": "file",
+    "path": "tests/agent_terminal/capabilities.rs",
+    "name": "capabilities.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "9a0a66e1d5ad0820",
+    "metrics": {
+      "totalLines": 119,
+      "codeLines": 118,
+      "functions": 2,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 2,
+      "responsibilities": 2,
+      "imports": 1
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/agent_terminal/conversation.rs",
+    "kind": "file",
+    "path": "tests/agent_terminal/conversation.rs",
+    "name": "conversation.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "b1f08123dbc0209e",
+    "metrics": {
+      "totalLines": 305,
+      "codeLines": 299,
+      "functions": 7,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 5,
+      "responsibilities": 5,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/agent_terminal/native_harness.rs",
+    "kind": "file",
+    "path": "tests/agent_terminal/native_harness.rs",
+    "name": "native_harness.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "af433fc373238992",
+    "metrics": {
+      "totalLines": 363,
+      "codeLines": 353,
+      "functions": 11,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 10,
+      "responsibilities": 5,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/agent_terminal/supervision.rs",
+    "kind": "file",
+    "path": "tests/agent_terminal/supervision.rs",
+    "name": "supervision.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "f80e7b3397aab1a3",
+    "metrics": {
+      "totalLines": 282,
+      "codeLines": 275,
+      "functions": 11,
+      "types": 1,
+      "publicItems": 0,
+      "inlineTests": 7,
+      "responsibilities": 3,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/d1_command.rs",
+    "kind": "file",
+    "path": "tests/d1_command.rs",
+    "name": "d1_command.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "e34c8893384c3df7",
+    "metrics": {
+      "totalLines": 41,
+      "codeLines": 38,
+      "functions": 2,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 1,
+      "responsibilities": 3,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/icons_command.rs",
+    "kind": "file",
+    "path": "tests/icons_command.rs",
+    "name": "icons_command.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "dce12b98c17155ba",
+    "metrics": {
+      "totalLines": 79,
+      "codeLines": 71,
+      "functions": 5,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 3,
+      "responsibilities": 3,
+      "imports": 3
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/project_tests.rs",
+    "kind": "file",
+    "path": "tests/project_tests.rs",
+    "name": "project_tests.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "f694d0396a1b5737",
+    "metrics": {
+      "totalLines": 94,
+      "codeLines": 81,
+      "functions": 5,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 4,
+      "responsibilities": 2,
+      "imports": 4
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/server_command.rs",
+    "kind": "file",
+    "path": "tests/server_command.rs",
+    "name": "server_command.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "39724c0541e94092",
+    "metrics": {
+      "totalLines": 14,
+      "codeLines": 11,
+      "functions": 2,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 1,
+      "responsibilities": 1,
+      "imports": 1
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "file:tests/uninstall_command.rs",
+    "kind": "file",
+    "path": "tests/uninstall_command.rs",
+    "name": "uninstall_command.rs",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "245eecc5126639e5",
+    "metrics": {
+      "totalLines": 17,
+      "codeLines": 14,
+      "functions": 2,
+      "types": 0,
+      "publicItems": 0,
+      "inlineTests": 1,
+      "responsibilities": 0,
+      "imports": 1
+    },
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/agent_harness:agent_harnesses",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/agent_harness",
+    "name": "agent_harnesses",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/agent_harness",
+    "fingerprint": "3633fb064c36d035",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/cli:cli_ipc_adapters",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/cli",
+    "name": "cli_ipc_adapters",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/cli",
+    "fingerprint": "40dfbc02e8ff424d",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/codegraph:codegraph",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/codegraph",
+    "name": "codegraph",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/codegraph",
+    "fingerprint": "a830ad2a643a26c5",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/compiler:dowe_artifact_writing",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/compiler",
+    "name": "dowe_artifact_writing",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/compiler",
+    "fingerprint": "d99455169b8509c1",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/compiler:source_parse_lowering",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/compiler",
+    "name": "source_parse_lowering",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/compiler",
+    "fingerprint": "b526ce6e8dc656b7",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/components:components_model",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/components",
+    "name": "components_model",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/components",
+    "fingerprint": "1e7008be2c49c027",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/components:components_semantics",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/components",
+    "name": "components_semantics",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/components",
+    "fingerprint": "fc4f7dbcb9e5326b",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/generator_android:android_generation",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/generator_android",
+    "name": "android_generation",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/generator_android",
+    "fingerprint": "627c50dc9767b66e",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/generator_desktop:desktop_generation",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/generator_desktop",
+    "name": "desktop_generation",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/generator_desktop",
+    "fingerprint": "d46c2ed8ba34d19e",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/generator_ios:ios_generation",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/generator_ios",
+    "name": "ios_generation",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/generator_ios",
+    "fingerprint": "449cef7ec3a5a6ae",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/generator_web:web_generation",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/generator_web",
+    "name": "web_generation",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/generator_web",
+    "fingerprint": "1d86483eb95e89fa",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/runtime:development_runtime",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/runtime",
+    "name": "development_runtime",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/runtime",
+    "fingerprint": "c1324997a2fb919f",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "ownership:dowe-lang/crates/spawn:spawn_runtime",
+    "kind": "ownership_area",
+    "path": "dowe-lang/crates/spawn",
+    "name": "spawn_runtime",
+    "language": "unknown",
+    "owner": "dowe-lang/crates/spawn",
+    "fingerprint": "8183991a201bf4d2",
+    "metrics": null,
+    "sourceRange": null
+  },
+  {
+    "id": "symbol:src/agent/footer.rs:12:lines",
+    "kind": "symbol",
+    "path": "src/agent/footer.rs",
+    "name": "lines",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "f34ae9059b2aa84e",
+    "metrics": null,
+    "sourceRange": {
+      "startLine": 12,
+      "endLine": 12
+    }
+  },
+  {
+    "id": "symbol:src/usage.rs:1:USAGE:",
+    "kind": "symbol",
+    "path": "src/usage.rs",
+    "name": "USAGE:",
+    "language": "rust",
+    "owner": null,
+    "fingerprint": "5ee20902772572a8",
+    "metrics": null,
+    "sourceRange": {
+      "startLine": 1,
+      "endLine": 1
+    }
+  },
+  {
+    "id": "workspace:.",
+    "kind": "workspace",
+    "path": ".",
+    "name": "workspace",
+    "language": "unknown",
+    "owner": null,
+    "fingerprint": "d9658a12c91ecdb8",
+    "metrics": null,
+    "sourceRange": null
+  }
+]

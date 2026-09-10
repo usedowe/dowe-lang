@@ -1,6 +1,6 @@
 use super::request::build_request;
 use crate::codegraph_enrichment::{SemanticEnrichment, SemanticStatus, enrich_codegraph};
-use dowe_codegraph::ensure_persistent_codegraph;
+use dowe_codegraph::{CodeGraphBinding, ensure_persistent_codegraph, read_persistent_codegraph};
 use super::{
     Approval, HarnessConfig, HarnessRole, HarnessSession, HarnessStore, HarnessTools, HarnessTurn,
     ModelSelection, ToolResult, response_turn,
@@ -13,7 +13,8 @@ use crate::{
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::time::{Duration, Instant};
+use std::fs;
+    use std::time::{Duration, Instant};
 
 mod shell_host;
 mod transport;
@@ -76,12 +77,35 @@ pub async fn run_harness_turn(
     task: super::HarnessTask<'_>,
     host: &mut impl HarnessHost,
 ) -> AgentResult<HarnessOutcome> {
+    run_harness_turn_with_persistence(store, session, config, task, host, true).await
+}
+
+pub(crate) async fn run_harness_turn_without_persistence(
+    store: &HarnessStore,
+    session: &mut HarnessSession,
+    config: &HarnessConfig,
+    task: super::HarnessTask<'_>,
+    host: &mut impl HarnessHost,
+) -> AgentResult<HarnessOutcome> {
+    run_harness_turn_with_persistence(store, session, config, task, host, false).await
+}
+
+async fn run_harness_turn_with_persistence(
+    store: &HarnessStore,
+    session: &mut HarnessSession,
+    config: &HarnessConfig,
+    task: super::HarnessTask<'_>,
+    host: &mut impl HarnessHost,
+    persist: bool,
+) -> AgentResult<HarnessOutcome> {
     let super::HarnessTask {
         prompt,
         role,
         active,
         explicit,
         image_paths,
+        edit_scope,
+        expected_codegraph_binding,
     } = task;
     config.validate()?;
     let _task = store.lease_session(&session.id)?;
@@ -91,6 +115,24 @@ pub async fn run_harness_turn(
         ));
     }
     let selected = config.resolve(role, explicit, active)?;
+        // Capture the persisted graph once; receipts retain this turn-start binding.
+        let turn_codegraph_binding = read_persistent_codegraph(store.root())
+            .ok()
+            .and_then(|snapshot| {
+                Some(CodeGraphBinding {
+                    generation: snapshot.generation?,
+                    revision: snapshot.manifest.revision,
+                    root: snapshot.manifest.root,
+                    mode: snapshot.manifest.mode,
+                })
+            });
+        if let Some(expected) = expected_codegraph_binding.as_ref()
+            && turn_codegraph_binding.as_ref() != Some(expected)
+        {
+            return Err(AgentError::new(
+                "persisted CodeGraphBinding does not match the expected orchestration binding",
+            ));
+        }
         let semantic = if matches!(role, HarnessRole::Execute | HarnessRole::Plan | HarnessRole::Review) {
             match ensure_persistent_codegraph(store.root()) {
                 Ok(snapshot) => enrich_codegraph(store.root(), &config.resolve(HarnessRole::Codegraph, None, active)?, &snapshot).await,
@@ -108,7 +150,12 @@ pub async fn run_harness_turn(
         role,
         !image_paths.is_empty() || historical_images,
     )?;
-    let mut tools = HarnessTools::new(store.root(), &session.id, config.clone())?;
+    let mut tools = HarnessTools::with_scope(
+        store.root(),
+        &session.id,
+        config.clone(),
+        edit_scope,
+    )?;
     tools.set_supervisor(host.supervisor()?);
     tools.restore_loaded_skills(&session.turns[session.context_start..]);
     for secret in host.secrets() {
@@ -137,7 +184,7 @@ pub async fn run_harness_turn(
         ..Default::default()
     };
     session.turns.push(user);
-    store.save_session(session)?;
+    if persist { store.save_session(session)?; }
     let started = Instant::now();
     let usage_start = session.events.len();
     let mut usage = AgentUsageTotals::default();
@@ -148,9 +195,10 @@ pub async fn run_harness_turn(
     let mut generated_image_for_continuation: Option<GeneratedImage> = None;
     for round in 0..config.max_rounds {
         if exhausted(config, &usage, charged_estimate, started) {
-            emit(
+            emit_persist(
                 store,
                 session,
+                persist,
                 host,
                 json!({"event":"budget_exhausted","session":session.id}),
             )?;
@@ -229,17 +277,19 @@ pub async fn run_harness_turn(
                 .saturating_add(4096)
                 > config.token_budget
         {
-            emit(
+            emit_persist(
                 store,
                 session,
+                persist,
                 host,
                 json!({"event":"budget_exhausted","reason":"estimated_next_request","estimated_input_tokens":estimate}),
             )?;
             return Ok(HarnessOutcome::BudgetExhausted);
         }
-        emit(
+        emit_persist(
             store,
             session,
+            persist,
             host,
             json!({"event":"request_prepared","requestType":"conversation","requestId":request.request_id,"session":session.id,"role":role,"provider":selected.provider,"model":selected.model,"round":round,"estimated_input_tokens":estimate}),
         )?;
@@ -259,10 +309,18 @@ pub async fn run_harness_turn(
                             transport::transient_failure_classification(&error) =>
                 {
                     retry += 1;
+                    let remaining =
+                        Duration::from_secs(config.duration_seconds).saturating_sub(started.elapsed());
+                    let delay = transport::retry_delay(retry).min(remaining);
+                    // Never let backoff consume more than the task's duration budget.
+                    if !delay.is_zero() {
+                        tokio::time::sleep(delay).await;
+                    }
                     // Persist only a stable classification, never provider error text.
-                    emit(
+                    emit_persist(
                         store,
                         session,
+                        persist,
                         host,
                         json!({"event":"provider_retry","requestType":"conversation","requestId":request.request_id,"provider":selected.provider,"model":selected.model,"attempt":retry + 1,"maxAttempts":transport::MAX_TRANSIENT_RETRIES + 1,"classification":classification}),
                     )?;
@@ -275,9 +333,10 @@ pub async fn run_harness_turn(
                     if round == 0 {
                         session.turns.pop();
                     }
-                    emit(
+                    emit_persist(
                         store,
                         session,
+                        persist,
                         host,
                         json!({"event":"error","requestType":"conversation","requestId":request.request_id,"model":selected.model,"payload":{"error":{"code":"provider_request_failed","message":tools.redactor.text(&error.to_string())}}}),
                     )?;
@@ -319,20 +378,23 @@ pub async fn run_harness_turn(
         turn = serde_json::from_value(projection)?;
         turn.continuation = continuation;
         let text = turn.message.as_ref().map(|message| &message.content);
-        emit(
+        emit_persist(
             store,
             session,
+            persist,
             host,
             json!({"event":"response_received","requestType":"conversation","requestId":request.request_id,"payload":{"output_text":text},"role":role,"provider":selected.provider,"model":selected.model,"text":text,"usage":crate::agent_response_usage(&selected.provider,&selected.model,&response.payload)}),
         )?;
         usage = session.usage_since(usage_start);
         session.turns.push(turn);
+        session.set_initial_prompt_metadata(&prompt);
         session.interrupted = !calls.is_empty();
-        store.save_session(session)?;
+        if persist { store.save_session(session)?; }
         if calls.is_empty() {
-            emit(
+            emit_persist(
                 store,
                 session,
+                persist,
                 host,
                 json!({"event":"task_state","status":"done"}),
             )?;
@@ -353,18 +415,20 @@ pub async fn run_harness_turn(
             let question: crate::ClarificationQuestion = serde_json::from_value(value)
                 .map_err(|_| AgentError::new("malformed clarification question"))?;
             question.validate()?;
-            emit(
+            emit_persist(
                 store,
                 session,
+                persist,
                 host,
                 json!({"event":"clarification_required","call_id":call.id,"question":question}),
             )?;
-            session.interrupted = true;
-            store.save_session(session)?;
+             session.interrupted = true;
+            if persist { store.save_session(session)?; }
             let Some(answer) = host.ask_clarification(&question).await? else {
-                emit(
+                emit_persist(
                     store,
                     session,
+                    persist,
                     host,
                     json!({"event":"task_state","status":"blocked","reason":"clarification_required"}),
                 )?;
@@ -379,9 +443,10 @@ pub async fn run_harness_turn(
                 failed: false,
                 output: json!({"answer":tools.redactor.text(&answer)}),
             };
-            emit(
+            emit_persist(
                 store,
                 session,
+                persist,
                 host,
                 json!({"event":"tool_result","result":result}),
             )?;
@@ -424,9 +489,10 @@ pub async fn run_harness_turn(
                 } else {
                     match tools.prepare(&call, role) {
                         Ok(Some(approval)) => {
-                            emit(
+                            emit_persist(
                                 store,
                                 session,
+                                persist,
                                 host,
                                 json!({"event":"approval_required","approval":approval}),
                             )?;
@@ -438,14 +504,21 @@ pub async fn run_harness_turn(
                                     Ok(json!({"status":"not_executed","reason":"budget_exhausted"}))
                                 }
                                 Some(true) => {
-                                    session.interrupted = true;
-                                    emit(
-                                        store,
-                                        session,
-                                        host,
-                                        json!({"event":"operation_started","call_id":call.id,"approval_id":approval.id}),
-                                    )?;
-                                    let output = if call.name == "shell" {
+                                        let receipt_start = operation_receipt(
+                                            &call,
+                                            "started",
+                                            turn_codegraph_binding.as_ref(),
+                                            &approval,
+                                        );
+                                        session.interrupted = true;
+                                        emit_persist(
+                                            store,
+                                            session,
+                                            persist,
+                                            host,
+                                            json!({"event":"operation_started","call_id":call.id,"approval_id":approval.id,"receipt":receipt_start}),
+                                        )?;
+                                        let output = if call.name == "shell" {
                                         tokio::time::timeout(
                                         Duration::from_secs(
                                             config
@@ -500,11 +573,12 @@ pub async fn run_harness_turn(
                                             tools.apply_write(approval)
                                         }
                                     };
-                                    emit(
+                                    emit_persist(
                                         store,
                                         session,
+                                        persist,
                                         host,
-                                        json!({"event":"operation_finished","call_id":call.id,"result":output.as_ref().ok(),"failed":output.is_err()}),
+                                        json!({"event":"operation_finished","call_id":call.id,"result":output.as_ref().ok(),"failed":output.is_err(),"receipt":finish_operation_receipt(store, &call, receipt_start, output.is_err())}),
                                     )?;
                                     output
                                 }
@@ -537,9 +611,10 @@ pub async fn run_harness_turn(
                     failed,
                     output,
                 };
-                emit(
+                emit_persist(
                     store,
                     session,
+                    persist,
                     host,
                     json!({"event":"tool_result","result":result}),
                 )?;
@@ -559,33 +634,85 @@ pub async fn run_harness_turn(
         }
         has_tool_result = true;
         session.interrupted = false;
-        store.save_session(session)?;
+        if persist { store.save_session(session)?; }
         if canceled {
-            emit(
+            emit_persist(
                 store,
                 session,
+                persist,
                 host,
                 json!({"event":"task_canceled","session":session.id}),
             )?;
             return Ok(HarnessOutcome::Canceled);
         }
         if approval_required {
-            emit(
+            emit_persist(
                 store,
                 session,
+                persist,
                 host,
                 json!({"event":"task_state","status":"awaiting_approval"}),
             )?;
             return Ok(HarnessOutcome::ApprovalRequired);
         }
     }
-    emit(
+    emit_persist(
         store,
         session,
+        persist,
         host,
         json!({"event":"budget_exhausted","reason":"tool_rounds"}),
     )?;
     Ok(HarnessOutcome::BudgetExhausted)
+}
+
+fn operation_receipt(
+    call: &super::ToolCall,
+    status: &str,
+    binding: Option<&CodeGraphBinding>,
+    approval: &Approval,
+) -> Value {
+    let mut receipt = json!({
+        "operation": call.name,
+        "status": status,
+        "codegraphBinding": binding,
+    });
+    let path = match call.name.as_str() {
+        "write_file" | "edit_file" | "write_asset" => call.arguments["path"].as_str(),
+        "generate_image" => call.arguments["destination"].as_str(),
+        _ => None,
+    };
+    if let Some(path) = path {
+        // Start receipts record the approved base; afterFingerprint is unknown
+        // until the operation has completed.
+        let before = approval.details["before_sha256"].clone();
+        receipt["path"] = json!(path);
+        receipt["beforeFingerprint"] = if before.is_null() { Value::Null } else { before };
+        receipt["afterFingerprint"] = Value::Null;
+    }
+    receipt
+}
+
+fn finish_operation_receipt(
+    store: &HarnessStore,
+    call: &super::ToolCall,
+    mut receipt: Value,
+    failed: bool,
+) -> Value {
+    receipt["status"] = json!(if failed { "failed" } else { "succeeded" });
+    let path = match call.name.as_str() {
+        "write_file" | "edit_file" | "write_asset" => call.arguments["path"].as_str(),
+        "generate_image" => call.arguments["destination"].as_str(),
+        _ => None,
+    };
+    if let Some(path) = path {
+        let fingerprint = HarnessTools::checked_path(store.root(), path)
+            .ok()
+            .and_then(|resolved| fs::read(resolved).ok())
+            .map(|bytes| super::digest(&bytes));
+        receipt["afterFingerprint"] = fingerprint.map_or(Value::Null, Value::String);
+    }
+    receipt
 }
 
 fn is_parallel_read(call: &super::ToolCall) -> bool {
@@ -636,8 +763,18 @@ fn emit(
     host: &mut impl HarnessHost,
     event: Value,
 ) -> AgentResult<()> {
+    emit_persist(store, session, true, host, event)
+}
+
+fn emit_persist(
+    store: &HarnessStore,
+    session: &mut HarnessSession,
+    persist: bool,
+    host: &mut impl HarnessHost,
+    event: Value,
+) -> AgentResult<()> {
     session.events.push(event.clone());
-    store.save_session(session)?;
+    if persist { store.save_session(session)?; }
     host.event(&event)
 }
 

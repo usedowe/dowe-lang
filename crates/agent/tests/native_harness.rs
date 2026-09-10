@@ -113,6 +113,12 @@ fn memory_is_local_bounded_and_sessions_use_compare_and_swap() {
     let store = HarnessStore::new(home.path(), a.path()).unwrap();
     let other = HarnessStore::new(home.path(), b.path()).unwrap();
     let mut session = store.create_session().unwrap();
+    let legacy_memory = home
+        .path()
+        .join("harness")
+        .join(&session.project)
+        .join("memory.json");
+    std::fs::write(&legacy_memory, b"legacy global memory").unwrap();
     let mut stale = store.load_session(&session.id).unwrap();
     store.save_session(&mut session).unwrap();
     assert!(store.save_session(&mut stale).is_err());
@@ -124,6 +130,8 @@ fn memory_is_local_bounded_and_sessions_use_compare_and_swap() {
     }
     assert_eq!(store.recall("Theme").unwrap().len(), 8);
     assert!(other.recall("Theme").unwrap().is_empty());
+    assert!(a.path().join(".agents/memory.json").is_file());
+    assert_eq!(std::fs::read(&legacy_memory).unwrap(), b"legacy global memory");
     store
         .remember("Unconfirmed", "Theme assumption", "model", false)
         .unwrap();

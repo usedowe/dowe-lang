@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -29,6 +30,19 @@ impl AgentProviderProtocol {
             Self::MistralConversations => "mistral-conversations",
             Self::BedrockConverse => "bedrock-converse-stream",
             Self::PiMessages => "pi-messages",
+        }
+    }
+}
+
+impl std::str::FromStr for AgentProviderProtocol {
+    type Err = AgentError;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "openai-completions" => Ok(Self::OpenAiCompletions), "openai-responses" => Ok(Self::OpenAiResponses),
+            "anthropic-messages" => Ok(Self::AnthropicMessages), "google-generative-ai" => Ok(Self::GoogleGenerativeAi),
+            "google-vertex" => Ok(Self::GoogleVertex), "mistral-conversations" => Ok(Self::MistralConversations),
+            "bedrock-converse-stream" => Ok(Self::BedrockConverse), "pi-messages" => Ok(Self::PiMessages),
+            _ => Err(AgentError::new("unsupported dynamic provider protocol")),
         }
     }
 }
@@ -80,7 +94,63 @@ pub struct AgentProviderInfo {
 pub struct AgentModelDefinition {
     pub id: &'static str,
     pub name: &'static str,
+    /// Capability metadata sourced from the provider catalog when available.
+    pub tools: Option<bool>,
+    pub images: Option<bool>,
+    /// Context window metadata sourced from the provider catalog when available.
+    pub context_window: Option<u64>,
 }
+
+const MAX_DYNAMIC_PROVIDER_NAME: usize = 64;
+const MAX_DYNAMIC_MODEL_ID: usize = 256;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DynamicProviderDefinition {
+    pub name: String,
+    pub base_url: String,
+    pub protocol: AgentProviderProtocol,
+    pub models: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key_env: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ProviderRegistry { pub providers: BTreeMap<String, DynamicProviderDefinition> }
+
+impl ProviderRegistry {
+    pub fn validate(&self) -> AgentResult<()> {
+        if self.providers.len() > 64 { return Err(AgentError::new("too many dynamic providers")); }
+        for (id, definition) in &self.providers {
+            let name = id.strip_prefix("custom/").filter(|v| !v.is_empty()).ok_or_else(|| AgentError::new("dynamic provider ids must use custom/<name>"))?;
+            validate_dynamic_name(name)?;
+            if provider_exists(id) { return Err(AgentError::new(format!("dynamic provider collides with built-in `{id}`"))); }
+            validate_dynamic_name(&definition.name)?;
+            validate_dynamic_url(&definition.base_url)?;
+            if !matches!(definition.protocol, AgentProviderProtocol::OpenAiCompletions | AgentProviderProtocol::OpenAiResponses | AgentProviderProtocol::AnthropicMessages | AgentProviderProtocol::GoogleGenerativeAi | AgentProviderProtocol::MistralConversations | AgentProviderProtocol::PiMessages) { return Err(AgentError::new("unsupported dynamic provider protocol")); }
+                if definition.models.is_empty() || definition.models.len() > 256 { return Err(AgentError::new("dynamic provider must declare 1..256 models")); }
+            let mut models = BTreeSet::new();
+            for model in &definition.models { validate_dynamic_model(model)?; if !models.insert(model) { return Err(AgentError::new("duplicate dynamic provider model")); } }
+            if let Some(name) = &definition.api_key_env { validate_env_name(name)?; }
+        }
+        Ok(())
+    }
+    pub fn definition(&self, id: &str) -> Option<&DynamicProviderDefinition> { self.providers.get(id) }
+    pub fn contains_model(&self, provider: &str, model: &str) -> bool { self.definition(provider).is_some_and(|p| p.models.iter().any(|m| m == model)) }
+    pub fn canonical_material(&self) -> AgentResult<String> { self.validate()?; serde_json::to_string(self).map_err(Into::into) }
+    pub fn resolve_auth(&self, provider: &str, explicit_api_key: Option<&str>) -> AgentResult<Option<ResolvedProviderAuth>> {
+        let definition = self.definition(provider).ok_or_else(|| unknown_provider(provider))?;
+        if let Some(key) = explicit_api_key.filter(|v| !v.is_empty()) { return Ok(Some(ResolvedProviderAuth { kind: AgentAuthKind::ApiKey, secret: Some(key.into()), env: BTreeMap::new(), source: "explicit request".into() })); }
+        let Some(name) = definition.api_key_env.as_deref() else { return Ok(None); };
+        let Some(value) = env::var(name).ok().filter(|v| !v.is_empty()) else { return Ok(None); };
+        Ok(Some(ResolvedProviderAuth { kind: AgentAuthKind::ApiKey, secret: Some(value), env: BTreeMap::new(), source: name.into() }))
+    }
+}
+fn validate_dynamic_name(value: &str) -> AgentResult<()> { if value.is_empty() || value.len() > MAX_DYNAMIC_PROVIDER_NAME || !value.bytes().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-' || c == b'_') { return Err(AgentError::new("dynamic provider names must be lowercase ASCII and bounded")); } Ok(()) }
+fn validate_dynamic_model(value: &str) -> AgentResult<()> { if value.is_empty() || value.len() > MAX_DYNAMIC_MODEL_ID || value.chars().any(|c| c.is_control() || c.is_whitespace()) || value.contains("://") || value.contains('\\') { return Err(AgentError::new("invalid dynamic provider model")); } Ok(()) }
+fn validate_dynamic_url(value: &str) -> AgentResult<()> { if value.chars().any(char::is_control) || value.contains('@') || value.contains('?') || value.contains('#') { return Err(AgentError::new("dynamic provider URL cannot contain credentials, query, fragment, or controls")); } let url = reqwest::Url::parse(value).map_err(|_| AgentError::new("invalid dynamic provider URL"))?; let allowed = url.scheme() == "https" || (url.scheme() == "http" && url.host_str().is_some_and(|h| matches!(h, "localhost" | "127.0.0.1" | "::1"))); if !allowed || url.host_str().is_none() { return Err(AgentError::new("dynamic provider URL must use HTTPS or loopback HTTP")); } Ok(()) }
+fn validate_env_name(name: &str) -> AgentResult<()> { if name.is_empty() || !name.bytes().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == b'_') { return Err(AgentError::new("invalid dynamic provider environment name")); } Ok(()) }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedProviderAuth {
@@ -90,38 +160,63 @@ pub struct ResolvedProviderAuth {
     pub source: String,
 }
 
+#[allow(dead_code)]
 const OPENAI_CODEX_MODELS: &[AgentModelDefinition] = &[
     AgentModelDefinition {
         id: "gpt-5.3-codex-spark",
         name: "GPT-5.3 Codex Spark",
+            tools: None,
+            images: None,
+            context_window: None,
     },
     AgentModelDefinition {
         id: "gpt-5.4",
         name: "GPT-5.4",
+            tools: None,
+            images: None,
+            context_window: None,
     },
     AgentModelDefinition {
         id: "gpt-5.4-mini",
         name: "GPT-5.4 mini",
+            tools: None,
+            images: None,
+            context_window: None,
     },
     AgentModelDefinition {
         id: "gpt-5.5",
         name: "GPT-5.5",
+            tools: None,
+            images: None,
+            context_window: None,
     },
     AgentModelDefinition {
         id: "gpt-5.6-luna",
         name: "GPT-5.6 Luna",
+            tools: None,
+            images: None,
+            context_window: None
     },
     AgentModelDefinition {
         id: "gpt-5.6-sol",
         name: "GPT-5.6 Sol",
+            tools: None,
+            images: None,
+            context_window: None
     },
     AgentModelDefinition {
         id: "gpt-5.6-terra",
         name: "GPT-5.6 Terra",
+            tools: None,
+            images: None,
+            context_window: None
     },
     AgentModelDefinition {
         id: "gpt-6-astra",
         name: "GPT-6 Astra",
+            tools: None,
+            images: None,
+            context_window: None
     },
 ];
 
@@ -140,6 +235,7 @@ const PROVIDER_IDS: &[&str] = &[
     "kimi-coding",
     "minimax",
     "minimax-cn",
+    "mistral",
     "nvidia",
     "openai",
     "openai-codex",
@@ -318,6 +414,17 @@ pub fn provider_definition(id: &str) -> Option<AgentProviderDefinition> {
             Some("https://api.minimaxi.com/anthropic"),
             "MiniMax-M2.7",
             AgentProviderProtocol::AnthropicMessages,
+            true,
+            false,
+        ),
+        "mistral" => definition(
+            "mistral",
+            "Mistral",
+            &["MISTRAL_API_KEY"],
+            &[],
+            Some("https://api.mistral.ai/v1"),
+            "mistral-large-latest",
+            AgentProviderProtocol::MistralConversations,
             true,
             false,
         ),
@@ -571,16 +678,6 @@ pub fn resolve_provider_auth(
         }
     }
 
-    if supports_ambient_auth(definition) {
-        validate_required_env(definition, &scoped_env)?;
-        return Ok(Some(ResolvedProviderAuth {
-            kind: AgentAuthKind::Ambient,
-            secret: None,
-            env: scoped_env,
-            source: ambient_source(definition),
-        }));
-    }
-
     Ok(None)
 }
 
@@ -793,18 +890,6 @@ fn env_value(scoped_env: &BTreeMap<String, String>, name: &str) -> Option<String
         .or_else(|| env::var(name).ok().filter(|value| !value.is_empty()))
 }
 
-fn supports_ambient_auth(definition: &AgentProviderDefinition) -> bool {
-    matches!(definition.id, "amazon-bedrock" | "google-vertex")
-}
-
-fn ambient_source(definition: &AgentProviderDefinition) -> String {
-    match definition.id {
-        "amazon-bedrock" => "AWS credential chain".to_string(),
-        "google-vertex" => "Google Application Default Credentials".to_string(),
-        _ => "ambient credentials".to_string(),
-    }
-}
-
 fn unknown_provider(id: &str) -> AgentError {
     AgentError::new(format!(
         "unknown agent provider `{id}`; use `dowe agent providers` to list providers"
@@ -843,10 +928,7 @@ pub fn validate_agent_model(provider: &str, model: &str) -> AgentResult<()> {
 }
 
 pub fn provider_models(id: &str) -> &'static [AgentModelDefinition] {
-    match id {
-        "openai-codex" => OPENAI_CODEX_MODELS,
-        _ => &[],
-    }
+    crate::catalog::builtin_models(id)
 }
 
 pub fn auth_file_has_provider(path: &Path, provider: &str) -> AgentResult<bool> {
@@ -861,11 +943,11 @@ mod tests {
 
     #[test]
     fn exposes_pi_provider_order_and_all_catalog_entries() {
-        assert_eq!(builtin_provider_ids().len(), 27);
+        assert_eq!(builtin_provider_ids().len(), 28);
         assert_eq!(builtin_provider_ids()[0], "amazon-bedrock");
-        assert_eq!(builtin_provider_ids()[26], "zai-coding-cn");
+        assert_eq!(builtin_provider_ids()[27], "zai-coding-cn");
         for retired in [
-            "ant-ling", "baseten", "cerebras", "huggingface", "mistral", "moonshotai",
+            "ant-ling", "baseten", "cerebras", "huggingface", "moonshotai",
             "moonshotai-cn", "radius", "together", "xiaomi", "xiaomi-token-plan-ams",
             "xiaomi-token-plan-cn", "xiaomi-token-plan-sgp",
         ] {
@@ -880,6 +962,26 @@ mod tests {
                 .iter()
                 .any(|model| model.id == "gpt-5.3-codex")
         );
+    }
+
+    #[test]
+    fn mistral_definition_uses_api_key_and_conversations_transport() {
+        let definition = provider_definition("mistral").expect("provider");
+        assert_eq!(definition.name, "Mistral");
+        assert_eq!(definition.env_keys, &["MISTRAL_API_KEY"]);
+        assert_eq!(definition.base_url, Some("https://api.mistral.ai/v1"));
+        assert_eq!(definition.default_model, "mistral-large-latest");
+        assert_eq!(definition.protocol, AgentProviderProtocol::MistralConversations);
+        assert!(definition.supports_api_key);
+        assert!(!definition.supports_account);
+
+        let root = tempfile::tempdir().expect("root");
+        let store = AgentAuthStore::new(root.path().join("auth.json"));
+        let resolved = resolve_provider_auth(&definition, &store, Some("mistral-test-key"), None)
+            .expect("resolve")
+            .expect("auth");
+        assert_eq!(resolved.kind, AgentAuthKind::ApiKey);
+        assert_eq!(resolved.secret.as_deref(), Some("mistral-test-key"));
     }
 
     #[test]

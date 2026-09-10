@@ -10,7 +10,9 @@ pub struct ModelCapabilities {
 }
 
 pub fn builtin_model_capabilities(provider: &str, model: &str) -> Option<ModelCapabilities> {
-    super::builtin_capability_evidence(provider, model).map(|entry| entry.capabilities)
+    super::builtin_capability_evidence(provider, model)
+        .map(|entry| entry.capabilities)
+        .or_else(|| super::capability_catalog::catalog_model_capabilities(provider, model))
 }
 
 pub fn builtin_image_generation_capability(provider: &str, model: &str) -> bool {
@@ -51,7 +53,9 @@ impl HarnessConfig {
             selection.provider,
             crate::normalize_model_id(&selection.provider, &selection.model)
         );
-        let capabilities = self.capabilities.get(&key).copied().or_else(|| builtin_model_capabilities(&selection.provider, &selection.model))
+        // Embedded authority wins for known models; local declarations are only for unknown models.
+        let capabilities = builtin_model_capabilities(&selection.provider, &selection.model)
+            .or_else(|| self.capabilities.get(&key).copied())
             .ok_or_else(|| AgentError::new(format!("model capabilities are unknown for {key}; explicitly declare /capabilities {key} <tools:true|false> <images:true|false> or select a supported model")))?;
         if role == HarnessRole::Execute && !capabilities.tools {
             return Err(AgentError::new(
@@ -91,6 +95,20 @@ mod tests {
                 .require_image_generation_capability(&unknown, HarnessRole::Execute)
                 .is_err()
         );
+    }
+
+    #[test]
+    fn catalog_capabilities_resolve_openrouter_models_and_custom_models_stay_unknown() {
+        let config = HarnessConfig::default();
+        let catalog_model = ModelSelection::new("openrouter", "deepseek/deepseek-v4-flash");
+        assert!(config
+            .require_capabilities(&catalog_model, HarnessRole::Execute, false)
+            .is_ok());
+
+        let custom = ModelSelection::new("openrouter", "custom/model");
+        assert!(config
+            .require_capabilities(&custom, HarnessRole::Execute, false)
+            .is_err());
     }
 
     #[test]

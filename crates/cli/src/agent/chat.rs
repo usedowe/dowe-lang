@@ -1,19 +1,24 @@
 use crate::menus::is_interactive_terminal;
 use crate::usage::USAGE;
-use dialoguer::{Input, Password, Select, theme::ColorfulTheme};
+use dialoguer::{
+    Input, Password, Select,
+    console::{measure_text_width, truncate_str},
+    theme::ColorfulTheme,
+};
 use dowe_agent::{
     AgentAuthStore, AgentConversation, AgentCredential, AgentDesktopEvent, AgentDesktopEventKind,
     AgentPreferencesStore, AgentPrepareOptions, AgentProviderInfo, AgentRequestType,
     AgentUsageTotals, ResolvedProviderAuth, ThinkingLevel, agent_model_details,
     agent_response_text, builtin_provider_info, default_llm_server_url, login_openai_codex,
-    normalize_model_id, prepare_agent_request, provider_default_model, provider_definition,
-    provider_exists, provider_models, refresh_openai_codex_credential, resolve_provider_auth,
-    send_agent_request, send_native_agent_request, token_needs_refresh,
+    login_openrouter, models_with_local_overrides, normalize_model_id, prepare_agent_request,
+    provider_default_model, provider_definition, provider_exists, refresh_openai_codex_credential,
+    resolve_provider_auth, send_agent_request, send_native_agent_request, token_needs_refresh,
 };
 use serde_json::{Value, json};
 use std::env;
+use std::fs;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(super) fn run_agent_providers_command(
     args: &[String],
@@ -69,7 +74,7 @@ pub(super) async fn run_agent_session_with_args(
 
     if !parsed.json_output {
         println!("Dowe Agent");
-        println!("Skills are embedded in the Dowe binary. Type /exit to leave.");
+        println!("Dowe Agent is ready — built-in skills loaded. Type /exit to quit.");
     }
 
     loop {
@@ -84,22 +89,42 @@ pub(super) async fn run_agent_session_with_args(
             thinking,
             usage: &usage,
         };
-        let queued = native.as_mut().and_then(|session| session.take_queued());
-            let Some(prompt) = (match queued {
-                Some(prompt) => Some(prompt),
-                None => read_agent_prompt(&footer, parsed.json_output)?,
-            }) else {
+        let queued = match native.as_mut() {
+            Some(session) => session.take_queued()?,
+            None => None,
+        };
+        let queued_id = queued.as_ref().map(|task| task.id.clone());
+        let Some(prompt) = (match queued {
+            Some(task) => Some(task.prompt),
+            None => read_agent_prompt(&footer, parsed.json_output)?,
+        }) else {
             if !parsed.json_output {
                 println!();
             }
             return Ok(());
         };
-        let command = prompt.trim();
+        let mut command = prompt.trim().to_string();
+        if !command.starts_with('/') {
+            command = attach_prompt_references(&command, &env::current_dir()?, &mut parsed.options);
+        }
+        let command = command.as_str();
         if is_exit_command(command) {
             return Ok(());
         }
         if command.is_empty() {
+            if let Some(id) = queued_id.as_deref()
+                && let Some(native) = native.as_ref()
+            {
+                native.fail_queued(id, "queued prompt was empty")?;
+            }
             continue;
+        }
+        if command.starts_with('/') {
+            if let Some(id) = queued_id.as_deref()
+                && let Some(native) = native.as_ref()
+            {
+                native.fail_queued(id, "queued commands are not executed as agent prompts")?;
+            }
         }
         if command == "/new" {
             if let Some(native) = &mut native {
@@ -148,12 +173,17 @@ pub(super) async fn run_agent_session_with_args(
                 preferences.select_provider(&selected)?;
                 provider = Some(selected);
             }
-            let selected_provider = provider.as_deref().expect("selected provider");
-            if let Some(selected) = select_model(selected_provider, model.as_deref())? {
-                if let Err(error) = preferences.select_model(selected_provider, &selected) {
+            if let Some(selected) =
+                select_model_for_session(&store, provider.as_deref(), model.as_deref())?
+            {
+                if let Err(error) = preferences.select_model(&selected.provider, &selected.model) {
                     eprintln!("{error}");
                     continue;
                 }
+                if provider.as_deref() != Some(selected.provider.as_str()) {
+                    api_key = None;
+                }
+                provider = Some(selected.provider);
                 (model, thinking) = restore_selection(provider.as_deref(), None, &preferences)?;
                 usage.clear_context();
             }
@@ -178,14 +208,16 @@ pub(super) async fn run_agent_session_with_args(
                 continue;
             };
             let levels = details.thinking_levels;
+            let thinking_items = aligned_menu_items(
+                &levels
+                    .iter()
+                    .map(|level| level.as_str())
+                    .collect::<Vec<_>>(),
+                menu_width(),
+            );
             if let Some(index) = Select::with_theme(&ColorfulTheme::default())
                 .with_prompt("Select thinking level")
-                .items(
-                    levels
-                        .iter()
-                        .map(|level| level.as_str())
-                        .collect::<Vec<_>>(),
-                )
+                .items(&thinking_items)
                 .default(
                     thinking
                         .and_then(|level| levels.iter().position(|candidate| *candidate == level))
@@ -216,9 +248,10 @@ pub(super) async fn run_agent_session_with_args(
                         | "/processes"
                         | "/watch"
                         | "/queue"
-                            | "/inspect"
+                        | "/inspect"
                         | "/recover"
                         | "/capabilities"
+                        | "/governance"
                 )
             )
         {
@@ -287,6 +320,18 @@ pub(super) async fn run_agent_session_with_args(
                 result = work => result,
                 _ = tokio::signal::ctrl_c() => Err(dowe_agent::AgentError::new("Agent task canceled; interrupted operations are not replayed")),
             };
+            if let Some(id) = queued_id.as_deref()
+                && let Some(native) = native.as_ref()
+            {
+                match &result {
+                    Ok(dowe_agent::native_harness::HarnessOutcome::Completed) => {
+                        native.complete_queued(id, json!({"status":"completed"}))?
+                    }
+                    Ok(outcome) => native
+                        .fail_queued(id, &format!("queued task did not complete: {outcome:?}"))?,
+                    Err(error) => native.fail_queued(id, &error.to_string())?,
+                }
+            }
             if matches!(
                 result,
                 Ok(dowe_agent::native_harness::HarnessOutcome::Completed)
@@ -577,7 +622,9 @@ fn parse_agent_args(
         }
     }
 
-    let prompt = prompt.join(" ");
+    let mut prompt = prompt.join(" ");
+    let root = env::current_dir()?;
+    prompt = attach_prompt_references(&prompt, &root, &mut options);
     if require_prompt && prompt.trim().is_empty() {
         return Err(USAGE.into());
     }
@@ -597,6 +644,180 @@ fn parse_agent_args(
         json_output,
         options,
     })
+}
+
+const MAX_LOCAL_TEXT_BYTES: u64 = 1_048_576;
+const MAX_LOCAL_IMAGE_BYTES: u64 = 20 * 1_048_576;
+
+fn attach_prompt_references(
+    prompt: &str,
+    root: &Path,
+    options: &mut AgentPrepareOptions,
+) -> String {
+    let mut output = String::with_capacity(prompt.len());
+    let mut contexts: Vec<(PathBuf, String)> = Vec::new();
+    let mut i = 0;
+    while i < prompt.len() {
+        let rest = &prompt[i..];
+        let boundary = i == 0
+            || prompt[..i]
+                .chars()
+                .next_back()
+                .is_some_and(char::is_whitespace);
+        let (end, raw, explicit) = if boundary && rest.starts_with('@') {
+            if rest.as_bytes().get(1) == Some(&b'"') {
+                let Some(close) = rest[2..].find('"') else {
+                    output.push('@');
+                    i += 1;
+                    continue;
+                };
+                (i + 3 + close, &rest[2..2 + close], true)
+            } else {
+                let end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+                (i + end, &rest[1..end], true)
+            }
+        } else if boundary && (rest.starts_with('"') || rest.starts_with('\'')) {
+            let quote = rest.as_bytes()[0] as char;
+            let Some(close) = rest[1..].find(quote) else {
+                output.push(rest.chars().next().unwrap());
+                i += 1;
+                continue;
+            };
+            (i + 2 + close, &rest[1..1 + close], false)
+        } else {
+            let ch = rest.chars().next().unwrap();
+            output.push(ch);
+            i += ch.len_utf8();
+            continue;
+        };
+        let candidate = PathBuf::from(raw);
+        let image = supported_image(&candidate);
+        let text = supported_text(&candidate);
+        let absolute = candidate.is_absolute();
+        let shape_ok = explicit || (absolute && image);
+        let path_like = raw.contains('/') || raw.contains('\\') || candidate.extension().is_some();
+        if shape_ok && (image || (explicit && text)) && (absolute || path_like) {
+            let path = if absolute {
+                candidate
+            } else {
+                root.join(candidate)
+            };
+            if !absolute {
+                if let (Ok(canonical), Ok(root)) = (fs::canonicalize(&path), fs::canonicalize(root))
+                {
+                    if !canonical.starts_with(root) {
+                        output.push_str(&prompt[i..end]);
+                        i = end;
+                        continue;
+                    }
+                }
+            }
+            if let Some(path) = safe_attachment_path(&path, image) {
+                if image {
+                    if !options.image_paths.iter().any(|existing| existing == &path) {
+                        options.image_paths.push(path);
+                    }
+                } else if let Some(content) = read_local_text(&path)
+                    && !contexts.iter().any(|(existing, _)| existing == &path)
+                {
+                    contexts.push((path, content));
+                }
+                i = end;
+                continue;
+            }
+        }
+        output.push_str(&prompt[i..end]);
+        i = end;
+    }
+    for (path, content) in contexts {
+        output.push_str(&format!(
+            "\n\n[Untrusted local file context: {}]\n```\n{}\n```",
+            path.display(),
+            content
+        ));
+    }
+    output
+}
+
+fn supported_image(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|value| value.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some("png" | "jpg" | "jpeg" | "webp" | "gif")
+    )
+}
+
+fn supported_text(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|value| value.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some(
+            "md" | "txt"
+                | "rs"
+                | "dowe"
+                | "toml"
+                | "json"
+                | "yaml"
+                | "yml"
+                | "js"
+                | "jsx"
+                | "ts"
+                | "tsx"
+                | "css"
+                | "html"
+                | "py"
+                | "go"
+                | "java"
+                | "c"
+                | "h"
+                | "cpp"
+                | "hpp"
+                | "sql"
+                | "sh"
+                | "bash"
+        )
+    )
+}
+
+fn safe_attachment_path(path: &Path, image: bool) -> Option<PathBuf> {
+    let metadata = fs::symlink_metadata(path).ok()?;
+    let max = if image {
+        MAX_LOCAL_IMAGE_BYTES
+    } else {
+        MAX_LOCAL_TEXT_BYTES
+    };
+    if !metadata.file_type().is_file() || metadata.len() > max {
+        return None;
+    }
+    let canonical = fs::canonicalize(path).ok()?;
+    if !image && is_credential_file(path) {
+        return None;
+    }
+    Some(canonical)
+}
+
+fn is_credential_file(path: &Path) -> bool {
+    let name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    name == ".env"
+        || ["credential", "secret", "token", "private", "id_rsa"]
+            .iter()
+            .any(|word| name.contains(word))
+        || matches!(
+            path.extension().and_then(|value| value.to_str()),
+            Some("pem" | "key")
+        )
+}
+
+fn read_local_text(path: &Path) -> Option<String> {
+    String::from_utf8(fs::read(path).ok()?).ok()
 }
 
 fn required_value<'a>(
@@ -753,7 +974,10 @@ async fn configure_provider(
     let (account, provider) = loop {
         let Some(method) = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Select authentication method")
-            .items(["Sign in with an account", "Sign in with an API key"])
+            .items(&aligned_menu_items(
+                &["Sign in with an account", "Sign in with an API key"],
+                menu_width(),
+            ))
             .default(previous_method)
             .interact_opt()?
         else {
@@ -791,6 +1015,14 @@ async fn configure_provider(
         .await?;
         eprintln!("OpenAI Codex account connected.");
         credential
+    } else if account && provider == "openrouter" {
+        let credential = login_openrouter(|url| {
+            eprintln!("Opening browser for OpenRouter login.");
+            eprintln!("{url}");
+        })
+        .await?;
+        eprintln!("OpenRouter account connected.");
+        credential
     } else if account {
         let access = Password::with_theme(&ColorfulTheme::default())
             .with_prompt(format!("Paste {} account access token", definition.name))
@@ -810,7 +1042,6 @@ async fn configure_provider(
         AgentCredential::OAuth { .. } => None,
     };
     store.save(&provider, &credential)?;
-    AgentPreferencesStore::from_default_path()?.select_provider(&provider)?;
     eprintln!("Configured {}.", definition.name);
     Ok(Some(ConfiguredProvider {
         provider,
@@ -846,11 +1077,126 @@ fn prompt_api_key(
     })
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SelectedModel {
+    provider: String,
+    model: String,
+}
+
+fn select_model_for_session(
+    store: &AgentAuthStore,
+    current_provider: Option<&str>,
+    current_model: Option<&str>,
+) -> Result<Option<SelectedModel>, Box<dyn std::error::Error>> {
+    let configured = configured_model_providers(store)?;
+    let provider = current_provider
+        .or_else(|| configured.first().map(String::as_str))
+        .ok_or("no agent provider is configured")?;
+
+    if configured.len() <= 1 {
+        return Ok(
+            select_model(provider, current_model)?.map(|model| SelectedModel {
+                provider: provider.to_string(),
+                model,
+            }),
+        );
+    }
+
+    select_model_from_providers(&configured, current_provider, current_model)
+}
+
+fn select_model_from_providers(
+    providers: &[String],
+    current_provider: Option<&str>,
+    current_model: Option<&str>,
+) -> Result<Option<SelectedModel>, Box<dyn std::error::Error>> {
+    let entries = model_menu_entries(providers)?;
+
+    let labels = entries
+        .iter()
+        .map(|entry| entry.label.as_str())
+        .collect::<Vec<_>>();
+    let items = aligned_menu_items(&labels, menu_width());
+    let default_index = entries
+        .iter()
+        .position(|entry| {
+            entry.provider == current_provider.unwrap_or_default()
+                && entry.model.as_deref() == current_model
+        })
+        .unwrap_or(0);
+    let Some(index) = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select provider and model")
+        .items(&items)
+        .default(default_index)
+        .interact_opt()?
+    else {
+        return Ok(None);
+    };
+    let entry = &entries[index];
+    let model = match entry.model.as_deref() {
+        Some(model) => model.to_string(),
+        None => {
+            let default = current_provider
+                .filter(|provider| *provider == entry.provider)
+                .and(current_model)
+                .map(str::to_string)
+                .unwrap_or(provider_default_model(&entry.provider)?.to_string());
+            Input::<String>::with_theme(&ColorfulTheme::default())
+                .with_prompt(format!("Model for {}", entry.provider))
+                .default(default)
+                .allow_empty(false)
+                .interact_text()?
+        }
+    };
+    Ok(Some(SelectedModel {
+        provider: entry.provider.clone(),
+        model,
+    }))
+}
+
+fn configured_model_providers(
+    store: &AgentAuthStore,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    Ok(builtin_provider_info(store)?
+        .into_iter()
+        .filter(|provider| provider.configured)
+        .map(|provider| provider.id)
+        .collect())
+}
+
+#[derive(Debug, Clone)]
+struct ModelMenuEntry {
+    provider: String,
+    model: Option<String>,
+    label: String,
+}
+
+fn model_menu_entries(
+    providers: &[String],
+) -> Result<Vec<ModelMenuEntry>, Box<dyn std::error::Error>> {
+    let mut entries = Vec::new();
+    for provider in providers {
+        for model in models_with_local_overrides(provider)? {
+            entries.push(ModelMenuEntry {
+                provider: provider.clone(),
+                model: Some(model.id.clone()),
+                label: format!("{provider} • {} • {}", model.name, model.id),
+            });
+        }
+        entries.push(ModelMenuEntry {
+            provider: provider.clone(),
+            model: None,
+            label: format!("{provider} • Enter another model id"),
+        });
+    }
+    Ok(entries)
+}
+
 pub(super) fn select_model(
     provider: &str,
     current: Option<&str>,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let models = provider_models(provider);
+    let models = models_with_local_overrides(provider)?;
     let default = current
         .map(str::to_string)
         .unwrap_or(provider_default_model(provider)?.to_string());
@@ -863,12 +1209,9 @@ pub(super) fn select_model(
                 .interact_text()?,
         ));
     }
-    let mut items = models
-        .iter()
-        .map(|model| format!("{} • {}", model.name, model.id))
-        .collect::<Vec<_>>();
+    let mut items = aligned_model_labels(&models, menu_width());
     let custom_index = items.len();
-    items.push("Enter another model id".to_string());
+    items.push(menu_text("Enter another model id", menu_width()));
     let default_index = models
         .iter()
         .position(|model| model.id == default)
@@ -904,7 +1247,7 @@ pub(super) fn select_provider(
     if providers.is_empty() {
         return Err("no providers support the selected authentication method".into());
     }
-    let items = providers.iter().map(provider_label).collect::<Vec<_>>();
+    let items = aligned_provider_labels(&providers, menu_width());
     let index = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select provider to configure")
         .items(&items)
@@ -920,6 +1263,113 @@ fn provider_label(provider: &AgentProviderInfo) -> String {
         .map(|source| format!("stored: {source}"))
         .unwrap_or_else(|| "unconfigured".to_string());
     format!("{} • {}", provider.name, status)
+}
+
+const MENU_NAME_WIDTH: usize = 28;
+const MENU_ID_WIDTH: usize = 40;
+
+fn menu_width() -> usize {
+    crossterm::terminal::size()
+        .map(|(columns, _)| usize::from(columns).saturating_sub(6))
+        .unwrap_or(74)
+        .max(1)
+}
+
+fn menu_text(value: &str, width: usize) -> String {
+    let value = value
+        .chars()
+        .map(|character| {
+            if character.is_control() {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect::<String>();
+    let value = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    truncate_str(&value, width, "…").into_owned()
+}
+
+fn pad_menu_text(value: String, width: usize) -> String {
+    format!(
+        "{value}{}",
+        " ".repeat(width.saturating_sub(measure_text_width(&value)))
+    )
+}
+
+fn aligned_menu_items(items: &[&str], width: usize) -> Vec<String> {
+    let labels = items
+        .iter()
+        .map(|item| menu_text(item, width))
+        .collect::<Vec<_>>();
+    let column_width = labels
+        .iter()
+        .map(|label| measure_text_width(label))
+        .max()
+        .unwrap_or(0);
+    labels
+        .into_iter()
+        .map(|label| pad_menu_text(label, column_width))
+        .collect()
+}
+
+fn aligned_columns(left: &[String], right: &[String], width: usize) -> Vec<String> {
+    let left_width = left
+        .iter()
+        .map(|value| measure_text_width(value))
+        .max()
+        .unwrap_or(0)
+        .min(MENU_NAME_WIDTH)
+        .min(width);
+    let right_width = right
+        .iter()
+        .map(|value| measure_text_width(value))
+        .max()
+        .unwrap_or(0)
+        .min(MENU_ID_WIDTH)
+        .min(width.saturating_sub(left_width));
+    let gap = 3.min(width.saturating_sub(left_width + right_width));
+    left.iter()
+        .zip(right)
+        .map(|(left, right)| {
+            format!(
+                "{}{}{}",
+                pad_menu_text(menu_text(left, left_width), left_width),
+                " ".repeat(gap),
+                pad_menu_text(menu_text(right, right_width), right_width),
+            )
+        })
+        .collect()
+}
+
+fn aligned_provider_labels(providers: &[AgentProviderInfo], width: usize) -> Vec<String> {
+    let names = providers
+        .iter()
+        .map(|provider| provider.name.clone())
+        .collect::<Vec<_>>();
+    let statuses = providers
+        .iter()
+        .map(|provider| {
+            provider
+                .source
+                .as_deref()
+                .map(|source| format!("stored: {source}"))
+                .unwrap_or_else(|| "unconfigured".to_string())
+        })
+        .collect::<Vec<_>>();
+    aligned_columns(&names, &statuses, width)
+}
+
+fn aligned_model_labels(models: &[dowe_agent::AgentCatalogModel], width: usize) -> Vec<String> {
+    let names = models
+        .iter()
+        .map(|model| model.name.to_string())
+        .collect::<Vec<_>>();
+    let ids = models
+        .iter()
+        .map(|model| model.id.to_string())
+        .collect::<Vec<_>>();
+    aligned_columns(&names, &ids, width)
 }
 
 fn infer_provider_from_model(model: &str) -> Option<String> {
@@ -1019,10 +1469,119 @@ mod tests {
     }
 
     #[test]
+    fn menu_labels_align_and_truncate_without_controls() {
+        let labels = aligned_columns(
+            &["Short".into(), "A very long provider name".into()],
+            &["stored: env".into(), "unconfigured".into()],
+            32,
+        );
+        assert_eq!(labels.len(), 2);
+        assert!(labels.iter().all(|label| measure_text_width(label) <= 32));
+        assert_eq!(
+            measure_text_width(&labels[0]),
+            measure_text_width(&labels[1])
+        );
+        assert!(!labels.iter().any(|label| label.contains('\n')));
+    }
+
+    #[test]
+    fn menu_items_preserve_values_while_padding_display_labels() {
+        let labels = aligned_menu_items(&["low", "very long\tlevel"], 20);
+        assert_eq!(labels[0].trim(), "low");
+        assert_eq!(labels[1].trim(), "very long level");
+        assert_eq!(
+            measure_text_width(&labels[0]),
+            measure_text_width(&labels[1])
+        );
+    }
+
+    #[test]
     fn only_exit_is_an_interactive_exit_command() {
         assert!(is_exit_command("/exit"));
         assert!(!is_exit_command("/quit"));
         assert!(!is_exit_command(":q"));
+    }
+
+    #[test]
+    fn empty_auth_store_does_not_expose_ambient_only_providers() {
+        let root = tempfile::tempdir().unwrap();
+        let auth = AgentAuthStore::new(root.path().join("auth.json"));
+
+        let providers = configured_model_providers(&auth).unwrap();
+        assert!(
+            !providers
+                .iter()
+                .any(|provider| provider == "amazon-bedrock")
+        );
+        assert!(!providers.iter().any(|provider| provider == "google-vertex"));
+
+        let entries = model_menu_entries(&providers).unwrap();
+        assert!(
+            !entries
+                .iter()
+                .any(|entry| entry.provider == "amazon-bedrock")
+        );
+        assert!(
+            !entries
+                .iter()
+                .any(|entry| entry.provider == "google-vertex")
+        );
+    }
+
+    #[test]
+    fn model_menu_aggregates_configured_providers_without_credentials() {
+        let root = tempfile::tempdir().unwrap();
+        let auth = AgentAuthStore::new(root.path().join("auth.json"));
+        auth.save("openai-codex", &AgentCredential::api_key("codex-secret"))
+            .unwrap();
+        auth.save("openrouter", &AgentCredential::api_key("router-secret"))
+            .unwrap();
+
+        let providers = configured_model_providers(&auth).unwrap();
+        assert!(providers.iter().any(|provider| provider == "openai-codex"));
+        assert!(providers.iter().any(|provider| provider == "openrouter"));
+        let entries = model_menu_entries(&providers).unwrap();
+        assert!(entries.iter().any(|entry| {
+            entry.provider == "openai-codex"
+                && entry.model.as_deref() == Some("gpt-5.5")
+                && entry.label.contains("openai-codex")
+                && entry.label.contains("gpt-5.5")
+        }));
+        assert!(entries.iter().any(|entry| {
+            entry.provider == "openrouter"
+                && entry.model.as_deref() == Some("openai/gpt-5.5")
+                && entry.label.contains("openrouter")
+                && entry.label.contains("openai/gpt-5.5")
+        }));
+        assert!(
+            entries
+                .iter()
+                .any(|entry| entry.provider == "openai-codex" && entry.model.is_none())
+        );
+        assert!(
+            entries
+                .iter()
+                .any(|entry| entry.provider == "openrouter" && entry.model.is_none())
+        );
+        assert!(!entries.iter().any(|entry| entry.label.contains("secret")));
+    }
+
+    #[test]
+    fn selecting_aggregated_entry_persists_provider_and_model_together() {
+        let root = tempfile::tempdir().unwrap();
+        let preferences = AgentPreferencesStore::new(root.path().join("preferences.json"));
+        preferences.select_model("openai-codex", "gpt-5.5").unwrap();
+
+        let selected = SelectedModel {
+            provider: "openrouter".to_string(),
+            model: "anthropic/claude-sonnet-4".to_string(),
+        };
+        preferences
+            .select_model(&selected.provider, &selected.model)
+            .unwrap();
+        let saved = preferences.read().unwrap();
+        assert_eq!(saved.provider.as_deref(), Some("openrouter"));
+        assert_eq!(saved.model.as_deref(), Some("anthropic/claude-sonnet-4"));
     }
 
     #[test]
@@ -1067,6 +1626,38 @@ mod tests {
                 Some("openai-codex")
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod attachment_tests {
+    use super::*;
+
+    #[test]
+    fn attaches_readme_and_quoted_dropped_image() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("README.md"), "# local\n").unwrap();
+        let image = root.path().join("design.png");
+        std::fs::write(&image, b"image").unwrap();
+        let mut options = AgentPrepareOptions::default();
+        let prompt = attach_prompt_references(
+            &format!("review @README.md and '{}'", image.display()),
+            root.path(),
+            &mut options,
+        );
+        assert!(prompt.contains("Untrusted local file context"));
+        assert!(prompt.contains("# local"));
+        assert_eq!(options.image_paths, vec![fs::canonicalize(image).unwrap()]);
+    }
+
+    #[test]
+    fn leaves_email_like_text_and_missing_references_untouched() {
+        let root = tempfile::tempdir().unwrap();
+        let mut options = AgentPrepareOptions::default();
+        let prompt =
+            attach_prompt_references("email me at @name @missing.md", root.path(), &mut options);
+        assert_eq!(prompt, "email me at @name @missing.md");
+        assert!(options.image_paths.is_empty());
     }
 }
 

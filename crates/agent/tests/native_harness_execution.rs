@@ -75,12 +75,38 @@ async fn approved_tools_continue_with_native_results_and_persist_evidence() {
     assert!(
         host.events
             .iter()
-            .any(|event| event["event"] == "operation_finished")
+            .any(|event| event["event"] == "operation_finished"
+                    && event["receipt"].get("codegraphBinding").is_some()
+                    && event["receipt"]["operation"] == "write_file"
+                    && event["receipt"]["status"] == "succeeded"
+                    && event["receipt"]["beforeFingerprint"].is_null()
+                    && event["receipt"]["afterFingerprint"].is_string())
     );
 }
 
 #[tokio::test]
-async fn noninteractive_approval_returns_without_execution_or_another_model_call() {
+async fn failed_operation_records_failed_receipt_status() {
+        let home = tempfile::tempdir().unwrap();
+        let root = tempfile::tempdir().unwrap();
+        let store = HarnessStore::new(home.path(), root.path()).unwrap();
+        let mut session = store.create_session().unwrap();
+        let mut host = Host {
+            responses: VecDeque::from([
+                json!({"output":[{"type":"function_call","call_id":"image","name":"generate_image","arguments":json!({"prompt":"texture","destination":"public/assets/texture.png","reason":"test"}).to_string()}]}),
+                json!({"output_text":"generation failed"}),
+            ]),
+            requests: vec![], events: vec![], decision: Some(true),
+        };
+        run_harness_turn(&store, &mut session, &HarnessConfig::default(),
+            HarnessTask::new("Generate asset", &ModelSelection::new("openai", "gpt-5.5")), &mut host).await.unwrap();
+        assert!(host.events.iter().any(|event| {
+            event["event"] == "operation_finished" && event["failed"] == true
+                && event["receipt"]["status"] == "failed"
+        }));
+    }
+
+    #[tokio::test]
+    async fn noninteractive_approval_returns_without_execution_or_another_model_call() {
     let home = tempfile::tempdir().unwrap();
     let root = tempfile::tempdir().unwrap();
     let store = HarnessStore::new(home.path(), root.path()).unwrap();

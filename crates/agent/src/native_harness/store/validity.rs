@@ -81,7 +81,7 @@ impl HarnessStore {
                 "memory invalidation requires a reason of 1..512 bytes",
             ));
         }
-        let path = self.directory().join("memory.json");
+        let path = self.memory_path()?;
         reject_symlink_ancestors(&path)?;
         let _lock = AuthFileLock::acquire(&path.with_extension("lock"))?;
         let mut memories = self.memories()?;

@@ -14,9 +14,18 @@ mod waivers;
 pub use error::{CodeGraphError, CodeGraphResult};
 pub use model::*;
 pub use persistence::{
-    CodeGraphQuery, CodeGraphSnapshot, GraphFreshness, GraphManifest, GraphQueryResult,
-    ensure_persistent_codegraph, refresh_persistent_codegraph, query_persistent_codegraph,
+    ensure_persistent_codegraph, query_persistent_codegraph, read_persistent_codegraph,
+    refresh_persistent_codegraph, CodeGraphBinding, CodeGraphQuery, CodeGraphSnapshot,
+    GraphFreshness, GraphManifest, GraphQueryResult,
 };
+
+pub fn check_bound_persistent_codegraph(
+    root: impl AsRef<std::path::Path>,
+    binding: &CodeGraphBinding,
+    options: CheckOptions,
+) -> CodeGraphResult<CheckReport> {
+    check::check_bound_persistent_codegraph(root.as_ref(), binding, options)
+}
 
 pub fn detect_codegraph_mode(root: impl AsRef<std::path::Path>) -> CodeGraphResult<CodeGraphMode> {
     mode::detect_codegraph_mode(root.as_ref())

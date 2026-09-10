@@ -107,7 +107,6 @@ fn similar_names_and_other_provider_routes_do_not_inherit_evidence() {
         ("minimax", "minimax-m3"),
         ("minimax-cn", "MiniMax-M3"),
         ("google-vertex", "gemini-2.5-flash"),
-        ("openrouter", "anthropic/claude-sonnet-4-5"),
         (
             "amazon-bedrock",
             "anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -128,10 +127,26 @@ fn similar_names_and_other_provider_routes_do_not_inherit_evidence() {
                 .is_err()
         );
     }
+    assert_eq!(
+        builtin_model_capabilities("openrouter", "anthropic/claude-sonnet-4-5"),
+        Some(ModelCapabilities {
+            tools: true,
+            images: true,
+        })
+    );
+    assert!(
+        HarnessConfig::default()
+            .require_capabilities(
+                &ModelSelection::new("openrouter", "anthropic/claude-sonnet-4-5"),
+                HarnessRole::Execute,
+                false
+            )
+            .is_ok()
+    );
 }
 
 #[test]
-fn local_declarations_override_verified_builtins_until_explicitly_removed() {
+fn local_declarations_cannot_override_verified_builtins() {
     let mut config = HarnessConfig::default();
     let selected = ModelSelection::new("anthropic", "claude-sonnet-4-5");
     config.capabilities.insert(
@@ -141,12 +156,6 @@ fn local_declarations_override_verified_builtins_until_explicitly_removed() {
             images: false,
         },
     );
-    assert!(
-        config
-            .require_capabilities(&selected, HarnessRole::Execute, false)
-            .is_err()
-    );
-    config.capabilities.remove("anthropic/claude-sonnet-4-5");
     assert!(
         config
             .require_capabilities(&selected, HarnessRole::Execute, true)

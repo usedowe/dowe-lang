@@ -10,7 +10,15 @@ pub use dowe_agent::{
     PublicSkillResourceDocument, ResolvedProviderAuth, ThinkingLevel, agent_model_details,
     agent_response_text, agent_response_usage,
 };
-pub use dowe_agent_harness::{
+pub use dowe_agent::native_harness::{
+        EventPage as AgentEventPage, SessionEvent, SessionEventLimits, SessionEventReceipt,
+        SessionObserver, SessionObserverHandle, SessionExtensionCall, SessionExtensionRegistry,
+        SessionExtensionResult, SessionExtensionToolDescriptor, session_extension_descriptor_fingerprint,
+        session_extension_fingerprint, validate_session_extension_descriptors,
+        MAX_EXTENSION_CALLS, MAX_EXTENSION_REQUEST_BYTES, MAX_EXTENSION_RESPONSE_BYTES,
+        MAX_EXTENSION_TOOLS,
+    };
+    pub use dowe_agent_harness::{
     CheckReport, DetectedMode, Diagnostic, HarnessManifest, HarnessMode, InitOptions, InitReport,
     PlanOptions, PlanReport, PlanState, StatusReport, TddState, ValidationReport,
 };
@@ -44,7 +52,42 @@ pub use dowe_spawn::{
 };
 use std::path::Path;
 
-pub fn prepare_agent_request(
+pub fn observe_agent_session(
+        root: impl AsRef<Path>,
+        session_id: impl Into<String>,
+    ) -> dowe_agent::AgentResult<SessionObserver> {
+        let store = dowe_agent::native_harness::HarnessStore::from_default_path(root)?;
+        SessionObserver::new(store, session_id)
+    }
+
+    pub fn create_agent_session_extension_registry(
+        root: impl AsRef<Path>,
+        session_id: impl Into<String>,
+    ) -> dowe_agent::AgentResult<SessionExtensionRegistry> {
+        let observer = observe_agent_session(root, session_id)?;
+        let handle = observer.subscribe();
+        observer.create_extension_registry(handle)
+    }
+
+    pub fn call_agent_session_extension(
+        root: impl AsRef<Path>,
+        request: SessionExtensionCall,
+    ) -> dowe_agent::AgentResult<SessionExtensionResult> {
+        let registry = create_agent_session_extension_registry(root, request.session_id.clone())?;
+        registry.call(request)
+    }
+
+    pub fn poll_agent_session_events(
+        root: impl AsRef<Path>,
+        session_id: &str,
+        since: u64,
+        limits: SessionEventLimits,
+    ) -> dowe_agent::AgentResult<AgentEventPage> {
+        let store = dowe_agent::native_harness::HarnessStore::from_default_path(root)?;
+        store.poll_events(session_id, since, limits)
+    }
+
+    pub fn prepare_agent_request(
     root: impl AsRef<Path>,
     prompt: &str,
     options: AgentPrepareOptions,

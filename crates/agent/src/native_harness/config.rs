@@ -44,6 +44,20 @@ mod tests {
         config.roles.remove(&HarnessRole::Codegraph);
         assert_eq!(config.resolve(HarnessRole::Codegraph, None, &active).unwrap(), active);
     }
+
+    #[test]
+    fn default_round_limit_is_pi_like_and_hard_limit_remains_validated() {
+        let config = HarnessConfig::default();
+        assert_eq!(config.max_rounds, 64);
+        assert!(config.validate().is_ok());
+
+        let mut maximum = config.clone();
+        maximum.max_rounds = 128;
+        assert!(maximum.validate().is_ok());
+
+        maximum.max_rounds = 129;
+        assert!(maximum.validate().is_err());
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -64,16 +78,28 @@ impl ModelSelection {
     }
 
     pub fn validate(&self) -> AgentResult<()> {
-        if !crate::provider_exists(&self.provider)
+        let registry = crate::provider::ProviderRegistry::default();
+            if (!crate::provider_exists(&self.provider) && registry.definition(&self.provider).is_none())
             || self.model.trim().is_empty()
             || self.model.chars().any(char::is_control)
         {
             return Err(AgentError::new("invalid harness provider/model selection"));
         }
+        if registry.definition(&self.provider).is_some() && !registry.contains_model(&self.provider, &self.model) { return Err(AgentError::new("model is not declared by the dynamic provider")); }
         validate_agent_model(&self.provider, &self.model)?;
         if let Some(level) = self.thinking {
             validate_thinking(&self.provider, &self.model, level)?;
         }
+        Ok(())
+    }
+}
+
+impl ModelSelection {
+    pub fn validate_with_registry(&self, registry: &crate::provider::ProviderRegistry) -> AgentResult<()> {
+        if (!crate::provider_exists(&self.provider) && registry.definition(&self.provider).is_none()) || self.model.trim().is_empty() || self.model.chars().any(char::is_control) { return Err(AgentError::new("invalid harness provider/model selection")); }
+        if registry.definition(&self.provider).is_some() && !registry.contains_model(&self.provider, &self.model) { return Err(AgentError::new("model is not declared by the dynamic provider")); }
+        validate_agent_model(&self.provider, &self.model)?;
+        if let Some(level) = self.thinking { validate_thinking(&self.provider, &self.model, level)?; }
         Ok(())
     }
 }
@@ -83,6 +109,7 @@ impl ModelSelection {
 pub struct HarnessConfig {
     pub roles: BTreeMap<HarnessRole, ModelSelection>,
     pub capabilities: BTreeMap<String, super::ModelCapabilities>,
+    pub providers: crate::provider::ProviderRegistry,
     pub shell: Option<String>,
     pub max_rounds: usize,
     pub max_output_bytes: usize,
@@ -99,8 +126,9 @@ impl Default for HarnessConfig {
         Self {
             roles: BTreeMap::new(),
             capabilities: BTreeMap::new(),
+                providers: crate::provider::ProviderRegistry::default(),
             shell: None,
-            max_rounds: 16,
+            max_rounds: 64,
             max_output_bytes: 32768,
             context_limit: None,
             token_budget: 200000,
@@ -114,6 +142,7 @@ impl Default for HarnessConfig {
 
 impl HarnessConfig {
     pub fn validate(&self) -> AgentResult<()> {
+        self.providers.validate()?;
         if !(1..=128).contains(&self.max_rounds)
             || !(1024..=131072).contains(&self.max_output_bytes)
             || self.token_budget == 0
@@ -143,10 +172,10 @@ impl HarnessConfig {
             let (provider, model) = key
                 .split_once('/')
                 .ok_or_else(|| AgentError::new("capability keys must be provider/model"))?;
-            ModelSelection::new(provider, model).validate()?;
+            ModelSelection::new(provider, model).validate_with_registry(&self.providers)?;
         }
         for selection in self.roles.values() {
-            selection.validate()?;
+            selection.validate_with_registry(&self.providers)?
         }
         Ok(())
     }
@@ -158,7 +187,7 @@ impl HarnessConfig {
         active: &ModelSelection,
     ) -> AgentResult<ModelSelection> {
         let selected = explicit.or_else(|| self.roles.get(&role)).unwrap_or(active);
-        selected.validate()?;
+        selected.validate_with_registry(&self.providers)?;
         Ok(selected.clone())
     }
 }

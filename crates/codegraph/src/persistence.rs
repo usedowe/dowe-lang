@@ -18,15 +18,25 @@ pub struct GraphManifest { pub version: u32, pub schema: u32, pub root: String, 
 pub enum GraphFreshness { Fresh, Initialized, Refreshed, Stale, Error }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CodeGraphSnapshot { pub graph: CodeGraph, pub manifest: GraphManifest, pub freshness: GraphFreshness, pub changed: Vec<String>, pub deleted: Vec<String>, pub error: Option<String> }
+pub struct CodeGraphSnapshot { pub graph: CodeGraph, pub manifest: GraphManifest, pub freshness: GraphFreshness, pub changed: Vec<String>, pub deleted: Vec<String>, pub error: Option<String>, #[serde(default)] pub generation: Option<String> }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CodeGraphQuery { pub text: String, pub limit: usize, pub depth: usize }
+pub struct CodeGraphBinding { pub generation: String, pub revision: u64, pub root: String, pub mode: CodeGraphMode }
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct CodeGraphQuery { pub text: String, pub limit: usize, pub depth: usize }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GraphQueryResult { pub nodes: Vec<Node>, pub incoming: Vec<Edge>, pub outgoing: Vec<Edge>, pub impact: Vec<Node> }
 
 pub fn ensure_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<CodeGraphSnapshot> { refresh_persistent_codegraph(root) }
+    pub fn read_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<CodeGraphSnapshot> {
+        let root = root.as_ref().canonicalize().map_err(|e| CodeGraphError::at_path(root.as_ref(), e.to_string()))?;
+        let mode = crate::detect_codegraph_mode(&root)?;
+        let dir = root.join(STORE);
+        if !dir.join("CURRENT").exists() { return Err(CodeGraphError::new("persisted CodeGraph generation is missing")); }
+        read_current(&dir, &root, mode)
+    }
 pub fn refresh_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<CodeGraphSnapshot> {
     let root = root.as_ref().canonicalize().map_err(|e| CodeGraphError::at_path(root.as_ref(), e.to_string()))?;
     let mode = crate::detect_codegraph_mode(&root)?;
@@ -51,7 +61,7 @@ pub fn refresh_persistent_codegraph(root: impl AsRef<Path>) -> CodeGraphResult<C
     let revision = old.as_ref().map_or(1, |s| s.manifest.revision + 1);
     let manifest = GraphManifest { version: VERSION, schema: VERSION, root: root.to_string_lossy().into_owned(), mode, revision, fingerprints };
     write_generation(&current, &manifest, &graph)?;
-    Ok(CodeGraphSnapshot { graph, manifest, freshness: if old.is_none() { GraphFreshness::Initialized } else { GraphFreshness::Refreshed }, changed, deleted, error: None })
+    Ok(CodeGraphSnapshot { generation: Some(format!("generation-{}-{}", revision, std::process::id())), graph, manifest, freshness: if old.is_none() { GraphFreshness::Initialized } else { GraphFreshness::Refreshed }, changed, deleted, error: None })
 }
 pub fn replace_file_contributions(mut base: CodeGraph, replacement: &CodeGraph, changed: &[String], deleted: &[String]) -> CodeGraph {
     let paths = changed.iter().chain(deleted).collect::<BTreeSet<_>>();
@@ -76,7 +86,7 @@ pub fn query_persistent_codegraph(root: impl AsRef<Path>, query: CodeGraphQuery)
 fn traverse(graph: &CodeGraph, start: &BTreeSet<String>, depth: usize) -> BTreeSet<String> { let mut seen=start.clone(); let mut q=start.iter().map(|x|(x.clone(),0)).collect::<VecDeque<_>>(); while let Some((id,d))=q.pop_front() { if d>=depth {continue;} for e in graph.edges.iter().filter(|e|e.from==id || e.to==id) { let next=if e.from==id {&e.to} else {&e.from}; if seen.insert(next.clone()) {q.push_back((next.clone(),d+1));} } } seen }
 fn store_dir(root: &Path) -> CodeGraphResult<PathBuf> { let dir=root.join(STORE); reject_path(root,&dir)?; fs::create_dir_all(&dir)?; Ok(dir) }
 fn reject_path(root:&Path,path:&Path)->CodeGraphResult<()> { let rel=path.strip_prefix(root).map_err(|_|CodeGraphError::new("CodeGraph path escapes project root"))?; if rel.components().any(|c|matches!(c,Component::ParentDir|Component::RootDir|Component::Prefix(_))){return Err(CodeGraphError::new("CodeGraph path traversal rejected"));} let mut p=root.to_path_buf(); for c in rel.components(){p.push(c); if p.exists() && fs::symlink_metadata(&p)?.file_type().is_symlink(){return Err(CodeGraphError::at_path(&p,"CodeGraph path must not contain symlinks"));}} Ok(()) }
-fn read_current(dir:&Path,root:&Path,mode:CodeGraphMode)->CodeGraphResult<CodeGraphSnapshot>{ let name=fs::read_to_string(dir.join("CURRENT"))?; let generation=dir.join(name.trim()); reject_path(root,&generation)?; let manifest:GraphManifest=serde_json::from_slice(&fs::read(generation.join("manifest.json"))?)?; if manifest.version!=VERSION || manifest.schema!=VERSION || manifest.root!=root.to_string_lossy() || manifest.mode!=mode {return Err(CodeGraphError::new("CodeGraph generation is incompatible"));} let nodes=serde_json::from_slice(&fs::read(generation.join("nodes.json"))?)?; let edges=serde_json::from_slice(&fs::read(generation.join("edges.json"))?)?; Ok(CodeGraphSnapshot{graph:CodeGraph{mode,root:".".into(),nodes,edges},manifest,freshness:GraphFreshness::Stale,changed:vec![],deleted:vec![],error:None}) }
+fn read_current(dir:&Path,root:&Path,mode:CodeGraphMode)->CodeGraphResult<CodeGraphSnapshot>{ let name=fs::read_to_string(dir.join("CURRENT"))?; let generation=dir.join(name.trim()); reject_path(root,&generation)?; let manifest:GraphManifest=serde_json::from_slice(&fs::read(generation.join("manifest.json"))?)?; if manifest.version!=VERSION || manifest.schema!=VERSION || manifest.root!=root.to_string_lossy() || manifest.mode!=mode {return Err(CodeGraphError::new("CodeGraph generation is incompatible"));} let nodes=serde_json::from_slice(&fs::read(generation.join("nodes.json"))?)?; let edges=serde_json::from_slice(&fs::read(generation.join("edges.json"))?)?; Ok(CodeGraphSnapshot{graph:CodeGraph{mode,root:".".into(),nodes,edges},manifest,freshness:GraphFreshness::Stale,changed:vec![],deleted:vec![],error:None,generation:Some(name.trim().to_string())}) }
 fn read_index(root:&Path,manifest:&GraphManifest,graph:&CodeGraph)->CodeGraphResult<BTreeMap<String,String>> { if manifest.root!=root.to_string_lossy() || graph.mode!=manifest.mode {return Err(CodeGraphError::new("CodeGraph compatibility mismatch"));} let dir=store_dir(root)?; let name=fs::read_to_string(dir.join("CURRENT"))?; let value=serde_json::from_slice(&fs::read(dir.join(name.trim()).join("index.json"))?)?; Ok(value) }
 fn write_generation(dir:&Path,manifest:&GraphManifest,graph:&CodeGraph)->CodeGraphResult<()> { let name=format!("generation-{}-{}",manifest.revision,std::process::id()); let tmp=dir.join(format!(".{name}.tmp")); let generation=dir.join(&name); fs::create_dir_all(&tmp)?; for (file,value) in [("manifest.json",serde_json::to_vec_pretty(manifest)?),("nodes.json",serde_json::to_vec_pretty(&graph.nodes)?),("edges.json",serde_json::to_vec_pretty(&graph.edges)?),("index.json",serde_json::to_vec_pretty(&graph.nodes.iter().filter_map(|n|n.path.as_ref().map(|p|(p,n.id.clone()))).collect::<BTreeMap<_,_>>())?)] { fs::write(tmp.join(file),value)?; } fs::rename(&tmp,&generation)?; let pointer=dir.join("CURRENT.tmp"); fs::write(&pointer,format!("{name}\n"))?; fs::rename(pointer,dir.join("CURRENT"))?; Ok(()) }
 #[allow(dead_code)] fn _fingerprint(bytes:&[u8])->String{fingerprint_bytes(bytes)}

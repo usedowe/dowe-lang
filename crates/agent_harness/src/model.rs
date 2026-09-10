@@ -101,6 +101,8 @@ pub struct PlanReport {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanState {
+    #[serde(default)]
+    pub codegraph_binding: Option<dowe_codegraph::CodeGraphBinding>,
     pub plan_id: String,
     pub spec_path: String,
     pub spec_fingerprint: String,
@@ -116,6 +118,8 @@ pub struct PlanState {
     pub documentation_actions: Vec<String>,
     #[serde(default)]
     pub skill_actions: Vec<String>,
+    #[serde(default)]
+    pub governance_task: Option<crate::orchestration::TaskRecord>,
     pub state: TddState,
     pub incomplete_reasons: Vec<String>,
     pub tdd_required: bool,

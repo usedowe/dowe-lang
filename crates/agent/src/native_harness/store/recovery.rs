@@ -23,7 +23,26 @@ impl HarnessStore {
             }
             let row = match self.read_session(id, false) {
                 Ok(session) => {
-                    json!({"id":id,"state":if session.interrupted {"interrupted"} else {"recorded"},"revision":session.revision,"catalog_compatible":session.catalog == super::super::catalog::catalog_fingerprint()?})
+                    let fallback = session.turns.iter().find_map(|turn| {
+                        let message = turn.message.as_ref()?;
+                        if message.role != "user" { return None; }
+                        match &message.content {
+                            crate::AgentMessageContent::Text(text) => Some(text.as_str()),
+                            crate::AgentMessageContent::Parts(parts) => parts.iter().find_map(|part| match part {
+                                crate::AgentMessagePart::Text { text } => Some(text.as_str()),
+                                crate::AgentMessagePart::ImageUrl { .. } => None,
+                            }),
+                        }
+                    });
+                    let preview = session.initial_prompt_preview.as_deref()
+                        .map(|text| super::sanitize_session_text(text, 240))
+                        .filter(|text| !text.is_empty())
+                        .or_else(|| fallback.map(|text| super::sanitize_session_text(text, 240)));
+                    let title = session.title.as_deref()
+                        .map(|text| super::sanitize_session_text(text, 80))
+                        .filter(|text| !text.is_empty())
+                        .or_else(|| preview.as_deref().map(|text| super::sanitize_session_text(text, 80)));
+                    json!({"id":id,"state":if session.interrupted {"interrupted"} else {"recorded"},"revision":session.revision,"catalog_compatible":session.catalog == super::super::catalog::catalog_fingerprint()?,"title":title,"initial_prompt_preview":preview})
                 }
                 Err(_) => json!({"id":id,"state":"unreadable","original_preserved":true}),
             };

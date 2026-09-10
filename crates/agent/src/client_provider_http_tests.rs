@@ -60,12 +60,14 @@ fn provider_http_fixture(
 #[tokio::test]
 async fn native_protocols_round_trip_through_local_http_with_images_tools_and_usage() {
     let completion = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n";
+    let mistral = "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n";
     let anthropic = "event: message_start\ndata: {\"message\":{\"usage\":{\"input_tokens\":10}}}\n\nevent: content_block_delta\ndata: {\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\nevent: message_delta\ndata: {\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":2}}\n\n";
     let google = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"thought\":true,\"text\":\"hidden\"},{\"text\":\"Hello\"}]}}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":2}}\n\n";
     let responses = "event: response.completed\ndata: {\"response\":{\"status\":\"completed\",\"output_text\":\"Hello\",\"usage\":{\"input_tokens\":10,\"output_tokens\":2}}}\n\n";
     let bedrock = "{\"output\":{\"message\":{\"content\":[{\"text\":\"Hello\"}]}},\"usage\":{\"inputTokens\":10,\"outputTokens\":2}}";
     for (provider, wire) in [
         ("deepseek", completion),
+        ("mistral", mistral),
         ("minimax", anthropic),
         ("google", google),
         ("google-vertex", google),
@@ -136,9 +138,14 @@ async fn native_protocols_round_trip_through_local_http_with_images_tools_and_us
                 );
                 assert!(body["toolConfig"]["tools"][0]["toolSpec"].is_object());
             }
-            AgentProviderProtocol::MistralConversations | AgentProviderProtocol::PiMessages => {
-                unreachable!()
+            AgentProviderProtocol::MistralConversations => {
+                assert_eq!(body["model"], "mistral-large-latest");
+                assert_eq!(body["messages"][0]["content"][1]["image_url"]["url"], "data:image/png;base64,aGVsbG8=");
+                assert_eq!(body["tools"][0]["type"], "function");
+                assert_eq!(body["stream_options"]["include_usage"], true);
+                assert_eq!(headers["authorization"], "Bearer test-secret");
             }
+            AgentProviderProtocol::PiMessages => unreachable!()
         }
         let parsed_url = reqwest::Url::parse(&url).unwrap();
         let path = format!(

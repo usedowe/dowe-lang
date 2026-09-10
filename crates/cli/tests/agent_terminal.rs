@@ -244,13 +244,19 @@ fn agent_restores_selected_provider_across_sessions() {
 }
 
 #[test]
-fn agent_login_persists_provider_and_restores_legacy_credentials() {
-    let session = Session::start(false);
+fn agent_login_preserves_model_and_thinking_selection() {
+    let home = TempDir::new().unwrap();
+    let path = home.path().join(".dowe/agent/preferences.json");
+    let preferences = dowe_agent::AgentPreferencesStore::new(&path);
+    preferences
+        .select_thinking("openai-codex", "gpt-5.5", dowe_agent::ThinkingLevel::High)
+        .unwrap();
+    let session = Session::start_at(home, false, &["agent"]);
     session.send("/login\r");
     session.until("Sign in with an API key");
     session.send("\u{1b}[B\r");
     session.until("Select provider to configure");
-    session.send("\u{1b}[B\u{1b}[B\r");
+    session.send("\u{1b}[B\r");
     session.until("Enter Anthropic API key");
     session.send("dowe-test-key\r");
     session.until("Configured Anthropic.");
@@ -259,10 +265,17 @@ fn agent_login_persists_provider_and_restores_legacy_credentials() {
     let saved: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&preferences).expect("login preference"))
             .unwrap();
-    assert_eq!(saved, serde_json::json!({"provider":"anthropic"}));
+    assert_eq!(
+        saved,
+        serde_json::json!({
+            "provider":"openai-codex",
+            "model":"gpt-5.5",
+            "thinkingLevel":"high"
+        })
+    );
     let session = Session::start_at(home, false, &["agent"]);
     session.send("/logout\r");
-    session.until("Logged out from anthropic.");
+    session.until("Logged out from openai-codex.");
     let home = session.stop();
     dowe_agent::AgentAuthStore::new(home.path().join(".dowe/agent/auth.json"))
         .save(
@@ -539,11 +552,11 @@ fn agent_escape_leaves_model_selection_without_authenticating() {
     session.until(">");
     session.send("/model\r");
     let before = session.until("Enter another model id");
-    assert!(before.contains("Select openai-codex model"));
+    assert!(before.lines().any(|line| line.contains(" • ")));
     let selected = before
         .lines()
-        .find(|line| line.starts_with("❯ "))
-        .expect("selected model")
+        .find(|line| line.starts_with("❯ ") && line.contains(" • "))
+        .expect("selected provider-qualified model")
         .to_string();
     session.send("\u{1b}[B\u{1b}");
     session.until(">");

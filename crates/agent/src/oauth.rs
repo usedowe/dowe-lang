@@ -17,6 +17,8 @@ const AUTHORIZATION_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
 const CALLBACK_ADDRESS: &str = "127.0.0.1:1455";
+const OPENROUTER_AUTHORIZATION_URL: &str = "https://openrouter.ai/auth";
+const OPENROUTER_KEYS_URL: &str = "https://openrouter.ai/api/v1/auth/keys";
 const SCOPE: &str = "openid profile email offline_access";
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 const REFRESH_MARGIN_MILLIS: u64 = 5 * 60 * 1000;
@@ -33,6 +35,11 @@ struct TokenResponse {
     access_token: Option<String>,
     refresh_token: Option<String>,
     expires_in: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenRouterKeyResponse {
+    key: Option<String>,
 }
 
 pub async fn login_openai_codex<F>(notify: F) -> AgentResult<AgentCredential>
@@ -52,8 +59,32 @@ where
             "could not open the OpenAI login browser: {error}; open this URL manually: {authorization_url}"
         ))
     })?;
-    let code = wait_for_callback(listener, &challenge.state).await?;
+    let code = wait_for_callback(listener, Some(&challenge.state), "OpenAI").await?;
     exchange_authorization_code(&code, &challenge.verifier).await
+}
+
+pub async fn login_openrouter<F>(notify: F) -> AgentResult<AgentCredential>
+where
+    F: Fn(&str),
+{
+    let challenge = create_pkce_challenge();
+    let listener = TcpListener::bind("127.0.0.1:0").await.map_err(|error| {
+        AgentError::new(format!("could not listen for OpenRouter login callback: {error}"))
+    })?;
+    let port = listener
+        .local_addr()
+        .map_err(|error| AgentError::new(format!("could not determine OpenRouter callback port: {error}")))?
+        .port();
+    let callback_url = format!("http://localhost:{port}/auth/callback");
+    let authorization_url = openrouter_authorization_url(&challenge, &callback_url)?;
+    notify(authorization_url.as_str());
+    open_browser(authorization_url.as_str()).await.map_err(|error| {
+        AgentError::new(format!(
+            "could not open the OpenRouter login browser: {error}; open this URL manually: {authorization_url}"
+        ))
+    })?;
+    let code = wait_for_callback(listener, None, "OpenRouter").await?;
+    exchange_openrouter_code(&code, &challenge.verifier).await
 }
 
 pub fn openai_codex_account_id(token: &str) -> AgentResult<String> {
@@ -129,6 +160,19 @@ fn create_pkce_challenge() -> PkceChallenge {
     }
 }
 
+fn openrouter_authorization_url(
+    challenge: &PkceChallenge,
+    callback_url: &str,
+) -> AgentResult<Url> {
+    let mut url = Url::parse(OPENROUTER_AUTHORIZATION_URL)
+        .map_err(|error| AgentError::new(format!("invalid OpenRouter authorization URL: {error}")))?;
+    url.query_pairs_mut()
+        .append_pair("callback_url", callback_url)
+        .append_pair("code_challenge", &challenge.challenge)
+        .append_pair("code_challenge_method", "S256");
+    Ok(url)
+}
+
 fn authorization_url(challenge: &PkceChallenge) -> AgentResult<Url> {
     let mut url = Url::parse(AUTHORIZATION_URL)
         .map_err(|error| AgentError::new(format!("invalid OpenAI authorization URL: {error}")))?;
@@ -172,11 +216,15 @@ async fn open_browser(url: &str) -> AgentResult<()> {
     }
 }
 
-async fn wait_for_callback(listener: TcpListener, expected_state: &str) -> AgentResult<String> {
+async fn wait_for_callback(
+    listener: TcpListener,
+    expected_state: Option<&str>,
+    provider: &str,
+) -> AgentResult<String> {
     timeout(CALLBACK_TIMEOUT, async move {
         loop {
             let (mut stream, _) = listener.accept().await.map_err(|error| {
-                AgentError::new(format!("OpenAI OAuth callback failed: {error}"))
+                AgentError::new(format!("{provider} OAuth callback failed: {error}"))
             })?;
             let target = read_request_target(&mut stream).await?;
             let callback = callback_url(&target)?;
@@ -189,35 +237,35 @@ async fn wait_for_callback(listener: TcpListener, expected_state: &str) -> Agent
                 .query_pairs()
                 .find(|(name, _)| name == "state")
                 .map(|(_, value)| value.into_owned());
-            if state.as_deref() != Some(expected_state) {
+            if expected_state.is_some() && state.as_deref() != expected_state {
                 write_callback_response(&mut stream, false, "Login state validation failed.")
                     .await?;
-                return Err(AgentError::new("OpenAI OAuth state validation failed"));
+                return Err(AgentError::new(format!("{provider} OAuth state validation failed")));
             }
             if let Some(error) = callback
                 .query_pairs()
                 .find(|(name, _)| name == "error")
                 .map(|(_, value)| value.into_owned())
             {
-                write_callback_response(&mut stream, false, "OpenAI login was rejected.").await?;
-                return Err(AgentError::new(format!("OpenAI login failed: {error}")));
+                write_callback_response(&mut stream, false, &format!("{provider} login was rejected.")).await?;
+                return Err(AgentError::new(format!("{provider} login failed: {error}")));
             }
             let code = callback
                 .query_pairs()
                 .find(|(name, _)| name == "code")
                 .map(|(_, value)| value.into_owned())
-                .ok_or_else(|| AgentError::new("OpenAI OAuth callback did not include a code"))?;
+                .ok_or_else(|| AgentError::new(format!("{provider} OAuth callback did not include a code")))?;
             write_callback_response(
                 &mut stream,
                 true,
-                "OpenAI authentication completed. You can close this window.",
+                &format!("{provider} authentication completed. You can close this window."),
             )
             .await?;
             return Ok(code);
         }
     })
     .await
-    .map_err(|_| AgentError::new("timed out waiting for the OpenAI login callback"))?
+    .map_err(|_| AgentError::new(format!("timed out waiting for the {provider} login callback")))?
 }
 
 async fn read_request_target(stream: &mut TcpStream) -> AgentResult<String> {
@@ -274,6 +322,39 @@ async fn write_callback_response(
         .write_all(response.as_bytes())
         .await
         .map_err(|error| AgentError::new(format!("could not answer OAuth callback: {error}")))
+}
+
+async fn exchange_openrouter_code(code: &str, verifier: &str) -> AgentResult<AgentCredential> {
+    let response = reqwest::Client::new()
+        .post(OPENROUTER_KEYS_URL)
+        .json(&serde_json::json!({
+            "code": code,
+            "code_verifier": verifier,
+            "code_challenge_method": "S256",
+        }))
+        .send()
+        .await
+        .map_err(|error| AgentError::new(format!("OpenRouter token exchange failed: {error}")))?;
+    let status = response.status();
+    let body = response.bytes().await.map_err(|error| {
+        AgentError::new(format!("OpenRouter token exchange returned invalid response: {error}"))
+    })?;
+    if !status.is_success() {
+        return Err(AgentError::new(format!(
+            "OpenRouter token exchange failed with HTTP {status}"
+        )));
+    }
+    parse_openrouter_key(&body)
+}
+
+fn parse_openrouter_key(body: &[u8]) -> AgentResult<AgentCredential> {
+    let response: OpenRouterKeyResponse = serde_json::from_slice(body)
+        .map_err(|error| AgentError::new(format!("OpenRouter auth response returned invalid JSON: {error}")))?;
+    let key = response
+        .key
+        .filter(|key| !key.trim().is_empty())
+        .ok_or_else(|| AgentError::new("OpenRouter auth response did not include an API key"))?;
+    Ok(AgentCredential::api_key(key))
 }
 
 async fn exchange_authorization_code(code: &str, verifier: &str) -> AgentResult<AgentCredential> {
@@ -411,7 +492,31 @@ mod tests {
     }
 
     #[test]
-    fn only_expiring_oauth_credentials_need_refresh() {
+    fn creates_openrouter_pkce_authorization_parameters() {
+            let challenge = create_pkce_challenge();
+            let callback = "http://localhost:43123/auth/callback";
+            let url = openrouter_authorization_url(&challenge, callback).expect("URL");
+            let query = url.query_pairs().map(|(key, value)| (key.into_owned(), value.into_owned())).collect::<std::collections::BTreeMap<_, _>>();
+            assert_eq!(url.origin().ascii_serialization(), "https://openrouter.ai");
+            assert_eq!(query.get("callback_url").map(String::as_str), Some(callback));
+            assert_eq!(query.get("code_challenge_method").map(String::as_str), Some("S256"));
+            assert_eq!(query.get("code_challenge").map(String::as_str), Some(challenge.challenge.as_str()));
+        }
+
+        #[test]
+        fn parses_openrouter_api_key_as_api_key_credential() {
+            let credential = parse_openrouter_key(br#"{"key":"sk-or-v1-test"}"#).expect("key");
+            assert_eq!(credential, AgentCredential::api_key("sk-or-v1-test"));
+        }
+
+        #[test]
+        fn rejects_openrouter_response_without_key() {
+            let error = parse_openrouter_key(br#"{"key":""}"#).expect_err("missing key");
+            assert!(error.to_string().contains("did not include an API key"));
+        }
+
+        #[test]
+        fn only_expiring_oauth_credentials_need_refresh() {
         let credential = AgentCredential::OAuth {
             access: "access".to_string(),
             refresh: Some("refresh".to_string()),

@@ -1,52 +1,22 @@
 use dialoguer::{Confirm, Input, Select, theme::ColorfulTheme};
 use dowe_agent::native_harness::{
     Approval, ClarificationQuestion, HarnessConfig, HarnessHost, HarnessOutcome, HarnessRole,
-    HarnessSession, HarnessStore, ModelSelection, Redactor, compact_harness_session,
+    HarnessSession, HarnessStore, ModelSelection, Redactor, SessionRecord, compact_harness_session,
     run_harness_turn,
 };
 use dowe_agent::{
     AgentAuthStore, AgentError, AgentRequest, AgentResult, AgentServerResponse, AgentUsageTotals,
 };
+use dowe_agent_harness::{ReviewOutcome, TaskRecord};
 use serde_json::{Value, json};
 
 mod formatting;
 
-#[derive(Default)]
-struct PromptQueue {
-    entries: std::collections::VecDeque<QueuedPrompt>,
-}
-struct QueuedPrompt {
-    text: String,
-    enqueued_at: std::time::Instant,
-}
-impl PromptQueue {
-    const LIMIT: usize = 8;
-    fn enqueue(&mut self, text: &str) -> AgentResult<usize> {
-        let text = text.trim();
-        if text.is_empty() || text.len() > 8192 {
-            return Err(AgentError::new("queued prompt must be 1..8192 bytes"));
-        }
-        if self.entries.len() >= Self::LIMIT {
-            return Err(AgentError::new("prompt queue is full (limit 8)"));
-        }
-        self.entries.push_back(QueuedPrompt {
-            text: text.into(),
-            enqueued_at: std::time::Instant::now(),
-        });
-        Ok(self.entries.len())
-    }
-    fn clear(&mut self) {
-        self.entries.clear();
-    }
-    fn len(&self) -> usize {
-        self.entries.len()
-    }
-    fn summary(&self) -> Vec<serde_json::Value> {
-        self.entries.iter().enumerate().map(|(index, entry)| json!({"position":index + 1,"prompt":entry.text,"queued_ms":entry.enqueued_at.elapsed().as_millis()})).collect()
-    }
-    fn pop(&mut self) -> Option<String> {
-        self.entries.pop_front().map(|entry| entry.text)
-    }
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
 }
 
 pub(super) struct NativeSession {
@@ -55,7 +25,6 @@ pub(super) struct NativeSession {
     config: HarnessConfig,
     pub(super) image_paths: Vec<std::path::PathBuf>,
     watchers: dowe_agent::native_harness::HarnessWatchers,
-    queue: PromptQueue,
 }
 
 impl NativeSession {
@@ -69,17 +38,29 @@ impl NativeSession {
             config,
             image_paths: Vec::new(),
             watchers: Default::default(),
-            queue: Default::default(),
         })
     }
 
-    pub(super) fn take_queued(&mut self) -> Option<String> {
-        self.queue.pop()
+    pub(super) fn take_queued(
+        &mut self,
+    ) -> AgentResult<Option<dowe_agent::native_harness::HarnessQueuedTask>> {
+        self.store.claim_task(&self.session.id)
+    }
+
+    pub(super) fn complete_queued(&self, id: &str, result: Value) -> AgentResult<()> {
+        self.store
+            .complete_task(&self.session.id, id, result)
+            .map(|_| ())
+    }
+    pub(super) fn fail_queued(&self, id: &str, error: &str) -> AgentResult<()> {
+        self.store
+            .fail_task(&self.session.id, id, error)
+            .map(|_| ())
     }
 
     fn transfer_activity_queue(&mut self, activity: &activity::Activity) {
         for prompt in activity.take_pending() {
-            if let Err(error) = self.queue.enqueue(&prompt) {
+            if let Err(error) = self.store.enqueue_task(&self.session.id, &prompt) {
                 eprintln!("Input not queued: {error}");
             }
         }
@@ -92,7 +73,6 @@ impl NativeSession {
     pub(super) fn reset(&mut self) -> AgentResult<()> {
         self.close_watchers()?;
         self.session = self.store.create_session()?;
-        self.queue.clear();
         Ok(())
     }
 
@@ -108,19 +88,27 @@ impl NativeSession {
         }
         let (command, argument) = prompt.split_once(' ').unwrap_or((prompt, ""));
         let mut result = match command {
+            "/governance" => self.governance_command(argument)?,
             "/queue" => {
                 let (operation, value) = argument.split_once(' ').unwrap_or((argument, ""));
                 match operation {
                     "add" => {
-                        json!({"queued":self.queue.enqueue(value)?,"position":self.queue.len()})
+                        self.store.enqueue_task(&self.session.id, value)?;
+                        let queued = self
+                            .store
+                            .list_tasks(&self.session.id)?
+                            .into_iter()
+                            .filter(|task| {
+                                task.state == dowe_agent::native_harness::HarnessTaskState::Pending
+                            })
+                            .count();
+                        json!({"queued":queued,"position":queued})
                     }
                     "clear" => {
-                        let count = self.queue.len();
-                        self.queue.clear();
-                        json!({"cleared":count})
+                        json!({"cleared":self.store.clear_tasks(&self.session.id)?})
                     }
                     "list" | "" => {
-                        json!({"queued":self.queue.summary(),"limit":PromptQueue::LIMIT})
+                        json!({"queued":self.store.list_tasks(&self.session.id)?.into_iter().filter(|task| task.state == dowe_agent::native_harness::HarnessTaskState::Pending).enumerate().map(|(index, task)| json!({"position":index + 1,"prompt":task.prompt,"queued_ms":now_ms().saturating_sub(task.created_at * 1000)})).collect::<Vec<_>>(),"limit":8})
                     }
                     _ => return Err("Use /queue add <prompt>|list|clear".into()),
                 }
@@ -168,15 +156,26 @@ impl NativeSession {
                     && !json_output
                     && crate::menus::is_interactive_terminal()
                 {
-                    let ids = self.store.sessions()?;
+                    let inventory = self.store.session_inventory()?;
+                    let sessions = inventory
+                        .iter()
+                        .filter(|row| row["state"] != "unreadable")
+                        .collect::<Vec<_>>();
+                    let labels = sessions
+                        .iter()
+                        .map(|row| formatting::resume_session_label(row))
+                        .collect::<Vec<_>>();
                     let Some(index) = Select::with_theme(&ColorfulTheme::default())
                         .with_prompt("Resume session")
-                        .items(&ids)
+                        .items(&labels)
                         .interact_opt()?
                     else {
                         return Ok(true);
                     };
-                    ids[index].clone()
+                    sessions[index]["id"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string()
                 } else {
                     argument.into()
                 };
@@ -276,7 +275,10 @@ impl NativeSession {
                             model.split_once('/').ok_or("Expected provider/model")?;
                         let selection = ModelSelection::new(provider, model);
                         selection.validate()?;
-                        if role == HarnessRole::ImageGeneration { self.config.require_image_generation_capability(&selection, role)?; }
+                        if role == HarnessRole::ImageGeneration {
+                            self.config
+                                .require_image_generation_capability(&selection, role)?;
+                        }
                         self.config.roles.insert(role, selection);
                     }
                     self.store.save_config(&self.config)?;
@@ -326,8 +328,87 @@ impl NativeSession {
         Ok(continue_session)
     }
 
+    fn governance_command(&mut self, argument: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        let mut parts = argument.split_whitespace();
+        let operation = parts.next().unwrap_or("status");
+        match operation {
+            "attach" => {
+                let Some(plan_id) = parts.next() else { return Err("Use /governance attach <plan-id>".into()); };
+                if parts.next().is_some() { return Err("Use /governance attach <plan-id>".into()); }
+                let state = dowe_agent_harness::read_plan_state(self.store.root(), plan_id)
+                    .map_err(|error| format!("Cannot attach governance plan: {error}"))?;
+                if state.plan_id != plan_id { return Err("Cannot attach governance plan: plan identity does not match".into()); }
+                let binding = state.codegraph_binding.ok_or_else(|| "Cannot attach governance plan: legacy state has no CodeGraphBinding")?;
+                let task = state.governance_task.ok_or_else(|| "Cannot attach governance plan: governance task is missing from plan state")?;
+                if task.id != plan_id || task.codegraph_binding != binding { return Err("Cannot attach governance plan: task binding is inconsistent".into()); }
+                let mut record = SessionRecord::new(self.session.id.clone(), binding).map_err(|error| error.to_string())?;
+                record.add_task(task).map_err(|error| error.to_string())?;
+                self.session.attach_orchestration(record).map_err(|error| error.to_string())?;
+                // Session orchestration is authoritative here; syncing plan state would require a second transaction.
+                self.store.save_session(&mut self.session)?;
+                Ok(json!({"status":"attached","plan_id":plan_id,"session_id":self.session.id}))
+            }
+            "status" if parts.next().is_none() => {
+                let record = self.session.orchestration().ok_or_else(|| "No governance task is attached to this native session")?;
+                Ok(json!({"session_id":record.id,"state":record.state,"codegraph_binding":record.codegraph_binding,"tasks":record.tasks}))
+            }
+            "review" => {
+                let outcome = match (parts.next(), parts.next()) {
+                    (Some("approved"), None) => ReviewOutcome::Approved,
+                    (Some("correction_required"), None) => ReviewOutcome::CorrectionRequired,
+                    (Some("rejected"), None) => ReviewOutcome::Rejected,
+                    _ => return Err("Use /governance review <approved|correction_required|rejected>".into()),
+                };
+                let result = self.mutate_governance_task(|task, binding| task.record_review_outcome(binding, outcome))?;
+                Ok(json!({"status":"review_recorded","task":result}))
+            }
+            "acknowledge" if parts.next().is_none() => {
+                let result = self.mutate_governance_task(|task, binding| task.acknowledge_approved_review(binding))?;
+                Ok(json!({"status":"acknowledged","task":result}))
+            }
+            "request-delivery" if parts.next().is_none() => {
+                let result = self.mutate_governance_task(|task, _| task.request_delivery())?;
+                Ok(json!({"status":"delivery_requested","task":result,"executed":false}))
+            }
+            _ => Err("Use /governance attach <plan-id>|status|review <approved|correction_required|rejected>|acknowledge|request-delivery".into()),
+        }
+    }
+
+    fn mutate_governance_task(
+        &mut self,
+        transition: impl FnOnce(
+            &mut TaskRecord,
+            dowe_agent_harness::CodeGraphBinding,
+        ) -> dowe_agent_harness::OrchestrationResult<()>,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let mut record = self
+            .session
+            .orchestration()
+            .cloned()
+            .ok_or_else(|| "No governance task is attached to this native session")?;
+        let binding = record.codegraph_binding.clone();
+        let task = record
+            .tasks
+            .first_mut()
+            .ok_or_else(|| "No governance task is attached to this native session")?;
+        transition(task, binding).map_err(|error| error.to_string())?;
+        let result = serde_json::to_value(&*task)?;
+        self.session
+            .update_orchestration(record)
+            .map_err(|error| error.to_string())?;
+        self.store.save_session(&mut self.session)?;
+        Ok(result)
+    }
+
     fn select_role_model(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let roles = ["plan", "execute", "compact", "review", "image_generation", "codegraph"];
+        let roles = [
+            "plan",
+            "execute",
+            "compact",
+            "review",
+            "image_generation",
+            "codegraph",
+        ];
         let Some(index) = Select::with_theme(&ColorfulTheme::default())
             .with_prompt("Model role")
             .items(roles)
@@ -355,7 +436,10 @@ impl NativeSession {
             };
             let selection = ModelSelection::new(&provider, &model);
             selection.validate()?;
-            if role == HarnessRole::ImageGeneration { self.config.require_image_generation_capability(&selection, role)?; }
+            if role == HarnessRole::ImageGeneration {
+                self.config
+                    .require_image_generation_capability(&selection, role)?;
+            }
             self.config.roles.insert(role, selection);
         }
         self.store.save_config(&self.config)?;
@@ -432,6 +516,8 @@ impl NativeSession {
                     explicit,
                     prompt,
                     image_paths: &self.image_paths,
+                    edit_scope: None,
+                    expected_codegraph_binding: None,
                 },
                 &mut host,
             ))
@@ -640,23 +726,6 @@ impl HarnessHost for TerminalHost<'_> {
 
     fn secrets(&self) -> Vec<String> {
         credential_secrets(&self.auth, self.api_key.as_deref())
-    }
-}
-
-#[cfg(test)]
-mod queue_tests {
-    use super::PromptQueue;
-    #[test]
-    fn queue_is_fifo_and_bounded() {
-        let mut queue = PromptQueue::default();
-        for index in 0..8 {
-            assert_eq!(queue.enqueue(&format!("p{index}")).unwrap(), index + 1);
-        }
-        assert!(queue.enqueue("overflow").is_err());
-        assert_eq!(queue.pop().unwrap(), "p0");
-        assert_eq!(queue.pop().unwrap(), "p1");
-        queue.clear();
-        assert_eq!(queue.len(), 0);
     }
 }
 

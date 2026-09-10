@@ -4,9 +4,10 @@ use crate::model::{
     HarnessMode, PlanOptions, PlanReport, PlanState, PlanStatus, StatusReport, TddState,
     ValidationCommandEvidence, ValidationCommandKind, ValidationReport,
 };
+use crate::orchestration::{AllowedEditSurface, TaskRecord};
 use crate::paths::{
-    WriteMode, WriteOutcome, safe_project_relative_path, slash_path, write_agent_file,
-    write_dowe_evidence,
+    safe_project_relative_path, slash_path, write_agent_file, write_dowe_evidence, WriteMode,
+    WriteOutcome,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -113,7 +114,33 @@ pub fn plan_from_spec(
         validation_commands.push("codegraph-check".to_string());
     }
 
+    let implementation_scope = implementation_scope_for(complex_feature);
+    let snapshot = dowe_codegraph::ensure_persistent_codegraph(root)
+        .map_err(|error| HarnessError::new(error.to_string()))?;
+    let codegraph_binding =
+        snapshot
+            .generation
+            .clone()
+            .map(|generation| dowe_codegraph::CodeGraphBinding {
+                generation,
+                revision: snapshot.manifest.revision,
+                root: snapshot.manifest.root.clone(),
+                mode: snapshot.manifest.mode,
+            });
+    let governance_task = codegraph_binding
+        .clone()
+        .map(|binding| {
+            let edit_surfaces = implementation_scope
+                .iter()
+                .map(AllowedEditSurface::new)
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|error| HarnessError::new(error.to_string()))?;
+            TaskRecord::new(spec.plan_id.clone(), binding, edit_surfaces)
+                .map_err(|error| HarnessError::new(error.to_string()))
+        })
+        .transpose()?;
     let state = PlanState {
+        codegraph_binding,
         plan_id: spec.plan_id.clone(),
         spec_path: spec.relative_spec_path.clone(),
         spec_fingerprint: fingerprint_file(&spec.spec_file)?,
@@ -122,7 +149,8 @@ pub fn plan_from_spec(
         test_plan,
         expected_initial_failures: Vec::new(),
         expected_failure_justification: None,
-        implementation_scope: implementation_scope_for(complex_feature),
+        implementation_scope,
+        governance_task,
         validation_commands,
         documentation_targets,
         documentation_actions,
@@ -178,8 +206,18 @@ pub fn read_status(root: impl AsRef<Path>) -> HarnessResult<StatusReport> {
 pub fn validate_plan(root: impl AsRef<Path>, plan_id: &str) -> HarnessResult<ValidationReport> {
     let root = root.as_ref();
     let manifest = read_manifest(root)?;
-    let state = read_plan_state(root, plan_id)?;
+    let mut state = read_plan_state(root, plan_id)?;
     ensure_plan_current(root, &state)?;
+    let binding = state.codegraph_binding.clone().ok_or_else(|| {
+        HarnessError::new(
+            "codegraph binding missing from plan state; governance validation cannot proceed",
+        )
+    })?;
+    let task = state.governance_task.as_mut().ok_or_else(|| {
+        HarnessError::new(
+            "governance task missing from plan state; validation evidence cannot be recorded",
+        )
+    })?;
     let mut commands = Vec::new();
 
     for command in manifest.validation_commands {
@@ -202,9 +240,14 @@ pub fn validate_plan(root: impl AsRef<Path>, plan_id: &str) -> HarnessResult<Val
                 });
             }
             ValidationCommandKind::CodegraphCheck => {
-                let report =
-                    dowe_codegraph::check_codegraph(root, dowe_codegraph::CheckOptions::default())
-                        .map_err(|error| HarnessError::new(error.to_string()))?;
+                let report = dowe_codegraph::check_bound_persistent_codegraph(
+                    root,
+                    state.codegraph_binding.as_ref().ok_or_else(|| {
+                        HarnessError::new("codegraph binding missing from plan state")
+                    })?,
+                    dowe_codegraph::CheckOptions::default(),
+                )
+                .map_err(|error| HarnessError::new(error.to_string()))?;
                 let success = !report.has_errors();
                 commands.push(ValidationCommandEvidence {
                     id: command.id,
@@ -241,6 +284,10 @@ pub fn validate_plan(root: impl AsRef<Path>, plan_id: &str) -> HarnessResult<Val
         &PathBuf::from(sanitize_slug(plan_id)?).join("validation.json"),
         &json(&report)?,
     )?;
+
+    task.record_validation_evidence(binding, report.evidence_path.clone())
+        .map_err(|error| HarnessError::new(error.to_string()))?;
+    write_plan_state(root, plan_id, &state)?;
 
     Ok(report)
 }

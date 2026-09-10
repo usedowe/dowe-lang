@@ -6,7 +6,7 @@ use crate::model::{
 use crate::oauth::openai_codex_account_id;
 use crate::provider::{
     AgentAuthKind, AgentProviderDefinition, AgentProviderProtocol, ResolvedProviderAuth,
-    normalize_model_id, protocol_for_model, provider_base_url, provider_definition,
+    normalize_model_id, protocol_for_model, provider_base_url, provider_definition, ProviderRegistry,
 };
 use base64::Engine;
 use reqwest::StatusCode;
@@ -160,6 +160,34 @@ pub async fn send_openai_image_generation(
         )));
     }
     parse_openai_image_response(&payload, model, prompt)
+}
+
+pub async fn send_native_agent_request_with_registry(
+    request: &AgentRequest,
+    auth: &ResolvedProviderAuth,
+    registry: &ProviderRegistry,
+) -> AgentResult<AgentServerResponse> {
+    registry.validate()?;
+    let provider_id = request.provider.as_deref().ok_or_else(|| AgentError::new("native agent requests require a provider"))?;
+    let definition = registry.definition(provider_id).ok_or_else(|| AgentError::new(format!("unknown dynamic agent provider `{provider_id}`")))?;
+    if !registry.contains_model(provider_id, &request.model) { return Err(AgentError::new("model is not declared by the dynamic provider")); }
+    let protocol = definition.protocol;
+    let base = definition.base_url.trim_end_matches('/');
+    let url = match protocol {
+        AgentProviderProtocol::OpenAiCompletions | AgentProviderProtocol::MistralConversations => format!("{base}/chat/completions"),
+        AgentProviderProtocol::OpenAiResponses => format!("{base}/responses"),
+        AgentProviderProtocol::AnthropicMessages => format!("{}/v1/messages", base.strip_suffix("/v1").unwrap_or(base)),
+        AgentProviderProtocol::GoogleGenerativeAi => format!("{base}/models/{}:generateContent", percent_encode_query(&request.model)),
+        AgentProviderProtocol::PiMessages => format!("{base}/messages"),
+        AgentProviderProtocol::GoogleVertex | AgentProviderProtocol::BedrockConverse => return Err(AgentError::new("dynamic provider protocol is not available for this route")),
+    };
+    let secret = auth.secret.as_deref().ok_or_else(|| AgentError::new("dynamic provider requires an explicit request credential or declared environment credential"))?;
+    let mut headers = HeaderMap::new(); headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json")); headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+    match protocol { AgentProviderProtocol::AnthropicMessages => { insert_header(&mut headers, "x-api-key", secret.into())?; insert_header(&mut headers, "anthropic-version", "2023-06-01".into())?; }, AgentProviderProtocol::GoogleGenerativeAi => insert_header(&mut headers, "x-goog-api-key", secret.into())?, _ => insert_header(&mut headers, AUTHORIZATION.as_str(), format!("Bearer {secret}"))? }
+    let body = match protocol { AgentProviderProtocol::OpenAiCompletions | AgentProviderProtocol::MistralConversations => openai_completions_body(&request.model, request, false)?, AgentProviderProtocol::OpenAiResponses => openai_responses_body(&request.model, request, false)?, AgentProviderProtocol::AnthropicMessages => anthropic_body(&request.model, request)?, AgentProviderProtocol::GoogleGenerativeAi => google_body(request)?, AgentProviderProtocol::PiMessages => pi_messages_body(&request.model, request)?, _ => unreachable!() };
+    let response_body = streaming::send_observed(&url, &headers, body, auth, request, protocol, &mut |_| Ok(())).await?;
+    let payload = if request.stream && !response_body.trim_start().starts_with('{') { parse_stream_payload(protocol, &response_body)? } else { serde_json::from_str(&response_body).map_err(|_| AgentError::new("dynamic provider returned invalid JSON"))? };
+    Ok(AgentServerResponse { request_id: request.request_id.clone(), request_type: request.request_type, model: request.model.clone(), payload })
 }
 
 pub async fn send_native_agent_request(

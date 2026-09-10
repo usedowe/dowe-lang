@@ -10,22 +10,34 @@ pub(super) struct Footer<'a> {
 
 impl Footer<'_> {
     pub fn lines(&self, width: usize) -> [String; 2] {
-        let provider = self.provider.unwrap_or("no-provider");
-        let model = self.model.unwrap_or("no-model");
-        let details = agent_model_details(provider, model);
+        let provider: String = self
+            .provider
+            .unwrap_or("no-provider")
+            .chars()
+            .filter(|ch| !ch.is_control())
+            .collect();
+        let model: String = self
+            .model
+            .unwrap_or("no-model")
+            .chars()
+            .filter(|ch| !ch.is_control())
+            .collect();
+        let details = agent_model_details(&provider, &model);
         let thinking = self
             .thinking
             .map(ThinkingLevel::as_str)
             .unwrap_or(if details.is_some() { "default" } else { "n/a" });
         let right = format!(
-            "({provider}) {model} • {thinking}{}",
+            "({}) {} • {}{}",
+            style(&provider).magenta(),
+            style(&model).cyan(),
+            style(thinking).yellow().bold(),
             if provider == "openai-codex" {
                 " (sub)"
             } else {
                 ""
             }
         );
-        let right: String = right.chars().filter(|ch| !ch.is_control()).collect();
         let tokens = if self.usage.known_usage == 0 && self.usage.responses > 0 {
             "tokens n/a".to_string()
         } else {
@@ -61,7 +73,7 @@ impl Footer<'_> {
             )
         };
         let context = match (
-            self.usage.context_tokens(provider, model),
+            self.usage.context_tokens(&provider, &model),
             details.and_then(|d| d.context_window),
         ) {
             (Some(tokens), Some(window)) => format!(
@@ -73,7 +85,12 @@ impl Footer<'_> {
             (Some(tokens), None) => format!("ctx {}/?", compact(tokens)),
             _ => "ctx n/a".to_string(),
         };
-        let left = format!("{tokens} {cost} {context}");
+        let left = format!(
+            "{} {} {}",
+            style(tokens).blue(),
+            style(cost).green(),
+            style(context).yellow()
+        );
         let right_width = measure_text_width(&right);
         let text = if right_width + 2 < width {
             let left = truncate_str(&left, width - right_width - 2, "…");
@@ -89,8 +106,8 @@ impl Footer<'_> {
             .unwrap_or_default();
         let cwd: String = cwd.chars().filter(|ch| !ch.is_control()).collect();
         [
-            style(truncate_str(&cwd, width, "…")).dim().to_string(),
-            style(text).dim().to_string(),
+            style(truncate_str(&cwd, width, "…")).cyan().dim().to_string(),
+            text,
         ]
     }
 }

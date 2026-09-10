@@ -172,6 +172,24 @@ fn persists_root_level_detectable_language_file() {
 }
 
 #[test]
+fn reads_bound_generation_without_refreshing_and_reports_drift() {
+    let temp = TempDir::new().expect("tempdir");
+    fs::write(temp.path().join("main.py"), "print(1)\n").expect("source");
+    let snapshot = dowe_codegraph::ensure_persistent_codegraph(temp.path()).expect("persist");
+    let binding = dowe_codegraph::CodeGraphBinding {
+        generation: snapshot.generation.clone().expect("generation"),
+        revision: snapshot.manifest.revision,
+        root: snapshot.manifest.root.clone(),
+        mode: snapshot.manifest.mode,
+    };
+    fs::write(temp.path().join("main.py"), "print(2)\n").expect("drift");
+    let report = dowe_codegraph::check_bound_persistent_codegraph(temp.path(), &binding, CheckOptions::default()).expect("check");
+    assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code == "codegraph_manifest_drift"));
+    let read = dowe_codegraph::read_persistent_codegraph(temp.path()).expect("read");
+    assert_eq!(read.manifest.revision, snapshot.manifest.revision);
+}
+
+#[test]
 fn reports_modular_warning_and_error_thresholds() {
     let temp = TempDir::new().expect("tempdir");
     write_workspace(&temp);

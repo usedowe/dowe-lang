@@ -48,7 +48,7 @@ impl HarnessStore {
             source_summary_hash: Some(digest(source_summary.as_bytes())),
             invalidated: None,
         };
-        let path = self.directory().join("memory.json");
+        let path = self.memory_path()?;
         reject_symlink_ancestors(&path)?;
         let _lock = AuthFileLock::acquire(&path.with_extension("lock"))?;
         let mut memories = self.memories()?;
@@ -99,7 +99,7 @@ impl HarnessStore {
     }
 
     pub fn confirm_memory(&self, id: &str) -> AgentResult<()> {
-        let path = self.directory().join("memory.json");
+        let path = self.memory_path()?;
         reject_symlink_ancestors(&path)?;
         let _lock = AuthFileLock::acquire(&path.with_extension("lock"))?;
         let mut memories = self.memories()?;
@@ -128,7 +128,7 @@ impl HarnessStore {
             .iter()
             .map(|file| Ok((file.clone(), self.file_fingerprint(file)?)))
             .collect::<AgentResult<std::collections::BTreeMap<_, _>>>()?;
-        let path = self.directory().join("memory.json");
+        let path = self.memory_path()?;
         reject_symlink_ancestors(&path)?;
         let _lock = AuthFileLock::acquire(&path.with_extension("lock"))?;
         let mut memories = self.memories()?;

@@ -1,14 +1,25 @@
 mod error;
 mod model;
+mod orchestration;
 mod paths;
 mod templates;
 mod workflow;
 
 pub use error::{HarnessError, HarnessResult};
+pub use dowe_codegraph::CodeGraphBinding;
 pub use model::{
     CheckReport, DetectedMode, Diagnostic, DiagnosticSeverity, FileRecord, HarnessManifest,
     HarnessMode, InitOptions, InitReport, PlanOptions, PlanReport, PlanState, StatusReport,
     TddState, ValidationReport,
+};
+pub use orchestration::{
+    AgentExecutionKind, AgentRecord, AgentRole, AgentState, AllowedEditSurface, NativeReceiptEvent,
+        OrchestrationError, OrchestrationResult,
+    Receipt, ReceiptPath,
+    ReceiptState, TaskRecord, TaskState, WorkerRecord, WorkerRole, WorkerState,
+    project_native_receipt_event,
+    AcknowledgementState, DeliveryState, Orchestrator, ReviewOutcome, ReviewState, SessionRecord,
+        SessionState, ValidationState,
 };
 pub use workflow::{
     check_harness, detect_mode, init_project_harness, plan_from_spec, read_manifest,

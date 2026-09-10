@@ -34,7 +34,7 @@ fn derived_memory_requires_unchanged_catalog_and_source_summary() {
         .update_memory(&id, "Theme", "Theme decision reviewed locally", &[])
         .unwrap();
     assert_eq!(store.recall("Theme").unwrap().len(), 1);
-    let path = store.directory().join("memory.json");
+    let path = store.memory_path().unwrap();
     let mut memories = store.memories().unwrap();
     memories.observations[0].validity.catalog = Some("previous-catalog".into());
     write_private_json(&path, &memories).unwrap();
@@ -94,7 +94,7 @@ fn legacy_local_decisions_remain_usable_but_missing_derived_proof_is_not_invente
             true,
         )
         .unwrap();
-    let path = store.directory().join("memory.json");
+    let path = store.memory_path().unwrap();
     let mut data = serde_json::to_value(store.memories().unwrap()).unwrap();
     for item in data["observations"].as_array_mut().unwrap() {
         item.as_object_mut().unwrap().remove("validity");

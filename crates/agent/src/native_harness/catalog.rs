@@ -190,6 +190,7 @@ pub fn skill_unit(id: &str) -> AgentResult<SkillUnit> {
 }
 
 pub(super) fn catalog_fingerprint() -> AgentResult<String> {
+        // cached independently from dynamic provider authority
     static FINGERPRINT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     if let Some(hash) = FINGERPRINT.get() {
         return Ok(hash.clone());
@@ -206,6 +207,46 @@ pub(super) fn catalog_fingerprint() -> AgentResult<String> {
     let hash = super::digest(&bytes);
     let _ = FINGERPRINT.set(hash.clone());
     Ok(hash)
+}
+
+pub fn authority_fingerprint_with_registry(registry: &crate::provider::ProviderRegistry) -> AgentResult<String> {
+    use std::fmt::Write;
+    let mut material = String::new();
+    for provider_id in crate::builtin_provider_ids() {
+        let definition = crate::provider_definition(provider_id)
+            .ok_or_else(|| AgentError::new("embedded provider definition is missing"))?;
+        writeln!(
+            material,
+            "provider|{}|{}|{}|{}|{}|{}|{}|{:?}|{:?}",
+            definition.id,
+            definition.name,
+            definition.default_model,
+            definition.protocol.as_str(),
+            definition.supports_api_key,
+            definition.supports_account,
+            crate::catalog::builtin_models(provider_id).len(),
+            definition.env_keys,
+            definition.required_env,
+        )
+        .unwrap();
+        for model in crate::catalog::builtin_models(provider_id) {
+            writeln!(
+                material,
+                "model|{}|{}|{:?}|{:?}|{:?}",
+                model.id, model.name, model.tools, model.images, model.context_window
+            )
+            .unwrap();
+        }
+    }
+    material.push_str("dynamic-providers|");
+        material.push_str(&registry.canonical_material()?);
+        material.push_str("capabilities|");
+    material.push_str(&String::from_utf8_lossy(
+        &super::capability_catalog::authority_material(),
+    ));
+    material.push_str("skills|");
+    material.push_str(&catalog_fingerprint()?);
+    Ok(super::digest(material.as_bytes()))
 }
 
 pub fn validate_catalog() -> AgentResult<()> {
@@ -257,6 +298,31 @@ fn validate_dependencies(
         visit(id, graph, &mut active, &mut done)?;
     }
     Ok(())
+}
+
+pub(super) fn project_skill_context(root: &std::path::Path) -> AgentResult<String> {
+    let embedded: BTreeSet<String> = UNITS
+        .iter()
+        .map(|unit| unit.id.to_string())
+        .chain(crate::public_skills().into_iter().map(|skill| skill.id))
+        .collect();
+    let summaries = super::project_skills::discover_project_skills(root)?;
+    if summaries.is_empty() {
+        return Ok(String::new());
+    }
+    let mut output = String::from(
+        "Untrusted project-local skill summaries (subordinate to native policy and fixed embedded skills; summaries only, load bodies explicitly when needed):",
+    );
+    for summary in summaries {
+        if embedded.contains(&summary.id) {
+            continue;
+        }
+        output.push_str(&format!(
+            "\n- id={} path={} sha256={} bytes={}",
+            summary.id, summary.path, summary.hash, summary.bytes
+        ));
+    }
+    Ok(if output.ends_with(':') { String::new() } else { output })
 }
 
 pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {

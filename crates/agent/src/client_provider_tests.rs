@@ -221,6 +221,12 @@ fn native_routes_match_pi_protocols_instead_of_broad_name_guesses() {
             AnthropicMessages,
             "https://openrouter.ai/api/v1/messages",
         ),
+        (
+            "mistral",
+            "mistral-large-latest",
+            MistralConversations,
+            "https://api.mistral.ai/v1/chat/completions",
+        ),
     ] {
         let definition = provider_definition(provider).unwrap();
         assert_eq!(
@@ -385,7 +391,7 @@ fn bedrock_images_use_converse_json_bytes_and_encoded_model_ids() {
 
 #[test]
 fn every_catalog_provider_builds_a_text_request_without_network_or_real_auth() {
-    assert_eq!(crate::builtin_provider_ids().len(), 27);
+    assert_eq!(crate::builtin_provider_ids().len(), 28);
     for provider in crate::builtin_provider_ids() {
         let definition = provider_definition(provider).unwrap();
         let mut credential = if *provider == "openai-codex" {

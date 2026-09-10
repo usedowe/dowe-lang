@@ -1,8 +1,10 @@
+use super::lock::DataLock;
 use super::{HarnessConfig, HarnessRole, Redactor, ToolCall, digest, identifier, skill_unit};
 use crate::instructions::MAX_INSTRUCTION_FILE_BYTES;
 use crate::{AgentError, AgentResult, AgentToolDefinition, AgentToolFunction, GeneratedImage};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
+use dowe_agent_harness::AllowedEditSurface;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -31,6 +33,7 @@ pub struct HarnessTools {
     pub(crate) session: String,
     config: HarnessConfig,
     supervisor: Option<dowe_runtime::SupervisorCommand>,
+    edit_scope: Option<Vec<AllowedEditSurface>>,
     pub(crate) pending: BTreeMap<String, String>,
     loaded: Mutex<BTreeSet<String>>,
     pub redactor: Redactor,
@@ -93,6 +96,15 @@ struct ShellArgs {
 
 impl HarnessTools {
     pub fn new(root: impl AsRef<Path>, session: &str, config: HarnessConfig) -> AgentResult<Self> {
+        Self::with_scope(root, session, config, None)
+    }
+
+    pub fn with_scope(
+        root: impl AsRef<Path>,
+        session: &str,
+        config: HarnessConfig,
+        edit_scope: Option<Vec<AllowedEditSurface>>,
+    ) -> AgentResult<Self> {
         config.validate()?;
         let root = fs::canonicalize(root)?;
         Ok(Self {
@@ -101,6 +113,7 @@ impl HarnessTools {
             session: session.into(),
             config,
             supervisor: None,
+            edit_scope,
             pending: BTreeMap::new(),
             loaded: Mutex::new(BTreeSet::new()),
         })
@@ -110,8 +123,57 @@ impl HarnessTools {
         self.supervisor = supervisor;
     }
 
+    fn resolve_write_skill(&self, skill: &str) -> AgentResult<String> {
+        if skill_unit(skill).is_ok() {
+            return Ok(skill.to_string());
+        }
+        if skill.len() != 64 || !skill.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return skill_unit(skill).map(|unit| unit.id);
+        }
+
+        let ids = self
+            .loaded
+            .lock()
+            .map_err(|_| AgentError::new("loaded skills lock poisoned"))?
+            .iter()
+            .filter_map(|entry| {
+                let mut fields = entry.split(':');
+                let source = fields.next()?;
+                let id = fields.next()?;
+                let hash = fields.next()?;
+                let offset = fields.next()?;
+                (source == "embedded"
+                    && hash == skill
+                    && offset.parse::<usize>().is_ok()
+                    && fields.next().is_none())
+                .then(|| id.to_string())
+            })
+            .collect::<BTreeSet<_>>();
+        if ids.len() == 1 {
+            return Ok(ids.into_iter().next().expect("one loaded skill id"));
+        }
+        Err(AgentError::new(
+            "write_file, edit_file, and write_asset require a logical skill id, not a skill hash; use the id returned by get_skill",
+        ))
+    }
+
     fn path(&self, value: &str) -> AgentResult<PathBuf> {
         Self::checked_path(&self.root, value)
+    }
+
+    fn enforce_edit_scope(&self, path: &Path) -> AgentResult<()> {
+        let Some(scopes) = &self.edit_scope else {
+            return Ok(());
+        };
+        let relative = path
+            .strip_prefix(&self.root)
+            .map_err(|_| AgentError::new("foreign path"))?
+            .to_string_lossy();
+        if scopes.iter().any(|scope| scope.allows(relative.as_ref())) {
+            Ok(())
+        } else {
+            Err(AgentError::new("path is outside the worker edit scope"))
+        }
     }
 
     pub(super) fn checked_path(root: &Path, value: &str) -> AgentResult<PathBuf> {
@@ -225,7 +287,12 @@ impl HarnessTools {
     pub fn prepare(&mut self, call: &ToolCall, role: HarnessRole) -> AgentResult<Option<Approval>> {
         if matches!(
             call.name.as_str(),
-            "write_file" | "edit_file" | "write_asset" | "generate_image" | "shell" | "propose_instruction_update"
+            "write_file"
+                | "edit_file"
+                | "write_asset"
+                | "generate_image"
+                | "shell"
+                | "propose_instruction_update"
         ) && role != HarnessRole::Execute
         {
             return Err(AgentError::new(
@@ -255,6 +322,7 @@ impl HarnessTools {
                     ));
                 }
                 let resolved = self.path(&args.destination)?;
+                self.enforce_edit_scope(&resolved)?;
                 self.asset_scope(&resolved, "views/generated")?;
                 let before_bytes = resolved.exists().then(|| fs::read(&resolved)).transpose()?;
                 if before_bytes
@@ -265,7 +333,7 @@ impl HarnessTools {
                         "generate_image destination base exceeds 8 MiB",
                     ));
                 }
-                let details = json!({"prompt":args.prompt,"destination":args.destination,"reason":args.reason,"reference_image_path":args.reference_image_path,"before_byte_count":before_bytes.as_ref().map(Vec::len),"before_sha256":before_bytes.as_ref().map(|value| digest(value)),"approval":"provider bytes remain in memory until this exact approval is accepted"});
+                let details = json!({"prompt":args.prompt,"destination":args.destination,"reason":args.reason,"reference_image_path":args.reference_image_path,"before_byte_count":before_bytes.as_ref().map(Vec::len),"before_sha256":before_bytes.as_ref().map(|value| digest(value)),"path_fingerprint":digest(resolved.as_os_str().as_encoded_bytes()),"approval":"provider bytes remain in memory until this exact approval is accepted"});
                 let approval = Approval {
                     id: identifier(),
                     session: self.session.clone(),
@@ -282,9 +350,10 @@ impl HarnessTools {
             }
             "write_asset" => {
                 let args: AssetArgs = serde_json::from_value(call.arguments.clone())?;
-                skill_unit(&args.skill)?;
+                let skill = self.resolve_write_skill(&args.skill)?;
                 let resolved = self.path(&args.path)?;
-                self.asset_scope(&resolved, &args.skill)?;
+                self.enforce_edit_scope(&resolved)?;
+                self.asset_scope(&resolved, &skill)?;
                 if args.reason.trim().is_empty() || args.reason.len() > 1024 {
                     return Err(AgentError::new("write reason exceeds limits"));
                 }
@@ -312,10 +381,10 @@ impl HarnessTools {
                     id: identifier(),
                     session: self.session.clone(),
                     call: public_call,
-                    details: json!({"path":args.path,"reason":args.reason,"skill":args.skill,
+                    details: json!({"path":args.path,"reason":args.reason,"skill":skill,
                         "byte_count":bytes.len(),"sha256":digest(&bytes),
                         "before_byte_count":before_bytes.as_ref().map(Vec::len),
-                        "before_sha256":before_bytes.as_ref().map(|value| digest(value))}),
+                        "before_sha256":before_bytes.as_ref().map(|value| digest(value)),"path_fingerprint":digest(resolved.as_os_str().as_encoded_bytes())}),
                     before: None,
                     after: None,
                     before_bytes,
@@ -326,32 +395,32 @@ impl HarnessTools {
                 return Ok(Some(approval));
             }
             "propose_instruction_update" => {
-                    let args: InstructionArgs = serde_json::from_value(call.arguments.clone())?;
-                    let (path, before) = self.instruction_base(&args.path)?;
-                    if args.reason.trim().is_empty()
-                        || args.reason.len() > 1024
-                        || args.content.len() > MAX_INSTRUCTION_FILE_BYTES
-                        || args.content.chars().any(|character| {
-                            character.is_control() && !matches!(character, '\n' | '\r' | '\t')
-                        })
-                    {
-                        return Err(AgentError::new(
-                            "instruction path, reason or content exceeds safety limits",
-                        ));
-                    }
-                    if self.redactor.text(&args.content) != args.content
-                        || before
-                            .as_ref()
-                            .is_some_and(|text| self.redactor.text(text) != *text)
-                    {
-                        return Err(AgentError::new(
-                            "instruction content contains a redactor-detected secret",
-                        ));
-                    }
-                    let details = json!({"path":path,"reason":args.reason,"before":before.as_deref().unwrap_or(""),"after":args.content,"approval":"host approval is required; this tool never grants approval"});
-                    (before, Some(args.content), details)
+                let args: InstructionArgs = serde_json::from_value(call.arguments.clone())?;
+                let (path, before) = self.instruction_base(&args.path)?;
+                if args.reason.trim().is_empty()
+                    || args.reason.len() > 1024
+                    || args.content.len() > MAX_INSTRUCTION_FILE_BYTES
+                    || args.content.chars().any(|character| {
+                        character.is_control() && !matches!(character, '\n' | '\r' | '\t')
+                    })
+                {
+                    return Err(AgentError::new(
+                        "instruction path, reason or content exceeds safety limits",
+                    ));
                 }
-                "write_file" | "edit_file" => {
+                if self.redactor.text(&args.content) != args.content
+                    || before
+                        .as_ref()
+                        .is_some_and(|text| self.redactor.text(text) != *text)
+                {
+                    return Err(AgentError::new(
+                        "instruction content contains a redactor-detected secret",
+                    ));
+                }
+                let details = json!({"path":path,"reason":args.reason,"before":before.as_deref().unwrap_or(""),"after":args.content,"approval":"host approval is required; this tool never grants approval"});
+                (before, Some(args.content), details)
+            }
+            "write_file" | "edit_file" => {
                 let (path, skill, reason, content, edit) = if call.name == "write_file" {
                     let args: WriteArgs = serde_json::from_value(call.arguments.clone())?;
                     (args.path, args.skill, args.reason, args.content, None)
@@ -365,8 +434,9 @@ impl HarnessTools {
                         Some(args.old_text),
                     )
                 };
-                skill_unit(&skill)?;
+                let skill = self.resolve_write_skill(&skill)?;
                 let resolved = self.path(&path)?;
+                self.enforce_edit_scope(&resolved)?;
                 self.write_scope(&resolved, &skill)?;
                 if reason.trim().is_empty() || reason.len() > 1024 || content.len() > 1048576 {
                     return Err(AgentError::new("write reason/content exceeds limits"));
@@ -405,7 +475,7 @@ impl HarnessTools {
                         "diff too large for approval; request a smaller exact edit or edit locally",
                     ));
                 }
-                let details = json!({"path":path,"reason":reason,"skill":skill,"before":before_text,"after":after});
+                let details = json!({"path":path,"reason":reason,"skill":skill,"before":before_text,"after":after,"before_sha256":before.as_ref().map(|value| digest(value.as_bytes())),"path_fingerprint":digest(resolved.as_os_str().as_encoded_bytes())});
                 (before, Some(after), details)
             }
             "shell" => {
@@ -431,6 +501,7 @@ impl HarnessTools {
                     AgentError::new("select an installed shell with /shell before execution")
                 })?;
                 let cwd = self.path(&args.cwd)?;
+                self.enforce_edit_scope(&cwd)?;
                 if !cwd.is_dir() {
                     return Err(AgentError::new(
                         "shell cwd must be an existing application directory",
@@ -494,6 +565,7 @@ impl HarnessTools {
         approval: Approval,
         image: GeneratedImage,
     ) -> AgentResult<Value> {
+        let _workspace_lock = DataLock::acquire(&self.root.join(".dowe-agent-write.lock"))?;
         if image.bytes.is_empty() || image.bytes.len() > 8 * 1024 * 1024 {
             return Err(AgentError::new("generated image is empty or exceeds 8 MiB"));
         }
@@ -531,6 +603,7 @@ impl HarnessTools {
     }
 
     pub fn apply_write(&mut self, approval: Approval) -> AgentResult<Value> {
+        let _workspace_lock = DataLock::acquire(&self.root.join(".dowe-agent-write.lock"))?;
         self.consume(&approval)?;
         if approval.call.name == "write_asset" {
             return self.apply_asset(approval);
@@ -589,53 +662,58 @@ impl HarnessTools {
     }
 
     fn instruction_path(&self, value: &str) -> AgentResult<PathBuf> {
-            if value != "AGENTS.md" && value != ".agents/AGENTS.md" {
-                return Err(AgentError::new(
-                    "instruction path must be AGENTS.md or .agents/AGENTS.md",
-                ));
-            }
-            let path = self.root.join(value);
-            let mut current = self.root.clone();
-            for component in Path::new(value).components() {
-                current.push(component);
-                if let Ok(metadata) = fs::symlink_metadata(&current) {
-                    if metadata.file_type().is_symlink() {
-                        return Err(AgentError::new("instruction paths cannot traverse symlinks"));
-                    }
-                    if component != Path::new(value).components().next_back().unwrap()
-                        && !metadata.is_dir()
-                    {
-                        return Err(AgentError::new("instruction parent must be a directory"));
-                    }
-                }
-            }
-            if let Ok(metadata) = fs::symlink_metadata(&path) {
-                if metadata.file_type().is_symlink() || !metadata.is_file() {
-                    return Err(AgentError::new("instruction target must be a regular file"));
-                }
-            }
-            Ok(path)
+        if value != "AGENTS.md" && value != ".agents/AGENTS.md" {
+            return Err(AgentError::new(
+                "instruction path must be AGENTS.md or .agents/AGENTS.md",
+            ));
         }
-
-        fn instruction_base(&self, value: &str) -> AgentResult<(String, Option<String>)> {
-            let path = self.instruction_path(value)?;
-            let before = match fs::symlink_metadata(&path) {
-                Ok(metadata) => {
-                    if metadata.len() > MAX_INSTRUCTION_FILE_BYTES as u64 {
-                        return Err(AgentError::new("existing instruction exceeds the byte limit"));
-                    }
-                    let bytes = fs::read(&path)?;
-                    Some(String::from_utf8(bytes).map_err(|_| {
-                        AgentError::new("existing instruction is not valid UTF-8")
-                    })?)
+        let path = self.root.join(value);
+        let mut current = self.root.clone();
+        for component in Path::new(value).components() {
+            current.push(component);
+            if let Ok(metadata) = fs::symlink_metadata(&current) {
+                if metadata.file_type().is_symlink() {
+                    return Err(AgentError::new(
+                        "instruction paths cannot traverse symlinks",
+                    ));
                 }
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-                Err(error) => return Err(error.into()),
-            };
-            Ok((value.into(), before))
+                if component != Path::new(value).components().next_back().unwrap()
+                    && !metadata.is_dir()
+                {
+                    return Err(AgentError::new("instruction parent must be a directory"));
+                }
+            }
         }
+        if let Ok(metadata) = fs::symlink_metadata(&path) {
+            if metadata.file_type().is_symlink() || !metadata.is_file() {
+                return Err(AgentError::new("instruction target must be a regular file"));
+            }
+        }
+        Ok(path)
+    }
 
-        fn shell_env(&self) -> BTreeMap<String, String> {
+    fn instruction_base(&self, value: &str) -> AgentResult<(String, Option<String>)> {
+        let path = self.instruction_path(value)?;
+        let before = match fs::symlink_metadata(&path) {
+            Ok(metadata) => {
+                if metadata.len() > MAX_INSTRUCTION_FILE_BYTES as u64 {
+                    return Err(AgentError::new(
+                        "existing instruction exceeds the byte limit",
+                    ));
+                }
+                let bytes = fs::read(&path)?;
+                Some(
+                    String::from_utf8(bytes)
+                        .map_err(|_| AgentError::new("existing instruction is not valid UTF-8"))?,
+                )
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error.into()),
+        };
+        Ok((value.into(), before))
+    }
+
+    fn shell_env(&self) -> BTreeMap<String, String> {
         [
             "PATH",
             "HOME",
@@ -651,6 +729,7 @@ impl HarnessTools {
     }
 
     fn apply_asset(&self, approval: Approval) -> AgentResult<Value> {
+        // apply_write holds the workspace lock while delegating here.
         let path = self.path(
             approval.call.arguments["path"]
                 .as_str()
@@ -691,7 +770,9 @@ impl HarnessTools {
         let relative = path
             .strip_prefix(&self.root)
             .map_err(|_| AgentError::new("foreign path"))?;
-        if !skill.starts_with("views/") || !relative.starts_with(Path::new("public/assets")) {
+        if !(skill == "views" || skill.starts_with("views/"))
+            || !relative.starts_with(Path::new("public/assets"))
+        {
             return Err(AgentError::new(
                 "asset purpose is not covered by the selected Dowe skill",
             ));
@@ -708,10 +789,18 @@ impl HarnessTools {
         let relative = path
             .strip_prefix(&self.root)
             .map_err(|_| AgentError::new("foreign path"))?;
+        // Generic projects do not have Dowe skills that can classify their
+        // source files. Keep the same path/symlink/secret checks above, but
+        // allow the common source files a coding agent is expected to edit.
+        // Dowe projects remain governed by the narrower skill-based contract.
+        if !is_dowe_project_root(&self.root) && generic_source_extension(path) {
+            return Ok(());
+        }
         let allowed = match path.extension().and_then(|ext| ext.to_str()) {
             Some("dowe") => {
                 skill == "core"
                     || skill == "theme"
+                    || (skill == "views" && relative.starts_with(Path::new("views")))
                     || (skill == "core/configuration" && relative == Path::new("main.dowe"))
                     || skill.starts_with("views/")
                     || skill.starts_with("server/")
@@ -721,7 +810,7 @@ impl HarnessTools {
                     && (relative.starts_with("docs") || relative == Path::new("README.md"))
             }
             Some("svg" | "json" | "txt") => {
-                skill.starts_with("views/")
+                (skill == "views" || skill.starts_with("views/"))
                     && (relative.starts_with("public") || relative.starts_with("assets"))
             }
             _ => false,
@@ -734,6 +823,27 @@ impl HarnessTools {
         }
         Ok(())
     }
+}
+
+fn is_dowe_project_root(root: &Path) -> bool {
+    let marker = root.join("main.dowe");
+    fs::symlink_metadata(marker).is_ok_and(|metadata| metadata.is_file())
+}
+
+fn generic_source_extension(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|ext| ext.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some(
+            "html" | "htm" | "css" | "scss" | "sass" | "less" | "js" | "jsx" | "mjs"
+                | "cjs" | "ts" | "tsx" | "json" | "yaml" | "yml" | "toml" | "md"
+                | "txt" | "rs" | "py" | "go" | "java" | "kt" | "swift" | "c" | "h"
+                | "cpp" | "hpp" | "rb" | "php" | "sh" | "bash" | "sql" | "vue"
+                | "svelte"
+        )
+    )
 }
 
 #[cfg(test)]
@@ -751,23 +861,170 @@ mod instruction_tests {
     #[test]
     fn instruction_tool_accepts_only_the_two_exact_paths() {
         let root = tempfile::tempdir().unwrap();
-        let mut tools = HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
-        assert!(tools.prepare(&call("AGENTS.md"), HarnessRole::Execute).unwrap().is_some());
-        assert!(tools.prepare(&call(".agents/AGENTS.md"), HarnessRole::Execute).unwrap().is_some());
-        for path in ["agents.md", "nested/AGENTS.md", "AGENTS.md/child", "../AGENTS.md"] {
-            assert!(tools.prepare(&call(path), HarnessRole::Execute).is_err(), "accepted {path}");
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        assert!(
+            tools
+                .prepare(&call("AGENTS.md"), HarnessRole::Execute)
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            tools
+                .prepare(&call(".agents/AGENTS.md"), HarnessRole::Execute)
+                .unwrap()
+                .is_some()
+        );
+        for path in [
+            "agents.md",
+            "nested/AGENTS.md",
+            "AGENTS.md/child",
+            "../AGENTS.md",
+        ] {
+            assert!(
+                tools.prepare(&call(path), HarnessRole::Execute).is_err(),
+                "accepted {path}"
+            );
         }
     }
 
     #[test]
     fn instruction_apply_rejects_a_changed_base() {
         let root = tempfile::tempdir().unwrap();
-        let mut tools = HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
         fs::write(root.path().join("AGENTS.md"), "before\n").unwrap();
-        let approval = tools.prepare(&call("AGENTS.md"), HarnessRole::Execute).unwrap().unwrap();
+        let approval = tools
+            .prepare(&call("AGENTS.md"), HarnessRole::Execute)
+            .unwrap()
+            .unwrap();
         fs::write(root.path().join("AGENTS.md"), "changed\n").unwrap();
         let error = tools.apply_write(approval).unwrap_err();
         assert!(error.to_string().contains("base changed"));
+    }
+}
+
+#[cfg(test)]
+mod write_skill_tests {
+    use super::*;
+
+    fn write_call(skill: &str) -> ToolCall {
+        write_call_for("main.dowe", skill)
+    }
+
+    fn write_call_for(path: &str, skill: &str) -> ToolCall {
+        ToolCall::new(
+            "write-skill-test",
+            "write_file",
+            json!({
+                "path": path,
+                "content": "shell {}\n",
+                "skill": skill,
+                "reason": "test skill authorization"
+            }),
+        )
+    }
+
+    #[test]
+    fn top_level_views_skill_covers_view_source_only() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+
+        assert!(
+            tools
+                .prepare(
+                    &write_call_for("views/layouts/site.dowe", "views"),
+                    HarnessRole::Execute
+                )
+                .unwrap()
+                .is_some()
+        );
+        for (path, skill) in [
+            ("main.dowe", "views"),
+            ("views/layouts/site.dowe", "core/configuration"),
+        ] {
+            assert!(
+                tools
+                    .prepare(&write_call_for(path, skill), HarnessRole::Execute)
+                    .is_err(),
+                "accepted {skill} for {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn accepts_hash_for_an_already_loaded_embedded_skill() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        let loaded = tools
+            .execute_skill(&ToolCall::new("skill", "get_skill", json!({"id":"core"})))
+            .unwrap();
+        let hash = loaded["hash"].as_str().unwrap();
+
+        let approval = tools
+            .prepare(&write_call(hash), HarnessRole::Execute)
+            .unwrap()
+            .unwrap();
+        assert_eq!(approval.details["skill"], "core");
+    }
+
+    #[test]
+    fn rejects_arbitrary_and_project_skill_hashes() {
+        let root = tempfile::tempdir().unwrap();
+        let project_skill = root.path().join(".agents/skills/local");
+        fs::create_dir_all(&project_skill).unwrap();
+        fs::write(project_skill.join("SKILL.md"), "local skill\n").unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        let loaded = tools
+            .execute_skill(&ToolCall::new(
+                "skill",
+                "get_skill",
+                json!({"id":"local","source":"project"}),
+            ))
+            .unwrap();
+        let project_hash = loaded["hash"].as_str().unwrap();
+        let arbitrary_hash = "a".repeat(64);
+
+        for hash in [project_hash, arbitrary_hash.as_str()] {
+            let error = tools
+                .prepare(&write_call(hash), HarnessRole::Execute)
+                .unwrap_err();
+            assert!(error.to_string().contains("logical skill id"));
+        }
+    }
+
+    #[test]
+    fn generic_projects_can_write_common_web_source_files() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+
+        for path in ["index.html", "styles.css", "src/app.tsx"] {
+            let approval = tools
+                .prepare(&write_call_for(path, "core"), HarnessRole::Execute)
+                .unwrap();
+            assert!(approval.is_some(), "rejected generic source file {path}");
+        }
+    }
+
+    #[test]
+    fn dowe_projects_keep_skill_scoped_writes() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("main.dowe"), "main {}\n").unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+
+        assert!(
+            tools
+                .prepare(
+                    &write_call_for("index.html", "core"),
+                    HarnessRole::Execute
+                )
+                .is_err()
+        );
     }
 }
 

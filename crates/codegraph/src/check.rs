@@ -2,9 +2,14 @@ use crate::baseline::apply_baseline;
 use crate::build::build_codegraph;
 use crate::duplicate::{detect_duplicates, detect_ownership_duplication};
 use crate::error::CodeGraphResult;
+use crate::metrics::fingerprint_bytes;
 use crate::mode::detect_codegraph_mode;
 use crate::model::{CheckOptions, CheckReport, Diagnostic, DiagnosticSeverity};
+use crate::paths::{discover_files, slash_path};
+use crate::persistence::{read_persistent_codegraph, CodeGraphBinding};
 use crate::waivers::{collect_waivers, waiver_for};
+use std::collections::BTreeMap;
+use std::fs;
 use std::path::Path;
 
 pub(crate) fn check_codegraph(root: &Path, options: CheckOptions) -> CodeGraphResult<CheckReport> {
@@ -112,6 +117,134 @@ pub(crate) fn check_codegraph(root: &Path, options: CheckOptions) -> CodeGraphRe
         apply_baseline(root, report)
     } else {
         Ok(report)
+    }
+}
+
+pub(crate) fn check_bound_persistent_codegraph(
+    root: &Path,
+    binding: &CodeGraphBinding,
+    _options: CheckOptions,
+) -> CodeGraphResult<CheckReport> {
+    let snapshot = read_persistent_codegraph(root)?;
+    let files = discover_files(root, snapshot.manifest.mode)?;
+    let fingerprints = files
+        .iter()
+        .filter_map(|path| {
+            let relative = slash_path(path.strip_prefix(root).ok()?);
+            if relative.starts_with(".agents/plans/") || relative.starts_with(".dowe/") {
+                return None;
+            }
+            Some((relative, fingerprint_bytes(&fs::read(path).ok()?)))
+        })
+        .collect::<BTreeMap<_, _>>();
+    let persisted_fingerprints = snapshot
+        .manifest
+        .fingerprints
+        .iter()
+        .filter(|(path, _)| !path.starts_with(".agents/plans/") && !path.starts_with(".dowe/"))
+        .map(|(path, fingerprint)| (path.clone(), fingerprint.clone()))
+        .collect::<BTreeMap<_, _>>();
+    let mut report = CheckReport::new();
+    if snapshot.generation.as_deref() != Some(binding.generation.as_str())
+        || snapshot.manifest.revision != binding.revision
+        || snapshot.manifest.root != binding.root
+        || snapshot.manifest.mode != binding.mode
+    {
+        report.diagnostics.push(drift_diagnostic(
+            "codegraph_binding_mismatch",
+            ".agents/codegraph/CURRENT",
+            "Persisted CodeGraph generation does not match the plan binding.",
+        ));
+    }
+    for path in persisted_fingerprints
+        .keys()
+        .filter(|path| !fingerprints.contains_key(*path))
+    {
+        report.diagnostics.push(drift_diagnostic(
+            "codegraph_source_deleted",
+            path,
+            "A source file recorded by the persisted CodeGraph was deleted.",
+        ));
+    }
+    for path in fingerprints
+        .keys()
+        .filter(|path| persisted_fingerprints.get(*path) != Some(fingerprints.get(*path).unwrap()))
+    {
+        let code = if persisted_fingerprints.contains_key(path) {
+            "codegraph_source_changed"
+        } else {
+            "codegraph_source_added"
+        };
+        report.diagnostics.push(drift_diagnostic(
+            code,
+            path,
+            "Current source differs from the persisted CodeGraph manifest.",
+        ));
+    }
+    validate_persisted_graph(&snapshot.graph, &snapshot.manifest, &mut report);
+    if persisted_fingerprints != fingerprints {
+        report.diagnostics.push(drift_diagnostic(
+            "codegraph_manifest_drift",
+            ".agents/codegraph/CURRENT",
+            "Persisted CodeGraph manifest differs from current project files.",
+        ));
+    }
+    Ok(report)
+}
+
+fn drift_diagnostic(code: &str, path: &str, message: &str) -> Diagnostic {
+    Diagnostic {
+        code: code.to_string(),
+        severity: DiagnosticSeverity::Error,
+        path: path.to_string(),
+        message: message.to_string(),
+        action: "Regenerate the persisted CodeGraph, then re-plan the feature.".to_string(),
+        owner: None,
+        metric: None,
+    }
+}
+
+fn validate_persisted_graph(
+    graph: &crate::model::CodeGraph,
+    manifest: &crate::persistence::GraphManifest,
+    report: &mut CheckReport,
+) {
+    let ids = graph
+        .nodes
+        .iter()
+        .map(|node| node.id.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    if ids.len() != graph.nodes.len() {
+        report.diagnostics.push(drift_diagnostic(
+            "codegraph_graph_invalid",
+            ".agents/codegraph",
+            "Persisted CodeGraph contains duplicate node IDs.",
+        ));
+    }
+    for edge in &graph.edges {
+        if !ids.contains(edge.from.as_str()) || !ids.contains(edge.to.as_str()) {
+            report.diagnostics.push(drift_diagnostic(
+                "codegraph_graph_invalid",
+                ".agents/codegraph",
+                "Persisted CodeGraph contains an edge to a missing node.",
+            ));
+            break;
+        }
+    }
+    for node in &graph.nodes {
+        if let Some(path) = &node.path {
+            if manifest
+                .fingerprints
+                .get(path)
+                .is_some_and(|fingerprint| fingerprint != &node.fingerprint)
+            {
+                report.diagnostics.push(drift_diagnostic(
+                    "codegraph_graph_invalid",
+                    path,
+                    "Persisted CodeGraph node fingerprint disagrees with its manifest.",
+                ));
+            }
+        }
     }
 }
 

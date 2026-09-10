@@ -31,7 +31,10 @@ mod tests {
         for index in 0..7 {
             state.pending.push_back(format!("p{index}"));
         }
-        assert_eq!(state.pending.iter().collect::<Vec<_>>(), vec!["firt", "p0", "p1", "p2", "p3", "p4", "p5", "p6"]);
+        assert_eq!(
+            state.pending.iter().collect::<Vec<_>>(),
+            vec!["firt", "p0", "p1", "p2", "p3", "p4", "p5", "p6"]
+        );
         assert!(state.input.value().is_empty());
         state.input.handle(KeyCode::Char('x'));
         state.submit_input();
@@ -41,10 +44,7 @@ mod tests {
     #[test]
     fn collapsed_activity_hides_tool_details_but_expanded_activity_keeps_them() {
         let activity = Activity::new(true).unwrap();
-        activity.push([
-            "shell [one] · completed".into(),
-            "  result: output".into(),
-        ]);
+        activity.push(["shell [one] · completed".into(), "  result: output".into()]);
         let mut state = activity.state();
         let collapsed = state.frame((120, 20), false).join("\n");
         assert!(collapsed.contains("shell [one] · completed"));
@@ -85,17 +85,34 @@ mod tests {
             }
         }
         state.expanded = false;
-        assert!(state.frame((120, 60), true).iter().any(|line| line.contains("Working…")));
-        assert!(state.frame((120, 60), true).iter().any(|line| line.contains("Agents")));
+        assert!(
+            state
+                .frame((120, 60), true)
+                .iter()
+                .any(|line| line.contains("Working…"))
+        );
+        assert!(
+            state
+                .frame((120, 60), true)
+                .iter()
+                .any(|line| line.contains("Agents"))
+        );
         state.expanded = true;
-        assert!(state.frame((120, 60), true).iter().any(|line| line.contains("Working…")));
+        assert!(
+            state
+                .frame((120, 60), true)
+                .iter()
+                .any(|line| line.contains("Working…"))
+        );
         assert!(!state.frame((120, 60), false).join("\n").contains("Working"));
     }
 
     #[test]
     fn workspace_state_uses_monotonic_elapsed_time_and_native_transitions() {
         let activity = Activity::new(true).unwrap();
-        activity.workspace_event(&serde_json::json!({"event":"request_prepared","role":"execute","model":"safe/model"}));
+        activity.workspace_event(
+            &serde_json::json!({"event":"request_prepared","role":"execute","model":"safe/model"}),
+        );
         let state = activity.state();
         let first = state.workspace_lines().join(" ");
         assert!(first.contains("in_progress") && first.contains("safe/model"));
@@ -105,32 +122,51 @@ mod tests {
         assert!(state.workspace_lines().join(" ").contains("0s"));
         drop(state);
         activity.workspace_event(&serde_json::json!({"event":"approval_required"}));
-        assert!(activity.state().workspace_lines().join(" ").contains("awaiting_approval"));
+        assert!(
+            activity
+                .state()
+                .workspace_lines()
+                .join(" ")
+                .contains("awaiting_approval")
+        );
     }
 
     #[test]
     fn workspace_cards_are_bounded_on_tiny_terminals() {
         let activity = Activity::new(true).unwrap();
-        activity.workspace_event(&serde_json::json!({"event":"request_prepared","role":"execute","model":"m"}));
+        activity.workspace_event(
+            &serde_json::json!({"event":"request_prepared","role":"execute","model":"m"}),
+        );
         let state = activity.state();
         for size in [(0, 0), (4, 4), (20, 8)] {
             let frame = state.frame(size, true);
             assert!(frame.len() <= size.1.saturating_sub(2) as usize);
-            assert!(frame.iter().all(|line| dialoguer::console::measure_text_width(line) <= size.0.saturating_sub(1) as usize));
+            assert!(
+                frame
+                    .iter()
+                    .all(|line| dialoguer::console::measure_text_width(line)
+                        <= size.0.saturating_sub(1) as usize)
+            );
         }
     }
 
     #[test]
     fn collapsed_cards_leave_tool_activity_visible() {
         let activity = Activity::new(true).unwrap();
-        activity.workspace_event(&serde_json::json!({"event":"request_prepared","role":"execute","model":"m"}));
+        activity.workspace_event(
+            &serde_json::json!({"event":"request_prepared","role":"execute","model":"m"}),
+        );
         activity.push(["retained-pipe-marker".into()]);
         let state = activity.state();
         let frame = state.frame((120, 20), true);
         assert!(frame.iter().any(|line| line.contains("Agents")));
         assert!(frame.iter().any(|line| line.contains("Todos")));
         assert!(frame.iter().any(|line| line.contains("Activity collapsed")));
-        assert!(frame.iter().any(|line| line.contains("retained-pipe-marker")));
+        assert!(
+            frame
+                .iter()
+                .any(|line| line.contains("retained-pipe-marker"))
+        );
         assert!(frame.iter().any(|line| line.contains("Ctrl+O")));
     }
 
@@ -357,7 +393,10 @@ impl State {
             .unwrap_or_else(|| "0s".into());
         vec![
             "╭─ Agents ─────────────────────────────────────────╮".into(),
-            format!("│ {} · {} / {} · {} · {}", self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed),
+            format!(
+                "│ {} · {} / {} · {} · {}",
+                self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed
+            ),
             "╰───────────────────────────────────────────────────╯".into(),
             "╭─ Todos ──────────────────────────────────────────╮".into(),
             format!("│ 1. {} [{}]", self.task_title, self.task_status),
@@ -371,8 +410,20 @@ impl State {
             .map(|started| format!("{}s", started.elapsed().as_secs()))
             .unwrap_or_else(|| "0s".into());
         vec![
-            format!("╭─ Agents: {} · {} / {} · {} · {} ╮", self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed),
-            format!("╰─ Todos: 1. {} [{}]{} ╯", self.task_title, self.task_status, if self.pending.is_empty() { String::new() } else { format!(" · Queue: {}", self.pending.len()) }),
+            format!(
+                "╭─ Agents: {} · {} / {} · {} · {} ╮",
+                self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed
+            ),
+            format!(
+                "╰─ Todos: 1. {} [{}]{} ╯",
+                self.task_title,
+                self.task_status,
+                if self.pending.is_empty() {
+                    String::new()
+                } else {
+                    format!(" · Queue: {}", self.pending.len())
+                }
+            ),
         ]
     }
 
@@ -437,7 +488,10 @@ impl State {
                     .unwrap_or("")
             };
             frame.push(if index == 0 || index == activity_height - 1 {
-                dialoguer::console::style(text).dim().for_stderr().to_string()
+                dialoguer::console::style(text)
+                    .dim()
+                    .for_stderr()
+                    .to_string()
             } else {
                 style_activity_line(text)
             });
@@ -472,9 +526,17 @@ impl State {
             frame.extend(
                 input
                     .into_iter()
-                    .map(|line| dialoguer::console::style(line).cyan().for_stderr().to_string())
+                    .map(|line| {
+                        dialoguer::console::style(line)
+                            .cyan()
+                            .for_stderr()
+                            .to_string()
+                    })
                     .chain(self.footer.iter().map(|line| {
-                        dialoguer::console::style(line).dim().for_stderr().to_string()
+                        dialoguer::console::style(line)
+                            .dim()
+                            .for_stderr()
+                            .to_string()
                     }))
                     .take(chrome),
             );
@@ -601,7 +663,8 @@ impl Activity {
         match event["event"].as_str() {
             Some("request_prepared") => {
                 state.agent_name = "Dowe Agent".into();
-                state.agent_role = super::safe_text(event["role"].as_str().unwrap_or("execute"), 32);
+                state.agent_role =
+                    super::safe_text(event["role"].as_str().unwrap_or("execute"), 32);
                 state.agent_model = super::safe_text(event["model"].as_str().unwrap_or("?"), 80);
                 state.task_status = "in_progress".into();
                 state.started_at = Some(Instant::now());
@@ -612,7 +675,8 @@ impl Activity {
             Some("tool_result") => state.task_status = "in_progress".into(),
             Some("task_canceled") => state.task_status = "canceled".into(),
             Some("task_state") => {
-                state.task_status = super::safe_text(event["status"].as_str().unwrap_or("blocked"), 32);
+                state.task_status =
+                    super::safe_text(event["status"].as_str().unwrap_or("blocked"), 32);
             }
             Some("error" | "budget_exhausted") => state.task_status = "blocked".into(),
             _ => return,

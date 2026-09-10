@@ -1,6 +1,6 @@
 use dowe_agent::native_harness::*;
 use dowe_agent::{AgentError, AgentRequest, AgentResult, AgentServerResponse};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::VecDeque;
 
 struct Host {
@@ -99,9 +99,10 @@ async fn transient_transport_failure_succeeds_after_one_retry() {
 }
 
 #[tokio::test]
-async fn transient_transport_failure_is_exhausted_after_two_retries() {
+async fn transient_transport_failure_is_exhausted_after_three_retries() {
     let (_home, _root, store, mut session, mut host) = setup(
         vec![
+            Err("service unavailable".into()),
             Err("service unavailable".into()),
             Err("service unavailable".into()),
             Err("service unavailable".into()),
@@ -118,13 +119,13 @@ async fn transient_transport_failure_is_exhausted_after_two_retries() {
     .await
     .unwrap_err();
     assert_eq!(error.to_string(), "service unavailable");
-    assert_eq!(host.requests, 3);
+    assert_eq!(host.requests, 4);
     assert_eq!(
         host.events
             .iter()
             .filter(|event| event["event"] == "provider_retry")
             .count(),
-        2
+        3
     );
 }
 

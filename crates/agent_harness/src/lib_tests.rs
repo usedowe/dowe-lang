@@ -83,6 +83,10 @@
                 .any(|action| action.contains("dowe-document-feature"))
         );
         assert_eq!(state.state, TddState::TestsPlanned);
+            let task = state.governance_task.as_ref().expect("governance task");
+            assert_eq!(task.codegraph_binding, state.codegraph_binding.clone().expect("binding"));
+            assert_eq!(task.edit_surfaces.len(), state.implementation_scope.len());
+            assert!(task.review_codegraph_binding.is_none());
         assert!(!state.implementation_allowed());
     }
 
@@ -375,7 +379,36 @@
     }
 
     #[test]
-    fn validate_plan_writes_redacted_evidence_under_dowe() {
+    fn legacy_plan_state_without_codegraph_binding_deserializes() {
+        let value = serde_json::json!({"planId":"legacy","specPath":"spec.md","specFingerprint":"x","contracts":[],"acceptanceCriteria":[],"testPlan":[],"expectedInitialFailures":[],"expectedFailureJustification":null,"implementationScope":[],"validationCommands":[],"documentationTargets":[],"state":"tests_planned","incompleteReasons":[],"tddRequired":true});
+        let state: PlanState = serde_json::from_value(value).expect("legacy state");
+        assert!(state.codegraph_binding.is_none());
+    }
+
+    #[test]
+    fn validate_plan_persists_validation_without_review_or_delivery_authority() {
+            let temp = TempDir::new().expect("tempdir");
+            write_spec_fixture(temp.path(), true);
+            init_project_harness(temp.path(), InitOptions::default()).expect("init");
+            plan_from_spec(
+                temp.path(),
+                Path::new("specs/features/00001-example-feature"),
+                PlanOptions::default(),
+            )
+            .expect("plan");
+
+            validate_plan(temp.path(), "00001-example-feature").expect("validate");
+            let state = read_plan_state(temp.path(), "00001-example-feature").expect("reloaded state");
+            let task = state.governance_task.expect("governance task");
+            assert_eq!(task.validation_state, crate::ValidationState::Recorded);
+            assert!(task.validation_evidence.is_some());
+            assert_eq!(task.review_state, crate::ReviewState::Pending);
+            assert_eq!(task.acknowledgement_state, crate::AcknowledgementState::Pending);
+            assert_eq!(task.delivery_state, crate::DeliveryState::NotRequested);
+        }
+
+        #[test]
+        fn validate_plan_writes_redacted_evidence_under_dowe() {
         let temp = TempDir::new().expect("tempdir");
         write_spec_fixture(temp.path(), true);
         init_project_harness(temp.path(), InitOptions::default()).expect("init");

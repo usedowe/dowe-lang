@@ -1,6 +1,7 @@
 mod auth;
 mod authoring;
 mod client;
+mod catalog;
 pub mod codegraph_enrichment;
 mod context;
 mod conversation;
@@ -29,7 +30,7 @@ pub use authoring::{
 };
 pub use client::{
     GeneratedImage, NativeRequestEvent, build_openai_image_request, parse_openai_image_response, send_agent_request, send_openai_image_generation, send_native_agent_request,
-    send_native_agent_request_observed,
+    send_native_agent_request_observed, send_native_agent_request_with_registry,
 };
 pub use context::{
     AgentCodeGraphNodeSummary, AgentCodeGraphSummary, summarize_codegraph, summarize_codegraph_for,
@@ -47,22 +48,31 @@ pub use model::{
     AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
     AgentToolDefinition, AgentToolFunction, ClarificationQuestion, ImageUrl, MINIMAX_M3, OPENAI_GPT_55,
 };
-pub use oauth::{login_openai_codex, refresh_openai_codex_credential, token_needs_refresh};
+pub use oauth::{login_openai_codex, login_openrouter, refresh_openai_codex_credential, token_needs_refresh};
 pub use preferences::{AgentPreferences, AgentPreferencesStore};
 pub use project::{AgentHarnessSummary, ProjectContext, is_dowe_project, project_context};
 pub use provider::{
     AgentAuthKind, AgentModelDefinition, AgentProviderDefinition, AgentProviderInfo,
-    AgentProviderProtocol, ResolvedProviderAuth, auth_file_has_provider, builtin_provider_ids,
+    AgentProviderProtocol, DynamicProviderDefinition, ProviderRegistry, ResolvedProviderAuth,
+        auth_file_has_provider, builtin_provider_ids,
     builtin_provider_info, normalize_model_id, protocol_for_model, provider_base_url,
     provider_default_model, provider_definition, provider_exists, provider_info,
     provider_is_configured, provider_models, resolve_provider_auth, validate_agent_model,
+
 };
+pub use catalog::{models_with_local_overrides, AgentCatalogModel};
 pub use request::{
     default_llm_server_url, infer_language, infer_request_type, prepare_agent_request,
 };
 pub use skills::{generation_skill_summaries, generation_skill_summaries_for};
 pub use tools::agent_tool_definitions;
 pub use usage::{AgentUsage, AgentUsageTotals, agent_response_usage};
+pub use native_harness::{
+    session_extension_descriptor_fingerprint, session_extension_fingerprint,
+    validate_session_extension_descriptors, SessionExtensionCall, SessionExtensionRegistry,
+    SessionExtensionResult, SessionExtensionToolDescriptor, MAX_EXTENSION_CALLS,
+    MAX_EXTENSION_REQUEST_BYTES, MAX_EXTENSION_RESPONSE_BYTES, MAX_EXTENSION_TOOLS,
+};
 
 #[cfg(test)]
 mod tests;

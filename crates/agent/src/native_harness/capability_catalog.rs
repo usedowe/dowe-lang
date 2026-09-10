@@ -185,6 +185,27 @@ pub fn builtin_capability_catalog() -> &'static [BuiltinCapabilityRecord] {
     CATALOG
 }
 
+/// Stable, non-secret material used to bind sessions to embedded capability authority.
+pub(super) fn authority_material() -> Vec<u8> {
+    let mut material = format!("version={CAPABILITY_CATALOG_VERSION};");
+    for record in CATALOG {
+        material.push_str(&format!(
+            "provider={};models={:?};tools={};images={};tools_ref={};tools_sha={};tools_at={:?};images_ref={};images_sha={};images_at={:?};",
+            record.provider,
+            record.models,
+            record.capabilities.tools,
+            record.capabilities.images,
+            record.tools_evidence.reference,
+            record.tools_evidence.sha256,
+            record.tools_evidence.retrieved_at,
+            record.images_evidence.reference,
+            record.images_evidence.sha256,
+            record.images_evidence.retrieved_at,
+        ));
+    }
+    material.into_bytes()
+}
+
 pub fn builtin_capability_evidence(
     provider: &str,
     model: &str,
@@ -193,6 +214,22 @@ pub fn builtin_capability_evidence(
     CATALOG
         .iter()
         .find(|entry| entry.provider == provider && entry.models.contains(&model))
+}
+
+/// Resolve complete capability metadata from the generated model catalog.
+/// Missing source fields remain unknown rather than being guessed.
+pub fn catalog_model_capabilities(
+    provider: &str,
+    model: &str,
+) -> Option<ModelCapabilities> {
+    let model = crate::normalize_model_id(provider, model);
+    crate::catalog::builtin_models(provider)
+        .iter()
+        .find(|entry| entry.id == model)
+        .and_then(|entry| Some(ModelCapabilities {
+            tools: entry.tools?,
+            images: entry.images?,
+        }))
 }
 
 #[cfg(test)]

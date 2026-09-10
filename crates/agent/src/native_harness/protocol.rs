@@ -2,6 +2,18 @@ use super::HarnessTurn;
 use crate::{AgentError, AgentProviderProtocol, AgentRequest, AgentResult};
 use serde_json::{Value, json};
 
+fn normalize_openai_responses_continuation(continuation: Vec<Value>) -> Vec<Value> {
+    continuation
+        .into_iter()
+        .map(|mut item| {
+            if item["type"] == "reasoning" && !item["summary"].is_array() {
+                item["summary"] = json!([]);
+            }
+            item
+        })
+        .collect()
+}
+
 pub(crate) fn apply_harness_turns(
     protocol: AgentProviderProtocol,
     request: &AgentRequest,
@@ -55,7 +67,7 @@ pub(crate) fn apply_harness_turns(
                 });
             match protocol {
                 OpenAiResponses => {
-                    messages.extend(turn.continuation);
+                    messages.extend(normalize_openai_responses_continuation(turn.continuation));
                     if let Some(message) = &turn.message { messages.push(crate::client::responses_message(message)); }
                     for call in turn.calls { messages.push(json!({"type":"function_call","call_id":call.id,"name":call.name,"arguments":call.arguments.to_string()})); }
                 }
@@ -104,12 +116,16 @@ pub(crate) fn apply_harness_turns(
 
 #[doc(hidden)]
 #[doc(hidden)]
-    pub fn apply_harness_turns_for_test(protocol: AgentProviderProtocol, request: &AgentRequest, body: &mut Value) -> AgentResult<()> {
-        apply_harness_turns(protocol, request, body)
-    }
+pub fn apply_harness_turns_for_test(
+    protocol: AgentProviderProtocol,
+    request: &AgentRequest,
+    body: &mut Value,
+) -> AgentResult<()> {
+    apply_harness_turns(protocol, request, body)
+}
 
-    #[cfg(test)]
-    mod tests {
+#[cfg(test)]
+mod tests {
     use super::super::{ToolCall, ToolResult};
     use super::*;
     use crate::{AgentPrepareOptions, prepare_agent_request};
@@ -177,5 +193,18 @@ pub(crate) fn apply_harness_turns(
             assert_eq!(body[field].pointer(call).unwrap(), "a");
             assert_eq!(body[field].pointer(result).unwrap(), "a");
         }
+    }
+
+    #[test]
+    fn openai_continuation_normalizes_legacy_reasoning_summary() {
+        let encrypted = "opaque";
+        let continuation = normalize_openai_responses_continuation(vec![
+            json!({"type":"reasoning","encrypted_content":encrypted}),
+            json!({"type":"reasoning","summary":null,"id":"rs_1","encrypted_content":encrypted}),
+        ]);
+        assert_eq!(continuation[0]["summary"], json!([]));
+        assert_eq!(continuation[1]["summary"], json!([]));
+        assert_eq!(continuation[1]["id"], "rs_1");
+        assert_eq!(continuation[1]["encrypted_content"], encrypted);
     }
 }
