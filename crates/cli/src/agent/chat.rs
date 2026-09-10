@@ -242,7 +242,6 @@ pub(super) async fn run_agent_session_with_args(
                         | "/memory"
                         | "/models"
                         | "/shell"
-                        | "/budget"
                         | "/env"
                         | "/evaluate"
                         | "/processes"
@@ -252,6 +251,7 @@ pub(super) async fn run_agent_session_with_args(
                         | "/recover"
                         | "/capabilities"
                         | "/governance"
+                        | "/sdd"
                 )
             )
         {

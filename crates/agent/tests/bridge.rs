@@ -377,6 +377,18 @@ fn gets_one_declared_public_skill_resource() {
 }
 
 #[test]
+fn side_nav_skill_keeps_identity_on_the_root() {
+    let layouts = get_public_skill_resource("views", "references/layouts.md")
+        .expect("layouts resource");
+    assert!(layouts.content.contains("item label:\"Home\" href:\"/\""));
+    assert!(!layouts.content.contains("item id:"));
+
+    let components = get_public_skill_resource("views", "references/components.md")
+        .expect("components resource");
+    assert!(components.content.contains("`item` entries do not accept `id`"));
+}
+
+#[test]
 fn view_skill_requires_faithful_reference_driven_composition() {
     let compact = get_public_skill("views", false).expect("compact views skill");
     let full = get_public_skill("views", true).expect("full views skill");

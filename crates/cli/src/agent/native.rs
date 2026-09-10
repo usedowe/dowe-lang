@@ -89,6 +89,7 @@ impl NativeSession {
         let (command, argument) = prompt.split_once(' ').unwrap_or((prompt, ""));
         let mut result = match command {
             "/governance" => self.governance_command(argument)?,
+            "/sdd" => self.sdd_command(argument, json_output)?,
             "/queue" => {
                 let (operation, value) = argument.split_once(' ').unwrap_or((argument, ""));
                 match operation {
@@ -140,7 +141,21 @@ impl NativeSession {
                 serde_json::to_value(dowe_agent::native_harness::evaluate_samples(&samples)?)?
             }
             "/session" => {
-                json!({"id":self.session.id,"revision":self.session.revision,"interrupted":self.session.interrupted,"context_start":self.session.context_start,"summary":self.session.summary,"recent_events":self.session.events.iter().rev().take(10).collect::<Vec<_>>()})
+                let recent_events = self
+                    .session
+                    .events
+                    .iter()
+                    .rev()
+                    .take(10)
+                    .map(|event| {
+                        let mut event = event.clone();
+                        if let Some(object) = event.as_object_mut() {
+                            object.remove("baseline");
+                        }
+                        event
+                    })
+                    .collect::<Vec<_>>();
+                json!({"id":self.session.id,"revision":self.session.revision,"interrupted":self.session.interrupted,"context_start":self.session.context_start,"summary":self.session.summary,"recent_events":recent_events})
             }
             "/sessions" => {
                 let inventory = self.store.session_inventory()?;
@@ -263,6 +278,13 @@ impl NativeSession {
             "/models" => {
                 if argument.is_empty() && !json_output && crate::menus::is_interactive_terminal() {
                     self.select_role_model()?;
+                } else if argument == "recommended" {
+                    let recommended = HarnessConfig::recommended_roles();
+                    for selection in recommended.values() {
+                        selection.validate()?;
+                    }
+                    self.config.roles = recommended;
+                    self.store.save_config(&self.config)?;
                 } else if !argument.is_empty() {
                     let (role, model) = argument
                         .split_once(' ')
@@ -285,6 +307,9 @@ impl NativeSession {
                 }
                 json!({"roles":self.config.roles,"precedence":"explicit --model > role assignment > active model"})
             }
+            "/budget" => {
+                return Err("The agent manages context and model usage automatically; no manual budget configuration is required.".into());
+            }
             "/shell" => {
                 if !argument.is_empty() {
                     let mut config = self.config.clone();
@@ -304,14 +329,6 @@ impl NativeSession {
                     self.config = config;
                 }
                 json!({"shell":self.config.shell,"approval":"required for every command","sandbox":false})
-            }
-            "/budget" => {
-                if !argument.is_empty() {
-                    let config: HarnessConfig = serde_json::from_str(argument)?;
-                    self.store.save_config(&config)?;
-                    self.config = config;
-                }
-                json!({"config":self.config,"usage":"/budget <complete JSON config> to replace limits; unsupported provider output limits cannot enforce hard per-call costs"})
             }
             _ => return Err("Unknown native command".into()),
         };
@@ -374,6 +391,54 @@ impl NativeSession {
         }
     }
 
+    fn sdd_command(
+        &mut self,
+        argument: &str,
+        json_output: bool,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let mut parts = argument.splitn(3, ' ');
+        match parts.next().unwrap_or("status") {
+            "status" | "" => {
+                let root = self.store.root().join(".agents/changes");
+                let mut changes = Vec::new();
+                if root.is_dir() {
+                    for entry in std::fs::read_dir(root)?.take(64) {
+                        let entry = entry?;
+                        let metadata = std::fs::symlink_metadata(entry.path())?;
+                        if metadata.is_dir() && !metadata.file_type().is_symlink() {
+                            changes.push(entry.file_name().to_string_lossy().into_owned());
+                        }
+                    }
+                    changes.sort();
+                }
+                Ok(json!({"changes":changes,"canonical_surface":self.store.root().join("specs").is_dir() || self.store.root().join("openspec").is_dir()}))
+            }
+            "init" => {
+                let Some(change_id) = parts.next().filter(|value| !value.is_empty()) else {
+                    return Err("Use /sdd init <change-id> [title] or /sdd status".into());
+                };
+                let title = parts.next().unwrap_or(change_id);
+                if json_output || !crate::menus::is_interactive_terminal() {
+                    return Ok(json!({"event":"approval_required","operation":"bootstrap_sdd_change","change_id":change_id,"title":title}));
+                }
+                if !Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt(format!("Create SDD artifacts under .agents/changes/{change_id}/?"))
+                    .default(false)
+                    .interact()?
+                {
+                    return Ok(json!({"status":"not_executed"}));
+                }
+                let report = dowe_agent_harness::bootstrap_sdd_change(
+                    self.store.root(),
+                    change_id,
+                    title,
+                )?;
+                Ok(json!({"status":"initialized","change":report}))
+            }
+            _ => Err("Use /sdd init <change-id> [title] or /sdd status".into()),
+        }
+    }
+
     fn mutate_governance_task(
         &mut self,
         transition: impl FnOnce(
@@ -406,6 +471,7 @@ impl NativeSession {
             "execute",
             "compact",
             "review",
+            "research",
             "image_generation",
             "codegraph",
         ];
@@ -495,11 +561,13 @@ impl NativeSession {
             result?;
             return Ok(HarnessOutcome::Completed);
         }
-        if matches!(prompt, "/plan" | "/review") {
-            return Err(AgentError::new("Use /plan <task> or /review <task>"));
+        if matches!(prompt, "/plan" | "/review" | "/research") {
+            return Err(AgentError::new("Use /plan <task>, /research <question> or /review <task>"));
         }
         let (role, prompt) = if let Some(prompt) = prompt.strip_prefix("/plan ") {
             (HarnessRole::Plan, prompt)
+        } else if let Some(prompt) = prompt.strip_prefix("/research ") {
+            (HarnessRole::Research, prompt)
         } else if let Some(prompt) = prompt.strip_prefix("/review ") {
             (HarnessRole::Review, prompt)
         } else {
@@ -644,7 +712,7 @@ impl HarnessHost for TerminalHost<'_> {
         redactor.value(&mut view);
         eprintln!(
             "{}",
-            super::markdown::terminal_text(&serde_json::to_string_pretty(&view)?)
+            super::markdown::terminal_text(&formatting::format_approval(&view))
         );
         Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt("Approve this exact operation once?")
@@ -717,7 +785,7 @@ impl HarnessHost for TerminalHost<'_> {
                 eprintln!("Memory extraction was deferred; inspect /session.")
             }
             Some("budget_exhausted") => eprintln!(
-                "Task paused at its budget. Inspect /budget before explicitly starting more work."
+                "The agent paused this run to protect the context. Your work is preserved; send a focused follow-up to continue."
             ),
             _ => {}
         }

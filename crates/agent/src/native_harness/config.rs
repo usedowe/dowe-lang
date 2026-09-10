@@ -10,6 +10,7 @@ pub enum HarnessRole {
     Execute,
     Compact,
     Review,
+    Research,
         ImageGeneration,
     Codegraph,
 }
@@ -17,7 +18,7 @@ pub enum HarnessRole {
 impl HarnessRole {
     pub fn parse(value: &str) -> AgentResult<Self> {
         serde_json::from_value(serde_json::Value::String(value.into()))
-            .map_err(|_| AgentError::new("role must be plan, execute, compact, review, image_generation or codegraph"))
+            .map_err(|_| AgentError::new("role must be plan, execute, compact, review, research, image_generation or codegraph"))
     }
 }
 
@@ -29,6 +30,7 @@ mod tests {
     fn codegraph_role_parses_and_serializes_as_snake_case() {
         assert_eq!(HarnessRole::parse("codegraph").unwrap(), HarnessRole::Codegraph);
         assert_eq!(serde_json::to_string(&HarnessRole::Codegraph).unwrap(), "\"codegraph\"");
+        assert_eq!(HarnessRole::parse("research").unwrap(), HarnessRole::Research);
         assert_eq!(HarnessRole::parse("image_generation").unwrap(), HarnessRole::ImageGeneration);
     }
 
@@ -43,6 +45,25 @@ mod tests {
 
         config.roles.remove(&HarnessRole::Codegraph);
         assert_eq!(config.resolve(HarnessRole::Codegraph, None, &active).unwrap(), active);
+    }
+
+    #[test]
+    fn recommended_roles_keep_expensive_work_explicit_and_read_roles_cheap() {
+        let roles = HarnessConfig::recommended_roles();
+        assert_eq!(
+            roles[&HarnessRole::Plan].model,
+            "gpt-6-astra"
+        );
+        assert_eq!(
+            roles[&HarnessRole::Execute].model,
+            "gpt-5.6-luna"
+        );
+        assert_eq!(
+            roles[&HarnessRole::Compact].model,
+            "deepseek/deepseek-v4-flash"
+        );
+        assert_eq!(roles[&HarnessRole::Research].provider, "openrouter");
+        assert_eq!(roles[&HarnessRole::Codegraph].provider, "openrouter");
     }
 
     #[test]
@@ -141,6 +162,25 @@ impl Default for HarnessConfig {
 }
 
 impl HarnessConfig {
+    /// Model assignments tuned for the native task pipeline. Applying this
+    /// profile is explicit; an unavailable provider remains an actionable
+    /// authentication error and is never replaced silently.
+    pub fn recommended_roles() -> BTreeMap<HarnessRole, ModelSelection> {
+        let mut plan = ModelSelection::new("openai-codex", "gpt-6-astra");
+        plan.thinking = Some(ThinkingLevel::Medium);
+        let mut execute = ModelSelection::new("openai-codex", "gpt-5.6-luna");
+        execute.thinking = Some(ThinkingLevel::Medium);
+        let compact = ModelSelection::new("openrouter", "deepseek/deepseek-v4-flash");
+        BTreeMap::from([
+            (HarnessRole::Plan, plan.clone()),
+            (HarnessRole::Execute, execute),
+            (HarnessRole::Compact, compact.clone()),
+            (HarnessRole::Review, plan),
+            (HarnessRole::Research, compact.clone()),
+            (HarnessRole::Codegraph, compact),
+        ])
+    }
+
     pub fn validate(&self) -> AgentResult<()> {
         self.providers.validate()?;
         if !(1..=128).contains(&self.max_rounds)

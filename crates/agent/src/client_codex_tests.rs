@@ -41,6 +41,9 @@ fn codex_payload_does_not_forward_generic_generation_parameters() {
         request.extra.insert("max_tokens".into(), json!(456));
         request
             .extra
+            .insert("task_packet".into(), json!({"objective":"internal"}));
+        request
+            .extra
             .insert("arbitrary_parameter".into(), json!(true));
         if level.is_some() {
             request.tools = crate::agent_tool_definitions(crate::AgentRequestType::Implementation);
@@ -57,6 +60,7 @@ fn codex_payload_does_not_forward_generic_generation_parameters() {
         .unwrap();
         assert_eq!(headers[ACCEPT], "text/event-stream");
         assert!(body.get("max_output_tokens").is_none(), "{body}");
+        assert!(body.get("task_packet").is_none(), "{body}");
         let mut keys = vec![
             "model",
             "instructions",

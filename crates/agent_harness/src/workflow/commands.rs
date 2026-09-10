@@ -327,6 +327,57 @@ pub fn write_plan_state(
     Ok(())
 }
 
+/// Create a minimal project-local SDD change when no canonical specs/OpenSpec
+/// surface exists. Existing files are preserved so the command is rerunnable.
+pub fn bootstrap_sdd_change(
+    root: impl AsRef<Path>,
+    change_id: &str,
+    title: &str,
+) -> HarnessResult<crate::model::ChangeBootstrapReport> {
+    let root = root.as_ref();
+    if root.join("specs").is_dir() || root.join("openspec").is_dir() {
+        return Err(HarnessError::new(
+            "a canonical specs/ or openspec/ surface exists; add the change there",
+        ));
+    }
+    let change_id = sanitize_slug(change_id)?;
+    let title = title.trim().chars().take(160).collect::<String>();
+    let title = if title.is_empty() {
+        change_id.replace(['-', '_'], " ")
+    } else {
+        title
+    };
+    let base = PathBuf::from("changes").join(&change_id);
+    let proposal = format!(
+        "# {title}\n\nStatus: Draft\n\n## Intent\n\nDescribe the user-visible outcome and the project constraints.\n\n## Scope\n\nList the files, interfaces, and capabilities this change may affect.\n\n## Evidence\n\nRecord the relevant paths, symbols, and validation references as they are confirmed.\n"
+    );
+    let tasks = format!(
+        "# {title} Tasks\n\nStatus: Draft\n\n- [ ] Confirm the contract and acceptance criteria.\n- [ ] Add or update focused tests.\n- [ ] Implement the smallest change.\n- [ ] Run targeted validation and record evidence.\n- [ ] Update affected documentation and Capability Map pages.\n"
+    );
+    let acceptance = format!(
+        "# {title} Acceptance\n\nStatus: Draft\n\n- [ ] The stated intent is observable in the project.\n- [ ] Invalid inputs and permission boundaries are covered.\n- [ ] Focused validation passes and its evidence is recorded.\n"
+    );
+    let mut created = Vec::new();
+    let mut preserved = Vec::new();
+    for (relative, content) in [
+        (base.join("proposal.md"), proposal),
+        (base.join("tasks.md"), tasks),
+        (base.join("acceptance.md"), acceptance),
+    ] {
+        match write_agent_file(root, &relative, &content, WriteMode::Preserve)? {
+            WriteOutcome::Created(record) => created.push(record),
+            WriteOutcome::Overwritten(record) | WriteOutcome::Preserved(record) => {
+                preserved.push(record)
+            }
+        }
+    }
+    Ok(crate::model::ChangeBootstrapReport {
+        change_id,
+        created,
+        preserved,
+    })
+}
+
 pub fn transition_tdd_state(current: TddState, next: TddState) -> HarnessResult<TddState> {
     let valid = current == next
         || matches!(

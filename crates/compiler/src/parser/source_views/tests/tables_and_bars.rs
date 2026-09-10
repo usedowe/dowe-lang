@@ -472,6 +472,30 @@ fn parses_reactive_side_nav_visual_props() {
 }
 
 #[test]
+fn side_nav_identity_belongs_to_root() {
+    let tree = parse_page(
+        r#"page navPage
+  SideNav id:"mobile-navigation"
+    item label:"Home" href:"/""#,
+    )
+    .expect("root identity");
+    let ViewNode::SideNav { props, .. } = tree else {
+        panic!("side nav");
+    };
+    assert_eq!(props.style.element.id.as_deref(), Some("mobile-navigation"));
+
+    let error = parse_page(
+        r#"page navPage
+  SideNav
+    item id:"home" label:"Home" href:"/""#,
+    )
+    .expect_err("item identity");
+    assert!(error.to_string().contains(
+        "SideNav item does not accept `id`; put `id` on the SideNav root"
+    ));
+}
+
+#[test]
 fn parses_rail_nav_items_icons_and_labels() {
     let tree = parse_page(
         r#"page railPage

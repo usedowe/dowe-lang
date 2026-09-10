@@ -104,6 +104,25 @@ fn completion_profiles_use_supported_limits_cache_and_usage_fields() {
 }
 
 #[test]
+fn harness_requests_disable_openrouter_fallbacks_even_for_auxiliary_stages() {
+    let definition = provider_definition("openrouter").unwrap();
+    let mut request = request("openrouter", "deepseek/deepseek-v4-flash", false);
+    request
+        .extra
+        .insert("dowe_harness_turns".into(), json!([]));
+    let (_, _, body) = build_provider_request(
+        &definition,
+        AgentProviderProtocol::OpenAiCompletions,
+        definition.base_url.unwrap(),
+        &request.model,
+        &request,
+        &auth(),
+    )
+    .unwrap();
+    assert_eq!(body["provider"]["allow_fallbacks"], false);
+}
+
+#[test]
 fn native_routes_match_pi_protocols_instead_of_broad_name_guesses() {
     use AgentProviderProtocol::*;
     for (provider, model, protocol, url) in [

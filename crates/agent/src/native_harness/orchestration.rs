@@ -171,12 +171,10 @@ pub async fn run_child_turn(
     child_session.events.clear();
     child_session.context_start = 0;
     child_session.summary = None;
-    // Compaction currently emits through the normal persistence wrapper. Disable
-    // automatic compaction for the non-persisting child path; oversized requests
-    // fail closed instead of writing parent state.
-    let mut child_config = config.clone();
-    child_config.context_limit = None;
-    let result = run_harness_turn_without_persistence(store, &mut child_session, &child_config, HarnessTask {
+    // The child uses the same bounded compaction policy in memory. Its
+    // compacted summary and events are projected back to the parent only after
+    // the turn completes; no child save can overwrite the parent's session.
+    let result = run_harness_turn_without_persistence(store, &mut child_session, config, HarnessTask {
         prompt: &request.prompt, role: request.role, active: &request.active,
         explicit: request.explicit.as_ref(), image_paths: &[],
         edit_scope: Some(request.edit_scope.clone()), expected_codegraph_binding: Some(request.codegraph_binding.clone()),

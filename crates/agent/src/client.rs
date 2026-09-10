@@ -782,7 +782,7 @@ fn insert_common_request_fields(
     for (name, value) in &request.extra {
         if matches!(
             name.as_str(),
-            "max_completion_tokens" | "thinkingLevel" | "dowe_harness_turns"
+            "max_completion_tokens" | "thinkingLevel" | "dowe_harness_turns" | "task_packet"
         ) {
             continue;
         }

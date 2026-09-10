@@ -104,7 +104,7 @@ impl HarnessSession {
             if attempt
                 || matches!(
                     event["event"].as_str(),
-                    Some("response_received" | "context_compacted")
+                    Some("response_received" | "context_compacted" | "auxiliary_response")
                 )
             {
                 if let Some(id) = id {

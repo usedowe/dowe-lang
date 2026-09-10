@@ -49,6 +49,11 @@ fn page_size() -> usize {
     200
 }
 
+// Skills are reference material, so a single page should leave room for the
+// agent to act on it. The general tool-output bound remains configurable, but
+// skill pages use this smaller cap to avoid flooding the next request.
+const MAX_SKILL_PAGE_BYTES: usize = 8192;
+
 fn normalize_embedded_skill_request(
     id: &str,
     resource: Option<&str>,
@@ -155,7 +160,7 @@ fn normalize_embedded_skill_request(
             let skill = crate::public_skills()
                 .into_iter()
                 .find(|skill| skill.id == bundle)
-                .ok_or_else(|| AgentError::new(format!("unknown public Dowe skill `{id}`")))?;
+                .ok_or_else(|| unknown_embedded_skill(id))?;
             let matches = skill
                 .resources
                 .into_iter()
@@ -174,6 +179,12 @@ fn normalize_embedded_skill_request(
         }
     };
     Ok((normalized_id, Some(shorthand)))
+}
+
+fn unknown_embedded_skill(id: &str) -> AgentError {
+    AgentError::new(format!(
+        "unknown public Dowe skill `{id}`; use an exact logical id such as core, theme, views, server, domain-modeling, native-ipc, or one of the suggested scoped units"
+    ))
 }
 
 impl HarnessTools {
@@ -358,9 +369,10 @@ impl HarnessTools {
                 let mut page = String::new();
                 let mut count = 0;
                 let mut encoded_size = 512;
+                let page_limit = self.config.max_output_bytes.min(MAX_SKILL_PAGE_BYTES);
                 for line in &lines {
                     let size = serde_json::to_string(line)?.len() + 2;
-                    if encoded_size + size > self.config.max_output_bytes {
+                    if encoded_size + size > page_limit {
                         break;
                     }
                     page.push_str(line);
@@ -645,6 +657,18 @@ mod skill_normalization_tests {
     use super::*;
 
     #[test]
+    fn embedded_skill_pages_keep_large_references_out_of_one_request() {
+        let root = tempfile::tempdir().unwrap();
+        let tools = HarnessTools::new(root.path(), "skill-page", HarnessConfig::default()).unwrap();
+        let result = tools
+            .execute_skill(&ToolCall::new("skill", "get_skill", json!({"id":"views"})))
+            .unwrap();
+        assert!(result["content"].as_str().unwrap().len() <= MAX_SKILL_PAGE_BYTES);
+        assert_eq!(result["truncated"], true);
+        assert!(result["next_offset"].as_u64().unwrap() > 1);
+    }
+
+    #[test]
     fn normalizes_legacy_embedded_skill_forms() {
         assert_eq!(
             normalize_embedded_skill_request("dowe-views", Some("views")).unwrap(),
@@ -769,5 +793,15 @@ mod skill_normalization_tests {
                 .unwrap_err()
                 .to_string();
         assert!(error.contains("not unambiguous"));
+    }
+
+    #[test]
+    fn unknown_skill_diagnostic_explains_the_recovery_path() {
+        let error = normalize_embedded_skill_request("layoutz", Some("layoutz"))
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("unknown public Dowe skill `layoutz`"));
+        assert!(error.contains("exact logical id"));
+        assert!(error.contains("views"));
     }
 }

@@ -254,8 +254,11 @@ fn agent_harness_terminal_approves_exact_write_and_returns_real_result() {
     let session = Session::start_at(home, false, &["agent"]);
     session.send("Create a Dowe application\r");
     let approval = session.until("Approve this exact operation once?");
+    assert!(approval.contains("File change requested"));
     assert!(approval.contains("main.dowe"));
     assert!(approval.contains("before") && approval.contains("after"));
+    assert!(!approval.contains("\"call\""));
+    assert!(!approval.contains("\"details\""));
     session.send("y\r");
     session.until("File applied");
     let home = session.stop();
@@ -360,4 +363,36 @@ fn agent_harness_role_assignment_routes_without_mutating_active_model() {
             .iter()
             .all(|tool| tool["name"] != "shell" && tool["name"] != "write_file")
     );
+}
+
+#[test]
+fn agent_harness_research_routes_to_read_only_tools() {
+    let (home, server) = conversation_fixture(vec![(200, conversation_reply("The project uses a Rust CLI."))]);
+    let session = Session::start_at(home, false, &["agent"]);
+    session.send("/research Find the CLI entrypoint\r");
+    session.until("The project uses a Rust CLI.");
+    let home = session.stop();
+    let requests = server.join().unwrap();
+    assert_eq!(requests.len(), 1);
+    let body = &requests[0];
+    assert!(body["tools"].as_array().unwrap().iter().any(|tool| tool["name"] == "read_file"));
+    assert!(body["tools"].as_array().unwrap().iter().all(|tool| {
+        !matches!(tool["name"].as_str(), Some("shell" | "write_file" | "edit_file" | "write_asset"))
+    }));
+    assert!(home.path().join(".agents/capabilities/index.md").is_file());
+}
+
+#[test]
+fn agent_harness_generic_project_can_apply_a_source_write() {
+    let response = serde_json::json!({"output":[{"type":"function_call","call_id":"generic-write","name":"write_file","arguments":serde_json::json!({"path":"src/main.rs","content":"fn main() {}\n","skill":"core","reason":"Create the generic entrypoint"}).to_string()}]});
+    let (home, server) = conversation_fixture(vec![(200, response), (200, conversation_reply("Generic source applied."))]);
+    std::fs::create_dir_all(home.path().join("src")).unwrap();
+    let session = Session::start_at(home, false, &["agent"]);
+    session.send("Create the generic Rust entrypoint\r");
+    session.until("Approve this exact operation once?");
+    session.send("y\r");
+    session.until("Generic source applied.");
+    let home = session.stop();
+    assert_eq!(std::fs::read_to_string(home.path().join("src/main.rs")).unwrap(), "fn main() {}\n");
+    assert_eq!(server.join().unwrap().len(), 2);
 }

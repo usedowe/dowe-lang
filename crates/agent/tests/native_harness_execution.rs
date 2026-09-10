@@ -36,6 +36,45 @@ fn write_call() -> Value {
     json!({"output":[{"type":"function_call","call_id":"write","name":"write_file","arguments":json!({"path":"main.dowe","content":"main {}\n","skill":"core","reason":"create application root"}).to_string()}]})
 }
 
+fn read_call(id: &str, path: &str) -> Value {
+    json!({"output":[{"type":"function_call","call_id":id,"name":"read_file","arguments":json!({"path":path}).to_string()}]})
+}
+
+#[tokio::test]
+async fn token_safety_bound_applies_per_request_not_to_accumulated_history() {
+    let home = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("one.txt"), "one\n").unwrap();
+    std::fs::write(root.path().join("two.txt"), "two\n").unwrap();
+    let store = HarnessStore::new(home.path(), root.path()).unwrap();
+    let mut session = store.create_session().unwrap();
+    let mut host = Host {
+        responses: VecDeque::from([
+            read_call("one", "one.txt"),
+            read_call("two", "two.txt"),
+            json!({"output_text":"finished"}),
+        ]),
+        requests: vec![],
+        events: vec![],
+        decision: None,
+    };
+    let config = HarnessConfig {
+        token_budget: 30_000,
+        ..Default::default()
+    };
+    let outcome = run_harness_turn(
+        &store,
+        &mut session,
+        &config,
+        HarnessTask::new("Read both files", &ModelSelection::new("openai", "gpt-5.5")),
+        &mut host,
+    )
+    .await
+    .unwrap();
+    assert!(matches!(outcome, HarnessOutcome::Completed));
+    assert_eq!(host.requests.len(), 3);
+}
+
 #[tokio::test]
 async fn approved_tools_continue_with_native_results_and_persist_evidence() {
     let home = tempfile::tempdir().unwrap();

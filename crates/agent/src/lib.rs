@@ -1,6 +1,7 @@
 mod auth;
 mod authoring;
 mod client;
+mod capability_map;
 mod catalog;
 pub mod codegraph_enrichment;
 mod context;

@@ -2,6 +2,8 @@ use serde_json::Value;
 
 const SESSION_TITLE_WIDTH: usize = 32;
 const SESSION_ID_WIDTH: usize = 8;
+const APPROVAL_PREVIEW_LINES: usize = 8;
+const APPROVAL_PREVIEW_LINE_CHARS: usize = 120;
 
 /// Build the compact, aligned label used by the interactive resume selector.
 ///
@@ -33,6 +35,107 @@ pub(super) fn format_value(value: &Value) -> String {
     let mut lines = Vec::new();
     render_value(value, 0, "", &mut lines);
     lines.join("\n")
+}
+
+/// Render a host approval as a small, human-readable change summary.
+///
+/// Approval payloads are internal protocol data and can contain large file
+/// bodies, tool arguments, and environment metadata. Showing that object
+/// directly made the interactive agent look like a JSON debugger and could
+/// flood the terminal. Keep the confirmation useful without exposing the
+/// wire shape or unbounded content.
+pub(super) fn format_approval(value: &Value) -> String {
+    let call = &value["call"];
+    let details = &value["details"];
+    let name = call["name"].as_str().unwrap_or("tool");
+    let heading = match name {
+        "write_file" | "edit_file" => "File change requested",
+        "write_asset" => "Asset change requested",
+        "propose_instruction_update" => "Instruction change requested",
+        "shell" => "Command requested",
+        "generate_image" => "Image generation requested",
+        "capture_web_screenshot" => "Screenshot requested",
+        _ => "Operation requested",
+    };
+    let mut lines = vec![heading.to_string()];
+    push_field(&mut lines, "path", details["path"].as_str());
+    push_field(&mut lines, "destination", details["destination"].as_str());
+    push_field(&mut lines, "skill", details["skill"].as_str());
+    push_field(&mut lines, "reason", details["reason"].as_str());
+
+    match name {
+        "write_file" | "edit_file" | "propose_instruction_update" => {
+            push_preview(&mut lines, "before", details["before"].as_str());
+            push_preview(&mut lines, "after", details["after"].as_str());
+        }
+        "write_asset" => {
+            push_field_value(&mut lines, "bytes", &details["byte_count"]);
+            push_field(&mut lines, "sha256", details["sha256"].as_str());
+            if details["before_byte_count"].is_number() {
+                push_field_value(&mut lines, "previous bytes", &details["before_byte_count"]);
+            }
+        }
+        "shell" => {
+            push_field(
+                &mut lines,
+                "command",
+                details["command"].as_str(),
+            );
+            push_field(&mut lines, "working directory", details["cwd"].as_str());
+            push_field(&mut lines, "resource", details["resource"].as_str());
+        }
+        "generate_image" => {
+            push_preview(&mut lines, "prompt", details["prompt"].as_str());
+        }
+        _ => {}
+    }
+    lines.push("This operation is single-use and will be checked again before applying.".into());
+    lines.join("\n")
+}
+
+fn push_field(lines: &mut Vec<String>, label: &str, value: Option<&str>) {
+    if let Some(value) = value.filter(|value| !value.trim().is_empty()) {
+        lines.push(format!("  {label}: {}", bounded_display(value, APPROVAL_PREVIEW_LINE_CHARS)));
+    }
+}
+
+fn push_field_value(lines: &mut Vec<String>, label: &str, value: &Value) {
+    if !value.is_null() {
+        lines.push(format!("  {label}: {}", bounded_display(&value.to_string(), APPROVAL_PREVIEW_LINE_CHARS)));
+    }
+}
+
+fn push_preview(lines: &mut Vec<String>, label: &str, value: Option<&str>) {
+    lines.push(format!("  {label}:"));
+    let Some(value) = value.filter(|value| !value.is_empty()) else {
+        lines.push("    (empty)".into());
+        return;
+    };
+    let mut omitted = false;
+    for line in value.lines().take(APPROVAL_PREVIEW_LINES) {
+        if lines.len() >= APPROVAL_PREVIEW_LINES * 2 + 8 {
+            omitted = true;
+            break;
+        }
+        lines.push(format!(
+            "    {}",
+            bounded_display(line, APPROVAL_PREVIEW_LINE_CHARS)
+        ));
+    }
+    if value.lines().count() > APPROVAL_PREVIEW_LINES {
+        omitted = true;
+    }
+    if omitted {
+        lines.push("    … preview truncated".into());
+    }
+}
+
+fn bounded_display(value: &str, limit: usize) -> String {
+    let clean = value
+        .chars()
+        .filter(|character| !character.is_control())
+        .collect::<String>();
+    truncate_label(&clean, limit)
 }
 
 fn is_sessions_result(value: &Value) -> bool {
@@ -191,7 +294,7 @@ fn scalar(value: &Value) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::format_value;
+    use super::{format_approval, format_value};
     use serde_json::json;
 
     #[test]
@@ -349,5 +452,46 @@ mod tests {
         assert_eq!(format_value(&json!(42)), "42");
         assert_eq!(format_value(&json!(false)), "false");
         assert_eq!(format_value(&json!(null)), "null");
+    }
+
+    #[test]
+    fn formats_file_approval_as_bounded_human_change_summary() {
+        let rendered = format_approval(&json!({
+            "call": {"name": "write_file"},
+            "details": {
+                "path": "views/layouts/site-layout.dowe",
+                "skill": "views",
+                "reason": "Alinear la navegación",
+                "before": "layout SiteLayout\n  main\n",
+                "after": "layout SiteLayout\n  Scaffold\n    appBar\n      AppBar\n"
+            }
+        }));
+
+        assert!(rendered.starts_with("File change requested"));
+        assert!(rendered.contains("path: views/layouts/site-layout.dowe"));
+        assert!(rendered.contains("before:"));
+        assert!(rendered.contains("after:"));
+        assert!(rendered.contains("Alinear la navegación"));
+        assert!(!rendered.contains("\"call\""));
+        assert!(!rendered.contains('{'));
+        assert!(rendered.lines().count() <= 28);
+    }
+
+    #[test]
+    fn approval_preview_does_not_dump_large_file_bodies_or_controls() {
+        let rendered = format_approval(&json!({
+            "call": {"name": "write_file"},
+            "details": {
+                "path": "src/main.rs",
+                "before": "before\u{1b}[2J\n".to_string() + &"x\n".repeat(100),
+                "after": "after\n"
+            }
+        }));
+
+        assert!(!rendered
+            .chars()
+            .any(|character| character.is_control() && !matches!(character, '\n' | '\t')));
+        assert!(rendered.contains("preview truncated"));
+        assert!(rendered.len() < 3000);
     }
 }

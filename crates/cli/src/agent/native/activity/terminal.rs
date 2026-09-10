@@ -313,7 +313,7 @@ fn style_activity_line(line: &str) -> String {
     let style = dialoguer::console::style(line);
     if line.starts_with("  ") {
         style.dim().for_stderr().to_string()
-    } else if line.ends_with(" · failed") {
+    } else if line.contains(" · failed") {
         style.red().bold().for_stderr().to_string()
     } else if line.ends_with(" · canceled") {
         style.magenta().bold().for_stderr().to_string()

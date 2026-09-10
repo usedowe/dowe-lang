@@ -386,6 +386,87 @@
     }
 
     #[test]
+    fn bootstrap_sdd_change_is_bounded_preserves_existing_files_and_respects_canonical_surfaces() {
+        let root = tempfile::tempdir().expect("root");
+        let report = bootstrap_sdd_change(root.path(), "add-search", "Add search").expect("bootstrap");
+        assert_eq!(report.created.len(), 3);
+        assert!(root.path().join(".agents/changes/add-search/proposal.md").is_file());
+        let proposal = root.path().join(".agents/changes/add-search/proposal.md");
+        fs::write(&proposal, "# user-owned proposal\n").expect("customize proposal");
+        let rerun = bootstrap_sdd_change(root.path(), "add-search", "Changed title").expect("rerun");
+        assert!(rerun.created.is_empty());
+        assert_eq!(fs::read_to_string(&proposal).unwrap(), "# user-owned proposal\n");
+
+        fs::create_dir(root.path().join("openspec")).expect("canonical marker");
+        assert!(bootstrap_sdd_change(root.path(), "another", "Another").is_err());
+    }
+
+    #[test]
+    fn task_packet_round_trips_and_rejects_unbounded_evidence() {
+        let packet = TaskPacket {
+            task_id: "task-1".into(),
+            role: "review".into(),
+            objective: "inspect the focused change".into(),
+            acceptance: vec!["tests pass".into()],
+            constraints: vec!["read_only_stage".into()],
+            files: vec!["src/lib.rs".into()],
+            evidence: vec![EvidenceRef {
+                path: "src/lib.rs".into(),
+                start_line: Some(1),
+                end_line: Some(4),
+                fingerprint: "abc".into(),
+                source: "operation_receipt".into(),
+            }],
+            change_set: Some(ChangeSet {
+                baseline: Some("baseline-1".into()),
+                files: vec![ChangeSetEntry {
+                    path: "src/lib.rs".into(),
+                    kind: ChangeKind::Modified,
+                    before_fingerprint: Some("old".into()),
+                    after_fingerprint: Some("new".into()),
+                }],
+            }),
+            validation: vec!["cargo test".into()],
+            budget_remaining_tokens: 100,
+        };
+        packet.validate().expect("bounded packet");
+        let decoded: TaskPacket = serde_json::from_value(serde_json::to_value(&packet).unwrap()).unwrap();
+        assert_eq!(decoded, packet);
+        let mut oversized = packet;
+        oversized.files = (0..65).map(|index| format!("src/{index}.rs")).collect();
+        assert!(oversized.validate().is_err());
+    }
+
+    #[test]
+    fn task_packet_rejects_control_text_empty_evidence_and_invalid_ranges() {
+        let mut packet = TaskPacket {
+            task_id: "task-1".into(),
+            role: "research".into(),
+            objective: "inspect".into(),
+            acceptance: vec!["facts".into()],
+            constraints: vec!["read only".into()],
+            files: vec!["src/lib.rs".into()],
+            evidence: vec![EvidenceRef {
+                path: "src/lib.rs".into(),
+                start_line: Some(4),
+                end_line: Some(2),
+                fingerprint: "sha256:abc".into(),
+                source: "local".into(),
+            }],
+            change_set: None,
+            validation: vec!["not run".into()],
+            budget_remaining_tokens: 1,
+        };
+        assert!(packet.validate().is_err());
+        packet.evidence[0].end_line = Some(4);
+        packet.evidence[0].fingerprint.clear();
+        assert!(packet.validate().is_err());
+        packet.evidence[0].fingerprint = "sha256:abc".into();
+        packet.objective = "bad\u{0000}text".into();
+        assert!(packet.validate().is_err());
+    }
+
+    #[test]
     fn validate_plan_persists_validation_without_review_or_delivery_authority() {
             let temp = TempDir::new().expect("tempdir");
             write_spec_fixture(temp.path(), true);

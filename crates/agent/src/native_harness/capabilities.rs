@@ -45,7 +45,7 @@ impl HarnessConfig {
         role: HarnessRole,
         images: bool,
     ) -> AgentResult<()> {
-        if role != HarnessRole::Execute && !images {
+        if !matches!(role, HarnessRole::Execute | HarnessRole::Research) && !images {
             return Ok(());
         }
         let key = format!(
@@ -57,7 +57,7 @@ impl HarnessConfig {
         let capabilities = builtin_model_capabilities(&selection.provider, &selection.model)
             .or_else(|| self.capabilities.get(&key).copied())
             .ok_or_else(|| AgentError::new(format!("model capabilities are unknown for {key}; explicitly declare /capabilities {key} <tools:true|false> <images:true|false> or select a supported model")))?;
-        if role == HarnessRole::Execute && !capabilities.tools {
+        if matches!(role, HarnessRole::Execute | HarnessRole::Research) && !capabilities.tools {
             return Err(AgentError::new(
                 "selected model does not support harness tools",
             ));

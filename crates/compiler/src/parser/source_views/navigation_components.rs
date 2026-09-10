@@ -289,6 +289,16 @@ fn side_nav_entry_props(
         .filter(|prop| !ignored.contains(&prop.name.as_str()))
         .map(|prop| {
             if !allowed.contains(&prop.name.as_str()) {
+                if prop.name == "id" && component == BuiltinComponent::SideNav {
+                    return Err(node_error(
+                        node,
+                        format!(
+                            "{} item does not accept `id`; put `id` on the {} root",
+                            component.as_str(),
+                            component.as_str()
+                        ),
+                    ));
+                }
                 return Err(node_error(
                     node,
                     ComponentError::unknown_prop(component, &prop.name).to_string(),

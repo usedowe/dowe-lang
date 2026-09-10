@@ -16,7 +16,6 @@ const COMMANDS: &[&str] = &[
     "/memory",
     "/shell",
     "/env",
-    "/budget",
     "/evaluate",
     "/processes",
     "/watch",
@@ -25,7 +24,9 @@ const COMMANDS: &[&str] = &[
     "/recover",
     "/capabilities",
     "/governance",
+    "/sdd",
     "/plan",
+    "/research",
     "/review",
     "/compact",
     "/exit",
@@ -256,6 +257,7 @@ mod tests {
     fn slash_filters_and_backspace_restores_matches() {
         let mut prompt = typed("/");
         assert_eq!(prompt.matches(), COMMANDS);
+        assert!(!prompt.matches().contains(&"/budget"));
         prompt.handle(Key::Char('l'));
         assert_eq!(prompt.matches(), ["/login", "/logout"]);
         prompt.handle(Key::Char('o'));

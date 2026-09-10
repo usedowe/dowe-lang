@@ -51,6 +51,7 @@ pub struct SemanticEnrichment {
     pub provider: Option<String>,
     pub model: Option<String>,
     pub context: String,
+    pub usage: Option<crate::AgentUsage>,
         pub cache_warning: Option<String>,
 }
 
@@ -99,9 +100,10 @@ pub async fn enrich_codegraph(
         messages: vec![
             AgentMessage { role: "system".into(), content: AgentMessageContent::Text("You are a read-only CodeGraph semantic annotator. Never use tools, mutate files, or claim graph edges.".into()) },
             AgentMessage { role: "user".into(), content: AgentMessageContent::Text(prompt) },
-        ], extra: BTreeMap::new(),
+        ], extra: BTreeMap::from([("dowe_harness_turns".into(), json!([]))]),
     };
     let response = match tokio::time::timeout(Duration::from_secs(8), send_native_agent_request(&request, &auth)).await { Ok(Ok(response)) => response, _ => return unavailable(&provider, &model) };
+    let usage = crate::agent_response_usage(&provider, &model, &response.payload);
     let text = match agent_response_text(&response.payload) { Ok(text) if text.len() <= 16 * 1024 => text, _ => return unavailable(&provider, &model) };
     let parsed = match parse_semantic_files(&text, &requested_paths) { Ok(value) => value, Err(_) => return unavailable(&provider, &model) };
     for (path, fingerprint, _) in changed.into_iter().filter(|(_, _, entry)| entry.is_none()) {
@@ -114,6 +116,7 @@ pub async fn enrich_codegraph(
     let warning = write_cache(root, &CacheFile { version: 1, entries: entries.clone() });
     let mut result = result_from_entries(SemanticStatus::Miss, &provider, &model, entries, &snapshot.changed);
         result.cache_warning = warning.err().map(|e| e.to_string());
+        result.usage = usage;
         result
 }
 
@@ -141,10 +144,10 @@ fn parse_semantic_files(text: &str, requested: &[String]) -> AgentResult<Vec<(St
     let mut selected = entries.into_iter().filter(|entry| paths.contains(&entry.path) && entry.provider == provider && entry.model == model && entry.prompt_schema_version == PROMPT_SCHEMA_VERSION).take(MAX_FILES_PER_TURN).collect::<Vec<_>>();
     selected.sort_by(|a,b| a.path.cmp(&b.path));
     let context = serde_json::to_string(&selected).unwrap_or_else(|_| "[]".into());
-    SemanticEnrichment { status, provider: Some(provider.into()), model: Some(model.into()), context: context.chars().take(32 * 1024).collect(), cache_warning: None }
+    SemanticEnrichment { status, provider: Some(provider.into()), model: Some(model.into()), context: context.chars().take(32 * 1024).collect(), usage: None, cache_warning: None }
 }
 
-fn unavailable(provider: &str, model: &str) -> SemanticEnrichment { SemanticEnrichment { status: SemanticStatus::Unavailable, provider: Some(provider.into()), model: Some(model.into()), context: "[]".into(), cache_warning: None } }
+fn unavailable(provider: &str, model: &str) -> SemanticEnrichment { SemanticEnrichment { status: SemanticStatus::Unavailable, provider: Some(provider.into()), model: Some(model.into()), context: "[]".into(), usage: None, cache_warning: None } }
 fn safe_project_path(root: &Path, relative: &str) -> Option<PathBuf> { let path = Path::new(relative); if path.is_absolute() || path.components().any(|c| matches!(c, std::path::Component::ParentDir)) { return None; } Some(root.join(path)) }
 fn cache_path(root: &Path) -> PathBuf { root.join(".agents/codegraph").join(CACHE_FILE) }
 fn read_cache(root: &Path) -> CacheFile { let path = cache_path(root); let Ok(bytes) = fs::read(path) else { return CacheFile { version: 1, entries: Vec::new() }; }; if bytes.len() > MAX_CACHE_BYTES { return CacheFile { version: 1, entries: Vec::new() }; } serde_json::from_slice::<CacheFile>(&bytes).ok().filter(|cache| cache.version == 1).unwrap_or_default() }

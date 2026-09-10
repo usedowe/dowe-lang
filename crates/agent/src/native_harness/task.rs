@@ -49,8 +49,39 @@ pub(super) fn omit_image_bytes(value: &mut serde_json::Value) -> usize {
 
 pub(super) fn estimate_request(request: &crate::AgentRequest) -> crate::AgentResult<u64> {
     let mut value = serde_json::to_value(request)?;
+    // The task packet is harness bookkeeping. It is flattened into the
+    // internal request but filtered before any provider payload is sent, so
+    // counting it would make the safety check reject requests that fit.
+    if let Some(object) = value.as_object_mut() {
+        object.remove("task_packet");
+    }
     let images = omit_image_bytes(&mut value);
     Ok(serde_json::to_vec(&value)?.len() as u64 / 3 + 1 + images as u64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{AgentPrepareOptions, prepare_agent_request};
+    use serde_json::json;
+
+    #[test]
+    fn request_estimate_ignores_internal_task_packet() {
+        let root = tempfile::tempdir().unwrap();
+        let mut request = prepare_agent_request(
+            root.path(),
+            "hello",
+            AgentPrepareOptions::default(),
+        )
+        .unwrap()
+        .request;
+        let baseline = estimate_request(&request).unwrap();
+        request.extra.insert(
+            "task_packet".into(),
+            json!({"objective":"x".repeat(100_000)}),
+        );
+        assert_eq!(estimate_request(&request).unwrap(), baseline);
+    }
 }
 
 impl<'a> HarnessTask<'a> {

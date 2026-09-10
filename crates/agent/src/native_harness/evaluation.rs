@@ -35,6 +35,10 @@ pub struct EvaluationSample {
     pub output: Option<u64>,
     pub cache_read: Option<u64>,
     pub cache_write: Option<u64>,
+    #[serde(default)]
+    pub stage_tokens: BTreeMap<String, u64>,
+    #[serde(default)]
+    pub stage_cost_usd: BTreeMap<String, f64>,
     pub cost_usd: Option<f64>,
     pub latency_ms: u64,
     pub retries: u64,
@@ -49,6 +53,16 @@ pub struct EvaluationReport {
     pub native_median_tokens: f64,
     pub baseline_median_latency_ms: f64,
     pub native_median_latency_ms: f64,
+    pub baseline_p95_latency_ms: u64,
+    pub native_p95_latency_ms: u64,
+    /// Total measured provider cost. `None` means at least one paired sample
+    /// did not report a known cost, so the total must not be presented as zero.
+    pub baseline_cost_usd: Option<f64>,
+    pub native_cost_usd: Option<f64>,
+    pub baseline_stage_tokens: BTreeMap<String, u64>,
+    pub native_stage_tokens: BTreeMap<String, u64>,
+    pub baseline_stage_cost_usd: BTreeMap<String, f64>,
+    pub native_stage_cost_usd: BTreeMap<String, f64>,
     pub numeric_gate_passed: bool,
     pub contains_fixture_data: bool,
     pub evidence_policy: &'static str,
@@ -57,7 +71,7 @@ pub struct EvaluationReport {
 }
 
 pub fn evaluate_samples(samples: &[EvaluationSample]) -> AgentResult<EvaluationReport> {
-    if samples.is_empty() || samples.len() > 2000 {
+    if samples.is_empty() || samples.len() > 1000 {
         return Err(AgentError::new(
             "evaluation requires 1..1000 complete task pairs",
         ));
@@ -81,6 +95,22 @@ pub fn evaluate_samples(samples: &[EvaluationSample]) -> AgentResult<EvaluationR
             || sample
                 .cost_budget_usd
                 .is_some_and(|cost| !cost.is_finite() || cost <= 0.0)
+            || sample.stage_tokens.len() > 16
+            || sample.stage_tokens.keys().any(|stage| {
+                stage.is_empty()
+                    || stage.len() > 32
+                    || stage.chars().any(char::is_control)
+            })
+            || sample.stage_cost_usd.len() > 16
+            || sample.stage_cost_usd.keys().any(|stage| {
+                stage.is_empty()
+                    || stage.len() > 32
+                    || stage.chars().any(char::is_control)
+            })
+            || sample
+                .stage_cost_usd
+                .values()
+                .any(|cost| !cost.is_finite() || *cost < 0.0)
         {
             return Err(AgentError::new(
                 "invalid evaluation identity, evidence, category or budget",
@@ -108,6 +138,12 @@ pub fn evaluate_samples(samples: &[EvaluationSample]) -> AgentResult<EvaluationR
     let mut native_tokens = Vec::new();
     let mut baseline_latency = Vec::new();
     let mut native_latency = Vec::new();
+    let mut baseline_stage_tokens = BTreeMap::new();
+    let mut native_stage_tokens = BTreeMap::new();
+    let mut baseline_stage_cost_usd = BTreeMap::new();
+    let mut native_stage_cost_usd = BTreeMap::new();
+    let mut baseline_cost_usd = Some(0.0_f64);
+    let mut native_cost_usd = Some(0.0_f64);
     let mut baseline_successes = 0;
     let mut native_successes = 0;
     let mut regressions = Vec::new();
@@ -133,6 +169,12 @@ pub fn evaluate_samples(samples: &[EvaluationSample]) -> AgentResult<EvaluationR
         native_tokens.push(tokens(native)?);
         baseline_latency.push(baseline.latency_ms);
         native_latency.push(native.latency_ms);
+        accumulate_stage_tokens(&mut baseline_stage_tokens, &baseline.stage_tokens)?;
+        accumulate_stage_tokens(&mut native_stage_tokens, &native.stage_tokens)?;
+        accumulate_stage_costs(&mut baseline_stage_cost_usd, &baseline.stage_cost_usd)?;
+        accumulate_stage_costs(&mut native_stage_cost_usd, &native.stage_cost_usd)?;
+        accumulate_known_cost(&mut baseline_cost_usd, baseline.cost_usd)?;
+        accumulate_known_cost(&mut native_cost_usd, native.cost_usd)?;
         let before = baseline.compilation_passed && baseline.scope_passed;
         let after = native.compilation_passed && native.scope_passed;
         baseline_successes += usize::from(before);
@@ -148,6 +190,8 @@ pub fn evaluate_samples(samples: &[EvaluationSample]) -> AgentResult<EvaluationR
     }
     let before = median(&mut baseline_tokens);
     let after = median(&mut native_tokens);
+    let baseline_p95_latency_ms = percentile_95(&mut baseline_latency);
+    let native_p95_latency_ms = percentile_95(&mut native_latency);
     Ok(EvaluationReport {
         pairs: pairs.len(),
         baseline_successes,
@@ -156,12 +200,66 @@ pub fn evaluate_samples(samples: &[EvaluationSample]) -> AgentResult<EvaluationR
         native_median_tokens: after,
         baseline_median_latency_ms: median(&mut baseline_latency),
         native_median_latency_ms: median(&mut native_latency),
+        baseline_p95_latency_ms,
+        native_p95_latency_ms,
+        baseline_cost_usd,
+        native_cost_usd,
+        baseline_stage_tokens,
+        native_stage_tokens,
+        baseline_stage_cost_usd,
+        native_stage_cost_usd,
         numeric_gate_passed: native_successes >= baseline_successes && after < before,
         contains_fixture_data: samples.iter().any(|sample| sample.origin == "fixture"),
         evidence_policy: "Statistics describe supplied measurements. Evidence hashes and provider origin must be independently audited; fixtures never establish real model quality or savings.",
         regressions,
         samples: samples.to_vec(),
     })
+}
+
+fn accumulate_stage_tokens(
+    totals: &mut BTreeMap<String, u64>,
+    values: &BTreeMap<String, u64>,
+) -> AgentResult<()> {
+    for (stage, value) in values {
+        let total = totals
+            .entry(stage.clone())
+            .or_default()
+            .checked_add(*value)
+            .ok_or_else(|| AgentError::new("evaluation stage token overflow"))?;
+        *totals.get_mut(stage).expect("stage inserted") = total;
+    }
+    Ok(())
+}
+
+fn accumulate_stage_costs(
+    totals: &mut BTreeMap<String, f64>,
+    values: &BTreeMap<String, f64>,
+) -> AgentResult<()> {
+    for (stage, value) in values {
+        let total = totals.get(stage).copied().unwrap_or_default() + value;
+        if !total.is_finite() {
+            return Err(AgentError::new("evaluation stage cost overflow"));
+        }
+        totals.insert(stage.clone(), total);
+    }
+    Ok(())
+}
+
+fn accumulate_known_cost(total: &mut Option<f64>, value: Option<f64>) -> AgentResult<()> {
+    let Some(value) = value else {
+        *total = None;
+        return Ok(());
+    };
+    if !value.is_finite() || value < 0.0 {
+        return Err(AgentError::new("evaluation cost is not finite or is negative"));
+    }
+    if let Some(current) = total {
+        *current += value;
+        if !current.is_finite() {
+            return Err(AgentError::new("evaluation cost overflow"));
+        }
+    }
+    Ok(())
 }
 
 fn hash(value: &str) -> bool {
@@ -195,6 +293,12 @@ fn median(values: &mut [u64]) -> f64 {
     }
 }
 
+fn percentile_95(values: &mut [u64]) -> u64 {
+    values.sort_unstable();
+    let index = ((values.len() as f64) * 0.95).ceil() as usize;
+    values[index.saturating_sub(1).min(values.len().saturating_sub(1))]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,6 +327,14 @@ mod tests {
                     output: Some(100),
                     cache_read: Some(50),
                     cache_write: Some(20),
+                    stage_tokens: BTreeMap::from([
+                        ("execute".into(), if variant == "baseline" { 1000 } else { 500 }),
+                        ("compact".into(), 20),
+                    ]),
+                    stage_cost_usd: BTreeMap::from([(
+                        "execute".into(),
+                        if variant == "baseline" { 1.0 } else { 0.5 },
+                    )]),
                     cost_usd: None,
                     latency_ms: 100,
                     retries: 0,
@@ -235,6 +347,12 @@ mod tests {
         let report = evaluate_samples(&samples()).unwrap();
         assert_eq!(report.baseline_median_tokens, 1170.0);
         assert_eq!(report.native_median_tokens, 670.0);
+        assert_eq!(report.baseline_stage_tokens["execute"], 10000);
+        assert_eq!(report.native_stage_tokens["execute"], 5000);
+        assert_eq!(report.baseline_p95_latency_ms, 100);
+        assert_eq!(report.native_p95_latency_ms, 100);
+        assert!(report.baseline_cost_usd.is_none());
+        assert!(report.native_cost_usd.is_none());
         assert!(report.numeric_gate_passed && report.contains_fixture_data);
     }
     #[test]
@@ -250,5 +368,18 @@ mod tests {
         let report = evaluate_samples(&values).unwrap();
         assert!(!report.numeric_gate_passed);
         assert_eq!(report.regressions, ["layout"]);
+    }
+
+    #[test]
+    fn known_cost_totals_are_summed_without_turning_missing_values_into_zero() {
+        let mut values = samples();
+        for sample in &mut values {
+            sample.cost_usd = Some(if sample.variant == "baseline" { 1.0 } else { 0.5 });
+        }
+        let report = evaluate_samples(&values).unwrap();
+        assert_eq!(report.baseline_cost_usd, Some(10.0));
+        assert_eq!(report.native_cost_usd, Some(5.0));
+        values[0].cost_usd = None;
+        assert!(evaluate_samples(&values).unwrap().baseline_cost_usd.is_none());
     }
 }

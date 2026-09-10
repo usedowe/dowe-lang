@@ -14,6 +14,9 @@ Layouts own persistent shell structure; pages own route-specific content and sta
 
 Omit theme-resolved visual and padding defaults. Availability or screenshot measurements do not justify `variant`, `scheme`, `rounded`, `p`, `px`, `py`, `pt`, `pb`, `pl`, or `pr`. Retain a prop only for required contract/content/accessibility/binding/behavior, an explicit non-default request, or a proven post-render exception.
 
+For vertical navigation, put an optional `id` on the `SideNav` root when two structurally
+identical navigations need independent submenu memory. `item` entries do not accept `id`.
+
 ```text
 layout SiteLayout
   signal openNavigation value:false
@@ -31,14 +34,14 @@ layout SiteLayout
       Sidebar show:{ xs:false md:true }
         body
           SideNav
-            item id:"home" label:"Home" href:"/"
+            item label:"Home" href:"/"
     main
       children
     overlays
       Drawer bind:openNavigation show:{ xs:true md:false }
         body
           SideNav
-            item id:"home" label:"Home" href:"/"
+            item label:"Home" href:"/"
     
  group path:"/" layout:SiteLayout
    route path:"" page:HomePage

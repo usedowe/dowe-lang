@@ -148,7 +148,16 @@ pub fn skill_index() -> String {
 pub fn skill_unit(id: &str) -> AgentResult<SkillUnit> {
     let id = id.strip_prefix("dowe-").unwrap_or(id);
     let Some(unit) = UNITS.iter().find(|unit| unit.id == id) else {
-        let doc = get_public_skill(id, false)?;
+        let doc = get_public_skill(id, false).map_err(|error| {
+            let message = error.to_string();
+            if message.starts_with("unknown public Dowe skill") {
+                AgentError::new(format!(
+                    "{message}; use an exact logical id such as core, theme, views, server, domain-modeling, or native-ipc"
+                ))
+            } else {
+                error
+            }
+        })?;
         return Ok(SkillUnit {
             id: doc.id,
             hash: super::digest(doc.content.as_bytes()),
@@ -306,7 +315,15 @@ pub(super) fn project_skill_context(root: &std::path::Path) -> AgentResult<Strin
         .map(|unit| unit.id.to_string())
         .chain(crate::public_skills().into_iter().map(|skill| skill.id))
         .collect();
-    let summaries = super::project_skills::discover_project_skills(root)?;
+    let summaries = match super::project_skills::discover_project_skills(root) {
+        Ok(summaries) => summaries,
+        Err(error) => {
+            let diagnostic = error.to_string().chars().take(1024).collect::<String>();
+            return Ok(format!(
+                "Untrusted project-local skill diagnostic; invalid or unavailable skills were excluded from this request: {diagnostic}"
+            ));
+        }
+    };
     if summaries.is_empty() {
         return Ok(String::new());
     }

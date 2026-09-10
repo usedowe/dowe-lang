@@ -110,12 +110,22 @@ fn details(
 
 pub(super) fn tool_result(event: &Value) -> Vec<String> {
     let result = &event["result"];
-    let mut lines = vec![format!(
+    let status = outcome(result);
+    let mut headline = format!(
         "{} [{}] · {}",
         safe_text(result["name"].as_str().unwrap_or("tool"), 80),
         safe_text(result["id"].as_str().unwrap_or("?"), 80),
-        outcome(result)
-    )];
+        status
+    );
+    // Keep actionable failures visible while the activity card is collapsed.
+    // Detailed result fields remain available when the user expands the card.
+    if status == "failed"
+        && let Some(error) = result["output"]["error"].as_str()
+    {
+        headline.push_str(": ");
+        headline.push_str(&safe_text(error, LINE_BYTES.saturating_sub(headline.len() + 2)));
+    }
+    let mut lines = vec![headline];
     let mut body = Vec::new();
     let omitted = details(&result["output"], "result", &mut body, &mut 0, 0);
     lines.extend(body);
@@ -170,6 +180,21 @@ mod tests {
             assert!(lines[0].contains(expected), "{lines:?}");
             assert!(!lines[0].contains("completed"));
         }
+    }
+
+    #[test]
+    fn failed_result_keeps_the_actionable_error_in_the_collapsed_headline() {
+        let lines = tool_result(&json!({
+            "result": {
+                "name": "write_file",
+                "id": "write-1",
+                "failed": true,
+                "output": {"error": "write base changed after approval"}
+            }
+        }));
+        assert!(lines[0].contains("write_file [write-1] · failed:"));
+        assert!(lines[0].contains("write base changed after approval"));
+        assert!(lines[0].len() <= LINE_BYTES);
     }
 
     #[test]

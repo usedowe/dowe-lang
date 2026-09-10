@@ -73,6 +73,156 @@ pub struct InitReport {
     pub blocked: Vec<FileRecord>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeBootstrapReport {
+    pub change_id: String,
+    pub created: Vec<FileRecord>,
+    pub preserved: Vec<FileRecord>,
+}
+
+/// A bounded, provider-neutral reference to evidence used by a task stage.
+/// The reference carries identity and location only; source content remains
+/// on the host and is loaded by the stage that needs it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvidenceRef {
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_line: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_line: Option<u32>,
+    pub fingerprint: String,
+    pub source: String,
+}
+
+/// A file-level change attributed to one task baseline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ChangeKind {
+    Added,
+    Modified,
+    Deleted,
+    Renamed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetEntry {
+    pub path: String,
+    pub kind: ChangeKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_fingerprint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_fingerprint: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline: Option<String>,
+    #[serde(default)]
+    pub files: Vec<ChangeSetEntry>,
+}
+
+/// Stable handoff data between plan, execute, research, compact and review.
+/// It intentionally excludes provider-specific messages and private reasoning.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskPacket {
+    pub task_id: String,
+    pub role: String,
+    pub objective: String,
+    #[serde(default)]
+    pub acceptance: Vec<String>,
+    #[serde(default)]
+    pub constraints: Vec<String>,
+    #[serde(default)]
+    pub files: Vec<String>,
+    #[serde(default)]
+    pub evidence: Vec<EvidenceRef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_set: Option<ChangeSet>,
+    #[serde(default)]
+    pub validation: Vec<String>,
+    pub budget_remaining_tokens: u64,
+}
+
+impl TaskPacket {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.task_id.trim().is_empty()
+            || self.task_id.len() > 128
+            || self.task_id.chars().any(char::is_control)
+            || self.role.trim().is_empty()
+            || self.role.len() > 32
+            || self.role.chars().any(char::is_control)
+            || self.objective.trim().is_empty()
+            || self.objective.len() > 8192
+            || self.objective.chars().any(char::is_control)
+            || self.files.len() > 64
+            || self.evidence.len() > 64
+            || self.acceptance.len() > 32
+            || self.constraints.len() > 32
+            || self.validation.len() > 32
+        {
+            return Err("task packet is empty or exceeds its bounds");
+        }
+        if self.files.iter().any(|path| {
+            path.is_empty() || path.len() > 512 || path.chars().any(char::is_control)
+        })
+            || self.acceptance.iter().any(|value| bounded_text(value, 2048))
+            || self.constraints.iter().any(|value| bounded_text(value, 2048))
+            || self.validation.iter().any(|value| bounded_text(value, 2048))
+            || self.evidence.iter().any(|reference| {
+                reference.path.is_empty()
+                    || reference.path.len() > 512
+                    || reference.fingerprint.is_empty()
+                    || reference.fingerprint.len() > 128
+                    || reference.source.is_empty()
+                    || reference.source.len() > 64
+                    || reference.path.chars().any(char::is_control)
+                    || reference.fingerprint.chars().any(char::is_control)
+                    || reference.source.chars().any(char::is_control)
+                    || reference
+                        .start_line
+                        .zip(reference.end_line)
+                        .is_some_and(|(start, end)| start == 0 || end < start)
+            })
+        {
+            return Err("task packet contains an invalid path or evidence reference");
+        }
+        if let Some(change_set) = &self.change_set {
+            if change_set
+                .baseline
+                .as_ref()
+                .is_some_and(|value| value.is_empty() || value.len() > 128 || value.chars().any(char::is_control))
+                || change_set.files.len() > 128
+                || change_set.files.iter().any(|entry| {
+                    entry.path.is_empty()
+                        || entry.path.len() > 512
+                        || entry.path.chars().any(char::is_control)
+                        || entry
+                            .before_fingerprint
+                            .as_ref()
+                            .is_some_and(|value| value.is_empty() || value.len() > 128 || value.chars().any(char::is_control))
+                        || entry
+                            .after_fingerprint
+                            .as_ref()
+                            .is_some_and(|value| value.is_empty() || value.len() > 128 || value.chars().any(char::is_control))
+                })
+            {
+                return Err("task packet change set exceeds its bounds");
+            }
+        }
+        Ok(())
+    }
+}
+
+fn bounded_text(value: &str, max: usize) -> bool {
+    value.is_empty() || value.len() > max || value.chars().any(char::is_control)
+}
+
 impl InitReport {
     pub fn new() -> Self {
         Self {

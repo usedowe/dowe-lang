@@ -63,6 +63,8 @@ pub use tools::{
 pub use turns::{response_turn, HarnessTurn, ToolCall, ToolResult};
 pub use visual_capture::validate_screenshot_png;
 
+pub(crate) use crate::capability_map::{bootstrap_capability_map, refresh_capability_map, sync_capability_map};
+
 pub(crate) fn digest(value: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     Sha256::digest(value)

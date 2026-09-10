@@ -228,6 +228,29 @@ fn responses_output_item_done_preserves_function_call_without_text() {
 }
 
 #[test]
+fn fragmented_openai_tool_arguments_are_reassembled_before_harness_validation() {
+    let payload = aggregate_openai(vec![
+        (
+            None,
+            json!({
+                "choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-read","function":{"name":"read_file","arguments":"{\"path\":\"src/"}}]}}]
+            }),
+        ),
+        (
+            None,
+            json!({
+                "choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"main.rs\"}"}}]}}]
+            }),
+        ),
+    ])
+    .expect("aggregate");
+    let turn = crate::native_harness::response_turn(&payload).expect("tool turn");
+    assert_eq!(turn.calls.len(), 1);
+    assert_eq!(turn.calls[0].id, "call-read");
+    assert_eq!(turn.calls[0].arguments["path"], "src/main.rs");
+}
+
+#[test]
 fn terminal_usage_survives_stream_aggregation_without_chunk_summing() {
     let plain = aggregate_openai(vec![(
         None,
