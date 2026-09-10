@@ -1,0 +1,206 @@
+fn display_overlay_route() -> ViewRoute {
+    ViewRoute {
+        id: "overlay".to_string(),
+        route_path: "/overlay".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: display_overlay_tree(),
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
+fn display_overlay_tree() -> ViewNode {
+    ViewNode::Box {
+        props: StyleProps::default(),
+        children: vec![
+            ViewNode::Avatar {
+                props: AvatarProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Solid),
+                        color: Some(ColorFamily::Success),
+                        style: StyleProps {
+                            shadow: Some(ResponsiveValue::scalar(ShadowSize::Lg)),
+                            shadow_color: Some(ColorFamily::Accent),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    src: None,
+                    name: Some("Ada".to_string()),
+                    name_binding: None,
+                    alt: "Ada Lovelace".to_string(),
+                    alt_binding: None,
+                    size: AvatarSize::Lg,
+                    size_binding: None,
+                    status: Some(AvatarStatus::Online),
+                    bordered: true,
+                },
+                icon: None,
+            },
+            ViewNode::Avatar {
+                props: AvatarProps {
+                    style: VariantProps::default(),
+                    src: Some("https://example.com/avatar.png".to_string()),
+                    name: Some("Maya".to_string()),
+                    name_binding: None,
+                    alt: "Maya portrait".to_string(),
+                    alt_binding: None,
+                    size: AvatarSize::Md,
+                    size_binding: None,
+                    status: None,
+                    bordered: false,
+                },
+                icon: None,
+            },
+            ViewNode::Badge {
+                props: BadgeProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Danger),
+                        ..Default::default()
+                    },
+                    text: "3".to_string(),
+                    position: OverlayCornerPosition::BottomRight,
+                },
+                children: vec![text("Inbox")],
+            },
+            ViewNode::Chip {
+                props: ChipProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Outlined),
+                        color: Some(ColorFamily::Info),
+                        size: Some(ButtonSize::Sm),
+                        ..Default::default()
+                    },
+                    on_close: Some("close".to_string()),
+                },
+                value: "Filter".to_string(),
+                start: Some(solar_control_icon("settings").expect("chip start icon")),
+                end: Some(solar_control_icon("magnifier").expect("chip end icon")),
+            },
+            ViewNode::Skeleton {
+                props: SkeletonProps {
+                    style: StyleProps::default(),
+                    variant: SkeletonVariant::Rounded,
+                    animation: SkeletonAnimation::Pulse,
+                },
+            },
+            ViewNode::Modal {
+                props: ModalProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Surface),
+                        ..Default::default()
+                    },
+                    open: "modal01".to_string(),
+                    on_close: Some("close".to_string()),
+                    disable_overlay_close: false,
+                    hide_close_button: false,
+                },
+                header: vec![text("Settings")],
+                body: vec![text("Body")],
+                footer: vec![text("Footer")],
+            },
+            ViewNode::AlertDialog {
+                props: AlertDialogProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Danger),
+                        ..Default::default()
+                    },
+                    open: "modal01".to_string(),
+                    title: "Delete?".to_string(),
+                    description: "Cannot undo.".to_string(),
+                    confirm_text: "Delete".to_string(),
+                    cancel_text: "Cancel".to_string(),
+                    on_confirm: Some("confirm".to_string()),
+                    on_cancel: Some("close".to_string()),
+                    loading: false,
+                },
+            },
+            ViewNode::Tooltip {
+                props: TooltipProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Muted),
+                        ..Default::default()
+                    },
+                    label: "More actions".to_string(),
+                    position: OverlayPosition::End,
+                },
+                children: vec![text("Hover")],
+            },
+            ViewNode::Toast {
+                props: ToastProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Outlined),
+                        color: Some(ColorFamily::Warning),
+                        ..Default::default()
+                    },
+                    source: None,
+                    kind: ToastKind::Success,
+                    title: Some("Saved".to_string()),
+                    description: "Profile updated".to_string(),
+                    position: OverlayCornerPosition::TopRight,
+                    show_icon: true,
+                },
+            },
+            ViewNode::Dropdown {
+                props: DropdownProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Surface),
+                        ..Default::default()
+                    },
+                },
+                trigger: vec![ViewNode::Button {
+                    props: VariantProps {
+                        variant: Some(ComponentVariant::Solid),
+                        color: Some(ColorFamily::Primary),
+                        ..Default::default()
+                    },
+                    children: vec![text("Menu")],
+                }],
+                header: Vec::new(),
+                entries: vec![OverlayEntry::Item(OverlayItemProps {
+                    label: "Docs".to_string(),
+                    description: None,
+                    icon: None,
+                    on_click: None,
+                    navigation: Some(NavigationAction::Internal {
+                        path: "/docs".to_string(),
+                        fragment: None,
+                        operation: NavigationOperation::Push,
+                    }),
+                    disabled: false,
+                })],
+                footer: Vec::new(),
+            },
+            ViewNode::Command {
+                props: CommandProps {
+                    style: VariantProps {
+                        color: Some(ColorFamily::Muted),
+                        ..Default::default()
+                    },
+                    open: Some("modal01".to_string()),
+                    placeholder: "Search".to_string(),
+                    empty_text: "No results".to_string(),
+                    close_text: "to close".to_string(),
+                    navigate_text: "Navigate".to_string(),
+                    select_text: "Select".to_string(),
+                    toggle_text: "Toggle".to_string(),
+                    shortcut: "p".to_string(),
+                    disable_global_shortcut: false,
+                    show_footer: true,
+                },
+                entries: vec![CommandEntry::Item(OverlayItemProps {
+                    label: "Home".to_string(),
+                    description: None,
+                    icon: None,
+                    on_click: None,
+                    navigation: Some(NavigationAction::Internal {
+                        path: "/".to_string(),
+                        fragment: None,
+                        operation: NavigationOperation::Push,
+                    }),
+                    disabled: false,
+                })],
+            },
+        ],
+    }
+}

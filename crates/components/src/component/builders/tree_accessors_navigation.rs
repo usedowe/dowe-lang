@@ -1,0 +1,408 @@
+pub fn first_text(node: &ViewNode) -> Option<String> {
+    match node {
+        ViewNode::Splash {
+            content, children, ..
+        } => content.iter().chain(children).find_map(first_text),
+        ViewNode::Scope { children, .. } | ViewNode::Each { children, .. } => {
+            children.iter().find_map(first_text)
+        }
+        ViewNode::Box { children, .. }
+        | ViewNode::Section { children, .. }
+        | ViewNode::Flex { children, .. }
+        | ViewNode::Grid { children, .. }
+        | ViewNode::Card { children, .. }
+        | ViewNode::Badge { children, .. }
+        | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
+        | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
+        | ViewNode::Button { children, .. } => children.iter().find_map(first_text),
+        ViewNode::Drawer {
+            header,
+            body,
+            footer,
+            ..
+        } => header.iter().chain(body).chain(footer).find_map(first_text),
+        ViewNode::Modal {
+            header,
+            body,
+            footer,
+            ..
+        } => header.iter().chain(body).chain(footer).find_map(first_text),
+        ViewNode::Dropdown {
+            trigger,
+            header,
+            footer,
+            entries,
+            ..
+        } => trigger
+            .iter()
+            .chain(header)
+            .chain(footer)
+            .find_map(first_text)
+            .or_else(|| entries.iter().find_map(overlay_entry_first_text)),
+        ViewNode::Command { entries, .. } => entries.iter().find_map(command_entry_first_text),
+        ViewNode::AvatarGroup { items, .. } => items.iter().find_map(|item| {
+            item.name
+                .clone()
+                .or_else(|| item.alt.clone())
+                .or_else(|| item.src.clone())
+        }),
+        ViewNode::ChatBox { props } => Some(props.assistant_name.clone()),
+        ViewNode::Empty { props } => props
+            .title
+            .clone()
+            .or_else(|| props.description.clone())
+            .or_else(|| Some(props.action_label.clone())),
+        ViewNode::TypeWriter { items, .. } => items.first().map(|item| item.text.clone()),
+        ViewNode::RichText { marks, .. } => marks.first().map(|mark| mark.text.clone()),
+        ViewNode::Record { props } => props
+            .style
+            .label
+            .clone()
+            .or_else(|| Some(props.name.clone())),
+        ViewNode::ToggleGroup { props, items } => props
+            .style
+            .label
+            .clone()
+            .or_else(|| items.first().map(|item| item.label.clone())),
+        ViewNode::Collapsible {
+            props, children, ..
+        } => Some(props.label.clone()).or_else(|| children.iter().find_map(first_text)),
+        ViewNode::Countdown { props } => Some(props.target.clone()),
+        ViewNode::Map { markers, .. } => markers
+            .iter()
+            .find_map(|marker| marker.label.clone().or_else(|| marker.popup.clone())),
+        ViewNode::Accordion { items, .. } => items.iter().find_map(|item| Some(item.label.clone())),
+        ViewNode::Tree { props } => Some(props.empty_label.clone()),
+        ViewNode::Carousel { props, slides } => props.title.clone().or_else(|| {
+            slides
+                .iter()
+                .find_map(|slide| slide.children.iter().find_map(first_text))
+        }),
+        ViewNode::Tabs { tabs, .. } => tabs
+            .iter()
+            .find_map(|tab| tab.children.iter().find_map(first_text)),
+        ViewNode::NavMenu { items, .. } => items.iter().find_map(nav_menu_first_text),
+        ViewNode::AppBar {
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        }
+        | ViewNode::Footer {
+            top,
+            start,
+            center,
+            end,
+            bottom,
+            ..
+        } => top
+            .iter()
+            .chain(start)
+            .chain(center)
+            .chain(end)
+            .chain(bottom)
+            .find_map(first_text),
+        ViewNode::BottomBar { tabs, .. } => tabs.first().map(|tab| tab.label.clone()),
+        ViewNode::SideNav { items, .. } => items.iter().find_map(side_nav_first_text),
+        ViewNode::RailNav { items, .. } => items.iter().find_map(rail_nav_first_text),
+        ViewNode::Sidebar {
+            header,
+            body,
+            footer,
+            ..
+        } => header.iter().chain(body).chain(footer).find_map(first_text),
+        ViewNode::Scaffold {
+            app_bar,
+            start,
+            main,
+            end,
+            bottom_bar,
+            overlays,
+            ..
+        } => app_bar
+            .iter()
+            .chain(start)
+            .chain(main)
+            .chain(end)
+            .chain(bottom_bar)
+            .chain(overlays)
+            .find_map(first_text),
+        ViewNode::Table { props } => props
+            .columns
+            .first()
+            .map(|column| column.label.clone())
+            .or_else(|| Some(props.empty_title.clone())),
+        ViewNode::Title { value, .. } | ViewNode::Text { value, .. } => Some(value.clone()),
+        ViewNode::Alert { props } => Some(props.message.clone()),
+        ViewNode::Avatar { props, .. } => props.name.clone().or_else(|| Some(props.alt.clone())),
+        ViewNode::Chip { value, .. } => Some(value.clone()),
+        ViewNode::AlertDialog { props } => Some(props.title.clone()),
+        ViewNode::Toast { props } => props
+            .title
+            .clone()
+            .or_else(|| (!props.description.is_empty()).then(|| props.description.clone())),
+        ViewNode::Audio { props } => props.subtitle.clone(),
+        ViewNode::Camera { props } => Some(props.label.clone()),
+        ViewNode::Microphone { props } => Some(props.label.clone()),
+        ViewNode::Image { props } => (!props.alt.is_empty()).then(|| props.alt.clone()),
+        ViewNode::Checkbox { props } => props.style.label.clone(),
+        ViewNode::Color { props } => props.style.label.clone(),
+        ViewNode::Date { props } => props.style.label.clone(),
+        ViewNode::DateRange { props } => props.style.label.clone(),
+        ViewNode::RadioGroup { props, options } => props
+            .style
+            .label
+            .clone()
+            .or_else(|| options.first().map(|option| option.label.clone())),
+        ViewNode::Toggle { props } => props.style.label.clone(),
+        ViewNode::ToggleTheme { props } => Some(props.dark_label.clone()),
+        ViewNode::SelectTheme { props } => Some(props.label.clone()),
+        ViewNode::Fab { props, actions } => props
+            .style
+            .label
+            .clone()
+            .or_else(|| actions.first().map(|action| action.label.clone())),
+        ViewNode::Slider { props } => props.style.label.clone(),
+        ViewNode::Dropzone { props } => props.style.label.clone(),
+        ViewNode::ComboBox { props, options } => props
+            .style
+            .label
+            .clone()
+            .or_else(|| options.first().map(|option| option.label.clone())),
+        ViewNode::CsvField { props, columns } => Some(props.button_text.clone())
+            .or_else(|| columns.first().map(|column| column.name.clone())),
+        ViewNode::DragDrop {
+            props,
+            items,
+            groups,
+        } => items
+            .first()
+            .and_then(|item| item.label.clone().or_else(|| Some(item.id.clone())))
+            .or_else(|| groups.first().and_then(|group| group.title.clone()))
+            .or_else(|| Some(props.empty_text.clone())),
+        ViewNode::Editor { props } => props.style.label.clone(),
+        ViewNode::ImageCropper { props } => props.style.label.clone(),
+        ViewNode::Password { props } => props.style.label.clone(),
+        ViewNode::Phone { props } => props.style.label.clone(),
+        ViewNode::Pin { props } => props.style.label.clone(),
+        ViewNode::Textarea { props } => props.style.label.clone(),
+        ViewNode::Input { .. }
+        | ViewNode::Select { .. }
+        | ViewNode::Code { .. }
+        | ViewNode::Video { .. }
+        | ViewNode::Iframe { .. }
+        | ViewNode::Device { .. }
+        | ViewNode::Canvas { .. }
+        | ViewNode::Candlestick { .. }
+        | ViewNode::Diagram { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
+        | ViewNode::Divider { .. }
+        | ViewNode::Skeleton { .. }
+        | ViewNode::Svg { .. }
+        | ViewNode::Children => None,
+    }
+}
+
+pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
+    match node {
+        ViewNode::Scope { .. } | ViewNode::Splash { .. } | ViewNode::Each { .. } => None,
+        ViewNode::Box { props, .. } | ViewNode::Section { props, .. } => Some(&props.element),
+        ViewNode::Flex { props, .. } => Some(&props.style.element),
+        ViewNode::Grid { props, .. } => Some(&props.style.element),
+        ViewNode::Card { props, .. }
+        | ViewNode::Button { props, .. }
+        | ViewNode::Input { props }
+        | ViewNode::Select { props, .. } => Some(&props.element),
+        ViewNode::Brand { props, .. } => Some(&props.style.element),
+        ViewNode::Banner { props, .. } => Some(&props.style.element),
+        ViewNode::AvatarGroup { props, .. } => Some(&props.style.element),
+        ViewNode::ChatBox { props } => Some(&props.style.element),
+        ViewNode::Empty { props } => Some(&props.style.element),
+        ViewNode::Marquee { props, .. } => Some(&props.style.element),
+        ViewNode::TypeWriter { props, .. } => Some(&props.style.element),
+        ViewNode::RichText { props, .. } => Some(&props.style.element),
+        ViewNode::Record { props } => Some(&props.style.element),
+        ViewNode::ToggleGroup { props, .. } => Some(&props.style.element),
+        ViewNode::Collapsible { props, .. } => Some(&props.style.element),
+        ViewNode::Countdown { props } => Some(&props.style.element),
+        ViewNode::Map { props, .. } => Some(&props.style.element),
+        ViewNode::ToggleTheme { props } => Some(&props.style.element),
+        ViewNode::SelectTheme { props } => Some(&props.style.element),
+        ViewNode::Fab { props, .. } => Some(&props.style.element),
+        ViewNode::Slider { props } => Some(&props.style.element),
+        ViewNode::Dropzone { props } => Some(&props.style.element),
+        ViewNode::ComboBox { props, .. } => Some(&props.style.element),
+        ViewNode::CsvField { props, .. } => Some(&props.style.element),
+        ViewNode::DragDrop { props, .. } => Some(&props.style.element),
+        ViewNode::Editor { props } => Some(&props.style.element),
+        ViewNode::ImageCropper { props } => Some(&props.style.element),
+        ViewNode::Password { props } => Some(&props.style.element),
+        ViewNode::Phone { props } => Some(&props.style.element),
+        ViewNode::Pin { props } => Some(&props.style.element),
+        ViewNode::Textarea { props } => Some(&props.style.element),
+        ViewNode::Avatar { props, .. } => Some(&props.style.element),
+        ViewNode::Badge { props, .. } => Some(&props.style.element),
+        ViewNode::Chip { props, .. } => Some(&props.style.element),
+        ViewNode::Modal { props, .. } => Some(&props.style.element),
+        ViewNode::AlertDialog { props } => Some(&props.style.element),
+        ViewNode::Tooltip { props, .. } => Some(&props.style.element),
+        ViewNode::Toast { props } => Some(&props.style.element),
+        ViewNode::Dropdown { props, .. } => Some(&props.style.element),
+        ViewNode::Command { props, .. } => Some(&props.style.element),
+        ViewNode::Audio { props } => Some(&props.style.element),
+        ViewNode::Image { props } => Some(&props.style.element),
+        ViewNode::Camera { props } => Some(&props.style.element),
+        ViewNode::Microphone { props } => Some(&props.style.element),
+        ViewNode::Accordion { props, .. } => Some(&props.style.element),
+        ViewNode::Carousel { props, .. } => Some(&props.style.element),
+        ViewNode::Checkbox { props } => Some(&props.style.element),
+        ViewNode::Color { props } => Some(&props.style.element),
+        ViewNode::Date { props } => Some(&props.style.element),
+        ViewNode::DateRange { props } => Some(&props.style.element),
+        ViewNode::RadioGroup { props, .. } => Some(&props.style.element),
+        ViewNode::Toggle { props } => Some(&props.style.element),
+        ViewNode::Skeleton { props } => Some(&props.style.element),
+        ViewNode::Tabs { props, .. } => Some(&props.style.element),
+        ViewNode::NavMenu { props, .. } => Some(&props.style.element),
+        ViewNode::Code { props } => Some(&props.style.element),
+        ViewNode::Video { props } => Some(&props.style.element),
+        ViewNode::Iframe { props } => Some(&props.style.element),
+        ViewNode::Device { props, .. } => Some(&props.style.element),
+        ViewNode::Canvas { props } => Some(&props.style.element),
+        ViewNode::Candlestick { props } => Some(&props.style.element),
+        ViewNode::Diagram { props } => Some(&props.style.element),
+        ViewNode::ArcChart { props } => Some(&props.common.style.element),
+        ViewNode::AreaChart { props } => Some(&props.common.style.element),
+        ViewNode::BarChart { props } => Some(&props.common.style.element),
+        ViewNode::LineChart { props } => Some(&props.common.style.element),
+        ViewNode::PieChart { props } => Some(&props.common.style.element),
+        ViewNode::Table { props } => Some(&props.style.element),
+        ViewNode::Tree { props } => Some(&props.style.element),
+        ViewNode::Divider { props } => Some(&props.style.element),
+        ViewNode::Alert { props } => Some(&props.style.element),
+        ViewNode::Svg { props, .. } => Some(&props.style.element),
+        ViewNode::AppBar { props, .. }
+        | ViewNode::Footer { props, .. }
+        | ViewNode::BottomBar { props, .. } => Some(&props.style.element),
+        ViewNode::SideNav { props, .. } => Some(&props.style.element),
+        ViewNode::RailNav { props, .. } => Some(&props.style.element),
+        ViewNode::Sidebar { props, .. } => Some(&props.style.element),
+        ViewNode::Scaffold { props, .. } => Some(&props.style.element),
+        ViewNode::Drawer { props, .. } => Some(&props.style.element),
+        ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => Some(&props.style.element),
+        ViewNode::Children => None,
+    }
+}
+
+pub fn navigation_action(node: &ViewNode) -> Option<&NavigationAction> {
+    match node {
+        ViewNode::Button { props, .. } => props.navigation.as_ref(),
+        ViewNode::Brand { props, .. } => props.navigation.as_ref(),
+        ViewNode::Banner { props, .. } => Some(&props.navigation),
+        ViewNode::Avatar { props, .. } => props.style.navigation.as_ref(),
+        ViewNode::Empty { props } => props.style.navigation.as_ref(),
+        _ => None,
+    }
+}
+
+pub fn node_children(node: &ViewNode) -> &[ViewNode] {
+    match node {
+        ViewNode::Splash { content, .. } => content,
+        ViewNode::Scope { children, .. } | ViewNode::Each { children, .. } => children,
+        ViewNode::Box { children, .. }
+        | ViewNode::Section { children, .. }
+        | ViewNode::Flex { children, .. }
+        | ViewNode::Grid { children, .. }
+        | ViewNode::Card { children, .. }
+        | ViewNode::Badge { children, .. }
+        | ViewNode::Tooltip { children, .. }
+        | ViewNode::Marquee { children, .. }
+        | ViewNode::Collapsible { children, .. }
+        | ViewNode::Brand { children, .. }
+        | ViewNode::Banner { children, .. }
+        | ViewNode::Button { children, .. } => children,
+        ViewNode::Drawer { body, .. } => body,
+        ViewNode::Modal { body, .. } => body,
+        ViewNode::Tabs { .. }
+        | ViewNode::NavMenu { .. }
+        | ViewNode::Dropdown { .. }
+        | ViewNode::Command { .. }
+        | ViewNode::Accordion { .. }
+        | ViewNode::Carousel { .. }
+        | ViewNode::RadioGroup { .. } => &[],
+        ViewNode::AppBar { .. }
+        | ViewNode::Footer { .. }
+        | ViewNode::BottomBar { .. }
+        | ViewNode::SideNav { .. }
+        | ViewNode::RailNav { .. }
+        | ViewNode::Sidebar { .. }
+        | ViewNode::Scaffold { .. } => &[],
+        ViewNode::Input { .. }
+        | ViewNode::ToggleTheme { .. }
+        | ViewNode::SelectTheme { .. }
+        | ViewNode::Fab { .. }
+        | ViewNode::Slider { .. }
+        | ViewNode::Dropzone { .. }
+        | ViewNode::ComboBox { .. }
+        | ViewNode::CsvField { .. }
+        | ViewNode::DragDrop { .. }
+        | ViewNode::Editor { .. }
+        | ViewNode::ImageCropper { .. }
+        | ViewNode::Password { .. }
+        | ViewNode::Phone { .. }
+        | ViewNode::Pin { .. }
+        | ViewNode::Textarea { .. }
+        | ViewNode::Select { .. }
+        | ViewNode::Code { .. }
+        | ViewNode::Video { .. }
+        | ViewNode::Iframe { .. }
+        | ViewNode::Device { .. }
+        | ViewNode::Canvas { .. }
+        | ViewNode::Candlestick { .. }
+        | ViewNode::Diagram { .. }
+        | ViewNode::ArcChart { .. }
+        | ViewNode::AreaChart { .. }
+        | ViewNode::BarChart { .. }
+        | ViewNode::LineChart { .. }
+        | ViewNode::PieChart { .. }
+        | ViewNode::Table { .. }
+        | ViewNode::Tree { .. }
+        | ViewNode::Divider { .. }
+        | ViewNode::Alert { .. }
+        | ViewNode::Audio { .. }
+        | ViewNode::Image { .. }
+        | ViewNode::Camera { .. }
+        | ViewNode::Microphone { .. }
+        | ViewNode::Avatar { .. }
+        | ViewNode::AvatarGroup { .. }
+        | ViewNode::ChatBox { .. }
+        | ViewNode::Empty { .. }
+        | ViewNode::RichText { .. }
+        | ViewNode::Record { .. }
+        | ViewNode::ToggleGroup { .. }
+        | ViewNode::Countdown { .. }
+        | ViewNode::Map { .. }
+        | ViewNode::Chip { .. }
+        | ViewNode::Checkbox { .. }
+        | ViewNode::Color { .. }
+        | ViewNode::Date { .. }
+        | ViewNode::DateRange { .. }
+        | ViewNode::Toggle { .. }
+        | ViewNode::Skeleton { .. }
+        | ViewNode::AlertDialog { .. }
+        | ViewNode::Toast { .. }
+        | ViewNode::Svg { .. }
+        | ViewNode::Title { .. }
+        | ViewNode::Text { .. }
+        | ViewNode::TypeWriter { .. }
+        | ViewNode::Children => &[],
+    }
+}

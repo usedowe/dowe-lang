@@ -34,7 +34,7 @@ use dowe_components::{
     ViewAnimation, ViewAssignAction, ViewFunctionStatement, ViewGesture, ViewIcon, ViewMotionStyle,
     ViewNode, ViewRequestAction, ViewRequestMethod, ViewRotation, ViewRoute, ViewScale,
     ViewSection, ViewSignal, ViewSignalValue, ViewToastAction, ViewTransition, ViewTranslation,
-    VisibilityCondition, icon_component_node, solar_control_icon, svg_spinner_control_icon,
+    VisibilityCondition, icon_component_node, solar_control_icon,
 };
 use std::collections::BTreeMap;
 use std::path::PathBuf;

@@ -1,6 +1,6 @@
 #[test]
 fn draw_layers_commit_select_erase_and_cancel_without_losing_state() {
-    let runtime = include_str!("../routes_and_css_collection/router_runtime/visualization_3.js");
+    let runtime = include_str!("../routes_and_css_collection/router_runtime/canvas_rendering.js");
     let assertions = include_str!("draw_interactions.js");
     let layers = include_str!("../routes_and_css_collection/router_runtime/canvas_layers.js");
     let mut child = Command::new("node")

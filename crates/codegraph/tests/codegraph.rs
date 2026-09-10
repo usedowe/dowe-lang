@@ -238,6 +238,24 @@ fn rejects_anonymous_split_files() {
 }
 
 #[test]
+fn rejects_numbered_router_runtime_files() {
+    let temp = TempDir::new().expect("tempdir");
+    write_workspace(&temp);
+    let path = temp
+        .path()
+        .join("crates/sample/src/router_runtime/events_1.js");
+    write_rust_file(path, "function events() {}\n");
+
+    let report = check_codegraph(temp.path(), CheckOptions::default()).expect("check");
+
+    assert!(report.diagnostics.iter().any(|diagnostic| {
+        diagnostic.code == "anonymous_partition_file"
+            && diagnostic.severity == DiagnosticSeverity::Error
+            && diagnostic.path.ends_with("router_runtime/events_1.js")
+    }));
+}
+
+#[test]
 fn accepts_valid_waiver_declared_in_spec() {
     let temp = TempDir::new().expect("tempdir");
     write_workspace(&temp);

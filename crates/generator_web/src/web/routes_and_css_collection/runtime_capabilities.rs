@@ -4,9 +4,9 @@ const STYLES_RUNTIME_EXPORTS: &[&str] = &["renderStyles"];
 
 const CONTROLS_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/color_picker.js"),
-    include_str!("router_runtime/forms_1.js"),
-    include_str!("router_runtime/forms_2.js"),
-    include_str!("router_runtime/forms_3.js"),
+    include_str!("router_runtime/select_and_date_controls.js"),
+    include_str!("router_runtime/combo_phone_editor_controls.js"),
+    include_str!("router_runtime/image_cropper_controls.js"),
 ];
 
 const TREE_RUNTIME_MODULES: &[&str] = &[include_str!("router_runtime/tree.js")];
@@ -14,22 +14,22 @@ const TREE_RUNTIME_MODULES: &[&str] = &[include_str!("router_runtime/tree.js")];
 const TREE_RUNTIME_EXPORTS: &[&str] = &["renderTrees"];
 
 const MEDIA_RUNTIME_MODULES: &[&str] = &[
-    include_str!("router_runtime/overlays_media_1.js"),
-    include_str!("router_runtime/overlays_media_2.js"),
+    include_str!("router_runtime/overlays_and_audio.js"),
+    include_str!("router_runtime/carousel_and_images.js"),
     include_str!("router_runtime/capture_media.js"),
     include_str!("router_runtime/video_media.js"),
 ];
 
 const VISUALIZATION_RUNTIME_MODULES: &[&str] = &[
-    include_str!("router_runtime/visualization_1.js"),
-    include_str!("router_runtime/visualization_2.js"),
-    include_str!("router_runtime/visualization_4.js"),
-    include_str!("router_runtime/visualization_5.js"),
+    include_str!("router_runtime/chart_primitives.js"),
+    include_str!("router_runtime/chart_rendering.js"),
+    include_str!("router_runtime/candlestick_rendering.js"),
+    include_str!("router_runtime/diagram_rendering.js"),
 ];
 
 const CANVAS_RUNTIME_MODULES: &[&str] = &[
     include_str!("router_runtime/canvas_render.js"),
-    include_str!("router_runtime/visualization_3.js"),
+    include_str!("router_runtime/canvas_rendering.js"),
     include_str!("router_runtime/canvas_layers.js"),
 ];
 

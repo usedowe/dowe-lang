@@ -43,7 +43,7 @@ fn independent_read_tools_run_from_an_immutable_tools_view_and_keep_provider_ord
 fn read_execution_does_not_mutate_loaded_skill_state() {
     let root = tempfile::tempdir().unwrap();
     std::fs::write(root.path().join("one.txt"), "content\n").unwrap();
-    let mut tools = HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+    let tools = HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
     let read = ToolCall::new("read", "read_file", json!({"path":"one.txt"}));
     assert!(tools.execute_read(&read).is_ok());
     let skill = ToolCall::new("skill", "get_skill", json!({"id":"core","offset":1}));

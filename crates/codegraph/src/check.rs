@@ -25,7 +25,10 @@ pub(crate) fn check_codegraph(root: &Path, options: CheckOptions) -> CodeGraphRe
         let Some(path) = &node.path else {
             continue;
         };
-        if !path.ends_with(".rs") {
+        let is_rust = path.ends_with(".rs");
+        let is_router_runtime_javascript = path.ends_with(".js")
+            && path.contains("/router_runtime/");
+        if !is_rust && !is_router_runtime_javascript {
             continue;
         }
         if is_anonymous_partition_path(path) {
@@ -40,6 +43,9 @@ pub(crate) fn check_codegraph(root: &Path, options: CheckOptions) -> CodeGraphRe
                 owner: node.owner.clone(),
                 metric: None,
             });
+        }
+        if !is_rust {
+            continue;
         }
         let Some(metrics) = &node.metrics else {
             continue;
@@ -250,6 +256,12 @@ fn validate_persisted_graph(
 
 fn is_anonymous_partition_path(path: &str) -> bool {
     let file_name = path.rsplit('/').next().unwrap_or(path);
+    let runtime_partition = path.contains("/router_runtime/")
+        && file_name.ends_with(".js")
+        && file_name
+            .strip_suffix(".js")
+            .and_then(|name| name.rsplit_once('_'))
+            .is_some_and(|(_, suffix)| !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit()));
     let numbered_part = file_name
         .strip_prefix("part_")
         .is_some_and(starts_with_digit);
@@ -257,7 +269,7 @@ fn is_anonymous_partition_path(path: &str) -> bool {
         .strip_prefix("tests_")
         .is_some_and(starts_with_digit);
     let anonymous_dir = path.split('/').any(|segment| segment.ends_with("_parts"));
-    numbered_part || numbered_test || anonymous_dir
+    numbered_part || numbered_test || anonymous_dir || runtime_partition
 }
 
 fn starts_with_digit(value: &str) -> bool {

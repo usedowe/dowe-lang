@@ -1,6 +1,6 @@
 #[test]
 fn diagram_commits_preserve_state_and_notify_only_successful_connections() {
-    let runtime = include_str!("../routes_and_css_collection/router_runtime/visualization_5.js");
+    let runtime = include_str!("../routes_and_css_collection/router_runtime/diagram_rendering.js");
     let assertions = include_str!("diagram_interactions.js");
     let mut child = Command::new("node")
         .stdin(Stdio::piped())

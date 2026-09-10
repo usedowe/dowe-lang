@@ -1,0 +1,317 @@
+fn apply_dev_android_style(
+    props: &StyleProps,
+    view: &str,
+    include_background: bool,
+    output: &mut String,
+) {
+    apply_dev_android_style_with_shadow_radius(props, view, include_background, None, output);
+}
+
+fn apply_dev_android_style_with_shadow_radius(
+    props: &StyleProps,
+    view: &str,
+    include_background: bool,
+    shadow_radius: Option<&str>,
+    output: &mut String,
+) {
+    if let Some(id) = props.element.id.as_ref() {
+        output.push_str(&format!(
+            "        doweRegisterSection(\"{}\", {view});\n",
+            escape_java(id)
+        ));
+    }
+    for binding in props.bindings() {
+        output.push_str(&format!(
+            "        {view}.setTag({}, \"{}\");\n",
+            dev_android_style_tag(binding.property.as_str()), escape_java(&binding.binding.path)
+        ));
+    }
+
+    let styled_background =
+        include_background && props.background.is_none() && props.border.is_some();
+
+    if include_background
+        && !styled_background
+        && let Some(value) = props.bg.as_ref()
+    {
+        output.push_str(&format!(
+            "        Integer {view}Background = {};\n        if ({view}Background != null) {{\n            {view}.setBackgroundColor({view}Background);\n        }}\n",
+            dev_color_value(value)
+        ));
+    }
+
+    if include_background && let Some(value) = props.background.as_ref() {
+        output.push_str(&format!(
+            "        String {view}SectionBackground = {};\n        if ({view}SectionBackground != null) {{\n            {view}.setBackground(doweSectionBackground({view}SectionBackground));\n        }}\n",
+            dev_section_background_value(value)
+        ));
+    }
+
+    if styled_background {
+        let background = props
+            .bg
+            .as_ref()
+            .map(|value| format!("doweColor({}, Color.TRANSPARENT)", dev_color_value(value)))
+            .unwrap_or_else(|| "Color.TRANSPARENT".to_string());
+        let border = props
+            .border
+            .as_ref()
+            .map(dev_border_value)
+            .unwrap_or_else(|| "null".to_string());
+        let border_color = props
+            .border_color
+            .map(|family| java_color(family_color(family)).to_string())
+            .unwrap_or_else(|| "DOWE_BACKGROUND_TEXT".to_string());
+        output.push_str(&format!(
+            "        {view}.setBackground(doweStyledBackground({background}, {border_color}, {border}, {}));\n",
+            dev_style_radius(props)
+        ));
+    }
+
+    if props.spacing.p.is_some()
+        || props.spacing.px.is_some()
+        || props.spacing.py.is_some()
+        || props.spacing.pl.is_some()
+        || props.spacing.pr.is_some()
+        || props.spacing.pt.is_some()
+        || props.spacing.pb.is_some()
+    {
+        output.push_str(&format!(
+            "        int {view}Left = 0;\n        int {view}Top = 0;\n        int {view}Right = 0;\n        int {view}Bottom = 0;\n"
+        ));
+        write_dev_android_padding(
+            props.spacing.p.as_ref(),
+            view,
+            "Padding",
+            DevPaddingEdges::All,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.px.as_ref(),
+            view,
+            "PaddingX",
+            DevPaddingEdges::Horizontal,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.py.as_ref(),
+            view,
+            "PaddingY",
+            DevPaddingEdges::Vertical,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pl.as_ref(),
+            view,
+            "PaddingLeft",
+            DevPaddingEdges::Left,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pr.as_ref(),
+            view,
+            "PaddingRight",
+            DevPaddingEdges::Right,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pt.as_ref(),
+            view,
+            "PaddingTop",
+            DevPaddingEdges::Top,
+            output,
+        );
+        write_dev_android_padding(
+            props.spacing.pb.as_ref(),
+            view,
+            "PaddingBottom",
+            DevPaddingEdges::Bottom,
+            output,
+        );
+        output.push_str(&format!(
+            "        {view}.setPadding({view}Left, {view}Top, {view}Right, {view}Bottom);\n"
+        ));
+    }
+
+    if props.sizing.w.is_some() || props.sizing.h.is_some() {
+        output.push_str(&format!(
+            "        Integer {view}Width = {};\n        Integer {view}Height = {};\n        ViewGroup.LayoutParams {view}SizeParams = {view}.getLayoutParams();\n        if ({view}SizeParams == null) {{\n            {view}SizeParams = new ViewGroup.LayoutParams(\n                {view}Width != null ? doweDimension({view}Width) : ViewGroup.LayoutParams.WRAP_CONTENT,\n                {view}Height != null ? doweDimension({view}Height) : ViewGroup.LayoutParams.WRAP_CONTENT\n            );\n        }} else {{\n            if ({view}Width != null) {{ {view}SizeParams.width = doweDimension({view}Width); }}\n            if ({view}Height != null) {{ {view}SizeParams.height = doweDimension({view}Height); }}\n        }}\n        {view}.setLayoutParams({view}SizeParams);\n        doweApplyPercentWidth({view}, {view}Width);\n",
+            dev_optional_size(props.sizing.w.as_ref()),
+            dev_optional_size(props.sizing.h.as_ref())
+        ));
+    }
+
+    if let Some(value) = props.sizing.min_w.as_ref() {
+        output.push_str(&format!(
+            "        Integer {view}MinWidth = {};\n        if ({view}MinWidth != null && {view}MinWidth != ViewGroup.LayoutParams.MATCH_PARENT && !doweIsPercentSize({view}MinWidth)) {{\n            {view}.setMinimumWidth(doweDp({view}MinWidth));\n        }}\n        doweApplyPercentMinWidth({view}, {view}MinWidth);\n",
+            dev_size_value(value)
+        ));
+    }
+    if let Some(value) = props.sizing.min_h.as_ref() {
+        output.push_str(&format!(
+            "        Integer {view}MinHeight = {};\n        if ({view}MinHeight != null && {view}MinHeight != ViewGroup.LayoutParams.WRAP_CONTENT) {{\n            if ({view}MinHeight == ViewGroup.LayoutParams.MATCH_PARENT) {{\n                ViewGroup.LayoutParams {view}MinHeightParams = {view}.getLayoutParams();\n                if ({view}MinHeightParams == null) {{\n                    {view}MinHeightParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);\n                }} else {{\n                    {view}MinHeightParams.height = ViewGroup.LayoutParams.MATCH_PARENT;\n                }}\n                {view}.setLayoutParams({view}MinHeightParams);\n            }} else {{\n                {view}.setMinimumHeight(doweDp({view}MinHeight));\n            }}\n        }}\n",
+            dev_size_value(value)
+        ));
+    }
+    if props.sizing.max_w.is_some() || props.sizing.max_h.is_some() {
+        output.push_str(&format!(
+            "        doweConstrain({view}, {}, {});\n",
+            dev_optional_size(props.sizing.max_w.as_ref()),
+            dev_optional_size(props.sizing.max_h.as_ref())
+        ));
+    }
+
+    if let Some(shadow_radius) = shadow_radius {
+        apply_dev_android_shadow_with_radius(props, view, shadow_radius, output);
+    } else {
+        apply_dev_android_shadow(props, view, output);
+    }
+
+    if let Some(value) = props.rounded.as_ref() {
+        output.push_str(&format!(
+            "        doweRound({view}, {});\n",
+            dev_rounded_value(value)
+        ));
+    }
+
+    let motion = props.motion();
+    if let Some(value) = motion.rotate.as_ref() {
+        output.push_str(&format!(
+            "        {view}.setRotation({});\n",
+            dev_responsive_float_value(value, |value| format!("{}f", value.degrees()))
+        ));
+    }
+    if let Some(value) = motion.scale.as_ref() {
+        let scale = dev_responsive_float_value(value, |value| format!("{}f", value.factor()));
+        output.push_str(&format!(
+            "        {view}.setScaleX({scale});\n        {view}.setScaleY({scale});\n"
+        ));
+    }
+    if let Some(value) = motion.translate_x.as_ref() {
+        output.push_str(&format!(
+            "        {view}.setTranslationX(doweDp({}));\n",
+            dev_responsive_value(value, |value| value.native_units().to_string())
+        ));
+    }
+    if let Some(value) = motion.translate_y.as_ref() {
+        output.push_str(&format!(
+            "        {view}.setTranslationY(doweDp({}));\n",
+            dev_responsive_value(value, |value| value.native_units().to_string())
+        ));
+    }
+    if let Some(gesture) = motion.gesture
+        && gesture != ViewGesture::None
+    {
+        output.push_str(&format!(
+            "        doweGesture({view}, \"{}\", \"{}\");\n",
+            gesture.as_str(),
+            motion.transition.unwrap_or(ViewTransition::Smooth).as_str()
+        ));
+    }
+
+    if let Some(animation) = props.animation() {
+        output.push_str(&format!(
+            "        doweAnimate({view}, \"{}\");\n",
+            animation.as_str()
+        ));
+    }
+}
+
+fn apply_dev_android_click(
+    props: &StyleProps,
+    view: &str,
+    context: &ComposeReactiveContext,
+    output: &mut String,
+) {
+    if let Some(action) = props
+        .element
+        .on_click
+        .as_deref()
+        .and_then(|name| context.action_id(name))
+    {
+        output.push_str(&format!(
+            "        {view}.setOnClickListener(v -> doweRunAction(\"{}\", null));\n",
+            escape_java(action)
+        ));
+    }
+}
+
+fn apply_dev_android_shadow(props: &StyleProps, view: &str, output: &mut String) {
+    apply_dev_android_shadow_with_radius(props, view, &dev_style_radius(props), output);
+}
+
+fn apply_dev_android_shadow_with_radius(
+    props: &StyleProps,
+    view: &str,
+    corner_radius: &str,
+    output: &mut String,
+) {
+    if let Some(value) = props.shadow.as_ref() {
+        let color = props
+            .shadow_color
+            .map(family_color)
+            .map(java_color)
+            .unwrap_or("Color.BLACK");
+        let alpha = if props.shadow_color.is_some() {
+            "0.28f"
+        } else {
+            "null"
+        };
+        output.push_str(&format!(
+            "        doweShadow({view}, {}, {color}, {}, {alpha});\n",
+            dev_responsive_value(value, |value| shadow_dp(*value).to_string()),
+            corner_radius
+        ));
+    }
+}
+
+enum DevPaddingEdges {
+    All,
+    Horizontal,
+    Vertical,
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+fn write_dev_android_padding(
+    value: Option<&ResponsiveValue<ScaleValue>>,
+    view: &str,
+    suffix: &str,
+    edges: DevPaddingEdges,
+    output: &mut String,
+) {
+    let Some(value) = value else {
+        return;
+    };
+    let name = format!("{view}{suffix}");
+    output.push_str(&format!(
+        "        Integer {name} = {};\n        if ({name} != null) {{\n",
+        dev_scale_value(value)
+    ));
+    match edges {
+        DevPaddingEdges::All => output.push_str(&format!(
+            "            int value = doweDp({name});\n            {view}Left = value;\n            {view}Top = value;\n            {view}Right = value;\n            {view}Bottom = value;\n"
+        )),
+        DevPaddingEdges::Horizontal => output.push_str(&format!(
+            "            int value = doweDp({name});\n            {view}Left = value;\n            {view}Right = value;\n"
+        )),
+        DevPaddingEdges::Vertical => output.push_str(&format!(
+            "            int value = doweDp({name});\n            {view}Top = value;\n            {view}Bottom = value;\n"
+        )),
+        DevPaddingEdges::Left => {
+            output.push_str(&format!("            {view}Left = doweDp({name});\n"));
+        }
+        DevPaddingEdges::Right => {
+            output.push_str(&format!("            {view}Right = doweDp({name});\n"));
+        }
+        DevPaddingEdges::Top => {
+            output.push_str(&format!("            {view}Top = doweDp({name});\n"));
+        }
+        DevPaddingEdges::Bottom => {
+            output.push_str(&format!("            {view}Bottom = doweDp({name});\n"));
+        }
+    }
+    output.push_str("        }\n");
+}

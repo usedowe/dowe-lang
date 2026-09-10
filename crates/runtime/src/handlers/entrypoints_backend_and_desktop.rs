@@ -1,0 +1,417 @@
+pub async fn backend_handler(
+    State(state): State<DevRuntimeState>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let project = state.project.read().await;
+
+    if uri.path() == "/_dowe/dev/modules/manifest.json" {
+        return generated_json_response(&project, "dev/modules/manifest.json");
+    }
+
+    if let Some(response) = dev_module_response(&project, uri.path()) {
+        return response;
+    }
+    server_response(
+        &project,
+        &project.backend,
+        &state.dev_origins,
+        state.cache_mode,
+        method,
+        uri.path(),
+        uri.query(),
+        headers,
+        body,
+    )
+    .await
+}
+
+pub async fn backend_declared_websocket_handler(
+    state: DevRuntimeState,
+    upgrade: WebSocketUpgrade,
+    uri: Uri,
+    headers: HeaderMap,
+    path: String,
+) -> Response {
+    let project = state.project.read().await;
+    let Some((route, params)) = project.backend.find_websocket_match_for(&path, uri.path()) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let body = Bytes::new();
+    let middleware_context = match execute_middlewares(
+        &project,
+        &project.root,
+        &route.middlewares,
+        &headers,
+        &params,
+        &body,
+        uri.query(),
+        state.cache_mode,
+    )
+    .await
+    {
+        MiddlewareFlow::Respond(response) => return response,
+        MiddlewareFlow::Continue(context) => context,
+    };
+    let _ = path;
+    websocket_response(
+        upgrade,
+        project.clone(),
+        route.handlers,
+        params,
+        middleware_context,
+        headers,
+        state.cache_mode,
+    )
+}
+
+pub async fn desktop_handler(
+    State(state): State<DevRuntimeState>,
+    method: Method,
+    uri: Uri,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    let project = state.project.read().await;
+    let Some(server) = &project.desktop_server else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    if !server.has_endpoint_path(uri.path())
+        && !(method == Method::OPTIONS && is_preflight(&headers))
+    {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    server_response(
+        &project,
+        server,
+        &state.dev_origins,
+        state.cache_mode,
+        method,
+        uri.path(),
+        uri.query(),
+        headers,
+        body,
+    )
+    .await
+}
+
+pub async fn desktop_declared_websocket_handler(
+    state: DevRuntimeState,
+    upgrade: WebSocketUpgrade,
+    uri: Uri,
+    headers: HeaderMap,
+    path: String,
+) -> Response {
+    let project = state.project.read().await;
+    let Some(server) = &project.desktop_server else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let Some((route, params)) = server.find_websocket_match_for(&path, uri.path()) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let body = Bytes::new();
+    let middleware_context = match execute_middlewares(
+        &project,
+        &project.root,
+        &route.middlewares,
+        &headers,
+        &params,
+        &body,
+        uri.query(),
+        state.cache_mode,
+    )
+    .await
+    {
+        MiddlewareFlow::Respond(response) => return response,
+        MiddlewareFlow::Continue(context) => context,
+    };
+    let _ = path;
+    websocket_response(
+        upgrade,
+        project.clone(),
+        route.handlers,
+        params,
+        middleware_context,
+        headers,
+        state.cache_mode,
+    )
+}
+
+pub(crate) async fn server_response(
+    project: &CompiledProject,
+    server: &ServerConfig,
+    dev_origins: &[String],
+    cache_mode: CacheRuntimeMode,
+    method: Method,
+    path: &str,
+    raw_query: Option<&str>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Response {
+    if method == Method::OPTIONS && is_preflight(&headers) && server.cors.enabled {
+        return cors_preflight_response(server, dev_origins, path, &headers);
+    }
+
+    let response = match HttpMethod::from_str(method.as_str()) {
+        Ok(method) => match server.find_endpoint(&method, path) {
+            Some(matched) => {
+                let middleware_context = match execute_middlewares(
+                    project,
+                    &project.root,
+                    &matched.endpoint.middlewares,
+                    &headers,
+                    &matched.params,
+                    &body,
+                    raw_query,
+                    cache_mode,
+                )
+                .await
+                {
+                    MiddlewareFlow::Continue(context) => context,
+                    MiddlewareFlow::Respond(response) => {
+                        return cors_actual_response(&server.cors, dev_origins, &headers, response);
+                    }
+                };
+                let uses_simplified_action = matches!(
+                    &matched.endpoint.behavior,
+                    EndpointBehavior::StaticText(_)
+                        | EndpointBehavior::TextTemplate(_)
+                        | EndpointBehavior::UserGreeting
+                        | EndpointBehavior::CreatePostJson
+                );
+                let action_result = if uses_simplified_action {
+                    execute_simplified_http_action(
+                        project,
+                        &project.root,
+                        &matched.endpoint.action,
+                        &matched.params,
+                        &body,
+                        raw_query,
+                        &headers,
+                        &middleware_context,
+                        cache_mode,
+                    )
+                    .await
+                } else {
+                    Ok(())
+                };
+                if !uses_simplified_action
+                    && !matches!(
+                        &matched.endpoint.behavior,
+                        EndpointBehavior::HttpProxy(_)
+                            | EndpointBehavior::HttpReverseProxy(_)
+                            | EndpointBehavior::HttpBytes(_)
+                            | EndpointBehavior::HttpActionJson(_)
+                            | EndpointBehavior::AgentResponse(_)
+                            | EndpointBehavior::StoreActionJson(_)
+                            | EndpointBehavior::KvActionJson(_)
+                            | EndpointBehavior::VectorActionJson(_)
+                            | EndpointBehavior::QueueActionJson(_)
+                    )
+                {
+                    crate::background_jobs::launch_task_statements(
+                        &project.root,
+                        &matched.endpoint.action,
+                        cache_mode,
+                    );
+                    execute_server_action_with_resolver(&matched.endpoint.action, |reference| {
+                        resolve_request_reference(reference, &matched.params, &middleware_context)
+                            .map(log_json_text)
+                    });
+                }
+
+                match action_result {
+                    Err(error) => json_error(error.status, error.code, error.message),
+                    Ok(()) => match matched.endpoint.behavior {
+                        EndpointBehavior::StaticText(text) => text_response(StatusCode::OK, text),
+                        EndpointBehavior::TextTemplate(text) => text_response(
+                            StatusCode::OK,
+                            render_text_template(&text, &matched.params, &middleware_context),
+                        ),
+                        EndpointBehavior::UserGreeting => {
+                            let id = matched.params.get("id").cloned().unwrap_or_default();
+                            text_response(StatusCode::OK, format!("Hello User {id}!"))
+                        }
+                        EndpointBehavior::CreatePostJson => created_json_response(&body),
+                        EndpointBehavior::HttpProxy(response) => {
+                            execute_http_proxy(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::HttpReverseProxy(response) => {
+                            execute_http_reverse_proxy(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                &method,
+                                path,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::HttpBytes(response) => {
+                            execute_http_bytes(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::HttpActionJson(response) => {
+                            execute_http_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                &middleware_context,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::AgentResponse(response) => {
+                            execute_agent_response(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::StoreInsertJson(insert) => {
+                            match execute_store_insert(
+                                project,
+                                &insert.connection,
+                                &insert.table,
+                                &insert.value,
+                            )
+                            .await
+                            {
+                                Ok(value) => json_response(StatusCode::OK, value),
+                                Err(error) => store_error_response(error),
+                            }
+                        }
+                        EndpointBehavior::StoreQueryJson(query) => {
+                            match execute_store_query(project, &query.connection, &query.query)
+                                .await
+                            {
+                                Ok(value) => json_response(StatusCode::OK, value),
+                                Err(error) => {
+                                    log_error(format!(
+                                        "Database query failed for `{}`: {error}",
+                                        query.connection.database
+                                    ));
+                                    store_error_response(error)
+                                }
+                            }
+                        }
+                        EndpointBehavior::StoreTransactionJson(transaction) => {
+                            match execute_store_transaction(project, &transaction).await {
+                                Ok(value) => json_response(StatusCode::OK, value),
+                                Err(error) => store_error_response(error),
+                            }
+                        }
+                        EndpointBehavior::StoreActionJson(response) => {
+                            execute_store_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                &middleware_context,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::KvActionJson(response) => {
+                            execute_kv_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::VectorActionJson(response) => {
+                            execute_vector_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                        EndpointBehavior::QueueActionJson(response) => {
+                            execute_queue_action_json(
+                                project,
+                                &project.root,
+                                &matched.endpoint.action,
+                                &response,
+                                &matched.params,
+                                &body,
+                                raw_query,
+                                &headers,
+                                cache_mode,
+                            )
+                            .await
+                        }
+                    },
+                }
+            }
+            None => {
+                if server.has_endpoint_path(path) {
+                    StatusCode::METHOD_NOT_ALLOWED.into_response()
+                } else {
+                    StatusCode::NOT_FOUND.into_response()
+                }
+            }
+        },
+        Err(_) => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+    };
+
+    cors_actual_response(&server.cors, dev_origins, &headers, response)
+}
+

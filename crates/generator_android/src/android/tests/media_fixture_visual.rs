@@ -1,0 +1,262 @@
+fn diagram_route() -> ViewRoute {
+    ViewRoute {
+        id: "diagram".to_string(),
+        route_path: "/diagram".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: dowe_components::diagram_component_node(vec![
+            ComponentProp {
+                name: "nodes".to_string(),
+                value: PropValue::String("flowNodes".to_string()),
+            },
+            ComponentProp {
+                name: "edges".to_string(),
+                value: PropValue::String("flowEdges".to_string()),
+            },
+            ComponentProp {
+                name: "fitView".to_string(),
+                value: PropValue::Boolean(true),
+            },
+            ComponentProp {
+                name: "minimap".to_string(),
+                value: PropValue::Boolean(true),
+            },
+            ComponentProp {
+                name: "onNodeClick".to_string(),
+                value: PropValue::String("selectNode".to_string()),
+            },
+            ComponentProp {
+                name: "onConnect".to_string(),
+                value: PropValue::String("connectNodes".to_string()),
+            },
+        ])
+        .expect("diagram"),
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
+fn charts_route() -> ViewRoute {
+    ViewRoute {
+        id: "charts".to_string(),
+        route_path: "/charts".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Box {
+            props: Default::default(),
+            children: vec![
+                dowe_components::arc_chart_component_node(vec![
+                    ComponentProp {
+                        name: "data".to_string(),
+                        value: PropValue::String("segments".to_string()),
+                    },
+                    ComponentProp {
+                        name: "centerText".to_string(),
+                        value: PropValue::String("Share".to_string()),
+                    },
+                    ComponentProp {
+                        name: "centerValue".to_string(),
+                        value: PropValue::String("88%".to_string()),
+                    },
+                    ComponentProp {
+                        name: "thickness".to_string(),
+                        value: PropValue::Number("18".to_string()),
+                    },
+                    ComponentProp {
+                        name: "gap".to_string(),
+                        value: PropValue::Number("4".to_string()),
+                    },
+                    ComponentProp {
+                        name: "startAngle".to_string(),
+                        value: PropValue::Number("-90".to_string()),
+                    },
+                    ComponentProp {
+                        name: "endAngle".to_string(),
+                        value: PropValue::Number("270".to_string()),
+                    },
+                    ComponentProp {
+                        name: "showInlineLabels".to_string(),
+                        value: PropValue::Boolean(true),
+                    },
+                    ComponentProp {
+                        name: "hideValues".to_string(),
+                        value: PropValue::Boolean(true),
+                    },
+                    ComponentProp {
+                        name: "showGlow".to_string(),
+                        value: PropValue::Boolean(true),
+                    },
+                ])
+                .expect("arc chart"),
+                dowe_components::area_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("points".to_string()),
+                }])
+                .expect("area chart"),
+                dowe_components::bar_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("segments".to_string()),
+                }])
+                .expect("bar chart"),
+                dowe_components::line_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("points".to_string()),
+                }])
+                .expect("line chart"),
+                dowe_components::pie_chart_component_node(vec![ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("segments".to_string()),
+                }])
+                .expect("pie chart"),
+            ],
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
+fn table_route() -> ViewRoute {
+    ViewRoute {
+        id: "users".to_string(),
+        route_path: "/users".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: dowe_components::table_node(
+            vec![
+                ComponentProp {
+                    name: "data".to_string(),
+                    value: PropValue::String("users".to_string()),
+                },
+                ComponentProp {
+                    name: "variant".to_string(),
+                    value: PropValue::String("outlined".to_string()),
+                },
+                ComponentProp {
+                    name: "scheme".to_string(),
+                    value: PropValue::String("primary".to_string()),
+                },
+                ComponentProp {
+                    name: "size".to_string(),
+                    value: PropValue::String("lg".to_string()),
+                },
+                ComponentProp {
+                    name: "striped".to_string(),
+                    value: PropValue::Boolean(true),
+                },
+                ComponentProp {
+                    name: "bordered".to_string(),
+                    value: PropValue::Boolean(true),
+                },
+                ComponentProp {
+                    name: "emptyTitle".to_string(),
+                    value: PropValue::String("No users".to_string()),
+                },
+            ],
+            vec![
+                dowe_components::table_column_component(vec![
+                    ComponentProp {
+                        name: "field".to_string(),
+                        value: PropValue::String("name".to_string()),
+                    },
+                    ComponentProp {
+                        name: "label".to_string(),
+                        value: PropValue::String("Name".to_string()),
+                    },
+                ])
+                .expect("name column"),
+                dowe_components::table_column_component(vec![
+                    ComponentProp {
+                        name: "field".to_string(),
+                        value: PropValue::String("status".to_string()),
+                    },
+                    ComponentProp {
+                        name: "label".to_string(),
+                        value: PropValue::String("Status".to_string()),
+                    },
+                    ComponentProp {
+                        name: "align".to_string(),
+                        value: PropValue::String("end".to_string()),
+                    },
+                    ComponentProp {
+                        name: "width".to_string(),
+                        value: PropValue::String("8rem".to_string()),
+                    },
+                ])
+                .expect("status column"),
+            ],
+        )
+        .expect("table"),
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
+fn divider_route() -> ViewRoute {
+    ViewRoute {
+        id: "divider".to_string(),
+        route_path: "/divider".to_string(),
+        layout_tree: ViewNode::Children,
+        page_tree: ViewNode::Divider {
+            props: DividerProps {
+                style: StyleProps::default(),
+                orientation: DividerOrientation::Vertical,
+                color: ColorFamily::Primary,
+            },
+        },
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    }
+}
+
+fn svg_tree() -> ViewNode {
+    ViewNode::Svg {
+        props: SvgProps {
+            style: StyleProps {
+                text: Some(ResponsiveValue::scalar(
+                    dowe_components::ColorToken::Accent,
+                )),
+                sizing: dowe_components::SizingProps {
+                    w: Some(ResponsiveValue::scalar(dowe_components::SizeValue::Scale(
+                        ScaleValue::from_half_steps(16),
+                    ))),
+                    h: Some(ResponsiveValue::scalar(dowe_components::SizeValue::Scale(
+                        ScaleValue::from_half_steps(16),
+                    ))),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            view_box: SvgViewBox {
+                min_x: "0".to_string(),
+                min_y: "0".to_string(),
+                width: "24".to_string(),
+                height: "24".to_string(),
+            },
+            data: None,
+            icon_name: None,
+            icon_fallback: None,
+            icon_fill: None,
+            icon_fill_binding: None,
+            icon_stroke: None,
+            icon_stroke_binding: None,
+            motion: None,
+        },
+        paths: vec![
+            SvgPath {
+                data: "M0 0h24v24H0z".to_string(),
+                fill: SvgPathFill::None,
+                transform: None,
+            },
+            SvgPath {
+                data: "M22 12c0-5.523-4.477-10-10-10".to_string(),
+                fill: SvgPathFill::CurrentColor,
+                transform: Some(SvgTransform {
+                    a: "2".to_string(),
+                    b: "0".to_string(),
+                    c: "0".to_string(),
+                    d: "2".to_string(),
+                    e: "4".to_string(),
+                    f: "6".to_string(),
+                }),
+            },
+        ],
+    }
+}
+

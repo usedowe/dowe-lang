@@ -1,0 +1,499 @@
+pub const TAILWIND_SCALE: &[ScaleValue] = &[
+    ScaleValue::from_half_steps(0),
+    ScaleValue::from_half_steps(1),
+    ScaleValue::from_half_steps(2),
+    ScaleValue::from_half_steps(3),
+    ScaleValue::from_half_steps(4),
+    ScaleValue::from_half_steps(5),
+    ScaleValue::from_half_steps(6),
+    ScaleValue::from_half_steps(7),
+    ScaleValue::from_half_steps(8),
+    ScaleValue::from_half_steps(10),
+    ScaleValue::from_half_steps(12),
+    ScaleValue::from_half_steps(14),
+    ScaleValue::from_half_steps(16),
+    ScaleValue::from_half_steps(18),
+    ScaleValue::from_half_steps(20),
+    ScaleValue::from_half_steps(22),
+    ScaleValue::from_half_steps(24),
+    ScaleValue::from_half_steps(28),
+    ScaleValue::from_half_steps(32),
+    ScaleValue::from_half_steps(40),
+    ScaleValue::from_half_steps(48),
+    ScaleValue::from_half_steps(56),
+    ScaleValue::from_half_steps(64),
+    ScaleValue::from_half_steps(72),
+    ScaleValue::from_half_steps(80),
+    ScaleValue::from_half_steps(88),
+    ScaleValue::from_half_steps(96),
+    ScaleValue::from_half_steps(104),
+    ScaleValue::from_half_steps(112),
+    ScaleValue::from_half_steps(120),
+    ScaleValue::from_half_steps(128),
+    ScaleValue::from_half_steps(144),
+    ScaleValue::from_half_steps(160),
+    ScaleValue::from_half_steps(192),
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContainerSize {
+    Sm,
+    Md,
+    Lg,
+    Xl,
+    TwoXl,
+    ThreeXl,
+    FourXl,
+    FiveXl,
+    SixXl,
+    SevenXl,
+}
+
+impl ContainerSize {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            "2xl" => Some(Self::TwoXl),
+            "3xl" => Some(Self::ThreeXl),
+            "4xl" => Some(Self::FourXl),
+            "5xl" => Some(Self::FiveXl),
+            "6xl" => Some(Self::SixXl),
+            "7xl" => Some(Self::SevenXl),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+            Self::TwoXl => "2xl",
+            Self::ThreeXl => "3xl",
+            Self::FourXl => "4xl",
+            Self::FiveXl => "5xl",
+            Self::SixXl => "6xl",
+            Self::SevenXl => "7xl",
+        }
+    }
+
+    pub fn scale_value(self) -> ScaleValue {
+        ScaleValue::from_half_steps(match self {
+            Self::Sm => 192,
+            Self::Md => 224,
+            Self::Lg => 256,
+            Self::Xl => 288,
+            Self::TwoXl => 336,
+            Self::ThreeXl => 384,
+            Self::FourXl => 448,
+            Self::FiveXl => 512,
+            Self::SixXl => 576,
+            Self::SevenXl => 640,
+        })
+    }
+
+    pub fn css_rem(self) -> &'static str {
+        match self {
+            Self::Sm => "24rem",
+            Self::Md => "28rem",
+            Self::Lg => "32rem",
+            Self::Xl => "36rem",
+            Self::TwoXl => "42rem",
+            Self::ThreeXl => "48rem",
+            Self::FourXl => "56rem",
+            Self::FiveXl => "64rem",
+            Self::SixXl => "72rem",
+            Self::SevenXl => "80rem",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Sm,
+            Self::Md,
+            Self::Lg,
+            Self::Xl,
+            Self::TwoXl,
+            Self::ThreeXl,
+            Self::FourXl,
+            Self::FiveXl,
+            Self::SixXl,
+            Self::SevenXl,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SizeValue {
+    Scale(ScaleValue),
+    Container(ContainerSize),
+    Percent(u8),
+    Full,
+    Auto,
+    ViewportMinus(ScaleValue),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RoundedSize {
+    Xs,
+    Sm,
+    Md,
+    Lg,
+    Xl,
+    Full,
+}
+
+impl RoundedSize {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "xs" => Some(Self::Xs),
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            "full" => Some(Self::Full),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Xs => "xs",
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+            Self::Full => "full",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Xs, Self::Sm, Self::Md, Self::Lg, Self::Xl, Self::Full]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShadowSize {
+    Xs,
+    Sm,
+    Md,
+    Lg,
+    Xl,
+}
+
+impl ShadowSize {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "xs" => Some(Self::Xs),
+            "sm" => Some(Self::Sm),
+            "md" => Some(Self::Md),
+            "lg" => Some(Self::Lg),
+            "xl" => Some(Self::Xl),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Xs => "xs",
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+            Self::Xl => "xl",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::Xs, Self::Sm, Self::Md, Self::Lg, Self::Xl]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BorderWidth(pub u8);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GridSpan(pub u16);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoverSource(pub String);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OverlayPaint {
+    BlackOpacity(String),
+    Color(ColorToken),
+    Rgba(String),
+    LinearGradient(String),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SectionBackground {
+    Aurora,
+    Sunrise,
+    Ocean,
+    Meadow,
+    Slate,
+}
+
+impl SectionBackground {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "aurora" => Some(Self::Aurora),
+            "sunrise" => Some(Self::Sunrise),
+            "ocean" => Some(Self::Ocean),
+            "meadow" => Some(Self::Meadow),
+            "slate" => Some(Self::Slate),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Aurora => "aurora",
+            Self::Sunrise => "sunrise",
+            Self::Ocean => "ocean",
+            Self::Meadow => "meadow",
+            Self::Slate => "slate",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::Aurora,
+            Self::Sunrise,
+            Self::Ocean,
+            Self::Meadow,
+            Self::Slate,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewAnimation {
+    None,
+    FadeIn,
+    SlideUp,
+    SlideDown,
+    SlideLeft,
+    SlideRight,
+    ScaleIn,
+}
+
+impl ViewAnimation {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "none" => Some(Self::None),
+            "fadeIn" => Some(Self::FadeIn),
+            "slideUp" => Some(Self::SlideUp),
+            "slideDown" => Some(Self::SlideDown),
+            "slideLeft" => Some(Self::SlideLeft),
+            "slideRight" => Some(Self::SlideRight),
+            "scaleIn" => Some(Self::ScaleIn),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::FadeIn => "fadeIn",
+            Self::SlideUp => "slideUp",
+            Self::SlideDown => "slideDown",
+            Self::SlideLeft => "slideLeft",
+            Self::SlideRight => "slideRight",
+            Self::ScaleIn => "scaleIn",
+        }
+    }
+
+    pub fn class_suffix(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::FadeIn => "fade-in",
+            Self::SlideUp => "slide-up",
+            Self::SlideDown => "slide-down",
+            Self::SlideLeft => "slide-left",
+            Self::SlideRight => "slide-right",
+            Self::ScaleIn => "scale-in",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[
+            Self::None,
+            Self::FadeIn,
+            Self::SlideUp,
+            Self::SlideDown,
+            Self::SlideLeft,
+            Self::SlideRight,
+            Self::ScaleIn,
+        ]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewRotation(pub i16);
+
+impl ViewRotation {
+    pub fn class_suffix(self) -> String {
+        signed_class_suffix(self.0)
+    }
+
+    pub fn degrees(self) -> i16 {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewScale(pub u16);
+
+impl ViewScale {
+    pub fn class_suffix(self) -> String {
+        decimal_hundredths(self.0).replace('.', "_")
+    }
+
+    pub fn factor(self) -> String {
+        decimal_hundredths(self.0)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ViewTranslation(pub i16);
+
+impl ViewTranslation {
+    pub fn class_suffix(self) -> String {
+        if self.0 < 0 {
+            format!("neg-{}", half_step_value(self.0.unsigned_abs()))
+        } else {
+            half_step_value(self.0 as u16)
+        }
+    }
+
+    pub fn native_units(self) -> i16 {
+        self.0 * 2
+    }
+
+    pub fn css_rem(self) -> String {
+        decimal_hundredths_signed(i32::from(self.0) * 25)
+    }
+}
+
+pub const VIEW_PAGE_TRANSITION_DURATION_MS: u64 = 280;
+pub const VIEW_PAGE_TRANSITION_DURATION_SECONDS: f64 =
+    VIEW_PAGE_TRANSITION_DURATION_MS as f64 / 1000.0;
+pub const VIEW_PAGE_TRANSITION_EASING_CSS: &str = "cubic-bezier(.22,.61,.36,1)";
+pub const VIEW_PAGE_TRANSITION_EASING: (f32, f32, f32, f32) = (0.22, 0.61, 0.36, 1.0);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewTransition {
+    None,
+    Quick,
+    Smooth,
+    Spring,
+}
+
+impl ViewTransition {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "none" => Some(Self::None),
+            "quick" => Some(Self::Quick),
+            "smooth" => Some(Self::Smooth),
+            "spring" => Some(Self::Spring),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Quick => "quick",
+            Self::Smooth => "smooth",
+            Self::Spring => "spring",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::None, Self::Quick, Self::Smooth, Self::Spring]
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewGesture {
+    None,
+    Lift,
+    Press,
+    Grow,
+    Tilt,
+}
+
+impl ViewGesture {
+    pub fn from_name(value: &str) -> Option<Self> {
+        match value {
+            "none" => Some(Self::None),
+            "lift" => Some(Self::Lift),
+            "press" => Some(Self::Press),
+            "grow" => Some(Self::Grow),
+            "tilt" => Some(Self::Tilt),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Lift => "lift",
+            Self::Press => "press",
+            Self::Grow => "grow",
+            Self::Tilt => "tilt",
+        }
+    }
+
+    pub fn all() -> &'static [Self] {
+        &[Self::None, Self::Lift, Self::Press, Self::Grow, Self::Tilt]
+    }
+}
+
+fn signed_class_suffix(value: i16) -> String {
+    if value < 0 {
+        format!("neg-{}", value.unsigned_abs())
+    } else {
+        value.to_string()
+    }
+}
+
+fn half_step_value(value: u16) -> String {
+    if value % 2 == 0 {
+        (value / 2).to_string()
+    } else {
+        format!("{}.5", value / 2)
+    }
+}
+
+fn decimal_hundredths(value: u16) -> String {
+    let whole = value / 100;
+    let fraction = value % 100;
+    if fraction == 0 {
+        whole.to_string()
+    } else if fraction % 10 == 0 {
+        format!("{whole}.{}", fraction / 10)
+    } else {
+        format!("{whole}.{fraction:02}")
+    }
+}
+
+fn decimal_hundredths_signed(value: i32) -> String {
+    let sign = if value < 0 { "-" } else { "" };
+    let value = value.unsigned_abs();
+    let whole = value / 100;
+    let fraction = value % 100;
+    if fraction == 0 {
+        format!("{sign}{whole}")
+    } else if fraction % 10 == 0 {
+        format!("{sign}{whole}.{}", fraction / 10)
+    } else {
+        format!("{sign}{whole}.{fraction:02}")
+    }
+}
+
