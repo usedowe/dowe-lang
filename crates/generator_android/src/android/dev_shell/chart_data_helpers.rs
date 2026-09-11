@@ -1,5 +1,4 @@
-r#"        if (dataPath != null && !dataPath.isEmpty()) {
-            return doweCandles(dataPath);
+r#"            return doweCandles(dataPath);
         }
         ArrayList<Map<String, Object>> rows = new ArrayList<>();
         if (seriesPath == null || seriesPath.isEmpty()) {

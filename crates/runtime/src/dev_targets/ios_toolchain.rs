@@ -5,8 +5,7 @@ fn ios_toolchain_signature() -> RuntimeResult<Vec<u8>> {
     }
     let mut signature = b"dowe-ios-cache-v1".to_vec();
     for args in ios_toolchain_signature_commands() {
-        let output = run_required(
-            DevTarget::Ios,
+        let output = run_ios_required(
             SpawnConfig::new("xcrun", args.clone())
                 .with_options(quiet_command_options(None, StreamMode::Pipe)),
         )?;
@@ -116,4 +115,3 @@ fn ios_swift_link_args(object_files: &[PathBuf], bundle: &Path, target: String) 
     ]);
     args
 }
-

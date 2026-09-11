@@ -33,8 +33,7 @@ fn compile_ios_asset_catalog(
     if !catalog.is_dir() {
         return Ok(());
     }
-    run_required(
-        DevTarget::Ios,
+    run_ios_required(
         SpawnConfig::new(
             "xcrun",
             ios_asset_catalog_args(
@@ -82,4 +81,3 @@ fn copy_dir(source: &Path, destination: &Path) -> RuntimeResult<()> {
     }
     Ok(())
 }
-

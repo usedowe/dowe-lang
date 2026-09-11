@@ -1,4 +1,5 @@
-r#"import UIKit
+r#"import SwiftUI
+import UIKit
 import SafariServices
 import Foundation
 import UniformTypeIdentifiers

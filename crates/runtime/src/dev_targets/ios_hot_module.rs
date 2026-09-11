@@ -91,8 +91,7 @@ fn compile_hot_module_once(
     workspace: &IosIncrementalWorkspace,
     target: &str,
 ) -> RuntimeResult<bool> {
-    let result = run_required(
-        DevTarget::Ios,
+    let result = run_ios_required(
         SpawnConfig::new(
             "xcrun",
             ios_hot_module_compile_args(
@@ -111,8 +110,7 @@ fn compile_hot_module_once(
 }
 
 fn link_hot_module_once(workspace: &IosIncrementalWorkspace, target: &str) -> RuntimeResult<()> {
-    run_required(
-        DevTarget::Ios,
+    run_ios_required(
         SpawnConfig::new(
             "xcrun",
             ios_hot_module_link_args(
@@ -226,4 +224,3 @@ fn ios_hot_module_link_args(
     args.extend(["-o".to_string(), output.to_string_lossy().to_string()]);
     args
 }
-

@@ -287,6 +287,8 @@ fn android_javac_args(
     let mut args = vec![
         "-g:none".to_string(),
         "-proc:none".to_string(),
+        "--release".to_string(),
+        "17".to_string(),
         "-classpath".to_string(),
         android_jar.to_string_lossy().to_string(),
         "-d".to_string(),
@@ -376,5 +378,4 @@ fn create_debug_keystore(path: &Path) -> RuntimeResult<()> {
     )?;
     Ok(())
 }
-
 

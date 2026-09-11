@@ -129,8 +129,8 @@ mod tests {
 
         assert_eq!(args[0], "-g:none");
         assert_eq!(args[1], "-proc:none");
+        assert!(args.windows(2).any(|pair| pair == ["--release", "17"]));
         assert!(args.iter().any(|arg| arg.ends_with("DoweDevActivity.java")));
         assert!(args.iter().any(|arg| arg.ends_with("R.java")));
     }
 }
-

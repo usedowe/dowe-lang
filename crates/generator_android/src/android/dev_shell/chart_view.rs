@@ -1,5 +1,4 @@
-r#"        private final String chartType;
-        private final String dataPath;
+r#"        private final String dataPath;
         private final String seriesPath;
         private final String palette;
         private final String legendPosition;

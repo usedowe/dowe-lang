@@ -102,6 +102,7 @@ fn all_android_source(output: &AndroidOutput) -> String {
 include!("tests/core_generation.rs");
 include!("tests/button_width.rs");
 include!("tests/dev_sharding.rs");
+include!("tests/dev_runtime_fragments.rs");
 include!("tests/navigation_generation.rs");
 include!("tests/component_data_generation.rs");
 include!("tests/diagram_interactions.rs");

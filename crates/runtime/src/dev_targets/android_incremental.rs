@@ -19,7 +19,7 @@ const GENERATED_PACKAGE: &str = "dev/dowe/generated";
 const CORE_SOURCE: &str = "DoweDevActivity.java";
 const ROUTE_PREFIX: &str = "DoweDevRoute";
 const LAYOUT_PREFIX: &str = "DoweDevLayout";
-const JAVAC_FLAGS: &[&str] = &["-g:none", "-proc:none", "-implicit:none"];
+const JAVAC_FLAGS: &[&str] = &["-g:none", "-proc:none", "-implicit:none", "--release", "17"];
 const D8_INTERMEDIATE_FLAGS: &[&str] =
     &["--min-api", "26", "--intermediate", "--file-per-class-file"];
 const D8_MERGE_FLAGS: &[&str] = &["--min-api", "26"];

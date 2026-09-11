@@ -5,8 +5,7 @@ fn android_device_serial(adb: &Path) -> RuntimeResult<Option<String>> {
 fn android_device_serials(adb: &Path) -> RuntimeResult<Vec<String>> {
     let output = run_required(
         DevTarget::Android,
-        SpawnConfig::new(adb.to_string_lossy().to_string(), ["devices"])
-            .with_options(quiet_command_options(None, StreamMode::Pipe)),
+        android_device_query(adb, ["devices"]),
     )?;
     let text = String::from_utf8_lossy(&output.stdout_bytes);
     let mut devices = text
@@ -42,34 +41,6 @@ fn parse_android_avds(contents: &str) -> Vec<String> {
         .filter(|line| !line.is_empty())
         .map(ToOwned::to_owned)
         .collect()
-}
-
-fn wait_for_new_android_device(adb: &Path, existing_serials: &[String]) -> RuntimeResult<String> {
-    let existing = existing_serials.iter().collect::<BTreeSet<_>>();
-    for _ in 0..120 {
-        if let Some(serial) = android_device_serials(adb)?
-            .into_iter()
-            .find(|serial| !existing.contains(serial))
-        {
-            return Ok(serial);
-        }
-        thread::sleep(Duration::from_secs(1));
-    }
-    Err(RuntimeError::new(
-        "Android app target failed: selected emulator did not become available",
-    ))
-}
-
-fn wait_for_android_device(adb: &Path) -> RuntimeResult<String> {
-    for _ in 0..120 {
-        if let Some(serial) = android_device_serial(adb)? {
-            return Ok(serial);
-        }
-        thread::sleep(Duration::from_secs(1));
-    }
-    Err(RuntimeError::new(
-        "Android app target failed: emulator did not become available",
-    ))
 }
 
 fn wait_for_android_boot(adb: &Path, serial: &str) -> RuntimeResult<()> {
@@ -125,7 +96,7 @@ fn parse_adb_device(line: &str) -> Option<String> {
 }
 
 fn android_tools(sdk: &Path) -> RuntimeResult<AndroidTools> {
-    let build_tools = latest_child(sdk.join("build-tools"))?;
+    let build_tools = android_build_tools(sdk)?;
     Ok(AndroidTools {
         emulator: ensure_file(
             executable_path(sdk.join("emulator/emulator")),
@@ -139,9 +110,12 @@ fn android_tools(sdk: &Path) -> RuntimeResult<AndroidTools> {
             executable_path(build_tools.join("aapt2")),
             DevTarget::Android,
         )?,
-        d8: ensure_file(executable_path(build_tools.join("d8")), DevTarget::Android)?,
+        d8: ensure_file(
+            android_script_path(build_tools.join("d8")),
+            DevTarget::Android,
+        )?,
         apksigner: ensure_file(
-            executable_path(build_tools.join("apksigner")),
+            android_script_path(build_tools.join("apksigner")),
             DevTarget::Android,
         )?,
         zipalign: ensure_file(
@@ -156,7 +130,7 @@ fn android_sdk_root() -> RuntimeResult<PathBuf> {
     for key in ["ANDROID_HOME", "ANDROID_SDK_ROOT"] {
         if let Ok(value) = env::var(key) {
             let path = PathBuf::from(value);
-            if path.is_dir() {
+            if !path.as_os_str().is_empty() {
                 return Ok(path);
             }
         }
@@ -174,15 +148,37 @@ fn android_sdk_root() -> RuntimeResult<PathBuf> {
         _ => Vec::new(),
     };
 
-    candidates
-        .into_iter()
-        .find(|path| path.is_dir())
-        .ok_or_else(|| RuntimeError::new("Android app target failed: Android SDK not found"))
+    candidates.into_iter().next().ok_or_else(|| {
+        RuntimeError::new(
+            "Android setup: cannot locate the SDK; set ANDROID_HOME to a writable SDK directory",
+        )
+    })
 }
 
 fn latest_android_jar(sdk: &Path) -> RuntimeResult<PathBuf> {
-    let platform = latest_child(sdk.join("platforms"))?;
-    ensure_file(platform.join("android.jar"), DevTarget::Android)
+    let platform = fs::read_dir(sdk.join("platforms"))?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.join("android.jar").is_file())
+        .max_by_key(|path| super::child_version_key(path))
+        .ok_or_else(|| RuntimeError::new("Android setup: no complete SDK platform is installed"))?;
+    Ok(platform.join("android.jar"))
 }
 
-
+fn android_build_tools(sdk: &Path) -> RuntimeResult<PathBuf> {
+    fs::read_dir(sdk.join("build-tools"))?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            ["aapt2", "zipalign"]
+                .iter()
+                .all(|name| executable_path(path.join(name)).is_file())
+                && ["d8", "apksigner"]
+                    .iter()
+                    .all(|name| android_script_path(path.join(name)).is_file())
+        })
+        .max_by_key(|path| super::child_version_key(path))
+        .ok_or_else(|| {
+            RuntimeError::new("Android setup: no complete SDK build-tools are installed")
+        })
+}

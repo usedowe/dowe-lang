@@ -1,4 +1,5 @@
-r#"    var value: T?
+r#"func doweResponsive<T>(_ viewportWidth: CGFloat, xs: T? = nil, sm: T? = nil, md: T? = nil, lg: T? = nil, xl: T? = nil) -> T? {
+    var value: T?
     if viewportWidth >= 0, let current = xs {
         value = current
     }

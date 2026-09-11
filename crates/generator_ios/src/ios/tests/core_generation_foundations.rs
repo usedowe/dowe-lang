@@ -130,6 +130,28 @@ fn generates_swiftui_box_and_text() {
 }
 
 #[test]
+fn emits_swiftui_and_responsive_headers_in_pages_artifact() {
+    let output = generate_ios(
+        &[route()],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let pages = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.swift"))
+        .expect("pages artifact");
+
+    assert!(pages.content.starts_with("import SwiftUI\n"));
+    assert!(
+        pages
+            .content
+            .contains("func doweResponsive<T>(_ viewportWidth: CGFloat")
+    );
+}
+
+#[test]
 fn generates_swiftui_text_alignment() {
     let mut aligned = route();
     aligned.page_tree = ViewNode::Title {
@@ -429,4 +451,3 @@ fn preserves_flex_end_inside_ios_cover_card() {
     assert!(card.contains("DoweSize.fixed(CGFloat(240))"));
     assert!(views.contains("if justify == .end || justify == .endSafe || justify == .center || justify == .centerSafe"));
 }
-

@@ -8,21 +8,23 @@ fn prepare_ios_simulator(selection: Option<IosSimulatorSelection>) -> RuntimeRes
         return prepare_selected_ios_simulator(&selection);
     }
 
-    if let Some(udid) = find_ios_device("booted")? {
+    let option = simulator_options()?
+        .into_iter()
+        .next()
+        .ok_or_else(|| RuntimeError::new("iOS setup: no available simulator after preparation"))?;
+    if option.is_booted() {
         return Ok(IosSimulator {
-            udid,
+            udid: option.udid().to_string(),
             boot_requested: false,
         });
     }
-
-    let udid = find_ios_device("available")?.ok_or_else(|| {
-        RuntimeError::new("iOS app target failed: no available iOS simulator found")
-    })?;
-    run_required(
-        DevTarget::Ios,
-        SpawnConfig::new("xcrun", ["simctl", "boot", &udid])
-            .with_options(quiet_command_options(None, StreamMode::Ignore)),
-    )?;
+    let udid = option.udid().to_string();
+    if option.state() != "Booting" {
+        run_ios_required(
+            SpawnConfig::new("xcrun", ["simctl", "boot", &udid])
+                .with_options(quiet_command_options(None, StreamMode::Ignore)),
+        )?;
+    }
     Ok(IosSimulator {
         udid,
         boot_requested: true,
@@ -44,8 +46,7 @@ fn prepare_selected_ios_simulator(
 
     let boot_requested = !option.is_booted();
     if option.state() != "Booted" && option.state() != "Booting" {
-        run_required(
-            DevTarget::Ios,
+        run_ios_required(
             SpawnConfig::new("xcrun", ["simctl", "boot", option.udid()])
                 .with_options(quiet_command_options(None, StreamMode::Ignore)),
         )?;
@@ -58,8 +59,7 @@ fn prepare_selected_ios_simulator(
 }
 
 fn wait_ios_simulator_boot(udid: &str) -> RuntimeResult<()> {
-    run_required(
-        DevTarget::Ios,
+    run_ios_required(
         SpawnConfig::new("xcrun", ["simctl", "bootstatus", udid, "-b"])
             .with_options(quiet_command_options(None, StreamMode::Ignore)),
     )
@@ -93,7 +93,7 @@ fn ios_cleanup_commands(udid: &str, quit_simulators_on_exit: bool) -> Vec<SpawnC
 
 fn run_ios_cleanup_configs(configs: &[SpawnConfig]) {
     for config in configs {
-        let _ = run_required(DevTarget::Ios, config.clone());
+        let _ = run_ios_required(config.clone());
     }
 }
 
@@ -101,45 +101,18 @@ pub(super) fn simulator_options() -> RuntimeResult<Vec<IosSimulatorOption>> {
     if HostOs::current() != HostOs::Macos {
         return Ok(Vec::new());
     }
-    let output = run_required(
-        DevTarget::Ios,
-        SpawnConfig::new("xcrun", ["simctl", "list", "devices", "available", "-j"])
-            .with_options(quiet_command_options(None, StreamMode::Pipe)),
-    )?;
-    parse_ios_simulator_options(&output.stdout_bytes)
-}
-
-fn find_ios_device(mode: &str) -> RuntimeResult<Option<String>> {
-    let output = run_required(
-        DevTarget::Ios,
-        SpawnConfig::new("xcrun", ["simctl", "list", "devices", mode, "-j"])
-            .with_options(quiet_command_options(None, StreamMode::Pipe)),
-    )?;
-    let value = serde_json::from_slice::<Value>(&output.stdout_bytes)
-        .map_err(|error| RuntimeError::new(format!("iOS app target failed: {error}")))?;
-    let Some(runtimes) = value.get("devices").and_then(Value::as_object) else {
-        return Ok(None);
+    static PREPARATION: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = PREPARATION
+        .lock()
+        .map_err(|_| RuntimeError::new("iOS setup lock failed"))?;
+    let architecture = if env::consts::ARCH == "aarch64" {
+        "arm64"
+    } else {
+        env::consts::ARCH
     };
-
-    for devices in runtimes.values() {
-        let Some(devices) = devices.as_array() else {
-            continue;
-        };
-        for device in devices {
-            let available = device
-                .get("isAvailable")
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-            let Some(udid) = device.get("udid").and_then(Value::as_str) else {
-                continue;
-            };
-            if available {
-                return Ok(Some(udid.to_string()));
-            }
-        }
-    }
-
-    Ok(None)
+    ensure_ios_simulators_with(architecture, |config| {
+        run_ios_required(config).map(|output| output.stdout_bytes)
+    })
 }
 
 fn parse_ios_simulator_options(contents: &[u8]) -> RuntimeResult<Vec<IosSimulatorOption>> {
@@ -207,4 +180,3 @@ fn ios_simulator_target() -> String {
     };
     format!("{arch}-apple-ios17.0-simulator")
 }
-

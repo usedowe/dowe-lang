@@ -171,6 +171,6 @@ fn append_dev_activity_lifecycle(output: &mut String) {
         }
     }
 
-        "#,
+"#,
     );
 }

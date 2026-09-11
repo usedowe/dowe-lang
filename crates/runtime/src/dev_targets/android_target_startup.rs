@@ -6,7 +6,7 @@ pub(super) fn start(
 ) -> RuntimeResult<ExternalTargetStartup> {
     let android_root = ensure_dir(project.root.join(".dowe/apps/android"), DevTarget::Android)?;
     let sdk = android_sdk_root()?;
-    let tools = android_tools(&sdk)?;
+    let tools = prepare_android_tools(&sdk)?;
     let mut processes = Vec::new();
 
     print_target_starting(DevTarget::Android);
@@ -22,20 +22,20 @@ pub(super) fn start(
             }
         }
         Some(AndroidDeviceSelection::Avd { name }) => {
-            let existing_serials = android_device_serials(&tools.adb)?;
-            start_android_avd(&tools.emulator, name, &mut processes)?;
-            cleanup_on_error(
-                wait_for_new_android_device(&tools.adb, &existing_serials),
+            ensure_android_emulator(
+                &tools.adb,
+                &tools.emulator,
+                &name,
                 &mut processes,
             )?
         }
         None => {
+            ensure_android_avd(&sdk, &tools)?;
             if let Some(serial) = android_device_serial(&tools.adb)? {
                 serial
             } else {
                 let avd = first_android_avd(&tools.emulator)?;
-                start_android_avd(&tools.emulator, avd, &mut processes)?;
-                cleanup_on_error(wait_for_android_device(&tools.adb), &mut processes)?
+                ensure_android_emulator(&tools.adb, &tools.emulator, &avd, &mut processes)?
             }
         }
     };
@@ -143,7 +143,8 @@ pub(super) fn start(
 
 pub(super) fn device_options() -> RuntimeResult<Vec<AndroidDeviceOption>> {
     let sdk = android_sdk_root()?;
-    let tools = android_tools(&sdk)?;
+    let tools = prepare_android_tools(&sdk)?;
+    ensure_android_avd(&sdk, &tools)?;
     let mut options = Vec::new();
 
     for serial in android_device_serials(&tools.adb)? {
@@ -161,26 +162,6 @@ pub(super) fn device_options() -> RuntimeResult<Vec<AndroidDeviceOption>> {
     }
 
     Ok(options)
-}
-
-fn start_android_avd(
-    emulator: &Path,
-    avd: String,
-    processes: &mut Vec<RunningExternalProcess>,
-) -> RuntimeResult<()> {
-    let mut options = quiet_command_options(None, StreamMode::Ignore);
-    options
-        .env_remove
-        .push("DYLD_FALLBACK_LIBRARY_PATH".to_string());
-    processes.push(spawn_background(
-        DevTarget::Android,
-        SpawnConfig::new(
-            emulator.to_string_lossy().to_string(),
-            ["-avd".to_string(), avd],
-        )
-        .with_options(options),
-    )?);
-    Ok(())
 }
 
 fn cleanup_on_error<T>(
@@ -239,5 +220,4 @@ fn uninstall_existing_app(adb: &Path, serial: &str, app_bundle: &str) -> Runtime
     )?;
     Ok(())
 }
-
 

@@ -51,4 +51,32 @@ fn generates_compose_and_dev_camera_microphone_capture_contract() {
     assert!(source.contains("requestPermissions(new String[]{Manifest.permission.CAMERA}"));
     assert!(source.contains("requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}"));
     assert!(source.contains("handlePermissionResult(int requestCode"));
+
+    let activity = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DoweDevActivity.java"))
+        .expect("dev activity");
+    assert!(
+        activity
+            .content
+            .contains("void doweOpenCamera(String facing")
+    );
+    assert!(
+        !activity
+            .content
+            .contains("private void doweOpenCamera(String facing")
+    );
+    let route_shard = output
+        .files
+        .iter()
+        .find(|file| {
+            file.relative_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("DoweDevRoute") && name.ends_with(".java"))
+                && file.content.contains("runtime.doweOpenCamera(")
+        })
+        .expect("capture route shard");
+    assert!(route_shard.content.contains("runtime.doweOpenCamera("));
 }

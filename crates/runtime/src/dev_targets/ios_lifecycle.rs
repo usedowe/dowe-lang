@@ -11,7 +11,10 @@ pub(super) fn start(
     let ios_root = ensure_dir(project.root.join(".dowe/apps/ios"), DevTarget::Ios)?;
     print_target_starting(DevTarget::Ios);
     let simulator = prepare_ios_simulator(selection)?;
-    let cleanup_configs = ios_cleanup_commands(&simulator.udid, quit_simulators_on_exit);
+    let cleanup_configs = ios_cleanup_commands(&simulator.udid, quit_simulators_on_exit)
+        .into_iter()
+        .map(super::ios_developer_dir::prepare_command)
+        .collect::<RuntimeResult<Vec<_>>>()?;
     if let Err(error) = launch_ios_app(project, &ios_root, &simulator, dev_origin) {
         run_ios_cleanup_configs(&cleanup_configs);
         return Err(error);
@@ -36,13 +39,11 @@ fn launch_ios_app(
     if simulator.boot_requested {
         wait_ios_simulator_boot(&simulator.udid)?;
     }
-    run_required(
-        DevTarget::Ios,
+    run_ios_required(
         ios_install_config(&simulator.udid, &app_bundle)
             .with_options(quiet_command_options(None, StreamMode::Ignore)),
     )?;
-    let launch_result = run_required(
-        DevTarget::Ios,
+    let launch_result = run_ios_required(
         ios_launch_config(&simulator.udid, &project.app_config.bundle, dev_origin)
             .with_options(quiet_command_options(None, StreamMode::Ignore)),
     );
@@ -83,8 +84,7 @@ fn ios_open_simulator_config() -> SpawnConfig {
 }
 
 fn open_ios_simulator() -> RuntimeResult<()> {
-    run_required(
-        DevTarget::Ios,
+    run_ios_required(
         ios_open_simulator_config().with_options(quiet_command_options(None, StreamMode::Ignore)),
     )
     .map(|_| ())
@@ -121,16 +121,14 @@ fn build_ios_app(project_root: &Path, ios_root: &Path) -> RuntimeResult<PathBuf>
         serde_json::to_vec(&output_map_content)
             .map_err(|error| RuntimeError::new(format!("iOS app target failed: {error}")))?,
     )?;
-    run_required(
-        DevTarget::Ios,
+    run_ios_required(
         SpawnConfig::new(
             "xcrun",
             ios_swift_compile_args(&swift_files, &output_map, target.clone(), swift_jobs),
         )
         .with_options(quiet_command_options(Some(source_root), StreamMode::Ignore)),
     )?;
-    run_required(
-        DevTarget::Ios,
+    run_ios_required(
         SpawnConfig::new("xcrun", ios_swift_link_args(&object_files, &bundle, target))
             .with_options(quiet_command_options(
                 Some(build_root.clone()),
@@ -145,4 +143,3 @@ fn build_ios_app(project_root: &Path, ios_root: &Path) -> RuntimeResult<PathBuf>
     fs::remove_dir_all(build_root)?;
     Ok(cached_bundle)
 }
-

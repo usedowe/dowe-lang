@@ -1,5 +1,4 @@
-r#"        private final String source;
-        private int index = 0;
+r#"        private int index = 0;
         private char command = 0;
 
         private DoweSvgPathParser(String source) {

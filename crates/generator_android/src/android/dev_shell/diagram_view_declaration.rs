@@ -1,4 +1,4 @@
-r#"    r#"    private final class DoweDiagramView extends View {
+r#"    private final class DoweDiagramView extends View {
         private static final int MODE_IDLE = 0;
         private static final int MODE_PAN = 1;
         private static final int MODE_DRAG = 2;

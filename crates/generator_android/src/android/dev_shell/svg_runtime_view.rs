@@ -1,4 +1,5 @@
-r#"        private final String data;
+r#"    private static final class DoweSvgPathEntry {
+        private final String data;
         private final boolean currentColor;
         private final Integer color;
         private final boolean stroke;

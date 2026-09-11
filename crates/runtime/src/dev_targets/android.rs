@@ -17,7 +17,6 @@ use crate::dev_modules::{
 use crate::error::{RuntimeError, RuntimeResult};
 use dowe_compiler::{CompiledProject, GeneratedFile};
 use dowe_spawn::{SpawnConfig, StreamMode};
-use std::collections::BTreeSet;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -28,4 +27,10 @@ use std::time::Duration;
 include!("android_target_startup.rs");
 include!("android_build_and_resources.rs");
 include!("android_devices_and_sdk.rs");
+include!("android_emulator_lifecycle.rs");
+include!("android_setup.rs");
 include!("android_target_tests.rs");
+
+#[cfg(test)]
+#[path = "android_emulator_tests.rs"]
+mod emulator_tests;
