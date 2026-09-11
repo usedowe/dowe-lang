@@ -1,7 +1,7 @@
 use super::request::build_request;
 use super::{
     Approval, HarnessConfig, HarnessRole, HarnessSession, HarnessStore, HarnessTools, HarnessTurn,
-    ModelSelection, ToolResult, response_turn,
+    ModelSelection, ToolResult, response_turn, select_units,
 };
 use crate::codegraph_enrichment::{SemanticEnrichment, SemanticStatus, enrich_codegraph};
 use crate::{
@@ -14,6 +14,7 @@ use dowe_codegraph::{CodeGraphBinding, ensure_persistent_codegraph, read_persist
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::fs;
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 mod shell_host;
@@ -54,6 +55,18 @@ pub trait HarnessHost {
         let _ = question;
         async { Ok(None) }
     }
+    fn validate_dowe_project(
+        &mut self,
+        root: &Path,
+    ) -> impl std::future::Future<Output = AgentResult<Value>> {
+        let _ = root;
+        async {
+            Ok(json!({
+                "status": "unavailable",
+                "reason": "the active host has no Dowe compiler validation adapter",
+            }))
+        }
+    }
     fn event(&mut self, event: &Value) -> AgentResult<()>;
     fn secrets(&self) -> Vec<String> {
         Vec::new()
@@ -68,6 +81,7 @@ pub enum HarnessOutcome {
     BudgetExhausted,
     Canceled,
     ClarificationRequired,
+    ValidationFailed,
 }
 
 pub async fn run_harness_turn(
@@ -99,6 +113,7 @@ async fn run_harness_turn_with_persistence(
     persist: bool,
 ) -> AgentResult<HarnessOutcome> {
     let PreparedHarnessTurn {
+        session_lock: _session_lock,
         role,
         active,
         explicit,
@@ -109,6 +124,7 @@ async fn run_harness_turn_with_persistence(
         mut tools,
         turn_codegraph_binding,
         expected_codegraph_binding,
+        ui_task: _ui_task,
     } = prepare_harness_turn(store, session, config, host, persist, task).await?;
 
     let started = Instant::now();
@@ -135,6 +151,12 @@ async fn run_harness_turn_with_persistence(
     // repeated request could duplicate an observed side effect.
     let mut has_tool_result = false;
     let mut generated_image_for_continuation: Option<GeneratedImage> = None;
+    let mut mutation_seen = false;
+    let mut validation_attempted = false;
+    let mut validation_failures = 0_u8;
+    let mut last_validation: Option<Value> = None;
+    let mut visual_failed_seen = false;
+    let mut visual_repair_attempts = 0_u8;
     for round in 0..config.max_rounds {
         if exhausted(config, &usage, 0, started) {
             emit_persist(
@@ -343,12 +365,135 @@ async fn run_harness_turn_with_persistence(
             store.save_session(session)?;
         }
         if calls.is_empty() {
+            if visual_failed_seen {
+                if visual_repair_attempts < 1 {
+                    visual_repair_attempts += 1;
+                    session.turns.push(HarnessTurn {
+                        message: Some(AgentMessage {
+                            role: "user".into(),
+                            content: AgentMessageContent::Text(
+                                "Native visual comparison found a significant difference from the attached reference. Inspect the captured screenshot and diff, refine the Dowe view, and capture it again before declaring the task complete.".into(),
+                            ),
+                        }),
+                        ..Default::default()
+                    });
+                    has_tool_result = true;
+                    session.interrupted = false;
+                    if persist {
+                        store.save_session(session)?;
+                    }
+                    continue;
+                }
+                emit_persist(
+                    store,
+                    session,
+                    persist,
+                    host,
+                    json!({"event":"validation_failed","kind":"visual_comparison","reason":"visual_comparison_failed"}),
+                )?;
+                emit_persist(
+                    store,
+                    session,
+                    persist,
+                    host,
+                    json!({"event":"task_state","status":"failed","reason":"visual_comparison_failed"}),
+                )?;
+                return Ok(HarnessOutcome::ValidationFailed);
+            }
+            if validation_failures > 0 && !validation_attempted && !mutation_seen {
+                emit_persist(
+                    store,
+                    session,
+                    persist,
+                    host,
+                    json!({"event":"validation_failed","kind":"dowe_project","reason":"dowe_validation_failed","validation":last_validation}),
+                )?;
+                emit_persist(
+                    store,
+                    session,
+                    persist,
+                    host,
+                    json!({"event":"task_state","status":"failed","reason":"dowe_validation_failed","validation":last_validation}),
+                )?;
+                return Ok(HarnessOutcome::ValidationFailed);
+            }
+            if crate::is_dowe_project(store.root()) && mutation_seen && !validation_attempted {
+                emit_persist(
+                    store,
+                    session,
+                    persist,
+                    host,
+                    json!({"event":"validation_started","scope":"project","automatic":true}),
+                )?;
+                let validation = validate_dowe_project(store, host, "project").await?;
+                let failed = validation["status"] == "failed";
+                let mut validation_for_model = validation.clone();
+                tools.redactor.value(&mut validation_for_model);
+                validation_for_model = super::privacy::bounded_value(
+                    validation_for_model,
+                    config.max_output_bytes,
+                );
+                emit_persist(
+                    store,
+                    session,
+                    persist,
+                    host,
+                    json!({"event":"validation_finished","automatic":true,"result":validation_for_model.clone()}),
+                )?;
+                last_validation = Some(validation_for_model.clone());
+                let result = ToolResult {
+                    id: format!("automatic-validation-{}", super::identifier()),
+                    name: "validate_dowe_project".into(),
+                    failed,
+                    output: validation_for_model,
+                };
+                session.turns.push(HarnessTurn {
+                    results: vec![result],
+                    ..Default::default()
+                });
+                if failed {
+                    if validation_failures < 1 {
+                        validation_failures += 1;
+                        validation_attempted = false;
+                        session.turns.push(HarnessTurn {
+                            message: Some(AgentMessage {
+                                role: "user".into(),
+                                content: AgentMessageContent::Text(
+                                    "Automatic Dowe validation failed. Inspect the compiler diagnostics and quality findings above, repair the source, and validate again before declaring the task complete.".into(),
+                                ),
+                            }),
+                            ..Default::default()
+                        });
+                        has_tool_result = true;
+                        session.interrupted = false;
+                        if persist {
+                            store.save_session(session)?;
+                        }
+                        continue;
+                    }
+                    emit_persist(
+                        store,
+                        session,
+                        persist,
+                        host,
+                        json!({"event":"validation_failed","kind":"dowe_project","reason":"dowe_validation_failed","validation":last_validation}),
+                    )?;
+                    emit_persist(
+                        store,
+                        session,
+                        persist,
+                        host,
+                        json!({"event":"task_state","status":"failed","reason":"dowe_validation_failed","validation":last_validation}),
+                    )?;
+                    return Ok(HarnessOutcome::ValidationFailed);
+                }
+            }
             emit_persist(
                 store,
                 session,
                 persist,
                 host,
-                json!({"event":"task_state","status":"done"}),
+                json!({"event":"task_state","status":"done","validation":last_validation}),
             )?;
             return Ok(HarnessOutcome::Completed);
         }
@@ -374,9 +519,32 @@ async fn run_harness_turn_with_persistence(
             canceled,
             graph_dirty,
             generated_image_for_continuation: generated_image,
+            validation_attempted: call_validation_attempted,
+            validation_failed: call_validation_failed,
+            visual_checked: call_visual_checked,
+            visual_failed: call_visual_failed,
             outcome,
         } = call_results;
         generated_image_for_continuation = generated_image;
+        mutation_seen |= graph_dirty;
+        validation_attempted |= call_validation_attempted && !call_validation_failed;
+        if call_validation_failed {
+            validation_attempted = false;
+            validation_failures = validation_failures.saturating_add(1);
+        }
+        if call_validation_attempted || call_validation_failed {
+            last_validation = results
+                .iter()
+                .rev()
+                .find(|result| result.name == "validate_dowe_project")
+                .map(|result| result.output.clone());
+        }
+        if call_visual_checked {
+            visual_failed_seen = call_visual_failed;
+            if !call_visual_failed {
+                visual_repair_attempts = 0;
+            }
+        }
         if let Some(outcome) = outcome {
             return Ok(outcome);
         }

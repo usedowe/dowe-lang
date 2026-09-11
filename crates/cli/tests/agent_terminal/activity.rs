@@ -141,7 +141,12 @@ impl ActivityScreen {
         };
         let activity = visible.rfind(header).expect(&visible);
         let input = visible.rfind("╭─").expect(&visible);
-        assert!(visible[input..].contains("Working…"), "{visible}");
+        assert!(
+            ["Thinking…", "Working…", "Writing…", "Waiting for approval…"]
+                .iter()
+                .any(|phase| visible[input..].contains(phase)),
+            "{visible}"
+        );
         assert!(visible[input..].contains("│ >"), "{visible}");
         assert!(visible[input..].contains("╰─"), "{visible}");
         assert!(activity < input, "{visible}");
@@ -183,11 +188,35 @@ fn agent_activity_navigates_while_shell_runs_and_restores_prompt() {
     session.send("\u{1b}[6~\u{f}");
     session.until("Activity collapsed");
     let completed = session.until("Final activity answer");
+    screen.feed(&completed);
     if !completed.contains("│ >") {
         session.until(">");
     }
     let _home = session.stop();
     assert_eq!(server.join().unwrap().len(), 2);
+}
+
+#[test]
+fn agent_activity_queues_follow_up_input_while_tools_run() {
+    let call = serde_json::json!({"output":[{"type":"function_call","call_id":"shell-queue","name":"shell","arguments":serde_json::json!({"command":"sleep 1","cwd":".","reason":"Queue fixture"}).to_string()}]});
+    let (home, server) = conversation_fixture(vec![
+        (200, call),
+        (200, conversation_reply("Initial task complete")),
+        (200, conversation_reply("Queued task complete")),
+    ]);
+    let session = Session::start_at(home, false, &["agent"]);
+    session.send("/shell /bin/sh\r");
+    session.until("required for every command");
+    session.send("Run queue fixture\r");
+    session.until("Approve this exact operation once?");
+    session.send("y\r");
+    session.until("Working…");
+    session.send("Continue with the queued instruction\r");
+    session.until("queued 1/8");
+    session.until("Initial task complete");
+    session.until("Queued task complete");
+    let _home = session.stop();
+    assert_eq!(server.join().unwrap().len(), 3);
 }
 
 #[test]
@@ -227,28 +256,32 @@ fn agent_activity_retains_pipe_output_across_live_navigation() {
         (200, conversation_reply("Pipe fixture finished")),
     ]);
     let session = Session::start_at(home, false, &["agent"]);
+    let mut screen = ActivityScreen::new(120, 60);
     session.send("/shell /bin/sh\r");
     session.until("required for every command");
     session.send("Run pipe fixture\r");
-    session.until("Approve this exact operation once?");
+    screen.feed(&session.until("Approve this exact operation once?"));
     session.send("y\r");
-    session.until("retained-pipe-marker");
+    screen.feed(&session.until("retained-pipe-marker"));
     session.send("\u{1b}[5~");
     let older = session.until("middle-pipe-marker");
+    screen.feed(&older);
     assert!(older.contains("older"));
     assert!(!older.contains("retained-pipe-marker"));
     session.send("\u{1b}[6~");
-    session.until("retained-pipe-marker");
+    screen.feed(&session.until("retained-pipe-marker"));
     session.send("\u{f}");
     let redraw = session.until_activity_frame("Activity expanded");
+    screen.feed(&redraw);
     assert!(redraw.contains("retained-pipe-marker"), "{redraw}");
     session.send("\u{1b}[5~");
-    session.until("older");
+    screen.feed(&session.until("older"));
     let completed = session.until("Pipe fixture finished");
-    assert!(
-        completed.contains("shell [pipe-live] · completed"),
-        "{completed}"
-    );
+    screen.feed(&completed);
+    assert!(screen.text().contains("• Ran command · completed"));
+    let snapshots = screen.text().matches("Activity collapsed").count()
+        + screen.text().matches("Activity expanded").count();
+    assert_eq!(snapshots, 1, "{}", screen.text());
     let _home = session.stop();
     assert_eq!(server.join().unwrap().len(), 2);
 }
@@ -324,14 +357,14 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     assert!(typed.contains("not-a-queued-prompt"), "{typed:?}");
     assert!(!preview.contains("[preview]"));
     assert!(!preview.contains("\u{1b}[?1049h"), "{preview}");
-    assert!(preview.contains("Working…"), "{preview}");
-    let frames = ['⠋', '⠙', '⠹', '⠸'];
+    assert!(preview.contains("Writing…"), "{preview}");
+    let frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
     let current = frames
         .iter()
         .position(|ch| screen.visible().contains(*ch))
         .unwrap();
     let animated = session.until_activity_frame(&format!(
-        "{} Working…",
+        "{} Writing…",
         frames[(current + 1) % frames.len()]
     ));
     screen.feed(&animated);
@@ -355,7 +388,7 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
     screen.resize(50, 12);
     screen.feed(&session.until_activity_frame("Activity expanded"));
     assert!(screen.text().contains("dowe > Stream fixture"));
-    assert!(screen.visible().contains("Working…"));
+    assert!(screen.visible().contains("Writing…"));
     session.child.resize_pty(60, 120).unwrap();
     screen.resize(120, 60);
     screen.feed(&session.until_activity_frame("Activity expanded"));
@@ -373,7 +406,7 @@ fn agent_activity_provider_preview_is_live_and_final_text_returns_to_scrollback(
         1
     );
     let snapshot = transcript.rfind("Activity expanded").unwrap();
-    assert!(!transcript[snapshot..].contains("Working…"));
+    assert!(!transcript[snapshot..].contains("Writing…"));
     assert!(!final_text.contains("\u{1b}[?1049l"), "{final_text}");
     let _home = session.stop();
     server.join().unwrap();
@@ -396,7 +429,7 @@ fn agent_activity_cancel_restores_input_without_another_request() {
     let canceled = session.until("ctx");
     assert!(canceled.contains("Agent task canceled"));
     screen.feed(&canceled);
-    assert!(!screen.visible().contains("Working…"));
+    assert!(!screen.visible().contains("Writing…"));
     assert!(screen.visible().contains("│ >"));
     let _home = session.stop();
     assert_eq!(server.join().unwrap().len(), 1);

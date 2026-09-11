@@ -1,4 +1,5 @@
 struct PreparedHarnessTurn {
+    session_lock: super::lock::DataLock,
     role: HarnessRole,
     active: ModelSelection,
     explicit: Option<ModelSelection>,
@@ -9,6 +10,7 @@ struct PreparedHarnessTurn {
     tools: HarnessTools,
     turn_codegraph_binding: Option<CodeGraphBinding>,
     expected_codegraph_binding: Option<CodeGraphBinding>,
+    ui_task: bool,
 }
 
 async fn prepare_harness_turn(
@@ -29,7 +31,10 @@ async fn prepare_harness_turn(
         expected_codegraph_binding,
     } = task;
     config.validate()?;
-    let _task = store.lease_session(&session.id)?;
+    // Keep the session lease for the whole provider/tool turn. Acquiring it
+    // only inside preparation would let a concurrent task start as soon as
+    // the request was built, while the first turn was still running.
+    let session_lock = store.lease_session(&session.id)?;
     if session.interrupted {
         return Err(AgentError::new(
             "session has an interrupted operation; inspect its events and start a new session without replaying tools",
@@ -109,6 +114,35 @@ async fn prepare_harness_turn(
         tools.redactor.add(&secret);
     }
     let prompt = tools.redactor.text(prompt);
+    let ui_task = role == HarnessRole::Execute
+        && (crate::skills::is_ui_authoring_prompt(&prompt)
+            || !image_paths.is_empty()
+            || historical_images);
+    let mut required_skills = select_units(&prompt, &[]);
+    let mut preloaded_skills = Vec::new();
+    if ui_task && crate::is_dowe_project(store.root()) {
+        required_skills.extend([
+            "theme".to_string(),
+            "views".to_string(),
+            "views/layouts".to_string(),
+            "views/pages".to_string(),
+            "views/components".to_string(),
+        ]);
+        // Keep vector guidance available for references containing a mark or
+        // icon without forcing the model to redraw it as a bitmap.
+        if prompt.to_ascii_lowercase().contains("svg")
+            || prompt.to_ascii_lowercase().contains("logo")
+            || prompt.to_ascii_lowercase().contains("icon")
+            || !image_paths.is_empty()
+        {
+            required_skills.push("views/svg".to_string());
+        }
+        required_skills.sort();
+        required_skills.dedup();
+        preloaded_skills = required_skills.clone();
+        tools.set_required_skills(required_skills.clone())?;
+        tools.set_reference_images(image_paths)?;
+    }
     let user = HarnessTurn {
         message: Some(AgentMessage {
             role: "user".into(),
@@ -138,7 +172,7 @@ async fn prepare_harness_turn(
         session,
         persist,
         host,
-        json!({"event":"task_started","taskId":task_id,"role":role,"baseline":baseline}),
+        json!({"event":"task_started","taskId":task_id,"role":role,"baseline":baseline,"preloadedSkills":preloaded_skills,"visualAuthoring":ui_task}),
     )?;
     if matches!(role, HarnessRole::Codegraph | HarnessRole::Research)
         && let Some(snapshot) = graph_snapshot.as_ref()
@@ -213,6 +247,7 @@ async fn prepare_harness_turn(
     }
 
     Ok(PreparedHarnessTurn {
+        session_lock,
         role,
         active: active.clone(),
         explicit: explicit.cloned(),
@@ -223,6 +258,6 @@ async fn prepare_harness_turn(
         tools,
         turn_codegraph_binding,
         expected_codegraph_binding,
+        ui_task,
     })
 }
-

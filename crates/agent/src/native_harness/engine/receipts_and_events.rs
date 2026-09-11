@@ -52,7 +52,10 @@ fn finish_operation_receipt(
 }
 
 fn is_parallel_read(call: &super::ToolCall) -> bool {
-    matches!(call.name.as_str(), "read_file" | "list_files" | "search")
+    matches!(
+        call.name.as_str(),
+        "read_file" | "list_files" | "search" | "convert_svg"
+    )
 }
 
 fn execute_read_batch(tools: &HarnessTools, calls: &[super::ToolCall]) -> Vec<AgentResult<Value>> {

@@ -417,7 +417,7 @@ impl NativeSession {
             self.config.roles.remove(&role);
         } else {
             let store = AgentAuthStore::from_default_path()?;
-            let Some(provider) = super::chat::select_provider(&store, false)? else {
+            let Some(provider) = super::chat::select_provider(&store)? else {
                 return Ok(());
             };
             let Some(model) = super::chat::select_model(&provider, None)? else {

@@ -1,3 +1,4 @@
+use dowe_agent::native_harness::audit_dowe_project;
 use std::fs;
 use std::path::Path;
 use std::sync::Mutex;
@@ -12,7 +13,6 @@ fn compiles_the_self_contained_fullstack_example() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/embedded/examples/fullstack");
     copy_tree(&source, temp.path());
     fs::copy(temp.path().join(".env.example"), temp.path().join(".env")).expect("env");
-
     let jwt = std::env::var_os("JWT_SECRET");
     let provider = std::env::var_os("PROVIDER_BASE_URL");
     unsafe {
@@ -46,6 +46,8 @@ fn compiles_the_reference_ui_example() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/embedded/examples/reference-ui");
     copy_tree(&source, temp.path());
     fs::copy(temp.path().join(".env.example"), temp.path().join(".env")).expect("env");
+    let quality = audit_dowe_project(temp.path()).expect("reference UI quality audit");
+    assert_eq!(quality["status"], "passed", "{quality}");
 
     let root = temp.path().to_path_buf();
     let result = std::thread::Builder::new()

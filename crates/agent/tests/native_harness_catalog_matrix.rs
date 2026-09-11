@@ -1,4 +1,4 @@
-use dowe_agent::native_harness::select_units;
+use dowe_agent::native_harness::{select_units, skill_unit};
 
 #[test]
 fn equivalent_english_and_spanish_intents_select_the_same_focused_units() {
@@ -95,4 +95,41 @@ fn substrings_do_not_expand_unrelated_knowledge_and_paths_take_precedence() {
         select_units("Inspect .gitignore", &[]),
         vec!["core", "core/configuration"]
     );
+}
+
+#[test]
+fn reference_image_intents_preload_the_complete_view_composition_contract() {
+    let units = select_units("implementa esta imagen de referencia en Dowe", &[]);
+    assert_eq!(
+        units,
+        vec!["core", "views/components", "views/layouts", "views/pages"]
+    );
+}
+
+#[test]
+fn ui_and_design_intents_preload_the_complete_view_composition_contract() {
+    for prompt in ["build the UI", "design a dashboard"] {
+        let units = select_units(prompt, &[]);
+        assert!(units.iter().any(|unit| unit == "views/layouts"), "{prompt}");
+        assert!(units.iter().any(|unit| unit == "views/pages"), "{prompt}");
+        assert!(
+            units.iter().any(|unit| unit == "views/components"),
+            "{prompt}"
+        );
+    }
+}
+
+#[test]
+fn focused_view_units_carry_default_first_guidance() {
+    for id in ["views/layouts", "views/pages", "views/components"] {
+        let unit = skill_unit(id).unwrap();
+        assert!(
+            unit.content
+                .contains("component design defaults are the visual baseline")
+        );
+        assert!(
+            unit.content.to_ascii_lowercase().contains("omit redundant"),
+            "{id}"
+        );
+    }
 }

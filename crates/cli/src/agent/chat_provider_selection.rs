@@ -137,44 +137,24 @@ async fn configure_provider(
     store: &AgentAuthStore,
     requested: Option<&str>,
 ) -> Result<Option<ConfiguredProvider>, Box<dyn std::error::Error>> {
-    let mut previous_method = 0;
-    let (account, provider) = loop {
-        let Some(method) = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select authentication method")
-            .items(&aligned_menu_items(
-                &["Sign in with an account", "Sign in with an API key"],
-                menu_width(),
-            ))
-            .default(previous_method)
-            .interact_opt()?
-        else {
-            return Ok(None);
-        };
-        previous_method = method;
-        let account = method == 0;
-        let provider = match requested {
-            Some(provider) => provider.to_string(),
-            None => match select_provider(store, account)? {
-                Some(provider) => provider,
-                None => continue,
-            },
-        };
-        break (account, provider);
+    let provider = match requested {
+        Some(provider) => provider.to_string(),
+        None => match select_login_provider(store)? {
+            Some(provider) => provider,
+            None => return Ok(None),
+        },
     };
     let definition =
         provider_definition(&provider).ok_or_else(|| format!("unknown provider `{provider}`"))?;
-    if account && !definition.supports_account {
+    if provider != "openai-codex" && provider != "openrouter" && !definition.supports_api_key {
         return Err(format!(
-            "provider `{}` does not support account sign-in",
+            "provider `{}` cannot be configured through interactive login; use its environment or ambient credential",
             definition.name
         )
         .into());
     }
-    if !account && !definition.supports_api_key {
-        return Err(format!("provider `{}` requires account sign-in", definition.name).into());
-    }
 
-    let credential = if account && provider == "openai-codex" {
+    let credential = if provider == "openai-codex" {
         let credential = login_openai_codex(|url| {
             eprintln!("Opening browser for OpenAI Codex login.");
             eprintln!("{url}");
@@ -182,7 +162,7 @@ async fn configure_provider(
         .await?;
         eprintln!("OpenAI Codex account connected.");
         credential
-    } else if account && provider == "openrouter" {
+    } else if provider == "openrouter" {
         let credential = login_openrouter(|url| {
             eprintln!("Opening browser for OpenRouter login.");
             eprintln!("{url}");
@@ -190,17 +170,6 @@ async fn configure_provider(
         .await?;
         eprintln!("OpenRouter account connected.");
         credential
-    } else if account {
-        let access = Password::with_theme(&ColorfulTheme::default())
-            .with_prompt(format!("Paste {} account access token", definition.name))
-            .allow_empty_password(false)
-            .interact()?;
-        AgentCredential::OAuth {
-            access,
-            refresh: None,
-            expires: None,
-            env: Default::default(),
-        }
     } else {
         prompt_api_key(&definition)?
     };
@@ -216,3 +185,23 @@ async fn configure_provider(
     }))
 }
 
+const LOGIN_PROVIDER_IDS: &[&str] = &["openai-codex", "openrouter"];
+
+fn select_login_provider(
+    store: &AgentAuthStore,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
+    let providers = builtin_provider_info(store)?
+        .into_iter()
+        .filter(|provider| LOGIN_PROVIDER_IDS.contains(&provider.id.as_str()))
+        .collect::<Vec<_>>();
+    let items = aligned_provider_labels(&providers, menu_width());
+    let Some(index) = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select provider to configure")
+        .items(&items)
+        .default(0)
+        .interact_opt()?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(providers[index].id.clone()))
+}

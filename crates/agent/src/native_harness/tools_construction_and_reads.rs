@@ -20,6 +20,8 @@ impl HarnessTools {
             edit_scope,
             pending: BTreeMap::new(),
             loaded: Mutex::new(BTreeSet::new()),
+            required_skills: Mutex::new(BTreeSet::new()),
+            reference_images: Vec::new(),
         })
     }
 
@@ -27,9 +29,50 @@ impl HarnessTools {
         self.supervisor = supervisor;
     }
 
+    /// Configure the skill contract for the current native authoring turn.
+    ///
+    /// Standalone tool tests intentionally keep their historical behavior and
+    /// may still use a logical skill id without a prior `get_skill` call. The
+    /// real harness calls this method after selecting the focused units, which
+    /// makes the model's declared skill auditable before an edit is approved.
+    pub fn set_required_skills<I>(&mut self, skills: I) -> AgentResult<()>
+    where
+        I: IntoIterator<Item = String>,
+    {
+        let mut required = self
+            .required_skills
+            .lock()
+            .map_err(|_| AgentError::new("required skills lock poisoned"))?;
+        required.clear();
+        for skill in skills {
+            let skill = skill.trim().strip_prefix("dowe-").unwrap_or(skill.trim());
+            if !skill.is_empty() {
+                required.insert(skill.to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn enforce_required_skill(&self, skill: &str) -> AgentResult<String> {
+        let normalized = skill.strip_prefix("dowe-").unwrap_or(skill).to_string();
+        let required = self
+            .required_skills
+            .lock()
+            .map_err(|_| AgentError::new("required skills lock poisoned"))?;
+        if required.is_empty()
+            || required.contains(&normalized)
+            || (normalized == "views" && required.iter().any(|id| id.starts_with("views/")))
+        {
+            return Ok(normalized);
+        }
+        Err(AgentError::new(format!(
+            "skill `{normalized}` was not preloaded for this Dowe turn; use get_skill for one of the focused units before authoring"
+        )))
+    }
+
     fn resolve_write_skill(&self, skill: &str) -> AgentResult<String> {
         if skill_unit(skill).is_ok() {
-            return Ok(skill.to_string());
+            return self.enforce_required_skill(skill);
         }
         if skill.len() != 64 || !skill.bytes().all(|byte| byte.is_ascii_hexdigit()) {
             return skill_unit(skill).map(|unit| unit.id);
@@ -54,7 +97,7 @@ impl HarnessTools {
             })
             .collect::<BTreeSet<_>>();
         if ids.len() == 1 {
-            return Ok(ids.into_iter().next().expect("one loaded skill id"));
+            return self.enforce_required_skill(&ids.into_iter().next().expect("one loaded skill id"));
         }
         Err(AgentError::new(
             "write_file, edit_file, and write_asset require a logical skill id, not a skill hash; use the id returned by get_skill",
@@ -189,4 +232,3 @@ impl HarnessTools {
     }
 
 }
-

@@ -1508,6 +1508,8 @@ dependencies = [
  "dowe_compiler",
  "dowe_components",
  "dowe_runtime",
+ "dowe_stdlib",
+ "png 0.18.1",
  "rand_core 0.6.4",
  "reqwest",
  "serde",

@@ -22,6 +22,15 @@ struct SearchArgs {
     #[serde(default = "first_line")]
     offset: usize,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SvgConversionArgs {
+    path: String,
+    #[serde(default = "original_svg_colors")]
+    colors: String,
+    #[serde(default = "source_svg_format")]
+    format: String,
+}
 #[derive(Debug, Default, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 enum SkillSource {
@@ -47,6 +56,12 @@ fn first_line() -> usize {
 }
 fn page_size() -> usize {
     200
+}
+fn original_svg_colors() -> String {
+    "original".to_string()
+}
+fn source_svg_format() -> String {
+    "source".to_string()
 }
 
 // Skills are reference material, so a single page should leave room for the

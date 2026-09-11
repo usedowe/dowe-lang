@@ -157,7 +157,18 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
         ),
         (
             "views/layouts",
-            &["layout", "layouts", "scaffold", "sidebar", "barra lateral"],
+            &[
+                "layout",
+                "layouts",
+                "scaffold",
+                "sidebar",
+                "barra lateral",
+                "interface",
+                "interfaz",
+                "design",
+                "diseño",
+                "diseno",
+            ],
         ),
         (
             "views/pages",
@@ -171,11 +182,44 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
                 "pantalla",
                 "pantallas",
                 "landing",
+                "image",
+                "imagen",
+                "reference",
+                "referencia",
+                "mockup",
+                "screenshot",
+                "captura",
+                "visual",
+                "visuales",
             ],
         ),
         (
             "views/components",
-            &["component", "components", "componente", "componentes"],
+            &[
+                "component",
+                "components",
+                "componente",
+                "componentes",
+                "interface",
+                "interfaz",
+                "mockup",
+                "screenshot",
+                "captura",
+            ],
+        ),
+        (
+            "views/svg",
+            &[
+                "svg",
+                "logo",
+                "logos",
+                "icon",
+                "icons",
+                "vectorial",
+                "vectoriales",
+                "vector asset",
+                "vector assets",
+            ],
         ),
         (
             "server/entities",
@@ -214,6 +258,43 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
             selected.insert(id.into());
         }
     }
+    let visual_reference = [
+        "ui",
+        "ux",
+        "frontend",
+        "dashboard",
+        "landing",
+        "website",
+        "web",
+        "portal",
+        "sitio",
+        "image",
+        "imagen",
+        "reference",
+        "referencia",
+        "mockup",
+        "screenshot",
+        "captura",
+        "visual",
+        "visuales",
+        "interfaz",
+        "interface",
+        "design",
+        "diseño",
+        "diseno",
+    ]
+    .iter()
+    .any(|term| has(term));
+    if visual_reference {
+        // A reference is a whole composition. Preload the three focused view
+        // units even when the prompt only says "this image" so the model has
+        // layout, page and component contracts before it writes source.
+        selected.extend([
+            "views/layouts".into(),
+            "views/pages".into(),
+            "views/components".into(),
+        ]);
+    }
     if [
         "request",
         "requests",
@@ -235,3 +316,20 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
     selected.into_iter().collect()
 }
 
+#[cfg(test)]
+mod svg_catalog_tests {
+    use super::*;
+
+    #[test]
+    fn selects_svg_guidance_for_vector_asset_requests() {
+        let units = select_units("convert the logo.svg into Dowe source", &[]);
+        assert!(units.iter().any(|unit| unit == "views/svg"));
+        assert!(units.iter().any(|unit| unit == "core"));
+    }
+
+    #[test]
+    fn maps_project_svg_paths_to_the_focused_unit() {
+        let units = select_units("inspect this asset", &["assets/brand/mark.svg".into()]);
+        assert_eq!(units, ["core", "views/svg"]);
+    }
+}

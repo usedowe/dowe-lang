@@ -15,42 +15,25 @@ pub fn generation_skill_summaries_for_mode(
     if !dowe_mode {
         return Vec::new();
     }
-    let lower = prompt.to_ascii_lowercase();
+    let lower = prompt.to_lowercase();
     let terms = lower
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
+        .split(|character: char| !character.is_alphanumeric() && character != '-')
         .filter(|term| !term.is_empty())
         .collect::<Vec<_>>();
     let fullstack = terms.contains(&"fullstack");
-    let views = fullstack
-        || contains_any(
-            &terms,
-            &[
-                "ui",
-                "ux",
-                "frontend",
-                "dashboard",
-                "view",
-                "vista",
-                "layout",
-                "page",
-                "screen",
-                "pantalla",
-                "component",
-                "componente",
-                "form",
-                "formulario",
-                "theme",
-                "tema",
-                "responsive",
-                "mobile",
-                "movil",
-                "desktop",
-                "escritorio",
-                "android",
-                "ios",
-                "button",
-            ],
-        );
+    let svg = contains_any(
+        &terms,
+        &[
+            "svg",
+            "logo",
+            "logos",
+            "icon",
+            "icons",
+            "vectorial",
+            "vectoriales",
+        ],
+    );
+    let views = fullstack || svg || is_ui_authoring_prompt(prompt);
     let server = fullstack
         || contains_any(
             &terms,
@@ -84,12 +67,82 @@ pub fn generation_skill_summaries_for_mode(
     let selected = generation_skills().iter().filter(|skill| match skill.name {
         "dowe-source-format" | "dowe-sdd-validation" => true,
         "dowe-fullstack" => views && server,
+        "dowe-svg" => svg,
         "dowe-ui-reference" => views && !server,
         "dowe-server-logic" => server && !views,
         "dowe-terminal" => terminal && !views && !server,
         _ => false,
     });
     selected.map(skill_summary).collect()
+}
+
+/// Returns true when a request is likely to author or refine a Dowe view.
+///
+/// Reference images are evidence for the same authoring path as an explicit
+/// "UI" request. Keeping these terms in one classifier prevents the request
+/// router, skill summaries and native harness from disagreeing on Spanish
+/// prompts such as "implementa esta imagen de referencia".
+pub(crate) fn is_ui_authoring_prompt(prompt: &str) -> bool {
+    let lower = prompt.to_lowercase();
+    let terms = lower
+        .split(|character: char| !character.is_alphanumeric() && character != '-')
+        .filter(|term| !term.is_empty())
+        .collect::<Vec<_>>();
+    contains_any(
+        &terms,
+        &[
+            "ui",
+            "ux",
+            "frontend",
+            "dashboard",
+            "landing",
+            "website",
+            "web",
+            "portal",
+            "sitio",
+            "view",
+            "vista",
+            "layout",
+            "page",
+            "pages",
+            "página",
+            "páginas",
+            "pagina",
+            "paginas",
+            "screen",
+            "pantalla",
+            "component",
+            "components",
+            "componente",
+            "componentes",
+            "form",
+            "formulario",
+            "responsive",
+            "mobile",
+            "movil",
+            "desktop",
+            "escritorio",
+            "android",
+            "ios",
+            "button",
+            "boton",
+            "botón",
+            "image",
+            "imagen",
+            "reference",
+            "referencia",
+            "mockup",
+            "screenshot",
+            "captura",
+            "visual",
+            "visuales",
+            "interfaz",
+            "interface",
+            "design",
+            "diseño",
+            "diseno",
+        ],
+    )
 }
 
 fn skill_summary(skill: &GenerationSkill) -> AgentSkillSummary {
@@ -118,6 +171,11 @@ fn generation_skills() -> &'static [GenerationSkill] {
             name: "dowe-ui-reference",
             description: "Convert UI reference images into Dowe view structures.",
             context: crate::prompts::SCREENSHOT_UI_POLICY,
+        },
+        GenerationSkill {
+            name: "dowe-svg",
+            description: "Convert project SVG assets into Dowe-native vector UI source.",
+            context: "For local SVG assets, use the read-only convert_svg tool and the shared parse.svg behavior. Prefer source output for static Svg with direct Path children, data output only for runtime Svg data bindings, preserve original colors unless theme tokens are requested, and never paste raw SVG/XML or redraw a vector asset with Image or Canvas.",
         },
         GenerationSkill {
             name: "dowe-server-logic",

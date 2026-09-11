@@ -36,6 +36,11 @@ pub struct HarnessTools {
     edit_scope: Option<Vec<AllowedEditSurface>>,
     pub(crate) pending: BTreeMap<String, String>,
     loaded: Mutex<BTreeSet<String>>,
+    /// Focused skills selected at the task boundary. A non-empty set enables
+    /// the native Dowe authoring gate: writes must name one of these logical
+    /// skills (or the top-level `views` bundle for a focused view task).
+    required_skills: Mutex<BTreeSet<String>>,
+    pub(crate) reference_images: Vec<(PathBuf, Vec<u8>)>,
     pub redactor: Redactor,
 }
 
@@ -94,7 +99,6 @@ struct ShellArgs {
     reason: String,
 }
 
-
 include!("tools_construction_and_reads.rs");
 include!("tools_approvals.rs");
 include!("tools_write_scope.rs");
@@ -111,10 +115,40 @@ fn generic_source_extension(path: &Path) -> bool {
             .map(str::to_ascii_lowercase)
             .as_deref(),
         Some(
-            "html" | "htm" | "css" | "scss" | "sass" | "less" | "js" | "jsx" | "mjs"
-                | "cjs" | "ts" | "tsx" | "json" | "yaml" | "yml" | "toml" | "md"
-                | "txt" | "rs" | "py" | "go" | "java" | "kt" | "swift" | "c" | "h"
-                | "cpp" | "hpp" | "rb" | "php" | "sh" | "bash" | "sql" | "vue"
+            "html"
+                | "htm"
+                | "css"
+                | "scss"
+                | "sass"
+                | "less"
+                | "js"
+                | "jsx"
+                | "mjs"
+                | "cjs"
+                | "ts"
+                | "tsx"
+                | "json"
+                | "yaml"
+                | "yml"
+                | "toml"
+                | "md"
+                | "txt"
+                | "rs"
+                | "py"
+                | "go"
+                | "java"
+                | "kt"
+                | "swift"
+                | "c"
+                | "h"
+                | "cpp"
+                | "hpp"
+                | "rb"
+                | "php"
+                | "sh"
+                | "bash"
+                | "sql"
+                | "vue"
                 | "svelte"
         )
     )
@@ -228,6 +262,43 @@ mod write_skill_tests {
     }
 
     #[test]
+    fn native_turn_gate_requires_one_of_the_preloaded_focused_skills() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        tools
+            .set_required_skills([
+                "core".to_string(),
+                "views/pages".to_string(),
+                "views/components".to_string(),
+            ])
+            .unwrap();
+        assert!(
+            tools
+                .prepare(&write_call("theme"), HarnessRole::Execute)
+                .is_err()
+        );
+        assert!(
+            tools
+                .prepare(
+                    &write_call_for("views/page.dowe", "views/pages"),
+                    HarnessRole::Execute
+                )
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            tools
+                .prepare(
+                    &write_call_for("views/page.dowe", "views"),
+                    HarnessRole::Execute
+                )
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[test]
     fn accepts_hash_for_an_already_loaded_embedded_skill() {
         let root = tempfile::tempdir().unwrap();
         let mut tools =
@@ -293,10 +364,7 @@ mod write_skill_tests {
 
         assert!(
             tools
-                .prepare(
-                    &write_call_for("index.html", "core"),
-                    HarnessRole::Execute
-                )
+                .prepare(&write_call_for("index.html", "core"), HarnessRole::Execute)
                 .is_err()
         );
     }

@@ -89,7 +89,7 @@ mod tests {
             state
                 .frame((120, 60), true)
                 .iter()
-                .any(|line| line.contains("Working…"))
+                .any(|line| line.contains("Thinking…"))
         );
         assert!(
             state
@@ -102,7 +102,7 @@ mod tests {
             state
                 .frame((120, 60), true)
                 .iter()
-                .any(|line| line.contains("Working…"))
+                .any(|line| line.contains("Thinking…"))
         );
         assert!(!state.frame((120, 60), false).join("\n").contains("Working"));
     }
@@ -115,7 +115,7 @@ mod tests {
         );
         let state = activity.state();
         let first = state.workspace_lines().join(" ");
-        assert!(first.contains("in_progress") && first.contains("safe/model"));
+        assert!(first.contains("Thinking") && first.contains("safe/model"));
         drop(state);
         std::thread::sleep(Duration::from_millis(2));
         let state = activity.state();
@@ -127,7 +127,48 @@ mod tests {
                 .state()
                 .workspace_lines()
                 .join(" ")
-                .contains("awaiting_approval")
+                .contains("Waiting for approval")
+        );
+    }
+
+    #[test]
+    fn phase_labels_follow_native_evidence() {
+        let activity = Activity::new(true).unwrap();
+        let frame = activity.state().frame((120, 20), true).join("\n");
+        assert!(frame.contains("Thinking…"));
+
+        activity.workspace_event(&serde_json::json!({
+            "event": "operation_started",
+            "receipt": {"operation": "search", "path": "src"}
+        }));
+        let frame = activity.state().frame((120, 20), true).join("\n");
+        assert!(frame.contains("Working…") && frame.contains("Searching files"));
+
+        activity.workspace_event(&serde_json::json!({"event":"tool_result"}));
+        assert!(
+            activity
+                .state()
+                .frame((120, 20), true)
+                .join("\n")
+                .contains("Thinking…")
+        );
+
+        activity.stream("preview", "partial response");
+        assert!(
+            activity
+                .state()
+                .frame((120, 20), true)
+                .join("\n")
+                .contains("Writing…")
+        );
+
+        activity.workspace_event(&serde_json::json!({"event":"approval_required"}));
+        assert!(
+            activity
+                .state()
+                .frame((120, 20), true)
+                .join("\n")
+                .contains("Waiting for approval…")
         );
     }
 
@@ -268,6 +309,8 @@ struct State {
     agent_model: String,
     task_title: String,
     task_status: String,
+    phase: ActivityPhase,
+    activity_detail: String,
     started_at: Option<Instant>,
     input: EditableLine,
     pending: VecDeque<String>,
@@ -281,4 +324,3 @@ struct EditableLine {
     text: Vec<char>,
     cursor: usize,
 }
-

@@ -40,6 +40,60 @@ fn read_call(id: &str, path: &str) -> Value {
     json!({"output":[{"type":"function_call","call_id":id,"name":"read_file","arguments":json!({"path":path}).to_string()}]})
 }
 
+fn convert_svg_call(id: &str, path: &str) -> Value {
+    json!({"output":[{"type":"function_call","call_id":id,"name":"convert_svg","arguments":json!({"path":path}).to_string()}]})
+}
+
+#[tokio::test]
+async fn svg_conversion_runs_as_a_read_without_an_approval_round_trip() {
+    let home = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(root.path().join("assets")).unwrap();
+    std::fs::write(
+        root.path().join("assets/mark.svg"),
+        r##"<svg viewBox="0 0 24 24"><path d="M4 4L20 4L12 20Z" fill="#2457D6"/></svg>"##,
+    )
+    .unwrap();
+    let store = HarnessStore::new(home.path(), root.path()).unwrap();
+    let mut session = store.create_session().unwrap();
+    let mut host = Host {
+        responses: VecDeque::from([
+            convert_svg_call("svg", "assets/mark.svg"),
+            json!({"output_text":"Converted the mark."}),
+        ]),
+        requests: vec![],
+        events: vec![],
+        decision: None,
+    };
+
+    let outcome = run_harness_turn(
+        &store,
+        &mut session,
+        &HarnessConfig::default(),
+        HarnessTask::new(
+            "Use the local logo.svg in the Dowe UI",
+            &ModelSelection::new("openai", "gpt-5.5"),
+        ),
+        &mut host,
+    )
+    .await
+    .unwrap();
+
+    assert!(matches!(outcome, HarnessOutcome::Completed));
+    assert_eq!(host.requests.len(), 2);
+    assert!(
+        host.events
+            .iter()
+            .all(|event| event["event"] != "approval_required")
+    );
+    assert!(
+        host.requests[1].extra["dowe_harness_turns"]
+            .to_string()
+            .contains("Svg viewBox")
+    );
+    assert!(root.path().join("assets/mark.svg").is_file());
+}
+
 #[tokio::test]
 async fn token_safety_bound_applies_per_request_not_to_accumulated_history() {
     let home = tempfile::tempdir().unwrap();
@@ -115,37 +169,47 @@ async fn approved_tools_continue_with_native_results_and_persist_evidence() {
         host.events
             .iter()
             .any(|event| event["event"] == "operation_finished"
-                    && event["receipt"].get("codegraphBinding").is_some()
-                    && event["receipt"]["operation"] == "write_file"
-                    && event["receipt"]["status"] == "succeeded"
-                    && event["receipt"]["beforeFingerprint"].is_null()
-                    && event["receipt"]["afterFingerprint"].is_string())
+                && event["receipt"].get("codegraphBinding").is_some()
+                && event["receipt"]["operation"] == "write_file"
+                && event["receipt"]["status"] == "succeeded"
+                && event["receipt"]["beforeFingerprint"].is_null()
+                && event["receipt"]["afterFingerprint"].is_string())
     );
 }
 
 #[tokio::test]
 async fn failed_operation_records_failed_receipt_status() {
-        let home = tempfile::tempdir().unwrap();
-        let root = tempfile::tempdir().unwrap();
-        let store = HarnessStore::new(home.path(), root.path()).unwrap();
-        let mut session = store.create_session().unwrap();
-        let mut host = Host {
-            responses: VecDeque::from([
-                json!({"output":[{"type":"function_call","call_id":"image","name":"generate_image","arguments":json!({"prompt":"texture","destination":"public/assets/texture.png","reason":"test"}).to_string()}]}),
-                json!({"output_text":"generation failed"}),
-            ]),
-            requests: vec![], events: vec![], decision: Some(true),
-        };
-        run_harness_turn(&store, &mut session, &HarnessConfig::default(),
-            HarnessTask::new("Generate asset", &ModelSelection::new("openai", "gpt-5.5")), &mut host).await.unwrap();
-        assert!(host.events.iter().any(|event| {
-            event["event"] == "operation_finished" && event["failed"] == true
-                && event["receipt"]["status"] == "failed"
-        }));
-    }
+    let home = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap();
+    let store = HarnessStore::new(home.path(), root.path()).unwrap();
+    let mut session = store.create_session().unwrap();
+    let mut host = Host {
+        responses: VecDeque::from([
+            json!({"output":[{"type":"function_call","call_id":"image","name":"generate_image","arguments":json!({"prompt":"texture","destination":"public/assets/texture.png","reason":"test"}).to_string()}]}),
+            json!({"output_text":"generation failed"}),
+        ]),
+        requests: vec![],
+        events: vec![],
+        decision: Some(true),
+    };
+    run_harness_turn(
+        &store,
+        &mut session,
+        &HarnessConfig::default(),
+        HarnessTask::new("Generate asset", &ModelSelection::new("openai", "gpt-5.5")),
+        &mut host,
+    )
+    .await
+    .unwrap();
+    assert!(host.events.iter().any(|event| {
+        event["event"] == "operation_finished"
+            && event["failed"] == true
+            && event["receipt"]["status"] == "failed"
+    }));
+}
 
-    #[tokio::test]
-    async fn noninteractive_approval_returns_without_execution_or_another_model_call() {
+#[tokio::test]
+async fn noninteractive_approval_returns_without_execution_or_another_model_call() {
     let home = tempfile::tempdir().unwrap();
     let root = tempfile::tempdir().unwrap();
     let store = HarnessStore::new(home.path(), root.path()).unwrap();

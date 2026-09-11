@@ -222,60 +222,15 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
 }
 
 #[test]
-fn agent_escape_returns_to_parent_menu_without_mutating_session() {
+fn agent_escape_dismisses_login_provider_menu_without_mutating_session() {
     let session = Session::start(false);
     session.send("/login\r");
-    session.until("Sign in with an API key");
-    session.send("\u{1b}[B\r");
-    session.until("Select provider to configure");
-    session.send("\u{1b}");
-    let method = session.until("Sign in with an API key");
-    assert!(method.contains("❯ Sign in with an API key"), "{method:?}");
-    session.send("\u{1b}");
-    session.until(">");
-    session.send("/provider\r");
-    session.until("Select provider to configure");
-    session.send("\u{1b}");
-    session.until(">");
-    session.finish();
-}
-
-#[test]
-fn agent_escape_leaves_model_selection_without_authenticating() {
-    let session = Session::start(false);
-    session.send("/provider\r");
-    session.until("Select provider to configure");
-    for _ in 0..23 {
-        session.send("\u{1b}[B");
-    }
-    session.send("\r");
-    session.until(">");
-    session.send("/provider\r");
-    session.until("Select provider to configure");
-    session.send("\u{1b}");
-    session.until(">");
-    session.send("/model\r");
-    session.until("Enter another model id");
-    session.send("\r");
-    session.until(">");
-    session.send("/model\r");
-    let before = session.until("Enter another model id");
-    assert!(before.lines().any(|line| line.contains(" • ")));
-    let selected = before
-        .lines()
-        .find(|line| line.starts_with("❯ ") && line.contains(" • "))
-        .expect("selected provider-qualified model")
-        .to_string();
-    session.send("\u{1b}[B\u{1b}");
-    session.until(">");
-    session.send("/model\r");
-    let after = session.until("Enter another model id");
-    assert!(after.contains(&selected), "{after:?}");
-    session.send("\u{1b}");
-    session.until(">");
-    session.send("hello\r");
-    session.until("Select authentication method");
-    session.send("\u{1b}");
-    session.until(">");
+    let mut login_menu = session.until("Select provider to configure");
+    login_menu.push_str(&session.until("OpenAI Codex"));
+    login_menu.push_str(&session.until("OpenRouter"));
+    assert!(login_menu.contains("OpenAI Codex"), "{login_menu:?}");
+    assert!(login_menu.contains("OpenRouter"), "{login_menu:?}");
+    assert!(!login_menu.contains("Sign in with"), "{login_menu:?}");
+    session.send("q");
     session.finish();
 }

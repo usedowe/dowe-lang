@@ -6,6 +6,9 @@ fn path_unit(path: &str) -> Option<&'static str> {
     if path == "main.dowe" || path == ".gitignore" || path.starts_with(".env") {
         return Some("core/configuration");
     }
+    if path.ends_with(".svg") {
+        return Some("views/svg");
+    }
     if path == "readme.md" || path.starts_with("docs/") {
         return Some("core");
     }

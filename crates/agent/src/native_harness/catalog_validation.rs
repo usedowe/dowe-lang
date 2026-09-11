@@ -1,6 +1,6 @@
 pub fn skill_index() -> String {
     format!(
-        "Units: {}. Use get_skill with an id; provide resource for another declared bundle reference. Bundles core, server, views, theme, domain-modeling, native-ipc remain available. Load only necessary units. Core covers application .dowe source and docs; core/configuration covers root environment names and .gitignore; views units cover app public/assets media. Skills classify scope, never grant execution approval.",
+        "Units: {}. Use get_skill with an id; provide resource for another declared bundle reference. Bundles core, server, views, theme, domain-modeling, native-ipc remain available. Load only necessary units. Core covers application .dowe source and docs; core/configuration covers root environment names and .gitignore; views units cover app public/assets media, including SVG conversion and vector composition. Skills classify scope, never grant execution approval.",
         UNITS
             .iter()
             .map(|unit| unit.id)
@@ -49,6 +49,13 @@ pub fn skill_unit(id: &str) -> AgentResult<SkillUnit> {
     if id == "core/configuration" {
         content.push_str("\nEnvironment files: .env, .env.example, .env.live, .env.stage, .env.uat belong at the application root. Only names and placeholders enter model context. Use local protected input for secrets. Never replace a hidden value with a placeholder. Keep private profiles ignored by Git. Root .gitignore and app docs may be edited for this workflow.\n");
     }
+    if id == "views" || id.starts_with("views/") {
+        content = format!(
+            "## Default-first view authoring\n{}\n\n{}",
+            crate::prompts::DOWE_VIEW_DEFAULTS_CONTRACT,
+            content
+        );
+    }
     Ok(SkillUnit {
         id: id.into(),
         hash: super::digest(content.as_bytes()),
@@ -63,7 +70,7 @@ pub fn skill_unit(id: &str) -> AgentResult<SkillUnit> {
 }
 
 pub(super) fn catalog_fingerprint() -> AgentResult<String> {
-        // cached independently from dynamic provider authority
+    // Cache independently from dynamic provider authority.
     static FINGERPRINT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     if let Some(hash) = FINGERPRINT.get() {
         return Ok(hash.clone());
@@ -77,6 +84,11 @@ pub(super) fn catalog_fingerprint() -> AgentResult<String> {
         );
     }
     bytes.extend_from_slice(skill_index().as_bytes());
+    for unit in UNITS {
+        let resolved = skill_unit(unit.id)?;
+        bytes.extend_from_slice(unit.id.as_bytes());
+        bytes.extend_from_slice(resolved.hash.as_bytes());
+    }
     let hash = super::digest(&bytes);
     let _ = FINGERPRINT.set(hash.clone());
     Ok(hash)
@@ -112,8 +124,8 @@ pub fn authority_fingerprint_with_registry(registry: &crate::provider::ProviderR
         }
     }
     material.push_str("dynamic-providers|");
-        material.push_str(&registry.canonical_material()?);
-        material.push_str("capabilities|");
+    material.push_str(&registry.canonical_material()?);
+    material.push_str("capabilities|");
     material.push_str(&String::from_utf8_lossy(
         &super::capability_catalog::authority_material(),
     ));
@@ -139,4 +151,3 @@ pub fn validate_catalog() -> AgentResult<()> {
     }
     validate_dependencies(&graph)
 }
-

@@ -72,6 +72,12 @@ const UNITS: &[Unit] = &[
         sections: &["Reusable components", "Repeated collection ownership"],
     },
     Unit {
+        id: "views/svg",
+        bundle: "views",
+        resource: "references/svg.md",
+        sections: &[],
+    },
+    Unit {
         id: "views/requests",
         bundle: "views",
         resource: "references/views.md",

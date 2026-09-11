@@ -9,6 +9,19 @@ pub fn agent_tool_definitions(request_type: AgentRequestType) -> Vec<AgentToolDe
         | AgentRequestType::VisionUi => Vec::new(),
         AgentRequestType::Implementation => vec![
             function_tool(
+                "convert_svg",
+                "Convert a project-local SVG through the shared parse.svg implementation into Dowe Svg/Path source or normalized runtime vector data. The request is read-only and requires no approval.",
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string" },
+                        "colors": { "type": "string", "enum": ["original", "tokens"], "default": "original" },
+                        "format": { "type": "string", "enum": ["source", "data"], "default": "source" }
+                    },
+                    "required": ["path"]
+                }),
+            ),
+            function_tool(
                 "read_file",
                 "Request a specific file path for local inspection by the Dowe binary.",
                 json!({

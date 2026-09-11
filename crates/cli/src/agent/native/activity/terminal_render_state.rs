@@ -37,10 +37,27 @@ fn style_activity_line(line: &str) -> String {
         style.yellow().bold().for_stderr().to_string()
     } else if line.starts_with("request · ") {
         style.green().bold().for_stderr().to_string()
+    } else if line.starts_with("• ") {
+        style.cyan().bold().for_stderr().to_string()
     } else if line.contains(" [") && line.contains("] · ") {
         style.cyan().bold().for_stderr().to_string()
     } else {
         line.to_string()
+    }
+}
+
+fn style_workspace_line(line: &str) -> String {
+    let style = dialoguer::console::style(line);
+    if line.contains("· Thinking") || line.contains("Thinking…") {
+        style.cyan().bold().for_stderr().to_string()
+    } else if line.contains("· Working") || line.contains("Working…") {
+        style.yellow().bold().for_stderr().to_string()
+    } else if line.contains("· Writing") || line.contains("Writing…") {
+        style.green().bold().for_stderr().to_string()
+    } else if line.contains("Waiting for approval") {
+        style.yellow().bold().for_stderr().to_string()
+    } else {
+        style.dim().for_stderr().to_string()
     }
 }
 
@@ -111,11 +128,20 @@ impl State {
             "╭─ Agents ─────────────────────────────────────────╮".into(),
             format!(
                 "│ {} · {} / {} · {} · {}",
-                self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed
+                self.agent_name,
+                self.agent_role,
+                self.agent_model,
+                self.phase.live_label(),
+                elapsed
             ),
             "╰───────────────────────────────────────────────────╯".into(),
             "╭─ Todos ──────────────────────────────────────────╮".into(),
-            format!("│ 1. {} [{}]", self.task_title, self.task_status),
+            format!(
+                "│ 1. {} · {} · {}",
+                self.task_title,
+                self.phase.label(),
+                super::safe_text(&self.activity_detail, 160)
+            ),
             "╰───────────────────────────────────────────────────╯".into(),
         ]
     }
@@ -127,13 +153,18 @@ impl State {
             .unwrap_or_else(|| "0s".into());
         vec![
             format!(
-                "╭─ Agents: {} · {} / {} · {} · {} ╮",
-                self.agent_name, self.agent_role, self.agent_model, self.task_status, elapsed
+                "╭─ Agents · {} · {} / {} · {} · {} ╮",
+                self.agent_name,
+                self.agent_role,
+                self.agent_model,
+                self.phase.live_label(),
+                elapsed
             ),
             format!(
-                "╰─ Todos: 1. {} [{}]{} ╯",
+                "╰─ Todos · 1. {} · {} · {}{} ╯",
                 self.task_title,
-                self.task_status,
+                self.phase.label(),
+                super::safe_text(&self.activity_detail, 120),
                 if self.pending.is_empty() {
                     String::new()
                 } else {
@@ -190,7 +221,10 @@ impl State {
                 ""
             }
         );
-        let mut frame = cards;
+        let mut frame = cards
+            .into_iter()
+            .map(|line| style_workspace_line(&line))
+            .collect::<Vec<_>>();
         for index in 0..activity_height {
             let text = if index == 0 {
                 header.as_str()
@@ -213,7 +247,11 @@ impl State {
             });
         }
         if busy {
-            let label = format!(" {} Working… ", ['⠋', '⠙', '⠹', '⠸'][self.spinner]);
+            let label = format!(
+                " {} {} ",
+                SPINNER_FRAMES[self.spinner % SPINNER_FRAMES.len()],
+                self.phase.live_label()
+            );
             let input = if outlined {
                 let [top, bottom] = crate::agent::prompt::input_outline(width, &label);
                 let display = format!(
@@ -237,7 +275,11 @@ impl State {
                     bottom,
                 ]
             } else {
-                vec!["Working…".to_string()]
+                vec![format!(
+                    "{} {}",
+                    SPINNER_FRAMES[self.spinner % SPINNER_FRAMES.len()],
+                    self.phase.live_label()
+                )]
             };
             frame.extend(
                 input
@@ -323,15 +365,17 @@ impl Drop for State {
     }
 }
 
-pub(crate) struct Suspension(Activity);
+pub(crate) struct Suspension {
+    activity: Activity,
+    resume: bool,
+}
 
 impl Drop for Suspension {
     fn drop(&mut self) {
-        let mut state = self.0.state();
+        let mut state = self.activity.state();
         state.suspended -= 1;
-        if let Err(error) = state.enter() {
+        if self.resume && let Err(error) = state.enter() {
             state.error = Some(error.to_string());
         }
     }
 }
-

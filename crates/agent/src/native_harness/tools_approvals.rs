@@ -230,7 +230,9 @@ impl HarnessTools {
                 let details = json!({"watch":args.watch,"lifetime":if args.watch {"owning_session"} else {"task"},"shell":shell,"command":args.command,"cwd":args.cwd,"reason":args.reason,"env":self.shell_env(),"stdin":if args.pty {"terminal"} else {"ignore"},"pty":args.pty,"resource":args.resource,"terminal_transcript":"local_only","timeout_ms":self.config.shell_timeout_ms,"max_output_bytes":self.config.max_output_bytes,"warning":"General shell runs with your user permissions and can access files outside the project and the network. This is not a sandbox."});
                 (None, None, details)
             }
-            "read_file" | "list_files" | "search" | "get_skill" => return Ok(None),
+            "read_file" | "list_files" | "search" | "convert_svg" | "get_skill" => {
+                return Ok(None);
+            }
             "capture_web_screenshot" => return Ok(Some(self.prepare_screenshot(call, role)?)),
             _ => return Err(AgentError::new("unknown harness tool")),
         };

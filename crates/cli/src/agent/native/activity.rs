@@ -111,19 +111,18 @@ fn details(
 pub(super) fn tool_result(event: &Value) -> Vec<String> {
     let result = &event["result"];
     let status = outcome(result);
-    let mut headline = format!(
-        "{} [{}] · {}",
-        safe_text(result["name"].as_str().unwrap_or("tool"), 80),
-        safe_text(result["id"].as_str().unwrap_or("?"), 80),
-        status
-    );
+    let name = result["name"].as_str().unwrap_or_default();
+    let mut headline = format!("• {} · {status}", terminal::tool_summary_label(name));
     // Keep actionable failures visible while the activity card is collapsed.
     // Detailed result fields remain available when the user expands the card.
     if status == "failed"
         && let Some(error) = result["output"]["error"].as_str()
     {
         headline.push_str(": ");
-        headline.push_str(&safe_text(error, LINE_BYTES.saturating_sub(headline.len() + 2)));
+        headline.push_str(&safe_text(
+            error,
+            LINE_BYTES.saturating_sub(headline.len() + 2),
+        ));
     }
     let mut lines = vec![headline];
     let mut body = Vec::new();
@@ -192,7 +191,7 @@ mod tests {
                 "output": {"error": "write base changed after approval"}
             }
         }));
-        assert!(lines[0].contains("write_file [write-1] · failed:"));
+        assert!(lines[0].contains("• Wrote file · failed:"));
         assert!(lines[0].contains("write base changed after approval"));
         assert!(lines[0].len() <= LINE_BYTES);
     }
@@ -204,5 +203,22 @@ mod tests {
         );
         assert!(lines.iter().all(|line| !line.chars().any(char::is_control)));
         assert!(!lines[0].contains("\nspoof"));
+    }
+
+    #[test]
+    fn result_view_uses_human_tool_summaries_without_call_ids() {
+        for (name, expected) in [
+            ("search", "Searched files"),
+            ("read_file", "Read file"),
+            ("write_file", "Wrote file"),
+            ("shell", "Ran command"),
+            ("validate_dowe_project", "Validated project"),
+        ] {
+            let lines = tool_result(&json!({
+                "result": {"name": name, "id": "private-call-id", "output": {}}
+            }));
+            assert_eq!(lines[0], format!("• {expected} · completed"));
+            assert!(!lines[0].contains("private-call-id"));
+        }
     }
 }

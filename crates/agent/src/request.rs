@@ -1,8 +1,8 @@
 use crate::context::summarize_codegraph_for;
-use crate::is_dowe_project;
 use crate::error::AgentResult;
 use crate::images::encode_image_paths;
 use crate::instructions::load_project_instructions;
+use crate::is_dowe_project;
 use crate::model::{
     AgentContext, AgentPrepareOptions, AgentPreparedRequest, AgentRequest, AgentRequestType,
 };
@@ -51,8 +51,8 @@ pub fn prepare_agent_request(
         crate::validate_thinking(provider, &model, level)?;
     }
     let dowe_mode = is_dowe_project(root);
-        let skills = generation_skill_summaries_for_mode(prompt, dowe_mode);
-        let project_instructions = load_project_instructions(root)?;
+    let skills = generation_skill_summaries_for_mode(prompt, dowe_mode);
+    let project_instructions = load_project_instructions(root)?;
     let codegraph = if dowe_mode && request_type != AgentRequestType::Conversation {
         Some(summarize_codegraph_for(root, prompt, 16)?)
     } else {
@@ -168,17 +168,30 @@ pub fn infer_request_type(prompt: &str, has_image: bool) -> AgentRequestType {
 }
 
 pub fn infer_language(prompt: &str) -> String {
-    let lower = format!(" {} ", prompt.to_ascii_lowercase());
+    let lower = format!(" {} ", prompt.to_lowercase());
     if contains_any(
         &lower,
         &[
             " quiero ",
             " crea ",
             " crear ",
+            " diseña ",
+            " diseñar ",
+            " disena ",
+            " disenar ",
             " necesito ",
+            " implementa ",
+            " implementar ",
+            " valida ",
+            " validar ",
             " usuario ",
+            " imagen ",
+            " referencia ",
             " pantalla ",
             " vista ",
+            " interfaz ",
+            " componente ",
+            " tema ",
             " backend ",
             " frontend ",
             " aplicación ",
@@ -199,36 +212,7 @@ fn is_under_specified(prompt: &str) -> bool {
 }
 
 fn is_ui_request(prompt: &str) -> bool {
-    let lower = prompt.to_ascii_lowercase();
-    let terms = lower
-        .split(|character: char| !character.is_ascii_alphanumeric() && character != '-')
-        .filter(|term| !term.is_empty())
-        .collect::<Vec<_>>();
-    contains_term(
-        &terms,
-        &[
-            "ui",
-            "ux",
-            "frontend",
-            "dashboard",
-            "vista",
-            "view",
-            "vista",
-            "layout",
-            "pantalla",
-            "screen",
-            "landing",
-            "card",
-            "form",
-            "formulario",
-            "component",
-            "componente",
-        ],
-    )
-}
-
-fn contains_term(terms: &[&str], needles: &[&str]) -> bool {
-    needles.iter().any(|needle| terms.contains(needle))
+    crate::skills::is_ui_authoring_prompt(prompt)
 }
 
 fn contains_any(text: &str, needles: &[&str]) -> bool {

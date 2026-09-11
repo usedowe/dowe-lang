@@ -39,10 +39,12 @@ fn lists_public_authoring_skills_without_workspace_skills() {
         views.resources,
         [
             "references/views.md",
+            "references/layouts.md",
             "references/composition.md",
             "references/blocks/index.json",
             "references/reference-ui.md",
             "references/components.md",
+            "references/svg.md",
             "references/styles.md",
             "references/canvas.md",
             "references/table.md",
@@ -276,6 +278,7 @@ fn gets_compact_and_full_view_skill_documents() {
         full.content
             .contains("## Resource: references/components.md")
     );
+    assert!(full.content.contains("## Resource: references/svg.md"));
     assert!(full.content.contains("## Resource: references/styles.md"));
     assert!(full.content.contains("## Resource: references/canvas.md"));
     assert!(full.content.contains("## Resource: scripts/visual_qa.py"));
@@ -354,6 +357,20 @@ fn gets_one_declared_public_skill_resource() {
             .to_string()
             .contains("unknown public Dowe skill resource")
     );
+}
+
+#[test]
+fn gets_the_focused_svg_skill_resource() {
+    let resource =
+        get_public_skill_resource("views", "references/svg.md").expect("svg resource");
+
+    assert_eq!(resource.id, "views");
+    assert_eq!(resource.name, "dowe-views");
+    assert!(resource.content.contains("convert_svg"));
+    assert!(resource.content.contains("format:\"source\""));
+    assert!(resource.content.contains("Svg data:<reference>"));
+    assert!(!resource.content.contains("/Users/"));
+    assert!(!resource.content.contains("/agents/"));
 }
 
 #[test]

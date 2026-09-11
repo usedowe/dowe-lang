@@ -288,13 +288,13 @@ fn skill_records() -> &'static [SkillRecord] {
                 },
                 SkillResource {
                     path: "references/composition.md",
-                        content: include_str!(concat!(
-                            env!("CARGO_MANIFEST_DIR"),
-                            "/src/embedded/dowe-views/references/composition.md"
-                        )),
-                    },
-                    SkillResource {
-                        path: "references/blocks/index.json",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/composition.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/blocks/index.json",
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/src/embedded/dowe-views/references/blocks/index.json"
@@ -312,6 +312,13 @@ fn skill_records() -> &'static [SkillRecord] {
                     content: include_str!(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/src/embedded/dowe-views/references/components.md"
+                    )),
+                },
+                SkillResource {
+                    path: "references/svg.md",
+                    content: include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/src/embedded/dowe-views/references/svg.md"
                     )),
                 },
                 SkillResource {

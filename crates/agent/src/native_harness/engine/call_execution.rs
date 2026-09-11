@@ -5,7 +5,64 @@ struct HarnessCallResults {
     canceled: bool,
     graph_dirty: bool,
     generated_image_for_continuation: Option<GeneratedImage>,
+    validation_attempted: bool,
+    validation_failed: bool,
+    visual_checked: bool,
+    visual_failed: bool,
     outcome: Option<HarnessOutcome>,
+}
+
+async fn validate_dowe_project(
+    store: &HarnessStore,
+    host: &mut impl HarnessHost,
+    scope: &str,
+) -> AgentResult<Value> {
+    if scope != "project" && scope != "views" {
+        return Err(AgentError::new(
+            "validate_dowe_project scope must be project or views",
+        ));
+    }
+    let quality = super::quality::audit_dowe_project(store.root())?;
+    let quality_passed = quality["status"] == "passed";
+    if scope == "views" {
+        let status = if super::quality::quality_failed(&quality) {
+            "failed"
+        } else if quality_passed {
+            "passed"
+        } else {
+            "not_run"
+        };
+        return Ok(json!({
+            "status": status,
+            "scope": scope,
+            "quality": quality,
+            "compiler": {"status": "not_run", "reason": "views scope requested"},
+        }));
+    }
+    if super::quality::quality_failed(&quality) {
+        return Ok(json!({
+            "status": "failed",
+            "scope": scope,
+            "quality": quality,
+            "compiler": {"status": "not_run", "reason": "quality audit found redundant default props"},
+        }));
+    }
+    let compiler = host.validate_dowe_project(store.root()).await?;
+    let compiler_failed = compiler["status"] == "failed";
+    let compiler_passed = compiler["status"] == "passed";
+    let status = if compiler_failed {
+        "failed"
+    } else if compiler_passed && quality_passed {
+        "passed"
+    } else {
+        "not_run"
+    };
+    Ok(json!({
+        "status": status,
+        "scope": scope,
+        "quality": quality,
+        "compiler": compiler,
+    }))
 }
 
 async fn execute_harness_calls(
@@ -25,8 +82,12 @@ async fn execute_harness_calls(
     let mut generated_image_for_continuation = None;
         let mut results = Vec::new();
         let mut screenshot_message = None;
-        let mut approval_required = false;
-        let mut graph_dirty = false;
+    let mut approval_required = false;
+    let mut graph_dirty = false;
+        let mut validation_attempted = false;
+        let mut validation_failed = false;
+        let mut visual_checked = false;
+        let mut visual_failed = false;
         for call in &calls {
             if call.name != "ask_user" && call.name != "question" {
                 continue;
@@ -65,6 +126,10 @@ async fn execute_harness_calls(
                     canceled: false,
                     graph_dirty: false,
                     generated_image_for_continuation,
+                    validation_attempted: false,
+                    validation_failed: false,
+                    visual_checked: false,
+                    visual_failed: false,
                     outcome: Some(HarnessOutcome::ClarificationRequired),
                 });
             };
@@ -120,6 +185,17 @@ async fn execute_harness_calls(
                     )
                 } else if exhausted(config, &usage, 0, started) {
                     Ok(json!({"status":"not_executed","reason":"budget_exhausted"}))
+                } else if call.name == "validate_dowe_project" {
+                    let scope = call.arguments["scope"].as_str().unwrap_or("project");
+                    let output = validate_dowe_project(store, host, scope).await;
+                    if let Ok(value) = &output {
+                        validation_attempted = true;
+                        validation_failed |= value["status"] == "failed";
+                    } else {
+                        validation_attempted = true;
+                        validation_failed = true;
+                    }
+                    output
                 } else {
                     match tools.prepare(&call, role) {
                         Ok(Some(approval)) => {
@@ -199,6 +275,9 @@ async fn execute_harness_calls(
                                         } else if call.name == "capture_web_screenshot" {
                                             let output = tools.capture_web_screenshot(approval);
                                             if let Ok(value) = &output {
+                                                visual_checked = true;
+                                                visual_failed =
+                                                    value["comparison"]["status"] == "failed";
                                                 screenshot_message =
                                                     Some(tools.screenshot_image(value)?);
                                             }
@@ -270,7 +349,11 @@ async fn execute_harness_calls(
                         Err(error) => Err(error),
                     }
                 };
-                let failed = output.is_err();
+                let failed = output.is_err()
+                    || (call.name == "validate_dowe_project"
+                        && output
+                            .as_ref()
+                            .is_ok_and(|value| value["status"] == "failed"));
                 let mut output = output.unwrap_or_else(
                     |error| json!({"error":tools.redactor.text(&error.to_string())}),
                 );
@@ -302,6 +385,10 @@ async fn execute_harness_calls(
         canceled,
         graph_dirty,
         generated_image_for_continuation,
+        validation_attempted,
+        validation_failed,
+        visual_checked,
+        visual_failed,
         outcome: None,
     })
 }

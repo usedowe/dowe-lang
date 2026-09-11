@@ -56,9 +56,15 @@ fn implementation_request_injects_persistent_graph_navigation_and_impact() {
     let temp = tempfile::tempdir().unwrap();
     fs::write(temp.path().join("main.dowe"), "main\n").unwrap();
     fs::write(temp.path().join("main.py"), "print(1)\n").unwrap();
-    let prepared = prepare_agent_request(temp.path(), "implement main.py", AgentPrepareOptions {
-        request_type: Some(AgentRequestType::Implementation), ..Default::default()
-    }).unwrap();
+    let prepared = prepare_agent_request(
+        temp.path(),
+        "implement main.py",
+        AgentPrepareOptions {
+            request_type: Some(AgentRequestType::Implementation),
+            ..Default::default()
+        },
+    )
+    .unwrap();
     let serialized = serde_json::to_string(&prepared).unwrap();
     assert!(serialized.contains("\\\"navigation\\\""));
     assert!(serialized.contains("\\\"impact\\\""));
@@ -147,16 +153,20 @@ fn server_build_does_not_request_a_ui_reference() {
     .expect("prepared");
 
     assert!(!prepared.context.needs_reference_image);
-    assert!(prepared
-        .context
-        .skills
-        .iter()
-        .any(|skill| skill.name == "dowe-server-logic"));
-    assert!(!prepared
-        .context
-        .skills
-        .iter()
-        .any(|skill| skill.name == "dowe-ui-reference"));
+    assert!(
+        prepared
+            .context
+            .skills
+            .iter()
+            .any(|skill| skill.name == "dowe-server-logic")
+    );
+    assert!(
+        !prepared
+            .context
+            .skills
+            .iter()
+            .any(|skill| skill.name == "dowe-ui-reference")
+    );
 }
 
 #[test]
@@ -172,17 +182,23 @@ fn uses_crate_generation_contexts_and_ignores_workspace_agent_skills() {
 
     let skills = generation_skill_summaries();
 
-    assert!(skills
-        .iter()
-        .all(|skill| skill.source == "dowe_agent_crate"));
+    assert!(
+        skills
+            .iter()
+            .all(|skill| skill.source == "dowe_agent_crate")
+    );
     assert!(skills.iter().any(|skill| skill.name == "dowe-ui-reference"));
-    assert!(skills
-        .iter()
-        .any(|skill| skill.context.contains("Scaffold")));
+    assert!(
+        skills
+            .iter()
+            .any(|skill| skill.context.contains("Scaffold"))
+    );
     assert!(!skills.iter().any(|skill| skill.name == "example"));
-    assert!(!serde_json::to_string(&skills)
-        .expect("skills")
-        .contains("Full body"));
+    assert!(
+        !serde_json::to_string(&skills)
+            .expect("skills")
+            .contains("Full body")
+    );
     let prepared = prepare_agent_request(
         temp.path(),
         "create a fullstack billing dashboard with server routes",
@@ -192,9 +208,11 @@ fn uses_crate_generation_contexts_and_ignores_workspace_agent_skills() {
         },
     )
     .expect("prepared");
-    assert!(!serde_json::to_string(&prepared.context.skills)
-        .expect("prepared skills")
-        .contains("Full body"));
+    assert!(
+        !serde_json::to_string(&prepared.context.skills)
+            .expect("prepared skills")
+            .contains("Full body")
+    );
 }
 
 #[test]
@@ -204,6 +222,8 @@ fn selects_only_generation_contexts_relevant_to_the_prompt() {
     let build_server = generation_skill_summaries_for("build the server API");
     let fullstack =
         generation_skill_summaries_for("implement the account page and its server endpoint");
+    let svg = generation_skill_summaries_for("convert the local logo.svg into a Dowe icon");
+    let spanish = generation_skill_summaries_for("Implementa una página de diseño visual");
 
     assert!(views.iter().any(|skill| skill.name == "dowe-ui-reference"));
     assert!(!views.iter().any(|skill| skill.name == "dowe-server-logic"));
@@ -213,18 +233,33 @@ fn selects_only_generation_contexts_relevant_to_the_prompt() {
     assert!(server.iter().any(|skill| skill.name == "dowe-server-logic"));
     assert!(!server.iter().any(|skill| skill.name == "dowe-ui-reference"));
     assert!(!server.iter().any(|skill| skill.name == "dowe-terminal"));
-    assert!(!build_server
-        .iter()
-        .any(|skill| skill.name == "dowe-ui-reference"));
+    assert!(
+        !build_server
+            .iter()
+            .any(|skill| skill.name == "dowe-ui-reference")
+    );
 
     assert!(fullstack.iter().any(|skill| skill.name == "dowe-fullstack"));
     assert!(!fullstack.iter().any(|skill| skill.name == "dowe-terminal"));
+    assert!(svg.iter().any(|skill| skill.name == "dowe-svg"));
+    assert!(svg.iter().any(|skill| skill.name == "dowe-ui-reference"));
+    assert!(spanish.iter().any(|skill| skill.name == "dowe-ui-reference"));
+    assert!(
+        svg.iter()
+            .any(|skill| skill.context.contains("convert_svg"))
+    );
     assert!([views, server, fullstack].iter().flatten().all(|skill| {
         !skill.description.contains("Node.js")
             && !skill.description.contains("Tailwind")
             && !skill.context.contains("Node.js")
             && !skill.context.contains("Tailwind")
     }));
+}
+
+#[test]
+fn spanish_visual_implementation_prompts_keep_the_response_language() {
+    assert_eq!(infer_language("Implementa esta imagen de referencia en Dowe"), "es");
+    assert_eq!(infer_language("Diseña una pantalla responsive"), "es");
 }
 
 #[test]
@@ -268,18 +303,22 @@ fn prepared_request_keeps_spec_plan_context_compact() {
     assert_eq!(prepared.request.model, OPENAI_GPT_55);
     assert!(prepared.request.metadata.is_some());
     assert!(prepared.request.tools.is_empty());
-    assert!(prepared
-        .context
-        .skills
-        .iter()
-        .all(|skill| skill.source == "dowe_agent_crate"));
+    assert!(
+        prepared
+            .context
+            .skills
+            .iter()
+            .all(|skill| skill.source == "dowe_agent_crate")
+    );
     assert_eq!(
         prepared.context.project_instructions.loaded_paths(),
         ["AGENTS.md"]
     );
-    assert!(serde_json::to_string(&prepared.request.messages[0].content)
-        .unwrap()
-        .contains("Prefer bounded billing modules."));
+    assert!(
+        serde_json::to_string(&prepared.request.messages[0].content)
+            .unwrap()
+            .contains("Prefer bounded billing modules.")
+    );
 }
 
 #[cfg(unix)]

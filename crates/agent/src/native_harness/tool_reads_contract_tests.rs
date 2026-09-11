@@ -94,7 +94,7 @@ mod codegraph_contract_tests {
             .collect::<Vec<_>>();
         assert!(names.iter().all(|name| matches!(
             name.as_str(),
-            "ask_user" | "get_skill" | "read_file" | "list_files" | "search"
+            "ask_user" | "get_skill" | "read_file" | "list_files" | "search" | "convert_svg"
         )));
     }
 
@@ -117,6 +117,104 @@ mod codegraph_contract_tests {
                 tools.prepare(&call, HarnessRole::Codegraph).is_err(),
                 "accepted {name}"
             );
+        }
+    }
+}
+
+#[cfg(test)]
+mod svg_conversion_tests {
+    use super::*;
+
+    #[test]
+    fn advertises_svg_conversion_as_a_bounded_read_tool() {
+        let definitions =
+            HarnessTools::definitions_for_capabilities(HarnessRole::Codegraph, false, false);
+        let definition = definitions
+            .iter()
+            .find(|tool| tool.function.name == "convert_svg")
+            .expect("convert_svg definition");
+        let properties = &definition.function.parameters["properties"];
+
+        assert_eq!(definition.function.parameters["required"], json!(["path"]));
+        assert_eq!(properties["colors"]["default"], "original");
+        assert_eq!(properties["format"]["default"], "source");
+        assert_eq!(
+            properties["colors"]["enum"],
+            json!(["original", "tokens"])
+        );
+        assert_eq!(
+            properties["format"]["enum"],
+            json!(["source", "data"])
+        );
+        assert!(definition.function.description.contains("read-only"));
+    }
+
+    #[test]
+    fn converts_source_and_runtime_data_without_creating_an_approval() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir_all(root.path().join("assets")).unwrap();
+        fs::write(
+            root.path().join("assets/mark.svg"),
+            r##"<svg viewBox="0 0 24 24"><path d="M4 4L20 4L12 20Z" fill="#2457D6"/></svg>"##,
+        )
+        .unwrap();
+        let tools = HarnessTools::new(root.path(), "svg", HarnessConfig::default()).unwrap();
+
+        let source = tools
+            .execute_read(&ToolCall::new(
+                "svg-source",
+                "convert_svg",
+                json!({"path":"assets/mark.svg"}),
+            ))
+            .unwrap();
+        assert_eq!(source["status"], "converted");
+        assert_eq!(source["colors"], "original");
+        assert_eq!(source["format"], "source");
+        assert!(source["content"].as_str().unwrap().contains("Svg viewBox"));
+        assert!(source["content"].as_str().unwrap().contains("fill:\"#2457d6\""));
+
+        let token_source = tools
+            .execute_read(&ToolCall::new(
+                "svg-tokens",
+                "convert_svg",
+                json!({"path":"assets/mark.svg","colors":"tokens","format":"source"}),
+            ))
+            .unwrap();
+        assert!(token_source["content"].as_str().unwrap().contains("fill:\"primary\""));
+
+        let data = tools
+            .execute_read(&ToolCall::new(
+                "svg-data",
+                "convert_svg",
+                json!({"path":"assets/mark.svg","format":"data"}),
+            ))
+            .unwrap();
+        let data_content = data["content"].as_str().unwrap();
+        let parsed: Value = serde_json::from_str(data_content).unwrap();
+        assert_eq!(parsed["viewBox"], "0 0 24 24");
+        assert_eq!(parsed["paths"].as_array().unwrap().len(), 1);
+        assert!(tools.pending.is_empty());
+    }
+
+    #[test]
+    fn rejects_unsafe_paths_invalid_options_and_tokenized_runtime_data() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("mark.svg"), "<svg></svg>").unwrap();
+        let tools = HarnessTools::new(root.path(), "svg-errors", HarnessConfig::default()).unwrap();
+
+        let cases = [
+            (json!({"path":"mark.txt"}), ".svg extension"),
+            (json!({"path":"mark.svg","colors":"other"}), "colors"),
+            (json!({"path":"mark.svg","format":"other"}), "format"),
+            (json!({"path":"mark.svg","colors":"tokens","format":"data"}), "requires colors original"),
+            (json!({"path":".dowe/mark.svg"}), "private, generated"),
+            (json!({"path":"agents/private.svg"}), "private, generated"),
+        ];
+        for (arguments, message) in cases {
+            let error = tools
+                .execute_read(&ToolCall::new("svg-error", "convert_svg", arguments))
+                .unwrap_err();
+            assert!(error.to_string().contains(message), "{error}");
         }
     }
 }

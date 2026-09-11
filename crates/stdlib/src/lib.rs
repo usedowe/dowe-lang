@@ -13,6 +13,7 @@ pub use model::{
 pub use registry::{
     functions, is_stdlib_function, is_stdlib_namespace, namespaces, signature, signatures,
 };
+pub use svg::{convert_svg, convert_svg_data};
 pub use validation::{reference_paths, validate_call};
 
 #[cfg(test)]

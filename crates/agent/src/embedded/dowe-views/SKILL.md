@@ -70,6 +70,12 @@ Keep static-only props static. `Icon.name` also accepts a string constant or an 
 compilation; Dowe generates only those icons and rejects mutable or unresolved names. For varying
 runtime vector data, use `Svg data:<reference>`. Preserve one repeated template in either case.
 
+When a local `.svg` asset is part of the requested UI, load `references/svg.md` and use the
+read-only `convert_svg` tool in the integrated native agent before authoring. Prefer its
+`format:"source"` result for static `Svg`/`Path` source and `format:"data"` only for runtime
+`Svg data:<reference>` values. Never paste raw SVG/XML into a view or redraw a vector asset with
+`Image` or `Canvas`.
+
 ## Reference-image theme boundary
 
 When a reference image is supplied to build or adapt a layout, page, reusable component, or
@@ -139,8 +145,9 @@ from `image_generation`. v1 rejects `reference_image_path` and does not produce 
 or reference-image generations. Python, Node, and Playwright are not runtime requirements. Account
 and billing availability remain provider-side. Screenshot capture is limited to an already-running
 loopback HTTP URL and an installed browser; it writes bounded evidence under `.dowe/visual-qa`,
-validates only bounded PNG signature/IHDR dimensions, and does not claim subrequest network
-isolation or perform visual comparison. Report visual QA as not run when capture is unavailable.
+accepts an explicit bounded viewport or infers it from the first attached PNG, and compares matching
+PNGs with a 16-channel threshold and 8% mismatch gate. Report visual QA as `not_run` when there is
+no matching PNG reference or capture host.
 
 8. Create or reuse a layout whenever the reference has shared chrome. AppBar and Footer never
    belong in a page, and a one-page site still uses a layout-backed route group.
@@ -323,12 +330,14 @@ isolation or perform visual comparison. Report visual QA as not run when capture
    interaction states before accepting a technically valid layout. For split layouts, compare the
    form centerline with the centerline of its owning panel, not the whole viewport, and verify that
    nested action columns fit the available panel width at every active breakpoint.
-27. For reference-driven work, run the installed `scripts/visual_qa.py` entrypoint at the exact
-   viewport. Inspect its band report and diff, then iterate on geometry, line wrapping, spacing,
-    density, states, layers, and assets before finishing. For directed adaptations, use the report
-    to inspect retained bands and document intentional structural deviations instead of weakening
-    thresholds or claiming pixel parity. It imports `scripts/visual_qa_blueprint.py` and
-    `scripts/visual_qa_png.py`; do not run the helpers directly.
+27. For reference-driven work, use the native `capture_web_screenshot` tool from `dowe agent` when
+   an approved loopback page and browser are available. Inspect its report and diff, then iterate
+   on geometry, line wrapping, spacing, density, states, layers, and assets before finishing; a
+   failed comparison requires another capture. The optional installed `scripts/visual_qa.py`
+   entrypoint remains available for detailed band blueprints and exact viewport reports. For
+   directed adaptations, use the report to inspect retained bands and document intentional
+   structural deviations instead of weakening thresholds or claiming pixel parity. It imports
+   `scripts/visual_qa_blueprint.py` and `scripts/visual_qa_png.py`; do not run the helpers directly.
 
 ## Table authoring
 
@@ -368,7 +377,9 @@ Open the primary resource first. Load another only when the task crosses its con
 | Exact screenshot, mockup, or UI-reference reconstruction | `references/reference-ui.md` |
 | Dowe documentation block patterns and variant selection | `references/blocks/index.json` |
 | New screen, shell ownership, reusable fragments, container choice, hero, or landing composition | `references/composition.md` |
+| Shared shell, side navigation, or layout boundaries | `references/layouts.md` |
 | Built-in component selection, children, bindings, interaction, or portability | `references/components.md` |
+| Local SVG assets, SVG-to-Dowe conversion, static paths, or runtime vector data | `references/svg.md` |
 | Tables, data grids, loading/empty/error states, toolbars, search, pagination, and responsive table UX | `references/table.md` |
 | Colors, variants, responsive props, typography, sizing, visibility, overlay, or motion | `references/styles.md` |
 | Canvas drawing, input, animation, dynamic scenes, or limits | `references/canvas.md` |

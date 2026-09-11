@@ -1,6 +1,6 @@
 use super::{
     HarnessConfig, HarnessRole, HarnessSession, HarnessStore, HarnessTools, HarnessTurn,
-    ModelSelection, select_units, skill_index,
+    ModelSelection, select_units, skill_index, skill_unit,
 };
 use crate::codegraph_enrichment::SemanticEnrichment;
 use crate::{
@@ -67,6 +67,33 @@ pub(super) fn build_request(
             ""
         },
     );
+    let reference_evidence = crate::skills::is_ui_authoring_prompt(prompt)
+        || session.turns[session.context_start..].iter().any(|turn| {
+            turn.message.as_ref().is_some_and(|message| {
+                matches!(
+                    &message.content,
+                    crate::AgentMessageContent::Parts(parts)
+                        if parts.iter().any(|part| matches!(part, crate::AgentMessagePart::ImageUrl { .. }))
+                )
+            })
+        });
+    if dowe_mode && reference_evidence {
+        system.push_str("\n\nPreloaded Dowe visual authoring contract (fixed guidance):\n");
+        system.push_str(crate::prompts::DOWE_VIEW_DEFAULTS_CONTRACT);
+        system.push_str("\nReference images are evidence only. Inspect the full image, map its hierarchy to semantic components, and use native visual QA after writing when the host can capture a loopback page.");
+        let mut remaining = 8_000_usize;
+        for id in ["theme", "views/layouts", "views/pages", "views/components"] {
+            if remaining == 0 {
+                break;
+            }
+            let Ok(unit) = skill_unit(id) else {
+                continue;
+            };
+            let snippet = unit.content.chars().take(2_000).collect::<String>();
+            remaining = remaining.saturating_sub(snippet.len());
+            system.push_str(&format!("\n\nPreloaded fixed skill unit `{id}` (reference excerpt):\n{snippet}"));
+        }
+    }
     if !project_skill_context.is_empty() {
         system.push_str("\n\n");
         system.push_str(&project_skill_context);
@@ -324,4 +351,3 @@ pub(super) fn task_packet(
         budget_remaining_tokens,
     }
 }
-

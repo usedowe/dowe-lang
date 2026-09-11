@@ -1,3 +1,117 @@
+use serde_json::Value;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ActivityPhase {
+    Thinking,
+    Working,
+    Writing,
+    Waiting,
+    Done,
+    Failed,
+    Canceled,
+}
+
+impl ActivityPhase {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Thinking => "Thinking",
+            Self::Working => "Working",
+            Self::Writing => "Writing",
+            Self::Waiting => "Waiting for approval",
+            Self::Done => "Done",
+            Self::Failed => "Failed",
+            Self::Canceled => "Canceled",
+        }
+    }
+
+    fn live_label(self) -> &'static str {
+        match self {
+            Self::Thinking => "Thinking…",
+            Self::Working => "Working…",
+            Self::Writing => "Writing…",
+            Self::Waiting => "Waiting for approval…",
+            _ => self.label(),
+        }
+    }
+
+    fn detail(self) -> &'static str {
+        match self {
+            Self::Thinking => "Thinking about your request",
+            Self::Working => "Running a tool",
+            Self::Writing => "Writing response",
+            Self::Waiting => "Waiting for approval",
+            Self::Done => "Finished",
+            Self::Failed => "Needs attention",
+            Self::Canceled => "Canceled",
+        }
+    }
+}
+
+const SPINNER_FRAMES: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+fn phase_for_status(status: &str) -> ActivityPhase {
+    match status {
+        "responding" => ActivityPhase::Writing,
+        "executing_tool" => ActivityPhase::Working,
+        "awaiting_approval" => ActivityPhase::Waiting,
+        "done" => ActivityPhase::Done,
+        "failed" | "blocked" => ActivityPhase::Failed,
+        "canceled" => ActivityPhase::Canceled,
+        _ => ActivityPhase::Thinking,
+    }
+}
+
+fn tool_progress_label(name: &str) -> &'static str {
+    match name {
+        "search" => "Searching files",
+        "read_file" => "Reading file",
+        "list_files" => "Listing files",
+        "convert_svg" => "Converting SVG",
+        "get_skill" => "Loading guidance",
+        "shell" => "Running command",
+        "write_file" => "Writing file",
+        "edit_file" => "Editing file",
+        "write_asset" => "Writing asset",
+        "generate_image" => "Generating image",
+        "capture_web_screenshot" => "Capturing screenshot",
+        "validate_dowe_project" => "Validating project",
+        "ask_user" | "question" => "Waiting for an answer",
+        _ => "Working",
+    }
+}
+
+pub(super) fn tool_summary_label(name: &str) -> &'static str {
+    match name {
+        "search" => "Searched files",
+        "read_file" => "Read file",
+        "list_files" => "Listed files",
+        "convert_svg" => "Converted SVG",
+        "get_skill" => "Loaded guidance",
+        "shell" => "Ran command",
+        "write_file" => "Wrote file",
+        "edit_file" => "Edited file",
+        "write_asset" => "Wrote asset",
+        "generate_image" => "Generated image",
+        "capture_web_screenshot" => "Captured screenshot",
+        "validate_dowe_project" => "Validated project",
+        "ask_user" | "question" => "Asked a question",
+        _ => "Completed tool",
+    }
+}
+
+fn operation_detail(event: &Value) -> String {
+    let name = event["receipt"]["operation"]
+        .as_str()
+        .or_else(|| event["operation"].as_str())
+        .unwrap_or_default();
+    let label = tool_progress_label(name);
+    event["receipt"]["path"]
+        .as_str()
+        .filter(|path| !path.is_empty())
+        .map(|path| format!("{label} · {}", super::safe_text(path, 120)))
+        .unwrap_or_else(|| label.into())
+}
+
 impl Activity {
     fn state(&self) -> MutexGuard<'_, State> {
         self.0.lock().unwrap_or_else(|error| error.into_inner())
@@ -26,6 +140,8 @@ impl Activity {
             agent_model: "?".into(),
             task_title: "Current request".into(),
             task_status: "idle".into(),
+            phase: ActivityPhase::Thinking,
+            activity_detail: ActivityPhase::Thinking.detail().into(),
             started_at: None,
             input: EditableLine::default(),
             pending: VecDeque::new(),
@@ -39,26 +155,72 @@ impl Activity {
 
     pub(crate) fn workspace_event(&self, event: &serde_json::Value) {
         let mut state = self.state();
-        match event["event"].as_str() {
+        let phase = match event["event"].as_str() {
             Some("request_prepared") => {
                 state.agent_name = "Dowe Agent".into();
                 state.agent_role =
                     super::safe_text(event["role"].as_str().unwrap_or("execute"), 32);
                 state.agent_model = super::safe_text(event["model"].as_str().unwrap_or("?"), 80);
                 state.task_status = "in_progress".into();
+                state.activity_detail = "Thinking about your request".into();
                 state.started_at = Some(Instant::now());
+                ActivityPhase::Thinking
             }
-            Some("response_received") => state.task_status = "responding".into(),
-            Some("approval_required") => state.task_status = "awaiting_approval".into(),
-            Some("operation_started") => state.task_status = "executing_tool".into(),
-            Some("tool_result") => state.task_status = "in_progress".into(),
-            Some("task_canceled") => state.task_status = "canceled".into(),
+            Some("context_compacted") => {
+                state.activity_detail = "Condensing context".into();
+                ActivityPhase::Thinking
+            }
+            Some("response_received") => {
+                state.task_status = "responding".into();
+                state.activity_detail = "Writing response".into();
+                ActivityPhase::Writing
+            }
+            Some("approval_required") => {
+                state.task_status = "awaiting_approval".into();
+                state.activity_detail = "Waiting for approval".into();
+                ActivityPhase::Waiting
+            }
+            Some("operation_started") => {
+                state.task_status = "executing_tool".into();
+                state.activity_detail = operation_detail(event);
+                ActivityPhase::Working
+            }
+            Some("operation_finished") => {
+                state.activity_detail = "Thinking about the next step".into();
+                ActivityPhase::Thinking
+            }
+            Some("tool_result") => {
+                state.task_status = "in_progress".into();
+                state.activity_detail = "Thinking about the next step".into();
+                ActivityPhase::Thinking
+            }
+            Some("task_canceled") => {
+                state.task_status = "canceled".into();
+                state.activity_detail = ActivityPhase::Canceled.detail().into();
+                ActivityPhase::Canceled
+            }
             Some("task_state") => {
-                state.task_status =
-                    super::safe_text(event["status"].as_str().unwrap_or("blocked"), 32);
+                let status = super::safe_text(event["status"].as_str().unwrap_or("blocked"), 32);
+                state.task_status = status.clone();
+                let phase = phase_for_status(&status);
+                state.activity_detail = phase.detail().into();
+                phase
             }
-            Some("error" | "budget_exhausted") => state.task_status = "blocked".into(),
+            Some("error") => {
+                state.task_status = "blocked".into();
+                state.activity_detail = ActivityPhase::Failed.detail().into();
+                ActivityPhase::Failed
+            }
+            Some("budget_exhausted") => {
+                state.task_status = "blocked".into();
+                state.activity_detail = "Context limit reached".into();
+                ActivityPhase::Failed
+            }
             _ => return,
+        };
+        state.phase = phase;
+        if state.activity_detail.is_empty() {
+            state.activity_detail = phase.detail().into();
         }
         state.dirty = true;
     }
@@ -70,13 +232,11 @@ impl Activity {
         state.dirty = true;
     }
 
-    pub(crate) fn transcript(&self) -> AgentResult<Suspension> {
-        self.state().snapshot()?;
-        self.suspend()
-    }
-
     fn finalize(&self) -> AgentResult<()> {
         let mut state = self.state();
+        if state.active && !state.lines.is_empty() {
+            state.snapshot_pending = true;
+        }
         let snapshot = state.snapshot();
         let cleanup = state.leave();
         snapshot.and(cleanup)?;
@@ -93,10 +253,14 @@ impl Activity {
 
     pub(crate) fn suspend(&self) -> AgentResult<Suspension> {
         let mut state = self.state();
+        let resume = state.active || state.suspended > 0;
         state.leave()?;
         state.anchor = None;
         state.suspended += 1;
-        Ok(Suspension(self.clone()))
+        Ok(Suspension {
+            activity: self.clone(),
+            resume,
+        })
     }
 
     pub(crate) fn push(&self, lines: impl IntoIterator<Item = String>) {
@@ -121,6 +285,15 @@ impl Activity {
     pub(crate) fn stream(&self, label: &str, text: &str) {
         let mut state = self.state();
         let label = super::safe_text(label, 80);
+        if label == "preview" {
+            state.task_status = "responding".into();
+            state.phase = ActivityPhase::Writing;
+            state.activity_detail = "Writing response".into();
+        } else if matches!(label.as_str(), "stdout" | "stderr") {
+            state.task_status = "executing_tool".into();
+            state.phase = ActivityPhase::Working;
+            state.activity_detail = "Streaming command output".into();
+        }
         if state.stream != label {
             state.stream = label;
             state.stream_open = false;
@@ -208,7 +381,7 @@ impl Activity {
             }
         }
         if state.animated_at.elapsed() >= Duration::from_millis(120) {
-            state.spinner = (state.spinner + 1) % 4;
+            state.spinner = (state.spinner + 1) % SPINNER_FRAMES.len();
             state.animated_at = Instant::now();
             state.dirty = true;
         }

@@ -6,7 +6,31 @@ struct TerminalHost<'a> {
     usage: &'a mut AgentUsageTotals,
     root: std::path::PathBuf,
     request_events: Vec<Value>,
+    pending_responses: Vec<String>,
     activity: activity::Activity,
+}
+
+impl TerminalHost<'_> {
+    fn queue_response(&mut self, event: &Value) {
+        if let Some(text) = event["text"].as_str() {
+            self.pending_responses.push(super::markdown::render_markdown(
+                text,
+                crate::menus::is_interactive_terminal(),
+            ));
+        }
+    }
+
+    fn flush_pending_responses(&mut self) -> AgentResult<()> {
+        if self.pending_responses.is_empty() {
+            return Ok(());
+        }
+        let responses = std::mem::take(&mut self.pending_responses);
+        let _activity = self.activity.suspend()?;
+        for response in responses {
+            println!("\n{response}\n");
+        }
+        Ok(())
+    }
 }
 
 impl HarnessHost for TerminalHost<'_> {
@@ -25,6 +49,37 @@ impl HarnessHost for TerminalHost<'_> {
     }
     async fn send(&mut self, request: &AgentRequest) -> AgentResult<AgentServerResponse> {
         self.send_provider(request).await
+    }
+
+    fn validate_dowe_project(
+        &mut self,
+        root: &std::path::Path,
+    ) -> impl std::future::Future<Output = AgentResult<Value>> {
+        let root = root.to_path_buf();
+        async move {
+            if !root.join("main.dowe").is_file() {
+                return Ok(json!({
+                    "status": "not_run",
+                    "reason": "project is not a Dowe application",
+                }));
+            }
+            let result = tokio::task::spawn_blocking(move || dowe_compiler::compile_dev(&root))
+                .await
+                .map_err(|error| AgentError::new(format!("Dowe compiler task failed: {error}")))?;
+            Ok(match result {
+                Ok(_) => json!({
+                    "status": "passed",
+                    "compiler": "dowe_compiler",
+                    "environment": "development",
+                }),
+                Err(error) => json!({
+                    "status": "failed",
+                    "compiler": "dowe_compiler",
+                    "environment": "development",
+                    "error": error.to_string(),
+                }),
+            })
+        }
     }
 
     async fn generate_image(
@@ -122,14 +177,22 @@ impl HarnessHost for TerminalHost<'_> {
             println!("{event}");
             return Ok(());
         }
+        if event["event"] == "response_received" {
+            self.flush_pending_responses()?;
+            self.activity.event(event);
+            self.queue_response(event);
+            return Ok(());
+        }
+        if event["event"] != "task_state" {
+            self.flush_pending_responses()?;
+        }
         if self.activity.event(event) {
             return Ok(());
         }
         if !matches!(
             event["event"].as_str(),
             Some(
-                "response_received"
-                    | "request_prepared"
+                "request_prepared"
                     | "context_compacted"
                     | "shell_output"
                     | "tool_result"
@@ -137,23 +200,15 @@ impl HarnessHost for TerminalHost<'_> {
                     | "memory_candidates"
                     | "memory_candidate_error"
                     | "budget_exhausted"
+                    | "validation_started"
+                    | "validation_finished"
+                    | "validation_failed"
             )
         ) {
             return Ok(());
         }
-        let _activity = self.activity.transcript()?;
+        let _activity = self.activity.suspend()?;
         match event["event"].as_str() {
-            Some("response_received") => {
-                if let Some(text) = event["text"].as_str() {
-                    println!(
-                        "\n{}\n",
-                        super::markdown::render_markdown(
-                            text,
-                            crate::menus::is_interactive_terminal()
-                        )
-                    );
-                }
-            }
             Some("request_prepared" | "context_compacted") => eprintln!(
                 "{} · {} / {}",
                 event["role"], event["provider"], event["model"]
@@ -181,6 +236,15 @@ impl HarnessHost for TerminalHost<'_> {
             }
             Some("budget_exhausted") => eprintln!(
                 "The agent paused this run to protect the context. Your work is preserved; send a focused follow-up to continue."
+            ),
+            Some("validation_started") => eprintln!("Validating the Dowe project before completing the task…"),
+            Some("validation_finished") => eprintln!(
+                "Dowe validation: {}",
+                event["result"]["status"].as_str().unwrap_or("not_run")
+            ),
+            Some("validation_failed") => eprintln!(
+                "Dowe validation failed: {}",
+                event["reason"].as_str().unwrap_or("validation_failed")
             ),
             _ => {}
         }

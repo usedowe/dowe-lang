@@ -133,7 +133,7 @@ pub(super) async fn run_agent_session_with_args(
             continue;
         }
         if command == "/provider" {
-            let Some(selected) = select_provider(&store, false)? else {
+            let Some(selected) = select_provider(&store)? else {
                 continue;
             };
             preferences.select_provider(&selected)?;
@@ -145,7 +145,7 @@ pub(super) async fn run_agent_session_with_args(
         }
         if command == "/model" {
             if provider.is_none() {
-                let Some(selected) = select_provider(&store, false)? else {
+                let Some(selected) = select_provider(&store)? else {
                     continue;
                 };
                 preferences.select_provider(&selected)?;
@@ -366,4 +366,3 @@ pub(super) async fn run_agent_session_with_args(
         }
     }
 }
-

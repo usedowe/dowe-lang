@@ -30,6 +30,7 @@ impl NativeSession {
             usage,
             root: self.store.root().to_path_buf(),
             request_events: Vec::new(),
+            pending_responses: Vec::new(),
             activity: activity.clone(),
         };
         let explicit = explicit.then_some(&active);
@@ -45,6 +46,7 @@ impl NativeSession {
                 ))
                 .await;
             self.transfer_activity_queue(&activity);
+            host.flush_pending_responses()?;
             result?;
             return Ok(HarnessOutcome::Completed);
         }
@@ -78,6 +80,7 @@ impl NativeSession {
             ))
             .await;
         self.transfer_activity_queue(&activity);
+        host.flush_pending_responses()?;
         result
     }
 }

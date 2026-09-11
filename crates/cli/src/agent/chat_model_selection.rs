@@ -187,14 +187,10 @@ pub(super) fn select_model(
 
 pub(super) fn select_provider(
     store: &AgentAuthStore,
-    account: bool,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let providers = builtin_provider_info(store)?
-        .into_iter()
-        .filter(|provider| !account || provider.supports_account)
-        .collect::<Vec<_>>();
+    let providers = builtin_provider_info(store)?;
     if providers.is_empty() {
-        return Err("no providers support the selected authentication method".into());
+        return Err("no agent providers are available".into());
     }
     let items = aligned_provider_labels(&providers, menu_width());
     let index = Select::with_theme(&ColorfulTheme::default())
@@ -204,4 +200,3 @@ pub(super) fn select_provider(
         .interact_opt()?;
     Ok(index.map(|index| providers[index].id.clone()))
 }
-

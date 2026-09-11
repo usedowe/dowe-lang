@@ -213,16 +213,11 @@ fn collector_preserves_later_markers_and_partial_utf8_between_calls() {
 
 #[test]
 fn agent_restores_selected_provider_across_sessions() {
-    let session = Session::start(false);
-    session.send("/provider\r");
-    session.until("Select provider to configure");
-    for _ in 0..23 {
-        session.send("\u{1b}[B");
-    }
-    session.send("\r");
-    session.until(">");
-    let home = session.stop();
+    let home = TempDir::new().unwrap();
     let preferences = home.path().join(".dowe/agent/preferences.json");
+    dowe_agent::AgentPreferencesStore::new(&preferences)
+        .select_provider("openai-codex")
+        .unwrap();
     let saved = std::fs::read_to_string(&preferences).expect("saved preferences");
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&saved).unwrap(),
@@ -231,18 +226,22 @@ fn agent_restores_selected_provider_across_sessions() {
     let session = Session::start_at(home, false, &["agent"]);
     session.send("/model\r");
     session.until("Select openai-codex model");
-    session.send("\u{1b}");
+    session.send("q");
     session.until(">");
     session.send("/login\r");
-    session.until("Sign in with an API key");
-    session.send("\u{1b}");
-    session.until(">");
+    let mut login_menu = session.until("Select provider to configure");
+    login_menu.push_str(&session.until("OpenAI Codex"));
+    login_menu.push_str(&session.until("OpenRouter"));
+    assert!(login_menu.contains("OpenAI Codex"));
+    assert!(login_menu.contains("OpenRouter"));
+    assert!(!login_menu.contains("Sign in with"));
+    session.send("q");
     assert_eq!(std::fs::read_to_string(&preferences).unwrap(), saved);
     session.finish();
 }
 
 #[test]
-fn agent_login_preserves_model_and_thinking_selection() {
+fn agent_login_cancel_preserves_model_and_thinking_selection() {
     let home = TempDir::new().unwrap();
     let path = home.path().join(".dowe/agent/preferences.json");
     let preferences = dowe_agent::AgentPreferencesStore::new(&path);
@@ -251,13 +250,13 @@ fn agent_login_preserves_model_and_thinking_selection() {
         .unwrap();
     let session = Session::start_at(home, false, &["agent"]);
     session.send("/login\r");
-    session.until("Sign in with an API key");
-    session.send("\u{1b}[B\r");
-    session.until("Select provider to configure");
-    session.send("\u{1b}[B\r");
-    session.until("Enter Anthropic API key");
-    session.send("dowe-test-key\r");
-    session.until("Configured Anthropic.");
+    let mut login_menu = session.until("Select provider to configure");
+    login_menu.push_str(&session.until("OpenAI Codex"));
+    login_menu.push_str(&session.until("OpenRouter"));
+    assert!(login_menu.contains("OpenAI Codex"));
+    assert!(login_menu.contains("OpenRouter"));
+    assert!(!login_menu.contains("Sign in with"));
+    session.send("q");
     let home = session.stop();
     let preferences = home.path().join(".dowe/agent/preferences.json");
     let saved: serde_json::Value =
@@ -271,19 +270,5 @@ fn agent_login_preserves_model_and_thinking_selection() {
             "thinkingLevel":"high"
         })
     );
-    let session = Session::start_at(home, false, &["agent"]);
-    session.send("/logout\r");
-    session.until("Logged out from openai-codex.");
-    let home = session.stop();
-    dowe_agent::AgentAuthStore::new(home.path().join(".dowe/agent/auth.json"))
-        .save(
-            "anthropic",
-            &dowe_agent::AgentCredential::api_key("dowe-test-key"),
-        )
-        .unwrap();
-    std::fs::remove_file(&preferences).unwrap();
-    let session = Session::start_at(home, false, &["agent"]);
-    session.send("/logout\r");
-    session.until("Logged out from anthropic.");
-    session.stop();
+    assert!(!home.path().join(".dowe/agent/auth.json").exists());
 }
