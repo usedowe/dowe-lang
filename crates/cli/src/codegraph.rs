@@ -23,6 +23,28 @@ pub(crate) async fn run_codegraph_command(
     let root = env::current_dir()?;
 
     match args.first().map(String::as_str) {
+        Some("source") if args.len() == 1 => {
+            let graph = build_codegraph(
+                &root,
+                BuildOptions {
+                    mode: Some(dowe_codegraph::CodeGraphMode::Project),
+                },
+            )?;
+            let output_root = root
+                .parent()
+                .filter(|parent| {
+                    parent.join("AGENTS.md").is_file()
+                        && parent.join("agents/README.md").is_file()
+                })
+                .unwrap_or(&root);
+            let path = output_root.join("codegraph/source.json");
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&path, serde_json::to_vec_pretty(&graph)?)?;
+            println!("written {}", path.display());
+            Ok(())
+        }
         Some("build") if args.len() == 1 => {
             let graph = build_codegraph(&root, BuildOptions::default())?;
             let report = CheckReport::new();

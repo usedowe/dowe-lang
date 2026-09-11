@@ -48,7 +48,7 @@ fn visit(
 }
 
 fn should_skip(relative: &Path, name: &str, is_dir: bool) -> bool {
-    if name == ".DS_Store" || name == ".git" || name == "target" || name == "node_modules" {
+    if name == ".DS_Store" || name == ".git" || name == "target" || name == "node_modules" || name == "codegraph" {
         return true;
     }
     if relative.starts_with(".dowe/codegraph") || relative.starts_with(".agents/codegraph") {
