@@ -212,10 +212,10 @@ Use this review gate before polishing the layout:
 4. Confirm that all varying supported values resolve from the current item and that the key is stable.
 5. Reject any source that still contains copied sibling units with the same shape.
 
-Static-only props remain static inside a loop. `Icon.name` requires a quoted compiler-validated name;
-do not write `name:<item.icon>`. Use the supported runtime `Svg data:<reference>` contract only when
-the icon source is genuinely runtime data. A limitation in a static component contract is not a reason
-to duplicate the complete repeated unit or invent a new binding form.
+Static-only props remain static inside a loop. `Icon.name` accepts a quoted name, a string constant,
+or `name:item.icon` in `each` over a constant collection. Every possible name must be known during
+compilation; only those icons are generated. Use `Svg data:<reference>` when the vector source is
+runtime data. Preserve one template for the complete repeated unit.
 
 ```text
 page ServicesPage
@@ -707,7 +707,8 @@ before considering a band finished.
 - Every repeated same-shape region, including non-Card feature rows, uses one `const`, typed `signal`,
   or shared Store and one `each` that wraps the complete unit inside the Grid tracks; no copy-pasted
   sibling survives visual QA.
-- Static-only props remain valid inside repeated templates; `Icon.name` is never bound to an item path.
+- Static-only props remain valid inside repeated templates; computed `Icon.name` values resolve
+  from constants or constant `each` collections, with every possible name validated.
 - Spacing starts with component defaults. A nonzero `gap` or one padding override is added only after
   the minimal render proves the real owner needs it; no stacked `p*` props, automatic gap on every
   Grid/Flex, empty Box spacers, or margin aliases such as `mt` survive.

@@ -131,17 +131,17 @@ fn generated_views(
 
     if let Some(route) = routes.first() {
         output.push_str(
-            "    @ViewBuilder\n    private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat) -> some View {\n        switch entry.path {\n",
+            "    private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat) -> AnyView {\n        switch entry.path {\n",
         );
         for route in routes {
             output.push_str(&format!(
-                "        case \"{}\":\n            {}(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment, navigate: navigate, goBack: goBack, openExternal: openExternal)\n",
+                "        case \"{}\":\n            return AnyView({}(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment, navigate: navigate, goBack: goBack, openExternal: openExternal))\n",
                 route.route_path,
                 swift_view_name(&route.route_path)
             ));
         }
         output.push_str(&format!(
-            "        default:\n            {}(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment, navigate: navigate, goBack: goBack, openExternal: openExternal)\n",
+            "        default:\n            return AnyView({}(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment, navigate: navigate, goBack: goBack, openExternal: openExternal))\n",
             swift_view_name(&route.route_path)
         ));
         output.push_str("        }\n    }\n\n");
@@ -242,4 +242,3 @@ func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool {
 
     output
 }
-

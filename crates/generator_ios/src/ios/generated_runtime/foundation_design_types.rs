@@ -97,5 +97,4 @@ enum DoweAnimationPreset: Equatable {
 }
 
 struct DoweAnimationModifier: ViewModifier {
-    let preset: DoweAnimationPreset
 "#

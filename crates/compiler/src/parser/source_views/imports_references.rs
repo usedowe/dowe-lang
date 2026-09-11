@@ -28,6 +28,8 @@ fn export_tree_with_stores(
     let mut tree = lower_export_tree_with_stores(node, allow_children, types, stores)?;
     validate_view_tree(&tree).map_err(|error| node_error(node, error.to_string()))?;
     validate_reactive_view_tree(&node.location.path, &tree, environment)?;
+    dowe_components::dynamic_icon_names(&tree)
+        .map_err(|error| node_error(node, error.to_string()))?;
     resolve_dynamic_icon_fallbacks(&mut tree);
     Ok(tree)
 }
@@ -47,4 +49,3 @@ fn node_uses_reference(node: &SourceNode, name: &str) -> bool {
             .iter()
             .any(|child| node_uses_reference(child, name))
 }
-

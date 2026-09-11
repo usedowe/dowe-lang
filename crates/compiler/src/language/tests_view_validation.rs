@@ -283,6 +283,36 @@ fn diagnostics_accept_each_item_icon_references() {
 }
 
 #[test]
+fn diagnostics_reject_unknown_possible_icon_names() {
+    let root = tempdir().expect("tempdir");
+    fs::create_dir_all(root.path().join("pages")).expect("pages");
+    for (value, binding, expected) in [
+        (
+            "const icons value:[{ id:\"one\" name:\"home\" } { id:\"two\" name:\"not-a-dowe-icon\" }]",
+            "each in:icons as:icon key:icon.id\n    Icon name:icon.name",
+            "not-a-dowe-icon",
+        ),
+        (
+            "signal chosen value:\"home\"",
+            "Icon name:chosen",
+            "must resolve to known names from a `const`",
+        ),
+    ] {
+        let document = LanguageDocument {
+            path: root.path().join("pages/icons.dowe"),
+            source: format!("page iconPage\n  {value}\n  {binding}\n"),
+        };
+        let diagnostics = analyze_document(root.path(), &document);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains(expected)),
+            "expected {expected}: {diagnostics:?}"
+        );
+    }
+}
+
+#[test]
 fn diagnostics_report_unquoted_static_component_strings() {
     let root = tempdir().expect("tempdir");
     fs::create_dir_all(root.path().join("pages")).expect("src");
@@ -373,4 +403,3 @@ fn diagnostics_accept_input_and_select_form_props() {
         "unexpected diagnostics: {diagnostics:?}"
     );
 }
-

@@ -141,7 +141,7 @@ fn generates_full_scene_background_without_unsafe_content() {
     assert!(!views.contains("func doweSafeAreaHeight("));
     assert!(views.contains("func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool"));
     assert!(views.contains(
-        "private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat) -> some View"
+        "private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat) -> AnyView"
     ));
     assert!(
         views.contains("LoginView(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment")

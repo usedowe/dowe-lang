@@ -22,5 +22,4 @@ final class DoweCanvasSelection: ObservableObject {
 }
 
 struct DoweCanvasView: View {
-    @ObservedObject var state: DoweReactiveState
 "#

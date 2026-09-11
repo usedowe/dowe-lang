@@ -166,5 +166,4 @@ private enum DoweRuntimeSvgParser {
 }
 
 struct DoweRuntimeSvgView: View {
-    let payload: String
 "#

@@ -39,6 +39,8 @@ use dowe_components::{
 use std::path::PathBuf;
 
 include!("tests/core_generation.rs");
+include!("tests/cold_start.rs");
+include!("tests/cold_route_dispatch.rs");
 include!("tests/data_generation.rs");
 include!("tests/diagram_interactions.rs");
 include!("tests/navigation_generation.rs");
@@ -83,3 +85,4 @@ fn generates_real_ios_notification_support() {
         .expect("entitlements");
     assert!(entitlements.content.contains("aps-environment"));
 }
+include!("tests/static_flex.rs");

@@ -1,6 +1,14 @@
-fn android_dynamic_icon_runtime() -> String {
-    let entries = dowe_components::runtime_icon_catalog_shared()
-        .expect("validated runtime icon catalog")
+fn android_dynamic_icon_catalog(routes: &[ViewRoute]) -> Vec<(String, String)> {
+    dowe_components::dynamic_icon_catalog_for_trees(
+        routes
+            .iter()
+            .flat_map(|route| [&route.layout_tree, &route.page_tree]),
+    )
+    .expect("computed icon names must be validated before generation")
+}
+
+fn android_dynamic_icon_runtime(routes: &[ViewRoute]) -> String {
+    let entries = android_dynamic_icon_catalog(routes)
         .iter()
         .map(|(name, payload)| {
             format!(
@@ -212,4 +220,3 @@ fn kotlin_call_end(source: &str, start: usize) -> Option<usize> {
     }
     None
 }
-

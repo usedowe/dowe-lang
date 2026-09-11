@@ -31,7 +31,7 @@
         assert!(args.contains(&"-incremental".to_string()));
         assert!(args.contains(&"-enable-incremental-file-hashing".to_string()));
         assert!(args.contains(&"-enable-batch-mode".to_string()));
-        assert_eq!(arg_after(&args, "-driver-batch-size-limit"), Some("1"));
+        assert_eq!(arg_after(&args, "-driver-batch-size-limit"), Some("4"));
         assert!(!args.contains(&"-driver-batch-count".to_string()));
         assert_eq!(arg_after(&args, "-j"), Some("8"));
         assert!(!args.contains(&"-Xfrontend".to_string()));
@@ -278,4 +278,3 @@
         assert_eq!(compile_count.get(), 2);
         assert_eq!(link_count.get(), 1);
     }
-

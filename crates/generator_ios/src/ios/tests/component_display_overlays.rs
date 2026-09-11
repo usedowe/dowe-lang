@@ -422,7 +422,19 @@ fn generates_swiftui_dynamic_icon_catalog_with_module_visibility() {
             id: "dynamic-icon".to_string(),
             route_path: "/dynamic-icon".to_string(),
             layout_tree: ViewNode::Children,
-            page_tree: dynamic_icon,
+            page_tree: ViewNode::Scope {
+                constants: vec![dowe_components::ViewConstant {
+                    id: "platform".to_string(),
+                    name: "platform".to_string(),
+                    value: ViewSignalValue::Object(vec![(
+                        "icon".to_string(),
+                        ViewSignalValue::String("route-bold-duotone".to_string()),
+                    )]),
+                }],
+                signals: Vec::new(),
+                actions: Vec::new(),
+                children: vec![dynamic_icon],
+            },
             sections: Vec::new(),
             navigation_actions: Vec::new(),
         }],
@@ -471,7 +483,7 @@ fn generates_swiftui_dynamic_icon_catalog_with_module_visibility() {
             .content
             .contains("DoweDynamicIconCatalogShard0.entries")
     );
-    assert!(shards.len() > 2);
+    assert_eq!(shards.len(), 1);
     assert!(shards.iter().all(|file| file.content.len() < 640_000));
     assert!(views.content.contains("DoweDynamicIconCatalog[state.text("));
 }

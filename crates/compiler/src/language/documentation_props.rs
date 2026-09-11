@@ -1,6 +1,6 @@
 fn prop_type(component: &str, prop: &str) -> String {
     if component == "Icon" && prop == "name" {
-        return "quoted catalog icon name or string Signal, constant, or each-item path"
+        return "quoted catalog icon name or string path from a constant or each over a constant collection"
             .to_string();
     }
     if component == "Button" && matches!(prop, "loading" | "disabled") {
@@ -82,6 +82,9 @@ fn prop_type(component: &str, prop: &str) -> String {
 }
 
 fn prop_description(component: &str, prop: &str) -> &'static str {
+    if component == "Icon" && prop == "name" {
+        return "Validates every possible name from constant data and generates only those icon payloads. Mutable or unresolved names are rejected; no target generates the complete catalog.";
+    }
     if component == "Tree" {
         return match prop {
             "defaultOpen" => {
@@ -187,4 +190,3 @@ fn return_kind(kind: StdlibReturnKind) -> &'static str {
         StdlibReturnKind::Object => "object",
     }
 }
-

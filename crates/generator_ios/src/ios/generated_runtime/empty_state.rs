@@ -1,4 +1,5 @@
-r#"    let kind: String
+r#"struct DoweEmpty: View {
+    let kind: String
     let title: String?
     let description: String?
     let actionLabel: String
@@ -55,5 +56,4 @@ r#"    let kind: String
 }
 
 struct DoweMarquee<Content: View>: View {
-    let speed: String
 "#

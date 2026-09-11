@@ -156,5 +156,4 @@ func doweChatMessages(_ rows: [[String: Any]]) -> [DoweChatMessage] {
 }
 
 struct DoweChatBox: View {
-    @ObservedObject var state: DoweReactiveState
 "#

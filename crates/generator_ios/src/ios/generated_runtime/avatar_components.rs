@@ -164,5 +164,4 @@ func doweAvatarGroupItems(_ rows: [[String: Any]], fallback: [DoweAvatarGroupIte
 }
 
 struct DoweAvatarGroup: View {
-    let items: [DoweAvatarGroupItem]
 "#

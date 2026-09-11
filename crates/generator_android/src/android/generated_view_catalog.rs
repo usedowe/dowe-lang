@@ -42,7 +42,7 @@ fn generated_views(
         dowe_components::tree_has_dynamic_icon(&route.layout_tree)
             || dowe_components::tree_has_dynamic_icon(&route.page_tree)
     }) {
-        output.insert_str(0, &android_dynamic_icon_runtime());
+        output.insert_str(0, &android_dynamic_icon_runtime(routes));
     }
     replace_android_font_support(&mut output, font_config, font_families);
     output.push_str(&compose_safe_area_color_methods(routes));
@@ -272,4 +272,3 @@ fn generated_views(
         .replace("__DOWE_PAGE_TRANSITION_Y2_F", &format!("{}f", easing.3));
     extract_compose_svg_path_helpers(output)
 }
-

@@ -100,12 +100,12 @@ fn accepts_generic_reactive_style_props_from_each_item_paths() {
 }
 
 #[test]
-fn accepts_icon_name_from_constant_signal_and_each_item_paths() {
+fn accepts_icon_name_from_constants_and_each_item_paths() {
     let tree = parse_page(
         r#"page platformPage
   const platforms value:[{ icon:"route-bold-duotone" title:"server" } { icon:"global-bold-duotone" title:"web" }]
   const fallbackIcon value:"home"
-  signal activeIcon value:"home"
+  const activeIcon value:"home"
   Flex
     each in:platforms as:platform key:platform.title
       Icon name:platform.icon
@@ -174,18 +174,6 @@ fn ignores_unrelated_mutable_each_when_narrowing_dynamic_icon_catalog() {
         dowe_components::dynamic_icon_names(&tree).expect("static icon catalog"),
         ["route-bold-duotone".to_string()].into_iter().collect()
     );
-}
-
-#[test]
-fn keeps_full_dynamic_icon_catalog_for_mutable_signals() {
-    let tree = parse_page(
-        r#"page iconPage
-  signal selectedIcon value:"home"
-  Icon name:selectedIcon"#,
-    )
-    .expect("dynamic icon names");
-
-    assert!(dowe_components::dynamic_icon_names(&tree).is_none());
 }
 
 #[test]

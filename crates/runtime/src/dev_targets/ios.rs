@@ -52,5 +52,6 @@ mod tests {
     use std::sync::{Arc, Mutex};
     include!("ios_tests_simulator.rs");
     include!("ios_tests_hot_module.rs");
+    include!("ios_tests_incremental_sdk.rs");
     include!("ios_tests_toolchain.rs");
 }

@@ -249,9 +249,10 @@ Inside the loop, item paths stay scoped for visible text and reactive props such
 `scheme:blog.scheme`. `Select` also accepts a structural `each` over an immutable `const` catalog
 producing `Option value:option.value label:option.label` entries.
 
-Static-only props do not become dynamic because they are inside `each`. `Icon.name` remains a quoted,
-compiler-validated name; do not use `name:<item.icon>`. Use the supported runtime `Svg data:<reference>`
-contract for a genuinely runtime vector catalog, or keep the component's static contract intact.
+Static-only props retain their contracts inside `each`. `Icon.name` accepts `name:item.icon` when
+the source collection is constant and every possible name is a known catalog member. Dowe inspects
+all items and nested loops and generates only those icons. Mutable or unresolved names produce a
+diagnostic; use `Svg data:<reference>` for a catalog supplied at runtime.
 
 `"blog.title"` is literal text. A braced binding such as "{blog.title}" must resolve to a string; do not bind `number`, `bool`, or object paths directly. Convert numeric values to a string Signal with `parse.string` before rendering them. Mixed text such as
 `"By {blog.author}"` is not interpolated and remains literal. Braces apply to direct visible-text

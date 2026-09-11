@@ -224,5 +224,4 @@ func doweFlexBetweenSpacer(_ justify: DoweJustify?, gap: CGFloat?) -> CGFloat? {
 }
 
 struct DoweFlowLayout: Layout {
-    let justify: DoweJustify?
 "#

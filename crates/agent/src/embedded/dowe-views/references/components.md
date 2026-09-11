@@ -345,14 +345,15 @@ fn submit
 | `Camera` | Portable still-photo capture. Supported props are `facing`, `resolution`, `onCapture`, and `onError`; capture results include a target-local `url`, `mimeType`, dimensions, and `facing`. |
 | `Microphone` | Portable audio recording. Use `label`, optional positive `maxDuration`, `disabled`, and named lifecycle functions; stop results include a target-local `url`, `mimeType`, and `durationMs`. |
 | `Image` | Portable original media whose quoted `src` is a project asset path such as `/assets/images/hero.jpg` or an HTTPS URL, or whose bare `src` resolves to a typed string constant, Signal, or current `each` item field. Use `alt` text (empty marks it decorative), `aspect` (`horizontal`, `vertical`, `square`, `auto`), `objectFit`, `scheme`, and `rounded`. Web download and fullscreen actions are hidden by default; set `hideControls:false` to enable both. An unavailable source keeps the styled frame as a placeholder without crashing, so authoring the final path first and adding the file later is the canonical placeholder workflow. Never rebuild a photograph with `Svg` or `Canvas`, and never use the design reference or a crop from it to flatten UI into an image asset. |
-| `Icon` | Bundled vector selected by quoted `name` or a string Signal, constant, or current `each` item path. Names use Solar variants, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. Web, native targets, and the Android development launcher update from the shared catalog; invalid runtime values fall back to the validated initial icon. |
+| `Icon` | Bundled vector selected by quoted `name`, a string constant, or a current item path inside `each` over a constant collection. Names use Solar variants, `country-flags:<ISO code>`, animated `svg-spinners:<name>`, or `svg-logos:<name>`. A plain Solar name is linear; append `-broken`, `-outline`, `-bold`, `-line-duotone`, or `-bold-duotone` for another variant. Every target generates only the validated possible names; mutable or unresolved names are rejected. |
 | `Svg` | Portable vector using either quoted `viewBox` plus direct `Path` children, or runtime `data:<reference>` with no static paths. If only `w` or only `h` is authored, the other axis stays automatic and preserves the vector ratio; with neither, the default is `6` by `6`. |
 | `Path` | Context-only Svg path with quoted `d`, paint, optional `fillRule:"nonzero|evenodd"`, and optional matrix transform. Use `evenodd` to preserve holes in compound paths. |
 
-`Icon name` accepts a quoted catalog value or a readable string path. A collection can bind its
-current item, and a Signal can change the selected catalog entry without rebuilding the view tree.
-Names must exist in the bundled catalog at their initial value and diagnostics reject unknown names:
-for example `magnifier` and
+`Icon name` accepts a quoted catalog value or a readable string path from constant data. The compiler
+validates all possible names in constant collections, including nested `each` loops, and deduplicates
+the selected payloads across routes. It never generates the complete catalog as a fallback for
+unknown runtime values. For server-provided vector data, use `Svg data:<reference>`. Diagnostics
+reject any unknown name, even in a later collection item: for example `magnifier` and
 `magnifier-bold-duotone` are valid but `search` is not. Standalone icons accept
 `fill:<color token>`, `stroke:<color token>`, `w`, and `h`; `style` is not an Icon prop.
 

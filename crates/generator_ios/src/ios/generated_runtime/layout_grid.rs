@@ -233,5 +233,4 @@ private extension EnvironmentValues {
 }
 
 struct DoweDockingScrollObserver: UIViewRepresentable {
-    @Environment(\.doweDockingState) private var state
 "#

@@ -1,4 +1,5 @@
-r#"    let id: String
+r#"struct DoweTabItem: Identifiable {
+    let id: String
     let label: String
 }
 
@@ -182,5 +183,4 @@ struct DoweTabs<Content: View>: View {
 }
 
 struct DoweSideNavRow<Content: View>: View {
-    let active: Bool
 "#

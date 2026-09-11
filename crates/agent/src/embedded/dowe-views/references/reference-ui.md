@@ -418,8 +418,9 @@ hide a visible mismatch.
   layer, never a compound navigation or overlay root.
 - Every repeated same-shape region, including icon-plus-copy rows, uses one collection and one `each`
   template around the complete unit; copied siblings are a structural defect.
-- Static-only component props remain compiler-valid inside the loop; do not invent dynamic bindings
-  such as `Icon name:<item.icon>`.
+- Static-only component props remain compiler-valid inside the loop. Use `Icon name:item.icon`
+  only with a constant collection whose possible names are all known during compilation; use
+  `Svg data:item.svg` for runtime vector data.
 - Responsive behavior distinguishes observed evidence from conservative inference.
 - Split-panel content is centered against its owning panel, and nested action tracks are checked at
   their actual usable width rather than inferred from the viewport breakpoint alone.

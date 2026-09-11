@@ -149,5 +149,4 @@ struct DoweTypeWriter: View {
 }
 
 struct DoweRichTextMark {
-    let text: String
 "#

@@ -237,7 +237,7 @@ pub fn generate_ios_with_app_translations_and_icons(
     files.extend(ios_layout_artifacts(&layouts, font_config));
     files.extend(ios_route_artifacts(routes, font_config, &route_layouts));
     if ios_has_dynamic_icon(routes) {
-        files.extend(ios_dynamic_icon_catalog_artifacts());
+        files.extend(ios_dynamic_icon_catalog_artifacts(routes));
     }
     if routes
         .iter()

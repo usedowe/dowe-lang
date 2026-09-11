@@ -244,5 +244,4 @@ struct DoweSideNav: View {
 }
 
 struct DoweNavMenu<Content: View, Popover: View>: View {
-    @State private var openIndex: Int? = nil
 "#

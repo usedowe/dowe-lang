@@ -21,6 +21,7 @@ use std::path::Path;
 use tempfile::TempDir;
 
 include!("tests/routes_and_state.rs");
+include!("tests/icon_demand.rs");
 include!("tests/requests_and_actions.rs");
 include!("tests/forms_and_reactivity.rs");
 include!("tests/types_and_stores.rs");

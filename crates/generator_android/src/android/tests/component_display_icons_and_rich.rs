@@ -46,7 +46,29 @@ fn generates_dynamic_icon_lookup_for_android_dev_launcher() {
             id: "dynamic-icon".to_string(),
             route_path: "/dynamic-icon".to_string(),
             layout_tree: ViewNode::Children,
-            page_tree: dynamic,
+            page_tree: ViewNode::Scope {
+                constants: vec![dowe_components::ViewConstant {
+                    id: "platforms".to_string(),
+                    name: "platforms".to_string(),
+                    value: ViewSignalValue::Array(
+                        ["route-bold-duotone", "svg-logos:android-icon", "svg-logos:apache-flink"]
+                            .into_iter()
+                            .map(|name| ViewSignalValue::Object(vec![(
+                                "icon".to_string(),
+                                ViewSignalValue::String(name.to_string()),
+                            )]))
+                            .collect(),
+                    ),
+                }],
+                signals: Vec::new(),
+                actions: Vec::new(),
+                children: vec![ViewNode::Each {
+                    item: "platform".to_string(),
+                    collection: "platforms".to_string(),
+                    key: "platform.icon".to_string(),
+                    children: vec![dynamic],
+                }],
+            },
             sections: Vec::new(),
             navigation_actions: Vec::new(),
         }],

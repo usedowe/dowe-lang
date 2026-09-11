@@ -221,7 +221,7 @@ fn render_swift_bar_region(
             "{pad}    .frame(maxWidth: .infinity, alignment: {alignment})\n"
         ));
     } else {
-        output.push_str(&format!("{pad}    .frame(alignment: {alignment})\n"));
+        output.push_str(&format!("{pad}    .frame(width: nil, alignment: {alignment})\n"));
         output.push_str(&format!("{pad}    .lineLimit(1)\n"));
         output.push_str(&format!("{pad}    .layoutPriority(1)\n"));
         output.push_str(&format!(

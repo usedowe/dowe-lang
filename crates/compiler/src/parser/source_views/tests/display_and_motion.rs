@@ -417,6 +417,7 @@ page displayPage
     fn parses_avatar_icons_from_region_and_prop() {
         let tree = parse_page(
             r#"page avatarIcons
+  const platform value:{ icon:"home" }
   Avatar name:"Dowe Agent" alt:"Dowe Agent" icon:platform.icon
   Avatar name:"Dowe Agent" alt:"Dowe Agent"
     icon
@@ -431,6 +432,7 @@ page displayPage
         };
         assert!(props.name.as_deref() == Some("Dowe Agent"));
         assert_eq!(icon.as_ref().and_then(|value| value.props.icon_name.as_deref()), Some("platform.icon"));
+        assert_eq!(icon.as_ref().and_then(|value| value.props.icon_fallback.as_deref()), Some("home"));
         assert_eq!(icon.as_ref().and_then(|value| value.props.icon_fill), Some(ColorToken::PrimaryText));
         let ViewNode::Avatar { icon, .. } = &children[1] else {
             panic!("region avatar");

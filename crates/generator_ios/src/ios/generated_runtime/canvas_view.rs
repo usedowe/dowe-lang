@@ -245,5 +245,4 @@ r#"    @ObservedObject var state: DoweReactiveState
 }
 
 struct DoweCanvasInputBridge: UIViewRepresentable {
-    @ObservedObject var state: DoweReactiveState
 "#

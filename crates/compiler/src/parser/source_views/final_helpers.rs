@@ -71,7 +71,11 @@ fn resolve_dynamic_icon_fallbacks(tree: &mut ViewNode) {
                     visit(child, values, &scoped);
                 }
             }
-            ViewNode::Svg { props, paths } => {
+            ViewNode::Svg { props, paths }
+            | ViewNode::Avatar {
+                icon: Some(dowe_components::SideNavIcon { props, paths }),
+                ..
+            } => {
                 let Some(binding) = props.icon_name.as_deref() else {
                     return;
                 };
@@ -79,16 +83,9 @@ fn resolve_dynamic_icon_fallbacks(tree: &mut ViewNode) {
                 else {
                     return;
                 };
-                if !dowe_components::all_icon_names()
-                    .iter()
-                    .any(|value| value == &name)
-                {
-                    return;
-                }
-                props.icon_fallback = Some(name.clone());
                 let mut icon_props = vec![ComponentProp {
                     name: "name".to_string(),
-                    value: PropValue::String(name),
+                    value: PropValue::String(name.clone()),
                 }];
                 if let Some(fill) = props.icon_fill {
                     icon_props.push(ComponentProp {
@@ -107,6 +104,7 @@ fn resolve_dynamic_icon_fallbacks(tree: &mut ViewNode) {
                     paths: fallback_paths,
                 }) = icon_component_node(icon_props)
                 {
+                    props.icon_fallback = Some(name);
                     props.view_box = fallback_props.view_box;
                     *paths = fallback_paths;
                 }

@@ -1,4 +1,5 @@
-r#"    let minX: CGFloat
+r#"struct DoweSvgViewBox {
+    let minX: CGFloat
     let minY: CGFloat
     let width: CGFloat
     let height: CGFloat
@@ -68,5 +69,4 @@ private final class DoweSvgPathCache: @unchecked Sendable {
 }
 
 struct DoweSvgShape: Shape {
-    let data: String
 "#

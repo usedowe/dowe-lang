@@ -10,9 +10,8 @@ fn dev_activity_dynamic_icon_runtime() -> &'static str {
 "#
 }
 
-fn dev_dynamic_icon_shards(app_bundle: &str) -> Vec<DevActivityShard> {
-    let entries =
-        dowe_components::runtime_icon_catalog_shared().expect("validated runtime icon catalog");
+fn dev_dynamic_icon_shards(app_bundle: &str, routes: &[ViewRoute]) -> Vec<DevActivityShard> {
+    let entries = android_dynamic_icon_catalog(routes);
     let mut groups = Vec::new();
     let mut group = Vec::new();
     let mut group_size = 0;

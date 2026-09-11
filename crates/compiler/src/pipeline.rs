@@ -14,4 +14,5 @@ mod tests {
     include!("pipeline/tests_security.rs");
     include!("pipeline/tests_generated_sync.rs");
     include!("pipeline/tests_icon_output.rs");
+    include!("pipeline/tests_icon_demand.rs");
 }

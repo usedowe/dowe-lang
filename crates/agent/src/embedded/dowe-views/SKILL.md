@@ -65,10 +65,10 @@ Before authoring the repeated view:
   that could be represented by one collection and one template. Fix the data boundary before doing
   visual polish.
 
-Keep static-only props static. In particular, `Icon.name` is a quoted, compiler-validated name and
-must not be invented as `name:<item.icon>`. For varying runtime vector data, use the supported
-`Svg data:<reference>` contract; otherwise preserve the component's static contract and report a
-missing language capability instead of duplicating the complete repeated unit or inventing syntax.
+Keep static-only props static. `Icon.name` also accepts a string constant or an item path such as
+`name:item.icon` inside `each` over a constant collection. Every possible name must be known during
+compilation; Dowe generates only those icons and rejects mutable or unresolved names. For varying
+runtime vector data, use `Svg data:<reference>`. Preserve one repeated template in either case.
 
 ## Reference-image theme boundary
 
@@ -314,7 +314,8 @@ isolation or perform visual comparison. Report visual QA as not run when capture
    dedicated string Signal first.
 25. Before visual QA, audit every repeated region: name its collection and owner, verify stable ids,
    confirm one `each` wraps the complete repeated subtree, and check that no copied sibling has
-   survived. Verify static-only props such as `Icon.name` remain compiler-valid. Audit every local
+   survived. Verify computed `Icon.name` values resolve from constants or constant collections and
+   static-only props remain compiler-valid. Audit every local
    prop against the admission gate and remove any prop whose only rationale is that it is accepted,
    commonly generated, or numerically measurable in the reference.
 26. Review the rendered page at `xs`, `md`, and the reference viewport. Audit focal hierarchy,

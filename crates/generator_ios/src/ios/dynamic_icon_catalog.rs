@@ -7,9 +7,14 @@ fn ios_has_dynamic_icon(routes: &[ViewRoute]) -> bool {
     })
 }
 
-fn ios_dynamic_icon_catalog_artifacts() -> Vec<IosArtifact> {
-    let entries = dowe_components::runtime_icon_catalog_shared()
-        .expect("validated runtime icon catalog")
+fn ios_dynamic_icon_catalog_artifacts(routes: &[ViewRoute]) -> Vec<IosArtifact> {
+    let catalog = dowe_components::dynamic_icon_catalog_for_trees(
+        routes
+            .iter()
+            .flat_map(|route| [&route.layout_tree, &route.page_tree]),
+    )
+    .expect("computed icon names must be validated before generation");
+    let entries = catalog
         .iter()
         .map(|(name, payload)| {
             format!(

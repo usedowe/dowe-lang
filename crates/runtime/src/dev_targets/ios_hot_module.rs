@@ -186,7 +186,7 @@ fn ios_hot_module_compile_args(
         "-enable-incremental-file-hashing".to_string(),
         "-enable-batch-mode".to_string(),
         "-driver-batch-size-limit".to_string(),
-        "1".to_string(),
+        "4".to_string(),
         "-j".to_string(),
         jobs.to_string(),
         "-target".to_string(),

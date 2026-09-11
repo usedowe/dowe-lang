@@ -288,5 +288,4 @@ func doweButtonMinHeight(_ value: String) -> CGFloat {
 }
 
 enum DoweSize {
-    case fixed(CGFloat)
 "#

@@ -159,5 +159,4 @@ struct DoweGestureModifier: ViewModifier {
 }
 
 struct DoweOverlayView: View {
-    let overlay: DoweOverlay
 "#

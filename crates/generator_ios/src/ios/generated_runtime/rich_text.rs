@@ -254,5 +254,4 @@ private struct DoweRichTextDecoration: View {
 }
 
 struct DoweRecord: View {
-    let name: String
 "#

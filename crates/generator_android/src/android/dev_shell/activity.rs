@@ -93,7 +93,7 @@ fn dev_activity_sources(
         shards.extend(dev_phone_flag_shards(app_bundle));
     }
     if has_dynamic_icons {
-        shards.extend(dev_dynamic_icon_shards(app_bundle));
+        shards.extend(dev_dynamic_icon_shards(app_bundle, routes));
     }
 
     DevActivitySources {
