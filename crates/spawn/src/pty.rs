@@ -295,7 +295,7 @@ fn handle_control(
             let Some(writer) = writer else {
                 return;
             };
-            if let Err(error) = writer.write_all(&bytes) {
+            if let Err(error) = writer.write_all(&bytes).and_then(|()| writer.flush()) {
                 let _ = event_tx.send(SpawnEvent::Error {
                     spawn_id,
                     error: SpawnError::new(

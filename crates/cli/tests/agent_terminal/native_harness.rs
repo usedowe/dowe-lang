@@ -11,7 +11,7 @@ fn agent_harness_watchers_survive_turns_but_close_on_new_and_exit() {
         session.send("y\r");
         session.until("watch_started");
         session.send("/watch\r");
-        session.until("\"running\": true");
+        session.until("running: true");
         if index == 0 {
             session.send("/new\r");
             session.until("Started a new conversation.");
@@ -280,6 +280,52 @@ fn agent_harness_terminal_approves_exact_write_and_returns_real_result() {
     );
 }
 
+#[test]
+fn agent_harness_terminal_reviews_chained_file_writes_once() {
+    let response = serde_json::json!({
+        "output":[
+            {
+                "type":"function_call",
+                "call_id":"write",
+                "name":"write_file",
+                "arguments":serde_json::json!({
+                    "path":"page.txt",
+                    "content":"before\n",
+                    "skill":"core",
+                    "reason":"create page"
+                }).to_string()
+            },
+            {
+                "type":"function_call",
+                "call_id":"edit",
+                "name":"edit_file",
+                "arguments":serde_json::json!({
+                    "path":"page.txt",
+                    "old_text":"before\n",
+                    "new_text":"after\n",
+                    "skill":"core",
+                    "reason":"finish page"
+                }).to_string()
+            }
+        ]
+    });
+    let (home, server) = conversation_fixture(vec![
+        (200, response),
+        (200, conversation_reply("Files applied.")),
+    ]);
+    let session = Session::start_at(home, false, &["agent"]);
+    session.send("Create the page\r");
+    let approval = session.until("Approve these exact operations once?");
+    assert!(approval.contains("File changes requested (2)"));
+    assert!(approval.contains("Operation 1:") && approval.contains("Operation 2:"));
+    assert!(!approval.contains("Approve this exact operation once?"));
+    session.send("y\r");
+    session.until("Files applied.");
+    let home = session.stop();
+    assert_eq!(std::fs::read_to_string(home.path().join("page.txt")).unwrap(), "after\n");
+    assert_eq!(server.join().unwrap().len(), 2);
+}
+
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 #[test]
 fn agent_harness_pty_input_is_local_and_not_provider_or_history_data() {
@@ -380,6 +426,23 @@ fn agent_harness_research_routes_to_read_only_tools() {
         !matches!(tool["name"].as_str(), Some("shell" | "write_file" | "edit_file" | "write_asset"))
     }));
     assert!(home.path().join(".agents/capabilities/index.md").is_file());
+}
+
+#[test]
+fn agent_harness_sdd_is_hidden_from_simple_menu_but_remains_actionable() {
+    let session = Session::start(false);
+    session.send("/");
+    let menu = session.until("/exit");
+    assert!(!menu.contains("/sdd"));
+    session.send("\u{7f}/sdd\r");
+    let output = session.until("SDD status");
+    let output = format!(
+        "{output}{}",
+        session.until("Next: use /sdd init <change-id> [title]")
+    );
+    assert!(output.contains("project-local SDD (.agents/changes/)"));
+    assert!(output.contains("Changes: none"));
+    session.finish();
 }
 
 #[test]

@@ -14,6 +14,23 @@ const ZED_SETTINGS: &str = r#"{
 const BLANK_THEME: &str = r##"theme
   fonts default:"inter" install:["inter"]
   design defaultTheme:"light"
+    Card variant:"solid" scheme:"surface" rounded:"md" shadow:"sm"
+    Button variant:"solid" scheme:"primary" size:"md" rounded:"md"
+    IconButton variant:"solid" scheme:"primary" size:"md" rounded:"md"
+    Toast variant:"solid" scheme:"info" rounded:"md"
+    Chip variant:"solid" scheme:"primary" rounded:"full" size:"sm"
+    Avatar variant:"solid" scheme:"primary" rounded:"full" size:"md"
+    Section variant:"solid" scheme:"background"
+    AppBar variant:"solid" scheme:"surface"
+    Input variant:"outlined" scheme:"primary"
+    Password variant:"outlined" scheme:"primary"
+    Textarea variant:"outlined" scheme:"primary"
+    Select variant:"outlined" scheme:"primary"
+    Checkbox scheme:"primary"
+    Modal variant:"solid" scheme:"surface"
+    Tabs variant:"pills" scheme:"primary"
+    Text font:"inter"
+    Title font:"inter"
     theme name:"light"
       colors:
         primary color:"#1F3A5F" text:"#EBF2FA" title:"#FFFFFF"
@@ -39,8 +56,19 @@ const CRUD_THEME: &str = r##"theme
   design defaultTheme:"editorial"
     Card variant:"solid" scheme:"surface" rounded:"xl" shadow:"xs" shadowColor:"muted"
     Button variant:"solid" scheme:"primary" size:"md" rounded:"full"
+    IconButton variant:"solid" scheme:"primary" size:"md" rounded:"full"
+    Toast variant:"solid" scheme:"info" rounded:"xl"
     Avatar variant:"solid" scheme:"primary" rounded:"full" size:"md"
     Chip variant:"solid" scheme:"primary" rounded:"full" size:"sm"
+    Section variant:"solid" scheme:"background"
+    AppBar variant:"ghost" scheme:"background"
+    Input variant:"outlined" scheme:"primary" rounded:"xl"
+    Password variant:"outlined" scheme:"primary" rounded:"xl"
+    Textarea variant:"outlined" scheme:"primary" rounded:"xl"
+    Select variant:"outlined" scheme:"primary" rounded:"xl"
+    Checkbox scheme:"primary"
+    Modal variant:"solid" scheme:"surface" rounded:"xl"
+    Tabs variant:"pills" scheme:"primary"
     Text font:"manrope"
     Title font:"manrope"
     theme name:"editorial"
@@ -115,5 +143,3 @@ struct InitTranslation {
     en: &'static str,
     es: &'static str,
 }
-
-

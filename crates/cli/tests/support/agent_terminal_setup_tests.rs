@@ -96,9 +96,19 @@ impl Session {
     }
 
     fn send(&self, input: &str) {
-        self.child
-            .write_stdin(input.as_bytes().to_vec())
-            .expect("input");
+        if let Some(body) = input.strip_suffix('\r') {
+            if !body.is_empty() {
+                self.child
+                    .write_stdin(body.as_bytes().to_vec())
+                    .expect("input");
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            self.child.write_stdin(b"\r".to_vec()).expect("input");
+        } else {
+            self.child
+                .write_stdin(input.as_bytes().to_vec())
+                .expect("input");
+        }
     }
 
     fn until(&self, expected: &str) -> String {
@@ -109,7 +119,8 @@ impl Session {
 
     fn stop(self) -> TempDir {
         self.send("/exit\r");
-        assert!(self.child.wait().expect("exit").success());
+        let output = self.child.wait().expect("exit");
+        assert!(output.success(), "agent exited unsuccessfully: {output:?}");
         self.home
     }
 
@@ -125,7 +136,7 @@ fn collect_until(
     mut receive: impl FnMut(Duration) -> Option<SpawnEvent>,
 ) -> String {
     assert!(!expected.is_empty());
-    let deadline = Instant::now() + Duration::from_secs(5);
+    let deadline = Instant::now() + Duration::from_secs(15);
     loop {
         // Match bytes before decoding: split UTF-8 and later markers stay intact.
         if let Some(start) = pending

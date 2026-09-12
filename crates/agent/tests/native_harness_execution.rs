@@ -178,6 +178,55 @@ async fn approved_tools_continue_with_native_results_and_persist_evidence() {
 }
 
 #[tokio::test]
+async fn unchanged_file_write_is_reported_without_an_approval_round_trip() {
+    let home = tempfile::tempdir().unwrap();
+    let root = tempfile::tempdir().unwrap();
+    std::fs::write(root.path().join("page.txt"), "same\n").unwrap();
+    let store = HarnessStore::new(home.path(), root.path()).unwrap();
+    let mut session = store.create_session().unwrap();
+    let response = json!({
+        "output":[{
+            "type":"function_call",
+            "call_id":"unchanged",
+            "name":"write_file",
+            "arguments":json!({
+                "path":"page.txt",
+                "content":"same\n",
+                "skill":"core",
+                "reason":"keep page"
+            }).to_string()
+        }]
+    });
+    let mut host = Host {
+        responses: VecDeque::from([response, json!({"output_text":"already current"})]),
+        requests: vec![],
+        events: vec![],
+        decision: Some(true),
+    };
+
+    let outcome = run_harness_turn(
+        &store,
+        &mut session,
+        &HarnessConfig::default(),
+        HarnessTask::new("Keep the page", &ModelSelection::new("openai", "gpt-5.5")),
+        &mut host,
+    )
+    .await
+    .unwrap();
+
+    assert!(matches!(outcome, HarnessOutcome::Completed));
+    assert!(
+        host.events
+            .iter()
+            .all(|event| event["event"] != "approval_required")
+    );
+    assert!(host.events.iter().any(|event| {
+        event["event"] == "tool_result"
+            && event["result"]["output"]["status"] == "unchanged"
+    }));
+}
+
+#[tokio::test]
 async fn failed_operation_records_failed_receipt_status() {
     let home = tempfile::tempdir().unwrap();
     let root = tempfile::tempdir().unwrap();

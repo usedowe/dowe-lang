@@ -158,6 +158,37 @@ async fn execute_harness_calls(
         let mut canceled = false;
         let mut call_index = 0;
         while call_index < calls.len() {
+            if is_batchable_text_write(&calls[call_index]) {
+                let batch_start = call_index;
+                let mut batch_end = batch_start + 1;
+                while batch_end < calls.len()
+                    && batch_end - batch_start < MAX_TEXT_WRITE_BATCH_OPERATIONS
+                    && is_batchable_text_write(&calls[batch_end])
+                {
+                    batch_end += 1;
+                }
+                if batch_end - batch_start > 1 {
+                    let batch = execute_text_write_batch(
+                        store,
+                        session,
+                        config,
+                        role,
+                        &calls[batch_start..batch_end],
+                        tools,
+                        host,
+                        started,
+                        usage,
+                        persist,
+                        turn_codegraph_binding,
+                    )
+                    .await?;
+                    results.extend(batch.results);
+                    approval_required |= batch.approval_required;
+                    graph_dirty |= batch.graph_dirty;
+                    call_index = batch_end;
+                    continue;
+                }
+            }
             let batch_start = call_index;
             let mut batch_end = batch_start + 1;
             while batch_end < calls.len()
@@ -196,9 +227,14 @@ async fn execute_harness_calls(
                         validation_failed = true;
                     }
                     output
-                } else {
-                    match tools.prepare(&call, role) {
-                        Ok(Some(approval)) => {
+                    } else {
+                        match tools.prepare(&call, role) {
+                            Ok(Some(approval)) if approval.details["unchanged"] == true => {
+                                let path = call.arguments["path"].clone();
+                                tools.reject(approval)?;
+                                Ok(json!({"status":"unchanged","path":path}))
+                            }
+                            Ok(Some(approval)) => {
                             emit_persist(
                                 store,
                                 session,

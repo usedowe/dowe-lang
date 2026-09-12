@@ -134,6 +134,10 @@ fn command_failure_detail(output: &dowe_spawn::SpawnOutput) -> Option<String> {
 }
 
 pub(crate) fn cancel_active_external_commands() {
+    #[cfg(test)]
+    let _test_guard = test_external_command_lock()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let controls = active_command_controls()
         .lock()
         .expect("active command lock")
@@ -146,6 +150,12 @@ pub(crate) fn cancel_active_external_commands() {
 fn active_command_controls() -> &'static Mutex<Vec<(DevTarget, ProcessControl)>> {
     static CONTROLS: OnceLock<Mutex<Vec<(DevTarget, ProcessControl)>>> = OnceLock::new();
     CONTROLS.get_or_init(|| Mutex::new(Vec::new()))
+}
+
+#[cfg(test)]
+pub(crate) fn test_external_command_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 fn register_active_external_command(target: DevTarget, control: ProcessControl) {
@@ -163,6 +173,10 @@ fn unregister_active_external_command(spawn_id: u64) {
 }
 
 pub(crate) fn cancel_active_external_commands_for(target: DevTarget) {
+    #[cfg(test)]
+    let _test_guard = test_external_command_lock()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let controls = active_command_controls()
         .lock()
         .expect("active command lock")

@@ -172,6 +172,39 @@ impl HarnessHost for TerminalHost<'_> {
             .map_err(|error| AgentError::new(error.to_string()))
     }
 
+    async fn approve_batch(&mut self, approvals: &[Approval]) -> AgentResult<Option<bool>> {
+        if approvals.is_empty() {
+            return Ok(Some(true));
+        }
+        if approvals.len() == 1 {
+            return self.approve(&approvals[0]).await;
+        }
+        if self.json_output || !crate::menus::is_interactive_terminal() {
+            return Ok(None);
+        }
+        let _activity = self.activity.suspend()?;
+        let mut redactor = Redactor::default();
+        for secret in self.secrets() {
+            redactor.add(&secret);
+        }
+        let mut views = Vec::with_capacity(approvals.len());
+        for approval in approvals {
+            let mut view = serde_json::to_value(approval)?;
+            redactor.value(&mut view);
+            views.push(view);
+        }
+        eprintln!(
+            "{}",
+            super::markdown::terminal_text(&formatting::format_approval_batch(&views))
+        );
+        Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt("Approve these exact operations once?")
+            .default(false)
+            .interact()
+            .map(Some)
+            .map_err(|error| AgentError::new(error.to_string()))
+    }
+
     fn event(&mut self, event: &Value) -> AgentResult<()> {
         if self.json_output {
             println!("{event}");
@@ -238,13 +271,21 @@ impl HarnessHost for TerminalHost<'_> {
                 "The agent paused this run to protect the context. Your work is preserved; send a focused follow-up to continue."
             ),
             Some("validation_started") => eprintln!("Validating the Dowe project before completing the task…"),
+            Some("validation_finished")
+                if event["result"]["status"].as_str() == Some("failed") =>
+            {
+                eprintln!(
+                    "Dowe validation failed: {}",
+                    activity::validation_failure_detail(event)
+                )
+            }
             Some("validation_finished") => eprintln!(
                 "Dowe validation: {}",
                 event["result"]["status"].as_str().unwrap_or("not_run")
             ),
             Some("validation_failed") => eprintln!(
                 "Dowe validation failed: {}",
-                event["reason"].as_str().unwrap_or("validation_failed")
+                activity::validation_failure_detail(event)
             ),
             _ => {}
         }

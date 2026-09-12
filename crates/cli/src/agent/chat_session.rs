@@ -173,7 +173,7 @@ pub(super) async fn run_agent_session_with_args(
                 continue;
             }
             let Some(selected_provider) = provider.as_deref() else {
-                eprintln!("Select a provider with /provider first.");
+                eprintln!("Select a provider with /login or /model first.");
                 continue;
             };
             let selected_model = model

@@ -1,6 +1,7 @@
 #[cfg(unix)]
 mod tests {
     use super::super::*;
+    use crate::dev_targets::test_external_command_lock;
     use std::os::unix::fs::PermissionsExt;
     use std::time::Instant;
     use tempfile::TempDir;
@@ -14,6 +15,9 @@ mod tests {
 
     #[test]
     fn reuses_selected_android_avd_without_spawning() {
+        let _guard = test_external_command_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let root = TempDir::new().unwrap();
         let adb = command(
             root.path(),
@@ -40,6 +44,9 @@ fi
 
     #[test]
     fn waits_for_an_existing_offline_avd_without_spawning() {
+        let _guard = test_external_command_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let root = TempDir::new().unwrap();
         let adb = command(
             root.path(),
@@ -68,6 +75,9 @@ fi
 
     #[test]
     fn selects_the_named_avd_among_other_connected_devices() {
+        let _guard = test_external_command_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let root = TempDir::new().unwrap();
         let adb = command(
             root.path(),
@@ -93,6 +103,9 @@ fi
 
     #[test]
     fn does_not_accept_unrelated_devices_before_the_deadline() {
+        let _guard = test_external_command_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let root = TempDir::new().unwrap();
         let adb = command(
             root.path(),
@@ -114,6 +127,9 @@ fi
 
     #[test]
     fn reports_emulator_exit_with_stdout_and_stderr_before_timeout() {
+        let _guard = test_external_command_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let root = TempDir::new().unwrap();
         let adb = command(root.path(), "adb", "printf 'List of devices attached\\n'");
         let emulator = command(
@@ -140,6 +156,9 @@ exit 7
 
     #[test]
     fn starts_the_selected_avd_and_resolves_its_serial() {
+        let _guard = test_external_command_lock()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
         let root = TempDir::new().unwrap();
         let adb = command(
             root.path(),

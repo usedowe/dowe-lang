@@ -16,9 +16,9 @@ fn lists_pi_compatible_providers_without_credentials() {
     let providers: Value = serde_json::from_slice(&output.stdout).expect("providers json");
 
     assert!(output.status.success());
-    assert_eq!(providers.as_array().expect("provider list").len(), 27);
+    assert_eq!(providers.as_array().expect("provider list").len(), 28);
     assert_eq!(providers[0]["id"], "amazon-bedrock");
-    assert_eq!(providers[15]["id"], "openai");
+    assert_eq!(providers[16]["id"], "openai");
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn starts_the_embedded_terminal_agent_without_project_files() {
 
     assert!(output.status.success());
     assert!(stdout.contains("Dowe Agent"));
-    assert!(stdout.contains("embedded in the Dowe binary"));
+    assert!(stdout.contains("built-in skills loaded"));
     assert!(!temp.path().join("AGENTS.md").exists());
     assert!(!temp.path().join("CLAUDE.md").exists());
     assert!(!temp.path().join(".agents").exists());

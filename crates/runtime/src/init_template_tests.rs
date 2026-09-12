@@ -100,6 +100,43 @@ fn every_project_template_generates_grouped_theme_colors() {
 }
 
 #[test]
+fn every_project_template_seeds_common_design_defaults() {
+    let components = [
+        "Card",
+        "Button",
+        "IconButton",
+        "Toast",
+        "Chip",
+        "Avatar",
+        "Section",
+        "AppBar",
+        "Input",
+        "Password",
+        "Textarea",
+        "Select",
+        "Checkbox",
+        "Modal",
+        "Tabs",
+        "Text",
+        "Title",
+    ];
+
+    for options in materialized_options() {
+        let temp = TempDir::new().expect("tempdir");
+        init_project(temp.path(), options).expect("init");
+        let theme = fs::read_to_string(temp.path().join("theme.dowe")).expect("theme");
+
+        for component in components {
+            let prefix = format!("    {component} ");
+            assert!(
+                theme.lines().any(|line| line.starts_with(&prefix)),
+                "missing design default for {component}:\n{theme}"
+            );
+        }
+    }
+}
+
+#[test]
 fn custom_app_identity_is_written_to_main_for_each_template() {
     for template in [ProjectTemplate::Blank, ProjectTemplate::Crud] {
         let temp = TempDir::new().expect("tempdir");
@@ -280,4 +317,3 @@ fn crud_writes_auth_owned_blogs_and_layered_server_modules() {
     assert!(!middleware.contains("jwt "));
     compile_template(temp.path());
 }
-

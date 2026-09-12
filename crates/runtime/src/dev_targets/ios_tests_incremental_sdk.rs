@@ -3,6 +3,16 @@
 fn ios_batches_reuse_unchanged_objects_and_validate_sdk_availability() {
     use super::{IosHotModuleSnapshot, IosIncrementalWorkspace};
     use dowe_compiler::GeneratedFile;
+    use std::process::Command;
+
+    let sdk = Command::new("xcrun")
+        .args(["--sdk", "iphonesimulator", "--show-sdk-path"])
+        .output()
+        .expect("Xcode SDK query");
+    if !sdk.status.success() {
+        eprintln!("skipping iOS incremental SDK test: simulator SDK unavailable");
+        return;
+    }
 
     let root = tempfile::tempdir().unwrap();
     let target = ios_simulator_target();

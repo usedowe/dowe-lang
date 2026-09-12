@@ -185,15 +185,21 @@ async fn configure_provider(
     }))
 }
 
-const LOGIN_PROVIDER_IDS: &[&str] = &["openai-codex", "openrouter"];
+const INTERACTIVE_PROVIDER_IDS: &[&str] = &["openai-codex", "openrouter"];
+
+fn interactive_provider_info(
+    store: &AgentAuthStore,
+) -> Result<Vec<AgentProviderInfo>, Box<dyn std::error::Error>> {
+    Ok(builtin_provider_info(store)?
+        .into_iter()
+        .filter(|provider| INTERACTIVE_PROVIDER_IDS.contains(&provider.id.as_str()))
+        .collect())
+}
 
 fn select_login_provider(
     store: &AgentAuthStore,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let providers = builtin_provider_info(store)?
-        .into_iter()
-        .filter(|provider| LOGIN_PROVIDER_IDS.contains(&provider.id.as_str()))
-        .collect::<Vec<_>>();
+    let providers = interactive_provider_info(store)?;
     let items = aligned_provider_labels(&providers, menu_width());
     let Some(index) = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Select provider to configure")

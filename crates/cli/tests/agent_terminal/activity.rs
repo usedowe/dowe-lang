@@ -426,9 +426,10 @@ fn agent_activity_cancel_restores_input_without_another_request() {
     screen.feed(&session.until_activity_frame("Ctrl+O"));
     screen.busy(false);
     session.send("\u{3}");
-    let canceled = session.until("ctx");
-    assert!(canceled.contains("Agent task canceled"));
+    let canceled = session.until("Agent task canceled");
+    let restored = session.until("│ >");
     screen.feed(&canceled);
+    screen.feed(&restored);
     assert!(!screen.visible().contains("Writing…"));
     assert!(screen.visible().contains("│ >"));
     let _home = session.stop();

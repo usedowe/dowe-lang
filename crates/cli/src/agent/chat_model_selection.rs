@@ -108,7 +108,9 @@ fn configured_model_providers(
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     Ok(builtin_provider_info(store)?
         .into_iter()
-        .filter(|provider| provider.configured)
+        .filter(|provider| {
+            provider.configured && INTERACTIVE_PROVIDER_IDS.contains(&provider.id.as_str())
+        })
         .map(|provider| provider.id)
         .collect())
 }
@@ -188,7 +190,7 @@ pub(super) fn select_model(
 pub(super) fn select_provider(
     store: &AgentAuthStore,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-    let providers = builtin_provider_info(store)?;
+    let providers = interactive_provider_info(store)?;
     if providers.is_empty() {
         return Err("no agent providers are available".into());
     }

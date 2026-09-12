@@ -65,6 +65,54 @@ fn outcome(result: &Value) -> &'static str {
     }
 }
 
+fn non_empty(value: &Value) -> Option<&str> {
+    value.as_str().filter(|text| !text.trim().is_empty())
+}
+
+fn quality_finding_detail(output: &Value) -> Option<String> {
+    let findings = output["quality"]["findings"].as_array()?;
+    let finding = findings.first()?;
+    let path = non_empty(&finding["path"]).unwrap_or("project");
+    let location = finding["line"]
+        .as_u64()
+        .map(|line| format!(":{line}"))
+        .unwrap_or_default();
+    let message = non_empty(&finding["message"]).unwrap_or("quality finding");
+    let remaining = findings.len().saturating_sub(1);
+    let suffix = if remaining == 0 {
+        String::new()
+    } else {
+        format!(" (+{remaining} more)")
+    };
+    Some(format!(
+        "{}{}: {}{}",
+        safe_text(path, 160),
+        location,
+        safe_text(message, 240),
+        suffix
+    ))
+}
+
+fn failure_detail_from_output(output: &Value) -> Option<String> {
+    non_empty(&output["error"])
+        .or_else(|| non_empty(&output["compiler"]["error"]))
+        .map(|text| safe_text(text, LINE_BYTES))
+        .or_else(|| quality_finding_detail(output))
+        .or_else(|| non_empty(&output["reason"]).map(|text| safe_text(text, LINE_BYTES)))
+        .or_else(|| non_empty(&output["message"]).map(|text| safe_text(text, LINE_BYTES)))
+}
+
+fn failure_detail(result: &Value) -> Option<String> {
+    failure_detail_from_output(&result["output"])
+}
+
+pub(super) fn validation_failure_detail(event: &Value) -> String {
+    failure_detail_from_output(&event["validation"])
+        .or_else(|| failure_detail_from_output(&event["result"]))
+        .or_else(|| non_empty(&event["reason"]).map(|text| safe_text(text, LINE_BYTES)))
+        .unwrap_or_else(|| "validation_failed".into())
+}
+
 fn details(
     value: &Value,
     label: &str,
@@ -113,14 +161,12 @@ pub(super) fn tool_result(event: &Value) -> Vec<String> {
     let status = outcome(result);
     let name = result["name"].as_str().unwrap_or_default();
     let mut headline = format!("• {} · {status}", terminal::tool_summary_label(name));
-    // Keep actionable failures visible while the activity card is collapsed.
-    // Detailed result fields remain available when the user expands the card.
     if status == "failed"
-        && let Some(error) = result["output"]["error"].as_str()
+        && let Some(error) = failure_detail(result)
     {
         headline.push_str(": ");
         headline.push_str(&safe_text(
-            error,
+            &error,
             LINE_BYTES.saturating_sub(headline.len() + 2),
         ));
     }
@@ -194,6 +240,68 @@ mod tests {
         assert!(lines[0].contains("• Wrote file · failed:"));
         assert!(lines[0].contains("write base changed after approval"));
         assert!(lines[0].len() <= LINE_BYTES);
+    }
+
+    #[test]
+    fn validation_result_keeps_nested_compiler_error_in_the_collapsed_headline() {
+        let lines = tool_result(&json!({
+            "result": {
+                "name": "validate_dowe_project",
+                "failed": true,
+                "output": {
+                    "status": "failed",
+                    "compiler": {
+                        "status": "failed",
+                        "error": "views/pages/home.dowe: unknown section `#invertir`"
+                    },
+                    "quality": {"status": "passed", "findings": []}
+                }
+            }
+        }));
+        assert!(lines[0].contains("unknown section `#invertir`"));
+    }
+
+    #[test]
+    fn validation_quality_failure_keeps_the_first_finding_in_the_headline() {
+        let lines = tool_result(&json!({
+            "result": {
+                "name": "validate_dowe_project",
+                "failed": true,
+                "output": {
+                    "status": "failed",
+                    "quality": {
+                        "status": "failed",
+                        "findings": [
+                            {
+                                "path": "views/pages/home.dowe",
+                                "line": 85,
+                                "message": "prop matches the component design default"
+                            },
+                            {
+                                "path": "views/pages/home.dowe",
+                                "line": 87,
+                                "message": "another finding"
+                            }
+                        ]
+                    },
+                    "compiler": {"status": "not_run"}
+                }
+            }
+        }));
+        assert!(lines[0].contains("views/pages/home.dowe:85"));
+        assert!(lines[0].contains("(+1 more)"));
+    }
+
+    #[test]
+    fn validation_event_keeps_nested_compiler_error_for_terminal_fallback() {
+        let detail = validation_failure_detail(&json!({
+            "event": "validation_finished",
+            "result": {
+                "status": "failed",
+                "compiler": {"error": "home.dowe: unknown section `#invertir`"}
+            }
+        }));
+        assert_eq!(detail, "home.dowe: unknown section `#invertir`");
     }
 
     #[test]

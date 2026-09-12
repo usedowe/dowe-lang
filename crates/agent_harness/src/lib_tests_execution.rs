@@ -27,6 +27,9 @@
             budget_remaining_tokens: 100,
         };
         packet.validate().expect("bounded packet");
+        let mut multiline = packet.clone();
+        multiline.objective = "inspect line one\ninspect line two".into();
+        multiline.validate().expect("multiline objective");
         let decoded: TaskPacket = serde_json::from_value(serde_json::to_value(&packet).unwrap()).unwrap();
         assert_eq!(decoded, packet);
         let mut oversized = packet;
@@ -110,4 +113,3 @@
         assert!(!evidence.contains("SECRET"));
         assert!(!temp.path().join(".agents/validation.json").exists());
     }
-

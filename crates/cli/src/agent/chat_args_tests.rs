@@ -110,6 +110,31 @@ mod tests {
     }
 
     #[test]
+    fn interactive_provider_lists_only_codex_and_openrouter() {
+        let root = tempfile::tempdir().unwrap();
+        let auth = AgentAuthStore::new(root.path().join("auth.json"));
+        auth.save("anthropic", &AgentCredential::api_key("anthropic-secret"))
+            .unwrap();
+        auth.save("openai-codex", &AgentCredential::api_key("codex-secret"))
+            .unwrap();
+        auth.save("openrouter", &AgentCredential::api_key("router-secret"))
+            .unwrap();
+
+        let providers = interactive_provider_info(&auth).unwrap();
+        assert_eq!(
+            providers
+                .iter()
+                .map(|provider| provider.id.as_str())
+                .collect::<Vec<_>>(),
+            ["openai-codex", "openrouter"]
+        );
+        assert_eq!(
+            configured_model_providers(&auth).unwrap(),
+            ["openai-codex", "openrouter"]
+        );
+    }
+
+    #[test]
     fn model_menu_aggregates_configured_providers_without_credentials() {
         let root = tempfile::tempdir().unwrap();
         let auth = AgentAuthStore::new(root.path().join("auth.json"));
@@ -209,4 +234,3 @@ mod tests {
         }
     }
 }
-

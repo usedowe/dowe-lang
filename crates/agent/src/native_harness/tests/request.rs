@@ -26,6 +26,7 @@ fn built_harness_request_contains_shared_screenshot_policy() {
     assert!(system.contains(crate::prompts::SCREENSHOT_UI_POLICY));
     assert!(system.contains("get_skill"));
     assert!(system.contains("visual QA as not run"));
+    assert!(system.contains("one coherent exact batch"));
     assert!(system.contains("Prefer focused validation."));
     assert_eq!(request.extra["task_packet"]["role"], "execute");
     assert_eq!(request.extra["task_packet"]["objective"], "author a screenshot-driven dashboard");

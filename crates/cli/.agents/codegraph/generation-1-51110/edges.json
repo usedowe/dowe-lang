@@ -1,0 +1,472 @@
+[
+  {
+    "from": "file:src/agent/footer.rs",
+    "to": "symbol:src/agent/footer.rs:12:lines",
+    "kind": "contains"
+  },
+  {
+    "from": "file:src/usage.rs",
+    "to": "symbol:src/usage.rs:1:USAGE:",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:Cargo.toml",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_args_and_attachments.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_args_tests.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_attachment_tests.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_input_helpers.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_menu_formatting.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_model_selection.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_provider_selection.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_request.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/chat_session.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/context.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/examples.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/footer.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/harness.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/markdown.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/mcp.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/activity.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/activity/terminal.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/activity/terminal_activity.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/activity/terminal_render_state.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/activity/terminal_tests_and_state.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/capabilities.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/formatting.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/lifecycle.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/provider.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/recovery.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/terminal.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native/watchers.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native_session_commands.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native_session_lifecycle.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native_session_run.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/native_terminal_host.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/prompt.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/agent/rpc.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/ai.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/build.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/cache_cli.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/codegraph.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/d1_cli.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/database_cli.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/deploy.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/deploy_tests.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/dev.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/icons.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/init.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/login.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/main.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/menus.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/menus_database.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/menus_primary.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/menus_tests.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/queue_cli.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/server.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/spawn_cli.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/studio.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/test_cli.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/uninstall.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/upgrade.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/usage.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/vector_cli.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:src/version.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_bridge.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_rpc.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_terminal.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_terminal/activity.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_terminal/capabilities.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_terminal/conversation.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_terminal/native_harness.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/agent_terminal/supervision.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/d1_command.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/icons_command.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/project_tests.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/server_command.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/support/agent_terminal_interaction_tests.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/support/agent_terminal_setup_tests.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "file:tests/uninstall_command.rs",
+    "kind": "contains"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/agent_harness:agent_harnesses",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/cli:cli_ipc_adapters",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/codegraph:codegraph",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/compiler:dowe_artifact_writing",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/compiler:source_parse_lowering",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/components:components_model",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/components:components_semantics",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/generator_android:android_generation",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/generator_desktop:desktop_generation",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/generator_ios:ios_generation",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/generator_web:web_generation",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/runtime:development_runtime",
+    "kind": "owns"
+  },
+  {
+    "from": "workspace:.",
+    "to": "ownership:dowe-lang/crates/spawn:spawn_runtime",
+    "kind": "owns"
+  }
+]

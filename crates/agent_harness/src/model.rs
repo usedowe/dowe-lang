@@ -159,7 +159,10 @@ impl TaskPacket {
             || self.role.chars().any(char::is_control)
             || self.objective.trim().is_empty()
             || self.objective.len() > 8192
-            || self.objective.chars().any(char::is_control)
+            || self
+                .objective
+                .chars()
+                .any(|ch| ch.is_control() && ch != '\n')
             || self.files.len() > 64
             || self.evidence.len() > 64
             || self.acceptance.len() > 32

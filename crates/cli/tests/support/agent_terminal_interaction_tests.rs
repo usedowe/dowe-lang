@@ -116,7 +116,12 @@ fn agent_provider_errors_keep_session_open_but_fail_one_shot() {
     let output = session.until("Request failed. Use /model");
     assert!(output.contains("400 Bad Request"));
     session.send("/provider\r");
-    session.until("Select provider to configure");
+    let mut provider_menu = session.until("Select provider to configure");
+    provider_menu.push_str(&session.until("OpenAI Codex"));
+    provider_menu.push_str(&session.until("OpenRouter"));
+    assert!(provider_menu.contains("OpenAI Codex"));
+    assert!(provider_menu.contains("OpenRouter"));
+    assert!(!provider_menu.contains("Azure OpenAI"));
     session.send("\u{1b}");
     session.until(">");
     let home = session.stop();
@@ -193,6 +198,25 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
         }
         assert!(!output.contains("/quit"), "{output:?}");
         assert!(!output.contains(":q"), "{output:?}");
+        for command in [
+            "/login",
+            "/logout",
+            "/model",
+            "/thinking",
+            "/models",
+            "/new",
+            "/session",
+            "/sessions",
+            "/resume",
+            "/compact",
+            "/exit",
+        ] {
+            assert!(output.contains(command), "missing {command}: {output:?}");
+        }
+        assert!(!output.contains("/provider"), "{output:?}");
+        assert!(!output.contains("/sdd"), "{output:?}");
+        assert!(!output.contains("/memory"), "{output:?}");
+        assert!(!output.contains("/queue"), "{output:?}");
         let plain = dialoguer::console::strip_ansi_codes(&output);
         assert!(plain.contains("╭─"), "{output:?}");
         assert!(plain.contains("│ > /"), "{output:?}");
@@ -201,7 +225,7 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
             assert!(output.contains("\u{1b}[36m╭─"), "{output:?}");
             assert!(output.contains("\u{1b}[32m❯"), "{output:?}");
             assert!(output.contains("\u{1b}[36m/login"), "{output:?}");
-                assert!(output.contains("\u{1b}[1m"), "{output:?}");
+            assert!(output.contains("\u{1b}[1m"), "{output:?}");
         } else {
             assert!(!output.contains("\u{1b}[32m"));
             assert!(!output.contains("\u{1b}[36m"));
@@ -219,6 +243,25 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
         assert!(restored_plain.contains("│ >"), "{restored:?}");
         session.finish();
     }
+}
+
+#[test]
+fn agent_terminal_wraps_and_preserves_multiline_prompt_text() {
+    let prompt = format!("{}\nsecond line", "x".repeat(160));
+    let (home, server) = conversation_fixture(vec![(200, conversation_reply("Received."))]);
+    let session = Session::start_at(
+        home,
+        false,
+        &["agent", "--provider", "azure-openai-responses"],
+    );
+    session.send(&prompt);
+    let wrapped = session.until("│   ");
+    assert!(wrapped.contains("│ >"), "{wrapped:?}");
+    session.send("\r");
+    session.until("Received.");
+    let _home = session.stop();
+    let requests = server.join().unwrap();
+    assert_eq!(requests[0]["input"][0]["content"], prompt);
 }
 
 #[test]

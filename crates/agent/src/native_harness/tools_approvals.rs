@@ -136,62 +136,15 @@ impl HarnessTools {
                 (before, Some(args.content), details)
             }
             "write_file" | "edit_file" => {
-                let (path, skill, reason, content, edit) = if call.name == "write_file" {
-                    let args: WriteArgs = serde_json::from_value(call.arguments.clone())?;
-                    (args.path, args.skill, args.reason, args.content, None)
-                } else {
-                    let args: EditArgs = serde_json::from_value(call.arguments.clone())?;
-                    (
-                        args.path,
-                        args.skill,
-                        args.reason,
-                        args.new_text,
-                        Some(args.old_text),
-                    )
-                };
-                let skill = self.resolve_write_skill(&skill)?;
-                let resolved = self.path(&path)?;
-                self.enforce_edit_scope(&resolved)?;
-                self.write_scope(&resolved, &skill)?;
-                if reason.trim().is_empty() || reason.len() > 1024 || content.len() > 1048576 {
-                    return Err(AgentError::new("write reason/content exceeds limits"));
-                }
-                let before = if resolved.exists() {
-                    if fs::metadata(&resolved)?.len() > 1048576 {
-                        return Err(AgentError::new("write base exceeds 1 MiB"));
-                    }
-                    Some(fs::read_to_string(&resolved)?)
-                } else {
-                    None
-                };
-                let after = if let Some(old) = edit {
-                    let base = before
-                        .as_ref()
-                        .ok_or_else(|| AgentError::new("edit requires an existing file"))?;
-                    if old.is_empty() || base.matches(&old).count() != 1 {
-                        return Err(AgentError::new("edit match must occur exactly once"));
-                    }
-                    base.replacen(&old, &content, 1)
-                } else {
-                    content
-                };
-                if self.redactor.text(&after) != after
-                    || before
-                        .as_ref()
-                        .is_some_and(|text| self.redactor.text(text) != *text)
-                {
-                    return Err(AgentError::new(
-                        "sensitive file change requires local editing; hidden values must remain intact",
-                    ));
-                }
-                let before_text = before.as_deref().unwrap_or("");
-                if before_text.len() + after.len() > self.config.max_output_bytes {
-                    return Err(AgentError::new(
-                        "diff too large for approval; request a smaller exact edit or edit locally",
-                    ));
-                }
-                let details = json!({"path":path,"reason":reason,"skill":skill,"before":before_text,"after":after,"before_sha256":before.as_ref().map(|value| digest(value.as_bytes())),"path_fingerprint":digest(resolved.as_os_str().as_encoded_bytes())});
-                (before, Some(after), details)
+                let path = call.arguments["path"]
+                    .as_str()
+                    .ok_or_else(|| AgentError::new("write path missing"))?;
+                let resolved = self.path(path)?;
+                let before = self.text_write_base(&resolved)?;
+                let approval = self.prepare_text_write_with_base(call, role, before)?;
+                self.pending
+                    .insert(approval.id.clone(), Self::approval_digest(&approval)?);
+                return Ok(Some(approval));
             }
             "shell" => {
                 let args: ShellArgs = serde_json::from_value(call.arguments.clone())?;
@@ -379,4 +332,3 @@ impl HarnessTools {
     }
 
 }
-
