@@ -40,27 +40,36 @@ fn append_single_variant_css(
     let name = family.as_str();
     let color = name;
     let text = text_token(family);
-    let title = title_token(family);
     let tint = family_color_token(family);
+    let roles = dowe_components::variant_visual_roles(variant, family);
+    let role_background = roles.background.as_str();
+    let role_content = roles.content.as_str();
+    let role_title = roles.title.as_str();
+    let role_border = roles.border.map(|token| token.as_str()).unwrap_or(color);
     let (surface, surface_text) = if family == ColorFamily::Background {
         ("background", "backgroundText")
     } else {
         ("surface", "surfaceText")
     };
     if base == "control" && variant == ComponentVariant::Outlined {
-        let (surface, content, accent) = match family {
-            ColorFamily::Background => ("background", text, text),
-            ColorFamily::Surface => ("surface", text, text),
-            _ => ("background", color, color),
-        };
+        let roles = dowe_components::variant_visual_roles(variant, family);
         css.push_str(&format!(
-            ".control.is-outlined.is-{name}{{background-color:var(--dowe-{surface});color:var(--dowe-{content});border:1px solid rgba(127,127,127,0.36);}}.control.is-outlined.is-{name}:focus-within{{border-color:var(--dowe-{accent});box-shadow:0 0 0 3px rgba(127,127,127,0.12);}}"
+            ".control.is-outlined.is-{name}{{background-color:var(--dowe-{});color:var(--dowe-{});border:1px solid var(--dowe-{});}}.control.is-outlined.is-{name}:focus-within{{border-color:var(--dowe-{});box-shadow:0 0 0 3px rgba(127,127,127,0.12);}}",
+            roles.background.as_str(),
+            roles.content.as_str(),
+            roles.border.expect("outlined control border").as_str(),
+            roles.border.expect("outlined control border").as_str()
         ));
         return;
     }
     if base == "control" && variant == ComponentVariant::Line {
+        let roles = dowe_components::variant_visual_roles(variant, family);
         css.push_str(&format!(
-            ".control.is-line.is-{name}{{background-color:transparent;color:var(--dowe-{color});border:0;border-bottom:1px solid rgba(127,127,127,0.42);border-radius:0;}}.control.is-line.is-{name}:focus-within{{border-bottom-color:var(--dowe-{color});box-shadow:0 1px 0 0 var(--dowe-{color});}}"
+            ".control.is-line.is-{name}{{background-color:var(--dowe-{});color:var(--dowe-{});border:0;border-bottom:1px solid rgba(127,127,127,0.42);border-radius:0;}}.control.is-line.is-{name}:focus-within{{border-bottom-color:var(--dowe-{});box-shadow:0 1px 0 0 var(--dowe-{});}}",
+            roles.background.as_str(),
+            roles.content.as_str(),
+            roles.content.as_str(),
+            roles.content.as_str()
         ));
         return;
     }
@@ -75,17 +84,49 @@ fn append_single_variant_css(
         ));
         return;
     }
+    if base == "card" && variant == ComponentVariant::Outlined {
+        let roles = dowe_components::card_variant_visual_roles(variant, family);
+        css.push_str(&format!(
+            ".card.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{});--dowe-content-title:var(--dowe-{});background-color:var(--dowe-{});color:var(--dowe-{});border:1px solid var(--dowe-{});}}",
+            roles.content.as_str(),
+            roles.title.as_str(),
+            roles.background.as_str(),
+            roles.content.as_str(),
+            roles.border.expect("outlined Card border").as_str()
+        ));
+        return;
+    }
+    if base == "card" && variant == ComponentVariant::Line {
+        let roles = dowe_components::card_variant_visual_roles(variant, family);
+        css.push_str(&format!(
+            ".card.is-line.is-{name}{{--dowe-content-text:var(--dowe-{});--dowe-content-title:var(--dowe-{});background-color:transparent;color:var(--dowe-{});border-color:transparent;border-bottom:1px solid var(--dowe-{});border-radius:0;}}",
+            roles.content.as_str(),
+            roles.title.as_str(),
+            roles.content.as_str(),
+            roles.content.as_str()
+        ));
+        return;
+    }
+    if base == "card" && variant == ComponentVariant::Ghost {
+        let roles = dowe_components::card_variant_visual_roles(variant, family);
+        css.push_str(&format!(
+            ".card.is-ghost.is-{name}{{--dowe-content-text:var(--dowe-{});--dowe-content-title:var(--dowe-{});background-color:transparent;color:var(--dowe-{});border-color:transparent;}}",
+            roles.content.as_str(),
+            roles.title.as_str(),
+            roles.content.as_str()
+        ));
+        return;
+    }
     if base == "accordion" {
-        let (surface, content, content_title) = if family == ColorFamily::Background {
-            ("background", "backgroundText", "backgroundTitle")
-        } else {
-            ("surface", "surfaceText", "surfaceTitle")
-        };
+        let roles = dowe_components::card_variant_visual_roles(variant, family);
+        let surface = roles.background.as_str();
+        let content = roles.content.as_str();
+        let content_title = roles.title.as_str();
         let (background, content, border, item_background, item_border, item_radius, padding, gap) =
             match variant {
                 ComponentVariant::Solid => (
                     format!("var(--dowe-{color})"),
-                    text,
+                    content,
                     "transparent".to_string(),
                     "transparent".to_string(),
                     format!("1px solid color-mix(in srgb,var(--dowe-{text}) 24%,transparent)"),
@@ -105,11 +146,11 @@ fn append_single_variant_css(
                 ),
                 ComponentVariant::Line => (
                     "transparent".to_string(),
-                    color,
+                    content,
                     "transparent".to_string(),
                     "transparent".to_string(),
                     format!(
-                        "0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{color}) 24%,transparent)"
+                        "0;border-bottom:1px solid color-mix(in srgb,var(--dowe-{content}) 24%,transparent)"
                     ),
                     "0".to_string(),
                     "0",
@@ -117,11 +158,7 @@ fn append_single_variant_css(
                 ),
                 ComponentVariant::Ghost => (
                     "transparent".to_string(),
-                    if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
-                        text
-                    } else {
-                        color
-                    },
+                    content,
                     "transparent".to_string(),
                     "transparent".to_string(),
                     format!(
@@ -132,7 +169,6 @@ fn append_single_variant_css(
                     "0",
                 ),
             };
-        let content_title = if variant == ComponentVariant::Solid { title } else { content_title };
         css.push_str(&format!(
             ".accordion.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content_title});background-color:{background};color:var(--dowe-{content});border:1px solid {border};padding:{padding};gap:{gap};}}.accordion.is-{variant}.is-{name} .accordion-item{{background-color:{item_background};border:{item_border};border-radius:{item_radius};}}.accordion.is-{variant}.is-{name} .accordion-header:hover,.accordion.is-{variant}.is-{name} .accordion-header:focus-visible{{background-color:color-mix(in srgb,currentColor 8%,transparent);}}",
             variant = variant.as_str()
@@ -140,33 +176,29 @@ fn append_single_variant_css(
         return;
     }
     if base == "collapsible" && variant == ComponentVariant::Outlined {
-        let (surface, content, content_title) = if family == ColorFamily::Background {
-            ("background", "backgroundText", "backgroundTitle")
-        } else {
-            ("surface", "surfaceText", "surfaceTitle")
-        };
+        let roles = dowe_components::card_variant_visual_roles(variant, family);
         css.push_str(&format!(
-            ".{base}.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content_title});background-color:var(--dowe-{surface});color:var(--dowe-{content});border:1px solid var(--dowe-{color});}}"
+            ".{base}.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{});--dowe-content-title:var(--dowe-{});background-color:var(--dowe-{});color:var(--dowe-{});border:1px solid var(--dowe-{});}}",
+            roles.content.as_str(),
+            roles.title.as_str(),
+            roles.background.as_str(),
+            roles.content.as_str(),
+            roles.border.expect("outlined collapsible border").as_str()
         ));
         return;
     }
     if base == "toggle-group" {
         match variant {
             ComponentVariant::Solid => css.push_str(&format!(
-                ".toggle-group.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{text});--dowe-content-title:var(--dowe-{title});background-color:var(--dowe-{color});color:var(--dowe-{text});border-color:transparent;}}",
+                ".toggle-group.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{role_content});--dowe-content-title:var(--dowe-{role_title});background-color:var(--dowe-{role_background});color:var(--dowe-{role_content});border-color:transparent;}}",
                 variant = variant.as_str()
             )),
             ComponentVariant::Outlined => css.push_str(&format!(
-                ".toggle-group.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{surface_text});--dowe-content-title:var(--dowe-{surface_text});background-color:var(--dowe-{surface});color:var(--dowe-{surface_text});border:1px solid var(--dowe-{color});}}"
+                ".toggle-group.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{role_content});--dowe-content-title:var(--dowe-{role_title});background-color:var(--dowe-{role_background});color:var(--dowe-{role_content});border:1px solid var(--dowe-{role_border});}}"
             )),
             ComponentVariant::Line | ComponentVariant::Ghost => {
-                let content = if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
-                    text
-                } else {
-                    color
-                };
                 css.push_str(&format!(
-                    ".toggle-group.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content});background-color:transparent;color:var(--dowe-{content});border-color:transparent;}}",
+                    ".toggle-group.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{role_content});--dowe-content-title:var(--dowe-{role_title});background-color:var(--dowe-{role_background});color:var(--dowe-{role_content});border-color:transparent;}}",
                     variant = variant.as_str()
                 ));
             }
@@ -188,7 +220,11 @@ fn append_single_variant_css(
         return;
     }
     if base == "sidenav" {
-        let accent = family.as_str();
+        let accent = if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
+            text
+        } else {
+            family.as_str()
+        };
         let variant = variant.as_str();
         let (hover_background, active_background, active_content, active_border) = match variant {
             "solid" => (
@@ -216,7 +252,11 @@ fn append_single_variant_css(
         return;
     }
     if base == "railnav" {
-        let accent = family.as_str();
+        let accent = if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
+            text
+        } else {
+            family.as_str()
+        };
         let variant = variant.as_str();
         let (hover_background, active_background, active_content, active_border) = match variant {
             "solid" => (
@@ -244,6 +284,11 @@ fn append_single_variant_css(
         return;
     }
     if base == "navmenu" {
+        let accent = if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
+            text
+        } else {
+            color
+        };
         let (hover_background, active_background, active_content, active_border) = match variant {
             ComponentVariant::Solid => (
                 format!("color-mix(in srgb,var(--dowe-{color}) 20%,transparent)"),
@@ -254,18 +299,18 @@ fn append_single_variant_css(
             ComponentVariant::Outlined | ComponentVariant::Line => (
                 format!("color-mix(in srgb,var(--dowe-{tint}) 50%,transparent)"),
                 "transparent".to_string(),
-                color,
-                format!("var(--dowe-{color})"),
+                accent,
+                format!("var(--dowe-{accent})"),
             ),
             ComponentVariant::Ghost => (
                 "transparent".to_string(),
                 "transparent".to_string(),
-                color,
+                accent,
                 "transparent".to_string(),
             ),
         };
         css.push_str(&format!(
-            ".navmenu.is-{variant}.is-{name} .navmenu-item:hover{{background-color:{hover_background};color:var(--dowe-{color});}}.navmenu.is-{variant}.is-{name} .navmenu-item.is-active,.navmenu.is-{variant}.is-{name} .navmenu-item.is-open{{background-color:{active_background};color:var(--dowe-{active_content});border-color:{active_border};font-weight:600;}}",
+            ".navmenu.is-{variant}.is-{name} .navmenu-item:hover{{background-color:{hover_background};color:var(--dowe-{accent});}}.navmenu.is-{variant}.is-{name} .navmenu-item.is-active,.navmenu.is-{variant}.is-{name} .navmenu-item.is-open{{background-color:{active_background};color:var(--dowe-{active_content});border-color:{active_border};font-weight:600;}}",
             variant = variant.as_str()
         ));
         return;
@@ -283,35 +328,40 @@ fn append_single_variant_css(
     }
     match variant {
         ComponentVariant::Solid => css.push_str(&format!(
-            ".{base}.is-solid.is-{name}{{--dowe-content-text:var(--dowe-{text});--dowe-content-title:var(--dowe-{title});background-color:var(--dowe-{color});color:var(--dowe-{text});border-color:var(--dowe-{color});}}"
+            ".{base}.is-solid.is-{name}{{--dowe-content-text:var(--dowe-{role_content});--dowe-content-title:var(--dowe-{role_title});background-color:var(--dowe-{role_background});color:var(--dowe-{role_content});border-color:var(--dowe-{role_background});}}"
         )),
         ComponentVariant::Outlined => {
-            let (surface, content, content_title) = if matches!(base, "modal" | "toast") {
+            let (surface, content, content_title, border) = if matches!(base, "modal" | "toast") {
                 if family == ColorFamily::Background {
-                    ("var(--dowe-background)", "backgroundText", "backgroundTitle")
+                    (
+                        "var(--dowe-background)".to_string(),
+                        "backgroundText",
+                        "backgroundTitle",
+                        "background",
+                    )
                 } else {
-                    ("var(--dowe-surface)", "surfaceText", "surfaceTitle")
+                    (
+                        "var(--dowe-surface)".to_string(),
+                        "surfaceText",
+                        "surfaceTitle",
+                        color,
+                    )
                 }
             } else {
-                ("transparent", color, color)
+                (format!("var(--dowe-{role_background})"), role_content, role_title, role_border)
             };
             css.push_str(&format!(
-                ".{base}.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content_title});background-color:{surface};color:var(--dowe-{content});border:1px solid var(--dowe-{color});}}"
+                ".{base}.is-outlined.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content_title});background-color:{surface};color:var(--dowe-{content});border:1px solid var(--dowe-{border});}}"
             ));
         }
         ComponentVariant::Line => {
             css.push_str(&format!(
-                ".{base}.is-line.is-{name}{{background-color:transparent;color:var(--dowe-{color});border-color:transparent;border-bottom:1px solid var(--dowe-{color});border-radius:0;}}"
+                ".{base}.is-line.is-{name}{{background-color:var(--dowe-{role_background});color:var(--dowe-{role_content});border-color:transparent;border-bottom:1px solid var(--dowe-{role_content});border-radius:0;}}"
             ));
         }
         ComponentVariant::Ghost => {
-            let content = if matches!(family, ColorFamily::Background | ColorFamily::Surface) {
-                text
-            } else {
-                color
-            };
             css.push_str(&format!(
-                ".{base}.is-ghost.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content});background-color:transparent;color:var(--dowe-{content});border-color:transparent;}}"
+                ".{base}.is-ghost.is-{name}{{--dowe-content-text:var(--dowe-{role_content});--dowe-content-title:var(--dowe-{role_title});background-color:var(--dowe-{role_background});color:var(--dowe-{role_content});border-color:transparent;}}"
             ));
         }
     }

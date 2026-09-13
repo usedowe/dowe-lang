@@ -278,6 +278,22 @@ fn reactive_button_attrs(props: &VariantProps, context: &ReactiveRenderContext) 
             ));
         }
     }
+    if props.reactive.variant.is_some() {
+        if let Some(value) = props.variant {
+            attrs.push_str(&format!(
+                r#" data-dowe-button-variant-fallback="{}""#,
+                value.as_str()
+            ));
+        }
+    }
+    if props.reactive.scheme.is_some() {
+        if let Some(value) = props.color {
+            attrs.push_str(&format!(
+                r#" data-dowe-button-scheme-fallback="{}""#,
+                value.as_str()
+            ));
+        }
+    }
     for (name, comparison) in [
         ("icon-start", props.reactive.icon_start_comparison.as_ref()),
         ("icon-end", props.reactive.icon_end_comparison.as_ref()),
@@ -302,4 +318,3 @@ fn internal_href(path: &str, fragment: Option<&str>) -> String {
         path.to_string()
     }
 }
-

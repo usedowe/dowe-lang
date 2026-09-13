@@ -156,7 +156,13 @@ heavy primary surface. `background` and `surface` are structural triples.
 A filled component supplies its resolved text role to normal descendants and its title role to
 `Title`. Buttons use the text role for their label. The transparent `SideNav` header is an
 exception: it uses the visible base color of its `scheme` so its content remains readable. An
-explicit descendant `color` remains the local override.
+explicit descendant `color` remains the local override. Transparent `line` and `ghost` variants
+use the structural `text` and `title` roles when their scheme is `background` or `surface`.
+
+`Card` is the surface exception for `outlined`: it uses `surface` (or `background` when its scheme
+is `background`) as the fill and structural title role, while content and border keep the scheme's
+base color. `line` and `ghost` remain transparent; with structural schemes they use the owning
+surface's text and title roles for readable content.
 
 ## Component defaults
 
@@ -185,6 +191,18 @@ These built-in defaults add no `border` or `shadow`. Resolve each property indep
 order: explicit component prop, matching `design` slot, then the built-in component default. This
 contract is defined by `/specs/features/00149-normalize-view-component-defaults`.
 
+The two fields are resolved independently, not as an all-or-nothing pair. For example, with this
+design entry:
+
+```dowe
+theme
+  design defaultTheme:"light"
+    Card variant:"solid" scheme:"primary"
+```
+
+`Card` is solid/primary, `Card variant:"outlined"` is outlined/primary, `Card scheme:"success"`
+is solid/success, and `Card variant:"outlined" scheme:"danger"` is outlined/danger.
+
 The `Toast` `variant` default also applies to the lowercase global `toast` statement used inside a
 View `fn` or `init`, even though that statement does not create a `Toast` node in the visual tree.
 Use `Toast variant:"solid"` for a project-wide global feedback surface; an explicit `variant` on a
@@ -199,7 +217,7 @@ same props into every page, layout, or component.
 
 | Prop | Accepted values |
 | --- | --- |
-| `variant` | `solid`, `outlined`, `ghost`; `Tabs` additionally accepts `line` and `pills` |
+| `variant` | `solid`, `outlined`, `line`, or `ghost` where supported; `Tabs` additionally accepts `pills`; some components restrict the subset |
 | `scheme` | Semantic color family |
 | `radius` or `rounded` | `xs`, `sm`, `md`, `lg`, `xl`, `full` |
 | `size` | `xs`, `sm`, `md`, `lg`, `xl` |

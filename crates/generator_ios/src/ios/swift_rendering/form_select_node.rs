@@ -25,7 +25,7 @@ let text_size = form_control_text_size(control_size);
 let size = swift_text_size_expr(false, text_size);
 let border =
     if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-        format!("Optional({})", color_ref(ColorToken::Muted))
+        format!("Optional({})", variant_border(props))
     } else {
         "nil".to_string()
     };

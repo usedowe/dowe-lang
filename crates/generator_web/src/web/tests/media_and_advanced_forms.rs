@@ -125,7 +125,7 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
             .contains(".accordion.is-outlined.is-surface")
     );
     assert!(page.css_content.contains(
-        ".accordion.is-outlined.is-surface{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid var(--dowe-surface);padding:.25rem;gap:.75rem;}"
+        ".accordion.is-outlined.is-surface{--dowe-content-text:var(--dowe-surface);--dowe-content-title:var(--dowe-surfaceTitle);background-color:var(--dowe-surface);color:var(--dowe-surface);border:1px solid var(--dowe-surface);padding:.25rem;gap:.75rem;}"
     ));
     assert!(page.css_content.contains(
         ".accordion.is-outlined.is-surface .accordion-item{background-color:var(--dowe-surface);border:1px solid color-mix(in srgb,var(--dowe-surface) 24%,transparent);"

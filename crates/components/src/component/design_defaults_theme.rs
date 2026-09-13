@@ -165,19 +165,21 @@ fn apply_variant_defaults(
             .or_else(|| defaults.size.get(&DesignComponentSlot::Ui))
             .copied();
     }
-    if props.variant.is_none() {
-        props.variant = defaults
+    if (!props.variant_explicit || props.variant.is_none())
+        && let Some(value) = defaults
             .variant
             .get(&slot)
             .or_else(|| defaults.variant.get(&DesignComponentSlot::Ui))
-            .copied();
+    {
+        props.variant = Some(*value);
     }
-    if props.color.is_none() {
-        props.color = defaults
+    if (!props.color_explicit || props.color.is_none())
+        && let Some(value) = defaults
             .scheme
             .get(&slot)
             .or_else(|| defaults.scheme.get(&DesignComponentSlot::Ui))
-            .copied();
+    {
+        props.color = Some(*value);
     }
     apply_style_defaults(&mut props.style, defaults, slot);
 }

@@ -311,16 +311,18 @@ fn render_dev_android_side_nav_data(
         let values = compose_side_nav_metrics(props.size);
         (values.0.to_string(), values.1.to_string(), values.2.to_string(), values.3.to_string(), values.4.to_string())
     };
-    let container = match (&variant, &scheme) { (None, None) => dev_variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or("\"solid\""), scheme.as_deref().unwrap_or("\"primary\"")) };
-    let content = match (&variant, &scheme) { (None, None) => dev_nav_active_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or("\"solid\""), scheme.as_deref().unwrap_or("\"primary\"")) };
+    let variant_fallback = format!("\"{}\"", props.style.variant.unwrap_or(ComponentVariant::Solid).as_str());
+    let scheme_fallback = format!("\"{}\"", props.style.color.unwrap_or(ColorFamily::Primary).as_str());
+    let container = match (&variant, &scheme) { (None, None) => dev_variant_container(&props.style).to_string(), _ => format!("doweButtonContainer({}, {})", variant.as_deref().unwrap_or(variant_fallback.as_str()), scheme.as_deref().unwrap_or(scheme_fallback.as_str())) };
+    let content = match (&variant, &scheme) { (None, None) => dev_nav_active_content(&props.style).to_string(), _ => format!("doweButtonContent({}, {})", variant.as_deref().unwrap_or(variant_fallback.as_str()), scheme.as_deref().unwrap_or(scheme_fallback.as_str())) };
     let title = dev_side_nav_header_content(&props.style).to_string();
     let wide = dev_side_nav_wide(props, context);
     let entries = dev_side_nav_entries(items);
     if let Some(path) = props.style.reactive.variant.as_ref() {
-        output.push_str(&format!("        {parent}.setTag(DOWE_VARIANT_TAG, \"{}\");\n", escape_java(path)));
+        output.push_str(&format!("        {parent}.setTag(DOWE_VARIANT_TAG, \"{}\");\n        {parent}.setTag(DOWE_VARIANT_FALLBACK_TAG, \"{}\");\n", escape_java(path), props.style.variant.unwrap_or(ComponentVariant::Solid).as_str()));
     }
     if let Some(path) = props.style.reactive.scheme.as_ref() {
-        output.push_str(&format!("        {parent}.setTag(DOWE_SCHEME_TAG, \"{}\");\n", escape_java(path)));
+        output.push_str(&format!("        {parent}.setTag(DOWE_SCHEME_TAG, \"{}\");\n        {parent}.setTag(DOWE_SCHEME_FALLBACK_TAG, \"{}\");\n", escape_java(path), props.style.color.unwrap_or(ColorFamily::Primary).as_str()));
     }
     if let Some(path) = props.style.reactive.size.as_ref() {
         output.push_str(&format!("        {parent}.setTag(DOWE_SIZE_TAG, \"{}\");\n", escape_java(path)));
@@ -472,4 +474,3 @@ fn dev_side_nav_optional_string(value: Option<&str>) -> String {
         .map(|value| format!("\"{}\"", escape_java(value)))
         .unwrap_or_else(|| "null".to_string())
 }
-

@@ -47,14 +47,14 @@ fn generates_portable_grid_controls_and_variant_colors() {
             .content
             .contains("contentColor = DoweDesign.secondary")
     );
-    assert!(views.content.contains("borderColor = DoweDesign.muted"));
+    assert!(views.content.contains("borderColor = DoweDesign.secondary"));
     assert!(
         views
             .content
             .contains("contentColor = DoweDesign.mutedText")
     );
     assert!(views.content.contains(
-            "CardDefaults.cardColors(containerColor = Color.Transparent, contentColor = DoweDesign.surface), border = BorderStroke(1.dp, DoweDesign.surface)"
+            "CardDefaults.cardColors(containerColor = DoweDesign.surface, contentColor = DoweDesign.surface), border = BorderStroke(1.dp, DoweDesign.surface)"
         ));
     assert!(
         views
@@ -86,13 +86,13 @@ fn generates_portable_grid_controls_and_variant_colors() {
             .contains("doweCard(DOWE_MUTED, (\"outlined\".equals(\"solid\") ? null : null))")
     );
     assert!(dev.content.contains(
-        "doweCard(Color.TRANSPARENT, (\"outlined\".equals(\"solid\") ? DOWE_SURFACE : null))"
+        "doweCard(DOWE_SURFACE, (\"outlined\".equals(\"outlined\") ? DOWE_SURFACE : null))"
     ));
     assert!(dev.content.contains(
         "setBackground(doweInputBackground(Color.TRANSPARENT, DOWE_PRIMARY, DOWE_RADIUS))"
     ));
     assert!(dev.content.contains("setBackgroundTintList(null)"));
-    assert!(dev.content.contains("doweText(\"Surface\", DOWE_SURFACE"));
+    assert!(dev.content.contains("doweText(\"Surface\", DOWE_SURFACE,"));
 }
 
 #[test]
@@ -247,4 +247,3 @@ fn generates_labeled_input_and_select_fields() {
     assert!(dev.content.contains(r#"new String[]{"Manages users"}"#));
     assert!(!dev.content.contains(r#".setPrompt("Role")"#));
 }
-

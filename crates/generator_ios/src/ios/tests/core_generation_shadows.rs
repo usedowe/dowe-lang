@@ -209,9 +209,8 @@ fn generates_diffuse_semantic_shadows_for_portable_components() {
         .find(|line| line.contains("DoweInputField") && line.contains("label: \"Workspace\""))
         .expect("input");
     assert!(input.contains("shadow: Optional(DoweShadowSpec"));
-    assert!(input.contains("borderColor: (doweResponsive(viewportWidth, md: CGFloat(2))) == nil ? Optional(DoweDesign.muted) : Optional(DoweDesign.danger)"));
+    assert!(input.contains("borderColor: (doweResponsive(viewportWidth, md: CGFloat(2))) == nil ? Optional(DoweDesign.danger) : Optional(DoweDesign.danger)"));
     assert!(
         input.contains("borderWidth: doweResponsive(viewportWidth, md: CGFloat(2)) ?? CGFloat(1)")
     );
 }
-

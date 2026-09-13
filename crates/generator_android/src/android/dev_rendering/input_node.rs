@@ -48,7 +48,7 @@ fn render_dev_android_input(
                     format!(
                         "doweInputBackground({}, {}, {radius})",
                         dev_variant_container(props),
-                        java_color(ColorToken::Muted)
+                        dev_variant_border(props)
                     )
                 } else {
                     format!("doweBackground({}, {radius})", dev_variant_container(props))

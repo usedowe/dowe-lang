@@ -6,6 +6,7 @@ include!("component/code_highlighting.rs");
 include!("component/typography.rs");
 include!("component/style_tokens.rs");
 include!("component/design_tokens.rs");
+include!("component/variant_visual_contract.rs");
 include!("component/design_defaults.rs");
 include!("component/font_catalog.rs");
 include!("component/registry.rs");

@@ -174,15 +174,7 @@ fn collect_ios_layout_sections<'a>(
             );
         }
         ViewNode::BottomBar { .. } => {}
-        ViewNode::Drawer {
-            props,
-            header,
-            body,
-            footer,
-        } => {
-            let neutral = neutral_context && props.style.style.font.is_none();
-            collect_ios_layout_section_slots(header, body, footer, neutral, scopes, sections);
-        }
+        ViewNode::Drawer { .. } => {}
         ViewNode::Sidebar {
             props,
             header,

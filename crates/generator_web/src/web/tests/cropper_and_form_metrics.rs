@@ -80,7 +80,7 @@ fn emits_portable_input_metrics_and_outlined_colors() {
         ".grid>[data-dowe-each],.flex>[data-dowe-each],[data-dowe-each-row]{display:contents;}"
     ));
     assert!(page.css_content.contains(
-            ".control.is-outlined.is-secondary{background-color:var(--dowe-background);color:var(--dowe-secondary);border:1px solid rgba(127,127,127,0.36);}"
+            ".control.is-outlined.is-secondary{background-color:var(--dowe-transparent);color:var(--dowe-secondary);border:1px solid var(--dowe-secondary);}"
         ));
     assert!(page.css_content.contains(
         ".control.is-outlined.is-secondary:focus-within{border-color:var(--dowe-secondary);"
@@ -160,10 +160,9 @@ fn emits_readable_outlined_surface_controls() {
     );
 
     assert!(page.css_content.contains(
-        ".control.is-outlined.is-surface{background-color:var(--dowe-surface);color:var(--dowe-surfaceText);border:1px solid rgba(127,127,127,0.36);}"
+        ".control.is-outlined.is-surface{background-color:var(--dowe-transparent);color:var(--dowe-surface);border:1px solid var(--dowe-surface);}"
     ));
     assert!(page.css_content.contains(
-        ".control.is-outlined.is-surface:focus-within{border-color:var(--dowe-surfaceText);"
+        ".control.is-outlined.is-surface:focus-within{border-color:var(--dowe-surface);"
     ));
 }
-

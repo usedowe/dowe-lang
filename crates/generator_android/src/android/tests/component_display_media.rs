@@ -258,9 +258,9 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(!views.content.contains("Text(if (open) \"^\" else \"v\")"));
     assert!(
         dev.content
-            .contains("doweAccordion(true, \"ghost\", Color.TRANSPARENT, DOWE_SURFACE, null")
+            .contains("doweAccordion(true, \"ghost\", Color.TRANSPARENT, DOWE_SURFACE_TEXT, null")
     );
-    assert!(dev.content.contains("doweAlpha(DOWE_SURFACE, 0.22f)"));
+    assert!(dev.content.contains("doweAlpha(DOWE_SURFACE_TEXT, 0.22f)"));
     assert!(!dev.content.contains("arrow.setBackgroundColor"));
     assert!(
         dev.content

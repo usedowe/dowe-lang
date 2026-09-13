@@ -70,8 +70,10 @@ function renderReactiveVariants(root, state, scope) {
     for (const [key, values, prefix, fallback] of [["doweVariant", variants, "is-", "solid"], ["doweScheme", schemes, "is-", "primary"], ["doweSize", sizes, sizePrefix, "md"], ["doweRounded", rounded, "rounded-", "md"]]) {
       const path = element.dataset[key];
       if (!path) continue;
-      const value = String(readPath(state, path, scope) || fallback);
-      const resolved = values.includes(value) ? value : fallback;
+      const configuredFallback = key === "doweVariant" ? element.dataset.doweVariantFallback : key === "doweScheme" ? element.dataset.doweSchemeFallback : null;
+      const effectiveFallback = configuredFallback || fallback;
+      const value = String(readPath(state, path, scope) || effectiveFallback);
+      const resolved = values.includes(value) ? value : effectiveFallback;
       for (const item of values) element.classList.remove(prefix + item);
       element.classList.add(prefix + resolved);
     }

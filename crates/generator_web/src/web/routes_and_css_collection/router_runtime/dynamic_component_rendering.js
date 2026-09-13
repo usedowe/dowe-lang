@@ -157,8 +157,8 @@ function renderReactiveButtons(root, state, scope) {
       for (const item of values) button.classList.remove(prefix + item);
       button.classList.add(prefix + resolved);
     };
-    apply("doweButtonVariant", variants, "is-", "solid");
-    apply("doweButtonScheme", schemes, "is-", "primary");
+      apply("doweButtonVariant", variants, "is-", button.dataset.doweButtonVariantFallback || "solid");
+      apply("doweButtonScheme", schemes, "is-", button.dataset.doweButtonSchemeFallback || "primary");
     apply("doweButtonSize", sizes, "button-", "md");
     apply("doweButtonRounded", rounded, "rounded-", "md");
     const loadingPath = button.dataset.doweButtonLoading,
@@ -225,8 +225,8 @@ function renderReactiveSideNavs(root, state, scope) {
       for (const item of values) nav.classList.remove(prefix + item);
       nav.classList.add(prefix + resolved);
     };
-    apply("doweSidenavVariant", variants, "is-", "ghost");
-    apply("doweSidenavScheme", schemes, "is-", "muted");
+    apply("doweSidenavVariant", variants, "is-", nav.dataset.doweSidenavVariantFallback || "ghost");
+    apply("doweSidenavScheme", schemes, "is-", nav.dataset.doweSidenavSchemeFallback || "muted");
     apply("doweSidenavSize", sizes, "sidenav-", "md");
     const wide = nav.dataset.doweSidenavWide;
     if (wide) nav.classList.toggle("is-wide", !!readPath(state, wide, scope));

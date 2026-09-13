@@ -41,7 +41,7 @@
     }
 
     private int doweButtonContainer(String variant, String scheme) {
-        if ("outlined".equals(variant) || "ghost".equals(variant)) return Color.TRANSPARENT;
+        if ("outlined".equals(variant) || "line".equals(variant) || "ghost".equals(variant)) return Color.TRANSPARENT;
         if ("solid".equals(variant)) return doweButtonFamily(scheme);
         return doweButtonFamily(scheme);
     }
@@ -53,7 +53,34 @@
     }
 
     private int doweButtonContent(String variant, String scheme) {
-        return "solid".equals(variant) ? doweButtonTextFamily(scheme) : doweButtonFamily(scheme);
+        if ("solid".equals(variant)) return doweButtonTextFamily(scheme);
+        if (("line".equals(variant) || "ghost".equals(variant))
+                && ("background".equals(scheme) || "surface".equals(scheme))) {
+            return doweButtonTextFamily(scheme);
+        }
+        return doweButtonFamily(scheme);
+    }
+
+    private int doweCardContainer(String variant, String scheme) {
+        if ("solid".equals(variant)) return doweButtonFamily(scheme);
+        if ("outlined".equals(variant)) return "background".equals(scheme) ? DOWE_BACKGROUND : DOWE_SURFACE;
+        return Color.TRANSPARENT;
+    }
+
+    private int doweCardContent(String variant, String scheme) {
+        if ("solid".equals(variant)) return doweButtonTextFamily(scheme);
+        if ("outlined".equals(variant)) return doweButtonFamily(scheme);
+        return doweButtonFamily(scheme);
+    }
+
+    private int doweCardTitle(String variant, String scheme) {
+        if ("solid".equals(variant)) return doweButtonTitleFamily(scheme);
+        if ("outlined".equals(variant)) return "background".equals(scheme) ? DOWE_BACKGROUND_TITLE : DOWE_SURFACE_TITLE;
+        return doweButtonFamily(scheme);
+    }
+
+    private Integer doweCardBorder(String variant, String scheme) {
+        return "outlined".equals(variant) ? doweButtonFamily(scheme) : null;
     }
 
     private float doweButtonRadius(String value) {
@@ -374,12 +401,51 @@
         return doweValidReactiveEnum(value, property) ? value : fallback;
     }
 
+    private View doweReactiveCardAncestor(View view) {
+        View current = view;
+        while (current != null) {
+            if ("card".equals(current.getTag(DOWE_COMPONENT_TAG))) return current;
+            current = current.getParent() instanceof View ? (View) current.getParent() : null;
+        }
+        return null;
+    }
+
     private void doweApplyReactiveVariant(View view) {
+        View card = doweReactiveCardAncestor(view);
+        Object cardRole = view.getTag(DOWE_CARD_ROLE_TAG);
+        if (card != null && cardRole instanceof String && view instanceof TextView) {
+            Object schemePath = card.getTag(DOWE_SCHEME_TAG);
+            Object variantPath = card.getTag(DOWE_VARIANT_TAG);
+            Object schemeFallbackTag = card.getTag(DOWE_SCHEME_FALLBACK_TAG);
+            Object variantFallbackTag = card.getTag(DOWE_VARIANT_FALLBACK_TAG);
+            String schemeFallback = schemeFallbackTag instanceof String ? (String) schemeFallbackTag : "surface";
+            String variantFallback = variantFallbackTag instanceof String ? (String) variantFallbackTag : "solid";
+            String scheme = doweReactiveEnum(schemePath, "scheme", schemeFallback);
+            String variant = doweReactiveEnum(variantPath, "variant", variantFallback);
+            ((TextView) view).setTextColor("title".equals(cardRole)
+                ? doweCardTitle(variant, scheme)
+                : doweCardContent(variant, scheme));
+            return;
+        }
         Object schemePath = view.getTag(DOWE_SCHEME_TAG);
         Object variantPath = view.getTag(DOWE_VARIANT_TAG);
         Object sizePath = view.getTag(DOWE_SIZE_TAG);
-        String scheme = doweReactiveEnum(schemePath, "scheme", "primary");
-        String variant = doweReactiveEnum(variantPath, "variant", "solid");
+        Object schemeFallbackTag = view.getTag(DOWE_SCHEME_FALLBACK_TAG);
+        Object variantFallbackTag = view.getTag(DOWE_VARIANT_FALLBACK_TAG);
+        String schemeFallback = schemeFallbackTag instanceof String ? (String) schemeFallbackTag : "primary";
+        String variantFallback = variantFallbackTag instanceof String ? (String) variantFallbackTag : "solid";
+        String scheme = doweReactiveEnum(schemePath, "scheme", schemeFallback);
+        String variant = doweReactiveEnum(variantPath, "variant", variantFallback);
+        if ("card".equals(view.getTag(DOWE_COMPONENT_TAG))) {
+            if (variantPath instanceof String || schemePath instanceof String) {
+                view.setBackground(doweInputBackground(
+                    doweCardContainer(variant, scheme),
+                    "outlined".equals(variant) ? doweCardBorder(variant, scheme) : null,
+                    DOWE_RADIUS
+                ));
+            }
+            return;
+        }
         if (view instanceof TextView) {
             ((TextView) view).setTextColor(doweButtonContent(variant, scheme));
             if (sizePath instanceof String) {

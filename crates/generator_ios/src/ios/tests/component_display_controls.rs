@@ -180,7 +180,7 @@ fn generates_portable_grid_controls_and_variant_colors() {
     );
     assert!(views.contains("minHeight: CGFloat(40), horizontalPadding: CGFloat(12)"));
     assert!(views.contains(
-            "backgroundColor: Color.clear, contentColor: DoweDesign.secondary, borderColor: Optional(DoweDesign.muted)"
+            "backgroundColor: Color.clear, contentColor: DoweDesign.secondary, borderColor: Optional(DoweDesign.secondary)"
         ));
     assert!(views.contains(".foregroundStyle(DoweDesign.mutedText)"));
     assert!(views.contains(".background(DoweDesign.surface)"));

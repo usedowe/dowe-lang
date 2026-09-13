@@ -72,13 +72,27 @@ fn lets_design_defaults_override_builtin_component_defaults() {
   Button
     "Default variant"
   Button scheme:"secondary"
-    "Explicit scheme""#,
+    "Explicit scheme"
+  Card
+    Text
+      "Theme card"
+  Card variant:"outlined"
+    Text
+      "Outlined card inherits scheme"
+  Card scheme:"secondary"
+    Text
+      "Scheme card inherits variant"
+  Input
+  Input variant:"outlined"
+  Input scheme:"danger""#,
     );
     fs::write(
         temp.path().join("theme.dowe"),
         r##"theme
   design defaultTheme:"light"
     Button variant:"outlined"
+    Card variant:"solid" scheme:"primary"
+    Input variant:"solid" scheme:"warning"
     theme name:"light"
       colors:
         primary color:"#2563eb" text:"#ffffff" title:"#ffffff""##,
@@ -93,6 +107,12 @@ fn lets_design_defaults_override_builtin_component_defaults() {
     assert!(body.contains(
         "is-outlined is-secondary"
     ));
+    assert!(body.contains(r#"class="card p-4 lg:p-5 rounded-md is-solid is-primary""#));
+    assert!(body.contains(r#"class="card p-4 lg:p-5 rounded-md is-outlined is-primary""#));
+    assert!(body.contains(r#"class="card p-4 lg:p-5 rounded-md is-solid is-secondary""#));
+    assert!(body.contains(r#"class="control is-md is-solid is-warning""#));
+    assert!(body.contains(r#"class="control is-md is-outlined is-warning""#));
+    assert!(body.contains(r#"class="control is-md is-solid is-danger""#));
     assert!(!body.contains("button-md border-"));
     assert!(!body.contains("button-md shadow-"));
     let desktop_body = &project.desktop_web.pages[0].body_html;
@@ -102,6 +122,20 @@ fn lets_design_defaults_override_builtin_component_defaults() {
     assert!(desktop_body.contains(
         "is-outlined is-secondary"
     ));
+    assert!(desktop_body.contains(r#"class="card p-4 lg:p-5 rounded-md is-outlined is-primary""#));
+
+    assert_eq!(
+        project.view_routes.web[0].page_tree,
+        project.view_routes.desktop[0].page_tree
+    );
+    assert_eq!(
+        project.view_routes.web[0].page_tree,
+        project.view_routes.android[0].page_tree
+    );
+    assert_eq!(
+        project.view_routes.web[0].page_tree,
+        project.view_routes.ios[0].page_tree
+    );
 
     let android = fs::read_to_string(
         temp.path()
@@ -418,4 +452,3 @@ fn compiles_design_system_components_and_responsive_props() {
     assert!(ios.contains("Font.Weight.heavy"));
     assert!(ios.contains("doweTextTracking"));
 }
-

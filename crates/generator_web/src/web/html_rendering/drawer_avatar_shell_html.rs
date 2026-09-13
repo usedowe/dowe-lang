@@ -30,6 +30,22 @@ fn render_side_nav_html(
             ));
         }
     }
+    if props.style.reactive.variant.is_some() {
+        if let Some(value) = props.style.variant {
+            reactive_attrs.push_str(&format!(
+                r#" data-dowe-sidenav-variant-fallback="{}""#,
+                value.as_str()
+            ));
+        }
+    }
+    if props.style.reactive.scheme.is_some() {
+        if let Some(value) = props.style.color {
+            reactive_attrs.push_str(&format!(
+                r#" data-dowe-sidenav-scheme-fallback="{}""#,
+                value.as_str()
+            ));
+        }
+    }
     let mut html = format!(
         "<nav{}>",
         attrs(

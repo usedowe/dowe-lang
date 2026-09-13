@@ -146,7 +146,7 @@ fn generates_compose_and_dev_display_overlay_components() {
             .contains("DoweToast(visible = true, title = \"Saved\"")
     );
     assert!(views.content.contains(
-        "position = \"top-right\", backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, borderColor = DoweDesign.warning"
+        "position = \"top-right\", backgroundColor = DoweDesign.surface, contentColor = DoweDesign.warning, borderColor = DoweDesign.warning"
     ));
     assert!(views.content.contains("paths = doweOverlayClosePaths"));
     assert!(
@@ -273,7 +273,7 @@ fn generates_android_overlay_surface_action_and_close_parity() {
         .find(|file| file.relative_path.ends_with("DowePages.kt"))
         .expect("views");
     assert!(views.content.contains(
-        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, titleColor = DoweDesign.surfaceTitle, borderColor = DoweDesign.warning"
+        "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.warning, titleColor = DoweDesign.surfaceTitle, borderColor = DoweDesign.warning"
     ));
     assert!(views.content.contains(
         "backgroundColor = DoweDesign.surface, contentColor = DoweDesign.surfaceText, borderColor = null"

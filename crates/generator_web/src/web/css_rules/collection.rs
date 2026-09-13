@@ -87,6 +87,7 @@ fn push_variant_rule(
         _ => ComponentVariant::Solid,
     };
     let default_color = match base {
+        "card" => ColorFamily::Surface,
         "navmenu" | "sidebar" => ColorFamily::Muted,
         _ => ColorFamily::Primary,
     };

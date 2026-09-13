@@ -305,29 +305,55 @@ fn render_compose_structural_flow_node(
                 .reactive
                 .variant
                 .as_deref()
-                .map(|path| reactive_text(path, "solid"))
+                .map(|path| {
+                    reactive_text(
+                        path,
+                        props.variant.unwrap_or(ComponentVariant::Solid).as_str(),
+                    )
+                })
                 .unwrap_or_else(|| format!("\\\"{}\\\"", props.variant.unwrap_or(ComponentVariant::Solid).as_str()));
             let scheme = props
                 .reactive
                 .scheme
                 .as_deref()
-                .map(|path| reactive_text(path, "primary"))
-                .unwrap_or_else(|| format!("\\\"{}\\\"", props.color.unwrap_or(ColorFamily::Primary).as_str()));
+                .map(|path| {
+                    reactive_text(path, props.color.unwrap_or(ColorFamily::Surface).as_str())
+                })
+                .unwrap_or_else(|| format!("\\\"{}\\\"", props.color.unwrap_or(ColorFamily::Surface).as_str()));
             let is_reactive = props.reactive.variant.is_some() || props.reactive.scheme.is_some();
             let card_content_color = props
                 .style
                 .text
                 .as_ref()
                 .map(compose_color_value)
-                .unwrap_or_else(|| if is_reactive { format!("doweCardContent({variant}, {scheme})") } else { card_surface_content(props).to_string() });
+                .unwrap_or_else(|| if is_reactive { format!("doweCardContent({variant}, {scheme})") } else { card_variant_content(props).to_string() });
             let card_title_color = props
                 .style
                 .text
                 .as_ref()
                 .map(compose_color_value)
-                .unwrap_or_else(|| if is_reactive { format!("doweCardTitle({variant}, {scheme})") } else { card_surface_title(props).to_string() });
-            let card_container = if is_reactive { format!("doweCardContainer({variant}, {scheme})") } else { card_surface_container(props).to_string() };
-            let card_border = if is_reactive { format!("if ({variant} == \\\"outlined\\\") BorderStroke(1.dp, {card_content_color}) else null") } else { compose_card_border(props) };
+                .unwrap_or_else(|| if is_reactive { format!("doweCardTitle({variant}, {scheme})") } else { card_variant_title(props).to_string() });
+            let card_container = props
+                .style
+                .bg
+                .as_ref()
+                .map(compose_color_value)
+                .map(|value| {
+                    let fallback = if is_reactive {
+                        format!("doweCardContainer({variant}, {scheme})")
+                    } else {
+                        card_variant_container(props).to_string()
+                    };
+                    format!("({value} ?: {fallback})")
+                })
+                .unwrap_or_else(|| {
+                    if is_reactive {
+                        format!("doweCardContainer({variant}, {scheme})")
+                    } else {
+                        card_variant_container(props).to_string()
+                    }
+                });
+            let card_border = if is_reactive { format!("doweCardBorder({variant}, {scheme})?.let {{ BorderStroke(1.dp, it) }}") } else { compose_card_border(props) };
             output.push_str(&format!(
                         "{pad}Card(modifier = {}, shape = RoundedCornerShape({}), colors = CardDefaults.cardColors(containerColor = {}, contentColor = {}), border = {}, elevation = {}) {{\n",
                         modifier,

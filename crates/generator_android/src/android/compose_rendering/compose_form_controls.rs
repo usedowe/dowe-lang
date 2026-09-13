@@ -32,7 +32,7 @@ fn render_compose_color(
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
-        color_ref(ColorToken::Muted)
+        variant_border(&props.style)
     } else {
         "null"
     };
@@ -73,7 +73,7 @@ fn render_compose_date(
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
-        color_ref(ColorToken::Muted)
+        variant_border(&props.style)
     } else {
         "null"
     };
@@ -118,7 +118,7 @@ fn render_compose_date_range(
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
-        color_ref(ColorToken::Muted)
+        variant_border(&props.style)
     } else {
         "null"
     };
@@ -188,4 +188,3 @@ fn render_compose_radio_card(
         compose_scheme_color(&props.style)
     ));
 }
-

@@ -24,7 +24,7 @@ skip validation.
 | component, catalog, or reusable fragment | `references/components.md`, `references/composition.md` |
 | `audit`, critique, validation, or quality review | `references/audit.md` |
 | `polish`, refine, or final pass | `references/polish.md` |
-| layout, styles, theme, or responsive behavior | `references/layouts.md`, `references/styles.md` |
+| layout, styles, theme, or responsive behavior | `references/layouts.md`, `references/styles.md`; also load `dowe-theme` references when defaults, semantic colors, or `theme.dowe` are involved |
 | Canvas, Game, table, or SVG | the matching focused reference |
 
 `craft` is a routing alias for a new surface. A request with no command still inspects the project,
@@ -68,8 +68,11 @@ radius, padding, shadow, and typography props unless a contract, behavior, acces
 explicit non-default, or a rendered mismatch requires them. `Grid` and `Flex` default to zero gap;
 do not add spacing by assumption. Default-first is not geometry-free: `w`, `h`, `minW`, `minH`,
 `maxW`, and `maxH` may preserve a real text measure, media bound, section height, or responsive
-relationship on the semantic owner. Generate a theme or modify its colors only when the user explicitly requests it; a page-only reference task preserves the existing theme unchanged. Theme changes use the
-grouped `colors:` form and remain owned by `dowe-theme`.
+relationship on the semantic owner. Resolve `variant` and `scheme` independently: an authored
+`variant` inherits an omitted `scheme` from the matching `design` slot or built-in default, and an
+authored `scheme` inherits an omitted `variant` the same way. Generate a theme or modify its colors only when the user explicitly requests it;
+a page-only reference task preserves the existing theme unchanged.
+Theme changes use the grouped `colors:` form and remain owned by `dowe-theme`.
 
 Never write `color` on `Text` or `Title`, including `color:"muted"`. In reference UI also omit
 `Text size:"xs"`, local text/title weights, and responsive `Title size` objects. `Title` is `h2`
@@ -100,8 +103,10 @@ After mutation, compile the project and run the focused quality audit. For an at
 call `capture_web_screenshot` at its viewport, inspect the screenshot/report/diff, and repair a
 significant comparison failure in a bounded pass. A missing browser or matching reference is
 `visualQA:"not_run"`, which is unverified evidence and never visual parity. Every mutation
-invalidates prior validation and capture evidence. Report the first compiler result, final result,
-asset status, and visual QA status separately.
+invalidates prior validation and capture evidence. For variant/scheme changes, regenerate requested
+output from the current compiler before capture; stale `.dowe` output is not evidence. If a native
+simulator is locked or unavailable, report that target's visual QA as `not_run`. Report the first
+compiler result, final result, asset status, and visual QA status separately.
 
 ## Focused references
 

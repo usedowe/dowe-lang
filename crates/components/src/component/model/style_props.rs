@@ -237,6 +237,8 @@ pub struct VariantProps {
     pub style: StyleProps,
     pub variant: Option<ComponentVariant>,
     pub color: Option<ColorFamily>,
+    pub variant_explicit: bool,
+    pub color_explicit: bool,
     pub size: Option<ButtonSize>,
     pub label: Option<String>,
     pub i18n: Option<String>,

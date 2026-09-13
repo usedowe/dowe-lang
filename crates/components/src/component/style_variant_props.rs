@@ -65,10 +65,10 @@ fn parse_variant_props(
                 );
             }
             "variant" if reactive_reference(&prop.value).is_some() => {
-                variant_props.reactive.variant = reactive_reference(&prop.value)
+                variant_props.reactive.variant = reactive_reference(&prop.value);
             }
             "scheme" if reactive_reference(&prop.value).is_some() => {
-                variant_props.reactive.scheme = reactive_reference(&prop.value)
+                variant_props.reactive.scheme = reactive_reference(&prop.value);
             }
             "size" if reactive_reference(&prop.value).is_some() => {
                 variant_props.reactive.size = reactive_reference(&prop.value)
@@ -134,10 +134,12 @@ fn parse_variant_props(
             }
             "variant" => {
                 variant_props.variant = Some(parse_variant_prop(&prop.name, &value)?);
+                variant_props.variant_explicit = true;
                 variant_props.variant_binding = binding;
             }
             "scheme" => {
                 variant_props.color = Some(parse_family_prop(component, &prop.name, &value)?);
+                variant_props.color_explicit = true;
                 variant_props.color_binding = binding
             }
             "size"
@@ -377,4 +379,3 @@ fn parse_variant_props(
     }
     Ok(variant_props)
 }
-

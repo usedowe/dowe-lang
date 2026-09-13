@@ -11,7 +11,7 @@ let base_border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
     == ComponentVariant::Outlined
 {
     (
-        format!("Optional({})", color_ref(ColorToken::Muted)),
+        format!("Optional({})", variant_border(&props.style)),
         "CGFloat(1)".to_string(),
     )
 } else {

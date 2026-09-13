@@ -108,6 +108,69 @@ fn omitted_navigation_variants_do_not_render_as_solid_primary_controls() {
 }
 
 #[test]
+fn keeps_structural_sidebar_foreground_readable_for_transparent_variants() {
+    let page_tree = ViewNode::Box {
+        props: Default::default(),
+        children: vec![
+            ViewNode::Sidebar {
+                props: SidebarProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Ghost),
+                        color: Some(ColorFamily::Background),
+                        ..Default::default()
+                    },
+                },
+                header: Vec::new(),
+                body: vec![text("Background navigation")],
+                footer: Vec::new(),
+            },
+            ViewNode::Sidebar {
+                props: SidebarProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Line),
+                        color: Some(ColorFamily::Surface),
+                        ..Default::default()
+                    },
+                },
+                header: Vec::new(),
+                body: vec![text("Surface navigation")],
+                footer: Vec::new(),
+            },
+            ViewNode::Accordion {
+                props: AccordionProps {
+                    style: VariantProps {
+                        variant: Some(ComponentVariant::Line),
+                        color: Some(ColorFamily::Surface),
+                        ..Default::default()
+                    },
+                    multiple: false,
+                },
+                items: Vec::new(),
+            },
+        ],
+    };
+    let page = build_page_chunk(
+        Path::new("/project"),
+        Path::new("/project/src/pages/index.dowe"),
+        "page",
+        &page_tree,
+    );
+
+    assert!(page.css_content.contains(
+        ".sidebar.is-ghost.is-background{--dowe-content-text:var(--dowe-backgroundText);--dowe-content-title:var(--dowe-backgroundTitle);background-color:var(--dowe-transparent);color:var(--dowe-backgroundText);border-color:transparent;}"
+    ));
+    assert!(page.css_content.contains(
+        ".sidebar.is-line.is-surface{background-color:var(--dowe-transparent);color:var(--dowe-surfaceText);border-color:transparent;border-bottom:1px solid var(--dowe-surfaceText);border-radius:0;}"
+    ));
+    assert!(page.css_content.contains(
+        ".accordion.is-line.is-surface{--dowe-content-text:var(--dowe-surfaceText);--dowe-content-title:var(--dowe-surfaceTitle);background-color:transparent;color:var(--dowe-surfaceText);border:1px solid transparent;padding:0;gap:0;}"
+    ));
+    assert!(page.css_content.contains(
+        ".accordion.is-line.is-surface .accordion-item{background-color:transparent;border:0;border-bottom:1px solid color-mix(in srgb,var(--dowe-surfaceText) 24%,transparent);border-radius:0;}"
+    ));
+}
+
+#[test]
 fn overlays_main_under_sticky_floating_appbar() {
     let tree = ViewNode::Scaffold {
         props: ScaffoldProps::default(),

@@ -36,7 +36,7 @@ fn render_compose_form_node(
             let size = compose_text_size_expr(false, text_size);
             let border =
                 if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-                    color_ref(ColorToken::Muted)
+                    variant_border(props)
                 } else {
                     "null"
                 };
@@ -95,7 +95,7 @@ fn render_compose_form_node(
             let size = compose_text_size_expr(false, text_size);
             let border =
                 if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-                    color_ref(ColorToken::Muted)
+                    variant_border(props)
                 } else {
                     "null"
                 };
@@ -305,7 +305,7 @@ fn render_compose_form_node(
             let border = if props.style.variant.unwrap_or(ComponentVariant::Solid)
                 == ComponentVariant::Outlined
             {
-                color_ref(ColorToken::Muted)
+                variant_border(&props.style)
             } else {
                 "null"
             };

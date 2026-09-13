@@ -17,6 +17,8 @@ fn scheme_inheritance_route(family: ColorFamily) -> ViewRoute {
                 style: VariantProps {
                     color: Some(family),
                     variant: Some(ComponentVariant::Solid),
+                    color_explicit: true,
+                    variant_explicit: true,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -39,6 +41,8 @@ fn scheme_inheritance_route(family: ColorFamily) -> ViewRoute {
                             style: VariantProps {
                                 variant: Some(ComponentVariant::Ghost),
                                 color: Some(ColorFamily::Muted),
+                                color_explicit: true,
+                                variant_explicit: true,
                                 ..Default::default()
                             },
                             size: SideNavSize::Md,
@@ -57,6 +61,8 @@ fn scheme_inheritance_route(family: ColorFamily) -> ViewRoute {
     let style = VariantProps {
         color: Some(family),
         variant: Some(ComponentVariant::Solid),
+        color_explicit: true,
+        variant_explicit: true,
         ..Default::default()
     };
     route.page_tree = ViewNode::Scope {

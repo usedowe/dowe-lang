@@ -90,7 +90,7 @@ fn render_swift_combo_box(
     let size = swift_text_size_expr(false, text_size);
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-            format!("Optional({})", color_ref(ColorToken::Muted))
+            format!("Optional({})", variant_border(&props.style))
         } else {
             "nil".to_string()
         };

@@ -245,10 +245,20 @@ fn reuses_stateful_scaffold_drawer_layout_when_page_mentions_binding_literals() 
 
     assert!(layouts.contains("struct DoweLayout0<"));
     assert!(layouts.contains("DoweDrawer(open: state.bool(\"layout.drawer.open\")"));
-    assert_eq!(layouts.matches("private func layoutSection").count(), 5);
+    assert_eq!(layouts.matches("private func layoutSection").count(), 4);
     assert!(layouts.contains("layoutSection0()"));
     assert!(layouts.contains("layoutSection1()"));
     assert!(layouts.contains("layoutSection2()"));
+    let drawer_start = layouts
+        .find("DoweDrawer(open: state.bool(\"layout.drawer.open\")")
+        .expect("drawer");
+    let drawer = &layouts[drawer_start..];
+    let first_layout_section = drawer
+        .find("\n    private func layoutSection")
+        .expect("sections");
+    assert!(drawer[..first_layout_section].contains("DoweSideNav("));
+    assert!(drawer[..first_layout_section].contains("path: \"/overview\""));
+    assert!(drawer[..first_layout_section].contains("navigate: navigate"));
     assert!(login.content.contains("DoweLayout0("));
     assert!(login.content.contains("\"layout.drawer.open\": false"));
     assert!(login.content.contains("\"layout.drawer.visible\": true"));

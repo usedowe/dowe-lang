@@ -234,7 +234,7 @@ fn render_dev_android_form_actions_color(
             output.push_str(&format!(
                                         "        LinearLayout {field} = doweContainer(true);\n        {field}.setGravity(Gravity.CENTER_VERTICAL);\n        {field}.setPadding(doweDp(12), doweDp(8), doweDp(12), doweDp(8));\n        {field}.setBackground(doweInputBackground({}, {}, DOWE_RADIUS));\n        View {swatch} = new View(this);\n        {swatch}.setLayoutParams(new LinearLayout.LayoutParams(doweDp(24), doweDp(24)));\n        try {{ {swatch}.setBackgroundColor(Color.parseColor({value})); }} catch (IllegalArgumentException ignored) {{ {swatch}.setBackgroundColor({}); }}\n        doweAdd({field}, {swatch});\n        TextView {field}Value = doweText({value}.toUpperCase(), {}, {}, 600, 0f, 1.2f, {});\n        {field}Value.setPadding(doweDp(10), 0, 0, 0);\n        doweAdd({field}, {field}Value);\n        final String[] {field}Selected = new String[]{{doweColorHex(doweColorRgb({value}))}};\n        doweBindColor({field}, {swatch}, {field}Value, {field}Selected, {bind}, {}, {}, {}, {}, {}, {});\n        doweAdd({view}, {field}, 4, false);\n",
                                         dev_variant_container(&props.style),
-                                        java_color(ColorToken::Muted),
+                                        dev_variant_border(&props.style),
                                         dev_variant_container(&props.style),
                                         dev_variant_content(&props.style),
                                         text_size,
@@ -252,4 +252,3 @@ fn render_dev_android_form_actions_color(
             apply_dev_android_style(&props.style.style, &view, true, output);
             output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
 }
-

@@ -31,6 +31,7 @@ fn default_variant_for(base: &str) -> ComponentVariant {
 fn default_color_for(base: &str) -> ColorFamily {
     match base {
         "navmenu" | "sidebar" => ColorFamily::Muted,
+        "card" => ColorFamily::Surface,
         _ => ColorFamily::Primary,
     }
 }
@@ -46,6 +47,12 @@ fn variant_classes(base: &str, props: &VariantProps) -> Vec<String> {
     append_style_classes(&mut classes, &props.style);
     if base == "card" {
         append_container_visual_classes(&mut classes, &props.style);
+        append_responsive_classes(
+            &mut classes,
+            "card-bg",
+            props.style.bg.as_ref(),
+            |value| value.as_str().to_string(),
+        );
         append_responsive_classes(
             &mut classes,
             "card-color",

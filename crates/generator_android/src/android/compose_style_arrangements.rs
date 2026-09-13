@@ -86,7 +86,7 @@ fn compose_control_radius(props: &StyleProps) -> String {
 
 fn compose_button_border(props: &VariantProps) -> String {
     if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-        format!("BorderStroke(1.dp, {})", variant_content(props))
+        format!("BorderStroke(1.dp, {})", variant_border(props))
     } else {
         "null".to_string()
     }
@@ -96,7 +96,7 @@ fn compose_card_border(props: &VariantProps) -> String {
     if props.style.border.is_some() {
         "null".to_string()
     } else if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-        format!("BorderStroke(1.dp, {})", variant_content(props))
+        format!("BorderStroke(1.dp, {})", card_variant_border(props))
     } else {
         "null".to_string()
     }
@@ -113,4 +113,3 @@ fn compose_animation_preset(value: ViewAnimation) -> &'static str {
         ViewAnimation::ScaleIn => "DoweAnimationPreset.ScaleIn",
     }
 }
-

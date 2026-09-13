@@ -35,7 +35,7 @@ fn render_swift_color(
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
-        format!("Optional({})", color_ref(ColorToken::Muted))
+        format!("Optional({})", variant_border(&props.style))
     } else {
         "nil".to_string()
     };
@@ -80,7 +80,7 @@ fn render_swift_date(
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
-        format!("Optional({})", color_ref(ColorToken::Muted))
+        format!("Optional({})", variant_border(&props.style))
     } else {
         "nil".to_string()
     };
@@ -129,7 +129,7 @@ fn render_swift_date_range(
     let border = if props.style.variant.unwrap_or(ComponentVariant::Outlined)
         == ComponentVariant::Outlined
     {
-        format!("Optional({})", color_ref(ColorToken::Muted))
+        format!("Optional({})", variant_border(&props.style))
     } else {
         "nil".to_string()
     };

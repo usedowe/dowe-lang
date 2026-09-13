@@ -21,13 +21,27 @@ fn render_swift_side_nav_data(
         .bindings()
         .iter()
         .find(|binding| binding.property == dowe_components::VariantBindingProperty::Variant)
-        .map(|binding| reactive_text(&binding.binding.path, "solid"));
+        .map(|binding| {
+            reactive_text(
+                &binding.binding.path,
+                props
+                    .style
+                    .variant
+                    .unwrap_or(ComponentVariant::Solid)
+                    .as_str(),
+            )
+        });
     let scheme = props
         .style
         .bindings()
         .iter()
         .find(|binding| binding.property == dowe_components::VariantBindingProperty::Scheme)
-        .map(|binding| reactive_text(&binding.binding.path, "primary"));
+        .map(|binding| {
+            reactive_text(
+                &binding.binding.path,
+                props.style.color.unwrap_or(ColorFamily::Primary).as_str(),
+            )
+        });
     let size = props
         .style
         .bindings()
@@ -360,4 +374,3 @@ fn swift_side_nav_optional_string(value: Option<&str>) -> String {
         .map(|value| format!("\"{}\"", escape_swift(value)))
         .unwrap_or_else(|| "nil".to_string())
 }
-

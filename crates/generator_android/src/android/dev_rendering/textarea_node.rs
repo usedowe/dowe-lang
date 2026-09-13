@@ -16,7 +16,7 @@ fn render_dev_android_textarea(
             format!(
                 "doweInputBackground({}, {}, DOWE_RADIUS)",
                 dev_variant_container(&props.style),
-                java_color(ColorToken::Muted)
+                dev_variant_border(&props.style)
             )
         } else {
             format!(

@@ -120,6 +120,18 @@ fn render_html_node_with_context(
                         escape_attr(&context.signal_path(path))
                     ));
                 }
+                if let Some(value) = props.variant {
+                    card_attrs.push_str(&format!(
+                        r#" data-dowe-variant-fallback="{}""#,
+                        value.as_str()
+                    ));
+                }
+                if let Some(value) = props.color {
+                    card_attrs.push_str(&format!(
+                        r#" data-dowe-scheme-fallback="{}""#,
+                        value.as_str()
+                    ));
+                }
             }
             let mut html = format!("<article{}>", card_attrs);
             for child in children {

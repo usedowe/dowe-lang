@@ -31,14 +31,18 @@ fn render_dev_android_surface_flow_node(
                     .unwrap_or_else(|| context.signal_path(path));
                 format!("runtime.doweTextValue(\"{}\", {item})", escape_java(&path))
             });
-            let variant = reactive_variant.as_deref().unwrap_or("\"solid\"");
-            let scheme = reactive_scheme.as_deref().unwrap_or("\"primary\"");
+            let variant = reactive_variant.as_ref().cloned().unwrap_or_else(|| {
+                format!("\"{}\"", props.variant.unwrap_or(ComponentVariant::Solid).as_str())
+            });
+            let scheme = reactive_scheme.as_ref().cloned().unwrap_or_else(|| {
+                format!("\"{}\"", props.color.unwrap_or(ColorFamily::Surface).as_str())
+            });
             let current_color = if props.style.text.is_some() {
                 dev_inherited_color(&props.style, inherited_color.as_deref())
             } else if reactive_scheme.is_some() || reactive_variant.is_some() {
                 Some(dev_content_colors(
-                    &format!("runtime.doweButtonContent({variant}, {scheme})"),
-                    &format!("runtime.doweButtonContent({variant}, {scheme})"),
+                    &format!("runtime.doweCardContent({variant}, {scheme})"),
+                    &format!("runtime.doweCardTitle({variant}, {scheme})"),
                 ))
             } else {
                 Some(dev_content_colors(
@@ -47,12 +51,12 @@ fn render_dev_android_surface_flow_node(
                 ))
             };
             let container = if reactive_scheme.is_some() || reactive_variant.is_some() {
-                format!("runtime.doweButtonContainer({variant}, {scheme})")
+                format!("runtime.doweCardContainer({variant}, {scheme})")
             } else {
                 dev_card_variant_container(props).to_string()
             };
-            let border = if props.reactive.variant.is_some() {
-                format!("runtime.doweButtonContent({variant}, {scheme})")
+            let border = if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
+                format!("runtime.doweCardBorder({variant}, {scheme})")
             } else {
                 dev_card_border(props).to_string()
             };
@@ -66,25 +70,44 @@ fn render_dev_android_surface_flow_node(
                     "        LinearLayout {view} = runtime.doweCard({container}, (\"outlined\".equals({variant}) ? {border} : null));\n"
                 ));
             }
+            if reactive_scheme.is_some() || reactive_variant.is_some() {
+                output.push_str(&format!(
+                    "        {view}.setTag(DOWE_COMPONENT_TAG, \"card\");\n"
+                ));
+            }
+            if let Some(path) = props.reactive.variant.as_ref() {
+                output.push_str(&format!(
+                    "        {view}.setTag(DOWE_VARIANT_TAG, \"{}\");\n        {view}.setTag(DOWE_VARIANT_FALLBACK_TAG, \"{}\");\n",
+                    escape_java(path),
+                    props.variant.unwrap_or(ComponentVariant::Solid).as_str()
+                ));
+            }
             if let Some(path) = props.reactive.scheme.as_ref() {
                 output.push_str(&format!(
-                    "        {view}.setTag(DOWE_SCHEME_TAG, \"{}\");\n",
-                    escape_java(path)
+                    "        {view}.setTag(DOWE_SCHEME_TAG, \"{}\");\n        {view}.setTag(DOWE_SCHEME_FALLBACK_TAG, \"{}\");\n",
+                    escape_java(path),
+                    props.color.unwrap_or(ColorFamily::Surface).as_str()
                 ));
             }
             let mut card_style = props.style.clone();
             if has_cover {
                 card_style.spacing = Default::default();
             }
-            apply_dev_android_style(&card_style, &view, false, output);
+            apply_dev_android_style(&card_style, &view, true, output);
             if let Some(border) = props.style.border.as_ref() {
+                let background = props
+                    .style
+                    .bg
+                    .as_ref()
+                    .map(dev_color_value)
+                    .unwrap_or_else(|| container.clone());
                 let border_color = props
                     .style
                     .border_color
                     .map(|family| java_color(family_color(family)).to_string())
                     .unwrap_or_else(|| "DOWE_BACKGROUND_TEXT".to_string());
                 output.push_str(&format!(
-                    "        {view}.setBackground(doweStyledBackground({container}, {border_color}, {}, {}));\n",
+                    "        {view}.setBackground(doweStyledBackground({background}, {border_color}, {}, {}));\n",
                     dev_border_value(border),
                     dev_style_radius(&props.style)
                 ));

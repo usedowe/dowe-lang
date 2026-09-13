@@ -35,8 +35,8 @@ fn collect_variant_rules<'a>(
             if props.reactive.scheme.is_some() || props.reactive.variant.is_some() {
                 for variant in [
                     ComponentVariant::Solid,
-                    ComponentVariant::Solid,
                     ComponentVariant::Outlined,
+                    ComponentVariant::Line,
                     ComponentVariant::Ghost,
                 ] {
                     for color in [
@@ -214,8 +214,8 @@ fn collect_variant_rules<'a>(
             if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
                 for variant in [
                     ComponentVariant::Solid,
-                    ComponentVariant::Solid,
                     ComponentVariant::Outlined,
+                    ComponentVariant::Line,
                     ComponentVariant::Ghost,
                 ] {
                     for color in [
@@ -385,18 +385,21 @@ fn collect_variant_rules<'a>(
             if props.style.reactive.variant.is_some() || props.style.reactive.scheme.is_some() {
                 for variant in [
                     ComponentVariant::Solid,
-                    ComponentVariant::Solid,
                     ComponentVariant::Outlined,
+                    ComponentVariant::Line,
                     ComponentVariant::Ghost,
                 ] {
                     for color in [
                         ColorFamily::Primary,
                         ColorFamily::Secondary,
                         ColorFamily::Accent,
+                        ColorFamily::Muted,
                         ColorFamily::Success,
                         ColorFamily::Info,
                         ColorFamily::Warning,
                         ColorFamily::Danger,
+                        ColorFamily::Background,
+                        ColorFamily::Surface,
                     ] {
                         let mut reactive_props = props.style.clone();
                         reactive_props.variant = Some(variant);

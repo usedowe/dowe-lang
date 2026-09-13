@@ -148,6 +148,22 @@ fn reactive_variant_attrs(
             ));
         }
     }
+    if props.reactive.variant.is_some() {
+        if let Some(value) = props.variant {
+            output.push_str(&format!(
+                r#" data-dowe-variant-fallback="{}""#,
+                value.as_str()
+            ));
+        }
+    }
+    if props.reactive.scheme.is_some() {
+        if let Some(value) = props.color {
+            output.push_str(&format!(
+                r#" data-dowe-scheme-fallback="{}""#,
+                value.as_str()
+            ));
+        }
+    }
     output
 }
 

@@ -19,9 +19,20 @@ fn compiles_reactive_button_props_across_targets() {
         Button variant:{variantChoice} scheme:{schemeChoice} size:{sizeChoice}
       """"#,
     );
+    fs::write(
+        temp.path().join("theme.dowe"),
+        r#"theme
+  design defaultTheme:"light"
+    Button variant:"outlined" scheme:"secondary"
+    theme name:"light""#,
+    )
+    .expect("theme");
     let project = compile_dev(temp.path()).expect("project");
     let body = &project.web.pages[0].body_html;
+    assert!(body.contains("is-outlined is-secondary"));
     assert!(body.contains("data-dowe-button-variant="));
+    assert!(body.contains("data-dowe-button-variant-fallback=\"outlined\""));
+    assert!(body.contains("data-dowe-button-scheme-fallback=\"secondary\""));
     assert!(body.contains("data-dowe-button-icon-start-when="));
     assert!(body.contains("data-dowe-show-operator=\">\""));
     assert!(body.contains("data-dowe-show-value=\"10\""));
@@ -35,7 +46,12 @@ fn compiles_reactive_button_props_across_targets() {
             .join(".dowe/apps/android/app/src/main/java/dev/dowe/generated/DowePages.kt"),
     )
     .expect("android");
-    assert!(android.contains("doweButtonContainer(state.text("));
+    let button_line = android
+        .lines()
+        .find(|line| line.contains("doweButtonContainer(state.text("))
+        .expect("reactive button line");
+    assert!(button_line.contains(", \"outlined\")"));
+    assert!(button_line.contains(", \"secondary\")"));
     assert!(android.contains(".toDoubleOrNull() ?: 0.0) > 10"));
     assert!(android.contains("DoweCode(source = \"Button variant:\" + state.text("));
     assert!(android.contains("listOf(DoweCodeToken(text = \"Button\", color = DoweDesign.info)"));
@@ -52,6 +68,8 @@ fn compiles_reactive_button_props_across_targets() {
     assert!(ios.contains("@MainActor\nfunc doweButtonFamily(_ scheme: String) -> Color"));
     assert!(ios.contains("@MainActor\nfunc doweButtonRadius(_ value: String) -> CGFloat"));
     assert!(ios.contains("doweButtonContainer(state.text("));
+    assert!(ios.contains("fallback: \"outlined\""));
+    assert!(ios.contains("fallback: \"secondary\""));
     assert!(ios.contains("Double(state.text("));
     assert!(ios.contains("DoweCodeView(source: \"Button variant:\" + state.text("));
     assert!(ios.contains("[DoweCodeToken(text: \"Button\", color: DoweDesign.info)"));
@@ -389,4 +407,3 @@ views viewRoutes
             .contains("view modules must export a layout or page")
     );
 }
-

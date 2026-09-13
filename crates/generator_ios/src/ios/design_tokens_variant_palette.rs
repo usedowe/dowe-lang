@@ -1,31 +1,36 @@
 fn variant_container(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Solid => color_ref(family_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
-            "Color.clear"
-        }
-    }
+    let roles = dowe_components::variant_visual_roles(
+        props.variant.unwrap_or(ComponentVariant::Solid),
+        props.color.unwrap_or(ColorFamily::Primary),
+    );
+    color_ref(roles.background)
 }
 
 fn variant_content(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Solid => color_ref(family_text_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
-            color_ref(family_color(color))
-        }
-    }
+    let roles = dowe_components::variant_visual_roles(
+        props.variant.unwrap_or(ComponentVariant::Solid),
+        props.color.unwrap_or(ColorFamily::Primary),
+    );
+    color_ref(roles.content)
 }
 
 fn variant_title(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Solid => color_ref(family_title_color(color)),
-        ComponentVariant::Outlined | ComponentVariant::Line | ComponentVariant::Ghost => {
-            color_ref(family_color(color))
-        }
+    let roles = dowe_components::variant_visual_roles(
+        props.variant.unwrap_or(ComponentVariant::Solid),
+        props.color.unwrap_or(ColorFamily::Primary),
+    );
+    color_ref(roles.title)
+}
+
+fn variant_border(props: &VariantProps) -> &'static str {
+    if let Some(family) = props.style.border_color {
+        return color_ref(family_color(family));
     }
+    let roles = dowe_components::variant_visual_roles(
+        props.variant.unwrap_or(ComponentVariant::Solid),
+        props.color.unwrap_or(ColorFamily::Primary),
+    );
+    color_ref(roles.border.unwrap_or(ColorToken::Transparent))
 }
 
 fn scheme_title(props: &VariantProps) -> &'static str {
@@ -56,59 +61,46 @@ fn nav_active_content(props: &VariantProps) -> &'static str {
 }
 
 fn card_variant_container(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Outlined => match color {
-            ColorFamily::Background => color_ref(ColorToken::Background),
-            _ => color_ref(ColorToken::Surface),
-        },
-        _ => variant_container(props),
-    }
+    color_ref(
+        dowe_components::card_variant_visual_roles(
+            props.variant.unwrap_or(ComponentVariant::Solid),
+            props.color.unwrap_or(ColorFamily::Primary),
+        )
+        .background,
+    )
 }
 
 fn card_variant_content(props: &VariantProps) -> &'static str {
-    let color = props.color.unwrap_or(ColorFamily::Primary);
-    match props.variant.unwrap_or(ComponentVariant::Solid) {
-        ComponentVariant::Outlined => match color {
-            ColorFamily::Background => color_ref(ColorToken::BackgroundText),
-            _ => color_ref(ColorToken::SurfaceText),
-        },
-        ComponentVariant::Ghost
-            if matches!(color, ColorFamily::Background | ColorFamily::Surface) =>
-        {
-            color_ref(family_text_color(color))
-        }
-        _ => variant_content(props),
-    }
+    color_ref(
+        dowe_components::card_variant_visual_roles(
+            props.variant.unwrap_or(ComponentVariant::Solid),
+            props.color.unwrap_or(ColorFamily::Primary),
+        )
+        .content,
+    )
 }
 
 fn card_variant_title(props: &VariantProps) -> &'static str {
-    if props.variant == Some(ComponentVariant::Outlined) {
-        color_ref(if props.color == Some(ColorFamily::Background) {
-            ColorToken::BackgroundTitle
-        } else {
-            ColorToken::SurfaceTitle
-        })
-    } else if props.variant == Some(ComponentVariant::Ghost)
-        && matches!(
-            props.color,
-            Some(ColorFamily::Background | ColorFamily::Surface)
+    color_ref(
+        dowe_components::card_variant_visual_roles(
+            props.variant.unwrap_or(ComponentVariant::Solid),
+            props.color.unwrap_or(ColorFamily::Primary),
         )
-    {
-        color_ref(family_title_color(props.color.unwrap()))
-    } else {
-        variant_title(props)
-    }
+        .title,
+    )
 }
 
-fn card_surface_container(props: &VariantProps) -> &'static str {
-    variant_container(props)
-}
-fn card_surface_content(props: &VariantProps) -> &'static str {
-    variant_content(props)
-}
-fn card_surface_title(props: &VariantProps) -> &'static str {
-    variant_title(props)
+fn card_variant_border(props: &VariantProps) -> &'static str {
+    if let Some(family) = props.style.border_color {
+        return color_ref(family_color(family));
+    }
+    let roles = dowe_components::card_variant_visual_roles(
+        props.variant.unwrap_or(ComponentVariant::Solid),
+        props.color.unwrap_or(ColorFamily::Primary),
+    );
+    color_ref(roles.border.unwrap_or_else(|| {
+        props.color.unwrap_or(ColorFamily::Primary).color_token()
+    }))
 }
 
 fn table_variant_container(props: &VariantProps) -> &'static str {

@@ -38,6 +38,10 @@ theme
   Do not replace, flatten, or re-sample that palette while authoring a view from an image.
 - A page consumes semantic family tokens from the existing theme. It does not recreate the theme
   from local component props or literal color values.
+- `variant` and `scheme` are independent defaults. A component that declares only one locally
+  inherits the other from its `design` slot or built-in contract; do not copy or replace the
+  omitted field when resolving a partial override. The concrete precedence examples live in
+  `references/theme.md`.
 - When a theme must be created or explicitly changed, write one complete grouped `colors:` block
   with `color`, `text`, and `title` for every declared family.
 - Before finishing, reread `theme.dowe`. If the request was page-only, its theme content must be

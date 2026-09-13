@@ -24,7 +24,7 @@ let size = swift_text_size_expr(false, text_size);
 let base_border =
     if props.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
         (
-            format!("Optional({})", color_ref(ColorToken::Muted)),
+            format!("Optional({})", variant_border(props)),
             "CGFloat(1)".to_string(),
         )
     } else {

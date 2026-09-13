@@ -173,6 +173,9 @@ fn java_color(value: ColorToken) -> &'static str {
     if value.as_str() == "white" {
         return "Color.WHITE";
     }
+    if value.as_str() == "transparent" {
+        return "Color.TRANSPARENT";
+    }
     let mut output = String::from("DOWE_");
     for character in value.as_str().chars() {
         if character.is_ascii_uppercase() {

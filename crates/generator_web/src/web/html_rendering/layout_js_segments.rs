@@ -111,10 +111,31 @@ fn collect_layout_js_node_segments(node: &ViewNode, segments: &mut Vec<JsSegment
                 None,
                 context,
             );
+            if props.reactive.variant.is_some() || props.reactive.scheme.is_some() {
+                card_attrs.push_str(r#" data-dowe-variant-binding="true""#);
+            }
+            if let Some(path) = props.reactive.variant.as_deref() {
+                card_attrs.push_str(&format!(
+                    r#" data-dowe-variant="{}""#,
+                    escape_attr(&context.signal_path(path))
+                ));
+            }
             if let Some(path) = props.reactive.scheme.as_deref() {
                 card_attrs.push_str(&format!(
-                    r#" data-dowe-variant-binding="true" data-dowe-scheme="{}""#,
+                    r#" data-dowe-scheme="{}""#,
                     escape_attr(&context.signal_path(path))
+                ));
+            }
+            if let Some(value) = props.variant {
+                card_attrs.push_str(&format!(
+                    r#" data-dowe-variant-fallback="{}""#,
+                    value.as_str()
+                ));
+            }
+            if let Some(value) = props.color {
+                card_attrs.push_str(&format!(
+                    r#" data-dowe-scheme-fallback="{}""#,
+                    value.as_str()
                 ));
             }
             push_literal(segments, &format!("<article{}>", card_attrs));

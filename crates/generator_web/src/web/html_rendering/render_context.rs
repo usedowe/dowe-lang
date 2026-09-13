@@ -32,10 +32,6 @@ fn text_token(family: ColorFamily) -> &'static str {
     family.text_token().as_str()
 }
 
-fn title_token(family: ColorFamily) -> &'static str {
-    family.title_token().as_str()
-}
-
 fn family_color_token(family: ColorFamily) -> &'static str {
     family.color_token().as_str()
 }
@@ -239,4 +235,3 @@ impl ReactiveRenderContext {
         Some(output)
     }
 }
-

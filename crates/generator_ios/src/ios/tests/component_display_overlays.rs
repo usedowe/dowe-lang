@@ -134,7 +134,7 @@ fn generates_swiftui_display_overlay_components() {
     assert!(!views.contains("private var popoverPoint"));
     assert!(views.contains("DoweToast(visible: true, title: \"Saved\""));
     assert!(views.contains(
-        "position: \"top-right\", backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: Optional(DoweDesign.warning)"
+        "position: \"top-right\", backgroundColor: DoweDesign.surface, contentColor: DoweDesign.warning, borderColor: Optional(DoweDesign.warning)"
     ));
     assert!(views.contains("struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable"));
     assert!(views.contains("@MainActor init(open: Bool, close: @escaping () -> Void"));
@@ -340,7 +340,7 @@ fn generates_ios_overlay_surface_action_and_close_parity() {
     );
     let views = swift_content(&output);
     assert!(views.contains(
-        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, titleColor: DoweDesign.surfaceTitle, borderColor: Optional(DoweDesign.warning)"
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.warning, titleColor: DoweDesign.surfaceTitle, borderColor: Optional(DoweDesign.warning)"
     ));
     assert!(views.contains(
         "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: nil"

@@ -28,7 +28,7 @@ fn render_dev_android_pin(
             format!(
                 "doweInputBackground({}, {}, {radius})",
                 dev_variant_container(&props.style),
-                java_color(ColorToken::Muted)
+                dev_variant_border(&props.style)
             )
         } else {
             format!(

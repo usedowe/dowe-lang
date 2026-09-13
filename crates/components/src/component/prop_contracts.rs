@@ -65,11 +65,7 @@ pub fn prop_color_tokens() -> &'static [&'static str] {
 pub fn prop_allowed_values(component: BuiltinComponent, name: &str) -> &'static [&'static str] {
     match name {
         "variant" => {
-            if matches!(component, BuiltinComponent::SideNav) {
-                &["solid", "outlined", "ghost"]
-            } else {
-                &["solid", "outlined", "ghost"]
-            }
+            &["solid", "outlined", "line", "ghost"]
         }
         "scheme" => &[
             "primary",

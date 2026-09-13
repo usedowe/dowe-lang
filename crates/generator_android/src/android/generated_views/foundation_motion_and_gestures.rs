@@ -64,28 +64,35 @@ private fun doweSideNavHeaderColor(scheme: String): Color = doweButtonContent("g
 
 private fun doweButtonContainer(variant: String, scheme: String): Color = when (variant) {
     "solid" -> doweButtonFamily(scheme)
-    "outlined", "ghost" -> Color.Transparent
+    "outlined", "line", "ghost" -> Color.Transparent
     else -> doweButtonFamily(scheme)
 }
 
 private fun doweButtonContent(variant: String, scheme: String): Color =
-    if (variant == "solid") doweButtonTextFamily(scheme) else doweButtonFamily(scheme)
+    when {
+        variant == "solid" -> doweButtonTextFamily(scheme)
+        (variant == "line" || variant == "ghost") && (scheme == "background" || scheme == "surface") -> doweButtonTextFamily(scheme)
+        else -> doweButtonFamily(scheme)
+    }
 
 private fun doweCardContainer(variant: String, scheme: String): Color = when (variant) {
     "solid" -> doweButtonFamily(scheme)
-    "outlined", "ghost" -> Color.Transparent
+    "outlined" -> if (scheme == "background") DoweDesign.background else DoweDesign.surface
+    "line", "ghost" -> Color.Transparent
     else -> doweButtonFamily(scheme)
 }
 
 private fun doweCardContent(variant: String, scheme: String): Color = when (variant) {
     "solid" -> doweButtonTextFamily(scheme)
-    "outlined", "ghost" -> doweButtonFamily(scheme)
+    "outlined" -> doweButtonFamily(scheme)
+    "line", "ghost" -> doweButtonFamily(scheme)
     else -> doweButtonTextFamily(scheme)
 }
 
 private fun doweCardTitle(variant: String, scheme: String): Color = when (variant) {
     "solid" -> doweButtonTitleFamily(scheme)
-    "outlined", "ghost" -> doweButtonFamily(scheme)
+    "outlined" -> if (scheme == "background") DoweDesign.backgroundTitle else DoweDesign.surfaceTitle
+    "line", "ghost" -> doweButtonFamily(scheme)
     else -> doweButtonTitleFamily(scheme)
 }
 

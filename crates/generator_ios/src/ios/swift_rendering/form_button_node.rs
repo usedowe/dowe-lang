@@ -92,12 +92,22 @@ let variant = props
     .reactive
     .variant
     .as_ref()
-    .map(|path| reactive_text(path, "solid"));
+    .map(|path| {
+        reactive_text(
+            path,
+            props.variant.unwrap_or(ComponentVariant::Solid).as_str(),
+        )
+    });
 let scheme = props
     .reactive
     .scheme
     .as_ref()
-    .map(|path| reactive_text(path, "primary"));
+    .map(|path| {
+        reactive_text(
+            path,
+            props.color.unwrap_or(ColorFamily::Primary).as_str(),
+        )
+    });
 let variant_value = variant.clone().unwrap_or_else(|| {
     format!(
         "\"{}\"",

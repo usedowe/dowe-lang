@@ -114,7 +114,11 @@ fn stateful_scaffold_drawer_layout_route(boxed: bool) -> ViewRoute {
                                 status_i18n: None,
                                 icon: None,
                                 on_click: None,
-                                navigation: None,
+                                navigation: Some(NavigationAction::Internal {
+                                    path: "/overview".to_string(),
+                                    fragment: None,
+                                    operation: NavigationOperation::Push,
+                                }),
                             })],
                         }],
                         footer: Vec::new(),

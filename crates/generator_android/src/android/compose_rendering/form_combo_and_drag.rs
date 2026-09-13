@@ -34,7 +34,7 @@ fn render_compose_combo_box(
     let size = compose_text_size_expr(false, text_size);
     let border =
         if props.style.variant.unwrap_or(ComponentVariant::Solid) == ComponentVariant::Outlined {
-            color_ref(ColorToken::Muted)
+            variant_border(&props.style)
         } else {
             "null"
         };
@@ -153,4 +153,3 @@ fn compose_drag_item(item: &DragItem) -> String {
         item.disabled
     )
 }
-

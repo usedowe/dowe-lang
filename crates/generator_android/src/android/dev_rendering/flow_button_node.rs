@@ -206,14 +206,16 @@ fn render_dev_android_button_flow_node(
                 }
                 if let Some(variant) = props.reactive.variant.as_ref() {
                     output.push_str(&format!(
-                        "        {view}.setTag(DOWE_VARIANT_TAG, \"{}\");\n",
-                        escape_java(variant)
+                        "        {view}.setTag(DOWE_VARIANT_TAG, \"{}\");\n        {view}.setTag(DOWE_VARIANT_FALLBACK_TAG, \"{}\");\n",
+                        escape_java(variant),
+                        props.variant.unwrap_or(ComponentVariant::Solid).as_str()
                     ));
                 }
                 if let Some(scheme) = props.reactive.scheme.as_ref() {
                     output.push_str(&format!(
-                        "        {view}.setTag(DOWE_SCHEME_TAG, \"{}\");\n",
-                        escape_java(scheme)
+                        "        {view}.setTag(DOWE_SCHEME_TAG, \"{}\");\n        {view}.setTag(DOWE_SCHEME_FALLBACK_TAG, \"{}\");\n",
+                        escape_java(scheme),
+                        props.color.unwrap_or(ColorFamily::Primary).as_str()
                     ));
                 }
                 if let Some(size) = props.reactive.size.as_ref() {

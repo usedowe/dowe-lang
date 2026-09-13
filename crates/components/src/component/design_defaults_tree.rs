@@ -21,9 +21,19 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         | ViewNode::Grid { children, .. }
         | ViewNode::Brand { children, .. }
         | ViewNode::Banner { children, .. }
-        | ViewNode::Marquee { children, .. }
-        | ViewNode::Collapsible { children, .. }
-        | ViewNode::Badge { children, .. } => {
+        | ViewNode::Marquee { children, .. } => {
+            for child in children {
+                apply_design_defaults_to_tree(child, defaults);
+            }
+        }
+        ViewNode::Collapsible { props, children } => {
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            for child in children {
+                apply_design_defaults_to_tree(child, defaults);
+            }
+        }
+        ViewNode::Badge { props, children } => {
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
             for child in children {
                 apply_design_defaults_to_tree(child, defaults);
             }
@@ -217,7 +227,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
         }
         ViewNode::Color { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Color);
             apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::Color);
         }
         ViewNode::Date { props } => {
@@ -225,7 +235,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
             apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::Date);
         }
         ViewNode::DateRange { props } => {
-            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::DateRange);
             apply_label_floating_default(
                 &mut props.style,
                 defaults,
@@ -382,9 +392,13 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         | ViewNode::Svg { .. }
         | ViewNode::TypeWriter { .. }
         | ViewNode::RichText { .. }
-        | ViewNode::Map { .. }
-        | ViewNode::Countdown { .. }
         | ViewNode::Skeleton { .. }
         | ViewNode::Children => {}
+        ViewNode::Countdown { props } => {
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+        }
+        ViewNode::Map { props, .. } => {
+            apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
+        }
     }
 }

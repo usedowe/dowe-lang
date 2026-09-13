@@ -20,6 +20,10 @@
     private static final int DOWE_SCHEME_TAG = 0x7f0d0014;
     private static final int DOWE_SIZE_TAG = 0x7f0d0015;
     private static final int DOWE_COMPACT_WIDTH_TAG = 0x7f0d0016;
+    private static final int DOWE_VARIANT_FALLBACK_TAG = 0x7f0d0017;
+    private static final int DOWE_SCHEME_FALLBACK_TAG = 0x7f0d0018;
+    private static final int DOWE_COMPONENT_TAG = 0x7f0d0019;
+    private static final int DOWE_CARD_ROLE_TAG = 0x7f0d001a;
 
     private static final class DoweSvgImportMatrix {
         private final double a;

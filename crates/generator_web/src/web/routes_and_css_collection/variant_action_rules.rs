@@ -7,6 +7,7 @@ fn push_form_variant_rules(
         for variant in [
             ComponentVariant::Solid,
             ComponentVariant::Outlined,
+            ComponentVariant::Line,
             ComponentVariant::Ghost,
         ] {
             for color in [
@@ -18,6 +19,8 @@ fn push_form_variant_rules(
                 ColorFamily::Info,
                 ColorFamily::Warning,
                 ColorFamily::Danger,
+                ColorFamily::Background,
+                ColorFamily::Surface,
             ] {
                 let mut reactive_props = props.clone();
                 reactive_props.variant = Some(variant);

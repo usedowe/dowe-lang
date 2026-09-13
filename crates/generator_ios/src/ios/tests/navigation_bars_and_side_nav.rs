@@ -198,7 +198,7 @@ fn emits_generic_variant_bindings_on_ios() {
     props.style.reactive.size = Some("item.size".to_string());
     let views = swift_content(&generate_ios(&[route], &FontConfig::default(), &DesignConfig::default(), &[]));
     assert!(views.contains("state.text(\"item.variant\", fallback: \"solid\")"));
-    assert!(views.contains("state.text(\"theme.scheme\", fallback: \"primary\")"));
+    assert!(views.contains("state.text(\"theme.scheme\", fallback: \"surface\")"));
     assert!(views.contains("state.text(\"item.size\", fallback: \"md\")"));
 }
 
@@ -222,4 +222,3 @@ fn generates_reactive_swiftui_side_nav_header_color_from_scheme() {
         "titleColor: doweSideNavHeaderColor(state.text(\"schemeChoice\", fallback: \"muted\"))"
     ));
 }
-

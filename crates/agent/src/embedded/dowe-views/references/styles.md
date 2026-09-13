@@ -28,9 +28,11 @@ container after padding and size and before radius and border. On `Text` and `Ti
 paints the content-sized text surface; combine it with
 `rounded` and padding when the text should read as a pill or badge.
 
-`scheme` on `Button`, `ToggleTheme`, `Fab`, `fabAction`, `Slider`, `Input`, `Select`, `SideNav`,
-and `RailNav` accepts action families only. `scheme` on `Accordion` accepts action families plus
-`background` and `surface`. `scheme` on `SelectTheme`, `Card`, `Video`, the chart
+`scheme` on `Button`, `ToggleTheme`, `Fab`, `fabAction`, `Slider`, `Input`, `Select`, and `RailNav`
+accepts action families only. `NavMenu` and `SideNav` may accept structural `background` and
+`surface` schemes where their current component contract permits them; compiler diagnostics are
+authoritative, so do not infer scheme support across navigation components. `scheme` on `Accordion`
+accepts action families plus `background` and `surface`. `scheme` on `SelectTheme`, `Card`, `Video`, the chart
 components, `Table`, `Dropzone`, `NavMenu`, `Sidebar`, `Tabs`, `Drawer`, `AppBar`, `Footer`,
 `Modal`, `Dropdown`, and `Tooltip` also accepts
 `background` and `surface`. Structural schemes have no base pair; solid variants degrade to the
@@ -41,34 +43,42 @@ structural tokens.
 `Card`, `Video`, `Candlestick`, `ArcChart`, `AreaChart`, `BarChart`, `LineChart`, `PieChart`,
 `Table`, `Button`, `ToggleTheme`, `SelectTheme`, `Dropzone`, `Input`, `Select`, `NavMenu`,
 `SideNav`, `RailNav`, `Sidebar`, `Drawer`, `Toast`, `Modal`, `Dropdown`, `Tooltip`, and
-`Accordion` support
-`solid`, `outlined`, and `ghost`.
-`Fab` supports `solid`. `Tabs` supports `solid`, `outlined`, `line`, `ghost`, and
-`pills`. Defaults are `variant:"solid"` and `scheme:"primary"` unless a component declares
-otherwise: `SelectTheme` defaults to `outlined` plus `surface`, and `RailNav` defaults to `ghost`
-plus `muted`. The normalized variant name is `outlined`.
+`Accordion` support `solid`, `outlined`, `line`, or `ghost` where their component contract allows
+them. `Fab` supports `solid`. `Tabs` additionally supports `pills`. Defaults are
+`variant:"solid"` and `scheme:"primary"` unless a component declares otherwise:
+`SelectTheme` defaults to `outlined` plus `surface`, and `RailNav` defaults to `ghost` plus `muted`.
+Compiler diagnostics and the component catalog are authoritative for each component's subset.
 
-`solid` maps the scheme family to its base, text, and title roles; `outlined` uses structural
-`*`, `*Text`, and `*Title` roles. Author `muted` as a lighter tonal counterpart of
-`primary`, with `mutedText` and `mutedTitle` chosen for clear contrast against that lighter fill.
-Use `muted` for lower-emphasis solid controls such as `Input` when a solid primary surface feels
-too heavy, rather than treating muted as an unrelated neutral.
-`outlined` is transparent with family-colored content, title, and border, and `ghost` is
-transparent with family-colored content and title. Child-bearing variant surfaces pass their resolved foreground token to all
-of their content regions. A muted Card supplies `MutedText` to ordinary content and `MutedTitle` to
-`Title`; `Text` and `Title` must not locally override that inherited foreground with a `color` prop.
-If a text contrast issue appears, change the owning surface's `scheme` instead. AppBar or Footer
-supplies its content roles to `top`, `start`, `center`, `end`, and `bottom`. Button labels use the
-text role. Transparent `SideNav` headers use the visible base color of their `scheme`; an explicit
-icon color remains a local override.
-Native iOS rows explicitly restore the background foreground for inactive labels and descriptions
-so a muted scheme cannot make them disappear against the page background.
+The shared visual roles are:
+
+| Variant | Background | Content/title | Border |
+| --- | --- | --- | --- |
+| `solid` | `scheme.color` | `scheme.text` / `scheme.title` | none |
+| `outlined` | transparent | `scheme.color` / `scheme.color` | `scheme.color` |
+| `line` | transparent | `scheme.color`* / `scheme.color`* | component edge rule |
+| `ghost` | transparent | `scheme.color`* / `scheme.color`* | none |
+
+`*` With structural `background` or `surface`, transparent `line` and `ghost` use the owning
+surface's `text` and `title` roles. `Card` is the approved `outlined` exception: it uses a
+structural `surface` (or `background` for `scheme:"background"`) fill/title while content and
+border retain the scheme's base color. Child-bearing variant surfaces pass their resolved
+foreground roles to all content regions. Do not add `color` to `Text` or `Title`; change the
+owning scheme when contrast needs repair. AppBar and Footer apply their content roles to each
+region, while navigation and other stateful components may add state-specific geometry from the
+same roles.
+
+Author `muted` as a lighter tonal counterpart of `primary`, with `mutedText` and `mutedTitle`
+chosen for clear contrast against that lighter fill. Transparent navigation headers and inactive
+rows on structural shells use the owning surface's text role; active and hover states use the
+navigation scheme. An explicit descendant `color` remains a local override where the component
+contract permits it.
 
 `Accordion` keeps `variant` and `scheme` orthogonal across targets: `ghost` is a flat row treatment
-with a 22% bottom separator, `outlined` uses a quiet family surface with neutral item panels and a 16%
-item border, `outlined` uses a structural panel with a family-colored outer and item border, and
-`solid` uses the family base with a 24% paired-text item border. Structural schemes remain readable
-in every treatment; structural treatments use structural roles. The default
+with a 22% bottom separator; `outlined` with an action scheme uses a quiet family surface with
+neutral item panels and a 16% item border; `outlined` with a structural scheme uses a structural
+panel with a family-colored outer and item border; and `solid` uses the family base with a 24%
+paired-text item border. Structural schemes remain readable in every treatment; structural
+treatments use structural roles. The default
 `Accordion` variant is `ghost`, and its item state plus bundled `SideNav` disclosure arrow are
 generated from the same normalized model for web, Android Compose, the Android development launcher,
 and iOS.

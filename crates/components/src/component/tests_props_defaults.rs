@@ -223,6 +223,57 @@ fn exposes_the_normative_component_visual_defaults() {
 }
 
 #[test]
+fn resolves_the_shared_variant_visual_contract() {
+    let solid = super::variant_visual_roles(
+        super::ComponentVariant::Solid,
+        super::ColorFamily::Primary,
+    );
+    assert_eq!(solid.background, super::ColorToken::Primary);
+    assert_eq!(solid.content, super::ColorToken::PrimaryText);
+    assert_eq!(solid.title, super::ColorToken::PrimaryTitle);
+    assert_eq!(solid.border, None);
+
+    let outlined = super::variant_visual_roles(
+        super::ComponentVariant::Outlined,
+        super::ColorFamily::Danger,
+    );
+    assert_eq!(outlined.background, super::ColorToken::Transparent);
+    assert_eq!(outlined.content, super::ColorToken::Danger);
+    assert_eq!(outlined.title, super::ColorToken::Danger);
+    assert_eq!(outlined.border, Some(super::ColorToken::Danger));
+
+    let ghost_background = super::variant_visual_roles(
+        super::ComponentVariant::Ghost,
+        super::ColorFamily::Background,
+    );
+    assert_eq!(ghost_background.background, super::ColorToken::Transparent);
+    assert_eq!(ghost_background.content, super::ColorToken::BackgroundText);
+    assert_eq!(ghost_background.title, super::ColorToken::BackgroundTitle);
+    assert_eq!(ghost_background.border, None);
+
+    let line_surface = super::variant_visual_roles(
+        super::ComponentVariant::Line,
+        super::ColorFamily::Surface,
+    );
+    assert_eq!(line_surface.background, super::ColorToken::Transparent);
+    assert_eq!(line_surface.content, super::ColorToken::SurfaceText);
+    assert_eq!(line_surface.title, super::ColorToken::SurfaceTitle);
+    assert_eq!(line_surface.border, None);
+}
+
+#[test]
+fn resolves_card_outlined_roles_from_surface_with_scheme_content() {
+    let roles = super::card_variant_visual_roles(
+        super::ComponentVariant::Outlined,
+        super::ColorFamily::Primary,
+    );
+    assert_eq!(roles.background, super::ColorToken::Surface);
+    assert_eq!(roles.content, super::ColorToken::Primary);
+    assert_eq!(roles.title, super::ColorToken::SurfaceTitle);
+    assert_eq!(roles.border, Some(super::ColorToken::Primary));
+}
+
+#[test]
 fn resolves_function_toast_variant_with_design_precedence() {
     let toast = |variant: Option<&str>| {
         super::ViewFunctionStatement::Toast(super::ViewToastAction {

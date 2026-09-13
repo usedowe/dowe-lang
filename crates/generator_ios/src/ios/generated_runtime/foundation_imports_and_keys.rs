@@ -175,13 +175,17 @@ func doweSideNavHeaderColor(_ scheme: String) -> Color {
 @MainActor
 func doweButtonContainer(_ variant: String, _ scheme: String) -> Color {
     if variant == "solid" { return doweButtonFamily(scheme) }
-    if variant == "outlined" || variant == "ghost" { return Color.clear }
+    if variant == "outlined" || variant == "line" || variant == "ghost" { return Color.clear }
     return doweButtonFamily(scheme)
 }
 
 @MainActor
 func doweButtonContent(_ variant: String, _ scheme: String) -> Color {
-    variant == "solid" ? doweButtonTextFamily(scheme) : doweButtonFamily(scheme)
+    if variant == "solid" { return doweButtonTextFamily(scheme) }
+    if (variant == "line" || variant == "ghost") && (scheme == "background" || scheme == "surface") {
+        return doweButtonTextFamily(scheme)
+    }
+    return doweButtonFamily(scheme)
 }
 
 @MainActor
@@ -219,18 +223,21 @@ func doweCardContent(_ scheme: String) -> Color {
 @MainActor
 func doweCardContainer(_ variant: String, _ scheme: String) -> Color {
     if variant == "solid" { return doweCardFamily(scheme) }
+    if variant == "outlined" { return scheme == "background" ? DoweDesign.background : DoweDesign.surface }
     return Color.clear
 }
 
 @MainActor
 func doweCardContent(_ variant: String, _ scheme: String) -> Color {
     if variant == "solid" { return doweButtonTextFamily(scheme) }
+    if variant == "outlined" { return doweButtonFamily(scheme) }
     return doweButtonFamily(scheme)
 }
 
 @MainActor
 func doweCardTitle(_ variant: String, _ scheme: String) -> Color {
     if variant == "solid" { return doweButtonTitleFamily(scheme) }
+    if variant == "outlined" { return scheme == "background" ? DoweDesign.backgroundTitle : DoweDesign.surfaceTitle }
     return doweButtonFamily(scheme)
 }
 

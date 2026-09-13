@@ -1,5 +1,6 @@
 include!("tests_web_output/routing_and_inspection.rs");
 include!("tests_web_output/design_system.rs");
+include!("tests_web_output/variant_scheme_visual_contract.rs");
 include!("tests_web_output/components_and_navigation.rs");
 include!("tests_web_output/interactive_controls.rs");
 include!("tests_web_output/typography_and_fonts.rs");
