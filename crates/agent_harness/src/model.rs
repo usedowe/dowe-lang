@@ -171,12 +171,22 @@ impl TaskPacket {
         {
             return Err("task packet is empty or exceeds its bounds");
         }
-        if self.files.iter().any(|path| {
-            path.is_empty() || path.len() > 512 || path.chars().any(char::is_control)
-        })
-            || self.acceptance.iter().any(|value| bounded_text(value, 2048))
-            || self.constraints.iter().any(|value| bounded_text(value, 2048))
-            || self.validation.iter().any(|value| bounded_text(value, 2048))
+        if self
+            .files
+            .iter()
+            .any(|path| path.is_empty() || path.len() > 512 || path.chars().any(char::is_control))
+            || self
+                .acceptance
+                .iter()
+                .any(|value| bounded_text(value, 2048))
+            || self
+                .constraints
+                .iter()
+                .any(|value| bounded_text(value, 2048))
+            || self
+                .validation
+                .iter()
+                .any(|value| bounded_text(value, 2048))
             || self.evidence.iter().any(|reference| {
                 reference.path.is_empty()
                     || reference.path.len() > 512
@@ -196,23 +206,23 @@ impl TaskPacket {
             return Err("task packet contains an invalid path or evidence reference");
         }
         if let Some(change_set) = &self.change_set {
-            if change_set
-                .baseline
-                .as_ref()
-                .is_some_and(|value| value.is_empty() || value.len() > 128 || value.chars().any(char::is_control))
-                || change_set.files.len() > 128
+            if change_set.baseline.as_ref().is_some_and(|value| {
+                value.is_empty() || value.len() > 128 || value.chars().any(char::is_control)
+            }) || change_set.files.len() > 128
                 || change_set.files.iter().any(|entry| {
                     entry.path.is_empty()
                         || entry.path.len() > 512
                         || entry.path.chars().any(char::is_control)
-                        || entry
-                            .before_fingerprint
-                            .as_ref()
-                            .is_some_and(|value| value.is_empty() || value.len() > 128 || value.chars().any(char::is_control))
-                        || entry
-                            .after_fingerprint
-                            .as_ref()
-                            .is_some_and(|value| value.is_empty() || value.len() > 128 || value.chars().any(char::is_control))
+                        || entry.before_fingerprint.as_ref().is_some_and(|value| {
+                            value.is_empty()
+                                || value.len() > 128
+                                || value.chars().any(char::is_control)
+                        })
+                        || entry.after_fingerprint.as_ref().is_some_and(|value| {
+                            value.is_empty()
+                                || value.len() > 128
+                                || value.chars().any(char::is_control)
+                        })
                 })
             {
                 return Err("task packet change set exceeds its bounds");

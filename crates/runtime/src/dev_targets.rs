@@ -3,8 +3,8 @@ mod android_command_tools;
 mod android_incremental;
 mod desktop;
 mod ios;
-mod ios_developer_dir;
 mod ios_cache;
+mod ios_developer_dir;
 mod ios_incremental;
 
 use crate::dev::{

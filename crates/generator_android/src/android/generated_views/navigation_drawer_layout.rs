@@ -264,7 +264,9 @@ private fun DoweNavMenu(modifier: Modifier = Modifier, gap: Dp, popoverBackgroun
                 ) {
                     DoweNavMenuPopoverSurface(onDismiss = { openIndex = null }) {
                         Column(modifier = Modifier.widthIn(min = 192.dp, max = 720.dp).heightIn(max = 640.dp).padding(8.dp)) {
-                            popover(openIndex)
+                            CompositionLocalProvider(LocalDoweTitleColor provides DoweDesign.backgroundTitle) {
+                                popover(openIndex)
+                            }
                         }
                     }
                 }
@@ -307,7 +309,7 @@ private fun DoweNavMenuItem(active: Boolean, paddingHorizontal: Dp, paddingVerti
 }
 
 @Composable
-private fun DoweDrawer(open: Boolean, onClose: () -> Unit, position: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: Dp, disableOverlayClose: Boolean, hideCloseButton: Boolean, content: @Composable () -> Unit) {
+private fun DoweDrawer(open: Boolean, onClose: () -> Unit, position: String, backgroundColor: Color, contentColor: Color, titleColor: Color = DoweDesign.backgroundTitle, borderColor: Color?, radius: Dp, disableOverlayClose: Boolean, hideCloseButton: Boolean, content: @Composable () -> Unit) {
     if (!open) {
         return
     }
@@ -332,7 +334,7 @@ private fun DoweDrawer(open: Boolean, onClose: () -> Unit, position: String, bac
                     .background(backgroundColor)
                     .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, shape))
             ) {
-                CompositionLocalProvider(LocalContentColor provides contentColor) {
+                CompositionLocalProvider(LocalContentColor provides contentColor, LocalDoweTitleColor provides titleColor) {
                     content()
                 }
             }

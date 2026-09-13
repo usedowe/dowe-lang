@@ -7,6 +7,8 @@ fn component_visual_value_completions(
             Some(quoted_values(["pen", "rect", "circle", "select", "erase"]))
         }
         (BuiltinComponent::Canvas, "drawMode") => Some(quoted_values(["pen", "rect", "circle"])),
+        (BuiltinComponent::Game, "renderer") => Some(quoted_values(["canvas2d", "raycast3d"])),
+        (BuiltinComponent::Game, "controls") => Some(quoted_values(["none", "doom"])),
         (
             BuiltinComponent::Box
             | BuiltinComponent::Section
@@ -347,10 +349,10 @@ fn component_visual_value_completions(
         (BuiltinComponent::AppBar, "position") => Some(quoted_values(
             BarPosition::all().iter().map(|value| value.as_str()),
         )),
-        (BuiltinComponent::Canvas | BuiltinComponent::Draw, "fit") => {
+        (BuiltinComponent::Canvas | BuiltinComponent::Draw | BuiltinComponent::Game, "fit") => {
             Some(quoted_values(["contain", "cover", "stretch"]))
         }
-        (BuiltinComponent::Canvas | BuiltinComponent::Draw, "background") => Some(quoted_values(
+        (BuiltinComponent::Canvas | BuiltinComponent::Draw | BuiltinComponent::Game, "background") => Some(quoted_values(
             ColorToken::all()
                 .iter()
                 .map(|value| value.as_str())

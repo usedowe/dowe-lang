@@ -48,7 +48,10 @@ impl HarnessSession {
             return;
         }
         self.initial_prompt_preview = Some(preview);
-        let title_source = prompt.lines().find(|line| !line.trim().is_empty()).unwrap_or(prompt);
+        let title_source = prompt
+            .lines()
+            .find(|line| !line.trim().is_empty())
+            .unwrap_or(prompt);
         self.title = Some(sanitize_session_text(title_source, 80));
     }
 

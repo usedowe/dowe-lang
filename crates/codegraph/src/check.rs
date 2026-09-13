@@ -6,7 +6,7 @@ use crate::metrics::fingerprint_bytes;
 use crate::mode::detect_codegraph_mode;
 use crate::model::{CheckOptions, CheckReport, Diagnostic, DiagnosticSeverity};
 use crate::paths::{discover_files, slash_path};
-use crate::persistence::{read_persistent_codegraph, CodeGraphBinding};
+use crate::persistence::{CodeGraphBinding, read_persistent_codegraph};
 use crate::waivers::{collect_waivers, waiver_for};
 use std::collections::BTreeMap;
 use std::fs;
@@ -26,8 +26,8 @@ pub(crate) fn check_codegraph(root: &Path, options: CheckOptions) -> CodeGraphRe
             continue;
         };
         let is_rust = path.ends_with(".rs");
-        let is_router_runtime_javascript = path.ends_with(".js")
-            && path.contains("/router_runtime/");
+        let is_router_runtime_javascript =
+            path.ends_with(".js") && path.contains("/router_runtime/");
         if !is_rust && !is_router_runtime_javascript {
             continue;
         }
@@ -261,7 +261,9 @@ fn is_anonymous_partition_path(path: &str) -> bool {
         && file_name
             .strip_suffix(".js")
             .and_then(|name| name.rsplit_once('_'))
-            .is_some_and(|(_, suffix)| !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit()));
+            .is_some_and(|(_, suffix)| {
+                !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit())
+            });
     let numbered_part = file_name
         .strip_prefix("part_")
         .is_some_and(starts_with_digit);

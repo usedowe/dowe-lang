@@ -1,3 +1,52 @@
+#[derive(Debug, Default, Clone)]
+struct SkillCoverage {
+    total_lines: usize,
+    ranges: BTreeMap<usize, usize>,
+}
+
+impl SkillCoverage {
+    fn add_range(&mut self, start: usize, end: usize, total_lines: usize) {
+        self.total_lines = total_lines;
+        if total_lines == 0 {
+            self.ranges.insert(1, 1);
+            return;
+        }
+        if end <= start {
+            return;
+        }
+        let mut merged_start = start;
+        let mut merged_end = end;
+        let overlapping = self
+            .ranges
+            .iter()
+            .filter_map(|(existing_start, existing_end)| {
+                ((*existing_start <= merged_end) && (*existing_end >= merged_start))
+                    .then_some((*existing_start, *existing_end))
+            })
+            .collect::<Vec<_>>();
+        for (existing_start, existing_end) in overlapping {
+            merged_start = merged_start.min(existing_start);
+            merged_end = merged_end.max(existing_end);
+            self.ranges.remove(&existing_start);
+        }
+        self.ranges.insert(merged_start, merged_end);
+    }
+
+    fn complete(&self) -> bool {
+        if self.total_lines == 0 {
+            return self.ranges.contains_key(&1);
+        }
+        let mut cursor = 1;
+        for (start, end) in &self.ranges {
+            if *start > cursor {
+                return false;
+            }
+            cursor = cursor.max(*end);
+        }
+        cursor > self.total_lines
+    }
+}
+
 impl HarnessTools {
     pub fn new(root: impl AsRef<Path>, session: &str, config: HarnessConfig) -> AgentResult<Self> {
         Self::with_scope(root, session, config, None)
@@ -16,11 +65,13 @@ impl HarnessTools {
             root,
             session: session.into(),
             config,
+            permission_mode: HarnessPermissionMode::Confirm,
             supervisor: None,
             edit_scope,
             pending: BTreeMap::new(),
             loaded: Mutex::new(BTreeSet::new()),
             required_skills: Mutex::new(BTreeSet::new()),
+            skill_coverage: Mutex::new(BTreeMap::new()),
             reference_images: Vec::new(),
         })
     }
@@ -29,12 +80,14 @@ impl HarnessTools {
         self.supervisor = supervisor;
     }
 
-    /// Configure the skill contract for the current native authoring turn.
-    ///
-    /// Standalone tool tests intentionally keep their historical behavior and
-    /// may still use a logical skill id without a prior `get_skill` call. The
-    /// real harness calls this method after selecting the focused units, which
-    /// makes the model's declared skill auditable before an edit is approved.
+    pub fn set_permission_mode(&mut self, permission_mode: HarnessPermissionMode) {
+        self.permission_mode = permission_mode;
+    }
+
+    pub(crate) fn permission_mode(&self) -> HarnessPermissionMode {
+        self.permission_mode
+    }
+
     pub fn set_required_skills<I>(&mut self, skills: I) -> AgentResult<()>
     where
         I: IntoIterator<Item = String>,
@@ -63,14 +116,91 @@ impl HarnessTools {
             || required.contains(&normalized)
             || (normalized == "views" && required.iter().any(|id| id.starts_with("views/")))
         {
-            return Ok(normalized);
+            if required.is_empty()
+                || (self.all_required_skills_ready(&required)? && self.skill_ready(&normalized)?)
+            {
+                return Ok(normalized);
+            }
+            return Err(AgentError::new(format!(
+                "skill `{normalized}` was selected but not fully delivered; call get_skill from offset 1 and continue until `truncated:false` before authoring"
+            )));
         }
         Err(AgentError::new(format!(
             "skill `{normalized}` was not preloaded for this Dowe turn; use get_skill for one of the focused units before authoring"
         )))
     }
 
+    fn skill_ready(&self, skill: &str) -> AgentResult<bool> {
+        let coverage = self
+            .skill_coverage
+            .lock()
+            .map_err(|_| AgentError::new("skill coverage lock poisoned"))?;
+        let complete = |id: &str| {
+            coverage
+                .iter()
+                .filter(|(key, _)| key.split(':').nth(1) == Some(id))
+                .any(|(_, value)| value.complete())
+        };
+        Ok(complete(skill)
+            || (skill.starts_with("views/") && complete("views"))
+            || (skill == "core" && complete("core/syntax")))
+    }
+
+    fn all_required_skills_ready(&self, required: &BTreeSet<String>) -> AgentResult<bool> {
+        required
+            .iter()
+            .try_fold(true, |ready, skill| Ok(ready && self.skill_ready(skill)?))
+    }
+
+    fn record_skill_page(&self, output: &Value) -> AgentResult<()> {
+        let Some(hash) = output["hash"].as_str() else {
+            return Ok(());
+        };
+        let Some(id) = output["id"].as_str() else {
+            return Ok(());
+        };
+        let source = output["source"].as_str().unwrap_or("embedded");
+        let Some(offset) = output["offset"].as_u64().map(|value| value as usize) else {
+            return Ok(());
+        };
+        let Some(next_offset) = output["next_offset"].as_u64().map(|value| value as usize) else {
+            return Ok(());
+        };
+        let total_lines = output["total_lines"]
+            .as_u64()
+            .map(|value| value as usize)
+            .unwrap_or(0);
+        let key = format!("{source}:{id}:{hash}");
+        self.skill_coverage
+            .lock()
+            .map_err(|_| AgentError::new("skill coverage lock poisoned"))?
+            .entry(key)
+            .or_default()
+            .add_range(offset, next_offset, total_lines);
+        Ok(())
+    }
+
+    pub(super) fn mark_skill_delivered(&self, skill: &str) -> AgentResult<()> {
+        let unit = skill_unit(skill)?;
+        let key = format!("embedded:{}:{}", unit.id, unit.hash);
+        let total_lines = unit.content.lines().count();
+        self.skill_coverage
+            .lock()
+            .map_err(|_| AgentError::new("skill coverage lock poisoned"))?
+            .entry(key)
+            .or_default()
+            .add_range(1, total_lines.saturating_add(1), total_lines);
+        Ok(())
+    }
+
     fn resolve_write_skill(&self, skill: &str) -> AgentResult<String> {
+        if self.permission_mode.is_full_access() {
+            let skill = skill.trim();
+            if skill.is_empty() || skill.len() > 128 || skill.chars().any(char::is_control) {
+                return Err(AgentError::new("full-access write label exceeds limits"));
+            }
+            return Ok(skill.into());
+        }
         if skill_unit(skill).is_ok() {
             return self.enforce_required_skill(skill);
         }
@@ -97,7 +227,8 @@ impl HarnessTools {
             })
             .collect::<BTreeSet<_>>();
         if ids.len() == 1 {
-            return self.enforce_required_skill(&ids.into_iter().next().expect("one loaded skill id"));
+            return self
+                .enforce_required_skill(&ids.into_iter().next().expect("one loaded skill id"));
         }
         Err(AgentError::new(
             "write_file, edit_file, and write_asset require a logical skill id, not a skill hash; use the id returned by get_skill",
@@ -230,5 +361,4 @@ impl HarnessTools {
             json!({"path":value,"offset":offset,"total_lines":total,"content":content,"truncated":offset - 1 + count < total,"next_offset":offset + count}),
         )
     }
-
 }

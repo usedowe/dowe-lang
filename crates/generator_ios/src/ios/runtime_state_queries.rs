@@ -216,7 +216,7 @@ r#"    func text(_ path: String, item: [String: Any]? = nil) -> String {
             case .toast(let kind, let title, let message, let duration, let scheme, let variant, let position):
                 showToast(kind: kind, title: title, message: message, duration: duration, scheme: scheme, variant: variant, position: position)
             case .redirect(let path):
-                redirectPath = path
+                localRedirectPath = path
                 return true
             }
         }
@@ -235,7 +235,7 @@ r#"    func text(_ path: String, item: [String: Any]? = nil) -> String {
 
     private func showToast(kind: String, title: String, message: String, duration: Int?, scheme: String?, variant: String?, position: String?) {
         toastSequence += 1
-        toast = DoweToastState(
+        localToast = DoweToastState(
             id: toastSequence,
             kind: kind,
             title: title,
@@ -248,11 +248,19 @@ r#"    func text(_ path: String, item: [String: Any]? = nil) -> String {
     }
 
     func closeToast() {
-        toast = nil
+        if localToast != nil {
+            localToast = nil
+        } else {
+            parent?.closeToast()
+        }
     }
 
     func consumeRedirect() {
-        redirectPath = nil
+        if localRedirectPath != nil {
+            localRedirectPath = nil
+        } else {
+            parent?.consumeRedirect()
+        }
     }
 
     func canvasValue(_ path: String) -> Any? {

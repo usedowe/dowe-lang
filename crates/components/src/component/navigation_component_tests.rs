@@ -1,4 +1,42 @@
 #[test]
+fn applies_non_button_navigation_defaults() {
+    let nav_item = super::nav_menu_item_component(
+        vec![string_prop("label", "Home"), string_prop("href", "/")],
+        None,
+    )
+    .expect("nav item");
+    let mut nav_menu =
+        super::nav_menu_component_node(Vec::new(), vec![nav_item]).expect("default nav menu");
+    super::apply_design_defaults_to_tree(
+        &mut nav_menu,
+        &super::DesignDefaults::with_builtin_defaults(),
+    );
+    let ViewNode::NavMenu { props, .. } = nav_menu else {
+        panic!("nav menu");
+    };
+    assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
+    assert_eq!(props.style.color, Some(ColorFamily::Muted));
+
+    let mut sidebar = super::sidebar_component_node(
+        Vec::new(),
+        Vec::new(),
+        vec![text_node("Navigation").expect("body")],
+        Vec::new(),
+        false,
+    )
+    .expect("default sidebar");
+    super::apply_design_defaults_to_tree(
+        &mut sidebar,
+        &super::DesignDefaults::with_builtin_defaults(),
+    );
+    let ViewNode::Sidebar { props, .. } = sidebar else {
+        panic!("sidebar");
+    };
+    assert_eq!(props.style.variant, Some(ComponentVariant::Ghost));
+    assert_eq!(props.style.color, Some(ColorFamily::Muted));
+}
+
+#[test]
 fn validates_navigation_shell_components() {
     let nav_item = super::nav_menu_item_component(
         vec![string_prop("label", "Home"), string_prop("href", "/")],
@@ -204,4 +242,3 @@ fn validates_drawer_props_and_children() {
         ComponentError::invalid_prop_combination("Drawer requires body children")
     );
 }
-

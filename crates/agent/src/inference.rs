@@ -105,12 +105,9 @@ pub fn agent_model_details(provider: &str, model: &str) -> Option<AgentModelDeta
                 Some([20.0, 75.0, 2.0, 25.0]),
                 &[Low, Medium, High, Xhigh, Max],
             ),
-            ("openrouter", "deepseek/deepseek-v4-flash") => (
-                1000000,
-                [0.14, 0.28, 0.0, 0.0],
-                None,
-                &[High, Xhigh],
-            ),
+            ("openrouter", "deepseek/deepseek-v4-flash") => {
+                (1000000, [0.14, 0.28, 0.0, 0.0], None, &[High, Xhigh])
+            }
             ("anthropic", "claude-sonnet-4-6") => (
                 1000000,
                 [3.0, 15.0, 0.3, 3.75],
@@ -198,12 +195,12 @@ mod tests {
                 .context_window,
             Some(272000)
         );
-            let details = agent_model_details("openrouter", "deepseek/deepseek-v4-flash")
-                .expect("OpenRouter DeepSeek V4 Flash metadata");
-            assert_eq!(details.context_window, Some(1_000_000));
-            assert_eq!(
-                details.thinking_levels,
-                &[ThinkingLevel::High, ThinkingLevel::Xhigh]
-            );
+        let details = agent_model_details("openrouter", "deepseek/deepseek-v4-flash")
+            .expect("OpenRouter DeepSeek V4 Flash metadata");
+        assert_eq!(details.context_window, Some(1_000_000));
+        assert_eq!(
+            details.thinking_levels,
+            &[ThinkingLevel::High, ThinkingLevel::Xhigh]
+        );
     }
 }

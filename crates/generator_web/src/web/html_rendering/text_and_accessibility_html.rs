@@ -7,6 +7,7 @@ fn render_text_html(
     tag: Option<&str>,
     context: &ReactiveRenderContext,
 ) -> String {
+    let classes = resolve_text_binding_classes(classes, context);
     let dynamic = visible_dynamic_text_attr(value, context);
     let mut extra = dynamic.clone();
     if let Some(key) = i18n {
@@ -30,6 +31,30 @@ fn render_text_html(
         ),
         content
     )
+}
+
+fn resolve_text_binding_classes(
+    classes: Vec<String>,
+    context: &ReactiveRenderContext,
+) -> Vec<String> {
+    const PREFIXES: [&str; 3] = [
+        "dowe-text-size-binding-",
+        "dowe-text-weight-binding-",
+        "dowe-text-spacing-binding-",
+    ];
+    classes
+        .into_iter()
+        .map(|class_name| {
+            PREFIXES
+                .iter()
+                .find_map(|prefix| {
+                    class_name
+                        .strip_prefix(prefix)
+                        .map(|path| format!("{prefix}{}", context.signal_path(path)))
+                })
+                .unwrap_or(class_name)
+        })
+        .collect()
 }
 
 fn bind_attr(value: Option<&str>, context: &ReactiveRenderContext) -> String {

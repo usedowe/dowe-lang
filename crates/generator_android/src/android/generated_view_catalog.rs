@@ -5,6 +5,7 @@ fn generated_views(
     design_config: &DesignConfig,
 ) -> String {
     let tree_runtime = android_runtime_tree();
+    let (layout_trees, route_layout_keys) = android_layout_state_catalog(routes);
     let mut output = [
         android_runtime_foundation(),
         android_runtime_media_video(),
@@ -22,6 +23,8 @@ fn generated_views(
         tree_runtime.as_str(),
         android_runtime_diagram(),
         android_runtime_canvas(),
+        android_runtime_game_raycast(),
+        android_runtime_game_socket(),
         android_runtime_avatar_chat(),
         android_runtime_empty_motion_text(),
         android_runtime_rich_controls_map(),
@@ -61,6 +64,8 @@ fn generated_views(
     val backStack = remember { mutableStateListOf<DoweRouteEntry>() }
     val scrollState = rememberScrollState()
     val sectionRegistry = remember(currentEntry.path) { DoweSectionRegistry() }
+    val layoutKey = doweLayoutKey(currentEntry.path)
+    val layoutState = DoweLayoutState(layoutKey, context)
     val targetSection = currentEntry.fragment?.let { sectionRegistry.positions[it] }
     fun beginPageTransition() {
         pageEntranceSuppressed = true
@@ -108,6 +113,9 @@ fn generated_views(
     }
     LaunchedEffect(navigationRequest) {
         navigate("replace", initialPath, initialFragment)
+    }
+    LaunchedEffect(layoutKey) {
+        layoutState?.load(DoweLayoutStartup(layoutKey))
     }
     LaunchedEffect(currentEntry.path) {
         scrollState.scrollTo(0)
@@ -159,7 +167,7 @@ fn generated_views(
                         label = "dowe-page-transition"
                     ) { path ->
                         key(path, routeRevision) {
-                            DoweRouteDispatcher(path, viewportWidth, scrollState, sectionRegistry, ::navigate, ::goBack, ::openExternal)
+                            DoweRouteDispatcher(path, viewportWidth, scrollState, sectionRegistry, layoutState, ::navigate, ::goBack, ::openExternal)
                         }
                     }
                 }
@@ -171,6 +179,8 @@ fn generated_views(
     }
 
     output.push_str("}\n");
+    output.push_str(&android_layout_state_helpers(&layout_trees));
+    output.push_str(&android_layout_key_helper(routes, &route_layout_keys));
     output.push_str(&compose_reactive_runtime());
     output.push_str(&compose_route_dispatcher(routes));
 
@@ -179,15 +189,28 @@ fn generated_views(
         output.push('\n');
         output.push_str("@Composable\n");
         output.push_str(&format!(
-            "fun {}(viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, navigate: (String, String, String?) -> Unit, goBack: () -> Unit, openExternal: (String, String) -> Unit) {{\n",
+            "fun {}(viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, layoutState: DoweReactiveState?, navigate: (String, String, String?) -> Unit, goBack: () -> Unit, openExternal: (String, String) -> Unit) {{\n",
             compose_screen_name(&route.route_path)
         ));
         let tree = compose_tree(&route.layout_tree, &route.page_tree);
         let fixed_boxes = fixed_box_nodes(&tree);
         let fixed_fabs = fixed_fab_nodes(&tree);
         let reactive = compose_reactive_route(&tree);
+        let layout_reactive = compose_reactive_route(&route.layout_tree);
+        let layout_startup = layout_reactive
+            .init
+            .iter()
+            .chain(&layout_reactive.autoload)
+            .collect::<std::collections::BTreeSet<_>>();
+        let startup = reactive
+            .init
+            .iter()
+            .chain(&reactive.autoload)
+            .filter(|id| !layout_startup.contains(id))
+            .map(|id| format!("\"{}\"", escape_kotlin(id)))
+            .collect::<Vec<_>>();
         output.push_str(&format!(
-            "    val activePath = \"{}\"\n    val doweContext = LocalContext.current\n    val state = remember {{ DoweReactiveState(context = doweContext, constants = {}, initial = {}, signals = {}, actions = {}, forms = {}) }}\n    val actionScope = rememberCoroutineScope()\n",
+            "    val activePath = \"{}\"\n    val doweContext = LocalContext.current\n    val state = remember {{ DoweReactiveState(context = doweContext, constants = {}, initial = {}, signals = {}, actions = {}, forms = {}, parent = layoutState) }}\n    val actionScope = rememberCoroutineScope()\n",
             escape_kotlin(&route.route_path),
             reactive.constants,
             reactive.initial,
@@ -196,12 +219,6 @@ fn generated_views(
             reactive.forms
         ));
         output.push_str("    LaunchedEffect(state.redirectPath) { state.redirectPath?.let { path -> state.consumeRedirect(); navigate(\"replace\", path, null) } }\n");
-        let startup = reactive
-            .init
-            .iter()
-            .chain(&reactive.autoload)
-            .map(|id| format!("\"{}\"", escape_kotlin(id)))
-            .collect::<Vec<_>>();
         if !startup.is_empty() {
             output.push_str(&format!(
                 "    LaunchedEffect(Unit) {{ state.load(listOf({})) }}\n",

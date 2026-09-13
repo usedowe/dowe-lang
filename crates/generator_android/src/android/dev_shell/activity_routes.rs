@@ -3,14 +3,16 @@ fn append_dev_activity_routes(
     routes: &[ViewRoute],
     route_classes: &[String],
     route_layouts: &[Option<usize>],
+    layout_state_keys: &[Option<usize>],
 ) {
     output.push_str(
-        r#"    private void renderCurrentRoute() {
+    r#"    private void renderCurrentRoute() {
         renderCurrentRoute(true);
     }
 
     private void renderCurrentRoute(boolean scrollToFragment) {
         doweOverlayRender++;
+        dowePrepareCurrentRoute();
         dowePageContainerView = null;
         root.removeAllViews();
         View pinnedAppBar = ((ViewGroup) scrollView.getParent()).findViewWithTag("dowe-pinned-appbar");
@@ -87,6 +89,51 @@ fn append_dev_activity_routes(
     for class_name in route_classes {
         output.push_str(&format!("        {class_name}.initialize(this);\n"));
     }
+    output.push_str("    }\n\n    private void dowePrepareCurrentRoute() {\n");
+    for (index, route) in routes.iter().enumerate() {
+        let layout_key = layout_state_keys
+            .get(index)
+            .and_then(|key| *key)
+            .map(|key| format!("layout:{key}"))
+            .unwrap_or_else(|| route.route_path.clone());
+        let layout_signals = dev_signal_ids(&route.layout_tree)
+            .iter()
+            .map(|id| format!("\"{}\"", escape_java(id)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let page_signals = dev_signal_ids(&route.page_tree)
+            .iter()
+            .map(|id| format!("\"{}\"", escape_java(id)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let startup = startup_ids(&dev_reactive_route(&compose_tree(
+            &route.layout_tree,
+            &route.page_tree,
+        )));
+        let layout_startup = startup_ids(&dev_reactive_route(&route.layout_tree));
+        let layout_startup_set = layout_startup.iter().collect::<BTreeSet<_>>();
+        let page_startup = startup
+            .iter()
+            .filter(|id| !layout_startup_set.contains(id))
+            .map(|id| format!("\"{}\"", escape_java(id)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let layout_startup = layout_startup
+            .iter()
+            .map(|id| format!("\"{}\"", escape_java(id)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        output.push_str(&format!(
+            "        if (\"{}\".equals(currentPath)) {{\n            dowePrepareState(\"{}\", \"{}\", new String[] {{{}}}, new String[] {{{}}}, new String[] {{{}}}, new String[] {{{}}});\n            return;\n        }}\n",
+            escape_java(&route.route_path),
+            escape_java(&route.route_path),
+            escape_java(&layout_key),
+            layout_signals,
+            page_signals,
+            layout_startup,
+            page_startup,
+        ));
+    }
     output.push_str("    }\n\n    private void doweAutoload() {\n");
     for class_name in route_classes {
         output.push_str(&format!("        {class_name}.autoload(this);\n"));
@@ -127,4 +174,13 @@ fn append_dev_activity_routes(
         ));
     }
     output.push_str("        return false;\n    }\n\n");
+}
+
+fn startup_ids(reactive: &DevReactiveRoute) -> Vec<String> {
+    reactive
+        .init
+        .iter()
+        .chain(&reactive.autoload)
+        .cloned()
+        .collect()
 }

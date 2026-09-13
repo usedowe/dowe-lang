@@ -1,12 +1,16 @@
-use std::process::{Command, Stdio};
 use std::io::Write;
+use std::process::{Command, Stdio};
 
 #[test]
 fn rpc_correlates_requests_and_rejects_mutation() {
     let binary = env!("CARGO_BIN_EXE_dowe");
     let mut child = Command::new(binary)
-        .arg("agent").arg("rpc")
-        .stdin(Stdio::piped()).stdout(Stdio::piped()).spawn().unwrap();
+        .arg("agent")
+        .arg("rpc")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
     let mut input = child.stdin.take().unwrap();
     input.write_all(b"{\"id\":\"one\",\"command\":\"execute\",\"sessionId\":\"0123456789abcdef0123456789abcdef\"}\n").unwrap();
     input.write_all(b"{\"id\":2,\"command\":\"unknown\",\"sessionId\":\"0123456789abcdef0123456789abcdef\"}\n").unwrap();

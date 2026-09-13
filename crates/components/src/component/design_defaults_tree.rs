@@ -226,7 +226,11 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         }
         ViewNode::DateRange { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui);
-            apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::DateRange);
+            apply_label_floating_default(
+                &mut props.style,
+                defaults,
+                DesignComponentSlot::DateRange,
+            );
         }
         ViewNode::RadioGroup { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
@@ -310,11 +314,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         }
         ViewNode::Textarea { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Textarea);
-            apply_label_floating_default(
-                &mut props.style,
-                defaults,
-                DesignComponentSlot::Textarea,
-            );
+            apply_label_floating_default(&mut props.style, defaults, DesignComponentSlot::Textarea);
         }
         ViewNode::Code { props } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::Ui)
@@ -352,8 +352,15 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         ViewNode::PieChart { props } => {
             apply_variant_defaults(&mut props.common.style, defaults, DesignComponentSlot::Ui)
         }
-        ViewNode::NavMenu { props, .. } => {
+        ViewNode::NavMenu { props, items } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::NavMenu);
+            for item in items {
+                if let NavMenuItem::Megamenu { content, .. } = item {
+                    for child in content {
+                        apply_design_defaults_to_tree(child, defaults);
+                    }
+                }
+            }
         }
         ViewNode::SideNav { props, .. } => {
             apply_variant_defaults(&mut props.style, defaults, DesignComponentSlot::SideNav);
@@ -371,6 +378,7 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Svg { .. }
         | ViewNode::TypeWriter { .. }
         | ViewNode::RichText { .. }
@@ -380,4 +388,3 @@ pub fn apply_design_defaults_to_tree(tree: &mut ViewNode, defaults: &DesignDefau
         | ViewNode::Children => {}
     }
 }
-

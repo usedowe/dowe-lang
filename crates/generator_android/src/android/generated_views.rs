@@ -5,6 +5,8 @@ include!("generated_views/data_code_svg.rs");
 include!("generated_views/tree.rs");
 include!("generated_views/diagram.rs");
 include!("generated_views/canvas.rs");
+include!("generated_views/game_socket.rs");
+include!("generated_views/game_raycast.rs");
 include!("generated_views/avatar_chat.rs");
 include!("generated_views/empty_motion_text.rs");
 include!("generated_views/rich_controls_map.rs");

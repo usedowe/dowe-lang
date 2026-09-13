@@ -133,6 +133,7 @@ enum ViewPathExpectation {
     String,
     Bool,
     Number,
+    Object,
 }
 
 fn validate_typed_path(
@@ -197,6 +198,7 @@ fn validate_typed_path(
         ViewPathExpectation::String => matches!(resolved_value, ViewSignalValue::String(_)),
         ViewPathExpectation::Bool => matches!(resolved_value, ViewSignalValue::Bool(_)),
         ViewPathExpectation::Number => matches!(resolved_value, ViewSignalValue::Number(_)),
+        ViewPathExpectation::Object => matches!(resolved_value, ViewSignalValue::Object(_)),
     };
     if valid {
         Ok(())
@@ -206,6 +208,7 @@ fn validate_typed_path(
             ViewPathExpectation::String => "string",
             ViewPathExpectation::Bool => "bool",
             ViewPathExpectation::Number => "number",
+            ViewPathExpectation::Object => "object",
         };
         Err(DoweError::at_path(
             path,

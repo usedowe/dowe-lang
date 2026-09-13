@@ -1,6 +1,6 @@
 fn android_runtime_media_accordion_carousel() -> &'static str {
     r##"@Composable
-private fun DoweAccordion(multiple: Boolean, variant: String, defaultOpenIds: Set<String>, modifier: Modifier, backgroundColor: Color, contentColor: Color, borderColor: Color?, itemBackgroundColor: Color, itemBorderColor: Color, itemBorderAlpha: Float, radius: Dp, content: @Composable (Set<String>, (String) -> Unit) -> Unit) {
+private fun DoweAccordion(multiple: Boolean, variant: String, defaultOpenIds: Set<String>, modifier: Modifier, backgroundColor: Color, contentColor: Color, titleColor: Color, borderColor: Color?, itemBackgroundColor: Color, itemBorderColor: Color, itemBorderAlpha: Float, radius: Dp, content: @Composable (Set<String>, (String) -> Unit) -> Unit) {
     var openIds by remember(multiple, defaultOpenIds) { mutableStateOf(defaultOpenIds) }
     val toggleItem: (String) -> Unit = { id ->
         openIds = if (id in openIds) {
@@ -19,7 +19,7 @@ private fun DoweAccordion(multiple: Boolean, variant: String, defaultOpenIds: Se
             .padding(if (variant == "ghost" || variant == "line") 0.dp else 4.dp),
         verticalArrangement = Arrangement.spacedBy(if (variant == "ghost" || variant == "line") 0.dp else 8.dp)
     ) {
-        CompositionLocalProvider(LocalContentColor provides contentColor) {
+        CompositionLocalProvider(LocalContentColor provides contentColor, LocalDoweTitleColor provides titleColor) {
             content(openIds, toggleItem)
         }
     }
@@ -76,20 +76,28 @@ private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, a
         }
         if (slideCount > 0) scope.launch { listState.animateScrollToItem(target) }
     }
-    LaunchedEffect(autoplay, autoplayInterval, currentIndex, slideCount) {
+    val autoplayIndex = androidx.compose.runtime.rememberUpdatedState(currentIndex)
+    LaunchedEffect(autoplay, autoplayInterval, disableLoop, slideCount) {
         if (autoplay && slideCount > 1) {
-            delay(max(500, autoplayInterval).toLong())
-            moveTo(currentIndex + 1)
+            while (true) {
+                delay(max(500, autoplayInterval).toLong())
+                if (!listState.isScrollInProgress && !(disableLoop && autoplayIndex.value >= slideCount - 1)) moveTo(autoplayIndex.value + 1)
+            }
         }
     }
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = modifier.semantics { contentDescription = "${title ?: "Carousel"}, slide ${currentIndex + 1} of $slideCount" }, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (title != null) Text(title, fontWeight = FontWeight.Bold, color = accentColor)
         BoxWithConstraints(modifier = Modifier.fillMaxWidth().clipToBounds()) {
             val viewportWidth = maxWidth
             val resolvedWidth = when {
                 slideWidth != null -> slideWidth.dp
+                variant == "masonry" -> minOf(200.dp, viewportWidth * 0.72f)
+                variant == "sticky" -> minOf(672.dp, viewportWidth * 0.88f)
+                variant == "stories" -> minOf(384.dp, viewportWidth * 0.82f)
+                variant == "smartStack" -> minOf(352.dp, viewportWidth * 0.8f)
+                variant == "cardStack" -> minOf(448.dp, viewportWidth * 0.84f)
+                variant == "flipbook" -> minOf(480.dp, viewportWidth * 0.88f)
                 slidesPerView > 1 -> (viewportWidth - gap.dp * (slidesPerView - 1)) / slidesPerView
-                variant == "simple" || variant == "masonry" || variant == "rtl" || variant == "sticky" -> minOf(280.dp, viewportWidth * 0.84f)
                 else -> viewportWidth
             }
             val shouldSnap = variant !in listOf("simple", "masonry", "rtl", "sticky")
@@ -136,8 +144,8 @@ private fun DoweCarousel(variant: String, slides: List<DoweCarouselSlideSpec>, a
         }
         if (!hideIndicators || variant == "dots" || variant == "thumbnails") {
             Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(slideCount) { index ->
-                    TextButton(modifier = Modifier.heightIn(min = 28.dp), colors = ButtonDefaults.textButtonColors(contentColor = if (index == currentIndex) accentColor else accentColor.copy(alpha = 0.45f)), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp), onClick = { moveTo(index) }) { Text(if (variant == "thumbnails") "Slide ${index + 1}" else if (indicatorType == "dot" || variant == "dots") "•" else "${index + 1}", fontSize = if (variant == "thumbnails") 12.sp else 16.sp) }
+                slides.forEachIndexed { index, slide ->
+                    TextButton(modifier = Modifier.heightIn(min = 28.dp), colors = ButtonDefaults.textButtonColors(contentColor = if (index == currentIndex) accentColor else accentColor.copy(alpha = 0.45f)), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp), onClick = { moveTo(index) }) { Text(if (variant == "thumbnails") slide.id else if (indicatorType == "dot" || variant == "dots") "•" else "${index + 1}", fontSize = if (variant == "thumbnails") 12.sp else 16.sp) }
                 }
             }
         }

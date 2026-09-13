@@ -219,6 +219,23 @@ pub fn component_prop_contract(
             if matches!(component, BuiltinComponent::Canvas | BuiltinComponent::Draw) => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }
+        "scene"
+        | "world"
+        | "camera"
+        | "onPointer"
+        | "onKey"
+        | "onFire"
+        | "onMotion"
+        | "socket"
+        | "send"
+        | "status"
+        | "onOpen"
+        | "onMessage"
+        | "onClose"
+        | "onError"
+            if component == BuiltinComponent::Game => {
+            Some(ComponentPropContract::new(PropValueKind::Any))
+        }
         "bind" | "selected" if component == BuiltinComponent::Draw => {
             Some(ComponentPropContract::new(PropValueKind::Any))
         }

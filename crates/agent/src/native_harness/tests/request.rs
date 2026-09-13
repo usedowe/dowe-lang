@@ -24,12 +24,16 @@ fn built_harness_request_contains_shared_screenshot_policy() {
     };
 
     assert!(system.contains(crate::prompts::SCREENSHOT_UI_POLICY));
+    assert!(system.contains(crate::prompts::DOWE_SYNTAX_CONTRACT));
     assert!(system.contains("get_skill"));
-    assert!(system.contains("visual QA as not run"));
+    assert!(system.contains("visual QA as `not_run`"));
     assert!(system.contains("one coherent exact batch"));
     assert!(system.contains("Prefer focused validation."));
     assert_eq!(request.extra["task_packet"]["role"], "execute");
-    assert_eq!(request.extra["task_packet"]["objective"], "author a screenshot-driven dashboard");
+    assert_eq!(
+        request.extra["task_packet"]["objective"],
+        "author a screenshot-driven dashboard"
+    );
 
     let codegraph = build_request(
         &store,
@@ -152,10 +156,8 @@ fn review_request_uses_task_baseline_for_external_changes_and_renames() {
         serde_json::json!({"event":"task_started","taskId":"task","role":"execute","baseline":baseline}),
         serde_json::json!({"event":"task_started","taskId":"review","role":"review","baseline":task_baseline(root.path())}),
     ];
-    // The review marker's baseline is the current state, so replace it with a
-    // marker without a baseline to model the legacy review boundary. The
-    // immediately preceding task still owns the captured baseline.
-    session.events[1] = serde_json::json!({"event":"task_started","taskId":"review","role":"review"});
+    session.events[1] =
+        serde_json::json!({"event":"task_started","taskId":"review","role":"review"});
     let request = build_request(
         &store,
         &session,
@@ -177,18 +179,24 @@ fn review_request_uses_task_baseline_for_external_changes_and_renames() {
 fn task_baseline_omits_generated_capability_map_files() {
     let root = tempfile::tempdir().expect("root");
     std::fs::create_dir_all(root.path().join(".agents/capabilities")).expect("map");
-    std::fs::write(root.path().join(".agents/capabilities/index.md"), "# generated\n")
-        .expect("index");
+    std::fs::write(
+        root.path().join(".agents/capabilities/index.md"),
+        "# generated\n",
+    )
+    .expect("index");
     std::fs::write(root.path().join("README.md"), "read me\n").expect("readme");
     let baseline = task_baseline(root.path());
-    assert!(baseline
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|entry| !entry["path"].as_str().unwrap().starts_with(".agents/capabilities/")));
-    assert!(baseline
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|entry| entry["path"] == "README.md"));
+    assert!(baseline.as_array().unwrap().iter().all(|entry| {
+        !entry["path"]
+            .as_str()
+            .unwrap()
+            .starts_with(".agents/capabilities/")
+    }));
+    assert!(
+        baseline
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["path"] == "README.md")
+    );
 }

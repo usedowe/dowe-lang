@@ -331,7 +331,7 @@ fn compiles_mobile_responsive_runtime_values() {
     .expect("android");
     assert!(android.contains("BoxWithConstraints"));
     assert!(android.contains(
-        "fun IndexScreen(viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, navigate:"
+        "fun IndexScreen(viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, layoutState: DoweReactiveState?, navigate:"
     ));
     assert!(android.contains("doweResponsive(viewportWidth, xs = 16.dp, md = 32.dp)"));
     assert!(android.contains("doweResponsive(viewportWidth, md = 32.dp)"));

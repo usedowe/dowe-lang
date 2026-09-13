@@ -40,6 +40,44 @@ fn dev_node_references_forms_and_data(
                     .chain(&props.on_layer_select)
                     .any(|value| bindings.references_action(value))
         }),
+        ViewNode::Game { props } => Some({
+            dev_style_references_layout_bindings(&props.style, bindings)
+                || props
+                    .scene
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .world
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .camera
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .socket
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .send
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .status
+                    .as_deref()
+                    .is_some_and(|value| bindings.references_signal(value))
+                || props
+                    .on_pointer
+                    .iter()
+                    .chain(&props.on_key)
+                    .chain(&props.on_fire)
+                    .chain(&props.on_motion)
+                    .chain(&props.on_open)
+                    .chain(&props.on_message)
+                    .chain(&props.on_close)
+                    .chain(&props.on_error)
+                    .any(|value| bindings.references_action(value))
+        }),
         ViewNode::Checkbox { props } => Some(dev_variant_references_layout_bindings(&props.style, bindings)),
         ViewNode::RadioGroup { props, .. } => Some({
             dev_variant_references_layout_bindings(&props.style, bindings)

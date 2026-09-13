@@ -27,13 +27,19 @@ struct HarnessTurnState {
     mutation_seen: bool,
     validation_attempted: bool,
     validation_failures: u8,
+    validation_attempts: u32,
+    first_validation: Option<Value>,
     last_validation: Option<Value>,
+    visual_qa_required: bool,
+    visual_qa_attempted: bool,
+    visual_status: Option<String>,
+    visual_gate_prompts: u8,
     visual_failed_seen: bool,
     visual_repair_attempts: u8,
 }
 
 impl HarnessTurnState {
-    fn new(session: &HarnessSession) -> Self {
+    fn new(session: &HarnessSession, visual_qa_required: bool) -> Self {
         Self {
             started: Instant::now(),
             usage_start: session.events.len(),
@@ -43,9 +49,22 @@ impl HarnessTurnState {
             mutation_seen: false,
             validation_attempted: false,
             validation_failures: 0,
+            validation_attempts: 0,
+            first_validation: None,
             last_validation: None,
+            visual_qa_required,
+            visual_qa_attempted: false,
+            visual_status: None,
+            visual_gate_prompts: 0,
             visual_failed_seen: false,
             visual_repair_attempts: 0,
+        }
+    }
+
+    fn record_validation(&mut self, value: Value) {
+        self.validation_attempts = self.validation_attempts.saturating_add(1);
+        if self.first_validation.is_none() {
+            self.first_validation = Some(value);
         }
     }
 }
@@ -70,10 +89,11 @@ async fn run_harness_turn_with_persistence(
         mut tools,
         turn_codegraph_binding,
         expected_codegraph_binding,
-        ui_task: _ui_task,
+        ui_task,
+        visual_qa_required,
     } = prepare_harness_turn(store, session, config, host, persist, task).await?;
 
-    let mut state = HarnessTurnState::new(session);
+    let mut state = HarnessTurnState::new(session, visual_qa_required);
     if semantic.status == SemanticStatus::Miss {
         emit_persist(
             store,
@@ -104,6 +124,7 @@ async fn run_harness_turn_with_persistence(
             &prompt,
             &semantic,
             &image_selection,
+            ui_task,
             &mut tools,
             turn_codegraph_binding.as_ref(),
             expected_codegraph_binding.as_ref(),

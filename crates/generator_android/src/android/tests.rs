@@ -105,6 +105,7 @@ include!("tests/dev_sharding.rs");
 include!("tests/dynamic_icons.rs");
 include!("tests/dev_runtime_fragments.rs");
 include!("tests/navigation_generation.rs");
+include!("tests/game_generation.rs");
 include!("tests/component_data_generation.rs");
 include!("tests/diagram_interactions.rs");
 include!("tests/component_navigation_generation.rs");
@@ -149,3 +150,5 @@ fn generates_real_android_notification_support() {
             .contains("android.permission.POST_NOTIFICATIONS")
     );
 }
+
+include!("tests/scheme_content_inheritance.rs");

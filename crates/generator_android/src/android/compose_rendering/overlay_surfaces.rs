@@ -18,10 +18,11 @@ fn render_compose_drawer(
             "null"
         };
     output.push_str(&format!(
-        "{pad}DoweDrawer(open = state.bool(\"{path}\"), onClose = {{ state.write(\"{path}\", false) }}, position = \"{}\", backgroundColor = {}, contentColor = {}, borderColor = {border}, radius = {}, disableOverlayClose = {}, hideCloseButton = {}) {{\n",
+        "{pad}DoweDrawer(open = state.bool(\"{path}\"), onClose = {{ state.write(\"{path}\", false) }}, position = \"{}\", backgroundColor = {}, contentColor = {}, titleColor = {}, borderColor = {border}, radius = {}, disableOverlayClose = {}, hideCloseButton = {}) {{\n",
         props.position.as_str(),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
+        card_variant_title(&props.style),
         compose_drawer_radius(&props.style.style),
         props.disable_overlay_close,
         props.hide_close_button
@@ -102,10 +103,11 @@ fn render_compose_modal(
     let pad = " ".repeat(indent);
     let path = escape_kotlin(&context.signal_path(&props.open));
     output.push_str(&format!(
-        "{pad}DoweModal(open = state.bool(\"{path}\"), close = {}, backgroundColor = {}, contentColor = {}, borderColor = {}, radius = {}, disableOverlayClose = {}, hideCloseButton = {}, header = ",
+        "{pad}DoweModal(open = state.bool(\"{path}\"), close = {}, backgroundColor = {}, contentColor = {}, titleColor = {}, borderColor = {}, radius = {}, disableOverlayClose = {}, hideCloseButton = {}, header = ",
         compose_close_action(&path, props.on_close.as_deref(), context),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
+        card_variant_title(&props.style),
         compose_variant_border(&props.style),
         compose_card_radius(&props.style.style),
         props.disable_overlay_close,

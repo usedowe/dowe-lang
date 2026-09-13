@@ -4,7 +4,8 @@ r#"private class DoweReactiveState(
     private val initial: Map<String, Any?>,
     private val signals: Map<String, DoweSignalMetadata>,
     private val actions: Map<String, DoweAction>,
-    private val forms: Map<String, List<DoweFormFieldMetadata>> = emptyMap()
+    private val forms: Map<String, List<DoweFormFieldMetadata>> = emptyMap(),
+    private val parent: DoweReactiveState? = null
 ) {
     companion object {
         private val globalValues = mutableMapOf<String, Any?>()
@@ -12,16 +13,16 @@ r#"private class DoweReactiveState(
     }
 
     private val preferences = context.getSharedPreferences("dowe_view_state", android.content.Context.MODE_PRIVATE)
-    var toast by mutableStateOf<DoweToastState?>(null)
-        private set
-    var redirectPath by mutableStateOf<String?>(null)
-        private set
+    private var localToast by mutableStateOf<DoweToastState?>(null)
+    val toast: DoweToastState? get() = localToast ?: parent?.toast
+    private var localRedirectPath by mutableStateOf<String?>(null)
+    val redirectPath: String? get() = localRedirectPath ?: parent?.redirectPath
     private var toastSequence = 0L
     private val formTouched = mutableMapOf<String, Boolean>()
     private val values = mutableStateMapOf<String, Any?>().also { state ->
-        state.putAll(initial)
+        state.putAll(initial.filterKeys { parent?.ownsSignal(it) != true })
         for ((id, metadata) in signals) {
-            if (metadata.scope == "global") {
+            if (metadata.scope == "global" && parent?.ownsSignal(id) != true) {
                 globalStorage[metadata.name] = metadata.storage
                 if (!globalValues.containsKey(metadata.name)) {
                     val stored = storedSignal(metadata)
@@ -31,6 +32,8 @@ r#"private class DoweReactiveState(
             }
         }
     }
+
+    private fun ownsSignal(id: String): Boolean = signals.containsKey(id) || parent?.ownsSignal(id) == true
 
     private fun compatibleSignalValue(value: Any?, initial: Any?): Boolean {
         if (initial == null || initial === JSONObject.NULL) return value == null || value === JSONObject.NULL
@@ -159,6 +162,11 @@ r#"private class DoweReactiveState(
     fun write(path: String, value: Any?) {
         val parts = path.split(".")
         val root = parts.firstOrNull() ?: return
+        if (parent?.ownsSignal(root) == true) {
+            touchFormField(path)
+            parent.write(path, value)
+            return
+        }
         if (parts.size == 1) {
             values[root] = value
         } else {

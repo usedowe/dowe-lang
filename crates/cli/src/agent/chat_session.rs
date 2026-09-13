@@ -74,7 +74,12 @@ pub(super) async fn run_agent_session_with_args(
         let queued_id = queued.as_ref().map(|task| task.id.clone());
         let Some(prompt) = (match queued {
             Some(task) => Some(task.prompt),
-            None => read_agent_prompt(&footer, parsed.json_output)?,
+            None => {
+                let draft = native
+                    .as_mut()
+                    .and_then(|session| session.take_activity_draft());
+                read_agent_prompt(&footer, parsed.json_output, draft.as_deref())?
+            }
         }) else {
             if !parsed.json_output {
                 println!();
@@ -213,7 +218,8 @@ pub(super) async fn run_agent_session_with_args(
             && matches!(
                 command.split_whitespace().next(),
                 Some(
-                    "/session"
+                    "/permissions"
+                        | "/session"
                         | "/sessions"
                         | "/resume"
                         | "/delete-session"

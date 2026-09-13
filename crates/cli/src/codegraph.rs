@@ -33,8 +33,7 @@ pub(crate) async fn run_codegraph_command(
             let output_root = root
                 .parent()
                 .filter(|parent| {
-                    parent.join("AGENTS.md").is_file()
-                        && parent.join("agents/README.md").is_file()
+                    parent.join("AGENTS.md").is_file() && parent.join("agents/README.md").is_file()
                 })
                 .unwrap_or(&root);
             let path = output_root.join("codegraph/source.json");

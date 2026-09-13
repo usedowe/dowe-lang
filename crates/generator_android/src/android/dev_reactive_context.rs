@@ -7,6 +7,28 @@ struct DevReactiveRoute {
     autoload: Vec<String>,
 }
 
+fn dev_signal_ids(tree: &ViewNode) -> Vec<String> {
+    fn collect(node: &ViewNode, output: &mut Vec<String>) {
+        if let ViewNode::Scope {
+            signals, children, ..
+        } = node
+        {
+            output.extend(signals.iter().map(|signal| signal.id.clone()));
+            for child in children {
+                collect(child, output);
+            }
+        } else {
+            for child in node_child_groups(node).into_iter().flatten() {
+                collect(child, output);
+            }
+        }
+    }
+
+    let mut output = Vec::new();
+    collect(tree, &mut output);
+    output
+}
+
 fn dev_reactive_route(tree: &ViewNode) -> DevReactiveRoute {
     let mut initial = Vec::new();
     let mut metadata = Vec::new();
@@ -303,6 +325,7 @@ fn collect_dev_reactive(
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
@@ -335,4 +358,3 @@ fn collect_dev_reactive(
         | ViewNode::Children => {}
     }
 }
-

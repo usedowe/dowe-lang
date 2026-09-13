@@ -1,6 +1,7 @@
 r#"                .frame(maxWidth: modalWidth, alignment: .leading)
                 .background(backgroundColor)
                 .foregroundStyle(contentColor)
+                .environment(\.doweTitleColor, titleColor)
                 .clipShape(RoundedRectangle(cornerRadius: radius))
                 .overlay(RoundedRectangle(cornerRadius: radius).stroke(borderColor ?? Color.clear, lineWidth: borderColor == nil ? CGFloat(0) : CGFloat(1)))
                 .overlay(alignment: .topTrailing) {

@@ -318,3 +318,68 @@ fn generates_compose_box_and_text() {
     );
 }
 
+#[test]
+fn generates_shared_reactive_typography_for_compose_and_launcher() {
+    let mut typography_route = route();
+    typography_route.layout_tree = ViewNode::Children;
+    typography_route.page_tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "textSize01".to_string(),
+            name: "textSize".to_string(),
+            storage_key: "textSize".to_string(),
+            scope: dowe_components::ViewSignalScope::Page,
+            storage: dowe_components::ViewSignalStorage::None,
+            initial: ViewSignalValue::String("9xl".to_string()),
+            schema: None,
+        }],
+        actions: Vec::new(),
+        children: vec![
+            ViewNode::Text {
+                props: TextProps {
+                    size: Some(ResponsiveValue::scalar(TextSize::Md)),
+                    size_binding: Some(dowe_components::PropBinding::string("textSize")),
+                    ..Default::default()
+                },
+                value: "Body".to_string(),
+            },
+            ViewNode::Title {
+                props: TextProps {
+                    size: Some(ResponsiveValue::scalar(TextSize::Md)),
+                    size_binding: Some(dowe_components::PropBinding::string("textSize")),
+                    ..Default::default()
+                },
+                value: "Title".to_string(),
+            },
+        ],
+    };
+    let output = generate_android(
+        &[typography_route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("views");
+    assert!(views.content.contains(
+        "doweDynamicTextSize(state.text(\"textSize01\"), viewportWidth, title = false)"
+    ));
+    assert!(views.content.contains(
+        "doweDynamicTextSize(state.text(\"textSize01\"), viewportWidth, title = true)"
+    ));
+    assert!(views.content.contains("doweDynamicTextLineHeight"));
+    assert!(views
+        .content
+        .contains("DoweTextMetrics(min = 72f, preferredBase = 48f, preferredViewport = 7f, max = 128f"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev
+        .content
+        .contains("private float doweDynamicTextSize(String value, boolean title)"));
+    assert!(dev
+        .content
+        .contains("case \"9xl\": return doweFluidTextSize(72f, 48f, 7f, 128f);"));
+}

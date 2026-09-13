@@ -41,6 +41,69 @@ fn generates_persistent_view_store_for_swiftui() {
 }
 
 #[test]
+fn gives_swiftui_layout_and_page_signals_separate_route_lifecycles() {
+    let lifecycle_signal = |id: &str, name: &str, initial: ViewSignalValue| ViewSignal {
+        id: id.to_string(),
+        name: name.to_string(),
+        storage_key: name.to_string(),
+        scope: dowe_components::ViewSignalScope::Page,
+        storage: dowe_components::ViewSignalStorage::None,
+        initial,
+        schema: None,
+    };
+    let layout = |id: &str, name: &str| ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![lifecycle_signal(id, name, ViewSignalValue::Bool(false))],
+        actions: Vec::new(),
+        children: vec![ViewNode::Box {
+            props: Default::default(),
+            children: vec![ViewNode::Children],
+        }],
+    };
+    let page = |id: &str, name: &str, label: &str| ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![lifecycle_signal(id, name, ViewSignalValue::String(String::new()))],
+        actions: Vec::new(),
+        children: vec![text(label)],
+    };
+
+    let mut first = route();
+    first.layout_tree = layout("layout.open", "open");
+    first.page_tree = page("page.login", "loginDraft", "Login");
+    let mut second = first.clone();
+    second.id = "signup".to_string();
+    second.route_path = "/signup".to_string();
+    second.page_tree = page("page.signup", "signupDraft", "Signup");
+    let mut third = second.clone();
+    third.id = "settings".to_string();
+    third.route_path = "/settings".to_string();
+    third.layout_tree = layout("layout.settings", "settingsOpen");
+    third.page_tree = page("page.settings", "settingsDraft", "Settings");
+
+    let generated = swift_content(&generate_ios(
+        &[first, second, third],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    ));
+    assert!(generated.contains("private struct DoweLayoutStateHost<Content: View>"));
+    assert!(generated.contains("@MainActor\nprivate func doweMakeLayoutState0()"));
+    assert!(generated.contains("@MainActor\nprivate func doweMakeLayoutState1()"));
+    assert!(generated.contains("@MainActor\nprivate struct DoweLayoutStateHost"));
+    assert!(generated.contains("makeState: @escaping @MainActor () -> DoweReactiveState"));
+    assert!(generated.contains("\"/login\":"));
+    assert!(generated.contains("DoweLayoutStateHost(makeState: { doweMakeLayoutState0() })"));
+    assert!(generated.contains("DoweLayoutStateHost(makeState: { doweMakeLayoutState1() })"));
+    assert!(generated.contains(".id(\"layout:0\")"));
+    assert!(generated.contains(".id(\"layout:1\")"));
+    assert!(generated.contains("layoutState: DoweReactiveState?"));
+    assert!(generated.contains("parent: layoutState"));
+    assert!(generated.contains(".id(routeRevision)"));
+    assert!(generated.contains("parent?.ownsSignal($0.key) != true"));
+    assert!(generated.contains("return parent?.value(path, item: item)"));
+}
+
+#[test]
 fn generates_flex_item_behavior_for_flex_parents_but_not_grid_children() {
     let mut flex_route = route();
     flex_route.layout_tree = ViewNode::Children;
@@ -156,4 +219,3 @@ fn generates_dowe_global_toast_presenter_for_swiftui() {
     assert!(generated.contains(".accessibilityLabel(\"Close toast\")"));
     assert!(!generated.contains("UIAlertController"));
 }
-

@@ -5,3 +5,4 @@ target
 *.af~lock~
 .agents/memory.json
 .agents/memory.lock
+**/.agents/codegraph/

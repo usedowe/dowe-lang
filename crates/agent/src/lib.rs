@@ -1,8 +1,8 @@
 mod auth;
 mod authoring;
-mod client;
 mod capability_map;
 mod catalog;
+mod client;
 pub mod codegraph_enrichment;
 mod context;
 mod conversation;
@@ -29,9 +29,11 @@ pub use authoring::{
     PublicSkill, PublicSkillDocument, PublicSkillResourceDocument, get_public_skill,
     get_public_skill_resource, public_skills,
 };
+pub use catalog::{AgentCatalogModel, models_with_local_overrides};
 pub use client::{
-    GeneratedImage, NativeRequestEvent, build_openai_image_request, parse_openai_image_response, send_agent_request, send_openai_image_generation, send_native_agent_request,
-    send_native_agent_request_observed, send_native_agent_request_with_registry,
+    GeneratedImage, NativeRequestEvent, build_openai_image_request, parse_openai_image_response,
+    send_agent_request, send_native_agent_request, send_native_agent_request_observed,
+    send_native_agent_request_with_registry, send_openai_image_generation,
 };
 pub use context::{
     AgentCodeGraphNodeSummary, AgentCodeGraphSummary, summarize_codegraph, summarize_codegraph_for,
@@ -41,39 +43,42 @@ pub use error::{AgentError, AgentResult};
 pub use examples::{PublicExampleResult, PublicExampleSearch, search_public_examples};
 pub use images::{encode_image, encode_image_paths};
 pub use inference::{AgentModelDetails, ThinkingLevel, agent_model_details, validate_thinking};
-    pub use instructions::{ProjectInstructionFile, ProjectInstructionIssue, ProjectInstructions, load_project_instructions};
+pub use instructions::{
+    ProjectInstructionFile, ProjectInstructionIssue, ProjectInstructions, load_project_instructions,
+};
 pub use mcp::handle_mcp_message;
 pub use model::{
     AgentContext, AgentDesktopEvent, AgentDesktopEventKind, AgentImageInput, AgentMessage,
     AgentMessageContent, AgentMessagePart, AgentPrepareOptions, AgentPreparedRequest, AgentRequest,
     AgentRequestMetadata, AgentRequestType, AgentServerResponse, AgentSkillSummary,
-    AgentToolDefinition, AgentToolFunction, ClarificationQuestion, ImageUrl, MINIMAX_M3, OPENAI_GPT_55,
+    AgentToolDefinition, AgentToolFunction, ClarificationQuestion, ImageUrl, MINIMAX_M3,
+    OPENAI_GPT_55,
 };
-pub use oauth::{login_openai_codex, login_openrouter, refresh_openai_codex_credential, token_needs_refresh};
+pub use native_harness::{
+    MAX_EXTENSION_CALLS, MAX_EXTENSION_REQUEST_BYTES, MAX_EXTENSION_RESPONSE_BYTES,
+    MAX_EXTENSION_TOOLS, SessionExtensionCall, SessionExtensionRegistry, SessionExtensionResult,
+    SessionExtensionToolDescriptor, session_extension_descriptor_fingerprint,
+    session_extension_fingerprint, validate_session_extension_descriptors,
+};
+pub use oauth::{
+    login_openai_codex, login_openrouter, refresh_openai_codex_credential, token_needs_refresh,
+};
 pub use preferences::{AgentPreferences, AgentPreferencesStore};
 pub use project::{AgentHarnessSummary, ProjectContext, is_dowe_project, project_context};
 pub use provider::{
     AgentAuthKind, AgentModelDefinition, AgentProviderDefinition, AgentProviderInfo,
     AgentProviderProtocol, DynamicProviderDefinition, ProviderRegistry, ResolvedProviderAuth,
-        auth_file_has_provider, builtin_provider_ids,
-    builtin_provider_info, normalize_model_id, protocol_for_model, provider_base_url,
-    provider_default_model, provider_definition, provider_exists, provider_info,
-    provider_is_configured, provider_models, resolve_provider_auth, validate_agent_model,
-
+    auth_file_has_provider, builtin_provider_ids, builtin_provider_info, normalize_model_id,
+    protocol_for_model, provider_base_url, provider_default_model, provider_definition,
+    provider_exists, provider_info, provider_is_configured, provider_models, resolve_provider_auth,
+    validate_agent_model,
 };
-pub use catalog::{models_with_local_overrides, AgentCatalogModel};
 pub use request::{
     default_llm_server_url, infer_language, infer_request_type, prepare_agent_request,
 };
 pub use skills::{generation_skill_summaries, generation_skill_summaries_for};
 pub use tools::agent_tool_definitions;
 pub use usage::{AgentUsage, AgentUsageTotals, agent_response_usage};
-pub use native_harness::{
-    session_extension_descriptor_fingerprint, session_extension_fingerprint,
-    validate_session_extension_descriptors, SessionExtensionCall, SessionExtensionRegistry,
-    SessionExtensionResult, SessionExtensionToolDescriptor, MAX_EXTENSION_CALLS,
-    MAX_EXTENSION_REQUEST_BYTES, MAX_EXTENSION_RESPONSE_BYTES, MAX_EXTENSION_TOOLS,
-};
 
 #[cfg(test)]
 mod tests;

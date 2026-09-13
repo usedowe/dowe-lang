@@ -332,6 +332,14 @@ fn view_skill_requires_reference_blueprints_and_visual_qa() {
     let compact = get_public_skill("views", false).expect("compact views skill");
     let full = get_public_skill("views", true).expect("full views skill");
     let script = get_public_skill_resource("views", "scripts/visual_qa.py").expect("script");
+    let reference_page = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/embedded/examples/reference-ui/views/pages/reference-page.dowe"
+    ));
+    let reference_layout = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/embedded/examples/reference-ui/views/layouts/reference-layout.dowe"
+    ));
 
     assert!(
         compact
@@ -356,6 +364,22 @@ fn view_skill_requires_reference_blueprints_and_visual_qa() {
     assert!(full.content.contains("kind:\"dynamic\""));
     assert!(full.content.contains("report.json"));
     assert!(full.content.contains("diff.png"));
+    assert!(compact.content.contains("desktop-only `NavMenu show:"));
+    assert!(
+        compact
+            .content
+            .contains("Never write `color` on `Text` or `Title`")
+    );
+    assert!(
+        compact
+            .content
+            .contains("Do not write the layout until all three nodes exist")
+    );
+    assert!(compact.content.contains("visual parity"));
+    assert!(!reference_page.contains("Text size:\"xs\""));
+    assert!(!reference_page.contains("weight:\"black\""));
+    assert!(!reference_page.contains("Title size:{"));
+    assert!(!reference_layout.contains("Text weight:"));
     assert!(
         script
             .content
@@ -367,4 +391,3 @@ fn view_skill_requires_reference_blueprints_and_visual_qa() {
             .contains("[dowe, \"dev\", \"--target\", \"web\"]")
     );
 }
-

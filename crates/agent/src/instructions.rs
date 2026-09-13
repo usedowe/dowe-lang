@@ -36,7 +36,10 @@ impl ProjectInstructions {
             output.push_str(&format!("\n--- {} ---\n{}\n", file.path, file.content));
         }
         for issue in &self.issues {
-            output.push_str(&format!("\n[Instruction warning: {}: {}]\n", issue.path, issue.message));
+            output.push_str(&format!(
+                "\n[Instruction warning: {}: {}]\n",
+                issue.path, issue.message
+            ));
         }
         output
     }
@@ -51,66 +54,102 @@ pub fn load_project_instructions(root: impl AsRef<Path>) -> AgentResult<ProjectI
     if !root.is_dir() {
         return Err(AgentError::new("agent project root must be a directory"));
     }
-    let candidates = [root.join("AGENTS.md"), root.join(".agents").join("AGENTS.md")];
+    let candidates = [
+        root.join("AGENTS.md"),
+        root.join(".agents").join("AGENTS.md"),
+    ];
     let mut result = ProjectInstructions::default();
     let mut total = 0;
     for path in candidates {
-        let display = path.strip_prefix(&root).unwrap_or(&path).display().to_string();
+        let display = path
+            .strip_prefix(&root)
+            .unwrap_or(&path)
+            .display()
+            .to_string();
         let mut ancestor = root.clone();
         let mut unsafe_link = false;
         if let Ok(relative) = path.strip_prefix(&root) {
             for component in relative.components() {
                 ancestor.push(component);
-                if fs::symlink_metadata(&ancestor).is_ok_and(|metadata| metadata.file_type().is_symlink()) {
+                if fs::symlink_metadata(&ancestor)
+                    .is_ok_and(|metadata| metadata.file_type().is_symlink())
+                {
                     unsafe_link = true;
                     break;
                 }
             }
         }
         if unsafe_link {
-            result.issues.push(ProjectInstructionIssue { path: display, message: "symlinks are not allowed".into() });
+            result.issues.push(ProjectInstructionIssue {
+                path: display,
+                message: "symlinks are not allowed".into(),
+            });
             continue;
         }
         let metadata = match fs::symlink_metadata(&path) {
             Ok(metadata) => metadata,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
             Err(error) => {
-                result.issues.push(ProjectInstructionIssue { path: display, message: error.to_string() });
+                result.issues.push(ProjectInstructionIssue {
+                    path: display,
+                    message: error.to_string(),
+                });
                 continue;
             }
         };
         if metadata.file_type().is_symlink() {
-            result.issues.push(ProjectInstructionIssue { path: display, message: "symlinks are not allowed".into() });
+            result.issues.push(ProjectInstructionIssue {
+                path: display,
+                message: "symlinks are not allowed".into(),
+            });
             continue;
         }
         if !metadata.is_file() {
-            result.issues.push(ProjectInstructionIssue { path: display, message: "only regular files are allowed".into() });
+            result.issues.push(ProjectInstructionIssue {
+                path: display,
+                message: "only regular files are allowed".into(),
+            });
             continue;
         }
         let bytes = match fs::read(&path) {
             Ok(bytes) => bytes,
             Err(error) => {
-                result.issues.push(ProjectInstructionIssue { path: display, message: error.to_string() });
+                result.issues.push(ProjectInstructionIssue {
+                    path: display,
+                    message: error.to_string(),
+                });
                 continue;
             }
         };
         if bytes.len() > MAX_INSTRUCTION_FILE_BYTES {
-            result.issues.push(ProjectInstructionIssue { path: display, message: format!("file exceeds {MAX_INSTRUCTION_FILE_BYTES} byte limit") });
+            result.issues.push(ProjectInstructionIssue {
+                path: display,
+                message: format!("file exceeds {MAX_INSTRUCTION_FILE_BYTES} byte limit"),
+            });
             continue;
         }
         if total + bytes.len() > MAX_INSTRUCTION_BYTES {
-            result.issues.push(ProjectInstructionIssue { path: display, message: format!("aggregate instruction limit is {MAX_INSTRUCTION_BYTES} bytes") });
+            result.issues.push(ProjectInstructionIssue {
+                path: display,
+                message: format!("aggregate instruction limit is {MAX_INSTRUCTION_BYTES} bytes"),
+            });
             continue;
         }
         let content = match String::from_utf8(bytes) {
             Ok(content) => content,
             Err(_) => {
-                result.issues.push(ProjectInstructionIssue { path: display, message: "file is not valid UTF-8".into() });
+                result.issues.push(ProjectInstructionIssue {
+                    path: display,
+                    message: "file is not valid UTF-8".into(),
+                });
                 continue;
             }
         };
         total += content.len();
-        result.files.push(ProjectInstructionFile { path: display, content });
+        result.files.push(ProjectInstructionFile {
+            path: display,
+            content,
+        });
     }
     Ok(result)
 }
@@ -135,10 +174,19 @@ mod tests {
     #[test]
     fn rejects_oversized_files_without_failing_request() {
         let root = tempfile::tempdir().unwrap();
-        fs::write(root.path().join("AGENTS.md"), vec![b'x'; MAX_INSTRUCTION_FILE_BYTES + 1]).unwrap();
+        fs::write(
+            root.path().join("AGENTS.md"),
+            vec![b'x'; MAX_INSTRUCTION_FILE_BYTES + 1],
+        )
+        .unwrap();
         let loaded = load_project_instructions(root.path()).unwrap();
         assert!(loaded.files.is_empty());
-        assert!(loaded.issues.iter().any(|issue| issue.message.contains("exceeds")));
+        assert!(
+            loaded
+                .issues
+                .iter()
+                .any(|issue| issue.message.contains("exceeds"))
+        );
     }
 
     #[cfg(unix)]
@@ -151,7 +199,11 @@ mod tests {
         symlink(outside.path(), root.path().join("AGENTS.md")).unwrap();
         let loaded = load_project_instructions(root.path()).unwrap();
         assert!(loaded.files.is_empty());
-        assert!(loaded.issues.iter().any(|issue| issue.message.contains("symlinks")));
+        assert!(
+            loaded
+                .issues
+                .iter()
+                .any(|issue| issue.message.contains("symlinks"))
+        );
     }
 }
-

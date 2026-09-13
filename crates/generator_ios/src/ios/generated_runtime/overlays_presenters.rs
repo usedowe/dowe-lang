@@ -246,6 +246,7 @@ struct DoweModal<Header: View, Content: View, Footer: View>: View {
     let close: () -> Void
     let backgroundColor: Color
     let contentColor: Color
+    let titleColor: Color
     let borderColor: Color?
     let radius: CGFloat
     let disableOverlayClose: Bool
@@ -256,11 +257,12 @@ struct DoweModal<Header: View, Content: View, Footer: View>: View {
     let content: Content
     let footer: Footer
 
-    init(open: Bool, close: @escaping () -> Void, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: CGFloat, disableOverlayClose: Bool, hideCloseButton: Bool, hasHeader: Bool, hasFooter: Bool, @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content, @ViewBuilder footer: () -> Footer) {
+    @MainActor init(open: Bool, close: @escaping () -> Void, backgroundColor: Color, contentColor: Color, titleColor: Color? = nil, borderColor: Color?, radius: CGFloat, disableOverlayClose: Bool, hideCloseButton: Bool, hasHeader: Bool, hasFooter: Bool, @ViewBuilder header: () -> Header, @ViewBuilder content: () -> Content, @ViewBuilder footer: () -> Footer) {
         self.open = open
         self.close = close
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
+        self.titleColor = titleColor ?? DoweDesign.backgroundTitle
         self.borderColor = borderColor
         self.radius = radius
         self.disableOverlayClose = disableOverlayClose

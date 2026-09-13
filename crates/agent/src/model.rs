@@ -175,10 +175,28 @@ mod clarification_tests {
 
     #[test]
     fn clarification_validation_is_bounded_and_rejects_controls() {
-        let valid = ClarificationQuestion { id: "scope".into(), text: "Which scope?".into(), options: vec!["one".into()] };
+        let valid = ClarificationQuestion {
+            id: "scope".into(),
+            text: "Which scope?".into(),
+            options: vec!["one".into()],
+        };
         assert!(valid.validate().is_ok());
-        assert!(ClarificationQuestion { id: "".into(), ..valid.clone() }.validate().is_err());
-        assert!(ClarificationQuestion { text: "bad\u{1b}[2J".into(), ..valid }.validate().is_err());
+        assert!(
+            ClarificationQuestion {
+                id: "".into(),
+                ..valid.clone()
+            }
+            .validate()
+            .is_err()
+        );
+        assert!(
+            ClarificationQuestion {
+                text: "bad\u{1b}[2J".into(),
+                ..valid
+            }
+            .validate()
+            .is_err()
+        );
     }
 }
 
@@ -208,11 +226,25 @@ pub struct ClarificationQuestion {
 
 impl ClarificationQuestion {
     pub fn validate(&self) -> crate::AgentResult<()> {
-        if self.id.is_empty() || self.id.len() > 64 || self.id.chars().any(char::is_control) || self.text.trim().is_empty() || self.text.len() > 1024 || self.text.chars().any(char::is_control) {
-            return Err(crate::AgentError::new("clarification question has an invalid id or bounded text"));
+        if self.id.is_empty()
+            || self.id.len() > 64
+            || self.id.chars().any(char::is_control)
+            || self.text.trim().is_empty()
+            || self.text.len() > 1024
+            || self.text.chars().any(char::is_control)
+        {
+            return Err(crate::AgentError::new(
+                "clarification question has an invalid id or bounded text",
+            ));
         }
-        if self.options.len() > 8 || self.options.iter().any(|option| option.is_empty() || option.len() > 256 || option.chars().any(char::is_control)) {
-            return Err(crate::AgentError::new("clarification question options exceed limits"));
+        if self.options.len() > 8
+            || self.options.iter().any(|option| {
+                option.is_empty() || option.len() > 256 || option.chars().any(char::is_control)
+            })
+        {
+            return Err(crate::AgentError::new(
+                "clarification question options exceed limits",
+            ));
         }
         Ok(())
     }

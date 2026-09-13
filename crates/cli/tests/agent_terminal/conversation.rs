@@ -124,23 +124,29 @@ fn agent_conversation_json_session_replays_successes_and_new_resets_history() {
         .lines()
         .map(|line| serde_json::from_str(line).expect("only JSON events"))
         .collect();
-    assert_eq!(events.len(), 15, "{stdout}");
+    let protocol_events: Vec<_> = events
+        .iter()
+        .filter(|event| event["event"] != "capability_map_stale")
+        .collect();
+    assert_eq!(events.len(), 16, "{stdout}");
+    assert_eq!(protocol_events.len(), 15, "{stdout}");
+    assert!(events.iter().any(|event| event["event"] == "capability_map_stale"));
     for index in [1, 5, 8, 12] {
-        assert_eq!(events[index]["event"], "request_attempt");
-        assert_eq!(events[index]["attempt"], 0);
-        assert_eq!(events[index]["requestId"], events[index - 1]["requestId"]);
+        assert_eq!(protocol_events[index]["event"], "request_attempt");
+        assert_eq!(protocol_events[index]["attempt"], 0);
+        assert_eq!(protocol_events[index]["requestId"], protocol_events[index - 1]["requestId"]);
     }
-    assert_eq!(events[5]["status"], 400);
-    assert!(events[5]["usage"].is_null());
-    assert_eq!(events[0]["requestType"], "conversation");
+    assert_eq!(protocol_events[5]["status"], 400);
+    assert!(protocol_events[5]["usage"].is_null());
+    assert_eq!(protocol_events[0]["requestType"], "conversation");
     assert_eq!(
-        events[2]["payload"],
+        protocol_events[2]["payload"],
         serde_json::json!({"output_text":"Hola, **Ana**."})
     );
-    assert_eq!(events[2]["role"], "execute");
+    assert_eq!(protocol_events[2]["role"], "execute");
     assert!(!stdout.contains("hidden reasoning"));
-    assert_eq!(events[6]["event"], "error");
-    assert_eq!(events[9]["event"], "response_received");
+    assert_eq!(protocol_events[6]["event"], "error");
+    assert_eq!(protocol_events[9]["event"], "response_received");
     assert!(!stdout.contains(['\u{1b}', '\r']));
     let requests = server.join().unwrap();
     assert_eq!(

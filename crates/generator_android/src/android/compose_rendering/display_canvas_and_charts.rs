@@ -145,6 +145,69 @@ fn render_compose_display_canvas(
 }
 
 #[allow(unused_variables)]
+fn render_compose_display_game(
+    node: &ViewNode,
+    indent: usize,
+    output: &mut String,
+    flow: ComposeFlow,
+    inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    default_family: FontFamily,
+    context: &ComposeReactiveContext,
+) {
+    let ViewNode::Game { props } = node else { return; };
+    let pad = " ".repeat(indent);
+    let background = match props.background {
+        CanvasBackground::Transparent => "Color.Transparent".to_string(),
+        CanvasBackground::Color(color) => color_ref(color).to_string(),
+    };
+    let socket_path = props.socket.as_deref().map(|path| {
+        if props.socket_binding {
+            context.signal_path(path)
+        } else {
+            path.to_string()
+        }
+    });
+    let signal_path = |path: Option<&String>| {
+        path.map(|value| compose_string_literal(&context.signal_path(value)))
+            .unwrap_or_else(|| "null".to_string())
+    };
+    output.push_str(&format!(
+        "{pad}DoweGame(state = state, scenePath = {}, renderer = {}, worldPath = {}, cameraPath = {}, controls = {}, moveSpeed = {}, turnSpeed = {}, viewWidth = {}f, viewHeight = {}f, fit = {}, fps = {}, autoplay = {}, pixelated = {}, backgroundColor = {}, label = {}, onPointer = {}, onKey = {}, onFire = {}, onMotion = {}, motionRate = {}, socketPath = {}, socketBinding = {}, sendPath = {}, statusPath = {}, onOpen = {}, onMessage = {}, onClose = {}, onError = {}, reconnect = {}, reconnectDelay = {}, modifier = {})\n",
+        signal_path(props.scene.as_ref()),
+        compose_string_literal(props.renderer.as_str()),
+        signal_path(props.world.as_ref()),
+        signal_path(props.camera.as_ref()),
+        compose_string_literal(props.controls.as_str()),
+        props.move_speed,
+        props.turn_speed,
+        props.view_width,
+        props.view_height,
+        compose_string_literal(props.fit.as_str()),
+        props.fps,
+        props.autoplay,
+        props.pixelated,
+        background,
+        compose_string_literal(&props.label),
+        compose_optional_string(props.on_pointer.as_deref().and_then(|value| context.action_id(value))),
+        compose_optional_string(props.on_key.as_deref().and_then(|value| context.action_id(value))),
+        compose_optional_string(props.on_fire.as_deref().and_then(|value| context.action_id(value))),
+        compose_optional_string(props.on_motion.as_deref().and_then(|value| context.action_id(value))),
+        props.motion_rate,
+        compose_optional_string(socket_path.as_deref()),
+        props.socket_binding,
+        signal_path(props.send.as_ref()),
+        signal_path(props.status.as_ref()),
+        compose_optional_string(props.on_open.as_deref().and_then(|value| context.action_id(value))),
+        compose_optional_string(props.on_message.as_deref().and_then(|value| context.action_id(value))),
+        compose_optional_string(props.on_close.as_deref().and_then(|value| context.action_id(value))),
+        compose_optional_string(props.on_error.as_deref().and_then(|value| context.action_id(value))),
+        props.reconnect,
+        props.reconnect_delay,
+        modifier_for_style(&props.style),
+    ));
+}
+
+#[allow(unused_variables)]
 fn render_compose_display_diagram(
     node: &ViewNode,
     indent: usize,
@@ -336,4 +399,3 @@ fn render_compose_display_table(
                         table_variant_content(&props.style),
                     ));
 }
-

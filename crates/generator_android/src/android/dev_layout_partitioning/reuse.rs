@@ -20,6 +20,27 @@ fn reusable_dev_layouts(routes: &[ViewRoute]) -> (Vec<&ViewNode>, Vec<Option<usi
     (layouts, route_layouts)
 }
 
+fn dev_layout_state_keys(routes: &[ViewRoute]) -> Vec<Option<usize>> {
+    let mut layouts = Vec::new();
+    routes
+        .iter()
+        .map(|route| {
+            if matches!(route.layout_tree, ViewNode::Children) {
+                return None;
+            }
+            Some(
+                layouts
+                    .iter()
+                    .position(|layout| *layout == &route.layout_tree)
+                    .unwrap_or_else(|| {
+                        layouts.push(&route.layout_tree);
+                        layouts.len() - 1
+                    }),
+            )
+        })
+        .collect()
+}
+
 fn dev_page_references_layout_bindings(layout: &ViewNode, page: &ViewNode) -> bool {
     let mut bindings = DevLayoutBindings::default();
     dev_collect_scope_bindings(layout, &mut bindings);
@@ -76,4 +97,3 @@ impl DevLayoutBindings {
         self.action_names.contains(name) || self.action_ids.contains(name)
     }
 }
-

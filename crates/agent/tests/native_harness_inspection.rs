@@ -1,9 +1,16 @@
-use dowe_agent::native_harness::{HarnessStore, SessionEventLimits, SessionObserver, SessionRecord};
+use dowe_agent::native_harness::{
+    HarnessStore, SessionEventLimits, SessionObserver, SessionRecord,
+};
 use dowe_agent_harness::CodeGraphBinding;
 use dowe_codegraph::CodeGraphMode;
 
 fn binding() -> CodeGraphBinding {
-    CodeGraphBinding { generation: "g1".into(), revision: 7, root: "/project".into(), mode: CodeGraphMode::Project }
+    CodeGraphBinding {
+        generation: "g1".into(),
+        revision: 7,
+        root: "/project".into(),
+        mode: CodeGraphMode::Project,
+    }
 }
 
 #[test]
@@ -13,9 +20,15 @@ fn inspection_is_session_scoped_and_cursor_is_after_cursor() {
     let store = HarnessStore::new(home.path(), root.path()).unwrap();
     let mut first = store.create_session().unwrap();
     let second = store.create_session().unwrap();
-    first.events = vec![serde_json::json!({"event":"safe","secret":"omit"}), serde_json::json!({"event":"next"})];
+    first.events = vec![
+        serde_json::json!({"event":"safe","secret":"omit"}),
+        serde_json::json!({"event":"next"}),
+    ];
     store.save_session(&mut first).unwrap();
-    assert_eq!(store.inspect_session_view(&first.id).unwrap().event_cursor, 2);
+    assert_eq!(
+        store.inspect_session_view(&first.id).unwrap().event_cursor,
+        2
+    );
     let page = store.inspect_events(&first.id, 1).unwrap();
     assert_eq!(page.since, 1);
     assert_eq!(page.cursor, 2);
@@ -36,7 +49,11 @@ fn observer_replacement_and_unsubscribe_are_idempotent() {
     let second = observer.subscribe();
     assert!(!first.is_active());
     assert!(second.is_active());
-    assert!(observer.poll(&second, 0, SessionEventLimits::default()).is_ok());
+    assert!(
+        observer
+            .poll(&second, 0, SessionEventLimits::default())
+            .is_ok()
+    );
     observer.unsubscribe(&second);
     observer.unsubscribe(&second);
     assert!(!second.is_active());
@@ -48,7 +65,9 @@ fn governance_projection_shows_binding_without_authority() {
     let root = tempfile::tempdir().unwrap();
     let store = HarnessStore::new(home.path(), root.path()).unwrap();
     let mut session = store.create_session().unwrap();
-    session.attach_orchestration(SessionRecord::new(session.id.clone(), binding()).unwrap()).unwrap();
+    session
+        .attach_orchestration(SessionRecord::new(session.id.clone(), binding()).unwrap())
+        .unwrap();
     store.save_session(&mut session).unwrap();
     let view = store.inspect_governance(&session.id).unwrap();
     assert_eq!(view.codegraph_binding, binding());

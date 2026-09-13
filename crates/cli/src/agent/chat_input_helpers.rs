@@ -5,9 +5,10 @@ fn is_exit_command(command: &str) -> bool {
 fn read_agent_prompt(
     footer: &super::footer::Footer<'_>,
     json_output: bool,
+    initial: Option<&str>,
 ) -> Result<Option<String>, Box<dyn std::error::Error>> {
     if !json_output && is_interactive_terminal() {
-        return Ok(super::prompt::read_interactive_prompt(footer)?);
+        return Ok(super::prompt::read_interactive_prompt(footer, initial)?);
     }
     if !json_output {
         print!("\n> ");

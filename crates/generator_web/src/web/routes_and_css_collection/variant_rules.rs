@@ -306,7 +306,7 @@ fn collect_variant_rules<'a>(
         }
         ViewNode::Iframe { .. } => {}
         ViewNode::Device { .. } => {}
-        ViewNode::Canvas { .. } => {}
+        ViewNode::Canvas { .. } | ViewNode::Game { .. } => {}
         ViewNode::Candlestick { props } => {
             push_variant_rule(variants, "candlestick", &props.style);
         }

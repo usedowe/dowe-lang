@@ -97,15 +97,11 @@ pub fn evaluate_samples(samples: &[EvaluationSample]) -> AgentResult<EvaluationR
                 .is_some_and(|cost| !cost.is_finite() || cost <= 0.0)
             || sample.stage_tokens.len() > 16
             || sample.stage_tokens.keys().any(|stage| {
-                stage.is_empty()
-                    || stage.len() > 32
-                    || stage.chars().any(char::is_control)
+                stage.is_empty() || stage.len() > 32 || stage.chars().any(char::is_control)
             })
             || sample.stage_cost_usd.len() > 16
             || sample.stage_cost_usd.keys().any(|stage| {
-                stage.is_empty()
-                    || stage.len() > 32
-                    || stage.chars().any(char::is_control)
+                stage.is_empty() || stage.len() > 32 || stage.chars().any(char::is_control)
             })
             || sample
                 .stage_cost_usd
@@ -251,7 +247,9 @@ fn accumulate_known_cost(total: &mut Option<f64>, value: Option<f64>) -> AgentRe
         return Ok(());
     };
     if !value.is_finite() || value < 0.0 {
-        return Err(AgentError::new("evaluation cost is not finite or is negative"));
+        return Err(AgentError::new(
+            "evaluation cost is not finite or is negative",
+        ));
     }
     if let Some(current) = total {
         *current += value;
@@ -328,7 +326,10 @@ mod tests {
                     cache_read: Some(50),
                     cache_write: Some(20),
                     stage_tokens: BTreeMap::from([
-                        ("execute".into(), if variant == "baseline" { 1000 } else { 500 }),
+                        (
+                            "execute".into(),
+                            if variant == "baseline" { 1000 } else { 500 },
+                        ),
                         ("compact".into(), 20),
                     ]),
                     stage_cost_usd: BTreeMap::from([(
@@ -374,12 +375,21 @@ mod tests {
     fn known_cost_totals_are_summed_without_turning_missing_values_into_zero() {
         let mut values = samples();
         for sample in &mut values {
-            sample.cost_usd = Some(if sample.variant == "baseline" { 1.0 } else { 0.5 });
+            sample.cost_usd = Some(if sample.variant == "baseline" {
+                1.0
+            } else {
+                0.5
+            });
         }
         let report = evaluate_samples(&values).unwrap();
         assert_eq!(report.baseline_cost_usd, Some(10.0));
         assert_eq!(report.native_cost_usd, Some(5.0));
         values[0].cost_usd = None;
-        assert!(evaluate_samples(&values).unwrap().baseline_cost_usd.is_none());
+        assert!(
+            evaluate_samples(&values)
+                .unwrap()
+                .baseline_cost_usd
+                .is_none()
+        );
     }
 }

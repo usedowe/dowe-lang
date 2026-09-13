@@ -248,7 +248,7 @@ fn generates_swiftui_viewport_minus_height() {
     );
     let views = swift_content(&output);
 
-    assert!(views.contains("routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height)"));
+    assert!(views.contains("routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height, routeRevision: routeRevision)"));
     assert!(views.contains("DoweSize.viewportMinus(CGFloat(64))"));
     assert!(views.contains("DoweSize.viewportMinus(CGFloat(80))"));
     assert!(views.contains(
@@ -264,4 +264,3 @@ fn generates_swiftui_viewport_minus_height() {
         ".frame(maxHeight: doweFixedSize(doweResponsive(viewportWidth, xs: DoweSize.viewportMinus(CGFloat(96))), viewportHeight: viewportHeight))"
     ));
 }
-

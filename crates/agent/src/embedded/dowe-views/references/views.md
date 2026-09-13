@@ -292,6 +292,13 @@ a View Store; target-local persistence is not a credential vault. Store declarat
 Views-only regardless of their folder. Persistent hydration falls back to the declared initial value
 when stored data is malformed or structurally incompatible with that initial shape.
 
+Signal lifecycle follows the declaration owner on every target. During normal navigation between
+route paths, a page Signal is recreated even when the destination uses the same layout. A layout
+Signal remains in memory when only the page changes within the same layout stack, and resets when
+the layout stack changes. Fragment-only navigation stays on the same page instance. Use an
+imported View Store for state that must survive page or layout changes. Development hot reload may
+preserve compatible in-memory state separately from normal route navigation.
+
 ## View-to-server contracts
 
 An internal `request` crosses the Views and Server authoring boundary. The View remains the owner of

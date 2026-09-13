@@ -26,3 +26,4 @@ include!("dev_shell/code_and_forms/date_phone.rs");
 include!("dev_shell/code_and_forms/combo_layout.rs");
 include!("dev_shell/code_and_forms.rs");
 include!("dev_shell/responsive_helpers.rs");
+include!("dev_shell/text_typography.rs");

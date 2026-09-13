@@ -4,6 +4,10 @@ impl HarnessTools {
             .lock()
             .expect("loaded skills lock poisoned")
             .clear();
+        self.skill_coverage
+            .lock()
+            .expect("skill coverage lock poisoned")
+            .clear();
         for result in turns
             .iter()
             .flat_map(|turn| &turn.results)
@@ -21,7 +25,18 @@ impl HarnessTools {
                     .lock()
                     .expect("loaded skills lock poisoned")
                     .insert(format!("{source}:{id}:{hash}:{offset}"));
+                self.record_skill_page(&result.output)
+                    .expect("record restored skill coverage");
             }
+        }
+        let syntax_required = self
+            .required_skills
+            .lock()
+            .expect("required skills lock poisoned")
+            .contains("core/syntax");
+        if syntax_required {
+            self.mark_skill_delivered("core/syntax")
+                .expect("restore syntax skill coverage");
         }
     }
 
@@ -84,6 +99,19 @@ impl HarnessTools {
                 if args.query.is_empty() || args.query.len() > 256 {
                     return Err(AgentError::new("search query must be 1..256 bytes"));
                 }
+                if self.path(&args.path)?.is_dir() {
+                    let listing = self.execute_parallel_read(&ToolCall::new(
+                        "search-directory-listing",
+                        "list_files",
+                        json!({"path": args.path, "offset": 0}),
+                    ))?;
+                    return Ok(json!({
+                        "status": "not_run",
+                        "path": args.path,
+                        "reason": "search requires a file; select a file from listing.paths, or use list_files for a subdirectory",
+                        "listing": listing,
+                    }));
+                }
                 let page = self.read(&args.path, args.offset, 1000)?;
                 let content = page["content"].as_str().unwrap_or_default();
                 let matches = content
@@ -119,9 +147,7 @@ impl HarnessTools {
                 ));
             }
             _ => {
-                return Err(AgentError::new(
-                    "convert_svg format must be source or data",
-                ));
+                return Err(AgentError::new("convert_svg format must be source or data"));
             }
         }
         if args.path == "agents" || args.path.starts_with("agents/") {
@@ -144,9 +170,7 @@ impl HarnessTools {
             return Err(AgentError::new("convert_svg path must be a file"));
         }
         if metadata.len() > 262_144 {
-            return Err(AgentError::new(
-                "convert_svg input exceeds 262144 bytes",
-            ));
+            return Err(AgentError::new("convert_svg input exceeds 262144 bytes"));
         }
         let source = fs::read_to_string(&path)?;
         let content = match args.format.as_str() {
@@ -276,9 +300,21 @@ impl HarnessTools {
                     .lock()
                     .map_err(|_| AgentError::new("loaded skills lock poisoned"))?
                     .insert(key);
-                Ok(
-                    json!({"id":skill_id,"hash":hash,"source":source,"relative_path":relative_path,"untrusted":untrusted,"offset":args.offset,"total_lines":total_lines,"content":page,"dependencies":dependencies,"next_offset":args.offset + count,"truncated":args.offset - 1 + count < total_lines}),
-                )
+                let result = json!({
+                    "id":skill_id,
+                    "hash":hash,
+                    "source":source,
+                    "relative_path":relative_path,
+                    "untrusted":untrusted,
+                    "offset":args.offset,
+                    "total_lines":total_lines,
+                    "content":page,
+                    "dependencies":dependencies,
+                    "next_offset":args.offset + count,
+                    "truncated":args.offset - 1 + count < total_lines
+                });
+                self.record_skill_page(&result)?;
+                Ok(result)
             }
             _ => Err(AgentError::new("not a skill tool")),
         }
@@ -349,14 +385,14 @@ impl HarnessTools {
             tools.push(definition("shell", "Request a general shell command; every call requires approval.", json!({"command":{"type":"string"},"cwd":{"type":"string"},"reason":{"type":"string"},"pty":{"type":"boolean"},"resource":{"type":"string"}}), &["command", "cwd", "reason"]));
             tools.push(definition(
                 "validate_dowe_project",
-                "Validate the current Dowe project with the compiler and the native UI quality audit. Read-only; compiler diagnostics and quality findings are returned as evidence.",
+                "Validate the current Dowe project with the compiler and the native UI quality audit. Read-only; compiler diagnostics, actionable quality findings, and advisory default-first warnings are returned as evidence.",
                 json!({"scope":{"type":"string","enum":["project","views"],"default":"project"}}),
                 &[],
             ));
             if images {
                 tools.push(definition(
                     "capture_web_screenshot",
-                    "Capture a bounded PNG from an already-running loopback web URL. Omit width and height to use the first attached PNG reference viewport; otherwise provide both dimensions.",
+                    "Capture a bounded PNG from an already-running loopback web URL. With an attached PNG reference, omit width and height so its viewport is used; an incompatible requested viewport is automatically replaced by the first reference viewport and recorded as reference_override.",
                     json!({"url":{"type":"string"},"reason":{"type":"string"},"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
                     &["url", "reason"],
                 ));

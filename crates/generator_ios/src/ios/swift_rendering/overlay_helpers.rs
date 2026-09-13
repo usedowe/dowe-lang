@@ -12,10 +12,11 @@ fn render_swift_modal(
     let pad = " ".repeat(indent);
     let path = escape_swift(&context.signal_path(&props.open));
     output.push_str(&format!(
-        "{pad}DoweModal(open: state.bool(\"{path}\"), close: {}, backgroundColor: {}, contentColor: {}, borderColor: {}, radius: {}, disableOverlayClose: {}, hideCloseButton: {}, hasHeader: {}, hasFooter: {}) {{\n",
+        "{pad}DoweModal(open: state.bool(\"{path}\"), close: {}, backgroundColor: {}, contentColor: {}, titleColor: {}, borderColor: {}, radius: {}, disableOverlayClose: {}, hideCloseButton: {}, hasHeader: {}, hasFooter: {}) {{\n",
         swift_close_action(&path, props.on_close.as_deref(), context),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
+        card_variant_title(&props.style),
         swift_variant_border(&props.style),
         swift_card_radius(&props.style.style),
         props.disable_overlay_close,

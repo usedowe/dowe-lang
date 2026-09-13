@@ -7,6 +7,75 @@ fn android_dynamic_icon_catalog(routes: &[ViewRoute]) -> Vec<(String, String)> {
     .expect("computed icon names must be validated before generation")
 }
 
+fn android_layout_state_catalog(routes: &[ViewRoute]) -> (Vec<&ViewNode>, Vec<Option<usize>>) {
+    let mut layouts = Vec::new();
+    let route_keys = routes
+        .iter()
+        .map(|route| {
+            if matches!(&route.layout_tree, ViewNode::Children) {
+                return None;
+            }
+            Some(
+                layouts
+                    .iter()
+                    .position(|layout| *layout == &route.layout_tree)
+                    .unwrap_or_else(|| {
+                        layouts.push(&route.layout_tree);
+                        layouts.len() - 1
+                    }),
+            )
+        })
+        .collect();
+    (layouts, route_keys)
+}
+
+fn android_layout_state_helpers(layouts: &[&ViewNode]) -> String {
+    let mut output = String::from(
+        "\n@Composable\nprivate fun DoweLayoutState(key: String?, context: Context): DoweReactiveState? {\n    return when (key) {\n",
+    );
+    for (index, layout) in layouts.iter().enumerate() {
+        let reactive = compose_reactive_route(layout);
+        output.push_str(&format!(
+            "        \"layout:{index}\" -> remember(key) {{ DoweReactiveState(context = context, constants = {}, initial = {}, signals = {}, actions = {}, forms = {}) }}\n",
+            reactive.constants,
+            reactive.initial,
+            reactive.signals,
+            reactive.actions,
+            reactive.forms,
+        ));
+    }
+    output.push_str("        else -> null\n    }\n}\n\nprivate fun DoweLayoutStartup(key: String?): List<String> = when (key) {\n");
+    for (index, layout) in layouts.iter().enumerate() {
+        let reactive = compose_reactive_route(layout);
+        let startup = reactive
+            .init
+            .iter()
+            .chain(&reactive.autoload)
+            .map(|id| format!("\"{}\"", escape_kotlin(id)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        output.push_str(&format!("        \"layout:{index}\" -> listOf({startup})\n"));
+    }
+    output.push_str("        else -> emptyList()\n    }\n}\n");
+    output
+}
+
+fn android_layout_key_helper(routes: &[ViewRoute], keys: &[Option<usize>]) -> String {
+    let mut output = String::from("\nprivate fun doweLayoutKey(path: String): String? = when (path) {\n");
+    for (route, key) in routes.iter().zip(keys) {
+        let value = key
+            .map(|index| format!("\"layout:{index}\""))
+            .unwrap_or_else(|| "null".to_string());
+        output.push_str(&format!(
+            "    \"{}\" -> {}\n",
+            escape_kotlin(&route.route_path),
+            value
+        ));
+    }
+    output.push_str("    else -> null\n}\n");
+    output
+}
+
 fn android_dynamic_icon_runtime(routes: &[ViewRoute]) -> String {
     let entries = android_dynamic_icon_catalog(routes)
         .iter()
@@ -77,9 +146,9 @@ fn compose_route_dispatcher(routes: &[ViewRoute]) -> String {
     if routes.is_empty() {
         return String::new();
     }
-    let parameters = "path: String, viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, navigate: (String, String, String?) -> Unit, goBack: () -> Unit, openExternal: (String, String) -> Unit";
+    let parameters = "path: String, viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, layoutState: DoweReactiveState?, navigate: (String, String, String?) -> Unit, goBack: () -> Unit, openExternal: (String, String) -> Unit";
     let arguments =
-        "path, viewportWidth, scrollState, sectionRegistry, navigate, goBack, openExternal";
+        "path, viewportWidth, scrollState, sectionRegistry, layoutState, navigate, goBack, openExternal";
     let mut output = format!(
         "\n@Composable\nprivate fun DoweRouteDispatcher({parameters}) {{\n    when ((DoweRoutes.paths.indexOf(path).coerceAtLeast(0)) / {ROUTES_PER_GROUP}) {{\n"
     );
@@ -110,7 +179,7 @@ fn compose_route_dispatcher(routes: &[ViewRoute]) -> String {
                 ".verticalScroll(scrollState)"
             };
             output.push_str(&format!(
-                "        \"{}\" -> Box(modifier = Modifier.fillMaxSize(){scroll_modifier}) {{ {}(viewportWidth, scrollState, sectionRegistry, navigate, goBack, openExternal) }}\n",
+                "        \"{}\" -> Box(modifier = Modifier.fillMaxSize(){scroll_modifier}) {{ {}(viewportWidth, scrollState, sectionRegistry, layoutState, navigate, goBack, openExternal) }}\n",
                 escape_kotlin(&route.route_path),
                 format!(
                     "DowePageShard{}.{}",
@@ -129,7 +198,7 @@ fn compose_route_dispatcher(routes: &[ViewRoute]) -> String {
             ".verticalScroll(scrollState)"
         };
         output.push_str(&format!(
-            "        else -> Box(modifier = Modifier.fillMaxSize(){scroll_modifier}) {{ {}(viewportWidth, scrollState, sectionRegistry, navigate, goBack, openExternal) }}\n    }}\n}}\n",
+            "        else -> Box(modifier = Modifier.fillMaxSize(){scroll_modifier}) {{ {}(viewportWidth, scrollState, sectionRegistry, layoutState, navigate, goBack, openExternal) }}\n    }}\n}}\n",
             format!(
                 "DowePageShard{}.{}",
                 routes

@@ -132,7 +132,9 @@ fn info_plist(
 }
 
 fn ios_canvas_motion(node: &ViewNode) -> bool {
-    if matches!(node, ViewNode::Canvas { props } if props.on_motion.is_some()) {
+    if matches!(node, ViewNode::Canvas { props } if props.on_motion.is_some())
+        || matches!(node, ViewNode::Game { props } if props.on_motion.is_some())
+    {
         return true;
     }
     node_child_groups(node)

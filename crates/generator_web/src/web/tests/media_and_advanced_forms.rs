@@ -63,6 +63,9 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(html.contains(r#"d="m19.704 12l-8.491-8.727a.75.75 0 1 1 1.075-1.046l9 9.25a.75.75 0 0 1 0 1.046l-9 9.25a.75.75 0 1 1-1.075-1.046z""#));
     assert!(!html.contains(r#"class="accordion-arrow">⌄"#));
     assert!(html.contains(r#"data-dowe-carousel data-dowe-carousel-index="0""#));
+    assert!(html.contains(r#"role="region" aria-roledescription="carousel"#));
+    assert!(html.contains(r#"class="carousel-viewport" role="group"#));
+    assert!(html.contains(r#"aria-roledescription="slide" aria-label="Slide 1 of"#));
     assert!(html.contains(r#"data-dowe-carousel-variant="coverFlow""#));
     assert!(html.contains("is-cover-flow"));
     assert!(html.contains(r#"class="checkbox-input is-success""#));
@@ -154,6 +157,9 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(router.contains("aria-valuetext"));
     assert!(router.contains("function toggleAccordion(trigger)"));
     assert!(router.contains("function renderCarousel(root)"));
+    assert!(router.contains("event.key===\"ArrowLeft\""));
+    assert!(router.contains("event.key===\"Home\""));
+    assert!(router.contains("__doweCarouselHovering"));
     assert!(router.contains("function renderCarouselEffects"));
     assert!(router.contains("case\"coverFlow\""));
     assert!(router.contains("touchmove"));
@@ -166,15 +172,27 @@ fn renders_media_display_and_form_components_markup_runtime_and_css() {
     assert!(!router.contains(")window.addEventListener"));
     assert!(router.contains("function selectDateValue(root,value)"));
     assert!(router.contains("function syncCarousel(root)"));
+    assert!(router.contains("function syncCarousel(...args)"));
     assert!(router.contains("maximum-position<=edge"));
     assert!(router.contains("function scrollCarouselSlide(root,slide"));
     assert!(router.contains("viewport.scrollTo({left,behavior})"));
     assert!(router.contains("button.disabled=disabled"));
     assert!(!router.contains("slides[index].scrollIntoView"));
     assert!(router.contains("pointerdown"));
+    assert!(router.contains("event.pointerType!==\"mouse\""));
+    assert!(router.contains("__doweCarouselInteraction"));
+    assert!(router.contains("__doweCarouselPauseUntil"));
+    assert!(router.contains("primaryDelta"));
+    assert!(router.contains("crossDelta"));
+    assert!(router.contains("activeCarouselViewport"));
+    assert!(router.contains("[\"simple\",\"masonry\",\"rtl\",\"sticky\"]"));
+    assert!(router.contains("goToCarousel"));
+    assert!(router.contains("translateX(${phase*24}px)"));
     assert!(css.contains(".carousel-viewport::-webkit-scrollbar"));
     assert!(css.contains("scrollbar-width:none"));
     assert!(css.contains(".carousel.is-vertical{flex-direction:column"));
+    assert!(css.contains(".carousel.is-vertical.is-controls .carousel-viewport"));
+    assert!(css.contains("dowe-carousel-parallax-vertical"));
     assert!(css.contains(".carousel-nav:disabled,.carousel-control:disabled"));
     assert!(css.contains("-webkit-overflow-scrolling:touch"));
     assert!(css.contains("border:0;border-radius:1.25rem;background:transparent;box-shadow:none"));
@@ -362,4 +380,3 @@ fn renders_advanced_form_components_markup_runtime_and_css() {
     assert!(css.contains(".pin-cell.control.is-lg{flex-basis:3.25rem;width:3.25rem;min-width:3.25rem;height:3rem;min-height:3rem;}"));
     assert!(css.contains("font-size:var(--dowe-control-font-size);line-height:var(--dowe-control-line-height);font-weight:800"));
 }
-

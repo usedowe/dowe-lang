@@ -23,7 +23,6 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
-
 include!("android_target_startup.rs");
 include!("android_build_and_resources.rs");
 include!("android_devices_and_sdk.rs");

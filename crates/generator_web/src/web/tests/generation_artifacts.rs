@@ -241,6 +241,9 @@ fn emits_web_manifest_and_html_artifacts() {
             .contains("prepareHydration(route,modules,preserveLayouts,true)")
     );
     assert!(web.router_js.contains("previous.state[signal.id]"));
+    assert!(web.router_js.contains("signal.scope!==\"global\""));
+    assert!(web.router_js.contains("preserveState"));
+    assert!(web.router_js.contains("preserveLayouts&&layout"));
     assert!(
         web.router_js
             .contains("Object.entries(activeView.globalIds)")
@@ -450,4 +453,3 @@ fn emits_web_manifest_and_html_artifacts() {
             .contains("if(!currentRoute){await syncDevRoutes()")
     );
 }
-

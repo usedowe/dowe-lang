@@ -34,6 +34,12 @@ Use this admission gate for every local prop:
 If every answer is no, omit the prop. A prop must not be added merely because diagnostics accept it,
 because generators commonly emit it, or because the reference contains a measurable value for it.
 
+Geometry is not a blanket omission. Where the component contract permits them, `w`, `h`, `minW`,
+`minH`, `maxW`, and `maxH` are valid composition props: use them on the actual Section, Card, Flex,
+Grid, media, or text owner when the reference requires a bounded measure, media size, section height,
+or responsive relationship. Keep the default-first rule for arbitrary values, and do not add a Box
+as a sizing shim. `maxW` constrains wrapping but does not center; `h:"full"` requires a bounded parent.
+
 ```text
 Button w:"full"
   "Log in"
@@ -178,7 +184,7 @@ layout SiteLayout
       AppBar position:"fixed" floating:true boxed:true
         start
           Brand href:"/" label:"Site home"
-            Text weight:"black"
+            Text
               "SITE"
         center
           NavMenu show:{ xs:false md:true }
@@ -340,6 +346,7 @@ fn submit
 | `Iframe` | Embeds one quoted HTTPS URL or root-relative internal route. Quoted `src` and accessible `title` are required. During native `dowe dev`, an internal route uses the active Views origin instead of the API `BACKEND_URL`. |
 | `Device` | Responsive preview frame that contains exactly one Iframe and selects a supported device profile. |
 | `Canvas` | Custom drawing or pointer surface for visuals that semantic components cannot express; keep its commands and data target-neutral. |
+| `Game` | High-frequency 2D game surface built on the retained Canvas command model; add optional WebSocket transport with `socket`, `send`, `status`, and lifecycle actions when the server owns realtime state. |
 | `Draw` | Interactive Canvas alias for bounded pen, rectangle, and circle input; use `draw:true`, a `drawMode`, and a named pointer handler when the user must author a sketch. |
 | `Audio` | Portable audio playback for a supported static source. Use source prop `src` and optional source prop `title`; the Rust field may alias this as `subtitle`, but Dowe source uses `title`. |
 | `Camera` | Portable still-photo capture. Supported props are `facing`, `resolution`, `onCapture`, and `onError`; capture results include a target-local `url`, `mimeType`, dimensions, and `facing`. |
@@ -452,7 +459,34 @@ launcher, and iOS share disclosure, indentation, active-row, empty-state, and ac
 | `marker` | Context-only Map marker with stable id, latitude, longitude, and optional named click function. |
 | `waypoint` | Context-only Map route point with latitude and longitude. |
 | `Accordion` | Expandable collection composed from one or more direct `item` entries. Each item requires a quoted `id` and `label`, accepts optional `disabled` and `defaultOpen`, and owns normal view children as its body. `multiple:false` keeps at most one item open; `multiple:true` permits independent items. It accepts `variant` (`solid`, `outlined`, `ghost`), `scheme` (action or structural family), and common style props. The built-in treatment is `ghost`; `variant` controls surface geometry while `scheme` supplies the semantic color roles. Web, Android Compose, the Android development launcher, and iOS share the same state, SideNav disclosure arrow, metrics, and motion contract. |
-| `Carousel` | Slide collection composed from one or more direct `slide` entries. `variant` selects the scroll/effect preset; effect variants derive their transform from the current slide distance on web, Android, and iOS. `showNavigation`, `hideControls`, `hideIndicators`, `showCounter`, `indicatorType`, `disableLoop`, `slideWidth`, `slideHeight`, `slidesPerView`, and `gap` share one active-index and native-scroll contract across targets. Hide flags control generic rows while `controls`, `dots`, and `thumbnails` retain their required affordance. Use several slides when validating responsive behavior; omit `slideWidth` for a viewport-filling track. |
+| `Carousel` | Slide collection composed from one or more direct `slide` entries. `variant` selects the scroll/effect preset; effect variants derive their transform from the current slide distance on web, Android, and iOS. `showNavigation`, `hideControls`, `hideIndicators`, `showCounter`, `indicatorType`, `disableLoop`, `slideWidth`, `slideHeight`, `slidesPerView`, and `gap` share one active-index and native-scroll contract across targets. Free-scroll variants (`simple`, `masonry`, `rtl`, `sticky`) preserve native momentum; the other variants settle on the nearest measured slide. Autoplay yields during a gesture and stops at the final slide with `disableLoop:true`; thumbnail controls display authored slide ids. Hide flags control generic rows while `controls`, `dots`, and `thumbnails` retain their required affordance. Use at least four slides when validating responsive behavior; omit `slideWidth` for a viewport-filling track. |
+
+### Behavior-first Carousel selection
+
+Use `Carousel` when the reference exposes a slide-based interaction, even if the screenshot captures
+only one active slide: previous/next arrows, dot or bar indicators, a counter, thumbnails, snapping,
+or visible auto-advance evidence are behavior cues. The controls, indicators, active index, touch,
+keyboard, accessibility, and reduced-motion behavior belong to the built-in component. For the
+common arrows-plus-dots treatment, start with the default-first shape:
+
+```text
+Carousel variant:"controls" indicatorType:"dot"
+  slide id:"testimonial-one"
+    Card
+      Text
+        "Supplied first testimonial"
+  slide id:"testimonial-two"
+    Card
+      Text
+        "Supplied second testimonial"
+```
+
+Use `showNavigation:true` only when the arrows visibly sit over the track rather than in the
+component's control row. Never write `Text "● • • •"`, separate previous/next `Button` nodes, or
+another generic control row to imitate a Carousel. If a static reference reveals controls but does
+not supply the off-screen slide copy, preserve the known content and record the missing or inferred
+slides; do not invent product copy just to make the indicators count match. A single static
+testimonial without behavior cues remains a normal `Card` or `Flex`.
 
 ## Overlays and transient surfaces
 

@@ -9,7 +9,7 @@ use dowe_components::{
     CommandEntry, CommandProps, ComponentVariant, ContainerSize, CountdownProps, CoverSource, CsvColumn,
     CsvFieldProps, DateProps, DateRangeProps, DesignConfig, DesignTheme, DeviceProps, DividerProps,
     DragDropProps, DragGroup, DragItem, DrawerProps, DropdownProps, DropzoneProps, EditorProps,
-    ElementProps, EmptyKind, EmptyProps, MobileMenu, FORM_CONTROL_FLOATING_HEIGHT_INCREMENT, FabAction,
+    ElementProps, EmptyKind, EmptyProps, GameProps, MobileMenu, FORM_CONTROL_FLOATING_HEIGHT_INCREMENT, FabAction,
     FabProps, FlexDirection, FlexItem, FontConfig, FontFamily, FormValidationRuleKind, GapSize, GapValue,
     GridAlignment, GridProps, INPUT_HORIZONTAL_PADDING, IframeProps, ImageCropperProps, ImageProps,
     Justify, LayoutProps, LineChartProps, MapMarker, MapProps, MapWaypoint, MarqueeProps,

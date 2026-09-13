@@ -102,6 +102,7 @@ function boundCanvasCommand(command, state, scope) {
   return output;
 }
 function renderCanvas(canvas, state, scope, time = performance.now()) {
+  if (canvas.dataset.doweGameRenderer === "raycast3d") return;
   const rect = canvas.getBoundingClientRect();
   const width = Math.max(1, Math.floor(rect.width)),
     height = Math.max(1, Math.floor(rect.height)),
@@ -291,6 +292,7 @@ function emitCanvasMotion(canvas) {
   runAction(action, { item });
 }
 function hydrateCanvasInput(canvas) {
+  if (canvas.dataset.doweGameRenderer === "raycast3d") return;
   if (canvas.__doweInputCleanup) return;
   canvas.__doweInputStart = performance.now();
   canvas.__dowePointers = new Map();
@@ -416,6 +418,7 @@ function closeCanvasFrames(view) {
 }
 function hydrateCanvases(view) {
   for (const canvas of view.root.querySelectorAll("[data-dowe-canvas]")) {
+    if (canvas.dataset.doweGameRenderer === "raycast3d") continue;
     hydrateCanvasInput(canvas);
     if (canvas.dataset.doweCanvasAutoplay !== "true") continue;
     canvas.__doweCanvasStart = performance.now();

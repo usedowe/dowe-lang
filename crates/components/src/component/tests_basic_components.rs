@@ -357,3 +357,123 @@ fn validates_canvas_props_and_defaults() {
     ])
     .is_err());
 }
+
+#[test]
+fn validates_game_props_and_websocket_contract() {
+    let node = game_component_node(vec![
+        string_prop("scene", "gameScene"),
+        string_prop("label", "Network game"),
+        string_prop("socket", "/game"),
+        string_prop("send", "outbound"),
+        string_prop("status", "connection"),
+        string_prop("onOpen", "connected"),
+        string_prop("onMessage", "received"),
+        string_prop("onClose", "disconnected"),
+        string_prop("onError", "failed"),
+        string_prop("onMotion", "motion"),
+        boolean_prop("reconnect", false),
+        number_prop("reconnectDelay", 500),
+    ])
+    .expect("game");
+    let ViewNode::Game { props } = node else {
+        panic!("game")
+    };
+    assert_eq!(props.scene.as_deref(), Some("gameScene"));
+    assert_eq!(props.view_width, 320);
+    assert_eq!(props.view_height, 180);
+    assert_eq!(props.socket.as_deref(), Some("/game"));
+    assert!(!props.socket_binding);
+    assert_eq!(props.send.as_deref(), Some("outbound"));
+    assert_eq!(props.status.as_deref(), Some("connection"));
+    assert_eq!(props.on_message.as_deref(), Some("received"));
+    assert_eq!(props.on_motion.as_deref(), Some("motion"));
+    assert!(!props.reconnect);
+    assert_eq!(props.reconnect_delay, 500);
+
+    let bound = game_component_node(vec![
+        string_prop("scene", "gameScene"),
+        string_prop("label", "Bound game"),
+        ComponentProp {
+            name: "socket".to_string(),
+            value: PropValue::Binding(PropBinding::new("endpoint", PropValueKind::String)),
+        },
+    ])
+    .expect("bound game");
+    let ViewNode::Game { props } = bound else {
+        panic!("bound game")
+    };
+    assert!(props.socket_binding);
+    assert_eq!(props.socket.as_deref(), Some("endpoint"));
+
+    for socket in ["http://localhost/game", "game", "//other/game", "/../game"] {
+        assert!(game_component_node(vec![
+            string_prop("scene", "scene"),
+            string_prop("label", "Invalid game"),
+            string_prop("socket", socket),
+        ])
+        .is_err());
+    }
+    assert!(game_component_node(vec![
+        string_prop("scene", "scene"),
+        string_prop("label", "Invalid delay"),
+        number_prop("reconnectDelay", 99),
+    ])
+    .is_err());
+}
+
+#[test]
+fn validates_game_raycast3d_contract() {
+    let node = game_component_node(vec![
+        string_prop("renderer", "raycast3d"),
+        string_prop("world", "doomWorld"),
+        string_prop("camera", "doomCamera"),
+        string_prop("controls", "doom"),
+        number_prop("moveSpeed", 4),
+        number_prop("turnSpeed", 180),
+        string_prop("onFire", "fireWeapon"),
+        string_prop("label", "Dowe Fortress"),
+    ])
+    .expect("raycast game");
+    let ViewNode::Game { props } = node else {
+        panic!("game")
+    };
+    assert_eq!(props.renderer, GameRenderer::Raycast3d);
+    assert_eq!(props.scene, None);
+    assert_eq!(props.world.as_deref(), Some("doomWorld"));
+    assert_eq!(props.camera.as_deref(), Some("doomCamera"));
+    assert_eq!(props.controls, GameControls::Doom);
+    assert_eq!(props.move_speed, 4);
+    assert_eq!(props.turn_speed, 180);
+    assert_eq!(props.on_fire.as_deref(), Some("fireWeapon"));
+
+    assert!(game_component_node(vec![
+        string_prop("renderer", "raycast3d"),
+        string_prop("world", "doomWorld"),
+        string_prop("label", "Missing camera"),
+    ])
+    .is_err());
+    assert!(game_component_node(vec![
+        string_prop("scene", "scene"),
+        string_prop("renderer", "raycast3d"),
+        string_prop("world", "doomWorld"),
+        string_prop("camera", "doomCamera"),
+        string_prop("label", "Mixed renderer"),
+    ])
+    .is_err());
+    assert!(game_component_node(vec![
+        string_prop("renderer", "raycast3d"),
+        string_prop("world", "doomWorld"),
+        string_prop("camera", "doomCamera"),
+        number_prop("moveSpeed", 21),
+        string_prop("label", "Invalid speed"),
+    ])
+    .is_err());
+    assert!(game_component_node(vec![
+        string_prop("renderer", "raycast3d"),
+        string_prop("world", "doomWorld"),
+        string_prop("camera", "doomCamera"),
+        string_prop("onMotion", "captureMotion"),
+        string_prop("label", "Invalid motion"),
+    ])
+    .is_err());
+}

@@ -243,7 +243,11 @@ fn selects_only_generation_contexts_relevant_to_the_prompt() {
     assert!(!fullstack.iter().any(|skill| skill.name == "dowe-terminal"));
     assert!(svg.iter().any(|skill| skill.name == "dowe-svg"));
     assert!(svg.iter().any(|skill| skill.name == "dowe-ui-reference"));
-    assert!(spanish.iter().any(|skill| skill.name == "dowe-ui-reference"));
+    assert!(
+        spanish
+            .iter()
+            .any(|skill| skill.name == "dowe-ui-reference")
+    );
     assert!(
         svg.iter()
             .any(|skill| skill.context.contains("convert_svg"))
@@ -258,7 +262,10 @@ fn selects_only_generation_contexts_relevant_to_the_prompt() {
 
 #[test]
 fn spanish_visual_implementation_prompts_keep_the_response_language() {
-    assert_eq!(infer_language("Implementa esta imagen de referencia en Dowe"), "es");
+    assert_eq!(
+        infer_language("Implementa esta imagen de referencia en Dowe"),
+        "es"
+    );
     assert_eq!(infer_language("Diseña una pantalla responsive"), "es");
 }
 

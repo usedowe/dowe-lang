@@ -104,7 +104,9 @@ pub enum HarnessOutcome {
 include!("engine/turn.rs");
 include!("engine/round.rs");
 include!("engine/preparation.rs");
+include!("engine/validation.rs");
 include!("engine/call_execution.rs");
+include!("engine/round_completion.rs");
 include!("engine/write_batch.rs");
 include!("engine/receipts_and_events.rs");
 include!("engine/compaction.rs");

@@ -8,6 +8,7 @@ struct TerminalHost<'a> {
     request_events: Vec<Value>,
     pending_responses: Vec<String>,
     activity: activity::Activity,
+    automatic_approval: bool,
 }
 
 impl TerminalHost<'_> {
@@ -153,6 +154,9 @@ impl HarnessHost for TerminalHost<'_> {
         if self.json_output || !crate::menus::is_interactive_terminal() {
             return Ok(None);
         }
+        if self.automatic_approval {
+            return Ok(Some(true));
+        }
         let _activity = self.activity.suspend()?;
         let mut redactor = Redactor::default();
         for secret in self.secrets() {
@@ -181,6 +185,9 @@ impl HarnessHost for TerminalHost<'_> {
         }
         if self.json_output || !crate::menus::is_interactive_terminal() {
             return Ok(None);
+        }
+        if self.automatic_approval {
+            return Ok(Some(true));
         }
         let _activity = self.activity.suspend()?;
         let mut redactor = Redactor::default();

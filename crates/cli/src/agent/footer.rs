@@ -106,7 +106,10 @@ impl Footer<'_> {
             .unwrap_or_default();
         let cwd: String = cwd.chars().filter(|ch| !ch.is_control()).collect();
         [
-            style(truncate_str(&cwd, width, "…")).cyan().dim().to_string(),
+            style(truncate_str(&cwd, width, "…"))
+                .cyan()
+                .dim()
+                .to_string(),
             text,
         ]
     }

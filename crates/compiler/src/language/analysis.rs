@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-
 include!("analysis_document_and_imports.rs");
 include!("analysis_surfaces_and_validation.rs");
 include!("analysis_store_fields.rs");

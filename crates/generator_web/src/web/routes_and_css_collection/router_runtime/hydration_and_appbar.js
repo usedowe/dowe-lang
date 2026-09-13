@@ -68,6 +68,7 @@ function prepareHydration(
   const previous = activeView;
   const visualization = runtimeCapability("visualization");
   visualization?.closeCandlestickStreams(previous);
+  closeGameSockets(previous);
   closeCanvasFrames(previous);
   closeCameraFrames(previous);
   closeMicrophoneFrames(previous);
@@ -134,6 +135,7 @@ function finishHydration(prepared) {
   if (!prepared || activeView !== prepared.view) return;
   const { route, root, view, visualization, initializers, autoload } = prepared;
   hydrateCanvases(view);
+  hydrateGames(view);
   hydrateTranslations(root);
   hydrateVideos(root);
   hydrateAudios(root);

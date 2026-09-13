@@ -167,6 +167,19 @@ fn render_candlestick_html(props: &CandlestickProps, context: &ReactiveRenderCon
 }
 
 fn render_canvas_html(props: &CanvasProps, context: &ReactiveRenderContext) -> String {
+    render_canvas_surface_html(props, context, None)
+}
+
+fn render_game_html(props: &GameProps, context: &ReactiveRenderContext) -> String {
+    let surface = props.canvas_props();
+    render_canvas_surface_html(&surface, context, Some(props))
+}
+
+fn render_canvas_surface_html(
+    props: &CanvasProps,
+    context: &ReactiveRenderContext,
+    game: Option<&GameProps>,
+) -> String {
     let background = match props.background {
         CanvasBackground::Transparent => "transparent",
         CanvasBackground::Color(color) => color.as_str(),
@@ -238,10 +251,17 @@ fn render_canvas_html(props: &CanvasProps, context: &ReactiveRenderContext) -> S
             props.motion_rate
         ));
     }
+    if let Some(game) = game {
+        append_game_attributes(&mut extra, game, context);
+    }
+    let mut classes = canvas_classes(props);
+    if game.is_some() {
+        classes.push("game".to_string());
+    }
     format!(
         r#"<canvas{} width="{}" height="{}"></canvas>"#,
         attrs(
-            canvas_classes(props),
+            classes,
             Some(&props.style.element),
             Some(&extra),
             context,

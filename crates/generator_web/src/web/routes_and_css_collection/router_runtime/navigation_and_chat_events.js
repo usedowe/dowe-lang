@@ -306,17 +306,24 @@ requestAnimationFrame(() => {
       );
   }
 });
+let activeCarouselViewport = null;
 document.addEventListener(
   "touchstart",
   event => {
     const viewport = event.target?.closest?.(".carousel-viewport"),
-      touch = event.touches?.[0];
+      touch = event.touches?.[0],
+      root = viewport?.closest?.("[data-dowe-carousel]");
     if (!viewport || !touch) return;
+    activeCarouselViewport = viewport;
+    if (root) root.__doweCarouselInteraction = true;
     viewport.__doweCarouselTouch = {
       startX: touch.clientX,
       startY: touch.clientY,
       scrollLeft: viewport.scrollLeft,
-      scrollTop: viewport.scrollTop
+      scrollTop: viewport.scrollTop,
+      primaryDelta: 0,
+      crossDelta: 0,
+      axis: null
     };
   },
   { passive: true }
@@ -324,36 +331,80 @@ document.addEventListener(
 document.addEventListener(
   "touchmove",
   event => {
-    const viewport = event.target?.closest?.(".carousel-viewport"),
+    const viewport =
+        activeCarouselViewport || event.target?.closest?.(".carousel-viewport"),
       state = viewport?.__doweCarouselTouch,
       touch = event.touches?.[0];
     if (!viewport || !state || !touch) return;
-    const vertical =
-        viewport.closest("[data-dowe-carousel]")?.dataset
-          .doweCarouselOrientation === "vertical",
-      delta = vertical
+    const root = viewport.closest("[data-dowe-carousel]"),
+      freeScroll = ["simple", "masonry", "rtl", "sticky"].includes(
+        root?.dataset.doweCarouselVariant
+      ),
+      vertical =
+        root?.dataset.doweCarouselOrientation === "vertical",
+      primaryDelta = vertical
         ? state.startY - touch.clientY
-        : state.startX - touch.clientX;
-    if (Math.abs(delta) < 3) return;
+        : state.startX - touch.clientX,
+      crossDelta = vertical
+        ? state.startX - touch.clientX
+        : state.startY - touch.clientY;
+    state.primaryDelta = primaryDelta;
+    state.crossDelta = crossDelta;
+    if (!state.axis && Math.abs(primaryDelta) >= 3) {
+      state.axis =
+        Math.abs(primaryDelta) >= Math.abs(crossDelta) ? "primary" : "cross";
+    }
+    if (state.axis !== "primary" || freeScroll) return;
     if (event.cancelable) event.preventDefault();
-    if (vertical) viewport.scrollTop = state.scrollTop + delta;
-    else viewport.scrollLeft = state.scrollLeft + delta;
+    if (vertical) viewport.scrollTop = state.scrollTop + primaryDelta;
+    else viewport.scrollLeft = state.scrollLeft + primaryDelta;
   },
   { passive: false }
 );
 document.addEventListener(
   "touchend",
   event => {
-    const viewport = event.target?.closest?.(".carousel-viewport");
-    if (viewport) viewport.__doweCarouselTouch = null;
+    if (event.touches?.length) return;
+    const viewport =
+      activeCarouselViewport || event.target?.closest?.(".carousel-viewport");
+    if (!viewport) return;
+    const root = viewport.closest?.("[data-dowe-carousel]"),
+      state = viewport.__doweCarouselTouch;
+    if (root) {
+      root.__doweCarouselInteraction = false;
+      root.__doweCarouselPauseUntil =
+        performance.now() +
+        Math.max(500, Number(root.dataset.doweCarouselInterval || 3000));
+      if (state?.axis === "primary" && Math.abs(state.primaryDelta) >= 3) {
+        syncCarousel(root);
+        if (
+          !["simple", "masonry", "rtl", "sticky"].includes(
+            root.dataset.doweCarouselVariant
+          )
+        )
+          goToCarousel(root, Number(root.dataset.doweCarouselIndex || 0));
+      }
+    }
+    viewport.__doweCarouselTouch = null;
+    activeCarouselViewport = null;
   },
   { passive: true }
 );
 document.addEventListener(
   "touchcancel",
   event => {
-    const viewport = event.target?.closest?.(".carousel-viewport");
-    if (viewport) viewport.__doweCarouselTouch = null;
+    const viewport =
+      activeCarouselViewport || event.target?.closest?.(".carousel-viewport");
+    if (!viewport) return;
+    const root = viewport.closest?.("[data-dowe-carousel]");
+    if (root) {
+      root.__doweCarouselInteraction = false;
+      root.__doweCarouselPauseUntil =
+        performance.now() +
+        Math.max(500, Number(root.dataset.doweCarouselInterval || 3000));
+    }
+    viewport.__doweCarouselTouch = null;
+    activeCarouselViewport = null;
   },
   { passive: true }
 );

@@ -5,18 +5,20 @@ fn swift_runtime_drawer_runtime() -> &'static str {
     let position: String
     let backgroundColor: Color
     let contentColor: Color
+    let titleColor: Color
     let borderColor: Color?
     let radius: CGFloat
     let disableOverlayClose: Bool
     let hideCloseButton: Bool
     let content: Content
 
-    init(open: Bool, close: @escaping () -> Void, position: String, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: CGFloat, disableOverlayClose: Bool, hideCloseButton: Bool, @ViewBuilder content: () -> Content) {
+    init(open: Bool, close: @escaping () -> Void, position: String, backgroundColor: Color, contentColor: Color, titleColor: Color, borderColor: Color?, radius: CGFloat, disableOverlayClose: Bool, hideCloseButton: Bool, @ViewBuilder content: () -> Content) {
         self.open = open
         self.close = close
         self.position = position
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
+        self.titleColor = titleColor
         self.borderColor = borderColor
         self.radius = radius
         self.disableOverlayClose = disableOverlayClose
@@ -35,7 +37,7 @@ fn swift_runtime_drawer_runtime() -> &'static str {
             radius: radius,
             disableOverlayClose: disableOverlayClose,
             hideCloseButton: hideCloseButton,
-            content: content
+            content: content.environment(\.doweTitleColor, titleColor)
         )
         .frame(width: CGFloat(0), height: CGFloat(0))
     }

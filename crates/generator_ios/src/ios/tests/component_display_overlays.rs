@@ -137,6 +137,9 @@ fn generates_swiftui_display_overlay_components() {
         "position: \"top-right\", backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: Optional(DoweDesign.warning)"
     ));
     assert!(views.contains("struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable"));
+    assert!(views.contains("@MainActor init(open: Bool, close: @escaping () -> Void"));
+    assert!(views.contains("titleColor: Color? = nil"));
+    assert!(views.contains("self.titleColor = titleColor ?? DoweDesign.backgroundTitle"));
     let toast_presenter_start = views
         .find("struct DoweToastOverlayPresenter<Content: View>: UIViewRepresentable")
         .expect("toast overlay presenter");
@@ -337,7 +340,7 @@ fn generates_ios_overlay_surface_action_and_close_parity() {
     );
     let views = swift_content(&output);
     assert!(views.contains(
-        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: Optional(DoweDesign.warning)"
+        "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, titleColor: DoweDesign.surfaceTitle, borderColor: Optional(DoweDesign.warning)"
     ));
     assert!(views.contains(
         "backgroundColor: DoweDesign.surface, contentColor: DoweDesign.surfaceText, borderColor: nil"
@@ -487,4 +490,3 @@ fn generates_swiftui_dynamic_icon_catalog_with_module_visibility() {
     assert!(shards.iter().all(|file| file.content.len() < 640_000));
     assert!(views.content.contains("DoweDynamicIconCatalog[state.text("));
 }
-

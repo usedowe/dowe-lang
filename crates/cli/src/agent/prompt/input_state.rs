@@ -22,6 +22,16 @@ struct InputView {
 }
 
 impl Prompt {
+    fn from_text(text: &str) -> Self {
+        let text = text.chars().collect::<Vec<_>>();
+        let cursor = text.len();
+        Self {
+            text,
+            cursor,
+            ..Self::default()
+        }
+    }
+
     fn value(&self) -> String {
         self.text.iter().collect()
     }

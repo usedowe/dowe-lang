@@ -27,7 +27,15 @@ fn render_swift_rich_display_node(
             render_swift_type_writer(props, items, indent, output)
         }
         ViewNode::RichText { props, marks } => {
-            render_swift_rich_text(props, marks, indent, output, inherited_font, default_family)
+            render_swift_rich_text(
+                props,
+                marks,
+                indent,
+                output,
+                inherited_font,
+                default_family,
+                context,
+            )
         }
         ViewNode::Record { props } => render_swift_record(props, indent, output, context),
         ViewNode::ToggleGroup { props, items } => {

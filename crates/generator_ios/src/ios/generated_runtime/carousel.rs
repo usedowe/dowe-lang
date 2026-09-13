@@ -21,6 +21,7 @@ fn swift_runtime_carousel() -> &'static str {
     @ViewBuilder var content: Content
     @State private var currentIndex = 0
     @State private var scrollId: String?
+    @State private var userInteracting = false
 
     init(variant: String, slideIds: [String], autoplay: Bool, autoplayInterval: Int, disableLoop: Bool, hideControls: Bool, hideIndicators: Bool, showNavigation: Bool, showCounter: Bool, orientation: String, size: String, indicatorType: String, title: String?, slideWidth: Int?, slideHeight: Int?, slidesPerView: Int, gap: Int, accentColor: Color, @ViewBuilder content: () -> Content) {
         self.variant = variant
@@ -51,21 +52,41 @@ fn swift_runtime_carousel() -> &'static str {
             }
             ZStack(alignment: .center) {
                 if orientation == "vertical" {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        LazyVStack(spacing: CGFloat(gap)) { content }
-                            .scrollTargetLayout()
+                    Group {
+                        if shouldSnap {
+                            ScrollView(.vertical, showsIndicators: false) {
+                                LazyVStack(spacing: CGFloat(gap)) { content }
+                                    .scrollTargetLayout()
+                            }
+                            .scrollTargetBehavior(.viewAligned)
+                        } else {
+                            ScrollView(.vertical, showsIndicators: false) {
+                                LazyVStack(spacing: CGFloat(gap)) { content }
+                                    .scrollTargetLayout()
+                            }
+                        }
                     }
-                    .scrollTargetBehavior(.viewAligned)
                     .scrollPosition(id: $scrollId)
                     .frame(maxHeight: CGFloat(560))
+                    .simultaneousGesture(carouselDragGesture)
                 } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: CGFloat(gap)) { content }
-                            .scrollTargetLayout()
+                    Group {
+                        if shouldSnap {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: CGFloat(gap)) { content }
+                                    .scrollTargetLayout()
+                            }
+                            .scrollTargetBehavior(.viewAligned)
+                        } else {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(spacing: CGFloat(gap)) { content }
+                                    .scrollTargetLayout()
+                            }
+                        }
                     }
-                    .scrollTargetBehavior(.viewAligned)
                     .scrollPosition(id: $scrollId)
                     .environment(\.layoutDirection, variant == "rtl" ? .rightToLeft : .leftToRight)
+                    .simultaneousGesture(carouselDragGesture)
                 }
                 if showNavigation {
                     HStack {
@@ -91,7 +112,7 @@ fn swift_runtime_carousel() -> &'static str {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: CGFloat(8)) {
                         ForEach(Array(slideIds.enumerated()), id: \.offset) { index, id in
-                            Button(variant == "thumbnails" ? "Slide \(index + 1)" : indicatorType == "dot" || variant == "dots" ? "•" : "\(index + 1)") {
+                            Button(variant == "thumbnails" ? id : indicatorType == "dot" || variant == "dots" ? "•" : "\(index + 1)") {
                                 currentIndex = index
                                 withAnimation { scrollId = id }
                             }
@@ -111,12 +132,27 @@ fn swift_runtime_carousel() -> &'static str {
             guard let value, let index = slideIds.firstIndex(of: value) else { return }
             currentIndex = index
         }
-        .task(id: currentIndex) {
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(title ?? "Carousel"))
+        .accessibilityValue(Text("\(currentIndex + 1) of \(slideIds.count)"))
+        .task(id: "\(autoplay)-\(autoplayInterval)-\(disableLoop)") {
             guard autoplay, slideIds.count > 1 else { return }
-            try? await Task.sleep(nanoseconds: UInt64(max(500, autoplayInterval)) * 1_000_000)
-            guard !Task.isCancelled else { return }
-            move(1)
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(max(500, autoplayInterval)) * 1_000_000)
+                guard !Task.isCancelled else { return }
+                if !userInteracting && !(disableLoop && currentIndex >= slideIds.count - 1) { move(1) }
+            }
         }
+    }
+
+    private var shouldSnap: Bool {
+        !["simple", "masonry", "rtl", "sticky"].contains(variant)
+    }
+
+    private var carouselDragGesture: some Gesture {
+        DragGesture(minimumDistance: CGFloat(1))
+            .onChanged { _ in userInteracting = true }
+            .onEnded { _ in userInteracting = false }
     }
 
     private func move(_ step: Int) {
@@ -154,7 +190,7 @@ struct DoweCarouselSlideView<Content: View>: View {
 
     var body: some View {
         sizedContent
-            .scrollTransition(.interactive, axis: .horizontal) { view, phase in
+            .scrollTransition(.interactive, axis: orientation == "vertical" ? .vertical : .horizontal) { view, phase in
                 view
                     .scaleEffect(carouselScale(phase.value))
                     .rotationEffect(.degrees(carouselTilt(phase.value)))
@@ -178,7 +214,27 @@ struct DoweCarouselSlideView<Content: View>: View {
                 .frame(height: slideHeight.map { CGFloat($0) })
         } else if variant == "masonry" {
             content
-                .frame(minWidth: CGFloat(180))
+                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.72, CGFloat(200)) }
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else if variant == "sticky" {
+            content
+                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.88, CGFloat(672)) }
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else if variant == "stories" {
+            content
+                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.82, CGFloat(384)) }
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else if variant == "smartStack" {
+            content
+                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.8, CGFloat(352)) }
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else if variant == "cardStack" {
+            content
+                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.84, CGFloat(448)) }
+                .frame(height: slideHeight.map { CGFloat($0) })
+        } else if variant == "flipbook" {
+            content
+                .containerRelativeFrame(.horizontal) { length, _ in min(length * 0.88, CGFloat(480)) }
                 .frame(height: slideHeight.map { CGFloat($0) })
         } else {
             content
@@ -215,6 +271,7 @@ struct DoweCarouselSlideView<Content: View>: View {
 
     nonisolated private func carouselOpacity(_ phase: Double) -> Double {
         let distance = min(abs(phase), 1)
+        if variant == "slideshow" { return 1 - distance * 0.12 }
         return variant == "coverFlow" || variant == "stories" || variant == "flipbook" ? 1 - distance * 0.22 : 1
     }
 }

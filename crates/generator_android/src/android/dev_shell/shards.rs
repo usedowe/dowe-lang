@@ -3,6 +3,7 @@ const DEV_ROUTE_METHOD_SOURCE_LIMIT: usize = 48 * 1024;
 fn dev_route_shard(
     route: &ViewRoute,
     layout_index: Option<usize>,
+    layout_state_key: Option<usize>,
     class_name: &str,
     app_bundle: &str,
 ) -> String {
@@ -47,37 +48,29 @@ fn dev_route_shard(
     }
     let composed_tree = compose_tree(&route.layout_tree, &route.page_tree);
     let startup_reactive = dev_reactive_route(&composed_tree);
-    let startup = startup_reactive
-        .init
+    let startup_action_ids = startup_ids(&startup_reactive);
+    let layout_startup_action_ids = startup_ids(&dev_reactive_route(&route.layout_tree));
+    let layout_startup_set = layout_startup_action_ids.iter().collect::<BTreeSet<_>>();
+    let page_startup_action_ids = startup_action_ids
         .iter()
-        .chain(&startup_reactive.autoload)
+        .filter(|id| !layout_startup_set.contains(id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let startup = startup_action_ids
+        .iter()
         .map(|id| format!("\"{}\"", escape_java(id)))
         .collect::<Vec<_>>();
-    let (layout_key, layout_ids, page_ids) = if let Some(class_name) = &shared_layout {
-        let layout_reactive = dev_reactive_route(&route.layout_tree);
-        let page_reactive = dev_reactive_route(&route.page_tree);
-        (
-            class_name.clone(),
-            layout_reactive
-                .init
-                .iter()
-                .chain(&layout_reactive.autoload)
-                .map(|id| format!("\"{}\"", escape_java(id)))
-                .collect::<Vec<_>>(),
-            page_reactive
-                .init
-                .iter()
-                .chain(&page_reactive.autoload)
-                .map(|id| format!("\"{}\"", escape_java(id)))
-                .collect::<Vec<_>>(),
-        )
-    } else {
-        (
-            route.route_path.clone(),
-            Vec::new(),
-            startup.clone(),
-        )
-    };
+    let layout_ids = layout_startup_action_ids
+        .iter()
+        .map(|id| format!("\"{}\"", escape_java(id)))
+        .collect::<Vec<_>>();
+    let page_ids = page_startup_action_ids
+        .iter()
+        .map(|id| format!("\"{}\"", escape_java(id)))
+        .collect::<Vec<_>>();
+    let layout_key = layout_state_key
+        .map(|key| format!("layout:{key}"))
+        .unwrap_or_else(|| route.route_path.clone());
     let reactive = if shared_layout.is_some() {
         dev_reactive_route(&route.page_tree)
     } else {

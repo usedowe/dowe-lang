@@ -20,10 +20,10 @@ fn render_dev_android_interactive_display_node(
             style.variant.get_or_insert(ComponentVariant::Ghost);
             let variant = style.variant.unwrap_or(ComponentVariant::Ghost);
             let content_color = dev_card_variant_content(&style);
-            let current_color = Some(content_color.to_string());
+            let current_color = Some(dev_content_colors(content_color, dev_card_variant_title(&style)));
             let radius = dev_style_radius(&props.style.style);
             let item_background = match variant {
-                ComponentVariant::Solid | ComponentVariant::Outlined => {
+                ComponentVariant::Outlined => {
                     java_color(ColorToken::Surface)
                 }
                 _ => "Color.TRANSPARENT",
@@ -101,6 +101,7 @@ fn render_dev_android_interactive_display_node(
             let shows_indicators = props.shows_indicators() || props.has_variant_indicators();
             let variant = props.variant.as_str();
             let disable_loop = if props.disable_loop { "true" } else { "false" };
+            let autoplay_interval = props.autoplay_interval;
             let view = next_dev_view(counter);
             output.push_str(&format!(
                                         "        LinearLayout {view} = doweContainer(false);\n        {view}.setBackground(doweBackground(Color.TRANSPARENT, DOWE_RADIUS));\n"
@@ -191,6 +192,38 @@ fn render_dev_android_interactive_display_node(
                     );
                 }
             }
+            if props.slide_width.is_none() && horizontal {
+                let width_rule = match props.variant {
+                    CarouselVariant::Masonry => {
+                        "Math.min(doweDp(200), Math.round(availableWidth * 0.72f))".to_string()
+                    }
+                    CarouselVariant::Sticky => {
+                        "Math.min(doweDp(672), Math.round(availableWidth * 0.88f))".to_string()
+                    }
+                    CarouselVariant::Stories => {
+                        "Math.min(doweDp(384), Math.round(availableWidth * 0.82f))".to_string()
+                    }
+                    CarouselVariant::SmartStack => {
+                        "Math.min(doweDp(352), Math.round(availableWidth * 0.8f))".to_string()
+                    }
+                    CarouselVariant::CardStack => {
+                        "Math.min(doweDp(448), Math.round(availableWidth * 0.84f))".to_string()
+                    }
+                    CarouselVariant::Flipbook => {
+                        "Math.min(doweDp(480), Math.round(availableWidth * 0.88f))".to_string()
+                    }
+                    _ if props.slides_per_view > 1 => format!(
+                        "Math.max(1, (availableWidth - doweDp({}) * {}) / {})",
+                        props.gap,
+                        props.slides_per_view.saturating_sub(1),
+                        props.slides_per_view
+                    ),
+                    _ => "availableWidth".to_string(),
+                };
+                output.push_str(&format!(
+                    "        {viewport}.post(() -> {{\n            int availableWidth = Math.max(1, {scroll}.getWidth());\n            int resolvedWidth = {width_rule};\n            for (int index = 0; index < {track}.getChildCount(); index++) {{\n                View slide = {track}.getChildAt(index);\n                android.view.ViewGroup.LayoutParams params = slide.getLayoutParams();\n                params.width = resolvedWidth;\n                slide.setLayoutParams(params);\n            }}\n            {track}.requestLayout();\n        }});\n"
+                ));
+            }
             let carousel_index = next_dev_view(counter);
             let carousel_variant = next_dev_view(counter);
             let carousel_indicators = next_dev_view(counter);
@@ -224,10 +257,10 @@ fn render_dev_android_interactive_display_node(
                 output.push_str(&format!(
                     "        LinearLayout {indicators} = doweContainer(true);\n        {indicators}.setGravity(Gravity.CENTER);\n"
                 ));
-                for index in 0..slides.len() {
+                for (index, slide) in slides.iter().enumerate() {
                     let indicator = next_dev_view(counter);
                     let label = if props.variant == CarouselVariant::Thumbnails {
-                        format!("Slide {}", index + 1)
+                        slide.id.clone()
                     } else if props.variant == CarouselVariant::Dots
                         || props.indicator_type.as_str() == "dot"
                     {
@@ -254,13 +287,13 @@ fn render_dev_android_interactive_display_node(
                 ));
             }
             output.push_str(&format!(
-                "        Runnable {carousel_update} = () -> {{\n            int viewportCenter = {vertical} ? {scroll}.getScrollY() + {scroll}.getHeight() / 2 : {scroll}.getScrollX() + {scroll}.getWidth() / 2;\n            int viewportSize = Math.max(1, {vertical} ? {scroll}.getHeight() : {scroll}.getWidth());\n            int active = 0;\n            float activeDistance = Float.MAX_VALUE;\n            for (int index = 0; index < {track}.getChildCount(); index++) {{\n                View slide = {track}.getChildAt(index);\n                float center = {vertical} ? slide.getTop() + slide.getHeight() / 2f : slide.getLeft() + slide.getWidth() / 2f;\n                float phase = Math.max(-1f, Math.min(1f, (center - viewportCenter) / (float) viewportSize));\n                float distance = Math.min(1f, Math.abs(phase));\n                slide.setRotationY(0f);\n                slide.setRotation(0f);\n                slide.setScaleX(1f);\n                slide.setScaleY(1f);\n                slide.setTranslationX(0f);\n                slide.setTranslationY(0f);\n                slide.setAlpha(1f);\n                if (\"coverFlow\".equals({carousel_variant})) {{ slide.setCameraDistance(doweDp(24)); slide.setRotationY(phase * 24f); slide.setScaleX(1f - distance * 0.1f); slide.setScaleY(1f - distance * 0.1f); slide.setAlpha(1f - distance * 0.22f); }}\n                else if (\"stories\".equals({carousel_variant})) {{ slide.setCameraDistance(doweDp(24)); slide.setRotationY(phase * 30f); slide.setScaleX(1f - distance * 0.1f); slide.setScaleY(1f - distance * 0.1f); slide.setAlpha(1f - distance * 0.22f); }}\n                else if (\"smartStack\".equals({carousel_variant})) {{ slide.setRotation(phase * 1.5f); slide.setScaleX(1f - distance * 0.055f); slide.setScaleY(1f - distance * 0.055f); slide.setTranslationY(doweDp(8) * distance); }}\n                else if (\"cardStack\".equals({carousel_variant})) {{ slide.setScaleX(1f - distance * 0.055f); slide.setScaleY(1f - distance * 0.055f); slide.setTranslationY(doweDp(8) * distance); }}\n                else if (\"flipbook\".equals({carousel_variant})) {{ slide.setCameraDistance(doweDp(24)); slide.setRotationY(phase * 52f); slide.setScaleX(1f - distance * 0.1f); slide.setScaleY(1f - distance * 0.1f); slide.setAlpha(1f - distance * 0.22f); }}\n                else if (\"slideshow\".equals({carousel_variant})) {{ if ({vertical}) slide.setTranslationY(doweDp(24) * phase); else slide.setTranslationX(doweDp(24) * phase); slide.setAlpha(1f - distance * 0.12f); }}\n                if (Math.abs(phase) < activeDistance) {{ active = index; activeDistance = Math.abs(phase); }}\n            }}\n            {carousel_index}[0] = active;\n            if ({carousel_previous}[0] != null) {carousel_previous}[0].setEnabled(!{disable_loop} || active > 0);\n            if ({carousel_next}[0] != null) {carousel_next}[0].setEnabled(!{disable_loop} || active < Math.max(0, {track}.getChildCount() - 1));\n            if ({carousel_control_previous}[0] != null) {carousel_control_previous}[0].setEnabled(!{disable_loop} || active > 0);\n            if ({carousel_control_next}[0] != null) {carousel_control_next}[0].setEnabled(!{disable_loop} || active < Math.max(0, {track}.getChildCount() - 1));\n            for (int index = 0; index < {carousel_indicators}.size(); index++) {{ Button indicator = {carousel_indicators}.get(index); boolean selected = index == active; indicator.setBackgroundColor(Color.TRANSPARENT); indicator.setTextColor(selected ? {accent_color} : doweAlpha({accent_color}, 0.45f)); }}\n        }};\n        {scroll}.setOnScrollChangeListener((target, scrollX, scrollY, oldScrollX, oldScrollY) -> {carousel_update}.run());\n        {viewport}.post({carousel_update});\n",
+                "        Runnable {carousel_update} = () -> {{\n            int viewportCenter = {vertical} ? {scroll}.getScrollY() + {scroll}.getHeight() / 2 : {scroll}.getScrollX() + {scroll}.getWidth() / 2;\n            int viewportSize = Math.max(1, {vertical} ? {scroll}.getHeight() : {scroll}.getWidth());\n            int active = 0;\n            float activeDistance = Float.MAX_VALUE;\n            for (int index = 0; index < {track}.getChildCount(); index++) {{\n                View slide = {track}.getChildAt(index);\n                float center = {vertical} ? slide.getTop() + slide.getHeight() / 2f : slide.getLeft() + slide.getWidth() / 2f;\n                float phase = Math.max(-1f, Math.min(1f, (center - viewportCenter) / (float) viewportSize));\n                float distance = Math.min(1f, Math.abs(phase));\n                slide.setRotationY(0f);\n                slide.setRotation(0f);\n                slide.setScaleX(1f);\n                slide.setScaleY(1f);\n                slide.setTranslationX(0f);\n                slide.setTranslationY(0f);\n                slide.setAlpha(1f);\n                if (\"coverFlow\".equals({carousel_variant})) {{ slide.setCameraDistance(doweDp(24)); slide.setRotationY(phase * 24f); slide.setScaleX(1f - distance * 0.1f); slide.setScaleY(1f - distance * 0.1f); slide.setAlpha(1f - distance * 0.22f); }}\n                else if (\"stories\".equals({carousel_variant})) {{ slide.setCameraDistance(doweDp(24)); slide.setRotationY(phase * 30f); slide.setScaleX(1f - distance * 0.1f); slide.setScaleY(1f - distance * 0.1f); slide.setAlpha(1f - distance * 0.22f); }}\n                else if (\"smartStack\".equals({carousel_variant})) {{ slide.setRotation(phase * 1.5f); slide.setScaleX(1f - distance * 0.055f); slide.setScaleY(1f - distance * 0.055f); slide.setTranslationY(doweDp(8) * distance); }}\n                else if (\"cardStack\".equals({carousel_variant})) {{ slide.setScaleX(1f - distance * 0.055f); slide.setScaleY(1f - distance * 0.055f); slide.setTranslationY(doweDp(8) * distance); }}\n                else if (\"flipbook\".equals({carousel_variant})) {{ slide.setCameraDistance(doweDp(24)); slide.setRotationY(phase * 52f); slide.setScaleX(1f - distance * 0.1f); slide.setScaleY(1f - distance * 0.1f); slide.setAlpha(1f - distance * 0.22f); }}\n                else if (\"slideshow\".equals({carousel_variant})) {{ if ({vertical}) slide.setTranslationY(doweDp(24) * phase); else slide.setTranslationX(doweDp(24) * phase); slide.setAlpha(1f - distance * 0.12f); }}\n                if (Math.abs(phase) < activeDistance) {{ active = index; activeDistance = Math.abs(phase); }}\n            }}\n            {carousel_index}[0] = active;\n            if ({carousel_previous}[0] != null) {carousel_previous}[0].setEnabled(!{disable_loop} || active > 0);\n            if ({carousel_next}[0] != null) {carousel_next}[0].setEnabled(!{disable_loop} || active < Math.max(0, {track}.getChildCount() - 1));\n            if ({carousel_control_previous}[0] != null) {carousel_control_previous}[0].setEnabled(!{disable_loop} || active > 0);\n            if ({carousel_control_next}[0] != null) {carousel_control_next}[0].setEnabled(!{disable_loop} || active < Math.max(0, {track}.getChildCount() - 1));\n            for (int index = 0; index < {carousel_indicators}.size(); index++) {{ Button indicator = {carousel_indicators}.get(index); boolean selected = index == active; indicator.setBackgroundColor(Color.TRANSPARENT); indicator.setTextColor(selected ? {accent_color} : doweAlpha({accent_color}, 0.45f)); }}\n            if ({carousel_counter}[0] != null) {carousel_counter}[0].setText(String.valueOf(active + 1) + \" / \" + String.valueOf({track}.getChildCount()));\n        }};\n        {scroll}.setOnScrollChangeListener((target, scrollX, scrollY, oldScrollX, oldScrollY) -> {carousel_update}.run());\n        {viewport}.post({carousel_update});\n",
             ));
-            if props.show_counter {
-                output.push_str(&format!(
-                    "        {scroll}.setOnScrollChangeListener((target, scrollX, scrollY, oldScrollX, oldScrollY) -> {{ {carousel_update}.run(); if ({carousel_counter}[0] != null) {carousel_counter}[0].setText(String.valueOf({carousel_index}[0] + 1) + \" / \" + String.valueOf({track}.getChildCount())); }});\n"
-                ));
-            }
+            let carousel_interacting = next_dev_view(counter);
+            let carousel_autoplay = next_dev_view(counter);
+            output.push_str(&format!(
+                "        boolean[] {carousel_interacting} = new boolean[] {{false}};\n"
+            ));
             if !matches!(
                 props.variant,
                 CarouselVariant::Simple
@@ -268,13 +301,20 @@ fn render_dev_android_interactive_display_node(
                     | CarouselVariant::Rtl
                     | CarouselVariant::Sticky
             ) {
-                let snap_step = if vertical {
-                    props.slide_height.unwrap_or(280).saturating_add(props.gap)
-                } else {
-                    slide_width.saturating_add(props.gap)
-                };
                 output.push_str(&format!(
-                    "        {scroll}.setOnTouchListener((target, event) -> {{\n            if (event.getAction() == android.view.MotionEvent.ACTION_UP || event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {{\n                int step = doweDp({snap_step});\n                int page = Math.round((float) ({vertical} ? {scroll}.getScrollY() : {scroll}.getScrollX()) / Math.max(1, step));\n                if ({vertical}) {scroll}.post(() -> {scroll}.smoothScrollTo(0, page * step)); else {scroll}.post(() -> {scroll}.smoothScrollTo(page * step, 0));\n            }}\n            return false;\n        }});\n"
+                    "        Runnable {carousel_update}Snap = () -> {{\n            if ({track}.getChildCount() == 0) return;\n            int viewportCenter = {vertical} ? {scroll}.getScrollY() + {scroll}.getHeight() / 2 : {scroll}.getScrollX() + {scroll}.getWidth() / 2;\n            int nearest = 0;\n            int nearestDistance = Integer.MAX_VALUE;\n            for (int index = 0; index < {track}.getChildCount(); index++) {{\n                View slide = {track}.getChildAt(index);\n                int center = {vertical} ? slide.getTop() + slide.getHeight() / 2 : slide.getLeft() + slide.getWidth() / 2;\n                int distance = Math.abs(center - viewportCenter);\n                if (distance < nearestDistance) {{ nearest = index; nearestDistance = distance; }}\n            }}\n            View slide = {track}.getChildAt(nearest);\n            int target = ({vertical} ? slide.getTop() + slide.getHeight() / 2 : slide.getLeft() + slide.getWidth() / 2) - ({vertical} ? {scroll}.getHeight() : {scroll}.getWidth()) / 2;\n            int maximum = Math.max(0, ({vertical} ? {scroll}.getChildAt(0).getHeight() - {scroll}.getHeight() : {scroll}.getChildAt(0).getWidth() - {scroll}.getWidth()));\n            target = Math.max(0, Math.min(target, maximum));\n            if ({vertical}) {scroll}.smoothScrollTo(0, target); else {scroll}.smoothScrollTo(target, 0);\n        }};\n        {scroll}.setOnTouchListener((target, event) -> {{\n            int action = event.getActionMasked();\n            if (action == android.view.MotionEvent.ACTION_DOWN) {carousel_interacting}[0] = true;\n            if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) {{\n                {carousel_interacting}[0] = false;\n                {scroll}.removeCallbacks({carousel_update}Snap);\n                {scroll}.postDelayed({carousel_update}Snap, 120);\n            }}\n            return false;\n        }});\n"
+                ));
+                output.push_str(&format!(
+                    "        {scroll}.setOnScrollChangeListener((target, scrollX, scrollY, oldScrollX, oldScrollY) -> {{ {carousel_update}.run(); {scroll}.removeCallbacks({carousel_update}Snap); {scroll}.postDelayed({carousel_update}Snap, 120); }});\n"
+                ));
+            } else {
+                output.push_str(&format!(
+                    "        {scroll}.setOnTouchListener((target, event) -> {{ int action = event.getActionMasked(); if (action == android.view.MotionEvent.ACTION_DOWN) {carousel_interacting}[0] = true; if (action == android.view.MotionEvent.ACTION_UP || action == android.view.MotionEvent.ACTION_CANCEL) {carousel_interacting}[0] = false; return false; }});\n"
+                ));
+            }
+            if props.autoplay {
+                output.push_str(&format!(
+                    "        Runnable[] {carousel_autoplay} = new Runnable[1];\n        {carousel_autoplay}[0] = () -> {{\n            if (!{view}.isShown() || {track}.getChildCount() == 0) return;\n            int last = Math.max(0, {track}.getChildCount() - 1);\n            if ({disable_loop} && {carousel_index}[0] >= last) return;\n            if ({carousel_interacting}[0]) {{ {scroll}.postDelayed({carousel_autoplay}[0], Math.max(500, {autoplay_interval})); return; }}\n            int targetIndex = {carousel_index}[0] + 1;\n            if (targetIndex > last) targetIndex = {disable_loop} ? last : 0;\n            View slide = {track}.getChildAt(targetIndex);\n            int target = ({vertical} ? slide.getTop() + slide.getHeight() / 2 : slide.getLeft() + slide.getWidth() / 2) - ({vertical} ? {scroll}.getHeight() : {scroll}.getWidth()) / 2;\n            int maximum = Math.max(0, ({vertical} ? {scroll}.getChildAt(0).getHeight() - {scroll}.getHeight() : {scroll}.getChildAt(0).getWidth() - {scroll}.getWidth()));\n            target = Math.max(0, Math.min(target, maximum));\n            if ({vertical}) {scroll}.smoothScrollTo(0, target); else {scroll}.smoothScrollTo(target, 0);\n            {scroll}.postDelayed({carousel_autoplay}[0], Math.max(500, {autoplay_interval}));\n        }};\n        {scroll}.postDelayed({carousel_autoplay}[0], Math.max(500, {autoplay_interval}));\n",
                 ));
             }
         }

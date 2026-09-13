@@ -11,7 +11,13 @@ fn session_metadata_is_bounded_and_inventory_falls_back_for_legacy_turns() {
     store.save_session(&mut current).unwrap();
     let saved = store.load_session(&current.id).unwrap();
     assert_eq!(saved.title.as_deref(), Some("Build a dashboard"));
-    assert!(!saved.initial_prompt_preview.as_deref().unwrap().contains('\u{1b}'));
+    assert!(
+        !saved
+            .initial_prompt_preview
+            .as_deref()
+            .unwrap()
+            .contains('\u{1b}')
+    );
 
     let mut legacy = store.create_session().unwrap();
     legacy.turns.push(HarnessTurn {
@@ -22,7 +28,12 @@ fn session_metadata_is_bounded_and_inventory_falls_back_for_legacy_turns() {
         ..Default::default()
     });
     store.save_session(&mut legacy).unwrap();
-    let row = store.session_inventory().unwrap().into_iter().find(|row| row["id"] == legacy.id).unwrap();
+    let row = store
+        .session_inventory()
+        .unwrap()
+        .into_iter()
+        .find(|row| row["id"] == legacy.id)
+        .unwrap();
     assert_eq!(row["title"], "Legacy session prompt");
     assert_eq!(row["initial_prompt_preview"], "Legacy session prompt");
 }
@@ -68,16 +79,33 @@ fn dynamic_registry_authority_is_stable_per_registry_and_session_bound() {
         api_key_env: Some("DOWE_TEST_PROVIDER_KEY".into()),
     };
     let mut registry_a = crate::ProviderRegistry::default();
-    registry_a.providers.insert("custom/local".into(), definition("https://a.example"));
+    registry_a
+        .providers
+        .insert("custom/local".into(), definition("https://a.example"));
     let mut registry_b = registry_a.clone();
-    registry_b.providers.get_mut("custom/local").unwrap().base_url = "https://b.example".into();
-    assert_eq!(registry_a.canonical_material().unwrap(), registry_a.canonical_material().unwrap());
+    registry_b
+        .providers
+        .get_mut("custom/local")
+        .unwrap()
+        .base_url = "https://b.example".into();
+    assert_eq!(
+        registry_a.canonical_material().unwrap(),
+        registry_a.canonical_material().unwrap()
+    );
     assert_ne!(
         crate::native_harness::catalog::authority_fingerprint_with_registry(&registry_a).unwrap(),
         crate::native_harness::catalog::authority_fingerprint_with_registry(&registry_b).unwrap()
     );
-    assert!(!registry_a.canonical_material().unwrap().contains("secret-value"));
-    let auth = registry_a.resolve_auth("custom/local", Some("secret-value")).unwrap().unwrap();
+    assert!(
+        !registry_a
+            .canonical_material()
+            .unwrap()
+            .contains("secret-value")
+    );
+    let auth = registry_a
+        .resolve_auth("custom/local", Some("secret-value"))
+        .unwrap()
+        .unwrap();
     assert_eq!(auth.secret.as_deref(), Some("secret-value"));
     assert_eq!(
         crate::native_harness::catalog::authority_fingerprint_with_registry(&registry_a).unwrap(),

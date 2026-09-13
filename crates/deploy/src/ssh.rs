@@ -107,7 +107,6 @@ as_root systemctl enable --now "$service.service"
 as_root systemctl --no-pager --full status "$service.service"
 "#;
 
-
 include!("ssh_types_and_destination.rs");
 include!("ssh_generation_and_apply.rs");
 include!("ssh_runtime_download.rs");

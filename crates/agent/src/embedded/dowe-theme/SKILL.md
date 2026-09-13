@@ -9,6 +9,10 @@ Keep theme behavior in root `theme.dowe` and use semantic Dowe tokens from views
 
 Theme colors use grouped family roles only. Every declared family is written under `colors:` with
 `color`, `text`, and `title`. This grouped form is the only theme color syntax to author or emit.
+Built-in family names are exact lowercase tokens (`primary`, `secondary`, `accent`, `muted`,
+`background`, `surface`, `success`, `info`, `warning`, `danger`); capitalized rows such as
+`Primary` and `Secondary`, `soft*` rows, and flat role declarations are invalid. Keep the three
+roles on the one lowercase family row.
 
 The following excerpt shows the family shape; a named theme must still declare the complete
 required semantic color set described in `references/theme.md`.

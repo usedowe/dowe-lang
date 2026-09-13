@@ -3,25 +3,30 @@ final class DoweReactiveState: ObservableObject {
     private static var globalValues: [String: Any] = [:]
     private static var globalStorage: [String: String] = [:]
     @Published private var values: [String: Any]
-    @Published private(set) var toast: DoweToastState? = nil
-    @Published private(set) var redirectPath: String? = nil
+    @Published private var localToast: DoweToastState? = nil
+    var toast: DoweToastState? { localToast ?? parent?.toast }
+    @Published private var localRedirectPath: String? = nil
+    var redirectPath: String? { localRedirectPath ?? parent?.redirectPath }
     private var toastSequence = 0
     private let constants: [String: Any]
     private let initial: [String: Any]
     private let signals: [String: DoweSignalMetadata]
     private let actions: [String: DoweAction]
     private let forms: [String: [DoweFormFieldMetadata]]
+    private let parent: DoweReactiveState?
+    private var parentObservation: AnyCancellable? = nil
     private var formTouched: [String: Bool] = [:]
     private var loaded = Set<String>()
 
-    init(constants: [String: Any], initial: [String: Any], signals: [String: DoweSignalMetadata], actions: [String: DoweAction], forms: [String: [DoweFormFieldMetadata]] = [:]) {
+    init(constants: [String: Any], initial: [String: Any], signals: [String: DoweSignalMetadata], actions: [String: DoweAction], forms: [String: [DoweFormFieldMetadata]] = [:], parent: DoweReactiveState? = nil) {
         self.constants = constants
         self.initial = initial
         self.signals = signals
         self.actions = actions
         self.forms = forms
-        var hydrated = initial
-        for (id, metadata) in signals where metadata.scope == "global" {
+        self.parent = parent
+        var hydrated = initial.filter { parent?.ownsSignal($0.key) != true }
+        for (id, metadata) in signals where metadata.scope == "global" && parent?.ownsSignal(id) != true {
             Self.globalStorage[metadata.name] = metadata.storage
             if Self.globalValues[metadata.name] == nil {
                 let fallback = initial[id] ?? NSNull()
@@ -34,6 +39,15 @@ final class DoweReactiveState: ObservableObject {
             hydrated[id] = Self.globalValues[metadata.name] ?? NSNull()
         }
         self.values = hydrated
+        if let parent {
+            self.parentObservation = parent.objectWillChange.sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+        }
+    }
+
+    private func ownsSignal(_ id: String) -> Bool {
+        signals[id] != nil || parent?.ownsSignal(id) == true
     }
 
     private static func compatibleSignalValue(_ value: Any, _ initial: Any) -> Bool {

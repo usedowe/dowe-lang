@@ -227,6 +227,14 @@ Grid, Flex, Card, media, control, or content owner. Do not introduce Box only to
 sizing, background, border, visibility, animation, or responsive values; reserve Box for an
 exceptional layer plane that normal flow cannot express.
 
+The Size group is enabled and must not be globally omitted during reference reconstruction. Use
+`w`, `h`, `minW`, `minH`, `maxW`, and `maxH` when they encode the measured text column, media bounds,
+section height, or responsive geometry on the real owner. This is still default-first: do not add
+arbitrary dimensions, and remember that `maxW` constrains wrapping without centering and `h:"full"`
+requires a bounded parent. Although the compiler accepts `color` syntactically on `Text` and `Title`
+for compatibility, Dowe authoring forbids that prop in every generated source; inherit foreground
+roles from the nearest scheme-owning `Card`, `Section`, or other parent.
+
 | Group              | Props                                               | Values                                                                                                                                                                               |
 | ------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Padding            | `p`, `px`, `py`, `pl`, `pr`, `pt`, `pb`             | Dowe numeric scale                                                                                                                                                                   |
@@ -415,7 +423,7 @@ those semantic components.
 Box position:"relative" cover:"/assets/images/hero.jpg" minH:"vh-32" rounded:"xl"
   Box position:"absolute" top:{ xs:4 md:6 } right:{ xs:4 md:6 }
     Card p:4
-      Text weight:"bold"
+      Text
         "Audience proof"
 ```
 
@@ -450,9 +458,10 @@ use the same fragment destinations. Fragment navigation scrolls smoothly unless 
 requested. On web, a fixed or sticky AppBar in the same Scaffold is measured so the destination
 begins below the bar. Empty, dynamic, duplicated, or non-portable ids fail compilation.
 
-`NavMenu scheme` styles trigger, open, and active-entry states consistently across web, Android,
-and iOS. Its submenu and megamenu popovers remain visible structural surfaces using `background`
-and `backgroundText`, even for `ghost` or `outlined` menus. Popovers float without changing layout
+Inactive `NavMenu` labels inherit the surrounding text role, including `AppBar` text.
+`NavMenu scheme` styles hover, open, and active-entry states consistently across web, Android,
+and iOS. Closing a menu restores the inherited trigger color. Its submenu and megamenu popovers remain visible structural surfaces using `background`
+and the separate `backgroundText` and `backgroundTitle` roles, even for `ghost` or `outlined` menus. Popovers float without changing layout
 and close after their content is activated. iOS uses the same Dowe-owned anchored overlay strategy
 as `Dropdown` instead of a system popover. Navigation dispatches before dismissal so fragment links
 can animate to their validated `Section` destination.

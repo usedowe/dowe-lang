@@ -1,4 +1,4 @@
-use super::{HarnessRole, ModelSelection};
+use super::{HarnessPermissionMode, HarnessRole, ModelSelection};
 use dowe_agent_harness::AllowedEditSurface;
 use dowe_codegraph::CodeGraphBinding;
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,8 @@ pub struct HarnessTask<'a> {
     pub explicit: Option<&'a ModelSelection>,
     pub image_paths: &'a [std::path::PathBuf],
     pub edit_scope: Option<Vec<AllowedEditSurface>>,
-        pub expected_codegraph_binding: Option<CodeGraphBinding>,
+    pub expected_codegraph_binding: Option<CodeGraphBinding>,
+    pub permission_mode: HarnessPermissionMode,
 }
 
 pub(super) fn omit_image_bytes(value: &mut serde_json::Value) -> usize {
@@ -68,13 +69,10 @@ mod tests {
     #[test]
     fn request_estimate_ignores_internal_task_packet() {
         let root = tempfile::tempdir().unwrap();
-        let mut request = prepare_agent_request(
-            root.path(),
-            "hello",
-            AgentPrepareOptions::default(),
-        )
-        .unwrap()
-        .request;
+        let mut request =
+            prepare_agent_request(root.path(), "hello", AgentPrepareOptions::default())
+                .unwrap()
+                .request;
         let baseline = estimate_request(&request).unwrap();
         request.extra.insert(
             "task_packet".into(),
@@ -93,7 +91,8 @@ impl<'a> HarnessTask<'a> {
             explicit: None,
             image_paths: &[],
             edit_scope: None,
-                expected_codegraph_binding: None,
+            expected_codegraph_binding: None,
+            permission_mode: HarnessPermissionMode::Confirm,
         }
     }
 }

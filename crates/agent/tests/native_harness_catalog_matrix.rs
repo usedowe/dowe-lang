@@ -33,12 +33,12 @@ fn equivalent_english_and_spanish_intents_select_the_same_focused_units() {
         (
             "Create a page",
             "Crea una página",
-            vec!["core", "views/pages"],
+            vec!["core", "core/syntax", "views/pages"],
         ),
         (
             "Extract components",
             "Extrae componentes",
-            vec!["core", "views/components"],
+            vec!["core", "views/catalog", "views/components"],
         ),
         (
             "Add entities",
@@ -102,7 +102,16 @@ fn reference_image_intents_preload_the_complete_view_composition_contract() {
     let units = select_units("implementa esta imagen de referencia en Dowe", &[]);
     assert_eq!(
         units,
-        vec!["core", "views/components", "views/layouts", "views/pages"]
+        vec![
+            "core",
+            "core/syntax",
+            "views/assets",
+            "views/catalog",
+            "views/components",
+            "views/layouts",
+            "views/pages",
+            "views/reference-ui",
+        ]
     );
 }
 
@@ -116,6 +125,23 @@ fn ui_and_design_intents_preload_the_complete_view_composition_contract() {
             units.iter().any(|unit| unit == "views/components"),
             "{prompt}"
         );
+        assert!(units.iter().any(|unit| unit == "views/catalog"), "{prompt}");
+    }
+}
+
+#[test]
+fn component_catalog_unit_contains_semantic_and_structural_entries() {
+    let unit = skill_unit("views/catalog").unwrap();
+    assert_eq!(unit.resource, "views/references/components.md");
+    for entry in [
+        "`Section`",
+        "`Flex`",
+        "`Grid`",
+        "`Card`",
+        "`Carousel`",
+        "`slide`",
+    ] {
+        assert!(unit.content.contains(entry), "catalog omits {entry}");
     }
 }
 

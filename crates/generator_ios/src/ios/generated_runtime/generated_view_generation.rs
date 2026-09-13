@@ -6,6 +6,7 @@ fn generated_views(
 ) -> String {
     let tree_runtime = swift_runtime_tree();
     let content_controls = swift_runtime_content_controls();
+    let (layout_trees, route_layout_keys) = ios_layout_state_catalog(routes);
     let mut output = [
         swift_runtime_foundation(),
         swift_runtime_media(),
@@ -56,8 +57,7 @@ fn generated_views(
         let easing = dowe_components::VIEW_PAGE_TRANSITION_EASING;
         let page_transition_runtime = r#"        GeometryReader { geometry in
             ZStack {
-                routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height)
-                    .id(routeRevision)
+                routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height, routeRevision: routeRevision)
                     .transition(.asymmetric(insertion: .opacity, removal: .identity))
                     .environment(\.dowePageEntranceSuppressed, pageEntranceSuppressed)
             }
@@ -131,18 +131,18 @@ fn generated_views(
 
     if let Some(route) = routes.first() {
         output.push_str(
-            "    private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat) -> AnyView {\n        switch entry.path {\n",
+            "    private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat, routeRevision: Int) -> AnyView {\n        switch entry.path {\n",
         );
-        for route in routes {
+        for (route, layout_key) in routes.iter().zip(&route_layout_keys) {
             output.push_str(&format!(
-                "        case \"{}\":\n            return AnyView({}(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment, navigate: navigate, goBack: goBack, openExternal: openExternal))\n",
+                "        case \"{}\":\n            {}\n",
                 route.route_path,
-                swift_view_name(&route.route_path)
+                ios_route_content_case(route, *layout_key)
             ));
         }
         output.push_str(&format!(
-            "        default:\n            return AnyView({}(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment, navigate: navigate, goBack: goBack, openExternal: openExternal))\n",
-            swift_view_name(&route.route_path)
+            "        default:\n            {}\n",
+            ios_route_content_case(route, route_layout_keys.first().copied().flatten())
         ));
         output.push_str("        }\n    }\n\n");
     }
@@ -173,8 +173,8 @@ fn generated_views(
         }
         if destination.path != currentEntry.path {
             beginPageTransition()
+            routeRevision += 1
         }
-        routeRevision += 1
         if operation == "replace" {
             if navigationPath.isEmpty {
                 rootEntry = destination
@@ -238,7 +238,63 @@ func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool {
 
 "#,
     );
+    output.push_str(&ios_layout_state_factories(&layout_trees));
     output.push_str(&swift_reactive_runtime());
 
+    output
+}
+
+fn ios_layout_state_catalog(routes: &[ViewRoute]) -> (Vec<&ViewNode>, Vec<Option<usize>>) {
+    let mut layouts = Vec::new();
+    let route_keys = routes
+        .iter()
+        .map(|route| {
+            if matches!(&route.layout_tree, ViewNode::Children) {
+                return None;
+            }
+            Some(
+                layouts
+                    .iter()
+                    .position(|layout| *layout == &route.layout_tree)
+                    .unwrap_or_else(|| {
+                        layouts.push(&route.layout_tree);
+                        layouts.len() - 1
+                    }),
+            )
+        })
+        .collect();
+    (layouts, route_keys)
+}
+
+fn ios_route_content_case(route: &ViewRoute, layout_key: Option<usize>) -> String {
+    let view = format!(
+        "{}(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment, navigate: navigate, goBack: goBack, openExternal: openExternal, layoutState: {{}}).id(routeRevision)",
+        swift_view_name(&route.route_path)
+    );
+    match layout_key {
+        Some(index) => format!(
+            "return AnyView(DoweLayoutStateHost(makeState: {{ doweMakeLayoutState{index}() }}) {{ layoutState in\n                AnyView({})\n            }}.id(\"layout:{index}\"))",
+            view.replace("layoutState: {}", "layoutState: layoutState")
+        ),
+        None => format!(
+            "return AnyView({})",
+            view.replace("layoutState: {}", "layoutState: nil")
+        ),
+    }
+}
+
+fn ios_layout_state_factories(layouts: &[&ViewNode]) -> String {
+    let mut output = String::new();
+    for (index, layout) in layouts.iter().enumerate() {
+        let reactive = swift_reactive_route(layout);
+        output.push_str(&format!(
+            "\n@MainActor\nprivate func doweMakeLayoutState{index}() -> DoweReactiveState {{\n    DoweReactiveState(constants: {}, initial: {}, signals: {}, actions: {}, forms: {})\n}}\n",
+            reactive.constants,
+            reactive.initial,
+            reactive.signals,
+            reactive.actions,
+            reactive.forms,
+        ));
+    }
     output
 }

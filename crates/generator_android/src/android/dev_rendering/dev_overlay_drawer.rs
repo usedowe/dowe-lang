@@ -68,7 +68,7 @@ fn render_dev_android_drawer(
                 counter,
                 output,
                 current_font,
-                Some(dev_card_variant_content(&props.style).to_string()),
+                Some(dev_content_colors(dev_card_variant_content(&props.style), dev_card_variant_title(&props.style))),
                 context,
                 children_method,
             );
@@ -87,7 +87,7 @@ fn render_dev_android_drawer(
             counter,
             output,
             current_font,
-            Some(dev_card_variant_content(&props.style).to_string()),
+            Some(dev_content_colors(dev_card_variant_content(&props.style), dev_card_variant_title(&props.style))),
             context,
             children_method,
         );
@@ -106,7 +106,7 @@ fn render_dev_android_drawer(
                 counter,
                 output,
                 current_font,
-                Some(dev_card_variant_content(&props.style).to_string()),
+                Some(dev_content_colors(dev_card_variant_content(&props.style), dev_card_variant_title(&props.style))),
                 context,
                 children_method,
             );

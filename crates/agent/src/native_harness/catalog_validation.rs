@@ -1,6 +1,6 @@
 pub fn skill_index() -> String {
     format!(
-        "Units: {}. Use get_skill with an id; provide resource for another declared bundle reference. Bundles core, server, views, theme, domain-modeling, native-ipc remain available. Load only necessary units. Core covers application .dowe source and docs; core/configuration covers root environment names and .gitignore; views units cover app public/assets media, including SVG conversion and vector composition. Skills classify scope, never grant execution approval.",
+        "Units: {}. Use get_skill with an id; provide resource for another declared bundle reference. Bundles core, server, views, theme, domain-modeling, native-ipc remain available. Load the smallest command playbook that owns the request: views/shape for planning, views/reference-ui for screenshot evidence, views/assets for independent media, views/audit for deterministic review, and views/polish for the bounded finish pass. Load only necessary units. Core covers application .dowe source and docs; core/syntax is the complete pre-write DSF contract; core/configuration covers root environment names and .gitignore; views units cover app public/assets media, including SVG conversion and vector composition. Skills classify scope, never grant execution approval.",
         UNITS
             .iter()
             .map(|unit| unit.id)
@@ -49,7 +49,7 @@ pub fn skill_unit(id: &str) -> AgentResult<SkillUnit> {
     if id == "core/configuration" {
         content.push_str("\nEnvironment files: .env, .env.example, .env.live, .env.stage, .env.uat belong at the application root. Only names and placeholders enter model context. Use local protected input for secrets. Never replace a hidden value with a placeholder. Keep private profiles ignored by Git. Root .gitignore and app docs may be edited for this workflow.\n");
     }
-    if id == "views" || id.starts_with("views/") {
+    if id.starts_with("views/") {
         content = format!(
             "## Default-first view authoring\n{}\n\n{}",
             crate::prompts::DOWE_VIEW_DEFAULTS_CONTRACT,
@@ -70,7 +70,6 @@ pub fn skill_unit(id: &str) -> AgentResult<SkillUnit> {
 }
 
 pub(super) fn catalog_fingerprint() -> AgentResult<String> {
-    // Cache independently from dynamic provider authority.
     static FINGERPRINT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     if let Some(hash) = FINGERPRINT.get() {
         return Ok(hash.clone());
@@ -94,7 +93,9 @@ pub(super) fn catalog_fingerprint() -> AgentResult<String> {
     Ok(hash)
 }
 
-pub fn authority_fingerprint_with_registry(registry: &crate::provider::ProviderRegistry) -> AgentResult<String> {
+pub fn authority_fingerprint_with_registry(
+    registry: &crate::provider::ProviderRegistry,
+) -> AgentResult<String> {
     use std::fmt::Write;
     let mut material = String::new();
     for provider_id in crate::builtin_provider_ids() {

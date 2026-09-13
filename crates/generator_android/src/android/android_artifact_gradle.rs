@@ -94,9 +94,9 @@ dependencies {{
     implementation(platform("androidx.compose:compose-bom:2026.06.01"))
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }}
 "#,
         escape_kotlin(app_bundle)
     )
 }
-

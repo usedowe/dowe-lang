@@ -47,6 +47,10 @@ fn registry_finds_builtin_components() {
         Some(BuiltinComponent::Canvas)
     );
     assert_eq!(
+        COMPONENT_REGISTRY.get("Game"),
+        Some(BuiltinComponent::Game)
+    );
+    assert_eq!(
         COMPONENT_REGISTRY.get("Iframe"),
         Some(BuiltinComponent::Iframe)
     );
@@ -255,4 +259,3 @@ fn font_catalog_exposes_platform_asset_metadata() {
             && weight.asset_stem == "poppins-extrabold"
     }));
 }
-

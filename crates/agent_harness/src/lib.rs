@@ -5,8 +5,8 @@ mod paths;
 mod templates;
 mod workflow;
 
-pub use error::{HarnessError, HarnessResult};
 pub use dowe_codegraph::CodeGraphBinding;
+pub use error::{HarnessError, HarnessResult};
 pub use model::{
     ChangeBootstrapReport, ChangeKind, ChangeSet, ChangeSetEntry, CheckReport, DetectedMode,
     Diagnostic, DiagnosticSeverity, EvidenceRef, FileRecord, HarnessManifest, HarnessMode,
@@ -14,13 +14,11 @@ pub use model::{
     TddState, ValidationReport,
 };
 pub use orchestration::{
-    AgentExecutionKind, AgentRecord, AgentRole, AgentState, AllowedEditSurface, NativeReceiptEvent,
-        OrchestrationError, OrchestrationResult,
-    Receipt, ReceiptPath,
-    ReceiptState, TaskRecord, TaskState, WorkerRecord, WorkerRole, WorkerState,
+    AcknowledgementState, AgentExecutionKind, AgentRecord, AgentRole, AgentState,
+    AllowedEditSurface, DeliveryState, NativeReceiptEvent, OrchestrationError, OrchestrationResult,
+    Orchestrator, Receipt, ReceiptPath, ReceiptState, ReviewOutcome, ReviewState, SessionRecord,
+    SessionState, TaskRecord, TaskState, ValidationState, WorkerRecord, WorkerRole, WorkerState,
     project_native_receipt_event,
-    AcknowledgementState, DeliveryState, Orchestrator, ReviewOutcome, ReviewState, SessionRecord,
-        SessionState, ValidationState,
 };
 pub use workflow::{
     bootstrap_sdd_change, check_harness, detect_mode, init_project_harness, plan_from_spec,

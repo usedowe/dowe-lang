@@ -192,7 +192,6 @@ impl DispatchError {
     }
 }
 
-
 include!("notification_dispatch_core.rs");
 include!("notification_provider_dispatch.rs");
 include!("notification_linux.rs");

@@ -13,7 +13,10 @@ fn dev_text_color(title: bool, props: &TextProps, inherited_color: Option<&str>)
         .unwrap_or_else(|| fallback.to_string())
 }
 
-fn dev_text_size(title: bool, props: &TextProps) -> String {
+fn dev_text_size(title: bool, props: &TextProps, context: &ComposeReactiveContext) -> String {
+    if let Some(binding) = props.size_binding.as_ref() {
+        return format!("doweDynamicTextSize({}, {title})", dev_text_binding_value(binding, context));
+    }
     let fallback = dev_text_size_expr(title, TextSize::Md);
     props
         .size
@@ -23,7 +26,13 @@ fn dev_text_size(title: bool, props: &TextProps) -> String {
         .unwrap_or(fallback)
 }
 
-fn dev_text_line_height(title: bool, props: &TextProps) -> String {
+fn dev_text_line_height(title: bool, props: &TextProps, context: &ComposeReactiveContext) -> String {
+    if let Some(binding) = props.size_binding.as_ref() {
+        return format!(
+            "doweDynamicTextLineHeight({}, {title})",
+            dev_text_binding_value(binding, context)
+        );
+    }
     let fallback = format!("{}f", text_typography(title, TextSize::Md).line_height);
     props
         .size
@@ -37,7 +46,10 @@ fn dev_text_line_height(title: bool, props: &TextProps) -> String {
         .unwrap_or(fallback)
 }
 
-fn dev_text_weight(title: bool, props: &TextProps) -> String {
+fn dev_text_weight(title: bool, props: &TextProps, context: &ComposeReactiveContext) -> String {
+    if let Some(binding) = props.weight_binding.as_ref() {
+        return format!("doweDynamicTextWeight({})", dev_text_binding_value(binding, context));
+    }
     if let Some(value) = props.weight.as_ref() {
         let fallback = dev_text_weight_value(TextWeight::Regular);
         return format!(
@@ -47,6 +59,12 @@ fn dev_text_weight(title: bool, props: &TextProps) -> String {
     }
 
     if title {
+        if let Some(binding) = props.size_binding.as_ref() {
+            return format!(
+                "doweDynamicTextWeightForSize({})",
+                dev_text_binding_value(binding, context)
+            );
+        }
         let fallback = dev_text_weight_value(text_typography(true, TextSize::Md).weight);
         props
             .size
@@ -63,7 +81,10 @@ fn dev_text_weight(title: bool, props: &TextProps) -> String {
     }
 }
 
-fn dev_text_spacing(title: bool, props: &TextProps) -> String {
+fn dev_text_spacing(title: bool, props: &TextProps, context: &ComposeReactiveContext) -> String {
+    if let Some(binding) = props.letter_spacing_binding.as_ref() {
+        return format!("doweDynamicTextSpacing({})", dev_text_binding_value(binding, context));
+    }
     if let Some(value) = props.letter_spacing.as_ref() {
         let fallback = "0f";
         return format!(
@@ -73,6 +94,12 @@ fn dev_text_spacing(title: bool, props: &TextProps) -> String {
     }
 
     if title {
+        if let Some(binding) = props.size_binding.as_ref() {
+            return format!(
+                "doweDynamicTextSpacingForSize({})",
+                dev_text_binding_value(binding, context)
+            );
+        }
         let fallback = format!("{}f", text_typography(true, TextSize::Md).letter_spacing_em);
         props
             .size
@@ -87,6 +114,17 @@ fn dev_text_spacing(title: bool, props: &TextProps) -> String {
     } else {
         "0f".to_string()
     }
+}
+
+fn dev_text_binding_value(
+    binding: &dowe_components::PropBinding,
+    context: &ComposeReactiveContext,
+) -> String {
+    let path = context
+        .item_path(&binding.path)
+        .unwrap_or_else(|| context.signal_path(&binding.path));
+    let item = context.item_value(&binding.path).unwrap_or("null");
+    format!("doweTextValue(\"{}\", {item})", escape_java(&path))
 }
 
 fn dev_optional_size(value: Option<&ResponsiveValue<SizeValue>>) -> String {
@@ -320,4 +358,3 @@ fn color_ref(value: ColorToken) -> &'static str {
         _ => intern_generated_color_name(format!("DoweDesign.{}", value.as_str())),
     }
 }
-

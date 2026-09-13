@@ -36,6 +36,7 @@ fn render_swift_text_svg_alert_node(
                 props,
                 props.style.font.as_ref().or(inherited_font),
                 default_family,
+                context,
             );
             append_swift_modifiers(output, indent, &modifiers);
         }
@@ -62,6 +63,7 @@ fn render_swift_text_svg_alert_node(
                 props,
                 props.style.font.as_ref().or(inherited_font),
                 default_family,
+                context,
             );
             append_swift_modifiers(output, indent, &modifiers);
         }

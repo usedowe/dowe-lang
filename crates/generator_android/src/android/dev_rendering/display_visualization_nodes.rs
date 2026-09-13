@@ -13,6 +13,7 @@ fn render_dev_android_visualization_display_node(
     if !matches!(
         node,
         ViewNode::Canvas { .. }
+            | ViewNode::Game { .. }
             | ViewNode::Diagram { .. }
             | ViewNode::Candlestick { .. }
             | ViewNode::ArcChart { .. }
@@ -96,6 +97,82 @@ fn render_dev_android_visualization_display_node(
                 props.motion_rate,
                 props.draw,
                 escape_java(&props.draw_mode),
+                dev_style_radius(&props.style),
+            ));
+            apply_dev_android_style(&props.style, &view, false, output);
+            output.push_str(&dev_add(parent, &view, parent_gap, parent_horizontal));
+        }
+        ViewNode::Game { props } => {
+            let view = next_dev_view(counter);
+            let action = |value: Option<&String>| {
+                value
+                    .and_then(|value| context.action_id(value))
+                    .map(|value| format!("\"{}\"", escape_java(value)))
+                    .unwrap_or_else(|| "null".to_string())
+            };
+            let path = |value: Option<&String>| {
+                value
+                    .map(|value| format!("\"{}\"", escape_java(&context.signal_path(value))))
+                    .unwrap_or_else(|| "null".to_string())
+            };
+            let socket_path = props.socket.as_ref().map(|value| {
+                let path = if props.socket_binding {
+                    context.signal_path(value)
+                } else {
+                    value.to_string()
+                };
+                format!("\"{}\"", escape_java(&path))
+            }).unwrap_or_else(|| "null".to_string());
+            let background = match props.background {
+                CanvasBackground::Transparent => "Color.TRANSPARENT".to_string(),
+                CanvasBackground::Color(color) => java_color(color).to_string(),
+            };
+            let border_width = props
+                .style
+                .border
+                .as_ref()
+                .map(dev_border_value)
+                .unwrap_or_else(|| "null".to_string());
+            let border_color = props
+                .style
+                .border_color
+                .map(family_color)
+                .map(java_color)
+                .unwrap_or("DOWE_BACKGROUND_TEXT");
+            output.push_str(&format!(
+                "        View {view} = doweGame({}, \"{}\", {}, {}, \"{}\", {}, {}, {}f, {}f, \"{}\", {}, {}, {}, {}, \"{}\", {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {});\n",
+                path(props.scene.as_ref()),
+                props.renderer.as_str(),
+                path(props.world.as_ref()),
+                path(props.camera.as_ref()),
+                props.controls.as_str(),
+                props.move_speed,
+                props.turn_speed,
+                props.view_width,
+                props.view_height,
+                props.fit.as_str(),
+                props.fps,
+                props.autoplay,
+                props.pixelated,
+                background,
+                escape_java(&props.label),
+                action(props.on_pointer.as_ref()),
+                action(props.on_key.as_ref()),
+                action(props.on_fire.as_ref()),
+                action(props.on_motion.as_ref()),
+                props.motion_rate,
+                socket_path,
+                props.socket_binding,
+                path(props.send.as_ref()),
+                path(props.status.as_ref()),
+                action(props.on_open.as_ref()),
+                action(props.on_message.as_ref()),
+                action(props.on_close.as_ref()),
+                action(props.on_error.as_ref()),
+                props.reconnect,
+                props.reconnect_delay,
+                border_width,
+                border_color,
                 dev_style_radius(&props.style),
             ));
             apply_dev_android_style(&props.style, &view, false, output);

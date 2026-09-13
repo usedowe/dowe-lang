@@ -9,6 +9,7 @@ async fn run_harness_round(
     prompt: &str,
     semantic: &SemanticEnrichment,
     image_selection: &ModelSelection,
+    strict_ui: bool,
     tools: &mut HarnessTools,
     turn_codegraph_binding: Option<&CodeGraphBinding>,
     expected_codegraph_binding: Option<&CodeGraphBinding>,
@@ -36,6 +37,7 @@ async fn run_harness_round(
         prompt,
         Some(semantic),
     )?;
+    annotate_permission_mode(&mut request, tools);
     if let Some(image) = &state.generated_image_for_continuation {
         request.messages.push(AgentMessage {
             role: "user".into(),
@@ -102,6 +104,7 @@ async fn run_harness_round(
             prompt,
             Some(semantic),
         )?;
+        annotate_permission_mode(&mut request, tools);
         estimate = super::task::estimate_request(&request)?;
         if estimate + 6144 >= limit {
             return Err(AgentError::new(
@@ -223,138 +226,10 @@ async fn run_harness_round(
         store.save_session(session)?;
     }
     if calls.is_empty() {
-        if state.visual_failed_seen {
-            if state.visual_repair_attempts < 1 {
-                state.visual_repair_attempts += 1;
-                session.turns.push(HarnessTurn {
-                    message: Some(AgentMessage {
-                        role: "user".into(),
-                        content: AgentMessageContent::Text(
-                            "Native visual comparison found a significant difference from the attached reference. Inspect the captured screenshot and diff, refine the Dowe view, and capture it again before declaring the task complete.".into(),
-                        ),
-                    }),
-                    ..Default::default()
-                });
-                state.has_tool_result = true;
-                session.interrupted = false;
-                if persist {
-                    store.save_session(session)?;
-                }
-                return Ok(None);
-            }
-            emit_persist(
-                store,
-                session,
-                persist,
-                host,
-                json!({"event":"validation_failed","kind":"visual_comparison","reason":"visual_comparison_failed"}),
-            )?;
-            emit_persist(
-                store,
-                session,
-                persist,
-                host,
-                json!({"event":"task_state","status":"failed","reason":"visual_comparison_failed"}),
-            )?;
-            return Ok(Some(HarnessOutcome::ValidationFailed));
-        }
-        if state.validation_failures > 0 && !state.validation_attempted && !state.mutation_seen {
-            emit_persist(
-                store,
-                session,
-                persist,
-                host,
-                json!({"event":"validation_failed","kind":"dowe_project","reason":"dowe_validation_failed","validation":state.last_validation}),
-            )?;
-            emit_persist(
-                store,
-                session,
-                persist,
-                host,
-                json!({"event":"task_state","status":"failed","reason":"dowe_validation_failed","validation":state.last_validation}),
-            )?;
-            return Ok(Some(HarnessOutcome::ValidationFailed));
-        }
-        if crate::is_dowe_project(store.root())
-            && state.mutation_seen
-            && !state.validation_attempted
-        {
-            emit_persist(
-                store,
-                session,
-                persist,
-                host,
-                json!({"event":"validation_started","scope":"project","automatic":true}),
-            )?;
-            let validation = validate_dowe_project(store, host, "project").await?;
-            let failed = validation["status"] == "failed";
-            let mut validation_for_model = validation.clone();
-            tools.redactor.value(&mut validation_for_model);
-            validation_for_model =
-                super::privacy::bounded_value(validation_for_model, config.max_output_bytes);
-            emit_persist(
-                store,
-                session,
-                persist,
-                host,
-                json!({"event":"validation_finished","automatic":true,"result":validation_for_model.clone()}),
-            )?;
-            state.last_validation = Some(validation_for_model.clone());
-            let result = ToolResult {
-                id: format!("automatic-validation-{}", super::identifier()),
-                name: "validate_dowe_project".into(),
-                failed,
-                output: validation_for_model,
-            };
-            session.turns.push(HarnessTurn {
-                results: vec![result],
-                ..Default::default()
-            });
-            if failed {
-                if state.validation_failures < 1 {
-                    state.validation_failures += 1;
-                    state.validation_attempted = false;
-                    session.turns.push(HarnessTurn {
-                        message: Some(AgentMessage {
-                            role: "user".into(),
-                            content: AgentMessageContent::Text(
-                                "Automatic Dowe validation failed. Inspect the compiler diagnostics and quality findings above, repair the source, and validate again before declaring the task complete.".into(),
-                            ),
-                        }),
-                        ..Default::default()
-                    });
-                    state.has_tool_result = true;
-                    session.interrupted = false;
-                    if persist {
-                        store.save_session(session)?;
-                    }
-                    return Ok(None);
-                }
-                emit_persist(
-                    store,
-                    session,
-                    persist,
-                    host,
-                    json!({"event":"validation_failed","kind":"dowe_project","reason":"dowe_validation_failed","validation":state.last_validation}),
-                )?;
-                emit_persist(
-                    store,
-                    session,
-                    persist,
-                    host,
-                    json!({"event":"task_state","status":"failed","reason":"dowe_validation_failed","validation":state.last_validation}),
-                )?;
-                return Ok(Some(HarnessOutcome::ValidationFailed));
-            }
-        }
-        emit_persist(
-            store,
-            session,
-            persist,
-            host,
-            json!({"event":"task_state","status":"done","validation":state.last_validation}),
-        )?;
-        return Ok(Some(HarnessOutcome::Completed));
+        return finish_no_tool_round(
+            store, session, config, strict_ui, tools, host, persist, state,
+        )
+        .await;
     }
     let call_results = execute_harness_calls(
         store,
@@ -369,6 +244,7 @@ async fn run_harness_round(
         persist,
         turn_codegraph_binding,
         image_selection,
+        strict_ui,
     )
     .await?;
     let HarnessCallResults {
@@ -380,29 +256,52 @@ async fn run_harness_round(
         generated_image_for_continuation: generated_image,
         validation_attempted: call_validation_attempted,
         validation_failed: call_validation_failed,
+        visual_attempted: call_visual_attempted,
         visual_checked: call_visual_checked,
         visual_failed: call_visual_failed,
+        visual_status: call_visual_status,
+        validation_after_mutation: call_validation_after_mutation,
+        visual_after_mutation: call_visual_after_mutation,
         outcome,
     } = call_results;
     state.generated_image_for_continuation = generated_image;
     state.mutation_seen |= graph_dirty;
-    state.validation_attempted |= call_validation_attempted && !call_validation_failed;
+    if graph_dirty && !call_validation_after_mutation {
+        state.validation_attempted = false;
+        state.last_validation = None;
+    }
     if call_validation_failed {
         state.validation_attempted = false;
         state.validation_failures = state.validation_failures.saturating_add(1);
     }
     if call_validation_attempted || call_validation_failed {
-        state.last_validation = results
+        if let Some(validation) = results
             .iter()
             .rev()
             .find(|result| result.name == "validate_dowe_project")
-            .map(|result| result.output.clone());
+            .map(|result| result.output.clone())
+        {
+            state.record_validation(validation.clone());
+            state.last_validation = Some(validation);
+            if !call_validation_failed && (!graph_dirty || call_validation_after_mutation) {
+                state.validation_attempted = true;
+            }
+        }
+    }
+    if call_visual_attempted {
+        state.visual_qa_attempted = true;
+        state.visual_status = Some(call_visual_status.unwrap_or_else(|| "not_run".into()));
     }
     if call_visual_checked {
         state.visual_failed_seen = call_visual_failed;
         if !call_visual_failed {
             state.visual_repair_attempts = 0;
         }
+    }
+    if graph_dirty && !call_visual_after_mutation {
+        state.visual_qa_attempted = false;
+        state.visual_status = None;
+        state.visual_failed_seen = false;
     }
     if let Some(outcome) = outcome {
         return Ok(Some(outcome));
@@ -471,4 +370,15 @@ async fn run_harness_round(
         return Ok(Some(HarnessOutcome::ApprovalRequired));
     }
     Ok(None)
+}
+
+fn annotate_permission_mode(request: &mut AgentRequest, tools: &HarnessTools) {
+    if !tools.permission_mode().is_full_access() {
+        return;
+    }
+    if let Some(message) = request.messages.first_mut()
+        && let AgentMessageContent::Text(system) = &mut message.content
+    {
+        system.push_str("\n\nThe user explicitly activated interactive full-access mode for this session. Proceed with prepared application mutations without asking for a separate approval; keep exact bounded changes, validation and protected-path rules. This mode is session-only and does not authorize secrets, instruction files, private/generated trees or paths outside the project.");
+    }
 }

@@ -20,6 +20,9 @@ fn component_description(name: &str) -> &'static str {
         "Draw" => {
             "Built-in cross-platform editable drawing surface with Signal-backed layers, selection, deletion, and layer events."
         }
+        "Game" => {
+            "Built-in cross-platform high-frequency game surface with retained 2D and deterministic Doom-like raycast3d renderers, input events, and optional WebSocket transport to a Dowe server."
+        }
         "Input" | "Select" | "Option" | "Slider" | "Dropzone" | "ComboBox" | "comboOption"
         | "CsvField" | "csvColumn" | "DragDrop" | "dragGroup" | "dragItem" | "Editor"
         | "ImageCropper" | "Password" | "Phone" | "Pin" | "Textarea" | "Checkbox" | "Color"
@@ -147,5 +150,3 @@ fn component_children(name: &str) -> &'static [(&'static str, &'static str)] {
         _ => &[],
     }
 }
-
-

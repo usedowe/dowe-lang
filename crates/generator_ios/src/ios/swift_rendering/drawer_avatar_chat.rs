@@ -18,10 +18,11 @@ fn render_swift_drawer(
             "nil".to_string()
         };
     output.push_str(&format!(
-        "{pad}DoweDrawer(open: state.bool(\"{path}\"), close: {{ state.write(\"{path}\", value: false) }}, position: \"{}\", backgroundColor: {}, contentColor: {}, borderColor: {border}, radius: {}, disableOverlayClose: {}, hideCloseButton: {}) {{\n",
+        "{pad}DoweDrawer(open: state.bool(\"{path}\"), close: {{ state.write(\"{path}\", value: false) }}, position: \"{}\", backgroundColor: {}, contentColor: {}, titleColor: {}, borderColor: {border}, radius: {}, disableOverlayClose: {}, hideCloseButton: {}) {{\n",
         props.position.as_str(),
         card_variant_container(&props.style),
         card_variant_content(&props.style),
+        card_variant_title(&props.style),
         swift_drawer_radius(&props.style.style),
         props.disable_overlay_close,
         props.hide_close_button
@@ -361,14 +362,10 @@ fn render_swift_rich_text(
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
+    context: &SwiftReactiveContext,
 ) {
     let pad = " ".repeat(indent);
-    let size = props
-        .size
-        .as_ref()
-        .map(|value| value.entries[0].value)
-        .unwrap_or(TextSize::Md);
-    let font_size = swift_text_size_expr(props.title, size);
+    let font_size = text_size(props.title, props, context);
     let content_color =
         text_color(props).unwrap_or_else(|| "DoweDesign.backgroundText".to_string());
     output.push_str(&format!(
@@ -379,7 +376,13 @@ fn render_swift_rich_text(
     append_swift_modifiers(
         output,
         indent,
-        &swift_modifiers_for_text(props.title, props, inherited_font, default_family),
+        &swift_modifiers_for_text(
+            props.title,
+            props,
+            inherited_font,
+            default_family,
+            context,
+        ),
     );
 }
 
@@ -454,4 +457,3 @@ fn render_swift_toggle_group(
         &swift_modifiers_for_style(&props.style.style),
     );
 }
-

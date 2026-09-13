@@ -7,11 +7,13 @@ fn render_dev_android_nav_menu(
     counter: &mut usize,
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
+    inherited_color: Option<&str>,
     context: &ComposeReactiveContext,
     children_method: Option<&str>,
 ) {
     let view = next_dev_view(counter);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
+    let current_color = dev_inherited_content_color(&props.style.style, inherited_color);
     output.push_str(&format!(
         "        LinearLayout {view} = doweContainer(false);\n"
     ));
@@ -39,6 +41,7 @@ fn render_dev_android_nav_menu(
                     output,
                     current_font,
                     context,
+                    &current_color,
                     None,
                 );
             }
@@ -57,6 +60,7 @@ fn render_dev_android_nav_menu(
                     output,
                     current_font,
                     context,
+                    &current_color,
                     None,
                 );
                 render_dev_android_nav_menu_submenu(
@@ -84,6 +88,7 @@ fn render_dev_android_nav_menu(
                     output,
                     current_font,
                     context,
+                    &current_color,
                     None,
                 );
                 render_dev_android_nav_menu_megamenu(
@@ -130,6 +135,7 @@ fn render_dev_android_nav_menu_submenu(
             output,
             inherited_font,
             context,
+            "DOWE_BACKGROUND_TEXT",
             Some(&dismiss),
         );
     }
@@ -167,7 +173,7 @@ fn render_dev_android_nav_menu_megamenu(
             counter,
             output,
             inherited_font,
-            Some("DOWE_BACKGROUND_TEXT".to_string()),
+            Some(dev_content_colors("DOWE_BACKGROUND_TEXT", "DOWE_BACKGROUND_TITLE")),
             context,
             children_method,
         );
@@ -190,7 +196,7 @@ fn begin_dev_android_nav_menu_popover(
     output: &mut String,
 ) {
     output.push_str(&format!(
-        "        final PopupWindow[] {popup_ref} = new PopupWindow[1];\n        {trigger}.setOnClickListener(anchor -> {{\n        if ({popup_ref}[0] != null && {popup_ref}[0].isShowing()) {{ {popup_ref}[0].dismiss(); return; }}\n        DoweDismissOnTouchLayout {panel} = new DoweDismissOnTouchLayout(this);\n        {panel}.setOrientation(LinearLayout.VERTICAL);\n        {panel}.setAlpha(0f);\n        {panel}.setScaleX(0.98f);\n        {panel}.setScaleY(0.98f);\n        {panel}.setTranslationY(-doweDp(4));\n        {panel}.setPadding(doweDp(8), doweDp(8), doweDp(8), doweDp(8));\n        {panel}.setBackground(doweInputBackground(DOWE_BACKGROUND, null, DOWE_RADIUS));\n"
+        "        final int {trigger}InactiveColor = {trigger}Label.getCurrentTextColor();\n        final PopupWindow[] {popup_ref} = new PopupWindow[1];\n        {trigger}.setOnClickListener(anchor -> {{\n        if ({popup_ref}[0] != null && {popup_ref}[0].isShowing()) {{ {popup_ref}[0].dismiss(); return; }}\n        DoweDismissOnTouchLayout {panel} = new DoweDismissOnTouchLayout(this);\n        {panel}.setOrientation(LinearLayout.VERTICAL);\n        {panel}.setAlpha(0f);\n        {panel}.setScaleX(0.98f);\n        {panel}.setScaleY(0.98f);\n        {panel}.setTranslationY(-doweDp(4));\n        {panel}.setPadding(doweDp(8), doweDp(8), doweDp(8), doweDp(8));\n        {panel}.setBackground(doweInputBackground(DOWE_BACKGROUND, null, DOWE_RADIUS));\n"
     ));
 }
 
@@ -218,7 +224,7 @@ fn finish_dev_android_nav_menu_popover(
         "Integer.valueOf(doweDp(1))"
     };
     output.push_str(&format!(
-        "        int {panel}AvailableWidth = Math.max(doweDp(192), getResources().getDisplayMetrics().widthPixels - doweDp(16));\n        int {panel}Width = Math.min(Math.min(Math.max({trigger}.getWidth(), doweDp({desired_width})), doweDp({maximum_width})), {panel}AvailableWidth);\n        ScrollView {scroll} = new ScrollView(this);\n        {scroll}.setFillViewport(false);\n        {scroll}.addView({panel}, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {panel}.measure(View.MeasureSpec.makeMeasureSpec({panel}Width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));\n        {popup_ref}[0] = new PopupWindow({scroll}, {panel}Width, Math.min({panel}.getMeasuredHeight(), Math.min(doweDp(640), (int) (getResources().getDisplayMetrics().heightPixels * 0.8f))), true);\n        {popup_ref}[0].setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));\n        {popup_ref}[0].setOutsideTouchable(true);\n        {popup_ref}[0].setElevation(doweDp(8));\n        {panel}.setDismissAction(() -> {{ if ({popup_ref}[0] != null) {{ {popup_ref}[0].dismiss(); }} }});\n        {trigger}.setBackground(doweStyledBackground({}, {border}, {border_width}, DOWE_RADIUS));\n        {trigger}Label.setTextColor({});\n        {trigger}Arrow.setCurrentColor({});\n        {trigger}Arrow.animate().rotation(-90f).setDuration(160).start();\n        {popup_ref}[0].setOnDismissListener(() -> {{\n            {trigger}.setBackgroundColor(Color.TRANSPARENT);\n            {trigger}Label.setTextColor(DOWE_BACKGROUND_TEXT);\n            {trigger}Arrow.setCurrentColor(DOWE_BACKGROUND_TEXT);\n            {trigger}Arrow.animate().rotation(90f).setDuration(160).start();\n        }});\n        {popup_ref}[0].showAsDropDown({trigger}, 0, doweDp(8));\n        {panel}.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f).setDuration(160).start();\n        }});\n",
+        "        int {panel}AvailableWidth = Math.max(doweDp(192), getResources().getDisplayMetrics().widthPixels - doweDp(16));\n        int {panel}Width = Math.min(Math.min(Math.max({trigger}.getWidth(), doweDp({desired_width})), doweDp({maximum_width})), {panel}AvailableWidth);\n        ScrollView {scroll} = new ScrollView(this);\n        {scroll}.setFillViewport(false);\n        {scroll}.addView({panel}, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));\n        {panel}.measure(View.MeasureSpec.makeMeasureSpec({panel}Width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));\n        {popup_ref}[0] = new PopupWindow({scroll}, {panel}Width, Math.min({panel}.getMeasuredHeight(), Math.min(doweDp(640), (int) (getResources().getDisplayMetrics().heightPixels * 0.8f))), true);\n        {popup_ref}[0].setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));\n        {popup_ref}[0].setOutsideTouchable(true);\n        {popup_ref}[0].setElevation(doweDp(8));\n        {panel}.setDismissAction(() -> {{ if ({popup_ref}[0] != null) {{ {popup_ref}[0].dismiss(); }} }});\n        {trigger}.setBackground(doweStyledBackground({}, {border}, {border_width}, DOWE_RADIUS));\n        {trigger}Label.setTextColor({});\n        {trigger}Arrow.setCurrentColor({});\n        {trigger}Arrow.animate().rotation(-90f).setDuration(160).start();\n        {popup_ref}[0].setOnDismissListener(() -> {{\n            {trigger}.setBackgroundColor(Color.TRANSPARENT);\n            {trigger}Label.setTextColor({trigger}InactiveColor);\n            {trigger}Arrow.setCurrentColor({trigger}InactiveColor);\n            {trigger}Arrow.animate().rotation(90f).setDuration(160).start();\n        }});\n        {popup_ref}[0].showAsDropDown({trigger}, 0, doweDp(8));\n        {panel}.animate().alpha(1f).scaleX(1f).scaleY(1f).translationY(0f).setDuration(160).start();\n        }});\n",
         dev_variant_container(&nav.style),
         dev_nav_active_content(&nav.style),
         dev_nav_active_content(&nav.style),
@@ -237,11 +243,12 @@ fn render_dev_android_nav_menu_button(
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     context: &ComposeReactiveContext,
+    inactive_color: &str,
     dismiss: Option<&str>,
 ) -> String {
     let view = next_dev_view(counter);
     let content = format!(
-        "({active}) ? {} : DOWE_BACKGROUND_TEXT",
+        "({active}) ? {} : {inactive_color}",
         dev_nav_active_content(&nav.style)
     );
     let border = if nav.style.variant.unwrap_or(ComponentVariant::Ghost)
@@ -264,7 +271,7 @@ fn render_dev_android_nav_menu_button(
     ));
     if arrow {
         output.push_str(&format!(
-            "        DoweSvgView {view}Arrow = doweNavMenuArrow(DOWE_BACKGROUND_TEXT);\n        doweAdd({view}, {view}Arrow, 8, true);\n"
+            "        DoweSvgView {view}Arrow = doweNavMenuArrow({content});\n        doweAdd({view}, {view}Arrow, 8, true);\n"
         ));
     }
     if let Some(action) = props

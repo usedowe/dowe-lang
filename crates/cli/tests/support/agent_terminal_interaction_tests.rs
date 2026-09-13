@@ -204,6 +204,7 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
             "/model",
             "/thinking",
             "/models",
+            "/permissions",
             "/new",
             "/session",
             "/sessions",
@@ -243,6 +244,68 @@ fn agent_slash_menu_has_colors_and_preserves_plain_mode() {
         assert!(restored_plain.contains("│ >"), "{restored:?}");
         session.finish();
     }
+}
+
+#[test]
+fn agent_prompt_resize_rebuilds_one_visible_outline() {
+    let home = TempDir::new().unwrap();
+    dowe_agent::AgentPreferencesStore::new(home.path().join(".dowe/agent/preferences.json"))
+        .select_model("openai-codex", "gpt-5.5")
+        .unwrap();
+    let session = Session::start_at(home, false, &["agent"]);
+    let mut screen = ActivityScreen::new(120, 60);
+    session.send("界");
+    let mut typed = session.until("界");
+    typed.push_str(&session.until("\u{1b}[6C"));
+    screen.feed(&typed);
+    assert_eq!(screen.visible().matches("╭─").count(), 1);
+
+    session.child.resize_pty(10, 50).unwrap();
+    screen.resize(50, 10);
+    let resized = session.until("\u{1b}[6C");
+    screen.feed(&resized);
+    let visible = screen.visible();
+    assert_eq!(visible.matches("╭─").count(), 1, "{visible}");
+    assert!(visible.contains("│ >"), "{visible}");
+    session.send("\u{7f}");
+    session.finish();
+}
+
+#[test]
+fn agent_prompt_is_anchored_to_the_bottom_of_the_terminal() {
+    let session = Session::start(false);
+    let mut screen = ActivityScreen::new(120, 60);
+    session.send("\u{7f}");
+    screen.feed(&session.until("ctx"));
+    let visible = screen.visible();
+    let lines: Vec<_> = visible.lines().collect();
+    let bottom_border = lines
+        .iter()
+        .rposition(|line| line.contains("╰─"))
+        .expect("input bottom border");
+    assert_eq!(bottom_border, lines.len().saturating_sub(3), "{lines:?}");
+    assert!(lines.last().is_some_and(|line| line.contains("ctx")));
+    session.finish();
+}
+
+#[test]
+fn agent_prompt_keeps_submitted_text_above_the_next_bottom_prompt() {
+    let session = Session::start(false);
+    let mut screen = ActivityScreen::new(120, 60);
+    session.send("\u{7f}");
+    screen.feed(&session.until("ctx"));
+    session.send("/new\r");
+    screen.feed(&session.until("dowe > /new"));
+    screen.feed(&session.until("ctx"));
+    let visible = screen.visible();
+    let lines: Vec<_> = visible.lines().collect();
+    let bottom_border = lines
+        .iter()
+        .rposition(|line| line.contains("╰─"))
+        .expect("input bottom border");
+    assert!(screen.text().contains("dowe > /new"));
+    assert_eq!(bottom_border, lines.len().saturating_sub(3), "{lines:?}");
+    session.finish();
 }
 
 #[test]

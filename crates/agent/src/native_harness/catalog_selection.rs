@@ -61,7 +61,11 @@ pub(super) fn project_skill_context(root: &std::path::Path) -> AgentResult<Strin
             summary.id, summary.path, summary.hash, summary.bytes
         ));
     }
-    Ok(if output.ends_with(':') { String::new() } else { output })
+    Ok(if output.ends_with(':') {
+        String::new()
+    } else {
+        output
+    })
 }
 
 pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
@@ -156,6 +160,36 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
             ],
         ),
         (
+            "core/syntax",
+            &[
+                "syntax",
+                "sintaxis",
+                "source format",
+                "dowe source",
+                "dsf",
+                "author",
+                "authoring",
+                "write",
+                "create",
+                "implement",
+                "build",
+                "generate",
+                "modify",
+                "edit",
+                "crear",
+                "implementar",
+                "implementa",
+                "implementación",
+                "implementacion",
+                "construir",
+                "construye",
+                "generar",
+                "editar",
+                "modificar",
+                "crea",
+            ],
+        ),
+        (
             "views/layouts",
             &[
                 "layout",
@@ -208,6 +242,70 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
             ],
         ),
         (
+            "views/shape",
+            &[
+                "shape",
+                "plan",
+                "planning",
+                "estructura",
+                "estructurar",
+                "decompose",
+                "decomponer",
+                "direction",
+            ],
+        ),
+        (
+            "views/reference-ui",
+            &["reference", "referencia", "mockup", "screenshot", "captura"],
+        ),
+        (
+            "views/assets",
+            &[
+                "asset",
+                "assets",
+                "asset",
+                "media",
+                "imagen",
+                "image",
+                "photo",
+                "photograph",
+                "fotografía",
+                "fotografia",
+                "illustration",
+                "ilustración",
+                "ilustracion",
+                "texture",
+                "hero",
+            ],
+        ),
+        (
+            "views/audit",
+            &[
+                "audit",
+                "auditar",
+                "critique",
+                "ui review",
+                "visual review",
+                "revisión",
+                "revision",
+                "revisar",
+                "quality",
+                "calidad",
+                "accessibility",
+                "accesibilidad",
+            ],
+        ),
+        (
+            "views/polish",
+            &[
+                "polish", "refine", "refinar", "pulir", "finish", "final", "handoff", "entrega",
+            ],
+        ),
+        (
+            "views/game",
+            &["game", "games", "juego", "juegos", "realtime game"],
+        ),
+        (
             "views/svg",
             &[
                 "svg",
@@ -258,6 +356,9 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
             selected.insert(id.into());
         }
     }
+    if selected.contains("views/components") {
+        selected.insert("views/catalog".into());
+    }
     let visual_reference = [
         "ui",
         "ux",
@@ -286,13 +387,11 @@ pub fn select_units(prompt: &str, paths: &[String]) -> Vec<String> {
     .iter()
     .any(|term| has(term));
     if visual_reference {
-        // A reference is a whole composition. Preload the three focused view
-        // units even when the prompt only says "this image" so the model has
-        // layout, page and component contracts before it writes source.
         selected.extend([
             "views/layouts".into(),
             "views/pages".into(),
             "views/components".into(),
+            "views/catalog".into(),
         ]);
     }
     if [
@@ -330,6 +429,14 @@ mod svg_catalog_tests {
     #[test]
     fn maps_project_svg_paths_to_the_focused_unit() {
         let units = select_units("inspect this asset", &["assets/brand/mark.svg".into()]);
-        assert_eq!(units, ["core", "views/svg"]);
+        assert_eq!(units, ["core", "views/assets", "views/svg"]);
+    }
+
+    #[test]
+    fn routes_command_playbooks_to_focused_units() {
+        assert!(select_units("shape this landing page", &[]).contains(&"views/shape".into()));
+        assert!(select_units("audit accessibility", &[]).contains(&"views/audit".into()));
+        assert!(select_units("polish the final screen", &[]).contains(&"views/polish".into()));
+        assert!(select_units("build a realtime game", &[]).contains(&"views/game".into()));
     }
 }

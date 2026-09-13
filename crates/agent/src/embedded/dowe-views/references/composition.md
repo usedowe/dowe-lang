@@ -55,17 +55,17 @@ layout SiteLayout
       AppBar boxed:true
         start
           Brand href:"/" label:"Home"
-            Text weight:"black"
+            Text
               "SOLTECH"
         end
-          NavMenu variant:"ghost" scheme:"surface"
+          NavMenu
             item label:"About" href:"/#about"
             item label:"Services" href:"/#services"
     main
       children
       Footer boxed:true
         start
-          Text weight:"bold"
+          Text
             "SOLTECH"
         end
           Text size:"sm"
@@ -79,7 +79,7 @@ layout AppLayout
       AppBar boxed:true
         start
           Brand href:"/"
-            Text weight:"bold"
+            Text
               "DOWE JOURNAL"
     main
       children
@@ -164,7 +164,7 @@ layout DocsLayout
             item label:"Reports" href:"/reports"
             item label:"Settings" href:"/settings"
     start
-      Sidebar show:{ xs:false md:true } variant:"ghost" scheme:"muted" w:72
+      Sidebar show:{ xs:false md:true } w:72
         body
           ViewsNavigation
     main
@@ -294,6 +294,22 @@ stage has no semantic owner; record that reason in the composition blueprint. `c
 padding, background, border, or sizing by themselves are not sufficient because ordinary bands and
 surfaces already belong to Section, Card, Grid, Flex, media, or controls.
 
+## Behavior-first display selection
+
+Choose the built-in that owns the visible interaction before deciding whether its contents need a
+Grid, Flex, Card, or Box. A screenshot with one visible panel is not evidence of a static panel when
+it also shows previous/next affordances, dot or bar indicators, a counter, thumbnails, snapping, or
+auto-advance evidence. Those cues identify a `Carousel`; use direct stable-id `slide` entries and
+let it own the track, active index, controls, indicators, touch/keyboard behavior, accessibility,
+and reduced-motion handling.
+
+For arrows and dot indicators together, the minimal source shape is
+`Carousel variant:"controls" indicatorType:"dot"`. Add `showNavigation:true` only when the
+reference places arrows over the viewport. Never encode the indicator row as a `Text` string or
+rebuild it with generic `Button`/`IconButton` nodes. If the reference shows only one static
+testimonial and no behavior cue, keep it as a normal Card/Flex group. Do not infer autoplay or
+invent unavailable off-screen copy; record those as inferred or missing evidence.
+
 ## Minimal reference patterns
 
 Use these source-shaped composition maps as the starting point for common marketing references.
@@ -309,13 +325,15 @@ typed Signal plus one complete `each` template for every repeated unit.
 | Icon features | `Section boxed:true > Text align:"center" + Grid columns:{ xs:1 lg:2 } > each(Flex > Icon + (Flex direction:"column" > Title + Text))` |
 | FAQ split | `Section boxed:true > Grid columns:{ xs:1 lg:2 } > [Flex direction:"column" > Chip + Title + Text + Button, Accordion]` |
 | Pricing | `Section boxed:true > Title + (Flex > Toggle + Text) + Grid columns:{ xs:1 lg:3 } > each(Card > Title + (Flex > Title + Text) + Text + Divider + each(Flex > Icon + Text) + Button)` |
+| Testimonial or quote carousel | `Section boxed:true > Carousel variant:"controls" indicatorType:"dot" > slide(id + Card/Text) ...` |
 
 These maps are a prop ceiling for the first pass, not a checklist to expand. Do not add padding,
-gap, width, height, maximum width, radius, border, shadow, color, weight, size, alignment, or motion
-merely because the screenshot makes that value measurable. First render the minimal semantic tree
-with component and theme defaults. Then admit one local prop only when it is required by content,
-behavior, accessibility, essential responsive structure, an explicit non-default choice, or a
-specific visual mismatch proven by that render.
+gap, radius, border, shadow, color, weight, size, alignment, or motion merely because the screenshot
+makes that value measurable. Size props are the geometry exception when they express an essential
+bound or relationship: use `w`, `h`, `minW`, `minH`, `maxW`, or `maxH` on the real owner when the
+reference or a rendered comparison proves they are needed. First render the minimal semantic tree
+with component and theme defaults, then admit one local prop at a time. Never write `color` on
+`Text` or `Title`; their foreground is inherited from the nearest scheme-owning parent.
 
 `Card` is evidence-driven. Pricing offers in the last pattern are Cards because the reference shows
 separate contained surfaces. The flat feature items and FAQ copy column are Flex groups because the
@@ -464,7 +482,7 @@ Box position:"relative" minH:{ xs:80 md:96 } rounded:"xl" border:1 borderColor:"
       Flex align:"center" gap:3
         Title size:"2xl"
           "+32%"
-        Text size:"xs"
+        Text size:"sm"
           "Verified activity"
 ```
 
@@ -658,6 +676,7 @@ before considering a band finished.
 | `Grid` for a toolbar, chip row, or actions row | `Flex`, adding `wrap:true` only when overflow requires it | One-axis flow is Flex behavior |
 | `Flex wrap:true` simulating a catalog of equal cards | `Grid columns:{ xs:1 md:3 }` | Repeated same-shape units are tracks |
 | Same-kind container whose only purpose is another gap, padding, size, or visibility prop | Flatten it into the owning Grid or Flex | Same-kind nesting needs a distinct subgroup and layout responsibility |
+| Quote plus `Text "● • • •"` plus previous/next `Button` nodes | `Carousel variant:"controls" indicatorType:"dot"` with direct stable-id `slide` entries | The built-in owns the active slide, controls, indicators, accessibility, and native interaction |
 | Column Flex containing an action-row Flex | Keep both | The inner action group owns a distinct row axis |
 | `Card` inside `Card` | One Card containing `Grid` or `Flex` | Nested surfaces double borders and padding |
 | `Box` as the default page or section container | `Section`, then Grid or Flex | Pages start at Section; Box is the exception |
@@ -707,6 +726,8 @@ before considering a band finished.
 - Every repeated same-shape region, including non-Card feature rows, uses one `const`, typed `signal`,
   or shared Store and one `each` that wraps the complete unit inside the Grid tracks; no copy-pasted
   sibling survives visual QA.
+- Every slide-based region uses the semantic `Carousel` owner with direct stable-id `slide` entries;
+  no indicator glyph strings or generic previous/next controls imitate it.
 - Static-only props remain valid inside repeated templates; computed `Icon.name` values resolve
   from constants or constant `each` collections, with every possible name validated.
 - Spacing starts with component defaults. A nonzero `gap` or one padding override is added only after

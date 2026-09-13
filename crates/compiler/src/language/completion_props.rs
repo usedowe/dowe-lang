@@ -75,6 +75,7 @@ pub(super) fn props_for_component(component: &str) -> Vec<&'static str> {
         "Iframe" => IFRAME_PROPS.to_vec(),
         "Device" => DEVICE_PROPS.to_vec(),
         "Canvas" => CANVAS_PROPS.to_vec(),
+        "Game" => GAME_PROPS.to_vec(),
         "Draw" => DRAW_PROPS.to_vec(),
         "Candlestick" => CANDLESTICK_PROPS.to_vec(),
         "Diagram" => DIAGRAM_PROPS.to_vec(),

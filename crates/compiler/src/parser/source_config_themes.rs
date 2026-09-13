@@ -56,7 +56,10 @@ fn parse_colors(
         let Some(family) = parse_theme_color_family_name(&family_node.name) else {
             return Err(node_error(
                 family_node,
-                format!("unknown color family `{}`", family_node.name),
+                format!(
+                    "unknown color family `{}`; use a lowercase built-in family such as `primary` or a lower-camel custom family",
+                    family_node.name
+                ),
             ));
         };
         if !color_families.insert(family_node.name.clone()) {
@@ -250,4 +253,3 @@ fn normalize_hex_color(prop: &SourceProp, value: &str) -> DoweResult<String> {
     };
     Ok(format!("#{output}"))
 }
-

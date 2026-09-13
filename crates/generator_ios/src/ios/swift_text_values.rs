@@ -3,28 +3,23 @@ fn swift_modifiers_for_text(
     props: &TextProps,
     font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
+    context: &SwiftReactiveContext,
 ) -> Vec<String> {
-    let size = text_size(title, props);
+    let size = text_size(title, props, context);
     let mut modifiers = vec![];
-    if let Some(binding) = props.size_binding.as_ref() {
-        modifiers.push(format!(".font(doweDynamicFontSize(state.text(\"{}\")))", escape_swift(&binding.path)));
-    }
-    if let Some(binding) = props.weight_binding.as_ref() {
-        modifiers.push(format!(".fontWeight(doweDynamicFontWeight(state.text(\"{}\")))", escape_swift(&binding.path)));
-    }
     modifiers.extend(vec![
         format!(".font({})", swift_font_value(font, &size, default_family)),
-        format!(".fontWeight({})", text_weight(title, props)),
+        format!(".fontWeight({})", text_weight(title, props, context)),
         format!(
             ".lineSpacing(doweTextLineSpacing(fontSize: {size}, lineHeight: {}))",
-            text_line_height(title, props)
+            text_line_height(title, props, context)
         ),
     ]);
 
-    if title || props.letter_spacing.is_some() {
+    if title || props.letter_spacing.is_some() || props.letter_spacing_binding.is_some() {
         modifiers.push(format!(
             ".tracking(doweTextTracking(fontSize: {size}, em: {}))",
-            text_spacing(title, props)
+            text_spacing(title, props, context)
         ));
     }
 
@@ -87,7 +82,13 @@ fn swift_text_frame_alignment(value: &ResponsiveValue<TextAlign>) -> String {
     )
 }
 
-fn text_size(title: bool, props: &TextProps) -> String {
+fn text_size(title: bool, props: &TextProps, context: &SwiftReactiveContext) -> String {
+    if let Some(binding) = props.size_binding.as_ref() {
+        let value = swift_text_prop_binding(binding, context);
+        return format!(
+            "doweDynamicTextSize({value}, viewportWidth: viewportWidth, title: {title})"
+        );
+    }
     let fallback = swift_text_size_expr(title, TextSize::Md);
     props
         .size
@@ -97,7 +98,13 @@ fn text_size(title: bool, props: &TextProps) -> String {
         .unwrap_or(fallback)
 }
 
-fn text_line_height(title: bool, props: &TextProps) -> String {
+fn text_line_height(title: bool, props: &TextProps, context: &SwiftReactiveContext) -> String {
+    if let Some(binding) = props.size_binding.as_ref() {
+        let value = swift_text_prop_binding(binding, context);
+        return format!(
+            "doweDynamicTextLineHeight({value}, title: {title})"
+        );
+    }
     let fallback = format!(
         "CGFloat({})",
         text_typography(title, TextSize::Md).line_height
@@ -114,7 +121,13 @@ fn text_line_height(title: bool, props: &TextProps) -> String {
         .unwrap_or(fallback)
 }
 
-fn text_weight(title: bool, props: &TextProps) -> String {
+fn text_weight(title: bool, props: &TextProps, context: &SwiftReactiveContext) -> String {
+    if let Some(binding) = props.weight_binding.as_ref() {
+        let value = swift_text_prop_binding(binding, context);
+        return format!(
+            "doweDynamicFontWeight({value})"
+        );
+    }
     if let Some(value) = props.weight.as_ref() {
         let fallback = swift_text_weight(TextWeight::Regular);
         return format!(
@@ -124,6 +137,12 @@ fn text_weight(title: bool, props: &TextProps) -> String {
     }
 
     if title {
+        if let Some(binding) = props.size_binding.as_ref() {
+            let value = swift_text_prop_binding(binding, context);
+            return format!(
+                "doweDynamicTextWeightForSize({value}, title: true)"
+            );
+        }
         let fallback = swift_text_weight(text_typography(true, TextSize::Md).weight);
         props
             .size
@@ -140,7 +159,13 @@ fn text_weight(title: bool, props: &TextProps) -> String {
     }
 }
 
-fn text_spacing(title: bool, props: &TextProps) -> String {
+fn text_spacing(title: bool, props: &TextProps, context: &SwiftReactiveContext) -> String {
+    if let Some(binding) = props.letter_spacing_binding.as_ref() {
+        let value = swift_text_prop_binding(binding, context);
+        return format!(
+            "doweDynamicTextSpacing({value})"
+        );
+    }
     if let Some(value) = props.letter_spacing.as_ref() {
         let fallback = "CGFloat(0)";
         return format!(
@@ -152,6 +177,12 @@ fn text_spacing(title: bool, props: &TextProps) -> String {
     }
 
     if title {
+        if let Some(binding) = props.size_binding.as_ref() {
+            let value = swift_text_prop_binding(binding, context);
+            return format!(
+                "doweDynamicTextSpacingForSize({value}, title: true)"
+            );
+        }
         let fallback = format!(
             "CGFloat({})",
             text_typography(true, TextSize::Md).letter_spacing_em
@@ -171,6 +202,26 @@ fn text_spacing(title: bool, props: &TextProps) -> String {
             .unwrap_or(fallback)
     } else {
         "CGFloat(0)".to_string()
+    }
+}
+
+fn swift_text_prop_binding(
+    binding: &dowe_components::PropBinding,
+    context: &SwiftReactiveContext,
+) -> String {
+    if let Some(item) = context.item_value(&binding.path) {
+        let path = context
+            .item_path(&binding.path)
+            .unwrap_or_else(|| binding.path.clone());
+        format!(
+            "state.text(\"{}\", item: {item})",
+            escape_swift(&path)
+        )
+    } else {
+        format!(
+            "state.text(\"{}\")",
+            escape_swift(&context.signal_path(&binding.path))
+        )
     }
 }
 

@@ -134,6 +134,7 @@ fn render_dev_android_navigation_node(
                 counter,
                 output,
                 inherited_font,
+                inherited_color.as_deref(),
                 context,
                 children_method,
             );
@@ -203,7 +204,7 @@ fn render_dev_android_bar(
     children_method: Option<&str>,
 ) {
     let current_font = props.style.style.font.as_ref().or(inherited_font);
-    let current_color = Some(dev_variant_content(&props.style).to_string());
+    let current_color = Some(dev_content_colors(dev_variant_content(&props.style), dev_variant_title(&props.style)));
     let surface = next_dev_view(counter);
     let surface_color = dev_variant_container(&props.style);
     let background = if props.dock_on_scroll {

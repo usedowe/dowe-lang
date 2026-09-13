@@ -27,7 +27,7 @@ pub(crate) fn build_codegraph(root: &Path, options: BuildOptions) -> CodeGraphRe
         kind: NodeKind::Workspace,
         path: Some(".".to_string()),
         name: "workspace".to_string(),
-            language: "unknown".to_string(),
+        language: "unknown".to_string(),
         owner: None,
         fingerprint: fingerprint_bytes(root.to_string_lossy().as_bytes()),
         metrics: None,
@@ -144,7 +144,7 @@ fn add_file(
         kind,
         path: Some(relative.clone()),
         name: file_name(&relative),
-            language: crate::paths::language_for(&relative),
+        language: crate::paths::language_for(&relative),
         owner,
         fingerprint: fingerprint_bytes(&bytes),
         metrics,
@@ -204,7 +204,7 @@ fn containing_node(
                 .trim_start_matches(&crate_prefix)
                 .trim_matches('/')
                 .replace('/', "::"),
-                language: "unknown".to_string(),
+            language: "unknown".to_string(),
             owner: Some(crate_id.trim_start_matches("crate:").to_string()),
             fingerprint: fingerprint_bytes(module_path.as_bytes()),
             metrics: None,
@@ -447,7 +447,9 @@ fn owner_for(relative: &str) -> Option<String> {
         let mut parts = relative.split('/');
         parts.next();
         parts.next();
-        return parts.next().map(|name| format!("dowe-language-server/crates/{name}"));
+        return parts
+            .next()
+            .map(|name| format!("dowe-language-server/crates/{name}"));
     }
     if relative.starts_with("docs/") {
         Some("docs".to_string())

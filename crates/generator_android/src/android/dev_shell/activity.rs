@@ -14,6 +14,9 @@ include!("activity_media.rs");
 include!("activity_window.rs");
 include!("activity_routes.rs");
 include!("activity_runtime.rs");
+include!("game_socket_runtime.rs");
+include!("game_socket_transport.rs");
+include!("game_raycast_runtime.rs");
 
 fn dev_activity_sources(
     routes: &[ViewRoute],
@@ -31,6 +34,7 @@ fn dev_activity_sources(
             || dowe_components::tree_has_dynamic_icon(&route.page_tree)
     });
     let (layouts, route_layouts) = reusable_dev_layouts(routes);
+    let layout_state_keys = dev_layout_state_keys(routes);
     let route_classes = routes
         .iter()
         .map(|route| dev_route_class_name(&route.route_path))
@@ -39,7 +43,13 @@ fn dev_activity_sources(
     append_dev_activity_lifecycle(&mut output);
     append_dev_activity_media(&mut output);
     append_dev_activity_window(&mut output);
-    append_dev_activity_routes(&mut output, routes, &route_classes, &route_layouts);
+    append_dev_activity_routes(
+        &mut output,
+        routes,
+        &route_classes,
+        &route_layouts,
+        &layout_state_keys,
+    );
     append_dev_activity_runtime(&mut output, has_dynamic_icons, has_phones);
     output = output.replace(
         "__DOWE_ANDROID_DEV_FONT_SUPPORT__",
@@ -75,9 +85,16 @@ fn dev_activity_sources(
         .iter()
         .zip(&route_layouts)
         .zip(&route_classes)
-        .map(|((route, layout_index), class_name)| DevActivityShard {
+        .zip(&layout_state_keys)
+        .map(|(((route, layout_index), class_name), layout_state_key)| DevActivityShard {
             file_name: format!("{class_name}.java"),
-            content: dev_route_shard(route, *layout_index, class_name, app_bundle),
+            content: dev_route_shard(
+                route,
+                *layout_index,
+                *layout_state_key,
+                class_name,
+                app_bundle,
+            ),
         })
         .collect::<Vec<_>>();
     shards.extend(

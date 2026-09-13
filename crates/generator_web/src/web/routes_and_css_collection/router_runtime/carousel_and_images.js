@@ -37,8 +37,8 @@ function renderCarouselEffects(root, viewport, slides) {
         break;
       case "slideshow":
         transform = vertical
-          ? `translateY(${phase * 7}%)`
-          : `translateX(${phase * 7}%)`;
+          ? `translateY(${phase * 24}px)`
+          : `translateX(${phase * 24}px)`;
         opacity = 1 - distance * 0.12;
         break;
     }
@@ -62,6 +62,13 @@ function renderCarousel(root) {
   )
     scrollCarouselSlide(root, slides[index]);
   root.__doweCarouselIndex = index;
+  root.setAttribute("aria-label", root.getAttribute("aria-label") || "Carousel");
+  const viewport = root.querySelector(".carousel-viewport");
+  if (viewport) viewport.setAttribute("aria-label", `Carousel slides, ${index + 1} of ${slides.length}`);
+  slides.forEach((slide, slideIndex) => {
+    const active = slideIndex === index;
+    slide.setAttribute("aria-hidden", active ? "false" : "true");
+  });
   for (const indicator of root.querySelectorAll(
     "[data-dowe-carousel-indicator]"
   ))
@@ -149,6 +156,13 @@ function hydrateCarousels(root) {
       carousel.__doweCarouselHydrated = true;
       const viewport = carousel.querySelector(".carousel-viewport");
       if (viewport) {
+        const interval = Math.max(
+          500,
+          Number(carousel.dataset.doweCarouselInterval || 3000)
+        );
+        let activePointerId = null,
+          start = 0,
+          scroll = 0;
         let frame = 0;
         viewport.addEventListener(
           "scroll",
@@ -158,42 +172,89 @@ function hydrateCarousels(root) {
           },
           { passive: true }
         );
-        if (matchMedia("(pointer:fine)").matches) {
-          let active = false,
-            start = 0,
-            scroll = 0;
-          viewport.addEventListener("pointerdown", event => {
-            if (event.button !== 0) return;
-            active = true;
-            start =
-              carousel.dataset.doweCarouselOrientation === "vertical"
-                ? event.clientY
-                : event.clientX;
-            scroll =
-              carousel.dataset.doweCarouselOrientation === "vertical"
-                ? viewport.scrollTop
-                : viewport.scrollLeft;
-            viewport.setPointerCapture(event.pointerId);
-            viewport.classList.add("is-dragging");
-          });
-          viewport.addEventListener("pointermove", event => {
-            if (!active) return;
-            const current =
-              carousel.dataset.doweCarouselOrientation === "vertical"
-                ? event.clientY
-                : event.clientX;
-            const next = scroll - (current - start);
-            if (carousel.dataset.doweCarouselOrientation === "vertical")
-              viewport.scrollTop = next;
-            else viewport.scrollLeft = next;
-          });
-          const finish = () => {
-            active = false;
-            viewport.classList.remove("is-dragging");
-          };
-          viewport.addEventListener("pointerup", finish);
-          viewport.addEventListener("pointercancel", finish);
-        }
+        viewport.addEventListener("keydown", event => {
+          const vertical = carousel.dataset.doweCarouselOrientation === "vertical";
+          const previous = vertical ? "ArrowUp" : "ArrowLeft";
+          const next = vertical ? "ArrowDown" : "ArrowRight";
+          let step = event.key === previous ? -1 : event.key === next ? 1 : 0;
+          if (event.key === "Home") step = -Infinity;
+          if (event.key === "End") step = Infinity;
+          if (!step) return;
+          event.preventDefault();
+          const slides = carousel.querySelectorAll("[data-dowe-carousel-slide]");
+          const current = Number(carousel.dataset.doweCarouselIndex || 0);
+          const target = step === -Infinity ? 0 : step === Infinity ? slides.length - 1 : current + step;
+          goToCarousel(carousel, target);
+          carousel.__doweCarouselPauseUntil = performance.now() + interval;
+        });
+        carousel.addEventListener("mouseenter", () => {
+          carousel.__doweCarouselHovering = true;
+        });
+        carousel.addEventListener("mouseleave", () => {
+          carousel.__doweCarouselHovering = false;
+        });
+        carousel.addEventListener("focusin", () => {
+          carousel.__doweCarouselFocused = true;
+        });
+        carousel.addEventListener("focusout", event => {
+          if (!carousel.contains(event.relatedTarget)) carousel.__doweCarouselFocused = false;
+        });
+        viewport.addEventListener("pointerdown", event => {
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+          carousel.__doweCarouselInteraction = true;
+          if (event.pointerType !== "mouse" || !matchMedia("(pointer:fine)").matches)
+            return;
+          activePointerId = event.pointerId;
+          start =
+            carousel.dataset.doweCarouselOrientation === "vertical"
+              ? event.clientY
+              : event.clientX;
+          scroll =
+            carousel.dataset.doweCarouselOrientation === "vertical"
+              ? viewport.scrollTop
+              : viewport.scrollLeft;
+          viewport.setPointerCapture?.(event.pointerId);
+          viewport.classList.add("is-dragging");
+        });
+        viewport.addEventListener("pointermove", event => {
+          if (activePointerId !== event.pointerId) return;
+          const current =
+            carousel.dataset.doweCarouselOrientation === "vertical"
+              ? event.clientY
+              : event.clientX;
+          const next = scroll - (current - start);
+          if (carousel.dataset.doweCarouselOrientation === "vertical")
+            viewport.scrollTop = next;
+          else viewport.scrollLeft = next;
+        });
+        const finish = event => {
+          if (
+            activePointerId !== null &&
+            event?.pointerId !== undefined &&
+            event.pointerId !== activePointerId
+          )
+            return;
+          const wasDragging = activePointerId !== null;
+          activePointerId = null;
+          carousel.__doweCarouselInteraction = false;
+          carousel.__doweCarouselPauseUntil = performance.now() + interval;
+          viewport.classList.remove("is-dragging");
+          if (wasDragging) {
+            syncCarousel(carousel);
+            if (
+              !["simple", "masonry", "rtl", "sticky"].includes(
+                carousel.dataset.doweCarouselVariant
+              )
+            )
+              goToCarousel(
+                carousel,
+                Number(carousel.dataset.doweCarouselIndex || 0)
+              );
+          }
+        };
+        viewport.addEventListener("pointerup", finish);
+        viewport.addEventListener("pointercancel", finish);
+        viewport.addEventListener("lostpointercapture", finish);
       }
     }
     renderCarousel(carousel);
@@ -210,6 +271,23 @@ function hydrateCarousels(root) {
           clearInterval(carousel.__doweCarouselTimer);
           carousel.__doweCarouselTimer = null;
           return;
+        }
+        if (
+          carousel.__doweCarouselInteraction ||
+          carousel.__doweCarouselHovering ||
+          carousel.__doweCarouselFocused ||
+          (carousel.__doweCarouselPauseUntil || 0) > performance.now()
+        )
+          return;
+        if (carousel.dataset.doweCarouselLoop !== "true") {
+          const slides = carousel.querySelectorAll(
+            "[data-dowe-carousel-slide]"
+          );
+          if (
+            Number(carousel.dataset.doweCarouselIndex || 0) >=
+            slides.length - 1
+          )
+            return;
         }
         moveCarousel(carousel, 1);
       }, interval);

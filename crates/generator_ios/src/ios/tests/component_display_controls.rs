@@ -125,7 +125,7 @@ fn generates_full_scene_background_without_unsafe_content() {
     assert!(views.contains("@State private var safeAreaInsets = EdgeInsets()"));
     assert!(views.contains("DoweSafeAreaReporter { insets in"));
     assert!(views.contains(
-        "routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height)"
+        "routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height, routeRevision: routeRevision)"
     ));
     assert!(views.contains(
         ".frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)\n                .clipped()\n            DoweSafeAreaReporter"
@@ -141,7 +141,7 @@ fn generates_full_scene_background_without_unsafe_content() {
     assert!(!views.contains("func doweSafeAreaHeight("));
     assert!(views.contains("func doweInsetsEqual(_ lhs: EdgeInsets, _ rhs: EdgeInsets) -> Bool"));
     assert!(views.contains(
-        "private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat) -> AnyView"
+        "private func routeContent(_ entry: DoweRouteEntry, viewportWidth: CGFloat, viewportHeight: CGFloat, routeRevision: Int) -> AnyView"
     ));
     assert!(
         views.contains("LoginView(viewportWidth: viewportWidth, viewportHeight: viewportHeight, activeFragment: entry.fragment")

@@ -97,9 +97,8 @@ impl State {
         Ok(())
     }
 
-    // The cursor rests on a blank sentinel below the owned rows, never inside
-    // transcript text. Reflow invalidates physical row counts: abandon, don't erase.
     fn clear_owned(&mut self, output: &mut impl Write, size: (u16, u16)) -> std::io::Result<()> {
+        self.rendered = None;
         if self.anchor != Some(size) {
             self.owned = 0;
             self.anchor = None;
@@ -117,6 +116,15 @@ impl State {
         self.owned = 0;
         self.anchor = Some(size);
         Ok(())
+    }
+
+    fn chrome_rows((cols, rows): (u16, u16), busy: bool) -> usize {
+        if !busy {
+            return 0;
+        }
+        let available = rows.saturating_sub(2) as usize;
+        let width = cols.saturating_sub(1) as usize;
+        (if width >= 16 && rows >= 8 { 5 } else { 3 }).min(available)
     }
 
     fn workspace_lines(&self) -> Vec<String> {
@@ -175,15 +183,10 @@ impl State {
     }
 
     fn frame(&self, (cols, rows): (u16, u16), busy: bool) -> Vec<String> {
-        // Leave room for the sentinel and at least one conversation row.
         let available = rows.saturating_sub(2) as usize;
         let width = cols.saturating_sub(1) as usize;
         let outlined = width >= 16 && rows >= 8;
-        let chrome = if busy {
-            (if outlined { 5 } else { 3 }).min(available)
-        } else {
-            0
-        };
+        let chrome = Self::chrome_rows((cols, rows), busy);
         let height = if self.expanded { 24 } else { 6 }.min(available - chrome);
         let cards = if busy {
             let cards = if self.expanded {
@@ -262,6 +265,11 @@ impl State {
                         .map(|status| format!(" · {status}"))
                         .unwrap_or_default()
                 );
+                let display = dialoguer::console::truncate_str(
+                    &display,
+                    width.saturating_sub(5),
+                    if width > 5 { "…" } else { "" },
+                );
                 let used = dialoguer::console::measure_text_width(&display);
                 vec![
                     top,
@@ -270,7 +278,7 @@ impl State {
                         dialoguer::console::style("│").cyan(),
                         dialoguer::console::style(">").cyan().bold(),
                         display,
-                        " ".repeat(width.saturating_sub(4 + used))
+                        " ".repeat(width.saturating_sub(5 + used))
                     ),
                     bottom,
                 ]
@@ -318,12 +326,43 @@ impl State {
         size: (u16, u16),
         busy: bool,
     ) -> std::io::Result<()> {
-        self.clear_owned(output, size)?;
         let frame = self.frame(size, busy);
-        for text in &frame {
-            write!(output, "{text}\r\n")?;
+        let chrome = Self::chrome_rows(size, busy);
+        let can_update = busy
+            && self.anchor == Some(size)
+            && self.owned as usize == frame.len()
+            && self
+                .rendered
+                .as_ref()
+                .is_some_and(|previous| previous.lines.len() == frame.len())
+            && self
+                .rendered
+                .as_ref()
+                .is_some_and(|previous| previous.chrome_rows == chrome);
+        if can_update {
+            let previous = self.rendered.as_ref().expect("rendered frame");
+            if previous.lines != frame {
+                execute!(output, cursor::MoveUp(self.owned))?;
+                for (index, text) in frame.iter().enumerate() {
+                    if previous.lines.get(index) != Some(text) {
+                        execute!(output, terminal::Clear(terminal::ClearType::CurrentLine))?;
+                        write!(output, "{text}")?;
+                    }
+                    write!(output, "\r\n")?;
+                }
+            }
+        } else {
+            self.clear_owned(output, size)?;
+            for text in &frame {
+                write!(output, "{text}\r\n")?;
+            }
         }
         self.owned = if busy { frame.len() as u16 } else { 0 };
+        self.anchor = Some(size);
+        self.rendered = busy.then_some(RenderedFrame {
+            lines: frame,
+            chrome_rows: chrome,
+        });
         Ok(())
     }
 
@@ -343,7 +382,6 @@ impl State {
 
     fn snapshot(&mut self) -> std::io::Result<()> {
         if self.active && self.snapshot_pending {
-            // Final receipts must not disappear merely because the live view was scrolled.
             self.offset = 0;
             self.older = false;
             let mut frame = Vec::new();
@@ -353,6 +391,7 @@ impl State {
             output.flush()?;
             self.snapshot_pending = false;
             self.anchor = None;
+            self.rendered = None;
         }
         Ok(())
     }
@@ -374,7 +413,9 @@ impl Drop for Suspension {
     fn drop(&mut self) {
         let mut state = self.activity.state();
         state.suspended -= 1;
-        if self.resume && let Err(error) = state.enter() {
+        if self.resume
+            && let Err(error) = state.enter()
+        {
             state.error = Some(error.to_string());
         }
     }

@@ -21,8 +21,9 @@ fn render_compose_bar(
         modifier_for_bar(props, flow)
     ));
     output.push_str(&format!(
-        "{pad}    CompositionLocalProvider(LocalContentColor provides {}) {{\n",
-        variant_content(&props.style)
+        "{pad}    CompositionLocalProvider(LocalContentColor provides {}, LocalDoweTitleColor provides {}) {{\n",
+        variant_content(&props.style),
+        variant_title(&props.style)
     ));
     if props.boxed && boxed_regions {
         output.push_str(&format!(

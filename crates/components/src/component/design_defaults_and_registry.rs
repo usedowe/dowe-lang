@@ -105,8 +105,8 @@ impl DesignDefaults {
             (DesignComponentSlot::Select, ColorFamily::Primary),
             (DesignComponentSlot::Pin, ColorFamily::Primary),
             (DesignComponentSlot::SideNav, ColorFamily::Primary),
-            (DesignComponentSlot::Sidebar, ColorFamily::Surface),
-            (DesignComponentSlot::NavMenu, ColorFamily::Primary),
+            (DesignComponentSlot::Sidebar, ColorFamily::Muted),
+            (DesignComponentSlot::NavMenu, ColorFamily::Muted),
             (DesignComponentSlot::Chip, ColorFamily::Primary),
             (DesignComponentSlot::AppBar, ColorFamily::Surface),
             (DesignComponentSlot::Footer, ColorFamily::Surface),
@@ -132,8 +132,8 @@ impl DesignDefaults {
             (DesignComponentSlot::Select, ComponentVariant::Outlined),
             (DesignComponentSlot::Pin, ComponentVariant::Outlined),
             (DesignComponentSlot::SideNav, ComponentVariant::Solid),
-            (DesignComponentSlot::Sidebar, ComponentVariant::Solid),
-            (DesignComponentSlot::NavMenu, ComponentVariant::Solid),
+            (DesignComponentSlot::Sidebar, ComponentVariant::Ghost),
+            (DesignComponentSlot::NavMenu, ComponentVariant::Ghost),
             (DesignComponentSlot::Chip, ComponentVariant::Solid),
             (DesignComponentSlot::AppBar, ComponentVariant::Solid),
             (DesignComponentSlot::Footer, ComponentVariant::Solid),
@@ -228,4 +228,3 @@ pub enum DesignComponentSlot {
     Title,
     Ui,
 }
-

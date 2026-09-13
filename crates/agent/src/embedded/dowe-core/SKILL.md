@@ -58,6 +58,7 @@ create `theme.dowe` or change its colors unless the user explicitly asks for the
 | Root files, `main.dowe`, imports, types, translations, or project tree | `references/main.md` |
 | Diagnostics, validation, native tests, Harness, CodeGraph, or generated output | `references/workflow.md` |
 | Portable `str`, `math`, `parse`, `url`, `csv`, `sort`, `list`, `json`, or `date` function | `references/standard-library.md` |
+| Complete Dowe Source Format syntax before a write | `references/syntax.md` |
 
 ## Boundaries
 

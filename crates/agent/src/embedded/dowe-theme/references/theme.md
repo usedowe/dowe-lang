@@ -5,7 +5,10 @@ and bundle metadata belong in `main.dowe`, not in `theme.dowe`.
 
 Color families use the grouped-role syntax shown below. The family name is the semantic fill token,
 `text` is the ordinary content and control-label role, and `title` is the heading role. This is the
-only theme color form to author or emit.
+only theme color form to author or emit. Built-in family names are exact lowercase tokens such as
+`primary`, `secondary`, `accent`, `muted`, `background`, and `surface`; `Primary`, `Secondary`, and
+other capitalized variants are not valid family names. Put the three roles on the one lowercase row
+instead of adding a second tonal row.
 
 ```text
 theme
@@ -20,29 +23,20 @@ theme
     theme name:"light"
       colors:
         primary color:"#0a0d12" text:"#f8f8f6" title:"#f8f8f6"
-        Primary color:"#e7e9ec" text:"#0a0d12" title:"#0a0d12"
         secondary color:"#050607" text:"#f7f7f4" title:"#f7f7f4"
-        Secondary color:"#171a1f" text:"#f7f7f4" title:"#f7f7f4"
         accent color:"#1f3a5f" text:"#f7f7f4" title:"#f7f7f4"
-        Accent color:"#dce7f5" text:"#0b1624" title:"#0b1624"
         muted color:"#6f716f" text:"#f7f7f4" title:"#f7f7f4"
-        Muted color:"#eeeeec" text:"#252525" title:"#252525"
         background color:"#f7f7f5" text:"#0d0f12" title:"#0d0f12"
         surface color:"#ffffff" text:"#101114" title:"#101114"
         success color:"#2f6f4f" text:"#f7f7f4" title:"#f7f7f4"
-        Success color:"#dfeee5" text:"#102519" title:"#102519"
         info color:"#385b87" text:"#f7f7f4" title:"#f7f7f4"
-        Info color:"#e1eaf4" text:"#102033" title:"#102033"
         warning color:"#7a6534" text:"#f7f7f4" title:"#f7f7f4"
-        Warning color:"#f1ead9" text:"#2b230f" title:"#2b230f"
         danger color:"#8a2f35" text:"#f7f7f4" title:"#f7f7f4"
-        Danger color:"#f2dddd" text:"#361216" title:"#361216"
     theme name:"dark" extends:"light"
       colors:
         background color:"#050607" text:"#f7f7f4" title:"#f7f7f4"
         surface color:"#101114" text:"#f7f7f4" title:"#f7f7f4"
         muted color:"#8a8d93" text:"#050607" title:"#050607"
-        Muted color:"#181a1e" text:"#f7f7f4" title:"#f7f7f4"
 ```
 
 ## Custom color families
@@ -54,7 +48,6 @@ defines a complete fill, text, and title triple and can then be used as a compon
 colors:
   happy color:"#176c75" text:"#fffffe" title:"#fffffe"
   sad color:"#394867" text:"#fffffe" title:"#fffffe"
-  Happy color:"#d9f3f1" text:"#124d53" title:"#124d53"
 ```
 
 ```text
@@ -63,12 +56,12 @@ Card scheme:"happy"
   Text "Your changes are ready."
 ```
 
-The base family creates `happy`, `happyText`, and `happyTitle`. `Happy` is a separate optional
-triple used by `variant:"solid" scheme:"happy"`; Dowe never derives it from `happy`. A referenced
-custom family must be complete in the resolved default theme. Alternate themes may override its
-roles and otherwise retain the default theme values. Names contain at most 48 ASCII letters or
-numbers, start with a lowercase letter, and use lower camel case. Do not declare normalized role
-names such as `happyText` or `happyTitle` as families.
+The base family creates `happy`, `happyText`, and `happyTitle` and can be used by a compatible
+component as `scheme:"happy"`. A referenced custom family must be complete in the resolved default
+theme. Alternate themes may override its roles and otherwise retain the default theme values. Names
+contain at most 48 ASCII letters or numbers, start with a lowercase letter, and use lower camel case.
+Do not declare capitalized companion rows or normalized role names such as `happyText` or
+`happyTitle` as families.
 The structural names `theme`, `design`, `fonts`, `colors`, `color`, `text`, and `title` are reserved.
 
 ## Fonts
@@ -108,9 +101,9 @@ asks for a theme or visual-system change.
 | --- | --- |
 | Page canvas, body copy, and headings | `background color:… text:… title:…` |
 | Cards, bars, menus, and raised panels | `surface color:… text:… title:…` |
-| Brand and primary action family | Complete `primary` and `Primary` fill, text, and title triples |
+| Brand and primary action family | Complete the lowercase `primary` fill, text, and title triple |
 | Supporting accent family | `secondary` or `accent` complete family |
-| Secondary copy and quiet fills | Base `muted` on `primary` as a lighter, lower-emphasis tonal counterpart; choose `mutedText` and `mutedTitle` for clear contrast, then complete the `Muted` triple when solid variants are needed |
+| Secondary copy and quiet fills | Base `muted` on `primary` as a lighter, lower-emphasis tonal counterpart; keep its grouped `color`, `text`, and `title` roles in the lowercase `muted` family when solid variants are needed |
 | Repeated success, information, warning, or error meaning | Matching semantic status family |
 | Repeated Card, Button, Avatar, or Chip treatment | Supported dedicated `design` slot |
 | Repeated control or surface treatment without a dedicated slot | Supported `Ui` defaults |
@@ -138,7 +131,7 @@ styling individual components:
 | --- | --- | --- |
 | Canvas | `background` family | Quietest broad field with readable body copy and headings |
 | Primary surface | `surface` family | Clearly separable from the canvas without requiring a border everywhere |
-| Quiet panel or divider field | `muted` or `Muted` fill, text, and title triple | `muted` is a lighter tonal counterpart of `primary`; use it when a solid primary surface is too heavy, including solid form controls such as `Input` |
+| Quiet panel or divider field | `muted` fill, text, and title roles | `muted` is a lighter tonal counterpart of `primary`; use it when a solid primary surface is too heavy, including solid form controls such as `Input` |
 | Brand emphasis | `primary` family | Saturated accent for actions, values, focal labels, and occasional glow—not every Card |
 | Supporting visual accent | `secondary` or `accent` family | Complements the brand and distinguishes charts, data, or a second product concept |
 
@@ -185,6 +178,7 @@ When no `design` entry configures a component, use these built-in defaults:
 | `Checkbox` | `scheme:"primary"` |
 | `Input`, `Date`, `Password`, `Select`, `Pin` | `variant:"outlined" scheme:"primary"` |
 | `AppBar`, `Footer`, `Modal`, `Dropdown`, `Tooltip` | `scheme:"surface" variant:"solid"` |
+| `NavMenu`, `Sidebar` | `scheme:"muted" variant:"ghost"` |
 | `Tabs` | `variant:"pills" scheme:"primary"` |
 
 These built-in defaults add no `border` or `shadow`. Resolve each property independently in this
@@ -231,3 +225,9 @@ Inheritance cycles and incomplete resolved themes are invalid.
 
 Use semantic roles instead of literal colors in pages and layouts. This lets the same source render
 consistently on web, desktop, Android, and iOS.
+
+Content inheritance preserves separate roles: a solid scheme-owning surface supplies its family's
+`text` to `Text` and `title` to `Title`, through neutral containers. A nested `Button` or `Card`
+keeps its own local or default scheme; its colors do not leak to siblings. Inactive `NavMenu`
+labels inherit the parent text role, including inside `AppBar`; popover content uses the
+`background` family's own text and title roles.

@@ -86,6 +86,7 @@ function renderReactive(view) {
   const visualization = runtimeCapability("visualization");
   visualization?.renderCharts(view.root, view.state, null);
   renderCanvases(view.root, view.state, null);
+  renderGames(view.root, view.state, null);
   visualization?.renderCandlesticks(view.root, view.state, null);
   visualization?.renderDiagrams(view.root, view.state, null);
   hydrateCameras(view.root);

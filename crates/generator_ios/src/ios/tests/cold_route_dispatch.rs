@@ -36,7 +36,9 @@ fn swiftui_large_route_dispatch_has_a_bounded_result_type() {
     for route in &routes {
         assert!(dispatch.contains(&format!("case \"{}\":", route.route_path)));
     }
-    assert!(dispatch.contains("default:\n            return AnyView(Page0View("));
+    assert!(dispatch.contains(
+        "default:\n            return AnyView(DoweLayoutStateHost(makeState: { doweMakeLayoutState0() })"
+    ));
     assert_eq!(
         dispatch.matches("activeFragment: entry.fragment").count(),
         routes.len() + 1

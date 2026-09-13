@@ -1,21 +1,27 @@
 r#"
-private fun doweDynamicTextSize(value: String): TextUnit = when (value) {
-    "xs" -> 12.sp
-    "sm" -> 14.sp
-    "lg" -> 20.sp
-    "xl" -> 24.sp
-    else -> 16.sp
-}
+__DOWE_DYNAMIC_TEXT_METRICS__
 private fun doweDynamicTextWeight(value: String): FontWeight = when (value) {
     "thin" -> FontWeight.Thin
+    "extralight" -> FontWeight.ExtraLight
     "light" -> FontWeight.Light
+    "regular" -> FontWeight.Normal
     "medium" -> FontWeight.Medium
     "semibold" -> FontWeight.SemiBold
     "bold" -> FontWeight.Bold
+    "extrabold" -> FontWeight.ExtraBold
     "black" -> FontWeight.Black
     else -> FontWeight.Normal
 }
-private fun doweDynamicTextSpacing(value: String): TextUnit = value.toFloatOrNull()?.sp ?: 0.sp
+private fun doweDynamicTextSpacing(value: String): TextUnit = when (value) {
+    "tightest" -> (-0.06f).em
+    "tighter" -> (-0.04f).em
+    "tight" -> (-0.02f).em
+    "normal" -> 0f.em
+    "wide" -> 0.02f.em
+    "wider" -> 0.04f.em
+    "widest" -> 0.06f.em
+    else -> value.toFloatOrNull()?.em ?: 0f.em
+}
 private fun doweValidEnum(value: String, kind: String): String = when (kind) {
     "variant" -> if (value in DowePropCatalog.variants) value else "solid"
     "scheme" -> if (value in DowePropCatalog.schemes) value else "primary"

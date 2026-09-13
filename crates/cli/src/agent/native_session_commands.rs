@@ -11,6 +11,7 @@ impl NativeSession {
         }
         let (command, argument) = prompt.split_once(' ').unwrap_or((prompt, ""));
         let mut result = match command {
+            "/permissions" => self.permissions_command(argument, json_output)?,
             "/governance" => self.governance_command(argument)?,
             "/sdd" => self.sdd_command(argument, json_output)?,
             "/queue" => {
@@ -123,6 +124,7 @@ impl NativeSession {
                 }
                 self.close_watchers()?;
                 self.session = self.store.load_session(&id)?;
+                self.permission_mode = HarnessPermissionMode::Confirm;
                 json!({"resumed":self.session.id,"turns":self.session.turns.len()})
             }
             "/delete-session" => {
@@ -266,6 +268,58 @@ impl NativeSession {
             );
         }
         Ok(continue_session)
+    }
+
+    fn permissions_command(
+        &mut self,
+        argument: &str,
+        json_output: bool,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let mut parts = argument.split_whitespace();
+        let operation = parts.next().unwrap_or("");
+        if parts.next().is_some() {
+            return Err("Use /permissions|/permissions status|full|confirm".into());
+        }
+        match operation {
+            "" if !json_output && crate::menus::is_interactive_terminal() => {
+                let labels = ["Confirm each operation", "Full access for this session"];
+                let default = usize::from(self.permission_mode.is_full_access());
+                let Some(index) = Select::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Agent permission mode")
+                    .items(labels)
+                    .default(default)
+                    .interact_opt()?
+                else {
+                    return Ok(json!({
+                        "mode": self.permission_mode.as_str(),
+                        "changed": false,
+                        "persistent": false
+                    }));
+                };
+                self.permission_mode = if index == 1 {
+                    HarnessPermissionMode::FullAccess
+                } else {
+                    HarnessPermissionMode::Confirm
+                };
+            }
+            "" | "status" => {}
+            "full" => {
+                if json_output || !crate::menus::is_interactive_terminal() {
+                    return Err(
+                        "Full permission mode requires an interactive terminal; JSON and non-interactive sessions never auto-approve".into(),
+                    );
+                }
+                self.permission_mode = HarnessPermissionMode::FullAccess;
+            }
+            "confirm" => self.permission_mode = HarnessPermissionMode::Confirm,
+            _ => return Err("Use /permissions|/permissions status|full|confirm".into()),
+        }
+        Ok(json!({
+            "mode": self.permission_mode.as_str(),
+            "automatic_approval": self.permission_mode.is_full_access(),
+            "persistent": false,
+            "scope": "regular application files under the canonical project root; protected paths remain closed"
+        }))
     }
 
     fn governance_command(&mut self, argument: &str) -> Result<Value, Box<dyn std::error::Error>> {

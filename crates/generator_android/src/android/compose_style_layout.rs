@@ -9,9 +9,9 @@ fn render_compose_text(
     context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
-    let size = text_size(title, props);
-    let spacing = if title || props.letter_spacing.is_some() {
-        format!(", letterSpacing = {}", text_spacing(title, props))
+    let size = text_size(title, props, context);
+    let spacing = if title || props.letter_spacing.is_some() || props.letter_spacing_binding.is_some() {
+        format!(", letterSpacing = {}", text_spacing(title, props, context))
     } else {
         String::new()
     };
@@ -29,9 +29,9 @@ fn render_compose_text(
         "{pad}Text({}, modifier = {modifier}, color = {}, fontSize = {size}, lineHeight = {}, fontFamily = {}, fontWeight = {}{spacing}{text_align})\n",
         compose_visible_text_expression(value, props.i18n.as_deref(), context),
         text_color(title, props),
-        text_line_height(title, props, &size),
+        text_line_height(title, props, &size, context),
         compose_font_value(font, default_family),
-        text_weight(title, props)
+        text_weight(title, props, context)
     ));
 }
 
@@ -307,4 +307,3 @@ fn append_compose_flex_item_modifier(
     });
     modifier.push_str(&format!(".then({item_modifier} ?: Modifier)"));
 }
-

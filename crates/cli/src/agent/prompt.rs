@@ -15,6 +15,7 @@ const VISIBLE_COMMANDS: &[&str] = &[
     "/model",
     "/thinking",
     "/models",
+    "/permissions",
     "/new",
     "/session",
     "/sessions",

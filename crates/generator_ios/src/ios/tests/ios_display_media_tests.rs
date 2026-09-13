@@ -256,13 +256,22 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("ScrollView(.horizontal"));
     assert!(views.contains("showsIndicators: false"));
     assert!(views.contains("if showNavigation"));
+    assert!(views.contains(".accessibilityElement(children: .contain)"));
+    assert!(views.contains(".accessibilityLabel(Text(title ?? \"Carousel\"))"));
+    assert!(views.contains(".accessibilityValue(Text(\"\\(currentIndex + 1) of \\(slideIds.count)\"))"));
+    assert!(views.contains("if shouldSnap"));
+    assert!(views.contains("private var shouldSnap: Bool"));
+    assert!(views.contains(".scrollTransition(.interactive, axis: orientation == \"vertical\" ? .vertical : .horizontal)"));
     assert!(views.contains(".disabled(disableLoop && currentIndex == 0)"));
     assert!(views.contains("containerRelativeFrame(.horizontal"));
     assert!(views.contains("carouselHorizontalOffset"));
     assert!(views.contains(".scrollPosition(id: $scrollId)"));
     assert!(views.contains(".onChange(of: scrollId) { _, value in"));
     assert!(!views.contains(".onChange(of: scrollId) { value in"));
-    assert!(views.contains(".scrollTransition(.interactive, axis: .horizontal)"));
+    assert!(views.contains(".task(id: \"\\(autoplay)-\\(autoplayInterval)-\\(disableLoop)\")"));
+    assert!(views.contains("if !userInteracting && !(disableLoop && currentIndex >= slideIds.count - 1) { move(1) }"));
+    assert!(views.contains("containerRelativeFrame(.horizontal) { length, _ in min(length * 0.82, CGFloat(384)) }"));
+    assert!(views.contains("if variant == \"slideshow\" { return 1 - distance * 0.12 }"));
     assert!(views.contains("rotation3DEffect"));
     assert!(views.contains("nonisolated private func carouselRotation(_ phase: Double) -> Double"));
     assert!(views.contains("nonisolated private func carouselScale(_ phase: Double) -> CGFloat"));
@@ -331,4 +340,3 @@ fn generates_swiftui_media_display_form_components() {
     assert!(views.contains("func boolBinding(_ path: String) -> Binding<Bool>"));
     assert!(!views.contains("DoweSimpleField"));
 }
-

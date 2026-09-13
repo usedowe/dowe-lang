@@ -101,14 +101,18 @@ mod tests {
     fn catalog_capabilities_resolve_openrouter_models_and_custom_models_stay_unknown() {
         let config = HarnessConfig::default();
         let catalog_model = ModelSelection::new("openrouter", "deepseek/deepseek-v4-flash");
-        assert!(config
-            .require_capabilities(&catalog_model, HarnessRole::Execute, false)
-            .is_ok());
+        assert!(
+            config
+                .require_capabilities(&catalog_model, HarnessRole::Execute, false)
+                .is_ok()
+        );
 
         let custom = ModelSelection::new("openrouter", "custom/model");
-        assert!(config
-            .require_capabilities(&custom, HarnessRole::Execute, false)
-            .is_err());
+        assert!(
+            config
+                .require_capabilities(&custom, HarnessRole::Execute, false)
+                .is_err()
+        );
     }
 
     #[test]

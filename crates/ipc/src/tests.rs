@@ -188,11 +188,15 @@ fn serializes_read_only_session_observer_through_ipc() {
     let root = TempDir::new().unwrap();
     let store = dowe_agent::native_harness::HarnessStore::new(home.path(), root.path()).unwrap();
     let mut session = store.create_session().unwrap();
-    session.events.push(serde_json::json!({"event":"response", "prompt":"omit", "secret":"omit"}));
+    session
+        .events
+        .push(serde_json::json!({"event":"response", "prompt":"omit", "secret":"omit"}));
     store.save_session(&mut session).unwrap();
     let facade = super::SessionObserver::new(store, session.id).unwrap();
     let handle = facade.subscribe();
-    let page = facade.poll(&handle, 0, super::SessionEventLimits::default()).unwrap();
+    let page = facade
+        .poll(&handle, 0, super::SessionEventLimits::default())
+        .unwrap();
     let encoded = serde_json::to_string(&page).unwrap();
     assert!(encoded.contains("response"));
     assert!(!encoded.contains("secret"));

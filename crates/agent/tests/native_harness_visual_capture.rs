@@ -84,7 +84,7 @@ fn capture_call_with_viewport(width: u32, height: u32) -> ToolCall {
 }
 
 #[cfg(unix)]
-const VALID_PNG: &str = "printf '\\211PNG\\r\\n\\032\\n\\000\\000\\000\\015IHDR\\000\\000\\000d\\000\\000\\000P\\010\\006\\000\\000\\000\\000\\000\\000\\000' > \"$out\"";
+const VALID_PNG: &str = r#"size="1280,720"; for arg in "$@"; do case "$arg" in --window-size=*) size="${arg#--window-size=}";; esac; done; width="${size%,*}"; height="${size#*,}"; python3 -c 'import struct,sys,zlib; o,w,h=sys.argv[1],int(sys.argv[2]),int(sys.argv[3]); row=b"\0"+b"\0\0\0\0"*w; raw=row*h; chunk=lambda k,d: struct.pack(">I",len(d))+k+d+struct.pack(">I",zlib.crc32(k+d)&0xffffffff); open(o,"wb").write(b"\x89PNG\r\n\x1a\n"+chunk(b"IHDR",struct.pack(">IIBBBBB",w,h,8,6,0,0,0))+chunk(b"IDAT",zlib.compress(raw))+chunk(b"IEND",b""))' "$out" "$width" "$height""#;
 
 #[cfg(unix)]
 #[test]

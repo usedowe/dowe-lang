@@ -7,8 +7,10 @@ impl NativeSession {
             store,
             session,
             config,
+            permission_mode: HarnessPermissionMode::Confirm,
             image_paths: Vec::new(),
             watchers: Default::default(),
+            activity_draft: None,
         })
     }
 
@@ -16,6 +18,10 @@ impl NativeSession {
         &mut self,
     ) -> AgentResult<Option<dowe_agent::native_harness::HarnessQueuedTask>> {
         self.store.claim_task(&self.session.id)
+    }
+
+    pub(super) fn take_activity_draft(&mut self) -> Option<String> {
+        self.activity_draft.take()
     }
 
     pub(super) fn complete_queued(&self, id: &str, result: Value) -> AgentResult<()> {
@@ -44,7 +50,8 @@ impl NativeSession {
     pub(super) fn reset(&mut self) -> AgentResult<()> {
         self.close_watchers()?;
         self.session = self.store.create_session()?;
+        self.permission_mode = HarnessPermissionMode::Confirm;
+        self.activity_draft = None;
         Ok(())
     }
-
 }

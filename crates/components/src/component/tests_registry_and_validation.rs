@@ -16,7 +16,7 @@ use super::{
     ContainerSize, DeviceProfile, DividerOrientation, EmptyKind, FabProps, FlexDirection, FlexItem,
     FontFamily, GapSize, GapValue, GridAlignment, GridTracks, IframeLoading, NativeExternalMode,
     NavigationAction, OverlayCornerPosition, OverlayPaint, PropBinding, PropValue, PropValueKind,
-    RadioGroupOrientation, RadioGroupPresentation,
+    RadioGroupOrientation, RadioGroupPresentation, GameControls, GameRenderer,
     ResponsivePropEntry, ResponsiveValue, RichTextMark, RichTextMarkStyle, RoundedSize,
     SVG_LOGOS, SVG_SPINNERS,
     ScaleValue, SectionBackground, SizeValue, SpacingProps, SvgLineCap, SvgLineJoin, SvgPathFill,
@@ -38,6 +38,7 @@ use super::{
     stepper_step_component, svg_component_node, svg_path_component, table_column_component,
     table_node, tabs_component_node, tabs_tab_component, text_binding_path, text_component_node,
     tree_component_node,
+    game_component_node,
     text_node, text_spacing_em, text_typography, text_weight_number, validate_solar_icon_catalog,
     validate_svg_logo_catalog, validate_svg_spinner_catalog, validate_view_tree, video_node,
 };

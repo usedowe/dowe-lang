@@ -100,6 +100,7 @@ impl DesignCssFeatures {
                 | ViewNode::BarChart { .. }
                 | ViewNode::Candlestick { .. }
                 | ViewNode::Canvas { .. }
+                | ViewNode::Game { .. }
                 | ViewNode::Countdown { .. }
                 | ViewNode::Diagram { .. }
                 | ViewNode::LineChart { .. }

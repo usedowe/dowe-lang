@@ -39,6 +39,17 @@ const CANVAS_RUNTIME_EXPORTS: &[&str] = &[
     "hydrateCanvases",
 ];
 
+const GAME_RUNTIME_MODULES: &[&str] = &[
+    include_str!("router_runtime/game_raycast.js"),
+    include_str!("router_runtime/game_websocket.js"),
+];
+
+const GAME_RUNTIME_EXPORTS: &[&str] = &[
+    "renderGames",
+    "closeGameSockets",
+    "hydrateGames",
+];
+
 const CONTROLS_RUNTIME_EXPORTS: &[&str] = &[
     "renderDoweColors",
     "cropperState",
@@ -87,6 +98,7 @@ const CONTROLS_RUNTIME_EXPORTS: &[&str] = &[
 const MEDIA_RUNTIME_EXPORTS: &[&str] = &[
     "renderCarouselEffects",
     "renderCarousel",
+    "syncCarousel",
     "goToCarousel",
     "moveCarousel",
     "hydrateCarousels",
@@ -150,6 +162,9 @@ pub fn runtime_chunks_for_trees(
     if features.canvas {
         chunks.push(canvas_runtime_chunk());
     }
+    if features.game {
+        chunks.push(game_runtime_chunk());
+    }
     chunks
 }
 
@@ -203,6 +218,7 @@ fn capability_runtime_chunk(
                 .replace("__DOWE_SCHEMES__", &runtime_values(dowe_components::BuiltinComponent::Button, "scheme"))
                 .replace("__DOWE_SIZES__", &runtime_values(dowe_components::BuiltinComponent::Button, "size"))
                 .replace("__DOWE_ROUNDED__", &runtime_values(dowe_components::BuiltinComponent::Button, "rounded"))
+                .replace("__DOWE_TEXT_METRICS__", &runtime_text_metrics())
         } else {
             (*module).to_string()
         };
@@ -227,6 +243,37 @@ fn runtime_colors() -> String {
 fn runtime_values(component: dowe_components::BuiltinComponent, name: &str) -> String {
     let values = dowe_components::prop_allowed_values(component, name);
     format!("[{}]", values.iter().map(|value| format!("\"{value}\"")).collect::<Vec<_>>().join(","))
+}
+
+fn runtime_text_metrics() -> String {
+    format!(
+        "{{\"body\":{},\"title\":{}}}",
+        runtime_text_metric_table(false),
+        runtime_text_metric_table(true)
+    )
+}
+
+fn runtime_text_metric_table(title: bool) -> String {
+    let entries = dowe_components::TextSize::all()
+        .iter()
+        .map(|size| {
+            let typography = dowe_components::text_typography(title, *size);
+            let font_size = typography.font_size;
+            format!(
+                "\"{}\":{{\"min\":{},\"preferredBase\":{},\"preferredViewport\":{},\"max\":{},\"lineHeight\":{},\"weight\":{},\"letterSpacing\":{}}}",
+                size.as_str(),
+                font_size.min,
+                font_size.preferred_base,
+                font_size.preferred_viewport,
+                font_size.max,
+                typography.line_height,
+                dowe_components::text_weight_number(typography.weight),
+                typography.letter_spacing_em,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("{{{entries}}}")
 }
 
 fn visualization_runtime_chunk() -> GeneratedRuntimeChunk {
@@ -259,6 +306,11 @@ fn canvas_runtime_chunk() -> GeneratedRuntimeChunk {
     CHUNK.get_or_init(|| capability_runtime_chunk("canvas", CANVAS_RUNTIME_MODULES, CANVAS_RUNTIME_EXPORTS)).clone()
 }
 
+fn game_runtime_chunk() -> GeneratedRuntimeChunk {
+    static CHUNK: std::sync::OnceLock<GeneratedRuntimeChunk> = std::sync::OnceLock::new();
+    CHUNK.get_or_init(|| capability_runtime_chunk("game", GAME_RUNTIME_MODULES, GAME_RUNTIME_EXPORTS)).clone()
+}
+
 #[derive(Default)]
 struct RuntimeFeatures {
     styles: bool,
@@ -267,6 +319,7 @@ struct RuntimeFeatures {
     media: bool,
     visualization: bool,
     canvas: bool,
+    game: bool,
 }
 
 fn runtime_features<'a>(roots: impl IntoIterator<Item = &'a ViewNode>) -> RuntimeFeatures {
@@ -280,6 +333,7 @@ fn runtime_features<'a>(roots: impl IntoIterator<Item = &'a ViewNode>) -> Runtim
         features.media |= node_actions_use_media(node);
         features.visualization |= node_uses_visualization(node);
         features.canvas |= matches!(node, ViewNode::Canvas { .. });
+        features.game |= matches!(node, ViewNode::Game { .. });
         for group in dowe_components::node_child_groups(node) {
             pending.extend(group);
         }
@@ -327,7 +381,12 @@ fn node_uses_style_bindings(node: &ViewNode) -> bool {
             style_has_binding(&props.style)
                 || !props.bindings().is_empty()
         }
-        ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => style_has_binding(&props.style),
+        ViewNode::Title { props, .. } | ViewNode::Text { props, .. } => {
+            style_has_binding(&props.style)
+                || props.size_binding.is_some()
+                || props.weight_binding.is_some()
+                || props.letter_spacing_binding.is_some()
+        }
         ViewNode::Svg { props, .. } => style_has_binding(&props.style),
         _ => false,
     }

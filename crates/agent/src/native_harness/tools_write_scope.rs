@@ -108,6 +108,9 @@ impl HarnessTools {
         let relative = path
             .strip_prefix(&self.root)
             .map_err(|_| AgentError::new("foreign path"))?;
+        if self.permission_mode.is_full_access() {
+            return Ok(());
+        }
         if !(skill == "views" || skill.starts_with("views/"))
             || !relative.starts_with(Path::new("public/assets"))
         {
@@ -123,6 +126,9 @@ impl HarnessTools {
             return Err(AgentError::new(
                 "environment values require local protected editing; use .env.example placeholders",
             ));
+        }
+        if self.permission_mode.is_full_access() {
+            return Ok(());
         }
         let relative = path
             .strip_prefix(&self.root)
@@ -162,4 +168,3 @@ impl HarnessTools {
         Ok(())
     }
 }
-

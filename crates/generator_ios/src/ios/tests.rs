@@ -86,3 +86,5 @@ fn generates_real_ios_notification_support() {
     assert!(entitlements.content.contains("aps-environment"));
 }
 include!("tests/static_flex.rs");
+
+include!("tests/scheme_content_inheritance.rs");

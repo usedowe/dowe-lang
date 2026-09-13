@@ -194,6 +194,10 @@ fn lower_remaining_view_node(
             reject_children(node)?;
             canvas_component_node(props).map_err(|error| component_error(node, error))
         }
+        BuiltinComponent::Game => {
+            reject_children(node)?;
+            game_component_node(props).map_err(|error| component_error(node, error))
+        }
         BuiltinComponent::Draw => {
             reject_children(node)?;
             draw_component_node(props).map_err(|error| component_error(node, error))

@@ -195,6 +195,7 @@ fn validate_view_tree_with_parent(
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }
@@ -235,4 +236,3 @@ fn validate_view_tree_with_parent(
 
     Ok(())
 }
-

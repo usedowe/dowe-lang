@@ -218,6 +218,7 @@ fn render_html_node_with_context(
         ViewNode::Iframe { props } => render_iframe_html(props, context),
         ViewNode::Device { props, iframe } => render_device_html(props, iframe, context),
         ViewNode::Canvas { props } => render_canvas_html(props, context),
+        ViewNode::Game { props } => render_game_html(props, context),
         ViewNode::Candlestick { props } => render_candlestick_html(props, context),
         ViewNode::Diagram { props } => render_diagram_html(props, context),
         ViewNode::ArcChart { props } => render_arc_chart_html(props, context),

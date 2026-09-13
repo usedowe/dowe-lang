@@ -48,7 +48,7 @@ page InvoiceTablePage
   signal invoices type:InvoiceRow[] value:[]
   Section id:"invoice-ledger"
     Grid columns:1 gap:6
-      Title size:{ xs:"3xl" md:"5xl" } weight:"black"
+      Title size:"5xl"
         "Invoice ledger"
       Table:
         data:invoices
@@ -200,31 +200,31 @@ identity affordance, the middle tracks contain fields, and the final track owns 
 ```text
 Flex direction:"column" gap:0
   Grid columns:{ xs:3 md:7 } gap:3 align:"center" p:3 border:1 borderColor:"muted"
-    Text size:"xs" weight:"bold"
+    Text size:"sm"
       "Author"
-    Text size:"xs" weight:"bold" show:{ xs:false md:true }
+    Text size:"sm" show:{ xs:false md:true }
       "Company"
-    Text size:"xs" weight:"bold" show:{ xs:false md:true }
+    Text size:"sm" show:{ xs:false md:true }
       "Email"
-    Text size:"xs" weight:"bold" show:{ xs:false md:true }
+    Text size:"sm" show:{ xs:false md:true }
       "Status"
-    Text size:"xs" weight:"bold"
+    Text size:"sm"
       "Actions"
   each in:members as:member key:member.id
     Grid columns:{ xs:3 md:7 } gap:3 align:"center" p:3 border:1 borderColor:"muted"
       Flex align:"center" gap:3
         Avatar alt:"Team member avatar" scheme:"muted"
         Grid columns:1 gap:0
-          Text size:"sm" weight:"bold"
+          Text size:"sm"
             "{member.name}"
-          Text size:"xs"
+          Text size:"sm"
             "{member.role}"
       Text size:"sm" show:{ xs:false md:true }
         "{member.company}"
       Text size:"sm" show:{ xs:false md:true }
         "{member.email}"
       Badge show:{ xs:false md:true }
-        Text size:"xs"
+        Text size:"sm"
           "{member.status}"
       IconButton icon:"menu-dots" label:"Open member actions" variant:"ghost" scheme:"muted" size:"sm"
 ```

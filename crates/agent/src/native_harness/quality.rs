@@ -1,5 +1,5 @@
 use crate::AgentResult;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,6 +23,7 @@ struct Finding {
     component: String,
     prop: String,
     value: String,
+    message: String,
 }
 
 fn scalar(value: &str) -> Option<String> {
@@ -216,11 +217,20 @@ fn relative(root: &Path, path: &Path) -> String {
 }
 
 pub fn audit_dowe_project(root: &Path) -> AgentResult<Value> {
+    audit_dowe_project_with_options(root, false)
+}
+
+pub(crate) fn audit_dowe_project_for_ui(root: &Path) -> AgentResult<Value> {
+    audit_dowe_project_with_options(root, true)
+}
+
+fn audit_dowe_project_with_options(root: &Path, strict_ui: bool) -> AgentResult<Value> {
     if !root.join("main.dowe").is_file() {
         return Ok(json!({
             "status": "not_run",
             "reason": "project is not a Dowe application",
             "findings": [],
+            "warnings": [],
         }));
     }
     let defaults = parse_theme_defaults(root)?;
@@ -228,11 +238,16 @@ pub fn audit_dowe_project(root: &Path) -> AgentResult<Value> {
     let mut files = inventory.files;
     files.sort();
     let mut findings = Vec::new();
+    let mut warnings = Vec::new();
+    let mut ui_audit = super::ui_quality::UiQualityAudit::default();
     for path in &files {
         if path.file_name().and_then(|name| name.to_str()) == Some("theme.dowe") {
             continue;
         }
         let content = fs::read_to_string(path)?;
+        if strict_ui {
+            ui_audit.inspect(path, &content);
+        }
         for (line_index, line) in content.lines().enumerate() {
             let Some((component, values)) = props(line.trim()) else {
                 continue;
@@ -241,19 +256,40 @@ pub fn audit_dowe_project(root: &Path) -> AgentResult<Value> {
                 continue;
             };
             for (prop, value) in values {
-                if findings.len() >= MAX_FINDINGS || !style_prop(&prop) {
+                if !style_prop(&prop) {
                     continue;
                 }
                 if component_defaults.get(&prop) == Some(&value) {
-                    findings.push(Finding {
+                    let destination = if strict_ui {
+                        &mut warnings
+                    } else {
+                        &mut findings
+                    };
+                    if destination.len() >= MAX_FINDINGS {
+                        continue;
+                    }
+                    destination.push(Finding {
                         path: relative(root, path),
                         line: line_index + 1,
                         component: component.clone(),
                         prop,
                         value,
+                        message: "prop matches the component design default; omit it unless the difference is intentional".into(),
                     });
                 }
             }
+        }
+    }
+    if strict_ui {
+        for finding in ui_audit.finish(MAX_FINDINGS.saturating_sub(findings.len())) {
+            findings.push(Finding {
+                path: relative(root, &finding.path),
+                line: finding.line,
+                component: finding.component,
+                prop: finding.prop,
+                value: finding.value,
+                message: finding.message.into(),
+            });
         }
     }
     let finding_values = findings
@@ -265,35 +301,59 @@ pub fn audit_dowe_project(root: &Path) -> AgentResult<Value> {
                 "component": finding.component,
                 "prop": finding.prop,
                 "value": finding.value,
-                "message": "prop matches the component design default; omit it unless the difference is intentional",
+                "message": finding.message,
             })
         })
         .collect::<Vec<_>>();
-    let limits_hit = inventory.skipped > 0 || inventory.truncated || findings.len() >= MAX_FINDINGS;
-    let status = if defaults.is_empty() {
-        "not_run"
-    } else if limits_hit {
+    let warning_values = warnings
+        .iter()
+        .map(|warning| {
+            json!({
+                "path": warning.path,
+                "line": warning.line,
+                "component": warning.component,
+                "prop": warning.prop,
+                "value": warning.value,
+                "message": warning.message,
+            })
+        })
+        .collect::<Vec<_>>();
+    let limits_hit = inventory.skipped > 0
+        || inventory.truncated
+        || findings.len() >= MAX_FINDINGS
+        || warnings.len() >= MAX_FINDINGS;
+    let status = if limits_hit {
         "not_run"
     } else if finding_values.is_empty() {
-        "passed"
+        if defaults.is_empty() {
+            "not_run"
+        } else {
+            "passed"
+        }
     } else {
         "failed"
+    };
+    let reason = if limits_hit {
+        Some("quality audit reached its bounded project scan limits")
+    } else if strict_ui && !finding_values.is_empty() {
+        Some("strict UI quality audit found actionable authoring issues")
+    } else if defaults.is_empty() {
+        Some("theme.dowe has no readable design defaults")
+    } else if strict_ui && !warning_values.is_empty() {
+        Some("quality audit passed with advisory default-first warnings")
+    } else {
+        None
     };
     Ok(json!({
         "status": status,
         "files_scanned": files.len(),
         "defaults_loaded": defaults.len(),
         "findings": finding_values,
+        "warnings": warning_values,
         "limits": {"max_files": MAX_FILES, "max_findings": MAX_FINDINGS, "max_file_bytes": MAX_FILE_BYTES, "max_depth": MAX_DEPTH},
         "files_skipped": inventory.skipped,
         "limits_hit": limits_hit,
-        "reason": if defaults.is_empty() {
-            Some("theme.dowe has no readable design defaults")
-        } else if limits_hit {
-            Some("quality audit reached its bounded project scan limits")
-        } else {
-            None::<&str>
-        },
+        "reason": reason,
     }))
 }
 
@@ -302,61 +362,4 @@ pub(crate) fn quality_failed(report: &Value) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn flags_redundant_component_defaults_and_allows_differences() {
-        let root = tempfile::tempdir().unwrap();
-        fs::write(
-            root.path().join("main.dowe"),
-            "import view from \"views/page.dowe\"\nmain {}\n",
-        )
-        .unwrap();
-        fs::write(
-            root.path().join("theme.dowe"),
-            "theme\n    Card variant:\"solid\" scheme:\"surface\"\n",
-        )
-        .unwrap();
-        fs::write(
-            root.path().join("views.dowe"),
-            "Card variant:\"solid\" scheme:\"primary\"\n",
-        )
-        .unwrap();
-        let report = audit_dowe_project(root.path()).unwrap();
-        assert_eq!(report["status"], "failed");
-        assert_eq!(report["findings"].as_array().unwrap().len(), 1);
-        assert_eq!(report["findings"][0]["prop"], "variant");
-    }
-
-    #[test]
-    fn reads_canonical_two_space_design_defaults() {
-        let root = tempfile::tempdir().unwrap();
-        fs::write(root.path().join("main.dowe"), "main {}\n").unwrap();
-        fs::write(
-            root.path().join("theme.dowe"),
-            "theme\n  design defaultTheme:\"reference\"\n    Card variant:\"solid\" scheme:\"surface\"\n",
-        )
-        .unwrap();
-        fs::create_dir_all(root.path().join("views")).unwrap();
-        fs::write(
-            root.path().join("views/page.dowe"),
-            "page Page\n  Card variant:\"solid\" scheme:\"primary\"\n",
-        )
-        .unwrap();
-        let report = audit_dowe_project(root.path()).unwrap();
-        assert_eq!(report["defaults_loaded"], 1);
-        assert_eq!(report["status"], "failed");
-        assert_eq!(report["findings"].as_array().unwrap().len(), 1);
-        assert_eq!(report["findings"][0]["prop"], "variant");
-    }
-
-    #[test]
-    fn reports_not_run_when_no_design_defaults_exist() {
-        let root = tempfile::tempdir().unwrap();
-        fs::write(root.path().join("main.dowe"), "main {}\n").unwrap();
-        let report = audit_dowe_project(root.path()).unwrap();
-        assert_eq!(report["status"], "not_run");
-        assert_eq!(report["defaults_loaded"], 0);
-    }
-}
+mod tests;

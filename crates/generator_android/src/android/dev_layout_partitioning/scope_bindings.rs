@@ -148,6 +148,7 @@ fn dev_collect_scope_bindings(node: &ViewNode, bindings: &mut DevLayoutBindings)
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
@@ -200,4 +201,3 @@ fn dev_collect_scope_bindings_from_children(
         dev_collect_scope_bindings(child, bindings);
     }
 }
-

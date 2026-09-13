@@ -8,33 +8,63 @@ pub(crate) fn input_outline(width: usize, label: &str) -> [String; 2] {
         format!("╰{}╯", "─".repeat(width.saturating_sub(2))),
     ]
 }
+
+struct PromptFrame {
+    line_widths: Vec<usize>,
+    cursor_line: usize,
+    cursor_column: usize,
+}
+
+impl PromptFrame {
+    fn cursor_row_after_reflow(&self, columns: usize) -> usize {
+        let columns = columns.max(1);
+        let cursor_line = self.cursor_line.min(self.line_widths.len());
+        self.line_widths[..cursor_line]
+            .iter()
+            .map(|width| reflow_rows(*width, columns))
+            .sum::<usize>()
+            .saturating_add(self.cursor_column / columns)
+    }
+}
+
+fn reflow_rows(width: usize, columns: usize) -> usize {
+    width.max(1).div_ceil(columns.max(1))
+}
+
+fn clear_resized_frame(term: &Term, frame: &PromptFrame, size: (u16, u16)) -> io::Result<()> {
+    term.move_cursor_up(frame.cursor_row_after_reflow(usize::from(size.1)))?;
+    term.write_str("\r")?;
+    term.clear_to_end_of_screen()
+}
+
+fn clear_frame(term: &Term, frame: &PromptFrame) -> io::Result<()> {
+    term.move_cursor_up(frame.cursor_line)?;
+    term.write_str("\r")?;
+    term.clear_to_end_of_screen()
+}
+
+fn anchor_frame(term: &Term, frame_rows: usize, size: (u16, u16), scroll: bool) -> io::Result<()> {
+    term.move_cursor_down(usize::from(size.0))?;
+    if scroll {
+        for _ in 0..frame_rows {
+            term.write_str("\r\n")?;
+        }
+    }
+    term.move_cursor_up(frame_rows.saturating_sub(1))?;
+    term.write_str("\r")
+}
+
 pub(super) fn read_interactive_prompt(
     footer: &super::footer::Footer<'_>,
+    initial: Option<&str>,
 ) -> io::Result<Option<String>> {
     let _input_terminal = PromptTerminal::open()?;
     let term = Term::stdout();
-    let mut prompt = Prompt::default();
-    let mut above_rows = 0;
-    let mut input_height: usize = 1;
-    let mut input_cursor_row = 0;
-    let mut footer_rows = 0;
+    let mut prompt = Prompt::from_text(initial.unwrap_or_default());
     let mut anchor = term.size();
-    write_prompt_line(&term, "")?;
+    let mut frame: Option<PromptFrame> = None;
     loop {
         let size = term.size();
-        if size == anchor {
-            clear_footer(
-                &term,
-                footer_rows,
-                input_height.saturating_sub(input_cursor_row + 1),
-            )?;
-            term.clear_line()?;
-            term.clear_last_lines(input_height.saturating_sub(1))?;
-            term.clear_last_lines(above_rows)?;
-        } else {
-            term.write_str("\r\n")?;
-            anchor = size;
-        }
         let width = usize::from(size.1).saturating_sub(1);
         let outlined = width >= 16 && size.0 >= 8;
         let below = usize::from(size.0.saturating_sub(2)).min(if outlined { 3 } else { 2 });
@@ -47,15 +77,15 @@ pub(super) fn read_interactive_prompt(
         } else {
             prompt.selected.saturating_sub(suggestion_rows - 1)
         };
+        let mut frame_lines = Vec::new();
         for (index, command) in matches.iter().enumerate().skip(first).take(suggestion_rows) {
             let line = if index == prompt.selected {
                 format!("{} {}", style("❯").green(), style(command).cyan())
             } else {
                 format!("  {}", style(command).dim())
             };
-            write_prompt_line(&term, &truncate_str(&line, width, ""))?;
+            frame_lines.push(truncate_str(&line, width, "").into_owned());
         }
-        let above = suggestion_rows + usize::from(outlined);
         let prefix = if outlined { "│ > " } else { "> " };
         let prefix_width = measure_text_width(prefix);
         let inner = width.saturating_sub(prefix_width + usize::from(outlined) * 2);
@@ -67,13 +97,11 @@ pub(super) fn read_interactive_prompt(
         let input = prompt.input_view(inner, input_limit);
         if outlined {
             let [top, _] = input_outline(width, "");
-            write_prompt_line(&term, &style(&top).cyan().to_string())?;
+            frame_lines.push(style(&top).cyan().to_string());
         }
+        let input_start = frame_lines.len();
         for (index, line) in input.rows.iter().enumerate() {
-            if index > 0 {
-                term.write_str("\r\n")?;
-            }
-            term.write_str(&styled_input_line(line, index, outlined, width, inner))?;
+            frame_lines.push(styled_input_line(line, index, outlined, width, inner));
         }
         let [_, bottom] = input_outline(width, "");
         let footer_lines = footer.lines(width);
@@ -86,18 +114,38 @@ pub(super) fn read_interactive_prompt(
         } else {
             footer_lines.to_vec()
         };
-        for line in tail.iter().take(below) {
-            term.write_str("\r\n")?;
+        frame_lines.extend(tail.iter().take(below).cloned());
+        let first_frame = frame.is_none();
+        if let Some(previous) = frame.as_ref() {
+            if size == anchor {
+                clear_frame(&term, previous)?;
+            } else {
+                clear_resized_frame(&term, previous, size)?;
+            }
+        } else {
+            term.write_str("\r")?;
+        }
+        anchor = size;
+        anchor_frame(&term, frame_lines.len(), size, first_frame)?;
+        for (index, line) in frame_lines.iter().enumerate() {
+            if index > 0 {
+                term.write_str("\r\n")?;
+            }
             term.write_str(line)?;
         }
-        let move_up = below + input.rows.len().saturating_sub(input.cursor_row + 1);
-        term.move_cursor_up(move_up)?;
+        let cursor_line = input_start + input.cursor_row;
+        let cursor_column = prefix_width + input.cursor_column;
+        term.move_cursor_up(frame_lines.len().saturating_sub(cursor_line + 1))?;
         term.write_str("\r")?;
-        term.move_cursor_right(prefix_width + input.cursor_column)?;
-        above_rows = above;
-        input_height = input.rows.len();
-        input_cursor_row = input.cursor_row;
-        footer_rows = below;
+        term.move_cursor_right(cursor_column)?;
+        frame = Some(PromptFrame {
+            line_widths: frame_lines
+                .iter()
+                .map(|line| measure_text_width(line))
+                .collect(),
+            cursor_line,
+            cursor_column,
+        });
         let event = read_prompt_event()?;
         let result = match event {
             PromptEvent::Key(key) => prompt.handle(key, inner),
@@ -108,15 +156,13 @@ pub(super) fn read_interactive_prompt(
             PromptEvent::Resize => None,
         };
         if let Some(result) = result {
-            if term.size() == anchor {
-                clear_footer(
-                    &term,
-                    footer_rows,
-                    input_height.saturating_sub(input_cursor_row + 1),
-                )?;
-                term.clear_line()?;
-                term.clear_last_lines(input_height.saturating_sub(1))?;
-                term.clear_last_lines(above_rows)?;
+            let final_size = term.size();
+            if final_size == anchor {
+                if let Some(previous) = frame.as_ref() {
+                    clear_frame(&term, previous)?;
+                }
+            } else if let Some(previous) = frame.as_ref() {
+                clear_resized_frame(&term, previous, final_size)?;
             } else {
                 term.write_str("\r\n")?;
             }
@@ -159,13 +205,4 @@ fn styled_input_line(
         };
         truncate_str(&format!("{prefix}{text}"), width, "").into_owned()
     }
-}
-
-fn clear_footer(term: &Term, rows: usize, cursor_offset: usize) -> io::Result<()> {
-    term.move_cursor_down(cursor_offset)?;
-    for _ in 0..rows {
-        term.move_cursor_down(1)?;
-        term.clear_line()?;
-    }
-    term.move_cursor_up(rows)
 }

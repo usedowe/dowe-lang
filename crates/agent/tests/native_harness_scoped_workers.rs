@@ -27,7 +27,12 @@ fn in_scope_write_is_prepared_for_approval() {
         }),
     );
 
-    assert!(tools.prepare(&call, HarnessRole::Execute).unwrap().is_some());
+    assert!(
+        tools
+            .prepare(&call, HarnessRole::Execute)
+            .unwrap()
+            .is_some()
+    );
 }
 
 #[test]
@@ -57,7 +62,10 @@ fn shell_cwd_must_stay_inside_the_worker_scope() {
     let mut tools = HarnessTools::with_scope(
         root.path(),
         "scoped-worker",
-        HarnessConfig { shell: Some("/bin/sh".into()), ..Default::default() },
+        HarnessConfig {
+            shell: Some("/bin/sh".into()),
+            ..Default::default()
+        },
         Some(vec![AllowedEditSurface::new("src").unwrap()]),
     )
     .unwrap();

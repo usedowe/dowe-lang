@@ -189,7 +189,7 @@ fn generates_terminal_replace_redirect_for_swiftui() {
     ));
 
     assert!(generated.contains(".redirect(\"/login\")"));
-    assert!(generated.contains("redirectPath = path"));
+    assert!(generated.contains("localRedirectPath = path"));
     assert!(generated.contains("navigate(\"replace\", path, nil)"));
     assert!(generated.contains("if await runSteps"));
 }
@@ -315,4 +315,3 @@ fn swift_content(output: &IosOutput) -> String {
         .collect::<Vec<_>>()
         .join("\n")
 }
-

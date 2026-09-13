@@ -18,6 +18,7 @@ include!("model/navigation_items.rs");
 include!("model/select_options.rs");
 include!("model/code_props.rs");
 include!("model/media_props.rs");
+include!("model/game_props.rs");
 include!("model/chart_props.rs");
 include!("model/diagram_props.rs");
 include!("model/tree_props.rs");

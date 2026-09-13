@@ -20,6 +20,7 @@ mod task;
 mod text_stream;
 mod tools;
 mod turns;
+mod ui_quality;
 mod visual_capture;
 mod visual_comparison;
 
@@ -32,7 +33,7 @@ pub use capability_catalog::{
     builtin_capability_catalog, builtin_capability_evidence,
 };
 pub use catalog::{SkillUnit, select_units, skill_index, skill_unit, validate_catalog};
-pub use config::{HarnessConfig, HarnessRole, ModelSelection};
+pub use config::{HarnessConfig, HarnessPermissionMode, HarnessRole, ModelSelection};
 pub use dowe_agent_harness::SessionRecord;
 pub(crate) use engine::run_harness_turn_without_persistence;
 pub use engine::{HarnessHost, HarnessOutcome, compact_harness_session, run_harness_turn};

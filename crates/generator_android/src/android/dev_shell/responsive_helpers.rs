@@ -223,6 +223,7 @@ fn dev_activity_responsive_helpers() -> &'static str {
     private float doweFluidTextSize(float min, float preferredBase, float preferredViewport, float max) {
         return Math.max(min, Math.min(preferredBase + viewportWidth * preferredViewport / 100f, max));
     }
+__DOWE_DYNAMIC_TEXT_TYPOGRAPHY__
 }
 "#
 }

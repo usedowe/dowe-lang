@@ -144,6 +144,24 @@ fn exposes_the_normative_component_visual_defaults() {
             None,
         ),
         (
+            super::DesignComponentSlot::SideNav,
+            Some(super::ColorFamily::Primary),
+            Some(super::ComponentVariant::Solid),
+            None,
+        ),
+        (
+            super::DesignComponentSlot::Sidebar,
+            Some(super::ColorFamily::Muted),
+            Some(super::ComponentVariant::Ghost),
+            None,
+        ),
+        (
+            super::DesignComponentSlot::NavMenu,
+            Some(super::ColorFamily::Muted),
+            Some(super::ComponentVariant::Ghost),
+            None,
+        ),
+        (
             super::DesignComponentSlot::AppBar,
             Some(super::ColorFamily::Surface),
             Some(super::ComponentVariant::Solid),

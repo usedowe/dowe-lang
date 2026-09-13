@@ -32,6 +32,7 @@ impl NativeSession {
             request_events: Vec::new(),
             pending_responses: Vec::new(),
             activity: activity.clone(),
+            automatic_approval: self.permission_mode.is_full_access(),
         };
         let explicit = explicit.then_some(&active);
         if prompt == "/compact" {
@@ -45,13 +46,18 @@ impl NativeSession {
                     &mut host,
                 ))
                 .await;
+            if let Some(draft) = activity.take_draft() {
+                self.activity_draft = Some(draft);
+            }
             self.transfer_activity_queue(&activity);
             host.flush_pending_responses()?;
             result?;
             return Ok(HarnessOutcome::Completed);
         }
         if matches!(prompt, "/plan" | "/review" | "/research") {
-            return Err(AgentError::new("Use /plan <task>, /research <question> or /review <task>"));
+            return Err(AgentError::new(
+                "Use /plan <task>, /research <question> or /review <task>",
+            ));
         }
         let (role, prompt) = if let Some(prompt) = prompt.strip_prefix("/plan ") {
             (HarnessRole::Plan, prompt)
@@ -75,10 +81,14 @@ impl NativeSession {
                     image_paths: &self.image_paths,
                     edit_scope: None,
                     expected_codegraph_binding: None,
+                    permission_mode: self.permission_mode,
                 },
                 &mut host,
             ))
             .await;
+        if let Some(draft) = activity.take_draft() {
+            self.activity_draft = Some(draft);
+        }
         self.transfer_activity_queue(&activity);
         host.flush_pending_responses()?;
         result

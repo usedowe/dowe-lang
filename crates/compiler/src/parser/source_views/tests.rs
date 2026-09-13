@@ -7,14 +7,14 @@ use dowe_components::{
     AvatarSize, AvatarStatus, Breakpoint, ButtonSize, CameraFacing, CanvasBackground, CanvasFit,
     CarouselIndicatorType, CarouselOrientation, CarouselVariant, ChartCurve, ChartLegendPosition,
     ChartPalette, ChartSize, ChatBoxMode, ColorFamily, ColorToken, CommandEntry, ComponentVariant,
-    CountdownSize, DividerOrientation, EmptyKind, GapSize, GapValue, ImageAspect, ImageLoading,
-    ImageObjectFit, MapMarkerIcon, MarqueeOrientation, MarqueeSpeed, NativeExternalMode,
-    NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayPosition, RadioGroupOrientation,
-    RadioGroupPresentation, RichTextMarkStyle, ScaleValue, SectionBackground, SkeletonAnimation,
-    SkeletonVariant, SvgPathFill, TableColumnAlign, TableSize, ToastKind, VideoAspect,
-    ViewActionKind, ViewAnimation, ViewFunctionStatement, ViewGesture, ViewIcon, ViewNode,
-    ViewRotation, ViewScale, ViewSignalScope, ViewSignalStorage, ViewTransition, ViewTranslation,
-    VisibilityCondition, WebTarget,
+    CountdownSize, DividerOrientation, EmptyKind, GameControls, GameRenderer, GapSize, GapValue,
+    ImageAspect, ImageLoading, ImageObjectFit, MapMarkerIcon, MarqueeOrientation, MarqueeSpeed,
+    NativeExternalMode, NavigationAction, OverlayCornerPosition, OverlayEntry, OverlayPosition,
+    RadioGroupOrientation, RadioGroupPresentation, RichTextMarkStyle, ScaleValue,
+    SectionBackground, SkeletonAnimation, SkeletonVariant, SvgPathFill, TableColumnAlign,
+    TableSize, ToastKind, VideoAspect, ViewActionKind, ViewAnimation, ViewFunctionStatement,
+    ViewGesture, ViewIcon, ViewNode, ViewRotation, ViewScale, ViewSignalScope, ViewSignalStorage,
+    ViewTransition, ViewTranslation, VisibilityCondition, WebTarget,
 };
 use std::fs;
 use std::path::Path;

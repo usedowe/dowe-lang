@@ -11,7 +11,7 @@ pub enum HarnessRole {
     Compact,
     Review,
     Research,
-        ImageGeneration,
+    ImageGeneration,
     Codegraph,
 }
 
@@ -22,16 +22,48 @@ impl HarnessRole {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum HarnessPermissionMode {
+    #[default]
+    Confirm,
+    FullAccess,
+}
+
+impl HarnessPermissionMode {
+    pub fn is_full_access(self) -> bool {
+        matches!(self, Self::FullAccess)
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Confirm => "confirm",
+            Self::FullAccess => "full_access",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn codegraph_role_parses_and_serializes_as_snake_case() {
-        assert_eq!(HarnessRole::parse("codegraph").unwrap(), HarnessRole::Codegraph);
-        assert_eq!(serde_json::to_string(&HarnessRole::Codegraph).unwrap(), "\"codegraph\"");
-        assert_eq!(HarnessRole::parse("research").unwrap(), HarnessRole::Research);
-        assert_eq!(HarnessRole::parse("image_generation").unwrap(), HarnessRole::ImageGeneration);
+        assert_eq!(
+            HarnessRole::parse("codegraph").unwrap(),
+            HarnessRole::Codegraph
+        );
+        assert_eq!(
+            serde_json::to_string(&HarnessRole::Codegraph).unwrap(),
+            "\"codegraph\""
+        );
+        assert_eq!(
+            HarnessRole::parse("research").unwrap(),
+            HarnessRole::Research
+        );
+        assert_eq!(
+            HarnessRole::parse("image_generation").unwrap(),
+            HarnessRole::ImageGeneration
+        );
     }
 
     #[test]
@@ -39,25 +71,31 @@ mod tests {
         let active = ModelSelection::new("openai", "gpt-5.5");
         let configured = ModelSelection::new("openai-codex", "gpt-5.3-codex-spark");
         let mut config = HarnessConfig::default();
-        config.roles.insert(HarnessRole::Codegraph, configured.clone());
+        config
+            .roles
+            .insert(HarnessRole::Codegraph, configured.clone());
 
-        assert_eq!(config.resolve(HarnessRole::Codegraph, None, &active).unwrap(), configured);
+        assert_eq!(
+            config
+                .resolve(HarnessRole::Codegraph, None, &active)
+                .unwrap(),
+            configured
+        );
 
         config.roles.remove(&HarnessRole::Codegraph);
-        assert_eq!(config.resolve(HarnessRole::Codegraph, None, &active).unwrap(), active);
+        assert_eq!(
+            config
+                .resolve(HarnessRole::Codegraph, None, &active)
+                .unwrap(),
+            active
+        );
     }
 
     #[test]
     fn recommended_roles_keep_expensive_work_explicit_and_read_roles_cheap() {
         let roles = HarnessConfig::recommended_roles();
-        assert_eq!(
-            roles[&HarnessRole::Plan].model,
-            "gpt-6-astra"
-        );
-        assert_eq!(
-            roles[&HarnessRole::Execute].model,
-            "gpt-5.6-luna"
-        );
+        assert_eq!(roles[&HarnessRole::Plan].model, "gpt-6-astra");
+        assert_eq!(roles[&HarnessRole::Execute].model, "gpt-5.6-luna");
         assert_eq!(
             roles[&HarnessRole::Compact].model,
             "deepseek/deepseek-v4-flash"
@@ -100,13 +138,20 @@ impl ModelSelection {
 
     pub fn validate(&self) -> AgentResult<()> {
         let registry = crate::provider::ProviderRegistry::default();
-            if (!crate::provider_exists(&self.provider) && registry.definition(&self.provider).is_none())
+        if (!crate::provider_exists(&self.provider)
+            && registry.definition(&self.provider).is_none())
             || self.model.trim().is_empty()
             || self.model.chars().any(char::is_control)
         {
             return Err(AgentError::new("invalid harness provider/model selection"));
         }
-        if registry.definition(&self.provider).is_some() && !registry.contains_model(&self.provider, &self.model) { return Err(AgentError::new("model is not declared by the dynamic provider")); }
+        if registry.definition(&self.provider).is_some()
+            && !registry.contains_model(&self.provider, &self.model)
+        {
+            return Err(AgentError::new(
+                "model is not declared by the dynamic provider",
+            ));
+        }
         validate_agent_model(&self.provider, &self.model)?;
         if let Some(level) = self.thinking {
             validate_thinking(&self.provider, &self.model, level)?;
@@ -116,11 +161,28 @@ impl ModelSelection {
 }
 
 impl ModelSelection {
-    pub fn validate_with_registry(&self, registry: &crate::provider::ProviderRegistry) -> AgentResult<()> {
-        if (!crate::provider_exists(&self.provider) && registry.definition(&self.provider).is_none()) || self.model.trim().is_empty() || self.model.chars().any(char::is_control) { return Err(AgentError::new("invalid harness provider/model selection")); }
-        if registry.definition(&self.provider).is_some() && !registry.contains_model(&self.provider, &self.model) { return Err(AgentError::new("model is not declared by the dynamic provider")); }
+    pub fn validate_with_registry(
+        &self,
+        registry: &crate::provider::ProviderRegistry,
+    ) -> AgentResult<()> {
+        if (!crate::provider_exists(&self.provider)
+            && registry.definition(&self.provider).is_none())
+            || self.model.trim().is_empty()
+            || self.model.chars().any(char::is_control)
+        {
+            return Err(AgentError::new("invalid harness provider/model selection"));
+        }
+        if registry.definition(&self.provider).is_some()
+            && !registry.contains_model(&self.provider, &self.model)
+        {
+            return Err(AgentError::new(
+                "model is not declared by the dynamic provider",
+            ));
+        }
         validate_agent_model(&self.provider, &self.model)?;
-        if let Some(level) = self.thinking { validate_thinking(&self.provider, &self.model, level)?; }
+        if let Some(level) = self.thinking {
+            validate_thinking(&self.provider, &self.model, level)?;
+        }
         Ok(())
     }
 }
@@ -147,7 +209,7 @@ impl Default for HarnessConfig {
         Self {
             roles: BTreeMap::new(),
             capabilities: BTreeMap::new(),
-                providers: crate::provider::ProviderRegistry::default(),
+            providers: crate::provider::ProviderRegistry::default(),
             shell: None,
             max_rounds: 64,
             max_output_bytes: 32768,

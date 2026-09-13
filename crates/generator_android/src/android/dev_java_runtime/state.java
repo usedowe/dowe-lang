@@ -71,6 +71,16 @@
         }
     }
 
+    private void doweResetSignal(String id) {
+        String[] metadata = doweSignalMetadata.get(id);
+        if (metadata != null && "global".equals(metadata[1])) {
+            return;
+        }
+        if (doweInitial.containsKey(id)) {
+            doweState.put(id, doweCopy(doweInitial.get(id)));
+        }
+    }
+
     private Object doweCopy(Object value) {
         if (value instanceof Map) {
             HashMap<String, Object> result = new HashMap<>();

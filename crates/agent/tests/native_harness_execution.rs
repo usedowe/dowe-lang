@@ -221,8 +221,7 @@ async fn unchanged_file_write_is_reported_without_an_approval_round_trip() {
             .all(|event| event["event"] != "approval_required")
     );
     assert!(host.events.iter().any(|event| {
-        event["event"] == "tool_result"
-            && event["result"]["output"]["status"] == "unchanged"
+        event["event"] == "tool_result" && event["result"]["output"]["status"] == "unchanged"
     }));
 }
 

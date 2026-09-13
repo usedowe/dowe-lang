@@ -24,6 +24,7 @@ fn render_compose_display_node(
         ViewNode::Iframe { .. } => render_compose_display_iframe(node, indent, output, flow, inherited_font, default_family, context),
         ViewNode::Device { .. } => render_compose_display_device(node, indent, output, flow, inherited_font, default_family, context),
         ViewNode::Canvas { .. } => render_compose_display_canvas(node, indent, output, flow, inherited_font, default_family, context),
+        ViewNode::Game { .. } => render_compose_display_game(node, indent, output, flow, inherited_font, default_family, context),
         ViewNode::Diagram { .. } => render_compose_display_diagram(node, indent, output, flow, inherited_font, default_family, context),
         ViewNode::Candlestick { .. } => render_compose_display_candlestick(node, indent, output, flow, inherited_font, default_family, context),
         ViewNode::ArcChart { .. } => render_compose_display_arc_chart(node, indent, output, flow, inherited_font, default_family, context),

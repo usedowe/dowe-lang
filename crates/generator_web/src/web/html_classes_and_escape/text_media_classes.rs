@@ -7,6 +7,15 @@ fn text_classes(base: &str, props: &TextProps) -> Vec<String> {
     } else {
         classes.push(format!("{base}-md"));
     }
+    if let Some(binding) = props.size_binding.as_ref() {
+        classes.push(format!("dowe-text-size-binding-{}", binding.path));
+    }
+    if let Some(binding) = props.weight_binding.as_ref() {
+        classes.push(format!("dowe-text-weight-binding-{}", binding.path));
+    }
+    if let Some(binding) = props.letter_spacing_binding.as_ref() {
+        classes.push(format!("dowe-text-spacing-binding-{}", binding.path));
+    }
     append_style_classes(&mut classes, &props.style);
     append_responsive_classes(&mut classes, "text-align", props.align.as_ref(), |value| {
         value.as_str().to_string()
@@ -127,4 +136,3 @@ fn divider_classes(props: &DividerProps) -> Vec<String> {
     append_style_classes(&mut classes, &props.style);
     classes
 }
-

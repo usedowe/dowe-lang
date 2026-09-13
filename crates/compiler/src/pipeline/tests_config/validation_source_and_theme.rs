@@ -217,6 +217,12 @@ fn accepts_grouped_theme_color_families_and_rejects_flat_roles() {
     let message = compile_dev(temp.path())
         .expect_err("unknown color family")
         .to_string();
-    assert!(message.contains("unknown color family `primaryText`"), "{message}");
+    assert!(
+        message.contains("unknown color family `primaryText`"),
+        "{message}"
+    );
+    assert!(
+        message.contains("lowercase built-in family") && message.contains("lower-camel custom"),
+        "{message}"
+    );
 }
-

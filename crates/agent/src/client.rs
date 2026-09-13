@@ -5,8 +5,9 @@ use crate::model::{
 };
 use crate::oauth::openai_codex_account_id;
 use crate::provider::{
-    AgentAuthKind, AgentProviderDefinition, AgentProviderProtocol, ResolvedProviderAuth,
-    normalize_model_id, protocol_for_model, provider_base_url, provider_definition, ProviderRegistry,
+    AgentAuthKind, AgentProviderDefinition, AgentProviderProtocol, ProviderRegistry,
+    ResolvedProviderAuth, normalize_model_id, protocol_for_model, provider_base_url,
+    provider_definition,
 };
 use base64::Engine;
 use reqwest::StatusCode;

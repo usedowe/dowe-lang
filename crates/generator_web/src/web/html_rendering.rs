@@ -12,6 +12,7 @@ include!("html_rendering/shell_js_segments.rs");
 include!("html_rendering/collection_js_segments.rs");
 include!("html_rendering/navigation_bar_html.rs");
 include!("html_rendering/svg_and_chart_html.rs");
+include!("html_rendering/game_html.rs");
 include!("html_rendering/table_and_tabs_html.rs");
 include!("html_rendering/tree_html.rs");
 include!("html_rendering/navigation_menu_html.rs");

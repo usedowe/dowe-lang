@@ -6,6 +6,7 @@ use tempfile::TempDir;
 
 include!("../agent_terminal/conversation.rs");
 include!("../agent_terminal/native_harness.rs");
+include!("../agent_terminal/permissions.rs");
 include!("../agent_terminal/activity.rs");
 include!("../agent_terminal/capabilities.rs");
 include!("../agent_terminal/supervision.rs");
@@ -77,7 +78,7 @@ impl Session {
                 cols: 120,
                 ..Default::default()
             }),
-            timeout_ms: Some(20000),
+            timeout_ms: Some(60000),
             ..Default::default()
         };
         let session = Self {

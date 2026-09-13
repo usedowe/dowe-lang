@@ -6,7 +6,14 @@ r#"    private func value(_ path: String, item: [String: Any]? = nil) -> Any? {
         if path.hasPrefix("item."), let item {
             return value(String(path.dropFirst(5)), in: item)
         }
-        return value(path, in: values) ?? value(path, in: constants)
+        let root = path.split(separator: ".").map(String.init).first ?? path
+        if values[root] != nil {
+            return value(path, in: values)
+        }
+        if constants[root] != nil {
+            return value(path, in: constants)
+        }
+        return parent?.value(path, item: item)
     }
 
     private func value(_ path: String, in source: [String: Any]) -> Any? {
@@ -32,6 +39,11 @@ r#"    private func value(_ path: String, item: [String: Any]? = nil) -> Any? {
     func write(_ path: String, value: Any) {
         let parts = path.split(separator: ".").map(String.init)
         guard let root = parts.first else {
+            return
+        }
+        if parent?.ownsSignal(root) == true {
+            touchFormField(path)
+            parent?.write(path, value: value)
             return
         }
         if parts.count == 1 {

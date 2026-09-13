@@ -14,9 +14,9 @@ mod waivers;
 pub use error::{CodeGraphError, CodeGraphResult};
 pub use model::*;
 pub use persistence::{
-    ensure_persistent_codegraph, query_persistent_codegraph, read_persistent_codegraph,
-    refresh_persistent_codegraph, CodeGraphBinding, CodeGraphQuery, CodeGraphSnapshot,
-    GraphFreshness, GraphManifest, GraphQueryResult,
+    CodeGraphBinding, CodeGraphQuery, CodeGraphSnapshot, GraphFreshness, GraphManifest,
+    GraphQueryResult, ensure_persistent_codegraph, query_persistent_codegraph,
+    read_persistent_codegraph, refresh_persistent_codegraph,
 };
 
 pub fn check_bound_persistent_codegraph(

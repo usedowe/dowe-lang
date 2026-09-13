@@ -1,6 +1,6 @@
 #[rustfmt::skip]
 pub(super) const VIEW_COMPONENTS: &[&str] = &[
-    "Box", "Section", "Flex", "Grid", "Input", "Select", "Option", "Code", "Video", "Iframe", "Device", "Canvas", "Draw",
+    "Box", "Section", "Flex", "Grid", "Input", "Select", "Option", "Code", "Video", "Iframe", "Device", "Canvas", "Game", "Draw",
     "Candlestick", "Diagram", "ArcChart", "AreaChart", "BarChart", "LineChart", "PieChart", "Table", "Divider",
     "Button", "Brand", "Banner", "ToggleTheme", "SelectTheme", "Fab", "fabAction", "Slider", "Dropzone", "ComboBox",
     "comboOption", "CsvField", "csvColumn", "DragDrop", "dragGroup", "dragItem", "Editor", "ImageCropper",
@@ -380,5 +380,4 @@ const SERVER_DOCUMENTATION: &[ServerDocumentation] = &[
         description: "Rolls back the current Store transaction.",
     },
 ];
-
 

@@ -154,6 +154,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
         render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
     };
     let core = super::router_js(&web);
+    let styles = super::styles_runtime_chunk().content;
     let controls = super::controls_runtime_chunk().content;
     let tree = super::tree_runtime_chunk().content;
     let media = super::media_runtime_chunk().content;
@@ -162,6 +163,7 @@ fn generated_runtime_javascript_has_valid_syntax() {
     assert_javascript_syntax(&core);
     assert!(core.contains("/_dowe/dev/ipc"));
     assert!(core.contains("127.0.0.1"));
+    assert_javascript_syntax(&styles);
     assert_javascript_syntax(&controls);
     assert_javascript_syntax(&tree);
     assert_javascript_syntax(&media);

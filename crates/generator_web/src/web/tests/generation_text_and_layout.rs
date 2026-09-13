@@ -7,6 +7,46 @@ fn renders_box_and_text_as_div_and_paragraph() {
 }
 
 #[test]
+fn generates_shared_reactive_typography_for_web() {
+    let bound_text_props = || TextProps {
+        size: Some(ResponsiveValue::scalar(dowe_components::TextSize::Md)),
+        size_binding: Some(dowe_components::PropBinding::string("textSize")),
+        ..Default::default()
+    };
+    let tree = ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![ViewSignal {
+            id: "textSize01".to_string(),
+            name: "textSize".to_string(),
+            storage_key: "textSize".to_string(),
+            scope: dowe_components::ViewSignalScope::Page,
+            storage: dowe_components::ViewSignalStorage::None,
+            initial: ViewSignalValue::String("9xl".to_string()),
+            schema: None,
+        }],
+        actions: Vec::new(),
+        children: vec![
+            ViewNode::Text {
+                props: bound_text_props(),
+                value: "Body".to_string(),
+            },
+            ViewNode::Title {
+                props: bound_text_props(),
+                value: "Title".to_string(),
+            },
+        ],
+    };
+    let html = render_page_body(&ViewNode::Children, &tree);
+    assert!(html.contains("dowe-text-size-binding-textSize01"));
+    let chunks = super::runtime_chunks_for_trees(&ViewNode::Children, &tree);
+    assert_eq!(chunks.iter().map(|chunk| chunk.name).collect::<Vec<_>>(), vec!["styles"]);
+    assert!(chunks[0].content.contains("doweDynamicTextSize"));
+    assert!(chunks[0].content.contains("\"9xl\""));
+    assert!(chunks[0].content.contains("preferredViewport"));
+    assert_javascript_syntax(&chunks[0].content);
+}
+
+#[test]
 fn renders_title_as_selected_heading_tag_on_web() {
     let tree = ViewNode::Title {
         props: TextProps {
@@ -404,4 +444,3 @@ fn renders_flex_end_inside_cover_card() {
     );
     assert!(page.css_content.contains("rgba(0,0,0,0.62)"));
 }
-

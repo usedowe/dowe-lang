@@ -39,6 +39,10 @@ mod skill_normalization_tests {
             let id = format!("references/{resource}");
             assert_eq!(
                 normalize_embedded_skill_request(&id, Some("views")).unwrap(),
+                ("views".to_string(), Some(id.clone()))
+            );
+            assert_eq!(
+                normalize_embedded_skill_request(&id, Some("bundles/views")).unwrap(),
                 ("views".to_string(), Some(id))
             );
         }

@@ -1,5 +1,22 @@
 fn swift_runtime_root_view_start() -> &'static str {
-    r#"struct DoweRootView: View {
+    r#"@MainActor
+private struct DoweLayoutStateHost<Content: View>: View {
+    let makeState: @MainActor () -> DoweReactiveState
+    let content: (DoweReactiveState) -> Content
+    @StateObject private var state: DoweReactiveState
+
+    init(makeState: @escaping @MainActor () -> DoweReactiveState, @ViewBuilder content: @escaping (DoweReactiveState) -> Content) {
+        self.makeState = makeState
+        self.content = content
+        _state = StateObject(wrappedValue: makeState())
+    }
+
+    var body: some View {
+        content(state)
+    }
+}
+
+struct DoweRootView: View {
     @StateObject private var design = DoweDesign.shared
     @State private var rootEntry: DoweRouteEntry
     @State private var navigationPath: [DoweRouteEntry] = []

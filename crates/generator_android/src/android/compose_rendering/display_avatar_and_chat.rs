@@ -235,9 +235,10 @@ fn render_compose_rich_text(
     output: &mut String,
     inherited_font: Option<&ResponsiveValue<FontFamily>>,
     default_family: FontFamily,
+    context: &ComposeReactiveContext,
 ) {
     let pad = " ".repeat(indent);
-    let size = text_size(props.title, props);
+    let size = text_size(props.title, props, context);
     output.push_str(&format!(
         "{pad}DoweRichText(marks = {}, fontFamily = {}, fontSize = {size}, contentColor = {}, modifier = {})\n",
         compose_rich_text_marks(marks),
@@ -246,4 +247,3 @@ fn render_compose_rich_text(
         modifier_for_style(&props.style),
     ));
 }
-

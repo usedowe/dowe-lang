@@ -3,6 +3,23 @@
         if (!pending.isEmpty()) doweRunStartup(pending.toArray(new String[0]), 0);
     }
 
+    void dowePrepareState(String routePath, String layoutKey, String[] layoutSignals, String[] pageSignals, String[] layoutStartup, String[] pageStartup) {
+        boolean layoutChanged = !layoutKey.equals(doweMountedLayout);
+        boolean pageChanged = !routePath.equals(doweMountedPath);
+        if (layoutChanged) {
+            for (String id : layoutSignals) doweResetSignal(id);
+            for (String id : layoutStartup) doweLoaded.remove(id);
+            doweMountedLayout = layoutKey;
+        }
+        if (pageChanged) {
+            for (String id : pageSignals) doweResetSignal(id);
+            for (String id : pageStartup) doweLoaded.remove(id);
+            doweTouchedValidations.clear();
+            doweTouchedForms.clear();
+            doweMountedPath = routePath;
+        }
+    }
+
     void dowePrepareStartup(String routePath, String layoutKey, String[] layoutIds, String[] pageIds) {
         if (!layoutKey.equals(doweMountedLayout)) {
             for (String id : layoutIds) doweLoaded.remove(id);

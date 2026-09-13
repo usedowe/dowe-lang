@@ -143,6 +143,9 @@ fn collect_control_js_node_segments(node: &ViewNode, segments: &mut Vec<JsSegmen
         ViewNode::Canvas { props } => {
             push_literal(segments, &render_canvas_html(props, context));
         }
+        ViewNode::Game { props } => {
+            push_literal(segments, &render_game_html(props, context));
+        }
         ViewNode::Diagram { props } => {
             push_literal(segments, &render_diagram_html(props, context));
         }

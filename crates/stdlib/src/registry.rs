@@ -77,7 +77,6 @@ pub fn functions(namespace: &str) -> &'static [&'static str] {
     }
 }
 
-
 pub fn signature(namespace: &str, function: &str) -> Option<StdlibSignature> {
     match namespace {
         "hash" => signature_hash(namespace, function),

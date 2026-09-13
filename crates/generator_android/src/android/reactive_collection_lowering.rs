@@ -207,6 +207,7 @@ fn collect_compose_reactive(
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
@@ -276,4 +277,3 @@ fn compose_signal_value(value: &ViewSignalValue) -> String {
         ),
     }
 }
-

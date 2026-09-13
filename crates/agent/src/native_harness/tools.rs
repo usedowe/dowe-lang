@@ -1,5 +1,8 @@
 use super::lock::DataLock;
-use super::{HarnessConfig, HarnessRole, Redactor, ToolCall, digest, identifier, skill_unit};
+use super::{
+    HarnessConfig, HarnessPermissionMode, HarnessRole, Redactor, ToolCall, digest, identifier,
+    skill_unit,
+};
 use crate::instructions::MAX_INSTRUCTION_FILE_BYTES;
 use crate::{AgentError, AgentResult, AgentToolDefinition, AgentToolFunction, GeneratedImage};
 use base64::Engine;
@@ -32,14 +35,13 @@ pub struct HarnessTools {
     pub(crate) root: PathBuf,
     pub(crate) session: String,
     config: HarnessConfig,
+    permission_mode: HarnessPermissionMode,
     supervisor: Option<dowe_runtime::SupervisorCommand>,
     edit_scope: Option<Vec<AllowedEditSurface>>,
     pub(crate) pending: BTreeMap<String, String>,
     loaded: Mutex<BTreeSet<String>>,
-    /// Focused skills selected at the task boundary. A non-empty set enables
-    /// the native Dowe authoring gate: writes must name one of these logical
-    /// skills (or the top-level `views` bundle for a focused view task).
     required_skills: Mutex<BTreeSet<String>>,
+    skill_coverage: Mutex<BTreeMap<String, SkillCoverage>>,
     pub(crate) reference_images: Vec<(PathBuf, Vec<u8>)>,
     pub redactor: Redactor,
 }
@@ -234,6 +236,28 @@ mod write_skill_tests {
         )
     }
 
+    fn load_complete_skill(tools: &HarnessTools, id: &str) {
+        let mut offset = 1_usize;
+        let mut hash = None::<String>;
+        loop {
+            let mut arguments = json!({"id": id, "offset": offset});
+            if let Some(value) = &hash {
+                arguments["hash"] = json!(value);
+            }
+            let page = tools
+                .execute_skill(&ToolCall::new("skill-page", "get_skill", arguments))
+                .unwrap();
+            if page["status"] == "already_loaded" {
+                break;
+            }
+            hash = page["hash"].as_str().map(str::to_owned);
+            if !page["truncated"].as_bool().unwrap_or(false) {
+                break;
+            }
+            offset = page["next_offset"].as_u64().unwrap() as usize;
+        }
+    }
+
     #[test]
     fn top_level_views_skill_covers_view_source_only() {
         let root = tempfile::tempdir().unwrap();
@@ -279,6 +303,9 @@ mod write_skill_tests {
                 .prepare(&write_call("theme"), HarnessRole::Execute)
                 .is_err()
         );
+        load_complete_skill(&tools, "core");
+        load_complete_skill(&tools, "views/pages");
+        load_complete_skill(&tools, "views/components");
         assert!(
             tools
                 .prepare(
@@ -294,6 +321,68 @@ mod write_skill_tests {
                     &write_call_for("views/page.dowe", "views"),
                     HarnessRole::Execute
                 )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn selected_skill_pages_must_be_complete_before_mutation() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        tools
+            .set_required_skills(["core".to_string(), "views/pages".to_string()])
+            .unwrap();
+        let page = tools
+            .execute_skill(&ToolCall::new(
+                "skill-page",
+                "get_skill",
+                json!({"id":"views/pages"}),
+            ))
+            .unwrap();
+        assert_eq!(page["truncated"], true);
+        let error = tools
+            .prepare(
+                &write_call_for("views/page.dowe", "views/pages"),
+                HarnessRole::Execute,
+            )
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("not fully delivered"));
+
+        let complete_root = tempfile::tempdir().unwrap();
+        let mut complete =
+            HarnessTools::new(complete_root.path(), "session", HarnessConfig::default()).unwrap();
+        complete
+            .set_required_skills(["core".to_string(), "views/pages".to_string()])
+            .unwrap();
+        load_complete_skill(&complete, "core");
+        load_complete_skill(&complete, "views/pages");
+        assert!(
+            complete
+                .prepare(
+                    &write_call_for("views/page.dowe", "views/pages"),
+                    HarnessRole::Execute,
+                )
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn restoring_compacted_turns_keeps_the_syntax_bootstrap_delivered() {
+        let root = tempfile::tempdir().unwrap();
+        let mut tools =
+            HarnessTools::new(root.path(), "session", HarnessConfig::default()).unwrap();
+        tools
+            .set_required_skills(["core".to_string(), "core/syntax".to_string()])
+            .unwrap();
+        tools.mark_skill_delivered("core/syntax").unwrap();
+        tools.restore_loaded_skills(&[]);
+
+        assert!(
+            tools
+                .prepare(&write_call("core"), HarnessRole::Execute)
                 .unwrap()
                 .is_some()
         );

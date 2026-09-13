@@ -74,7 +74,11 @@ pub(super) fn logical_lines(path: &Path, source: &str) -> DoweResult<Vec<Logical
                 value.push('\n');
                 value.push_str(next);
             }
-            logical_lines.push(LogicalLine { line, indent_spaces, source: value });
+            logical_lines.push(LogicalLine {
+                line,
+                indent_spaces,
+                source: value,
+            });
             index += 1;
             continue;
         }
@@ -98,7 +102,11 @@ pub(super) fn logical_lines(path: &Path, source: &str) -> DoweResult<Vec<Logical
             delimiters.scan(path, index + 1, next_value)?;
         }
 
-        logical_lines.push(LogicalLine { line, indent_spaces, source: value });
+        logical_lines.push(LogicalLine {
+            line,
+            indent_spaces,
+            source: value,
+        });
         index += 1;
     }
 
@@ -114,45 +122,73 @@ fn strip_line_comment(source: &str) -> &str {
     while index < bytes.len() {
         let byte = bytes[index];
         if in_string {
-            if escaped { escaped = false; }
-            else if byte == b'\\' { escaped = true; }
-            else if byte == b'"' { in_string = false; }
+            if escaped {
+                escaped = false;
+            } else if byte == b'\\' {
+                escaped = true;
+            } else if byte == b'"' {
+                in_string = false;
+            }
             index += 1;
             continue;
         }
-        if byte == b'"' { in_string = true; index += 1; }
-        else if byte == b'/' && bytes.get(index + 1) == Some(&b'/') { return source[..index].trim_end(); }
-        else { index += 1; }
+        if byte == b'"' {
+            in_string = true;
+            index += 1;
+        } else if byte == b'/' && bytes.get(index + 1) == Some(&b'/') {
+            return source[..index].trim_end();
+        } else {
+            index += 1;
+        }
     }
     source
 }
 
 impl DelimiterState {
-    fn is_open(&self) -> bool { self.brace_depth > 0 || self.bracket_depth > 0 }
+    fn is_open(&self) -> bool {
+        self.brace_depth > 0 || self.bracket_depth > 0
+    }
 
     fn scan(&mut self, path: &Path, line: usize, source: &str) -> DoweResult<()> {
         let mut string_delimiter = None;
         let mut escaped = false;
         for (column, value) in source.char_indices() {
             if let Some(delimiter) = string_delimiter {
-                if escaped { escaped = false; }
-                else if value == '\\' { escaped = true; }
-                else if value == delimiter { string_delimiter = None; }
+                if escaped {
+                    escaped = false;
+                } else if value == '\\' {
+                    escaped = true;
+                } else if value == delimiter {
+                    string_delimiter = None;
+                }
                 continue;
             }
             match value {
                 '"' => string_delimiter = Some(value),
                 '{' => self.brace_depth += 1,
-                '}' if self.brace_depth == 0 => return Err(DoweError::at_path(path, format!("{line}:{}: unexpected `}}`", column + 1))),
+                '}' if self.brace_depth == 0 => {
+                    return Err(DoweError::at_path(
+                        path,
+                        format!("{line}:{}: unexpected `}}`", column + 1),
+                    ));
+                }
                 '}' => self.brace_depth -= 1,
                 '[' => self.bracket_depth += 1,
-                ']' if self.bracket_depth == 0 => return Err(DoweError::at_path(path, format!("{line}:{}: unexpected `]`", column + 1))),
+                ']' if self.bracket_depth == 0 => {
+                    return Err(DoweError::at_path(
+                        path,
+                        format!("{line}:{}: unexpected `]`", column + 1),
+                    ));
+                }
                 ']' => self.bracket_depth -= 1,
                 _ => {}
             }
         }
         if string_delimiter.is_some() {
-            return Err(DoweError::at_path(path, format!("{line}:1: strings cannot continue across lines")));
+            return Err(DoweError::at_path(
+                path,
+                format!("{line}:1: strings cannot continue across lines"),
+            ));
         }
         Ok(())
     }
@@ -163,12 +199,20 @@ fn leading_indent(path: &Path, line: usize, source: &str) -> DoweResult<usize> {
     for value in source.chars() {
         match value {
             ' ' => count += 1,
-            '\t' => return Err(DoweError::at_path(path, format!("{line}:1: tabs are not valid indentation in Dowe Source Format"))),
+            '\t' => {
+                return Err(DoweError::at_path(
+                    path,
+                    format!("{line}:1: tabs are not valid indentation in Dowe Source Format"),
+                ));
+            }
             _ => break,
         }
     }
     if count % 2 != 0 {
-        return Err(DoweError::at_path(path, format!("{line}:1: indentation must use two spaces per level")));
+        return Err(DoweError::at_path(
+            path,
+            format!("{line}:1: indentation must use two spaces per level"),
+        ));
     }
     Ok(count)
 }

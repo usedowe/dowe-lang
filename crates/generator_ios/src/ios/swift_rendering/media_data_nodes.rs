@@ -219,6 +219,56 @@ fn render_swift_media_data_node(
             ));
             append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
         }
+        ViewNode::Game { props } => {
+            let background = match props.background {
+                CanvasBackground::Transparent => "Color.clear".to_string(),
+                CanvasBackground::Color(color) => color_ref(color).to_string(),
+            };
+            let socket_path = props.socket.as_deref().map(|path| {
+                if props.socket_binding {
+                    context.signal_path(path)
+                } else {
+                    path.to_string()
+                }
+            });
+            let signal_path = |path: Option<&String>| {
+                path.map(|value| context.signal_path(value))
+            };
+            output.push_str(&format!(
+                "{pad}DoweGameView(state: state, scenePath: {}, renderer: {}, worldPath: {}, cameraPath: {}, controls: {}, moveSpeed: {}, turnSpeed: {}, viewWidth: CGFloat({}), viewHeight: CGFloat({}), fit: {}, fps: {}, autoplay: {}, pixelated: {}, backgroundColor: {}, label: {}, onPointer: {}, onKey: {}, onFire: {}, onMotion: {}, motionRate: {}, socketPath: {}, socketBinding: {}, sendPath: {}, statusPath: {}, onOpen: {}, onMessage: {}, onClose: {}, onError: {}, reconnect: {}, reconnectDelay: {})\n",
+                swift_optional_literal(signal_path(props.scene.as_ref()).as_deref()),
+                swift_string_literal(props.renderer.as_str()),
+                swift_optional_literal(signal_path(props.world.as_ref()).as_deref()),
+                swift_optional_literal(signal_path(props.camera.as_ref()).as_deref()),
+                swift_string_literal(props.controls.as_str()),
+                props.move_speed,
+                props.turn_speed,
+                props.view_width,
+                props.view_height,
+                swift_string_literal(props.fit.as_str()),
+                props.fps,
+                props.autoplay,
+                props.pixelated,
+                background,
+                swift_string_literal(&props.label),
+                swift_optional_literal(props.on_pointer.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_key.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_fire.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_motion.as_deref().and_then(|value| context.action_id(value))),
+                props.motion_rate,
+                swift_optional_literal(socket_path.as_deref()),
+                props.socket_binding,
+                swift_optional_literal(signal_path(props.send.as_ref()).as_deref()),
+                swift_optional_literal(signal_path(props.status.as_ref()).as_deref()),
+                swift_optional_literal(props.on_open.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_message.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_close.as_deref().and_then(|value| context.action_id(value))),
+                swift_optional_literal(props.on_error.as_deref().and_then(|value| context.action_id(value))),
+                props.reconnect,
+                props.reconnect_delay,
+            ));
+            append_swift_modifiers(output, indent, &swift_modifiers_for_style(&props.style));
+        }
         ViewNode::Diagram { props } => {
             output.push_str(&format!(
                 "{pad}DoweDiagramView(state: state, nodesPath: {}, edgesPath: {}, fitView: {}, panOnDrag: {}, zoomOnScroll: {}, controls: {}, minimap: {}, showGrid: {}, emptyLabel: {}, onNodeClick: {}, onNodeDrag: {}, onConnect: {}, backgroundColor: {}, contentColor: {})\n",

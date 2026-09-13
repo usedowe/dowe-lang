@@ -23,7 +23,6 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-
 include!("completion_document.rs");
 include!("completion_context.rs");
 include!("completion_sources.rs");

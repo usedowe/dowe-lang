@@ -27,7 +27,7 @@ fn render_dev_android_modal(
     ));
     apply_dev_android_style(&props.style.style, &panel, false, output);
     let current_font = props.style.style.font.as_ref().or(inherited_font);
-    let current_color = Some(dev_card_variant_content(&props.style).to_string());
+    let current_color = Some(dev_content_colors(dev_card_variant_content(&props.style), dev_card_variant_title(&props.style)));
     if !header.is_empty() {
         for child in header {
             render_dev_android_node(

@@ -148,7 +148,7 @@ fn render_compose_accordion(
         "null"
     };
     let item_background = match variant {
-        ComponentVariant::Solid | ComponentVariant::Outlined => color_ref(ColorToken::Surface),
+        ComponentVariant::Outlined => color_ref(ColorToken::Surface),
         _ => "Color.Transparent",
     };
     let item_border = match variant {
@@ -170,12 +170,13 @@ fn render_compose_accordion(
         format!("({}) * 0.85f", compose_card_radius(&style.style))
     };
     output.push_str(&format!(
-        "{pad}DoweAccordion(multiple = {}, variant = {}, defaultOpenIds = setOf({default_open_ids}), modifier = {}, backgroundColor = {}, contentColor = {}, borderColor = {border}, itemBackgroundColor = {}, itemBorderColor = {}, itemBorderAlpha = {}, radius = {}) {{ openIds, toggleItem ->\n",
+        "{pad}DoweAccordion(multiple = {}, variant = {}, defaultOpenIds = setOf({default_open_ids}), modifier = {}, backgroundColor = {}, contentColor = {}, titleColor = {}, borderColor = {border}, itemBackgroundColor = {}, itemBorderColor = {}, itemBorderAlpha = {}, radius = {}) {{ openIds, toggleItem ->\n",
         props.multiple,
         compose_string_literal(variant.as_str()),
         modifier_for_style(&style.style),
         card_variant_container(&style),
         card_variant_content(&style),
+        card_variant_title(&style),
         item_background,
         item_border,
         item_border_alpha,

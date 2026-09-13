@@ -14,6 +14,8 @@ include!("generated_runtime/data_display.rs");
 include!("generated_runtime/tree.rs");
 include!("generated_runtime/diagram_runtime.rs");
 include!("generated_runtime/canvas_runtime.rs");
+include!("generated_runtime/game_raycast.rs");
+include!("generated_runtime/game_socket.rs");
 include!("generated_runtime/avatar_chat.rs");
 include!("generated_runtime/empty_motion_text.rs");
 include!("generated_runtime/rich_controls_map.rs");

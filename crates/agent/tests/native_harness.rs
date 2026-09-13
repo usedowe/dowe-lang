@@ -12,6 +12,7 @@ fn catalog_is_granular_versioned_and_preserves_public_bundles() {
         "views/layouts",
         "views/pages",
         "views/components",
+        "views/catalog",
         "server/entities",
         "server/handlers",
         "server/functions",
@@ -131,7 +132,10 @@ fn memory_is_local_bounded_and_sessions_use_compare_and_swap() {
     assert_eq!(store.recall("Theme").unwrap().len(), 8);
     assert!(other.recall("Theme").unwrap().is_empty());
     assert!(a.path().join(".agents/memory.json").is_file());
-    assert_eq!(std::fs::read(&legacy_memory).unwrap(), b"legacy global memory");
+    assert_eq!(
+        std::fs::read(&legacy_memory).unwrap(),
+        b"legacy global memory"
+    );
     store
         .remember("Unconfirmed", "Theme assumption", "model", false)
         .unwrap();

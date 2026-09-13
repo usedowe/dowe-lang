@@ -63,6 +63,7 @@ struct DoweNavMenuPopover<Content: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(backgroundColor)
         .foregroundStyle(contentColor)
+        .environment(\.doweTitleColor, DoweDesign.backgroundTitle)
         .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
         .overlay(RoundedRectangle(cornerRadius: DoweDesign.radius).stroke(contentColor.opacity(0.08), lineWidth: CGFloat(1)))
     }
@@ -89,19 +90,26 @@ struct DoweNavMenuItem<Content: View>: View {
         self.content = content()
     }
 
-    private var row: some View {
+    private var rowSurface: some View {
         HStack(spacing: CGFloat(8)) {
             content
         }
         .padding(.horizontal, paddingHorizontal)
         .padding(.vertical, paddingVertical)
         .background(active ? backgroundColor : Color.clear)
-        .foregroundStyle(active ? contentColor : DoweDesign.backgroundText)
         .clipShape(RoundedRectangle(cornerRadius: DoweDesign.radius))
         .overlay(
             RoundedRectangle(cornerRadius: DoweDesign.radius)
                 .stroke(active ? borderColor ?? Color.clear : Color.clear, lineWidth: active && borderColor != nil ? CGFloat(1) : CGFloat(0))
         )
+    }
+
+    @ViewBuilder private var row: some View {
+        if active {
+            rowSurface.foregroundStyle(contentColor)
+        } else {
+            rowSurface
+        }
     }
 
     var body: some View {
@@ -120,14 +128,12 @@ struct DoweSideNavArrow: View {
     let expanded: Bool
 
     var body: some View {
-        DoweSvgView(
+        DoweSvgShape(
+            data: "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__",
             viewBox: DoweSvgViewBox(minX: CGFloat(0), minY: CGFloat(0), width: CGFloat(24), height: CGFloat(24)),
-            color: DoweDesign.backgroundText,
-            paths: [
-                DoweSvgPathData(data: "M0 0h24v24H0z", fill: .none),
-                DoweSvgPathData(data: "__DOWE_SIDE_NAV_SUBMENU_ARROW_PATH__", fill: .currentColor)
-            ]
+            pathTransform: nil
         )
+        .fill(.foreground)
         .frame(width: CGFloat(16), height: CGFloat(16))
         .rotationEffect(.degrees(expanded ? 90 : 0))
         .animation(.easeInOut(duration: 0.16), value: expanded)

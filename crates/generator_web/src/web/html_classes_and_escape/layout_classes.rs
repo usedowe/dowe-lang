@@ -21,6 +21,19 @@ fn grid_classes(props: &GridProps) -> Vec<String> {
     });
     classes
 }
+fn default_variant_for(base: &str) -> ComponentVariant {
+    match base {
+        "accordion" | "navmenu" | "sidebar" => ComponentVariant::Ghost,
+        _ => ComponentVariant::Solid,
+    }
+}
+
+fn default_color_for(base: &str) -> ColorFamily {
+    match base {
+        "navmenu" | "sidebar" => ColorFamily::Muted,
+        _ => ColorFamily::Primary,
+    }
+}
 
 fn variant_classes(base: &str, props: &VariantProps) -> Vec<String> {
     let mut classes = vec![base.to_string()];
@@ -33,22 +46,26 @@ fn variant_classes(base: &str, props: &VariantProps) -> Vec<String> {
     append_style_classes(&mut classes, &props.style);
     if base == "card" {
         append_container_visual_classes(&mut classes, &props.style);
-        append_responsive_classes(&mut classes, "card-color", props.style.text.as_ref(), |value| {
-            value.as_str().to_string()
-        });
+        append_responsive_classes(
+            &mut classes,
+            "card-color",
+            props.style.text.as_ref(),
+            |value| value.as_str().to_string(),
+        );
     }
-    let default_variant = if base == "accordion" {
-        ComponentVariant::Ghost
-    } else {
-        ComponentVariant::Solid
-    };
     classes.push(format!(
         "is-{}",
-        props.variant.unwrap_or(default_variant).as_str()
+        props
+            .variant
+            .unwrap_or_else(|| default_variant_for(base))
+            .as_str()
     ));
     classes.push(format!(
         "is-{}",
-        props.color.unwrap_or(ColorFamily::Primary).as_str()
+        props
+            .color
+            .unwrap_or_else(|| default_color_for(base))
+            .as_str()
     ));
     classes
 }
@@ -247,4 +264,3 @@ fn rich_text_classes(props: &TextProps) -> Vec<String> {
     );
     classes
 }
-

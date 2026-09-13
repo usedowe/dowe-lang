@@ -1,4 +1,4 @@
-use super::{bind_error, RunningServer};
+use super::{RunningServer, bind_error};
 use crate::error::{RuntimeError, RuntimeResult};
 use crate::logging::log_info;
 use dowe_compiler::{ServerAction, ServerTransport, ServerTransportProtocol};
@@ -112,7 +112,10 @@ pub(crate) fn notification_namespace(root: &std::path::Path) -> String {
         .to_string()
 }
 
-pub(crate) fn start_notification_dispatcher(root: std::path::PathBuf, namespace: String) -> JoinHandle<()> {
+pub(crate) fn start_notification_dispatcher(
+    root: std::path::PathBuf,
+    namespace: String,
+) -> JoinHandle<()> {
     tokio::spawn(async move {
         if std::env::var("DOWE_NOTIFICATIONS_DISPATCHER")
             .ok()

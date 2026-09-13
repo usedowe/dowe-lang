@@ -93,6 +93,7 @@ pub async fn run_orchestrated_turn(
             image_paths,
             edit_scope,
             expected_codegraph_binding: Some(binding.clone()),
+            permission_mode: Default::default(),
         },
         host,
     )
@@ -310,6 +311,7 @@ pub async fn run_child_turn(
             image_paths: &[],
             edit_scope: Some(request.edit_scope.clone()),
             expected_codegraph_binding: Some(request.codegraph_binding.clone()),
+            permission_mode: Default::default(),
         },
         host,
     )

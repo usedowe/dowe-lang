@@ -227,6 +227,32 @@ fn register_structural_node_consumed_props(node: &ViewNode, context: &ReactiveRe
                 consumed,
             )
         }
+        ViewNode::Game { .. } => register_structural_consumed_props(
+            BuiltinComponent::Game,
+            context,
+            &[
+                ("scene", "GameProps.scene"),
+                ("renderer", "GameProps.renderer"),
+                ("world", "GameProps.world"),
+                ("camera", "GameProps.camera"),
+                ("controls", "GameProps.controls"),
+                ("moveSpeed", "GameProps.move_speed"),
+                ("turnSpeed", "GameProps.turn_speed"),
+                ("onPointer", "GameProps.on_pointer"),
+                ("onKey", "GameProps.on_key"),
+                ("onFire", "GameProps.on_fire"),
+                ("onMotion", "GameProps.on_motion"),
+                ("socket", "GameProps.socket"),
+                ("send", "GameProps.send"),
+                ("status", "GameProps.status"),
+                ("onOpen", "GameProps.on_open"),
+                ("onMessage", "GameProps.on_message"),
+                ("onClose", "GameProps.on_close"),
+                ("onError", "GameProps.on_error"),
+                ("reconnect", "GameProps.reconnect"),
+                ("reconnectDelay", "GameProps.reconnect_delay"),
+            ],
+        ),
         ViewNode::Modal { .. } => register_structural_consumed_props(
             BuiltinComponent::Modal,
             context,

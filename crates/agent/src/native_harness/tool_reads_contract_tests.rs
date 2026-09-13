@@ -1,4 +1,35 @@
 #[cfg(test)]
+mod search_directory_tests {
+    use super::*;
+
+    #[test]
+    fn directory_search_returns_filtered_recovery_then_file_search_works() {
+        let root = tempfile::tempdir().unwrap();
+        fs::write(root.path().join("page.dowe"), "page Home\n").unwrap();
+        fs::create_dir(root.path().join(".agents")).unwrap();
+        let tools = HarnessTools::new(root.path(), "search", HarnessConfig::default()).unwrap();
+        let report = tools
+            .execute_read(&ToolCall::new(
+                "directory",
+                "search",
+                json!({"path":".", "query":"Home"}),
+            ))
+            .unwrap();
+        assert_eq!(report["status"], "not_run");
+        assert_eq!(report["listing"]["paths"], json!(["page.dowe"]));
+        let result = tools
+            .execute_read(&ToolCall::new(
+                "file",
+                "search",
+                json!({"path":"page.dowe", "query":"Home"}),
+            ))
+            .unwrap();
+        assert_eq!(result["matches"][0]["line"], 1);
+        assert_eq!(result["matches"][0]["text"], "page Home");
+    }
+}
+
+#[cfg(test)]
 mod image_generation_contract_tests {
     use super::*;
 
@@ -138,14 +169,8 @@ mod svg_conversion_tests {
         assert_eq!(definition.function.parameters["required"], json!(["path"]));
         assert_eq!(properties["colors"]["default"], "original");
         assert_eq!(properties["format"]["default"], "source");
-        assert_eq!(
-            properties["colors"]["enum"],
-            json!(["original", "tokens"])
-        );
-        assert_eq!(
-            properties["format"]["enum"],
-            json!(["source", "data"])
-        );
+        assert_eq!(properties["colors"]["enum"], json!(["original", "tokens"]));
+        assert_eq!(properties["format"]["enum"], json!(["source", "data"]));
         assert!(definition.function.description.contains("read-only"));
     }
 
@@ -171,7 +196,12 @@ mod svg_conversion_tests {
         assert_eq!(source["colors"], "original");
         assert_eq!(source["format"], "source");
         assert!(source["content"].as_str().unwrap().contains("Svg viewBox"));
-        assert!(source["content"].as_str().unwrap().contains("fill:\"#2457d6\""));
+        assert!(
+            source["content"]
+                .as_str()
+                .unwrap()
+                .contains("fill:\"#2457d6\"")
+        );
 
         let token_source = tools
             .execute_read(&ToolCall::new(
@@ -180,7 +210,12 @@ mod svg_conversion_tests {
                 json!({"path":"assets/mark.svg","colors":"tokens","format":"source"}),
             ))
             .unwrap();
-        assert!(token_source["content"].as_str().unwrap().contains("fill:\"primary\""));
+        assert!(
+            token_source["content"]
+                .as_str()
+                .unwrap()
+                .contains("fill:\"primary\"")
+        );
 
         let data = tools
             .execute_read(&ToolCall::new(
@@ -206,7 +241,10 @@ mod svg_conversion_tests {
             (json!({"path":"mark.txt"}), ".svg extension"),
             (json!({"path":"mark.svg","colors":"other"}), "colors"),
             (json!({"path":"mark.svg","format":"other"}), "format"),
-            (json!({"path":"mark.svg","colors":"tokens","format":"data"}), "requires colors original"),
+            (
+                json!({"path":"mark.svg","colors":"tokens","format":"data"}),
+                "requires colors original",
+            ),
             (json!({"path":".dowe/mark.svg"}), "private, generated"),
             (json!({"path":"agents/private.svg"}), "private, generated"),
         ];

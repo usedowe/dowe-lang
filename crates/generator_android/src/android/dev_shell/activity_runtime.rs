@@ -12,6 +12,9 @@ fn append_dev_activity_runtime(output: &mut String, has_dynamic_icons: bool, has
     output.push_str(dev_activity_candlestick_runtime());
     output.push_str(dev_activity_chart_runtime());
     output.push_str(dev_activity_canvas_runtime());
+    output.push_str(dev_activity_game_raycast_runtime());
+    output.push_str(dev_activity_game_socket_runtime());
+    output.push_str(dev_activity_game_socket_transport());
     output.push_str(dev_activity_diagram_runtime());
     output.push_str(dev_activity_diagram_view());
     output.push_str(&dev_activity_code_and_forms());
@@ -20,5 +23,10 @@ fn append_dev_activity_runtime(output: &mut String, has_dynamic_icons: bool, has
     } else {
         output.push_str(dev_activity_empty_phone_flag_runtime());
     }
-    output.push_str(dev_activity_responsive_helpers());
+    output.push_str(
+        &dev_activity_responsive_helpers().replace(
+            "__DOWE_DYNAMIC_TEXT_TYPOGRAPHY__",
+            &dev_activity_text_typography_helpers(),
+        ),
+    );
 }

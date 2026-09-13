@@ -323,7 +323,7 @@ fn generates_compose_and_dev_navigation_shell_components() {
         dev.content
             .contains("doweInputBackground(DOWE_BACKGROUND, null, DOWE_RADIUS)")
     );
-    assert!(dev.content.contains("doweNavMenuArrow(DOWE_BACKGROUND_TEXT)"));
+    assert!(dev.content.contains("doweNavMenuArrow((false) ?"));
     assert!(dev.content.contains("setOnDismissListener"));
     assert!(dev.content.contains(".isShowing()) {"));
     assert!(

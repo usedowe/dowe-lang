@@ -68,6 +68,12 @@ impl WebOutput {
         {
             chunks.push(canvas_runtime_chunk());
         }
+        if paths
+            .iter()
+            .any(|path| path.starts_with("chunks/runtime/game-"))
+        {
+            chunks.push(game_runtime_chunk());
+        }
         chunks
     }
 

@@ -28,6 +28,10 @@ fn collect_special_node_classes(node: &ViewNode, classes: &mut BTreeSet<String>)
             ViewNode::Canvas { props } => {
                 classes.extend(canvas_classes(props));
             }
+            ViewNode::Game { props } => {
+                classes.extend(canvas_classes(&props.canvas_props()));
+                classes.insert("game".to_string());
+            }
             ViewNode::Candlestick { props } => {
                 classes.extend(candlestick_classes(props));
                 classes.insert("candlestick-canvas".to_string());

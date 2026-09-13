@@ -128,7 +128,15 @@ fn render_compose_display_rich_text(
 ) {
     let ViewNode::RichText { props, marks } = node else { return; };
     let pad = " ".repeat(indent);
-            render_compose_rich_text(props, marks, indent, output, inherited_font, default_family);
+            render_compose_rich_text(
+                props,
+                marks,
+                indent,
+                output,
+                inherited_font,
+                default_family,
+                context,
+            );
 }
 
 #[allow(unused_variables)]
@@ -184,4 +192,3 @@ fn render_compose_display_collapsible(
                 context,
             );
 }
-

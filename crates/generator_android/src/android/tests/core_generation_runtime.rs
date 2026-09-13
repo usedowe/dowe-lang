@@ -116,7 +116,7 @@ fn generates_terminal_replace_redirect_for_compose_and_dev_shell() {
     let generated = all_android_source(&output);
 
     assert!(generated.contains("DoweStep.Redirect(\"/login\")"));
-    assert!(generated.contains("redirectPath = step.path"));
+    assert!(generated.contains("localRedirectPath = step.path"));
     assert!(generated.contains("navigate(\"replace\", path, null)"));
     assert!(generated.contains("DoweStep.redirect(\"/login\")"));
     assert!(generated.contains("doweNavigate(\"replace\", step.target, null);"));
@@ -370,4 +370,3 @@ fn resolves_button_values_from_each_item_scope() {
     assert!(!generated.contains(".doweRounded(doweResponsive(viewportWidth, xs = 8.dp))"));
     assert!(!generated.contains("doweResponsiveFloat(viewportWidth, 8f, null, null, null, null)"));
 }
-

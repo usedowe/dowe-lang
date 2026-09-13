@@ -4,11 +4,32 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 pub(crate) fn language_for(relative: &str) -> String {
-        let extension = Path::new(relative).extension().and_then(|e| e.to_str()).unwrap_or("");
-        match extension { "rs" => "rust", "dowe" => "dowe", "md" => "markdown", "toml" => "toml", "json" => "json", "yaml" | "yml" => "yaml", "js" => "javascript", "ts" => "typescript", "py" => "python", "go" => "go", "java" => "java", "kt" => "kotlin", "swift" => "swift", "css" => "css", "html" => "html", _ => "unknown" }.to_string()
+    let extension = Path::new(relative)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("");
+    match extension {
+        "rs" => "rust",
+        "dowe" => "dowe",
+        "md" => "markdown",
+        "toml" => "toml",
+        "json" => "json",
+        "yaml" | "yml" => "yaml",
+        "js" => "javascript",
+        "ts" => "typescript",
+        "py" => "python",
+        "go" => "go",
+        "java" => "java",
+        "kt" => "kotlin",
+        "swift" => "swift",
+        "css" => "css",
+        "html" => "html",
+        _ => "unknown",
     }
+    .to_string()
+}
 
-    pub fn discover_files(root: &Path, mode: CodeGraphMode) -> CodeGraphResult<Vec<PathBuf>> {
+pub fn discover_files(root: &Path, mode: CodeGraphMode) -> CodeGraphResult<Vec<PathBuf>> {
     let mut files = Vec::new();
     visit(root, root, mode, &mut files)?;
     files.sort();
@@ -48,7 +69,12 @@ fn visit(
 }
 
 fn should_skip(relative: &Path, name: &str, is_dir: bool) -> bool {
-    if name == ".DS_Store" || name == ".git" || name == "target" || name == "node_modules" || name == "codegraph" {
+    if name == ".DS_Store"
+        || name == ".git"
+        || name == "target"
+        || name == "node_modules"
+        || name == "codegraph"
+    {
         return true;
     }
     if relative.starts_with(".dowe/codegraph") || relative.starts_with(".agents/codegraph") {
@@ -78,9 +104,9 @@ fn should_include(relative: &Path, mode: CodeGraphMode) -> bool {
                 || relative.starts_with("dowe-zed/tree-sitter-dowe")
                 || relative == Path::new("dowe-llm/README.md")
                 || relative.starts_with("dowe-llm/contracts")
-                    || (language_for(&slash_path(relative)) != "unknown"
-                        && !relative.starts_with(".agents/codegraph")
-                        && !relative.starts_with(".dowe/codegraph"))
+                || (language_for(&slash_path(relative)) != "unknown"
+                    && !relative.starts_with(".agents/codegraph")
+                    && !relative.starts_with(".dowe/codegraph"))
         }
         CodeGraphMode::Project => {
             relative == Path::new("Cargo.toml")

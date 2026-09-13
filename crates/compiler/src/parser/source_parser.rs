@@ -26,11 +26,20 @@ pub fn parse_source_file(root: &Path, path: &Path, source: String) -> DoweResult
         let indent_spaces = logical.indent_spaces;
         let trimmed = logical.source.as_str();
         let column = indent_spaces + 1;
-        let location = SourceLocation { path: path.to_path_buf(), relative_path: relative_path.clone(), line: line_number, column, indent: indent_spaces / 2 };
+        let location = SourceLocation {
+            path: path.to_path_buf(),
+            relative_path: relative_path.clone(),
+            line: line_number,
+            column,
+            indent: indent_spaces / 2,
+        };
 
         if trimmed.starts_with("import ") {
             if indent_spaces != 0 {
-                return Err(DoweError::at_path(path, format!("{line_number}:{column}: imports must be top-level")));
+                return Err(DoweError::at_path(
+                    path,
+                    format!("{line_number}:{column}: imports must be top-level"),
+                ));
             }
             imports.extend(parse_imports(path, location, trimmed)?);
             line_index += 1;
@@ -39,28 +48,60 @@ pub fn parse_source_file(root: &Path, path: &Path, source: String) -> DoweResult
             let mut node = parse_node(path, &relative_path, line_number, column, node_source)?;
             if opens_prop_suite {
                 if node.name == "type" {
-                    return Err(DoweError::at_path(path, format!("{line_number}:{column}: `type` declarations do not accept property suites")));
+                    return Err(DoweError::at_path(
+                        path,
+                        format!(
+                            "{line_number}:{column}: `type` declarations do not accept property suites"
+                        ),
+                    ));
                 }
                 if !node.props.is_empty() {
-                    return Err(DoweError::at_path(path, format!("{line_number}:{column}: property suite headers cannot contain inline props")));
+                    return Err(DoweError::at_path(
+                        path,
+                        format!(
+                            "{line_number}:{column}: property suite headers cannot contain inline props"
+                        ),
+                    ));
                 }
                 let child_level = indent_spaces / 2 + 1;
                 let mut next = line_index + 1;
                 let mut seen_props = HashSet::new();
-                while next < logical_lines.len() && logical_lines[next].indent_spaces / 2 == child_level {
-                    let Some(prop) = parse_continuation_prop(path, &relative_path, &logical_lines[next])? else { break; };
+                while next < logical_lines.len()
+                    && logical_lines[next].indent_spaces / 2 == child_level
+                {
+                    let Some(prop) =
+                        parse_continuation_prop(path, &relative_path, &logical_lines[next])?
+                    else {
+                        break;
+                    };
                     if !seen_props.insert(prop.name.clone()) {
-                        return Err(DoweError::at_path(path, format!("{}:{}: duplicate prop `{}`", prop.location.line, prop.location.column, prop.name)));
+                        return Err(DoweError::at_path(
+                            path,
+                            format!(
+                                "{}:{}: duplicate prop `{}`",
+                                prop.location.line, prop.location.column, prop.name
+                            ),
+                        ));
                     }
                     node.props.push(prop);
                     next += 1;
                 }
                 let mut remaining = next;
-                while remaining < logical_lines.len() && logical_lines[remaining].indent_spaces > indent_spaces {
+                while remaining < logical_lines.len()
+                    && logical_lines[remaining].indent_spaces > indent_spaces
+                {
                     if logical_lines[remaining].indent_spaces / 2 == child_level
-                        && parse_continuation_prop(path, &relative_path, &logical_lines[remaining])?.is_some()
+                        && parse_continuation_prop(path, &relative_path, &logical_lines[remaining])?
+                            .is_some()
                     {
-                        return Err(DoweError::at_path(path, format!("{}:{}: property suite props must appear before child nodes", logical_lines[remaining].line, logical_lines[remaining].indent_spaces + 1)));
+                        return Err(DoweError::at_path(
+                            path,
+                            format!(
+                                "{}:{}: property suite props must appear before child nodes",
+                                logical_lines[remaining].line,
+                                logical_lines[remaining].indent_spaces + 1
+                            ),
+                        ));
                     }
                     remaining += 1;
                 }
@@ -68,7 +109,10 @@ pub fn parse_source_file(root: &Path, path: &Path, source: String) -> DoweResult
             } else {
                 line_index += 1;
             }
-            flat_nodes.push(FlatNode { level: indent_spaces / 2, node });
+            flat_nodes.push(FlatNode {
+                level: indent_spaces / 2,
+                node,
+            });
         }
     }
 
@@ -76,7 +120,19 @@ pub fn parse_source_file(root: &Path, path: &Path, source: String) -> DoweResult
     let nodes = assembly::parse_block(&flat_nodes, &mut index, 0)?;
     if index < flat_nodes.len() {
         let node = &flat_nodes[index].node;
-        return Err(DoweError::at_path(&node.location.path, format!("{}:{}: block is not nested under a parent", node.location.line, node.location.column)));
+        return Err(DoweError::at_path(
+            &node.location.path,
+            format!(
+                "{}:{}: block is not nested under a parent",
+                node.location.line, node.location.column
+            ),
+        ));
     }
-    Ok(SourceFile { path: path.to_path_buf(), relative_path, imports, nodes, source })
+    Ok(SourceFile {
+        path: path.to_path_buf(),
+        relative_path,
+        imports,
+        nodes,
+        source,
+    })
 }

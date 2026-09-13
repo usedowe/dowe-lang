@@ -1,6 +1,6 @@
 use dowe_agent::native_harness::*;
 use dowe_agent::{AgentError, AgentRequest, AgentResult, AgentServerResponse};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::VecDeque;
 
 struct Host {

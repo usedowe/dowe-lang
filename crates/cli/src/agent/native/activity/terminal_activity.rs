@@ -133,6 +133,7 @@ impl Activity {
             error: None,
             owned: 0,
             anchor: None,
+            rendered: None,
             snapshot_pending: false,
             footer: Default::default(),
             agent_name: "Dowe Agent".into(),
@@ -251,6 +252,17 @@ impl Activity {
         self.state().pending.drain(..).collect()
     }
 
+    pub(crate) fn take_draft(&self) -> Option<String> {
+        let mut state = self.state();
+        let draft = state.input.value();
+        if draft.is_empty() {
+            None
+        } else {
+            state.input = EditableLine::default();
+            Some(draft)
+        }
+    }
+
     pub(crate) fn suspend(&self) -> AgentResult<Suspension> {
         let mut state = self.state();
         let resume = state.active || state.suspended > 0;
@@ -346,6 +358,7 @@ impl Activity {
                 Event::Resize(..) => {
                     state.anchor = None;
                     state.owned = 0;
+                    state.rendered = None;
                     state.dirty = true;
                 }
                 Event::Key(key) if key.kind != KeyEventKind::Release => {

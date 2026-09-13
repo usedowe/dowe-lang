@@ -18,6 +18,74 @@ fn validate_node_data_and_media(
             validate_optional_action(path, actions, props.on_motion.as_deref())?;
             Ok(())
         })()),
+        ViewNode::Game { props } => Some((|| -> DoweResult<()> {
+            match props.renderer {
+                GameRenderer::Canvas2d => {
+                    let scene = props.scene.as_deref().ok_or_else(|| {
+                        DoweError::at_path(path, "Game canvas2d renderer requires `scene`")
+                    })?;
+                    validate_canvas_scene(path, signals, scene)?;
+                }
+                GameRenderer::Raycast3d => {
+                    for (value, label) in [
+                        (props.world.as_deref(), "Game world"),
+                        (props.camera.as_deref(), "Game camera"),
+                    ] {
+                        let value = value.ok_or_else(|| {
+                            DoweError::at_path(path, format!("{label} requires a signal object path"))
+                        })?;
+                        validate_typed_path(
+                            path,
+                            signals,
+                            locals,
+                            value,
+                            label,
+                            ViewPathExpectation::Object,
+                        )?;
+                    }
+                }
+            }
+            validate_optional_action(path, actions, props.on_pointer.as_deref())?;
+            validate_optional_action(path, actions, props.on_key.as_deref())?;
+            validate_optional_action(path, actions, props.on_fire.as_deref())?;
+            validate_optional_action(path, actions, props.on_motion.as_deref())?;
+            validate_optional_action(path, actions, props.on_open.as_deref())?;
+            validate_optional_action(path, actions, props.on_message.as_deref())?;
+            validate_optional_action(path, actions, props.on_close.as_deref())?;
+            validate_optional_action(path, actions, props.on_error.as_deref())?;
+            if props.socket_binding {
+                if let Some(socket) = props.socket.as_deref() {
+                    validate_typed_path(
+                        path,
+                        signals,
+                        locals,
+                        socket,
+                        "Game socket",
+                        ViewPathExpectation::String,
+                    )?;
+                }
+            }
+            if let Some(send) = props.send.as_deref() {
+                validate_typed_path(path, signals, locals, send, "Game send", ViewPathExpectation::Any)?;
+            }
+            if let Some(status) = props.status.as_deref() {
+                if signals.contains_key(path_root(status)) && !writable_signals.contains(path_root(status)) {
+                    return Err(DoweError::at_path(
+                        path,
+                        format!("constant path `{status}` cannot be used in `Game status`"),
+                    ));
+                }
+                validate_typed_path(
+                    path,
+                    signals,
+                    locals,
+                    status,
+                    "Game status",
+                    ViewPathExpectation::String,
+                )?;
+            }
+            Ok(())
+        })()),
         ViewNode::Editor { props } => Some((|| -> DoweResult<()> {
             validate_optional_action(path, actions, props.on_save.as_deref())?;
             Ok(())

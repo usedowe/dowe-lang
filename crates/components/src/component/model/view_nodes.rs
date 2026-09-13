@@ -135,6 +135,9 @@ pub enum ViewNode {
     Canvas {
         props: CanvasProps,
     },
+    Game {
+        props: GameProps,
+    },
     Candlestick {
         props: CandlestickProps,
     },

@@ -1,7 +1,13 @@
 #[test]
 fn accepts_view_group_roots_in_dev_route_shards() {
     for layout_index in [None, Some(0)] {
-        let source = super::dev_route_shard(&route(), layout_index, "DoweDevRouteTest", "dev.test");
+        let source = super::dev_route_shard(
+            &route(),
+            layout_index,
+            None,
+            "DoweDevRouteTest",
+            "dev.test",
+        );
         assert!(source.contains("static void render(DoweDevActivity runtime, ViewGroup root)"));
     }
 }
@@ -395,4 +401,3 @@ fn generates_relative_box_cover_from_project_assets_for_compose_and_dev_launcher
     assert!(dev.contains("BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length)"));
     assert!(dev.contains("doweLoadImageBitmap(view"));
 }
-

@@ -337,6 +337,10 @@ fn swift_modifiers_for_bar(props: &BarProps, flow: NativeFlow) -> Vec<String> {
         ".foregroundStyle({})",
         variant_content(&props.style)
     ));
+    modifiers.push(format!(
+        ".environment(\\.doweTitleColor, {})",
+        variant_title(&props.style)
+    ));
     if props.position != BarPosition::Static {
         modifiers.push(".zIndex(1)".to_string());
     }

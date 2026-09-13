@@ -49,6 +49,7 @@ impl NativeSession {
             .recover_session(id, ticket, &redactor.text(objective))?;
         self.close_watchers()?;
         self.session = recovered;
+        self.permission_mode = HarnessPermissionMode::Confirm;
         self.image_paths.clear();
         Ok(
             json!({"recovered_session":self.session.id,"source_session":id,"replayed_operations":0,"old_history":"preserved"}),

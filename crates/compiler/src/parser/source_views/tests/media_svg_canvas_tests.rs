@@ -283,3 +283,83 @@ fn parses_canvas_component_and_validates_scene_signal() {
     assert!(error.to_string().contains("unknown fn `missing`"));
 }
 
+#[test]
+fn parses_game_component_with_socket_bindings_and_lifecycle_actions() {
+    let tree = parse_page(
+        r#"page gamePage
+  signal scene value:[{ type:"circle" x:80 y:60 radius:20 fill:"primary" }]
+  signal endpoint value:"/game"
+  signal outbound value:{ type:"move" x:80 }
+  signal connection value:"closed"
+  fn connected
+    set connection value:"open"
+  fn received
+    set connection value:item.kind
+  fn disconnected
+    set connection value:"closed"
+  fn failed
+    set connection value:"error"
+  Game scene:scene label:"Network game" socket:endpoint send:outbound status:connection onOpen:connected onMessage:received onClose:disconnected onError:failed reconnect:false reconnectDelay:500 w:"full" h:80"#,
+    )
+    .expect("game tree");
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("scope")
+    };
+    let ViewNode::Game { props } = &children[0] else {
+        panic!("game")
+    };
+    assert_eq!(props.scene.as_deref(), Some("scene"));
+    assert_eq!(props.socket.as_deref(), Some("endpoint"));
+    assert!(props.socket_binding);
+    assert_eq!(props.send.as_deref(), Some("outbound"));
+    assert_eq!(props.status.as_deref(), Some("connection"));
+    assert_eq!(props.on_open.as_deref(), Some("connected"));
+    assert_eq!(props.on_message.as_deref(), Some("received"));
+    assert_eq!(props.on_close.as_deref(), Some("disconnected"));
+    assert_eq!(props.on_error.as_deref(), Some("failed"));
+    assert!(!props.reconnect);
+    assert_eq!(props.reconnect_delay, 500);
+
+    let error = parse_page(
+        r#"page gamePage
+  signal scene value:[]
+  Game scene:scene label:"Invalid socket" socket:"http://localhost/game""#,
+    )
+    .expect_err("socket scheme");
+    assert!(error.to_string().contains("ws/wss URL or absolute backend path"));
+
+    let error = parse_page(
+        r#"page gamePage
+  signal scene value:[]
+  Game scene:scene label:"Invalid delay" reconnectDelay:99"#,
+    )
+    .expect_err("reconnect delay");
+    assert!(error.to_string().contains("integer from 100 through 60000"));
+}
+
+#[test]
+fn parses_game_raycast3d_world_and_camera_contract() {
+    let tree = parse_page(
+        r##"page fortressPage
+  signal world value:{ map:["11111" "10001" "10001" "10001" "11111"] wall:"#5f6fff" floor:"#151b2e" sprites:[{ id:"imp" x:3.5 y:2.5 color:"#ff4d6d" }] }
+  signal camera value:{ x:1.5 y:2.5 angle:0 fov:1.047 pitch:0 }
+  fn fireWeapon
+    set camera.angle value:item.data.angle
+  Game renderer:"raycast3d" world:world camera:camera controls:"doom" moveSpeed:3 turnSpeed:150 onFire:fireWeapon label:"Dowe Fortress" w:"full" h:96"##,
+    )
+    .expect("raycast game tree");
+    let ViewNode::Scope { children, .. } = tree else {
+        panic!("scope")
+    };
+    let ViewNode::Game { props } = &children[0] else {
+        panic!("game")
+    };
+    assert_eq!(props.renderer, GameRenderer::Raycast3d);
+    assert_eq!(props.controls, GameControls::Doom);
+    assert_eq!(props.scene, None);
+    assert_eq!(props.world.as_deref(), Some("world"));
+    assert_eq!(props.camera.as_deref(), Some("camera"));
+    assert_eq!(props.move_speed, 3);
+    assert_eq!(props.turn_speed, 150);
+    assert_eq!(props.on_fire.as_deref(), Some("fireWeapon"));
+}

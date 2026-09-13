@@ -1,9 +1,30 @@
 r#"
-private func doweDynamicFontSize(_ value: String) -> Font {
-    switch value { case "xs": return .caption; case "sm": return .subheadline; case "lg": return .title3; case "xl": return .title2; default: return .body }
-}
+__DOWE_DYNAMIC_TEXT_METRICS__
 private func doweDynamicFontWeight(_ value: String) -> Font.Weight {
-    switch value { case "thin": return .thin; case "light": return .light; case "medium": return .medium; case "semibold": return .semibold; case "bold": return .bold; case "black": return .black; default: return .regular }
+    switch value {
+    case "thin": return .ultraLight
+    case "extralight": return .thin
+    case "light": return .light
+    case "regular": return .regular
+    case "medium": return .medium
+    case "semibold": return .semibold
+    case "bold": return .bold
+    case "extrabold": return .heavy
+    case "black": return .black
+    default: return .regular
+    }
+}
+private func doweDynamicTextSpacing(_ value: String) -> CGFloat {
+    switch value {
+    case "tightest": return CGFloat(-0.06)
+    case "tighter": return CGFloat(-0.04)
+    case "tight": return CGFloat(-0.02)
+    case "normal": return CGFloat(0)
+    case "wide": return CGFloat(0.02)
+    case "wider": return CGFloat(0.04)
+    case "widest": return CGFloat(0.06)
+    default: return CGFloat(Double(value) ?? 0)
+    }
 }
 
 @MainActor

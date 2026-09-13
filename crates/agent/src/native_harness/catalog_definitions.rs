@@ -38,6 +38,12 @@ const UNITS: &[Unit] = &[
         sections: &[],
     },
     Unit {
+        id: "core/syntax",
+        bundle: "core",
+        resource: "references/syntax.md",
+        sections: &[],
+    },
+    Unit {
         id: "theme",
         bundle: "theme",
         resource: "references/theme.md",
@@ -70,6 +76,48 @@ const UNITS: &[Unit] = &[
         bundle: "views",
         resource: "references/composition.md",
         sections: &["Reusable components", "Repeated collection ownership"],
+    },
+    Unit {
+        id: "views/shape",
+        bundle: "views",
+        resource: "references/shape.md",
+        sections: &[],
+    },
+    Unit {
+        id: "views/reference-ui",
+        bundle: "views",
+        resource: "references/reference-ui.md",
+        sections: &[],
+    },
+    Unit {
+        id: "views/assets",
+        bundle: "views",
+        resource: "references/assets.md",
+        sections: &[],
+    },
+    Unit {
+        id: "views/audit",
+        bundle: "views",
+        resource: "references/audit.md",
+        sections: &[],
+    },
+    Unit {
+        id: "views/polish",
+        bundle: "views",
+        resource: "references/polish.md",
+        sections: &[],
+    },
+    Unit {
+        id: "views/game",
+        bundle: "views",
+        resource: "references/game.md",
+        sections: &[],
+    },
+    Unit {
+        id: "views/catalog",
+        bundle: "views",
+        resource: "references/components.md",
+        sections: &[],
     },
     Unit {
         id: "views/svg",
@@ -139,4 +187,3 @@ const UNITS: &[Unit] = &[
         sections: &[],
     },
 ];
-

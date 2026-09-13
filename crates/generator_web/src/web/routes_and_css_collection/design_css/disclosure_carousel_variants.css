@@ -115,8 +115,8 @@
 }
 @keyframes dowe-carousel-cover-flow {
   0%,100% {
-    transform:scale(.86) rotateY(30deg);
-    opacity:.68;
+    transform:scale(.9) rotateY(24deg);
+    opacity:.78;
   }
   50% {
     transform:scale(1) rotateY(0);
@@ -125,72 +125,72 @@
 }
 @keyframes dowe-carousel-parallax {
   0% {
-    transform:translateX(7%);
-    opacity:.76;
+    transform:translateX(24px);
+    opacity:.88;
   }
   50% {
     transform:translateX(0);
     opacity:1;
   }
   100% {
-    transform:translateX(-7%);
-    opacity:.76;
+    transform:translateX(-24px);
+    opacity:.88;
   }
 }
 @keyframes dowe-carousel-stories {
   0% {
-    transform:rotateY(44deg) scale(.9);
-    opacity:.58;
+    transform:rotateY(30deg) scale(.9);
+    opacity:.78;
   }
   50% {
     transform:rotateY(0) scale(1);
     opacity:1;
   }
   100% {
-    transform:rotateY(-44deg) scale(.9);
-    opacity:.58;
+    transform:rotateY(-30deg) scale(.9);
+    opacity:.78;
   }
 }
 @keyframes dowe-carousel-smart-stack {
   0% {
-    transform:translateY(1rem) scale(.94) rotate(1.5deg);
-    opacity:.7;
+    transform:translateY(8px) scale(.945) rotate(1.5deg);
+    opacity:1;
   }
   50% {
     transform:translateY(0) scale(1) rotate(0);
     opacity:1;
   }
   100% {
-    transform:translateY(-.5rem) scale(.96) rotate(-1deg);
-    opacity:.76;
+    transform:translateY(8px) scale(.945) rotate(-1.5deg);
+    opacity:1;
   }
 }
 @keyframes dowe-carousel-card-stack {
   0% {
-    transform:translateY(.75rem) scale(.95);
-    opacity:.72;
+    transform:translateY(8px) scale(.945);
+    opacity:1;
   }
   50% {
     transform:translateY(0) scale(1);
     opacity:1;
   }
   100% {
-    transform:translateY(-.75rem) scale(.97);
-    opacity:.8;
+    transform:translateY(8px) scale(.945);
+    opacity:1;
   }
 }
 @keyframes dowe-carousel-flipbook {
   0% {
-    transform:rotateY(64deg) scale(.92);
-    opacity:.55;
+    transform:rotateY(52deg) scale(.9);
+    opacity:.78;
   }
   50% {
     transform:rotateY(0) scale(1);
     opacity:1;
   }
   100% {
-    transform:rotateY(-64deg) scale(.92);
-    opacity:.55;
+    transform:rotateY(-52deg) scale(.9);
+    opacity:.78;
   }
 }
 @media (max-width:640px) {
@@ -232,7 +232,7 @@
   min-width:100%;
   flex-basis:auto;
 }
-.carousel.is-vertical .carousel-viewport {
+.carousel.is-vertical.is-snapping .carousel-viewport,.carousel.is-vertical.is-controls .carousel-viewport,.carousel.is-vertical.is-dots .carousel-viewport,.carousel.is-vertical.is-thumbnails .carousel-viewport,.carousel.is-vertical.is-cover-flow .carousel-viewport,.carousel.is-vertical.is-slideshow .carousel-viewport,.carousel.is-vertical.is-stories .carousel-viewport,.carousel.is-vertical.is-smart-stack .carousel-viewport,.carousel.is-vertical.is-card-stack .carousel-viewport,.carousel.is-vertical.is-flipbook .carousel-viewport {
   scroll-snap-type:block mandatory;
 }
 .carousel.is-vertical .carousel-slide {
@@ -254,4 +254,24 @@
 .carousel-viewport {
   touch-action:pan-x pan-y;
   overscroll-behavior-inline:contain;
+}
+.carousel.is-vertical.is-cover-flow .carousel-slide,.carousel.is-vertical.is-slideshow .carousel-slide,.carousel.is-vertical.is-stories .carousel-slide,.carousel.is-vertical.is-smart-stack .carousel-slide,.carousel.is-vertical.is-card-stack .carousel-slide,.carousel.is-vertical.is-flipbook .carousel-slide {
+  animation-timeline:view(block);
+}
+@keyframes dowe-carousel-parallax-vertical {
+  0% {
+    transform:translateY(24px);
+    opacity:.88;
+  }
+  50% {
+    transform:translateY(0);
+    opacity:1;
+  }
+  100% {
+    transform:translateY(-24px);
+    opacity:.88;
+  }
+}
+.carousel.is-vertical.is-slideshow .carousel-slide {
+  animation-name:dowe-carousel-parallax-vertical;
 }

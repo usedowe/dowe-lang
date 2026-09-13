@@ -41,13 +41,18 @@ fn lists_public_authoring_skills_without_workspace_skills() {
             "references/views.md",
             "references/layouts.md",
             "references/composition.md",
+            "references/shape.md",
             "references/blocks/index.json",
             "references/reference-ui.md",
+            "references/assets.md",
             "references/components.md",
             "references/svg.md",
             "references/styles.md",
+            "references/audit.md",
+            "references/polish.md",
             "references/canvas.md",
             "references/table.md",
+            "references/game.md",
             "scripts/visual_qa.py",
             "scripts/visual_qa_blueprint.py",
             "scripts/visual_qa_png.py"
@@ -384,4 +389,3 @@ fn side_nav_skill_keeps_identity_on_the_root() {
         .expect("components resource");
     assert!(components.content.contains("`item` entries do not accept `id`"));
 }
-

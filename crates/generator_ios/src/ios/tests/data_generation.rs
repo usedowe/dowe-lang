@@ -121,6 +121,106 @@ fn generates_swiftui_candlestick_with_canvas_and_stream() {
 }
 
 #[test]
+fn generates_swiftui_game_with_socket_runtime() {
+    let game = dowe_components::game_component_node(vec![
+        ComponentProp {
+            name: "scene".into(),
+            value: PropValue::String("scene".into()),
+        },
+        ComponentProp {
+            name: "label".into(),
+            value: PropValue::String("Network game".into()),
+        },
+        ComponentProp {
+            name: "socket".into(),
+            value: PropValue::String("/game".into()),
+        },
+        ComponentProp {
+            name: "send".into(),
+            value: PropValue::String("outbound".into()),
+        },
+        ComponentProp {
+            name: "status".into(),
+            value: PropValue::String("connection".into()),
+        },
+    ])
+    .expect("game");
+    let route = ViewRoute {
+        id: "game".into(),
+        route_path: "/game".into(),
+        layout_tree: ViewNode::Children,
+        page_tree: game,
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    for contract in [
+        "DoweGameSocketDelegate: NSObject, URLSessionWebSocketDelegate",
+        "didOpenWithProtocol",
+        "didCloseWith closeCode",
+        "final class DoweGameSocket: ObservableObject",
+        "URLSessionWebSocketTask",
+        "run(onOpen, item: item(\"open\"))",
+        "run(onClose, item: item(\"close\"",
+        "run(onError, item: item(\"error\"",
+        "struct DoweGameView: View",
+        "DoweGameView(state: state, scenePath: \"scene\"",
+        "socketPath: \"/game\"",
+        "onMessage: nil",
+        "DoweRaycastGameView",
+    ] {
+        assert!(
+            views.contains(contract),
+            "missing SwiftUI Game contract: {contract}"
+        );
+    }
+}
+
+#[test]
+fn generates_swiftui_raycast3d_game_runtime() {
+    let game = dowe_components::game_component_node(vec![
+        ComponentProp { name: "renderer".into(), value: PropValue::String("raycast3d".into()) },
+        ComponentProp { name: "world".into(), value: PropValue::String("world".into()) },
+        ComponentProp { name: "camera".into(), value: PropValue::String("camera".into()) },
+        ComponentProp { name: "controls".into(), value: PropValue::String("doom".into()) },
+        ComponentProp { name: "label".into(), value: PropValue::String("Fortress".into()) },
+    ])
+    .expect("raycast game");
+    let route = ViewRoute {
+        id: "fortress".into(),
+        route_path: "/fortress".into(),
+        layout_tree: ViewNode::Children,
+        page_tree: game,
+        sections: Vec::new(),
+        navigation_actions: Vec::new(),
+    };
+    let output = generate_ios(
+        &[route],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = swift_content(&output);
+    for contract in [
+        "DoweRaycastGameView",
+        "worldPath: \"world\"",
+        "cameraPath: \"camera\"",
+        "controls: \"doom\"",
+        "@MainActor private func doweRaycastColor",
+        "@MainActor private func doweRaycastDraw",
+        "DragGesture(minimumDistance: 0)",
+    ] {
+        assert!(views.contains(contract), "missing SwiftUI raycast contract: {contract}");
+    }
+}
+
+#[test]
 fn generates_swiftui_charts_with_canvas_runtime() {
     let output = generate_ios(
         &[charts_route()],

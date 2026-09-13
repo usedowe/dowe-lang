@@ -70,7 +70,7 @@ fn generates_compose_responsive_runtime_values() {
     assert!(views.content.contains("BoxWithConstraints"));
     assert!(views.content.contains("val viewportWidth = maxWidth"));
     assert!(views.content.contains(
-        "fun LoginScreen(viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, navigate:"
+        "fun LoginScreen(viewportWidth: Dp, scrollState: ScrollState, sectionRegistry: DoweSectionRegistry, layoutState: DoweReactiveState?, navigate:"
     ));
     assert!(views
         .content
@@ -182,4 +182,3 @@ fn generates_dev_flex_justify_and_align_gravity() {
     assert!(dev.content.contains("if (wrap)"));
     assert!(dev.content.contains("doweWrapContentWidth(view1)"));
 }
-

@@ -136,6 +136,7 @@ fn contains_children(nodes: &[ViewNode]) -> bool {
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }

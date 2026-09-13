@@ -50,6 +50,7 @@ fn advanced_commands_remain_explicit_without_entering_the_suggestion_list() {
         "/research find the entrypoint",
         "/review inspect the change",
         "/memory status",
+        "/permissions full",
     ] {
         let mut prompt = typed(command);
         assert!(prompt.matches().is_empty(), "{command} should stay hidden");
@@ -161,6 +162,24 @@ fn outline_bounds_unicode_labels_and_empty_viewports() {
         }
     }
     assert_eq!(typed("界🙂").input_view(0, 1).cursor_column, 0);
+}
+
+#[test]
+fn restored_prompt_starts_with_the_saved_draft() {
+    let prompt = Prompt::from_text("continue later");
+    assert_eq!(prompt.value(), "continue later");
+    assert_eq!(prompt.cursor, "continue later".chars().count());
+}
+
+#[test]
+fn resized_frame_cursor_row_accounts_for_reflowed_lines() {
+    let frame = PromptFrame {
+        line_widths: vec![79, 12, 79],
+        cursor_line: 3,
+        cursor_column: 18,
+    };
+    assert_eq!(frame.cursor_row_after_reflow(80), 3);
+    assert_eq!(frame.cursor_row_after_reflow(20), 9);
 }
 
 #[test]

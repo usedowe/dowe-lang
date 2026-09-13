@@ -66,6 +66,40 @@ mod tests {
     }
 
     #[test]
+    fn activity_draft_survives_until_the_next_prompt() {
+        let activity = Activity::new(true).unwrap();
+        {
+            let mut state = activity.state();
+            for ch in "continue later".chars() {
+                state.input.handle(KeyCode::Char(ch));
+            }
+        }
+        assert_eq!(activity.take_draft().as_deref(), Some("continue later"));
+        assert!(activity.take_draft().is_none());
+    }
+
+    #[test]
+    fn incremental_paint_does_not_rewrite_an_unchanged_input() {
+        let activity = Activity::new(true).unwrap();
+        let mut state = activity.state();
+        for ch in "keep this draft".chars() {
+            state.input.handle(KeyCode::Char(ch));
+        }
+        let mut bytes = Vec::new();
+        state.paint(&mut bytes, (120, 60), true).unwrap();
+        bytes.clear();
+        state.activity_detail = "Reading file".into();
+        state.paint(&mut bytes, (120, 60), true).unwrap();
+        let repaint = String::from_utf8(std::mem::take(&mut bytes)).unwrap();
+        assert!(repaint.contains("Reading file"));
+        assert!(!repaint.contains("keep this draft"));
+        assert!(repaint.contains("\u{1b}[2K"));
+        bytes.clear();
+        state.paint(&mut bytes, (120, 60), true).unwrap();
+        assert!(bytes.is_empty());
+    }
+
+    #[test]
     fn inline_frames_bound_cells_and_keep_busy_chrome_below_activity() {
         let activity = Activity::new(true).unwrap();
         activity.footer(["fixture directory".into(), "fixture model".into()]);
@@ -105,6 +139,26 @@ mod tests {
                 .any(|line| line.contains("Thinking…"))
         );
         assert!(!state.frame((120, 60), false).join("\n").contains("Working"));
+    }
+
+    #[test]
+    fn busy_input_outline_keeps_borders_aligned_with_long_text() {
+        let activity = Activity::new(true).unwrap();
+        let mut state = activity.state();
+        for ch in "x".repeat(200).chars() {
+            state.input.handle(KeyCode::Char(ch));
+        }
+        let frame = state.frame((80, 20), true);
+        let input = frame
+            .windows(3)
+            .find(|rows| rows[1].contains("│ >"))
+            .expect("outlined input");
+        assert!(
+            input
+                .iter()
+                .all(|line| dialoguer::console::measure_text_width(line) == 79)
+        );
+        assert!(input[1].ends_with('│'));
     }
 
     #[test]
@@ -302,6 +356,7 @@ struct State {
     error: Option<String>,
     owned: u16,
     anchor: Option<(u16, u16)>,
+    rendered: Option<RenderedFrame>,
     snapshot_pending: bool,
     footer: [String; 2],
     agent_name: String,
@@ -323,4 +378,9 @@ struct State {
 struct EditableLine {
     text: Vec<char>,
     cursor: usize,
+}
+
+struct RenderedFrame {
+    lines: Vec<String>,
+    chrome_rows: usize,
 }

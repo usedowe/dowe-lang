@@ -265,3 +265,72 @@ fn generates_compose_and_dev_section_backgrounds() {
     );
 }
 
+#[test]
+fn gives_android_layout_and_page_signals_separate_route_lifecycles() {
+    let lifecycle_signal = |id: &str, name: &str, initial: ViewSignalValue| ViewSignal {
+        id: id.to_string(),
+        name: name.to_string(),
+        storage_key: name.to_string(),
+        scope: dowe_components::ViewSignalScope::Page,
+        storage: dowe_components::ViewSignalStorage::None,
+        initial,
+        schema: None,
+    };
+    let layout = |id: &str, name: &str| ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![lifecycle_signal(id, name, ViewSignalValue::Bool(false))],
+        actions: Vec::new(),
+        children: vec![ViewNode::Box {
+            props: Default::default(),
+            children: vec![ViewNode::Children],
+        }],
+    };
+    let page = |id: &str, name: &str, label: &str| ViewNode::Scope {
+        constants: Vec::new(),
+        signals: vec![lifecycle_signal(id, name, ViewSignalValue::String(String::new()))],
+        actions: Vec::new(),
+        children: vec![text(label)],
+    };
+
+    let mut first = route();
+    first.layout_tree = layout("layout.open", "open");
+    first.page_tree = page("page.login", "loginDraft", "Login");
+    let mut second = first.clone();
+    second.id = "signup".to_string();
+    second.route_path = "/signup".to_string();
+    second.page_tree = page("page.signup", "signupDraft", "Signup");
+    let mut third = second.clone();
+    third.id = "settings".to_string();
+    third.route_path = "/settings".to_string();
+    third.layout_tree = layout("layout.settings", "settingsOpen");
+    third.page_tree = page("page.settings", "settingsDraft", "Settings");
+
+    let output = generate_android(
+        &[first, second, third],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    let views = output
+        .files
+        .iter()
+        .find(|file| file.relative_path.ends_with("DowePages.kt"))
+        .expect("generated Compose pages");
+    assert!(views.content.contains("private fun DoweLayoutState(key: String?, context: Context)"));
+    assert!(views.content.contains("\"/login\" -> \"layout:0\""));
+    assert!(views.content.contains("\"/signup\" -> \"layout:0\""));
+    assert!(views.content.contains("\"/settings\" -> \"layout:1\""));
+    assert!(views.content.contains("LaunchedEffect(layoutKey)"));
+    assert!(views.content.contains("parent = layoutState"));
+
+    let dev = dev_java_source(&output);
+    assert!(dev.content.contains("dowePrepareState(\"/login\", \"layout:0\", new String[] {\"layout.open\"}, new String[] {\"page.login\"}"));
+    assert!(dev.content.contains("dowePrepareState(\"/signup\", \"layout:0\", new String[] {\"layout.open\"}, new String[] {\"page.signup\"}"));
+    assert!(dev.content.contains("dowePrepareState(\"/settings\", \"layout:1\", new String[] {\"layout.settings\"}, new String[] {\"page.settings\"}"));
+    assert!(dev.content.contains("boolean layoutChanged = !layoutKey.equals(doweMountedLayout);"));
+    assert!(dev.content.contains("for (String id : layoutSignals) doweResetSignal(id);"));
+    assert!(dev.content.contains("for (String id : pageSignals) doweResetSignal(id);"));
+    assert!(dev
+        .content
+        .contains("if (metadata != null && \"global\".equals(metadata[1])) {"));
+}

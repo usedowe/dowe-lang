@@ -243,6 +243,7 @@ fn collect_i18n_keys(node: &ViewNode, keys: &mut BTreeSet<String>) {
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
@@ -344,4 +345,3 @@ fn prop_error(prop: &SourceProp, message: impl AsRef<str>) -> DoweError {
         ),
     )
 }
-

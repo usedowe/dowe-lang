@@ -289,6 +289,7 @@ fn code_types(language: CodeLanguage) -> &'static [&'static str] {
             "Banner",
             "IconButton",
             "Canvas",
+            "Game",
             "Candlestick",
             "Card",
             "Code",

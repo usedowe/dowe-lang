@@ -44,7 +44,7 @@ r#"    suspend fun run(id: String, item: Map<String, Any?>? = null) {
                 is DoweStep.Reset -> initial[step.target]?.let { write(step.target, it) }
                 is DoweStep.Toast -> showToast(step)
                 is DoweStep.Redirect -> {
-                    redirectPath = step.path
+                    localRedirectPath = step.path
                     return true
                 }
             }
@@ -73,15 +73,15 @@ r#"    suspend fun run(id: String, item: Map<String, Any?>? = null) {
     private fun showToast(action: DoweStep.Toast) {
         val scheme = action.scheme ?: if (action.kind == "error") "danger" else action.kind
         toastSequence += 1
-        toast = DoweToastState(toastSequence, action.kind, action.title, action.message, action.duration ?: 4000, scheme, action.variant ?: "solid", action.position ?: "top-right")
+        localToast = DoweToastState(toastSequence, action.kind, action.title, action.message, action.duration ?: 4000, scheme, action.variant ?: "solid", action.position ?: "top-right")
     }
 
     fun closeToast() {
-        toast = null
+        if (localToast != null) localToast = null else parent?.closeToast()
     }
 
     fun consumeRedirect() {
-        redirectPath = null
+        if (localRedirectPath != null) localRedirectPath = null else parent?.consumeRedirect()
     }
 
     private fun read(path: String, item: Map<String, Any?>? = null): Any? {
@@ -92,11 +92,16 @@ r#"    suspend fun run(id: String, item: Map<String, Any?>? = null) {
         if (path.startsWith("item.") && item != null) {
             return readMap(path.removePrefix("item."), item)
         }
-        return readMap(path, values) ?: readMap(path, constants)
+        val root = path.substringBefore('.')
+        return when {
+            values.containsKey(root) -> readMap(path, values)
+            constants.containsKey(root) -> readMap(path, constants)
+            else -> parent?.read(path, item)
+        }
     }
 
     private fun formError(form: String, field: DoweFormFieldMetadata, item: Map<String, Any?>?): String? {
-        val value = readMap(form + "." + field.path, values)
+        val value = read(form + "." + field.path, item)
         val rules = field.rules.map { rule ->
             if (rule.kind == "matches" && rule.argument != null) rule.copy(argument = read(rule.argument, item)?.toString() ?: "") else rule
         }

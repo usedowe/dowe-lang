@@ -8,7 +8,6 @@ use crud_server::{
     CRUD_USERS, CRUD_USERS_HANDLER, CRUD_USERS_REPOSITORY, CRUD_USERS_SERVICE,
 };
 
-
 include!("init_template_basics.rs");
 include!("init_template_translations.rs");
 include!("init_template_crud_files.rs");

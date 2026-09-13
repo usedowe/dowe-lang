@@ -4,7 +4,7 @@ use super::{
 };
 use crate::control::ControlMessage;
 use crate::platform::ProcessTree;
-use crate::{KillTarget, Signal, SpawnConfig, SpawnResult, SpawnEvent};
+use crate::{KillTarget, Signal, SpawnConfig, SpawnEvent, SpawnResult};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
@@ -70,7 +70,9 @@ pub(super) fn run() -> SpawnResult<()> {
                     .is_some_and(|deadline| Instant::now() >= deadline);
                 let expired =
                     timeout.is_some_and(|limit| started.elapsed() >= limit.saturating_add(grace));
-                if expired { watch_timeout.store(true, Ordering::Release); }
+                if expired {
+                    watch_timeout.store(true, Ordering::Release);
+                }
                 if watch_dead.load(Ordering::Acquire) || requested || expired {
                     terminate(&mut tree);
                 }
@@ -91,7 +93,9 @@ pub(super) fn run() -> SpawnResult<()> {
         .name("spawn-owner-input".into())
         .spawn(move || {
             while let Ok(message) = wire::receive::<ControlMessage>(&mut input) {
-                if matches!(message, ControlMessage::Cancel) { read_canceled.store(true, Ordering::Release); }
+                if matches!(message, ControlMessage::Cancel) {
+                    read_canceled.store(true, Ordering::Release);
+                }
                 let delay = match &message {
                     ControlMessage::ForceKill | ControlMessage::Signal(Signal::Kill) => {
                         Some(Duration::ZERO)
@@ -119,7 +123,7 @@ pub(super) fn run() -> SpawnResult<()> {
     let result = if transport_ok {
         loop {
             match child.recv_event_timeout(Duration::from_millis(10)) {
-                Ok(SpawnEvent::Exit { .. }) => {},
+                Ok(SpawnEvent::Exit { .. }) => {}
                 Ok(event) => {
                     if wire::send(&mut output, &Reply::Event(event)).is_err() {
                         dead.store(true, Ordering::Release);
@@ -132,7 +136,9 @@ pub(super) fn run() -> SpawnResult<()> {
             match child.result_rx.try_recv() {
                 Ok(result) => {
                     while let Ok(event) = child.try_recv_event() {
-                        if !matches!(event, SpawnEvent::Exit { .. }) { let _ = wire::send(&mut output, &Reply::Event(event)); }
+                        if !matches!(event, SpawnEvent::Exit { .. }) {
+                            let _ = wire::send(&mut output, &Reply::Event(event));
+                        }
                     }
                     break result;
                 }
@@ -150,14 +156,33 @@ pub(super) fn run() -> SpawnResult<()> {
     let result = result.map(|mut result| {
         if forced_timeout.load(Ordering::Acquire) && !result.timed_out {
             result.timed_out = true;
-            let _ = wire::send(&mut output, &Reply::Event(SpawnEvent::Timeout { spawn_id, timeout_ms: timeout.map_or(0, |duration| duration.as_millis() as u64), signal: Signal::Kill }));
+            let _ = wire::send(
+                &mut output,
+                &Reply::Event(SpawnEvent::Timeout {
+                    spawn_id,
+                    timeout_ms: timeout.map_or(0, |duration| duration.as_millis() as u64),
+                    signal: Signal::Kill,
+                }),
+            );
         }
         if canceled.load(Ordering::Acquire) && !result.canceled {
             result.canceled = true;
-            let _ = wire::send(&mut output, &Reply::Event(SpawnEvent::Canceled { spawn_id, signal: Signal::Kill }));
+            let _ = wire::send(
+                &mut output,
+                &Reply::Event(SpawnEvent::Canceled {
+                    spawn_id,
+                    signal: Signal::Kill,
+                }),
+            );
         }
         result.success &= !result.timed_out && !result.canceled;
-        let _ = wire::send(&mut output, &Reply::Event(SpawnEvent::Exit { spawn_id, output: result.clone() }));
+        let _ = wire::send(
+            &mut output,
+            &Reply::Event(SpawnEvent::Exit {
+                spawn_id,
+                output: result.clone(),
+            }),
+        );
         result
     });
     let sent = wire::send(&mut output, &Reply::Finished(result))

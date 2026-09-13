@@ -57,6 +57,7 @@ fn node_style_props(node: &ViewNode) -> Option<&StyleProps> {
         ViewNode::Iframe { props } => Some(&props.style),
         ViewNode::Device { props, .. } => Some(&props.style),
         ViewNode::Canvas { props } => Some(&props.style),
+        ViewNode::Game { props } => Some(&props.style),
         ViewNode::Candlestick { props } => Some(&props.style.style),
         ViewNode::ArcChart { props } => Some(&props.common.style.style),
         ViewNode::AreaChart { props } => Some(&props.common.style.style),
@@ -113,4 +114,3 @@ fn container_node(
         }),
     }
 }
-

@@ -10,6 +10,15 @@ function closeCanvasFrames(...args) {
 function hydrateCanvases(...args) {
   return runtimeCall("canvas", "hydrateCanvases", args);
 }
+function renderGames(...args) {
+  return runtimeCall("game", "renderGames", args);
+}
+function closeGameSockets(...args) {
+  return runtimeCall("game", "closeGameSockets", args);
+}
+function hydrateGames(...args) {
+  return runtimeCall("game", "hydrateGames", args);
+}
 function cropperState(...args) {
   return runtimeCall("controls", "cropperState", args);
 }
@@ -135,6 +144,9 @@ function renderCarouselEffects(...args) {
 }
 function renderCarousel(...args) {
   return runtimeCall("media", "renderCarousel", args);
+}
+function syncCarousel(...args) {
+  return runtimeCall("media", "syncCarousel", args);
 }
 function goToCarousel(...args) {
   return runtimeCall("media", "goToCarousel", args);

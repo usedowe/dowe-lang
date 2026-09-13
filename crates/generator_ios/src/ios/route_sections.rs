@@ -43,6 +43,7 @@ fn ios_route_expression_weight(node: &ViewNode) -> usize {
         | ViewNode::RichText { .. }
         | ViewNode::Map { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
         | ViewNode::AreaChart { .. }

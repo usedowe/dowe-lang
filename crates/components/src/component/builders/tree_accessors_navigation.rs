@@ -197,6 +197,7 @@ pub fn first_text(node: &ViewNode) -> Option<String> {
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }
@@ -277,6 +278,7 @@ pub fn node_element_props(node: &ViewNode) -> Option<&ElementProps> {
         ViewNode::Iframe { props } => Some(&props.style.element),
         ViewNode::Device { props, .. } => Some(&props.style.element),
         ViewNode::Canvas { props } => Some(&props.style.element),
+        ViewNode::Game { props } => Some(&props.style.element),
         ViewNode::Candlestick { props } => Some(&props.style.element),
         ViewNode::Diagram { props } => Some(&props.style.element),
         ViewNode::ArcChart { props } => Some(&props.common.style.element),
@@ -366,6 +368,7 @@ pub fn node_children(node: &ViewNode) -> &[ViewNode] {
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::ArcChart { .. }

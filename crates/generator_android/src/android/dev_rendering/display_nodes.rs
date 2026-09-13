@@ -25,6 +25,7 @@ fn render_dev_android_display_node(
         | ViewNode::Carousel { .. }
         | ViewNode::Code { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Image { .. }
         | ViewNode::Table { .. }
         | ViewNode::Video { .. }

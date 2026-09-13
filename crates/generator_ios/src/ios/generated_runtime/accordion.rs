@@ -4,6 +4,7 @@ fn swift_runtime_accordion() -> &'static str {
     let variant: String
     let backgroundColor: Color
     let contentColor: Color
+    let titleColor: Color
     let borderColor: Color?
     let itemBackgroundColor: Color
     let itemBorderColor: Color
@@ -12,11 +13,12 @@ fn swift_runtime_accordion() -> &'static str {
     @ViewBuilder let content: (Set<String>, @escaping (String) -> Void) -> Content
     @State private var openIds: Set<String>
 
-    init(multiple: Bool, variant: String, defaultOpenIds: Set<String>, backgroundColor: Color, contentColor: Color, borderColor: Color?, itemBackgroundColor: Color, itemBorderColor: Color, itemBorderOpacity: Double, radius: CGFloat, @ViewBuilder content: @escaping (Set<String>, @escaping (String) -> Void) -> Content) {
+    init(multiple: Bool, variant: String, defaultOpenIds: Set<String>, backgroundColor: Color, contentColor: Color, titleColor: Color, borderColor: Color?, itemBackgroundColor: Color, itemBorderColor: Color, itemBorderOpacity: Double, radius: CGFloat, @ViewBuilder content: @escaping (Set<String>, @escaping (String) -> Void) -> Content) {
         self.multiple = multiple
         self.variant = variant
         self.backgroundColor = backgroundColor
         self.contentColor = contentColor
+        self.titleColor = titleColor
         self.borderColor = borderColor
         self.itemBackgroundColor = itemBackgroundColor
         self.itemBorderColor = itemBorderColor
@@ -41,6 +43,7 @@ fn swift_runtime_accordion() -> &'static str {
         .padding(variant == "ghost" || variant == "line" ? CGFloat(0) : CGFloat(4))
         .frame(maxWidth: .infinity, alignment: .leading)
         .foregroundStyle(contentColor)
+        .environment(\.doweTitleColor, titleColor)
         .background(backgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: radius))
         .overlay(

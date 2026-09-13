@@ -142,6 +142,18 @@ fn container_editor_and_charts(
             })()
             .map(Some)
         }
+        BuiltinComponent::Game => {
+            let props = props.to_vec();
+            let children = children.to_vec();
+            (|| -> ComponentResult<ViewNode> {
+                if children.is_empty() {
+                    game_component_node(props)
+                } else {
+                    Err(ComponentError::children_not_allowed(component))
+                }
+            })()
+            .map(Some)
+        }
         BuiltinComponent::Draw => {
             let props = props.to_vec();
             let children = children.to_vec();

@@ -166,9 +166,31 @@ fn persists_root_level_detectable_language_file() {
     let temp = TempDir::new().expect("tempdir");
     fs::write(temp.path().join("main.py"), "print(1)\n").expect("python");
     let graph = build_codegraph(temp.path(), BuildOptions::default()).expect("graph");
-    assert!(graph.nodes.iter().any(|node| node.path.as_deref() == Some("main.py") && node.language == "python"));
-    let snapshot = dowe_codegraph::ensure_persistent_codegraph(temp.path()).expect("persistent graph");
-    assert_eq!(snapshot.manifest.fingerprints.get("main.py").map(String::as_str), Some(snapshot.graph.nodes.iter().find(|node| node.path.as_deref() == Some("main.py")).unwrap().fingerprint.as_str()));
+    assert!(
+        graph
+            .nodes
+            .iter()
+            .any(|node| node.path.as_deref() == Some("main.py") && node.language == "python")
+    );
+    let snapshot =
+        dowe_codegraph::ensure_persistent_codegraph(temp.path()).expect("persistent graph");
+    assert_eq!(
+        snapshot
+            .manifest
+            .fingerprints
+            .get("main.py")
+            .map(String::as_str),
+        Some(
+            snapshot
+                .graph
+                .nodes
+                .iter()
+                .find(|node| node.path.as_deref() == Some("main.py"))
+                .unwrap()
+                .fingerprint
+                .as_str()
+        )
+    );
 }
 
 #[test]
@@ -183,8 +205,18 @@ fn reads_bound_generation_without_refreshing_and_reports_drift() {
         mode: snapshot.manifest.mode,
     };
     fs::write(temp.path().join("main.py"), "print(2)\n").expect("drift");
-    let report = dowe_codegraph::check_bound_persistent_codegraph(temp.path(), &binding, CheckOptions::default()).expect("check");
-    assert!(report.diagnostics.iter().any(|diagnostic| diagnostic.code == "codegraph_manifest_drift"));
+    let report = dowe_codegraph::check_bound_persistent_codegraph(
+        temp.path(),
+        &binding,
+        CheckOptions::default(),
+    )
+    .expect("check");
+    assert!(
+        report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "codegraph_manifest_drift")
+    );
     let read = dowe_codegraph::read_persistent_codegraph(temp.path()).expect("read");
     assert_eq!(read.manifest.revision, snapshot.manifest.revision);
 }

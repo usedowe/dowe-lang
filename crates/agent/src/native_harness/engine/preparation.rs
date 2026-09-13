@@ -11,6 +11,7 @@ struct PreparedHarnessTurn {
     turn_codegraph_binding: Option<CodeGraphBinding>,
     expected_codegraph_binding: Option<CodeGraphBinding>,
     ui_task: bool,
+    visual_qa_required: bool,
 }
 
 async fn prepare_harness_turn(
@@ -29,11 +30,9 @@ async fn prepare_harness_turn(
         image_paths,
         edit_scope,
         expected_codegraph_binding,
+        permission_mode,
     } = task;
     config.validate()?;
-    // Keep the session lease for the whole provider/tool turn. Acquiring it
-    // only inside preparation would let a concurrent task start as soon as
-    // the request was built, while the first turn was still running.
     let session_lock = store.lease_session(&session.id)?;
     if session.interrupted {
         return Err(AgentError::new(
@@ -41,8 +40,6 @@ async fn prepare_harness_turn(
         ));
     }
     let selected = config.resolve(role, explicit, active)?;
-    // Refresh ordinary sessions at the task boundary. Orchestrated sessions
-    // retain their baseline binding until the coordinator advances it.
     let graph_snapshot = if expected_codegraph_binding.is_none() {
         ensure_persistent_codegraph(store.root())
             .ok()
@@ -50,7 +47,6 @@ async fn prepare_harness_turn(
     } else {
         read_persistent_codegraph(store.root()).ok()
     };
-    // Capture the persisted graph once; receipts retain this turn-start binding.
     let turn_codegraph_binding = graph_snapshot.as_ref().and_then(|snapshot| {
         Some(CodeGraphBinding {
             generation: snapshot.generation.clone()?,
@@ -108,6 +104,7 @@ async fn prepare_harness_turn(
     )?;
     let mut tools =
         HarnessTools::with_scope(store.root(), &session.id, config.clone(), edit_scope)?;
+    tools.set_permission_mode(permission_mode);
     tools.set_supervisor(host.supervisor()?);
     tools.restore_loaded_skills(&session.turns[session.context_start..]);
     for secret in host.secrets() {
@@ -118,8 +115,17 @@ async fn prepare_harness_turn(
         && (crate::skills::is_ui_authoring_prompt(&prompt)
             || !image_paths.is_empty()
             || historical_images);
+    let visual_qa_required = ui_task
+        && crate::is_dowe_project(store.root())
+        && (!image_paths.is_empty() || historical_images);
     let mut required_skills = select_units(&prompt, &[]);
     let mut preloaded_skills = Vec::new();
+    let mut delivered_skills = Vec::new();
+    if crate::is_dowe_project(store.root()) && role == HarnessRole::Execute {
+        // The compact syntax bootstrap is included in every Dowe execute
+        // request, so it is delivered before the model can propose a write.
+        required_skills.push("core/syntax".to_string());
+    }
     if ui_task && crate::is_dowe_project(store.root()) {
         required_skills.extend([
             "theme".to_string(),
@@ -127,9 +133,12 @@ async fn prepare_harness_turn(
             "views/layouts".to_string(),
             "views/pages".to_string(),
             "views/components".to_string(),
+            "views/catalog".to_string(),
+            "views/shape".to_string(),
         ]);
-        // Keep vector guidance available for references containing a mark or
-        // icon without forcing the model to redraw it as a bitmap.
+        if !image_paths.is_empty() || historical_images {
+            required_skills.extend(["views/reference-ui".to_string(), "views/assets".to_string()]);
+        }
         if prompt.to_ascii_lowercase().contains("svg")
             || prompt.to_ascii_lowercase().contains("logo")
             || prompt.to_ascii_lowercase().contains("icon")
@@ -141,7 +150,18 @@ async fn prepare_harness_turn(
         required_skills.dedup();
         preloaded_skills = required_skills.clone();
         tools.set_required_skills(required_skills.clone())?;
+        if role == HarnessRole::Execute {
+            tools.mark_skill_delivered("core/syntax")?;
+            delivered_skills.push("core/syntax".to_string());
+        }
         tools.set_reference_images(image_paths)?;
+    } else if crate::is_dowe_project(store.root()) && role == HarnessRole::Execute {
+        required_skills.sort();
+        required_skills.dedup();
+        preloaded_skills = required_skills.clone();
+        tools.set_required_skills(required_skills.clone())?;
+        tools.mark_skill_delivered("core/syntax")?;
+        delivered_skills.push("core/syntax".to_string());
     }
     let user = HarnessTurn {
         message: Some(AgentMessage {
@@ -172,7 +192,7 @@ async fn prepare_harness_turn(
         session,
         persist,
         host,
-        json!({"event":"task_started","taskId":task_id,"role":role,"baseline":baseline,"preloadedSkills":preloaded_skills,"visualAuthoring":ui_task}),
+        json!({"event":"task_started","taskId":task_id,"role":role,"baseline":baseline,"preloadedSkills":preloaded_skills,"deliveredSkills":delivered_skills,"visualAuthoring":ui_task}),
     )?;
     if matches!(role, HarnessRole::Codegraph | HarnessRole::Research)
         && let Some(snapshot) = graph_snapshot.as_ref()
@@ -188,8 +208,7 @@ async fn prepare_harness_turn(
             .nodes
             .iter()
             .filter(|node| {
-                node.path.as_deref().is_some_and(|path| path != ".")
-                    && node.language == "unknown"
+                node.path.as_deref().is_some_and(|path| path != ".") && node.language == "unknown"
             })
             .count();
         emit_persist(
@@ -259,5 +278,6 @@ async fn prepare_harness_turn(
         turn_codegraph_binding,
         expected_codegraph_binding,
         ui_task,
+        visual_qa_required,
     })
 }

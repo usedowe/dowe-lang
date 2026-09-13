@@ -1,4 +1,4 @@
 component AppBrand
   Flex align:"center" gap:2
-    Text weight:"bold"
+    Text
       "Dowe Journal"

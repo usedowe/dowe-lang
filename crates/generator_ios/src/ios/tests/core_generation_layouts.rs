@@ -1,4 +1,19 @@
 #[test]
+fn generates_labeled_layout_state_without_a_layout() {
+    let mut page = route();
+    page.layout_tree = ViewNode::Children;
+    let output = generate_ios(
+        &[page],
+        &FontConfig::default(),
+        &DesignConfig::default(),
+        &[],
+    );
+    assert!(swift_content(&output).contains(
+        "openExternal: openExternal, layoutState: nil).id(routeRevision)"
+    ));
+}
+
+#[test]
 fn generates_shared_swiftui_layout_once_for_multiple_routes() {
     let mut first = route();
     first.layout_tree = ViewNode::Box {
@@ -156,6 +171,7 @@ fn keeps_layouts_composed_when_page_reads_layout_state() {
         &[],
     );
     let layouts = swift_content(&output);
+    assert!(layouts.contains("openExternal: openExternal, layoutState: layoutState).id(routeRevision)"));
     let login = output
         .files
         .iter()
@@ -276,4 +292,3 @@ fn reuses_stateful_scaffold_drawer_layout_when_page_mentions_binding_literals() 
     assert!(boxed_layouts.contains(".frame(maxWidth: CGFloat(1536), alignment: .topLeading)"));
     assert!(boxed_layouts.contains(".frame(maxWidth: .infinity, alignment: .top)"));
 }
-

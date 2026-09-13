@@ -216,20 +216,17 @@ pub fn builtin_capability_evidence(
         .find(|entry| entry.provider == provider && entry.models.contains(&model))
 }
 
-/// Resolve complete capability metadata from the generated model catalog.
-/// Missing source fields remain unknown rather than being guessed.
-pub fn catalog_model_capabilities(
-    provider: &str,
-    model: &str,
-) -> Option<ModelCapabilities> {
+pub fn catalog_model_capabilities(provider: &str, model: &str) -> Option<ModelCapabilities> {
     let model = crate::normalize_model_id(provider, model);
     crate::catalog::builtin_models(provider)
         .iter()
         .find(|entry| entry.id == model)
-        .and_then(|entry| Some(ModelCapabilities {
-            tools: entry.tools?,
-            images: entry.images?,
-        }))
+        .and_then(|entry| {
+            Some(ModelCapabilities {
+                tools: entry.tools?,
+                images: entry.images?,
+            })
+        })
 }
 
 #[cfg(test)]

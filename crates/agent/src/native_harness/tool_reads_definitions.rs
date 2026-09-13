@@ -82,8 +82,11 @@ fn normalize_embedded_skill_request(
         return match (matches.as_slice(), resource) {
             ([skill], None) => Ok((skill.id.clone(), Some(id.to_string()))),
             ([skill], Some(bundle)) => {
-                let normalized_bundle =
-                    bundle.trim().strip_prefix("dowe-").unwrap_or(bundle.trim());
+                let bundle = bundle.trim();
+                let normalized_bundle = bundle.strip_prefix("dowe-").unwrap_or(bundle);
+                let normalized_bundle = normalized_bundle
+                    .strip_prefix("bundles/")
+                    .unwrap_or(normalized_bundle);
                 if normalized_bundle != skill.id {
                     return Err(AgentError::new(format!(
                         "embedded skill resource `{id}` does not match bundle `{bundle}`; expected `{}`",
@@ -201,4 +204,3 @@ fn unknown_embedded_skill(id: &str) -> AgentError {
         "unknown public Dowe skill `{id}`; use an exact logical id such as core, theme, views, server, domain-modeling, native-ipc, or one of the suggested scoped units"
     ))
 }
-

@@ -82,14 +82,17 @@ fn push_variant_rule(
     base: &'static str,
     props: &VariantProps,
 ) {
-    let default_variant = if base == "accordion" {
-        ComponentVariant::Ghost
-    } else {
-        ComponentVariant::Solid
+    let default_variant = match base {
+        "accordion" | "navmenu" | "sidebar" => ComponentVariant::Ghost,
+        _ => ComponentVariant::Solid,
+    };
+    let default_color = match base {
+        "navmenu" | "sidebar" => ColorFamily::Muted,
+        _ => ColorFamily::Primary,
     };
     let rule = (
         base,
-        props.color.unwrap_or(ColorFamily::Primary),
+        props.color.unwrap_or(default_color),
         props.variant.unwrap_or(default_variant),
     );
     if !variants.contains(&rule) {
@@ -111,4 +114,3 @@ fn append_class_css(css: &mut String, class_name: &str) {
         append_rule(css, class_name, &body);
     }
 }
-

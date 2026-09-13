@@ -236,7 +236,7 @@ fn render_swift_accordion(
         "nil".to_string()
     };
     let item_background = match variant {
-        ComponentVariant::Solid | ComponentVariant::Outlined => color_ref(ColorToken::Surface),
+        ComponentVariant::Outlined => color_ref(ColorToken::Surface),
         _ => "Color.clear",
     };
     let item_border = match variant {
@@ -262,8 +262,9 @@ fn render_swift_accordion(
     } else {
         format!("({}) * CGFloat(0.85)", swift_card_radius(&style.style))
     };
+    let title_color = card_variant_title(&style);
     output.push_str(&format!(
-        "{pad}DoweAccordionView(multiple: {}, variant: {}, defaultOpenIds: [{default_open_ids}], backgroundColor: {}, contentColor: {content_color}, borderColor: {border}, itemBackgroundColor: {}, itemBorderColor: {}, itemBorderOpacity: {}, radius: {}) {{ openIds, toggleItem in\n",
+        "{pad}DoweAccordionView(multiple: {}, variant: {}, defaultOpenIds: [{default_open_ids}], backgroundColor: {}, contentColor: {content_color}, titleColor: {title_color}, borderColor: {border}, itemBackgroundColor: {}, itemBorderColor: {}, itemBorderOpacity: {}, radius: {}) {{ openIds, toggleItem in\n",
         props.multiple,
         swift_string_literal(variant.as_str()),
         card_variant_container(&style),

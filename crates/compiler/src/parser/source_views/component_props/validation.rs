@@ -234,6 +234,12 @@ pub(super) fn allows_bare_component_reference(
             SourceValue::Bareword(_),
         )
         | (
+            BuiltinComponent::Game,
+            "scene" | "world" | "camera" | "onPointer" | "onKey" | "onFire" | "onMotion"
+            | "socket" | "send" | "status" | "onOpen" | "onMessage" | "onClose" | "onError",
+            SourceValue::Bareword(_),
+        )
+        | (
             BuiltinComponent::ArcChart
             | BuiltinComponent::AreaChart
             | BuiltinComponent::BarChart

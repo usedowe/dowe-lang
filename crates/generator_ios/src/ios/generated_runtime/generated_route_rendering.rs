@@ -42,6 +42,7 @@ fn generated_route_view(
     output.push_str("    let navigate: (String, String, String?) -> Void\n");
     output.push_str("    let goBack: () -> Void\n");
     output.push_str("    let openExternal: (String, String) -> Void\n");
+    output.push_str("    let layoutState: DoweReactiveState?\n");
     output.push_str(&format!(
         "    private let activePath = \"{}\"\n",
         escape_swift(&route.route_path)
@@ -54,13 +55,39 @@ fn generated_route_view(
     let fixed_boxes = fixed_box_nodes(&tree);
     let fixed_fabs = fixed_fab_nodes(&tree);
     let reactive = swift_reactive_route(&tree);
+    let layout_reactive = swift_reactive_route(&route.layout_tree);
+    let layout_startup = layout_reactive
+        .init
+        .iter()
+        .chain(&layout_reactive.autoload)
+        .map(|id| format!("\"{}\"", escape_swift(id)))
+        .collect::<Vec<_>>();
+    let layout_startup_ids = layout_reactive
+        .init
+        .iter()
+        .chain(&layout_reactive.autoload)
+        .collect::<std::collections::BTreeSet<_>>();
+    let startup = reactive
+        .init
+        .iter()
+        .chain(&reactive.autoload)
+        .filter(|id| !layout_startup_ids.contains(id))
+        .map(|id| format!("\"{}\"", escape_swift(id)))
+        .collect::<Vec<_>>();
     for index in 0..fixed_fabs.len() {
         output.push_str(&format!(
             "    @State private var doweFixedFabOpen{index} = false\n"
         ));
     }
+    output.push_str("    @StateObject private var state: DoweReactiveState\n\n");
+    output.push_str(
+        "    init(\n        viewportWidth: CGFloat,\n        viewportHeight: CGFloat,\n        activeFragment: String?,\n        navigate: @escaping (String, String, String?) -> Void,\n        goBack: @escaping () -> Void,\n        openExternal: @escaping (String, String) -> Void,\n        layoutState: DoweReactiveState? = nil\n    ) {\n",
+    );
+    output.push_str(
+        "        self.viewportWidth = viewportWidth\n        self.viewportHeight = viewportHeight\n        self.activeFragment = activeFragment\n        self.navigate = navigate\n        self.goBack = goBack\n        self.openExternal = openExternal\n        self.layoutState = layoutState\n",
+    );
     output.push_str(&format!(
-        "    @StateObject private var state = DoweReactiveState(constants: {}, initial: {}, signals: {}, actions: {}, forms: {})\n",
+        "        _state = StateObject(wrappedValue: DoweReactiveState(constants: {}, initial: {}, signals: {}, actions: {}, forms: {}, parent: layoutState))\n    }}\n\n",
         reactive.constants, reactive.initial, reactive.signals, reactive.actions, reactive.forms
     ));
     let route_tree = if layout_index.is_some() {
@@ -118,20 +145,24 @@ fn generated_route_view(
     }
     output.push_str("            DoweGlobalToast(toast: state.toast, close: state.closeToast)\n");
     output.push_str("        }\n");
-    let startup = reactive
-        .init
-        .iter()
-        .chain(&reactive.autoload)
-        .collect::<Vec<_>>();
-    if !startup.is_empty() {
+    if layout_startup.is_empty() && !startup.is_empty() {
         output.push_str(&format!(
             "        .task {{ state.load([{}]) }}\n",
-            startup
-                .iter()
-                .map(|value| format!("\"{}\"", escape_swift(value)))
-                .collect::<Vec<_>>()
-                .join(", ")
+            startup.join(", ")
         ));
+    } else if !layout_startup.is_empty() {
+        output.push_str("        .task {\n");
+        output.push_str(&format!(
+            "            layoutState?.load([{}])\n",
+            layout_startup.join(", ")
+        ));
+        if !startup.is_empty() {
+            output.push_str(&format!(
+                "            state.load([{}])\n",
+                startup.join(", ")
+            ));
+        }
+        output.push_str("        }\n");
     }
     output.push_str("        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)\n        .background(DoweDesign.background)\n        .foregroundStyle(DoweDesign.backgroundText)\n");
     output.push_str("        .environment(\\.doweTitleColor, DoweDesign.backgroundTitle)\n");
@@ -213,4 +244,3 @@ fn generated_route_view(
     output.push_str("}\n");
     output
 }
-

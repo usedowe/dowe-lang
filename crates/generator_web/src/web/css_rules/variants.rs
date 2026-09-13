@@ -132,6 +132,7 @@ fn append_single_variant_css(
                     "0",
                 ),
             };
+        let content_title = if variant == ComponentVariant::Solid { title } else { content_title };
         css.push_str(&format!(
             ".accordion.is-{variant}.is-{name}{{--dowe-content-text:var(--dowe-{content});--dowe-content-title:var(--dowe-{content_title});background-color:{background};color:var(--dowe-{content});border:1px solid {border};padding:{padding};gap:{gap};}}.accordion.is-{variant}.is-{name} .accordion-item{{background-color:{item_background};border:{item_border};border-radius:{item_radius};}}.accordion.is-{variant}.is-{name} .accordion-header:hover,.accordion.is-{variant}.is-{name} .accordion-header:focus-visible{{background-color:color-mix(in srgb,currentColor 8%,transparent);}}",
             variant = variant.as_str()

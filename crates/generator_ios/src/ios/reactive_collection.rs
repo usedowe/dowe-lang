@@ -217,6 +217,7 @@ fn collect_swift_reactive(
         | ViewNode::Iframe { .. }
         | ViewNode::Device { .. }
         | ViewNode::Canvas { .. }
+        | ViewNode::Game { .. }
         | ViewNode::Diagram { .. }
         | ViewNode::Candlestick { .. }
         | ViewNode::ArcChart { .. }
@@ -244,4 +245,3 @@ fn collect_swift_reactive(
         | ViewNode::Children => {}
     }
 }
-

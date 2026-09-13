@@ -291,6 +291,7 @@ fn generates_compose_and_dev_media_display_form_components() {
             .contains("item.arrow.animate().rotation(open ? 90f : 0f)")
     );
     assert!(views.content.contains("DoweCarousel("));
+    assert!(views.content.contains("contentDescription = \"${title ?: \"Carousel\"}, slide"));
     assert!(views.content.contains("variant = \"snapping\""));
     assert!(views.content.contains("DoweCarouselSlideSpec(id ="));
     assert!(views.content.contains("LazyRow("));
@@ -331,6 +332,10 @@ fn generates_compose_and_dev_media_display_form_components() {
     );
     assert!(dev.content.contains("ArrayList<Button>"));
     assert!(dev.content.contains("setOnScrollChangeListener"));
+    assert!(dev.content.contains("postDelayed"));
+    assert!(dev.content.contains("nearestDistance"));
+    assert!(dev.content.contains("getChildAt(0).getWidth()"));
+    assert!(!dev.content.contains("int step = doweDp(280)"));
     assert!(dev.content.contains("setRotationY(phase * 24f)"));
     assert!(dev.content.contains("setRotation(phase * 1.5f)"));
     assert!(!dev.content.contains("setRotationZ("));
@@ -381,6 +386,10 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(dev.content.contains("setHorizontalScrollBarEnabled(false)"));
     assert!(dev.content.contains("setOnTouchListener"));
     assert!(views.content.contains("rotationY"));
+    assert!(views.content.contains("rememberUpdatedState(currentIndex)"));
+    assert!(views.content.contains("if (!listState.isScrollInProgress && !(disableLoop && autoplayIndex.value >= slideCount - 1)) moveTo(autoplayIndex.value + 1)"));
+    assert!(views.content.contains("slides.forEachIndexed { index, slide ->"));
+    assert!(views.content.contains("variant == \"stories\" -> minOf(384.dp, viewportWidth * 0.82f)"));
     for variant in [
         "coverFlow",
         "stories",
@@ -479,4 +488,3 @@ fn generates_compose_and_dev_media_display_form_components() {
     assert!(dev.content.contains("doweText(\"Off\""));
     assert!(dev.content.contains("doweText(\"On\""));
 }
-

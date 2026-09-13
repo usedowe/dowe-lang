@@ -21,9 +21,12 @@ fn text_color(title: bool, props: &TextProps) -> String {
         })
 }
 
-fn text_size(title: bool, props: &TextProps) -> String {
+fn text_size(title: bool, props: &TextProps, context: &ComposeReactiveContext) -> String {
     if let Some(binding) = props.size_binding.as_ref() {
-        return format!("doweDynamicTextSize(state.text(\"{}\"))", escape_kotlin(&binding.path));
+        let value = compose_text_binding(binding, context);
+        return format!(
+            "doweDynamicTextSize({value}, viewportWidth, title = {title})"
+        );
     }
     let fallback = compose_text_size_expr(title, TextSize::Md);
     props
@@ -34,7 +37,18 @@ fn text_size(title: bool, props: &TextProps) -> String {
         .unwrap_or(fallback)
 }
 
-fn text_line_height(title: bool, props: &TextProps, size: &str) -> String {
+fn text_line_height(
+    title: bool,
+    props: &TextProps,
+    size: &str,
+    context: &ComposeReactiveContext,
+) -> String {
+    if let Some(binding) = props.size_binding.as_ref() {
+        let value = compose_text_binding(binding, context);
+        return format!(
+            "doweDynamicTextLineHeight({value}, title = {title}, fontSize = {size})"
+        );
+    }
     let fallback = format!("{}f", text_typography(title, TextSize::Md).line_height);
     let line_height = props
         .size
@@ -49,9 +63,10 @@ fn text_line_height(title: bool, props: &TextProps, size: &str) -> String {
     format!("doweTextLineHeight({size}, {line_height})")
 }
 
-fn text_weight(title: bool, props: &TextProps) -> String {
+fn text_weight(title: bool, props: &TextProps, context: &ComposeReactiveContext) -> String {
     if let Some(binding) = props.weight_binding.as_ref() {
-        return format!("doweDynamicTextWeight(state.text(\"{}\"))", escape_kotlin(&binding.path));
+        let value = compose_text_binding(binding, context);
+        return format!("doweDynamicTextWeight({value})");
     }
     if let Some(value) = props.weight.as_ref() {
         let fallback = compose_text_weight(TextWeight::Regular);
@@ -62,6 +77,12 @@ fn text_weight(title: bool, props: &TextProps) -> String {
     }
 
     if title {
+        if let Some(binding) = props.size_binding.as_ref() {
+            let value = compose_text_binding(binding, context);
+            return format!(
+                "doweDynamicTextWeightForSize({value}, title = true)"
+            );
+        }
         let fallback = compose_text_weight(text_typography(true, TextSize::Md).weight);
         props
             .size
@@ -78,9 +99,10 @@ fn text_weight(title: bool, props: &TextProps) -> String {
     }
 }
 
-fn text_spacing(title: bool, props: &TextProps) -> String {
+fn text_spacing(title: bool, props: &TextProps, context: &ComposeReactiveContext) -> String {
     if let Some(binding) = props.letter_spacing_binding.as_ref() {
-        return format!("doweDynamicTextSpacing(state.text(\"{}\"))", escape_kotlin(&binding.path));
+        let value = compose_text_binding(binding, context);
+        return format!("doweDynamicTextSpacing({value})");
     }
     if let Some(value) = props.letter_spacing.as_ref() {
         let fallback = "0f.em";
@@ -91,6 +113,12 @@ fn text_spacing(title: bool, props: &TextProps) -> String {
     }
 
     if title {
+        if let Some(binding) = props.size_binding.as_ref() {
+            let value = compose_text_binding(binding, context);
+            return format!(
+                "doweDynamicTextSpacingForSize({value}, title = true)"
+            );
+        }
         let fallback = compose_default_text_spacing(TextSize::Md);
         props
             .size
@@ -102,6 +130,23 @@ fn text_spacing(title: bool, props: &TextProps) -> String {
             .unwrap_or(fallback)
     } else {
         "0f.em".to_string()
+    }
+}
+
+fn compose_text_binding(
+    binding: &dowe_components::PropBinding,
+    context: &ComposeReactiveContext,
+) -> String {
+    if let Some(item) = context.item_value(&binding.path) {
+        let path = context
+            .item_path(&binding.path)
+            .unwrap_or_else(|| binding.path.clone());
+        format!("state.text(\"{}\", {item})", escape_kotlin(&path))
+    } else {
+        format!(
+            "state.text(\"{}\")",
+            escape_kotlin(&context.signal_path(&binding.path))
+        )
     }
 }
 
@@ -142,4 +187,3 @@ fn compose_em(value: &str) -> String {
         format!("{value}f.em")
     }
 }
-

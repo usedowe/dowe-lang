@@ -6,7 +6,7 @@ private val doweOverlayClosePaths = listOf(
 )
 
 @Composable
-private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, contentColor: Color, borderColor: Color?, radius: Dp, disableOverlayClose: Boolean, hideCloseButton: Boolean, header: (@Composable () -> Unit)?, footer: (@Composable () -> Unit)?, content: @Composable () -> Unit) {
+private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, contentColor: Color, titleColor: Color = DoweDesign.backgroundTitle, borderColor: Color?, radius: Dp, disableOverlayClose: Boolean, hideCloseButton: Boolean, header: (@Composable () -> Unit)?, footer: (@Composable () -> Unit)?, content: @Composable () -> Unit) {
     if (!open) {
         return
     }
@@ -30,7 +30,7 @@ private fun DoweModal(open: Boolean, close: () -> Unit, backgroundColor: Color, 
                     .background(backgroundColor)
                     .then(if (borderColor == null) Modifier else Modifier.border(1.dp, borderColor, RoundedCornerShape(radius)))
             ) {
-                CompositionLocalProvider(LocalContentColor provides contentColor) {
+                CompositionLocalProvider(LocalContentColor provides contentColor, LocalDoweTitleColor provides titleColor) {
                     Column(
                         modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)

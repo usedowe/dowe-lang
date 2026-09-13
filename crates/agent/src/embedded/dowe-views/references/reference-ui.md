@@ -209,10 +209,19 @@ Annotated labels are hints, not component names. Resolve visible behavior agains
 | Relative stage with overlapping children or a fixed viewport layer | Positioned `Box` wrappers around the real semantic components |
 | Compact label or status | `Chip` or `Badge` according to its behavior |
 | Related bordered, raised, tinted, or otherwise contained unit | `Card`; a visually flat semantic group remains Grid/Flex content |
+| Visible slide or quote with previous/next controls, indicators, counter, thumbnails, snapping, or auto-advance | `Carousel` with direct stable-id `slide` entries; never encode indicators as text or controls as ordinary Buttons |
 
 Rebuild navigation, headings, text, controls, cards, lists, metrics, forms, tables, charts,
 dashboards, badges, icons, logos, and decorative geometry with Dowe components. Use `Canvas` only
 for a portable drawing that semantic components and charts cannot express.
+
+Treat the control row as interaction evidence, not decoration. A screenshot may show only one active
+slide while arrows or multiple indicators prove that the region is a `Carousel`. Use
+`variant:"controls" indicatorType:"dot"` for the common arrows-plus-dots treatment and add
+`showNavigation:true` only for arrows visibly overlaid on the track. Do not type a dot string or
+copy previous/next Buttons. If the reference does not provide off-screen slide content, preserve
+only supplied copy and record the missing or inferred slides instead of fabricating product content;
+do not infer `autoplay` from a single static capture.
 
 ## Ownership and data
 
@@ -269,6 +278,7 @@ Dowe states.
 | Submit or refresh action | Named function, `Button loading`, duplicate-action prevention, success or error feedback |
 | Form | Visible labels, help or error copy when required, disabled/read-only behavior already supported by the chosen control |
 | Overlay or responsive navigation | Open, close, dismissal, and focus behavior owned by the built-in component |
+| Carousel | Active slide, previous/next controls, indicators or counter, touch/keyboard navigation, and reduced-motion behavior owned by `Carousel` |
 | Interactive control | Default, disabled, focus, keyboard, pointer, and reduced-motion behavior provided by its portable contract |
 
 Use `Skeleton` or `Splash` for loading boundaries, `Empty` for an empty collection, `Alert` for
@@ -382,23 +392,29 @@ share only genuine cross-route state through a Store. Never invent component inp
 
 ## Deterministic visual QA
 
-The bundled script accepts 8-bit non-interlaced PNG evidence and writes only under `.dowe`.
-Run its self-test once when the environment is new:
+The bundled script accepts 8-bit non-interlaced PNG evidence and writes only under `.dowe`. Run its
+self-test once when the environment is new. In a native `dowe agent` turn, prefer the
+`capture_web_screenshot` tool after the final source mutation:
 
-Use the embedded `dowe-views` visual QA script resource for its self-test when the environment is
-new.
+```text
+capture_web_screenshot
+  url:"http://127.0.0.1:<port>/"
+  reason:"Compare the finished reference-UI layout at the attached viewport"
+```
 
-When local Chrome or Chromium is available, start Dowe, capture the exact viewport, and compare in
-one command:
+With an attached PNG, omit `width` and `height` together so the harness supplies the reference
+viewport. If an older caller provides an incompatible viewport, the harness records
+`reference_override` and uses the first valid attached PNG instead. The tool writes the rendered PNG,
+report, and optional diff under `.dowe/visual-qa/<session>`, returns the captured image to the model,
+and compares matching dimensions. Inspect all three pieces of evidence before editing again. A
+failed comparison requires a repair and a new capture; the harness permits up to three bounded
+visual repairs before returning `validation_failed`.
 
-Use the embedded visual QA script resource with the project root, reference image, blueprint,
-output directory, and local route. It must write all evidence under `.dowe/visual-qa/<screen>`.
-
-If no supported local browser is available, start the web target, capture the rendered route at the
-blueprint viewport with the agent's browser, and compare the two PNG files:
-
-Use the embedded visual QA script resource to compare the reference and rendered PNG files with
-the blueprint, writing the report and diff under `.dowe/visual-qa/<screen>`.
+When the browser, loopback page, or matching PNG is unavailable, the tool or script must record
+`not_run`. That status is useful evidence of an unavailable comparison, but it is not visual parity
+and must be stated as unverified in the final task report. The optional `scripts/visual_qa.py`
+entrypoint remains available for detailed band blueprints and exact viewport reports; it must write
+all evidence under `.dowe/visual-qa/<screen>`.
 
 Review `report.json` and `diff.png` band by band. The default gate marks a pixel different when one
 RGB channel differs by more than 16 and fails a band when more than 8 percent of its pixels differ.
@@ -421,6 +437,8 @@ hide a visible mismatch.
 - Static-only component props remain compiler-valid inside the loop. Use `Icon name:item.icon`
   only with a constant collection whose possible names are all known during compilation; use
   `Svg data:item.svg` for runtime vector data.
+- Every slide-based region uses `Carousel` with direct stable-id `slide` entries; typed indicator
+  glyphs and generic previous/next controls are a structural defect.
 - Responsive behavior distinguishes observed evidence from conservative inference.
 - Split-panel content is centered against its owning panel, and nested action tracks are checked at
   their actual usable width rather than inferred from the viewport breakpoint alone.

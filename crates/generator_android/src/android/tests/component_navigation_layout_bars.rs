@@ -33,7 +33,7 @@ fn generates_compose_and_dev_layout_bars() {
     assert!(
         views
             .content
-            .contains("CompositionLocalProvider(LocalContentColor provides DoweDesign.surfaceText)")
+            .contains("CompositionLocalProvider(LocalContentColor provides DoweDesign.surfaceText, LocalDoweTitleColor provides DoweDesign.surfaceTitle)")
     );
     assert!(
         views
@@ -51,7 +51,7 @@ fn generates_compose_and_dev_layout_bars() {
         .rfind("Column(modifier = Modifier.widthIn(max = 1536.dp).fillMaxWidth())")
         .expect("Footer boxed regions");
     let footer_provider = views.content[..footer_inner]
-        .rfind("CompositionLocalProvider(LocalContentColor provides DoweDesign.surfaceText)")
+        .rfind("CompositionLocalProvider(LocalContentColor provides DoweDesign.surfaceText, LocalDoweTitleColor provides DoweDesign.surfaceTitle)")
         .expect("Footer content color");
     let copyright = views.content[directory..]
         .find("Text(\"Copyright\"")

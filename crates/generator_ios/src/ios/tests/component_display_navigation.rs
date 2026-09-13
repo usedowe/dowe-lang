@@ -19,7 +19,7 @@ fn generates_fragment_aware_native_history_and_deep_links() {
     assert!(views.contains("@State private var navigationPath: [DoweRouteEntry] = []"));
     assert!(views.contains("@State private var routeRevision = 0"));
     assert!(views.contains(
-        "routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height)"
+        "routeContent(currentEntry, viewportWidth: geometry.size.width, viewportHeight: geometry.size.height, routeRevision: routeRevision)"
     ));
     assert!(views.contains(".simultaneousGesture(backSwipeGesture)"));
     assert!(!views.contains("NavigationStack(path: $navigationPath)"));
@@ -33,6 +33,9 @@ fn generates_fragment_aware_native_history_and_deep_links() {
         "private func navigate(_ operation: String, _ target: String, _ fragment: String?)"
     ));
     assert!(views.contains("if destination == currentEntry"));
+    assert!(views.contains(
+        "if destination.path != currentEntry.path {\n            beginPageTransition()\n            routeRevision += 1\n        }"
+    ));
     assert!(views.contains("routeRevision += 1"));
     assert!(views.contains(".id(routeRevision)"));
     assert!(views.contains(".transition(.asymmetric(insertion: .opacity, removal: .identity))"));

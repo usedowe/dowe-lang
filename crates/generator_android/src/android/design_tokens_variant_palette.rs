@@ -92,6 +92,22 @@ fn card_variant_content(props: &VariantProps) -> &'static str {
     }
 }
 
+fn card_variant_title(props: &VariantProps) -> &'static str {
+    if props.variant == Some(ComponentVariant::Outlined) {
+        color_ref(if props.color == Some(ColorFamily::Background) {
+            ColorToken::BackgroundTitle
+        } else {
+            ColorToken::SurfaceTitle
+        })
+    } else if props.variant == Some(ComponentVariant::Ghost)
+        && matches!(props.color, Some(ColorFamily::Background | ColorFamily::Surface))
+    {
+        color_ref(family_title_color(props.color.unwrap()))
+    } else {
+        variant_title(props)
+    }
+}
+
 fn card_surface_container(props: &VariantProps) -> &'static str { variant_container(props) }
 fn card_surface_content(props: &VariantProps) -> &'static str { variant_content(props) }
 fn card_surface_title(props: &VariantProps) -> &'static str { variant_title(props) }

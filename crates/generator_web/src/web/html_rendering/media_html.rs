@@ -230,12 +230,13 @@ fn render_carousel_html(
         })
         .unwrap_or_default();
     let extra = format!(
-        r#" data-dowe-carousel data-dowe-carousel-index="0" data-dowe-carousel-loop="{}" data-dowe-carousel-autoplay="{}" data-dowe-carousel-interval="{}" data-dowe-carousel-orientation="{}" data-dowe-carousel-variant="{}"{}"#,
+        r#" data-dowe-carousel data-dowe-carousel-index="0" data-dowe-carousel-loop="{}" data-dowe-carousel-autoplay="{}" data-dowe-carousel-interval="{}" data-dowe-carousel-orientation="{}" data-dowe-carousel-variant="{}" role="region" aria-roledescription="carousel" aria-label="{}"{}"#,
         !props.disable_loop,
         props.autoplay,
         props.autoplay_interval,
         props.orientation.as_str(),
         props.variant.as_str(),
+        escape_attr(props.title.as_deref().unwrap_or("Carousel")),
         if props.variant == CarouselVariant::Rtl {
             r#" dir="rtl""#
         } else {
@@ -243,7 +244,7 @@ fn render_carousel_html(
         }
     );
     let mut html = format!(
-        "<div{}>{}<div class=\"carousel-viewport\"><div class=\"carousel-container\" data-dowe-carousel-track style=\"--dowe-carousel-gap:{}px;--dowe-carousel-per-view:{};gap:var(--dowe-carousel-gap);\">",
+        "<div{}>{}<div class=\"carousel-viewport\" role=\"group\" aria-roledescription=\"slide viewport\" aria-label=\"Carousel slides\" tabindex=\"0\"><div class=\"carousel-container\" data-dowe-carousel-track style=\"--dowe-carousel-gap:{}px;--dowe-carousel-per-view:{};gap:var(--dowe-carousel-gap);\">",
         attrs(classes, Some(&props.style.element), Some(&extra), context),
         title,
         props.gap,
@@ -258,7 +259,10 @@ fn render_carousel_html(
             style.push_str(&format!("height:{height}px;"));
         }
         html.push_str(&format!(
-            r#"<div class="carousel-slide" data-dowe-carousel-slide="{}"{}>"#,
+            r#"<div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="Slide {} of {}" aria-hidden="{}" data-dowe-carousel-slide="{}"{}>"#,
+            slides.iter().position(|candidate| candidate.id == slide.id).unwrap_or(0) + 1,
+            slides.len(),
+            if slide.id == slides.first().map(|first| first.id.as_str()).unwrap_or_default() { "false" } else { "true" },
             escape_attr(&slide.id),
             if style.is_empty() {
                 String::new()

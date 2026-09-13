@@ -127,10 +127,10 @@ fn render_dev_android_display_rich_controls_node(
                     "        TextView {mark_view} = doweRichTextView(\"{}\", {}, {}, {}, {}, {}, {});\n        doweRichTextMark({mark_view}, \"{}\", \"{}\");\n        doweAdd({view}, {mark_view});\n",
                     escape_java(&mark.text),
                     dev_text_color(props.title, props, inherited_color.as_deref()),
-                    dev_text_size(props.title, props),
-                    dev_text_weight(props.title, props),
-                    dev_text_spacing(props.title, props),
-                    dev_text_line_height(props.title, props),
+                    dev_text_size(props.title, props, context),
+                    dev_text_weight(props.title, props, context),
+                    dev_text_spacing(props.title, props, context),
+                    dev_text_line_height(props.title, props, context),
                     dev_font_value(props.style.font.as_ref().or(inherited_font)),
                     mark.style.as_str(),
                     mark.color.as_str(),
@@ -424,4 +424,3 @@ fn render_dev_android_display_rich_controls_node(
         _ => {}
     }
 }
-

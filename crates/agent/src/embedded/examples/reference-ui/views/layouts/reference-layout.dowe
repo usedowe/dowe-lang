@@ -9,7 +9,7 @@ layout ReferenceLayout
           Brand href:"/" label:"Reference Workspace home"
             Flex align:"center" gap:2
               Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:7 h:7
-              Text weight:"black"
+              Text
                 "REFERENCE"
         center
           NavMenu show:{ xs:false md:true }
@@ -29,7 +29,7 @@ layout ReferenceLayout
           Brand href:"/" label:"Reference Workspace home"
             Flex align:"center" gap:2
               Icon name:"layers-minimalistic-bold-duotone" fill:"primary" w:7 h:7
-              Text weight:"black"
+              Text
                 "REFERENCE"
         end
           Text size:"sm"
@@ -37,7 +37,7 @@ layout ReferenceLayout
     overlays
       Drawer bind:openNavigation
         header
-          Text weight:"bold"
+          Text
             "Navigation"
         body
           SiteNavigation

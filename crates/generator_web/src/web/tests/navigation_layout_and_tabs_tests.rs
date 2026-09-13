@@ -16,7 +16,10 @@ fn renders_navigation_shell_markup_runtime_and_css() {
         translation_chunks: Vec::new(),
         default_locale: None,
         router_js: String::new(),
-        render_report: dowe_components::RenderReport::new(dowe_components::RenderTarget::Web, Vec::new()),
+        render_report: dowe_components::RenderReport::new(
+            dowe_components::RenderTarget::Web,
+            Vec::new(),
+        ),
     });
 
     assert!(html.contains(r#"<div class="scaffold is-boxed">"#));
@@ -75,6 +78,36 @@ fn renders_navigation_shell_markup_runtime_and_css() {
 }
 
 #[test]
+fn omitted_navigation_variants_do_not_render_as_solid_primary_controls() {
+    let nav_menu = ViewNode::NavMenu {
+        props: NavMenuProps {
+            style: VariantProps::default(),
+            size: SideNavSize::Md,
+        },
+        items: vec![NavMenuItem::Item(NavMenuItemProps {
+            label: "Home".to_string(),
+            i18n: None,
+            description: None,
+            description_i18n: None,
+            icon: None,
+            on_click: None,
+            navigation: Some(NavigationAction::Internal {
+                path: "/".to_string(),
+                fragment: None,
+                operation: NavigationOperation::Push,
+            }),
+        })],
+    };
+    let page_tree = ViewNode::Box {
+        props: Default::default(),
+        children: vec![nav_menu],
+    };
+    let html = render_page_body(&ViewNode::Children, &page_tree);
+    assert!(html.contains(r#"class="navmenu is-ghost is-muted navmenu-md""#));
+    assert!(!html.contains(r#"class="navmenu is-solid is-primary""#));
+}
+
+#[test]
 fn overlays_main_under_sticky_floating_appbar() {
     let tree = ViewNode::Scaffold {
         props: ScaffoldProps::default(),
@@ -89,7 +122,7 @@ fn overlays_main_under_sticky_floating_appbar() {
             center: Vec::new(),
             end: Vec::new(),
             bottom: Vec::new(),
-                mobile_menu: None,
+            mobile_menu: None,
         }],
         start: Vec::new(),
         main: vec![text("Main content")],
@@ -182,4 +215,3 @@ fn renders_responsive_stepper_markup_and_css() {
     assert!(page.css_content.contains("scroll-snap-type:x proximity"));
     assert!(router.contains("writePath(activeView.state,bind,id)"));
 }
-

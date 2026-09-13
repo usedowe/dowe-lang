@@ -8,7 +8,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
-
 include!("database_migration_types.rs");
 include!("database_migration_generation.rs");
 include!("database_migration_sql.rs");
